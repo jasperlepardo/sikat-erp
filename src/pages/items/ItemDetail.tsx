@@ -114,38 +114,35 @@ export function ItemDetail() {
           <Card>
             <Card.Header icon={<Icon size={24}>info</Icon>}>Details</Card.Header>
             <Card.Content>
-              <Form.Group>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <FormField label="Name" required error={errors.name}>
-                    {(p) => (
-                      <TextField {...p} value={draft.name} onChange={(e) => set('name', e.currentTarget.value)} />
-                    )}
-                  </FormField>
-                  <FormField label="SKU" required error={errors.sku}>
-                    {(p) => <TextField {...p} value={draft.sku} onChange={(e) => set('sku', e.currentTarget.value)} />}
-                  </FormField>
-                  <FormField label="Category">
-                    {(p) => (
-                      <Select
-                        {...p}
-                        options={options(ITEM_CATEGORIES)}
-                        value={draft.category}
-                        onValueChange={(v) => set('category', v)}
-                      />
-                    )}
-                  </FormField>
-                  <FormField label="Status">
-                    {(p) => (
-                      <Select
-                        {...p}
-                        options={options(['Active', 'Inactive'])}
-                        value={draft.status}
-                        onValueChange={(v) => set('status', v as Item['status'])}
-                      />
-                    )}
-                  </FormField>
-                </div>
-                <FormField label="Description">
+              {/* `grid!` — Form.Group's own display:flex is unlayered CSS and would beat a plain `grid` utility. */}
+              <Form.Group className="grid! grid-cols-2 gap-2">
+                <FormField label="Name" required error={errors.name}>
+                  {(p) => <TextField {...p} value={draft.name} onChange={(e) => set('name', e.currentTarget.value)} />}
+                </FormField>
+                <FormField label="SKU" required error={errors.sku}>
+                  {(p) => <TextField {...p} value={draft.sku} onChange={(e) => set('sku', e.currentTarget.value)} />}
+                </FormField>
+                <FormField label="Category">
+                  {(p) => (
+                    <Select
+                      {...p}
+                      options={options(ITEM_CATEGORIES)}
+                      value={draft.category}
+                      onValueChange={(v) => set('category', v)}
+                    />
+                  )}
+                </FormField>
+                <FormField label="Status">
+                  {(p) => (
+                    <Select
+                      {...p}
+                      options={options(['Active', 'Inactive'])}
+                      value={draft.status}
+                      onValueChange={(v) => set('status', v as Item['status'])}
+                    />
+                  )}
+                </FormField>
+                <FormField label="Description" className="col-span-2">
                   {(p) => (
                     <Textarea
                       {...p}
@@ -161,28 +158,26 @@ export function ItemDetail() {
           <Card>
             <Card.Header icon={<Icon size={24}>warehouse</Icon>}>Stock & pricing</Card.Header>
             <Card.Content>
-              <Form.Group>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <FormField label="Unit of measure">
-                    {(p) => (
-                      <Select
-                        {...p}
-                        options={options(ITEM_UOMS)}
-                        value={draft.uom}
-                        onValueChange={(v) => set('uom', v)}
-                      />
-                    )}
-                  </FormField>
-                  <FormField label="Unit price">
-                    {(p) => <TextField {...p} prefix="PHP" step="0.01" {...num('unitPrice')} />}
-                  </FormField>
-                  <FormField label="On hand">
-                    {(p) => <TextField {...p} suffix={draft.uom} {...num('onHand')} />}
-                  </FormField>
-                  <FormField label="Reorder level" hint="Flag as low stock at or below this quantity.">
-                    {(p) => <TextField {...p} suffix={draft.uom} {...num('reorderLevel')} />}
-                  </FormField>
-                </div>
+              <Form.Group className="grid! grid-cols-2 gap-2">
+                <FormField label="Unit of measure">
+                  {(p) => (
+                    <Select
+                      {...p}
+                      options={options(ITEM_UOMS)}
+                      value={draft.uom}
+                      onValueChange={(v) => set('uom', v)}
+                    />
+                  )}
+                </FormField>
+                <FormField label="Unit price">
+                  {(p) => <TextField {...p} prefix="PHP" step="0.01" {...num('unitPrice')} />}
+                </FormField>
+                <FormField label="On hand">
+                  {(p) => <TextField {...p} suffix={draft.uom} {...num('onHand')} />}
+                </FormField>
+                <FormField label="Reorder level" hint="Flag as low stock at or below this quantity.">
+                  {(p) => <TextField {...p} suffix={draft.uom} {...num('reorderLevel')} />}
+                </FormField>
               </Form.Group>
               {!isNew && draft.onHand <= draft.reorderLevel ? (
                 <Text variant="small" tone="danger">
