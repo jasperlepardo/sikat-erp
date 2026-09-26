@@ -1,15 +1,13 @@
 import { Fields, Section, bind } from '../../../../components/form/fields';
 import {
   COMMISSION_GROUPS,
-  SALES_TAX_CODES,
-  SALES_TAX_GROUPS,
   SHIPPING_TYPES,
   UOMS,
   WARRANTY_TEMPLATES,
 } from '../../../../mocks/itemMasters';
-import type { TabProps } from './types';
+import { taxCodeOptions, taxGroupOptions, taxResolution, type TabProps } from './types';
 
-export function SalesTab({ draft, update, errors }: TabProps) {
+export function SalesTab({ draft, update, errors, tax }: TabProps) {
   const f = bind(draft, update);
   const converts = draft.salesUom !== draft.inventoryUom;
 
@@ -36,10 +34,16 @@ export function SalesTab({ draft, update, errors }: TabProps) {
 
       <Section icon="percent" title="Tax & commission">
         <Fields>
-          {f.pick('salesTaxGroup', 'Tax group', SALES_TAX_GROUPS, {
-            hint: "Picks the output VAT code from the customer's tax zone.",
+          {f.choose('salesTaxGroup', 'Tax group', taxGroupOptions(tax, 'Sales', draft.salesTaxGroup), {
+            required: draft.salesItem,
+            error: errors.salesTaxGroup,
+            hint: draft.taxLiable
+              ? taxResolution(tax, draft.salesTaxGroup, draft.salesTaxCode)
+              : 'Not tax liable (General tab): no tax is charged on sales.',
           })}
-          {f.pick('salesTaxCode', 'Fixed sales tax code', SALES_TAX_CODES, { hint: 'Overrides the tax group on every sale.' })}
+          {f.choose('salesTaxCode', 'Fixed sales tax code', taxCodeOptions(tax, 'Sales', draft.salesTaxCode), {
+            hint: 'Overrides the tax group on every sale.',
+          })}
           {f.pick('commissionGroup', 'Commission group', COMMISSION_GROUPS)}
           {f.num('commissionPct', 'Commission', { suffix: '%', hint: 'Per item; overrides the salesperson rate.' })}
         </Fields>

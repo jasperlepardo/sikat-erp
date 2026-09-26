@@ -41,9 +41,11 @@ src/
     nav.tsx        Sidebar hubs and pages (from the navigation architecture); a page's id is its route (/sales/invoices)
     router.tsx     Route table; unbuilt nav entries fall through to <Placeholder />
   components/form/ Shared master-data form pieces: field builders, "You can also" menu,
-                   problems alert, attachments table
+                   problems alert, attachments table, MasterList (editable settings lists)
   pages/           One folder per hub (Home, inventory/items/…, partners/…)
     inventory/items/ The item master; detail/ holds the form, one file per tab
+    settings/accounting-tax/ Settings › Accounting & Tax: tax codes, tax groups, withholding,
+                   excise, currencies and BSP exchange rates
     partners/      Business partners: the Business Partners master lists every record;
                    CRM › Leads, Sales › Customers and Purchasing › Vendors are role views
                    of it. detail/ holds the master form, one file per tab
@@ -71,6 +73,13 @@ src/
   `@jasperlepardo/sikat-design-system/styles` explicitly.
 - Theme: light, dark, or follow the OS. Switch it from the avatar menu.
 - To reset the mock data, clear the `sikat-erp:*` keys in `localStorage`.
+- Tax master data (Settings › Accounting & Tax) covers Philippine VAT (12%, zero-rated,
+  exempt, government, importation, digital-services reverse charge), 3% percentage tax,
+  expanded withholding tax ATCs, withholding VAT and excise categories. Rows marked
+  "To confirm" / "Enter current rate" still need your accountant's check.
+- Exchange rates are PHP per unit from the BSP Reference Exchange Rate Bulletin. Paste
+  the day's bulletin into "Import BSP bulletin"; the sample data holds the 30 Apr 2026
+  (partial) and 25 Sep 2026 bulletins.
 - Item fields follow the SAP B1 Item Master Data field map, localized (BIR VAT tax
   groups, PH warehouses). Seed items are marked as having transactions, which locks
   Item No., type, inventory UoM, tracking and valuation, as SAP does. Issue method

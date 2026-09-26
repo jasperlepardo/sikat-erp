@@ -49,11 +49,6 @@ export const CUSTOMS_GROUPS = [
   { name: 'Plastic pipes (HS 3917)', duty: 10 },
 ];
 
-export const PURCHASE_TAX_GROUPS = ['VAT 12% – Input', 'VAT 12% – Input (Capital goods)', 'VAT-exempt purchase', 'Zero-rated purchase'];
-export const SALES_TAX_GROUPS = ['VAT 12% – Output', 'VAT-exempt sale', 'Zero-rated sale (export)'];
-export const PURCHASE_TAX_CODES = ['— None —', 'IV12 – Input VAT 12%', 'IVX – VAT-exempt', 'IV0 – Zero-rated'];
-export const SALES_TAX_CODES = ['— None —', 'OV12 – Output VAT 12%', 'OVX – VAT-exempt', 'OV0 – Zero-rated'];
-
 export const MANUFACTURERS = [
   { code: '— None —', name: '' },
   { code: 'MFR-001', name: 'Phelps Dodge Philippines' },

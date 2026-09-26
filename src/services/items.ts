@@ -2,8 +2,9 @@ import { ITEM_GROUPS } from '../mocks/itemMasters';
 import { SEED_ITEMS, type Item } from '../mocks/items';
 import { createCollection } from './store';
 
-// v2: the record gained the full item master field set; the new key skips old-shaped data.
-const items = createCollection<Item>('sikat-erp:items:v2', SEED_ITEMS, 'itm');
+// v3: tax groups/codes became Settings codes and excise categories were added;
+// the new key skips old-shaped data.
+const items = createCollection<Item>('sikat-erp:items:v3', SEED_ITEMS, 'itm');
 
 export const listItems = items.list;
 export const getItem = items.get;

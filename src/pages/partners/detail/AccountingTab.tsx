@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Radio, Text } from '@jasperlepardo/sikat-design-system';
+import { FormField, MultiSelect, Radio, Text } from '@jasperlepardo/sikat-design-system';
 import { GL_ACCOUNTS, PLANNING_GROUPS } from '../../../mocks/masters';
 import type { Partner } from '../../../mocks/partners';
+import { TAX_ZONES, type WithholdingTax } from '../../../mocks/taxes';
+import { withholdingTaxes } from '../../../services/masterData';
 import { listPartners } from '../../../services/partners';
 import type { TabProps } from './GeneralTab';
 import { Fields, Flags, ReadOnly, Section, bind } from './fields';
@@ -11,15 +13,59 @@ export function AccountingTab({ draft, update, errors }: TabProps) {
   const isCustomer = draft.roles.includes('customer');
   const isVendor = draft.roles.includes('vendor');
   const [others, setOthers] = useState<Partner[]>([]);
+  const [withholding, setWithholding] = useState<WithholdingTax[]>([]);
   useEffect(() => {
     listPartners().then((all) => setOthers(all.filter((p) => p.id !== draft.id)));
+    withholdingTaxes.list().then(setWithholding);
   }, [draft.id]);
+
+  // Individuals and sole proprietors use WI codes; companies use WC codes.
+  const payee = ['Individual', 'Sole proprietorship'].includes(draft.businessType) ? 'Individual' : 'Corporate';
+  const withholdingOptions = withholding
+    .filter((w) => (w.active && (w.payee === payee || w.payee === 'Any')) || draft.withholdingTaxIds.includes(w.id))
+    .map((w) => ({ value: w.id, label: `${w.atc || 'ATC to confirm'} · ${w.description} (${w.rate}%)` }));
 
   const consolidating = others.find((p) => p.id === draft.consolidatingPartnerId);
   const partnerOptions = ['— None —', ...others.map((p) => `${p.code} · ${p.name}`)];
 
   return (
     <>
+      <Section icon="receipt_long" title="Tax">
+        <Fields>
+          {f.choose('taxZone', 'Tax zone', TAX_ZONES, {
+            hint: "Picks the code from each item's tax group, e.g. Government → OVG12 on sales.",
+          })}
+          <ReadOnly
+            label="Withholding payee type"
+            value={payee}
+            hint="From Type of business on the General tab."
+          />
+          {isVendor ? (
+            <FormField
+              label="Withholding taxes"
+              className="md:col-span-2"
+              hint="Withheld when you pay this vendor; they get a BIR Form 2307. Rates live in Settings › Accounting & Tax."
+            >
+              {(p) => (
+                <MultiSelect
+                  {...p}
+                  options={withholdingOptions}
+                  placeholder="None"
+                  value={draft.withholdingTaxIds}
+                  onValueChange={(ids) => update({ withholdingTaxIds: ids })}
+                />
+              )}
+            </FormField>
+          ) : null}
+        </Fields>
+        <Flags>{f.check('vatRegistered', 'VAT-registered')}</Flags>
+        {!draft.vatRegistered && isVendor ? (
+          <Text variant="small" tone="muted">
+            Non-VAT supplier: purchases carry no input VAT (tax code INV).
+          </Text>
+        ) : null}
+      </Section>
+
       <Section icon="account_tree" title="Control accounts">
         <Fields>
           {isCustomer

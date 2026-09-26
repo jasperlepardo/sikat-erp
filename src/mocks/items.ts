@@ -64,6 +64,8 @@ export interface Item {
   gtin: string;
   taxLiable: boolean;
   exciseTax: boolean;
+  /** Excise category code (Settings › Accounting & Tax › Excise tax) when excise applies. */
+  exciseCategory: string;
   validFrom: string;
   validTo: string;
   generalRemarks: string;
@@ -75,7 +77,9 @@ export interface Item {
   itemsPerPurchaseUnit: number;
   vendorItemNo: string;
   dutyPct: number;
+  /** Tax group code (Settings › Accounting & Tax › Tax groups). */
   purchaseTaxGroup: string;
+  /** Fixed tax code overriding the group; '' for none. */
   purchaseTaxCode: string;
   length: number;
   width: number;
@@ -90,7 +94,9 @@ export interface Item {
   salesUom: string;
   itemsPerSalesUnit: number;
   sellingItemNo: string;
+  /** Tax group code (Settings › Accounting & Tax › Tax groups). */
   salesTaxGroup: string;
+  /** Fixed tax code overriding the group; '' for none. */
   salesTaxCode: string;
   commissionGroup: string;
   commissionPct: number;
@@ -175,6 +181,7 @@ export function blankItem(groupName = ITEM_GROUPS[0].name): Omit<Item, 'id'> {
     gtin: '',
     taxLiable: true,
     exciseTax: false,
+    exciseCategory: '',
     validFrom: '',
     validTo: '',
     generalRemarks: '',
@@ -184,8 +191,8 @@ export function blankItem(groupName = ITEM_GROUPS[0].name): Omit<Item, 'id'> {
     itemsPerPurchaseUnit: 1,
     vendorItemNo: '',
     dutyPct: 0,
-    purchaseTaxGroup: 'VAT 12% – Input',
-    purchaseTaxCode: '— None —',
+    purchaseTaxGroup: 'P-VAT12',
+    purchaseTaxCode: '',
     length: 0,
     width: 0,
     height: 0,
@@ -197,8 +204,8 @@ export function blankItem(groupName = ITEM_GROUPS[0].name): Omit<Item, 'id'> {
     salesUom: 'pc',
     itemsPerSalesUnit: 1,
     sellingItemNo: '',
-    salesTaxGroup: 'VAT 12% – Output',
-    salesTaxCode: '— None —',
+    salesTaxGroup: 'S-VAT12',
+    salesTaxCode: '',
     commissionGroup: '— None —',
     commissionPct: 0,
     salesLeadTimeDays: 0,
@@ -340,6 +347,7 @@ export const SEED_ITEMS: Item[] = [
   }, { 'WH-MNL': [3, 1, 2] }),
   seed('itm-016', 'Services', {
     itemNo: 'SVC-INS-HR', description: 'Installation labor', itemType: 'Labor', inventoryUom: 'hour', purchaseItem: false,
+    purchaseTaxGroup: 'P-VAT12S',
     inventoryItem: false, basePrice: 450, commissionGroup: 'Standard (2%)', cycleCountDays: 0, warehouses: [],
   }),
   seed('itm-017', 'Services', {

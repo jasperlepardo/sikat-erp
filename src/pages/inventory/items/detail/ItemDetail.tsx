@@ -9,6 +9,7 @@ import { blankItem, type ItemType } from '../../../../mocks/items';
 import type { Partner } from '../../../../mocks/partners';
 import { ItemSaveError, getItem, isValidToday, saveItem } from '../../../../services/items';
 import { listPartnersByRole } from '../../../../services/partners';
+import { exciseCategories, taxCodes, taxGroups } from '../../../../services/masterData';
 import { AttachmentsTab } from './AttachmentsTab';
 import { BarcodesTab } from './BarcodesTab';
 import { GeneralTab } from './GeneralTab';
@@ -20,7 +21,7 @@ import { PropertiesTab } from './PropertiesTab';
 import { PurchasingTab } from './PurchasingTab';
 import { RemarksTab } from './RemarksTab';
 import { SalesTab } from './SalesTab';
-import { LOCKED_HINT, asOptions, type Draft } from './types';
+import { LOCKED_HINT, asOptions, type Draft, type TaxMasters } from './types';
 
 const LIST_PATH = '/inventory/items';
 
@@ -50,6 +51,9 @@ function validate(d: Draft, codeMode: 'auto' | 'manual'): Problem<TabId>[] {
 
   need(d.purchaseItem || d.salesItem || d.inventoryItem, 'general', 'usage', 'Tick at least one of purchase, sales or inventory item.');
   need(!d.validFrom || !d.validTo || d.validFrom <= d.validTo, 'general', 'validTo', 'Valid to is before Valid from.');
+  need(!d.exciseTax || d.exciseCategory, 'general', 'exciseCategory', 'Pick the excise category.');
+  need(!d.purchaseItem || d.purchaseTaxGroup, 'purchasing', 'purchaseTaxGroup', 'Purchase items need a tax group.');
+  need(!d.salesItem || d.salesTaxGroup, 'sales', 'salesTaxGroup', 'Sales items need a tax group.');
 
   if (d.purchaseItem && d.purchasingUom !== d.inventoryUom) {
     need(d.itemsPerPurchaseUnit > 0, 'purchasing', 'itemsPerPurchaseUnit', `Enter how many ${d.inventoryUom} are in one ${d.purchasingUom}.`);
@@ -93,6 +97,7 @@ function ItemForm() {
 
   const [draft, setDraft] = useState<Draft | null | undefined>(isNew ? (copyFrom ?? blankItem()) : undefined);
   const [vendors, setVendors] = useState<Partner[]>([]);
+  const [tax, setTax] = useState<TaxMasters>({ groups: [], codes: [], excise: [] });
   const [codeMode, setCodeMode] = useState<'auto' | 'manual'>('auto');
   const [tab, setTab] = useState<TabId>('general');
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
@@ -100,6 +105,9 @@ function ItemForm() {
 
   useEffect(() => {
     listPartnersByRole('vendor').then(setVendors);
+    Promise.all([taxGroups.list(), taxCodes.list(), exciseCategories.list()]).then(([groups, codes, excise]) =>
+      setTax({ groups, codes, excise }),
+    );
     if (isNew || !id) return;
     let cancelled = false;
     getItem(id).then((item) => !cancelled && setDraft(item ?? null));
@@ -324,6 +332,7 @@ function ItemForm() {
             }}
             errors={errors}
             vendors={vendors}
+            tax={tax}
           />
         </Panel.Body>
       </Panel>

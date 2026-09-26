@@ -1,8 +1,8 @@
 import { SEED_PARTNERS, contactName, type Partner, type PartnerRole } from '../mocks/partners';
 import { createCollection } from './store';
 
-// v2: the record gained the full BP field set; the new key skips old-shaped data.
-const partners = createCollection<Partner>('sikat-erp:partners:v2', SEED_PARTNERS, 'bp');
+// v3: added tax zone, VAT registration and withholding taxes; the new key skips old-shaped data.
+const partners = createCollection<Partner>('sikat-erp:partners:v3', SEED_PARTNERS, 'bp');
 
 export const listPartners = partners.list;
 export const getPartner = partners.get;

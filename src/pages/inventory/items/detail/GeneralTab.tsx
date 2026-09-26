@@ -13,7 +13,7 @@ import {
 import { isValidToday } from '../../../../services/items';
 import { LOCKED_HINT, type TabProps } from './types';
 
-export function GeneralTab({ draft, update, errors }: TabProps) {
+export function GeneralTab({ draft, update, errors, tax }: TabProps) {
   const f = bind(draft, update);
   const service = draft.itemType !== 'Items';
   const group = ITEM_GROUPS.find((g) => g.name === draft.itemGroup);
@@ -90,8 +90,28 @@ export function GeneralTab({ draft, update, errors }: TabProps) {
         </Fields>
         <Flags>
           {f.check('taxLiable', 'Tax liable (VAT applies on sales)')}
-          {f.check('exciseTax', 'Excise tax (fuel, alcohol, tobacco, sweetened drinks)')}
+          {f.check('exciseTax', 'Excise tax (fuel, alcohol, tobacco, sweetened drinks…)')}
         </Flags>
+        {draft.exciseTax ? (
+          <Fields>
+            {f.choose(
+              'exciseCategory',
+              'Excise category',
+              tax.excise
+                .filter((x) => x.active || x.code === draft.exciseCategory)
+                .map((x) => ({ value: x.code, label: `${x.code} · ${x.name}` })),
+              {
+                required: true,
+                error: errors.exciseCategory,
+                placeholder: 'Pick a category',
+                hint: (() => {
+                  const x = tax.excise.find((e) => e.code === draft.exciseCategory);
+                  return x ? `${x.basis}: ${x.rate || 'rate not set — update it in Settings › Accounting & Tax'}` : 'Rates are kept in Settings › Accounting & Tax.';
+                })(),
+              },
+            )}
+          </Fields>
+        ) : null}
       </Section>
 
       <Section icon="event_available" title="Validity">

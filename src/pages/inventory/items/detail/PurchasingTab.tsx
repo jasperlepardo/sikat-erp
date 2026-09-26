@@ -1,9 +1,9 @@
 import { Button } from '@jasperlepardo/sikat-design-system';
 import { Fields, Section, bind } from '../../../../components/form/fields';
-import { MANUFACTURERS, PURCHASE_TAX_CODES, PURCHASE_TAX_GROUPS, UOMS } from '../../../../mocks/itemMasters';
-import { vendorOptions, type TabProps } from './types';
+import { MANUFACTURERS, UOMS } from '../../../../mocks/itemMasters';
+import { taxCodeOptions, taxGroupOptions, taxResolution, vendorOptions, type TabProps } from './types';
 
-export function PurchasingTab({ draft, update, errors, vendors }: TabProps) {
+export function PurchasingTab({ draft, update, errors, vendors, tax }: TabProps) {
   const f = bind(draft, update);
   const converts = draft.purchasingUom !== draft.inventoryUom;
   const volume = Math.round(draft.length * draft.width * draft.height * 100) / 100;
@@ -42,8 +42,12 @@ export function PurchasingTab({ draft, update, errors, vendors }: TabProps) {
       <Section icon="receipt_long" title="Import & tax">
         <Fields>
           {f.num('dutyPct', 'Duty', { suffix: '%', hint: 'Used in landed cost.' })}
-          {f.pick('purchaseTaxGroup', 'Tax group', PURCHASE_TAX_GROUPS, { hint: "Picks the input VAT code from the vendor's tax zone." })}
-          {f.pick('purchaseTaxCode', 'Fixed purchasing tax code', PURCHASE_TAX_CODES, {
+          {f.choose('purchaseTaxGroup', 'Tax group', taxGroupOptions(tax, 'Purchase', draft.purchaseTaxGroup), {
+            required: draft.purchaseItem,
+            error: errors.purchaseTaxGroup,
+            hint: taxResolution(tax, draft.purchaseTaxGroup, draft.purchaseTaxCode),
+          })}
+          {f.choose('purchaseTaxCode', 'Fixed purchasing tax code', taxCodeOptions(tax, 'Purchase', draft.purchaseTaxCode), {
             hint: 'Overrides the tax group on every purchase.',
           })}
         </Fields>

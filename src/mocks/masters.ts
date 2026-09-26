@@ -14,7 +14,6 @@ export const BP_GROUPS: { value: string; role: PartnerRole }[] = [
   { value: 'Leads', role: 'lead' },
 ];
 
-export const CURRENCIES = ['PHP', 'USD', 'EUR', 'JPY', 'SGD', 'All currencies'];
 export const SHIPPING_TYPES = ['Pick-up', 'Own delivery', 'LBC', 'J&T Express', 'Lalamove', 'Sea freight'];
 export const INDUSTRIES = ['Construction', 'Retail', 'Manufacturing', 'Real estate', 'Agriculture', 'Services', 'Government'];
 export const BUSINESS_TYPES = ['Company', 'Sole proprietorship', 'Partnership', 'Cooperative', 'Individual', 'Government'];

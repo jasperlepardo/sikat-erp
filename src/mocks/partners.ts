@@ -59,6 +59,7 @@ export interface PaymentMethodSetting {
 }
 
 import type { Attachment } from './common';
+import type { TaxZone } from './taxes';
 
 export type { Attachment };
 
@@ -151,6 +152,13 @@ export interface Partner {
   autoBankCharges: boolean;
   paymentMethods: PaymentMethodSetting[];
   defaultPaymentMethod: string;
+
+  // Tax (Settings › Accounting & Tax)
+  /** Decides which code a tax group resolves to on this partner's documents. */
+  taxZone: TaxZone;
+  vatRegistered: boolean;
+  /** Withholding taxes (by id) you withhold when paying this partner as a vendor. */
+  withholdingTaxIds: string[];
 
   // Accounting
   consolidatingPartnerId: string;
@@ -297,6 +305,9 @@ export function blankPartner(role: PartnerRole): Omit<Partner, 'id'> {
       { code: 'MAYA', include: false },
     ],
     defaultPaymentMethod: 'BANK',
+    taxZone: 'domestic',
+    vatRegistered: true,
+    withholdingTaxIds: [],
     consolidatingPartnerId: '',
     consolidationType: 'payment',
     receivableAccount: '1120 Accounts Receivable – Trade',
@@ -354,13 +365,13 @@ export const SEED_PARTNERS: Partner[] = [
   ),
   seed(
     'bp-003', 'vendor',
-    { name: 'Luzon Steel Industries', tin: '345-678-901-000', email: 'sales@luzonsteel.ph', tel1: '+63 44 791 2233', vendorPaymentTerms: 'Net 60', industry: 'Manufacturing', group: 'Vendors – Local', bankName: 'BPI', bankBranch: 'Malolos', bankAccount: '8890-1122-33', bankAccountName: 'Luzon Steel Industries Inc.' },
+    { name: 'Luzon Steel Industries', tin: '345-678-901-000', email: 'sales@luzonsteel.ph', tel1: '+63 44 791 2233', vendorPaymentTerms: 'Net 60', industry: 'Manufacturing', group: 'Vendors – Local', withholdingTaxIds: ['wt-WC158'], bankName: 'BPI', bankBranch: 'Malolos', bankAccount: '8890-1122-33', bankAccountName: 'Luzon Steel Industries Inc.' },
     { firstName: 'Ramon', lastName: 'Cruz', position: 'Sales Director', email: 'ramon.cruz@luzonsteel.ph' },
     { street: 'MacArthur Hwy.', streetNo: 'Km 45', block: 'Longos', city: 'Malolos', zip: '3000', province: 'Bulacan' },
   ),
   seed(
     'bp-004', 'vendor',
-    { name: 'Visayas Electrical Trading', tin: '456-789-012-000', email: 'ap@visayaselectrical.ph', tel1: '+63 32 255 4410', industry: 'Retail' },
+    { name: 'Visayas Electrical Trading', tin: '456-789-012-000', email: 'ap@visayaselectrical.ph', tel1: '+63 32 255 4410', industry: 'Retail', withholdingTaxIds: ['wt-WC158'] },
     { firstName: 'Ana', lastName: 'Villanueva', position: 'Accounts Officer', email: 'ana@visayaselectrical.ph' },
     { street: 'Osmeña Blvd.', streetNo: '12', block: 'Capitol Site', city: 'Cebu City', zip: '6000', province: 'Cebu' },
   ),
@@ -384,7 +395,7 @@ export const SEED_PARTNERS: Partner[] = [
   ),
   seed(
     'bp-008', 'vendor',
-    { name: 'Golden Plumbing Center', email: 'rosa@goldenplumbing.ph', vendorPaymentTerms: 'COD', status: 'Inactive' },
+    { name: 'Golden Plumbing Center', email: 'rosa@goldenplumbing.ph', vendorPaymentTerms: 'COD', status: 'Inactive', vatRegistered: false, withholdingTaxIds: ['wt-WI158'] },
     { firstName: 'Rosa', lastName: 'Garcia', position: 'Owner', email: 'rosa@goldenplumbing.ph' },
     { street: 'Aurora Blvd.', streetNo: '31', city: 'San Juan', zip: '1500', province: 'Metro Manila' },
   ),

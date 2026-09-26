@@ -11,7 +11,8 @@ import {
   TextField,
   FormField,
 } from '@jasperlepardo/sikat-design-system';
-import { BP_GROUPS, CURRENCIES } from '../../../mocks/masters';
+import { BP_GROUPS } from '../../../mocks/masters';
+import { currencies } from '../../../services/masterData';
 import { blankPartner, type PartnerRole } from '../../../mocks/partners';
 import { convertLeadToCustomer, getPartner, isActive, savePartner } from '../../../services/partners';
 import { MASTER_CONFIG, ROLE_CONFIG, ROLE_ORDER, type PartnerScope } from '../roles';
@@ -99,6 +100,11 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
   const [tab, setTab] = useState<TabId>('general');
   const [problems, setProblems] = useState<Problem[]>([]);
   const [saving, setSaving] = useState(false);
+  const [currencyCodes, setCurrencyCodes] = useState<string[]>([]);
+
+  useEffect(() => {
+    currencies.list().then((all) => setCurrencyCodes(all.filter((c) => c.active).map((c) => c.code)));
+  }, []);
 
   useEffect(() => {
     if (isNew || !id) return;
@@ -273,7 +279,11 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
               {h.text('name', 'Name', { required: true, error: errors.name })}
               {h.text('foreignName', 'Foreign name', { hint: 'For bilingual printouts.' })}
               {h.pick('group', 'Group', groups, { required: true, error: errors.group })}
-              {h.pick('currency', 'Currency', CURRENCIES, { required: true, error: errors.currency })}
+              {h.pick('currency', 'Currency', [...new Set([...currencyCodes, draft.currency, 'All currencies'])], {
+                required: true,
+                error: errors.currency,
+                hint: 'Active currencies from Settings › Accounting & Tax.',
+              })}
               {h.text('tin', 'TIN', { placeholder: '000-000-000-000', hint: 'BIR Taxpayer Identification Number.' })}
             </Fields>
           </Section>
