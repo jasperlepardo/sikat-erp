@@ -6,15 +6,14 @@ import { ItemDetail } from '../pages/inventory/items/ItemDetail';
 import { Placeholder } from '../pages/Placeholder';
 import { PartnerList } from '../pages/partners/PartnerList';
 import { PartnerDetail } from '../pages/partners/detail/PartnerDetail';
-import { ROLE_CONFIG } from '../pages/partners/roles';
-import type { PartnerRole } from '../mocks/partners';
+import { ROLE_CONFIG, scopeConfig, type PartnerScope } from '../pages/partners/roles';
 
-/** Leads, Customers and Vendors: one business partner screen pair per role. */
-const partnerRoutes = (Object.keys(ROLE_CONFIG) as PartnerRole[]).flatMap((role) => {
-  const path = ROLE_CONFIG[role].basePath.slice(1);
+/** Business Partners (all) plus Leads, Customers and Vendors: one list + form pair each. */
+const partnerRoutes = (['all', ...Object.keys(ROLE_CONFIG)] as PartnerScope[]).flatMap((scope) => {
+  const path = scopeConfig(scope).basePath.slice(1);
   return [
-    { path, element: <PartnerList key={role} role={role} /> },
-    { path: `${path}/:id`, element: <PartnerDetail key={role} role={role} /> },
+    { path, element: <PartnerList key={scope} scope={scope} /> },
+    { path: `${path}/:id`, element: <PartnerDetail key={scope} scope={scope} /> },
   ];
 });
 

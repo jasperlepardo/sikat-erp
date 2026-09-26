@@ -30,6 +30,19 @@ export const ROLE_CONFIG: Record<
 
 export const ROLE_ORDER: PartnerRole[] = ['lead', 'customer', 'vendor'];
 
+/** Where a partner screen is opened from: the master (all partners) or one role's list. */
+export type PartnerScope = PartnerRole | 'all';
+
+export const MASTER_CONFIG = {
+  title: 'Business Partners',
+  singular: 'Business partner',
+  icon: 'groups',
+  basePath: '/business-partners',
+  subcopy: 'Every lead, customer and vendor — one record per company or person.',
+};
+
+export const scopeConfig = (scope: PartnerScope) => (scope === 'all' ? MASTER_CONFIG : ROLE_CONFIG[scope]);
+
 export const STAGE_INTENT: Record<LeadStage, 'default' | 'primary' | 'success' | 'danger'> = {
   New: 'default',
   Contacted: 'primary',

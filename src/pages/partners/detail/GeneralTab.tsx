@@ -17,12 +17,13 @@ export interface TabProps {
   draft: Draft;
   update: (patch: Partial<Draft>) => void;
   errors: Errors;
-  role: PartnerRole;
+  /** The role of the list the form was opened from; it can't be removed there. */
+  lockedRole?: PartnerRole;
 }
 
 const STATUSES: PartnerStatus[] = ['Active', 'Inactive', 'Advanced'];
 
-export function GeneralTab({ draft, update, errors, role }: TabProps) {
+export function GeneralTab({ draft, update, errors, lockedRole }: TabProps) {
   const f = bind(draft, update);
   const has = (r: PartnerRole) => draft.roles.includes(r);
   const toggleRole = (r: PartnerRole, on: boolean) =>
@@ -121,7 +122,8 @@ export function GeneralTab({ draft, update, errors, role }: TabProps) {
             <Checkbox
               key={r}
               checked={has(r)}
-              disabled={r === role}
+              // Keep the list's own role, and always at least one role.
+              disabled={r === lockedRole || (has(r) && draft.roles.length === 1)}
               onChange={(e) => toggleRole(r, e.currentTarget.checked)}
             >
               {ROLE_CONFIG[r].singular} <span className="text-muted">· {ROLE_CONFIG[r].title} list</span>

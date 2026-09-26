@@ -32,6 +32,8 @@ export const NAV: SideNavSection[] = [
     items: [
       { id: 'home', label: 'Home', icon: icon('home') },
       hub('Inbox', 'inbox', ['Approvals', 'Tasks', 'Drafts']),
+      // Master data: every partner. Leads, Customers and Vendors are role views of it.
+      { id: 'business-partners', label: 'Business Partners', icon: icon('groups') },
     ],
   },
   {

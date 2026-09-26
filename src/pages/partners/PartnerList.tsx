@@ -18,11 +18,18 @@ import {
   type TableColumn,
   type TableSort,
 } from '@jasperlepardo/sikat-design-system';
-import { LEAD_STAGES, type Partner, type PartnerRole } from '../../mocks/partners';
-import { defaultBillTo, defaultContact, defaultContactName, isActive, listPartnersByRole } from '../../services/partners';
+import { LEAD_STAGES, type Partner } from '../../mocks/partners';
+import {
+  defaultBillTo,
+  defaultContact,
+  defaultContactName,
+  isActive,
+  listPartners,
+  listPartnersByRole,
+} from '../../services/partners';
 import { useAsync } from '../../services/useAsync';
 import { formatAmount } from '../../services/format';
-import { ROLE_CONFIG, ROLE_ORDER, STAGE_INTENT } from './roles';
+import { ROLE_CONFIG, ROLE_ORDER, STAGE_INTENT, scopeConfig, type PartnerScope } from './roles';
 
 const initials = (name: string) =>
   name
@@ -40,11 +47,14 @@ function sortValue(p: Partner, key: string): string {
   return typeof value === 'string' ? value : '';
 }
 
-/** Leads, Customers and Vendors: the same business partner records, filtered by role. */
-export function PartnerList({ role }: { role: PartnerRole }) {
-  const config = ROLE_CONFIG[role];
+/**
+ * Business Partners (the master: every partner) and Leads, Customers and Vendors
+ * (the same records filtered by role).
+ */
+export function PartnerList({ scope }: { scope: PartnerScope }) {
+  const config = scopeConfig(scope);
   const navigate = useNavigate();
-  const partners = useAsync(() => listPartnersByRole(role), [role]);
+  const partners = useAsync(() => (scope === 'all' ? listPartners() : listPartnersByRole(scope)), [scope]);
   const [filter, setFilter] = useState('all');
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<TableSort | null>({ key: 'name', direction: 'asc' });
@@ -53,7 +63,13 @@ export function PartnerList({ role }: { role: PartnerRole }) {
 
   // Leads filter by pipeline stage; customers and vendors by active status.
   const filters: Record<string, (p: Partner) => boolean> =
-    role === 'lead'
+    scope === 'all'
+      ? {
+          all: () => true,
+          ...Object.fromEntries(ROLE_ORDER.map((r) => [r, (p: Partner) => p.roles.includes(r)])),
+          inactive: (p) => !isActive(p),
+        }
+      : scope === 'lead'
       ? Object.fromEntries([
           ['all', () => true],
           ...LEAD_STAGES.map((s) => [s, (p: Partner) => p.leadStage === s]),
@@ -80,9 +96,11 @@ export function PartnerList({ role }: { role: PartnerRole }) {
   const open = (p: Partner) => navigate(`${config.basePath}/${p.id}`);
 
   const roleColumn: TableColumn<Partner> =
-    role === 'lead'
+    scope === 'all'
+      ? { key: 'group', header: 'Group', sortable: true, cell: (p) => p.group }
+      : scope === 'lead'
       ? { key: 'leadSource', header: 'Source', sortable: true, cell: (p) => p.leadSource ?? '—' }
-      : role === 'customer'
+      : scope === 'customer'
         ? {
             key: 'creditLimit',
             header: 'Credit limit',
@@ -118,9 +136,9 @@ export function PartnerList({ role }: { role: PartnerRole }) {
     roleColumn,
     {
       key: 'roles',
-      header: 'Also a',
+      header: scope === 'all' ? 'Roles' : 'Also a',
       cell: (p) => {
-        const others = ROLE_ORDER.filter((r) => r !== role && p.roles.includes(r));
+        const others = ROLE_ORDER.filter((r) => r !== scope && p.roles.includes(r));
         return others.length ? (
           <div className="flex gap-1">
             {others.map((r) => (
@@ -136,9 +154,9 @@ export function PartnerList({ role }: { role: PartnerRole }) {
     },
     {
       key: 'status',
-      header: role === 'lead' ? 'Stage' : 'Status',
+      header: scope === 'lead' ? 'Stage' : 'Status',
       cell: (p) =>
-        role === 'lead' ? (
+        scope === 'lead' ? (
           <TableStatus intent={STAGE_INTENT[p.leadStage ?? 'New']}>{p.leadStage ?? 'New'}</TableStatus>
         ) : (
           <TableStatus intent={isActive(p) ? 'success' : 'default'}>{isActive(p) ? 'Active' : 'Inactive'}</TableStatus>
@@ -147,7 +165,9 @@ export function PartnerList({ role }: { role: PartnerRole }) {
   ];
 
   const tabLabels: Record<string, string> =
-    role === 'lead' ? { all: 'All', ...Object.fromEntries(LEAD_STAGES.map((s) => [s, s])) } : { all: 'All', active: 'Active', inactive: 'Inactive' };
+    scope === 'all'
+      ? { all: 'All', ...Object.fromEntries(ROLE_ORDER.map((r) => [r, ROLE_CONFIG[r].title])), inactive: 'Inactive' }
+      : scope === 'lead' ? { all: 'All', ...Object.fromEntries(LEAD_STAGES.map((s) => [s, s])) } : { all: 'All', active: 'Active', inactive: 'Inactive' };
 
   return (
     <Panel className="flex-1">

@@ -41,8 +41,9 @@ src/
     nav.tsx        Sidebar hubs and pages (from the navigation architecture); a page's id is its route (/sales/invoices)
     router.tsx     Route table; unbuilt nav entries fall through to <Placeholder />
   pages/           One folder per hub (Home, inventory/items/…, partners/…)
-    partners/      Business partners: one record listed as CRM › Leads, Sales › Customers
-                   and Purchasing › Vendors; detail/ holds the master form, one file per tab
+    partners/      Business partners: the Business Partners master lists every record;
+                   CRM › Leads, Sales › Customers and Purchasing › Vendors are role views
+                   of it. detail/ holds the master form, one file per tab
   mocks/           Seed data and types
   services/        Fake async API over the mocks (store.ts; swap for fetch() later)
   index.css        Tailwind + the design system's token theme

@@ -18,7 +18,7 @@ import {
 import { BP_GROUPS, CURRENCIES } from '../../../mocks/masters';
 import { blankPartner, type PartnerRole } from '../../../mocks/partners';
 import { convertLeadToCustomer, getPartner, isActive, savePartner } from '../../../services/partners';
-import { ROLE_CONFIG, ROLE_ORDER } from '../roles';
+import { MASTER_CONFIG, ROLE_CONFIG, ROLE_ORDER, type PartnerScope } from '../roles';
 import { AccountingTab } from './AccountingTab';
 import { AddressesTab } from './AddressesTab';
 import { AttachmentsTab } from './AttachmentsTab';
@@ -81,23 +81,28 @@ function validate(d: Draft, codeMode: 'auto' | 'manual'): Problem[] {
 }
 
 /**
- * The business partner master, opened from Leads, Customers or Vendors. Keyed by
- * record so moving between records (or duplicating into /new) starts a fresh form.
+ * The business partner master form, opened from Business Partners or from the
+ * Leads, Customers or Vendors list. Keyed by record so moving between records
+ * (or duplicating into /new) starts a fresh form.
  */
-export function PartnerDetail({ role }: { role: PartnerRole }) {
+export function PartnerDetail({ scope }: { scope: PartnerScope }) {
   const { id } = useParams();
   const location = useLocation();
-  return <PartnerForm key={id === 'new' ? location.key : id} role={role} />;
+  return <PartnerForm key={id === 'new' ? location.key : id} scope={scope} />;
 }
 
-function PartnerForm({ role }: { role: PartnerRole }) {
+function PartnerForm({ scope }: { scope: PartnerScope }) {
   const { id } = useParams();
   const isNew = id === 'new';
   const navigate = useNavigate();
   const copyFrom = (useLocation().state as { copyFrom?: Draft } | null)?.copyFrom;
 
-  const [draft, setDraft] = useState<Draft | null | undefined>(isNew ? (copyFrom ?? blankPartner(role)) : undefined);
-  const [type, setType] = useState<PartnerRole>(role);
+  // From the master, a new partner starts as a customer; from a role list, as that role.
+  const initialType: PartnerRole = scope === 'all' ? 'customer' : scope;
+  const [draft, setDraft] = useState<Draft | null | undefined>(
+    isNew ? (copyFrom ?? blankPartner(initialType)) : undefined,
+  );
+  const [type, setType] = useState<PartnerRole>(initialType);
   const [codeMode, setCodeMode] = useState<'auto' | 'manual'>('auto');
   const [tab, setTab] = useState<TabId>('general');
   const [problems, setProblems] = useState<Problem[]>([]);
@@ -112,7 +117,7 @@ function PartnerForm({ role }: { role: PartnerRole }) {
     };
   }, [id, isNew]);
 
-  const config = ROLE_CONFIG[isNew ? type : role];
+  const config = scope === 'all' ? MASTER_CONFIG : ROLE_CONFIG[isNew ? type : scope];
 
   if (draft === undefined) return <p className="p-4 text-muted">Loading {config.singular.toLowerCase()}…</p>;
   if (draft === null) {
@@ -165,8 +170,9 @@ function PartnerForm({ role }: { role: PartnerRole }) {
   const convert = async () => {
     if (!draft.id || !check()) return;
     if (!(await save())) return;
-    await convertLeadToCustomer(draft.id);
-    navigate(`${ROLE_CONFIG.customer.basePath}/${draft.id}`);
+    const converted = await convertLeadToCustomer(draft.id);
+    if (scope === 'all') setDraft(converted ?? draft);
+    else navigate(`${ROLE_CONFIG.customer.basePath}/${draft.id}`);
   };
 
   const duplicate = () => {
@@ -177,12 +183,14 @@ function PartnerForm({ role }: { role: PartnerRole }) {
   const menu = [
     { label: 'Duplicate', icon: 'content_copy', onSelect: duplicate, show: !isNew },
     { label: 'Convert to customer', icon: 'person_check', onSelect: convert, show: !isNew && draft.roles.includes('lead') },
-    ...ROLE_ORDER.filter((r) => r !== role && draft.roles.includes(r)).map((r) => ({
-      label: `Open in ${ROLE_CONFIG[r].title}`,
-      icon: ROLE_CONFIG[r].icon,
-      onSelect: () => navigate(`${ROLE_CONFIG[r].basePath}/${draft.id}`),
-      show: !isNew,
-    })),
+    ...(scope === 'all' ? [] : [MASTER_CONFIG])
+      .concat(ROLE_ORDER.filter((r) => r !== scope && draft.roles.includes(r)).map((r) => ROLE_CONFIG[r]))
+      .map((target) => ({
+        label: `Open in ${target.title}`,
+        icon: target.icon,
+        onSelect: () => navigate(`${target.basePath}/${draft.id}`),
+        show: !isNew,
+      })),
   ].filter((m) => m.show);
 
   const counts: Partial<Record<TabId, number>> = {
@@ -204,7 +212,7 @@ function PartnerForm({ role }: { role: PartnerRole }) {
             isNew ? undefined : (
               <div className="flex gap-1">
                 {ROLE_ORDER.filter((r) => draft.roles.includes(r)).map((r) => (
-                  <Badge key={r} intent={r === role ? 'primary' : 'default'} variant={r === role ? 'solid' : 'outline'}>
+                  <Badge key={r} intent={r === scope ? 'primary' : 'default'} variant={r === scope ? 'solid' : 'outline'}>
                     {ROLE_CONFIG[r].singular}
                   </Badge>
                 ))}
@@ -278,7 +286,7 @@ function PartnerForm({ role }: { role: PartnerRole }) {
                   <Select
                     {...p}
                     options={ROLE_ORDER.map((r) => ({ value: r, label: ROLE_CONFIG[r].singular }))}
-                    value={isNew ? type : role}
+                    value={isNew ? type : scope === 'all' ? draft.roles[0] : scope}
                     disabled={!isNew}
                     onValueChange={(v) => changeType(v as PartnerRole)}
                   />
@@ -301,7 +309,12 @@ function PartnerForm({ role }: { role: PartnerRole }) {
               badge: problems.some((p) => p.tab === t.value) ? '!' : counts[t.value] ? String(counts[t.value]) : undefined,
             }))}
           />
-          <ActiveTab draft={draft} update={update} errors={errors} role={isNew ? type : role} />
+          <ActiveTab
+            draft={draft}
+            update={update}
+            errors={errors}
+            lockedRole={scope === 'all' ? undefined : isNew ? type : scope}
+          />
         </Panel.Body>
       </Panel>
     </Form>
