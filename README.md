@@ -29,7 +29,7 @@ The design system is published to **GitHub Packages**, which needs a token even 
 | `npm run preview`   | Serve the built site locally            |
 | `npm run typecheck` | Typecheck only                          |
 
-The build is fully static and uses hash routing (`/#/items`), so `dist/` can be
+The build is fully static and uses hash routing (`/#/inventory/items`), so `dist/` can be
 hosted anywhere (GitHub Pages, Netlify, Vercel) with no rewrite rules.
 
 ## Project layout
@@ -38,9 +38,9 @@ hosted anywhere (GitHub Pages, Netlify, Vercel) with no rewrite rules.
 src/
   app/
     AppShell.tsx   Navbar + SideNav + routed content (<Outlet />)
-    nav.tsx        Sidebar modules; a leaf's id is its route (/sales/invoices)
+    nav.tsx        Sidebar hubs and pages (from the navigation architecture); a page's id is its route (/sales/invoices)
     router.tsx     Route table; unbuilt nav entries fall through to <Placeholder />
-  pages/           One folder/file per screen (Home, items/ItemList, items/ItemDetail)
+  pages/           One folder per hub (Home, inventory/items/ItemList, inventory/items/ItemDetail)
   mocks/           Seed data and types
   services/        Fake async API over the mocks (swap for fetch() later)
   index.css        Tailwind + the design system's token theme
@@ -49,11 +49,11 @@ src/
 
 ## Adding a screen
 
-1. Create `src/pages/<module>/<Screen>.tsx`. Compose it from design system parts:
+1. Create `src/pages/<hub>/<Screen>.tsx`. Compose it from design system parts:
    `Panel` + `PanelHeader` for the page frame, `Table` for lists, `Card` +
    `FormField` for forms.
 2. Register its route in `src/app/router.tsx`, using the same path as the nav leaf's id
-   in `src/app/nav.tsx` (for example, `sales/customers`).
+   in `src/app/nav.tsx` (for example, `sales/customers` or `purchasing/purchase-orders`).
 3. If it needs data, add seed records to `src/mocks/` and a service in `src/services/`.
 
 ## Notes

@@ -14,8 +14,8 @@ import {
   TextField,
   Textarea,
 } from '@jasperlepardo/sikat-design-system';
-import { ITEM_CATEGORIES, ITEM_UOMS, type Item } from '../../mocks/items';
-import { getItem, saveItem } from '../../services/items';
+import { ITEM_CATEGORIES, ITEM_UOMS, type Item } from '../../../mocks/items';
+import { getItem, saveItem } from '../../../services/items';
 
 type Draft = Omit<Item, 'id'> & { id?: string };
 
@@ -56,7 +56,7 @@ export function ItemDetail() {
       <Panel className="flex-1">
         <PanelHeader icon="inventory_2" title="Item not found" />
         <Panel.Body>
-          <Button onClick={() => navigate('/items')}>Back to items</Button>
+          <Button onClick={() => navigate('/inventory/items')}>Back to items</Button>
         </Panel.Body>
       </Panel>
     );
@@ -79,7 +79,7 @@ export function ItemDetail() {
     if (Object.keys(next).length) return;
     setSaving(true);
     await saveItem(draft);
-    navigate('/items');
+    navigate('/inventory/items');
   };
 
   return (
@@ -100,7 +100,7 @@ export function ItemDetail() {
                 intent="default"
                 variant="solid"
                 size="extra-large"
-                onClick={() => navigate('/items')}
+                onClick={() => navigate('/inventory/items')}
               >
                 Cancel
               </Button>

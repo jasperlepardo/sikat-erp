@@ -16,10 +16,10 @@ import {
   type TableColumn,
   type TableSort,
 } from '@jasperlepardo/sikat-design-system';
-import type { Item } from '../../mocks/items';
-import { isLowStock, listItems } from '../../services/items';
-import { useAsync } from '../../services/useAsync';
-import { formatAmount } from '../../services/format';
+import type { Item } from '../../../mocks/items';
+import { isLowStock, listItems } from '../../../services/items';
+import { useAsync } from '../../../services/useAsync';
+import { formatAmount } from '../../../services/format';
 
 type Filter = 'all' | 'active' | 'inactive' | 'low';
 
@@ -51,7 +51,7 @@ export function ItemList() {
   }, [items, filter, query, sort]);
 
   const count = (f: Filter) => String(items?.filter(FILTERS[f]).length ?? '');
-  const open = (i: Item) => navigate(`/items/${i.id}`);
+  const open = (i: Item) => navigate(`/inventory/items/${i.id}`);
 
   const columns: TableColumn<Item>[] = [
     {
@@ -109,7 +109,7 @@ export function ItemList() {
             variant="solid"
             size="extra-large"
             leadingIcon={<Icon size={20}>add</Icon>}
-            onClick={() => navigate('/items/new')}
+            onClick={() => navigate('/inventory/items/new')}
           >
             New item
           </Button>

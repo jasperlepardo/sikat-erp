@@ -37,7 +37,7 @@ export function AppShell() {
           sections={NAV}
           activeId={leafForPath(location.pathname)?.id}
           onNavigate={(id) => navigate(pathOf(id))}
-          style={{ position: 'sticky', top: 64, height: 'calc(100vh - 64px)', flex: 'none', width: 280 }}
+          style={{ position: 'sticky', top: 64, height: 'calc(100vh - 64px)', flex: 'none', width: 280, overflowY: 'auto' }}
         />
         <main className="flex min-w-0 flex-1 flex-col gap-2 p-2">
           <Outlet />

@@ -1,8 +1,8 @@
 import { createHashRouter } from 'react-router';
 import { AppShell } from './AppShell';
 import { Home } from '../pages/Home';
-import { ItemList } from '../pages/items/ItemList';
-import { ItemDetail } from '../pages/items/ItemDetail';
+import { ItemList } from '../pages/inventory/items/ItemList';
+import { ItemDetail } from '../pages/inventory/items/ItemDetail';
 import { Placeholder } from '../pages/Placeholder';
 
 /**
@@ -14,8 +14,8 @@ export const router = createHashRouter([
     element: <AppShell />,
     children: [
       { index: true, element: <Home /> },
-      { path: 'items', element: <ItemList /> },
-      { path: 'items/:id', element: <ItemDetail /> },
+      { path: 'inventory/items', element: <ItemList /> },
+      { path: 'inventory/items/:id', element: <ItemDetail /> },
       { path: '*', element: <Placeholder /> },
     ],
   },
