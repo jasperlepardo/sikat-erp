@@ -5,7 +5,7 @@ import { ItemList } from '../pages/inventory/items/ItemList';
 import { ItemDetail } from '../pages/inventory/items/ItemDetail';
 import { Placeholder } from '../pages/Placeholder';
 import { PartnerList } from '../pages/partners/PartnerList';
-import { PartnerDetail } from '../pages/partners/PartnerDetail';
+import { PartnerDetail } from '../pages/partners/detail/PartnerDetail';
 import { ROLE_CONFIG } from '../pages/partners/roles';
 import type { PartnerRole } from '../mocks/partners';
 

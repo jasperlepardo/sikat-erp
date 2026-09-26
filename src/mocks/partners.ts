@@ -1,101 +1,418 @@
 /**
  * Business partners — one record shown as three lists: Leads (CRM),
  * Customers (Sales) and Vendors (Purchasing). A partner can hold several roles,
- * e.g. a customer who also supplies you.
+ * e.g. a customer who also supplies you. Fields follow the SAP B1 BP master
+ * field mapping, grouped by tab.
  */
 export type PartnerRole = 'lead' | 'customer' | 'vendor';
-export type PartnerStatus = 'Active' | 'Inactive';
+export type PartnerStatus = 'Active' | 'Inactive' | 'Advanced';
 export type LeadStage = 'New' | 'Contacted' | 'Qualified' | 'Lost';
 
-export interface Partner {
-  id: string;
-  code: string;
-  name: string;
-  roles: PartnerRole[];
-  status: PartnerStatus;
-  tin?: string;
-  contactPerson: string;
-  email: string;
-  phone: string;
-  address: string;
-  city: string;
-  /** Customer: payment terms you give them. */
-  customerTerms?: string;
-  creditLimit?: number;
-  /** Vendor: payment terms they give you. */
-  vendorTerms?: string;
-  /** Lead only. */
-  leadSource?: string;
-  leadStage?: LeadStage;
-  notes?: string;
-}
-
-export const PAYMENT_TERMS = ['COD', 'Net 7', 'Net 15', 'Net 30', 'Net 60'] as const;
 export const LEAD_SOURCES = ['Referral', 'Website', 'Trade show', 'Walk-in', 'Cold call'] as const;
 export const LEAD_STAGES: LeadStage[] = ['New', 'Contacted', 'Qualified', 'Lost'];
 
+export interface ContactPerson {
+  id: string;
+  firstName: string;
+  middleName: string;
+  lastName: string;
+  title: string;
+  position: string;
+  address: string;
+  tel1: string;
+  tel2: string;
+  mobile: string;
+  fax: string;
+  email: string;
+  emailGroup: string;
+  remarks1: string;
+  remarks2: string;
+  blockMarketing: boolean;
+  active: boolean;
+  eDocRecipient: boolean;
+}
+
+export type AddressType = 'bill' | 'ship';
+
+export interface PartnerAddress {
+  id: string;
+  type: AddressType;
+  /** Address ID — the label picked on documents, e.g. "Main office". */
+  label: string;
+  name2: string;
+  name3: string;
+  street: string;
+  streetNo: string;
+  building: string;
+  /** Barangay (SAP "Block"). */
+  block: string;
+  city: string;
+  zip: string;
+  /** Province (SAP "State"). */
+  province: string;
+  country: string;
+}
+
+export interface PaymentMethodSetting {
+  code: string;
+  include: boolean;
+}
+
+export interface Attachment {
+  id: string;
+  fileName: string;
+  size: number;
+  attachedOn: string;
+}
+
+export interface Partner {
+  id: string;
+
+  // Header
+  code: string;
+  roles: PartnerRole[];
+  name: string;
+  foreignName: string;
+  group: string;
+  currency: string;
+  /** Federal Tax ID → BIR TIN. */
+  tin: string;
+
+  // General
+  tel1: string;
+  tel2: string;
+  mobile: string;
+  fax: string;
+  email: string;
+  website: string;
+  shippingType: string;
+  project: string;
+  industry: string;
+  businessType: string;
+  aliasName: string;
+  gln: string;
+  blockMarketing: boolean;
+  idNo2: string;
+  unifiedTin: string;
+  generalRemarks: string;
+  salesEmployee: string;
+  channel: string;
+  technician: string;
+  territory: string;
+  status: PartnerStatus;
+  statusFrom: string;
+  statusTo: string;
+  statusRemarks: string;
+  leadSource?: string;
+  leadStage?: LeadStage;
+
+  // Contact persons (the default one is the BP's "Contact Person")
+  contacts: ContactPerson[];
+  defaultContactId: string;
+
+  // Addresses
+  addresses: PartnerAddress[];
+  defaultBillToId: string;
+  defaultShipToId: string;
+
+  // Payment terms
+  customerPaymentTerms: string;
+  vendorPaymentTerms: string;
+  interestOnArrears: number;
+  priceList: string;
+  totalDiscount: number;
+  creditLimit: number;
+  commitmentLimit: number;
+  dunningTerm: string;
+  effectiveDiscountGroups: string;
+  effectivePrice: string;
+  effectivePriceAllSources: boolean;
+  bankCountry: string;
+  bankName: string;
+  bankBranch: string;
+  bankAccount: string;
+  bankAccountName: string;
+  bankSwift: string;
+  averageDelayDays: number;
+  priority: string;
+  holidays: string;
+  allowPartialDelivery: boolean;
+  allowPartialDeliveryPerRow: boolean;
+  noDiscountGroups: boolean;
+  endorsableChecks: boolean;
+  acceptsEndorsedChecks: boolean;
+
+  // Payment run
+  houseBankCountry: string;
+  houseBank: string;
+  houseBankAccount: string;
+  paymentReference: string;
+  paymentBlock: boolean;
+  singlePayment: boolean;
+  collectionAuthorization: boolean;
+  bankChargesCode: string;
+  autoBankCharges: boolean;
+  paymentMethods: PaymentMethodSetting[];
+  defaultPaymentMethod: string;
+
+  // Accounting
+  consolidatingPartnerId: string;
+  consolidationType: 'payment' | 'delivery';
+  receivableAccount: string;
+  payableAccount: string;
+  downPaymentClearingAccount: string;
+  downPaymentInterimAccount: string;
+  blockDunning: boolean;
+  dunningLevel: number;
+  dunningDate: string;
+  planningGroup: string;
+  affiliate: boolean;
+  useShippedGoodsAccount: boolean;
+
+  // Properties, remarks, attachments
+  properties: string[];
+  remarks: string;
+  attachments: Attachment[];
+}
+
+export const newContact = (patch: Partial<ContactPerson> = {}): ContactPerson => ({
+  id: `ct-${crypto.randomUUID().slice(0, 8)}`,
+  firstName: '',
+  middleName: '',
+  lastName: '',
+  title: '',
+  position: '',
+  address: '',
+  tel1: '',
+  tel2: '',
+  mobile: '',
+  fax: '',
+  email: '',
+  emailGroup: '— None —',
+  remarks1: '',
+  remarks2: '',
+  blockMarketing: false,
+  active: true,
+  eDocRecipient: false,
+  ...patch,
+});
+
+export const newAddress = (type: AddressType, patch: Partial<PartnerAddress> = {}): PartnerAddress => ({
+  id: `ad-${crypto.randomUUID().slice(0, 8)}`,
+  type,
+  label: '',
+  name2: '',
+  name3: '',
+  street: '',
+  streetNo: '',
+  building: '',
+  block: '',
+  city: '',
+  zip: '',
+  province: '',
+  country: 'Philippines',
+  ...patch,
+});
+
+export const contactName = (c?: ContactPerson) =>
+  c ? [c.firstName, c.middleName, c.lastName].filter(Boolean).join(' ') || 'Unnamed contact' : '';
+
+/** A blank partner with sensible defaults for the role it's created from. */
+export function blankPartner(role: PartnerRole): Omit<Partner, 'id'> {
+  return {
+    code: '',
+    roles: [role],
+    name: '',
+    foreignName: '',
+    group: role === 'lead' ? 'Leads' : role === 'customer' ? 'Customers – Trade' : 'Vendors – Local',
+    currency: 'PHP',
+    tin: '',
+    tel1: '',
+    tel2: '',
+    mobile: '',
+    fax: '',
+    email: '',
+    website: '',
+    shippingType: 'Own delivery',
+    project: '— None —',
+    industry: 'Construction',
+    businessType: 'Company',
+    aliasName: '',
+    gln: '',
+    blockMarketing: false,
+    idNo2: '',
+    unifiedTin: '',
+    generalRemarks: '',
+    salesEmployee: '— None —',
+    channel: '— None —',
+    technician: '— None —',
+    territory: '— None —',
+    status: 'Active',
+    statusFrom: '',
+    statusTo: '',
+    statusRemarks: '',
+    ...(role === 'lead' ? { leadSource: LEAD_SOURCES[0], leadStage: 'New' as const } : {}),
+    contacts: [],
+    defaultContactId: '',
+    addresses: [],
+    defaultBillToId: '',
+    defaultShipToId: '',
+    customerPaymentTerms: 'Net 30',
+    vendorPaymentTerms: 'Net 30',
+    interestOnArrears: 0,
+    priceList: 'Base price',
+    totalDiscount: 0,
+    creditLimit: 0,
+    commitmentLimit: 0,
+    dunningTerm: '— None —',
+    effectiveDiscountGroups: 'Lowest discount',
+    effectivePrice: 'Default priority',
+    effectivePriceAllSources: false,
+    bankCountry: 'Philippines',
+    bankName: '',
+    bankBranch: '',
+    bankAccount: '',
+    bankAccountName: '',
+    bankSwift: '',
+    averageDelayDays: 0,
+    priority: '— None —',
+    holidays: 'Philippines (national)',
+    allowPartialDelivery: true,
+    allowPartialDeliveryPerRow: true,
+    noDiscountGroups: false,
+    endorsableChecks: false,
+    acceptsEndorsedChecks: false,
+    houseBankCountry: 'Philippines',
+    houseBank: 'BDO Unibank',
+    houseBankAccount: '0012-3456-7890',
+    paymentReference: '',
+    paymentBlock: false,
+    singlePayment: false,
+    collectionAuthorization: false,
+    bankChargesCode: '— None —',
+    autoBankCharges: false,
+    paymentMethods: [
+      { code: 'CASH', include: true },
+      { code: 'CHECK', include: true },
+      { code: 'PDC', include: false },
+      { code: 'BANK', include: true },
+      { code: 'GCASH', include: false },
+      { code: 'MAYA', include: false },
+    ],
+    defaultPaymentMethod: 'BANK',
+    consolidatingPartnerId: '',
+    consolidationType: 'payment',
+    receivableAccount: '1120 Accounts Receivable – Trade',
+    payableAccount: '2010 Accounts Payable – Trade',
+    downPaymentClearingAccount: '— None —',
+    downPaymentInterimAccount: '— None —',
+    blockDunning: false,
+    dunningLevel: 0,
+    dunningDate: '',
+    planningGroup: '— None —',
+    affiliate: false,
+    useShippedGoodsAccount: false,
+    properties: [],
+    remarks: '',
+    attachments: [],
+  };
+}
+
+/** Seed helper: a blank partner of `role`, one contact and one bill-to/ship-to address. */
+function seed(
+  id: string,
+  role: PartnerRole,
+  patch: Partial<Partner>,
+  contact: Partial<ContactPerson>,
+  address: Partial<PartnerAddress>,
+): Partner {
+  const c = newContact({ id: `${id}-c1`, ...contact });
+  const bill = newAddress('bill', { id: `${id}-a1`, label: 'Main office', ...address });
+  const ship = newAddress('ship', { ...bill, id: `${id}-a2`, type: 'ship', label: 'Main office' });
+  return {
+    ...blankPartner(role),
+    id,
+    code: `BP-${id.slice(3).padStart(4, '0')}`,
+    contacts: [c],
+    defaultContactId: c.id,
+    addresses: [bill, ship],
+    defaultBillToId: bill.id,
+    defaultShipToId: ship.id,
+    ...patch,
+  };
+}
+
 export const SEED_PARTNERS: Partner[] = [
-  {
-    id: 'bp-001', code: 'BP-0001', name: 'Acme Construction Corp.', roles: ['customer'], status: 'Active',
-    tin: '123-456-789-000', contactPerson: 'Maria Santos', email: 'purchasing@acmeconstruction.ph', phone: '+63 2 8812 3456',
-    address: '21 Shaw Blvd.', city: 'Mandaluyong', customerTerms: 'Net 30', creditLimit: 500000,
-  },
-  {
-    id: 'bp-002', code: 'BP-0002', name: 'Metro Hardware Supply', roles: ['customer', 'vendor'], status: 'Active',
-    tin: '234-567-890-000', contactPerson: 'Jose Reyes', email: 'orders@metrohardware.ph', phone: '+63 2 8723 1100',
-    address: '88 Rizal Ave.', city: 'Manila', customerTerms: 'Net 15', creditLimit: 250000, vendorTerms: 'Net 30',
-    notes: 'Buys paint from us; we buy fasteners from them.',
-  },
-  {
-    id: 'bp-003', code: 'BP-0003', name: 'Luzon Steel Industries', roles: ['vendor'], status: 'Active',
-    tin: '345-678-901-000', contactPerson: 'Ramon Cruz', email: 'sales@luzonsteel.ph', phone: '+63 44 791 2233',
-    address: 'Km 45 MacArthur Hwy.', city: 'Malolos', vendorTerms: 'Net 60',
-  },
-  {
-    id: 'bp-004', code: 'BP-0004', name: 'Visayas Electrical Trading', roles: ['vendor'], status: 'Active',
-    tin: '456-789-012-000', contactPerson: 'Ana Villanueva', email: 'ap@visayaselectrical.ph', phone: '+63 32 255 4410',
-    address: '12 Osmeña Blvd.', city: 'Cebu City', vendorTerms: 'Net 30',
-  },
-  {
-    id: 'bp-005', code: 'BP-0005', name: 'Northpoint Builders', roles: ['customer'], status: 'Active',
-    contactPerson: 'Carlo Mendoza', email: 'carlo@northpointbuilders.ph', phone: '+63 917 555 0142',
-    address: '5 Session Rd.', city: 'Baguio', customerTerms: 'COD', creditLimit: 0,
-  },
-  {
-    id: 'bp-006', code: 'BP-0006', name: 'Pacific Paints Inc.', roles: ['vendor', 'customer'], status: 'Active',
-    tin: '567-890-123-000', contactPerson: 'Liza Tan', email: 'trade@pacificpaints.ph', phone: '+63 2 8634 7788',
-    address: '400 EDSA', city: 'Quezon City', vendorTerms: 'Net 30', customerTerms: 'Net 30', creditLimit: 150000,
-  },
-  {
-    id: 'bp-007', code: 'BP-0007', name: 'Island Homes Development', roles: ['customer'], status: 'Inactive',
-    contactPerson: 'Mark Lim', email: 'mark.lim@islandhomes.ph', phone: '+63 82 224 9901',
-    address: '77 JP Laurel Ave.', city: 'Davao City', customerTerms: 'Net 30', creditLimit: 300000,
-  },
-  {
-    id: 'bp-008', code: 'BP-0008', name: 'Golden Plumbing Center', roles: ['vendor'], status: 'Inactive',
-    contactPerson: 'Rosa Garcia', email: 'rosa@goldenplumbing.ph', phone: '+63 2 8541 2020',
-    address: '31 Aurora Blvd.', city: 'San Juan', vendorTerms: 'COD',
-  },
-  {
-    id: 'bp-009', code: 'BP-0009', name: 'Sunrise Renovations', roles: ['lead'], status: 'Active',
-    contactPerson: 'Paolo Aquino', email: 'paolo@sunrisereno.ph', phone: '+63 918 222 3344',
-    address: '9 Katipunan Ave.', city: 'Quezon City', leadSource: 'Referral', leadStage: 'Qualified',
-    notes: 'Referred by Acme. Needs quote for 200 boxes of screws.',
-  },
-  {
-    id: 'bp-010', code: 'BP-0010', name: 'Bayview Condominium Corp.', roles: ['lead'], status: 'Active',
-    contactPerson: 'Grace Dela Cruz', email: 'admin@bayviewcondo.ph', phone: '+63 2 8831 6060',
-    address: '1200 Roxas Blvd.', city: 'Pasay', leadSource: 'Website', leadStage: 'Contacted',
-  },
-  {
-    id: 'bp-011', code: 'BP-0011', name: 'Mindanao Agri Supplies', roles: ['lead'], status: 'Active',
-    contactPerson: 'Nestor Ramos', email: 'nestor@mindanaoagri.ph', phone: '+63 88 856 7123',
-    address: '14 Corrales Ave.', city: 'Cagayan de Oro', leadSource: 'Trade show', leadStage: 'New',
-  },
-  {
-    id: 'bp-012', code: 'BP-0012', name: 'Quickfix Home Services', roles: ['lead'], status: 'Active',
-    contactPerson: 'Ella Navarro', email: 'ella@quickfix.ph', phone: '+63 927 400 1188',
-    address: '3 Alabang–Zapote Rd.', city: 'Las Piñas', leadSource: 'Walk-in', leadStage: 'Lost',
-    notes: 'Went with a competitor on price.',
-  },
+  seed(
+    'bp-001', 'customer',
+    { name: 'Acme Construction Corp.', tin: '123-456-789-000', email: 'purchasing@acmeconstruction.ph', tel1: '+63 2 8812 3456', creditLimit: 500000, commitmentLimit: 750000, salesEmployee: 'Andrea Ramos', territory: 'NCR', properties: ['Key account', 'Requires PO'], averageDelayDays: 4 },
+    { firstName: 'Maria', lastName: 'Santos', position: 'Purchasing Manager', email: 'maria.santos@acmeconstruction.ph', mobile: '+63 917 800 1122' },
+    { street: 'Shaw Blvd.', streetNo: '21', block: 'Wack-Wack', city: 'Mandaluyong', zip: '1552', province: 'Metro Manila' },
+  ),
+  seed(
+    'bp-002', 'customer',
+    { roles: ['customer', 'vendor'], name: 'Metro Hardware Supply', tin: '234-567-890-000', email: 'orders@metrohardware.ph', tel1: '+63 2 8723 1100', customerPaymentTerms: 'Net 15', vendorPaymentTerms: 'Net 30', creditLimit: 250000, industry: 'Retail', remarks: 'Buys paint from us; we buy fasteners from them.' },
+    { firstName: 'Jose', lastName: 'Reyes', position: 'Owner', email: 'jose@metrohardware.ph' },
+    { street: 'Rizal Ave.', streetNo: '88', block: 'Sta. Cruz', city: 'Manila', zip: '1003', province: 'Metro Manila' },
+  ),
+  seed(
+    'bp-003', 'vendor',
+    { name: 'Luzon Steel Industries', tin: '345-678-901-000', email: 'sales@luzonsteel.ph', tel1: '+63 44 791 2233', vendorPaymentTerms: 'Net 60', industry: 'Manufacturing', group: 'Vendors – Local', bankName: 'BPI', bankBranch: 'Malolos', bankAccount: '8890-1122-33', bankAccountName: 'Luzon Steel Industries Inc.' },
+    { firstName: 'Ramon', lastName: 'Cruz', position: 'Sales Director', email: 'ramon.cruz@luzonsteel.ph' },
+    { street: 'MacArthur Hwy.', streetNo: 'Km 45', block: 'Longos', city: 'Malolos', zip: '3000', province: 'Bulacan' },
+  ),
+  seed(
+    'bp-004', 'vendor',
+    { name: 'Visayas Electrical Trading', tin: '456-789-012-000', email: 'ap@visayaselectrical.ph', tel1: '+63 32 255 4410', industry: 'Retail' },
+    { firstName: 'Ana', lastName: 'Villanueva', position: 'Accounts Officer', email: 'ana@visayaselectrical.ph' },
+    { street: 'Osmeña Blvd.', streetNo: '12', block: 'Capitol Site', city: 'Cebu City', zip: '6000', province: 'Cebu' },
+  ),
+  seed(
+    'bp-005', 'customer',
+    { name: 'Northpoint Builders', email: 'hello@northpointbuilders.ph', mobile: '+63 917 555 0142', customerPaymentTerms: 'COD', group: 'Customers – Retail', territory: 'North Luzon' },
+    { firstName: 'Carlo', lastName: 'Mendoza', position: 'Project Engineer', email: 'carlo@northpointbuilders.ph' },
+    { street: 'Session Rd.', streetNo: '5', city: 'Baguio', zip: '2600', province: 'Benguet' },
+  ),
+  seed(
+    'bp-006', 'vendor',
+    { roles: ['vendor', 'customer'], name: 'Pacific Paints Inc.', tin: '567-890-123-000', email: 'trade@pacificpaints.ph', tel1: '+63 2 8634 7788', creditLimit: 150000, industry: 'Manufacturing', properties: ['Preferred supplier', 'Accepts e-invoice'] },
+    { firstName: 'Liza', lastName: 'Tan', position: 'Trade Marketing', email: 'liza.tan@pacificpaints.ph' },
+    { street: 'EDSA', streetNo: '400', block: 'Bagong Pag-asa', city: 'Quezon City', zip: '1105', province: 'Metro Manila' },
+  ),
+  seed(
+    'bp-007', 'customer',
+    { name: 'Island Homes Development', email: 'finance@islandhomes.ph', status: 'Inactive', statusRemarks: 'Project completed; account closed.', industry: 'Real estate', territory: 'Mindanao' },
+    { firstName: 'Mark', lastName: 'Lim', position: 'Finance Head', email: 'mark.lim@islandhomes.ph' },
+    { street: 'JP Laurel Ave.', streetNo: '77', block: 'Bajada', city: 'Davao City', zip: '8000', province: 'Davao del Sur' },
+  ),
+  seed(
+    'bp-008', 'vendor',
+    { name: 'Golden Plumbing Center', email: 'rosa@goldenplumbing.ph', vendorPaymentTerms: 'COD', status: 'Inactive' },
+    { firstName: 'Rosa', lastName: 'Garcia', position: 'Owner', email: 'rosa@goldenplumbing.ph' },
+    { street: 'Aurora Blvd.', streetNo: '31', city: 'San Juan', zip: '1500', province: 'Metro Manila' },
+  ),
+  seed(
+    'bp-009', 'lead',
+    { name: 'Sunrise Renovations', email: 'info@sunrisereno.ph', leadSource: 'Referral', leadStage: 'Qualified', remarks: 'Referred by Acme. Needs quote for 200 boxes of screws.' },
+    { firstName: 'Paolo', lastName: 'Aquino', position: 'Operations', email: 'paolo@sunrisereno.ph', mobile: '+63 918 222 3344' },
+    { street: 'Katipunan Ave.', streetNo: '9', block: 'Loyola Heights', city: 'Quezon City', zip: '1108', province: 'Metro Manila' },
+  ),
+  seed(
+    'bp-010', 'lead',
+    { name: 'Bayview Condominium Corp.', email: 'admin@bayviewcondo.ph', leadSource: 'Website', leadStage: 'Contacted', industry: 'Real estate' },
+    { firstName: 'Grace', lastName: 'Dela Cruz', position: 'Admin Officer', email: 'grace@bayviewcondo.ph' },
+    { street: 'Roxas Blvd.', streetNo: '1200', city: 'Pasay', zip: '1300', province: 'Metro Manila' },
+  ),
+  seed(
+    'bp-011', 'lead',
+    { name: 'Mindanao Agri Supplies', email: 'sales@mindanaoagri.ph', leadSource: 'Trade show', leadStage: 'New', industry: 'Agriculture' },
+    { firstName: 'Nestor', lastName: 'Ramos', email: 'nestor@mindanaoagri.ph' },
+    { street: 'Corrales Ave.', streetNo: '14', city: 'Cagayan de Oro', zip: '9000', province: 'Misamis Oriental' },
+  ),
+  seed(
+    'bp-012', 'lead',
+    { name: 'Quickfix Home Services', email: 'ella@quickfix.ph', leadSource: 'Walk-in', leadStage: 'Lost', industry: 'Services', remarks: 'Went with a competitor on price.' },
+    { firstName: 'Ella', lastName: 'Navarro', email: 'ella@quickfix.ph' },
+    { street: 'Alabang–Zapote Rd.', streetNo: '3', city: 'Las Piñas', zip: '1740', province: 'Metro Manila' },
+  ),
 ];

@@ -40,9 +40,11 @@ src/
     AppShell.tsx   Navbar + SideNav + routed content (<Outlet />)
     nav.tsx        Sidebar hubs and pages (from the navigation architecture); a page's id is its route (/sales/invoices)
     router.tsx     Route table; unbuilt nav entries fall through to <Placeholder />
-  pages/           One folder per hub (Home, inventory/items/ItemList, inventory/items/ItemDetail)
+  pages/           One folder per hub (Home, inventory/items/…, partners/…)
+    partners/      Business partners: one record listed as CRM › Leads, Sales › Customers
+                   and Purchasing › Vendors; detail/ holds the master form, one file per tab
   mocks/           Seed data and types
-  services/        Fake async API over the mocks (swap for fetch() later)
+  services/        Fake async API over the mocks (store.ts; swap for fetch() later)
   index.css        Tailwind + the design system's token theme
   main.tsx         Loads the design system CSS, applies the saved theme, mounts the router
 ```
@@ -64,4 +66,9 @@ src/
 - The design system's JS doesn't inject its CSS on its own, so `main.tsx` imports
   `@jasperlepardo/sikat-design-system/styles` explicitly.
 - Theme: light, dark, or follow the OS. Switch it from the avatar menu.
-- To reset the mock data, clear the `sikat-erp:items` key in `localStorage`.
+- To reset the mock data, clear the `sikat-erp:*` keys in `localStorage`.
+- Business partner fields follow the SAP B1 BP master field mapping, localized for
+  the Philippines (TIN, barangay/province, GCash/Maya/PDC). Left out on purpose:
+  portal passwords and card numbers (security), IBAN/SEPA mandate (EU-only), pager,
+  factoring and country of birth. "Connected vendor" is unnecessary because one
+  record can be both customer and vendor.

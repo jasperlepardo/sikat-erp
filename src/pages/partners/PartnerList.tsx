@@ -19,7 +19,7 @@ import {
   type TableSort,
 } from '@jasperlepardo/sikat-design-system';
 import { LEAD_STAGES, type Partner, type PartnerRole } from '../../mocks/partners';
-import { listPartnersByRole } from '../../services/partners';
+import { defaultBillTo, defaultContact, defaultContactName, isActive, listPartnersByRole } from '../../services/partners';
 import { useAsync } from '../../services/useAsync';
 import { formatAmount } from '../../services/format';
 import { ROLE_CONFIG, ROLE_ORDER, STAGE_INTENT } from './roles';
@@ -31,6 +31,14 @@ const initials = (name: string) =>
     .map((w) => w[0])
     .join('')
     .toUpperCase();
+
+/** Sort key → comparable text (contact and city come from the default contact / bill-to). */
+function sortValue(p: Partner, key: string): string {
+  if (key === 'contact') return defaultContactName(p);
+  if (key === 'city') return defaultBillTo(p)?.city ?? '';
+  const value = p[key as keyof Partner];
+  return typeof value === 'string' ? value : '';
+}
 
 /** Leads, Customers and Vendors: the same business partner records, filtered by role. */
 export function PartnerList({ role }: { role: PartnerRole }) {
@@ -52,20 +60,19 @@ export function PartnerList({ role }: { role: PartnerRole }) {
         ])
       : {
           all: () => true,
-          active: (p) => p.status === 'Active',
-          inactive: (p) => p.status === 'Inactive',
+          active: (p) => isActive(p),
+          inactive: (p) => !isActive(p),
         };
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
     const matches = (filters[filter] ?? filters.all) as (p: Partner) => boolean;
     const filtered = (partners ?? []).filter(
-      (p) => matches(p) && (!q || `${p.code} ${p.name} ${p.contactPerson} ${p.city}`.toLowerCase().includes(q)),
+      (p) => matches(p) && (!q || `${p.code} ${p.name} ${p.aliasName} ${defaultContactName(p)} ${defaultBillTo(p)?.city ?? ''}`.toLowerCase().includes(q)),
     );
     if (!sort) return filtered;
-    const key = sort.key as keyof Partner;
     const dir = sort.direction === 'asc' ? 1 : -1;
-    return [...filtered].sort((a, b) => String(a[key] ?? '').localeCompare(String(b[key] ?? '')) * dir);
+    return [...filtered].sort((a, b) => sortValue(a, sort.key).localeCompare(sortValue(b, sort.key)) * dir);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [partners, filter, query, sort]);
 
@@ -80,12 +87,12 @@ export function PartnerList({ role }: { role: PartnerRole }) {
             key: 'creditLimit',
             header: 'Credit limit',
             cell: (p) => (
-              <TableSubcontent subcopy={p.customerTerms}>
+              <TableSubcontent subcopy={p.customerPaymentTerms}>
                 <TableAmount currency="PHP">{formatAmount(p.creditLimit ?? 0)}</TableAmount>
               </TableSubcontent>
             ),
           }
-        : { key: 'vendorTerms', header: 'Payment terms', sortable: true, cell: (p) => p.vendorTerms ?? '—' };
+        : { key: 'vendorPaymentTerms', header: 'Payment terms', sortable: true, cell: (p) => p.vendorPaymentTerms || '—' };
 
   const columns: TableColumn<Partner>[] = [
     {
@@ -99,12 +106,15 @@ export function PartnerList({ role }: { role: PartnerRole }) {
       ),
     },
     {
-      key: 'contactPerson',
+      key: 'contact',
       header: 'Contact',
       sortable: true,
-      cell: (p) => <TableUser name={p.contactPerson} subcopy={p.email} initials={initials(p.contactPerson)} />,
+      cell: (p) => {
+        const name = defaultContactName(p);
+        return name ? <TableUser name={name} subcopy={defaultContact(p)?.email || p.email} initials={initials(name)} /> : '—';
+      },
     },
-    { key: 'city', header: 'City', sortable: true, cell: (p) => p.city },
+    { key: 'city', header: 'City', sortable: true, cell: (p) => defaultBillTo(p)?.city || '—' },
     roleColumn,
     {
       key: 'roles',
@@ -131,7 +141,7 @@ export function PartnerList({ role }: { role: PartnerRole }) {
         role === 'lead' ? (
           <TableStatus intent={STAGE_INTENT[p.leadStage ?? 'New']}>{p.leadStage ?? 'New'}</TableStatus>
         ) : (
-          <TableStatus intent={p.status === 'Active' ? 'success' : 'default'}>{p.status}</TableStatus>
+          <TableStatus intent={isActive(p) ? 'success' : 'default'}>{isActive(p) ? 'Active' : 'Inactive'}</TableStatus>
         ),
     },
   ];
