@@ -1,13 +1,9 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import {
-  Alert,
   Badge,
   Button,
-  Dropdown,
-  DropdownItem,
   Form,
-  Icon,
   Panel,
   PanelHeader,
   Select,
@@ -29,6 +25,8 @@ import { PaymentTermsTab } from './PaymentTermsTab';
 import { PropertiesTab } from './PropertiesTab';
 import { RemarksTab } from './RemarksTab';
 import { Fields, Section, bind, type Draft, type Errors } from './fields';
+import { MoreMenu } from '../../../components/form/MoreMenu';
+import { ProblemsAlert, problemCollector, type Problem as ProblemBase } from '../../../components/form/ProblemsAlert';
 
 const TABS = [
   { value: 'general', label: 'General', Component: GeneralTab },
@@ -43,17 +41,11 @@ const TABS = [
 ] as const;
 type TabId = (typeof TABS)[number]['value'];
 
-interface Problem {
-  tab: TabId | 'header';
-  key: string;
-  message: string;
-}
+type Problem = ProblemBase<TabId>;
 
 /** Mandatory fields from the BP field mapping, checked on Add/Save. */
 function validate(d: Draft, codeMode: 'auto' | 'manual'): Problem[] {
-  const problems: Problem[] = [];
-  const need = (ok: unknown, tab: Problem['tab'], key: string, message: string) =>
-    !ok && problems.push({ tab, key, message });
+  const { problems, need } = problemCollector<TabId>();
 
   need(codeMode === 'auto' || d.code.trim(), 'header', 'code', 'Enter a code, or switch numbering to Auto.');
   need(d.name.trim(), 'header', 'name', 'Name is required.');
@@ -233,25 +225,11 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
           }
         />
         <Panel.Body className="flex flex-col gap-2">
-          {problems.length ? (
-            <Alert intent="danger" variant="outline" title={`Fix ${problems.length} field${problems.length === 1 ? '' : 's'} to save`}>
-              <ul className="list-disc pl-5">
-                {problems.map((p) => (
-                  <li key={p.key}>
-                    {p.message}
-                    {p.tab !== 'header' ? (
-                      <>
-                        {' '}
-                        <button type="button" className="text-primary underline" onClick={() => setTab(p.tab as TabId)}>
-                          {TABS.find((t) => t.value === p.tab)?.label}
-                        </button>
-                      </>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            </Alert>
-          ) : null}
+          <ProblemsAlert
+            problems={problems}
+            tabLabel={(t) => TABS.find((x) => x.value === t)?.label}
+            onOpenTab={setTab}
+          />
 
           <Section icon="badge" title="Business partner">
             <Fields cols={3}>
@@ -318,55 +296,5 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
         </Panel.Body>
       </Panel>
     </Form>
-  );
-}
-
-/** "You can also" — related actions for this partner. */
-function MoreMenu({ items }: { items: { label: string; icon: string; onSelect: () => void }[] }) {
-  const [open, setOpen] = useState(false);
-  const root = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const close = (e: MouseEvent) => !root.current?.contains(e.target as Node) && setOpen(false);
-    const esc = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
-    document.addEventListener('mousedown', close);
-    document.addEventListener('keydown', esc);
-    return () => {
-      document.removeEventListener('mousedown', close);
-      document.removeEventListener('keydown', esc);
-    };
-  }, [open]);
-
-  return (
-    <div ref={root} className="relative">
-      <Button
-        type="button"
-        intent="default"
-        variant="solid"
-        size="extra-large"
-        aria-haspopup="menu"
-        aria-expanded={open}
-        trailingIcon={<Icon size={20}>keyboard_arrow_down</Icon>}
-        onClick={() => setOpen(!open)}
-      >
-        You can also
-      </Button>
-      {open ? (
-        <Dropdown role="menu" style={{ left: 'auto', right: 0, width: 240 }}>
-          {items.map((item) => (
-            <DropdownItem
-              key={item.label}
-              leadingIcon={<Icon size={20}>{item.icon}</Icon>}
-              onSelect={() => {
-                setOpen(false);
-                item.onSelect();
-              }}
-            >
-              {item.label}
-            </DropdownItem>
-          ))}
-        </Dropdown>
-      ) : null}
-    </div>
   );
 }

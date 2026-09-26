@@ -58,12 +58,9 @@ export interface PaymentMethodSetting {
   include: boolean;
 }
 
-export interface Attachment {
-  id: string;
-  fileName: string;
-  size: number;
-  attachedOn: string;
-}
+import type { Attachment } from './common';
+
+export type { Attachment };
 
 export interface Partner {
   id: string;
