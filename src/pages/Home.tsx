@@ -1,17 +1,17 @@
 import { Card, Icon, Panel, PanelHeader, Text } from '@jasperlepardo/sikat-design-system';
-import { isLowStock, listItems } from '../services/items';
+import { isLowStock, isValidToday, listItems, stockTotals } from '../services/items';
 import { useAsync } from '../services/useAsync';
 import { formatAmount } from '../services/format';
 
 export function Home() {
   const items = useAsync(listItems, []);
-  const active = items?.filter((i) => i.status === 'Active') ?? [];
+  const active = items?.filter((i) => i.inventoryItem && isValidToday(i)) ?? [];
   const stats = [
-    { label: 'Active items', value: items ? String(active.length) : '—', icon: 'inventory_2' },
+    { label: 'Stocked items', value: items ? String(active.length) : '—', icon: 'inventory_2' },
     { label: 'Low or out of stock', value: items ? String(active.filter(isLowStock).length) : '—', icon: 'warning' },
     {
-      label: 'Inventory value (PHP)',
-      value: items ? formatAmount(active.reduce((sum, i) => sum + i.onHand * i.unitPrice, 0)) : '—',
+      label: 'Inventory value at cost (PHP)',
+      value: items ? formatAmount(active.reduce((sum, i) => sum + stockTotals(i).inStock * i.itemCost, 0)) : '—',
       icon: 'payments',
     },
   ];

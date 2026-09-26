@@ -13,3 +13,11 @@
 .sikat-tabs__tab:disabled {
   background-color: var(--color-bg-default);
 }
+
+/* Design system workaround (v0.17.1): <Icon> is a Material Symbols ligature. Until the
+   font loads (or if it's blocked) the glyph name, e.g. "keyboard_arrow_down", is laid
+   out as wide text past the icon's box and can sit on top of neighbouring buttons,
+   swallowing their clicks. Clip it to its box. Remove once fixed upstream. */
+.sikat-icon {
+  overflow: hidden;
+}

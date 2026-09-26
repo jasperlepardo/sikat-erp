@@ -2,7 +2,7 @@ import { createHashRouter } from 'react-router';
 import { AppShell } from './AppShell';
 import { Home } from '../pages/Home';
 import { ItemList } from '../pages/inventory/items/ItemList';
-import { ItemDetail } from '../pages/inventory/items/ItemDetail';
+import { ItemDetail } from '../pages/inventory/items/detail/ItemDetail';
 import { Placeholder } from '../pages/Placeholder';
 import { PartnerList } from '../pages/partners/PartnerList';
 import { PartnerDetail } from '../pages/partners/detail/PartnerDetail';

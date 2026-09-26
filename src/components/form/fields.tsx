@@ -86,6 +86,24 @@ export function bind<T>(obj: T, update: (patch: Partial<T>) => void) {
         />
       )),
 
+    /** A select whose options show a label but store a value (e.g. a partner id). */
+    choose: (
+      key: KeysOf<T, string>,
+      label: ReactNode,
+      options: { value: string; label: string }[],
+      o: FieldOptions = {},
+    ) =>
+      field(key, label, o, (p) => (
+        <Select
+          {...p}
+          options={options}
+          disabled={o.disabled}
+          placeholder={o.placeholder}
+          value={(obj[key] as string | undefined) ?? ''}
+          onValueChange={(v) => patch(key, v)}
+        />
+      )),
+
     date: (key: KeysOf<T, string>, label: ReactNode, o: FieldOptions = {}) =>
       field(key, label, o, (p) => (
         <DatePicker

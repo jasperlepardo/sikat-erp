@@ -40,7 +40,10 @@ src/
     AppShell.tsx   Navbar + SideNav + routed content (<Outlet />)
     nav.tsx        Sidebar hubs and pages (from the navigation architecture); a page's id is its route (/sales/invoices)
     router.tsx     Route table; unbuilt nav entries fall through to <Placeholder />
+  components/form/ Shared master-data form pieces: field builders, "You can also" menu,
+                   problems alert, attachments table
   pages/           One folder per hub (Home, inventory/items/…, partners/…)
+    inventory/items/ The item master; detail/ holds the form, one file per tab
     partners/      Business partners: the Business Partners master lists every record;
                    CRM › Leads, Sales › Customers and Purchasing › Vendors are role views
                    of it. detail/ holds the master form, one file per tab
@@ -68,6 +71,10 @@ src/
   `@jasperlepardo/sikat-design-system/styles` explicitly.
 - Theme: light, dark, or follow the OS. Switch it from the avatar menu.
 - To reset the mock data, clear the `sikat-erp:*` keys in `localStorage`.
+- Item fields follow the SAP B1 Item Master Data field map, localized (BIR VAT tax
+  groups, PH warehouses). Seed items are marked as having transactions, which locks
+  Item No., type, inventory UoM, tracking and valuation, as SAP does. Issue method
+  and phantom live only on the Production tab (the map lists them twice).
 - Business partner fields follow the SAP B1 BP master field mapping, localized for
   the Philippines (TIN, barangay/province, GCash/Maya/PDC). Left out on purpose:
   portal passwords and card numbers (security), IBAN/SEPA mandate (EU-only), pager,
