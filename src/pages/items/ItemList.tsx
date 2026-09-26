@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import {
   Button,
+  Card,
   Icon,
   Panel,
   PanelHeader,
@@ -27,6 +28,13 @@ const FILTERS: Record<Filter, (i: Item) => boolean> = {
   active: (i) => i.status === 'Active',
   inactive: (i) => i.status === 'Inactive',
   low: (i) => i.status === 'Active' && isLowStock(i),
+};
+
+const FILTER_LABELS: Record<Filter, string> = {
+  all: 'All items',
+  active: 'Active items',
+  low: 'Low stock',
+  inactive: 'Inactive items',
 };
 
 export function ItemList() {
@@ -129,41 +137,46 @@ export function ItemList() {
           />
         }
       />
-      <Panel.Body className="flex flex-col gap-2">
-        <TextField
-          aria-label="Search items"
-          placeholder="Search by name, SKU, or category"
-          leadingIcon={<Icon size={20}>search</Icon>}
-          value={query}
-          onChange={(e) => {
-            setQuery(e.currentTarget.value);
-            setPage(1);
-          }}
-        />
-        {items ? (
-          <Table
-            caption="Items"
-            columns={columns}
-            rows={rows.slice((page - 1) * pageSize, page * pageSize)}
-            getRowId={(i) => i.id}
-            sort={sort}
-            onSortChange={setSort}
-            onRowAction={open}
-            pagination={{
-              page,
-              pageSize,
-              total: rows.length,
-              pageSizes: [10, 25, 50],
-              onPageChange: setPage,
-              onPageSizeChange: (size) => {
-                setPageSize(size);
+      <Panel.Body>
+        <Card>
+          <Card.Header icon={<Icon size={24}>list_alt</Icon>}>{FILTER_LABELS[filter]}</Card.Header>
+          <Card.Content>
+            <TextField
+              aria-label="Search items"
+              placeholder="Search by name, SKU, or category"
+              leadingIcon={<Icon size={20}>search</Icon>}
+              value={query}
+              onChange={(e) => {
+                setQuery(e.currentTarget.value);
                 setPage(1);
-              },
-            }}
-          />
-        ) : (
-          <p className="p-4 text-muted">Loading items…</p>
-        )}
+              }}
+            />
+            {items ? (
+              <Table
+                caption="Items"
+                columns={columns}
+                rows={rows.slice((page - 1) * pageSize, page * pageSize)}
+                getRowId={(i) => i.id}
+                sort={sort}
+                onSortChange={setSort}
+                onRowAction={open}
+                pagination={{
+                  page,
+                  pageSize,
+                  total: rows.length,
+                  pageSizes: [10, 25, 50],
+                  onPageChange: setPage,
+                  onPageSizeChange: (size) => {
+                    setPageSize(size);
+                    setPage(1);
+                  },
+                }}
+              />
+            ) : (
+              <p className="p-4 text-muted">Loading items…</p>
+            )}
+          </Card.Content>
+        </Card>
       </Panel.Body>
     </Panel>
   );
