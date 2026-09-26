@@ -1,0 +1,5 @@
+/* Tailwind v4 with the design system's tokens as the theme: utilities like
+   bg-default, text-heading, p-4, rounded-md all resolve to Sikat tokens.
+   The components' own CSS is injected by importing the package. */
+@import 'tailwindcss';
+@import '@jasperlepardo/sikat-design-system/theme';
