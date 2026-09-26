@@ -1,6 +1,7 @@
 import { Button } from '@jasperlepardo/sikat-design-system';
 import { Fields, Section, bind } from '../../../../components/form/fields';
 import { MANUFACTURERS, UOMS } from '../../../../mocks/itemMasters';
+import { WITHHOLDING_CATEGORIES } from '../../../../mocks/taxes';
 import { taxCodeOptions, taxGroupOptions, taxResolution, vendorOptions, type TabProps } from './types';
 
 export function PurchasingTab({ draft, update, errors, vendors, tax }: TabProps) {
@@ -49,6 +50,14 @@ export function PurchasingTab({ draft, update, errors, vendors, tax }: TabProps)
           })}
           {f.choose('purchaseTaxCode', 'Fixed purchasing tax code', taxCodeOptions(tax, 'Purchase', draft.purchaseTaxCode), {
             hint: 'Overrides the tax group on every purchase.',
+          })}
+          {f.pick('withholdingCategory', 'Withholding category', WITHHOLDING_CATEGORIES, {
+            hint:
+              draft.withholdingCategory === 'Goods' || draft.withholdingCategory === 'Services'
+                ? `Top withholding agents withhold ${draft.withholdingCategory === 'Goods' ? '1% (W?158)' : '2% (W?160)'} when paying for this.`
+                : draft.withholdingCategory === 'None'
+                  ? 'Never withheld.'
+                  : `Withheld as ${draft.withholdingCategory.toLowerCase()} whatever the company status.`,
           })}
         </Fields>
       </Section>

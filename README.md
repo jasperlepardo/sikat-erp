@@ -77,6 +77,12 @@ src/
   exempt, government, importation, digital-services reverse charge), 3% percentage tax,
   expanded withholding tax ATCs, withholding VAT and excise categories. Rows marked
   "To confirm" / "Enter current rate" still need your accountant's check.
+- Tax on a document line is decided by rules in `src/services/taxDetermination.ts`:
+  company status (VAT-registered, top withholding agent) → item fixed code → partner
+  status (government / zero-rated / exempt customer; non-VAT / non-resident supplier)
+  → item tax group. Withholding comes from the vendor override, else the item's
+  withholding category and the company's TWA status. Try it on the Determination
+  rules tab. Tax codes keep effective-dated rates.
 - Exchange rates are PHP per unit from the BSP Reference Exchange Rate Bulletin. Paste
   the day's bulletin into "Import BSP bulletin"; the sample data holds the 30 Apr 2026
   (partial) and 25 Sep 2026 bulletins.

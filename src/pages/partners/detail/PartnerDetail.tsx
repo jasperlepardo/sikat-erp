@@ -53,6 +53,12 @@ function validate(d: Draft, codeMode: 'auto' | 'manual'): Problem[] {
   need(d.group, 'header', 'group', 'Group is required.');
   need(d.currency, 'header', 'currency', 'Currency is required.');
   need(!d.email || /^\S+@\S+\.\S+$/.test(d.email), 'general', 'email', 'Enter a valid email address.');
+  need(
+    !d.roles.includes('customer') || d.salesVatTreatment !== 'Zero-rated' || d.zeroRatedCertificate.trim(),
+    'accounting',
+    'zeroRatedCertificate',
+    'Zero-rated customers need their zero-rating certificate number.',
+  );
   if (d.status === 'Advanced') {
     need(d.statusFrom, 'general', 'statusFrom', 'Pick a start date.');
     need(d.statusTo, 'general', 'statusTo', 'Pick an end date.');

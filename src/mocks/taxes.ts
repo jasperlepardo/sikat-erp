@@ -27,7 +27,8 @@ export interface TaxCode {
   name: string;
   direction: TaxDirection;
   category: TaxCategory;
-  rate: number;
+  /** Rate history; a document uses the rate in force on its posting date. */
+  rates: TaxRatePeriod[];
   glAccount: string;
   birReturn: string;
   legalBasis: string;
@@ -35,23 +36,77 @@ export interface TaxCode {
   notes: string;
 }
 
-/** Tax zones on business partners decide which code a tax group resolves to. */
-export type TaxZone = 'domestic' | 'government' | 'foreign';
-export const TAX_ZONES: { value: TaxZone; label: string }[] = [
-  { value: 'domestic', label: 'Domestic' },
-  { value: 'government', label: 'Government' },
-  { value: 'foreign', label: 'Foreign / export / import' },
-];
+export interface TaxRatePeriod {
+  /** YYYY-MM-DD the rate takes effect. */
+  from: string;
+  rate: number;
+}
 
-/** What items point to. Resolves to a tax code by the partner's tax zone. */
+/** The rate in force on `date` (latest period starting on or before it). */
+export function rateAt(code: Pick<TaxCode, 'rates'>, date: string): number | undefined {
+  return [...code.rates].sort((a, b) => b.from.localeCompare(a.from)).find((p) => p.from <= date)?.rate;
+}
+
+/** The rate in force today. */
+export const currentRate = (code: Pick<TaxCode, 'rates'>) => rateAt(code, new Date().toISOString().slice(0, 10));
+
+/**
+ * What items carry: the default tax code for the item's nature (goods, services,
+ * capital goods…). Partner and company status can override it — see
+ * services/taxDetermination.ts.
+ */
 export interface TaxGroup {
   id: string;
   code: string;
   name: string;
   direction: TaxDirection;
-  codes: Record<TaxZone, string>;
+  taxCode: string;
   active: boolean;
 }
+
+/** How a customer is treated for output VAT. */
+export type SalesVatTreatment = 'Regular' | 'Government' | 'Zero-rated' | 'Exempt entity';
+export const SALES_VAT_TREATMENTS: { value: SalesVatTreatment; label: string }[] = [
+  { value: 'Regular', label: 'Regular (12% VAT)' },
+  { value: 'Government', label: 'Government agency / GOCC' },
+  { value: 'Zero-rated', label: 'Zero-rated (export, PEZA / registered export enterprise)' },
+  { value: 'Exempt entity', label: 'VAT-exempt entity' },
+];
+
+/** A supplier's VAT status, which decides whether you get input VAT. */
+export type SupplierVatStatus = 'VAT-registered' | 'Non-VAT' | 'Non-resident digital services';
+export const SUPPLIER_VAT_STATUSES: { value: SupplierVatStatus; label: string }[] = [
+  { value: 'VAT-registered', label: 'VAT-registered' },
+  { value: 'Non-VAT', label: 'Non-VAT (percentage tax payer)' },
+  { value: 'Non-resident digital services', label: 'Non-resident digital service provider' },
+];
+
+/** What an item's purchase is for withholding tax purposes. */
+export type WithholdingCategory = 'Goods' | 'Services' | 'Rent' | 'Professional fees' | 'Contractor' | 'None';
+export const WITHHOLDING_CATEGORIES: WithholdingCategory[] = ['Goods', 'Services', 'Rent', 'Professional fees', 'Contractor', 'None'];
+
+/** The company's own tax registration (Settings › Accounting & Tax › Company tax profile). */
+export interface CompanyTaxProfile {
+  id: string;
+  registeredName: string;
+  tin: string;
+  rdoCode: string;
+  /** VAT-registered sellers charge VAT; non-VAT sellers pay 3% percentage tax instead. */
+  vatRegistered: boolean;
+  /** Top withholding agents withhold 1% on goods and 2% on services from regular suppliers. */
+  topWithholdingAgent: boolean;
+}
+
+export const SEED_COMPANY_TAX: CompanyTaxProfile[] = [
+  {
+    id: 'company',
+    registeredName: 'Sikat Tech Inc.',
+    tin: '',
+    rdoCode: '',
+    vatRegistered: true,
+    topWithholdingAgent: true,
+  },
+];
 
 export type WithholdingKind = 'Expanded (EWT)' | 'Withholding VAT';
 export type WithholdingBase = 'Amount net of VAT' | 'One-half of gross remittance' | 'VAT-exclusive amount';
@@ -96,17 +151,25 @@ export const TAX_GL_ACCOUNTS = [
   '2320 Percentage Tax Payable',
   '2330 VAT Withheld Payable',
   '1410 Input VAT',
-  '1415 Deferred Input VAT – Capital Goods',
+  '1415 Deferred Input VAT – Capital Goods (pre-2022 balances)',
   '1420 Input VAT – Importation',
   '1430 Creditable Withholding VAT',
   '— None —',
 ];
 export const BIR_RETURNS = ['2550Q', '2551Q', '1600-VT', '2550Q / 1600-VT', '—'];
 
+/** VAT has been 12% since 1 Feb 2006 (RA 9337). */
+const VAT_SINCE = '2006-02-01';
+const ZERO_SINCE = '2006-02-01';
+
 const tc = (
-  code: string, name: string, direction: TaxDirection, category: TaxCategory, rate: number,
+  code: string, name: string, direction: TaxDirection, category: TaxCategory, rate: number | TaxRatePeriod[],
   glAccount: string, birReturn: string, legalBasis: string, notes = '',
-): TaxCode => ({ id: `tc-${code}`, code, name, direction, category, rate, glAccount, birReturn, legalBasis, active: true, notes });
+): TaxCode => ({
+  id: `tc-${code}`, code, name, direction, category,
+  rates: typeof rate === 'number' ? [{ from: rate ? VAT_SINCE : ZERO_SINCE, rate }] : rate,
+  glAccount, birReturn, legalBasis, active: true, notes,
+});
 
 export const SEED_TAX_CODES: TaxCode[] = [
   // Sales (output)
@@ -115,13 +178,17 @@ export const SEED_TAX_CODES: TaxCode[] = [
     'Government buyers withhold 5% as creditable VAT (final withholding ended 1 Jan 2021, except ODA-funded projects).'),
   tc('OV0', 'Zero-rated sale (export / registered export enterprise)', 'Sales', 'Zero-rated', 0, '2310 Output VAT Payable', '2550Q', 'NIRC Secs. 106(A)(2), 108(B); RA 12066 (CREATE MORE)'),
   tc('OVX', 'VAT-exempt sale', 'Sales', 'Exempt', 0, '— None —', '2550Q', 'NIRC Sec. 109'),
-  tc('PT3', 'Percentage tax 3% (non-VAT seller)', 'Sales', 'Percentage tax', 3, '2320 Percentage Tax Payable', '2551Q', 'NIRC Sec. 116',
-    'For non-VAT sellers with gross sales ≤ ₱3M. The 1% CREATE rate ended 30 Jun 2023.'),
+  tc('PT3', 'Percentage tax (non-VAT seller)', 'Sales', 'Percentage tax',
+    [{ from: '2018-01-01', rate: 3 }, { from: '2020-07-01', rate: 1 }, { from: '2023-07-01', rate: 3 }],
+    '2320 Percentage Tax Payable', '2551Q', 'NIRC Sec. 116 as amended by TRAIN and CREATE (RA 11534)',
+    'Used on every sale when the company is not VAT-registered (gross sales ≤ ₱3M). CREATE cut it to 1% from 1 Jul 2020 to 30 Jun 2023.'),
   // Purchases (input)
   tc('IV12', 'Input VAT 12% – goods', 'Purchase', 'Standard', 12, '1410 Input VAT', '2550Q', 'NIRC Sec. 110'),
   tc('IVS12', 'Input VAT 12% – services', 'Purchase', 'Services', 12, '1410 Input VAT', '2550Q', 'NIRC Sec. 110'),
-  tc('IVC12', 'Input VAT 12% – capital goods', 'Purchase', 'Capital goods', 12, '1415 Deferred Input VAT – Capital Goods', '2550Q', 'NIRC Sec. 110(A)'),
-  tc('IVI12', 'Input VAT 12% – importation (paid to BOC)', 'Purchase', 'Importation', 12, '1420 Input VAT – Importation', '2550Q', 'NIRC Sec. 107'),
+  tc('IVC12', 'Input VAT 12% – capital goods', 'Purchase', 'Capital goods', 12, '1410 Input VAT', '2550Q', 'NIRC Sec. 110(A)(2)(b) as amended by TRAIN',
+    'Claimed in full. Spreading input VAT on capital goods over ₱1M ended 31 Dec 2021; only older deferred balances keep amortizing.'),
+  tc('IVI12', 'Input VAT 12% – importation (paid to BOC)', 'Purchase', 'Importation', 12, '1420 Input VAT – Importation', '2550Q', 'NIRC Sec. 107',
+    'Entered on the import entry / landed cost document, not on the foreign supplier’s bill.'),
   tc('IVD12', 'VAT 12% – digital services from non-resident (reverse charge)', 'Purchase', 'Reverse charge', 12, '1410 Input VAT', '1600-VT', 'RA 12023; effective 2 Jun 2025',
     'The buyer withholds and remits the 12% VAT, then claims it as input VAT.'),
   tc('IV0', 'Zero-rated purchase', 'Purchase', 'Zero-rated', 0, '— None —', '2550Q', 'NIRC Sec. 108(B)'),
@@ -129,20 +196,19 @@ export const SEED_TAX_CODES: TaxCode[] = [
   tc('INV', 'Purchase from non-VAT supplier (no input VAT)', 'Purchase', 'Non-VAT', 0, '— None —', '—', 'NIRC Sec. 110'),
 ];
 
-const tg = (code: string, name: string, direction: TaxDirection, domestic: string, government: string, foreign: string): TaxGroup => ({
-  id: `tg-${code}`, code, name, direction, codes: { domestic, government, foreign }, active: true,
+const tg = (code: string, name: string, direction: TaxDirection, taxCode: string): TaxGroup => ({
+  id: `tg-${code}`, code, name, direction, taxCode, active: true,
 });
 
 export const SEED_TAX_GROUPS: TaxGroup[] = [
-  tg('S-VAT12', 'VAT 12% – output', 'Sales', 'OV12', 'OVG12', 'OV0'),
-  tg('S-VATX', 'VAT-exempt sale', 'Sales', 'OVX', 'OVX', 'OVX'),
-  tg('S-VAT0', 'Zero-rated sale', 'Sales', 'OV0', 'OV0', 'OV0'),
-  tg('S-PT3', 'Percentage tax (non-VAT seller)', 'Sales', 'PT3', 'PT3', 'PT3'),
-  tg('P-VAT12', 'VAT 12% – input (goods)', 'Purchase', 'IV12', 'IV12', 'IVI12'),
-  tg('P-VAT12S', 'VAT 12% – input (services)', 'Purchase', 'IVS12', 'IVS12', 'IVD12'),
-  tg('P-VAT12C', 'VAT 12% – input (capital goods)', 'Purchase', 'IVC12', 'IVC12', 'IVI12'),
-  tg('P-VATX', 'VAT-exempt purchase', 'Purchase', 'IVX', 'IVX', 'IVX'),
-  tg('P-VAT0', 'Zero-rated purchase', 'Purchase', 'IV0', 'IV0', 'IV0'),
+  tg('S-VAT12', 'VAT 12% – output', 'Sales', 'OV12'),
+  tg('S-VATX', 'VAT-exempt goods or services', 'Sales', 'OVX'),
+  tg('S-VAT0', 'Zero-rated goods or services', 'Sales', 'OV0'),
+  tg('P-VAT12', 'VAT 12% – input (goods)', 'Purchase', 'IV12'),
+  tg('P-VAT12S', 'VAT 12% – input (services)', 'Purchase', 'IVS12'),
+  tg('P-VAT12C', 'VAT 12% – input (capital goods)', 'Purchase', 'IVC12'),
+  tg('P-VATX', 'VAT-exempt purchase', 'Purchase', 'IVX'),
+  tg('P-VAT0', 'Zero-rated purchase', 'Purchase', 'IV0'),
 ];
 
 const wt = (

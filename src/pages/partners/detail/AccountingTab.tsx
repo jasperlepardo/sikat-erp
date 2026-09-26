@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { FormField, MultiSelect, Radio, Text } from '@jasperlepardo/sikat-design-system';
+import { Radio, Text } from '@jasperlepardo/sikat-design-system';
 import { GL_ACCOUNTS, PLANNING_GROUPS } from '../../../mocks/masters';
 import type { Partner } from '../../../mocks/partners';
-import { TAX_ZONES, type WithholdingTax } from '../../../mocks/taxes';
+import { SALES_VAT_TREATMENTS, SUPPLIER_VAT_STATUSES, type WithholdingTax } from '../../../mocks/taxes';
 import { withholdingTaxes } from '../../../services/masterData';
 import { listPartners } from '../../../services/partners';
 import type { TabProps } from './GeneralTab';
@@ -21,9 +21,12 @@ export function AccountingTab({ draft, update, errors }: TabProps) {
 
   // Individuals and sole proprietors use WI codes; companies use WC codes.
   const payee = ['Individual', 'Sole proprietorship'].includes(draft.businessType) ? 'Individual' : 'Corporate';
-  const withholdingOptions = withholding
-    .filter((w) => (w.active && (w.payee === payee || w.payee === 'Any')) || draft.withholdingTaxIds.includes(w.id))
-    .map((w) => ({ value: w.id, label: `${w.atc || 'ATC to confirm'} · ${w.description} (${w.rate}%)` }));
+  const withholdingOptions = [
+    { value: '', label: 'Use the rules (by item and company status)' },
+    ...withholding
+      .filter((w) => (w.active && w.kind === 'Expanded (EWT)' && w.payee === payee) || w.id === draft.withholdingOverrideId)
+      .map((w) => ({ value: w.id, label: `${w.atc || 'ATC to confirm'} · ${w.description} (${w.rate}%)` })),
+  ];
 
   const consolidating = others.find((p) => p.id === draft.consolidatingPartnerId);
   const partnerOptions = ['— None —', ...others.map((p) => `${p.code} · ${p.name}`)];
@@ -31,39 +34,40 @@ export function AccountingTab({ draft, update, errors }: TabProps) {
   return (
     <>
       <Section icon="receipt_long" title="Tax">
+        <Text variant="small" tone="muted">
+          Used by tax determination: these statuses override the item’s default tax code. Test them in Settings › Accounting &
+          Tax › Determination rules.
+        </Text>
         <Fields>
-          {f.choose('taxZone', 'Tax zone', TAX_ZONES, {
-            hint: "Picks the code from each item's tax group, e.g. Government → OVG12 on sales.",
-          })}
-          <ReadOnly
-            label="Withholding payee type"
-            value={payee}
-            hint="From Type of business on the General tab."
-          />
-          {isVendor ? (
-            <FormField
-              label="Withholding taxes"
-              className="md:col-span-2"
-              hint="Withheld when you pay this vendor; they get a BIR Form 2307. Rates live in Settings › Accounting & Tax."
-            >
-              {(p) => (
-                <MultiSelect
-                  {...p}
-                  options={withholdingOptions}
-                  placeholder="None"
-                  value={draft.withholdingTaxIds}
-                  onValueChange={(ids) => update({ withholdingTaxIds: ids })}
-                />
-              )}
-            </FormField>
+          {isCustomer
+            ? f.choose('salesVatTreatment', 'VAT treatment as a customer', SALES_VAT_TREATMENTS, {
+                hint: 'Government → OVG12 · Zero-rated → OV0 · Exempt entity → OVX · Regular → the item’s code.',
+              })
+            : null}
+          {isCustomer && draft.salesVatTreatment === 'Zero-rated' ? (
+            <>
+              {f.text('zeroRatedCertificate', 'Zero-rating certificate no.', {
+                required: true,
+                error: errors.zeroRatedCertificate,
+                placeholder: 'e.g. PEZA-REE-2024-0183',
+              })}
+              {f.date('zeroRatedValidUntil', 'Certificate valid until', {
+                hint: 'After this date sales fall back to regular VAT.',
+              })}
+            </>
           ) : null}
+          {isVendor
+            ? f.choose('supplierVatStatus', 'VAT status as a supplier', SUPPLIER_VAT_STATUSES, {
+                hint: 'Non-VAT → no input VAT (INV) · Non-resident digital → you withhold the 12% VAT (IVD12).',
+              })
+            : null}
+          {isVendor
+            ? f.choose('withholdingOverrideId', 'Withholding tax override', withholdingOptions, {
+                hint: 'Leave on “Use the rules” unless this vendor always gets one specific ATC.',
+              })
+            : null}
+          <ReadOnly label="Withholding payee type" value={payee} hint="From Type of business on the General tab." />
         </Fields>
-        <Flags>{f.check('vatRegistered', 'VAT-registered')}</Flags>
-        {!draft.vatRegistered && isVendor ? (
-          <Text variant="small" tone="muted">
-            Non-VAT supplier: purchases carry no input VAT (tax code INV).
-          </Text>
-        ) : null}
       </Section>
 
       <Section icon="account_tree" title="Control accounts">

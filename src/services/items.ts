@@ -2,9 +2,9 @@ import { ITEM_GROUPS } from '../mocks/itemMasters';
 import { SEED_ITEMS, type Item } from '../mocks/items';
 import { createCollection } from './store';
 
-// v3: tax groups/codes became Settings codes and excise categories were added;
+// v4: added the withholding category (and more tax fields before it);
 // the new key skips old-shaped data.
-const items = createCollection<Item>('sikat-erp:items:v3', SEED_ITEMS, 'itm');
+const items = createCollection<Item>('sikat-erp:items:v4', SEED_ITEMS, 'itm');
 
 export const listItems = items.list;
 export const getItem = items.get;

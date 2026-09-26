@@ -1,8 +1,7 @@
 import type { Item } from '../../../../mocks/items';
 import type { Partner } from '../../../../mocks/partners';
 import type { Errors } from '../../../../components/form/fields';
-import type { ExciseCategory, TaxCode, TaxGroup, TaxDirection } from '../../../../mocks/taxes';
-import { TAX_ZONES } from '../../../../mocks/taxes';
+import { currentRate, type ExciseCategory, type TaxCode, type TaxDirection, type TaxGroup } from '../../../../mocks/taxes';
 
 export type Draft = Omit<Item, 'id'> & { id?: string };
 
@@ -33,19 +32,20 @@ export const taxCodeOptions = (tax: TaxMasters, direction: TaxDirection, current
   { value: '', label: '— None (use the tax group) —' },
   ...tax.codes
     .filter((c) => c.direction === direction && (c.active || c.code === current))
-    .map((c) => ({ value: c.code, label: `${c.code} · ${c.name} (${c.rate}%)` })),
+    .map((c) => ({ value: c.code, label: `${c.code} · ${c.name} (${currentRate(c) ?? '—'}%)` })),
 ];
 
-/** "Domestic → OV12 12% · Government → OVG12 12% · …" for a group, or the fixed code. */
+/** The item's default tax code, and a reminder that partner/company status can override it. */
 export function taxResolution(tax: TaxMasters, groupCode: string, fixedCode: string) {
   const describe = (code: string) => {
     const c = tax.codes.find((x) => x.code === code);
-    return c ? `${c.code} ${c.rate}%` : code || '—';
+    return c ? `${c.code} ${currentRate(c) ?? '—'}%` : code || '—';
   };
-  if (fixedCode) return `Always ${describe(fixedCode)}, whatever the partner's tax zone.`;
+  const override = 'The partner’s or company’s tax status can override it (Settings › Accounting & Tax › Determination rules).';
+  if (fixedCode) return `Always ${describe(fixedCode)}. Only company or supplier VAT status overrides a fixed code.`;
   const g = tax.groups.find((x) => x.code === groupCode);
   if (!g) return 'Pick a tax group.';
-  return TAX_ZONES.map((z) => `${z.label.split(' ')[0]} → ${describe(g.codes[z.value])}`).join(' · ');
+  return `Default ${describe(g.taxCode)}. ${override}`;
 }
 
 export const vendorOptions = (vendors: Partner[]) => [

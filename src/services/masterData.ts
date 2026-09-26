@@ -1,9 +1,11 @@
 import { SEED_CURRENCIES, SEED_RATES, type Currency, type ExchangeRate } from '../mocks/currencies';
 import {
+  SEED_COMPANY_TAX,
   SEED_EXCISE,
   SEED_TAX_CODES,
   SEED_TAX_GROUPS,
   SEED_WITHHOLDING,
+  type CompanyTaxProfile,
   type ExciseCategory,
   type TaxCode,
   type TaxGroup,
@@ -12,8 +14,10 @@ import {
 import { createCollection } from './store';
 
 /** Settings › Accounting & Tax master data. */
-export const taxCodes = createCollection<TaxCode>('sikat-erp:tax-codes', SEED_TAX_CODES, 'tc');
-export const taxGroups = createCollection<TaxGroup>('sikat-erp:tax-groups', SEED_TAX_GROUPS, 'tg');
+// v2: tax codes gained rate history; tax groups map to a single code.
+export const taxCodes = createCollection<TaxCode>('sikat-erp:tax-codes:v2', SEED_TAX_CODES, 'tc');
+export const taxGroups = createCollection<TaxGroup>('sikat-erp:tax-groups:v2', SEED_TAX_GROUPS, 'tg');
+export const companyTax = createCollection<CompanyTaxProfile>('sikat-erp:company-tax', SEED_COMPANY_TAX, 'company');
 export const withholdingTaxes = createCollection<WithholdingTax>('sikat-erp:withholding', SEED_WITHHOLDING, 'wt');
 export const exciseCategories = createCollection<ExciseCategory>('sikat-erp:excise', SEED_EXCISE, 'ex');
 export const currencies = createCollection<Currency>('sikat-erp:currencies', SEED_CURRENCIES, 'cur');

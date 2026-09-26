@@ -1,0 +1,67 @@
+import { useEffect, useState } from 'react';
+import { Button, Text } from '@jasperlepardo/sikat-design-system';
+import { Fields, Flags, Section, bind } from '../../../components/form/fields';
+import type { CompanyTaxProfile } from '../../../mocks/taxes';
+import { companyTax } from '../../../services/masterData';
+
+/** The company's own BIR registration — drives percentage tax and top-withholding-agent rules. */
+export function CompanyTaxTab() {
+  const [profile, setProfile] = useState<CompanyTaxProfile>();
+  const [saved, setSaved] = useState<CompanyTaxProfile>();
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    companyTax.list().then(([p]) => {
+      setProfile(p);
+      setSaved(p);
+    });
+  }, []);
+
+  if (!profile) return <p className="p-4 text-muted">Loading…</p>;
+  const f = bind(profile, (patch) => setProfile({ ...profile, ...patch }));
+  const dirty = JSON.stringify(profile) !== JSON.stringify(saved);
+
+  const save = async () => {
+    if (profile.tin && !/^\d{3}-\d{3}-\d{3}-\d{3,5}$/.test(profile.tin)) {
+      setError('Use the BIR format 000-000-000-000 (branch code 000 for the head office).');
+      return;
+    }
+    setError('');
+    const next = await companyTax.save(profile);
+    setProfile(next);
+    setSaved(next);
+  };
+
+  return (
+    <Section
+      icon="corporate_fare"
+      title="Company tax profile"
+      actions={
+        <Button type="button" size="small" intent="primary" variant="solid" disabled={!dirty} onClick={save}>
+          Save
+        </Button>
+      }
+    >
+      <Text variant="small" tone="muted">
+        From the company’s BIR Certificate of Registration (Form 2303). These settings run first in tax determination.
+      </Text>
+      <Fields cols={3}>
+        {f.text('registeredName', 'Registered name')}
+        {f.text('tin', 'TIN', { placeholder: '000-000-000-000', error })}
+        {f.text('rdoCode', 'RDO code', { placeholder: 'e.g. 043', hint: 'Revenue District Office on the COR.' })}
+      </Fields>
+      <Flags>
+        {f.check('vatRegistered', 'VAT-registered')}
+        {f.check('topWithholdingAgent', 'Top withholding agent (BIR-notified)')}
+      </Flags>
+      <Text variant="small" tone="muted">
+        {profile.vatRegistered
+          ? 'VAT-registered: sales carry output VAT from the item and customer.'
+          : 'Not VAT-registered: every sale uses percentage tax (PT3), whatever the item says.'}{' '}
+        {profile.topWithholdingAgent
+          ? 'As a top withholding agent, you withhold 1% on goods and 2% on services bought from regular suppliers.'
+          : 'Not a top withholding agent: regular goods and services aren’t withheld (rent, contractors and professional fees still are).'}
+      </Text>
+    </Section>
+  );
+}

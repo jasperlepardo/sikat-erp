@@ -59,7 +59,7 @@ export interface PaymentMethodSetting {
 }
 
 import type { Attachment } from './common';
-import type { TaxZone } from './taxes';
+import type { SalesVatTreatment, SupplierVatStatus } from './taxes';
 
 export type { Attachment };
 
@@ -153,12 +153,16 @@ export interface Partner {
   paymentMethods: PaymentMethodSetting[];
   defaultPaymentMethod: string;
 
-  // Tax (Settings › Accounting & Tax)
-  /** Decides which code a tax group resolves to on this partner's documents. */
-  taxZone: TaxZone;
-  vatRegistered: boolean;
-  /** Withholding taxes (by id) you withhold when paying this partner as a vendor. */
-  withholdingTaxIds: string[];
+  // Tax — inputs to tax determination (services/taxDetermination.ts)
+  /** As a customer: overrides the item's output VAT (government, zero-rated, exempt). */
+  salesVatTreatment: SalesVatTreatment;
+  /** Zero-rated customers: the BIR/PEZA/BOI certificate backing the zero-rating. */
+  zeroRatedCertificate: string;
+  zeroRatedValidUntil: string;
+  /** As a supplier: decides whether you get input VAT at all. */
+  supplierVatStatus: SupplierVatStatus;
+  /** Withholding tax (id) that always applies to this vendor, replacing the rules. '' = use the rules. */
+  withholdingOverrideId: string;
 
   // Accounting
   consolidatingPartnerId: string;
@@ -305,9 +309,11 @@ export function blankPartner(role: PartnerRole): Omit<Partner, 'id'> {
       { code: 'MAYA', include: false },
     ],
     defaultPaymentMethod: 'BANK',
-    taxZone: 'domestic',
-    vatRegistered: true,
-    withholdingTaxIds: [],
+    salesVatTreatment: 'Regular',
+    zeroRatedCertificate: '',
+    zeroRatedValidUntil: '',
+    supplierVatStatus: 'VAT-registered',
+    withholdingOverrideId: '',
     consolidatingPartnerId: '',
     consolidationType: 'payment',
     receivableAccount: '1120 Accounts Receivable – Trade',
@@ -365,13 +371,13 @@ export const SEED_PARTNERS: Partner[] = [
   ),
   seed(
     'bp-003', 'vendor',
-    { name: 'Luzon Steel Industries', tin: '345-678-901-000', email: 'sales@luzonsteel.ph', tel1: '+63 44 791 2233', vendorPaymentTerms: 'Net 60', industry: 'Manufacturing', group: 'Vendors – Local', withholdingTaxIds: ['wt-WC158'], bankName: 'BPI', bankBranch: 'Malolos', bankAccount: '8890-1122-33', bankAccountName: 'Luzon Steel Industries Inc.' },
+    { name: 'Luzon Steel Industries', tin: '345-678-901-000', email: 'sales@luzonsteel.ph', tel1: '+63 44 791 2233', vendorPaymentTerms: 'Net 60', industry: 'Manufacturing', group: 'Vendors – Local', bankName: 'BPI', bankBranch: 'Malolos', bankAccount: '8890-1122-33', bankAccountName: 'Luzon Steel Industries Inc.' },
     { firstName: 'Ramon', lastName: 'Cruz', position: 'Sales Director', email: 'ramon.cruz@luzonsteel.ph' },
     { street: 'MacArthur Hwy.', streetNo: 'Km 45', block: 'Longos', city: 'Malolos', zip: '3000', province: 'Bulacan' },
   ),
   seed(
     'bp-004', 'vendor',
-    { name: 'Visayas Electrical Trading', tin: '456-789-012-000', email: 'ap@visayaselectrical.ph', tel1: '+63 32 255 4410', industry: 'Retail', withholdingTaxIds: ['wt-WC158'] },
+    { name: 'Visayas Electrical Trading', tin: '456-789-012-000', email: 'ap@visayaselectrical.ph', tel1: '+63 32 255 4410', industry: 'Retail' },
     { firstName: 'Ana', lastName: 'Villanueva', position: 'Accounts Officer', email: 'ana@visayaselectrical.ph' },
     { street: 'Osmeña Blvd.', streetNo: '12', block: 'Capitol Site', city: 'Cebu City', zip: '6000', province: 'Cebu' },
   ),
@@ -395,7 +401,7 @@ export const SEED_PARTNERS: Partner[] = [
   ),
   seed(
     'bp-008', 'vendor',
-    { name: 'Golden Plumbing Center', email: 'rosa@goldenplumbing.ph', vendorPaymentTerms: 'COD', status: 'Inactive', vatRegistered: false, withholdingTaxIds: ['wt-WI158'] },
+    { name: 'Golden Plumbing Center', email: 'rosa@goldenplumbing.ph', vendorPaymentTerms: 'COD', status: 'Inactive', supplierVatStatus: 'Non-VAT', businessType: 'Sole proprietorship' },
     { firstName: 'Rosa', lastName: 'Garcia', position: 'Owner', email: 'rosa@goldenplumbing.ph' },
     { street: 'Aurora Blvd.', streetNo: '31', city: 'San Juan', zip: '1500', province: 'Metro Manila' },
   ),
@@ -422,5 +428,29 @@ export const SEED_PARTNERS: Partner[] = [
     { name: 'Quickfix Home Services', email: 'ella@quickfix.ph', leadSource: 'Walk-in', leadStage: 'Lost', industry: 'Services', remarks: 'Went with a competitor on price.' },
     { firstName: 'Ella', lastName: 'Navarro', email: 'ella@quickfix.ph' },
     { street: 'Alabang–Zapote Rd.', streetNo: '3', city: 'Las Piñas', zip: '1740', province: 'Metro Manila' },
+  ),
+  seed(
+    'bp-013', 'customer',
+    { name: 'Cavite Export Assemblers Inc.', tin: '678-901-234-000', email: 'procurement@caviteexport.ph', industry: 'Manufacturing',
+      salesVatTreatment: 'Zero-rated', zeroRatedCertificate: 'PEZA-REE-2024-0183', zeroRatedValidUntil: '2027-12-31',
+      remarks: 'PEZA-registered export enterprise in Cavite Economic Zone. Keep the VAT zero-rating certificate on file.' },
+    { firstName: 'Lorna', lastName: 'Bautista', position: 'Procurement Head', email: 'lorna.bautista@caviteexport.ph' },
+    { street: 'Main Ave.', streetNo: 'Lot 7', block: 'CEZ', city: 'Rosario', zip: '4106', province: 'Cavite' },
+  ),
+  seed(
+    'bp-014', 'customer',
+    { name: 'City Government of Pasig – Engineering Office', email: 'engineering@pasigcity.gov.ph', industry: 'Government',
+      businessType: 'Government', group: 'Customers – Government', salesVatTreatment: 'Government', customerPaymentTerms: 'Net 60',
+      remarks: 'Withholds 5% creditable VAT and 1% EWT on our invoices; expect BIR Form 2307.' },
+    { firstName: 'Ramil', lastName: 'Ocampo', position: 'City Engineer', email: 'r.ocampo@pasigcity.gov.ph' },
+    { street: 'Caruncho Ave.', block: 'Malinao', city: 'Pasig', zip: '1600', province: 'Metro Manila' },
+  ),
+  seed(
+    'bp-015', 'vendor',
+    { name: 'CloudStack Pte. Ltd.', email: 'billing@cloudstack.example.sg', industry: 'Services', group: 'Vendors – Services',
+      currency: 'USD', supplierVatStatus: 'Non-resident digital services', vendorPaymentTerms: 'Net 7',
+      remarks: 'Cloud hosting subscription. Non-resident digital service provider: we withhold and remit the 12% VAT (RA 12023).' },
+    { firstName: 'Mei', lastName: 'Lin', position: 'Billing', email: 'billing@cloudstack.example.sg' },
+    { street: 'Robinson Rd.', streetNo: '71', city: 'Singapore', zip: '068895', province: 'Other', country: 'Singapore' },
   ),
 ];

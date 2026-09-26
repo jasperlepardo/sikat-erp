@@ -4,6 +4,7 @@
  */
 import type { Attachment } from './common';
 import { ITEM_GROUPS, type ValuationMethod } from './itemMasters';
+import type { WithholdingCategory } from './taxes';
 
 export type ItemType = 'Items' | 'Labor' | 'Travel';
 export type ManageBy = 'None' | 'Batches' | 'Serial Numbers';
@@ -81,6 +82,8 @@ export interface Item {
   purchaseTaxGroup: string;
   /** Fixed tax code overriding the group; '' for none. */
   purchaseTaxCode: string;
+  /** What buying this is for withholding tax: decides WC158 vs WC160 vs rent, etc. */
+  withholdingCategory: WithholdingCategory;
   length: number;
   width: number;
   height: number;
@@ -193,6 +196,7 @@ export function blankItem(groupName = ITEM_GROUPS[0].name): Omit<Item, 'id'> {
     dutyPct: 0,
     purchaseTaxGroup: 'P-VAT12',
     purchaseTaxCode: '',
+    withholdingCategory: 'Goods',
     length: 0,
     width: 0,
     height: 0,
@@ -348,10 +352,27 @@ export const SEED_ITEMS: Item[] = [
   seed('itm-016', 'Services', {
     itemNo: 'SVC-INS-HR', description: 'Installation labor', itemType: 'Labor', inventoryUom: 'hour', purchaseItem: false,
     purchaseTaxGroup: 'P-VAT12S',
+    withholdingCategory: 'Services',
     inventoryItem: false, basePrice: 450, commissionGroup: 'Standard (2%)', cycleCountDays: 0, warehouses: [],
   }),
   seed('itm-017', 'Services', {
     itemNo: 'SVC-DLV-TRIP', description: 'Delivery trip (Metro Manila)', itemType: 'Travel', inventoryUom: 'trip',
     purchaseItem: false, inventoryItem: false, basePrice: 1200, cycleCountDays: 0, warehouses: [],
+    purchaseTaxGroup: 'P-VAT12S', withholdingCategory: 'Services',
+  }),
+  seed('itm-018', 'Services', {
+    itemNo: 'SVC-RNT-FORK', description: 'Forklift rental (per day)', itemType: 'Items', inventoryUom: 'pc', purchasingUom: 'pc',
+    salesItem: false, inventoryItem: false, purchaseTaxGroup: 'P-VAT12S', withholdingCategory: 'Rent', warehouses: [],
+    cycleCountDays: 0, hasTransactions: false,
+  }),
+  seed('itm-019', 'Services', {
+    itemNo: 'SVC-SUB-INST', description: 'Installation subcontract', itemType: 'Labor', inventoryUom: 'hour', purchasingUom: 'hour',
+    salesItem: false, inventoryItem: false, purchaseTaxGroup: 'P-VAT12S', withholdingCategory: 'Contractor', warehouses: [],
+    cycleCountDays: 0, hasTransactions: false,
+  }),
+  seed('itm-020', 'Services', {
+    itemNo: 'SVC-CLD-HOST', description: 'Cloud hosting subscription (monthly)', itemType: 'Items', inventoryUom: 'pc',
+    purchasingUom: 'pc', salesItem: false, inventoryItem: false, purchaseTaxGroup: 'P-VAT12S', withholdingCategory: 'Services',
+    defaultVendorId: 'bp-015', warehouses: [], cycleCountDays: 0, hasTransactions: false,
   }),
 ];
