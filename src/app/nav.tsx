@@ -38,7 +38,7 @@ export const NAV: SideNavSection[] = [
     id: 'customers',
     title: 'Customers',
     items: [
-      hub('CRM', 'handshake', ['Pipeline', 'Activities', 'Campaigns', 'Insights']),
+      hub('CRM', 'handshake', ['Leads', 'Pipeline', 'Activities', 'Campaigns', 'Insights']),
       hub('Sales', 'sell', [
         'Customers',
         'Quotations',
