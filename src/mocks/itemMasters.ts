@@ -19,7 +19,7 @@ export const PROCUREMENT_METHODS = ['Buy', 'Make'] as const;
 
 export const INVENTORY_ACCOUNTS = ['1310 Inventory – Merchandise', '1320 Inventory – Raw Materials', '1330 Inventory – Finished Goods', '— None —'];
 export const COGS_ACCOUNTS = ['5010 COGS – Merchandise', '5020 COGS – Manufactured', '5030 Cost of Services'];
-export const REVENUE_ACCOUNTS = ['4010 Sales – Merchandise', '4020 Sales – Manufactured', '4030 Service Revenue'];
+export const REVENUE_ACCOUNTS = ['4010 Sales – Merchandise', '4020 Sales – Manufactured', '4030 Service Revenue', '2150 Gift certificates outstanding'];
 
 export interface ItemGroup {
   id: string;
@@ -118,14 +118,18 @@ const group = (
   inventoryAccount: string, cogsAccount: string, revenueAccount: string,
 ): ItemGroup => ({ id: `ig-${prefix}`, name, prefix, valuationMethod, inventoryAccount, cogsAccount, revenueAccount, active: true });
 
+const MERCH = ['1310 Inventory – Merchandise', '5010 COGS – Merchandise', '4010 Sales – Merchandise'] as const;
 export const SEED_ITEM_GROUPS: ItemGroup[] = [
-  group('Fasteners', 'FST', 'Moving Average', '1310 Inventory – Merchandise', '5010 COGS – Merchandise', '4010 Sales – Merchandise'),
-  group('Electrical', 'ELC', 'Moving Average', '1310 Inventory – Merchandise', '5010 COGS – Merchandise', '4010 Sales – Merchandise'),
-  group('Plumbing', 'PLB', 'Moving Average', '1310 Inventory – Merchandise', '5010 COGS – Merchandise', '4010 Sales – Merchandise'),
-  group('Hardware', 'HRD', 'FIFO', '1310 Inventory – Merchandise', '5010 COGS – Merchandise', '4010 Sales – Merchandise'),
-  group('Paint', 'PNT', 'FIFO', '1310 Inventory – Merchandise', '5010 COGS – Merchandise', '4010 Sales – Merchandise'),
-  group('Raw Materials', 'RM', 'Standard Price', '1320 Inventory – Raw Materials', '5020 COGS – Manufactured', '4020 Sales – Manufactured'),
-  group('Finished Goods', 'FG', 'Standard Price', '1330 Inventory – Finished Goods', '5020 COGS – Manufactured', '4020 Sales – Manufactured'),
+  // Apple Premium Reseller catalog (mocks/appleCatalog.ts).
+  group('iPhone', 'IPH', 'Serial/Batch', ...MERCH),
+  group('iPad', 'IPD', 'Serial/Batch', ...MERCH),
+  group('Mac', 'MAC', 'Serial/Batch', ...MERCH),
+  group('Apple Watch', 'AW', 'Serial/Batch', ...MERCH),
+  group('AirPods', 'APD', 'Serial/Batch', ...MERCH),
+  group('Home & TV', 'HOM', 'Serial/Batch', ...MERCH),
+  group('Accessories', 'ACC', 'Moving Average', ...MERCH),
+  group('AppleCare', 'ACP', 'Moving Average', '— None —', '5030 Cost of Services', '4030 Service Revenue'),
+  group('Gift Certificates', 'GC', 'Moving Average', '— None —', '5030 Cost of Services', '2150 Gift certificates outstanding'),
   group('Services', 'SVC', 'Moving Average', '— None —', '5030 Cost of Services', '4030 Service Revenue'),
 ];
 
@@ -133,34 +137,33 @@ const uom = (code: string, name: string): UnitOfMeasure => ({ id: `uom-${code}`,
 export const SEED_UOMS: UnitOfMeasure[] = [
   uom('pc', 'Piece'), uom('box', 'Box'), uom('carton', 'Carton'), uom('pack', 'Pack'), uom('roll', 'Roll'),
   uom('m', 'Meter'), uom('ft', 'Foot'), uom('kg', 'Kilogram'), uom('L', 'Liter'), uom('gal', 'Gallon'),
-  uom('set', 'Set'), uom('pail', 'Pail'), uom('hour', 'Hour'), uom('trip', 'Trip'),
+  uom('set', 'Set'), uom('pail', 'Pail'), uom('hour', 'Hour'), uom('trip', 'Trip'), uom('plan', 'Plan'),
 ];
 
 export const SEED_WAREHOUSES: Warehouse[] = [
-  { id: 'wh-MNL', code: 'WH-MNL', name: 'Manila main', city: 'Manila', binEnabled: true, bins: ['A-01-01', 'A-01-02', 'A-02-01', 'B-01-01', 'B-02-03', 'C-01-01'], active: true },
-  { id: 'wh-CEB', code: 'WH-CEB', name: 'Cebu branch', city: 'Cebu City', binEnabled: false, bins: [], active: true },
-  { id: 'wh-DVO', code: 'WH-DVO', name: 'Davao branch', city: 'Davao City', binEnabled: false, bins: [], active: true },
-  { id: 'wh-PRD', code: 'WH-PRD', name: 'Production floor', city: 'Valenzuela', binEnabled: false, bins: [], active: true },
+  { id: 'wh-MNL', code: 'WH-MNL', name: 'Manila distribution center', city: 'Pasig', binEnabled: true, bins: ['A-01-01', 'A-01-02', 'A-02-01', 'B-01-01', 'B-02-03', 'C-01-01'], active: true },
+  { id: 'wh-CEB', code: 'WH-CEB', name: 'Cebu store', city: 'Cebu City', binEnabled: false, bins: [], active: true },
+  { id: 'wh-DVO', code: 'WH-DVO', name: 'Davao store', city: 'Davao City', binEnabled: false, bins: [], active: true },
+  { id: 'wh-PRD', code: 'WH-PRD', name: 'Service center (repairs)', city: 'Makati', binEnabled: false, bins: [], active: true },
 ];
 
 const mfr = (code: string, name: string, country: string, contactPerson = '', email = '', phone = ''): Manufacturer => ({
   id: `mfr-${code}`, code, name, country, contactPerson, email, phone, active: true,
 });
 export const SEED_MANUFACTURERS: Manufacturer[] = [
-  mfr('MFR-001', 'Phelps Dodge Philippines', 'Philippines'),
-  mfr('MFR-002', 'Boysen Paints (Pacific Paint)', 'Philippines'),
-  mfr('MFR-003', 'Neltex Development Co.', 'Philippines'),
-  mfr('MFR-004', 'Stanley Black & Decker', 'United States'),
-  mfr('MFR-005', 'Schneider Electric', 'France'),
-  mfr('MFR-006', 'Luzon Steel Industries', 'Philippines'),
+  mfr('MFR-APL', 'Apple Inc.', 'United States'),
 ];
 
 const customs = (name: string, hsCode: string, duty: number): CustomsGroup => ({ id: `cg-${hsCode}`, name, hsCode, duty, active: true });
+// Duty: ITA goods (phones, computers, tablets) enter duty-free; confirm the rest with the customs broker.
 export const SEED_CUSTOMS_GROUPS: CustomsGroup[] = [
-  customs('Fasteners & fittings', '7318', 5),
+  customs('Phones & smartwatches', '8517', 0),
+  customs('Computers & tablets', '8471', 0),
+  customs('Headphones & speakers', '8518', 0),
+  customs('Displays & TV receivers', '8528', 0),
+  customs('Power adapters', '8504', 0),
   customs('Electrical wire & cable', '8544', 7),
-  customs('Paints & coatings', '3208', 10),
-  customs('Plastic pipes', '3917', 10),
+  customs('Cases & bags', '4202', 0),
 ];
 
 export const SEED_COMMISSION_GROUPS: CommissionGroup[] = [
@@ -182,12 +185,14 @@ export const SEED_WARRANTY_TEMPLATES: WarrantyTemplate[] = [
   { id: 'wr-6p', name: '6 months – parts', months: 6, coverage: 'Parts', active: true },
   { id: 'wr-1pl', name: '1 year – parts & labor', months: 12, coverage: 'Parts & labor', active: true },
   { id: 'wr-2m', name: '2 years – manufacturer', months: 24, coverage: 'Manufacturer', active: true },
+  { id: 'wr-apl1', name: 'Apple one-year limited warranty', months: 12, coverage: 'Manufacturer', active: true },
 ];
 
 const PROPERTY_SEED: [string, string[]][] = [
   ['Storage requirements', ['Keep dry', 'Flammable', 'Fragile', 'Heavy (2-person lift)']],
   ['Compliance', ['Hazardous', 'PS/ICC certified', 'Requires SDS', 'Import permit needed']],
   ['Marketing', ['Promotional item', 'New arrival', 'Best seller', 'Clearance']],
+  ['Retail', ['PH SRP to confirm', 'Pre-order', 'Activation lock check', 'Demo unit available']],
 ];
 export const SEED_ITEM_PROPERTIES: ItemProperty[] = PROPERTY_SEED.flatMap(([g, names], gi) =>
   names.map((name, i) => {

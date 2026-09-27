@@ -2,8 +2,8 @@ import { SEED_ITEMS, type Item } from '../mocks/items';
 import { itemGroups } from './inventoryMasters';
 import { createCollection } from './store';
 
-// v5: references to inventory master data became ids / codes ('' for none).
-const items = createCollection<Item>('sikat-erp:items:v5', SEED_ITEMS, 'itm');
+// v6: Apple Premium Reseller catalog (mocks/appleCatalog.ts).
+const items = createCollection<Item>('sikat-erp:items:v6', SEED_ITEMS, 'itm');
 
 export const listItems = items.list;
 export const getItem = items.get;
@@ -11,7 +11,7 @@ export const resetItems = items.reset;
 
 /**
  * Item No. is unique. Auto-numbered items get the next number in their group's
- * series (e.g. FST-00012); barcodes must be unique across all items.
+ * series (e.g. ACC-00012); barcodes must be unique across all items.
  */
 export async function saveItem(input: Omit<Item, 'id'> & { id?: string }): Promise<Item> {
   const all = await items.list();

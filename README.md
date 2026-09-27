@@ -96,6 +96,22 @@ src/
   and phantom show on both General and Production (same fields), and the Purchasing
   manufacturer is the main row on the Manufacturers tab. Master data the item picks
   from is editable; codes other records refer to lock once saved (deactivate instead).
+- The sample business is an Apple Premium Reseller in the Philippines. The catalog is
+  generated from product-family specs in `src/mocks/appleCatalog.ts`: one flat item per
+  sellable configuration (model × size × chip/memory × storage × connectivity × colour),
+  417 items as of 27 Sep 2026. There are no variants yet; each family becomes one parent
+  item when they arrive. Macs use Apple's standard configurations (build-to-order is not
+  itemised). Vision Pro and HomePod are left out: as far as we know Apple doesn't sell
+  them in the PH (confirm).
+  - Prices are VAT-inclusive PH SRPs. Only iPhone 18 Pro, 18 Pro Max and iPhone Duo use
+    published Apple PH prices; the rest are estimated from US prices (× 79.2, calibrated
+    on iPhone 18 Pro) and tagged with the "PH SRP to confirm" item property.
+  - Apple part numbers, UPCs and reseller cost aren't public, so the Manufacturers and
+    Barcodes tabs stay empty and item cost is a demo assumption (88% of the net SRP).
+    Load the distributor's price file to fill them. Vendor bp-016 is a placeholder.
+  - Devices are serial-tracked with the Apple one-year warranty. iPhone Duo is valid from
+    23 Oct 2026, so it shows as a pre-order ("Not valid today"). AppleCare+ plans and store
+    gift certificates are non-stock; gift certificates aren't VAT-liable at sale.
 - Business partner fields follow the SAP B1 BP master field mapping, localized for
   the Philippines (TIN, barangay/province, GCash/Maya/PDC). Left out on purpose:
   portal passwords and card numbers (security), IBAN/SEPA mandate (EU-only), pager,

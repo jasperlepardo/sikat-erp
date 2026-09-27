@@ -14,7 +14,7 @@ export const BP_GROUPS: { value: string; role: PartnerRole }[] = [
   { value: 'Leads', role: 'lead' },
 ];
 
-export const INDUSTRIES = ['Construction', 'Retail', 'Manufacturing', 'Real estate', 'Agriculture', 'Services', 'Government'];
+export const INDUSTRIES = ['Construction', 'Retail', 'Manufacturing', 'Real estate', 'Agriculture', 'Services', 'Government', 'Wholesale'];
 export const BUSINESS_TYPES = ['Company', 'Sole proprietorship', 'Partnership', 'Cooperative', 'Individual', 'Government'];
 export const EMPLOYEES = ['— None —', 'Andrea Ramos', 'Ben Salazar', 'Carla Uy', 'Dino Pascual'];
 export const TECHNICIANS = ['— None —', 'Edgar Bautista', 'Fe Lopez'];

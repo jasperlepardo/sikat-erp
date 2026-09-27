@@ -23,15 +23,15 @@ import {
 import { createCollection } from './store';
 
 /** Settings › Inventory and Inventory › Warehouses & Bins master data. */
-export const itemGroups = createCollection<ItemGroup>('sikat-erp:item-groups', SEED_ITEM_GROUPS, 'ig');
-export const unitsOfMeasure = createCollection<UnitOfMeasure>('sikat-erp:uoms', SEED_UOMS, 'uom');
-export const warehouses = createCollection<Warehouse>('sikat-erp:warehouses', SEED_WAREHOUSES, 'wh');
-export const manufacturers = createCollection<Manufacturer>('sikat-erp:manufacturers', SEED_MANUFACTURERS, 'mfr');
-export const customsGroups = createCollection<CustomsGroup>('sikat-erp:customs-groups', SEED_CUSTOMS_GROUPS, 'cg');
+export const itemGroups = createCollection<ItemGroup>('sikat-erp:item-groups:v2', SEED_ITEM_GROUPS, 'ig');
+export const unitsOfMeasure = createCollection<UnitOfMeasure>('sikat-erp:uoms:v2', SEED_UOMS, 'uom');
+export const warehouses = createCollection<Warehouse>('sikat-erp:warehouses:v2', SEED_WAREHOUSES, 'wh');
+export const manufacturers = createCollection<Manufacturer>('sikat-erp:manufacturers:v2', SEED_MANUFACTURERS, 'mfr');
+export const customsGroups = createCollection<CustomsGroup>('sikat-erp:customs-groups:v2', SEED_CUSTOMS_GROUPS, 'cg');
 export const commissionGroups = createCollection<CommissionGroup>('sikat-erp:commission-groups', SEED_COMMISSION_GROUPS, 'cm');
 export const shippingTypes = createCollection<ShippingType>('sikat-erp:shipping-types', SEED_SHIPPING_TYPES, 'sh');
-export const warrantyTemplates = createCollection<WarrantyTemplate>('sikat-erp:warranty-templates', SEED_WARRANTY_TEMPLATES, 'wr');
-export const itemProperties = createCollection<ItemProperty>('sikat-erp:item-properties', SEED_ITEM_PROPERTIES, 'prop');
+export const warrantyTemplates = createCollection<WarrantyTemplate>('sikat-erp:warranty-templates:v2', SEED_WARRANTY_TEMPLATES, 'wr');
+export const itemProperties = createCollection<ItemProperty>('sikat-erp:item-properties:v2', SEED_ITEM_PROPERTIES, 'prop');
 export const inventorySettings = createCollection<InventorySettings>('sikat-erp:inventory-settings', SEED_INVENTORY_SETTINGS, 'inventory');
 
 /** Everything the item form needs, loaded once. */

@@ -269,13 +269,13 @@ function ItemForm() {
                 label="Item No."
                 required
                 error={errors.itemNo}
-                hint={isNew ? 'Prefix by type, e.g. RM- raw materials, FG- finished goods.' : locked ? LOCKED_HINT : undefined}
+                hint={isNew ? 'Prefix by group, e.g. IPH- iPhone, ACC- accessories.' : locked ? LOCKED_HINT : undefined}
               >
                 {(p) => (
                   <TextField
                     {...p}
                     value={isNew && codeMode === 'auto' ? '' : draft.itemNo}
-                    placeholder={isNew && codeMode === 'auto' ? 'Assigned on save' : 'e.g. FST-BLT-0612'}
+                    placeholder={isNew && codeMode === 'auto' ? 'Assigned on save' : 'e.g. IPH-18P-256-BLK'}
                     readOnly={(isNew && codeMode === 'auto') || locked}
                     onChange={(e) => update({ itemNo: e.currentTarget.value })}
                   />

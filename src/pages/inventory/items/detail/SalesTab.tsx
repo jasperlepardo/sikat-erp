@@ -21,7 +21,7 @@ export function SalesTab({ draft, update, errors, tax, inv }: TabProps) {
           })}
           {f.num('basePrice', `Base price per ${draft.salesUom}`, {
             prefix: 'PHP',
-            hint: 'Default price list. Customer price lists live in Inventory › Pricing.',
+            hint: 'Retail SRP, VAT inclusive (default price list). Customer price lists live in Inventory › Pricing.',
           })}
           {f.text('sellingItemNo', 'Selling item no.', { hint: 'Printed on sales documents instead of the Item No.' })}
         </Fields>

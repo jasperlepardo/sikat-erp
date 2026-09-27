@@ -1,10 +1,12 @@
 /**
  * Item master data. Fields follow the SAP B1 Item Master Data field map,
  * grouped by tab, localized for the Philippines (BIR VAT, PH warehouses).
+ * The seed is an Apple Premium Reseller's catalog (mocks/appleCatalog.ts).
  */
 import type { Attachment } from './common';
 import { SEED_ITEM_GROUPS, propertyId, type ItemGroup, type ValuationMethod } from './itemMasters';
 import type { WithholdingCategory } from './taxes';
+import { expandCatalog } from './appleCatalog';
 
 export type ItemType = 'Items' | 'Labor' | 'Travel';
 export type ManageBy = 'None' | 'Batches' | 'Serial Numbers';
@@ -190,7 +192,7 @@ export function blankItem(groupOrName: ItemGroup | string = SEED_ITEM_GROUPS[0])
     inventoryAccount: group.inventoryAccount,
     cogsAccount: group.cogsAccount,
     revenueAccount: group.revenueAccount,
-    countryOfOrigin: 'Philippines',
+    countryOfOrigin: '',
     customsGroup: '',
     gtin: '',
     taxLiable: true,
@@ -283,106 +285,125 @@ function seed(
   };
 }
 
-export const SEED_ITEMS: Item[] = [
-  seed('itm-001', 'Fasteners', {
-    itemNo: 'FST-BLT-0612', description: 'Hex bolt M6 × 12mm', foreignName: 'Perno hex M6 × 12mm', inventoryUom: 'box',
-    purchasingUom: 'carton', itemsPerPurchaseUnit: 10, salesUom: 'box', basePrice: 185, itemCost: 118.5,
-    defaultVendorId: 'bp-002', vendorItemNo: 'MH-B612', minStock: 50, maxStock: 400, minOrderQty: 20,
-    countryOfOrigin: 'Taiwan', customsGroup: 'cg-7318', dutyPct: 5,
-    gtin: '4806501234567', manufacturer: 'MFR-004', planningMethod: 'MRP', leadTimeDays: 7, orderMultiple: 10,
-    netWeight: 1.2, grossWeight: 1.3, itemsPerPackage: 1, packagesPerPallet: 120,
-    barcodes: [
-      { id: 'itm-001-b1', uom: 'box', barcode: '4806501234567', freeText: 'EAN-13 — supplier label' },
-      { id: 'itm-001-b2', uom: 'carton', barcode: '14806501234564', freeText: 'GTIN-14 — carton' },
+const APPLE_VENDOR = 'bp-016';
+
+const CUSTOMS_BY_GROUP: Record<string, string> = {
+  iPhone: 'cg-8517', 'Apple Watch': 'cg-8517', iPad: 'cg-8471', Mac: 'cg-8471', AirPods: 'cg-8518', 'Home & TV': 'cg-8528',
+};
+const ACCESSORY_CUSTOMS: [RegExp, string][] = [
+  [/^ACC-(PWR|MAGSF)/, 'cg-8504'], [/^ACC-(CBL|USBC)/, 'cg-8544'], [/^ACC-(CASE|SPBAND)/, 'cg-4202'],
+];
+
+/** Small deterministic hash so seeded stock looks varied but never changes between reloads. */
+const hash = (s: string) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
+
+const prefixOf = (group: string) => SEED_ITEM_GROUPS.find((g) => g.name === group)!.prefix;
+const TODAY = '2026-09-27';
+
+/** One flat item per Apple configuration. */
+const APPLE_ITEMS: Item[] = expandCatalog(prefixOf).map((e, n) => {
+  const { family } = e;
+  const h = hash(e.itemNo);
+  const preOrder = !!family.validFrom && family.validFrom > TODAY;
+  const accessory = family.group === 'Accessories';
+  // Accessories carry more units; pre-order items have stock on order only.
+  const scale = accessory ? 4 : 1;
+  const mnl = preOrder ? 0 : (h % 9) * scale;
+  const ceb = preOrder ? 0 : ((h >>> 4) % 4) * scale;
+  const dvo = preOrder ? 0 : ((h >>> 8) % 3) * scale;
+  return seed(`apl-${String(n + 1).padStart(4, '0')}`, family.group, {
+    itemNo: e.itemNo,
+    description: e.description,
+    manageBy: family.serial ? 'Serial Numbers' : 'None',
+    countryOfOrigin: '',
+    customsGroup: CUSTOMS_BY_GROUP[family.group] ?? ACCESSORY_CUSTOMS.find(([re]) => re.test(e.itemNo))?.[1] ?? '',
+    defaultVendorId: APPLE_VENDOR,
+    manufacturer: 'MFR-APL',
+    warrantyTemplate: 'wr-apl1',
+    basePrice: e.price,
+    // Demo assumption: reseller cost ≈ 88% of the VAT-exclusive SRP.
+    itemCost: Math.round((e.price / 1.12) * 0.88),
+    commissionGroup: accessory ? 'cm-high' : 'cm-std',
+    validFrom: family.validFrom ?? '',
+    netWeight: family.weightKg ?? 0,
+    grossWeight: family.weightKg ? Math.round(family.weightKg * 1.4 * 100) / 100 : 0,
+    minStock: accessory ? 4 : 1,
+    maxStock: accessory ? 60 : 15,
+    minOrderQty: accessory ? 10 : 1,
+    planningMethod: 'MRP',
+    leadTimeDays: 7,
+    hasTransactions: !preOrder,
+    properties: [
+      ...(e.estimated ? [propertyId('PH SRP to confirm')] : []),
+      ...(preOrder ? [propertyId('Pre-order')] : []),
+      ...(family.group === 'iPhone' || family.group === 'iPad' || family.group === 'Apple Watch' ? [propertyId('Activation lock check')] : []),
+      ...(!accessory && h % 5 === 0 ? [propertyId('Demo unit available')] : []),
     ],
-    manufacturers: [{ id: 'itm-001-m1', code: 'MFR-004', catalogNo: 'STN-HB-M6-12' }],
-    properties: [propertyId('Best seller')],
-  }, { 'WH-MNL': [110, 18, 40], 'WH-CEB': [30, 4] }),
-  seed('itm-002', 'Fasteners', {
-    itemNo: 'FST-NUT-0600', description: 'Hex nut M6', inventoryUom: 'box', basePrice: 95, itemCost: 52,
-    defaultVendorId: 'bp-002', minStock: 50, maxStock: 300, planningMethod: 'MRP', leadTimeDays: 7,
-  }, { 'WH-MNL': [32, 10] }),
-  seed('itm-003', 'Electrical', {
-    itemNo: 'ELC-WIR-1425', description: 'THHN wire 14 AWG, 150m', inventoryUom: 'roll', basePrice: 2450, itemCost: 1890,
-    defaultVendorId: 'bp-004', manufacturer: 'MFR-001', minStock: 10, maxStock: 60,
-    customsGroup: 'cg-8544', properties: [propertyId('PS/ICC certified')],
-    manufacturers: [{ id: 'itm-003-m1', code: 'MFR-001', catalogNo: 'PD-THHN-14-150' }],
-  }, { 'WH-MNL': [12, 2, 10], 'WH-CEB': [6] }),
-  seed('itm-004', 'Electrical', {
-    itemNo: 'ELC-BRK-2030', description: 'Circuit breaker 30A, 2-pole', inventoryUom: 'pc', basePrice: 540, itemCost: 355,
-    defaultVendorId: 'bp-004', manufacturer: 'MFR-005', minStock: 12, maxStock: 80, properties: [propertyId('PS/ICC certified')],
-  }, { 'WH-MNL': [6, 3] }),
-  seed('itm-005', 'Plumbing', {
-    itemNo: 'PLB-PVC-0050', description: 'PVC pipe ½" × 3m', inventoryUom: 'pc', basePrice: 48, itemCost: 29,
-    defaultVendorId: 'bp-008', manufacturer: 'MFR-003', minStock: 100, maxStock: 800, customsGroup: 'cg-3917',
-    length: 300, width: 2.1, height: 2.1,
-  }, { 'WH-MNL': [320, 40], 'WH-DVO': [100] }),
-  seed('itm-006', 'Plumbing', {
-    itemNo: 'PLB-ELB-0050', description: 'PVC elbow ½"', inventoryUom: 'pc', basePrice: 12, itemCost: 5.5,
-    defaultVendorId: 'bp-008', minStock: 40, maxStock: 500,
-  }, { 'WH-MNL': [0, 25, 200] }),
-  seed('itm-007', 'Hardware', {
-    itemNo: 'HRD-HNG-0304', description: 'Butt hinge 3" × 4"', inventoryUom: 'pc', basePrice: 65, itemCost: 38,
-    minStock: 30, maxStock: 200,
-  }, { 'WH-MNL': [75] }),
-  seed('itm-008', 'Hardware', {
-    itemNo: 'HRD-LCK-0100', description: 'Cylindrical lockset', inventoryUom: 'pc', basePrice: 890, itemCost: 610,
-    manufacturer: 'MFR-004', minStock: 10, maxStock: 60, warrantyTemplate: 'wr-6p',
-  }, { 'WH-MNL': [9, 1], 'WH-CEB': [5] }),
-  seed('itm-009', 'Paint', {
-    itemNo: 'PNT-LTX-WHT4', description: 'Latex paint, white 4L', inventoryUom: 'gal', basePrice: 720, itemCost: 505,
-    defaultVendorId: 'bp-006', manufacturer: 'MFR-002', manageBy: 'Batches', minStock: 15, maxStock: 120,
-    customsGroup: 'cg-3208', properties: [propertyId('Keep dry'), propertyId('Requires SDS')],
-    remarks: 'Store below 30°C. Stack max 4 high.',
-  }, { 'WH-MNL': [22, 6] }),
-  seed('itm-010', 'Paint', {
-    itemNo: 'PNT-PRM-GRY4', description: 'Metal primer, grey 4L', inventoryUom: 'gal', basePrice: 680, itemCost: 470,
-    defaultVendorId: 'bp-006', manufacturer: 'MFR-002', manageBy: 'Batches', minStock: 10, maxStock: 80,
-    properties: [propertyId('Flammable'), propertyId('Requires SDS')],
-  }, { 'WH-MNL': [9] }),
-  seed('itm-011', 'Fasteners', {
-    itemNo: 'FST-SCR-0425', description: 'Wood screw #8 × 1"', inventoryUom: 'box', basePrice: 150, itemCost: 88,
-    defaultVendorId: 'bp-002', minStock: 60, maxStock: 400,
-  }, { 'WH-MNL': [180], 'WH-CEB': [30] }),
-  seed('itm-012', 'Electrical', {
-    itemNo: 'ELC-OUT-0002', description: 'Duplex outlet', inventoryUom: 'pc', basePrice: 120, itemCost: 64,
-    minStock: 25, validTo: '2026-06-30', generalRemarks: 'Discontinued — use ELC-OUT-0003 (with USB) from 2026-Q3.',
-  }, { 'WH-MNL': [55] }),
-  seed('itm-013', 'Raw Materials', {
-    itemNo: 'RM-PVC-RSN', description: 'PVC resin, 25kg bag', inventoryUom: 'kg', purchasingUom: 'pack', itemsPerPurchaseUnit: 25,
-    salesItem: false, basePrice: 0, itemCost: 62, manageBy: 'Batches', defaultVendorId: 'bp-003', countryOfOrigin: 'China',
-    minStock: 500, maxStock: 5000, planningMethod: 'MRP', leadTimeDays: 21, mrpMinOrderQty: 1000, orderMultiple: 25,
-    issueMethod: 'Backflush',
-  }, { 'WH-PRD': [750, 300, 1000] }),
-  seed('itm-014', 'Finished Goods', {
-    itemNo: 'FG-KIT-PVC01', description: 'Pre-cut PVC plumbing kit', inventoryUom: 'set', purchaseItem: false,
-    basePrice: 1450, itemCost: 980, planningMethod: 'MRP', procurementMethod: 'Make', leadTimeDays: 3,
-    productionWarehouse: 'WH-PRD', componentWarehouse: 'WH-MNL', bomCode: '', minStock: 20, maxStock: 150,
-    generalRemarks: 'Bill of Materials still to be set up in Manufacturing.',
-  }, { 'WH-MNL': [14, 8] }),
-  seed('itm-015', 'Hardware', {
-    itemNo: 'HRD-GEN-5KVA', description: 'Portable generator 5kVA', inventoryUom: 'pc', manageBy: 'Serial Numbers',
-    basePrice: 38500, itemCost: 29800, warrantyTemplate: 'wr-1pl', countryOfOrigin: 'Japan',
-    minStock: 2, maxStock: 10, netWeight: 68, grossWeight: 75, properties: [propertyId('Heavy (2-person lift)')],
-  }, { 'WH-MNL': [3, 1, 2] }),
+    remarks: [
+      family.remarks,
+      e.estimated ? 'Price estimated from the US price — confirm against the Apple PH SRP.' : 'Price: Apple PH SRP (VAT inclusive).',
+    ].filter(Boolean).join('\n'),
+  }, {
+    'WH-MNL': [mnl, mnl > 2 ? h % 2 : 0, preOrder ? 20 : (h >>> 12) % 2 ? 5 * scale : 0],
+    'WH-CEB': [ceb],
+    'WH-DVO': [dvo],
+  });
+});
+
+/** Non-stock sales items: AppleCare plans and store gift certificates. */
+const service = (id: string, group: string, patch: Partial<Item>): Item =>
+  seed(id, group, {
+    itemType: 'Items', inventoryUom: 'plan', purchasingUom: 'plan', salesUom: 'plan', inventoryItem: false, purchaseItem: false,
+    purchaseTaxGroup: 'P-VAT12S', withholdingCategory: 'Services', warehouses: [], cycleCountDays: 0, planningMethod: 'None',
+    ...patch,
+  });
+
+const APPLECARE: Item[] = ([
+  ['IPH', 'iPhone', 12990], ['IPD', 'iPad', 5990], ['MAC', 'Mac', 15990], ['AW', 'Apple Watch', 4990], ['APD', 'AirPods', 1990],
+] as const).map(([code, product, price], n) =>
+  service(`acp-${String(n + 1).padStart(3, '0')}`, 'AppleCare', {
+    itemNo: `ACP-${code}-2Y`, description: `AppleCare+ for ${product} (2 years)`, basePrice: price, commissionGroup: 'cm-high',
+    purchaseItem: true, defaultVendorId: APPLE_VENDOR, properties: [propertyId('PH SRP to confirm')],
+    remarks: 'Sold with a serial-tracked device; the plan registers against that serial. Confirm AppleCare+ availability and pricing for PH.',
+  }),
+);
+
+/** Appends the EAN-13 check digit to 12 digits. */
+const ean13 = (d12: string) =>
+  d12 + ((10 - ([...d12].reduce((n, c, i) => n + Number(c) * (i % 2 ? 3 : 1), 0) % 10)) % 10);
+
+const GIFT_CERTIFICATES: Item[] = [1000, 5000, 10000].map((amount, n) =>
+  service(`gc-${String(n + 1).padStart(3, '0')}`, 'Gift Certificates', {
+    itemNo: `GC-${amount / 1000}K`, description: `Store gift certificate ₱${amount.toLocaleString('en-PH')}`, inventoryUom: 'pc',
+    purchasingUom: 'pc', salesUom: 'pc', basePrice: amount, taxLiable: false,
+    // EAN-13 with a 2xx prefix: reserved for in-store numbering, so it can't clash with a GS1 product code.
+    barcodes: [{ id: `gc-${n + 1}-b1`, uom: 'pc', barcode: ean13(`20000000${String(amount / 1000).padStart(4, '0')}`), freeText: 'In-store code' }],
+    generalRemarks: 'Our own gift certificate. Selling one is a liability, not a sale: VAT applies when it is redeemed against goods.',
+  }),
+);
+
+export const SEED_ITEMS: Item[] = [
+  ...APPLE_ITEMS,
+  ...APPLECARE,
+  ...GIFT_CERTIFICATES,
+  // Services the store sells or buys. Their ids stay stable: the tax rules tester and tests use them.
   seed('itm-016', 'Services', {
-    itemNo: 'SVC-INS-HR', description: 'Installation labor', itemType: 'Labor', inventoryUom: 'hour', purchaseItem: false,
-    purchaseTaxGroup: 'P-VAT12S',
-    withholdingCategory: 'Services',
-    inventoryItem: false, basePrice: 450, commissionGroup: 'cm-std', cycleCountDays: 0, warehouses: [],
+    itemNo: 'SVC-SETUP', description: 'Device setup & data transfer', itemType: 'Labor', inventoryUom: 'hour', purchaseItem: false,
+    purchaseTaxGroup: 'P-VAT12S', withholdingCategory: 'Services',
+    inventoryItem: false, basePrice: 990, commissionGroup: 'cm-std', cycleCountDays: 0, warehouses: [],
   }),
   seed('itm-017', 'Services', {
-    itemNo: 'SVC-DLV-TRIP', description: 'Delivery trip (Metro Manila)', itemType: 'Travel', inventoryUom: 'trip',
-    purchaseItem: false, inventoryItem: false, basePrice: 1200, cycleCountDays: 0, warehouses: [],
+    itemNo: 'SVC-DLV-TRIP', description: 'Same-day delivery (Metro Manila)', itemType: 'Travel', inventoryUom: 'trip',
+    purchaseItem: false, inventoryItem: false, basePrice: 350, cycleCountDays: 0, warehouses: [],
     purchaseTaxGroup: 'P-VAT12S', withholdingCategory: 'Services',
   }),
   seed('itm-018', 'Services', {
-    itemNo: 'SVC-RNT-FORK', description: 'Forklift rental (per day)', itemType: 'Items', inventoryUom: 'pc', purchasingUom: 'pc',
+    itemNo: 'SVC-RNT-MALL', description: 'Mall store space rent (monthly)', itemType: 'Items', inventoryUom: 'pc', purchasingUom: 'pc',
     salesItem: false, inventoryItem: false, purchaseTaxGroup: 'P-VAT12S', withholdingCategory: 'Rent', warehouses: [],
     cycleCountDays: 0, hasTransactions: false,
   }),
   seed('itm-019', 'Services', {
-    itemNo: 'SVC-SUB-INST', description: 'Installation subcontract', itemType: 'Labor', inventoryUom: 'hour', purchasingUom: 'hour',
+    itemNo: 'SVC-SUB-FITOUT', description: 'Store fit-out subcontract', itemType: 'Labor', inventoryUom: 'hour', purchasingUom: 'hour',
     salesItem: false, inventoryItem: false, purchaseTaxGroup: 'P-VAT12S', withholdingCategory: 'Contractor', warehouses: [],
     cycleCountDays: 0, hasTransactions: false,
   }),

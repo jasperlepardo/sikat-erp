@@ -454,4 +454,12 @@ export const SEED_PARTNERS: Partner[] = [
     { firstName: 'Mei', lastName: 'Lin', position: 'Billing', email: 'billing@cloudstack.example.sg' },
     { street: 'Robinson Rd.', streetNo: '71', city: 'Singapore', zip: '068895', province: 'Other', country: 'Singapore' },
   ),
+  seed(
+    'bp-016', 'vendor',
+    { name: 'Apple Authorized Distributor (placeholder)', tin: '789-012-345-000', email: 'orders@apple-distributor.example.ph', industry: 'Wholesale',
+      group: 'Vendors – Local', vendorPaymentTerms: 'Net 30', properties: ['Preferred supplier', 'Accepts e-invoice'],
+      remarks: 'Demo vendor for the Apple catalog. Replace with the actual Apple distributor and its price file (part numbers, UPCs, cost).' },
+    { firstName: 'Trade', lastName: 'Desk', position: 'Reseller accounts', email: 'orders@apple-distributor.example.ph' },
+    { street: 'Ayala Ave.', streetNo: '6750', city: 'Makati', zip: '1226', province: 'Metro Manila' },
+  ),
 ];
