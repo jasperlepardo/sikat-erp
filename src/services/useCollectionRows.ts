@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useAsync } from '../../../services/useAsync';
+import { useAsync } from './useAsync';
 
 /** Rows of a master-data collection plus a `save` that reloads them. */
 export function useCollectionRows<T extends { id: string }>(collection: {

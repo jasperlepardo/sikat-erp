@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
-import { Button, Icon, Table, TableActions, Text, TextField, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { Button, Icon, TableActions, Text, TextField, type TableColumn } from '@jasperlepardo/sikat-design-system';
 import { CURRENT_USER, type Attachment } from '../../mocks/common';
-import { Section } from './fields';
+import { DataTable } from './DataTable';
 
 const formatSize = (bytes: number) =>
   bytes < 1024 ? `${bytes} B` : bytes < 1024 ** 2 ? `${(bytes / 1024).toFixed(0)} KB` : `${(bytes / 1024 ** 2).toFixed(1)} MB`;
@@ -103,21 +103,7 @@ export function AttachmentsCard({
   ];
 
   return (
-    <Section
-      icon="attach_file"
-      title="Attachments"
-      actions={
-        <Button
-          type="button"
-          size="small"
-          variant="ghost"
-          leadingIcon={<Icon size={16}>upload</Icon>}
-          onClick={() => input.current?.click()}
-        >
-          Browse
-        </Button>
-      }
-    >
+    <>
       <input
         ref={input}
         type="file"
@@ -128,14 +114,33 @@ export function AttachmentsCard({
           e.currentTarget.value = '';
         }}
       />
-      {attachments.length ? (
-        <Table caption="Attachments" columns={columns} rows={attachments} getRowId={(a) => a.id} />
-      ) : (
-        <Text variant="small" tone="muted">
-          {emptyHint}
-        </Text>
-      )}
-      <Text variant="caption">Prototype: file details are saved, but files can only be opened until you reload.</Text>
-    </Section>
+      <DataTable
+        icon="attach_file"
+        title="Attachments"
+        description="Prototype: file details are saved, but files can only be opened until you reload."
+        rows={attachments}
+        getRowId={(a) => a.id}
+        columns={columns}
+        unsortable={['description', 'actions']}
+        onRemove={(picked) => onChange(attachments.filter((a) => !picked.includes(a)))}
+        actions={
+          <Button
+            type="button"
+            size="small"
+            intent="primary"
+            variant="solid"
+            leadingIcon={<Icon size={16}>upload</Icon>}
+            onClick={() => input.current?.click()}
+          >
+            Browse
+          </Button>
+        }
+        empty={
+          <Text variant="small" tone="muted">
+            {emptyHint}
+          </Text>
+        }
+      />
+    </>
   );
 }

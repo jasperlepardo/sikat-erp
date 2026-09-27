@@ -2,21 +2,21 @@ import { Text } from '@jasperlepardo/sikat-design-system';
 import { Fields, Flags, ReadOnly, Section, bind } from '../../../../components/form/fields';
 import {
   COGS_ACCOUNTS,
-  COUNTRIES_OF_ORIGIN,
-  CUSTOMS_GROUPS,
   GL_BY,
   INVENTORY_ACCOUNTS,
-  ITEM_GROUPS,
+  ISSUE_METHODS,
   REVENUE_ACCOUNTS,
   VALUATION_METHODS,
 } from '../../../../mocks/itemMasters';
+import { COUNTRIES } from '../../../../mocks/masters';
+import { activeOptions } from '../../../../services/inventoryMasters';
 import { isValidToday } from '../../../../services/items';
 import { LOCKED_HINT, type TabProps } from './types';
 
-export function GeneralTab({ draft, update, errors, tax }: TabProps) {
+export function GeneralTab({ draft, update, errors, tax, inv }: TabProps) {
   const f = bind(draft, update);
   const service = draft.itemType !== 'Items';
-  const group = ITEM_GROUPS.find((g) => g.name === draft.itemGroup);
+  const group = inv.groups.find((g) => g.name === draft.itemGroup);
   const valuationLocked = draft.hasTransactions && draft.inventoryItem;
 
   return (
@@ -77,11 +77,20 @@ export function GeneralTab({ draft, update, errors, tax }: TabProps) {
 
       <Section icon="public" title="Trade & tax">
         <Fields>
-          {f.pick('countryOfOrigin', 'Country of origin', COUNTRIES_OF_ORIGIN)}
+          {f.choose('countryOfOrigin', 'Country of origin', [
+            { value: '', label: '— None —' },
+            ...COUNTRIES.map((c) => ({ value: c, label: c })),
+          ])}
           {f.choose(
             'customsGroup',
             'Customs group',
-            CUSTOMS_GROUPS.map((c) => ({ value: c.name, label: c.duty ? `${c.name} · ${c.duty}% duty` : c.name })),
+            activeOptions(
+              inv.customs,
+              (c) => c.id,
+              (c) => `${c.name} (HS ${c.hsCode}) · ${c.duty}% duty`,
+              draft.customsGroup,
+              '— None —',
+            ),
             { hint: 'Sets the default duty % on the Purchasing tab.' },
           )}
           {f.text('gtin', 'GTIN / UPC code', {
@@ -112,6 +121,16 @@ export function GeneralTab({ draft, update, errors, tax }: TabProps) {
             )}
           </Fields>
         ) : null}
+      </Section>
+
+      <Section icon="precision_manufacturing" title="Production">
+        <Fields>
+          {f.pick('issueMethod', 'Issue method', ISSUE_METHODS, {
+            required: true,
+            hint: 'Manual: staff post the issue. Backflush: issued automatically on the production receipt. Same setting as the Production tab.',
+          })}
+        </Fields>
+        <Flags>{f.check('phantom', 'Phantom item (never stocked; its BOM explodes into the parent)')}</Flags>
       </Section>
 
       <Section icon="event_available" title="Validity">

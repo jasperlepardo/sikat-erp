@@ -1,6 +1,6 @@
-import { Button, Select, Table, Text, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { Button, Select, Text, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { DataTable } from '../../../../components/form/DataTable';
 import { Fields, ReadOnly, Section, bind } from '../../../../components/form/fields';
-import { WAREHOUSES, warehouseLabel } from '../../../../mocks/itemMasters';
 import { newItemWarehouse, type ItemWarehouse } from '../../../../mocks/items';
 import { stockTotals } from '../../../../services/items';
 import { formatAmount } from '../../../../services/format';
@@ -8,7 +8,7 @@ import { vendorOptions, type TabProps } from './types';
 
 const qty = (n: number) => n.toLocaleString('en-PH');
 
-export function InventoryTab({ draft, update, errors, vendors }: TabProps) {
+export function InventoryTab({ draft, update, errors, vendors, inv }: TabProps) {
   const f = bind(draft, update);
   if (!draft.inventoryItem) {
     return (
@@ -23,12 +23,14 @@ export function InventoryTab({ draft, update, errors, vendors }: TabProps) {
   const totals = stockTotals(draft);
   const uom = draft.inventoryUom;
   const standard = draft.valuationMethod === 'Standard Price';
-  const missing = WAREHOUSES.filter((w) => !draft.warehouses.some((x) => x.code === w.code));
+  const missing = inv.warehouses.filter((w) => w.active && !draft.warehouses.some((x) => x.code === w.code));
+  const warehouseOf = (code: string) => inv.warehouses.find((x) => x.code === code);
+  const hasActivity = (w: ItemWarehouse) => w.inStock + w.committed + w.ordered > 0;
   const patchRow = (code: string, p: Partial<ItemWarehouse>) =>
     update({ warehouses: draft.warehouses.map((w) => (w.code === code ? { ...w, ...p } : w)) });
 
   const columns: TableColumn<ItemWarehouse>[] = [
-    { key: 'code', header: 'Warehouse', cell: (w) => warehouseLabel(w.code) },
+    { key: 'code', header: 'Warehouse', cell: (w) => `${w.code} · ${warehouseOf(w.code)?.name ?? 'Unknown warehouse'}` },
     { key: 'inStock', header: 'In stock', cell: (w) => qty(w.inStock) },
     { key: 'committed', header: 'Committed', cell: (w) => qty(w.committed) },
     { key: 'ordered', header: 'Ordered', cell: (w) => qty(w.ordered) },
@@ -56,7 +58,7 @@ export function InventoryTab({ draft, update, errors, vendors }: TabProps) {
       key: 'defaultBin',
       header: 'Default bin',
       cell: (w) => {
-        const wh = WAREHOUSES.find((x) => x.code === w.code);
+        const wh = warehouseOf(w.code);
         if (!wh?.binEnabled) return <span className="text-muted">No bins</span>;
         const error = errors[`wh:${w.code}:bin`];
         return (
@@ -84,8 +86,8 @@ export function InventoryTab({ draft, update, errors, vendors }: TabProps) {
           size="small"
           variant="ghost"
           intent="danger"
-          disabled={w.inStock + w.committed + w.ordered > 0}
-          title={w.inStock + w.committed + w.ordered > 0 ? 'Has stock or open documents' : undefined}
+          disabled={hasActivity(w)}
+          title={hasActivity(w) ? 'Has stock or open documents' : undefined}
           onClick={() => update({ warehouses: draft.warehouses.filter((x) => x.code !== w.code) })}
         >
           Remove
@@ -131,9 +133,17 @@ export function InventoryTab({ draft, update, errors, vendors }: TabProps) {
         </Fields>
       </Section>
 
-      <Section
+      <DataTable
         icon="warehouse"
         title="Warehouses"
+        description="Stock, preferred vendor and default bin per warehouse. Warehouses with stock or open documents can't be removed."
+        rows={draft.warehouses}
+        getRowId={(w) => w.code}
+        columns={columns}
+        unsortable={['preferredVendorId', 'defaultBin', 'remove']}
+        sortValue={(w, key) =>
+          key === 'available' ? w.inStock - w.committed + w.ordered : (w[key as keyof ItemWarehouse] as string | number)
+        }
         actions={
           missing.length ? (
             <Select
@@ -145,15 +155,12 @@ export function InventoryTab({ draft, update, errors, vendors }: TabProps) {
             />
           ) : undefined
         }
-      >
-        {draft.warehouses.length ? (
-          <Table caption="Stock by warehouse" columns={columns} rows={draft.warehouses} getRowId={(w) => w.code} />
-        ) : (
+        empty={
           <Text variant="small" tone="muted">
             Not stocked in any warehouse yet.
           </Text>
-        )}
-      </Section>
+        }
+      />
     </>
   );
 }

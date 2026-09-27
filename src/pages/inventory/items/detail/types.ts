@@ -1,6 +1,7 @@
 import type { Item } from '../../../../mocks/items';
 import type { Partner } from '../../../../mocks/partners';
 import type { Errors } from '../../../../components/form/fields';
+import type { InventoryMasters } from '../../../../services/inventoryMasters';
 import { currentRate, type ExciseCategory, type TaxCode, type TaxDirection, type TaxGroup } from '../../../../mocks/taxes';
 
 export type Draft = Omit<Item, 'id'> & { id?: string };
@@ -13,6 +14,8 @@ export interface TabProps {
   vendors: Partner[];
   /** Tax master data from Settings › Accounting & Tax. */
   tax: TaxMasters;
+  /** Inventory master data from Settings › Inventory and Warehouses & Bins. */
+  inv: InventoryMasters;
 }
 
 export interface TaxMasters {

@@ -5,12 +5,13 @@ import {
   EMPLOYEES,
   INDUSTRIES,
   PROJECTS,
-  SHIPPING_TYPES,
   TECHNICIANS,
   TERRITORIES,
 } from '../../../mocks/masters';
 import { LEAD_SOURCES, LEAD_STAGES, contactName, type PartnerRole, type PartnerStatus } from '../../../mocks/partners';
 import { ROLE_CONFIG, ROLE_ORDER } from '../roles';
+import { activeOptions, shippingTypes } from '../../../services/inventoryMasters';
+import { useAsync } from '../../../services/useAsync';
 import { Fields, Flags, ReadOnly, Section, bind, type Draft, type Errors } from './fields';
 
 export interface TabProps {
@@ -32,6 +33,7 @@ export function GeneralTab({ draft, update, errors, lockedRole }: TabProps) {
       ...(on && r === 'lead' && !draft.leadStage ? { leadStage: 'New' as const, leadSource: LEAD_SOURCES[0] } : {}),
     });
   const defaultContact = draft.contacts.find((c) => c.id === draft.defaultContactId);
+  const shipping = useAsync(shippingTypes.list, []) ?? [];
 
   return (
     <>
@@ -61,7 +63,9 @@ export function GeneralTab({ draft, update, errors, lockedRole }: TabProps) {
           {f.pick('industry', 'Industry', INDUSTRIES)}
           {f.pick('businessType', 'Type of business', BUSINESS_TYPES)}
           {f.text('aliasName', 'Alias name', { hint: 'Short name used in search and lookups.' })}
-          {f.pick('shippingType', 'Shipping type', SHIPPING_TYPES, { hint: 'Defaults into new documents.' })}
+          {f.choose('shippingType', 'Shipping type', activeOptions(shipping, (x) => x.id, (x) => x.name, draft.shippingType, '— None —'), {
+            hint: 'Defaults into new documents. Shipping types live in Settings › Inventory.',
+          })}
           {f.text('idNo2', 'ID no. 2', { hint: 'Secondary ID, e.g. SEC or DTI registration no.' })}
           {f.text('unifiedTin', 'Unified TIN', { hint: 'For partners in a tax-consolidated group.' })}
           {f.text('gln', 'GLN', { hint: 'Global Location Number, for e-invoicing.' })}

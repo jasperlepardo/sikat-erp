@@ -19,7 +19,7 @@ import {
   type TaxRatePeriod,
 } from '../../../mocks/taxes';
 import { taxCodes } from '../../../services/masterData';
-import { newId, useCollectionRows } from './useCollectionRows';
+import { newId, useCollectionRows } from '../../../services/useCollectionRows';
 
 const today = () => new Date().toISOString().slice(0, 10);
 

@@ -1,10 +1,9 @@
-import { ITEM_GROUPS } from '../mocks/itemMasters';
 import { SEED_ITEMS, type Item } from '../mocks/items';
+import { itemGroups } from './inventoryMasters';
 import { createCollection } from './store';
 
-// v4: added the withholding category (and more tax fields before it);
-// the new key skips old-shaped data.
-const items = createCollection<Item>('sikat-erp:items:v4', SEED_ITEMS, 'itm');
+// v5: references to inventory master data became ids / codes ('' for none).
+const items = createCollection<Item>('sikat-erp:items:v5', SEED_ITEMS, 'itm');
 
 export const listItems = items.list;
 export const getItem = items.get;
@@ -31,7 +30,7 @@ export async function saveItem(input: Omit<Item, 'id'> & { id?: string }): Promi
     }
     return items.save({ ...input, itemNo });
   }
-  const prefix = ITEM_GROUPS.find((g) => g.name === input.itemGroup)?.prefix ?? 'ITM';
+  const prefix = (await itemGroups.list()).find((g) => g.name === input.itemGroup)?.prefix ?? 'ITM';
   const next =
     Math.max(
       0,

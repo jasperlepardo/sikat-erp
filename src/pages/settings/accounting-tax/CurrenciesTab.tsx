@@ -4,7 +4,7 @@ import { MasterList } from '../../../components/form/MasterList';
 import { ROUNDING_RULES, type Currency } from '../../../mocks/currencies';
 import { currencies, exchangeRates, rateOn } from '../../../services/masterData';
 import { useAsync } from '../../../services/useAsync';
-import { newId, useCollectionRows } from './useCollectionRows';
+import { newId, useCollectionRows } from '../../../services/useCollectionRows';
 
 const blank = (): Currency => ({
   id: newId('cur'),

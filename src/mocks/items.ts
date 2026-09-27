@@ -3,7 +3,7 @@
  * grouped by tab, localized for the Philippines (BIR VAT, PH warehouses).
  */
 import type { Attachment } from './common';
-import { ITEM_GROUPS, type ValuationMethod } from './itemMasters';
+import { SEED_ITEM_GROUPS, propertyId, type ItemGroup, type ValuationMethod } from './itemMasters';
 import type { WithholdingCategory } from './taxes';
 
 export type ItemType = 'Items' | 'Labor' | 'Travel';
@@ -60,7 +60,9 @@ export interface Item {
   inventoryAccount: string;
   cogsAccount: string;
   revenueAccount: string;
+  /** Country name, '' when unknown. */
   countryOfOrigin: string;
+  /** Customs group id, '' for none. */
   customsGroup: string;
   gtin: string;
   taxLiable: boolean;
@@ -73,6 +75,7 @@ export interface Item {
 
   // Purchasing
   defaultVendorId: string;
+  /** Main manufacturer code (also the main row on the Manufacturers tab), '' for none. */
   manufacturer: string;
   purchasingUom: string;
   itemsPerPurchaseUnit: number;
@@ -101,10 +104,13 @@ export interface Item {
   salesTaxGroup: string;
   /** Fixed tax code overriding the group; '' for none. */
   salesTaxCode: string;
+  /** Commission group id, '' for none. */
   commissionGroup: string;
   commissionPct: number;
   salesLeadTimeDays: number;
+  /** Shipping type id, '' for none. */
   shippingType: string;
+  /** Warranty template id, '' for none. */
   warrantyTemplate: string;
   /** Base selling price per sales unit (the default price list). */
   basePrice: number;
@@ -130,12 +136,14 @@ export interface Item {
   // Production
   issueMethod: IssueMethod;
   phantom: boolean;
+  /** Warehouse codes, '' for none. */
   productionWarehouse: string;
   componentWarehouse: string;
   /** Bill of Materials code; '' when none exists yet. */
   bomCode: string;
 
   // Properties, remarks, attachments, manufacturers, barcodes
+  /** Item property ids (Settings › Inventory › Item properties). */
   properties: string[];
   remarks: string;
   foreignRemarks: string;
@@ -155,12 +163,15 @@ export const newItemWarehouse = (code: string, patch: Partial<ItemWarehouse> = {
 });
 
 const rowId = (prefix: string) => `${prefix}-${crypto.randomUUID().slice(0, 8)}`;
-export const newManufacturerRow = (): ItemManufacturer => ({ id: rowId('mf'), code: '— None —', catalogNo: '' });
+export const newManufacturerRow = (code = ''): ItemManufacturer => ({ id: rowId('mf'), code, catalogNo: '' });
 export const newBarcodeRow = (uom: string): ItemBarcode => ({ id: rowId('bc'), uom, barcode: '', freeText: '' });
 
 /** A blank item with defaults from its group (valuation, G/L accounts). */
-export function blankItem(groupName = ITEM_GROUPS[0].name): Omit<Item, 'id'> {
-  const group = ITEM_GROUPS.find((g) => g.name === groupName) ?? ITEM_GROUPS[0];
+export function blankItem(groupOrName: ItemGroup | string = SEED_ITEM_GROUPS[0]): Omit<Item, 'id'> {
+  const group =
+    typeof groupOrName === 'string'
+      ? (SEED_ITEM_GROUPS.find((g) => g.name === groupOrName) ?? SEED_ITEM_GROUPS[0])
+      : groupOrName;
   return {
     itemNo: '',
     description: '',
@@ -180,7 +191,7 @@ export function blankItem(groupName = ITEM_GROUPS[0].name): Omit<Item, 'id'> {
     cogsAccount: group.cogsAccount,
     revenueAccount: group.revenueAccount,
     countryOfOrigin: 'Philippines',
-    customsGroup: '— None —',
+    customsGroup: '',
     gtin: '',
     taxLiable: true,
     exciseTax: false,
@@ -189,7 +200,7 @@ export function blankItem(groupName = ITEM_GROUPS[0].name): Omit<Item, 'id'> {
     validTo: '',
     generalRemarks: '',
     defaultVendorId: '',
-    manufacturer: '— None —',
+    manufacturer: '',
     purchasingUom: 'pc',
     itemsPerPurchaseUnit: 1,
     vendorItemNo: '',
@@ -210,11 +221,11 @@ export function blankItem(groupName = ITEM_GROUPS[0].name): Omit<Item, 'id'> {
     sellingItemNo: '',
     salesTaxGroup: 'S-VAT12',
     salesTaxCode: '',
-    commissionGroup: '— None —',
+    commissionGroup: '',
     commissionPct: 0,
     salesLeadTimeDays: 0,
-    shippingType: '— None —',
-    warrantyTemplate: '— None —',
+    shippingType: '',
+    warrantyTemplate: '',
     basePrice: 0,
     minStock: 0,
     maxStock: 0,
@@ -232,8 +243,8 @@ export function blankItem(groupName = ITEM_GROUPS[0].name): Omit<Item, 'id'> {
     toleranceDays: 0,
     issueMethod: 'Manual',
     phantom: false,
-    productionWarehouse: '— None —',
-    componentWarehouse: '— None —',
+    productionWarehouse: '',
+    componentWarehouse: '',
     bomCode: '',
     properties: [],
     remarks: '',
@@ -264,6 +275,11 @@ function seed(
       newItemWarehouse(code, { inStock, committed, ordered, defaultBin: code === 'WH-MNL' ? 'A-01-01' : '' }),
     ),
     ...patch,
+    // The main manufacturer is always one of the Manufacturers tab rows.
+    manufacturers:
+      patch.manufacturer && !patch.manufacturers?.some((m) => m.code === patch.manufacturer)
+        ? [...(patch.manufacturers ?? []), { id: `${id}-m0`, code: patch.manufacturer, catalogNo: '' }]
+        : (patch.manufacturers ?? []),
   };
 }
 
@@ -272,7 +288,7 @@ export const SEED_ITEMS: Item[] = [
     itemNo: 'FST-BLT-0612', description: 'Hex bolt M6 × 12mm', foreignName: 'Perno hex M6 × 12mm', inventoryUom: 'box',
     purchasingUom: 'carton', itemsPerPurchaseUnit: 10, salesUom: 'box', basePrice: 185, itemCost: 118.5,
     defaultVendorId: 'bp-002', vendorItemNo: 'MH-B612', minStock: 50, maxStock: 400, minOrderQty: 20,
-    countryOfOrigin: 'Taiwan', customsGroup: 'Fasteners & fittings (HS 7318)', dutyPct: 5,
+    countryOfOrigin: 'Taiwan', customsGroup: 'cg-7318', dutyPct: 5,
     gtin: '4806501234567', manufacturer: 'MFR-004', planningMethod: 'MRP', leadTimeDays: 7, orderMultiple: 10,
     netWeight: 1.2, grossWeight: 1.3, itemsPerPackage: 1, packagesPerPallet: 120,
     barcodes: [
@@ -280,7 +296,7 @@ export const SEED_ITEMS: Item[] = [
       { id: 'itm-001-b2', uom: 'carton', barcode: '14806501234564', freeText: 'GTIN-14 — carton' },
     ],
     manufacturers: [{ id: 'itm-001-m1', code: 'MFR-004', catalogNo: 'STN-HB-M6-12' }],
-    properties: ['Best seller'],
+    properties: [propertyId('Best seller')],
   }, { 'WH-MNL': [110, 18, 40], 'WH-CEB': [30, 4] }),
   seed('itm-002', 'Fasteners', {
     itemNo: 'FST-NUT-0600', description: 'Hex nut M6', inventoryUom: 'box', basePrice: 95, itemCost: 52,
@@ -289,16 +305,16 @@ export const SEED_ITEMS: Item[] = [
   seed('itm-003', 'Electrical', {
     itemNo: 'ELC-WIR-1425', description: 'THHN wire 14 AWG, 150m', inventoryUom: 'roll', basePrice: 2450, itemCost: 1890,
     defaultVendorId: 'bp-004', manufacturer: 'MFR-001', minStock: 10, maxStock: 60,
-    customsGroup: 'Electrical wire & cable (HS 8544)', properties: ['PS/ICC certified'],
+    customsGroup: 'cg-8544', properties: [propertyId('PS/ICC certified')],
     manufacturers: [{ id: 'itm-003-m1', code: 'MFR-001', catalogNo: 'PD-THHN-14-150' }],
   }, { 'WH-MNL': [12, 2, 10], 'WH-CEB': [6] }),
   seed('itm-004', 'Electrical', {
     itemNo: 'ELC-BRK-2030', description: 'Circuit breaker 30A, 2-pole', inventoryUom: 'pc', basePrice: 540, itemCost: 355,
-    defaultVendorId: 'bp-004', manufacturer: 'MFR-005', minStock: 12, maxStock: 80, properties: ['PS/ICC certified'],
+    defaultVendorId: 'bp-004', manufacturer: 'MFR-005', minStock: 12, maxStock: 80, properties: [propertyId('PS/ICC certified')],
   }, { 'WH-MNL': [6, 3] }),
   seed('itm-005', 'Plumbing', {
     itemNo: 'PLB-PVC-0050', description: 'PVC pipe ½" × 3m', inventoryUom: 'pc', basePrice: 48, itemCost: 29,
-    defaultVendorId: 'bp-008', manufacturer: 'MFR-003', minStock: 100, maxStock: 800, customsGroup: 'Plastic pipes (HS 3917)',
+    defaultVendorId: 'bp-008', manufacturer: 'MFR-003', minStock: 100, maxStock: 800, customsGroup: 'cg-3917',
     length: 300, width: 2.1, height: 2.1,
   }, { 'WH-MNL': [320, 40], 'WH-DVO': [100] }),
   seed('itm-006', 'Plumbing', {
@@ -311,18 +327,18 @@ export const SEED_ITEMS: Item[] = [
   }, { 'WH-MNL': [75] }),
   seed('itm-008', 'Hardware', {
     itemNo: 'HRD-LCK-0100', description: 'Cylindrical lockset', inventoryUom: 'pc', basePrice: 890, itemCost: 610,
-    manufacturer: 'MFR-004', minStock: 10, maxStock: 60, warrantyTemplate: '6 months – parts',
+    manufacturer: 'MFR-004', minStock: 10, maxStock: 60, warrantyTemplate: 'wr-6p',
   }, { 'WH-MNL': [9, 1], 'WH-CEB': [5] }),
   seed('itm-009', 'Paint', {
     itemNo: 'PNT-LTX-WHT4', description: 'Latex paint, white 4L', inventoryUom: 'gal', basePrice: 720, itemCost: 505,
     defaultVendorId: 'bp-006', manufacturer: 'MFR-002', manageBy: 'Batches', minStock: 15, maxStock: 120,
-    customsGroup: 'Paints & coatings (HS 3208)', properties: ['Keep dry', 'Requires SDS'],
+    customsGroup: 'cg-3208', properties: [propertyId('Keep dry'), propertyId('Requires SDS')],
     remarks: 'Store below 30°C. Stack max 4 high.',
   }, { 'WH-MNL': [22, 6] }),
   seed('itm-010', 'Paint', {
     itemNo: 'PNT-PRM-GRY4', description: 'Metal primer, grey 4L', inventoryUom: 'gal', basePrice: 680, itemCost: 470,
     defaultVendorId: 'bp-006', manufacturer: 'MFR-002', manageBy: 'Batches', minStock: 10, maxStock: 80,
-    properties: ['Flammable', 'Requires SDS'],
+    properties: [propertyId('Flammable'), propertyId('Requires SDS')],
   }, { 'WH-MNL': [9] }),
   seed('itm-011', 'Fasteners', {
     itemNo: 'FST-SCR-0425', description: 'Wood screw #8 × 1"', inventoryUom: 'box', basePrice: 150, itemCost: 88,
@@ -346,14 +362,14 @@ export const SEED_ITEMS: Item[] = [
   }, { 'WH-MNL': [14, 8] }),
   seed('itm-015', 'Hardware', {
     itemNo: 'HRD-GEN-5KVA', description: 'Portable generator 5kVA', inventoryUom: 'pc', manageBy: 'Serial Numbers',
-    basePrice: 38500, itemCost: 29800, warrantyTemplate: '1 year – parts & labor', countryOfOrigin: 'Japan',
-    minStock: 2, maxStock: 10, netWeight: 68, grossWeight: 75, properties: ['Heavy (2-person lift)'],
+    basePrice: 38500, itemCost: 29800, warrantyTemplate: 'wr-1pl', countryOfOrigin: 'Japan',
+    minStock: 2, maxStock: 10, netWeight: 68, grossWeight: 75, properties: [propertyId('Heavy (2-person lift)')],
   }, { 'WH-MNL': [3, 1, 2] }),
   seed('itm-016', 'Services', {
     itemNo: 'SVC-INS-HR', description: 'Installation labor', itemType: 'Labor', inventoryUom: 'hour', purchaseItem: false,
     purchaseTaxGroup: 'P-VAT12S',
     withholdingCategory: 'Services',
-    inventoryItem: false, basePrice: 450, commissionGroup: 'Standard (2%)', cycleCountDays: 0, warehouses: [],
+    inventoryItem: false, basePrice: 450, commissionGroup: 'cm-std', cycleCountDays: 0, warehouses: [],
   }),
   seed('itm-017', 'Services', {
     itemNo: 'SVC-DLV-TRIP', description: 'Delivery trip (Metro Manila)', itemType: 'Travel', inventoryUom: 'trip',

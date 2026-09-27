@@ -41,11 +41,15 @@ src/
     nav.tsx        Sidebar hubs and pages (from the navigation architecture); a page's id is its route (/sales/invoices)
     router.tsx     Route table; unbuilt nav entries fall through to <Placeholder />
   components/form/ Shared master-data form pieces: field builders, "You can also" menu,
-                   problems alert, attachments table, MasterList (editable settings lists)
+                   problems alert, attachments table, MasterList (editable settings lists),
+                   DataTable (titled Card + Table for smaller tables)
   pages/           One folder per hub (Home, inventory/items/…, partners/…)
     inventory/items/ The item master; detail/ holds the form, one file per tab
     settings/accounting-tax/ Settings › Accounting & Tax: tax codes, tax groups, withholding,
                    excise, currencies and BSP exchange rates
+    settings/inventory/ Settings › Inventory: item groups, units, manufacturers, customs and
+                   commission groups, shipping types, warranties, item properties, units setting
+    inventory/WarehousesPage.tsx Inventory › Warehouses & Bins
     partners/      Business partners: the Business Partners master lists every record;
                    CRM › Leads, Sales › Customers and Purchasing › Vendors are role views
                    of it. detail/ holds the master form, one file per tab
@@ -89,7 +93,9 @@ src/
 - Item fields follow the SAP B1 Item Master Data field map, localized (BIR VAT tax
   groups, PH warehouses). Seed items are marked as having transactions, which locks
   Item No., type, inventory UoM, tracking and valuation, as SAP does. Issue method
-  and phantom live only on the Production tab (the map lists them twice).
+  and phantom show on both General and Production (same fields), and the Purchasing
+  manufacturer is the main row on the Manufacturers tab. Master data the item picks
+  from is editable; codes other records refer to lock once saved (deactivate instead).
 - Business partner fields follow the SAP B1 BP master field mapping, localized for
   the Philippines (TIN, barangay/province, GCash/Maya/PDC). Left out on purpose:
   portal passwords and card numbers (security), IBAN/SEPA mandate (EU-only), pager,

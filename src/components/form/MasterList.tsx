@@ -30,7 +30,8 @@ export interface MasterListProps<T extends { id: string }> {
   blank: () => T;
   /** Label for a row in the editor title. */
   label: (row: T) => string;
-  editor: (row: T, update: (patch: Partial<T>) => void, errors: Errors) => ReactNode;
+  /** `isNew` is false once the row is saved — lock key fields other records refer to. */
+  editor: (row: T, update: (patch: Partial<T>) => void, errors: Errors, isNew: boolean) => ReactNode;
   /** Field errors for a row about to be saved (checked against all rows). */
   validate: (row: T, all: T[]) => Errors;
   onSave: (row: T) => Promise<void>;
@@ -164,7 +165,7 @@ export function MasterList<T extends { id: string }>({
               </div>
             }
           >
-            {editor(draft.row, (patch) => setDraft({ ...draft, row: { ...draft.row, ...patch } }), errors)}
+            {editor(draft.row, (patch) => setDraft({ ...draft, row: { ...draft.row, ...patch } }), errors, draft.isNew)}
           </Section>
         </div>
       ) : null}

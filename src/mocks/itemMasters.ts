@@ -1,35 +1,14 @@
 /**
- * Master data behind the item master dropdowns. In the real product these are
- * Settings › Inventory lists; here they're fixed so the prototype has real choices.
+ * Inventory master data behind the item master: item groups, units of measure,
+ * warehouses and bins, manufacturers, customs / commission groups, shipping
+ * types, warranty templates, item properties and inventory settings.
+ * Seeds only — the app edits them in Settings › Inventory and Inventory ›
+ * Warehouses & Bins (services/inventoryMasters.ts).
  */
 
 export type ValuationMethod = 'Moving Average' | 'FIFO' | 'Standard Price' | 'Serial/Batch';
 
-export interface ItemGroup {
-  name: string;
-  /** Item No. prefix for the numbering series, e.g. FST-00001. */
-  prefix: string;
-  valuationMethod: ValuationMethod;
-  inventoryAccount: string;
-  cogsAccount: string;
-  revenueAccount: string;
-}
-
-export const ITEM_GROUPS: ItemGroup[] = [
-  { name: 'Fasteners', prefix: 'FST', valuationMethod: 'Moving Average', inventoryAccount: '1310 Inventory – Merchandise', cogsAccount: '5010 COGS – Merchandise', revenueAccount: '4010 Sales – Merchandise' },
-  { name: 'Electrical', prefix: 'ELC', valuationMethod: 'Moving Average', inventoryAccount: '1310 Inventory – Merchandise', cogsAccount: '5010 COGS – Merchandise', revenueAccount: '4010 Sales – Merchandise' },
-  { name: 'Plumbing', prefix: 'PLB', valuationMethod: 'Moving Average', inventoryAccount: '1310 Inventory – Merchandise', cogsAccount: '5010 COGS – Merchandise', revenueAccount: '4010 Sales – Merchandise' },
-  { name: 'Hardware', prefix: 'HRD', valuationMethod: 'FIFO', inventoryAccount: '1310 Inventory – Merchandise', cogsAccount: '5010 COGS – Merchandise', revenueAccount: '4010 Sales – Merchandise' },
-  { name: 'Paint', prefix: 'PNT', valuationMethod: 'FIFO', inventoryAccount: '1310 Inventory – Merchandise', cogsAccount: '5010 COGS – Merchandise', revenueAccount: '4010 Sales – Merchandise' },
-  { name: 'Raw Materials', prefix: 'RM', valuationMethod: 'Standard Price', inventoryAccount: '1320 Inventory – Raw Materials', cogsAccount: '5020 COGS – Manufactured', revenueAccount: '4020 Sales – Manufactured' },
-  { name: 'Finished Goods', prefix: 'FG', valuationMethod: 'Standard Price', inventoryAccount: '1330 Inventory – Finished Goods', cogsAccount: '5020 COGS – Manufactured', revenueAccount: '4020 Sales – Manufactured' },
-  { name: 'Services', prefix: 'SVC', valuationMethod: 'Moving Average', inventoryAccount: '— None —', cogsAccount: '5030 Cost of Services', revenueAccount: '4030 Service Revenue' },
-];
-
-export const INVENTORY_ACCOUNTS = ['1310 Inventory – Merchandise', '1320 Inventory – Raw Materials', '1330 Inventory – Finished Goods', '— None —'];
-export const COGS_ACCOUNTS = ['5010 COGS – Merchandise', '5020 COGS – Manufactured', '5030 Cost of Services'];
-export const REVENUE_ACCOUNTS = ['4010 Sales – Merchandise', '4020 Sales – Manufactured', '4030 Service Revenue'];
-
+/** Fixed system lists (not master data). */
 export const ITEM_TYPES = ['Items', 'Labor', 'Travel'] as const;
 export const MANAGE_BY = ['None', 'Batches', 'Serial Numbers'] as const;
 export const VALUATION_METHODS: ValuationMethod[] = ['Moving Average', 'FIFO', 'Standard Price', 'Serial/Batch'];
@@ -38,55 +17,185 @@ export const ISSUE_METHODS = ['Manual', 'Backflush'] as const;
 export const PLANNING_METHODS = ['MRP', 'MPS', 'None'] as const;
 export const PROCUREMENT_METHODS = ['Buy', 'Make'] as const;
 
-export const UOMS = ['pc', 'box', 'carton', 'pack', 'roll', 'm', 'ft', 'kg', 'L', 'gal', 'set', 'pail', 'hour', 'trip'];
+export const INVENTORY_ACCOUNTS = ['1310 Inventory – Merchandise', '1320 Inventory – Raw Materials', '1330 Inventory – Finished Goods', '— None —'];
+export const COGS_ACCOUNTS = ['5010 COGS – Merchandise', '5020 COGS – Manufactured', '5030 Cost of Services'];
+export const REVENUE_ACCOUNTS = ['4010 Sales – Merchandise', '4020 Sales – Manufactured', '4030 Service Revenue'];
 
-export const COUNTRIES_OF_ORIGIN = ['— None —', 'Philippines', 'China', 'Japan', 'South Korea', 'Taiwan', 'Vietnam', 'Thailand', 'Malaysia', 'United States', 'Germany'];
-export const CUSTOMS_GROUPS = [
-  { name: '— None —', duty: 0 },
-  { name: 'Fasteners & fittings (HS 7318)', duty: 5 },
-  { name: 'Electrical wire & cable (HS 8544)', duty: 7 },
-  { name: 'Paints & coatings (HS 3208)', duty: 10 },
-  { name: 'Plastic pipes (HS 3917)', duty: 10 },
-];
-
-export const MANUFACTURERS = [
-  { code: '— None —', name: '' },
-  { code: 'MFR-001', name: 'Phelps Dodge Philippines' },
-  { code: 'MFR-002', name: 'Boysen Paints (Pacific Paint)' },
-  { code: 'MFR-003', name: 'Neltex Development Co.' },
-  { code: 'MFR-004', name: 'Stanley Black & Decker' },
-  { code: 'MFR-005', name: 'Schneider Electric' },
-  { code: 'MFR-006', name: 'Luzon Steel Industries' },
-];
-export const manufacturerLabel = (code: string) => {
-  const m = MANUFACTURERS.find((x) => x.code === code);
-  return m && m.name ? `${m.code} · ${m.name}` : '— None —';
-};
-
-export const COMMISSION_GROUPS = ['— None —', 'Standard (2%)', 'High margin (4%)', 'Project sales (1%)'];
-export const SHIPPING_TYPES = ['— None —', 'Pick-up', 'Own delivery', 'LBC', 'J&T Express', 'Lalamove', 'Sea freight'];
-export const WARRANTY_TEMPLATES = ['— None —', '6 months – parts', '1 year – parts & labor', '2 years – manufacturer'];
-
-export const PROPERTY_GROUPS: { group: string; labels: string[] }[] = [
-  { group: 'Storage requirements', labels: ['Keep dry', 'Flammable', 'Fragile', 'Heavy (2-person lift)'] },
-  { group: 'Compliance', labels: ['Hazardous', 'PS/ICC certified', 'Requires SDS', 'Import permit needed'] },
-  { group: 'Marketing', labels: ['Promotional item', 'New arrival', 'Best seller', 'Clearance'] },
-];
-
-export interface Warehouse {
-  code: string;
+export interface ItemGroup {
+  id: string;
   name: string;
-  binEnabled: boolean;
-  bins: string[];
+  /** Item No. prefix for the group's numbering series, e.g. FST-00001. */
+  prefix: string;
+  valuationMethod: ValuationMethod;
+  inventoryAccount: string;
+  cogsAccount: string;
+  revenueAccount: string;
+  active: boolean;
 }
 
-export const WAREHOUSES: Warehouse[] = [
-  { code: 'WH-MNL', name: 'Manila main', binEnabled: true, bins: ['A-01-01', 'A-01-02', 'A-02-01', 'B-01-01', 'B-02-03', 'C-01-01'] },
-  { code: 'WH-CEB', name: 'Cebu branch', binEnabled: false, bins: [] },
-  { code: 'WH-DVO', name: 'Davao branch', binEnabled: false, bins: [] },
-  { code: 'WH-PRD', name: 'Production floor', binEnabled: false, bins: [] },
+export interface UnitOfMeasure {
+  id: string;
+  code: string;
+  name: string;
+  active: boolean;
+}
+
+export interface Warehouse {
+  id: string;
+  code: string;
+  name: string;
+  city: string;
+  binEnabled: boolean;
+  bins: string[];
+  active: boolean;
+}
+
+export interface Manufacturer {
+  id: string;
+  code: string;
+  name: string;
+  country: string;
+  contactPerson: string;
+  email: string;
+  phone: string;
+  active: boolean;
+}
+
+export interface CustomsGroup {
+  id: string;
+  name: string;
+  /** Harmonized System heading, e.g. 7318. */
+  hsCode: string;
+  duty: number;
+  active: boolean;
+}
+
+export interface CommissionGroup {
+  id: string;
+  name: string;
+  pct: number;
+  active: boolean;
+}
+
+export interface ShippingType {
+  id: string;
+  name: string;
+  trackingUrl: string;
+  active: boolean;
+}
+
+export interface WarrantyTemplate {
+  id: string;
+  name: string;
+  months: number;
+  coverage: 'Parts' | 'Parts & labor' | 'Manufacturer';
+  active: boolean;
+}
+
+/** One of the 64 admin-defined item property flags. */
+export interface ItemProperty {
+  id: string;
+  /** Property number, 1–64. */
+  number: number;
+  name: string;
+  group: string;
+  active: boolean;
+}
+export const MAX_ITEM_PROPERTIES = 64;
+
+export interface InventorySettings {
+  id: string;
+  lengthUnit: 'cm' | 'm' | 'in';
+  weightUnit: 'kg' | 'lb';
+}
+export const LENGTH_UNITS = ['cm', 'm', 'in'] as const;
+export const WEIGHT_UNITS = ['kg', 'lb'] as const;
+/** Volume unit follows the length unit. */
+export const volumeUnit = (length: InventorySettings['lengthUnit']) => `${length}³`;
+
+const group = (
+  name: string, prefix: string, valuationMethod: ValuationMethod,
+  inventoryAccount: string, cogsAccount: string, revenueAccount: string,
+): ItemGroup => ({ id: `ig-${prefix}`, name, prefix, valuationMethod, inventoryAccount, cogsAccount, revenueAccount, active: true });
+
+export const SEED_ITEM_GROUPS: ItemGroup[] = [
+  group('Fasteners', 'FST', 'Moving Average', '1310 Inventory – Merchandise', '5010 COGS – Merchandise', '4010 Sales – Merchandise'),
+  group('Electrical', 'ELC', 'Moving Average', '1310 Inventory – Merchandise', '5010 COGS – Merchandise', '4010 Sales – Merchandise'),
+  group('Plumbing', 'PLB', 'Moving Average', '1310 Inventory – Merchandise', '5010 COGS – Merchandise', '4010 Sales – Merchandise'),
+  group('Hardware', 'HRD', 'FIFO', '1310 Inventory – Merchandise', '5010 COGS – Merchandise', '4010 Sales – Merchandise'),
+  group('Paint', 'PNT', 'FIFO', '1310 Inventory – Merchandise', '5010 COGS – Merchandise', '4010 Sales – Merchandise'),
+  group('Raw Materials', 'RM', 'Standard Price', '1320 Inventory – Raw Materials', '5020 COGS – Manufactured', '4020 Sales – Manufactured'),
+  group('Finished Goods', 'FG', 'Standard Price', '1330 Inventory – Finished Goods', '5020 COGS – Manufactured', '4020 Sales – Manufactured'),
+  group('Services', 'SVC', 'Moving Average', '— None —', '5030 Cost of Services', '4030 Service Revenue'),
 ];
-export const warehouseLabel = (code: string) => {
-  const w = WAREHOUSES.find((x) => x.code === code);
-  return w ? `${w.code} · ${w.name}` : '— None —';
-};
+
+const uom = (code: string, name: string): UnitOfMeasure => ({ id: `uom-${code}`, code, name, active: true });
+export const SEED_UOMS: UnitOfMeasure[] = [
+  uom('pc', 'Piece'), uom('box', 'Box'), uom('carton', 'Carton'), uom('pack', 'Pack'), uom('roll', 'Roll'),
+  uom('m', 'Meter'), uom('ft', 'Foot'), uom('kg', 'Kilogram'), uom('L', 'Liter'), uom('gal', 'Gallon'),
+  uom('set', 'Set'), uom('pail', 'Pail'), uom('hour', 'Hour'), uom('trip', 'Trip'),
+];
+
+export const SEED_WAREHOUSES: Warehouse[] = [
+  { id: 'wh-MNL', code: 'WH-MNL', name: 'Manila main', city: 'Manila', binEnabled: true, bins: ['A-01-01', 'A-01-02', 'A-02-01', 'B-01-01', 'B-02-03', 'C-01-01'], active: true },
+  { id: 'wh-CEB', code: 'WH-CEB', name: 'Cebu branch', city: 'Cebu City', binEnabled: false, bins: [], active: true },
+  { id: 'wh-DVO', code: 'WH-DVO', name: 'Davao branch', city: 'Davao City', binEnabled: false, bins: [], active: true },
+  { id: 'wh-PRD', code: 'WH-PRD', name: 'Production floor', city: 'Valenzuela', binEnabled: false, bins: [], active: true },
+];
+
+const mfr = (code: string, name: string, country: string, contactPerson = '', email = '', phone = ''): Manufacturer => ({
+  id: `mfr-${code}`, code, name, country, contactPerson, email, phone, active: true,
+});
+export const SEED_MANUFACTURERS: Manufacturer[] = [
+  mfr('MFR-001', 'Phelps Dodge Philippines', 'Philippines'),
+  mfr('MFR-002', 'Boysen Paints (Pacific Paint)', 'Philippines'),
+  mfr('MFR-003', 'Neltex Development Co.', 'Philippines'),
+  mfr('MFR-004', 'Stanley Black & Decker', 'United States'),
+  mfr('MFR-005', 'Schneider Electric', 'France'),
+  mfr('MFR-006', 'Luzon Steel Industries', 'Philippines'),
+];
+
+const customs = (name: string, hsCode: string, duty: number): CustomsGroup => ({ id: `cg-${hsCode}`, name, hsCode, duty, active: true });
+export const SEED_CUSTOMS_GROUPS: CustomsGroup[] = [
+  customs('Fasteners & fittings', '7318', 5),
+  customs('Electrical wire & cable', '8544', 7),
+  customs('Paints & coatings', '3208', 10),
+  customs('Plastic pipes', '3917', 10),
+];
+
+export const SEED_COMMISSION_GROUPS: CommissionGroup[] = [
+  { id: 'cm-std', name: 'Standard', pct: 2, active: true },
+  { id: 'cm-high', name: 'High margin', pct: 4, active: true },
+  { id: 'cm-proj', name: 'Project sales', pct: 1, active: true },
+];
+
+export const SEED_SHIPPING_TYPES: ShippingType[] = [
+  { id: 'sh-pickup', name: 'Pick-up', trackingUrl: '', active: true },
+  { id: 'sh-own', name: 'Own delivery', trackingUrl: '', active: true },
+  { id: 'sh-lbc', name: 'LBC', trackingUrl: 'https://www.lbcexpress.com/track/', active: true },
+  { id: 'sh-jt', name: 'J&T Express', trackingUrl: 'https://www.jtexpress.ph/', active: true },
+  { id: 'sh-lala', name: 'Lalamove', trackingUrl: '', active: true },
+  { id: 'sh-sea', name: 'Sea freight', trackingUrl: '', active: true },
+];
+
+export const SEED_WARRANTY_TEMPLATES: WarrantyTemplate[] = [
+  { id: 'wr-6p', name: '6 months – parts', months: 6, coverage: 'Parts', active: true },
+  { id: 'wr-1pl', name: '1 year – parts & labor', months: 12, coverage: 'Parts & labor', active: true },
+  { id: 'wr-2m', name: '2 years – manufacturer', months: 24, coverage: 'Manufacturer', active: true },
+];
+
+const PROPERTY_SEED: [string, string[]][] = [
+  ['Storage requirements', ['Keep dry', 'Flammable', 'Fragile', 'Heavy (2-person lift)']],
+  ['Compliance', ['Hazardous', 'PS/ICC certified', 'Requires SDS', 'Import permit needed']],
+  ['Marketing', ['Promotional item', 'New arrival', 'Best seller', 'Clearance']],
+];
+export const SEED_ITEM_PROPERTIES: ItemProperty[] = PROPERTY_SEED.flatMap(([g, names], gi) =>
+  names.map((name, i) => {
+    const number = gi * names.length + i + 1;
+    return { id: `prop-${number}`, number, name, group: g, active: true };
+  }),
+);
+/** Property id by its seed name (for seeding items). */
+export const propertyId = (name: string) => SEED_ITEM_PROPERTIES.find((p) => p.name === name)!.id;
+
+export const SEED_INVENTORY_SETTINGS: InventorySettings[] = [{ id: 'inventory', lengthUnit: 'cm', weightUnit: 'kg' }];

@@ -1,10 +1,13 @@
 import { Button } from '@jasperlepardo/sikat-design-system';
 import { Fields, Section, bind } from '../../../../components/form/fields';
-import { MANUFACTURERS, UOMS } from '../../../../mocks/itemMasters';
+import { volumeUnit } from '../../../../mocks/itemMasters';
+import { activeOptions } from '../../../../services/inventoryMasters';
 import { WITHHOLDING_CATEGORIES } from '../../../../mocks/taxes';
 import { taxCodeOptions, taxGroupOptions, taxResolution, vendorOptions, type TabProps } from './types';
 
-export function PurchasingTab({ draft, update, errors, vendors, tax }: TabProps) {
+export function PurchasingTab({ draft, update, errors, vendors, tax, inv }: TabProps) {
+  const { lengthUnit, weightUnit } = inv.settings;
+  const uomCodes = activeOptions(inv.uoms, (u) => u.code, (u) => `${u.code} · ${u.name}`, draft.purchasingUom);
   const f = bind(draft, update);
   const converts = draft.purchasingUom !== draft.inventoryUom;
   const volume = Math.round(draft.length * draft.width * draft.height * 100) / 100;
@@ -19,8 +22,8 @@ export function PurchasingTab({ draft, update, errors, vendors, tax }: TabProps)
           {f.choose(
             'manufacturer',
             'Manufacturer',
-            MANUFACTURERS.map((m) => ({ value: m.code, label: m.name ? `${m.code} · ${m.name}` : m.code })),
-            { hint: 'Who makes it — not necessarily who you buy from.' },
+            activeOptions(inv.manufacturers, (m) => m.code, (m) => `${m.code} · ${m.name}`, draft.manufacturer, '— None —'),
+            { hint: 'Who makes it — not necessarily who you buy from. Also the main row on the Manufacturers tab.' },
           )}
           {f.text('vendorItemNo', 'Purchasing item no.', { hint: "The vendor's part number, for matching their invoices." })}
         </Fields>
@@ -28,7 +31,7 @@ export function PurchasingTab({ draft, update, errors, vendors, tax }: TabProps)
 
       <Section icon="inventory" title="Purchasing unit">
         <Fields>
-          {f.pick('purchasingUom', 'Purchasing UoM', UOMS)}
+          {f.choose('purchasingUom', 'Purchasing UoM', uomCodes)}
           {f.num('itemsPerPurchaseUnit', `${draft.inventoryUom} per ${draft.purchasingUom}`, {
             required: converts,
             error: errors.itemsPerPurchaseUnit,
@@ -64,7 +67,7 @@ export function PurchasingTab({ draft, update, errors, vendors, tax }: TabProps)
 
       <Section
         icon="straighten"
-        title={`Dimensions & packaging · per ${draft.purchasingUom}`}
+        title={`Dimensions & packaging · per ${draft.purchasingUom} · ${lengthUnit} / ${weightUnit}`}
         actions={
           <Button
             type="button"
@@ -78,12 +81,12 @@ export function PurchasingTab({ draft, update, errors, vendors, tax }: TabProps)
         }
       >
         <Fields cols={3}>
-          {f.num('length', 'Length', { suffix: 'cm' })}
-          {f.num('width', 'Width', { suffix: 'cm' })}
-          {f.num('height', 'Height', { suffix: 'cm' })}
-          {f.num('volume', 'Volume', { suffix: 'cm³' })}
-          {f.num('netWeight', 'Net weight', { suffix: 'kg', hint: 'Without packaging.' })}
-          {f.num('grossWeight', 'Gross weight', { suffix: 'kg', hint: 'With packaging.' })}
+          {f.num('length', 'Length', { suffix: lengthUnit })}
+          {f.num('width', 'Width', { suffix: lengthUnit })}
+          {f.num('height', 'Height', { suffix: lengthUnit })}
+          {f.num('volume', 'Volume', { suffix: volumeUnit(lengthUnit) })}
+          {f.num('netWeight', 'Net weight', { suffix: weightUnit, hint: 'Without packaging.' })}
+          {f.num('grossWeight', 'Gross weight', { suffix: weightUnit, hint: 'With packaging.' })}
           {f.num('itemsPerPackage', 'Items per package')}
           {f.num('packagesPerPallet', 'Packages per pallet')}
         </Fields>

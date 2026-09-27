@@ -4,7 +4,7 @@ import { MasterList } from '../../../components/form/MasterList';
 import { currentRate, type TaxGroup } from '../../../mocks/taxes';
 import { taxCodes, taxGroups } from '../../../services/masterData';
 import { useAsync } from '../../../services/useAsync';
-import { newId, useCollectionRows } from './useCollectionRows';
+import { newId, useCollectionRows } from '../../../services/useCollectionRows';
 
 const blank = (): TaxGroup => ({ id: newId('tg'), code: '', name: '', direction: 'Sales', taxCode: '', active: true });
 

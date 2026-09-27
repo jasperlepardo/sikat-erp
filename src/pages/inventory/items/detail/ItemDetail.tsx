@@ -4,8 +4,14 @@ import { Badge, Button, Form, FormField, Panel, PanelHeader, Select, Tabs, TextF
 import { Fields, Section, bind, type Errors } from '../../../../components/form/fields';
 import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
-import { CUSTOMS_GROUPS, ITEM_GROUPS, ITEM_TYPES, MANAGE_BY, UOMS, WAREHOUSES } from '../../../../mocks/itemMasters';
-import { blankItem, type ItemType } from '../../../../mocks/items';
+import { ITEM_TYPES, MANAGE_BY } from '../../../../mocks/itemMasters';
+import { blankItem, newManufacturerRow, type ItemType } from '../../../../mocks/items';
+import {
+  EMPTY_INVENTORY_MASTERS,
+  activeOptions,
+  loadInventoryMasters,
+  type InventoryMasters,
+} from '../../../../services/inventoryMasters';
 import type { Partner } from '../../../../mocks/partners';
 import { ItemSaveError, getItem, isValidToday, saveItem } from '../../../../services/items';
 import { listPartnersByRole } from '../../../../services/partners';
@@ -41,7 +47,7 @@ const TABS = [
 type TabId = (typeof TABS)[number]['value'];
 
 /** Mandatory and conditional fields from the Item Master Data field map, checked on Add/Save. */
-function validate(d: Draft, codeMode: 'auto' | 'manual'): Problem<TabId>[] {
+function validate(d: Draft, codeMode: 'auto' | 'manual', inv: InventoryMasters): Problem<TabId>[] {
   const { problems, need } = problemCollector<TabId>();
 
   need(codeMode === 'auto' || d.itemNo.trim(), 'header', 'itemNo', 'Enter an Item No., or switch numbering to Auto.');
@@ -65,7 +71,7 @@ function validate(d: Draft, codeMode: 'auto' | 'manual'): Problem<TabId>[] {
   if (d.inventoryItem) {
     need(!d.maxStock || d.maxStock >= d.minStock, 'inventory', 'maxStock', 'Maximum stock is below minimum stock.');
     for (const w of d.warehouses) {
-      const wh = WAREHOUSES.find((x) => x.code === w.code);
+      const wh = inv.warehouses.find((x) => x.code === w.code);
       need(!wh?.binEnabled || w.defaultBin, 'inventory', `wh:${w.code}:bin`, `${w.code} uses bins — pick a default bin.`);
     }
   }
@@ -98,6 +104,9 @@ function ItemForm() {
   const [draft, setDraft] = useState<Draft | null | undefined>(isNew ? (copyFrom ?? blankItem()) : undefined);
   const [vendors, setVendors] = useState<Partner[]>([]);
   const [tax, setTax] = useState<TaxMasters>({ groups: [], codes: [], excise: [] });
+  const [inv, setInv] = useState<InventoryMasters>(EMPTY_INVENTORY_MASTERS);
+  // Validation and pickers depend on master data, so the form waits for it.
+  const [mastersReady, setMastersReady] = useState(false);
   const [codeMode, setCodeMode] = useState<'auto' | 'manual'>('auto');
   const [tab, setTab] = useState<TabId>('general');
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
@@ -105,8 +114,12 @@ function ItemForm() {
 
   useEffect(() => {
     listPartnersByRole('vendor').then(setVendors);
-    Promise.all([taxGroups.list(), taxCodes.list(), exciseCategories.list()]).then(([groups, codes, excise]) =>
-      setTax({ groups, codes, excise }),
+    Promise.all([loadInventoryMasters(), taxGroups.list(), taxCodes.list(), exciseCategories.list()]).then(
+      ([inventory, groups, codes, excise]) => {
+        setInv(inventory);
+        setTax({ groups, codes, excise });
+        setMastersReady(true);
+      },
     );
     if (isNew || !id) return;
     let cancelled = false;
@@ -116,7 +129,7 @@ function ItemForm() {
     };
   }, [id, isNew]);
 
-  if (draft === undefined) return <p className="p-4 text-muted">Loading item…</p>;
+  if (draft === undefined || !mastersReady) return <p className="p-4 text-muted">Loading item…</p>;
   if (draft === null) {
     return (
       <Panel className="flex-1">
@@ -132,11 +145,11 @@ function ItemForm() {
   const errors: Errors = Object.fromEntries(problems.map((p) => [p.key, p.message]));
   const h = bind(draft, update);
   const locked = draft.hasTransactions;
-  const group = ITEM_GROUPS.find((g) => g.name === draft.itemGroup);
+  const group = inv.groups.find((g) => g.name === draft.itemGroup);
 
   // Group change: re-default valuation (unless locked) and the group's G/L accounts.
   const changeGroup = (name: string) => {
-    const g = ITEM_GROUPS.find((x) => x.name === name)!;
+    const g = inv.groups.find((x) => x.name === name)!;
     update({
       itemGroup: name,
       ...(locked && draft.inventoryItem ? {} : { valuationMethod: g.valuationMethod }),
@@ -151,7 +164,7 @@ function ItemForm() {
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
-    const found = validate(draft, isNew ? codeMode : 'manual');
+    const found = validate(draft, isNew ? codeMode : 'manual', inv);
     setProblems(found);
     const first = found[0];
     if (first && first.tab !== 'header') setTab(first.tab);
@@ -294,13 +307,13 @@ function ItemForm() {
                 {(p) => (
                   <Select
                     {...p}
-                    options={ITEM_GROUPS.map((g) => ({ value: g.name, label: `${g.name} (${g.prefix})` }))}
+                    options={activeOptions(inv.groups, (g) => g.name, (g) => `${g.name} (${g.prefix})`, draft.itemGroup)}
                     value={draft.itemGroup}
                     onValueChange={changeGroup}
                   />
                 )}
               </FormField>
-              {h.pick('inventoryUom', 'Inventory UoM', UOMS, {
+              {h.choose('inventoryUom', 'Inventory UoM', activeOptions(inv.uoms, (u) => u.code, (u) => `${u.code} · ${u.name}`, draft.inventoryUom), {
                 required: true,
                 error: errors.inventoryUom,
                 disabled: locked,
@@ -326,12 +339,24 @@ function ItemForm() {
           <ActiveTab
             draft={draft}
             update={(patch) => {
-              // Picking a customs group sets its duty % as the default.
-              const customs = CUSTOMS_GROUPS.find((c) => c.name === patch.customsGroup);
-              update(customs ? { ...patch, dutyPct: customs.duty } : patch);
+              // Linked defaults: customs group → duty %, commission group → commission %,
+              // and the Purchasing manufacturer is always a row on the Manufacturers tab.
+              const customs = inv.customs.find((c) => c.id === patch.customsGroup);
+              const commission = inv.commissions.find((c) => c.id === patch.commissionGroup);
+              const addManufacturer =
+                patch.manufacturer && !draft.manufacturers.some((m) => m.code === patch.manufacturer)
+                  ? { manufacturers: [...draft.manufacturers, newManufacturerRow(patch.manufacturer)] }
+                  : {};
+              update({
+                ...patch,
+                ...(customs ? { dutyPct: customs.duty } : {}),
+                ...(commission ? { commissionPct: commission.pct } : {}),
+                ...addManufacturer,
+              });
             }}
             errors={errors}
             vendors={vendors}
+            inv={inv}
             tax={tax}
           />
         </Panel.Body>

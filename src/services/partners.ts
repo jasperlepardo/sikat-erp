@@ -1,8 +1,8 @@
 import { SEED_PARTNERS, contactName, type Partner, type PartnerRole } from '../mocks/partners';
 import { createCollection } from './store';
 
-// v4: tax fields became VAT treatment / supplier VAT status / withholding override.
-const partners = createCollection<Partner>('sikat-erp:partners:v4', SEED_PARTNERS, 'bp');
+// v5: shipping type became a Settings id.
+const partners = createCollection<Partner>('sikat-erp:partners:v5', SEED_PARTNERS, 'bp');
 
 export const listPartners = partners.list;
 export const getPartner = partners.get;

@@ -83,6 +83,7 @@ export interface Partner {
   fax: string;
   email: string;
   website: string;
+  /** Shipping type id (Settings › Inventory › Shipping types). */
   shippingType: string;
   project: string;
   industry: string;
@@ -242,7 +243,7 @@ export function blankPartner(role: PartnerRole): Omit<Partner, 'id'> {
     fax: '',
     email: '',
     website: '',
-    shippingType: 'Own delivery',
+    shippingType: 'sh-own',
     project: '— None —',
     industry: 'Construction',
     businessType: 'Company',

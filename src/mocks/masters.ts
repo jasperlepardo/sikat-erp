@@ -14,7 +14,6 @@ export const BP_GROUPS: { value: string; role: PartnerRole }[] = [
   { value: 'Leads', role: 'lead' },
 ];
 
-export const SHIPPING_TYPES = ['Pick-up', 'Own delivery', 'LBC', 'J&T Express', 'Lalamove', 'Sea freight'];
 export const INDUSTRIES = ['Construction', 'Retail', 'Manufacturing', 'Real estate', 'Agriculture', 'Services', 'Government'];
 export const BUSINESS_TYPES = ['Company', 'Sole proprietorship', 'Partnership', 'Cooperative', 'Individual', 'Government'];
 export const EMPLOYEES = ['— None —', 'Andrea Ramos', 'Ben Salazar', 'Carla Uy', 'Dino Pascual'];
@@ -32,7 +31,11 @@ export const EFFECTIVE_PRICE = ['Default priority', 'Lowest price', 'Highest pri
 export const PRIORITIES = ['— None —', 'High', 'Medium', 'Low'];
 export const HOLIDAY_CALENDARS = ['— None —', 'Philippines (national)', 'Philippines (national + NCR)'];
 
-export const COUNTRIES = ['Philippines', 'Singapore', 'Japan', 'China', 'United States', 'Germany'];
+/** Countries used on addresses, banks and items' country of origin. */
+export const COUNTRIES = [
+  'Philippines', 'China', 'Japan', 'South Korea', 'Taiwan', 'Vietnam', 'Thailand', 'Malaysia', 'Singapore',
+  'Indonesia', 'India', 'United States', 'Germany', 'France',
+];
 export const PH_PROVINCES = [
   'Metro Manila', 'Bulacan', 'Cavite', 'Laguna', 'Rizal', 'Pampanga', 'Benguet', 'Batangas',
   'Cebu', 'Iloilo', 'Negros Occidental', 'Davao del Sur', 'Misamis Oriental', 'Other',

@@ -3,7 +3,7 @@ import { Fields, Flags, bind } from '../../../components/form/fields';
 import { MasterList } from '../../../components/form/MasterList';
 import type { ExciseCategory } from '../../../mocks/taxes';
 import { exciseCategories } from '../../../services/masterData';
-import { newId, useCollectionRows } from './useCollectionRows';
+import { newId, useCollectionRows } from '../../../services/useCollectionRows';
 
 const blank = (): ExciseCategory => ({
   id: newId('ex'),

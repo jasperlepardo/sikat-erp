@@ -5,6 +5,8 @@ import { ItemList } from '../pages/inventory/items/ItemList';
 import { ItemDetail } from '../pages/inventory/items/detail/ItemDetail';
 import { Placeholder } from '../pages/Placeholder';
 import { AccountingTaxPage } from '../pages/settings/accounting-tax/AccountingTaxPage';
+import { InventorySettingsPage } from '../pages/settings/inventory/InventorySettingsPage';
+import { WarehousesPage } from '../pages/inventory/WarehousesPage';
 import { PartnerList } from '../pages/partners/PartnerList';
 import { PartnerDetail } from '../pages/partners/detail/PartnerDetail';
 import { ROLE_CONFIG, scopeConfig, type PartnerScope } from '../pages/partners/roles';
@@ -31,6 +33,8 @@ export const router = createHashRouter([
       { path: 'inventory/items/:id', element: <ItemDetail /> },
       ...partnerRoutes,
       { path: 'settings/accounting-and-tax', element: <AccountingTaxPage /> },
+      { path: 'settings/inventory', element: <InventorySettingsPage /> },
+      { path: 'inventory/warehouses-and-bins', element: <WarehousesPage /> },
       { path: '*', element: <Placeholder /> },
     ],
   },

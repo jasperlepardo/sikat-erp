@@ -1,12 +1,11 @@
-import { Button, Icon, Select, Table, Text, TextField, type TableColumn } from '@jasperlepardo/sikat-design-system';
-import { Section } from '../../../../components/form/fields';
+import { Button, Icon, Select, Text, TextField, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { DataTable } from '../../../../components/form/DataTable';
 import { newBarcodeRow, type ItemBarcode } from '../../../../mocks/items';
+import { activeOptions } from '../../../../services/inventoryMasters';
 import type { TabProps } from './types';
 
-export function BarcodesTab({ draft, update, errors }: TabProps) {
+export function BarcodesTab({ draft, update, errors, inv }: TabProps) {
   const rows = draft.barcodes;
-  // The item's own units: inventory, purchasing and sales.
-  const uoms = [...new Set([draft.inventoryUom, draft.purchasingUom, draft.salesUom])];
   const patch = (id: string, p: Partial<ItemBarcode>) =>
     update({ barcodes: rows.map((r) => (r.id === id ? { ...r, ...p } : r)) });
   const err = (r: ItemBarcode, field: string) => errors[`barcode:${r.id}:${field}`];
@@ -18,7 +17,7 @@ export function BarcodesTab({ draft, update, errors }: TabProps) {
       cell: (r) => (
         <Select
           aria-label="Unit of measure"
-          options={uoms.map((u) => ({ value: u, label: u }))}
+          options={activeOptions(inv.uoms, (u) => u.code, (u) => `${u.code} · ${u.name}`, r.uom)}
           invalid={!!err(r, 'uom')}
           value={r.uom}
           onValueChange={(uom) => patch(r.id, { uom })}
@@ -53,57 +52,42 @@ export function BarcodesTab({ draft, update, errors }: TabProps) {
         />
       ),
     },
-    {
-      key: 'remove',
-      header: 'Remove',
-      srOnlyHeader: true,
-      cell: (r) => (
-        <Button
-          type="button"
-          size="small"
-          variant="ghost"
-          intent="danger"
-          onClick={() => update({ barcodes: rows.filter((x) => x.id !== r.id) })}
-        >
-          Remove
-        </Button>
-      ),
-    },
   ];
 
   return (
-    <Section
-      icon="barcode"
-      title="Barcodes"
-      actions={
-        <Button
-          type="button"
-          size="small"
-          variant="ghost"
-          aria-label="New barcode"
-          leadingIcon={<Icon size={16}>add</Icon>}
-          onClick={() => update({ barcodes: [...rows, newBarcodeRow(draft.inventoryUom)] })}
-        >
-          New
-        </Button>
-      }
-    >
-      <Text variant="small" tone="muted">
-        One barcode per packaging unit, so scanning a box or a carton finds the right quantity. Barcodes must be unique
-        across all items.
-      </Text>
+    <>
+      <DataTable
+        icon="barcode"
+        title="Barcodes"
+        description="One barcode per packaging unit, so scanning a box or a carton finds the right quantity. Barcodes must be unique across all items."
+        rows={rows}
+        getRowId={(r) => r.id}
+        columns={columns}
+        onRemove={(picked) => update({ barcodes: rows.filter((r) => !picked.includes(r)) })}
+        actions={
+          <Button
+            type="button"
+            size="small"
+            intent="primary"
+            variant="solid"
+            aria-label="New barcode"
+            leadingIcon={<Icon size={16}>add</Icon>}
+            onClick={() => update({ barcodes: [...rows, newBarcodeRow(draft.inventoryUom)] })}
+          >
+            New
+          </Button>
+        }
+        empty={
+          <Text variant="small" tone="muted">
+            No barcodes. {draft.gtin ? `The GTIN on the General tab (${draft.gtin}) still scans.` : ''}
+          </Text>
+        }
+      />
       {errors.barcodes ? (
         <Text variant="small" tone="danger">
           {errors.barcodes}
         </Text>
       ) : null}
-      {rows.length ? (
-        <Table caption="Barcodes" columns={columns} rows={rows} getRowId={(r) => r.id} />
-      ) : (
-        <Text variant="small" tone="muted">
-          No barcodes. {draft.gtin ? `The GTIN on the General tab (${draft.gtin}) still scans.` : ''}
-        </Text>
-      )}
-    </Section>
+    </>
   );
 }

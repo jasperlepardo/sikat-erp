@@ -1,14 +1,12 @@
 import { Alert, Link, Text } from '@jasperlepardo/sikat-design-system';
 import { Fields, Flags, ReadOnly, Section, bind } from '../../../../components/form/fields';
-import { ISSUE_METHODS, WAREHOUSES } from '../../../../mocks/itemMasters';
+import { ISSUE_METHODS } from '../../../../mocks/itemMasters';
+import { activeOptions } from '../../../../services/inventoryMasters';
 import type { TabProps } from './types';
 
-const warehouseOptions = [
-  { value: '— None —', label: '— None —' },
-  ...WAREHOUSES.map((w) => ({ value: w.code, label: `${w.code} · ${w.name}` })),
-];
-
-export function ProductionTab({ draft, update }: TabProps) {
+export function ProductionTab({ draft, update, inv }: TabProps) {
+  const warehouseOptions = (current: string) =>
+    activeOptions(inv.warehouses, (w) => w.code, (w) => `${w.code} · ${w.name}`, current, '— None —');
   const f = bind(draft, update);
   const makeWithoutBom = draft.procurementMethod === 'Make' && draft.planningMethod !== 'None' && !draft.bomCode;
 
@@ -24,14 +22,14 @@ export function ProductionTab({ draft, update }: TabProps) {
           {f.pick('issueMethod', 'Issue method', ISSUE_METHODS, {
             required: true,
             hint:
-              draft.issueMethod === 'Backflush'
+              (draft.issueMethod === 'Backflush'
                 ? 'Components issue automatically when the finished good is received.'
-                : 'Staff post an issue for production explicitly.',
+                : 'Staff post an issue for production explicitly.') + ' Same setting as on the General tab.',
           })}
-          {f.choose('productionWarehouse', 'Production warehouse', warehouseOptions, {
+          {f.choose('productionWarehouse', 'Production warehouse', warehouseOptions(draft.productionWarehouse), {
             hint: 'Where production orders pull components from.',
           })}
-          {f.choose('componentWarehouse', 'Component warehouse', warehouseOptions, {
+          {f.choose('componentWarehouse', 'Component warehouse', warehouseOptions(draft.componentWarehouse), {
             hint: 'Staging area for BOM components, if different.',
           })}
           <ReadOnly

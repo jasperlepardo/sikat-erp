@@ -17,7 +17,7 @@ import { MasterList } from '../../../components/form/MasterList';
 import { BSP_RERB_URL, type ExchangeRate } from '../../../mocks/currencies';
 import { currencies, exchangeRates, parseBspBulletin } from '../../../services/masterData';
 import { useAsync } from '../../../services/useAsync';
-import { newId, useCollectionRows } from './useCollectionRows';
+import { newId, useCollectionRows } from '../../../services/useCollectionRows';
 
 const today = () => new Date().toISOString().slice(0, 10);
 const fmt = (n: number) => n.toLocaleString('en-PH', { maximumFractionDigits: 6 });

@@ -1,13 +1,8 @@
 import { Fields, Section, bind } from '../../../../components/form/fields';
-import {
-  COMMISSION_GROUPS,
-  SHIPPING_TYPES,
-  UOMS,
-  WARRANTY_TEMPLATES,
-} from '../../../../mocks/itemMasters';
+import { activeOptions } from '../../../../services/inventoryMasters';
 import { taxCodeOptions, taxGroupOptions, taxResolution, type TabProps } from './types';
 
-export function SalesTab({ draft, update, errors, tax }: TabProps) {
+export function SalesTab({ draft, update, errors, tax, inv }: TabProps) {
   const f = bind(draft, update);
   const converts = draft.salesUom !== draft.inventoryUom;
 
@@ -15,7 +10,7 @@ export function SalesTab({ draft, update, errors, tax }: TabProps) {
     <>
       <Section icon="sell" title="Selling unit & price">
         <Fields>
-          {f.pick('salesUom', 'Sales UoM', UOMS)}
+          {f.choose('salesUom', 'Sales UoM', activeOptions(inv.uoms, (u) => u.code, (u) => `${u.code} · ${u.name}`, draft.salesUom))}
           {f.num('itemsPerSalesUnit', `${draft.inventoryUom} per ${draft.salesUom}`, {
             required: converts,
             error: errors.itemsPerSalesUnit,
@@ -44,7 +39,12 @@ export function SalesTab({ draft, update, errors, tax }: TabProps) {
           {f.choose('salesTaxCode', 'Fixed sales tax code', taxCodeOptions(tax, 'Sales', draft.salesTaxCode), {
             hint: 'Overrides the tax group on every sale.',
           })}
-          {f.pick('commissionGroup', 'Commission group', COMMISSION_GROUPS)}
+          {f.choose(
+            'commissionGroup',
+            'Commission group',
+            activeOptions(inv.commissions, (c) => c.id, (c) => `${c.name} (${c.pct}%)`, draft.commissionGroup, '— None —'),
+            { hint: 'Picking a group sets its commission %.' },
+          )}
           {f.num('commissionPct', 'Commission', { suffix: '%', hint: 'Per item; overrides the salesperson rate.' })}
         </Fields>
       </Section>
@@ -52,8 +52,8 @@ export function SalesTab({ draft, update, errors, tax }: TabProps) {
       <Section icon="local_shipping" title="Fulfillment">
         <Fields>
           {f.num('salesLeadTimeDays', 'Lead time', { suffix: 'days', hint: 'Sets the promised delivery date on orders.' })}
-          {f.pick('shippingType', 'Shipping type', SHIPPING_TYPES)}
-          {f.pick('warrantyTemplate', 'Warranty template', WARRANTY_TEMPLATES, {
+          {f.choose('shippingType', 'Shipping type', activeOptions(inv.shipping, (x) => x.id, (x) => x.name, draft.shippingType, '— None —'))}
+          {f.choose('warrantyTemplate', 'Warranty template', activeOptions(inv.warranties, (w) => w.id, (w) => `${w.name} · ${w.coverage}`, draft.warrantyTemplate, '— None —'), {
             hint: draft.manageBy === 'Serial Numbers' ? 'Assigned to each serial number sold.' : 'Used with serial-numbered items.',
           })}
         </Fields>
