@@ -20,7 +20,7 @@ import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMen
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { CURRENT_USER } from '../../../../mocks/common';
 import { EMPLOYEES } from '../../../../mocks/masters';
-import { contactName } from '../../../../mocks/partners';
+import { contactName, type Partner } from '../../../../mocks/partners';
 import {
   PO_SERIES,
   PURCHASING_SETTINGS,
@@ -48,6 +48,7 @@ import {
 import { AccountingTab } from './AccountingTab';
 import { ContentsTab } from './ContentsTab';
 import { LogisticsTab } from './LogisticsTab';
+import { VendorQuickCreate } from './VendorQuickCreate';
 import {
   ALL_CURRENCIES,
   buildContext,
@@ -133,6 +134,8 @@ function PurchaseOrderForm() {
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [dupWarning, setDupWarning] = useState<string>();
   const [saving, setSaving] = useState(false);
+  const [showVendorCreate, setShowVendorCreate] = useState(false);
+  const [vendorQuery, setVendorQuery] = useState('');
 
   useEffect(() => {
     Promise.all([
@@ -186,8 +189,8 @@ function PurchaseOrderForm() {
   const h = bind(draft, update);
 
   /** Picking the vendor fills everything that defaults from it. */
-  const pickVendor = (vendorId: string | null) => {
-    const v = m.vendors.find((x) => x.id === vendorId);
+  const pickVendor = (vendorId: string | null, override?: Partner) => {
+    const v = override ?? m.vendors.find((x) => x.id === vendorId);
     if (!v) return update({ vendorId: '', vendorCode: '', vendorName: '', contactId: '' });
     const bill = v.addresses.find((a) => a.id === v.defaultBillToId);
     const next = { ...draft, vendorId: v.id };
@@ -211,6 +214,12 @@ function PurchaseOrderForm() {
         return item ? { ...l, taxCode: proposedTaxCode(item, v, m, next.postingDate) } : l;
       }),
     });
+  };
+
+  const handleVendorCreated = (vendor: Partner) => {
+    setM((prev) => prev && { ...prev, vendors: [...prev.vendors, vendor] });
+    setShowVendorCreate(false);
+    pickVendor(vendor.id, vendor);
   };
 
   /** Add / Save (or save as draft). `patch` applies last-moment changes, e.g. Approve. */
@@ -299,6 +308,7 @@ function PurchaseOrderForm() {
   const postingMoved = draft.postingDate && draft.postingDate !== TODAY() && !ctx.added;
 
   return (
+    <>
     <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
       <Panel className="flex-1">
         <PanelHeader
@@ -359,6 +369,17 @@ function PurchaseOrderForm() {
                           .map((v) => ({ value: v.id, label: `${v.code} · ${v.name}`, text: `${v.code} ${v.name}` }))}
                         value={draft.vendorId || null}
                         onValueChange={pickVendor}
+                        onQueryChange={setVendorQuery}
+                        emptyContent={(close) => (
+                          <button
+                            type="button"
+                            className="w-full cursor-pointer rounded-xl px-4 py-2 text-left text-sm font-medium hover:bg-[var(--color-bg-primary-subtle)]"
+                            style={{ color: 'var(--color-text-primary)' }}
+                            onClick={() => { close(); setShowVendorCreate(true); }}
+                          >
+                            {vendorQuery.trim() ? `+ Create "${vendorQuery.trim()}"` : '+ Create new vendor'}
+                          </button>
+                        )}
                       />
                     )}
                   </FormField>
@@ -560,6 +581,15 @@ function PurchaseOrderForm() {
         </Panel.Body>
       </Panel>
     </Form>
+    {showVendorCreate && (
+      <VendorQuickCreate
+        currencies={m.currencies}
+        initialName={vendorQuery.trim()}
+        onClose={() => setShowVendorCreate(false)}
+        onCreated={handleVendorCreated}
+      />
+    )}
+    </>
   );
 }
 
