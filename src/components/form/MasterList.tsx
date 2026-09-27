@@ -1,8 +1,11 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
+import { useNavigate } from 'react-router';
 import {
   Button,
   Card,
   Icon,
+  Panel,
+  PanelHeader,
   Table,
   TableLink,
   Text,
@@ -40,6 +43,16 @@ export interface MasterListProps<T extends { id: string }> {
   /** Extra controls next to "New" (e.g. an import button). */
   actions?: ReactNode;
   noun: string;
+  /** Route of the list, e.g. /settings/accounting-and-tax/tax-codes. Rows open at `${basePath}/${id}`. */
+  basePath: string;
+  /** When set, render that record's page ('new' for a new record) instead of the list. */
+  recordId?: string;
+}
+
+/** Route props every master-data list tab receives from its page. */
+export interface ListRoute {
+  basePath: string;
+  recordId?: string;
 }
 
 const defaultSortValue = <T,>(row: T, key: string): string | number => {
@@ -50,10 +63,16 @@ const defaultSortValue = <T,>(row: T, key: string): string | number => {
 /**
  * A master-data list in the design system's Table pattern — the Table sits
  * directly in a Card, with sortable headers, row selection, the row "…" action
- * and pagination — plus an editor for the picked or new row. Rows are
- * deactivated rather than deleted, since documents may reference them.
+ * and pagination. Rows open on their own page (`${basePath}/${id}`, or `/new`).
+ * Rows are deactivated rather than deleted, since documents may reference them.
  */
-export function MasterList<T extends { id: string }>({
+export function MasterList<T extends { id: string }>(props: MasterListProps<T>) {
+  // A record id in the route means the record's own page; otherwise the list.
+  if (props.recordId) return <RecordPage key={props.recordId} {...props} recordId={props.recordId} />;
+  return <ListView {...props} />;
+}
+
+function ListView<T extends { id: string }>({
   icon,
   title,
   description,
@@ -62,19 +81,13 @@ export function MasterList<T extends { id: string }>({
   searchText,
   sortValue = defaultSortValue,
   defaultSort,
-  blank,
-  label,
-  editor,
-  validate,
-  onSave,
   onSetActive,
   actions,
   noun,
+  basePath,
 }: MasterListProps<T>) {
+  const navigate = useNavigate();
   const [query, setQuery] = useState('');
-  const [draft, setDraft] = useState<{ row: T; isNew: boolean } | null>(null);
-  const [errors, setErrors] = useState<Errors>({});
-  const [saving, setSaving] = useState(false);
   const [sort, setSort] = useState<TableSort | null>(defaultSort ?? { key: columns[0].key, direction: 'asc' });
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -97,38 +110,11 @@ export function MasterList<T extends { id: string }>({
   const current = Math.min(page, pages);
   const visible = filtered.slice((current - 1) * pageSize, current * pageSize);
 
-  const open = (row: T, isNew = false) => {
-    setDraft({ row: structuredClone(row), isNew });
-    setErrors({});
-  };
-
-  // Bring the editor into view when a row is opened (not on every keystroke).
-  const editorRef = useRef<HTMLDivElement>(null);
-  const openKey = draft ? `${draft.isNew}:${draft.row.id}` : '';
-  useEffect(() => {
-    if (openKey) editorRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-  }, [openKey]);
-
-  const save = async () => {
-    if (!draft) return;
-    const found = validate(draft.row, rows ?? []);
-    setErrors(found);
-    if (Object.keys(found).length) return;
-    setSaving(true);
-    try {
-      await onSave(draft.row);
-      setDraft(null);
-    } finally {
-      setSaving(false);
-    }
-  };
+  const open = (row: T) => navigate(`${basePath}/${encodeURIComponent(row.id)}`);
 
   const setActive = async (active: boolean) => {
     if (!onSetActive) return;
-    await onSetActive(
-      (rows ?? []).filter((r) => selected.includes(r.id)),
-      active,
-    );
+    await onSetActive((rows ?? []).filter((r) => selected.includes(r.id)), active);
     setSelected([]);
   };
 
@@ -149,27 +135,6 @@ export function MasterList<T extends { id: string }>({
 
   return (
     <>
-      {draft ? (
-        <div ref={editorRef}>
-          <Section
-            icon={draft.isNew ? 'add_circle' : 'edit'}
-            title={draft.isNew ? `New ${noun}` : label(draft.row)}
-            actions={
-              <div className="flex gap-1">
-                <Button type="button" size="small" variant="ghost" onClick={() => setDraft(null)}>
-                  Cancel
-                </Button>
-                <Button type="button" size="small" intent="primary" variant="solid" disabled={saving} onClick={save}>
-                  {saving ? 'Saving…' : 'Save'}
-                </Button>
-              </div>
-            }
-          >
-            {editor(draft.row, (patch) => setDraft({ ...draft, row: { ...draft.row, ...patch } }), errors, draft.isNew)}
-          </Section>
-        </div>
-      ) : null}
-
       <div className="flex flex-wrap items-start justify-between gap-2 px-2 pt-2">
         <div className="flex min-w-0 flex-1 items-start gap-2">
           <Icon size={24}>{icon}</Icon>
@@ -204,7 +169,7 @@ export function MasterList<T extends { id: string }>({
             variant="solid"
             aria-label={`New ${noun}`}
             leadingIcon={<Icon size={16}>add</Icon>}
-            onClick={() => open(blank(), true)}
+            onClick={() => navigate(`${basePath}/new`)}
           >
             New
           </Button>
@@ -248,5 +213,95 @@ export function MasterList<T extends { id: string }>({
         )}
       </Card>
     </>
+  );
+}
+
+/**
+ * A master-data record on its own page: header with Cancel / Save, the editor in a
+ * card, and a return to the list on save or cancel.
+ */
+function RecordPage<T extends { id: string }>({
+  icon,
+  title,
+  rows,
+  blank,
+  label,
+  editor,
+  validate,
+  onSave,
+  noun,
+  basePath,
+  recordId,
+}: MasterListProps<T> & { recordId: string }) {
+  const navigate = useNavigate();
+  const isNew = recordId === 'new';
+  const [draft, setDraft] = useState<T | null>(null);
+  // A new record's defaults can depend on the other rows (e.g. the next free
+  // number), so it's created once the list has loaded.
+  const loaded = rows !== undefined;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const fresh = useMemo(() => (isNew && loaded ? blank() : null), [isNew, loaded]);
+  const [errors, setErrors] = useState<Errors>({});
+  const [saving, setSaving] = useState(false);
+
+  // An existing record arrives once the list has loaded.
+  const existing = isNew ? undefined : rows?.find((r) => r.id === recordId);
+  const row = draft ?? fresh ?? (existing ? structuredClone(existing) : null);
+  const back = () => navigate(basePath);
+
+  if (!loaded) return <p className="p-4 text-muted">Loading…</p>;
+  if (!row) {
+    return (
+      <Panel className="flex-1">
+        <PanelHeader icon={icon} title={`${noun[0].toUpperCase()}${noun.slice(1)} not found`} />
+        <Panel.Body>
+          <Button onClick={back}>Back to {title.toLowerCase()}</Button>
+        </Panel.Body>
+      </Panel>
+    );
+  }
+
+  const save = async () => {
+    const found = validate(row, rows ?? []);
+    setErrors(found);
+    if (Object.keys(found).length) return;
+    setSaving(true);
+    try {
+      await onSave(row);
+      back();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Panel className="flex-1">
+      <PanelHeader
+        type="forms"
+        icon={icon}
+        title={isNew ? `New ${noun}` : label(row)}
+        subcopy={title}
+        actions={
+          <>
+            <Button type="button" intent="default" variant="solid" size="extra-large" onClick={back}>
+              Cancel
+            </Button>
+            <Button type="button" intent="primary" variant="solid" size="extra-large" disabled={saving} onClick={save}>
+              {saving ? 'Saving…' : isNew ? 'Add' : 'Save'}
+            </Button>
+          </>
+        }
+      />
+      <Panel.Body className="flex flex-col gap-2">
+        {Object.keys(errors).length ? (
+          <Text variant="small" tone="danger">
+            Fix the highlighted fields to save.
+          </Text>
+        ) : null}
+        <Section icon={isNew ? 'add_circle' : 'edit'} title="Details">
+          {editor(row, (patch) => setDraft({ ...row, ...patch }), errors, isNew)}
+        </Section>
+      </Panel.Body>
+    </Panel>
   );
 }

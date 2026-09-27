@@ -9,7 +9,7 @@ import {
   TextField,
 } from '@jasperlepardo/sikat-design-system';
 import { Fields, Flags, Section, bind } from '../../../components/form/fields';
-import { MasterList } from '../../../components/form/MasterList';
+import { MasterList, type ListRoute } from '../../../components/form/MasterList';
 import {
   BIR_RETURNS,
   TAX_CATEGORIES,
@@ -37,10 +37,11 @@ const blank = (): TaxCode => ({
   notes: '',
 });
 
-export function TaxCodesTab() {
+export function TaxCodesTab(route: ListRoute) {
   const { rows, save, setActive } = useCollectionRows(taxCodes);
   return (
     <MasterList<TaxCode>
+      {...route}
       icon="percent"
       title="Tax codes"
       noun="tax code"

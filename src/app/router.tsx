@@ -32,9 +32,10 @@ export const router = createHashRouter([
       { path: 'inventory/items', element: <ItemList /> },
       { path: 'inventory/items/:id', element: <ItemDetail /> },
       ...partnerRoutes,
-      { path: 'settings/accounting-and-tax', element: <AccountingTaxPage /> },
-      { path: 'settings/inventory', element: <InventorySettingsPage /> },
-      { path: 'inventory/warehouses-and-bins', element: <WarehousesPage /> },
+      // Settings pages keep the tab and an opened record in the URL.
+      { path: 'settings/accounting-and-tax/:tab?/:recordId?', element: <AccountingTaxPage /> },
+      { path: 'settings/inventory/:tab?/:recordId?', element: <InventorySettingsPage /> },
+      { path: 'inventory/warehouses-and-bins/:recordId?', element: <WarehousesPage /> },
       { path: '*', element: <Placeholder /> },
     ],
   },

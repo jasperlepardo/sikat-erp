@@ -158,6 +158,13 @@ const LEAVES = NAV.flatMap((s) => s.items.flatMap((i) => (i.items?.length ? i.it
 
 export const pathOf = (id: string) => (id === 'home' ? '/' : `/${id}`);
 
+/** The module (hub) a leaf belongs to, e.g. 'inventory' for 'inventory/items'. */
+export function moduleOf(leafId: string | undefined): string | null {
+  if (!leafId) return null;
+  for (const section of NAV) for (const item of section.items) if (item.items?.some((l) => l.id === leafId)) return item.id;
+  return null;
+}
+
 /** The nav leaf for a URL — the longest leaf path that prefixes it (so `/inventory/items/42` → Items). */
 export function leafForPath(pathname: string): SideNavItem | undefined {
   if (pathname === '/') return LEAVES.find((l) => l.id === 'home');

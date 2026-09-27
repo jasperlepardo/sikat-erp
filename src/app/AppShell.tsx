@@ -1,6 +1,7 @@
 import { Outlet, useLocation, useNavigate } from 'react-router';
 import { Navbar, Page, SideNav, useTheme, type NavbarMenuItem } from '@jasperlepardo/sikat-design-system';
-import { NAV, leafForPath, pathOf } from './nav';
+import { useEffect, useState } from 'react';
+import { NAV, leafForPath, moduleOf, pathOf } from './nav';
 
 const ORGS: NavbarMenuItem[] = [
   { id: 'sikat', label: 'Sikat Tech Inc.' },
@@ -12,6 +13,14 @@ export function AppShell() {
   const location = useLocation();
   const navigate = useNavigate();
   const [, setTheme, resolved] = useTheme();
+  const activeId = leafForPath(location.pathname)?.id;
+  // Open the current page's hub whenever the route moves to another hub (links,
+  // Back, deep links) — not only when the user clicks the sidebar.
+  const [openId, setOpenId] = useState<string | null>(moduleOf(activeId));
+  const activeModule = moduleOf(activeId);
+  useEffect(() => {
+    if (activeModule) setOpenId(activeModule);
+  }, [activeModule]);
 
   const accountItems: NavbarMenuItem[] = [
     {
@@ -35,7 +44,9 @@ export function AppShell() {
       <div className="flex flex-1">
         <SideNav
           sections={NAV}
-          activeId={leafForPath(location.pathname)?.id}
+          activeId={activeId}
+          openId={openId}
+          onOpenChange={setOpenId}
           onNavigate={(id) => navigate(pathOf(id))}
           style={{ position: 'sticky', top: 64, height: 'calc(100vh - 64px)', flex: 'none', width: 280, overflowY: 'auto' }}
         />

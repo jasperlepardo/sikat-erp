@@ -1,6 +1,6 @@
 import { TableStatus } from '@jasperlepardo/sikat-design-system';
 import { Fields, Flags, bind } from '../../../components/form/fields';
-import { MasterList } from '../../../components/form/MasterList';
+import { MasterList, type ListRoute } from '../../../components/form/MasterList';
 import type { WithholdingTax } from '../../../mocks/taxes';
 import { withholdingTaxes } from '../../../services/masterData';
 import { newId, useCollectionRows } from '../../../services/useCollectionRows';
@@ -19,10 +19,11 @@ const blank = (): WithholdingTax => ({
   notes: '',
 });
 
-export function WithholdingTab() {
+export function WithholdingTab(route: ListRoute) {
   const { rows, save, setActive } = useCollectionRows(withholdingTaxes);
   return (
     <MasterList<WithholdingTax>
+      {...route}
       icon="request_quote"
       title="Withholding tax"
       noun="withholding tax"

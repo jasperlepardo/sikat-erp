@@ -1,6 +1,6 @@
 import { TableStatus } from '@jasperlepardo/sikat-design-system';
 import { Fields, Flags, bind } from '../../../components/form/fields';
-import { MasterList } from '../../../components/form/MasterList';
+import { MasterList, type ListRoute } from '../../../components/form/MasterList';
 import type { ExciseCategory } from '../../../mocks/taxes';
 import { exciseCategories } from '../../../services/masterData';
 import { newId, useCollectionRows } from '../../../services/useCollectionRows';
@@ -17,10 +17,11 @@ const blank = (): ExciseCategory => ({
   notes: '',
 });
 
-export function ExciseTab() {
+export function ExciseTab(route: ListRoute) {
   const { rows, save, setActive } = useCollectionRows(exciseCategories);
   return (
     <MasterList<ExciseCategory>
+      {...route}
       icon="local_bar"
       title="Excise tax"
       noun="excise category"

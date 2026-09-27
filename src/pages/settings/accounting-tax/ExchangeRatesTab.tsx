@@ -13,7 +13,7 @@ import {
   Textarea,
 } from '@jasperlepardo/sikat-design-system';
 import { Fields, Section, bind } from '../../../components/form/fields';
-import { MasterList } from '../../../components/form/MasterList';
+import { MasterList, type ListRoute } from '../../../components/form/MasterList';
 import { BSP_RERB_URL, type ExchangeRate } from '../../../mocks/currencies';
 import { currencies, exchangeRates, parseBspBulletin } from '../../../services/masterData';
 import { useAsync } from '../../../services/useAsync';
@@ -22,7 +22,7 @@ import { newId, useCollectionRows } from '../../../services/useCollectionRows';
 const today = () => new Date().toISOString().slice(0, 10);
 const fmt = (n: number) => n.toLocaleString('en-PH', { maximumFractionDigits: 6 });
 
-export function ExchangeRatesTab() {
+export function ExchangeRatesTab(route: ListRoute) {
   const { rows, save, reload } = useCollectionRows(exchangeRates);
   const allCurrencies = useAsync(currencies.list, []) ?? [];
   const foreign = allCurrencies.filter((c) => !c.isLocal);
@@ -47,6 +47,7 @@ export function ExchangeRatesTab() {
         />
       ) : null}
       <MasterList<ExchangeRate>
+      {...route}
         icon="trending_up"
         title="Exchange rates"
         noun="exchange rate"

@@ -1,6 +1,6 @@
 import { TableStatus } from '@jasperlepardo/sikat-design-system';
 import { Fields, Flags, bind } from '../../../components/form/fields';
-import { MasterList } from '../../../components/form/MasterList';
+import { MasterList, type ListRoute } from '../../../components/form/MasterList';
 import { currentRate, type TaxGroup } from '../../../mocks/taxes';
 import { taxCodes, taxGroups } from '../../../services/masterData';
 import { useAsync } from '../../../services/useAsync';
@@ -8,13 +8,14 @@ import { newId, useCollectionRows } from '../../../services/useCollectionRows';
 
 const blank = (): TaxGroup => ({ id: newId('tg'), code: '', name: '', direction: 'Sales', taxCode: '', active: true });
 
-export function TaxGroupsTab() {
+export function TaxGroupsTab(route: ListRoute) {
   const { rows, save, setActive } = useCollectionRows(taxGroups);
   const codes = useAsync(taxCodes.list, []) ?? [];
   const codeOf = (code: string) => codes.find((c) => c.code === code);
 
   return (
     <MasterList<TaxGroup>
+      {...route}
       icon="account_tree"
       title="Tax groups"
       noun="tax group"

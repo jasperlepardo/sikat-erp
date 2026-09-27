@@ -1,6 +1,6 @@
 import { Badge, TableStatus, Text } from '@jasperlepardo/sikat-design-system';
 import { Fields, Flags, bind } from '../../../components/form/fields';
-import { MasterList } from '../../../components/form/MasterList';
+import { MasterList, type ListRoute } from '../../../components/form/MasterList';
 import { ROUNDING_RULES, type Currency } from '../../../mocks/currencies';
 import { currencies, exchangeRates, rateOn } from '../../../services/masterData';
 import { useAsync } from '../../../services/useAsync';
@@ -21,12 +21,13 @@ const blank = (): Currency => ({
   active: true,
 });
 
-export function CurrenciesTab() {
+export function CurrenciesTab(route: ListRoute) {
   const { rows, save, setActive, reload } = useCollectionRows(currencies);
   const rates = useAsync(exchangeRates.list, []) ?? [];
 
   return (
     <MasterList<Currency>
+      {...route}
       icon="currency_exchange"
       title="Currencies"
       noun="currency"

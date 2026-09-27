@@ -4,7 +4,7 @@
  */
 import { TableStatus } from '@jasperlepardo/sikat-design-system';
 import { Fields, Flags, bind } from '../../../components/form/fields';
-import { MasterList } from '../../../components/form/MasterList';
+import { MasterList, type ListRoute } from '../../../components/form/MasterList';
 import {
   COGS_ACCOUNTS,
   INVENTORY_ACCOUNTS,
@@ -54,10 +54,11 @@ export function uniqueRequired<T extends { id: string }>(
   else if (all.some((x) => x.id !== row.id && String(x[key]).trim().toLowerCase() === v.toLowerCase())) e[key] = `${v} already exists.`;
 }
 
-export function ItemGroupsTab() {
+export function ItemGroupsTab(route: ListRoute) {
   const { rows, save, setActive } = useCollectionRows(itemGroups);
   return (
     <MasterList<ItemGroup>
+      {...route}
       icon="category"
       title="Item groups"
       noun="item group"
@@ -112,10 +113,11 @@ export function ItemGroupsTab() {
   );
 }
 
-export function UnitsTab() {
+export function UnitsTab(route: ListRoute) {
   const { rows, save, setActive } = useCollectionRows(unitsOfMeasure);
   return (
     <MasterList<UnitOfMeasure>
+      {...route}
       icon="straighten"
       title="Units of measure"
       noun="unit of measure"
@@ -153,10 +155,11 @@ export function UnitsTab() {
   );
 }
 
-export function ManufacturersTab() {
+export function ManufacturersTab(route: ListRoute) {
   const { rows, save, setActive } = useCollectionRows(manufacturers);
   return (
     <MasterList<Manufacturer>
+      {...route}
       icon="factory"
       title="Manufacturers"
       noun="manufacturer"
@@ -201,10 +204,11 @@ export function ManufacturersTab() {
   );
 }
 
-export function CustomsGroupsTab() {
+export function CustomsGroupsTab(route: ListRoute) {
   const { rows, save, setActive } = useCollectionRows(customsGroups);
   return (
     <MasterList<CustomsGroup>
+      {...route}
       icon="gavel"
       title="Customs groups"
       noun="customs group"
@@ -244,10 +248,11 @@ export function CustomsGroupsTab() {
   );
 }
 
-export function CommissionGroupsTab() {
+export function CommissionGroupsTab(route: ListRoute) {
   const { rows, save, setActive } = useCollectionRows(commissionGroups);
   return (
     <MasterList<CommissionGroup>
+      {...route}
       icon="paid"
       title="Commission groups"
       noun="commission group"
@@ -285,10 +290,11 @@ export function CommissionGroupsTab() {
   );
 }
 
-export function ShippingTypesTab() {
+export function ShippingTypesTab(route: ListRoute) {
   const { rows, save, setActive } = useCollectionRows(shippingTypes);
   return (
     <MasterList<ShippingType>
+      {...route}
       icon="local_shipping"
       title="Shipping types"
       noun="shipping type"
@@ -326,10 +332,11 @@ export function ShippingTypesTab() {
   );
 }
 
-export function WarrantyTemplatesTab() {
+export function WarrantyTemplatesTab(route: ListRoute) {
   const { rows, save, setActive } = useCollectionRows(warrantyTemplates);
   return (
     <MasterList<WarrantyTemplate>
+      {...route}
       icon="verified_user"
       title="Warranty templates"
       noun="warranty template"
@@ -369,7 +376,7 @@ export function WarrantyTemplatesTab() {
   );
 }
 
-export function ItemPropertiesTab() {
+export function ItemPropertiesTab(route: ListRoute) {
   const { rows, save, setActive } = useCollectionRows(itemProperties);
   const groups = [...new Set((rows ?? []).map((p) => p.group).filter(Boolean))];
   const nextNumber = () => {
@@ -379,6 +386,7 @@ export function ItemPropertiesTab() {
   };
   return (
     <MasterList<ItemProperty>
+      {...route}
       icon="label"
       title="Item properties"
       noun="item property"
