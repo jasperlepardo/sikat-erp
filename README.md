@@ -95,6 +95,11 @@ src/
   taxes (28). Each tax type carries BIR's definition and forms. "Applicable to Government
   Withholding Agent Only" ATCs are marked and can't be picked as a vendor override.
   Non-resident digital services withhold VAT under WV070.
+- Compensation tax, de minimis benefits and withholding forms (with eFPS / manual due dates)
+  are also loaded verbatim from the BIR Withholding Tax page: the revised withholding tax
+  tables (daily to monthly) and annual tax tables for 2018–2022 and 2023 onwards. The numbers
+  used to calculate are parsed from BIR's own text on save, and the Compensation tax tab has
+  a "Try it" calculator (e.g. monthly ₱50,000 in 2026 → ₱5,208.40).
   A vendor's "Gross income this year exceeds ₱3M / ₱720,000" flag picks the higher ATC of
   a pair: for professional fees from the rules, and for any income-tiered override
   (e.g. WC139 becomes WC140). Individuals who are VAT-registered always get the higher ATC.

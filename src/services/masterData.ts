@@ -11,6 +11,14 @@ import {
   type TaxGroup,
   type WithholdingTax,
 } from '../mocks/taxes';
+import {
+  SEED_COMPENSATION_TAX,
+  SEED_DE_MINIMIS,
+  SEED_WITHHOLDING_FORMS,
+  type CompensationBracket,
+  type DeMinimisBenefit,
+  type WithholdingForm,
+} from '../mocks/compensation';
 import { createCollection } from './store';
 
 /** Settings › Accounting & Tax master data. */
@@ -18,6 +26,9 @@ import { createCollection } from './store';
 export const taxCodes = createCollection<TaxCode>('sikat-erp:tax-codes:v2', SEED_TAX_CODES, 'tc');
 export const taxGroups = createCollection<TaxGroup>('sikat-erp:tax-groups:v2', SEED_TAX_GROUPS, 'tg');
 export const companyTax = createCollection<CompanyTaxProfile>('sikat-erp:company-tax', SEED_COMPANY_TAX, 'company');
+export const compensationTax = createCollection<CompensationBracket>('sikat-erp:compensation-tax', SEED_COMPENSATION_TAX, 'ct');
+export const deMinimisBenefits = createCollection<DeMinimisBenefit>('sikat-erp:de-minimis', SEED_DE_MINIMIS, 'dm');
+export const withholdingForms = createCollection<WithholdingForm>('sikat-erp:withholding-forms', SEED_WITHHOLDING_FORMS, 'wf');
 export const withholdingTaxes = createCollection<WithholdingTax>('sikat-erp:withholding:v5', SEED_WITHHOLDING, 'wt');
 export const exciseCategories = createCollection<ExciseCategory>('sikat-erp:excise', SEED_EXCISE, 'ex');
 export const currencies = createCollection<Currency>('sikat-erp:currencies', SEED_CURRENCIES, 'cur');

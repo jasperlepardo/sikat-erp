@@ -42,6 +42,8 @@ export interface MasterListProps<T extends { id: string }> {
   onSetActive?: (rows: T[], active: boolean) => Promise<void>;
   /** Extra controls next to "New" (e.g. an import button). */
   actions?: ReactNode;
+  /** Shown between the title and the search box (e.g. a calculator or reference card). */
+  intro?: ReactNode;
   noun: string;
   /** Route of the list, e.g. /settings/accounting-and-tax/tax-codes. Rows open at `${basePath}/${id}`. */
   basePath: string;
@@ -83,6 +85,7 @@ function ListView<T extends { id: string }>({
   defaultSort,
   onSetActive,
   actions,
+  intro,
   noun,
   basePath,
 }: MasterListProps<T>) {
@@ -175,6 +178,7 @@ function ListView<T extends { id: string }>({
           </Button>
         </div>
       </div>
+      {intro}
       <TextField
         aria-label={`Search ${title.toLowerCase()}`}
         placeholder={`Search ${title.toLowerCase()}`}
