@@ -53,6 +53,8 @@ src/
     partners/      Business partners: the Business Partners master lists every record;
                    CRM › Leads, Sales › Customers and Purchasing › Vendors are role views
                    of it. detail/ holds the master form, one file per tab
+    purchasing/orders/ Purchasing › Purchase Orders: list, and detail/ with the header,
+                   Contents / Logistics / Accounting tabs and the totals footer
   mocks/           Seed data and types
   services/        Fake async API over the mocks (store.ts; swap for fetch() later)
   index.css        Tailwind + the design system's token theme
@@ -112,6 +114,23 @@ src/
   - Devices are serial-tracked with the Apple one-year warranty. iPhone Duo is valid from
     23 Oct 2026, so it shows as a pre-order ("Not valid today"). AppleCare+ plans and store
     gift certificates are non-stock; gift certificates aren't VAT-liable at sale.
+- Purchase orders follow the SAP B1 PO field map. Open points are settled as follows
+  (see `src/mocks/purchaseOrders.ts`):
+  - The vendor name is a snapshot taken when the vendor is picked.
+  - Close date is set by the system on Close / Cancel.
+  - Unticking Approved saves the PO as Not Confirmed.
+  - Delivery date is required when adding.
+  - Lines behave like the Manual UoM group: UoM name and items per unit are editable.
+  - Return Reason is left out; it belongs to returns.
+  - Document settings are fixed in `PURCHASING_SETTINGS`: net/gross price mode on,
+    freight on, rounding by currency, multi-language off, duplicate vendor ref. = warn.
+  - Split purchase order makes one PO per warehouse on Add.
+  - Line tax codes come from the determination rules. A reverse-charge code (IVD12)
+    isn't added to the amount due to the vendor.
+  - Price lists aren't built: "Last purchase price" is the item cost; the other
+    lists use the base price.
+  - Items must be valid on the posting date, as in SAP. So iPhone Duo can't be ordered
+    before its Valid From date (23 Oct 2026) unless that date moves earlier.
 - Business partner fields follow the SAP B1 BP master field mapping, localized for
   the Philippines (TIN, barangay/province, GCash/Maya/PDC). Left out on purpose:
   portal passwords and card numbers (security), IBAN/SEPA mandate (EU-only), pager,

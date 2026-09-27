@@ -20,6 +20,8 @@ export interface DataTableProps<T> {
   /** Shown instead of the table when there are no rows. */
   empty: ReactNode;
   pageSize?: number;
+  /** Shows the table's column-settings ("tune") button. */
+  onColumnSettings?: () => void;
 }
 
 const defaultSortValue = (row: unknown, key: string): string | number => {
@@ -45,6 +47,7 @@ export function DataTable<T>({
   onRemove,
   empty,
   pageSize: initialPageSize = 10,
+  onColumnSettings,
 }: DataTableProps<T>) {
   const [sort, setSort] = useState<TableSort | null>(null);
   const [page, setPage] = useState(1);
@@ -113,6 +116,7 @@ export function DataTable<T>({
             sort={sort}
             onSortChange={setSort}
             {...(onRowAction ? { onRowAction } : {})}
+            {...(onColumnSettings ? { onColumnSettings } : {})}
             {...(onRemove ? { selectable: true, selectedIds: liveSelection, onSelectionChange: setSelected } : {})}
             pagination={{
               page: current,
