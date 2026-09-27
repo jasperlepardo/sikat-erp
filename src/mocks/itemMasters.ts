@@ -5,7 +5,6 @@
  * Seeds only — the app edits them in Settings › Inventory and Inventory ›
  * Warehouses & Bins (services/inventoryMasters.ts).
  */
-import { accountOptions } from './chartOfAccounts';
 
 export type ValuationMethod = 'Moving Average' | 'FIFO' | 'Standard Price' | 'Serial/Batch';
 
@@ -18,10 +17,6 @@ export const ISSUE_METHODS = ['Manual', 'Backflush'] as const;
 export const PLANNING_METHODS = ['MRP', 'MPS', 'None'] as const;
 export const PROCUREMENT_METHODS = ['Buy', 'Make'] as const;
 
-// G/L accounts item groups and items post to (Accounting › Chart of Accounts).
-export const INVENTORY_ACCOUNTS = [...accountOptions('1310', '1320', '1330', '1340'), '— None —'];
-export const COGS_ACCOUNTS = accountOptions('5010', '5020', '5030');
-export const REVENUE_ACCOUNTS = accountOptions('4010', '4020', '4030', '2160');
 
 export interface ItemGroup {
   id: string;
@@ -29,6 +24,7 @@ export interface ItemGroup {
   /** Item No. prefix for the group's numbering series, e.g. FST-00001. */
   prefix: string;
   valuationMethod: ValuationMethod;
+  /** G/L account codes (Accounting › Chart of Accounts); '' for none (non-stock groups have no inventory account). */
   inventoryAccount: string;
   cogsAccount: string;
   revenueAccount: string;
@@ -120,7 +116,7 @@ const group = (
   inventoryAccount: string, cogsAccount: string, revenueAccount: string,
 ): ItemGroup => ({ id: `ig-${prefix}`, name, prefix, valuationMethod, inventoryAccount, cogsAccount, revenueAccount, active: true });
 
-const MERCH = ['1310 Inventory – Merchandise', '5010 COGS – Merchandise', '4010 Sales – Merchandise'] as const;
+const MERCH = ['1310', '5010', '4010'] as const;
 export const SEED_ITEM_GROUPS: ItemGroup[] = [
   // Apple Premium Reseller catalog (mocks/appleCatalog.ts).
   group('iPhone', 'IPH', 'Serial/Batch', ...MERCH),
@@ -130,9 +126,9 @@ export const SEED_ITEM_GROUPS: ItemGroup[] = [
   group('AirPods', 'APD', 'Serial/Batch', ...MERCH),
   group('Home & TV', 'HOM', 'Serial/Batch', ...MERCH),
   group('Accessories', 'ACC', 'Moving Average', ...MERCH),
-  group('AppleCare', 'ACP', 'Moving Average', '— None —', '5030 Cost of Services', '4030 Service Revenue'),
-  group('Gift Certificates', 'GC', 'Moving Average', '— None —', '5030 Cost of Services', '2160 Gift Certificates Outstanding'),
-  group('Services', 'SVC', 'Moving Average', '— None —', '5030 Cost of Services', '4030 Service Revenue'),
+  group('AppleCare', 'ACP', 'Moving Average', '', '5030', '4030'),
+  group('Gift Certificates', 'GC', 'Moving Average', '', '5030', '2160'),
+  group('Services', 'SVC', 'Moving Average', '', '5030', '4030'),
 ];
 
 const uom = (code: string, name: string): UnitOfMeasure => ({ id: `uom-${code}`, code, name, active: true });

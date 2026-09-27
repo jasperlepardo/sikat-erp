@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Radio, Text } from '@jasperlepardo/sikat-design-system';
-import { GL_ACCOUNTS, PLANNING_GROUPS } from '../../../mocks/masters';
+import { AccountField, useAccounts } from '../../../components/form/AccountField';
+import { PLANNING_GROUPS } from '../../../mocks/masters';
 import type { Partner } from '../../../mocks/partners';
 import { SALES_VAT_TREATMENTS, SUPPLIER_VAT_STATUSES, type WithholdingTax } from '../../../mocks/taxes';
 import { withholdingTaxes } from '../../../services/masterData';
@@ -12,6 +13,7 @@ export function AccountingTab({ draft, update, errors }: TabProps) {
   const f = bind(draft, update);
   const isCustomer = draft.roles.includes('customer');
   const isVendor = draft.roles.includes('vendor');
+  const chart = useAccounts();
   const [others, setOthers] = useState<Partner[]>([]);
   const [withholding, setWithholding] = useState<WithholdingTax[]>([]);
   useEffect(() => {
@@ -88,22 +90,48 @@ export function AccountingTab({ draft, update, errors }: TabProps) {
 
       <Section icon="account_tree" title="Control accounts">
         <Fields>
-          {isCustomer
-            ? f.pick('receivableAccount', 'Accounts receivable', GL_ACCOUNTS.receivable, {
-                required: true,
-                error: errors.receivableAccount,
-                hint: 'Every invoice to this partner posts here.',
-              })
-            : null}
-          {isVendor
-            ? f.pick('payableAccount', 'Accounts payable', GL_ACCOUNTS.payable, {
-                required: true,
-                error: errors.payableAccount,
-                hint: 'Every bill from this partner posts here.',
-              })
-            : null}
-          {f.pick('downPaymentClearingAccount', 'Down payment clearing account', GL_ACCOUNTS.downPaymentClearing)}
-          {f.pick('downPaymentInterimAccount', 'Down payment interim account', GL_ACCOUNTS.downPaymentInterim)}
+          {isCustomer ? (
+            <AccountField
+              label="Accounts receivable"
+              role="receivable"
+              accounts={chart}
+              required
+              error={errors.receivableAccount}
+              hint="Every invoice to this partner posts here."
+              value={draft.receivableAccount}
+              onChange={(receivableAccount) => update({ receivableAccount })}
+            />
+          ) : null}
+          {isVendor ? (
+            <AccountField
+              label="Accounts payable"
+              role="payable"
+              accounts={chart}
+              required
+              error={errors.payableAccount}
+              hint="Every bill from this partner posts here."
+              value={draft.payableAccount}
+              onChange={(payableAccount) => update({ payableAccount })}
+            />
+          ) : null}
+          <AccountField
+            label="Down payment clearing account"
+            role="downPaymentClearing"
+            accounts={chart}
+            allowNone
+            error={errors.downPaymentClearingAccount}
+            value={draft.downPaymentClearingAccount}
+            onChange={(downPaymentClearingAccount) => update({ downPaymentClearingAccount })}
+          />
+          <AccountField
+            label="Down payment interim account"
+            role="downPaymentInterim"
+            accounts={chart}
+            allowNone
+            error={errors.downPaymentInterimAccount}
+            value={draft.downPaymentInterimAccount}
+            onChange={(downPaymentInterimAccount) => update({ downPaymentInterimAccount })}
+          />
         </Fields>
         {!isCustomer && !isVendor ? (
           <Text variant="small" tone="muted">

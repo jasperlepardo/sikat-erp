@@ -243,10 +243,71 @@ export const SEED_ACCOUNTS: Account[] = [
   ]]),
 ];
 
-/** Labels of active (postable) seed accounts with these codes, for fixed dropdowns. */
-export const accountOptions = (...codes: string[]) =>
-  codes.map((code) => {
-    const a = SEED_ACCOUNTS.find((x) => x.code === code && !x.title);
-    if (!a) throw new Error(`Account ${code} is not in the chart of accounts`);
-    return accountLabel(a);
-  });
+/** Whether `a` sits anywhere below the title account `titleCode`. */
+export function isUnder(a: Account, titleCode: string, all: Account[]) {
+  let parent = a.parentCode;
+  for (let i = 0; parent && i < 10; i++) {
+    if (parent === titleCode) return true;
+    parent = all.find((x) => x.code === parent)?.parentCode ?? '';
+  }
+  return false;
+}
+
+/** The G/L account fields other records have, and which accounts fit each. */
+export type AccountRole =
+  | 'inventory'
+  | 'cogs'
+  | 'revenue'
+  | 'receivable'
+  | 'payable'
+  | 'downPaymentClearing'
+  | 'downPaymentInterim'
+  | 'tax';
+
+export const ACCOUNT_ROLES: Record<AccountRole, { what: string; fits: (a: Account, all: Account[]) => boolean }> = {
+  inventory: { what: 'an inventory account (under 1300 Inventories)', fits: (a, all) => isUnder(a, '1300', all) },
+  cogs: { what: 'a cost of sales account', fits: (a) => a.drawer === 'Cost of sales' },
+  revenue: {
+    what: 'a revenue account (or unearned revenue under 2100)',
+    fits: (a, all) => a.drawer === 'Revenue' || isUnder(a, '2100', all),
+  },
+  receivable: { what: 'a receivable control account', fits: (a) => a.control && a.drawer === 'Assets' },
+  payable: { what: 'a payable control account', fits: (a) => a.control && a.drawer === 'Liabilities' },
+  downPaymentClearing: {
+    what: 'a down payment account (under 1100 Receivables or 2100 Deposits)',
+    fits: (a, all) => !a.control && (isUnder(a, '1100', all) || isUnder(a, '2100', all)),
+  },
+  downPaymentInterim: { what: 'a deposit account (under 2100)', fits: (a, all) => isUnder(a, '2100', all) },
+  tax: {
+    what: 'a tax account (under 1400 Tax credits or 2300 Taxes payable)',
+    fits: (a, all) => isUnder(a, '1400', all) || isUnder(a, '2300', all),
+  },
+};
+
+/** Active postable accounts that fit a role; contra accounts (allowances, returns) never do. */
+export const fitsRole = (a: Account, role: AccountRole, all: Account[]) => !a.contra && ACCOUNT_ROLES[role].fits(a, all);
+
+/** "1310 Inventory – Merchandise" for a stored account code; flags codes missing from the chart. */
+export function accountText(code: string, all: Account[] | undefined) {
+  if (!code) return '—';
+  const a = all?.find((x) => x.code === code);
+  if (!all) return code;
+  return a ? `${accountLabel(a)}${a.active ? '' : ' (inactive)'}` : `${code} (not in the chart of accounts)`;
+}
+
+/** Old seeds stored "1310 Inventory – Merchandise" / "— None —"; records now store the code. */
+export const toAccountCode = (value: string) => (!value || value.startsWith('—') ? '' : value.split(' ')[0]);
+
+/**
+ * Why `code` can't be used for `role`, or undefined when it can. Blank is a
+ * problem only when `required`.
+ */
+export function accountProblem(code: string, role: AccountRole, all: Account[], required = false): string | undefined {
+  if (!code) return required ? 'Pick an account.' : undefined;
+  const a = all.find((x) => x.code === code);
+  if (!a) return `${code} isn’t in the chart of accounts — pick another.`;
+  if (!a.active) return `${accountLabel(a)} is inactive — pick an active account.`;
+  if (a.title) return `${accountLabel(a)} is a title account — pick an account under it.`;
+  if (!fitsRole(a, role, all)) return `${accountLabel(a)} isn’t ${ACCOUNT_ROLES[role].what}.`;
+  return undefined;
+}

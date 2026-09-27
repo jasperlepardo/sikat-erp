@@ -2,8 +2,8 @@ import { SEED_ITEMS, type Item } from '../mocks/items';
 import { itemGroups } from './inventoryMasters';
 import { createCollection } from './store';
 
-// v7: gift certificates post to 2160 (chart of accounts).
-const items = createCollection<Item>('sikat-erp:items:v7', SEED_ITEMS, 'itm');
+// v8: G/L accounts are stored as chart-of-accounts codes.
+const items = createCollection<Item>('sikat-erp:items:v8', SEED_ITEMS, 'itm');
 
 export const listItems = items.list;
 export const getItem = items.get;

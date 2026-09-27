@@ -24,7 +24,7 @@ import { createCollection } from './store';
 
 /** Settings › Accounting & Tax master data. */
 // v2: tax codes gained rate history; tax groups map to a single code.
-export const taxCodes = createCollection<TaxCode>('sikat-erp:tax-codes:v2', SEED_TAX_CODES, 'tc');
+export const taxCodes = createCollection<TaxCode>('sikat-erp:tax-codes:v3', SEED_TAX_CODES, 'tc');
 export const taxGroups = createCollection<TaxGroup>('sikat-erp:tax-groups:v2', SEED_TAX_GROUPS, 'tg');
 export const companyTax = createCollection<CompanyTaxProfile>('sikat-erp:company-tax', SEED_COMPANY_TAX, 'company');
 /** Accounting › Chart of Accounts. */

@@ -1,13 +1,8 @@
 import { Text } from '@jasperlepardo/sikat-design-system';
 import { Fields, Flags, ReadOnly, Section, bind } from '../../../../components/form/fields';
-import {
-  COGS_ACCOUNTS,
-  GL_BY,
-  INVENTORY_ACCOUNTS,
-  ISSUE_METHODS,
-  REVENUE_ACCOUNTS,
-  VALUATION_METHODS,
-} from '../../../../mocks/itemMasters';
+import { AccountField } from '../../../../components/form/AccountField';
+import { accountText } from '../../../../mocks/chartOfAccounts';
+import { GL_BY, ISSUE_METHODS, VALUATION_METHODS } from '../../../../mocks/itemMasters';
 import { COUNTRIES } from '../../../../mocks/masters';
 import { activeOptions } from '../../../../services/inventoryMasters';
 import { isValidToday } from '../../../../services/items';
@@ -59,15 +54,40 @@ export function GeneralTab({ draft, update, errors, tax, inv }: TabProps) {
           })}
           {draft.glBy === 'Item Level' ? (
             <>
-              {f.pick('inventoryAccount', 'Inventory account', INVENTORY_ACCOUNTS)}
-              {f.pick('cogsAccount', 'Cost of goods sold account', COGS_ACCOUNTS)}
-              {f.pick('revenueAccount', 'Revenue account', REVENUE_ACCOUNTS)}
+              <AccountField
+                label="Inventory account"
+                role="inventory"
+                accounts={inv.accounts}
+                allowNone={!draft.inventoryItem}
+                required={draft.inventoryItem}
+                error={errors.inventoryAccount}
+                value={draft.inventoryAccount}
+                onChange={(inventoryAccount) => update({ inventoryAccount })}
+              />
+              <AccountField
+                label="Cost of goods sold account"
+                role="cogs"
+                accounts={inv.accounts}
+                required
+                error={errors.cogsAccount}
+                value={draft.cogsAccount}
+                onChange={(cogsAccount) => update({ cogsAccount })}
+              />
+              <AccountField
+                label="Revenue account"
+                role="revenue"
+                accounts={inv.accounts}
+                required={draft.salesItem}
+                error={errors.revenueAccount}
+                value={draft.revenueAccount}
+                onChange={(revenueAccount) => update({ revenueAccount })}
+              />
             </>
           ) : draft.glBy === 'Item Group' ? (
             <>
-              <ReadOnly label="Inventory account" value={group?.inventoryAccount ?? '—'} hint="From the item group." />
-              <ReadOnly label="Cost of goods sold account" value={group?.cogsAccount ?? '—'} hint="From the item group." />
-              <ReadOnly label="Revenue account" value={group?.revenueAccount ?? '—'} hint="From the item group." />
+              <ReadOnly label="Inventory account" value={accountText(group?.inventoryAccount ?? '', inv.accounts)} hint="From the item group." />
+              <ReadOnly label="Cost of goods sold account" value={accountText(group?.cogsAccount ?? '', inv.accounts)} hint="From the item group." />
+              <ReadOnly label="Revenue account" value={accountText(group?.revenueAccount ?? '', inv.accounts)} hint="From the item group." />
             </>
           ) : (
             <ReadOnly label="G/L accounts" value="Taken from each warehouse's account settings." />

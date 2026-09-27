@@ -5,11 +5,10 @@
 import { TableStatus } from '@jasperlepardo/sikat-design-system';
 import { Fields, Flags, bind } from '../../../components/form/fields';
 import { MasterList, type ListRoute } from '../../../components/form/MasterList';
+import { AccountField, useAccounts } from '../../../components/form/AccountField';
+import { accountProblem, accountText } from '../../../mocks/chartOfAccounts';
 import {
-  COGS_ACCOUNTS,
-  INVENTORY_ACCOUNTS,
   MAX_ITEM_PROPERTIES,
-  REVENUE_ACCOUNTS,
   VALUATION_METHODS,
   type CommissionGroup,
   type CustomsGroup,
@@ -56,6 +55,7 @@ export function uniqueRequired<T extends { id: string }>(
 
 export function ItemGroupsTab(route: ListRoute) {
   const { rows, save, setActive } = useCollectionRows(itemGroups);
+  const chart = useAccounts();
   return (
     <MasterList<ItemGroup>
       {...route}
@@ -69,7 +69,8 @@ export function ItemGroupsTab(route: ListRoute) {
         { key: 'name', header: 'Group', cell: (g) => g.name },
         { key: 'prefix', header: 'Item No. prefix', cell: (g) => `${g.prefix}-#####` },
         { key: 'valuationMethod', header: 'Valuation', cell: (g) => g.valuationMethod },
-        { key: 'inventoryAccount', header: 'Inventory account', cell: (g) => g.inventoryAccount },
+        { key: 'inventoryAccount', header: 'Inventory account', cell: (g) => accountText(g.inventoryAccount, chart) },
+        { key: 'revenueAccount', header: 'Revenue account', cell: (g) => accountText(g.revenueAccount, chart) },
         statusColumn<ItemGroup>(),
       ]}
       searchText={(g) => `${g.name} ${g.prefix} ${g.valuationMethod}`}
@@ -78,9 +79,9 @@ export function ItemGroupsTab(route: ListRoute) {
         name: '',
         prefix: '',
         valuationMethod: 'Moving Average',
-        inventoryAccount: INVENTORY_ACCOUNTS[0],
-        cogsAccount: COGS_ACCOUNTS[0],
-        revenueAccount: REVENUE_ACCOUNTS[0],
+        inventoryAccount: '1310',
+        cogsAccount: '5010',
+        revenueAccount: '4010',
         active: true,
       })}
       label={(g) => g.name}
@@ -90,6 +91,12 @@ export function ItemGroupsTab(route: ListRoute) {
         if (!/^[A-Z0-9]{2,5}$/.test(g.prefix.trim().toUpperCase())) e.prefix = 'Use 2–5 letters or digits, e.g. FST.';
         else if (all.some((x) => x.id !== g.id && x.prefix.toUpperCase() === g.prefix.trim().toUpperCase()))
           e.prefix = `${g.prefix.toUpperCase()} is used by another group.`;
+        const accountErrors = {
+          inventoryAccount: accountProblem(g.inventoryAccount, 'inventory', chart ?? []),
+          cogsAccount: accountProblem(g.cogsAccount, 'cogs', chart ?? [], true),
+          revenueAccount: accountProblem(g.revenueAccount, 'revenue', chart ?? [], true),
+        };
+        for (const [k, v] of Object.entries(accountErrors)) if (v && chart) e[k] = v;
         return e;
       }}
       onSave={(g) => save({ ...g, prefix: g.prefix.trim().toUpperCase() })}
@@ -101,9 +108,34 @@ export function ItemGroupsTab(route: ListRoute) {
               {f.text('name', 'Name', { required: true, error: errors.name, readOnly: !isNew, hint: isNew ? undefined : 'Can’t change once saved — items refer to it. Deactivate instead.' })}
               {f.text('prefix', 'Item No. prefix', { required: true, error: errors.prefix, hint: 'Auto-numbered items become PREFIX-00001.' })}
               {f.pick('valuationMethod', 'Default valuation method', VALUATION_METHODS)}
-              {f.pick('inventoryAccount', 'Inventory account', INVENTORY_ACCOUNTS)}
-              {f.pick('cogsAccount', 'Cost of goods sold account', COGS_ACCOUNTS)}
-              {f.pick('revenueAccount', 'Revenue account', REVENUE_ACCOUNTS)}
+              <AccountField
+                label="Inventory account"
+                role="inventory"
+                accounts={chart}
+                allowNone
+                hint="None for non-stock groups (services, gift certificates)."
+                error={errors.inventoryAccount}
+                value={g.inventoryAccount}
+                onChange={(inventoryAccount) => update({ inventoryAccount })}
+              />
+              <AccountField
+                label="Cost of goods sold account"
+                role="cogs"
+                accounts={chart}
+                required
+                error={errors.cogsAccount}
+                value={g.cogsAccount}
+                onChange={(cogsAccount) => update({ cogsAccount })}
+              />
+              <AccountField
+                label="Revenue account"
+                role="revenue"
+                accounts={chart}
+                required
+                error={errors.revenueAccount}
+                value={g.revenueAccount}
+                onChange={(revenueAccount) => update({ revenueAccount })}
+              />
             </Fields>
             <Flags>{f.check('active', 'Active')}</Flags>
           </>

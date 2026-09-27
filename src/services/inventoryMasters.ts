@@ -20,10 +20,12 @@ import {
   type Warehouse,
   type WarrantyTemplate,
 } from '../mocks/itemMasters';
+import type { Account } from '../mocks/chartOfAccounts';
+import { accounts } from './masterData';
 import { createCollection } from './store';
 
 /** Settings › Inventory and Inventory › Warehouses & Bins master data. */
-export const itemGroups = createCollection<ItemGroup>('sikat-erp:item-groups:v3', SEED_ITEM_GROUPS, 'ig');
+export const itemGroups = createCollection<ItemGroup>('sikat-erp:item-groups:v4', SEED_ITEM_GROUPS, 'ig');
 export const unitsOfMeasure = createCollection<UnitOfMeasure>('sikat-erp:uoms:v2', SEED_UOMS, 'uom');
 export const warehouses = createCollection<Warehouse>('sikat-erp:warehouses:v2', SEED_WAREHOUSES, 'wh');
 export const manufacturers = createCollection<Manufacturer>('sikat-erp:manufacturers:v2', SEED_MANUFACTURERS, 'mfr');
@@ -46,10 +48,12 @@ export interface InventoryMasters {
   warranties: WarrantyTemplate[];
   properties: ItemProperty[];
   settings: InventorySettings;
+  /** Chart of accounts, for the item's G/L account pickers. */
+  accounts: Account[];
 }
 
 export async function loadInventoryMasters(): Promise<InventoryMasters> {
-  const [groups, uoms, whs, mfrs, customs, commissions, shipping, warranties, properties, [settings]] = await Promise.all([
+  const [groups, uoms, whs, mfrs, customs, commissions, shipping, warranties, properties, [settings], chart] = await Promise.all([
     itemGroups.list(),
     unitsOfMeasure.list(),
     warehouses.list(),
@@ -60,16 +64,17 @@ export async function loadInventoryMasters(): Promise<InventoryMasters> {
     warrantyTemplates.list(),
     itemProperties.list(),
     inventorySettings.list(),
+    accounts.list(),
   ]);
   return {
     groups, uoms, warehouses: whs, manufacturers: mfrs, customs, commissions, shipping, warranties,
-    properties: properties.sort((a, b) => a.number - b.number), settings,
+    properties: properties.sort((a, b) => a.number - b.number), settings, accounts: chart,
   };
 }
 
 export const EMPTY_INVENTORY_MASTERS: InventoryMasters = {
   groups: [], uoms: [], warehouses: [], manufacturers: [], customs: [], commissions: [], shipping: [], warranties: [],
-  properties: [], settings: SEED_INVENTORY_SETTINGS[0],
+  properties: [], settings: SEED_INVENTORY_SETTINGS[0], accounts: [],
 };
 
 /** Options over active rows, keeping the current value if it's been deactivated. */

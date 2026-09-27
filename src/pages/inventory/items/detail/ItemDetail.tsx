@@ -4,6 +4,7 @@ import { Badge, Button, Form, FormField, Panel, PanelHeader, Select, Tabs, TextF
 import { Fields, Section, bind, type Errors } from '../../../../components/form/fields';
 import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
+import { accountProblem } from '../../../../mocks/chartOfAccounts';
 import { ITEM_TYPES, MANAGE_BY } from '../../../../mocks/itemMasters';
 import { blankItem, newManufacturerRow, type ItemType } from '../../../../mocks/items';
 import {
@@ -58,6 +59,16 @@ function validate(d: Draft, codeMode: 'auto' | 'manual', inv: InventoryMasters):
   need(d.purchaseItem || d.salesItem || d.inventoryItem, 'general', 'usage', 'Tick at least one of purchase, sales or inventory item.');
   need(!d.validFrom || !d.validTo || d.validFrom <= d.validTo, 'general', 'validTo', 'Valid to is before Valid from.');
   need(!d.exciseTax || d.exciseCategory, 'general', 'exciseCategory', 'Pick the excise category.');
+  if (d.glBy === 'Item Level') {
+    for (const [key, role, required] of [
+      ['inventoryAccount', 'inventory', d.inventoryItem],
+      ['cogsAccount', 'cogs', true],
+      ['revenueAccount', 'revenue', d.salesItem],
+    ] as const) {
+      const problem = accountProblem(d[key], role, inv.accounts, required);
+      need(!problem, 'general', key, problem ?? '');
+    }
+  }
   need(!d.purchaseItem || d.purchaseTaxGroup, 'purchasing', 'purchaseTaxGroup', 'Purchase items need a tax group.');
   need(!d.salesItem || d.salesTaxGroup, 'sales', 'salesTaxGroup', 'Sales items need a tax group.');
 

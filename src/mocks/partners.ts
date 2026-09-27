@@ -174,6 +174,7 @@ export interface Partner {
   // Accounting
   consolidatingPartnerId: string;
   consolidationType: 'payment' | 'delivery';
+  /** G/L account codes (Accounting › Chart of Accounts); '' for none. */
   receivableAccount: string;
   payableAccount: string;
   downPaymentClearingAccount: string;
@@ -324,10 +325,10 @@ export function blankPartner(role: PartnerRole): Omit<Partner, 'id'> {
     grossIncomeAboveThreshold: false,
     consolidatingPartnerId: '',
     consolidationType: 'payment',
-    receivableAccount: '1120 Accounts Receivable – Trade',
-    payableAccount: '2010 Accounts Payable – Trade',
-    downPaymentClearingAccount: '— None —',
-    downPaymentInterimAccount: '— None —',
+    receivableAccount: '1120',
+    payableAccount: '2010',
+    downPaymentClearingAccount: '',
+    downPaymentInterimAccount: '',
     blockDunning: false,
     dunningLevel: 0,
     dunningDate: '',

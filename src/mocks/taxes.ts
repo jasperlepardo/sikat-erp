@@ -6,7 +6,7 @@
  * RA 12066, VAT on Digital Services RA 12023) and BIR/BOC issuances. Anything not
  * confirmed from a primary source is flagged in `notes` for your accountant to check.
  */
-import { accountOptions } from './chartOfAccounts';
+import { toAccountCode } from './chartOfAccounts';
 
 export type TaxDirection = 'Sales' | 'Purchase';
 export type TaxCategory =
@@ -30,6 +30,7 @@ export interface TaxCode {
   category: TaxCategory;
   /** Rate history; a document uses the rate in force on its posting date. */
   rates: TaxRatePeriod[];
+  /** G/L account code (Accounting › Chart of Accounts); '' for none. */
   glAccount: string;
   birReturn: string;
   legalBasis: string;
@@ -190,8 +191,6 @@ export interface ExciseCategory {
 export const TAX_CATEGORIES: TaxCategory[] = [
   'Standard', 'Government', 'Zero-rated', 'Exempt', 'Capital goods', 'Services', 'Importation', 'Reverse charge', 'Non-VAT', 'Percentage tax',
 ];
-/** Tax accounts tax codes post to (Accounting › Chart of Accounts). */
-export const TAX_GL_ACCOUNTS = [...accountOptions('2310', '2320', '2330', '1410', '1415', '1420', '1430'), '— None —'];
 export const BIR_RETURNS = ['2550Q', '2551Q', '1600-VT', '2550Q / 1600-VT', '—'];
 
 /** VAT has been 12% since 1 Feb 2006 (RA 9337). */
@@ -204,7 +203,7 @@ const tc = (
 ): TaxCode => ({
   id: `tc-${code}`, code, name, direction, category,
   rates: typeof rate === 'number' ? [{ from: rate ? VAT_SINCE : ZERO_SINCE, rate }] : rate,
-  glAccount, birReturn, legalBasis, active: true, notes,
+  glAccount: toAccountCode(glAccount), birReturn, legalBasis, active: true, notes,
 });
 
 export const SEED_TAX_CODES: TaxCode[] = [

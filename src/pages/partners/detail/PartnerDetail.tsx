@@ -1,4 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import { useAccounts } from '../../../components/form/AccountField';
+import { accountProblem, type Account } from '../../../mocks/chartOfAccounts';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import {
   Badge,
@@ -45,7 +47,7 @@ type TabId = (typeof TABS)[number]['value'];
 type Problem = ProblemBase<TabId>;
 
 /** Mandatory fields from the BP field mapping, checked on Add/Save. */
-function validate(d: Draft, codeMode: 'auto' | 'manual'): Problem[] {
+function validate(d: Draft, codeMode: 'auto' | 'manual', chart: Account[]): Problem[] {
   const { problems, need } = problemCollector<TabId>();
 
   need(codeMode === 'auto' || d.code.trim(), 'header', 'code', 'Enter a code, or switch numbering to Auto.');
@@ -70,11 +72,20 @@ function validate(d: Draft, codeMode: 'auto' | 'manual'): Problem[] {
   }
   if (d.roles.includes('customer')) {
     need(d.customerPaymentTerms, 'payment-terms', 'customerPaymentTerms', 'Customer payment terms are required.');
-    need(d.receivableAccount, 'accounting', 'receivableAccount', 'Customers need an accounts receivable account.');
+    const ar = accountProblem(d.receivableAccount, 'receivable', chart, true);
+    need(!ar, 'accounting', 'receivableAccount', ar === 'Pick an account.' ? 'Customers need an accounts receivable account.' : `Accounts receivable: ${ar}`);
   }
   if (d.roles.includes('vendor')) {
     need(d.vendorPaymentTerms, 'payment-terms', 'vendorPaymentTerms', 'Vendor payment terms are required.');
-    need(d.payableAccount, 'accounting', 'payableAccount', 'Vendors need an accounts payable account.');
+    const ap = accountProblem(d.payableAccount, 'payable', chart, true);
+    need(!ap, 'accounting', 'payableAccount', ap === 'Pick an account.' ? 'Vendors need an accounts payable account.' : `Accounts payable: ${ap}`);
+  }
+  for (const [key, role, label] of [
+    ['downPaymentClearingAccount', 'downPaymentClearing', 'Down payment clearing account'],
+    ['downPaymentInterimAccount', 'downPaymentInterim', 'Down payment interim account'],
+  ] as const) {
+    const problem = accountProblem(d[key], role, chart);
+    need(!problem, 'accounting', key, `${label}: ${problem}`);
   }
   return problems;
 }
@@ -108,6 +119,7 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
   const [saving, setSaving] = useState(false);
   const [currencyCodes, setCurrencyCodes] = useState<string[]>([]);
 
+  const chart = useAccounts();
   useEffect(() => {
     currencies.list().then((all) => setCurrencyCodes(all.filter((c) => c.active).map((c) => c.code)));
   }, []);
@@ -146,7 +158,7 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
   };
 
   const check = () => {
-    const found = validate(draft, isNew ? codeMode : 'manual');
+    const found = validate(draft, isNew ? codeMode : 'manual', chart ?? []);
     setProblems(found);
     const first = found[0];
     if (first && first.tab !== 'header') setTab(first.tab);

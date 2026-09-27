@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { useParams } from 'react-router';
-import { Badge, Panel, PanelHeader, TableStatus, Tabs } from '@jasperlepardo/sikat-design-system';
+import { Alert, Badge, Panel, PanelHeader, TableStatus, Tabs } from '@jasperlepardo/sikat-design-system';
 import { Fields, Flags, ReadOnly, bind } from '../../components/form/fields';
 import { MasterList } from '../../components/form/MasterList';
 import { DRAWERS, normalBalance, statementOf, type Account, type Drawer } from '../../mocks/chartOfAccounts';
+import { describeUsage, loadAccountUsage, usageCount } from '../../services/accountUsage';
 import { accounts } from '../../services/masterData';
+import { useAsync } from '../../services/useAsync';
 import { newId, useCollectionRows } from '../../services/useCollectionRows';
 
 const BASE = '/accounting/chart-of-accounts';
@@ -41,6 +43,21 @@ export function ChartOfAccountsPage() {
   const { recordId } = useParams();
   const { rows, save, setActive } = useCollectionRows(accounts);
   const [drawer, setDrawer] = useState<'all' | Drawer>('all');
+  const [notice, setNotice] = useState<string>();
+  // Which records use each account; reloads whenever the chart changes.
+  const usage = useAsync(loadAccountUsage, [rows]);
+  const usedBy = (code: string) => usage?.get(code);
+
+  // Accounts in use can't be deactivated: move the records to another account first.
+  const setActiveChecked = async (picked: Account[], active: boolean) => {
+    const blocked = active ? [] : picked.filter((a) => usageCount(usedBy(a.code)) > 0);
+    await setActive(picked.filter((a) => !blocked.includes(a)), active);
+    setNotice(
+      blocked.length
+        ? `Not deactivated — still in use: ${blocked.map((a) => `${a.code} (${describeUsage(usedBy(a.code))})`).join('; ')}. Move those records to another account first.`
+        : undefined,
+    );
+  };
   const all = rows ?? [];
   const shown = rows && (drawer === 'all' ? rows : rows.filter((a) => a.drawer === drawer));
 
@@ -53,7 +70,7 @@ export function ChartOfAccountsPage() {
       noun="account"
       description="Title accounts group the accounts below them; documents post only to active accounts. Control accounts take postings through business partners only."
       rows={shown}
-      onSetActive={setActive}
+      onSetActive={setActiveChecked}
       columns={[
         {
           key: 'code',
@@ -80,13 +97,25 @@ export function ChartOfAccountsPage() {
         },
         { key: 'currency', header: 'Currency', cell: (a) => a.currency },
         {
+          key: 'usage',
+          header: 'Used in',
+          cell: (a) => {
+            const n = usageCount(usedBy(a.code));
+            return n ? `${n} record${n === 1 ? '' : 's'}` : <span className="text-muted">—</span>;
+          },
+        },
+        {
           key: 'active',
           header: 'Status',
           cell: (a) => <TableStatus intent={a.active ? 'success' : 'default'}>{a.active ? 'Active' : 'Inactive'}</TableStatus>,
         },
       ]}
       sortValue={(a, key) =>
-        key === 'drawer' ? `${DRAWERS.indexOf(a.drawer)}-${a.code}` : key === 'balance' ? normalBalance(a) : String(a[key as keyof Account] ?? '').toLowerCase()
+        key === 'drawer'
+          ? `${DRAWERS.indexOf(a.drawer)}-${a.code}`
+          : key === 'usage'
+            ? usageCount(usedBy(a.code))
+            : key === 'balance' ? normalBalance(a) : String(a[key as keyof Account] ?? '').toLowerCase()
       }
       searchText={(a) => `${a.code} ${a.name} ${a.drawer} ${a.control ? 'control' : ''} ${a.cash ? 'cash' : ''} ${a.contra ? 'contra' : ''}`}
       blank={blank}
@@ -105,6 +134,9 @@ export function ChartOfAccountsPage() {
         const children = others.filter((o) => o.parentCode === a.code && o.id !== a.id);
         if (!a.title && children.length) e.title = `${children.length} account(s) sit under it, so it must stay a title account.`;
         if (a.control && a.cash) e.control = 'An account is either a control account or a cash account, not both.';
+        const used = usedBy(a.code);
+        if (usageCount(used) && !a.active) e.active = `Still used by ${describeUsage(used)} — move them to another account before deactivating.`;
+        if (usageCount(used) && a.title) e.title = `Used by ${describeUsage(used)} — a title account can’t take postings.`;
         return e;
       }}
       onSave={(a) => save({ ...a, code: a.code.trim(), name: a.name.trim() })}
@@ -152,7 +184,16 @@ export function ChartOfAccountsPage() {
               {f.check('cash', 'Cash account')}
               {f.check('active', 'Active')}
             </Flags>
-            {errors.title || errors.control ? <p className="text-sm text-danger">{errors.title ?? errors.control}</p> : null}
+            {errors.title || errors.control || errors.active ? (
+              <p className="text-sm text-danger">{errors.title ?? errors.control ?? errors.active}</p>
+            ) : null}
+            <Fields cols={1}>
+              <ReadOnly
+                label="Used in"
+                value={isNew ? '—' : describeUsage(usedBy(a.code)) || 'Not used yet.'}
+                hint="Item groups, items, business partners and tax codes that post to this account. Names shown here update everywhere when the account is renamed."
+              />
+            </Fields>
             <Fields cols={1}>{f.area('remarks', 'Remarks', { rows: 2 })}</Fields>
           </>
         );
@@ -178,7 +219,14 @@ export function ChartOfAccountsPage() {
           />
         }
       />
-      <Panel.Body className="flex flex-col gap-2">{list}</Panel.Body>
+      <Panel.Body className="flex flex-col gap-2">
+        {notice ? (
+          <Alert intent="warning" variant="outline" title="Some accounts are in use">
+            {notice}
+          </Alert>
+        ) : null}
+        {list}
+      </Panel.Body>
     </Panel>
   );
 }

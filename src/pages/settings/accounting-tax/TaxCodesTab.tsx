@@ -8,12 +8,13 @@ import {
   Text,
   TextField,
 } from '@jasperlepardo/sikat-design-system';
+import { AccountField, useAccounts } from '../../../components/form/AccountField';
 import { Fields, Flags, Section, bind } from '../../../components/form/fields';
+import { accountProblem } from '../../../mocks/chartOfAccounts';
 import { MasterList, type ListRoute } from '../../../components/form/MasterList';
 import {
   BIR_RETURNS,
   TAX_CATEGORIES,
-  TAX_GL_ACCOUNTS,
   currentRate,
   type TaxCode,
   type TaxRatePeriod,
@@ -30,7 +31,7 @@ const blank = (): TaxCode => ({
   direction: 'Sales',
   category: 'Standard',
   rates: [{ from: today(), rate: 12 }],
-  glAccount: '2310 Output VAT Payable',
+  glAccount: '2310',
   birReturn: '2550Q',
   legalBasis: '',
   active: true,
@@ -39,6 +40,7 @@ const blank = (): TaxCode => ({
 
 export function TaxCodesTab(route: ListRoute) {
   const { rows, save, setActive } = useCollectionRows(taxCodes);
+  const chart = useAccounts();
   return (
     <MasterList<TaxCode>
       {...route}
@@ -94,6 +96,8 @@ export function TaxCodesTab(route: ListRoute) {
         else if (all.some((x) => x.id !== t.id && x.code.toLowerCase() === t.code.trim().toLowerCase()))
           e.code = `${t.code} already exists.`;
         if (!t.name.trim()) e.name = 'Name is required.';
+        const gl = chart ? accountProblem(t.glAccount, 'tax', chart) : undefined;
+        if (gl) e.glAccount = gl;
         if (!t.rates.length) e.rates = 'Add at least one rate.';
         else if (t.rates.some((r) => !r.from)) e.rates = 'Every rate needs an effective date.';
         else if (t.rates.some((r) => r.rate < 0 || r.rate > 100)) e.rates = 'Rates must be between 0 and 100.';
@@ -118,7 +122,16 @@ export function TaxCodesTab(route: ListRoute) {
               {f.pick('direction', 'Used on', ['Sales', 'Purchase'])}
               {f.pick('category', 'Category', TAX_CATEGORIES)}
               {f.pick('birReturn', 'BIR return', BIR_RETURNS)}
-              {f.pick('glAccount', 'G/L account', TAX_GL_ACCOUNTS)}
+              <AccountField
+                label="G/L account"
+                role="tax"
+                accounts={chart}
+                allowNone
+                error={errors.glAccount}
+                hint="Where this tax posts: a tax credit (input) or tax payable (output) account."
+                value={t.glAccount}
+                onChange={(glAccount) => update({ glAccount })}
+              />
               {f.text('legalBasis', 'Legal basis', { placeholder: 'e.g. NIRC Sec. 106', className: 'md:col-span-3' })}
               {f.area('notes', 'Notes', { rows: 2, className: 'md:col-span-3' })}
             </Fields>

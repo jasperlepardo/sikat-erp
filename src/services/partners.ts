@@ -1,8 +1,8 @@
 import { SEED_PARTNERS, contactName, type Partner, type PartnerRole } from '../mocks/partners';
 import { createCollection } from './store';
 
-// v7: grossIncomeAboveThreshold for income-tiered withholding ATCs.
-const partners = createCollection<Partner>('sikat-erp:partners:v7', SEED_PARTNERS, 'bp');
+// v8: G/L accounts are stored as chart-of-accounts codes.
+const partners = createCollection<Partner>('sikat-erp:partners:v8', SEED_PARTNERS, 'bp');
 
 export const listPartners = partners.list;
 export const getPartner = partners.get;
