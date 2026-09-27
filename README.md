@@ -89,6 +89,11 @@ src/
   → item tax group. Withholding comes from the vendor override, else the item's
   withholding category and the company's TWA status. Try it on the Determination
   rules tab. Tax codes keep effective-dated rates.
+- Withholding tax holds the BIR expanded withholding (WE) ATC table: 109 ATCs, WI for
+  individual and WC for corporate payees. Where an income payment splits by the payee's
+  gross income (₱3M for individuals, ₱720,000 for corporations) or VAT registration,
+  each ATC carries that condition. The e-marketplace and digital financial services ATCs
+  (WI/WC820, 830) apply ½% to the gross remittance.
 - Exchange rates are PHP per unit from the BSP Reference Exchange Rate Bulletin. Paste
   the day's bulletin into "Import BSP bulletin"; the sample data holds the 30 Apr 2026
   (partial) and 25 Sep 2026 bulletins.

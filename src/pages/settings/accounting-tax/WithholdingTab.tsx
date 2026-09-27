@@ -1,7 +1,7 @@
-import { TableStatus } from '@jasperlepardo/sikat-design-system';
+import { TableStatus, TableSubcontent } from '@jasperlepardo/sikat-design-system';
 import { Fields, Flags, bind } from '../../../components/form/fields';
 import { MasterList, type ListRoute } from '../../../components/form/MasterList';
-import type { WithholdingTax } from '../../../mocks/taxes';
+import { WITHHOLDING_BASES, type WithholdingTax } from '../../../mocks/taxes';
 import { withholdingTaxes } from '../../../services/masterData';
 import { newId, useCollectionRows } from '../../../services/useCollectionRows';
 
@@ -9,6 +9,7 @@ const blank = (): WithholdingTax => ({
   id: newId('wt'),
   atc: '',
   description: '',
+  condition: '',
   kind: 'Expanded (EWT)',
   payee: 'Corporate',
   rate: 1,
@@ -27,7 +28,7 @@ export function WithholdingTab(route: ListRoute) {
       icon="request_quote"
       title="Withholding tax"
       noun="withholding tax"
-      description="Creditable taxes you withhold when paying suppliers, by BIR Alphanumeric Tax Code (ATC). Suppliers get a BIR Form 2307 for each."
+      description="Creditable taxes you withhold when paying suppliers, by BIR Alphanumeric Tax Code (ATC): WI for individual payees, WC for corporate. Suppliers get a BIR Form 2307 for each."
       rows={rows}
       onSetActive={setActive}
       columns={[
@@ -37,8 +38,16 @@ export function WithholdingTab(route: ListRoute) {
           cell: (w) =>
             w.atc ? <span className="font-semibold">{w.atc}</span> : <span className="text-warning">To confirm</span>,
         },
-        { key: 'description', header: 'Income payment', cell: (w) => w.description },
-        { key: 'payee', header: 'Payee', cell: (w) => w.payee },
+        {
+          key: 'description',
+          header: 'Income payment',
+          cell: (w) => (
+            <TableSubcontent subcopy={w.condition || undefined}>
+              <span className="line-clamp-2 max-w-xl whitespace-normal">{w.description}</span>
+            </TableSubcontent>
+          ),
+        },
+        { key: 'payee', header: 'Payee', cell: (w) => (w.payee === 'Individual' ? 'Individual (WI)' : w.payee === 'Corporate' ? 'Corporate (WC)' : w.payee) },
         { key: 'rate', header: 'Rate', cell: (w) => `${w.rate}%` },
         { key: 'base', header: 'Applied to', cell: (w) => w.base },
         {
@@ -49,7 +58,7 @@ export function WithholdingTab(route: ListRoute) {
           ),
         },
       ]}
-      searchText={(w) => `${w.atc} ${w.description} ${w.kind} ${w.payee} ${w.legalBasis}`}
+      searchText={(w) => `${w.atc} ${w.description} ${w.condition} ${w.kind} ${w.payee} ${w.legalBasis} ${w.notes}`}
       blank={blank}
       label={(w) => `${w.atc || 'No ATC'} · ${w.description}`}
       validate={(w, all) => {
@@ -79,11 +88,12 @@ export function WithholdingTab(route: ListRoute) {
               {f.pick('kind', 'Kind', ['Expanded (EWT)', 'Withholding VAT'])}
               {f.pick('payee', 'Payee', ['Individual', 'Corporate', 'Any'])}
               {f.num('rate', 'Rate', { required: true, error: errors.rate, suffix: '%' })}
-              {f.pick('base', 'Applied to', [
-                'Amount net of VAT',
-                'One-half of gross remittance',
-                'VAT-exclusive amount',
-              ])}
+              {f.text('condition', 'Applies when', {
+                className: 'md:col-span-3',
+                placeholder: 'e.g. Gross income this year ≤ ₱3M',
+                hint: 'For ATCs that split by the payee’s gross income or VAT registration. Leave blank if it always applies.',
+              })}
+              {f.pick('base', 'Applied to', WITHHOLDING_BASES)}
               {f.text('birForms', 'BIR forms')}
               {f.text('legalBasis', 'Legal basis')}
               {f.area('notes', 'Notes', { rows: 2, className: 'md:col-span-3' })}

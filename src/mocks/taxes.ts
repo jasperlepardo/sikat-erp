@@ -109,14 +109,18 @@ export const SEED_COMPANY_TAX: CompanyTaxProfile[] = [
 ];
 
 export type WithholdingKind = 'Expanded (EWT)' | 'Withholding VAT';
-export type WithholdingBase = 'Amount net of VAT' | 'One-half of gross remittance' | 'VAT-exclusive amount';
+export type WithholdingBase = 'Amount net of VAT' | 'Gross amount' | 'VAT-exclusive amount';
+export const WITHHOLDING_BASES: WithholdingBase[] = ['Amount net of VAT', 'Gross amount', 'VAT-exclusive amount'];
 
 /** A creditable withholding tax, by BIR Alphanumeric Tax Code (ATC). */
 export interface WithholdingTax {
   id: string;
   /** BIR ATC, e.g. WC158. Blank when the ATC still has to be confirmed. */
   atc: string;
+  /** Nature of the income payment, as worded in the BIR ATC table. */
   description: string;
+  /** When this ATC applies instead of its sibling, e.g. "Gross income this year ≤ ₱3M". '' = always. */
+  condition: string;
   kind: WithholdingKind;
   payee: 'Individual' | 'Corporate' | 'Any';
   rate: number;
@@ -216,31 +220,102 @@ const wt = (
   patch: Partial<WithholdingTax> = {},
 ): WithholdingTax => ({
   id: `wt-${atc || description.toLowerCase().replace(/\W+/g, '-')}`,
-  atc, description, kind: 'Expanded (EWT)', payee, rate, base: 'Amount net of VAT',
+  atc, description, condition: '', kind: 'Expanded (EWT)', payee, rate, base: 'Amount net of VAT',
   birForms: '2307 · 0619-E · 1601-EQ', legalBasis, active: true, notes: '', ...patch,
 });
 
+const EWT_BASIS = 'RR 2-98 Sec. 2.57.2, as amended';
+
+// Income-based pairs: individuals switch at ₱3M gross income (or VAT registration), corporations at ₱720,000.
+const IND_LOW = 'Gross income this year ≤ ₱3M';
+const IND_HIGH = 'Gross income > ₱3M, or VAT-registered regardless of amount';
+const CORP_LOW = 'Gross income this year ≤ ₱720,000';
+const CORP_HIGH = 'Gross income > ₱720,000';
+
+/** One nature of income payment with the four threshold ATCs: [WI low, WI high, WC low, WC high]. */
+const tiered = (description: string, [il, ih, cl, ch]: (string | null)[]): WithholdingTax[] => [
+  ...(il ? [wt(il, description, 'Individual', 5, EWT_BASIS, { condition: IND_LOW })] : []),
+  ...(ih ? [wt(ih, description, 'Individual', 10, EWT_BASIS, { condition: IND_HIGH })] : []),
+  ...(cl ? [wt(cl, description, 'Corporate', 10, EWT_BASIS, { condition: CORP_LOW })] : []),
+  ...(ch ? [wt(ch, description, 'Corporate', 15, EWT_BASIS, { condition: CORP_HIGH })] : []),
+];
+
+/** One nature of income payment at one rate, for individuals (WI…) and/or corporations (WC…). */
+const flat = (
+  description: string, rate: number, wi: string | null, wc: string | null, patch: Partial<WithholdingTax> = {},
+): WithholdingTax[] => [
+  ...(wi ? [wt(wi, description, 'Individual', rate, EWT_BASIS, patch)] : []),
+  ...(wc ? [wt(wc, description, 'Corporate', rate, EWT_BASIS, patch)] : []),
+];
+
+const TWA = 'Top withholding agents only.';
+const GOVT = 'Paid by national government agencies (NGAs), LGUs and other government offices.';
+
+/** Expanded withholding tax (WE) ATCs, in BIR table order, plus withholding VAT. */
 export const SEED_WITHHOLDING: WithholdingTax[] = [
-  wt('WI010', 'Professional fees – individual, gross ≤ ₱3M (non-VAT)', 'Individual', 5, 'RR 2-98 as amended by RR 11-2018'),
-  wt('WI011', 'Professional fees – individual, gross > ₱3M or VAT-registered', 'Individual', 10, 'RR 2-98 as amended by RR 11-2018'),
-  wt('WC010', 'Professional fees – corporate, gross ≤ ₱720,000', 'Corporate', 10, 'RR 2-98 as amended by RR 11-2018'),
-  wt('WC011', 'Professional fees – corporate, gross > ₱720,000', 'Corporate', 15, 'RR 2-98 as amended by RR 11-2018'),
-  wt('WI100', 'Rentals – real or personal property', 'Individual', 5, 'RR 2-98 as amended'),
-  wt('WC100', 'Rentals – real or personal property', 'Corporate', 5, 'RR 2-98 as amended'),
-  wt('WI120', 'Contractors and sub-contractors', 'Individual', 2, 'RR 2-98 as amended'),
-  wt('WC120', 'Contractors and sub-contractors', 'Corporate', 2, 'RR 2-98 as amended'),
-  wt('WI158', 'Goods bought by a top withholding agent', 'Individual', 1, 'RR 11-2018, RR 31-2020'),
-  wt('WC158', 'Goods bought by a top withholding agent', 'Corporate', 1, 'RR 11-2018, RR 31-2020'),
-  wt('WI160', 'Services bought by a top withholding agent', 'Individual', 2, 'RR 11-2018, RR 31-2020'),
-  wt('WC160', 'Services bought by a top withholding agent', 'Corporate', 2, 'RR 11-2018, RR 31-2020'),
-  wt('WI760', 'E-marketplace / digital financial services remittances to sellers', 'Individual', 1, 'RR 16-2023', {
-    base: 'One-half of gross remittance',
-    notes: 'BIR issued new ATCs in 2025 (RMO 18-2025). Confirm the current ATC before use.',
-  }),
-  wt('WC760', 'E-marketplace / digital financial services remittances to sellers', 'Corporate', 1, 'RR 16-2023', {
-    base: 'One-half of gross remittance',
-    notes: 'BIR issued new ATCs in 2025 (RMO 18-2025). Confirm the current ATC before use.',
-  }),
+  ...tiered('Professional fees (lawyers, CPAs, engineers, etc.)', ['WI010', 'WI011', 'WC010', 'WC011']),
+  ...tiered('Professional entertainers (actors and actresses, singers, lyricists, composers, emcees, etc.)', ['WI020', 'WI021', 'WC020', 'WC021']),
+  ...tiered('Professional athletes, including basketball players, pelotaris and jockeys', ['WI030', 'WI031', 'WC030', 'WC031']),
+  ...tiered('Directors and producers in movies, stage, television and musical productions', ['WI040', 'WI041', 'WC040', 'WC041']),
+  ...tiered('Management and technical consultants', ['WI050', 'WI051', 'WC050', 'WC051']),
+  ...tiered('Business and bookkeeping agents and agencies', ['WI060', 'WI061', 'WC060', 'WC061']),
+  ...tiered('Insurance agents and insurance adjusters', ['WI070', 'WI071', 'WC070', 'WC071']),
+  ...tiered('Other recipients of talent fees', ['WI080', 'WI081', 'WC080', 'WC081']),
+  ...tiered('Fees of directors who are not employees of the company', ['WI090', 'WI091', null, null]),
+  ...flat(
+    'Rentals: gross rental or lease of personal property over ₱10,000 a year, and of real property used in business the payor has no title to or equity in; poles, satellites, transmission facilities and billboards',
+    5, 'WI100', 'WC100',
+  ),
+  ...flat('Cinematographic film rentals and other payments to resident film owners, lessors and distributors', 5, 'WI110', 'WC110'),
+  ...flat('Income payments to certain contractors', 2, 'WI120', 'WC120'),
+  ...flat('Income distribution to the beneficiaries of estates and trusts', 15, 'WI130', null),
+  ...tiered(
+    'Gross commissions or service fees of customs, insurance, stock, immigration and commercial brokers, agents of professional entertainers and real estate service practitioners (consultants, appraisers and brokers)',
+    ['WI139', 'WI140', 'WC139', 'WC140'],
+  ),
+  ...tiered(
+    'Professional fees of medical practitioners (doctors of medicine and veterinary science, dentists) paid by hospitals, clinics, HMOs and similar establishments',
+    ['WI151', 'WI150', 'WC151', 'WC150'],
+  ),
+  wt('WI152', 'Payments by general professional partnerships (GPPs) to their partners', 'Individual', 10, EWT_BASIS, { condition: CORP_LOW }),
+  wt('WI153', 'Payments by general professional partnerships (GPPs) to their partners', 'Individual', 15, EWT_BASIS, { condition: CORP_HIGH }),
+  ...flat('Income payments made by credit card companies', 0.5, 'WI156', 'WC156'),
+  ...flat('Additional income payments to government personnel from importers, shipping and airline companies or their agents for overtime services', 15, 'WI159', null),
+  ...flat('Payments by NGAs, LGUs, etc. to local/resident suppliers of goods not covered by other withholding rates', 1, 'WI640', 'WC640', { notes: GOVT }),
+  ...flat('Payments by NGAs, LGUs, etc. to local/resident suppliers of services not covered by other withholding rates', 2, 'WI157', 'WC157', { notes: GOVT }),
+  ...flat('Payments by top withholding agents to local/resident suppliers of goods not covered by other withholding rates', 1, 'WI158', 'WC158', { notes: TWA }),
+  ...flat('Payments by top withholding agents to local/resident suppliers of services not covered by other withholding rates', 2, 'WI160', 'WC160', { notes: TWA }),
+  wt('WI515', 'Commissions, rebates, discounts and similar considerations to independent or exclusive sales representatives and marketing agents and sub-agents, including multi-level marketing', 'Individual', 5, EWT_BASIS, { condition: IND_LOW }),
+  wt('WI516', 'Commissions, rebates, discounts and similar considerations to independent or exclusive sales representatives and marketing agents and sub-agents, including multi-level marketing', 'Individual', 10, EWT_BASIS, { condition: IND_HIGH }),
+  ...flat('Gross payments to embalmers by funeral parlors', 1, 'WI530', null),
+  ...flat('Payments made by pre-need companies to funeral parlors', 1, 'WI535', 'WC535'),
+  ...flat('Tolling fees paid to refineries', 5, 'WI540', 'WC540'),
+  ...flat('Payments to suppliers of agricultural products over a cumulative ₱300,000 in the same taxable year', 1, 'WI610', 'WC610'),
+  ...flat('Purchases of minerals, mineral products and quarry resources (silver, gold, granite, gravel, sand, boulders, etc.), except purchases by the BSP', 5, 'WI630', 'WC630'),
+  ...flat('Purchases of minerals, mineral products and quarry resources by the Bangko Sentral ng Pilipinas from gold miners/suppliers (PD 1899 as amended by RA 7076)', 1, 'WI632', 'WC632'),
+  ...flat('Gross amount of refunds by MERALCO to customers with active contracts', 15, 'WI650', 'WC650', { base: 'Gross amount' }),
+  ...flat('Gross amount of refunds by MERALCO to customers with terminated contracts', 15, 'WI651', 'WC651', { base: 'Gross amount' }),
+  ...flat('Interest on refunds of meter deposits — MERALCO residential and general service customers using over 200 kWh a month', 10, 'WI660', 'WC660', { base: 'Gross amount' }),
+  ...flat('Interest on refunds of meter deposits — MERALCO non-residential customers using over 200 kWh a month', 15, 'WI661', 'WC661', { base: 'Gross amount' }),
+  ...flat('Interest on refunds of meter deposits — other distribution utilities’ residential and general service customers using over 200 kWh a month', 10, 'WI662', 'WC662', { base: 'Gross amount' }),
+  ...flat('Interest on refunds of meter deposits — other distribution utilities’ non-residential customers using over 200 kWh a month', 15, 'WI663', 'WC663', { base: 'Gross amount' }),
+  ...flat(
+    'Purchases of goods and services for campaign expenditures by political parties and candidates, and purchases intended as campaign contributions',
+    5, 'WI680', 'WC680',
+  ),
+  ...flat('Income payments received by Real Estate Investment Trusts (REITs)', 1, null, 'WC690'),
+  ...flat('Interest income from other debt instruments not covered by deposit substitutes and RR 14-2012', 15, 'WI710', 'WC710', { base: 'Gross amount' }),
+  ...flat('Income payments on locally produced raw sugar', 1, 'WI720', 'WC720'),
+  ...flat('Payments by joint ventures (incorporated or not, taxable or not) to local/resident suppliers of goods', 1, 'WI770', 'WC770'),
+  ...flat('Payments by joint ventures (incorporated or not, taxable or not) to local/resident suppliers of services', 2, 'WI780', 'WC780'),
+  ...flat('Each co-venturer’s share in the net income of a joint venture or consortium not taxable as a corporation, before distribution', 15, null, 'WC790'),
+  ...flat('Gross remittances by e-marketplace operators to sellers/merchants for goods or services sold through their platform', 0.5, 'WI820', 'WC820', { base: 'Gross amount', legalBasis: 'RR 16-2023' }),
+  ...flat('Gross remittances by digital financial services providers to sellers/merchants for goods or services paid through their platform', 0.5, 'WI830', 'WC830', { base: 'Gross amount', legalBasis: 'RR 16-2023' }),
+  ...flat('Payments by top withholding agents to manufacturers and direct importers of motor vehicles (CBU or SKD), motor vehicle parts and accessories', 0.5, 'WI840', 'WC840', { notes: TWA }),
+  ...flat('Payments by top withholding agents to manufacturers and direct importers of medicine and pharmaceutical products', 0.5, 'WI850', 'WC850', { notes: TWA }),
+  ...flat('Payments by top withholding agents to manufacturers and direct importers of solid or liquid fuels and related products', 0.5, 'WI860', 'WC860', { notes: TWA }),
+
+  // Withholding VAT (BIR Form 1600-VT)
   wt('', 'Creditable withholding VAT – government purchases', 'Any', 5, 'NIRC Sec. 114(C) as amended by TRAIN', {
     kind: 'Withholding VAT', base: 'VAT-exclusive amount', birForms: '2307 · 1600-VT',
     notes: 'Withheld by government buyers. Final only for ODA-funded projects. Assign the ATC from BIR Form 1600-VT.',
