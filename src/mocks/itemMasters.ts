@@ -5,6 +5,7 @@
  * Seeds only — the app edits them in Settings › Inventory and Inventory ›
  * Warehouses & Bins (services/inventoryMasters.ts).
  */
+import { accountOptions } from './chartOfAccounts';
 
 export type ValuationMethod = 'Moving Average' | 'FIFO' | 'Standard Price' | 'Serial/Batch';
 
@@ -17,9 +18,10 @@ export const ISSUE_METHODS = ['Manual', 'Backflush'] as const;
 export const PLANNING_METHODS = ['MRP', 'MPS', 'None'] as const;
 export const PROCUREMENT_METHODS = ['Buy', 'Make'] as const;
 
-export const INVENTORY_ACCOUNTS = ['1310 Inventory – Merchandise', '1320 Inventory – Raw Materials', '1330 Inventory – Finished Goods', '— None —'];
-export const COGS_ACCOUNTS = ['5010 COGS – Merchandise', '5020 COGS – Manufactured', '5030 Cost of Services'];
-export const REVENUE_ACCOUNTS = ['4010 Sales – Merchandise', '4020 Sales – Manufactured', '4030 Service Revenue', '2150 Gift certificates outstanding'];
+// G/L accounts item groups and items post to (Accounting › Chart of Accounts).
+export const INVENTORY_ACCOUNTS = [...accountOptions('1310', '1320', '1330', '1340'), '— None —'];
+export const COGS_ACCOUNTS = accountOptions('5010', '5020', '5030');
+export const REVENUE_ACCOUNTS = accountOptions('4010', '4020', '4030', '2160');
 
 export interface ItemGroup {
   id: string;
@@ -129,7 +131,7 @@ export const SEED_ITEM_GROUPS: ItemGroup[] = [
   group('Home & TV', 'HOM', 'Serial/Batch', ...MERCH),
   group('Accessories', 'ACC', 'Moving Average', ...MERCH),
   group('AppleCare', 'ACP', 'Moving Average', '— None —', '5030 Cost of Services', '4030 Service Revenue'),
-  group('Gift Certificates', 'GC', 'Moving Average', '— None —', '5030 Cost of Services', '2150 Gift certificates outstanding'),
+  group('Gift Certificates', 'GC', 'Moving Average', '— None —', '5030 Cost of Services', '2160 Gift Certificates Outstanding'),
   group('Services', 'SVC', 'Moving Average', '— None —', '5030 Cost of Services', '4030 Service Revenue'),
 ];
 

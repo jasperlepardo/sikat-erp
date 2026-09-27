@@ -53,6 +53,7 @@ src/
     partners/      Business partners: the Business Partners master lists every record;
                    CRM › Leads, Sales › Customers and Purchasing › Vendors are role views
                    of it. detail/ holds the master form, one file per tab
+    accounting/    Accounting › Chart of Accounts
     purchasing/orders/ Purchasing › Purchase Orders: list, and detail/ with the header,
                    Contents / Logistics / Accounting tabs and the totals footer
   mocks/           Seed data and types
@@ -128,6 +129,12 @@ src/
   - Devices are serial-tracked with the Apple one-year warranty. iPhone Duo is valid from
     23 Oct 2026, so it shows as a pre-order ("Not valid today"). AppleCare+ plans and store
     gift certificates are non-stock; gift certificates aren't VAT-liable at sale.
+- The chart of accounts is a basic one for a VAT-registered Philippine retailer (123
+  accounts, 4-digit codes) in SAP-style drawers: Assets, Liabilities, Equity, Revenue, Cost of
+  sales, Operating expenses, Other income, Other expenses and Income tax. Title accounts
+  group active accounts; control (AR/AP), cash and contra accounts are flagged. The G/L
+  dropdowns on item groups, tax codes and business partners read their options from the
+  seed chart; accounts added later in the page don't reach those dropdowns yet.
 - Purchase orders follow the SAP B1 PO field map. Open points are settled as follows
   (see `src/mocks/purchaseOrders.ts`):
   - The vendor name is a snapshot taken when the vendor is picked.

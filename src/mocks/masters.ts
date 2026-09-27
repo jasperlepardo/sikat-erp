@@ -2,6 +2,7 @@
  * Master data behind the business partner dropdowns. In the real product these
  * are Settings lists; here they're fixed so the prototype has realistic choices.
  */
+import { accountOptions } from './chartOfAccounts';
 import type { PartnerRole } from './partners';
 
 export const BP_GROUPS: { value: string; role: PartnerRole }[] = [
@@ -57,11 +58,12 @@ export const PAYMENT_METHODS = [
   { code: 'MAYA', description: 'Maya' },
 ];
 
+/** Control accounts and down payment accounts (Accounting › Chart of Accounts). */
 export const GL_ACCOUNTS = {
-  receivable: ['1120 Accounts Receivable – Trade', '1125 Accounts Receivable – Related Parties'],
-  payable: ['2010 Accounts Payable – Trade', '2015 Accounts Payable – Import'],
-  downPaymentClearing: ['— None —', '2150 Customer Down Payments', '1150 Advances to Suppliers'],
-  downPaymentInterim: ['— None —', '2155 Down Payments – Interim'],
+  receivable: accountOptions('1120', '1125'),
+  payable: accountOptions('2010', '2015'),
+  downPaymentClearing: ['— None —', ...accountOptions('2150', '1150')],
+  downPaymentInterim: ['— None —', ...accountOptions('2155')],
 };
 export const PLANNING_GROUPS = ['— None —', 'Fast movers', 'Project-based', 'Seasonal'];
 

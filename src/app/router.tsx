@@ -9,6 +9,7 @@ import { InventorySettingsPage } from '../pages/settings/inventory/InventorySett
 import { WarehousesPage } from '../pages/inventory/WarehousesPage';
 import { PurchaseOrderList } from '../pages/purchasing/orders/PurchaseOrderList';
 import { PurchaseOrderDetail } from '../pages/purchasing/orders/detail/PurchaseOrderDetail';
+import { ChartOfAccountsPage } from '../pages/accounting/ChartOfAccountsPage';
 import { PartnerList } from '../pages/partners/PartnerList';
 import { PartnerDetail } from '../pages/partners/detail/PartnerDetail';
 import { ROLE_CONFIG, scopeConfig, type PartnerScope } from '../pages/partners/roles';
@@ -40,6 +41,7 @@ export const router = createHashRouter([
       { path: 'settings/accounting-and-tax/:tab?/:recordId?', element: <AccountingTaxPage /> },
       { path: 'settings/inventory/:tab?/:recordId?', element: <InventorySettingsPage /> },
       { path: 'inventory/warehouses-and-bins/:recordId?', element: <WarehousesPage /> },
+      { path: 'accounting/chart-of-accounts/:recordId?', element: <ChartOfAccountsPage /> },
       { path: '*', element: <Placeholder /> },
     ],
   },

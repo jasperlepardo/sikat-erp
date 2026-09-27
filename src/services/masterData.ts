@@ -19,6 +19,7 @@ import {
   type DeMinimisBenefit,
   type WithholdingForm,
 } from '../mocks/compensation';
+import { SEED_ACCOUNTS, type Account } from '../mocks/chartOfAccounts';
 import { createCollection } from './store';
 
 /** Settings › Accounting & Tax master data. */
@@ -26,6 +27,8 @@ import { createCollection } from './store';
 export const taxCodes = createCollection<TaxCode>('sikat-erp:tax-codes:v2', SEED_TAX_CODES, 'tc');
 export const taxGroups = createCollection<TaxGroup>('sikat-erp:tax-groups:v2', SEED_TAX_GROUPS, 'tg');
 export const companyTax = createCollection<CompanyTaxProfile>('sikat-erp:company-tax', SEED_COMPANY_TAX, 'company');
+/** Accounting › Chart of Accounts. */
+export const accounts = createCollection<Account>('sikat-erp:accounts', SEED_ACCOUNTS, 'acct');
 export const compensationTax = createCollection<CompensationBracket>('sikat-erp:compensation-tax', SEED_COMPENSATION_TAX, 'ct');
 export const deMinimisBenefits = createCollection<DeMinimisBenefit>('sikat-erp:de-minimis', SEED_DE_MINIMIS, 'dm');
 export const withholdingForms = createCollection<WithholdingForm>('sikat-erp:withholding-forms', SEED_WITHHOLDING_FORMS, 'wf');
