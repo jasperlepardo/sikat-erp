@@ -194,7 +194,7 @@ export function determineWithholding(item: LineItem, partner: LineParty, data: T
       : high ? 'gross income > ₱720,000' : 'gross income ≤ ₱720,000';
   /** The sibling of a tiered ATC (same income payment and payee) that matches the vendor's income. */
   const tierOf = (w: WithholdingTax) => {
-    if (!w.condition) return w;
+    if (!w.condition || w.kind !== 'Expanded (EWT)') return w;
     const siblings = data.withholding.filter(
       (x) => x.active && x.condition && x.kind === w.kind && x.payee === w.payee && x.description === w.description,
     );
@@ -204,11 +204,12 @@ export function determineWithholding(item: LineItem, partner: LineParty, data: T
 
   // Withholding VAT on non-resident digital services (on top of any EWT).
   if (partner.supplierVatStatus === 'Non-resident digital services') {
-    const wv = data.withholding.find((w) => w.kind === 'Withholding VAT' && w.rate === 12 && w.active);
+    // Private withholding agents use WV070 (final withholding VAT on services by non-residents).
+    const wv = byAtc('WV070');
     if (wv) {
       withholding.push(wv);
-      step('Non-resident digital services', 'applied', `Withhold the 12% VAT → ${wv.atc || 'ATC to confirm'} (BIR Form 1600-VT)`);
-    }
+      step('Non-resident digital services', 'applied', `Withhold the 12% VAT → ${wv.atc} ${wv.rate}% (BIR Form 1600-VT)`);
+    } else step('Non-resident digital services', 'warning', 'Withhold the 12% VAT — but WV070 is missing or inactive in Settings.');
   }
 
   // 1. Vendor override
@@ -235,7 +236,7 @@ export function determineWithholding(item: LineItem, partner: LineParty, data: T
     step(
       'Expanded withholding',
       'warning',
-      'EWT covers resident suppliers only. Payments to a non-resident may carry final withholding income tax — check the tax treaty.',
+      'EWT covers resident suppliers only. Payments to a non-resident may carry final withholding tax (e.g. WC230 25% for other payments to NRFCs) — check the tax treaty, then set it as the vendor’s override.',
     );
     return { withholding, withholdingTrace };
   }

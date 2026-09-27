@@ -108,7 +108,18 @@ export const SEED_COMPANY_TAX: CompanyTaxProfile[] = [
   },
 ];
 
-export type WithholdingKind = 'Expanded (EWT)' | 'Withholding VAT';
+/**
+ * Expanded (WE): creditable — the payee deducts it from their income tax (BIR Form 2307).
+ * Final (WF): the tax withheld is the payee's full and final income tax on that income; the payee
+ * files no return for it, and if the payor under-withholds, the deficiency is collected from the payor (BIR Form 2306).
+ * Withholding VAT (WV) and percentage tax (WB): business taxes withheld on government money payments
+ * and some private payments (BIR Forms 1600-VT and 1600-PT).
+ */
+export type WithholdingKind = 'Expanded (EWT)' | 'Final (FWT)' | 'Withholding VAT' | 'Percentage tax';
+export const WITHHOLDING_KINDS: WithholdingKind[] = ['Expanded (EWT)', 'Final (FWT)', 'Withholding VAT', 'Percentage tax'];
+/** Who may withhold with the ATC: government offices (NGAs, GOCCs, LGUs), private agents, or both. */
+export type WithholdingAgent = 'Government' | 'Private' | 'Any';
+export const WITHHOLDING_AGENTS: WithholdingAgent[] = ['Any', 'Government', 'Private'];
 export type WithholdingBase = 'Amount net of VAT' | 'Gross amount' | 'VAT-exclusive amount';
 export const WITHHOLDING_BASES: WithholdingBase[] = ['Amount net of VAT', 'Gross amount', 'VAT-exclusive amount'];
 
@@ -122,6 +133,8 @@ export interface WithholdingTax {
   /** When this ATC applies instead of its sibling, e.g. "Gross income this year ≤ ₱3M". '' = always. */
   condition: string;
   kind: WithholdingKind;
+  /** Who may use this ATC as withholding agent. */
+  agent: WithholdingAgent;
   payee: 'Individual' | 'Corporate' | 'Any';
   rate: number;
   base: WithholdingBase;
@@ -220,7 +233,7 @@ const wt = (
   patch: Partial<WithholdingTax> = {},
 ): WithholdingTax => ({
   id: `wt-${atc || description.toLowerCase().replace(/\W+/g, '-')}`,
-  atc, description, condition: '', kind: 'Expanded (EWT)', payee, rate, base: 'Amount net of VAT',
+  atc, description, condition: '', kind: 'Expanded (EWT)', agent: 'Any', payee, rate, base: 'Amount net of VAT',
   birForms: '2307 · 0619-E · 1601-EQ', legalBasis, active: true, notes: '', ...patch,
 });
 
@@ -246,6 +259,36 @@ const flat = (
 ): WithholdingTax[] => [
   ...(wi ? [wt(wi, description, 'Individual', rate, EWT_BASIS, patch)] : []),
   ...(wc ? [wt(wc, description, 'Corporate', rate, EWT_BASIS, patch)] : []),
+];
+
+/** Final withholding tax (WF) at one rate, for individuals (WI…) and/or corporations (WC…), on the gross amount. */
+const final = (description: string, rate: number, wi: string | null, wc: string | null, patch: Partial<WithholdingTax> = {}) =>
+  flat(description, rate, wi, wc, {
+    kind: 'Final (FWT)',
+    base: 'Gross amount',
+    birForms: '2306 · 0619-F · 1601-FQ',
+    legalBasis: 'RR 2-98 Sec. 2.57.1, as amended',
+    ...patch,
+  });
+
+const BANKS = 'Banks and non-bank financial intermediaries performing quasi-banking functions';
+const NON_BANKS = 'Other non-bank financial intermediaries not performing quasi-banking functions';
+
+/**
+ * Government money payments (GMP): VAT (WV) and percentage taxes (WB) withheld before paying
+ * a supplier or payee. Some ATCs are for government withholding agents only.
+ */
+const gmp = (
+  kind: 'Withholding VAT' | 'Percentage tax', description: string, rate: number, atc: string,
+  agent: WithholdingAgent, patch: Partial<WithholdingTax> = {},
+): WithholdingTax[] => [
+  wt(atc, description, 'Any', rate, kind === 'Withholding VAT' ? 'NIRC Sec. 114, as amended' : 'NIRC Title V (percentage taxes), as amended', {
+    kind,
+    agent,
+    base: kind === 'Withholding VAT' ? 'VAT-exclusive amount' : 'Gross amount',
+    birForms: kind === 'Withholding VAT' ? '2307 · 1600-VT' : '2307 · 1600-PT',
+    ...patch,
+  }),
 ];
 
 const TWA = 'Top withholding agents only.';
@@ -281,8 +324,8 @@ export const SEED_WITHHOLDING: WithholdingTax[] = [
   wt('WI153', 'Payments by general professional partnerships (GPPs) to their partners', 'Individual', 15, EWT_BASIS, { condition: CORP_HIGH }),
   ...flat('Income payments made by credit card companies', 0.5, 'WI156', 'WC156'),
   ...flat('Additional income payments to government personnel from importers, shipping and airline companies or their agents for overtime services', 15, 'WI159', null),
-  ...flat('Payments by NGAs, LGUs, etc. to local/resident suppliers of goods not covered by other withholding rates', 1, 'WI640', 'WC640', { notes: GOVT }),
-  ...flat('Payments by NGAs, LGUs, etc. to local/resident suppliers of services not covered by other withholding rates', 2, 'WI157', 'WC157', { notes: GOVT }),
+  ...flat('Payments by NGAs, LGUs, etc. to local/resident suppliers of goods not covered by other withholding rates', 1, 'WI640', 'WC640', { notes: GOVT, agent: 'Government' }),
+  ...flat('Payments by NGAs, LGUs, etc. to local/resident suppliers of services not covered by other withholding rates', 2, 'WI157', 'WC157', { notes: GOVT, agent: 'Government' }),
   ...flat('Payments by top withholding agents to local/resident suppliers of goods not covered by other withholding rates', 1, 'WI158', 'WC158', { notes: TWA }),
   ...flat('Payments by top withholding agents to local/resident suppliers of services not covered by other withholding rates', 2, 'WI160', 'WC160', { notes: TWA }),
   wt('WI515', 'Commissions, rebates, discounts and similar considerations to independent or exclusive sales representatives and marketing agents and sub-agents, including multi-level marketing', 'Individual', 5, EWT_BASIS, { condition: IND_LOW }),
@@ -315,15 +358,91 @@ export const SEED_WITHHOLDING: WithholdingTax[] = [
   ...flat('Payments by top withholding agents to manufacturers and direct importers of medicine and pharmaceutical products', 0.5, 'WI850', 'WC850', { notes: TWA }),
   ...flat('Payments by top withholding agents to manufacturers and direct importers of solid or liquid fuels and related products', 0.5, 'WI860', 'WC860', { notes: TWA }),
 
-  // Withholding VAT (BIR Form 1600-VT)
-  wt('', 'Creditable withholding VAT – government purchases', 'Any', 5, 'NIRC Sec. 114(C) as amended by TRAIN', {
-    kind: 'Withholding VAT', base: 'VAT-exclusive amount', birForms: '2307 · 1600-VT',
-    notes: 'Withheld by government buyers. Final only for ODA-funded projects. Assign the ATC from BIR Form 1600-VT.',
+  // Final withholding tax (WF)
+  ...final('Interest on foreign loans payable to non-resident foreign corporations (NRFCs)', 20, null, 'WC180'),
+  ...final('Interest and other income payments on foreign currency transactions/loans payable of Offshore Banking Units (OBUs)', 10, null, 'WC190'),
+  ...final('Interest and other income payments on foreign currency transactions/loans payable of Foreign Currency Deposit Units (FCDUs)', 10, null, 'WC191'),
+  final('Cash dividends paid by a domestic corporation to citizens and resident aliens', 10, 'WI202', null)[0],
+  final('Cash dividends paid by a domestic corporation to non-resident foreign corporations (NRFCs)', 25, null, 'WC212')[0],
+  final('Property dividends paid by a domestic corporation to citizens and resident aliens', 10, 'WI203', null)[0],
+  final('Property dividends paid by a domestic corporation to non-resident foreign corporations (NRFCs)', 25, null, 'WC213')[0],
+  ...final('Cash dividends paid by a domestic corporation to NRFCs whose countries allow a deemed-paid tax credit (tax sparing rule)', 15, null, 'WC222'),
+  ...final('Property dividends paid by a domestic corporation to NRFCs whose countries allow a deemed-paid tax credit (tax sparing rule)', 15, null, 'WC223'),
+  ...final('Cash dividends paid by a domestic corporation to non-resident aliens engaged in trade or business in the Philippines (NRAETB)', 20, 'WI224', null),
+  ...final('Property dividends paid by a domestic corporation to NRAETB', 20, 'WI225', null),
+  ...final(
+    'Share of an NRAETB in the distributable net income after tax of a partnership (except GPPs), or in the net income after tax of an association, joint account or joint venture taxable as a corporation, of which he is a partner, member or co-venturer',
+    20, 'WI226', null,
+  ),
+  ...final('Other payments to non-resident foreign corporations (NRFCs)', 25, null, 'WC230'),
+  ...final('Distributive share of individual partners in a taxable partnership, association, joint account, joint venture or consortium', 10, 'WI240', null),
+  ...final(
+    'Royalties of all kinds paid to citizens, resident aliens and NRAETB (other than WI380 and WI341), and to domestic and resident foreign corporations',
+    20, 'WI250', 'WC250',
+  ),
+  ...final('Prizes over ₱10,000 and other winnings paid to individuals', 20, 'WI260', null),
+  ...final('Branch profit remittances by all corporations except PEZA/SBMA/CDA-registered', 15, null, 'WC280'),
+  ...final('Gross rentals, lease and charter fees of non-resident owners or lessors of foreign vessels', 4.5, null, 'WC290'),
+  ...final('Gross rentals, charter and other fees of non-resident lessors of aircraft, machinery and equipment', 7.5, null, 'WC300'),
+  ...final('Payments to oil exploration service contractors and sub-contractors', 8, 'WI310', 'WC310'),
+  ...final(
+    'Payments to non-resident aliens not engaged in trade or business in the Philippines (NRANETB), except on the sale of shares of domestic corporations and real property',
+    25, 'WI330', null,
+  ),
+  ...final('Payments to non-resident individual or corporate cinematographic film owners, lessors or distributors', 25, 'WI340', 'WC340'),
+  ...final('Royalties paid to NRAETB on cinematographic films and similar works', 25, 'WI341', null),
+  ...final(
+    'Interest or other payments on tax-free covenant bonds, mortgages, deeds of trust or other obligations (NIRC Sec. 57(C), as amended)',
+    30, 'WI350', null,
+  ),
+  ...final('Royalties paid to citizens, resident aliens and NRAETB on books, other literary works and musical compositions', 10, 'WI380', null),
+  ...final('Informer’s cash reward to individuals and juridical persons', 10, 'WI410', 'WC410'),
+  ...final('Cash or property dividends paid by a Real Estate Investment Trust (REIT)', 10, 'WI700', 'WC700'),
+
+  // Government money payments (GMP): withholding VAT (WV)
+  ...gmp('Withholding VAT', 'VAT withholding on purchases of goods', 5, 'WV010', 'Government'),
+  ...gmp('Withholding VAT', 'VAT withholding on purchases of services', 5, 'WV020', 'Government'),
+  ...gmp('Withholding VAT', 'VAT withholding from non-residents on the lease or use of property or property rights', 12, 'WV040', 'Government'),
+  ...gmp('Withholding VAT', 'VAT withholding from non-residents on the lease or use of property or property rights', 12, 'WV050', 'Private'),
+  ...gmp('Withholding VAT', 'Final withholding VAT on other services rendered in the Philippines by non-residents', 12, 'WV060', 'Government', { birForms: '2306 · 1600-VT' }),
+  ...gmp('Withholding VAT', 'Final withholding VAT on other services rendered in the Philippines by non-residents', 12, 'WV070', 'Private', {
+    birForms: '2306 · 1600-VT',
+    notes: 'Used for digital services from non-resident providers (RA 12023), withheld on the VAT-exclusive amount and claimed back as input VAT (IVD12). Confirm with your tax adviser if BIR issues a dedicated ATC.',
   }),
-  wt('', 'VAT on digital services from non-residents (reverse charge)', 'Any', 12, 'RA 12023', {
-    kind: 'Withholding VAT', base: 'VAT-exclusive amount', birForms: '1600-VT',
-    notes: 'Applies to B2B purchases from non-resident digital service providers. Assign the ATC from BIR Form 1600-VT.',
-  }),
+  ...gmp('Withholding VAT', 'VAT withholding on purchases of goods, with waiver of the privilege to claim input tax credit (creditable)', 12, 'WV012', 'Any'),
+  ...gmp('Withholding VAT', 'VAT withholding on purchases of goods, with waiver of the privilege to claim input tax credit (final)', 12, 'WV014', 'Any', { birForms: '2306 · 1600-VT' }),
+  ...gmp('Withholding VAT', 'VAT withholding on purchases of services, with waiver of the privilege to claim input tax credit (creditable)', 12, 'WV022', 'Any'),
+  ...gmp('Withholding VAT', 'VAT withholding on purchases of services, with waiver of the privilege to claim input tax credit (final)', 12, 'WV024', 'Any', { birForms: '2306 · 1600-VT' }),
+
+  // Government money payments (GMP): percentage taxes (WB)
+  ...gmp('Percentage tax', 'Tax on carriers and keepers of garages', 3, 'WB030', 'Government'),
+  ...gmp('Percentage tax', 'Franchise tax on gas and water utilities', 2, 'WB040', 'Government'),
+  ...gmp('Percentage tax', 'Franchise tax on radio and TV broadcasting companies with annual gross receipts of ₱10M or less that are not VAT-registered', 3, 'WB050', 'Government'),
+  ...gmp('Percentage tax', 'Tax on life insurance premiums', 2, 'WB070', 'Government'),
+  ...gmp('Percentage tax', 'Tax on overseas dispatch, message or conversation from the Philippines', 10, 'WB090', 'Government'),
+  ...gmp('Percentage tax', 'Business tax on agents of foreign insurance companies — insurance agents', 4, 'WB120', 'Government'),
+  ...gmp('Percentage tax', 'Business tax on agents of foreign insurance companies — owner of the property', 5, 'WB121', 'Government'),
+  ...gmp('Percentage tax', 'Tax on international carriers', 3, 'WB130', 'Government'),
+  ...gmp('Percentage tax', 'Tax on cockpits', 18, 'WB140', 'Government'),
+  ...gmp('Percentage tax', 'Tax on amusement places (cabarets, night and day clubs, videoke and karaoke bars, karaoke televisions and boxes, music lounges and similar establishments)', 18, 'WB150', 'Government'),
+  ...gmp('Percentage tax', 'Tax on boxing exhibitions', 10, 'WB160', 'Government'),
+  ...gmp('Percentage tax', 'Tax on professional basketball games', 15, 'WB170', 'Government'),
+  ...gmp('Percentage tax', 'Tax on jai-alai and race tracks', 30, 'WB180', 'Government'),
+  ...gmp('Percentage tax', 'Tax on the sale, barter or exchange of shares of stock listed and traded through the local stock exchange', 0.6, 'WB200', 'Government'),
+  ...gmp('Percentage tax', 'Tax on shares of stock sold or exchanged through initial and secondary public offering', 4, 'WB201', 'Government', { condition: 'Shares sold: not over 25%' }),
+  ...gmp('Percentage tax', 'Tax on shares of stock sold or exchanged through initial and secondary public offering', 2, 'WB202', 'Government', { condition: 'Shares sold: over 25% but not over 33⅓%' }),
+  ...gmp('Percentage tax', 'Tax on shares of stock sold or exchanged through initial and secondary public offering', 1, 'WB203', 'Government', { condition: 'Shares sold: over 33⅓%' }),
+  ...gmp('Percentage tax', `${BANKS} — interest, commissions and discounts from lending, and financial leasing income`, 5, 'WB301', 'Government', { condition: 'Remaining maturity 5 years or less' }),
+  ...gmp('Percentage tax', `${BANKS} — interest, commissions and discounts from lending, and financial leasing income`, 1, 'WB303', 'Government', { condition: 'Remaining maturity over 5 years' }),
+  ...gmp('Percentage tax', `${BANKS} — dividends, equity shares and net income of subsidiaries`, 0, 'WB102', 'Government'),
+  ...gmp('Percentage tax', `${BANKS} — royalties, rentals of real or personal property, profits from exchange and all other gross income`, 7, 'WB103', 'Government'),
+  ...gmp('Percentage tax', `${BANKS} — net trading gains in the year on foreign currency, debt securities, derivatives and similar instruments`, 7, 'WB104', 'Government'),
+  ...gmp('Percentage tax', `${NON_BANKS} — interest, commissions and discounts from lending, and financial leasing income`, 5, 'WB108', 'Government', { condition: 'Remaining maturity 5 years or less' }),
+  ...gmp('Percentage tax', `${NON_BANKS} — interest, commissions and discounts from lending, and financial leasing income`, 1, 'WB109', 'Government', { condition: 'Remaining maturity over 5 years' }),
+  ...gmp('Percentage tax', `${NON_BANKS} — all other gross income`, 5, 'WB110', 'Government'),
+  ...gmp('Percentage tax', 'Persons exempt from VAT under Sec. 108(BB) (creditable)', 3, 'WB080', 'Government'),
+  ...gmp('Percentage tax', 'Persons exempt from VAT under Sec. 108(BB) (creditable)', 3, 'WB082', 'Private'),
+  ...gmp('Percentage tax', 'Persons exempt from VAT under Sec. 109(BB) (Sec. 116 applies)', 3, 'WB084', 'Any'),
 ];
 
 const ex = (code: string, name: string, basis: ExciseBasis, rate: string, legalBasis: string, notes = '', effective = '2026'): ExciseCategory => ({

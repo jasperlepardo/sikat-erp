@@ -24,8 +24,8 @@ export function AccountingTab({ draft, update, errors }: TabProps) {
   const withholdingOptions = [
     { value: '', label: 'Use the rules (by item and company status)' },
     ...withholding
-      .filter((w) => (w.active && w.kind === 'Expanded (EWT)' && w.payee === payee) || w.id === draft.withholdingOverrideId)
-      .map((w) => ({ value: w.id, label: `${w.atc || 'ATC to confirm'} · ${w.description}${w.condition ? ` — ${w.condition}` : ''} (${w.rate}%)` })),
+      .filter((w) => (w.active && (w.kind === 'Expanded (EWT)' || w.kind === 'Final (FWT)') && w.agent !== 'Government' && w.payee === payee) || w.id === draft.withholdingOverrideId)
+      .map((w) => ({ value: w.id, label: `${w.atc || 'ATC to confirm'}${w.kind === 'Final (FWT)' ? ' (final)' : ''} · ${w.description}${w.condition ? ` — ${w.condition}` : ''} (${w.rate}%)` })),
   ];
 
   const consolidating = others.find((p) => p.id === draft.consolidatingPartnerId);

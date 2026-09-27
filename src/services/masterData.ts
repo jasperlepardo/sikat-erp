@@ -18,7 +18,7 @@ import { createCollection } from './store';
 export const taxCodes = createCollection<TaxCode>('sikat-erp:tax-codes:v2', SEED_TAX_CODES, 'tc');
 export const taxGroups = createCollection<TaxGroup>('sikat-erp:tax-groups:v2', SEED_TAX_GROUPS, 'tg');
 export const companyTax = createCollection<CompanyTaxProfile>('sikat-erp:company-tax', SEED_COMPANY_TAX, 'company');
-export const withholdingTaxes = createCollection<WithholdingTax>('sikat-erp:withholding:v2', SEED_WITHHOLDING, 'wt');
+export const withholdingTaxes = createCollection<WithholdingTax>('sikat-erp:withholding:v4', SEED_WITHHOLDING, 'wt');
 export const exciseCategories = createCollection<ExciseCategory>('sikat-erp:excise', SEED_EXCISE, 'ex');
 export const currencies = createCollection<Currency>('sikat-erp:currencies', SEED_CURRENCIES, 'cur');
 export const exchangeRates = createCollection<ExchangeRate>('sikat-erp:exchange-rates', SEED_RATES, 'fx');

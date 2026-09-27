@@ -1,7 +1,7 @@
 import { TableStatus, TableSubcontent } from '@jasperlepardo/sikat-design-system';
 import { Fields, Flags, bind } from '../../../components/form/fields';
 import { MasterList, type ListRoute } from '../../../components/form/MasterList';
-import { WITHHOLDING_BASES, type WithholdingTax } from '../../../mocks/taxes';
+import { WITHHOLDING_AGENTS, WITHHOLDING_BASES, WITHHOLDING_KINDS, type WithholdingKind, type WithholdingTax } from '../../../mocks/taxes';
 import { withholdingTaxes } from '../../../services/masterData';
 import { newId, useCollectionRows } from '../../../services/useCollectionRows';
 
@@ -11,6 +11,7 @@ const blank = (): WithholdingTax => ({
   description: '',
   condition: '',
   kind: 'Expanded (EWT)',
+  agent: 'Any',
   payee: 'Corporate',
   rate: 1,
   base: 'Amount net of VAT',
@@ -20,6 +21,13 @@ const blank = (): WithholdingTax => ({
   notes: '',
 });
 
+const KIND_SHORT: Record<WithholdingKind, string> = {
+  'Expanded (EWT)': 'Expanded (WE)',
+  'Final (FWT)': 'Final (WF)',
+  'Withholding VAT': 'VAT (WV)',
+  'Percentage tax': 'Percentage (WB)',
+};
+
 export function WithholdingTab(route: ListRoute) {
   const { rows, save, setActive } = useCollectionRows(withholdingTaxes);
   return (
@@ -28,7 +36,7 @@ export function WithholdingTab(route: ListRoute) {
       icon="request_quote"
       title="Withholding tax"
       noun="withholding tax"
-      description="Creditable taxes you withhold when paying suppliers, by BIR Alphanumeric Tax Code (ATC): WI for individual payees, WC for corporate. Suppliers get a BIR Form 2307 for each."
+      description="Taxes you withhold when paying suppliers and other payees, by BIR Alphanumeric Tax Code (ATC): WI for individual payees, WC for corporate. Expanded (WE) is creditable to the payee (BIR Form 2307); final (WF) is the payee’s full income tax on that income (BIR Form 2306). WV and WB are VAT and percentage taxes withheld on government money payments and some private payments."
       rows={rows}
       onSetActive={setActive}
       columns={[
@@ -47,6 +55,13 @@ export function WithholdingTab(route: ListRoute) {
             </TableSubcontent>
           ),
         },
+        {
+          key: 'kind',
+          header: 'Kind',
+          cell: (w) => (
+            <TableSubcontent subcopy={w.agent === 'Any' ? undefined : `${w.agent} agents only`}>{KIND_SHORT[w.kind]}</TableSubcontent>
+          ),
+        },
         { key: 'payee', header: 'Payee', cell: (w) => (w.payee === 'Individual' ? 'Individual (WI)' : w.payee === 'Corporate' ? 'Corporate (WC)' : w.payee) },
         { key: 'rate', header: 'Rate', cell: (w) => `${w.rate}%` },
         { key: 'base', header: 'Applied to', cell: (w) => w.base },
@@ -58,7 +73,7 @@ export function WithholdingTab(route: ListRoute) {
           ),
         },
       ]}
-      searchText={(w) => `${w.atc} ${w.description} ${w.condition} ${w.kind} ${w.payee} ${w.legalBasis} ${w.notes}`}
+      searchText={(w) => `${w.atc} ${w.description} ${w.condition} ${w.kind} ${KIND_SHORT[w.kind]} ${w.agent} ${w.payee} ${w.legalBasis} ${w.notes}`}
       blank={blank}
       label={(w) => `${w.atc || 'No ATC'} · ${w.description}`}
       validate={(w, all) => {
@@ -66,7 +81,7 @@ export function WithholdingTab(route: ListRoute) {
         if (!w.description.trim()) e.description = 'Describe the income payment.';
         if (w.atc && all.some((x) => x.id !== w.id && x.atc === w.atc.trim().toUpperCase()))
           e.atc = `${w.atc} already exists.`;
-        if (w.rate <= 0 || w.rate > 100) e.rate = 'Rate must be above 0 and at most 100.';
+        if (w.rate < 0 || w.rate > 100) e.rate = 'Rate must be between 0 and 100.';
         return e;
       }}
       onSave={(w) => save({ ...w, atc: w.atc.trim().toUpperCase() })}
@@ -85,8 +100,13 @@ export function WithholdingTab(route: ListRoute) {
                 error: errors.description,
                 className: 'md:col-span-2',
               })}
-              {f.pick('kind', 'Kind', ['Expanded (EWT)', 'Withholding VAT'])}
+              {f.pick('kind', 'Kind', WITHHOLDING_KINDS, {
+                hint: w.kind === 'Final (FWT)' ? 'The payee’s full and final income tax on this income. Under-withholding is collected from you.' : undefined,
+              })}
               {f.pick('payee', 'Payee', ['Individual', 'Corporate', 'Any'])}
+              {f.pick('agent', 'Withholding agent', WITHHOLDING_AGENTS, {
+                hint: 'Government: NGAs, GOCCs and LGUs only. Private: private agents only.',
+              })}
               {f.num('rate', 'Rate', { required: true, error: errors.rate, suffix: '%' })}
               {f.text('condition', 'Applies when', {
                 className: 'md:col-span-3',
