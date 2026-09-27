@@ -28,7 +28,7 @@ export const taxCodes = createCollection<TaxCode>('sikat-erp:tax-codes:v3', SEED
 export const taxGroups = createCollection<TaxGroup>('sikat-erp:tax-groups:v2', SEED_TAX_GROUPS, 'tg');
 export const companyTax = createCollection<CompanyTaxProfile>('sikat-erp:company-tax', SEED_COMPANY_TAX, 'company');
 /** Accounting › Chart of Accounts. */
-export const accounts = createCollection<Account>('sikat-erp:accounts', SEED_ACCOUNTS, 'acct');
+export const accounts = createCollection<Account>('sikat-erp:accounts:v2', SEED_ACCOUNTS, 'acct');
 export const compensationTax = createCollection<CompensationBracket>('sikat-erp:compensation-tax', SEED_COMPENSATION_TAX, 'ct');
 export const deMinimisBenefits = createCollection<DeMinimisBenefit>('sikat-erp:de-minimis', SEED_DE_MINIMIS, 'dm');
 export const withholdingForms = createCollection<WithholdingForm>('sikat-erp:withholding-forms', SEED_WITHHOLDING_FORMS, 'wf');

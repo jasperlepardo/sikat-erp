@@ -47,7 +47,71 @@ export interface Account {
   currency: string;
   active: boolean;
   remarks: string;
+
+  // Reporting
+  /** SAP account type: Sales (revenue), Expenditure (costs), Other (balance sheet). */
+  accountType: AccountType;
+  /** Balance sheet accounts: current or non-current. '' for income statement and equity. */
+  classification: Classification;
+  /** Where movements show on the cash flow statement; '' = not shown (cash itself, retained earnings). */
+  cashFlow: CashFlowCategory;
+  /** Line the account rolls up to on the financial statements. */
+  statementLine: string;
+
+  // Posting controls
+  /** Only documents post here (e.g. inventory, AR/AP, VAT) — no manual journal entries. */
+  blockManualPosting: boolean;
+  /** Postings dated outside this window are refused ('' = open-ended). */
+  validFrom: string;
+  validTo: string;
+  /** Dimensions a posting must fill in. */
+  requiredDimensions: Dimension[];
+  /** Only users with access to confidential accounts see balances and postings. */
+  confidential: boolean;
+
+  // Period-end and tax
+  /** Revalued at period-end for exchange rate changes (foreign currency accounts). */
+  revalue: boolean;
+  /** Reconciled against bank statements. */
+  reconcile: boolean;
+  /** Tax code proposed on manual postings ('' = not VAT-relevant). */
+  defaultTaxCode: string;
 }
+
+export type AccountType = 'Sales' | 'Expenditure' | 'Other';
+export const ACCOUNT_TYPES: AccountType[] = ['Sales', 'Expenditure', 'Other'];
+export type Classification = '' | 'Current' | 'Non-current';
+export type CashFlowCategory = '' | 'Operating' | 'Investing' | 'Financing';
+export const CASH_FLOW_CATEGORIES: CashFlowCategory[] = ['', 'Operating', 'Investing', 'Financing'];
+export type Dimension = 'Branch' | 'Cost center' | 'Project';
+export const DIMENSIONS: Dimension[] = ['Branch', 'Cost center', 'Project'];
+
+/**
+ * Financial statement lines, in statement order — a PFRS for SMEs-style layout
+ * (not an official template); edit to match your auditor's format.
+ */
+export const STATEMENT_LINES: Record<Drawer, string[]> = {
+  Assets: [
+    'Cash and cash equivalents',
+    'Trade and other receivables',
+    'Inventories',
+    'Prepayments and other current assets',
+    'Property and equipment',
+    'Deferred tax assets',
+    'Other non-current assets',
+  ],
+  Liabilities: ['Trade and other payables', 'Contract liabilities', 'Income tax payable', 'Borrowings', 'Deferred tax liabilities'],
+  Equity: ['Share capital', 'Additional paid-in capital', 'Retained earnings'],
+  Revenue: ['Revenue'],
+  'Cost of sales': ['Cost of sales'],
+  'Operating expenses': ['Selling and administrative expenses'],
+  'Other income': ['Other income'],
+  'Other expenses': ['Finance costs', 'Other expenses'],
+  'Income tax': ['Income tax expense'],
+};
+
+export const defaultAccountType = (d: Drawer): AccountType =>
+  d === 'Revenue' || d === 'Other income' ? 'Sales' : ['Assets', 'Liabilities', 'Equity'].includes(d) ? 'Other' : 'Expenditure';
 
 export const normalBalance = (a: Pick<Account, 'drawer' | 'contra'>) =>
   DEBIT_DRAWERS.includes(a.drawer) !== a.contra ? 'Debit' : 'Credit';
@@ -78,6 +142,18 @@ function drawer(drawerName: Drawer, root: Node): Account[] {
       currency: flags.includes('usd') ? 'USD' : title ? 'All currencies' : 'PHP',
       active: true,
       remarks: '',
+      accountType: defaultAccountType(drawerName),
+      classification: '',
+      cashFlow: '',
+      statementLine: '',
+      blockManualPosting: false,
+      validFrom: '',
+      validTo: '',
+      requiredDimensions: [],
+      confidential: false,
+      revalue: false,
+      reconcile: false,
+      defaultTaxCode: '',
     });
     children.forEach((c) => walk(c, code));
   };
@@ -85,7 +161,7 @@ function drawer(drawerName: Drawer, root: Node): Account[] {
   return out;
 }
 
-export const SEED_ACCOUNTS: Account[] = [
+const CHART: Account[] = [
   ...drawer('Assets', ['1000', 'Assets', [
     ['1010', 'Cash and Cash Equivalents', [
       ['1011', 'Cash on Hand – Petty Cash', ['cash']],
@@ -242,6 +318,57 @@ export const SEED_ACCOUNTS: Account[] = [
     ['9020', 'Provision for Income Tax – Deferred'],
   ]]),
 ];
+
+/** First match wins: [title or account code the account sits under (or is), value]. */
+type Rule<T> = [under: string, value: T][];
+
+const STATEMENT_LINE_RULES: Rule<string> = [
+  ['1010', 'Cash and cash equivalents'], ['1100', 'Trade and other receivables'], ['1300', 'Inventories'],
+  ['1400', 'Prepayments and other current assets'], ['1500', 'Property and equipment'], ['1620', 'Deferred tax assets'],
+  ['1600', 'Other non-current assets'],
+  ['2100', 'Contract liabilities'], ['2360', 'Income tax payable'], ['2500', 'Borrowings'], ['2610', 'Deferred tax liabilities'],
+  ['2000', 'Trade and other payables'],
+  ['3010', 'Share capital'], ['3020', 'Additional paid-in capital'], ['3000', 'Retained earnings'],
+  ['4000', 'Revenue'], ['5000', 'Cost of sales'], ['6000', 'Selling and administrative expenses'], ['7000', 'Other income'],
+  ['8010', 'Finance costs'], ['8000', 'Other expenses'], ['9000', 'Income tax expense'],
+];
+const NON_CURRENT: string[] = ['1500', '1600', '2520', '2600'];
+const CASH_FLOW_RULES: Rule<CashFlowCategory> = [
+  ['1010', ''], ['1500', 'Investing'], ['2500', 'Financing'], ['3010', 'Financing'], ['3020', 'Financing'], ['3110', 'Financing'],
+  ['3100', ''], ['1000', 'Operating'], ['2000', 'Operating'],
+  // Income statement accounts reach cash flow through net income (indirect method).
+  ['4000', 'Operating'], ['5000', 'Operating'], ['6000', 'Operating'], ['7000', 'Operating'], ['8000', 'Operating'], ['9000', 'Operating'],
+];
+/** Posted by documents only: control accounts, inventory and the VAT accounts tax codes post to. */
+const DOCUMENT_ONLY = ['1300', '1410', '1420', '1430', '2310', '2320', '2330'];
+const CONFIDENTIAL = ['6005', '2410'];
+/** Tax code proposed on manual postings. */
+const DEFAULT_TAX: Rule<string> = [
+  ['4010', 'OV12'], ['4030', 'OV12'],
+  ['5040', 'IVS12'], ['6230', 'IV12'],
+  ['6100', 'IVS12'], ['6110', 'IVS12'], ['6120', 'IVS12'], ['6200', 'IVS12'], ['6210', 'IVS12'], ['6240', 'IVS12'],
+  ['6250', 'IVS12'], ['6260', 'IVS12'], ['6270', 'IVS12'],
+];
+
+/** The chart with reporting, posting and period-end settings filled in by rule. */
+export const SEED_ACCOUNTS: Account[] = CHART.map((a) => {
+  const within = (code: string) => a.code === code || isUnder(a, code, CHART);
+  const pick = <T,>(rules: Rule<T>, fallback: T) => rules.find(([code]) => within(code))?.[1] ?? fallback;
+  const balanceSheet = ['Assets', 'Liabilities'].includes(a.drawer);
+  if (a.title) return { ...a, statementLine: '', cashFlow: '' as const };
+  return {
+    ...a,
+    classification: balanceSheet ? (NON_CURRENT.some(within) ? 'Non-current' : 'Current') : '',
+    cashFlow: a.cash ? '' : pick(CASH_FLOW_RULES, ''),
+    statementLine: pick(STATEMENT_LINE_RULES, ''),
+    blockManualPosting: a.control || DOCUMENT_ONLY.some(within),
+    requiredDimensions: ['Revenue', 'Cost of sales', 'Operating expenses'].includes(a.drawer) ? ['Branch'] : [],
+    confidential: CONFIDENTIAL.some(within),
+    revalue: a.currency !== 'PHP' && a.currency !== 'All currencies',
+    reconcile: a.cash && a.name.startsWith('Cash in Bank'),
+    defaultTaxCode: pick(DEFAULT_TAX, ''),
+  };
+});
 
 /** Whether `a` sits anywhere below the title account `titleCode`. */
 export function isUnder(a: Account, titleCode: string, all: Account[]) {

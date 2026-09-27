@@ -137,6 +137,12 @@ src/
   saved chart and store the account code: only active, postable accounts of the right kind are
   offered (contra accounts never), renames show everywhere, and an account still used by item
   groups, items, partners or tax codes can't be deactivated. The account page lists its usage.
+  Each active account also carries reporting settings (account type, current/non-current,
+  cash flow category, financial statement line), posting controls (block manual journal
+  entries, valid from/to, required dimensions, confidential) and period-end/tax settings
+  (revalue, bank reconciliation, default tax code). The seed fills them by rule; statement
+  lines follow a PFRS for SMEs-style layout (STATEMENT_LINES), not an official template. There's
+  no BIR ITR schedule mapping yet; load the official schedule lines to add one.
 - Purchase orders follow the SAP B1 PO field map. Open points are settled as follows
   (see `src/mocks/purchaseOrders.ts`):
   - The vendor name is a snapshot taken when the vendor is picked.
