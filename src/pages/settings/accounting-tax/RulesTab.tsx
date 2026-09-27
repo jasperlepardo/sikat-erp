@@ -32,8 +32,8 @@ const PURCHASE_RULES = [
   'Company default → IV12 · Import VAT (IVI12) goes on the import entry, not the bill',
 ];
 const WITHHOLDING_RULES = [
-  'Vendor override → that withholding tax',
-  'Item withholding category: rent → W?100 · contractor → W?120 · professional fees → W?010/011',
+  'Vendor override → that withholding tax (an income-tiered ATC follows the vendor’s gross income)',
+  'Item withholding category: rent → W?100 · contractor → W?120 · professional fees → W?010 / W?011 by the vendor’s gross income (individuals: over ₱3M or VAT-registered; corporations: over ₱720,000)',
   'Goods or services → W?158 (1%) / W?160 (2%), only if the company is a top withholding agent',
   'WI for individuals and sole proprietors, WC for companies (from the partner’s type of business)',
 ];

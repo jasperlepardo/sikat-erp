@@ -94,6 +94,9 @@ src/
   gross income (₱3M for individuals, ₱720,000 for corporations) or VAT registration,
   each ATC carries that condition. The e-marketplace and digital financial services ATCs
   (WI/WC820, 830) apply ½% to the gross remittance.
+  A vendor's "Gross income this year exceeds ₱3M / ₱720,000" flag picks the higher ATC of
+  a pair: for professional fees from the rules, and for any income-tiered override
+  (e.g. WC139 becomes WC140). Individuals who are VAT-registered always get the higher ATC.
 - Exchange rates are PHP per unit from the BSP Reference Exchange Rate Bulletin. Paste
   the day's bulletin into "Import BSP bulletin"; the sample data holds the 30 Apr 2026
   (partial) and 25 Sep 2026 bulletins.

@@ -1,8 +1,8 @@
 import { SEED_PARTNERS, contactName, type Partner, type PartnerRole } from '../mocks/partners';
 import { createCollection } from './store';
 
-// v6: Apple distributor vendor (bp-016).
-const partners = createCollection<Partner>('sikat-erp:partners:v6', SEED_PARTNERS, 'bp');
+// v7: grossIncomeAboveThreshold for income-tiered withholding ATCs.
+const partners = createCollection<Partner>('sikat-erp:partners:v7', SEED_PARTNERS, 'bp');
 
 export const listPartners = partners.list;
 export const getPartner = partners.get;

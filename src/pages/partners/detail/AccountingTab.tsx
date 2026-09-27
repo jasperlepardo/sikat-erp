@@ -68,6 +68,22 @@ export function AccountingTab({ draft, update, errors }: TabProps) {
             : null}
           <ReadOnly label="Withholding payee type" value={payee} hint="From Type of business on the General tab." />
         </Fields>
+        {isVendor ? (
+          <>
+            <Flags>
+              {f.check(
+                'grossIncomeAboveThreshold',
+                `Gross income this year exceeds ${payee === 'Individual' ? '₱3M' : '₱720,000'}`,
+              )}
+            </Flags>
+            <Text variant="small" tone="muted">
+              {payee === 'Individual'
+                ? 'Individuals get the higher rate (e.g. WI011 10% instead of WI010 5%) above ₱3M, or when VAT-registered regardless of amount.'
+                : 'Corporations get the higher rate (e.g. WC011 15% instead of WC010 10%) above ₱720,000.'}{' '}
+              Also adjusts an override set to an income-tiered ATC.
+            </Text>
+          </>
+        ) : null}
       </Section>
 
       <Section icon="account_tree" title="Control accounts">

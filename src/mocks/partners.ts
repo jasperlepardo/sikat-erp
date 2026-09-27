@@ -164,6 +164,12 @@ export interface Partner {
   supplierVatStatus: SupplierVatStatus;
   /** Withholding tax (id) that always applies to this vendor, replacing the rules. '' = use the rules. */
   withholdingOverrideId: string;
+  /**
+   * As a supplier: gross income this year is above the BIR withholding threshold
+   * (₱3M for individuals, ₱720,000 for corporations). Picks the higher ATC of an
+   * income-tiered pair, e.g. WC011 (15%) instead of WC010 (10%).
+   */
+  grossIncomeAboveThreshold: boolean;
 
   // Accounting
   consolidatingPartnerId: string;
@@ -315,6 +321,7 @@ export function blankPartner(role: PartnerRole): Omit<Partner, 'id'> {
     zeroRatedValidUntil: '',
     supplierVatStatus: 'VAT-registered',
     withholdingOverrideId: '',
+    grossIncomeAboveThreshold: false,
     consolidatingPartnerId: '',
     consolidationType: 'payment',
     receivableAccount: '1120 Accounts Receivable – Trade',
@@ -372,7 +379,7 @@ export const SEED_PARTNERS: Partner[] = [
   ),
   seed(
     'bp-003', 'vendor',
-    { name: 'Luzon Steel Industries', tin: '345-678-901-000', email: 'sales@luzonsteel.ph', tel1: '+63 44 791 2233', vendorPaymentTerms: 'Net 60', industry: 'Manufacturing', group: 'Vendors – Local', bankName: 'BPI', bankBranch: 'Malolos', bankAccount: '8890-1122-33', bankAccountName: 'Luzon Steel Industries Inc.' },
+    { name: 'Luzon Steel Industries', tin: '345-678-901-000', email: 'sales@luzonsteel.ph', tel1: '+63 44 791 2233', vendorPaymentTerms: 'Net 60', industry: 'Manufacturing', group: 'Vendors – Local', grossIncomeAboveThreshold: true, bankName: 'BPI', bankBranch: 'Malolos', bankAccount: '8890-1122-33', bankAccountName: 'Luzon Steel Industries Inc.' },
     { firstName: 'Ramon', lastName: 'Cruz', position: 'Sales Director', email: 'ramon.cruz@luzonsteel.ph' },
     { street: 'MacArthur Hwy.', streetNo: 'Km 45', block: 'Longos', city: 'Malolos', zip: '3000', province: 'Bulacan' },
   ),
@@ -457,7 +464,7 @@ export const SEED_PARTNERS: Partner[] = [
   seed(
     'bp-016', 'vendor',
     { name: 'Apple Authorized Distributor (placeholder)', tin: '789-012-345-000', email: 'orders@apple-distributor.example.ph', industry: 'Wholesale',
-      group: 'Vendors – Local', vendorPaymentTerms: 'Net 30', properties: ['Preferred supplier', 'Accepts e-invoice'],
+      group: 'Vendors – Local', vendorPaymentTerms: 'Net 30', properties: ['Preferred supplier', 'Accepts e-invoice'], grossIncomeAboveThreshold: true,
       remarks: 'Demo vendor for the Apple catalog. Replace with the actual Apple distributor and its price file (part numbers, UPCs, cost).' },
     { firstName: 'Trade', lastName: 'Desk', position: 'Reseller accounts', email: 'orders@apple-distributor.example.ph' },
     { street: 'Ayala Ave.', streetNo: '6750', city: 'Makati', zip: '1226', province: 'Metro Manila' },

@@ -35,6 +35,7 @@ export type LineParty = Pick<
   | 'zeroRatedValidUntil'
   | 'supplierVatStatus'
   | 'withholdingOverrideId'
+  | 'grossIncomeAboveThreshold'
   | 'businessType'
 >;
 
@@ -180,6 +181,27 @@ export function determineWithholding(item: LineItem, partner: LineParty, data: T
     step(rule, 'applied', `${why} → ${w.atc} ${w.rate}% (${w.description})`);
   };
 
+  // Income-tiered ATCs: individuals move up above ₱3M or when VAT-registered; corporations above ₱720,000.
+  const high =
+    payee === 'Individual'
+      ? partner.grossIncomeAboveThreshold || partner.supplierVatStatus === 'VAT-registered'
+      : partner.grossIncomeAboveThreshold;
+  const tierLabel =
+    payee === 'Individual'
+      ? high
+        ? partner.grossIncomeAboveThreshold ? 'gross income > ₱3M' : 'VAT-registered'
+        : 'non-VAT, gross income ≤ ₱3M'
+      : high ? 'gross income > ₱720,000' : 'gross income ≤ ₱720,000';
+  /** The sibling of a tiered ATC (same income payment and payee) that matches the vendor's income. */
+  const tierOf = (w: WithholdingTax) => {
+    if (!w.condition) return w;
+    const siblings = data.withholding.filter(
+      (x) => x.active && x.condition && x.kind === w.kind && x.payee === w.payee && x.description === w.description,
+    );
+    const rates = siblings.map((x) => x.rate);
+    return siblings.find((x) => x.rate === (high ? Math.max(...rates) : Math.min(...rates))) ?? w;
+  };
+
   // Withholding VAT on non-resident digital services (on top of any EWT).
   if (partner.supplierVatStatus === 'Non-resident digital services') {
     const wv = data.withholding.find((w) => w.kind === 'Withholding VAT' && w.rate === 12 && w.active);
@@ -191,10 +213,17 @@ export function determineWithholding(item: LineItem, partner: LineParty, data: T
 
   // 1. Vendor override
   if (partner.withholdingOverrideId) {
-    const w = data.withholding.find((x) => x.id === partner.withholdingOverrideId);
-    if (w) {
+    const set = data.withholding.find((x) => x.id === partner.withholdingOverrideId);
+    if (set) {
+      const w = tierOf(set);
       withholding.push(w);
-      step('Vendor override', 'applied', `Set on the vendor → ${w.atc || 'ATC to confirm'} ${w.rate}%`);
+      step(
+        'Vendor override',
+        'applied',
+        w === set
+          ? `Set on the vendor → ${w.atc || 'ATC to confirm'} ${w.rate}%`
+          : `Set on the vendor as ${set.atc}, adjusted for ${tierLabel} → ${w.atc} ${w.rate}%`,
+      );
       return { withholding, withholdingTrace };
     }
     step('Vendor override', 'warning', 'The vendor’s override points to a withholding tax that no longer exists.');
@@ -221,13 +250,10 @@ export function determineWithholding(item: LineItem, partner: LineParty, data: T
       take('Item withholding category: contractor', `${prefix}120`, `Contractor, ${payee.toLowerCase()} payee`);
       break;
     case 'Professional fees':
-      // The ₱3M / ₱720,000 thresholds depend on the payee's income; VAT status is the usual signal.
       take(
         'Item withholding category: professional fees',
-        payee === 'Individual' ? (partner.supplierVatStatus === 'Non-VAT' ? 'WI010' : 'WI011') : 'WC011',
-        payee === 'Individual'
-          ? `Individual professional, ${partner.supplierVatStatus === 'Non-VAT' ? 'non-VAT (≤ ₱3M)' : 'VAT-registered'}`
-          : 'Corporate professional (confirm the ₱720,000 threshold for WC010)',
+        `${prefix}01${high ? 1 : 0}`,
+        `${payee} professional, ${tierLabel}`,
       );
       break;
     case 'Goods':
