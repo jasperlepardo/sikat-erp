@@ -133,8 +133,10 @@ src/
   accounts, 4-digit codes) in SAP-style drawers: Assets, Liabilities, Equity, Revenue, Cost of
   sales, Operating expenses, Other income, Other expenses and Income tax. Title accounts
   group active accounts; control (AR/AP), cash and contra accounts are flagged. The G/L
-  dropdowns on item groups, tax codes and business partners read their options from the
-  seed chart; accounts added later in the page don't reach those dropdowns yet.
+  dropdowns on items, item groups, tax codes and business partners read the
+  saved chart and store the account code: only active, postable accounts of the right kind are
+  offered (contra accounts never), renames show everywhere, and an account still used by item
+  groups, items, partners or tax codes can't be deactivated. The account page lists its usage.
 - Purchase orders follow the SAP B1 PO field map. Open points are settled as follows
   (see `src/mocks/purchaseOrders.ts`):
   - The vendor name is a snapshot taken when the vendor is picked.
