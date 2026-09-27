@@ -18,7 +18,7 @@ const blank = (): ExciseCategory => ({
 });
 
 export function ExciseTab() {
-  const { rows, save } = useCollectionRows(exciseCategories);
+  const { rows, save, setActive } = useCollectionRows(exciseCategories);
   return (
     <MasterList<ExciseCategory>
       icon="local_bar"
@@ -26,6 +26,7 @@ export function ExciseTab() {
       noun="excise category"
       description="Excise on top of VAT for sin and other covered products. Items flagged as excise-taxable pick one of these. Sin-tax rates step up every January — update them yearly."
       rows={rows}
+      onSetActive={setActive}
       columns={[
         { key: 'code', header: 'Code', cell: (x) => <span className="font-semibold">{x.code}</span> },
         { key: 'name', header: 'Products', cell: (x) => x.name },
@@ -39,7 +40,9 @@ export function ExciseTab() {
         {
           key: 'active',
           header: 'Status',
-          cell: (x) => <TableStatus intent={x.active ? 'success' : 'default'}>{x.active ? 'Active' : 'Inactive'}</TableStatus>,
+          cell: (x) => (
+            <TableStatus intent={x.active ? 'success' : 'default'}>{x.active ? 'Active' : 'Inactive'}</TableStatus>
+          ),
         },
       ]}
       searchText={(x) => `${x.code} ${x.name} ${x.legalBasis}`}
@@ -48,7 +51,8 @@ export function ExciseTab() {
       validate={(x, all) => {
         const e: Record<string, string> = {};
         if (!x.code.trim()) e.code = 'Code is required.';
-        else if (all.some((o) => o.id !== x.id && o.code.toLowerCase() === x.code.trim().toLowerCase())) e.code = `${x.code} already exists.`;
+        else if (all.some((o) => o.id !== x.id && o.code.toLowerCase() === x.code.trim().toLowerCase()))
+          e.code = `${x.code} already exists.`;
         if (!x.name.trim()) e.name = 'Name is required.';
         return e;
       }}

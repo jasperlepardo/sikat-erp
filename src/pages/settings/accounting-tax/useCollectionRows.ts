@@ -12,7 +12,12 @@ export function useCollectionRows<T extends { id: string }>(collection: {
     await collection.save(row);
     setVersion((v) => v + 1);
   };
-  return { rows, save, reload: () => setVersion((v) => v + 1) };
+  /** Bulk activate/deactivate (for rows with an `active` flag). */
+  const setActive = async (picked: T[], active: boolean) => {
+    for (const row of picked) await collection.save({ ...row, active });
+    setVersion((v) => v + 1);
+  };
+  return { rows, save, setActive, reload: () => setVersion((v) => v + 1) };
 }
 
 export const newId = (prefix: string) => `${prefix}-${crypto.randomUUID().slice(0, 8)}`;

@@ -1,5 +1,14 @@
 import { useMemo, useState } from 'react';
-import { Badge, DatePicker, FormField, Select, Table, TableStatus, Text } from '@jasperlepardo/sikat-design-system';
+import {
+  Badge,
+  Card,
+  DatePicker,
+  FormField,
+  Select,
+  Table,
+  TableStatus,
+  Text,
+} from '@jasperlepardo/sikat-design-system';
 import { Fields, ReadOnly, Section } from '../../../components/form/fields';
 import type { TaxDirection } from '../../../mocks/taxes';
 import { companyTax, taxCodes, taxGroups, withholdingTaxes } from '../../../services/masterData';
@@ -36,24 +45,26 @@ function Trace({ steps, caption }: { steps: TraceStep[]; caption: string }) {
   return (
     <div className="flex flex-col gap-1">
       <p className="text-sm font-semibold text-heading">{caption}</p>
-      <Table
-        caption={caption}
-        getRowId={(s) => s.rule + s.detail}
-        rows={steps}
-        columns={[
-          { key: 'rule', header: 'Rule', cell: (s) => s.rule },
-          {
-            key: 'outcome',
-            header: 'Result',
-            cell: (s) => (
-              <TableStatus intent={outcomeIntent(s.outcome)}>
-                {s.outcome === 'applied' ? 'Applied' : s.outcome === 'warning' ? 'Check' : 'Skipped'}
-              </TableStatus>
-            ),
-          },
-          { key: 'detail', header: 'Why', cell: (s) => s.detail },
-        ]}
-      />
+      <Card>
+        <Table
+          caption={caption}
+          getRowId={(s) => s.rule + s.detail}
+          rows={steps}
+          columns={[
+            { key: 'rule', header: 'Rule', cell: (s) => s.rule },
+            {
+              key: 'outcome',
+              header: 'Result',
+              cell: (s) => (
+                <TableStatus intent={outcomeIntent(s.outcome)}>
+                  {s.outcome === 'applied' ? 'Applied' : s.outcome === 'warning' ? 'Check' : 'Skipped'}
+                </TableStatus>
+              ),
+            },
+            { key: 'detail', header: 'Why', cell: (s) => s.detail },
+          ]}
+        />
+      </Card>
     </div>
   );
 }

@@ -1,7 +1,23 @@
-import { Button, DatePicker, Icon, Table, TableStatus, Text, TextField } from '@jasperlepardo/sikat-design-system';
+import {
+  Button,
+  Card,
+  DatePicker,
+  Icon,
+  Table,
+  TableStatus,
+  Text,
+  TextField,
+} from '@jasperlepardo/sikat-design-system';
 import { Fields, Flags, Section, bind } from '../../../components/form/fields';
 import { MasterList } from '../../../components/form/MasterList';
-import { BIR_RETURNS, TAX_CATEGORIES, TAX_GL_ACCOUNTS, currentRate, type TaxCode, type TaxRatePeriod } from '../../../mocks/taxes';
+import {
+  BIR_RETURNS,
+  TAX_CATEGORIES,
+  TAX_GL_ACCOUNTS,
+  currentRate,
+  type TaxCode,
+  type TaxRatePeriod,
+} from '../../../mocks/taxes';
 import { taxCodes } from '../../../services/masterData';
 import { newId, useCollectionRows } from './useCollectionRows';
 
@@ -22,7 +38,7 @@ const blank = (): TaxCode => ({
 });
 
 export function TaxCodesTab() {
-  const { rows, save } = useCollectionRows(taxCodes);
+  const { rows, save, setActive } = useCollectionRows(taxCodes);
   return (
     <MasterList<TaxCode>
       icon="percent"
@@ -30,10 +46,22 @@ export function TaxCodesTab() {
       noun="tax code"
       description="VAT and percentage tax applied on document rows. Rates are kept with effective dates, so older documents keep the rate of their posting date."
       rows={rows}
+      onSetActive={setActive}
+      sortValue={(t, key) =>
+        key === 'rate'
+          ? (currentRate(t) ?? -1)
+          : key === 'active'
+            ? Number(t.active)
+            : String(t[key as keyof TaxCode] ?? '').toLowerCase()
+      }
       columns={[
         { key: 'code', header: 'Code', cell: (t) => t.code },
         { key: 'name', header: 'Name', cell: (t) => t.name },
-        { key: 'direction', header: 'Used on', cell: (t) => (t.direction === 'Sales' ? 'Sales (output)' : 'Purchases (input)') },
+        {
+          key: 'direction',
+          header: 'Used on',
+          cell: (t) => (t.direction === 'Sales' ? 'Sales (output)' : 'Purchases (input)'),
+        },
         {
           key: 'rate',
           header: 'Rate today',
@@ -51,7 +79,9 @@ export function TaxCodesTab() {
         {
           key: 'active',
           header: 'Status',
-          cell: (t) => <TableStatus intent={t.active ? 'success' : 'default'}>{t.active ? 'Active' : 'Inactive'}</TableStatus>,
+          cell: (t) => (
+            <TableStatus intent={t.active ? 'success' : 'default'}>{t.active ? 'Active' : 'Inactive'}</TableStatus>
+          ),
         },
       ]}
       searchText={(t) => `${t.code} ${t.name} ${t.category} ${t.legalBasis}`}
@@ -66,11 +96,16 @@ export function TaxCodesTab() {
         if (!t.rates.length) e.rates = 'Add at least one rate.';
         else if (t.rates.some((r) => !r.from)) e.rates = 'Every rate needs an effective date.';
         else if (t.rates.some((r) => r.rate < 0 || r.rate > 100)) e.rates = 'Rates must be between 0 and 100.';
-        else if (new Set(t.rates.map((r) => r.from)).size !== t.rates.length) e.rates = 'Two rates start on the same date.';
+        else if (new Set(t.rates.map((r) => r.from)).size !== t.rates.length)
+          e.rates = 'Two rates start on the same date.';
         return e;
       }}
       onSave={(t) =>
-        save({ ...t, code: t.code.trim().toUpperCase(), rates: [...t.rates].sort((a, b) => a.from.localeCompare(b.from)) })
+        save({
+          ...t,
+          code: t.code.trim().toUpperCase(),
+          rates: [...t.rates].sort((a, b) => a.from.localeCompare(b.from)),
+        })
       }
       editor={(t, update, errors) => {
         const f = bind(t, update);
@@ -106,7 +141,8 @@ function RateHistory({
   onChange: (rates: TaxRatePeriod[]) => void;
 }) {
   const rows = rates.map((r, i) => ({ ...r, id: String(i) }));
-  const set = (i: number, patch: Partial<TaxRatePeriod>) => onChange(rates.map((r, j) => (j === i ? { ...r, ...patch } : r)));
+  const set = (i: number, patch: Partial<TaxRatePeriod>) =>
+    onChange(rates.map((r, j) => (j === i ? { ...r, ...patch } : r)));
   const current = [...rates].sort((a, b) => b.from.localeCompare(a.from)).find((r) => r.from <= today());
 
   return (
@@ -129,63 +165,69 @@ function RateHistory({
       <Text variant="small" tone="muted">
         When a rate changes, add a new period instead of editing the old one.
       </Text>
-      <Table
-        caption="Rate history"
-        getRowId={(r) => r.id}
-        rows={rows}
-        columns={[
-          {
-            key: 'from',
-            header: 'Effective from',
-            cell: (r) => (
-              <DatePicker aria-label="Effective from" value={r.from || null} onValueChange={(from) => set(Number(r.id), { from })} />
-            ),
-          },
-          {
-            key: 'rate',
-            header: 'Rate',
-            cell: (r) => (
-              <TextField
-                aria-label="Rate"
-                type="number"
-                min={0}
-                suffix="%"
-                value={String(r.rate)}
-                onChange={(e) => set(Number(r.id), { rate: Number(e.currentTarget.value) })}
-              />
-            ),
-          },
-          {
-            key: 'status',
-            header: 'Status',
-            cell: (r) =>
-              r.from > today() ? (
-                <TableStatus intent="primary">Upcoming</TableStatus>
-              ) : current && r.from === current.from ? (
-                <TableStatus intent="success">In force</TableStatus>
-              ) : (
-                <TableStatus intent="default">Superseded</TableStatus>
+      <Card>
+        <Table
+          caption="Rate history"
+          getRowId={(r) => r.id}
+          rows={rows}
+          columns={[
+            {
+              key: 'from',
+              header: 'Effective from',
+              cell: (r) => (
+                <DatePicker
+                  aria-label="Effective from"
+                  value={r.from || null}
+                  onValueChange={(from) => set(Number(r.id), { from })}
+                />
               ),
-          },
-          {
-            key: 'remove',
-            header: 'Remove',
-            srOnlyHeader: true,
-            cell: (r) => (
-              <Button
-                type="button"
-                size="small"
-                variant="ghost"
-                intent="danger"
-                disabled={rates.length === 1}
-                onClick={() => onChange(rates.filter((_, j) => j !== Number(r.id)))}
-              >
-                Remove
-              </Button>
-            ),
-          },
-        ]}
-      />
+            },
+            {
+              key: 'rate',
+              header: 'Rate',
+              cell: (r) => (
+                <TextField
+                  aria-label="Rate"
+                  type="number"
+                  min={0}
+                  suffix="%"
+                  value={String(r.rate)}
+                  onChange={(e) => set(Number(r.id), { rate: Number(e.currentTarget.value) })}
+                />
+              ),
+            },
+            {
+              key: 'status',
+              header: 'Status',
+              cell: (r) =>
+                r.from > today() ? (
+                  <TableStatus intent="primary">Upcoming</TableStatus>
+                ) : current && r.from === current.from ? (
+                  <TableStatus intent="success">In force</TableStatus>
+                ) : (
+                  <TableStatus intent="default">Superseded</TableStatus>
+                ),
+            },
+            {
+              key: 'remove',
+              header: 'Remove',
+              srOnlyHeader: true,
+              cell: (r) => (
+                <Button
+                  type="button"
+                  size="small"
+                  variant="ghost"
+                  intent="danger"
+                  disabled={rates.length === 1}
+                  onClick={() => onChange(rates.filter((_, j) => j !== Number(r.id)))}
+                >
+                  Remove
+                </Button>
+              ),
+            },
+          ]}
+        />
+      </Card>
       {error ? (
         <Text variant="small" tone="danger">
           {error}

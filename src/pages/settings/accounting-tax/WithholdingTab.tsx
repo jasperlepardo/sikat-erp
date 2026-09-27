@@ -20,7 +20,7 @@ const blank = (): WithholdingTax => ({
 });
 
 export function WithholdingTab() {
-  const { rows, save } = useCollectionRows(withholdingTaxes);
+  const { rows, save, setActive } = useCollectionRows(withholdingTaxes);
   return (
     <MasterList<WithholdingTax>
       icon="request_quote"
@@ -28,11 +28,13 @@ export function WithholdingTab() {
       noun="withholding tax"
       description="Creditable taxes you withhold when paying suppliers, by BIR Alphanumeric Tax Code (ATC). Suppliers get a BIR Form 2307 for each."
       rows={rows}
+      onSetActive={setActive}
       columns={[
         {
           key: 'atc',
           header: 'ATC',
-          cell: (w) => (w.atc ? <span className="font-semibold">{w.atc}</span> : <span className="text-warning">To confirm</span>),
+          cell: (w) =>
+            w.atc ? <span className="font-semibold">{w.atc}</span> : <span className="text-warning">To confirm</span>,
         },
         { key: 'description', header: 'Income payment', cell: (w) => w.description },
         { key: 'payee', header: 'Payee', cell: (w) => w.payee },
@@ -41,7 +43,9 @@ export function WithholdingTab() {
         {
           key: 'active',
           header: 'Status',
-          cell: (w) => <TableStatus intent={w.active ? 'success' : 'default'}>{w.active ? 'Active' : 'Inactive'}</TableStatus>,
+          cell: (w) => (
+            <TableStatus intent={w.active ? 'success' : 'default'}>{w.active ? 'Active' : 'Inactive'}</TableStatus>
+          ),
         },
       ]}
       searchText={(w) => `${w.atc} ${w.description} ${w.kind} ${w.payee} ${w.legalBasis}`}
@@ -50,7 +54,8 @@ export function WithholdingTab() {
       validate={(w, all) => {
         const e: Record<string, string> = {};
         if (!w.description.trim()) e.description = 'Describe the income payment.';
-        if (w.atc && all.some((x) => x.id !== w.id && x.atc === w.atc.trim().toUpperCase())) e.atc = `${w.atc} already exists.`;
+        if (w.atc && all.some((x) => x.id !== w.id && x.atc === w.atc.trim().toUpperCase()))
+          e.atc = `${w.atc} already exists.`;
         if (w.rate <= 0 || w.rate > 100) e.rate = 'Rate must be above 0 and at most 100.';
         return e;
       }}
@@ -60,12 +65,24 @@ export function WithholdingTab() {
         return (
           <>
             <Fields cols={3}>
-              {f.text('atc', 'ATC', { error: errors.atc, placeholder: 'e.g. WC158', hint: 'Leave blank until confirmed.' })}
-              {f.text('description', 'Income payment', { required: true, error: errors.description, className: 'md:col-span-2' })}
+              {f.text('atc', 'ATC', {
+                error: errors.atc,
+                placeholder: 'e.g. WC158',
+                hint: 'Leave blank until confirmed.',
+              })}
+              {f.text('description', 'Income payment', {
+                required: true,
+                error: errors.description,
+                className: 'md:col-span-2',
+              })}
               {f.pick('kind', 'Kind', ['Expanded (EWT)', 'Withholding VAT'])}
               {f.pick('payee', 'Payee', ['Individual', 'Corporate', 'Any'])}
               {f.num('rate', 'Rate', { required: true, error: errors.rate, suffix: '%' })}
-              {f.pick('base', 'Applied to', ['Amount net of VAT', 'One-half of gross remittance', 'VAT-exclusive amount'])}
+              {f.pick('base', 'Applied to', [
+                'Amount net of VAT',
+                'One-half of gross remittance',
+                'VAT-exclusive amount',
+              ])}
               {f.text('birForms', 'BIR forms')}
               {f.text('legalBasis', 'Legal basis')}
               {f.area('notes', 'Notes', { rows: 2, className: 'md:col-span-3' })}

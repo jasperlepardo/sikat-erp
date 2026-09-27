@@ -22,7 +22,7 @@ const blank = (): Currency => ({
 });
 
 export function CurrenciesTab() {
-  const { rows, save, reload } = useCollectionRows(currencies);
+  const { rows, save, setActive, reload } = useCollectionRows(currencies);
   const rates = useAsync(exchangeRates.list, []) ?? [];
 
   return (
@@ -32,6 +32,20 @@ export function CurrenciesTab() {
       noun="currency"
       description="Books are kept in Philippine pesos (local currency). Active currencies can be used on partners and documents; rates come from the BSP bulletin on the Exchange rates tab."
       rows={rows}
+      // The local and system currencies always stay active.
+      onSetActive={(picked, active) =>
+        setActive(active ? picked : picked.filter((c) => !c.isLocal && !c.isSystem), active)
+      }
+      defaultSort={{ key: 'code', direction: 'asc' }}
+      sortValue={(c, key) =>
+        key === 'code'
+          ? `${c.isLocal ? 0 : c.isSystem ? 1 : 2}${c.code}`
+          : key === 'rate'
+            ? (rateOn(rates, c.code)?.rate ?? -1)
+            : key === 'active'
+              ? Number(c.active)
+              : String(c[key as keyof Currency] ?? '').toLowerCase()
+      }
       columns={[
         {
           key: 'code',
@@ -65,7 +79,9 @@ export function CurrenciesTab() {
         {
           key: 'active',
           header: 'Status',
-          cell: (c) => <TableStatus intent={c.active ? 'success' : 'default'}>{c.active ? 'Active' : 'Inactive'}</TableStatus>,
+          cell: (c) => (
+            <TableStatus intent={c.active ? 'success' : 'default'}>{c.active ? 'Active' : 'Inactive'}</TableStatus>
+          ),
         },
       ]}
       searchText={(c) => `${c.code} ${c.name} ${c.unitName}`}

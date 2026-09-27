@@ -9,7 +9,7 @@ import { newId, useCollectionRows } from './useCollectionRows';
 const blank = (): TaxGroup => ({ id: newId('tg'), code: '', name: '', direction: 'Sales', taxCode: '', active: true });
 
 export function TaxGroupsTab() {
-  const { rows, save } = useCollectionRows(taxGroups);
+  const { rows, save, setActive } = useCollectionRows(taxGroups);
   const codes = useAsync(taxCodes.list, []) ?? [];
   const codeOf = (code: string) => codes.find((c) => c.code === code);
 
@@ -20,6 +20,7 @@ export function TaxGroupsTab() {
       noun="tax group"
       description="Items carry a sales and a purchase tax group: the default code for what the item is (goods, services, capital goods, exempt…). The partner’s or company’s tax status can override it — see Determination rules."
       rows={rows}
+      onSetActive={setActive}
       columns={[
         { key: 'code', header: 'Code', cell: (g) => g.code },
         { key: 'name', header: 'Name', cell: (g) => g.name },
@@ -29,13 +30,19 @@ export function TaxGroupsTab() {
           header: 'Default tax code',
           cell: (g) => {
             const c = codeOf(g.taxCode);
-            return c ? `${c.code} · ${c.name} (${currentRate(c) ?? '—'}%)` : <span className="text-warning">Missing</span>;
+            return c ? (
+              `${c.code} · ${c.name} (${currentRate(c) ?? '—'}%)`
+            ) : (
+              <span className="text-warning">Missing</span>
+            );
           },
         },
         {
           key: 'active',
           header: 'Status',
-          cell: (g) => <TableStatus intent={g.active ? 'success' : 'default'}>{g.active ? 'Active' : 'Inactive'}</TableStatus>,
+          cell: (g) => (
+            <TableStatus intent={g.active ? 'success' : 'default'}>{g.active ? 'Active' : 'Inactive'}</TableStatus>
+          ),
         },
       ]}
       searchText={(g) => `${g.code} ${g.name} ${g.taxCode}`}

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import {
   Alert,
   Button,
+  Card,
   DatePicker,
   FormField,
   Icon,
@@ -51,11 +52,19 @@ export function ExchangeRatesTab() {
         noun="exchange rate"
         description={
           <>
-            Pesos per 1 unit of foreign currency, one rate per currency per day. Documents use the latest rate on or before
-            their posting date. Source: the <Link href={BSP_RERB_URL} target="_blank" rel="noreferrer">BSP Reference Exchange Rate Bulletin</Link>, published every banking day.
+            Pesos per 1 unit of foreign currency, one rate per currency per day. Documents use the latest rate on or
+            before their posting date. Source: the{' '}
+            <Link href={BSP_RERB_URL} target="_blank" rel="noreferrer">
+              BSP Reference Exchange Rate Bulletin
+            </Link>
+            , published every banking day.
           </>
         }
         rows={sorted}
+        defaultSort={{ key: 'date', direction: 'desc' }}
+        sortValue={(r, key) =>
+          key === 'inverse' ? 1 / r.rate : key === 'rate' ? r.rate : String(r[key as keyof ExchangeRate])
+        }
         actions={
           <Button
             type="button"
@@ -161,7 +170,14 @@ function BspImport({
           <Button type="button" size="small" variant="ghost" onClick={onClose}>
             Cancel
           </Button>
-          <Button type="button" size="small" intent="primary" variant="solid" disabled={!parsed.length || saving} onClick={run}>
+          <Button
+            type="button"
+            size="small"
+            intent="primary"
+            variant="solid"
+            disabled={!parsed.length || saving}
+            onClick={run}
+          >
             {saving ? 'Importing…' : `Import ${parsed.length || ''} rate${parsed.length === 1 ? '' : 's'}`}
           </Button>
         </div>
@@ -169,8 +185,11 @@ function BspImport({
     >
       <ol className="list-decimal space-y-1 pl-5 text-sm text-body">
         <li>
-          Open the <Link href={BSP_RERB_URL} target="_blank" rel="noreferrer">BSP exchange rate page</Link> and the day’s
-          bulletin.
+          Open the{' '}
+          <Link href={BSP_RERB_URL} target="_blank" rel="noreferrer">
+            BSP exchange rate page
+          </Link>{' '}
+          and the day’s bulletin.
         </li>
         <li>Select the currency table and copy it — the web table or the PDF both work.</li>
         <li>Paste it below and check the preview. Rates are pesos per unit (the “Phil. peso equivalent” column).</li>
@@ -203,27 +222,29 @@ function BspImport({
         </Alert>
       ) : null}
       {parsed.length ? (
-        <Table
-          caption="Rates to import"
-          getRowId={(r) => r.currency}
-          rows={parsed}
-          columns={[
-            { key: 'currency', header: 'Currency', cell: (r) => r.currency },
-            { key: 'rate', header: 'PHP per unit', cell: (r) => fmt(r.rate) },
-            {
-              key: 'action',
-              header: 'Action',
-              cell: (r) => {
-                const prior = replaces(r.currency);
-                return prior ? (
-                  <TableStatus intent="warning">Replaces {fmt(prior.rate)}</TableStatus>
-                ) : (
-                  <TableStatus intent="success">New</TableStatus>
-                );
+        <Card>
+          <Table
+            caption="Rates to import"
+            getRowId={(r) => r.currency}
+            rows={parsed}
+            columns={[
+              { key: 'currency', header: 'Currency', cell: (r) => r.currency },
+              { key: 'rate', header: 'PHP per unit', cell: (r) => fmt(r.rate) },
+              {
+                key: 'action',
+                header: 'Action',
+                cell: (r) => {
+                  const prior = replaces(r.currency);
+                  return prior ? (
+                    <TableStatus intent="warning">Replaces {fmt(prior.rate)}</TableStatus>
+                  ) : (
+                    <TableStatus intent="success">New</TableStatus>
+                  );
+                },
               },
-            },
-          ]}
-        />
+            ]}
+          />
+        </Card>
       ) : null}
       {bulletin.unavailable.length ? (
         <Text variant="small" tone="muted">
@@ -236,4 +257,3 @@ function BspImport({
     </Section>
   );
 }
-
