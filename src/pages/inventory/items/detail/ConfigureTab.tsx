@@ -1,11 +1,9 @@
 import { Button, Text } from '@jasperlepardo/sikat-design-system';
 import { Fields, Flags, ReadOnly, Section, bind } from '../../../../components/form/fields';
+import { AccountField, useAccounts } from '../../../../components/form/AccountField';
 import {
-  COGS_ACCOUNTS,
   GL_BY,
-  INVENTORY_ACCOUNTS,
   ISSUE_METHODS,
-  REVENUE_ACCOUNTS,
   VALUATION_METHODS,
   volumeUnit,
 } from '../../../../mocks/itemMasters';
@@ -25,6 +23,7 @@ export type ConfigurePanelTab = 'accounting' | 'tax' | 'purchasing' | 'sales';
 
 export function ConfigureTab({ draft, update, errors, vendors, tax, inv, activeTab }: TabProps & { activeTab?: ConfigurePanelTab }) {
   const f = bind(draft, update);
+  const allAccounts = useAccounts();
   const { lengthUnit, weightUnit } = inv.settings;
   const service = draft.itemType !== 'Items';
   const group = inv.groups.find((g) => g.name === draft.itemGroup);
@@ -72,9 +71,9 @@ export function ConfigureTab({ draft, update, errors, vendors, tax, inv, activeT
               })}
               {draft.glBy === 'Item Level' ? (
                 <>
-                  {f.pick('inventoryAccount', 'Inventory account', INVENTORY_ACCOUNTS)}
-                  {f.pick('cogsAccount', 'Cost of goods sold account', COGS_ACCOUNTS)}
-                  {f.pick('revenueAccount', 'Revenue account', REVENUE_ACCOUNTS)}
+                  <AccountField label="Inventory account" role="inventory" value={draft.inventoryAccount} onChange={(v) => update({ inventoryAccount: v })} accounts={allAccounts} />
+                  <AccountField label="Cost of goods sold account" role="cogs" value={draft.cogsAccount} onChange={(v) => update({ cogsAccount: v })} accounts={allAccounts} />
+                  <AccountField label="Revenue account" role="revenue" value={draft.revenueAccount} onChange={(v) => update({ revenueAccount: v })} accounts={allAccounts} />
                 </>
               ) : draft.glBy === 'Item Group' ? (
                 <>

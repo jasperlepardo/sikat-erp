@@ -19,6 +19,7 @@ import { listPartnersByRole } from '../../../../services/partners';
 import { exciseCategories, taxCodes, taxGroups } from '../../../../services/masterData';
 import { AttachmentsTab } from './AttachmentsTab';
 import { BarcodesTab } from './BarcodesTab';
+import { ConfigureTab } from './ConfigureTab';
 import { GeneralTab } from './GeneralTab';
 import { InventoryTab } from './InventoryTab';
 import { ManufacturersTab } from './ManufacturersTab';
@@ -33,6 +34,7 @@ import { LOCKED_HINT, asOptions, type Draft, type TaxMasters } from './types';
 const LIST_PATH = '/inventory/items';
 
 const TABS = [
+  { value: 'configure', label: 'Configure', Component: ConfigureTab },
   { value: 'general', label: 'General', Component: GeneralTab },
   { value: 'purchasing', label: 'Purchasing', Component: PurchasingTab },
   { value: 'sales', label: 'Sales', Component: SalesTab },

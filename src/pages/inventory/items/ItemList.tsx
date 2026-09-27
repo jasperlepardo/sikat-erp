@@ -47,7 +47,7 @@ function sortValue(i: Item, key: string): string | number {
   return typeof v === 'number' ? v : String(v ?? '').toLowerCase();
 }
 
-export function ItemList() {
+export function ItemList({ basePath = '/inventory/items' }: { basePath?: string }) {
   const navigate = useNavigate();
   const items = useAsync(listItems, []);
   const [filter, setFilter] = useState<Filter>('all');
@@ -77,7 +77,7 @@ export function ItemList() {
   }, [items, filter, query, sort]);
 
   const count = (f: Filter) => String(items?.filter(FILTERS[f]).length ?? '');
-  const open = (i: Item) => navigate(`/inventory/items/${i.id}`);
+  const open = (i: Item) => navigate(`${basePath}/${i.id}`);
 
   const columns: TableColumn<Item>[] = [
     {
@@ -162,7 +162,7 @@ export function ItemList() {
             variant="solid"
             size="extra-large"
             leadingIcon={<Icon size={20}>add</Icon>}
-            onClick={() => navigate('/inventory/items/new')}
+            onClick={() => navigate(`${basePath}/new`)}
           >
             New item
           </Button>

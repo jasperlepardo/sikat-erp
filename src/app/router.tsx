@@ -3,6 +3,8 @@ import { AppShell } from './AppShell';
 import { Home } from '../pages/Home';
 import { ItemList } from '../pages/inventory/items/ItemList';
 import { ItemDetail } from '../pages/inventory/items/detail/ItemDetail';
+import { ItemListNew } from '../pages/inventory/items-new/ItemListNew';
+import { ItemDetailNew } from '../pages/inventory/items-new/ItemDetailNew';
 import { Placeholder } from '../pages/Placeholder';
 import { AccountingTaxPage } from '../pages/settings/accounting-tax/AccountingTaxPage';
 import { InventorySettingsPage } from '../pages/settings/inventory/InventorySettingsPage';
@@ -34,6 +36,8 @@ export const router = createHashRouter([
       { index: true, element: <Home /> },
       { path: 'inventory/items', element: <ItemList /> },
       { path: 'inventory/items/:id', element: <ItemDetail /> },
+      { path: 'inventory/items-new', element: <ItemListNew /> },
+      { path: 'inventory/items-new/:id', element: <ItemDetailNew /> },
       ...partnerRoutes,
       { path: 'purchasing/purchase-orders', element: <PurchaseOrderList /> },
       { path: 'purchasing/purchase-orders/:id', element: <PurchaseOrderDetail /> },

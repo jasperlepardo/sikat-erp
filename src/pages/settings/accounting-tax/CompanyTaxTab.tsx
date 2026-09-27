@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Button, Text } from '@jasperlepardo/sikat-design-system';
+import { Button, Combobox, FormField, Text } from '@jasperlepardo/sikat-design-system';
 import { Fields, Flags, Section, bind } from '../../../components/form/fields';
-import type { CompanyTaxProfile } from '../../../mocks/taxes';
+import { RDOS, type CompanyTaxProfile } from '../../../mocks/taxes';
 import { companyTax } from '../../../services/masterData';
 
 /** The company's own BIR registration — drives percentage tax and top-withholding-agent rules. */
@@ -48,7 +48,17 @@ export function CompanyTaxTab() {
       <Fields cols={3}>
         {f.text('registeredName', 'Registered name')}
         {f.text('tin', 'TIN', { placeholder: '000-000-000-000', error })}
-        {f.text('rdoCode', 'RDO code', { placeholder: 'e.g. 043', hint: 'Revenue District Office on the COR.' })}
+        <FormField label="RDO code" hint="Revenue District Office on the COR.">
+          {(p) => (
+            <Combobox
+              {...p}
+              options={RDOS}
+              value={profile.rdoCode || null}
+              placeholder="Search by code or area"
+              onValueChange={(v) => setProfile({ ...profile, rdoCode: v ?? '' })}
+            />
+          )}
+        </FormField>
       </Fields>
       <Flags>
         {f.check('vatRegistered', 'VAT-registered')}
