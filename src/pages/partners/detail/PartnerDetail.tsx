@@ -315,7 +315,7 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
 
             <div className="grid gap-2 lg:grid-cols-12">
               <aside className="flex flex-col gap-2 lg:col-span-3">
-                <DefaultsCard draft={draft} />
+                <DefaultsCard draft={draft} update={update} />
                 <ContactChannelsCards draft={draft} update={update} onOpen={(value, added) => setEditing({ kind: 'channel', value, isNew: added })} />
                 <ContactsCards draft={draft} update={update} onOpen={(value, added) => setEditing({ kind: 'contact', value, isNew: added })} />
                 <AddressesCards draft={draft} update={update} onOpen={(value, added) => setEditing({ kind: 'address', value, isNew: added })} />
