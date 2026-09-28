@@ -245,7 +245,7 @@ export function blankPurchaseOrder(buyer: string): Omit<PurchaseOrder, 'id'> {
     remarks: '',
     discountPct: 0,
     freight: 0,
-    freightTaxCode: 'IVS12',
+    freightTaxCode: '44',
   };
 }
 
@@ -266,7 +266,7 @@ const line = (n: string, itemNo: string, quantity: number, patch: Partial<PoLine
     uomName: item.purchasingUom === 'pc' ? 'Piece' : item.purchasingUom,
     itemsPerUnit: item.itemsPerPurchaseUnit,
     unitPrice: item.itemCost,
-    taxCode: item.purchaseTaxGroup === 'P-VAT12S' ? 'IVS12' : 'IV12',
+    taxCode: '44',
     mfrNo: item.manufacturers[0]?.catalogNo ?? '',
     ...patch,
   });
@@ -342,7 +342,7 @@ export const SEED_PURCHASE_ORDERS: PurchaseOrder[] = [
     lines: [
       newPoLine({
         id: 'po-005-1', itemId: 'itm-020', itemNo: 'SVC-CLD-HOST', description: 'Cloud hosting subscription (October 2026)',
-        quantity: 1, unitPrice: 420, taxCode: 'IVD12', warehouse: '', deliveryDate: '2026-10-01', blanketAgreement: 'BA-2026-003',
+        quantity: 1, unitPrice: 420, taxCode: '45', warehouse: '', deliveryDate: '2026-10-01', blanketAgreement: 'BA-2026-003',
         department: 'IT',
       }),
     ],

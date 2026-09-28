@@ -63,14 +63,18 @@ export function CompanyTaxTab() {
       <Flags>
         {f.check('vatRegistered', 'VAT-registered')}
         {f.check('topWithholdingAgent', 'Top withholding agent (BIR-notified)')}
+        {f.check('exportEnterprise', 'Registered export enterprise (PEZA, BOI or other IPA)')}
       </Flags>
       <Text variant="small" tone="muted">
         {profile.vatRegistered
           ? 'VAT-registered: sales carry output VAT from the item and customer.'
-          : 'Not VAT-registered: every sale uses percentage tax (PT3), whatever the item says.'}{' '}
+          : 'Not VAT-registered: every sale uses percentage tax (PT010), whatever the item says.'}{' '}
         {profile.topWithholdingAgent
           ? 'As a top withholding agent, you withhold 1% on goods and 2% on services bought from regular suppliers.'
-          : 'Not a top withholding agent: regular goods and services aren’t withheld (rent, contractors and professional fees still are).'}
+          : 'Not a top withholding agent: regular goods and services aren’t withheld (rent, contractors and professional fees still are).'}{' '}
+        {profile.exportEnterprise
+          ? 'As a registered export enterprise, suppliers may zero-rate qualifying purchases.'
+          : 'Not an export enterprise: purchases in a zero-rated tax group are charged 12% instead.'}
       </Text>
     </Section>
   );

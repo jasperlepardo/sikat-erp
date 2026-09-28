@@ -3,7 +3,7 @@ import type { Currency, ExchangeRate } from '../../../../mocks/currencies';
 import type { Item } from '../../../../mocks/items';
 import type { Partner, PartnerAddress } from '../../../../mocks/partners';
 import { COMPANY_ADDRESS, PURCHASING_SETTINGS, newPoLine, type PoLine } from '../../../../mocks/purchaseOrders';
-import { rateAt } from '../../../../mocks/taxes';
+import { rateAt, vatNotPaidToVendor } from '../../../../mocks/taxes';
 import type { InventoryMasters } from '../../../../services/inventoryMasters';
 import { rateOn } from '../../../../services/masterData';
 import type { PoInput } from '../../../../services/purchaseOrders';
@@ -34,7 +34,7 @@ export interface PoContext {
   vendor?: Partner;
   /** Tax rate (%) of a code on the posting date. */
   rateOf: (taxCode: string) => number;
-  /** Reverse-charge codes (e.g. IVD12): you remit the VAT, the vendor isn't paid it. */
+  /** Codes whose VAT the vendor isn't paid: reverse charge (45, you remit it) and importation (46, paid to Customs). */
   isReverseCharge: (taxCode: string) => boolean;
   /** PHP per unit of the document currency on the posting date (1 for PHP, 0 when missing). */
   fx: number;
@@ -54,7 +54,7 @@ export function buildContext(draft: PoDraft, m: PoMasters): PoContext {
       const c = m.tax.codes.find((x) => x.code === code);
       return c ? (rateAt(c, date) ?? 0) : 0;
     },
-    isReverseCharge: (code) => m.tax.codes.find((x) => x.code === code)?.category === 'Reverse charge',
+    isReverseCharge: (code) => vatNotPaidToVendor(m.tax.codes.find((x) => x.code === code)),
     fx: draft.currency === 'PHP' ? 1 : (rateOn(m.rates, draft.currency, date)?.rate ?? 0),
     readOnly: draft.status === 'Closed' || draft.status === 'Cancelled',
     added: draft.status !== 'Draft',

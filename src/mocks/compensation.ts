@@ -170,6 +170,128 @@ export function compensationTax(rows: CompensationBracket[], compensation: numbe
   return { bracket, tax: Math.round(tax * 100) / 100 };
 }
 
+/**
+ * The three "Less: Non-Taxable/Exempt Compensation Income" lines of BIR's annualized
+ * withholding tax formula. Every exclusion is deducted on one of them.
+ */
+export type ExclusionLine = '13th month pay and other benefits' | 'SSS, GSIS, PHIC, HDMF and union dues' | 'Other non-taxable';
+export const EXCLUSION_LINES: ExclusionLine[] = ['13th month pay and other benefits', 'SSS, GSIS, PHIC, HDMF and union dues', 'Other non-taxable'];
+
+export type ExclusionKind = 'Exemption / exclusion' | 'Minimum wage earner';
+export const EXCLUSION_KINDS: ExclusionKind[] = ['Exemption / exclusion', 'Minimum wage earner'];
+
+/** EXEMPTIONS AND EXCLUSIONS FROM GROSS INCOME and the MINIMUM WAGE EARNERS rule, verbatim. */
+export interface CompensationExclusion {
+  id: string;
+  description: string;
+  kind: ExclusionKind;
+  line: ExclusionLine;
+  /** Most that is excluded per year; 0 = no limit. */
+  annualCap: number;
+  active: boolean;
+}
+
+const exclusion = (n: number, description: string, line: ExclusionLine = 'Other non-taxable', annualCap = 0, kind: ExclusionKind = 'Exemption / exclusion'): CompensationExclusion => ({
+  id: `cx-${String(n).padStart(2, '0')}`,
+  description,
+  kind,
+  line,
+  annualCap,
+  active: true,
+});
+const mwe = (n: number, description: string) => exclusion(n, description, 'Other non-taxable', 0, 'Minimum wage earner');
+
+export const SEED_EXCLUSIONS: CompensationExclusion[] = [
+  exclusion(1, 'Remuneration received as an incident of employment (RA 7641; those with approved reasonable private retirement plan; Social Security Act of 1954, as amended; GSIS Act of 1937, as amended; and etc.'),
+  exclusion(2, 'Remuneration paid for agricultural labor;'),
+  exclusion(3, 'Remuneration for domestic services;'),
+  exclusion(4, "Remuneration for casual labor not in the course of an employer's trade or business;"),
+  exclusion(5, 'Compensation for services by a citizen or a resident of the Philippines for a foreign government or international organization;'),
+  exclusion(6, 'Damages (Actual, moral, exemplary and nominal);'),
+  exclusion(7, 'Life insurance;'),
+  exclusion(8, 'Amounts received by the insured as a return of premium;'),
+  exclusion(9, 'Compensation for injuries or sickness;'),
+  exclusion(10, 'Income exempt under treaty'),
+  // The annualized formula caps this line: "1. 13th month pay and other benefits ₱ 90,000.00".
+  exclusion(11, '13th Month pay and other benefits', '13th month pay and other benefits', 90000),
+  exclusion(12, "GSIS, SSS, Medicare and other contributions (employee's share only)", 'SSS, GSIS, PHIC, HDMF and union dues'),
+  exclusion(13, 'Compensation income of minimum wage earners (MWEs) who work in the private sector and being paid the Statutory Minimum Wage (SMW), as fixed by the Regional Tripartite Wage and Productivity Board (RTWPB)/National Wages Productivity Commission (NWPC), applicable to the place where he/she is assigned;'),
+  exclusion(14, 'Compensation income of employees in the public sector with compensation income of not more the the SMW in the non-agricultural sector as fixed by the RTWPB?NWPC applicable to the place where he/she is assigned.'),
+  exclusion(15, 'De Minimis benefits'),
+  exclusion(16, 'Fringe benefits given to employees other than rank and file and subjected to Fringe Benefit Tax (FBT);'),
+  exclusion(17, 'Personnel Economic Relief Allowance (PERA) given to government employees; and Representation and transportation allowance (RATA granted to public officers and employees under the General Appropriations Act.'),
+  // MINIMUM WAGE EARNERS: "No withholding tax shall be required on the Statutory Minimum Wage (SMW) … including:"
+  mwe(18, 'Statutory Minimum Wage (SMW)'),
+  mwe(19, 'Holiday pay'),
+  mwe(20, 'Overtime pay'),
+  mwe(21, 'Night shift differential'),
+  mwe(22, 'Hazard pay'),
+];
+
+/** A pay period's compensation, split the way the minimum wage earner rule needs it. */
+export interface PeriodPay {
+  /** Basic pay — the statutory minimum wage for a minimum wage earner. */
+  basic: number;
+  holiday: number;
+  overtime: number;
+  nightShift: number;
+  hazard: number;
+  /** Everything else taxable (commissions, taxable allowances…), after exclusions. */
+  other: number;
+}
+
+/**
+ * Taxable compensation for a pay period. A minimum wage earner's SMW, holiday pay,
+ * overtime pay, night shift differential and hazard pay are exempt (RR 2-98 as amended
+ * by RR 11-2018); anything else they earn is taxed like anyone else's.
+ */
+export function taxablePay(pay: PeriodPay, minimumWageEarner: boolean) {
+  if (minimumWageEarner) return pay.other;
+  return pay.basic + pay.holiday + pay.overtime + pay.nightShift + pay.hazard + pay.other;
+}
+
+/** Amounts for the ANNUALIZED WITHHOLDING TAX FORMULA. */
+export interface YearEndInput {
+  /** Gross Compensation Income (present + previous employer). */
+  gross: number;
+  /** 13th month pay and other benefits received. */
+  benefits: number;
+  /** SSS, GSIS, PHIC, HDMF and union dues (employee share). */
+  contributions: number;
+  /** Other non-taxable compensation: de minimis, a minimum wage earner's exempt pay, other exclusions. */
+  otherNonTaxable: number;
+  /** Tax withheld, January to November / termination date (present + previous employer). */
+  withheld: number;
+}
+
+export type YearEndOutcome = 'Collect' | 'Refund' | 'Break even';
+
+/**
+ * Year-end adjustment: taxable compensation for the year, tax due on it from the
+ * annual tax table in force on `date`, and what to collect or refund on the last payroll.
+ * Exclusions on a capped line (13th month pay and other benefits: ₱90,000) count only
+ * up to the cap; the excess stays taxable.
+ */
+export function yearEndAdjustment(brackets: CompensationBracket[], exclusions: CompensationExclusion[], input: YearEndInput, date: string) {
+  const caps = exclusions.filter((x) => x.active && x.line === '13th month pay and other benefits' && x.annualCap > 0).map((x) => x.annualCap);
+  const benefitsCap = caps.length ? Math.max(...caps) : Infinity;
+  const benefitsExcluded = Math.min(input.benefits, benefitsCap);
+  const nonTaxable = benefitsExcluded + input.contributions + input.otherNonTaxable;
+  const taxable = Math.max(0, input.gross - nonTaxable);
+  const due = compensationTax(brackets, taxable, 'Annual', date);
+  if (!due) return undefined;
+  const balance = Math.round((due.tax - input.withheld) * 100) / 100;
+  const outcome: YearEndOutcome = balance > 0 ? 'Collect' : balance < 0 ? 'Refund' : 'Break even';
+  return { benefitsCap, benefitsExcluded, nonTaxable, taxable, due, balance, outcome };
+}
+
+/** What BIR says to do with each outcome, verbatim. */
+export const YEAR_END_OUTCOMES: Record<YearEndOutcome, string> = {
+  Collect: 'Tax Due> tax withheld  - collect before payment of last salary',
+  Refund: 'Tax Due< tax withheld -  refund on or before January 25th of the year/ last payment of salary',
+  'Break even': 'Tax due = tax withheld    - no more withholding for December salary',
+};
+
 /** DE MINIMIS BENEFITS NOT SUBJECT TO WITHHOLDING TAX, verbatim. */
 export interface DeMinimisBenefit {
   id: string;

@@ -14,8 +14,10 @@ import {
 import {
   SEED_COMPENSATION_TAX,
   SEED_DE_MINIMIS,
+  SEED_EXCLUSIONS,
   SEED_WITHHOLDING_FORMS,
   type CompensationBracket,
+  type CompensationExclusion,
   type DeMinimisBenefit,
   type WithholdingForm,
 } from '../mocks/compensation';
@@ -23,13 +25,14 @@ import { SEED_ACCOUNTS, type Account } from '../mocks/chartOfAccounts';
 import { createCollection } from './store';
 
 /** Settings › Accounting & Tax master data. */
-// v2: tax codes gained rate history; tax groups map to a single code.
-export const taxCodes = createCollection<TaxCode>('sikat-erp:tax-codes:v3', SEED_TAX_CODES, 'tc');
-export const taxGroups = createCollection<TaxGroup>('sikat-erp:tax-groups:v2', SEED_TAX_GROUPS, 'tg');
+// v2: tax codes gained rate history; tax groups map to a single code. v5/v4: codes are BIR's (2550Q line numbers, 2551Q ATC).
+export const taxCodes = createCollection<TaxCode>('sikat-erp:tax-codes:v5', SEED_TAX_CODES, 'tc');
+export const taxGroups = createCollection<TaxGroup>('sikat-erp:tax-groups:v5', SEED_TAX_GROUPS, 'tg');
 export const companyTax = createCollection<CompanyTaxProfile>('sikat-erp:company-tax', SEED_COMPANY_TAX, 'company');
 /** Accounting › Chart of Accounts. */
-export const accounts = createCollection<Account>('sikat-erp:accounts:v2', SEED_ACCOUNTS, 'acct');
+export const accounts = createCollection<Account>('sikat-erp:accounts:v3', SEED_ACCOUNTS, 'acct');
 export const compensationTax = createCollection<CompensationBracket>('sikat-erp:compensation-tax', SEED_COMPENSATION_TAX, 'ct');
+export const compensationExclusions = createCollection<CompensationExclusion>('sikat-erp:compensation-exclusions', SEED_EXCLUSIONS, 'cx');
 export const deMinimisBenefits = createCollection<DeMinimisBenefit>('sikat-erp:de-minimis', SEED_DE_MINIMIS, 'dm');
 export const withholdingForms = createCollection<WithholdingForm>('sikat-erp:withholding-forms', SEED_WITHHOLDING_FORMS, 'wf');
 export const withholdingTaxes = createCollection<WithholdingTax>('sikat-erp:withholding:v5', SEED_WITHHOLDING, 'wt');

@@ -21,3 +21,62 @@
 .sikat-icon {
   overflow: hidden;
 }
+
+/* Tables scroll their rows inside the table, under a sticky header, so the column
+   headers and pagination stay in view. The design system's scroller only scrolls
+   sideways and hides its scrollbar; let it scroll both ways with a thin bar. */
+.table-fill .sikat-table__scroller,
+.table-scroll .sikat-table__scroller {
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+.table-fill .sikat-table__scroller::-webkit-scrollbar,
+.table-scroll .sikat-table__scroller::-webkit-scrollbar {
+  display: block;
+  width: 8px;
+  height: 0; /* the design system draws its own horizontal indicator */
+}
+.table-fill .sikat-table__th,
+.table-scroll .sikat-table__th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background-color: var(--color-bg-tertiary); /* the Card's surface */
+  /* Fill the row gap above the header, or scrolled rows peek through it. */
+  box-shadow: 0 calc(-1 * var(--spacing-0_5)) 0 var(--color-bg-tertiary);
+}
+
+/* A full-page list: the Card shrinks to the space left in its Panel body (never below
+   ~6 rows), and the rows scroll inside it. Short lists keep their natural height. */
+.table-fill {
+  flex: 0 1 auto;
+  min-height: 18rem;
+}
+/* Contain absolutely positioned descendants in the scrolling body. The Table's
+   screen-reader caption and labels are position: absolute with no positioned
+   ancestor, so without this they sit relative to the document — outside the
+   body's scroll clip — and stretch the page past the app shell. */
+.sikat-panel__body {
+  position: relative;
+}
+
+/* Only the list table gives way. Everything else in the Panel body keeps its size
+   (the body scrolls instead): a TextField's input is height: 100%, so as a flex
+   item it has no content minimum and would otherwise be squeezed. */
+.sikat-panel__body > :not(.table-fill) {
+  flex-shrink: 0;
+}
+.table-fill > .sikat-table {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.table-fill .sikat-table__scroller {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* A table inside a record's form (detail tabs): cap its height instead. */
+.table-scroll .sikat-table__scroller {
+  max-height: min(60dvh, 36rem);
+}

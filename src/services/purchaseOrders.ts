@@ -8,7 +8,7 @@ import {
 import type { RoundingRule } from '../mocks/currencies';
 import { createCollection } from './store';
 
-const orders = createCollection<PurchaseOrder>('sikat-erp:purchase-orders:v1', SEED_PURCHASE_ORDERS, 'po');
+const orders = createCollection<PurchaseOrder>('sikat-erp:purchase-orders:v2', SEED_PURCHASE_ORDERS, 'po');
 
 export const listPurchaseOrders = orders.list;
 export const getPurchaseOrder = orders.get;

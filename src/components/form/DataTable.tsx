@@ -24,6 +24,10 @@ export interface DataTableProps<T> {
   onColumnSettings?: () => void;
 }
 
+/** Page sizes every paginated table offers; tables open at `DEFAULT_PAGE_SIZE`. */
+export const PAGE_SIZES = [10, 25, 50, 100, 250];
+export const DEFAULT_PAGE_SIZE = 50;
+
 const defaultSortValue = (row: unknown, key: string): string | number => {
   const v = (row as Record<string, unknown>)[key];
   return typeof v === 'number' ? v : String(v ?? '').toLowerCase();
@@ -46,7 +50,7 @@ export function DataTable<T>({
   onRowAction,
   onRemove,
   empty,
-  pageSize: initialPageSize = 10,
+  pageSize: initialPageSize = DEFAULT_PAGE_SIZE,
   onColumnSettings,
 }: DataTableProps<T>) {
   const [sort, setSort] = useState<TableSort | null>(null);
@@ -107,7 +111,7 @@ export function DataTable<T>({
         </div>
       </div>
       {rows.length ? (
-        <Card>
+        <Card className="table-scroll">
           <Table
             caption={title}
             columns={columns.map((c) => ({ sortable: !unsortable.includes(c.key), ...c }))}
@@ -122,7 +126,7 @@ export function DataTable<T>({
               page: current,
               pageSize,
               total: rows.length,
-              pageSizes: [10, 25, 50],
+              pageSizes: PAGE_SIZES,
               onPageChange: setPage,
               onPageSizeChange: (size) => {
                 setPageSize(size);

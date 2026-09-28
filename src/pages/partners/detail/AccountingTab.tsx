@@ -43,7 +43,7 @@ export function AccountingTab({ draft, update, errors }: TabProps) {
         <Fields>
           {isCustomer
             ? f.choose('salesVatTreatment', 'VAT treatment as a customer', SALES_VAT_TREATMENTS, {
-                hint: 'Government → OVG12 · Zero-rated → OV0 · Exempt entity → OVX · Regular → the item’s code.',
+                hint: 'Government → 31 (buyer withholds 5% VAT) · Zero-rated → 32 · Exempt entity → 33 · Regular → the item’s code.',
               })
             : null}
           {isCustomer && draft.salesVatTreatment === 'Zero-rated' ? (
@@ -60,7 +60,7 @@ export function AccountingTab({ draft, update, errors }: TabProps) {
           ) : null}
           {isVendor
             ? f.choose('supplierVatStatus', 'VAT status as a supplier', SUPPLIER_VAT_STATUSES, {
-                hint: 'Non-VAT → no input VAT (INV) · Non-resident digital → you withhold the 12% VAT (IVD12).',
+                hint: 'Non-VAT → no input VAT (48) · Non-resident digital → you withhold the 12% VAT (45).',
               })
             : null}
           {isVendor
@@ -77,6 +77,7 @@ export function AccountingTab({ draft, update, errors }: TabProps) {
                 'grossIncomeAboveThreshold',
                 `Gross income this year exceeds ${payee === 'Individual' ? '₱3M' : '₱720,000'}`,
               )}
+              {f.check('nonResident', 'Non-resident — not doing business in the Philippines (final tax instead of EWT)')}
             </Flags>
             <Text variant="small" tone="muted">
               {payee === 'Individual'

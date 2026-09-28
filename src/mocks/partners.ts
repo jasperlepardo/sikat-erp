@@ -170,6 +170,11 @@ export interface Partner {
    * income-tiered pair, e.g. WC011 (15%) instead of WC010 (10%).
    */
   grossIncomeAboveThreshold: boolean;
+  /**
+   * As a supplier: a non-resident (foreign corporation or alien) not doing business in the
+   * Philippines. Payments to them carry final withholding tax instead of EWT.
+   */
+  nonResident: boolean;
 
   // Accounting
   consolidatingPartnerId: string;
@@ -323,6 +328,7 @@ export function blankPartner(role: PartnerRole): Omit<Partner, 'id'> {
     supplierVatStatus: 'VAT-registered',
     withholdingOverrideId: '',
     grossIncomeAboveThreshold: false,
+    nonResident: false,
     consolidatingPartnerId: '',
     consolidationType: 'payment',
     receivableAccount: '1120',
@@ -457,7 +463,7 @@ export const SEED_PARTNERS: Partner[] = [
   seed(
     'bp-015', 'vendor',
     { name: 'CloudStack Pte. Ltd.', email: 'billing@cloudstack.example.sg', industry: 'Services', group: 'Vendors – Services',
-      currency: 'USD', supplierVatStatus: 'Non-resident digital services', vendorPaymentTerms: 'Net 7',
+      currency: 'USD', supplierVatStatus: 'Non-resident digital services', nonResident: true, vendorPaymentTerms: 'Net 7',
       remarks: 'Cloud hosting subscription. Non-resident digital service provider: we withhold and remit the 12% VAT (RA 12023).' },
     { firstName: 'Mei', lastName: 'Lin', position: 'Billing', email: 'billing@cloudstack.example.sg' },
     { street: 'Robinson Rd.', streetNo: '71', city: 'Singapore', zip: '068895', province: 'Other', country: 'Singapore' },

@@ -6,7 +6,7 @@ import { taxCodes, taxGroups } from '../../../services/masterData';
 import { useAsync } from '../../../services/useAsync';
 import { newId, useCollectionRows } from '../../../services/useCollectionRows';
 
-const blank = (): TaxGroup => ({ id: newId('tg'), code: '', name: '', direction: 'Sales', taxCode: '', active: true });
+const blank = (): TaxGroup => ({ id: newId('tg'), code: '', name: '', direction: 'Sales', taxCode: '', zeroRated: false, active: true });
 
 export function TaxGroupsTab(route: ListRoute) {
   const { rows, save, setActive } = useCollectionRows(taxGroups);
@@ -78,7 +78,10 @@ export function TaxGroupsTab(route: ListRoute) {
                 { required: true, error: errors.taxCode, placeholder: 'Pick a tax code', className: 'md:col-span-3' },
               )}
             </Fields>
-            <Flags>{f.check('active', 'Active')}</Flags>
+            <Flags>
+              {f.check('zeroRated', 'Zero-rated — suppliers may zero-rate it only for a registered export enterprise')}
+              {f.check('active', 'Active')}
+            </Flags>
           </>
         );
       }}

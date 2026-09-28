@@ -29,6 +29,7 @@ import {
 } from '../../services/partners';
 import { useAsync } from '../../services/useAsync';
 import { formatAmount } from '../../services/format';
+import { DEFAULT_PAGE_SIZE, PAGE_SIZES } from '../../components/form/DataTable';
 import { ROLE_CONFIG, ROLE_ORDER, STAGE_INTENT, scopeConfig, type PartnerScope } from './roles';
 
 const initials = (name: string) =>
@@ -59,7 +60,7 @@ export function PartnerList({ scope }: { scope: PartnerScope }) {
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<TableSort | null>({ key: 'name', direction: 'asc' });
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
 
   // Leads filter by pipeline stage; customers and vendors by active status.
   const filters: Record<string, (p: Partner) => boolean> =
@@ -208,7 +209,7 @@ export function PartnerList({ scope }: { scope: PartnerScope }) {
             setPage(1);
           }}
         />
-        <Card>
+        <Card className="table-fill">
           {partners ? (
             <Table
               caption={config.title}
@@ -222,7 +223,7 @@ export function PartnerList({ scope }: { scope: PartnerScope }) {
                 page,
                 pageSize,
                 total: rows.length,
-                pageSizes: [10, 25, 50],
+                pageSizes: PAGE_SIZES,
                 onPageChange: setPage,
                 onPageSizeChange: (size) => {
                   setPageSize(size);

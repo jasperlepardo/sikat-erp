@@ -44,6 +44,10 @@ export interface TaxRatePeriod {
   rate: number;
 }
 
+/** VAT on the line that the vendor isn't paid: reverse-charge VAT you remit yourself, and import VAT paid to the Bureau of Customs. */
+export const vatNotPaidToVendor = (code?: Pick<TaxCode, 'category'>) =>
+  code?.category === 'Reverse charge' || code?.category === 'Importation';
+
 /** The rate in force on `date` (latest period starting on or before it). */
 export function rateAt(code: Pick<TaxCode, 'rates'>, date: string): number | undefined {
   return [...code.rates].sort((a, b) => b.from.localeCompare(a.from)).find((p) => p.from <= date)?.rate;
@@ -63,6 +67,8 @@ export interface TaxGroup {
   name: string;
   direction: TaxDirection;
   taxCode: string;
+  /** Zero-rated goods or services: only allowed when the buyer qualifies (see CompanyTaxProfile.exportEnterprise). */
+  zeroRated: boolean;
   active: boolean;
 }
 
@@ -212,8 +218,8 @@ export const RDOS: { value: string; label: string }[] = [
   { value: '115', label: '115 – Digos City, Davao del Sur & Davao Occidental' },
 ];
 
-export type WithholdingCategory = 'Goods' | 'Services' | 'Rent' | 'Professional fees' | 'Contractor' | 'None';
-export const WITHHOLDING_CATEGORIES: WithholdingCategory[] = ['Goods', 'Services', 'Rent', 'Professional fees', 'Contractor', 'None'];
+export type WithholdingCategory = 'Goods' | 'Services' | 'Rent' | 'Professional fees' | 'Contractor' | 'Royalties' | 'Interest' | 'Prizes' | 'None';
+export const WITHHOLDING_CATEGORIES: WithholdingCategory[] = ['Goods', 'Services', 'Rent', 'Professional fees', 'Contractor', 'Royalties', 'Interest', 'Prizes', 'None'];
 
 /** The company's own tax registration (Settings › Accounting & Tax › Company tax profile). */
 export interface CompanyTaxProfile {
@@ -225,6 +231,11 @@ export interface CompanyTaxProfile {
   vatRegistered: boolean;
   /** Top withholding agents withhold 1% on goods and 2% on services from regular suppliers. */
   topWithholdingAgent: boolean;
+  /**
+   * Registered export enterprise (PEZA, BOI or another investment promotion agency). Only then may
+   * suppliers zero-rate sales to the company (NIRC Secs. 106(A)(2), 108(B); RA 12066).
+   */
+  exportEnterprise: boolean;
 }
 
 export const SEED_COMPANY_TAX: CompanyTaxProfile[] = [
@@ -235,6 +246,7 @@ export const SEED_COMPANY_TAX: CompanyTaxProfile[] = [
     rdoCode: '',
     vatRegistered: true,
     topWithholdingAgent: true,
+    exportEnterprise: false,
   },
 ];
 
@@ -334,44 +346,55 @@ const tc = (
   glAccount: toAccountCode(glAccount), birReturn, legalBasis, active: true, notes,
 });
 
+/*
+ * Codes are BIR's own. VAT has no ATCs: BIR Form 2550Q (April 2024) identifies each kind
+ * of sale and purchase by its line number in Part IV, so the code is that line number and
+ * the name is the line's label. Percentage tax uses its ATC from BIR Form 2551Q.
+ * Notes quote BIR's Value-Added Tax page and the 2550Q guidelines.
+ */
 export const SEED_TAX_CODES: TaxCode[] = [
-  // Sales (output)
-  tc('OV12', 'Output VAT 12%', 'Sales', 'Standard', 12, '2310 Output VAT Payable', '2550Q', 'NIRC Secs. 106, 108'),
-  tc('OVG12', 'Output VAT 12% – sale to government', 'Sales', 'Government', 12, '2310 Output VAT Payable', '2550Q', 'NIRC Sec. 114(C)',
-    'Government buyers withhold 5% as creditable VAT (final withholding ended 1 Jan 2021, except ODA-funded projects).'),
-  tc('OV0', 'Zero-rated sale (export / registered export enterprise)', 'Sales', 'Zero-rated', 0, '2310 Output VAT Payable', '2550Q', 'NIRC Secs. 106(A)(2), 108(B); RA 12066 (CREATE MORE)'),
-  tc('OVX', 'VAT-exempt sale', 'Sales', 'Exempt', 0, '— None —', '2550Q', 'NIRC Sec. 109'),
-  tc('PT3', 'Percentage tax (non-VAT seller)', 'Sales', 'Percentage tax',
+  // Sales — 2550Q Part IV, "Total Sales and Output Tax"
+  tc('31', 'VATable Sales', 'Sales', 'Standard', 12, '2310 Output VAT Payable', '2550Q', 'NIRC Secs. 106, 108',
+    '2550Q guidelines: "On Sale of Goods or Properties – twelve percent (12%) of the gross sales of the goods or properties sold, bartered or exchanged" and '
+    + '"On Sale of Services and Use or Lease of Properties – twelve percent (12%) of gross sales derived from the sale or exchange of services, including the use or lease of properties". '
+    + 'Sales to government are VATable too: the buyer withholds 5% creditable VAT, claimed on 2550Q item 16 (Creditable VAT Withheld).'),
+  tc('32', 'Zero-Rated Sales', 'Sales', 'Zero-rated', 0, '2310 Output VAT Payable', '2550Q', 'NIRC Secs. 106(A)(2), 108(B)',
+    'BIR: "It is a taxable transaction for VAT purposes, but shall not result in any output tax." The invoice must show "ZERO-RATED SALE".'),
+  tc('33', 'Exempt Sales', 'Sales', 'Exempt', 0, '— None —', '2550Q', 'NIRC Sec. 109',
+    'BIR: a sale "which is not subject to output tax and whereby the buyer is not allowed any tax credit or input tax related to such exempt sale". The invoice must show "VAT-EXEMPT SALE".'),
+  tc('PT010', 'Persons exempt from VAT under Sec. 109(BB) (Sec. 116)', 'Sales', 'Percentage tax',
     [{ from: '2018-01-01', rate: 3 }, { from: '2020-07-01', rate: 1 }, { from: '2023-07-01', rate: 3 }],
     '2320 Percentage Tax Payable', '2551Q', 'NIRC Sec. 116 as amended by TRAIN and CREATE (RA 11534)',
-    'Used on every sale when the company is not VAT-registered (gross sales ≤ ₱3M). CREATE cut it to 1% from 1 Jul 2020 to 30 Jun 2023.'),
-  // Purchases (input)
-  tc('IV12', 'Input VAT 12% – goods', 'Purchase', 'Standard', 12, '1410 Input VAT', '2550Q', 'NIRC Sec. 110'),
-  tc('IVS12', 'Input VAT 12% – services', 'Purchase', 'Services', 12, '1410 Input VAT', '2550Q', 'NIRC Sec. 110'),
-  tc('IVC12', 'Input VAT 12% – capital goods', 'Purchase', 'Capital goods', 12, '1410 Input VAT', '2550Q', 'NIRC Sec. 110(A)(2)(b) as amended by TRAIN',
-    'Claimed in full. Spreading input VAT on capital goods over ₱1M ended 31 Dec 2021; only older deferred balances keep amortizing.'),
-  tc('IVI12', 'Input VAT 12% – importation (paid to BOC)', 'Purchase', 'Importation', 12, '1420 Input VAT – Importation', '2550Q', 'NIRC Sec. 107',
-    'Entered on the import entry / landed cost document, not on the foreign supplier’s bill.'),
-  tc('IVD12', 'VAT 12% – digital services from non-resident (reverse charge)', 'Purchase', 'Reverse charge', 12, '1410 Input VAT', '1600-VT', 'RA 12023; effective 2 Jun 2025',
-    'The buyer withholds and remits the 12% VAT, then claims it as input VAT.'),
-  tc('IV0', 'Zero-rated purchase', 'Purchase', 'Zero-rated', 0, '— None —', '2550Q', 'NIRC Sec. 108(B)'),
-  tc('IVX', 'VAT-exempt purchase', 'Purchase', 'Exempt', 0, '— None —', '2550Q', 'NIRC Sec. 109'),
-  tc('INV', 'Purchase from non-VAT supplier (no input VAT)', 'Purchase', 'Non-VAT', 0, '— None —', '—', 'NIRC Sec. 110'),
+    'ATC from BIR Form 2551Q. For sellers whose gross annual sales do not exceed Three Million Pesos (Php 3,000,000.00). CREATE cut the rate to 1% from 1 Jul 2020 to 30 Jun 2023.'),
+  // Purchases — 2550Q Part IV, "Current Transactions"
+  tc('44', 'Domestic Purchases', 'Purchase', 'Standard', 12, '1410 Input VAT', '2550Q', 'NIRC Sec. 110',
+    'Goods, services, lease and capital goods bought locally from VAT-registered suppliers. 2550Q guidelines: input tax is "the value-added tax due from or paid by a VAT-registered person '
+    + 'in the course of his trade or business on importation of goods, or local purchase of goods or services, including lease or use of property, from a VAT-registered person".'),
+  tc('45', 'Services Rendered by Non-Residents', 'Purchase', 'Reverse charge', 12, '1410 Input VAT', '2550Q / 1600-VT', 'NIRC Sec. 114(C); RA 12023 (digital services)',
+    'You withhold the 12% VAT and remit it on 1600-VT (ATC WV050 / WV070), then claim it as input tax. BIR: buyers "shall withhold twelve percent (12%) VAT" on '
+    + '"Lease or use of properties or property rights owned by non-residents" and "Other services rendered in the Philippines by non-residents".'),
+  tc('46', 'Importations', 'Purchase', 'Importation', 12, '1420 Input VAT – Importation', '2550Q', 'NIRC Sec. 107',
+    '2550Q guidelines: "twelve percent (12%) based on the total value used by the Bureau of Customs in determining tariff and customs duties, plus customs duties, excise taxes, if any, and other charges". '
+    + 'Entered on the import entry / landed cost, not the foreign supplier’s bill.'),
+  tc('48', 'Domestic Purchases with No Input Tax', 'Purchase', 'Non-VAT', 0, '— None —', '2550Q', 'NIRC Sec. 110',
+    'Purchases from non-VAT suppliers, and VAT-exempt or zero-rated purchases: no input tax to claim.'),
+  tc('49', 'VAT-Exempt Importations', 'Purchase', 'Exempt', 0, '— None —', '2550Q', 'NIRC Sec. 109',
+    'Importations exempt under Sec. 109 (e.g. agricultural and marine food products in their original state, books). Entered on the import entry.'),
 ];
 
-const tg = (code: string, name: string, direction: TaxDirection, taxCode: string): TaxGroup => ({
-  id: `tg-${code}`, code, name, direction, taxCode, active: true,
+const tg = (code: string, name: string, direction: TaxDirection, taxCode: string, zeroRated = false): TaxGroup => ({
+  id: `tg-${code}`, code, name, direction, taxCode, zeroRated, active: true,
 });
 
 export const SEED_TAX_GROUPS: TaxGroup[] = [
-  tg('S-VAT12', 'VAT 12% – output', 'Sales', 'OV12'),
-  tg('S-VATX', 'VAT-exempt goods or services', 'Sales', 'OVX'),
-  tg('S-VAT0', 'Zero-rated goods or services', 'Sales', 'OV0'),
-  tg('P-VAT12', 'VAT 12% – input (goods)', 'Purchase', 'IV12'),
-  tg('P-VAT12S', 'VAT 12% – input (services)', 'Purchase', 'IVS12'),
-  tg('P-VAT12C', 'VAT 12% – input (capital goods)', 'Purchase', 'IVC12'),
-  tg('P-VATX', 'VAT-exempt purchase', 'Purchase', 'IVX'),
-  tg('P-VAT0', 'Zero-rated purchase', 'Purchase', 'IV0'),
+  tg('S-VAT12', 'VAT 12% – output', 'Sales', '31'),
+  tg('S-VATX', 'VAT-exempt goods or services', 'Sales', '33'),
+  tg('S-VAT0', 'Zero-rated goods or services', 'Sales', '32', true),
+  tg('P-VAT12', 'VAT 12% – input (goods)', 'Purchase', '44'),
+  tg('P-VAT12S', 'VAT 12% – input (services)', 'Purchase', '44'),
+  tg('P-VAT12C', 'VAT 12% – input (capital goods)', 'Purchase', '44'),
+  tg('P-VATX', 'VAT-exempt purchase', 'Purchase', '48'),
+  tg('P-VAT0', 'Zero-rated purchase', 'Purchase', '48', true),
 ];
 
 const wt = (
@@ -521,7 +544,7 @@ const FINAL: WithholdingTax[] = [
   ...wf('Interest and other income payments on foreign currency transactions/loans payable of Offshore Banking Units (OBUs)', both(null, 'WC190', 10)),
   ...wf('Interest and other income payments on foreign currency transactions/loans payable of Foreign Currency Deposits Units (FCDUs)', both(null, 'WC191', 10)),
   ...wf('Cash dividend payment by domestic corporation to citizens and residents aliens/NRFCs', [
-    ['W1202', 'Individual', 10],
+    ['WI202', 'Individual', 10],
     ['WC212', 'Corporate', 25],
   ]),
   ...wf('Property dividend payment by domestic corporation to citizens and resident aliens/NRFCs', [

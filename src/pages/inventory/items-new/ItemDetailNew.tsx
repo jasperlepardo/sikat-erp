@@ -5,7 +5,7 @@ import {
   Panel, PanelHeader, Select, SidePanel, Tabs, TextField,
   type TabItem,
 } from '@jasperlepardo/sikat-design-system';
-import { Fields, Section, bind, type Errors } from '../../../components/form/fields';
+import { Fields, Flags, Section, bind, type Errors } from '../../../components/form/fields';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../components/form/ProblemsAlert';
 import { MoreMenu, type MoreMenuItem } from '../../../components/form/MoreMenu';
 import { ITEM_TYPES, MANAGE_BY } from '../../../mocks/itemMasters';
@@ -20,6 +20,7 @@ import type { Partner } from '../../../mocks/partners';
 import { ItemSaveError, getItem, isValidToday, saveItem } from '../../../services/items';
 import { listPartnersByRole } from '../../../services/partners';
 import { exciseCategories, taxCodes, taxGroups } from '../../../services/masterData';
+import { WITHHOLDING_CATEGORIES } from '../../../mocks/taxes';
 import { AttachmentsTab } from '../items/detail/AttachmentsTab';
 import { BarcodesTab } from '../items/detail/BarcodesTab';
 import { ConfigureTab, type ConfigurePanelTab } from '../items/detail/ConfigureTab';
@@ -27,7 +28,7 @@ import { InventoryTab } from '../items/detail/InventoryTab';
 import { ManufacturersTab } from '../items/detail/ManufacturersTab';
 import { PlanningTab } from '../items/detail/PlanningTab';
 import { RemarksTab } from '../items/detail/RemarksTab';
-import { LOCKED_HINT, asOptions, taxGroupOptions, vendorOptions, type Draft, type TaxMasters } from '../items/detail/types';
+import { LOCKED_HINT, asOptions, taxCodeOptions, taxGroupOptions, taxResolution, vendorOptions, type Draft, type TaxMasters } from '../items/detail/types';
 
 const BASE = '/inventory/items-new';
 
@@ -338,12 +339,25 @@ function ItemFormNew() {
               {h.choose('defaultVendorId', 'Default vendor', vendorOptions(vendors), {
                 hint: 'Pre-fills new purchase orders.',
               })}
+              {h.pick('withholdingCategory', 'Withholding category', WITHHOLDING_CATEGORIES, {
+                hint: 'Picks the withholding tax; Goods from a non-resident supplier are treated as imports.',
+              })}
               {h.choose('salesTaxGroup', 'Sales tax group', taxGroupOptions(tax, 'Sales', draft.salesTaxGroup), {
-                hint: 'Tax applied on sales.',
+                hint: draft.taxLiable ? taxResolution(tax, draft.salesTaxGroup, draft.salesTaxCode) : 'Not tax liable: no VAT charged on sales.',
               })}
+              {h.choose('salesTaxCode', 'Fixed sales tax code', taxCodeOptions(tax, 'Sales', draft.salesTaxCode), {
+                hint: 'Overrides the sales tax group on every sale.',
+              })}
+              <div className="md:pt-6">
+                <Flags>{h.check('taxLiable', 'Tax liable (VAT applies on sales)')}</Flags>
+              </div>
               {h.choose('purchaseTaxGroup', 'Purchase tax group', taxGroupOptions(tax, 'Purchase', draft.purchaseTaxGroup), {
-                hint: 'Tax applied on purchases.',
+                hint: taxResolution(tax, draft.purchaseTaxGroup, draft.purchaseTaxCode),
               })}
+              {h.choose('purchaseTaxCode', 'Fixed purchase tax code', taxCodeOptions(tax, 'Purchase', draft.purchaseTaxCode), {
+                hint: 'Overrides the purchase tax group, e.g. 49 for a VAT-exempt import.',
+              })}
+              <div className="hidden md:block" />
               {h.date('validFrom', 'Valid from', { hint: 'Blocks documents dated before this.' })}
               {h.date('validTo', 'Valid to', { error: errors.validTo, hint: 'Phases the item out without deleting it.' })}
               {h.area('generalRemarks', 'Remarks', {

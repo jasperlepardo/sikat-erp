@@ -117,7 +117,7 @@ export function TaxCodesTab(route: ListRoute) {
         return (
           <>
             <Fields cols={3}>
-              {f.text('code', 'Code', { required: true, error: errors.code, placeholder: 'e.g. OV12' })}
+              {f.text('code', 'Code', { required: true, error: errors.code, placeholder: 'e.g. 31' })}
               {f.text('name', 'Name', { required: true, error: errors.name })}
               {f.pick('direction', 'Used on', ['Sales', 'Purchase'])}
               {f.pick('category', 'Category', TAX_CATEGORIES)}

@@ -36,6 +36,7 @@ export type LineParty = Pick<
   | 'supplierVatStatus'
   | 'withholdingOverrideId'
   | 'grossIncomeAboveThreshold'
+  | 'nonResident'
   | 'businessType'
 >;
 
@@ -83,7 +84,7 @@ export function determineTax(
 
   if (direction === 'Sales') {
     // 1. Company status
-    if (!data.company.vatRegistered) decide('Company is not VAT-registered', 'PT3', 'Non-VAT sellers pay percentage tax on every sale');
+    if (!data.company.vatRegistered) decide('Company is not VAT-registered', 'PT010', 'Non-VAT sellers pay percentage tax on every sale');
     else step('Company is not VAT-registered', 'skipped', 'The company is VAT-registered.');
 
     // 2. Item not tax liable
@@ -104,9 +105,9 @@ export function determineTax(
     if (!decided) {
       const t = partner.salesVatTreatment;
       if (t === 'Government') {
-        decide('Customer VAT treatment', 'OVG12', 'Government customer');
-        notes.push('The government buyer withholds 5% creditable VAT (and 1%/2% EWT) and issues BIR Form 2307.');
-      } else if (t === 'Exempt entity') decide('Customer VAT treatment', 'OVX', 'VAT-exempt customer');
+        decide('Customer VAT treatment', '31', 'Government customer');
+        notes.push('The government buyer withholds 5% creditable VAT (and 1%/2% EWT) and issues BIR Form 2307; claim it on 2550Q item 16.');
+      } else if (t === 'Exempt entity') decide('Customer VAT treatment', '33', 'VAT-exempt customer');
       else if (t === 'Zero-rated') {
         if (!partner.zeroRatedCertificate) {
           step('Customer VAT treatment', 'warning', 'Marked zero-rated but no certificate is on file — charging regular VAT.');
@@ -116,7 +117,7 @@ export function determineTax(
             'warning',
             `Zero-rating certificate ${partner.zeroRatedCertificate} expired on ${partner.zeroRatedValidUntil} — charging regular VAT.`,
           );
-        } else decide('Customer VAT treatment', 'OV0', `Zero-rated customer (certificate ${partner.zeroRatedCertificate})`);
+        } else decide('Customer VAT treatment', '32', `Zero-rated customer (certificate ${partner.zeroRatedCertificate})`);
       } else step('Customer VAT treatment', 'skipped', 'Regular customer.');
     }
 
@@ -126,29 +127,53 @@ export function determineTax(
       if (g) decide('Item sales tax group', g.taxCode, `Item group ${g.code}`);
       else step('Item sales tax group', 'skipped', 'The item has no sales tax group.');
     }
-    if (!decided) decide('Company default', 'OV12', 'Standard output VAT');
+    if (!decided) decide('Company default', '31', 'VATable sales');
   } else {
-    // 1. Supplier status
-    const s = partner.supplierVatStatus;
-    if (s === 'Non-VAT') decide('Supplier VAT status', 'INV', 'Non-VAT supplier: no input VAT to claim');
-    else if (s === 'Non-resident digital services') {
-      decide('Supplier VAT status', 'IVD12', 'Non-resident digital service provider: you withhold and remit the 12% VAT');
-    } else step('Supplier VAT status', 'skipped', 'VAT-registered supplier.');
+    const group = data.groups.find((x) => x.code === item.purchaseTaxGroup);
+    const groupRate = (g: TaxGroup) => {
+      const c = data.codes.find((x) => x.code === g.taxCode);
+      return c ? rateAt(c, date) : undefined;
+    };
+    const zeroRatingRefused = (g: TaxGroup) => g.zeroRated && !data.company.exportEnterprise;
 
-    // 2. Item fixed code
+    // 1. Imported goods: VAT is paid to the Bureau of Customs, whoever the seller is.
+    const imported = partner.nonResident && item.withholdingCategory === 'Goods';
+    if (imported) {
+      if (item.purchaseTaxCode === '46' || item.purchaseTaxCode === '49') {
+        decide('Imported goods', item.purchaseTaxCode, 'Goods from a non-resident supplier, code fixed on the item');
+      } else if (group && groupRate(group) === 0 && !zeroRatingRefused(group)) {
+        decide('Imported goods', '49', `Goods from a non-resident supplier; item group ${group.code} is not subject to VAT`);
+      } else decide('Imported goods', '46', 'Goods from a non-resident supplier: 12% import VAT paid to the Bureau of Customs');
+      notes.push('Import VAT is paid to the Bureau of Customs on the import entry, not to the supplier.');
+    } else step('Imported goods', 'skipped', partner.nonResident ? 'Not goods — services from a non-resident are covered below.' : 'Resident supplier.');
+
+    // 2. Supplier status
+    if (!decided) {
+      const s = partner.supplierVatStatus;
+      if (s === 'Non-VAT') decide('Supplier VAT status', '48', 'Non-VAT supplier: no input VAT to claim');
+      else if (s === 'Non-resident digital services') {
+        decide('Supplier VAT status', '45', 'Non-resident digital service provider: you withhold and remit the 12% VAT');
+      } else step('Supplier VAT status', 'skipped', 'VAT-registered supplier.');
+    }
+
+    // 3. Item fixed code
     if (!decided) {
       if (item.purchaseTaxCode) decide('Item has a fixed purchasing tax code', item.purchaseTaxCode, 'Fixed on the item');
       else step('Item has a fixed purchasing tax code', 'skipped', 'No fixed code on the item.');
     }
 
-    // 3. Item tax group, 4. company default
+    // 4. Item tax group (zero-rating only for an export enterprise), 5. company default
     if (!decided) {
-      const g = data.groups.find((x) => x.code === item.purchaseTaxGroup);
-      if (g) decide('Item purchase tax group', g.taxCode, `Item group ${g.code}`);
-      else step('Item purchase tax group', 'skipped', 'The item has no purchase tax group.');
+      if (!group) step('Item purchase tax group', 'skipped', 'The item has no purchase tax group.');
+      else if (zeroRatingRefused(group)) {
+        step(
+          'Item purchase tax group',
+          'warning',
+          `Item group ${group.code} is zero-rated, but the company isn’t a registered export enterprise (Company tax profile) — suppliers should charge 12%.`,
+        );
+      } else decide('Item purchase tax group', group.taxCode, `Item group ${group.code}`);
     }
-    if (!decided) decide('Company default', 'IV12', 'Standard input VAT');
-    notes.push('Import VAT (IVI12) is entered on the import entry / landed cost, not on the supplier’s bill.');
+    if (!decided) decide('Company default', '44', 'Domestic purchases');
   }
 
   const rate = taxCode ? rateAt(taxCode, date) : undefined;
@@ -230,16 +255,23 @@ export function determineWithholding(item: LineItem, partner: LineParty, data: T
     step('Vendor override', 'warning', 'The vendor’s override points to a withholding tax that no longer exists.');
   } else step('Vendor override', 'skipped', 'No override on the vendor.');
 
-  // 2. By what is bought
+  // 2. Non-resident vendor → final withholding tax (EWT covers residents only)
   const category = item.withholdingCategory;
-  if (partner.supplierVatStatus === 'Non-resident digital services') {
-    step(
-      'Expanded withholding',
-      'warning',
-      'EWT covers resident suppliers only. Payments to a non-resident may carry final withholding tax (e.g. WC230 25% for other payments to NRFCs) — check the tax treaty, then set it as the vendor’s override.',
-    );
+  if (partner.nonResident && category === 'Goods') {
+    step('Non-resident: final tax', 'skipped', 'Goods bought from abroad are foreign-source income to the seller: no Philippine withholding.');
     return { withholding, withholdingTrace };
   }
+  if (partner.nonResident || partner.supplierVatStatus === 'Non-resident digital services') {
+    const treaty = 'A tax treaty may lower the rate — with a treaty ruling, set that rate as the vendor’s override.';
+    if (category === 'None') step('Non-resident: final tax', 'skipped', 'The item is marked as not subject to withholding.');
+    else if (payee === 'Individual') take('Non-resident: final tax', 'WI330', `Non-resident alien not engaged in business here. ${treaty}`);
+    else if (category === 'Interest') take('Non-resident: final tax', 'WC180', `Interest on a foreign loan to a non-resident foreign corporation. ${treaty}`);
+    else take('Non-resident: final tax', 'WC230', `Payment to a non-resident foreign corporation. ${treaty}`);
+    return { withholding, withholdingTrace };
+  }
+  step('Non-resident: final tax', 'skipped', 'Resident vendor.');
+
+  // 3. By what is bought
   switch (category) {
     case 'None':
       step('Item withholding category', 'skipped', 'The item is marked as not subject to withholding.');
@@ -256,6 +288,16 @@ export function determineWithholding(item: LineItem, partner: LineParty, data: T
         `${prefix}01${high ? 1 : 0}`,
         `${payee} professional, ${tierLabel}`,
       );
+      break;
+    case 'Royalties':
+      take('Item withholding category: royalties', `${prefix}250`, `Royalties, ${payee.toLowerCase()} payee (final tax)`);
+      break;
+    case 'Interest':
+      take('Item withholding category: interest', `${prefix}710`, `Interest on a debt instrument, ${payee.toLowerCase()} payee`);
+      break;
+    case 'Prizes':
+      if (payee === 'Individual') take('Item withholding category: prizes', 'WI260', 'Prize to an individual (final tax, if the prize exceeds ₱10,000)');
+      else step('Item withholding category: prizes', 'skipped', 'Final tax on prizes applies to individuals only.');
       break;
     case 'Goods':
     case 'Services':

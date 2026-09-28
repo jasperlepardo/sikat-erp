@@ -564,8 +564,8 @@ function PurchaseOrderForm() {
                   <TotalRow label="Tax" value={view.convert(totals.tax)} code={view.code} />
                   {totals.reverseCharge ? (
                     <Text variant="small" tone="muted">
-                      Reverse-charge VAT of {view.code} {formatAmount(view.convert(totals.reverseCharge))} isn’t paid to the vendor: you
-                      withhold and remit it (BIR 1600-VT), then claim it as input VAT.
+                      VAT of {view.code} {formatAmount(view.convert(totals.reverseCharge))} isn’t paid to the vendor: reverse-charge VAT
+                      you withhold and remit (BIR 1600-VT), and import VAT is paid to the Bureau of Customs. Both are claimed as input VAT.
                     </Text>
                   ) : null}
                   <TotalRow label="Total payment due" value={view.convert(totals.total)} code={view.code} strong />

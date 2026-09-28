@@ -18,12 +18,13 @@ import {
   type TableSort,
 } from '@jasperlepardo/sikat-design-system';
 import { PO_STATUSES, type PoStatus, type PurchaseOrder } from '../../../mocks/purchaseOrders';
-import { rateAt } from '../../../mocks/taxes';
+import { rateAt, vatNotPaidToVendor } from '../../../mocks/taxes';
 import { formatAmount } from '../../../services/format';
 import { taxCodes } from '../../../services/masterData';
 import { listPurchaseOrders, openQty, poNumber, poTotals } from '../../../services/purchaseOrders';
 import { useAsync } from '../../../services/useAsync';
 import { PO_LIST_PATH, STATUS_INTENT } from './detail/PurchaseOrderDetail';
+import { DEFAULT_PAGE_SIZE, PAGE_SIZES } from '../../../components/form/DataTable';
 
 type Filter = 'all' | PoStatus;
 
@@ -35,14 +36,14 @@ export function PurchaseOrderList() {
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<TableSort | null>({ key: 'postingDate', direction: 'desc' });
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
 
   const [orders, codes] = data ?? [undefined, []];
   const totalOf = (po: PurchaseOrder) =>
     poTotals(po, (code) => {
       const c = codes.find((x) => x.code === code);
       return c ? (rateAt(c, po.postingDate) ?? 0) : 0;
-    }, undefined, (code) => codes.find((x) => x.code === code)?.category === 'Reverse charge').total;
+    }, undefined, (code) => vatNotPaidToVendor(codes.find((x) => x.code === code))).total;
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -155,7 +156,7 @@ export function PurchaseOrderList() {
             setPage(1);
           }}
         />
-        <Card>
+        <Card className="table-fill">
           {orders ? (
             <Table
               caption="Purchase orders"
@@ -169,7 +170,7 @@ export function PurchaseOrderList() {
                 page,
                 pageSize,
                 total: rows.length,
-                pageSizes: [10, 25, 50],
+                pageSizes: PAGE_SIZES,
                 onPageChange: setPage,
                 onPageSizeChange: (size) => {
                   setPageSize(size);

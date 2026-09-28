@@ -14,6 +14,7 @@ import {
   type TableSort,
 } from '@jasperlepardo/sikat-design-system';
 import { Section, type Errors } from './fields';
+import { DEFAULT_PAGE_SIZE, PAGE_SIZES } from './DataTable';
 
 export interface MasterListProps<T extends { id: string }> {
   icon: string;
@@ -93,7 +94,7 @@ function ListView<T extends { id: string }>({
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<TableSort | null>(defaultSort ?? { key: columns[0].key, direction: 'asc' });
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [selected, setSelected] = useState<string[]>([]);
 
   const filtered = useMemo(() => {
@@ -189,7 +190,7 @@ function ListView<T extends { id: string }>({
           setPage(1);
         }}
       />
-      <Card>
+      <Card className="table-fill">
         {rows ? (
           <Table
             caption={title}
@@ -204,7 +205,7 @@ function ListView<T extends { id: string }>({
               page: current,
               pageSize,
               total: filtered.length,
-              pageSizes: [10, 25, 50],
+              pageSizes: PAGE_SIZES,
               onPageChange: setPage,
               onPageSizeChange: (size) => {
                 setPageSize(size);
