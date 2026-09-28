@@ -381,6 +381,24 @@ const GIFT_CERTIFICATES: Item[] = [1000, 5000, 10000].map((amount, n) =>
   }),
 );
 
+type PurchasedService = [
+  id: string, itemNo: string, description: string, uom: string, withholdingGroup: string, defaultVendorId: string, purchaseTaxGroup?: string,
+];
+const PURCHASED_SERVICES: PurchasedService[] = [
+  ['itm-021', 'SVC-AI-SEAT', 'AI assistant subscription (per seat, monthly)', 'seat', 'WH-SVC', 'bp-018'],
+  ['itm-022', 'SVC-ADS-DIGITAL', 'Digital advertising (search, video, social)', 'pc', 'WH-SVC', 'bp-019'],
+  ['itm-023', 'SVC-SECURITY', 'Store security guard services (monthly)', 'pc', 'WH-CONT', 'bp-014'],
+  ['itm-024', 'SVC-COURIER', 'Courier and logistics', 'trip', 'WH-SVC', 'bp-027'],
+  ['itm-025', 'SVC-AUDIT', 'External audit and tax compliance fee', 'pc', 'WH-PROF', 'bp-021'],
+  ['itm-026', 'SVC-CUSTOMS', 'Customs brokerage fee (per import entry)', 'pc', 'WH-COMM', 'bp-022'],
+  ['itm-027', 'SVC-PHOTO', 'Product photography and creative services', 'pc', 'WH-PROF', 'bp-023'],
+  ['itm-028', 'SVC-IT-CONSULT', 'IT consulting and systems integration', 'hour', 'WH-PROF', 'bp-024'],
+  ['itm-029', 'SVC-SALES-COMM', 'Sales agent commission', 'pc', 'WH-SCOMM', 'bp-026'],
+  ['itm-030', 'SVC-POS-LICENSE', 'POS software licence (annual)', 'pc', 'WH-ROY', 'bp-030'],
+  ['itm-031', 'FIN-LOAN-INT', 'Interest on inventory financing', 'pc', 'WH-INT', 'bp-032', 'P-VATX'],
+  ['itm-032', 'SVC-POSTAGE', 'Registered mail and postage', 'pc', 'WH-SVC', 'bp-028'],
+];
+
 export const SEED_ITEMS: Item[] = [
   ...APPLE_ITEMS,
   ...APPLECARE,
@@ -399,16 +417,23 @@ export const SEED_ITEMS: Item[] = [
   seed('itm-018', 'Services', {
     itemNo: 'SVC-RNT-MALL', description: 'Mall store space rent (monthly)', itemType: 'Items', inventoryUom: 'pc', purchasingUom: 'pc',
     salesItem: false, inventoryItem: false, purchaseTaxGroup: 'P-VAT12S', withholdingGroup: 'WH-RENT', warehouses: [],
-    cycleCountDays: 0, hasTransactions: false,
+    defaultVendorId: 'bp-002', cycleCountDays: 0, hasTransactions: false,
   }),
   seed('itm-019', 'Services', {
     itemNo: 'SVC-SUB-FITOUT', description: 'Store fit-out subcontract', itemType: 'Labor', inventoryUom: 'hour', purchasingUom: 'hour',
     salesItem: false, inventoryItem: false, purchaseTaxGroup: 'P-VAT12S', withholdingGroup: 'WH-CONT', warehouses: [],
-    cycleCountDays: 0, hasTransactions: false,
+    defaultVendorId: 'bp-025', cycleCountDays: 0, hasTransactions: false,
   }),
   seed('itm-020', 'Services', {
     itemNo: 'SVC-CLD-HOST', description: 'Cloud hosting subscription (monthly)', itemType: 'Items', inventoryUom: 'pc',
     purchasingUom: 'pc', salesItem: false, inventoryItem: false, purchaseTaxGroup: 'P-VAT12S', withholdingGroup: 'WH-SVC',
     defaultVendorId: 'bp-015', warehouses: [], cycleCountDays: 0, hasTransactions: false,
   }),
+  // Other things the store buys — one per withholding group, so every vendor's tax scenario can be tried.
+  ...PURCHASED_SERVICES.map(([id, itemNo, description, uom, withholdingGroup, defaultVendorId, purchaseTaxGroup = 'P-VAT12S']) =>
+    seed(id, 'Services', {
+      itemNo, description, itemType: 'Items', inventoryUom: uom, purchasingUom: uom, salesItem: false, inventoryItem: false,
+      purchaseTaxGroup, withholdingGroup, defaultVendorId, warehouses: [], cycleCountDays: 0, hasTransactions: false,
+    }),
+  ),
 ];

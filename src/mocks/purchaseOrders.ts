@@ -169,9 +169,10 @@ export interface BlanketAgreement {
   validTo: string;
 }
 export const BLANKET_AGREEMENTS: BlanketAgreement[] = [
-  { no: 'BA-2026-001', vendorId: 'bp-016', description: 'Apple distributor — FY2026 volume agreement', validTo: '2026-12-31' },
-  { no: 'BA-2026-002', vendorId: 'bp-016', description: 'Apple distributor — holiday season allocation', validTo: '2027-01-15' },
-  { no: 'BA-2026-003', vendorId: 'bp-015', description: 'CloudStack — annual hosting commitment', validTo: '2027-03-31' },
+  { no: 'BA-2026-001', vendorId: 'bp-016', description: 'Luzon iDistribution — FY2026 volume agreement', validTo: '2026-12-31' },
+  { no: 'BA-2026-002', vendorId: 'bp-016', description: 'Luzon iDistribution — holiday season allocation', validTo: '2027-01-15' },
+  { no: 'BA-2026-003', vendorId: 'bp-015', description: 'AWS — annual compute savings plan', validTo: '2027-03-31' },
+  { no: 'BA-2026-004', vendorId: 'bp-017', description: 'Apple South Asia — FY2026 direct import allocation', validTo: '2026-12-31' },
 ];
 
 /** Where service-only POs ship to (Company Details › General › Local Language). */
@@ -272,7 +273,16 @@ const line = (n: string, itemNo: string, quantity: number, patch: Partial<PoLine
   });
 };
 
-const APPLE_PAY_TO = 'Apple Authorized Distributor (placeholder)\n6750 Ayala Ave.\nMakati 1226, Metro Manila';
+/** Demo conversion for USD-billed imports (BSP reference rate, rounded). */
+const USD_PHP = 58;
+
+/** A seeded import line from Apple South Asia: USD cost, 46 Importations. */
+const importLine = (n: string, itemNo: string, quantity: number): PoLine => {
+  const l = line(n, itemNo, quantity);
+  return { ...l, unitPrice: Math.round((l.unitPrice / USD_PHP) * 100) / 100, taxCode: '46', deliveryDate: '2026-10-06' };
+};
+
+const APPLE_PAY_TO ='Luzon iDistribution Corp.\n6750 Ayala Ave.\nMakati 1226, Metro Manila';
 const MNL_SHIP_TO = 'Manila distribution center\nPasig';
 
 const po = (id: string, docNum: number, patch: Partial<PurchaseOrder>): PurchaseOrder => ({
@@ -281,7 +291,7 @@ const po = (id: string, docNum: number, patch: Partial<PurchaseOrder>): Purchase
   docNum,
   vendorId: 'bp-016',
   vendorCode: 'BP-0016',
-  vendorName: 'Apple Authorized Distributor (placeholder)',
+  vendorName: 'Luzon iDistribution Corp.',
   contactId: 'bp-016-c1',
   shipTo: MNL_SHIP_TO,
   payTo: APPLE_PAY_TO,
@@ -335,9 +345,9 @@ export const SEED_PURCHASE_ORDERS: PurchaseOrder[] = [
   }),
   po('po-005', 260004, {
     status: 'Open',
-    vendorId: 'bp-015', vendorCode: 'BP-0015', vendorName: 'CloudStack Pte. Ltd.', contactId: 'bp-015-c1',
+    vendorId: 'bp-015', vendorCode: 'BP-0015', vendorName: 'Amazon Web Services, Inc.', contactId: 'bp-015-c1',
     currency: 'USD', currencyView: 'BP', paymentTerms: 'Net 7', shipTo: COMPANY_ADDRESS,
-    payTo: 'CloudStack Pte. Ltd.\n71 Robinson Rd.\nSingapore 068895', shippingType: '', journalRemark: 'Purchase Orders – BP-0015',
+    payTo: 'Amazon Web Services, Inc.\n410 Terry Ave. North\nSeattle, WA 98109, United States', shippingType: '', journalRemark: 'Purchase Orders – BP-0015',
     postingDate: '2026-09-26', documentDate: '2026-09-26', deliveryDate: '2026-10-01', dueDate: '2026-10-03',
     lines: [
       newPoLine({
@@ -346,6 +356,20 @@ export const SEED_PURCHASE_ORDERS: PurchaseOrder[] = [
         department: 'IT',
       }),
     ],
+  }),
+  po('po-006', 260005, {
+    status: 'Open',
+    vendorId: 'bp-017', vendorCode: 'BP-0017', vendorName: 'Apple South Asia Pte. Ltd.', contactId: 'bp-017-c1',
+    currency: 'USD', currencyView: 'BP', paymentTerms: 'Net 30',
+    payTo: 'Apple South Asia Pte. Ltd.\n7 Ang Mo Kio Street 64\nSingapore 569086', journalRemark: 'Purchase Orders – BP-0017',
+    postingDate: '2026-09-22', documentDate: '2026-09-22', deliveryDate: '2026-10-06', dueDate: '2026-10-22',
+    vendorRef: 'ASA-PO-7741902', freightTaxCode: '46',
+    lines: [
+      importLine('po-006-1', 'IPH-18P-256-BLK', 20),
+      importLine('po-006-2', 'IPH-18P-256-SLV', 20),
+      importLine('po-006-3', 'IPH-18PM-512-GLC', 10),
+    ].map((l) => ({ ...l, blanketAgreement: 'BA-2026-004' })),
+    remarks: 'Direct import from Apple. Import VAT (46) is paid to the Bureau of Customs on the import entry; Pier Four Customs Brokerage files the entry.',
   }),
 ];
 

@@ -14,7 +14,10 @@ export const BP_GROUPS: { value: string; role: PartnerRole }[] = [
   { value: 'Leads', role: 'lead' },
 ];
 
-export const INDUSTRIES = ['Construction', 'Retail', 'Manufacturing', 'Real estate', 'Agriculture', 'Services', 'Government', 'Wholesale'];
+export const INDUSTRIES = [
+  'Retail', 'Wholesale', 'Technology', 'BPO / IT-BPM', 'Financial services', 'Education', 'Government', 'Cooperative',
+  'Real estate', 'Logistics', 'Professional services', 'Media & advertising', 'Security services', 'Construction', 'Manufacturing', 'Services',
+];
 export const BUSINESS_TYPES = [
   'Company',
   'Resident foreign company',
@@ -32,7 +35,7 @@ export const EMPLOYEES = ['— None —', 'Andrea Ramos', 'Ben Salazar', 'Carla 
 export const TECHNICIANS = ['— None —', 'Edgar Bautista', 'Fe Lopez'];
 export const TERRITORIES = ['— None —', 'NCR', 'North Luzon', 'South Luzon', 'Visayas', 'Mindanao'];
 export const CHANNELS = ['— None —', 'Direct', 'Distributor', 'E-commerce', 'Walk-in'];
-export const PROJECTS = ['— None —', 'PRJ-001 Bayview Tower', 'PRJ-002 Clark Warehouse', 'PRJ-003 Cebu Showroom'];
+export const PROJECTS = ['— None —', 'PRJ-001 Northgate store renovation', 'PRJ-002 DepEd Pasig iPad rollout', 'PRJ-003 Cebu store opening'];
 export const EMAIL_GROUPS = ['— None —', 'Newsletter', 'Promotions', 'Billing notices'];
 
 export const PAYMENT_TERMS = ['COD', 'Net 7', 'Net 15', 'Net 30', 'Net 45', 'Net 60', '50% DP, balance on delivery'];
@@ -46,7 +49,7 @@ export const HOLIDAY_CALENDARS = ['— None —', 'Philippines (national)', 'Phi
 /** Countries used on addresses, banks and items' country of origin. */
 export const COUNTRIES = [
   'Philippines', 'China', 'Japan', 'South Korea', 'Taiwan', 'Vietnam', 'Thailand', 'Malaysia', 'Singapore',
-  'Indonesia', 'India', 'United States', 'Germany', 'France',
+  'Indonesia', 'India', 'Hong Kong', 'Ireland', 'United States', 'Germany', 'France',
 ];
 
 /** Countries with an existing tax treaty with the Philippines (BIR-recognized, as of 2024). */

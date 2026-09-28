@@ -302,31 +302,33 @@ export function determineWithholding(
   }
 
   // 2. Income tier (residents only): the lower rate needs this year's sworn declaration (RR 11-2018).
-  // A VAT-registered individual always gets the higher rate, declaration or not.
+  // A VAT-registered individual always gets the higher rate, declaration or not. Worked out here,
+  // but only reported when an income-tiered ATC is picked — a flat rate doesn't depend on it.
   let high = true;
   let tierLabel = '';
+  let tierStep: TraceStep | undefined;
   if (!partner.nonResident) {
     const threshold = payee === 'Individual' ? '₱3M' : '₱720,000';
     const docYear = new Date(date).getFullYear();
     const declYear = partner.swornDeclarationDate ? new Date(partner.swornDeclarationDate).getFullYear() : null;
+    const tier = (outcome: TraceStep['outcome'], label: string, detail: string) => {
+      tierLabel = label;
+      tierStep = { rule: 'Income tier', outcome, detail };
+    };
     if (payee === 'Individual' && chargesVat(partner)) {
-      tierLabel = 'VAT-registered';
-      step('Income tier', 'applied', 'VAT-registered individual — the higher rate applies regardless of income.');
+      tier('applied', 'VAT-registered', 'VAT-registered individual — the higher rate applies regardless of income.');
     } else if (!partner.swornDeclarationRef) {
-      tierLabel = 'no declaration — higher rate';
-      step('Income tier', 'warning', 'No sworn declaration on file — higher rate applies (RR 11-2018). Ask the vendor to submit one.');
+      tier('warning', 'no declaration — higher rate', 'No sworn declaration on file — higher rate applies (RR 11-2018). Ask the vendor to submit one.');
     } else if (declYear !== docYear) {
-      tierLabel = 'no declaration — higher rate';
-      step('Income tier', 'warning', `Sworn declaration (ref ${partner.swornDeclarationRef}) is for ${declYear ?? 'an unknown year'}, not ${docYear} — higher rate applies. Ask the vendor to resubmit.`);
+      tier('warning', 'no declaration — higher rate', `Sworn declaration (ref ${partner.swornDeclarationRef}) is for ${declYear ?? 'an unknown year'}, not ${docYear} — higher rate applies. Ask the vendor to resubmit.`);
     } else if (!partner.swornDeclarationAttachments.length) {
-      tierLabel = 'no declaration — higher rate';
-      step('Income tier', 'warning', `Sworn declaration ref ${partner.swornDeclarationRef} has no document attached — higher rate applies. Upload the signed declaration.`);
+      tier('warning', 'no declaration — higher rate', `Sworn declaration ref ${partner.swornDeclarationRef} has no document attached — higher rate applies. Upload the signed declaration.`);
     } else {
       high = false;
-      tierLabel = `declared ≤ ${threshold}`;
-      step('Income tier', 'applied', `Vendor declared gross income ≤ ${threshold} (ref ${partner.swornDeclarationRef}, ${partner.swornDeclarationDate}) — lower rate applies.`);
+      tier('applied', `declared ≤ ${threshold}`, `Vendor declared gross income ≤ ${threshold} (ref ${partner.swornDeclarationRef}, ${partner.swornDeclarationDate}) — lower rate applies.`);
     }
   }
+  const reportTier = () => tierStep && withholdingTrace.push(tierStep);
 
   // 3. VAT withheld on services or property lease from a non-resident (Sec. 114(C), 1600-VT).
   const nr = nonResidentVat(item, partner, data, date);
@@ -361,6 +363,7 @@ export function determineWithholding(
         );
         const rates = siblings.map((x) => x.rate);
         w = siblings.find((x) => x.rate === (high ? Math.max(...rates) : Math.min(...rates))) ?? set;
+        reportTier();
       }
       withholding.push(w);
       step(
@@ -437,7 +440,8 @@ export function determineWithholding(
     return done();
   }
 
-  const tiered = !govAtc && !!(group.atcIndividualHigh || group.atcCorporateHigh);
+  const tiered = !govAtc && !!(payee === 'Individual' ? group.atcIndividualHigh : group.atcCorporateHigh);
+  if (tiered) reportTier();
   const govLabel = govAtc ? ' (government entity)' : '';
   take('Withholding group', atc, `${group.name}, ${payee.toLowerCase()} payee${govLabel}${tiered ? `, ${tierLabel}` : ''}`);
   return done();

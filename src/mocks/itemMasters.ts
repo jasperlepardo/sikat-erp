@@ -135,7 +135,7 @@ const uom = (code: string, name: string): UnitOfMeasure => ({ id: `uom-${code}`,
 export const SEED_UOMS: UnitOfMeasure[] = [
   uom('pc', 'Piece'), uom('box', 'Box'), uom('carton', 'Carton'), uom('pack', 'Pack'), uom('roll', 'Roll'),
   uom('m', 'Meter'), uom('ft', 'Foot'), uom('kg', 'Kilogram'), uom('L', 'Liter'), uom('gal', 'Gallon'),
-  uom('set', 'Set'), uom('pail', 'Pail'), uom('hour', 'Hour'), uom('trip', 'Trip'), uom('plan', 'Plan'),
+  uom('set', 'Set'), uom('pail', 'Pail'), uom('hour', 'Hour'), uom('trip', 'Trip'), uom('plan', 'Plan'), uom('seat', 'Seat'),
 ];
 
 export const SEED_WAREHOUSES: Warehouse[] = [

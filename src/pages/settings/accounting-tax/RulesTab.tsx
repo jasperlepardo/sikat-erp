@@ -92,7 +92,7 @@ export function RulesTab() {
 
   const [direction, setDirection] = useState<TaxDirection>('Purchase');
   const [partnerId, setPartnerId] = useState('bp-002');
-  const [itemId, setItemId] = useState('itm-019');
+  const [itemId, setItemId] = useState('itm-018');
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
 
   const role = direction === 'Sales' ? 'customer' : 'vendor';

@@ -26,7 +26,7 @@ import { createCollection } from './store';
 
 /** Settings › Inventory and Inventory › Warehouses & Bins master data. */
 export const itemGroups = createCollection<ItemGroup>('sikat-erp:item-groups:v4', SEED_ITEM_GROUPS, 'ig');
-export const unitsOfMeasure = createCollection<UnitOfMeasure>('sikat-erp:uoms:v2', SEED_UOMS, 'uom');
+export const unitsOfMeasure = createCollection<UnitOfMeasure>('sikat-erp:uoms:v3', SEED_UOMS, 'uom');
 export const warehouses = createCollection<Warehouse>('sikat-erp:warehouses:v2', SEED_WAREHOUSES, 'wh');
 export const manufacturers = createCollection<Manufacturer>('sikat-erp:manufacturers:v2', SEED_MANUFACTURERS, 'mfr');
 export const customsGroups = createCollection<CustomsGroup>('sikat-erp:customs-groups:v2', SEED_CUSTOMS_GROUPS, 'cg');

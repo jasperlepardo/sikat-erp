@@ -321,7 +321,7 @@ export function blankPartner(role: PartnerRole): Omit<Partner, 'id'> {
     contactChannels: [],
     shippingType: 'sh-own',
     project: '— None —',
-    industry: 'Construction',
+    industry: 'Retail',
     businessType: 'Company',
     aliasName: '',
     gln: '',
@@ -435,112 +435,353 @@ function seed(
   };
 }
 
+/** Seed helper: an attached document. */
+const doc = (id: string, fileName: string, attachedOn: string, description?: string): Attachment => ({
+  id, fileName, size: 120000, attachedOn, ...(description ? { description } : {}),
+});
+/** Seed helper: this year's sworn declaration (RR 11-2018), signed and on file. */
+const sworn = (id: string, ref: string, date: string) => ({
+  swornDeclarationRef: ref,
+  swornDeclarationDate: date,
+  swornDeclarationAttachments: [doc(`att-${id}-sd`, `Sworn_Declaration_${ref}.pdf`, date, 'Sworn declaration of gross income')],
+});
+const email = (id: string, value: string, label = 'Email'): PartnerContactChannel => ({ id, type: 'Email', label, value });
+const phone = (id: string, value: string, label = 'Phone'): PartnerContactChannel => ({ id, type: 'Phone', label, value });
+const mobile = (id: string, value: string, label = 'Mobile'): PartnerContactChannel => ({ id, type: 'Mobile', label, value });
+const web = (id: string, value: string): PartnerContactChannel => ({ id, type: 'Website', label: 'Website', value });
+
+/**
+ * The business partners of an Apple Premium Reseller in the Philippines. Together they cover
+ * every VAT and withholding tax combination the rules produce (services/taxDetermination.ts);
+ * each partner's remarks say which one, with the company profile's defaults (VAT-registered,
+ * private top withholding agent).
+ *
+ * Foreign providers are listed under their real contracting entities for realism. Whether each
+ * one is registered with BIR as a digital service provider is a demo setting here — match it to
+ * what their invoice shows.
+ */
 export const SEED_PARTNERS: Partner[] = [
+  // ── Customers ──────────────────────────────────────────────────────────────
   seed(
     'bp-001', 'customer',
-    { name: 'Acme Construction Corp.', tin: '123-456-789-000', contactChannels: [{ id: 'bp-001-ch1', type: 'Phone', label: 'Phone', value: '+63 2 8812 3456' }, { id: 'bp-001-ch2', type: 'Email', label: 'Email', value: 'purchasing@acmeconstruction.ph' }], creditLimit: 500000, commitmentLimit: 750000, salesEmployee: 'Andrea Ramos', territory: 'NCR', properties: ['Key account', 'Requires PO'], averageDelayDays: 4 },
-    { firstName: 'Maria', lastName: 'Santos', position: 'Purchasing Manager', email: 'maria.santos@acmeconstruction.ph', mobile: '+63 917 800 1122' },
-    { street: 'Shaw Blvd.', streetNo: '21', block: 'Wack-Wack', city: 'Mandaluyong', zip: '1552', province: 'Metro Manila' },
+    { name: 'Walk-in customer', businessType: 'Individual', group: 'Customers – Retail', industry: 'Retail', channel: 'Walk-in',
+      customerPaymentTerms: 'COD', vatRegistered: false,
+      remarks: 'Tax scenario (sales): regular consumer → 31 VATable sales, 12% output VAT.' },
+    { firstName: 'Walk-in', lastName: 'Customer', position: 'Consumer' },
+    { street: 'Ortigas Ave.', block: 'San Antonio', city: 'Pasig', zip: '1605', province: 'Metro Manila' },
   ),
   seed(
-    'bp-002', 'customer',
-    { roles: ['customer', 'vendor'], name: 'Metro Hardware Supply', tin: '234-567-890-000', contactChannels: [{ id: 'bp-002-ch1', type: 'Phone', label: 'Phone', value: '+63 2 8723 1100' }, { id: 'bp-002-ch2', type: 'Email', label: 'Email', value: 'orders@metrohardware.ph' }], customerPaymentTerms: 'Net 15', vendorPaymentTerms: 'Net 30', creditLimit: 250000, industry: 'Retail', remarks: 'Buys paint from us; we buy fasteners from them.' },
-    { firstName: 'Jose', lastName: 'Reyes', position: 'Owner', email: 'jose@metrohardware.ph' },
-    { street: 'Rizal Ave.', streetNo: '88', block: 'Sta. Cruz', city: 'Manila', zip: '1003', province: 'Metro Manila' },
+    'bp-002', 'vendor',
+    { roles: ['vendor', 'customer'], name: 'Northgate Prime Malls Inc.', tin: '201-334-517-000', businessType: 'Company', group: 'Vendors – Services',
+      industry: 'Real estate', contactChannels: [phone('bp-002-ch1', '+63 2 8631 4400'), email('bp-002-ch2', 'leasing@northgateprime.example.ph')],
+      vendorPaymentTerms: 'Net 15', customerPaymentTerms: 'Net 30', creditLimit: 300000, ...sworn('bp-002', 'SD-NPM-2026', '2026-01-12'),
+      remarks: 'Our landlord at Northgate Mall, and a customer (buys iPads for its mall admin office).\n'
+        + 'Tax scenario (purchase, mall rent): 44 input VAT · WC100 5% EWT on rent.\n'
+        + 'Tax scenario (sales): 31 VATable; as a top withholding agent it withholds 1% and sends us BIR Form 2307.' },
+    { firstName: 'Patricia', lastName: 'Gonzales', position: 'Leasing Manager', email: 'patricia.gonzales@northgateprime.example.ph' },
+    { street: 'Northgate Ave.', block: 'Filinvest City', city: 'Muntinlupa', zip: '1781', province: 'Metro Manila' },
   ),
   seed(
-    'bp-003', 'vendor',
-    { name: 'Luzon Steel Industries', tin: '345-678-901-000', contactChannels: [{ id: 'bp-003-ch1', type: 'Phone', label: 'Phone', value: '+63 44 791 2233' }, { id: 'bp-003-ch2', type: 'Email', label: 'Email', value: 'sales@luzonsteel.ph' }], vendorPaymentTerms: 'Net 60', industry: 'Manufacturing', group: 'Vendors – Local', swornDeclarationRef: 'SD-LSI-2026-001', swornDeclarationDate: '2026-01-07', swornDeclarationAttachments: [{ id: 'att-sd-lsi-001', fileName: 'Sworn_Declaration_LSI_2026.pdf', size: 98304, attachedOn: '2026-01-07' }],
-      bankAccounts: [newBankAccount({ id: 'bp-003-b1', bank: 'BPI', branch: 'Malolos', accountNo: '8890-1122-33', accountName: 'Luzon Steel Industries Inc.' })],
-      defaultBankAccountId: 'bp-003-b1' },
-    { firstName: 'Ramon', lastName: 'Cruz', position: 'Sales Director', email: 'ramon.cruz@luzonsteel.ph' },
-    { street: 'MacArthur Hwy.', streetNo: 'Km 45', block: 'Longos', city: 'Malolos', zip: '3000', province: 'Bulacan' },
+    'bp-003', 'customer',
+    { name: 'Bayanihan Savings Bank Corp.', tin: '004-112-908-000', businessType: 'Company', group: 'Customers – Trade', industry: 'Financial services',
+      contactChannels: [email('bp-003-ch1', 'procurement@bayanihanbank.example.ph')], customerPaymentTerms: 'Net 30', creditLimit: 2500000,
+      salesEmployee: 'Carla Uy', territory: 'NCR', properties: ['Key account', 'Requires PO'],
+      remarks: 'Corporate fleet of MacBooks and iPhones for branch staff.\n'
+        + 'Tax scenario (sales): 31 VATable. Top withholding agent: withholds 1% on goods / 2% on services and issues BIR Form 2307.' },
+    { firstName: 'Miguel', lastName: 'Ferrer', position: 'Head of Procurement', email: 'miguel.ferrer@bayanihanbank.example.ph' },
+    { street: 'Paseo de Roxas', streetNo: '8750', block: 'Bel-Air', city: 'Makati', zip: '1226', province: 'Metro Manila' },
   ),
   seed(
-    'bp-004', 'vendor',
-    { name: 'Visayas Electrical Trading', tin: '456-789-012-000', contactChannels: [{ id: 'bp-004-ch1', type: 'Phone', label: 'Phone', value: '+63 32 255 4410' }, { id: 'bp-004-ch2', type: 'Email', label: 'Email', value: 'ap@visayaselectrical.ph' }], industry: 'Retail' },
-    { firstName: 'Ana', lastName: 'Villanueva', position: 'Accounts Officer', email: 'ana@visayaselectrical.ph' },
-    { street: 'Osmeña Blvd.', streetNo: '12', block: 'Capitol Site', city: 'Cebu City', zip: '6000', province: 'Cebu' },
+    'bp-004', 'customer',
+    { name: 'Clarkfield Global Services Inc.', tin: '009-876-120-000', businessType: 'Company', group: 'Customers – Trade', industry: 'BPO / IT-BPM',
+      contactChannels: [email('bp-004-ch1', 'it.procurement@clarkfieldgs.example.ph')], customerPaymentTerms: 'Net 30', creditLimit: 1500000, territory: 'North Luzon',
+      vatExemptions: [{ id: 've-bp-004', type: 'Zero-rated', certificateRef: 'PEZA-EO-2023-0417', basis: '', validUntil: '2028-06-30',
+        attachments: [doc('att-bp-004-peza', 'PEZA_Certificate_of_Registration.pdf', '2023-07-02', 'PEZA IT enterprise registration')] }],
+      remarks: 'PEZA-registered IT-BPM company in Clark Freeport. Buys Macs and iPads for its delivery floor.\n'
+        + 'Tax scenario (sales): valid zero-rating certificate → 32 zero-rated sales; the invoice must say "ZERO-RATED SALE".' },
+    { firstName: 'Anne', lastName: 'Sison', position: 'IT Asset Manager', email: 'anne.sison@clarkfieldgs.example.ph' },
+    { street: 'Manuel A. Roxas Hwy.', streetNo: 'Bldg 7', block: 'Clark Freeport Zone', city: 'Mabalacat', zip: '2023', province: 'Pampanga' },
   ),
   seed(
     'bp-005', 'customer',
-    { name: 'Northpoint Builders', contactChannels: [{ id: 'bp-005-ch1', type: 'Mobile', label: 'Mobile', value: '+63 917 555 0142' }, { id: 'bp-005-ch2', type: 'Email', label: 'Email', value: 'hello@northpointbuilders.ph' }], customerPaymentTerms: 'COD', group: 'Customers – Retail', territory: 'North Luzon' },
-    { firstName: 'Carlo', lastName: 'Mendoza', position: 'Project Engineer', email: 'carlo@northpointbuilders.ph' },
-    { street: 'Session Rd.', streetNo: '5', city: 'Baguio', zip: '2600', province: 'Benguet' },
+    { name: 'Mactan Pixel Animation Studio Inc.', tin: '011-445-760-000', businessType: 'Company', group: 'Customers – Trade', industry: 'BPO / IT-BPM',
+      contactChannels: [email('bp-005-ch1', 'admin@mactanpixel.example.ph')], customerPaymentTerms: 'Net 15', territory: 'Visayas',
+      vatExemptions: [{ id: 've-bp-005', type: 'Zero-rated', certificateRef: 'PEZA-EO-2021-0932', basis: '', validUntil: '2026-06-30',
+        attachments: [doc('att-bp-005-peza', 'PEZA_Certificate_2021.pdf', '2021-07-15', 'PEZA registration (expired)')] }],
+      remarks: 'Animation studio in Mactan Economic Zone.\n'
+        + 'Tax scenario (sales): zero-rating certificate expired on 30 Jun 2026 → warning, charged 31 VATable until they send the renewal.' },
+    { firstName: 'Kevin', lastName: 'Ong', position: 'Admin Head', email: 'kevin.ong@mactanpixel.example.ph' },
+    { street: 'MEPZ 1', block: 'Mactan Economic Zone', city: 'Lapu-Lapu City', zip: '6015', province: 'Cebu' },
   ),
   seed(
-    'bp-006', 'vendor',
-    { roles: ['vendor', 'customer'], name: 'Pacific Paints Inc.', tin: '567-890-123-000', contactChannels: [{ id: 'bp-006-ch1', type: 'Phone', label: 'Phone', value: '+63 2 8634 7788' }, { id: 'bp-006-ch2', type: 'Email', label: 'Email', value: 'trade@pacificpaints.ph' }], creditLimit: 150000, industry: 'Manufacturing', properties: ['Preferred supplier', 'Accepts e-invoice'] },
-    { firstName: 'Liza', lastName: 'Tan', position: 'Trade Marketing', email: 'liza.tan@pacificpaints.ph' },
-    { street: 'EDSA', streetNo: '400', block: 'Bagong Pag-asa', city: 'Quezon City', zip: '1105', province: 'Metro Manila' },
+    'bp-006', 'customer',
+    { name: 'Lourdes M. Villanueva', businessType: 'Individual', group: 'Customers – Retail', industry: 'Retail', channel: 'Walk-in',
+      customerPaymentTerms: 'COD', vatRegistered: false, contactChannels: [mobile('bp-006-ch1', '+63 917 402 1188')],
+      vatExemptions: [{ id: 've-bp-006', type: 'Exempt entity', certificateRef: 'OSCA-PSG-2019-44871', basis: 'RA 9994 / RA 10754 — Senior citizen / PWD', validUntil: '',
+        attachments: [doc('att-bp-006-osca', 'OSCA_Senior_Citizen_ID.jpg', '2026-08-03', 'OSCA senior citizen ID')] }],
+      remarks: 'Senior citizen, buys for personal use.\n'
+        + 'Tax scenario (sales): senior citizen exemption with ID on file → 33 VAT-exempt sales (the 20% senior discount applies too).' },
+    { firstName: 'Lourdes', middleName: 'M.', lastName: 'Villanueva', position: 'Senior citizen' },
+    { street: 'Dr. Sixto Antonio Ave.', streetNo: '41', block: 'Kapasigan', city: 'Pasig', zip: '1600', province: 'Metro Manila' },
   ),
   seed(
     'bp-007', 'customer',
-    { name: 'Island Homes Development', contactChannels: [{ id: 'bp-007-ch1', type: 'Email', label: 'Email', value: 'finance@islandhomes.ph' }], status: 'Inactive', statusRemarks: 'Project completed; account closed.', industry: 'Real estate', territory: 'Mindanao' },
-    { firstName: 'Mark', lastName: 'Lim', position: 'Finance Head', email: 'mark.lim@islandhomes.ph' },
-    { street: 'JP Laurel Ave.', streetNo: '77', block: 'Bajada', city: 'Davao City', zip: '8000', province: 'Davao del Sur' },
+    { name: 'Guro ng Bayan Multi-Purpose Cooperative', tin: '412-778-903-000', businessType: 'Cooperative', group: 'Customers – Trade', industry: 'Cooperative',
+      contactChannels: [email('bp-007-ch1', 'office@gurongbayancoop.example.ph')], customerPaymentTerms: 'Net 15', vatRegistered: false,
+      vatExemptions: [{ id: 've-bp-007', type: 'Exempt entity', certificateRef: 'CDA-9520-00418823', basis: 'RA 9520 — Cooperative Code', validUntil: '2027-12-31',
+        attachments: [doc('att-bp-007-cda', 'CDA_Certificate_of_Registration.pdf', '2025-01-20', 'CDA registration + BIR certificate of tax exemption')] }],
+      remarks: 'Teachers’ cooperative; buys iPads for members through salary loans.\n'
+        + 'Tax scenario (sales): cooperative with CDA certificate on file → 33 VAT-exempt sales.' },
+    { firstName: 'Teresita', lastName: 'Ramos', position: 'Treasurer', email: 'treasurer@gurongbayancoop.example.ph' },
+    { street: 'Caruncho Ave.', streetNo: '118', block: 'San Nicolas', city: 'Pasig', zip: '1600', province: 'Metro Manila' },
   ),
   seed(
     'bp-008', 'vendor',
-    { name: 'Golden Plumbing Center', contactChannels: [{ id: 'bp-008-ch1', type: 'Email', label: 'Email', value: 'rosa@goldenplumbing.ph' }], vendorPaymentTerms: 'COD', status: 'Inactive', vatRegistered: false, businessType: 'Sole proprietorship' },
-    { firstName: 'Rosa', lastName: 'Garcia', position: 'Owner', email: 'rosa@goldenplumbing.ph' },
-    { street: 'Aurora Blvd.', streetNo: '31', city: 'San Juan', zip: '1500', province: 'Metro Manila' },
+    { roles: ['vendor', 'customer'], name: 'Kapitbahayan Transport Service Cooperative', tin: '415-202-661-000', businessType: 'Cooperative', group: 'Vendors – Services',
+      industry: 'Logistics', contactChannels: [mobile('bp-008-ch1', '+63 918 330 7711', 'Dispatch')],
+      vendorPaymentTerms: 'Net 7', customerPaymentTerms: 'COD', vatRegistered: false,
+      vatExemptions: [{ id: 've-bp-008', type: 'Exempt entity', certificateRef: 'CDA-9520-00520190', basis: 'RA 9520 — Cooperative Code', validUntil: '', attachments: [] }],
+      remarks: 'Delivery riders for our same-day deliveries; also buys iPhones for its dispatchers.\n'
+        + 'Tax scenario (purchase, courier): non-VAT → 48 no input tax · WC160 2% EWT.\n'
+        + 'Tax scenario (sales): exemption entered but no certificate attached → warning, charged 31 VATable.' },
+    { firstName: 'Rodel', lastName: 'Manalo', position: 'Manager', email: 'kapitbahayan.tsc@example.ph' },
+    { street: 'C. Raymundo Ave.', streetNo: '22', block: 'Maybunga', city: 'Pasig', zip: '1607', province: 'Metro Manila' },
   ),
   seed(
-    'bp-009', 'lead',
-    { name: 'Sunrise Renovations', contactChannels: [{ id: 'bp-009-ch1', type: 'Email', label: 'Email', value: 'info@sunrisereno.ph' }], leadSource: 'Referral', leadStage: 'Qualified', remarks: 'Referred by Acme. Needs quote for 200 boxes of screws.' },
-    { firstName: 'Paolo', lastName: 'Aquino', position: 'Operations', email: 'paolo@sunrisereno.ph', mobile: '+63 918 222 3344' },
-    { street: 'Katipunan Ave.', streetNo: '9', block: 'Loyola Heights', city: 'Quezon City', zip: '1108', province: 'Metro Manila' },
-  ),
-  seed(
-    'bp-010', 'lead',
-    { name: 'Bayview Condominium Corp.', contactChannels: [{ id: 'bp-010-ch1', type: 'Email', label: 'Email', value: 'admin@bayviewcondo.ph' }], leadSource: 'Website', leadStage: 'Contacted', industry: 'Real estate' },
-    { firstName: 'Grace', lastName: 'Dela Cruz', position: 'Admin Officer', email: 'grace@bayviewcondo.ph' },
-    { street: 'Roxas Blvd.', streetNo: '1200', city: 'Pasay', zip: '1300', province: 'Metro Manila' },
-  ),
-  seed(
-    'bp-011', 'lead',
-    { name: 'Mindanao Agri Supplies', contactChannels: [{ id: 'bp-011-ch1', type: 'Email', label: 'Email', value: 'sales@mindanaoagri.ph' }], leadSource: 'Trade show', leadStage: 'New', industry: 'Agriculture' },
-    { firstName: 'Nestor', lastName: 'Ramos', email: 'nestor@mindanaoagri.ph' },
-    { street: 'Corrales Ave.', streetNo: '14', city: 'Cagayan de Oro', zip: '9000', province: 'Misamis Oriental' },
-  ),
-  seed(
-    'bp-012', 'lead',
-    { name: 'Quickfix Home Services', contactChannels: [{ id: 'bp-012-ch1', type: 'Email', label: 'Email', value: 'ella@quickfix.ph' }], leadSource: 'Walk-in', leadStage: 'Lost', industry: 'Services', remarks: 'Went with a competitor on price.' },
-    { firstName: 'Ella', lastName: 'Navarro', email: 'ella@quickfix.ph' },
-    { street: 'Alabang–Zapote Rd.', streetNo: '3', city: 'Las Piñas', zip: '1740', province: 'Metro Manila' },
-  ),
-  seed(
-    'bp-013', 'customer',
-    { name: 'Cavite Export Assemblers Inc.', tin: '678-901-234-000', contactChannels: [{ id: 'bp-013-ch1', type: 'Email', label: 'Email', value: 'procurement@caviteexport.ph' }], industry: 'Manufacturing',
-      vatExemptions: [{ id: 've-peza-0001', type: 'Zero-rated', certificateRef: 'PEZA-REE-2024-0183', basis: '', validUntil: '2027-12-31', attachments: [{ id: 'att-peza-0001', fileName: 'PEZA_Certificate_REE_2024.pdf', size: 142080, attachedOn: '2024-03-15', description: 'PEZA Registered Export Enterprise certificate' }] }],
-      remarks: 'PEZA-registered export enterprise in Cavite Economic Zone. Keep the VAT zero-rating certificate on file.' },
-    { firstName: 'Lorna', lastName: 'Bautista', position: 'Procurement Head', email: 'lorna.bautista@caviteexport.ph' },
-    { street: 'Main Ave.', streetNo: 'Lot 7', block: 'CEZ', city: 'Rosario', zip: '4106', province: 'Cavite' },
-  ),
-  seed(
-    'bp-014', 'customer',
-    { name: 'City Government of Pasig – Engineering Office', contactChannels: [{ id: 'bp-014-ch1', type: 'Email', label: 'Email', value: 'engineering@pasigcity.gov.ph' }], industry: 'Government',
-      businessType: 'Government', group: 'Customers – Government', customerPaymentTerms: 'Net 60',
-      remarks: 'Withholds 5% creditable VAT and 1% EWT on our invoices; expect BIR Form 2307.' },
-    { firstName: 'Ramil', lastName: 'Ocampo', position: 'City Engineer', email: 'r.ocampo@pasigcity.gov.ph' },
+    'bp-009', 'customer',
+    { name: 'Department of Education – Schools Division Office of Pasig City', businessType: 'Government', group: 'Customers – Government', industry: 'Government',
+      contactChannels: [email('bp-009-ch1', 'supply.office@depedpasig.example.gov.ph')], customerPaymentTerms: 'Net 60', priceList: 'Government',
+      remarks: 'iPads for teachers under a public bidding award (PhilGEPS).\n'
+        + 'Tax scenario (sales): 31 VATable. The agency withholds 5% creditable VAT and 1% EWT and issues BIR Form 2307 — claim the VAT on 2550Q item 16.' },
+    { firstName: 'Ramil', lastName: 'Ocampo', position: 'Supply Officer', email: 'supply.office@depedpasig.example.gov.ph' },
     { street: 'Caruncho Ave.', block: 'Malinao', city: 'Pasig', zip: '1600', province: 'Metro Manila' },
   ),
   seed(
+    'bp-010', 'customer',
+    { name: 'Harbourline Travel Pte. Ltd.', businessType: 'Non-resident foreign company', group: 'Customers – Trade', industry: 'Services',
+      contactChannels: [email('bp-010-ch1', 'finance@harbourline.example.sg')], currency: 'USD', customerPaymentTerms: '50% DP, balance on delivery',
+      vatRegistered: false, nonResident: true,
+      remarks: 'Singapore travel company buying iPhones for its Manila-based staff, delivered here.\n'
+        + 'Tax scenario (sales): non-resident buyer, goods consumed in the Philippines → 31 VATable (no exemption applies).' },
+    { firstName: 'Rachel', lastName: 'Tan', position: 'Finance Manager', email: 'finance@harbourline.example.sg' },
+    { street: 'Cecil St.', streetNo: '138', city: 'Singapore', zip: '069538', province: 'Other', country: 'Singapore' },
+  ),
+
+  // ── Leads ──────────────────────────────────────────────────────────────────
+  seed(
+    'bp-011', 'lead',
+    { name: 'Mabini Academy Foundation Inc.', businessType: 'Company', industry: 'Education', leadSource: 'Trade show', leadStage: 'Qualified',
+      contactChannels: [email('bp-011-ch1', 'registrar@mabiniacademy.example.edu.ph')],
+      remarks: 'Private school planning a 1:1 iPad program for Grade 7. Needs a quote for 180 iPads with education pricing.' },
+    { firstName: 'Paolo', lastName: 'Aquino', position: 'IT Coordinator', email: 'paolo.aquino@mabiniacademy.example.edu.ph' },
+    { street: 'Mabini St.', streetNo: '15', city: 'Marikina', zip: '1800', province: 'Metro Manila' },
+  ),
+  seed(
+    'bp-012', 'lead',
+    { name: 'Tala Creative Agency', businessType: 'Partnership', industry: 'Media & advertising', leadSource: 'Website', leadStage: 'Lost',
+      contactChannels: [email('bp-012-ch1', 'hello@talacreative.example.ph')],
+      remarks: 'Wanted 12 MacBook Pros on 0% installment; went with another reseller on price.' },
+    { firstName: 'Ella', lastName: 'Navarro', position: 'Operations', email: 'ella@talacreative.example.ph' },
+    { street: 'Kalayaan Ave.', streetNo: '220', block: 'Poblacion', city: 'Makati', zip: '1210', province: 'Metro Manila' },
+  ),
+
+  // ── Vendors: local suppliers ───────────────────────────────────────────────
+  seed(
+    'bp-013', 'vendor',
+    { name: 'Techzone Accessories Distribution Inc.', tin: '203-118-456-000', businessType: 'Company', group: 'Vendors – Local', industry: 'Wholesale',
+      contactChannels: [phone('bp-013-ch1', '+63 2 8570 2210'), email('bp-013-ch2', 'orders@techzone.example.ph')], vendorPaymentTerms: 'Net 30',
+      remarks: 'Third-party accessories (cases, screen protectors, chargers).\n'
+        + 'Tax scenario (purchase, goods): 44 input VAT · WC158 1% EWT (we are a top withholding agent). The 1% is flat, so no sworn declaration is needed.' },
+    { firstName: 'Janine', lastName: 'Co', position: 'Account Manager', email: 'janine.co@techzone.example.ph' },
+    { street: 'Pioneer St.', streetNo: '55', block: 'Buayang Bato', city: 'Mandaluyong', zip: '1550', province: 'Metro Manila' },
+  ),
+  seed(
+    'bp-014', 'vendor',
+    { name: 'Sentinel Guard & Security Agency Inc.', tin: '206-554-120-000', businessType: 'Company', group: 'Vendors – Services', industry: 'Security services',
+      contactChannels: [email('bp-014-ch1', 'billing@sentinelguard.example.ph')], vendorPaymentTerms: 'Net 15',
+      remarks: 'Security guards for the Pasig and Muntinlupa stores.\n'
+        + 'Tax scenario (purchase, contractor): 44 input VAT · WC120 2% EWT.' },
+    { firstName: 'Ernesto', lastName: 'Dizon', position: 'Operations Manager', email: 'ernesto.dizon@sentinelguard.example.ph' },
+    { street: 'Shaw Blvd.', streetNo: '410', block: 'Oranbo', city: 'Pasig', zip: '1600', province: 'Metro Manila' },
+  ),
+  seed(
     'bp-015', 'vendor',
-    { name: 'CloudStack Pte. Ltd.', contactChannels: [{ id: 'bp-015-ch1', type: 'Email', label: 'Email', value: 'billing@cloudstack.example.sg' }], industry: 'Services', group: 'Vendors – Services',
-      currency: 'USD', vatRegistered: false, nonResident: true, nonResidentDigitalServices: true, vendorPaymentTerms: 'Net 7',
-      remarks: 'Cloud hosting subscription. Non-resident digital service provider: we withhold and remit the 12% VAT (RA 12023).' },
-    { firstName: 'Mei', lastName: 'Lin', position: 'Billing', email: 'billing@cloudstack.example.sg' },
-    { street: 'Robinson Rd.', streetNo: '71', city: 'Singapore', zip: '068895', province: 'Other', country: 'Singapore' },
+    { name: 'Amazon Web Services, Inc.', businessType: 'Non-resident foreign company', group: 'Vendors – Services', industry: 'Technology',
+      contactChannels: [web('bp-015-ch1', 'aws.amazon.com')], currency: 'USD', vendorPaymentTerms: 'Net 7',
+      vatRegistered: false, nonResident: true, nonResidentDigitalServices: true,
+      remarks: 'Cloud hosting for our online store and POS back office, billed monthly in USD.\n'
+        + 'Tax scenario (purchase, digital services, provider not registered with BIR — demo setting): 45 reverse-charge VAT · WV070 12% withholding VAT (1600-VT) · WC230 25% final tax.' },
+    { firstName: 'AWS', lastName: 'Billing', position: 'Accounts receivable' },
+    { street: 'Terry Ave. North', streetNo: '410', city: 'Seattle, WA', zip: '98109', province: 'Other', country: 'United States' },
   ),
   seed(
     'bp-016', 'vendor',
-    { roles: ['lead', 'customer', 'vendor'], name: 'Apple Authorized Distributor (placeholder)', tin: '789-012-345-000', contactChannels: [{ id: 'bp-016-ch1', type: 'Email', label: 'Email', value: 'orders@apple-distributor.example.ph' }], industry: 'Wholesale',
-      group: 'Vendors – Local', customerPaymentTerms: 'Net 30', vendorPaymentTerms: 'Net 30', leadSource: 'Referral', leadStage: 'Qualified',
-      properties: ['Preferred supplier', 'Accepts e-invoice'], swornDeclarationRef: 'SD-APL-2026-001', swornDeclarationDate: '2026-01-03', swornDeclarationAttachments: [{ id: 'att-sd-apl-001', fileName: 'Sworn_Declaration_APL_2026.pdf', size: 87040, attachedOn: '2026-01-03' }],
-      remarks: 'Demo vendor for the Apple catalog. Replace with the actual Apple distributor and its price file (part numbers, UPCs, cost).' },
-    { firstName: 'Trade', lastName: 'Desk', position: 'Reseller accounts', email: 'orders@apple-distributor.example.ph' },
+    { roles: ['vendor', 'customer'], name: 'Luzon iDistribution Corp.', tin: '789-012-345-000', businessType: 'Company', group: 'Vendors – Local', industry: 'Wholesale',
+      contactChannels: [phone('bp-016-ch1', '+63 2 8845 6000'), email('bp-016-ch2', 'reseller.orders@luzonidist.example.ph')],
+      customerPaymentTerms: 'Net 30', vendorPaymentTerms: 'Net 30', properties: ['Preferred supplier', 'Accepts e-invoice'], ...sworn('bp-016', 'SD-LID-2026', '2026-01-03'),
+      bankAccounts: [newBankAccount({ id: 'bp-016-b1', bank: 'BDO Unibank', branch: 'Ayala Avenue', accountNo: '0045-8812-3301', accountName: 'Luzon iDistribution Corp.' })],
+      defaultBankAccountId: 'bp-016-b1',
+      remarks: 'Authorized Apple distributor: our local source for iPhone, iPad, Mac and AppleCare+. Also buys surplus stock back from us.\n'
+        + 'Tax scenario (purchase, goods): 44 input VAT · WC158 1% EWT. AppleCare+ (services): 44 · WC160 2%.\n'
+        + 'Tax scenario (sales): 31 VATable.' },
+    { firstName: 'Trade', lastName: 'Desk', position: 'Reseller accounts', email: 'reseller.orders@luzonidist.example.ph' },
     { street: 'Ayala Ave.', streetNo: '6750', city: 'Makati', zip: '1226', province: 'Metro Manila' },
+  ),
+
+  // ── Vendors: non-resident ──────────────────────────────────────────────────
+  seed(
+    'bp-017', 'vendor',
+    { name: 'Apple South Asia Pte. Ltd.', businessType: 'Non-resident foreign company', group: 'Vendors – Import', industry: 'Technology',
+      contactChannels: [web('bp-017-ch1', 'apple.com')], currency: 'USD', vendorPaymentTerms: 'Net 30', vatRegistered: false, nonResident: true,
+      remarks: 'Direct imports of Apple products, shipped from Singapore and cleared through our customs broker.\n'
+        + 'Tax scenario (purchase, imported goods): 46 importations — the 12% import VAT is paid to the Bureau of Customs on the import entry, not to Apple · no withholding (foreign-source income).' },
+    { firstName: 'Channel', lastName: 'Operations', position: 'Reseller channel' },
+    { street: 'Ang Mo Kio Street 64', streetNo: '7', city: 'Singapore', zip: '569086', province: 'Other', country: 'Singapore' },
+  ),
+  seed(
+    'bp-018', 'vendor',
+    { name: 'OpenAI, LLC', businessType: 'Non-resident foreign company', group: 'Vendors – Services', industry: 'Technology',
+      contactChannels: [web('bp-018-ch1', 'openai.com')], currency: 'USD', vendorPaymentTerms: 'COD',
+      vatRegistered: false, nonResident: true, nonResidentDigitalServices: true,
+      remarks: 'ChatGPT Team seats for the store and marketing teams, charged to the company card monthly.\n'
+        + 'Tax scenario (purchase, digital services, provider not registered with BIR — demo setting): 45 · WV070 12% · WC230 25%.' },
+    { firstName: 'OpenAI', lastName: 'Billing', position: 'Accounts receivable' },
+    { street: '3rd Street', streetNo: '1455', city: 'San Francisco, CA', zip: '94158', province: 'Other', country: 'United States' },
+  ),
+  seed(
+    'bp-019', 'vendor',
+    { name: 'Google Asia Pacific Pte. Ltd.', businessType: 'Non-resident foreign company', group: 'Vendors – Services', industry: 'Technology',
+      contactChannels: [web('bp-019-ch1', 'ads.google.com')], vendorPaymentTerms: 'Net 30',
+      vatRegistered: true, nonResident: true, nonResidentDigitalServices: true,
+      remarks: 'Google Ads (search and YouTube) and Google Workspace.\n'
+        + 'Tax scenario (purchase, digital services, provider registered with BIR — demo setting): it charges 12% VAT on the invoice → 44 input VAT · WC230 25% final tax.' },
+    { firstName: 'Google Ads', lastName: 'Billing', position: 'Collections' },
+    { street: 'Pasir Panjang Rd.', streetNo: '70', building: '#03-71 Mapletree Business City II', city: 'Singapore', zip: '117371', province: 'Other', country: 'Singapore' },
+  ),
+  seed(
+    'bp-020', 'vendor',
+    { name: 'Meta Platforms Ireland Limited', businessType: 'Non-resident foreign company', group: 'Vendors – Services', industry: 'Technology',
+      contactChannels: [web('bp-020-ch1', 'facebook.com/business')], vendorPaymentTerms: 'COD',
+      vatRegistered: true, nonResident: true, nonResidentDigitalServices: true,
+      remarks: 'Facebook and Instagram ads for launches and promos.\n'
+        + 'Tax scenario (purchase, digital services, provider registered with BIR — demo setting): 44 input VAT from its invoice · WC230 25% final tax.' },
+    { firstName: 'Meta Ads', lastName: 'Billing', position: 'Collections' },
+    { street: 'Merrion Rd.', city: 'Dublin 4', zip: 'D04 X2K5', province: 'Other', country: 'Ireland' },
+  ),
+
+  // ── Vendors: professionals and service providers ───────────────────────────
+  seed(
+    'bp-021', 'vendor',
+    { name: 'Reyes Tan Aquino & Co., CPAs', tin: '212-667-890-000', businessType: 'General professional partnership', group: 'Vendors – Services', industry: 'Professional services',
+      contactChannels: [email('bp-021-ch1', 'audit@rtaco.example.ph')], vendorPaymentTerms: 'Net 30',
+      remarks: 'External auditor (annual audit and BIR filings). No sworn declaration on file.\n'
+        + 'Tax scenario (purchase, professional fees): 44 input VAT · WC011 15% EWT (juridical payee, no declaration → higher rate).' },
+    { firstName: 'Victor', lastName: 'Tan', position: 'Audit Partner', email: 'victor.tan@rtaco.example.ph' },
+    { street: 'Valero St.', streetNo: '120', block: 'Salcedo Village', city: 'Makati', zip: '1227', province: 'Metro Manila' },
+  ),
+  seed(
+    'bp-022', 'vendor',
+    { name: 'Pier Four Customs Brokerage Inc.', tin: '218-331-045-000', businessType: 'Company', group: 'Vendors – Services', industry: 'Logistics',
+      contactChannels: [email('bp-022-ch1', 'entries@pierfour.example.ph')], vendorPaymentTerms: 'Net 7', ...sworn('bp-022', 'SD-PFC-2026', '2026-01-09'),
+      remarks: 'Clears our Apple imports at NAIA and the Port of Manila. Small firm: declared gross income ≤ ₱720,000.\n'
+        + 'Tax scenario (purchase, broker commission): 44 input VAT · WC139 10% EWT (sworn declaration on file → lower rate).' },
+    { firstName: 'Arnel', lastName: 'Bautista', position: 'Licensed Customs Broker', email: 'arnel.bautista@pierfour.example.ph' },
+    { street: 'Railroad St.', building: 'Pier 4 Bldg., 2F', block: 'Port Area', city: 'Manila', zip: '1018', province: 'Metro Manila' },
+  ),
+  seed(
+    'bp-023', 'vendor',
+    { name: 'Bea Salonga Photography', tin: '301-778-221-000', businessType: 'Individual', group: 'Vendors – Services', industry: 'Media & advertising',
+      contactChannels: [email('bp-023-ch1', 'bea@beasalonga.example.ph')], vendorPaymentTerms: 'Net 7', vatRegistered: false, ...sworn('bp-023', 'SD-BSP-2026', '2026-02-02'),
+      remarks: 'Freelance product photographer for launch visuals. Non-VAT; declared gross income ≤ ₱3M.\n'
+        + 'Tax scenario (purchase, professional fees): 48 no input tax · WI010 5% EWT.' },
+    { firstName: 'Bea', lastName: 'Salonga', position: 'Photographer', email: 'bea@beasalonga.example.ph' },
+    { street: 'Maginhawa St.', streetNo: '88', block: 'Teachers Village', city: 'Quezon City', zip: '1101', province: 'Metro Manila' },
+  ),
+  seed(
+    'bp-024', 'vendor',
+    { name: 'Engr. Marco D. Lim', tin: '305-990-114-000', businessType: 'Individual', group: 'Vendors – Services', industry: 'Technology',
+      contactChannels: [email('bp-024-ch1', 'marco.lim@example.ph')], vendorPaymentTerms: 'Net 15', vatRegistrationDate: '2022-04-01',
+      remarks: 'Independent IT consultant: network and MDM setup for corporate deployments. VAT-registered.\n'
+        + 'Tax scenario (purchase, professional fees): 44 input VAT · WI011 10% EWT (VAT-registered individual → higher rate; no declaration needed).' },
+    { firstName: 'Marco', middleName: 'D.', lastName: 'Lim', position: 'IT Consultant', email: 'marco.lim@example.ph' },
+    { street: 'Scout Rallos St.', streetNo: '17', block: 'Laging Handa', city: 'Quezon City', zip: '1103', province: 'Metro Manila' },
+  ),
+  seed(
+    'bp-025', 'vendor',
+    { name: 'RJ Dizon Interiors & Construction', tin: '308-445-672-000', businessType: 'Sole proprietorship', group: 'Vendors – Services', industry: 'Construction',
+      contactChannels: [mobile('bp-025-ch1', '+63 917 889 2040')], vendorPaymentTerms: '50% DP, balance on delivery', vatRegistered: false,
+      remarks: 'Store fit-out and repairs. Non-VAT sole proprietor.\n'
+        + 'Tax scenario (purchase, contractor): 48 no input tax · WI120 2% EWT.' },
+    { firstName: 'Rolando', lastName: 'Dizon', position: 'Owner', email: 'rjdizon.interiors@example.ph' },
+    { street: 'A. Mabini St.', streetNo: '301', block: 'Santolan', city: 'Pasig', zip: '1610', province: 'Metro Manila' },
+  ),
+  seed(
+    'bp-026', 'vendor',
+    { name: 'Jolina P. Cruz', tin: '310-552-008-000', businessType: 'Individual', group: 'Vendors – Services', industry: 'Retail',
+      contactChannels: [mobile('bp-026-ch1', '+63 928 115 6630')], vendorPaymentTerms: 'Net 15', vatRegistered: false,
+      swornDeclarationRef: 'SD-JPC-2025', swornDeclarationDate: '2025-01-15',
+      swornDeclarationAttachments: [doc('att-bp-026-sd', 'Sworn_Declaration_SD-JPC-2025.pdf', '2025-01-15')],
+      remarks: 'Independent sales agent for corporate accounts, paid a commission per closed deal. Non-VAT.\n'
+        + 'Tax scenario (purchase, sales commission): 48 no input tax · WI516 10% EWT — her sworn declaration is for 2025, so the higher rate applies until she submits the 2026 one.' },
+    { firstName: 'Jolina', middleName: 'P.', lastName: 'Cruz', position: 'Sales agent', email: 'jolina.cruz@example.ph' },
+    { street: 'Col. Bonny Serrano Ave.', streetNo: '9', block: 'Bagong Lipunan', city: 'Quezon City', zip: '1111', province: 'Metro Manila' },
+  ),
+  seed(
+    'bp-027', 'vendor',
+    { name: 'SwiftCargo Express Corp.', tin: '221-908-334-000', businessType: 'Company', group: 'Vendors – Services', industry: 'Logistics',
+      contactChannels: [email('bp-027-ch1', 'corporate@swiftcargo.example.ph')], vendorPaymentTerms: 'Net 15',
+      remarks: 'Nationwide courier for provincial deliveries and store-to-store transfers.\n'
+        + 'Tax scenario (purchase, services): 44 input VAT · WC160 2% EWT.' },
+    { firstName: 'Liza', lastName: 'Mercado', position: 'Corporate Accounts', email: 'liza.mercado@swiftcargo.example.ph' },
+    { street: 'Domestic Rd.', streetNo: '1480', block: 'Barangay 191', city: 'Pasay', zip: '1301', province: 'Metro Manila' },
+  ),
+  seed(
+    'bp-028', 'vendor',
+    { name: 'Philippine Postal Corporation', businessType: 'Government', group: 'Vendors – Services', industry: 'Government',
+      contactChannels: [web('bp-028-ch1', 'phlpost.gov.ph')], vendorPaymentTerms: 'COD',
+      remarks: 'Registered mail for warranty documents and BIR correspondence.\n'
+        + 'Tax scenario (purchase, services): government payee → 44 input VAT · no withholding.' },
+    { firstName: 'Business', lastName: 'Center', position: 'Corporate accounts' },
+    { street: 'Liwasang Bonifacio', block: 'Ermita', city: 'Manila', zip: '1000', province: 'Metro Manila' },
+  ),
+  seed(
+    'bp-029', 'vendor',
+    { name: 'Kestrel Retail Systems Pte. Ltd.', businessType: 'Non-resident foreign company', group: 'Vendors – Services', industry: 'Technology',
+      contactChannels: [email('bp-029-ch1', 'projects@kestrelretail.example.sg')], currency: 'USD', vendorPaymentTerms: 'Net 30', vatRegistered: false, nonResident: true,
+      taxTreatyCountry: 'Singapore', taxTreatyCertificate: 'IRAS-COR-2026-118830', taxTreatyCertificateExpiry: '2026-12-31',
+      remarks: 'Singapore firm integrating our POS with the ERP; its consultants work remotely and on site.\n'
+        + 'Tax scenario (purchase, services from a non-resident, not digital services): 45 reverse-charge VAT · WV070 12% · WC230 25% final tax (no treaty income entered — the Philippines–Singapore treaty has no reduced rate for technical fees).' },
+    { firstName: 'Daniel', lastName: 'Koh', position: 'Project Director', email: 'daniel.koh@kestrelretail.example.sg' },
+    { street: 'Tanjong Pagar Rd.', streetNo: '1', city: 'Singapore', zip: '088537', province: 'Other', country: 'Singapore' },
+  ),
+  seed(
+    'bp-030', 'vendor',
+    { name: 'Nakamura Retail Software K.K.', businessType: 'Non-resident foreign company', group: 'Vendors – Services', industry: 'Technology',
+      contactChannels: [email('bp-030-ch1', 'licensing@nakamura-rs.example.jp')], currency: 'JPY', vendorPaymentTerms: 'Net 30', vatRegistered: false, nonResident: true,
+      taxTreatyCountry: 'Japan', taxTreatyCertificate: 'NTA-COR-2026-55102', taxTreatyCertificateExpiry: '2027-03-31',
+      taxTreatyIncomes: [{ id: 'ti-bp-030', incomeType: 'Royalties', approvedRate: 10, ttraApprovalDate: '2026-03-18',
+        attachments: [doc('att-bp-030-ttra', 'TTRA_Confirmation_Royalties.pdf', '2026-03-18', 'BIR ruling on the treaty rate'), doc('att-bp-030-cor', 'Certificate_of_Residence_2026.pdf', '2026-02-10')] }],
+      remarks: 'Licenses the POS software we run in every store (annual licence fee).\n'
+        + 'Tax scenario (purchase, royalties from a non-resident with treaty relief): 45 · WV050 12% withholding VAT on use of property rights · WC230 at the 10% Japan treaty rate instead of 25%.' },
+    { firstName: 'Haruto', lastName: 'Sato', position: 'Licensing', email: 'licensing@nakamura-rs.example.jp' },
+    { street: 'Shiba-koen', streetNo: '2-4-1', city: 'Minato-ku, Tokyo', zip: '105-0011', province: 'Other', country: 'Japan' },
+  ),
+  seed(
+    'bp-031', 'vendor',
+    { name: 'Ayu Pratama', businessType: 'Individual', group: 'Vendors – Services', industry: 'Media & advertising',
+      contactChannels: [email('bp-031-ch1', 'ayu.pratama@example.id')], currency: 'USD', vendorPaymentTerms: 'Net 7', vatRegistered: false, nonResident: true,
+      remarks: 'Freelance motion designer in Jakarta; makes our launch videos remotely.\n'
+        + 'Tax scenario (purchase, services from a non-resident individual): 45 · WV070 12% · WI330 25% final tax.' },
+    { firstName: 'Ayu', lastName: 'Pratama', position: 'Motion designer', email: 'ayu.pratama@example.id' },
+    { street: 'Jl. Kemang Raya', streetNo: '12', city: 'Jakarta', zip: '12730', province: 'Other', country: 'Indonesia' },
+  ),
+  seed(
+    'bp-032', 'vendor',
+    { name: 'Harbour Capital Asia Ltd.', businessType: 'Non-resident foreign company', group: 'Vendors – Services', industry: 'Financial services',
+      contactChannels: [email('bp-032-ch1', 'loans@harbourcapital.example.hk')], currency: 'USD', vendorPaymentTerms: 'Net 30', vatRegistered: false, nonResident: true,
+      remarks: 'Hong Kong lender: USD inventory financing for the iPhone launch season.\n'
+        + 'Tax scenario (purchase, interest): 48 no input tax (interest is not VATable) · WC180 20% final tax on interest on foreign loans.' },
+    { firstName: 'Winnie', lastName: 'Chan', position: 'Relationship Manager', email: 'winnie.chan@harbourcapital.example.hk' },
+    { street: 'Queen’s Rd. Central', streetNo: '99', city: 'Hong Kong', zip: '', province: 'Other', country: 'Hong Kong' },
   ),
 ];

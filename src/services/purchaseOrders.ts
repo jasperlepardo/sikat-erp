@@ -10,7 +10,7 @@ import type { Item } from '../mocks/items';
 import { createCollection } from './store';
 import { determineWithholding, type LineParty, type TaxMasterData } from './taxDetermination';
 
-const orders = createCollection<PurchaseOrder>('sikat-erp:purchase-orders:v2', SEED_PURCHASE_ORDERS, 'po');
+const orders = createCollection<PurchaseOrder>('sikat-erp:purchase-orders:v3', SEED_PURCHASE_ORDERS, 'po');
 
 export const listPurchaseOrders = orders.list;
 export const getPurchaseOrder = orders.get;
