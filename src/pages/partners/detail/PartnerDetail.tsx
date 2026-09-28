@@ -277,8 +277,8 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
 
   return (
     <>
-      <Form className="flex-1" onSubmit={submit} noValidate>
-        <Panel className="flex-1">
+      <Form className="flex min-h-0 flex-1 flex-col" onSubmit={submit} noValidate>
+        <Panel className="min-h-0 flex-1">
           <PanelHeader
             type="forms"
             icon={config.icon}
@@ -308,15 +308,16 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
               </>
             }
           />
-          <Panel.Body className="flex flex-col gap-2">
+          {/* Side by side (lg), each column scrolls on its own; stacked, the body scrolls as one. */}
+          <Panel.Body className="flex flex-col gap-2 lg:overflow-hidden!">
             <ProblemsAlert
               problems={problems}
               tabLabel={(t) => (t === 'addresses' ? 'Addresses' : TABS.find((x) => x.value === t)?.label)}
               onOpenTab={(t) => openProblem(t)}
             />
 
-            <div className="grid gap-2 lg:grid-cols-12">
-              <aside className="flex flex-col gap-2 lg:col-span-3">
+            <div className="grid gap-2 lg:min-h-0 lg:flex-1 lg:grid-cols-12 lg:grid-rows-1">
+              <aside className="flex flex-col gap-2 lg:col-span-3 lg:min-h-0 lg:overflow-y-auto">
                 <DefaultsCard
                   draft={draft}
                   update={update}
@@ -333,7 +334,7 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
                 <BankAccountsCards draft={draft} update={update} onOpen={(value, added) => setEditing({ kind: 'bank', value, isNew: added })} />
               </aside>
 
-              <div className="flex min-w-0 flex-col gap-2 lg:col-span-9">
+              <div className="flex min-w-0 flex-col gap-2 lg:col-span-9 lg:min-h-0 lg:overflow-y-auto">
                 <Section icon="badge" title="Business partner">
                   <Fields cols={3}>
                     {isNew ? (
