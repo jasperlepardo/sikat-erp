@@ -52,7 +52,7 @@ export function GeneralTab({ draft, update, errors, lockedRole }: TabProps) {
           <ReadOnly
             label="Contact person"
             value={defaultContact ? contactName(defaultContact) : '—'}
-            hint="The default contact on the Contact Persons tab."
+            hint="The default contact under Contact persons in the side column."
           />
         </Fields>
         <Flags>{f.check('blockMarketing', 'Block sending marketing content')}</Flags>

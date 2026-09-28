@@ -1,6 +1,4 @@
 import {
-  BANKS,
-  COUNTRIES,
   DUNNING_TERMS,
   EFFECTIVE_DISCOUNT_GROUPS,
   EFFECTIVE_PRICE,
@@ -9,6 +7,7 @@ import {
   PRICE_LISTS,
   PRIORITIES,
 } from '../../../mocks/masters';
+import { bankAccountTitle } from './BankAccountsTab';
 import type { TabProps } from './GeneralTab';
 import { Fields, Flags, ReadOnly, Section, bind } from './fields';
 
@@ -66,14 +65,18 @@ export function PaymentTermsTab({ draft, update, errors }: TabProps) {
         </Fields>
       </Section>
 
-      <Section icon="account_balance" title="Business partner bank">
+      <Section icon="account_balance" title="Bank">
         <Fields>
-          {f.pick('bankCountry', 'Bank country/region', COUNTRIES)}
-          {f.pick('bankName', 'Bank name', BANKS, { placeholder: 'Select a bank' })}
-          {f.text('bankBranch', 'Branch', { disabled: !draft.bankName })}
-          {f.text('bankAccount', 'Account no.', { disabled: !draft.bankName })}
-          {f.text('bankAccountName', 'Account name', { disabled: !draft.bankName })}
-          {f.text('bankSwift', 'BIC/SWIFT code', { disabled: !draft.bankName })}
+          {f.choose(
+            'defaultBankAccountId',
+            'Default bank account',
+            draft.bankAccounts.map((b) => ({ value: b.id, label: `${bankAccountTitle(b)}${b.accountName ? ` (${b.accountName})` : ''}` })),
+            {
+              placeholder: draft.bankAccounts.length ? 'Select an account' : 'No bank accounts yet',
+              disabled: !draft.bankAccounts.length,
+              hint: 'Used when paying this partner. Add or edit accounts under Bank accounts in the side column.',
+            },
+          )}
         </Fields>
       </Section>
 

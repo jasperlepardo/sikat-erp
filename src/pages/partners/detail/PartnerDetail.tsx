@@ -15,13 +15,14 @@ import {
 } from '@jasperlepardo/sikat-design-system';
 import { BP_GROUPS } from '../../../mocks/masters';
 import { currencies } from '../../../services/masterData';
-import { blankPartner, type PartnerRole } from '../../../mocks/partners';
+import { blankPartner, type ContactPerson, type PartnerAddress, type PartnerBankAccount, type PartnerRole } from '../../../mocks/partners';
 import { convertLeadToCustomer, getPartner, isActive, savePartner } from '../../../services/partners';
 import { MASTER_CONFIG, ROLE_CONFIG, ROLE_ORDER, type PartnerScope } from '../roles';
 import { AccountingTab } from './AccountingTab';
-import { AddressesTab } from './AddressesTab';
+import { AddressPanel, AddressesCards, defaultKey } from './AddressesTab';
 import { AttachmentsTab } from './AttachmentsTab';
-import { ContactsTab } from './ContactsTab';
+import { BankAccountPanel, BankAccountsCards } from './BankAccountsTab';
+import { ContactPanel, ContactsCards } from './ContactsTab';
 import { GeneralTab } from './GeneralTab';
 import { PaymentRunTab } from './PaymentRunTab';
 import { PaymentTermsTab } from './PaymentTermsTab';
@@ -33,8 +34,6 @@ import { ProblemsAlert, problemCollector, type Problem as ProblemBase } from '..
 
 const TABS = [
   { value: 'general', label: 'General', Component: GeneralTab },
-  { value: 'contacts', label: 'Contact persons', Component: ContactsTab },
-  { value: 'addresses', label: 'Addresses', Component: AddressesTab },
   { value: 'payment-terms', label: 'Payment terms', Component: PaymentTermsTab },
   { value: 'payment-run', label: 'Payment run', Component: PaymentRunTab },
   { value: 'accounting', label: 'Accounting', Component: AccountingTab },
@@ -44,12 +43,21 @@ const TABS = [
 ] as const;
 type TabId = (typeof TABS)[number]['value'];
 
-type Problem = ProblemBase<TabId>;
+/** Address problems point at the side column ('addresses'), which opens the address's side panel. */
+type ProblemTab = TabId | 'addresses';
+type Problem = ProblemBase<ProblemTab>;
+
+/** The contact or address open in the side panel. */
+type Editing =
+  | { kind: 'contact'; value: ContactPerson; isNew: boolean }
+  | { kind: 'address'; value: PartnerAddress; isNew: boolean }
+  | { kind: 'bank'; value: PartnerBankAccount; isNew: boolean }
+  | null;
 
 /** Mandatory fields from the BP field mapping, checked on Add/Save. */
 /** `chart` is undefined until the chart of accounts loads; account checks then only require a value. */
 function validate(d: Draft, codeMode: 'auto' | 'manual', chart: Account[] | undefined): Problem[] {
-  const { problems, need } = problemCollector<TabId>();
+  const { problems, need } = problemCollector<ProblemTab>();
 
   need(codeMode === 'auto' || d.code.trim(), 'header', 'code', 'Enter a code, or switch numbering to Auto.');
   need(d.name.trim(), 'header', 'name', 'Name is required.');
@@ -118,6 +126,7 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
   const [tab, setTab] = useState<TabId>('general');
   const [problems, setProblems] = useState<Problem[]>([]);
   const [saving, setSaving] = useState(false);
+  const [editing, setEditing] = useState<Editing>(null);
   const [currencyCodes, setCurrencyCodes] = useState<string[]>([]);
 
   const chart = useAccounts();
@@ -158,12 +167,47 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
     update({ roles: [next], group: blankPartner(next).group, ...(next === 'lead' ? { leadStage: 'New' } : {}) });
   };
 
+  /** Show where a problem is: a tab, or the side panel of the address it's about. */
+  const openProblem = (t: ProblemTab, found = problems) => {
+    if (t !== 'addresses') return setTab(t);
+    const id = found.find((p) => p.tab === 'addresses')?.key.split(':')[1];
+    const address = draft.addresses.find((a) => a.id === id);
+    if (address) setEditing({ kind: 'address', value: address, isNew: false });
+  };
+
   const check = () => {
     const found = validate(draft, isNew ? codeMode : 'manual', chart);
     setProblems(found);
     const first = found[0];
-    if (first && first.tab !== 'header') setTab(first.tab);
+    if (first && first.tab !== 'header') openProblem(first.tab, found);
     return !found.length;
+  };
+
+  const applyContact = (c: ContactPerson, added: boolean) => {
+    update(
+      added
+        ? { contacts: [...draft.contacts, c], defaultContactId: draft.defaultContactId || c.id }
+        : { contacts: draft.contacts.map((x) => (x.id === c.id ? c : x)) },
+    );
+    setEditing(null);
+  };
+  const applyBank = (b: PartnerBankAccount, added: boolean) => {
+    update(
+      added
+        ? { bankAccounts: [...draft.bankAccounts, b], defaultBankAccountId: draft.defaultBankAccountId || b.id }
+        : { bankAccounts: draft.bankAccounts.map((x) => (x.id === b.id ? b : x)) },
+    );
+    setEditing(null);
+  };
+  const applyAddress = (a: PartnerAddress, added: boolean) => {
+    const key = defaultKey[a.type];
+    update(
+      added
+        ? { addresses: [...draft.addresses, a], [key]: draft[key] || a.id }
+        : { addresses: draft.addresses.map((x) => (x.id === a.id ? a : x)) },
+    );
+    setProblems(problems.filter((p) => !p.key.startsWith(`address:${a.id}:`)));
+    setEditing(null);
   };
 
   const save = async () => {
@@ -210,120 +254,157 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
       })),
   ].filter((m) => m.show);
 
-  const counts: Partial<Record<TabId, number>> = {
-    contacts: draft.contacts.length,
-    addresses: draft.addresses.length,
-    attachments: draft.attachments.length,
-  };
+  const counts: Partial<Record<TabId, number>> = { attachments: draft.attachments.length };
   const ActiveTab = TABS.find((t) => t.value === tab)!.Component;
 
   return (
-    <Form className="flex-1" onSubmit={submit} noValidate>
-      <Panel className="flex-1">
-        <PanelHeader
-          type="forms"
-          icon={config.icon}
-          title={isNew ? `New ${config.singular.toLowerCase()}` : draft.name}
-          subcopy={isNew ? config.subcopy : draft.code}
-          status={
-            isNew ? undefined : (
-              <div className="flex gap-1">
-                {ROLE_ORDER.filter((r) => draft.roles.includes(r)).map((r) => (
-                  <Badge key={r} intent={r === scope ? 'primary' : 'default'} variant={r === scope ? 'solid' : 'outline'}>
-                    {ROLE_CONFIG[r].singular}
-                  </Badge>
-                ))}
-                {!isActive(draft) ? <Badge intent="default">Inactive</Badge> : null}
+    <>
+      <Form className="flex-1" onSubmit={submit} noValidate>
+        <Panel className="flex-1">
+          <PanelHeader
+            type="forms"
+            icon={config.icon}
+            title={isNew ? `New ${config.singular.toLowerCase()}` : draft.name}
+            subcopy={isNew ? config.subcopy : draft.code}
+            status={
+              isNew ? undefined : (
+                <div className="flex gap-1">
+                  {ROLE_ORDER.filter((r) => draft.roles.includes(r)).map((r) => (
+                    <Badge key={r} intent={r === scope ? 'primary' : 'default'} variant={r === scope ? 'solid' : 'outline'}>
+                      {ROLE_CONFIG[r].singular}
+                    </Badge>
+                  ))}
+                  {!isActive(draft) ? <Badge intent="default">Inactive</Badge> : null}
+                </div>
+              )
+            }
+            actions={
+              <>
+                <Button type="button" intent="default" variant="solid" size="extra-large" onClick={() => navigate(config.basePath)}>
+                  Cancel
+                </Button>
+                {menu.length ? <MoreMenu items={menu} /> : null}
+                <Button type="submit" intent="primary" variant="solid" size="extra-large" disabled={saving}>
+                  {saving ? 'Saving…' : isNew ? 'Add' : 'Save'}
+                </Button>
+              </>
+            }
+          />
+          <Panel.Body className="flex flex-col gap-2">
+            <ProblemsAlert
+              problems={problems}
+              tabLabel={(t) => (t === 'addresses' ? 'Addresses' : TABS.find((x) => x.value === t)?.label)}
+              onOpenTab={(t) => openProblem(t)}
+            />
+
+            <div className="grid gap-2 lg:grid-cols-12">
+              <aside className="flex flex-col gap-2 lg:col-span-3">
+                <ContactsCards draft={draft} update={update} onOpen={(value, added) => setEditing({ kind: 'contact', value, isNew: added })} />
+                <AddressesCards draft={draft} update={update} onOpen={(value, added) => setEditing({ kind: 'address', value, isNew: added })} />
+                <BankAccountsCards draft={draft} update={update} onOpen={(value, added) => setEditing({ kind: 'bank', value, isNew: added })} />
+              </aside>
+
+              <div className="flex min-w-0 flex-col gap-2 lg:col-span-9">
+                <Section icon="badge" title="Business partner">
+                  <Fields cols={3}>
+                    {isNew ? (
+                      <FormField label="Numbering" tooltip="Auto assigns the next BP code.">
+                        {(p) => (
+                          <Select
+                            {...p}
+                            options={[
+                              { value: 'auto', label: 'Auto (BP-####)' },
+                              { value: 'manual', label: 'Manual' },
+                            ]}
+                            value={codeMode}
+                            onValueChange={(v) => setCodeMode(v as 'auto' | 'manual')}
+                          />
+                        )}
+                      </FormField>
+                    ) : null}
+                    <FormField label="Code" required error={errors.code} tooltip={isNew ? undefined : 'Locked after the partner is added.'}>
+                      {(p) => (
+                        <TextField
+                          {...p}
+                          value={isNew && codeMode === 'auto' ? '' : draft.code}
+                          placeholder={isNew && codeMode === 'auto' ? 'Assigned on save' : 'e.g. C-ACME'}
+                          readOnly={!isNew || codeMode === 'auto'}
+                          onChange={(e) => update({ code: e.currentTarget.value })}
+                        />
+                      )}
+                    </FormField>
+                    <FormField label="Type" tooltip={isNew ? 'Locks after the partner is added.' : 'Add more roles on the General tab.'}>
+                      {(p) => (
+                        <Select
+                          {...p}
+                          options={ROLE_ORDER.map((r) => ({ value: r, label: ROLE_CONFIG[r].singular }))}
+                          value={isNew ? type : scope === 'all' ? draft.roles[0] : scope}
+                          disabled={!isNew}
+                          onValueChange={(v) => changeType(v as PartnerRole)}
+                        />
+                      )}
+                    </FormField>
+                    {h.text('name', 'Name', { required: true, error: errors.name })}
+                    {h.text('foreignName', 'Foreign name', { hint: 'For bilingual printouts.' })}
+                    {h.pick('group', 'Group', groups, { required: true, error: errors.group })}
+                    {h.pick('currency', 'Currency', [...new Set([...currencyCodes, draft.currency, 'All currencies'])], {
+                      required: true,
+                      error: errors.currency,
+                      hint: 'Active currencies from Settings › Accounting & Tax.',
+                    })}
+                    {h.text('tin', 'TIN', { placeholder: '000-000-000-000', hint: 'BIR Taxpayer Identification Number.' })}
+                  </Fields>
+                </Section>
+
+                <Tabs
+                  value={tab}
+                  onValueChange={(v) => setTab(v as TabId)}
+                  items={TABS.map((t) => ({
+                    value: t.value,
+                    label: t.label,
+                    badge: problems.some((p) => p.tab === t.value) ? '!' : counts[t.value] ? String(counts[t.value]) : undefined,
+                  }))}
+                />
+                <ActiveTab
+                  draft={draft}
+                  update={update}
+                  errors={errors}
+                  lockedRole={scope === 'all' ? undefined : isNew ? type : scope}
+                />
               </div>
-            )
-          }
-          actions={
-            <>
-              <Button type="button" intent="default" variant="solid" size="extra-large" onClick={() => navigate(config.basePath)}>
-                Cancel
-              </Button>
-              {menu.length ? <MoreMenu items={menu} /> : null}
-              <Button type="submit" intent="primary" variant="solid" size="extra-large" disabled={saving}>
-                {saving ? 'Saving…' : isNew ? 'Add' : 'Save'}
-              </Button>
-            </>
-          }
+            </div>
+          </Panel.Body>
+        </Panel>
+      </Form>
+
+      {/* Outside the <Form>, so Enter in a panel field doesn't save the partner. */}
+      {editing?.kind === 'contact' ? (
+        <ContactPanel
+          key={editing.value.id}
+          value={editing.value}
+          isNew={editing.isNew}
+          onDone={(c) => applyContact(c, editing.isNew)}
+          onCancel={() => setEditing(null)}
         />
-        <Panel.Body className="flex flex-col gap-2">
-          <ProblemsAlert
-            problems={problems}
-            tabLabel={(t) => TABS.find((x) => x.value === t)?.label}
-            onOpenTab={setTab}
-          />
-
-          <Section icon="badge" title="Business partner">
-            <Fields cols={3}>
-              {isNew ? (
-                <FormField label="Numbering" hint="Auto assigns the next BP code.">
-                  {(p) => (
-                    <Select
-                      {...p}
-                      options={[
-                        { value: 'auto', label: 'Auto (BP-####)' },
-                        { value: 'manual', label: 'Manual' },
-                      ]}
-                      value={codeMode}
-                      onValueChange={(v) => setCodeMode(v as 'auto' | 'manual')}
-                    />
-                  )}
-                </FormField>
-              ) : null}
-              <FormField label="Code" required error={errors.code} hint={isNew ? undefined : 'Locked after the partner is added.'}>
-                {(p) => (
-                  <TextField
-                    {...p}
-                    value={isNew && codeMode === 'auto' ? '' : draft.code}
-                    placeholder={isNew && codeMode === 'auto' ? 'Assigned on save' : 'e.g. C-ACME'}
-                    readOnly={!isNew || codeMode === 'auto'}
-                    onChange={(e) => update({ code: e.currentTarget.value })}
-                  />
-                )}
-              </FormField>
-              <FormField label="Type" hint={isNew ? 'Locks after the partner is added.' : 'Add more roles on the General tab.'}>
-                {(p) => (
-                  <Select
-                    {...p}
-                    options={ROLE_ORDER.map((r) => ({ value: r, label: ROLE_CONFIG[r].singular }))}
-                    value={isNew ? type : scope === 'all' ? draft.roles[0] : scope}
-                    disabled={!isNew}
-                    onValueChange={(v) => changeType(v as PartnerRole)}
-                  />
-                )}
-              </FormField>
-              {h.text('name', 'Name', { required: true, error: errors.name })}
-              {h.text('foreignName', 'Foreign name', { hint: 'For bilingual printouts.' })}
-              {h.pick('group', 'Group', groups, { required: true, error: errors.group })}
-              {h.pick('currency', 'Currency', [...new Set([...currencyCodes, draft.currency, 'All currencies'])], {
-                required: true,
-                error: errors.currency,
-                hint: 'Active currencies from Settings › Accounting & Tax.',
-              })}
-              {h.text('tin', 'TIN', { placeholder: '000-000-000-000', hint: 'BIR Taxpayer Identification Number.' })}
-            </Fields>
-          </Section>
-
-          <Tabs
-            value={tab}
-            onValueChange={(v) => setTab(v as TabId)}
-            items={TABS.map((t) => ({
-              value: t.value,
-              label: t.label,
-              badge: problems.some((p) => p.tab === t.value) ? '!' : counts[t.value] ? String(counts[t.value]) : undefined,
-            }))}
-          />
-          <ActiveTab
-            draft={draft}
-            update={update}
-            errors={errors}
-            lockedRole={scope === 'all' ? undefined : isNew ? type : scope}
-          />
-        </Panel.Body>
-      </Panel>
-    </Form>
+      ) : editing?.kind === 'address' ? (
+        <AddressPanel
+          key={editing.value.id}
+          value={editing.value}
+          isNew={editing.isNew}
+          errors={errors}
+          onDone={(a) => applyAddress(a, editing.isNew)}
+          onCancel={() => setEditing(null)}
+        />
+      ) : editing?.kind === 'bank' ? (
+        <BankAccountPanel
+          key={editing.value.id}
+          value={editing.value}
+          isNew={editing.isNew}
+          currencies={currencyCodes}
+          onDone={(b) => applyBank(b, editing.isNew)}
+          onCancel={() => setEditing(null)}
+        />
+      ) : null}
+    </>
   );
 }

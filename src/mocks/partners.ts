@@ -53,6 +53,19 @@ export interface PartnerAddress {
   country: string;
 }
 
+/** One of the partner's bank accounts (where you pay a vendor, or refund a customer). */
+export interface PartnerBankAccount {
+  id: string;
+  country: string;
+  bank: string;
+  branch: string;
+  accountNo: string;
+  accountName: string;
+  swift: string;
+  currency: string;
+  active: boolean;
+}
+
 export interface PaymentMethodSetting {
   code: string;
   include: boolean;
@@ -126,12 +139,8 @@ export interface Partner {
   effectiveDiscountGroups: string;
   effectivePrice: string;
   effectivePriceAllSources: boolean;
-  bankCountry: string;
-  bankName: string;
-  bankBranch: string;
-  bankAccount: string;
-  bankAccountName: string;
-  bankSwift: string;
+  bankAccounts: PartnerBankAccount[];
+  defaultBankAccountId: string;
   averageDelayDays: number;
   priority: string;
   holidays: string;
@@ -219,6 +228,19 @@ export const newContact = (patch: Partial<ContactPerson> = {}): ContactPerson =>
   ...patch,
 });
 
+export const newBankAccount = (patch: Partial<PartnerBankAccount> = {}): PartnerBankAccount => ({
+  id: `ba-${crypto.randomUUID().slice(0, 8)}`,
+  country: 'Philippines',
+  bank: '',
+  branch: '',
+  accountNo: '',
+  accountName: '',
+  swift: '',
+  currency: 'PHP',
+  active: true,
+  ...patch,
+});
+
 export const newAddress = (type: AddressType, patch: Partial<PartnerAddress> = {}): PartnerAddress => ({
   id: `ad-${crypto.randomUUID().slice(0, 8)}`,
   type,
@@ -290,12 +312,8 @@ export function blankPartner(role: PartnerRole): Omit<Partner, 'id'> {
     effectiveDiscountGroups: 'Lowest discount',
     effectivePrice: 'Default priority',
     effectivePriceAllSources: false,
-    bankCountry: 'Philippines',
-    bankName: '',
-    bankBranch: '',
-    bankAccount: '',
-    bankAccountName: '',
-    bankSwift: '',
+    bankAccounts: [],
+    defaultBankAccountId: '',
     averageDelayDays: 0,
     priority: '— None —',
     holidays: 'Philippines (national)',
@@ -386,7 +404,9 @@ export const SEED_PARTNERS: Partner[] = [
   ),
   seed(
     'bp-003', 'vendor',
-    { name: 'Luzon Steel Industries', tin: '345-678-901-000', email: 'sales@luzonsteel.ph', tel1: '+63 44 791 2233', vendorPaymentTerms: 'Net 60', industry: 'Manufacturing', group: 'Vendors – Local', grossIncomeAboveThreshold: true, bankName: 'BPI', bankBranch: 'Malolos', bankAccount: '8890-1122-33', bankAccountName: 'Luzon Steel Industries Inc.' },
+    { name: 'Luzon Steel Industries', tin: '345-678-901-000', email: 'sales@luzonsteel.ph', tel1: '+63 44 791 2233', vendorPaymentTerms: 'Net 60', industry: 'Manufacturing', group: 'Vendors – Local', grossIncomeAboveThreshold: true,
+      bankAccounts: [newBankAccount({ id: 'bp-003-b1', bank: 'BPI', branch: 'Malolos', accountNo: '8890-1122-33', accountName: 'Luzon Steel Industries Inc.' })],
+      defaultBankAccountId: 'bp-003-b1' },
     { firstName: 'Ramon', lastName: 'Cruz', position: 'Sales Director', email: 'ramon.cruz@luzonsteel.ph' },
     { street: 'MacArthur Hwy.', streetNo: 'Km 45', block: 'Longos', city: 'Malolos', zip: '3000', province: 'Bulacan' },
   ),
