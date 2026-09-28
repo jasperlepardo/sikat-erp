@@ -70,18 +70,6 @@ function validate(d: Draft, codeMode: 'auto' | 'manual', chart: Account[] | unde
   need(d.name.trim(), 'header', 'name', 'Name is required.');
   need(d.group, 'header', 'group', 'Group is required.');
   need(d.currency, 'header', 'currency', 'Currency is required.');
-  need(
-    !d.roles.includes('customer') || d.salesVatTreatment !== 'Zero-rated' || d.zeroRatedCertificate.trim(),
-    'settings',
-    'zeroRatedCertificate',
-    'Zero-rated customers need their zero-rating certificate number.',
-  );
-  need(
-    !d.roles.includes('customer') || d.salesVatTreatment !== 'Exempt entity' || d.exemptionCertificate.trim(),
-    'settings',
-    'exemptionCertificate',
-    'Exempt entity customers need their exemption certificate number.',
-  );
   if (d.status === 'Advanced') {
     need(d.statusFrom, 'general', 'statusFrom', 'Pick a start date.');
     need(d.statusTo, 'general', 'statusTo', 'Pick an end date.');

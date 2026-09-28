@@ -6,7 +6,9 @@ import {
   type PurchaseOrder,
 } from '../mocks/purchaseOrders';
 import type { RoundingRule } from '../mocks/currencies';
+import type { Item } from '../mocks/items';
 import { createCollection } from './store';
+import { determineWithholding, type LineParty, type TaxMasterData } from './taxDetermination';
 
 const orders = createCollection<PurchaseOrder>('sikat-erp:purchase-orders:v2', SEED_PURCHASE_ORDERS, 'po');
 
@@ -66,6 +68,46 @@ export function poTotals(
   const step = PURCHASING_SETTINGS.roundingMethod === 'By Currency' ? ROUNDING_STEP[rounding] : 0;
   const total = step ? Math.round(raw / step) * step : raw;
   return { beforeDiscount, discount, freight, tax, reverseCharge, rounding: round2(total - raw), total: round2(total) };
+}
+
+export interface WithholdingLine {
+  atc: string;
+  description: string;
+  rate: number;
+  kind: string;
+  amount: number;
+}
+
+/**
+ * Withholding taxes deducted when paying the vendor — one entry per ATC,
+ * amounts summed across all lines, in document currency.
+ */
+export function poWithholding(
+  po: Pick<PurchaseOrder, 'lines' | 'discountPct'>,
+  vendor: LineParty | undefined,
+  items: Item[],
+  tax: TaxMasterData,
+  date: string,
+): WithholdingLine[] {
+  if (!vendor) return [];
+  const factor = 1 - po.discountPct / 100;
+  const totals = new Map<string, WithholdingLine>();
+  for (const line of po.lines) {
+    const item = items.find((i) => i.id === line.itemId);
+    if (!item) continue;
+    const { withholding } = determineWithholding(item, vendor, tax, date);
+    const base = lineNet(line) * factor;
+    for (const wt of withholding) {
+      const amt = round2((base * wt.rate) / 100);
+      const existing = totals.get(wt.atc);
+      if (existing) {
+        existing.amount = round2(existing.amount + amt);
+      } else {
+        totals.set(wt.atc, { atc: wt.atc, description: wt.description, rate: wt.rate, kind: wt.kind, amount: amt });
+      }
+    }
+  }
+  return [...totals.values()];
 }
 
 const ROUNDING_STEP: Record<RoundingRule, number> = {

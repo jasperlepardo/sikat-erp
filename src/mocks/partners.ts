@@ -89,7 +89,8 @@ export const newContactChannel = (type: ContactChannelType = 'Phone'): PartnerCo
 });
 
 import type { Attachment } from './common';
-import type { SalesVatTreatment, SupplierVatStatus } from './taxes';
+import type { VatExemptionEntry } from './taxes';
+export type { VatExemptionEntry };
 
 export type { Attachment };
 
@@ -192,30 +193,31 @@ export interface Partner {
   // Tax — inputs to tax determination (services/taxDetermination.ts)
   /** Partner's BIR Revenue District Office code. */
   rdoCode: string;
+  /** Whether this entity is BIR-registered for VAT. Applies regardless of role (customer / vendor / lead). */
+  vatRegistered: boolean;
   /** Date the partner registered for VAT with BIR. */
   vatRegistrationDate: string;
-  /** As a customer: overrides the item's output VAT (government, zero-rated, exempt). */
-  salesVatTreatment: SalesVatTreatment;
-  /** Zero-rated customers: the BIR/PEZA/BOI certificate backing the zero-rating. */
-  zeroRatedCertificate: string;
-  zeroRatedValidUntil: string;
-  /** Exempt entity customers: legal ground for the VAT exemption. */
-  exemptionBasis: string;
-  /** Exempt entity customers: certificate/ruling/registration number. */
-  exemptionCertificate: string;
-  exemptionValidUntil: string;
-  /** As a supplier: decides whether you get input VAT at all. */
-  supplierVatStatus: SupplierVatStatus;
-  /** VAT-registered or Non-VAT vendors: BIR Certificate of Registration (Form 2303) number. */
+  /** BIR Certificate of Registration (Form 2303) number. */
   birCorNumber: string;
+  /**
+   * Document-backed VAT exemptions for this customer (Zero-rated, Exempt entity).
+   * An entry is active only when it has at least one attached document and has not expired.
+   * Government treatment is automatic from businessType, not stored here.
+   */
+  vatExemptions: VatExemptionEntry[];
+  /**
+   * Non-resident vendor that provides digital services to Philippine consumers.
+   * Triggers 12% VAT self-withholding (BIR Form 1600-VT). Only relevant when nonResident is true.
+   */
+  nonResidentDigitalServices: boolean;
   /** Withholding tax (id) that always applies to this vendor, replacing the rules. '' = use the rules. */
   withholdingOverrideId: string;
-  /**
-   * As a supplier: gross income this year is above the BIR withholding threshold
-   * (₱3M for individuals, ₱720,000 for corporations). Picks the higher ATC of an
-   * income-tiered pair, e.g. WC011 (15%) instead of WC010 (10%).
-   */
-  grossIncomeAboveThreshold: boolean;
+  /** BIR Sworn Declaration reference number (e.g. internal doc no. or BIR-acknowledged stamp). */
+  swornDeclarationRef: string;
+  /** Date the vendor submitted the sworn declaration to you. Must be in the same calendar year as the posting date for the lower rate to apply. */
+  swornDeclarationDate: string;
+  /** The actual sworn declaration document(s). The lower withholding rate applies only when at least one file is attached. */
+  swornDeclarationAttachments: Attachment[];
   /**
    * As a supplier: a non-resident (foreign corporation or alien) not doing business in the
    * Philippines. Payments to them carry final withholding tax instead of EWT.
@@ -379,16 +381,14 @@ export function blankPartner(role: PartnerRole): Omit<Partner, 'id'> {
     defaultPaymentMethod: 'BANK',
     rdoCode: '',
     vatRegistrationDate: '',
-    salesVatTreatment: 'Regular',
-    zeroRatedCertificate: '',
-    zeroRatedValidUntil: '',
-    exemptionBasis: '',
-    exemptionCertificate: '',
-    exemptionValidUntil: '',
-    supplierVatStatus: 'VAT-registered',
+    vatRegistered: true,
     birCorNumber: '',
+    vatExemptions: [],
+    nonResidentDigitalServices: false,
     withholdingOverrideId: '',
-    grossIncomeAboveThreshold: false,
+    swornDeclarationRef: '',
+    swornDeclarationDate: '',
+    swornDeclarationAttachments: [],
     nonResident: false,
     taxTreatyCertificate: '',
     taxTreatyCertificateExpiry: '',
@@ -450,7 +450,7 @@ export const SEED_PARTNERS: Partner[] = [
   ),
   seed(
     'bp-003', 'vendor',
-    { name: 'Luzon Steel Industries', tin: '345-678-901-000', contactChannels: [{ id: 'bp-003-ch1', type: 'Phone', label: 'Phone', value: '+63 44 791 2233' }, { id: 'bp-003-ch2', type: 'Email', label: 'Email', value: 'sales@luzonsteel.ph' }], vendorPaymentTerms: 'Net 60', industry: 'Manufacturing', group: 'Vendors – Local', grossIncomeAboveThreshold: true,
+    { name: 'Luzon Steel Industries', tin: '345-678-901-000', contactChannels: [{ id: 'bp-003-ch1', type: 'Phone', label: 'Phone', value: '+63 44 791 2233' }, { id: 'bp-003-ch2', type: 'Email', label: 'Email', value: 'sales@luzonsteel.ph' }], vendorPaymentTerms: 'Net 60', industry: 'Manufacturing', group: 'Vendors – Local', swornDeclarationRef: 'SD-LSI-2026-001', swornDeclarationDate: '2026-01-07', swornDeclarationAttachments: [{ id: 'att-sd-lsi-001', fileName: 'Sworn_Declaration_LSI_2026.pdf', size: 98304, attachedOn: '2026-01-07' }],
       bankAccounts: [newBankAccount({ id: 'bp-003-b1', bank: 'BPI', branch: 'Malolos', accountNo: '8890-1122-33', accountName: 'Luzon Steel Industries Inc.' })],
       defaultBankAccountId: 'bp-003-b1' },
     { firstName: 'Ramon', lastName: 'Cruz', position: 'Sales Director', email: 'ramon.cruz@luzonsteel.ph' },
@@ -482,7 +482,7 @@ export const SEED_PARTNERS: Partner[] = [
   ),
   seed(
     'bp-008', 'vendor',
-    { name: 'Golden Plumbing Center', contactChannels: [{ id: 'bp-008-ch1', type: 'Email', label: 'Email', value: 'rosa@goldenplumbing.ph' }], vendorPaymentTerms: 'COD', status: 'Inactive', supplierVatStatus: 'Non-VAT', businessType: 'Sole proprietorship' },
+    { name: 'Golden Plumbing Center', contactChannels: [{ id: 'bp-008-ch1', type: 'Email', label: 'Email', value: 'rosa@goldenplumbing.ph' }], vendorPaymentTerms: 'COD', status: 'Inactive', vatRegistered: false, businessType: 'Sole proprietorship' },
     { firstName: 'Rosa', lastName: 'Garcia', position: 'Owner', email: 'rosa@goldenplumbing.ph' },
     { street: 'Aurora Blvd.', streetNo: '31', city: 'San Juan', zip: '1500', province: 'Metro Manila' },
   ),
@@ -513,7 +513,7 @@ export const SEED_PARTNERS: Partner[] = [
   seed(
     'bp-013', 'customer',
     { name: 'Cavite Export Assemblers Inc.', tin: '678-901-234-000', contactChannels: [{ id: 'bp-013-ch1', type: 'Email', label: 'Email', value: 'procurement@caviteexport.ph' }], industry: 'Manufacturing',
-      salesVatTreatment: 'Zero-rated', zeroRatedCertificate: 'PEZA-REE-2024-0183', zeroRatedValidUntil: '2027-12-31',
+      vatExemptions: [{ id: 've-peza-0001', type: 'Zero-rated', certificateRef: 'PEZA-REE-2024-0183', basis: '', validUntil: '2027-12-31', attachments: [{ id: 'att-peza-0001', fileName: 'PEZA_Certificate_REE_2024.pdf', size: 142080, attachedOn: '2024-03-15', description: 'PEZA Registered Export Enterprise certificate' }] }],
       remarks: 'PEZA-registered export enterprise in Cavite Economic Zone. Keep the VAT zero-rating certificate on file.' },
     { firstName: 'Lorna', lastName: 'Bautista', position: 'Procurement Head', email: 'lorna.bautista@caviteexport.ph' },
     { street: 'Main Ave.', streetNo: 'Lot 7', block: 'CEZ', city: 'Rosario', zip: '4106', province: 'Cavite' },
@@ -521,7 +521,7 @@ export const SEED_PARTNERS: Partner[] = [
   seed(
     'bp-014', 'customer',
     { name: 'City Government of Pasig – Engineering Office', contactChannels: [{ id: 'bp-014-ch1', type: 'Email', label: 'Email', value: 'engineering@pasigcity.gov.ph' }], industry: 'Government',
-      businessType: 'Government', group: 'Customers – Government', salesVatTreatment: 'Government', customerPaymentTerms: 'Net 60',
+      businessType: 'Government', group: 'Customers – Government', customerPaymentTerms: 'Net 60',
       remarks: 'Withholds 5% creditable VAT and 1% EWT on our invoices; expect BIR Form 2307.' },
     { firstName: 'Ramil', lastName: 'Ocampo', position: 'City Engineer', email: 'r.ocampo@pasigcity.gov.ph' },
     { street: 'Caruncho Ave.', block: 'Malinao', city: 'Pasig', zip: '1600', province: 'Metro Manila' },
@@ -529,7 +529,7 @@ export const SEED_PARTNERS: Partner[] = [
   seed(
     'bp-015', 'vendor',
     { name: 'CloudStack Pte. Ltd.', contactChannels: [{ id: 'bp-015-ch1', type: 'Email', label: 'Email', value: 'billing@cloudstack.example.sg' }], industry: 'Services', group: 'Vendors – Services',
-      currency: 'USD', supplierVatStatus: 'Non-resident digital services', nonResident: true, vendorPaymentTerms: 'Net 7',
+      currency: 'USD', vatRegistered: false, nonResident: true, nonResidentDigitalServices: true, vendorPaymentTerms: 'Net 7',
       remarks: 'Cloud hosting subscription. Non-resident digital service provider: we withhold and remit the 12% VAT (RA 12023).' },
     { firstName: 'Mei', lastName: 'Lin', position: 'Billing', email: 'billing@cloudstack.example.sg' },
     { street: 'Robinson Rd.', streetNo: '71', city: 'Singapore', zip: '068895', province: 'Other', country: 'Singapore' },
@@ -538,7 +538,7 @@ export const SEED_PARTNERS: Partner[] = [
     'bp-016', 'vendor',
     { roles: ['lead', 'customer', 'vendor'], name: 'Apple Authorized Distributor (placeholder)', tin: '789-012-345-000', contactChannels: [{ id: 'bp-016-ch1', type: 'Email', label: 'Email', value: 'orders@apple-distributor.example.ph' }], industry: 'Wholesale',
       group: 'Vendors – Local', customerPaymentTerms: 'Net 30', vendorPaymentTerms: 'Net 30', leadSource: 'Referral', leadStage: 'Qualified',
-      properties: ['Preferred supplier', 'Accepts e-invoice'], grossIncomeAboveThreshold: true,
+      properties: ['Preferred supplier', 'Accepts e-invoice'], swornDeclarationRef: 'SD-APL-2026-001', swornDeclarationDate: '2026-01-03', swornDeclarationAttachments: [{ id: 'att-sd-apl-001', fileName: 'Sworn_Declaration_APL_2026.pdf', size: 87040, attachedOn: '2026-01-03' }],
       remarks: 'Demo vendor for the Apple catalog. Replace with the actual Apple distributor and its price file (part numbers, UPCs, cost).' },
     { firstName: 'Trade', lastName: 'Desk', position: 'Reseller accounts', email: 'orders@apple-distributor.example.ph' },
     { street: 'Ayala Ave.', streetNo: '6750', city: 'Makati', zip: '1226', province: 'Metro Manila' },

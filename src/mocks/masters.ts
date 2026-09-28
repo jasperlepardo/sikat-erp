@@ -21,6 +21,7 @@ export const BUSINESS_TYPES = [
   'Non-resident foreign company',
   'Sole proprietorship',
   'Partnership',
+  'General professional partnership',
   'Resident foreign partnership',
   'Non-resident foreign partnership',
   'Cooperative',

@@ -346,7 +346,7 @@ const form = (section: FormSection, form: string, description: string, dueEfps =
 
 export const SEED_WITHHOLDING_FORMS: WithholdingForm[] = [
   form('REGISTRATION FORM', 'BIR FORM NO. 1901', 'Application for Registration for Self-Employed and Mixed Income Individuals, Estates and Trusts'),
-  form('REGISTRATION FORM', 'BIR FORM NO. 1902', 'Application for Registration for Individuals Earning Purely Compensation Income and Non-Residnet Citizens/Resident Alien Employee'),
+  form('REGISTRATION FORM', 'BIR FORM NO. 1902', 'Application for Registration for Individuals Earning Purely Compensation Income and Non-Resident Citizens/Resident Alien Employee'),
   form('REGISTRATION FORM', 'BIR FORM NO. 1903', 'Application for Registration for Corporations/Partnerships (Taxable/Non-Taxable), including GAIs and LGUs'),
   form('REGISTRATION FORM', 'BIR FORM NO. 1904', 'Application for Registration for One-time Taxpayer and Persons Registering under E.O. 98 (Securing a TIN to be able to transact with any government office)'),
   form('REGISTRATION FORM', 'BIR FORM NO. 1905', 'Application for Information Update'),
@@ -356,7 +356,7 @@ export const SEED_WITHHOLDING_FORMS: WithholdingForm[] = [
   form('REMITTANCE FORM', 'BIR FORM NO. 1600-VT', 'Monthly Remittance Return of Value-Added Tax', TENTH, TENTH),
   form('REMITTANCE FORM', 'BIR FORM No. 1600-PT', 'Monthly Remittance Return of Percentage Tax', TENTH, TENTH),
   form('REMITTANCE FORM', 'BIR FORM NO. 1600WP', 'Remittance Return of Percentage Tax on Winnings and Prizes Withheld by Race Track Operators', TENTH, TENTH),
-  form('REMITTANCE FORM', 'BIR FORM NO. 1601-C', 'Monthly Remittance Return of Income Taxes Withheld on Comnpensation', EFPS_SCHEDULE),
+  form('REMITTANCE FORM', 'BIR FORM NO. 1601-C', 'Monthly Remittance Return of Income Taxes Withheld on Compensation', EFPS_SCHEDULE),
   form('REMITTANCE FORM', 'BIR FORM NO. 1601-EQ', 'Quarterly Remittance Return of Creditable Income Taxes withheld (Expanded)', QUARTER, QUARTER),
   form('REMITTANCE FORM', 'BIR FORM NO. 1601-FQ', 'Quarterly Remittance Return of Final Income Taxes Withheld', QUARTER, QUARTER),
   form('REMITTANCE FORM', 'BIR FORM NO. 1602-Q', 'Quarterly Remittance Return of Final Taxes Withheld on Interest Paid on Deposits and Deposits Substitutes/Trusts/Etc.', QUARTER, QUARTER),

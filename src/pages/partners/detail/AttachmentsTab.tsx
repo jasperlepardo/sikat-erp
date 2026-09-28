@@ -8,6 +8,7 @@ interface RequiredDoc {
   onFile: boolean;
   reference?: string;
   validUntil?: string;
+  dateLabel?: string;
 }
 
 function requiredDocs(draft: Draft): RequiredDoc[] {
@@ -15,29 +16,32 @@ function requiredDocs(draft: Draft): RequiredDoc[] {
   const isCustomer = draft.roles.includes('customer');
   const isVendor = draft.roles.includes('vendor');
 
-  if (isCustomer && draft.salesVatTreatment === 'Zero-rated') {
-    docs.push({
-      name: 'Zero-rating certificate',
-      onFile: !!draft.zeroRatedCertificate,
-      reference: draft.zeroRatedCertificate || undefined,
-      validUntil: draft.zeroRatedValidUntil || undefined,
-    });
+  if (isCustomer) {
+    for (const e of draft.vatExemptions) {
+      docs.push({
+        name: e.type === 'Zero-rated' ? 'Zero-rating certificate' : `VAT exemption — ${e.basis || e.certificateRef || 'certificate'}`,
+        onFile: e.attachments.length > 0,
+        reference: e.certificateRef || undefined,
+        validUntil: e.validUntil || undefined,
+      });
+    }
   }
 
-  if (isCustomer && draft.salesVatTreatment === 'Exempt entity') {
-    docs.push({
-      name: 'Tax exemption certificate',
-      onFile: !!draft.exemptionCertificate,
-      reference: draft.exemptionCertificate || undefined,
-      validUntil: draft.exemptionValidUntil || undefined,
-    });
-  }
-
-  if (isVendor && (draft.supplierVatStatus === 'VAT-registered' || draft.supplierVatStatus === 'Non-VAT')) {
+  if (isVendor || isCustomer) {
     docs.push({
       name: 'BIR Certificate of Registration (Form 2303)',
       onFile: !!draft.birCorNumber,
       reference: draft.birCorNumber || undefined,
+    });
+  }
+
+  if (isVendor && !draft.nonResident) {
+    docs.push({
+      name: 'Sworn Declaration of Gross Income (RR 11-2018)',
+      onFile: draft.swornDeclarationAttachments.length > 0,
+      reference: draft.swornDeclarationRef || undefined,
+      validUntil: draft.swornDeclarationDate || undefined,
+      dateLabel: 'Date submitted',
     });
   }
 
@@ -67,14 +71,14 @@ export function AttachmentsTab({ draft, update }: TabProps) {
                 icon={<Icon size={16}>{doc.onFile ? 'check_circle' : 'warning'}</Icon>}
                 title={doc.name}
                 fields={[
-                  ...(doc.reference ? [{ label: 'Certificate no.', value: doc.reference }] : []),
-                  ...(doc.validUntil ? [{ label: 'Valid until', value: doc.validUntil }] : []),
+                  ...(doc.reference ? [{ label: 'Reference no.', value: doc.reference }] : []),
+                  ...(doc.validUntil ? [{ label: doc.dateLabel ?? 'Valid until', value: doc.validUntil }] : []),
                 ]}
               />
             ))}
           </List.Group>
           <Text variant="small" tone="muted">
-            Add or update certificate numbers in the Accounting tab.
+            Add or update reference numbers in the Settings tab. Upload the actual documents below.
           </Text>
         </Section>
       ) : null}

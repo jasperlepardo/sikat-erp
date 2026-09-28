@@ -11,7 +11,7 @@
     "typecheck": "tsc -b"
   },
   "dependencies": {
-    "@jasperlepardo/sikat-design-system": "^0.21.1",
+    "@jasperlepardo/sikat-design-system": "^0.21.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router": "^7.0.0"

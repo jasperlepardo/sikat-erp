@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Button, Card, Icon, Link, List, Text } from '@jasperlepardo/sikat-design-system';
+import { Icon, Link, List, Text } from '@jasperlepardo/sikat-design-system';
 import { AttachmentsCard } from '../../../components/form/AttachmentsCard';
 import { RowMenu } from '../../../components/form/RowMenu';
 import { newTreatyIncomeEntry, type TreatyIncomeEntry } from '../../../mocks/partners';
 import { TREATY_INCOME_TYPES, TREATY_RATES, type TreatyIncomeType } from '../../../mocks/taxes';
+import { EditPanel } from './EditPanel';
 import { Fields, Section, bind } from './fields';
 
 const INCOME_ICONS: Record<string, string> = {
@@ -16,11 +17,13 @@ const INCOME_ICONS: Record<string, string> = {
 function EntryForm({
   entry,
   treatyCountry,
+  isNew,
   onDone,
   onCancel,
 }: {
   entry: TreatyIncomeEntry;
   treatyCountry: string;
+  isNew: boolean;
   onDone: (e: TreatyIncomeEntry) => void;
   onCancel: () => void;
 }) {
@@ -40,8 +43,13 @@ function EntryForm({
   const f = bind(local, update);
 
   return (
-    <Card>
-      <Card.Content>
+    <EditPanel
+      icon={INCOME_ICONS[local.incomeType] ?? 'receipt_long'}
+      title={isNew ? 'New treaty income' : (local.incomeType || 'Treaty income')}
+      onCancel={onCancel}
+      onDone={() => onDone(local)}
+    >
+      <Section icon="gavel" title="Treaty income details">
         <Fields>
           {f.pick('incomeType', 'Income type', ['', ...TREATY_INCOME_TYPES], {
             hint: 'Type of income being paid to this vendor.',
@@ -60,16 +68,8 @@ function EntryForm({
           emptyHint="Add the TTRA approval letter, Certificate of Residence, and supporting documents."
           withDescription
         />
-        <div className="mt-3 flex justify-end gap-2">
-          <Button type="button" size="small" variant="ghost" onClick={onCancel}>
-            Cancel
-          </Button>
-          <Button type="button" size="small" intent="primary" variant="solid" onClick={() => onDone(local)}>
-            Done
-          </Button>
-        </div>
-      </Card.Content>
-    </Card>
+      </Section>
+    </EditPanel>
   );
 }
 
@@ -84,12 +84,8 @@ export function TreatyIncomesPanel({
 }) {
   const [editing, setEditing] = useState<{ entry: TreatyIncomeEntry; isNew: boolean } | null>(null);
 
-  const startAdd = () => {
-    setEditing({ entry: newTreatyIncomeEntry(), isNew: true });
-  };
-  const startEdit = (e: TreatyIncomeEntry) => {
-    setEditing({ entry: { ...e, attachments: [...e.attachments] }, isNew: false });
-  };
+  const startAdd = () => setEditing({ entry: newTreatyIncomeEntry(), isNew: true });
+  const startEdit = (e: TreatyIncomeEntry) => setEditing({ entry: { ...e, attachments: [...e.attachments] }, isNew: false });
   const remove = (id: string) => onChange(incomes.filter((e) => e.id !== id));
   const apply = (e: TreatyIncomeEntry, isNew: boolean) => {
     onChange(isNew ? [...incomes, e] : incomes.map((x) => (x.id === e.id ? e : x)));
@@ -97,63 +93,56 @@ export function TreatyIncomesPanel({
   };
 
   return (
-    <Section
-      icon="gavel"
-      title={`Treaty incomes${incomes.length ? ` · ${incomes.length}` : ''}`}
-      actions={
-        editing ? undefined : (
-          <Link leadingIcon={<Icon size={20}>add</Icon>} onClick={startAdd}>
-            Add
-          </Link>
-        )
-      }
-    >
-      {incomes.length ? (
-        <div className="flex flex-col gap-2">
-          {incomes.map((e) =>
-            editing && !editing.isNew && editing.entry.id === e.id ? (
-              <EntryForm
+    <>
+      <Section
+        icon="gavel"
+        title={`Treaty incomes${incomes.length ? ` · ${incomes.length}` : ''}`}
+        actions={
+          !editing ? (
+            <Link leadingIcon={<Icon size={20}>add</Icon>} onClick={startAdd}>
+              Add
+            </Link>
+          ) : undefined
+        }
+      >
+        {incomes.length ? (
+          <List.Group>
+            {incomes.map((e) => (
+              <List.Card
                 key={e.id}
-                entry={editing.entry}
-                treatyCountry={treatyCountry}
-                onDone={(updated) => apply(updated, false)}
-                onCancel={() => setEditing(null)}
+                icon={<Icon size={16}>{INCOME_ICONS[e.incomeType] ?? 'receipt_long'}</Icon>}
+                title={e.incomeType || '—'}
+                fields={[
+                  { label: 'Approved rate', value: e.approvedRate ? `${e.approvedRate}%` : '—' },
+                  { label: 'TTRA approved', value: e.ttraApprovalDate || '' },
+                  { label: 'Documents', value: e.attachments.length ? `${e.attachments.length} file${e.attachments.length !== 1 ? 's' : ''}` : '' },
+                ].filter((f) => f.value)}
+                actions={
+                  <RowMenu
+                    label={`Actions for ${e.incomeType || 'entry'}`}
+                    items={[
+                      { label: 'Edit', icon: 'edit', onSelect: () => startEdit(e) },
+                      { label: 'Remove', icon: 'delete', onSelect: () => remove(e.id) },
+                    ]}
+                  />
+                }
               />
-            ) : (
-              <List.Group key={e.id}>
-                <List.Card
-                  icon={<Icon size={16}>{INCOME_ICONS[e.incomeType] ?? 'receipt_long'}</Icon>}
-                  title={e.incomeType || '—'}
-                  fields={[
-                    { label: 'Approved rate', value: e.approvedRate ? `${e.approvedRate}%` : '—' },
-                    { label: 'TTRA approved', value: e.ttraApprovalDate || '' },
-                    { label: 'Attachments', value: e.attachments.length ? `${e.attachments.length} file${e.attachments.length !== 1 ? 's' : ''}` : '' },
-                  ].filter((f) => f.value)}
-                  actions={
-                    <RowMenu
-                      label={`Actions for ${e.incomeType || 'entry'}`}
-                      items={[
-                        { label: 'Edit', icon: 'edit', onSelect: () => startEdit(e) },
-                        { label: 'Remove', icon: 'delete', onSelect: () => remove(e.id) },
-                      ]}
-                    />
-                  }
-                />
-              </List.Group>
-            ),
-          )}
-        </div>
-      ) : (
-        <Text variant="small" tone="muted">No income types added yet.</Text>
-      )}
-      {editing?.isNew ? (
+            ))}
+          </List.Group>
+        ) : (
+          <Text variant="small" tone="muted">No income types added yet.</Text>
+        )}
+      </Section>
+
+      {editing ? (
         <EntryForm
           entry={editing.entry}
           treatyCountry={treatyCountry}
-          onDone={(e) => apply(e, true)}
+          isNew={editing.isNew}
+          onDone={(e) => apply(e, editing.isNew)}
           onCancel={() => setEditing(null)}
         />
       ) : null}
-    </Section>
+    </>
   );
 }
