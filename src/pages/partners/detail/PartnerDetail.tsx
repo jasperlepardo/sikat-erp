@@ -17,7 +17,7 @@ import {
 import { BP_GROUPS } from '../../../mocks/masters';
 import { RDOS } from '../../../mocks/taxes';
 import { currencies } from '../../../services/masterData';
-import { blankPartner, type ContactPerson, type PartnerAddress, type PartnerBankAccount, type PartnerContactChannel, type PartnerRole } from '../../../mocks/partners';
+import { blankPartner, newAddress, newBankAccount, newContact, type ContactPerson, type PartnerAddress, type PartnerBankAccount, type PartnerContactChannel, type PartnerRole } from '../../../mocks/partners';
 import { convertLeadToCustomer, getPartner, isActive, savePartner } from '../../../services/partners';
 import { MASTER_CONFIG, ROLE_CONFIG, ROLE_ORDER, type PartnerScope } from '../roles';
 import { AccountingTab } from './AccountingTab';
@@ -315,7 +315,16 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
 
             <div className="grid gap-2 lg:grid-cols-12">
               <aside className="flex flex-col gap-2 lg:col-span-3">
-                <DefaultsCard draft={draft} update={update} />
+                <DefaultsCard
+                  draft={draft}
+                  update={update}
+                  onCreate={(what) => {
+                    if (what === 'contact') setEditing({ kind: 'contact', value: newContact(), isNew: true });
+                    else if (what === 'address') setEditing({ kind: 'address', value: newAddress({ label: 'Main office' }), isNew: true });
+                    else if (what === 'bank') setEditing({ kind: 'bank', value: newBankAccount({ accountName: draft.name, currency: draft.currency === 'All currencies' ? 'PHP' : draft.currency }), isNew: true });
+                    else setTab('payment-run');
+                  }}
+                />
                 <ContactChannelsCards draft={draft} update={update} onOpen={(value, added) => setEditing({ kind: 'channel', value, isNew: added })} />
                 <ContactsCards draft={draft} update={update} onOpen={(value, added) => setEditing({ kind: 'contact', value, isNew: added })} />
                 <AddressesCards draft={draft} update={update} onOpen={(value, added) => setEditing({ kind: 'address', value, isNew: added })} />
