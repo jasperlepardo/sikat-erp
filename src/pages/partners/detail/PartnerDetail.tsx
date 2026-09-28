@@ -17,7 +17,7 @@ import {
 import { BP_GROUPS } from '../../../mocks/masters';
 import { RDOS } from '../../../mocks/taxes';
 import { currencies } from '../../../services/masterData';
-import { blankPartner, newAddress, newBankAccount, newContact, type ContactPerson, type PartnerAddress, type PartnerBankAccount, type PartnerContactChannel, type PartnerRole } from '../../../mocks/partners';
+import { LEAD_SOURCES, PARTNER_STATUSES, blankPartner, newAddress, newBankAccount, newContact, type ContactPerson, type PartnerAddress, type PartnerBankAccount, type PartnerContactChannel, type PartnerRole } from '../../../mocks/partners';
 import { convertLeadToCustomer, getPartner, isActive, savePartner } from '../../../services/partners';
 import { MASTER_CONFIG, ROLE_CONFIG, ROLE_ORDER, type PartnerScope } from '../roles';
 import { AccountingTab } from './AccountingTab';
@@ -71,9 +71,9 @@ function validate(d: Draft, codeMode: 'auto' | 'manual', chart: Account[] | unde
   need(d.group, 'header', 'group', 'Group is required.');
   need(d.currency, 'header', 'currency', 'Currency is required.');
   if (d.status === 'Advanced') {
-    need(d.statusFrom, 'general', 'statusFrom', 'Pick a start date.');
-    need(d.statusTo, 'general', 'statusTo', 'Pick an end date.');
-    need(!d.statusFrom || !d.statusTo || d.statusFrom <= d.statusTo, 'general', 'statusTo', 'End date is before the start date.');
+    need(d.statusFrom, 'header', 'statusFrom', 'Pick a start date.');
+    need(d.statusTo, 'header', 'statusTo', 'Pick an end date.');
+    need(!d.statusFrom || !d.statusTo || d.statusFrom <= d.statusTo, 'header', 'statusTo', 'End date is before the start date.');
   }
   for (const a of d.addresses) {
     need(a.label.trim(), 'addresses', `address:${a.id}:label`, 'Every address needs an Address ID.');
@@ -161,12 +161,14 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
   const h = bind(draft, update);
   const groups = BP_GROUPS.filter((g) => draft.roles.includes(g.role)).map((g) => g.value);
 
-  const changeRoles = (next: PartnerRole[]) => {
+  // A partner always keeps at least one role, and the role of the list it was opened from.
+  const changeRoles = (picked: PartnerRole[]) => {
+    const next = ROLE_ORDER.filter((r) => picked.includes(r) || r === scope);
     if (next.length === 0) return;
     const hadLead = draft.roles.includes('lead');
     update({
       roles: next,
-      ...(!hadLead && next.includes('lead') && !draft.leadStage ? { leadStage: 'New' as const } : {}),
+      ...(!hadLead && next.includes('lead') && !draft.leadStage ? { leadStage: 'New' as const, leadSource: LEAD_SOURCES[0] } : {}),
     });
   };
 
@@ -360,7 +362,10 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
                         />
                       )}
                     </FormField>
-                    <FormField label="Type">
+                    <FormField
+                      label="Type"
+                      tooltip="A partner can be a lead, a customer and a vendor at once. It shows in each matching list, and edits here show everywhere."
+                    >
                       {(p) => (
                         <MultiSelect
                           {...p}
@@ -381,6 +386,16 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
                     {h.text('tin', 'TIN', { placeholder: '000-000-000-000', hint: 'BIR Taxpayer Identification Number.' })}
                     {h.text('birCorNumber', 'BIR COR no.', { placeholder: '000-000-000-000', hint: 'BIR Certificate of Registration (Form 2303).' })}
                     {h.choose('rdoCode', 'BIR RDO', [{ value: '', label: '— None —' }, ...RDOS], { hint: 'Revenue District Office where the partner is registered.' })}
+                    {h.choose('status', 'Status', PARTNER_STATUSES.map((s) => ({ value: s, label: s })), {
+                      hint: 'Advanced: active only between the dates you set.',
+                    })}
+                    {draft.status === 'Advanced' ? (
+                      <>
+                        {h.date('statusFrom', 'Active from', { required: true, error: errors.statusFrom })}
+                        {h.date('statusTo', 'Active to', { required: true, error: errors.statusTo })}
+                      </>
+                    ) : null}
+                    {h.text('statusRemarks', 'Status remarks', { placeholder: 'Why the status changed' })}
                   </Fields>
                 </Section>
 
@@ -393,12 +408,7 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
                     badge: problems.some((p) => p.tab === t.value) ? '!' : counts[t.value] ? String(counts[t.value]) : undefined,
                   }))}
                 />
-                <ActiveTab
-                  draft={draft}
-                  update={update}
-                  errors={errors}
-                  lockedRole={scope === 'all' ? undefined : scope}
-                />
+                <ActiveTab draft={draft} update={update} errors={errors} />
               </div>
             </div>
           </Panel.Body>

@@ -203,7 +203,7 @@ export function VendorQuickCreate({ currencies, initialName = '', onClose, onCre
             />
 
             {tab === 'general' && (
-              <GeneralTab draft={draft} update={update} errors={errors} lockedRole="vendor" />
+              <GeneralTab draft={draft} update={update} errors={errors} />
             )}
             {tab === 'payment-terms' && (
               <PaymentTermsTab draft={draft} update={update} errors={errors} />

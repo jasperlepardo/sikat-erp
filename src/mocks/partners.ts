@@ -6,6 +6,7 @@
  */
 export type PartnerRole = 'lead' | 'customer' | 'vendor';
 export type PartnerStatus = 'Active' | 'Inactive' | 'Advanced';
+export const PARTNER_STATUSES: PartnerStatus[] = ['Active', 'Inactive', 'Advanced'];
 export type LeadStage = 'New' | 'Contacted' | 'Qualified' | 'Lost';
 
 export const LEAD_SOURCES = ['Referral', 'Website', 'Trade show', 'Walk-in', 'Cold call'] as const;

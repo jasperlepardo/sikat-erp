@@ -1,4 +1,3 @@
-import { Checkbox, Radio, Text } from '@jasperlepardo/sikat-design-system';
 import {
   CHANNELS,
   EMPLOYEES,
@@ -7,8 +6,8 @@ import {
   TECHNICIANS,
   TERRITORIES,
 } from '../../../mocks/masters';
-import { LEAD_SOURCES, LEAD_STAGES, type PartnerRole, type PartnerStatus } from '../../../mocks/partners';
-import { ROLE_CONFIG, ROLE_ORDER } from '../roles';
+import { LEAD_SOURCES, LEAD_STAGES, type PartnerRole } from '../../../mocks/partners';
+import { ROLE_CONFIG } from '../roles';
 import { activeOptions, shippingTypes } from '../../../services/inventoryMasters';
 import { useAsync } from '../../../services/useAsync';
 import { Fields, Flags, Section, bind, type Draft, type Errors } from './fields';
@@ -17,20 +16,11 @@ export interface TabProps {
   draft: Draft;
   update: (patch: Partial<Draft>) => void;
   errors: Errors;
-  /** The role of the list the form was opened from; it can't be removed there. */
-  lockedRole?: PartnerRole;
 }
 
-const STATUSES: PartnerStatus[] = ['Active', 'Inactive', 'Advanced'];
-
-export function GeneralTab({ draft, update, errors, lockedRole }: TabProps) {
+export function GeneralTab({ draft, update }: TabProps) {
   const f = bind(draft, update);
   const has = (r: PartnerRole) => draft.roles.includes(r);
-  const toggleRole = (r: PartnerRole, on: boolean) =>
-    update({
-      roles: ROLE_ORDER.filter((x) => (x === r ? on : draft.roles.includes(x))),
-      ...(on && r === 'lead' && !draft.leadStage ? { leadStage: 'New' as const, leadSource: LEAD_SOURCES[0] } : {}),
-    });
   const shipping = useAsync(shippingTypes.list, []) ?? [];
 
   return (
@@ -60,30 +50,6 @@ export function GeneralTab({ draft, update, errors, lockedRole }: TabProps) {
         </Fields>
       </Section>
 
-      <Section icon="toggle_on" title="Status">
-        <div className="flex flex-wrap gap-6" role="radiogroup" aria-label="Status">
-          {STATUSES.map((s) => (
-            <Radio key={s} name="bp-status" checked={draft.status === s} onChange={() => update({ status: s })}>
-              {s}
-            </Radio>
-          ))}
-        </div>
-        {draft.status === 'Advanced' ? (
-          <Fields cols={3}>
-            {f.date('statusFrom', 'Active from', { required: true, error: errors.statusFrom })}
-            {f.date('statusTo', 'Active to', { required: true, error: errors.statusTo })}
-            {f.text('statusRemarks', 'Remarks')}
-          </Fields>
-        ) : (
-          <Fields cols={1}>{f.text('statusRemarks', 'Remarks', { placeholder: 'Why the status changed' })}</Fields>
-        )}
-        {draft.status === 'Advanced' ? (
-          <Text variant="small" tone="muted">
-            Advanced: the partner is active only between these dates.
-          </Text>
-        ) : null}
-      </Section>
-
       {has('lead') ? (
         <Section icon={ROLE_CONFIG.lead.icon} title="Lead">
           <Fields>
@@ -92,26 +58,6 @@ export function GeneralTab({ draft, update, errors, lockedRole }: TabProps) {
           </Fields>
         </Section>
       ) : null}
-
-      <Section icon="group_work" title="Roles">
-        <Text variant="small" tone="muted">
-          One business partner can be a lead, a customer and a vendor. It appears in each matching list, and edits here
-          show everywhere.
-        </Text>
-        <Flags>
-          {ROLE_ORDER.map((r) => (
-            <Checkbox
-              key={r}
-              checked={has(r)}
-              // Keep the list's own role, and always at least one role.
-              disabled={r === lockedRole || (has(r) && draft.roles.length === 1)}
-              onChange={(e) => toggleRole(r, e.currentTarget.checked)}
-            >
-              {ROLE_CONFIG[r].singular} <span className="text-muted">· {ROLE_CONFIG[r].title} list</span>
-            </Checkbox>
-          ))}
-        </Flags>
-      </Section>
     </>
   );
 }
