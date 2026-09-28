@@ -37,6 +37,7 @@ export type LineParty = Pick<
   Partner,
   | 'vatRegistered'
   | 'vatExemptions'
+  | 'topWithholdingAgent'
   | 'businessType'
   | 'nonResidentDigitalServices'
   | 'nonResident'
@@ -244,8 +245,8 @@ export function determineTax(
 
   const { withholding, withholdingTrace } =
     direction === 'Purchase' ? determineWithholding(item, partner, data, date) : { withholding: [], withholdingTrace: [] };
-  if (direction === 'Sales' && partner.businessType !== 'Government') {
-    notes.push('Customers who are top withholding agents withhold 1% (goods) or 2% (services) from what they pay you.');
+  if (direction === 'Sales' && partner.businessType !== 'Government' && partner.topWithholdingAgent) {
+    notes.push('This customer is a top withholding agent: it withholds 1% (goods) or 2% (services) from what it pays you and issues BIR Form 2307.');
   }
 
   return { taxCode, rate, trace, withholding, withholdingTrace, notes };

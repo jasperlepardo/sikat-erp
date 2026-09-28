@@ -209,6 +209,11 @@ export interface Partner {
    */
   vatExemptions: VatExemptionEntry[];
   /**
+   * As a customer: a BIR-designated top withholding agent. It withholds 1% on goods and 2% on
+   * services from what it pays you and gives you BIR Form 2307, which you credit against income tax.
+   */
+  topWithholdingAgent: boolean;
+  /**
    * Non-resident vendor that provides digital services to Philippine consumers.
    * Triggers 12% VAT self-withholding (BIR Form 1600-VT). Only relevant when nonResident is true.
    */
@@ -398,6 +403,7 @@ export function blankPartner(role: PartnerRole): Omit<Partner, 'id'> {
     vatRegistered: true,
     birCorNumber: '',
     vatExemptions: [],
+    topWithholdingAgent: false,
     nonResidentDigitalServices: false,
     withholdingOverrideId: '',
     swornDeclarationRef: '',
@@ -488,7 +494,7 @@ export const SEED_PARTNERS: Partner[] = [
     'bp-002', 'vendor',
     { roles: ['vendor', 'customer'], name: 'Northgate Prime Malls Inc.', tin: '201-334-517-000', businessType: 'Company', group: 'Vendors – Services',
       industry: 'Real estate', contactChannels: [phone('bp-002-ch1', '+63 2 8631 4400'), email('bp-002-ch2', 'leasing@northgateprime.example.ph')],
-      vendorPaymentTerms: 'Net 15', customerPaymentTerms: 'Net 30', creditLimit: 300000, ...sworn('bp-002', 'SD-NPM-2026', '2026-01-12'),
+      vendorPaymentTerms: 'Net 15', customerPaymentTerms: 'Net 30', creditLimit: 300000, topWithholdingAgent: true, ...sworn('bp-002', 'SD-NPM-2026', '2026-01-12'),
       remarks: 'Our landlord at Northgate Mall, and a customer (buys iPads for its mall admin office).\n'
         + 'Tax scenario (purchase, mall rent): 44 input VAT · WC100 5% EWT on rent.\n'
         + 'Tax scenario (sales): 31 VATable; as a top withholding agent it withholds 1% and sends us BIR Form 2307.' },
@@ -499,7 +505,7 @@ export const SEED_PARTNERS: Partner[] = [
     'bp-003', 'customer',
     { name: 'Bayanihan Savings Bank Corp.', tin: '004-112-908-000', businessType: 'Company', group: 'Customers – Trade', industry: 'Financial services',
       contactChannels: [email('bp-003-ch1', 'procurement@bayanihanbank.example.ph')], customerPaymentTerms: 'Net 30', creditLimit: 2500000,
-      salesEmployee: 'Carla Uy', territory: 'NCR', properties: ['Key account', 'Requires PO'],
+      salesEmployee: 'Carla Uy', territory: 'NCR', properties: ['Key account', 'Requires PO'], topWithholdingAgent: true,
       remarks: 'Corporate fleet of MacBooks and iPhones for branch staff.\n'
         + 'Tax scenario (sales): 31 VATable. Top withholding agent: withholds 1% on goods / 2% on services and issues BIR Form 2307.' },
     { firstName: 'Miguel', lastName: 'Ferrer', position: 'Head of Procurement', email: 'miguel.ferrer@bayanihanbank.example.ph' },

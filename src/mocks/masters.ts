@@ -85,8 +85,9 @@ export const PAYMENT_METHODS = [
 
 export const PLANNING_GROUPS = ['— None —', 'Fast movers', 'Project-based', 'Seasonal'];
 
-/** Labels for the Properties tab (the real product lets admins rename up to 64). */
-export const PROPERTY_LABELS = [
-  'Key account', 'VAT exempt', 'Government entity', 'Requires PO', 'Top withholding agent',
-  'Export', 'Wholesale', 'Retail', 'Accepts e-invoice', 'Credit hold watch', 'Consignment', 'Preferred supplier',
-];
+/**
+ * Labels for the Properties tab (the real product lets admins rename up to 64). Only facts with no
+ * field of their own: VAT exemption, government, export (zero-rating), top withholding agent, group
+ * and price list are real partner fields, so they aren't tags that could contradict them.
+ */
+export const PROPERTY_LABELS = ['Key account', 'Requires PO', 'Accepts e-invoice', 'Credit hold watch', 'Preferred supplier'];

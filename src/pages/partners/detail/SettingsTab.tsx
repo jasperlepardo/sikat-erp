@@ -111,6 +111,16 @@ export function SettingsTab({ draft, update }: TabProps) {
           </Text>
         </Section>
       ) : null}
+      {isCustomer && !draft.nonResident && draft.businessType !== 'Government' ? (
+        <Section icon="sell" title="Customer tax">
+          <Flags>{f.check('topWithholdingAgent', 'Top withholding agent (BIR-designated)')}</Flags>
+          <Text variant="small" tone="muted">
+            {draft.topWithholdingAgent
+              ? 'Withholds 1% on goods and 2% on services from what it pays you, and gives you BIR Form 2307 to credit against income tax.'
+              : 'Tick when BIR has designated this customer a top withholding agent (large taxpayers, top corporations).'}
+          </Text>
+        </Section>
+      ) : null}
 
       {/* ── Exemptions (unified VAT + sworn declaration) ── */}
       <ExemptionsSection
