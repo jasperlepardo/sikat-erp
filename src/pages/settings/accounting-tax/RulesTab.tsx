@@ -21,24 +21,27 @@ const SALES_RULES = [
   'Company is not VAT-registered → PT010 percentage tax on every sale',
   'Item is not tax liable → no tax',
   'Item has a fixed sales tax code → that code',
-  'Customer VAT treatment: Government → 31 (buyer withholds 5% VAT) · Zero-rated with a valid certificate → 32 · Exempt entity → 33',
+  'Customer: Government → 31 (buyer withholds 5% VAT) · Zero-rated exemption → 32 · Exempt entity → 33. An exemption counts only with a document attached and not expired.',
   'Item sales tax group → its default code',
   'Company default → 31 VATable Sales',
 ];
 const PURCHASE_RULES = [
   'Goods from a non-resident supplier → 46 Importations (49 if the item isn’t subject to VAT)',
-  'Supplier VAT status: Non-VAT → 48 · Non-resident digital services → 45 (you withhold the VAT)',
+  'Services or property lease from a non-resident → 45: you withhold the 12% VAT (not for a digital service provider registered with BIR, which charges VAT itself)',
+  'Supplier not VAT-registered, or a non-resident → 48 no input tax',
   'Item has a fixed purchasing tax code → that code',
   'Item purchase tax group → its default code (a zero-rated group only if the company is a registered export enterprise)',
   'Company default → 44 Domestic Purchases',
 ];
 const WITHHOLDING_RULES = [
-  'Vendor override → that withholding tax (an income-tiered ATC follows the vendor’s gross income)',
-  'Non-resident vendor → final tax (none on imported goods): WC180 (20%) on interest, WC230 (25%) on other payments to foreign corporations, WI330 (25%) to individuals',
-  'Item withholding category: rent → W?100 · contractor → W?120 · professional fees → W?010 / W?011 by the vendor’s gross income (individuals: over ₱3M or VAT-registered; corporations: over ₱720,000)',
-  'Royalties → W?250 (20% final) · interest → W?710 (15%) · prizes → WI260 (20% final, individuals only)',
-  'Goods or services → W?158 (1%) / W?160 (2%), only if the company is a top withholding agent',
-  'WI for individuals and sole proprietors, WC for companies (from the partner’s type of business)',
+  'Government payee → no withholding',
+  'Income tier: the lower rate needs this year’s sworn declaration with the document attached (₱3M individuals, ₱720,000 corporations); VAT-registered individuals always get the higher rate',
+  'Non-resident services → withholding VAT: WV050 lease / WV070 other services (WV040 / WV060 for a government company)',
+  'Government company → WV010 / WV020 5% VAT on VAT-registered suppliers, WB080 3% on non-VAT suppliers',
+  'Vendor override → that withholding tax (an income-tiered ATC follows the income tier)',
+  'Item withholding group → its ATC. Non-residents: final tax (none on goods), the group’s own ATC or WC230 / WI330 at 25%, lowered to the treaty rate when the treaty income and Certificate of Residence are on file',
+  'Goods and services groups (1% / 2%) apply only for top withholding agents and government companies, which use WI640 / WC640 and WI157 / WC157',
+  'WI for individuals and sole proprietors, WC for everyone else (from the partner’s type of business)',
 ];
 
 const outcomeIntent = (o: TraceStep['outcome']) =>

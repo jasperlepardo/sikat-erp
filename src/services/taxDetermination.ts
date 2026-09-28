@@ -13,6 +13,7 @@ import {
   SYSTEM_ATCS,
   SYSTEM_TAX_CODES,
   type CompanyTaxProfile,
+  type NonResidentVat,
   type TaxCode,
   type TaxDirection,
   type TaxGroup,
@@ -43,6 +44,10 @@ export type LineParty = Pick<
   | 'swornDeclarationRef'
   | 'swornDeclarationDate'
   | 'swornDeclarationAttachments'
+  | 'taxTreatyCountry'
+  | 'taxTreatyCertificate'
+  | 'taxTreatyCertificateExpiry'
+  | 'taxTreatyIncomes'
 >;
 
 export interface TraceStep {
@@ -64,6 +69,45 @@ export interface Determination {
 
 const payeeOf = (p: LineParty) =>
   ['Individual', 'Sole proprietorship'].includes(p.businessType) ? 'Individual' : 'Corporate';
+
+/**
+ * Whether the partner charges Philippine VAT. A non-resident only does when it's a digital
+ * service provider registered with BIR (RA 12023); any other non-resident is outside the
+ * VAT system, whatever the stored flag says.
+ */
+const chargesVat = (p: LineParty) => p.vatRegistered && (!p.nonResident || p.nonResidentDigitalServices);
+
+type NonResidentVatResult =
+  | { applies: true; kind: NonResidentVat; why: string }
+  | { applies: false; why: string; warning?: boolean };
+
+/**
+ * VAT on a payment to a non-resident for services or the lease/use of property (NIRC Sec. 114(C)):
+ * the buyer withholds the 12% (BIR Form 1600-VT) and claims it back as input tax. Goods are
+ * importations instead, handled separately.
+ */
+function nonResidentVat(item: LineItem, partner: LineParty, data: TaxMasterData, date: string): NonResidentVatResult {
+  if (!partner.nonResident) return { applies: false, why: 'Resident supplier.' };
+  const group = data.withholdingGroups.find((g) => g.code === item.withholdingGroup && g.active);
+  if (group?.nrExempt) return { applies: false, why: 'Goods — covered by the importation rule.' };
+  if (partner.nonResidentDigitalServices && partner.vatRegistered) {
+    return { applies: false, why: 'Digital service provider registered with BIR: it charges and remits the 12% VAT itself — claim input VAT from its invoice.' };
+  }
+  const kind = group ? group.nrVat : partner.nonResidentDigitalServices ? 'Services' : null;
+  if (kind) {
+    const what = partner.nonResidentDigitalServices ? 'digital services' : kind === 'Lease' ? 'lease or use of property' : 'services';
+    const why = `Non-resident, ${what}${group ? ` (${group.name})` : ''}`;
+    // An exempt purchase tax group on the item wins (a zero-rated one only counts for an export enterprise).
+    const taxGroup = data.groups.find((g) => g.code === item.purchaseTaxGroup);
+    const code = taxGroup && data.codes.find((c) => c.code === taxGroup.taxCode);
+    if (taxGroup && code && rateAt(code, date) === 0 && !(taxGroup.zeroRated && !data.company.exportEnterprise)) {
+      return { applies: false, why: `${why}, but item group ${taxGroup.code} is not subject to VAT.` };
+    }
+    return { applies: true, kind, why };
+  }
+  if (!group) return { applies: false, warning: true, why: 'Non-resident supplier but the item has no withholding group — set one so the VAT treatment can be decided.' };
+  return { applies: false, why: `${group.name} from a non-resident is not subject to VAT.` };
+}
 
 export function determineTax(
   direction: TaxDirection,
@@ -156,26 +200,30 @@ export function determineTax(
         decide('Imported goods', SYSTEM_TAX_CODES.EXEMPT_IMPORTATION, `Goods from a non-resident supplier; item group ${group.code} is not subject to VAT`);
       } else decide('Imported goods', SYSTEM_TAX_CODES.IMPORTATION, 'Goods from a non-resident supplier: 12% import VAT paid to the Bureau of Customs');
       notes.push('Import VAT is paid to the Bureau of Customs on the import entry, not to the supplier.');
-    } else step('Imported goods', 'skipped', partner.nonResident ? 'Not goods — services from a non-resident are covered below.' : 'Resident supplier.');
+    } else step('Imported goods', 'skipped', partner.nonResident ? 'Not goods — see services from a non-resident below.' : 'Resident supplier.');
 
-    // 2. Supplier VAT registration
+    // 2. Services from a non-resident: you withhold the VAT (reverse charge)
     if (!decided) {
-      if (partner.nonResident && partner.nonResidentDigitalServices && !partner.vatRegistered) {
-        decide('Supplier VAT registration', SYSTEM_TAX_CODES.NR_SERVICES, 'Non-resident digital service provider not registered with BIR: you withhold and remit the 12% VAT (BIR Form 1600-VT)');
-      } else if (partner.nonResident && partner.nonResidentDigitalServices && partner.vatRegistered) {
-        step('Supplier VAT registration', 'skipped', 'Non-resident digital service provider registered with BIR as NR-DSP: they charge and remit the 12% VAT directly — claim input VAT from their invoice.');
-      } else if (!partner.vatRegistered) {
-        decide('Supplier VAT registration', SYSTEM_TAX_CODES.NO_INPUT_TAX, 'Non-VAT supplier: no input VAT to claim');
+      const nr = nonResidentVat(item, partner, data, date);
+      if (nr.applies) {
+        decide('Services from a non-resident', SYSTEM_TAX_CODES.NR_SERVICES, `${nr.why}: you withhold and remit the 12% VAT (BIR Form 1600-VT) and claim it as input tax`);
+      } else step('Services from a non-resident', nr.warning ? 'warning' : 'skipped', nr.why);
+    }
+
+    // 3. Supplier VAT registration
+    if (!decided) {
+      if (!chargesVat(partner)) {
+        decide('Supplier VAT registration', SYSTEM_TAX_CODES.NO_INPUT_TAX, partner.nonResident ? 'Non-resident supplier: no Philippine VAT on its invoice' : 'Non-VAT supplier: no input VAT to claim');
       } else step('Supplier VAT registration', 'skipped', 'VAT-registered supplier.');
     }
 
-    // 3. Item fixed code
+    // 4. Item fixed code
     if (!decided) {
       if (item.purchaseTaxCode) decide('Item has a fixed purchasing tax code', item.purchaseTaxCode, 'Fixed on the item');
       else step('Item has a fixed purchasing tax code', 'skipped', 'No fixed code on the item.');
     }
 
-    // 4. Item tax group (zero-rating only for an export enterprise), 5. company default
+    // 5. Item tax group (zero-rating only for an export enterprise), 6. company default
     if (!decided) {
       if (!group) step('Item purchase tax group', 'skipped', 'The item has no purchase tax group.');
       else if (zeroRatingRefused(group)) {
@@ -203,6 +251,26 @@ export function determineTax(
   return { taxCode, rate, trace, withholding, withholdingTrace, notes };
 }
 
+
+/**
+ * The vendor's treaty rate for this kind of income, if the paperwork is in place: a treaty
+ * income entry with an approved rate and an attached document, and an unexpired Certificate
+ * of Residence (RMO 14-2021).
+ */
+function treatyRelief(group: WithholdingGroup, partner: LineParty, date: string) {
+  if (!group.treatyIncomeType || !partner.taxTreatyCountry) return undefined;
+  const entry = partner.taxTreatyIncomes.find((e) => e.incomeType === group.treatyIncomeType);
+  if (!entry) return undefined;
+  const label = `${partner.taxTreatyCountry} treaty, ${entry.incomeType.toLowerCase()}`;
+  if (!entry.approvedRate) return { valid: false as const, why: `${label}: no approved rate entered — domestic rate applies.` };
+  if (!entry.attachments.length) return { valid: false as const, why: `${label}: no document attached — domestic rate applies.` };
+  if (!partner.taxTreatyCertificate) return { valid: false as const, why: `${label}: no Certificate of Residence on file — domestic rate applies.` };
+  if (partner.taxTreatyCertificateExpiry && partner.taxTreatyCertificateExpiry < date) {
+    return { valid: false as const, why: `${label}: Certificate of Residence expired ${partner.taxTreatyCertificateExpiry} — domestic rate applies.` };
+  }
+  return { valid: true as const, rate: entry.approvedRate, label };
+}
+
 /** Which withholding taxes you deduct when paying a supplier for this item. */
 export function determineWithholding(
   item: LineItem,
@@ -214,6 +282,7 @@ export function determineWithholding(
   const withholding: WithholdingTax[] = [];
   const step = (rule: string, outcome: TraceStep['outcome'], detail: string) =>
     withholdingTrace.push({ rule, outcome, detail });
+  const done = () => ({ withholding, withholdingTrace });
   const payee = payeeOf(partner);
   const byAtc = (atc: string) => data.withholding.find((w) => w.atc === atc && w.active);
   const take = (rule: string, atc: string, why: string) => {
@@ -223,72 +292,70 @@ export function determineWithholding(
     step(rule, 'applied', `${why} → ${w.atc} ${w.rate}% (${w.description})`);
   };
 
-  // Resolve the group early — both GMP and EWT logic need it.
   const group = data.withholdingGroups.find((g) => g.code === item.withholdingGroup && g.active);
   const isGov = data.company.governmentEntity;
 
-  // Income tier: validate the vendor's sworn declaration (RR 11-2018).
-  // Without a valid declaration for this year, the higher rate applies.
-  const docYear = new Date(date).getFullYear();
-  const declYear = partner.swornDeclarationDate ? new Date(partner.swornDeclarationDate).getFullYear() : null;
-  const declarationValid = !!partner.swornDeclarationRef && declYear === docYear && partner.swornDeclarationAttachments.length > 0;
-  const threshold = payee === 'Individual' ? '₱3M' : '₱720,000';
+  // 1. Government payee: income payments to the government are not subject to withholding.
+  if (partner.businessType === 'Government') {
+    step('Government payee', 'applied', 'Payments to government agencies are not subject to withholding tax.');
+    return done();
+  }
 
-  // A valid sworn declaration means the vendor is declaring income ≤ threshold → lower rate.
-  // Without one, the higher rate applies by default (RR 11-2018).
-  let grossAbove: boolean;
-  if (!declarationValid) {
-    grossAbove = true;
-    if (!partner.swornDeclarationRef) {
-      step('Sworn declaration', 'warning', `No sworn declaration on file — higher rate applies (RR 11-2018). Ask the vendor to submit one.`);
+  // 2. Income tier (residents only): the lower rate needs this year's sworn declaration (RR 11-2018).
+  // A VAT-registered individual always gets the higher rate, declaration or not.
+  let high = true;
+  let tierLabel = '';
+  if (!partner.nonResident) {
+    const threshold = payee === 'Individual' ? '₱3M' : '₱720,000';
+    const docYear = new Date(date).getFullYear();
+    const declYear = partner.swornDeclarationDate ? new Date(partner.swornDeclarationDate).getFullYear() : null;
+    if (payee === 'Individual' && chargesVat(partner)) {
+      tierLabel = 'VAT-registered';
+      step('Income tier', 'applied', 'VAT-registered individual — the higher rate applies regardless of income.');
+    } else if (!partner.swornDeclarationRef) {
+      tierLabel = 'no declaration — higher rate';
+      step('Income tier', 'warning', 'No sworn declaration on file — higher rate applies (RR 11-2018). Ask the vendor to submit one.');
     } else if (declYear !== docYear) {
-      step('Sworn declaration', 'warning', `Sworn declaration (ref ${partner.swornDeclarationRef}) is for ${declYear ?? 'an unknown year'}, not ${docYear} — higher rate applies. Ask the vendor to resubmit.`);
+      tierLabel = 'no declaration — higher rate';
+      step('Income tier', 'warning', `Sworn declaration (ref ${partner.swornDeclarationRef}) is for ${declYear ?? 'an unknown year'}, not ${docYear} — higher rate applies. Ask the vendor to resubmit.`);
+    } else if (!partner.swornDeclarationAttachments.length) {
+      tierLabel = 'no declaration — higher rate';
+      step('Income tier', 'warning', `Sworn declaration ref ${partner.swornDeclarationRef} has no document attached — higher rate applies. Upload the signed declaration.`);
     } else {
-      step('Sworn declaration', 'warning', `Sworn declaration ref ${partner.swornDeclarationRef} has no document attached — higher rate applies. Upload the signed declaration.`);
+      high = false;
+      tierLabel = `declared ≤ ${threshold}`;
+      step('Income tier', 'applied', `Vendor declared gross income ≤ ${threshold} (ref ${partner.swornDeclarationRef}, ${partner.swornDeclarationDate}) — lower rate applies.`);
     }
-  } else {
-    grossAbove = false;
-    step('Sworn declaration', 'applied', `Vendor declared gross income ≤ ${threshold} (ref ${partner.swornDeclarationRef}, ${partner.swornDeclarationDate}) — lower rate applies.`);
   }
 
-  const high =
-    payee === 'Individual'
-      ? grossAbove || partner.vatRegistered
-      : grossAbove;
-  const tierLabel =
-    payee === 'Individual'
-      ? high ? (grossAbove ? 'no declaration — higher rate' : 'VAT-registered') : 'declared ≤ ₱3M'
-      : high ? 'no declaration — higher rate' : 'declared ≤ ₱720,000';
-
-  // Withholding VAT on non-resident digital services.
-  // Government entities use WV060; private entities use WV070.
-  if (partner.nonResident && partner.nonResidentDigitalServices && !partner.vatRegistered) {
-    const vatAtc = isGov ? SYSTEM_ATCS.NR_VAT_GOV : SYSTEM_ATCS.NR_VAT_PRIVATE;
-    const wv = byAtc(vatAtc);
-    if (wv) {
-      withholding.push(wv);
-      step('Non-resident digital services', 'applied', `NR-DSP not registered with BIR — withhold the 12% VAT → ${wv.atc} ${wv.rate}% (BIR Form 1600-VT)`);
-    } else step('Non-resident digital services', 'warning', `NR-DSP not registered with BIR — withhold the 12% VAT, but ${vatAtc} is missing or inactive in Settings.`);
+  // 3. VAT withheld on services or property lease from a non-resident (Sec. 114(C), 1600-VT).
+  const nr = nonResidentVat(item, partner, data, date);
+  if (nr.applies) {
+    const atc = nr.kind === 'Lease'
+      ? (isGov ? SYSTEM_ATCS.NR_LEASE_VAT_GOV : SYSTEM_ATCS.NR_LEASE_VAT_PRIVATE)
+      : (isGov ? SYSTEM_ATCS.NR_VAT_GOV : SYSTEM_ATCS.NR_VAT_PRIVATE);
+    take('Non-resident: VAT', atc, `${nr.why} — withhold the 12% VAT (BIR Form 1600-VT)`);
+  } else if (partner.nonResident) {
+    step('Non-resident: VAT', nr.warning ? 'warning' : 'skipped', nr.why);
   }
 
-  // GMP: government entity money-payment taxes on resident supplier purchases (on top of EWT).
-  // VAT-registered suppliers: 5% creditable VAT withheld (WV010 goods / WV020 services).
-  // Non-VAT suppliers: 3% percentage tax withheld (WB080).
-  if (isGov && !partner.nonResident && !partner.nonResidentDigitalServices) {
-    if (partner.vatRegistered && item.taxLiable) {
+  // 4. Government money payments (GMP) on resident suppliers, on top of EWT.
+  // VAT-registered: 5% creditable VAT (WV010 goods / WV020 services). Non-VAT: 3% percentage tax (WB080).
+  if (isGov && !partner.nonResident) {
+    if (chargesVat(partner) && item.taxLiable) {
       const gmpAtc = group?.nrExempt ? SYSTEM_ATCS.GMP_VAT_GOODS : SYSTEM_ATCS.GMP_VAT_SERVICES;
       take('GMP: VAT withholding', gmpAtc, `Government withholds 5% creditable VAT on ${group?.nrExempt ? 'goods' : 'services'} (BIR Form 1600-VT)`);
-    } else if (!partner.vatRegistered) {
+    } else if (!chargesVat(partner)) {
       take('GMP: Percentage tax withholding', SYSTEM_ATCS.GMP_PT, 'Government withholds 3% percentage tax on non-VAT supplier (BIR Form 1600-PT)');
     }
   }
 
-  // 1. Vendor override for EWT (tiering still applies).
+  // 5. Vendor override (income tiering still applies to residents).
   if (partner.withholdingOverrideId) {
     const set = data.withholding.find((x) => x.id === partner.withholdingOverrideId);
     if (set) {
       let w = set;
-      if (set.condition && set.kind === 'Expanded (EWT)') {
+      if (!partner.nonResident && set.condition && set.kind === 'Expanded (EWT)') {
         const siblings = data.withholding.filter(
           (x) => x.active && x.condition && x.kind === set.kind && x.payee === set.payee && x.description === set.description,
         );
@@ -303,56 +370,62 @@ export function determineWithholding(
           ? `Set on the vendor → ${w.atc || 'ATC to confirm'} ${w.rate}%`
           : `Set on the vendor as ${set.atc}, adjusted for ${tierLabel} → ${w.atc} ${w.rate}%`,
       );
-      return { withholding, withholdingTrace };
+      return done();
     }
     step('Vendor override', 'warning', "The vendor's override points to a withholding tax that no longer exists.");
   } else step('Vendor override', 'skipped', 'No override on the vendor.');
 
-  // 2. Withholding group lookup.
+  // 6. Withholding group lookup.
   if (!group) {
     if (item.withholdingGroup) {
       step('Withholding group', 'warning', `Withholding group '${item.withholdingGroup}' is missing or inactive in Settings.`);
     } else {
       step('Withholding group', 'skipped', 'No withholding group on the item.');
     }
-    return { withholding, withholdingTrace };
+    return done();
   }
 
-  // No-withholding group (all ATC fields null).
   const hasAnyAtc = group.atcIndividual || group.atcCorporate || group.atcIndividualGov || group.atcCorporateGov
     || group.atcNrIndividual || group.atcNrCorporate;
   if (!hasAnyAtc) {
     step('Withholding group', 'skipped', `${group.name}: not subject to withholding.`);
-    return { withholding, withholdingTrace };
+    return done();
   }
 
-  // 3. Non-resident vendor.
+  // 7. Non-resident vendor: final tax, lowered by a tax treaty when the paperwork is in place.
   if (partner.nonResident && group.nrExempt) {
-    step('Non-resident: no withholding', 'skipped', `${group.name} from a non-resident: foreign-source income, no Philippine withholding.`);
-    return { withholding, withholdingTrace };
+    step('Non-resident: final tax', 'skipped', `${group.name} from a non-resident: foreign-source income, no Philippine withholding.`);
+    return done();
   }
-  if (partner.nonResident || partner.nonResidentDigitalServices) {
-    const treaty = "A tax treaty may lower the rate — with a treaty ruling, set that rate as the vendor's override.";
+  if (partner.nonResident) {
     const nrAtc = payee === 'Individual' ? (group.atcNrIndividual ?? SYSTEM_ATCS.NR_INDIVIDUAL) : (group.atcNrCorporate ?? SYSTEM_ATCS.NR_CORPORATE);
-    take('Non-resident: final tax', nrAtc, `${group.name}, non-resident payee. ${treaty}`);
-    return { withholding, withholdingTrace };
+    const w = byAtc(nrAtc);
+    if (!w) {
+      step('Non-resident: final tax', 'warning', `${group.name}, non-resident payee — but ${nrAtc} is missing or inactive in Settings.`);
+      return done();
+    }
+    const treaty = treatyRelief(group, partner, date);
+    if (treaty?.valid && treaty.rate < w.rate) {
+      withholding.push({ ...w, rate: treaty.rate, description: `${w.description} (${treaty.label} rate)` });
+      step('Non-resident: final tax', 'applied', `${group.name}, non-resident payee, ${treaty.label} → ${w.atc} ${treaty.rate}% instead of ${w.rate}%`);
+    } else {
+      withholding.push(w);
+      if (treaty && !treaty.valid) step('Tax treaty', 'warning', treaty.why);
+      else if (treaty?.valid) step('Tax treaty', 'skipped', `${treaty.label}: ${treaty.rate}% is not lower than the domestic ${w.rate}%.`);
+      step('Non-resident: final tax', 'applied', `${group.name}, non-resident payee → ${w.atc} ${w.rate}% (${w.description})`);
+    }
+    return done();
   }
   step('Non-resident: final tax', 'skipped', 'Resident vendor.');
 
-  // 4. Top withholding agent gate — government entities always withhold, so skip this gate for them.
+  // 8. Top withholding agent gate — government entities always withhold.
   if (group.requiresTopWA && !data.company.topWithholdingAgent && !isGov) {
     step('Top withholding agent', 'skipped', `${group.name}: only withheld by top withholding agents — the company is not one.`);
-    return { withholding, withholdingTrace };
+    return done();
   }
 
-  // 5. GPP partner distributions use special ATCs regardless of the services group ATCs.
-  if (group.code === 'WH-SVC' && partner.businessType === 'General professional partnership') {
-    take('GPP partner distribution', high ? SYSTEM_ATCS.GPP_HIGH : SYSTEM_ATCS.GPP_LOW, `General professional partnership, ${tierLabel}`);
-    return { withholding, withholdingTrace };
-  }
-
-  // 6. Pick the ATC for the payee type and income tier.
-  // Government entities use their own ATCs when defined; otherwise fall back to the regular (tiered) set.
+  // 9. The ATC for the payee type and income tier. Government entities use their own ATCs when the
+  // group defines them; otherwise the regular (tiered) set.
   const govAtc = isGov ? (payee === 'Individual' ? group.atcIndividualGov : group.atcCorporateGov) : null;
   const regularAtc = payee === 'Individual'
     ? ((high && group.atcIndividualHigh) ? group.atcIndividualHigh : group.atcIndividual)
@@ -361,11 +434,11 @@ export function determineWithholding(
 
   if (!atc) {
     step('Withholding group', 'skipped', `${group.name}: not applicable to a ${payee.toLowerCase()} payee.`);
-    return { withholding, withholdingTrace };
+    return done();
   }
 
   const tiered = !govAtc && !!(group.atcIndividualHigh || group.atcCorporateHigh);
   const govLabel = govAtc ? ' (government entity)' : '';
   take('Withholding group', atc, `${group.name}, ${payee.toLowerCase()} payee${govLabel}${tiered ? `, ${tierLabel}` : ''}`);
-  return { withholding, withholdingTrace };
+  return done();
 }

@@ -22,23 +22,29 @@ export function SettingsTab({ draft, update }: TabProps) {
   useEffect(() => { withholdingTaxes.list().then(setWithholding); }, [draft.id]);
 
 
-  // ── Non-resident rules ─────────────────────────────────────────────────────
-  // Non-resident foreign types → auto-set nonResident; resident types → clear it.
+  // ── Residency and VAT registration rules ──────────────────────────────────
+  // One patch, so the rules can't overwrite each other:
+  // · non-resident foreign types are non-resident; resident types, cooperatives and government are not
+  // · digital services (RA 12023) implies non-resident
+  // · a non-resident is outside the VAT system unless it's a digital service provider registered with BIR
+  const alwaysResident = draft.businessType === 'Cooperative' || draft.businessType === 'Government';
   useEffect(() => {
-    if (NON_RESIDENT_TYPES.includes(draft.businessType) && !draft.nonResident) {
-      update({ nonResident: true });
-    } else if (RESIDENT_CORPORATE_TYPES.includes(draft.businessType) && draft.nonResident) {
-      update({ nonResident: false });
+    let { nonResident, nonResidentDigitalServices, vatRegistered } = draft;
+    if (NON_RESIDENT_TYPES.includes(draft.businessType)) nonResident = true;
+    else if (RESIDENT_CORPORATE_TYPES.includes(draft.businessType) || alwaysResident) {
+      nonResident = false;
+      nonResidentDigitalServices = false;
+    } else if (nonResidentDigitalServices) nonResident = true;
+    if (!nonResident) nonResidentDigitalServices = false;
+    if (nonResident && !nonResidentDigitalServices) vatRegistered = false;
+    if (
+      nonResident !== draft.nonResident ||
+      nonResidentDigitalServices !== draft.nonResidentDigitalServices ||
+      vatRegistered !== draft.vatRegistered
+    ) {
+      update({ nonResident, nonResidentDigitalServices, vatRegistered });
     }
-  }, [draft.businessType]);
-
-  // Non-resident digital services → implies non-resident.
-  useEffect(() => {
-    if (!isVendor) return;
-    if (draft.nonResidentDigitalServices && !draft.nonResident) {
-      update({ nonResident: true });
-    }
-  }, [draft.nonResidentDigitalServices]);
+  }, [draft.businessType, draft.nonResident, draft.nonResidentDigitalServices, draft.vatRegistered]);
 
   // ── Derived option lists ───────────────────────────────────────────────────
   const payee = ['Individual', 'Sole proprietorship'].includes(draft.businessType) ? 'Individual' : 'Corporate';
@@ -65,7 +71,6 @@ export function SettingsTab({ draft, update }: TabProps) {
       })),
   ];
 
-  const alwaysResident = draft.businessType === 'Cooperative' || draft.businessType === 'Government';
   const nonResidentLocked = draft.nonResidentDigitalServices || nonResidentDrivenByType || alwaysResident;
 
   return (
@@ -113,7 +118,9 @@ export function SettingsTab({ draft, update }: TabProps) {
         exemptions={draft.vatExemptions}
         businessType={draft.businessType}
         onExemptionsChange={(vatExemptions) => update({ vatExemptions })}
-        showSwornDeclaration={isVendor && !draft.nonResident && draft.businessType !== 'Government'}
+        showSwornDeclaration={
+          isVendor && !draft.nonResident && draft.businessType !== 'Government' && !(payee === 'Individual' && draft.vatRegistered)
+        }
         swornDeclaration={{
           swornDeclarationRef: draft.swornDeclarationRef,
           swornDeclarationDate: draft.swornDeclarationDate,
@@ -152,6 +159,9 @@ export function SettingsTab({ draft, update }: TabProps) {
             <>
             <Flags>
               {f.check('nonResidentDigitalServices', 'Provides digital services to Philippine consumers (RA 12023)')}
+              {draft.nonResidentDigitalServices
+                ? f.check('vatRegistered', 'Registered with BIR as a digital service provider — charges 12% VAT on its invoices')
+                : null}
             </Flags>
             <Fields>
               {f.pick('taxTreatyCountry', 'Treaty country', ['', ...TREATY_COUNTRIES], {
@@ -166,9 +176,11 @@ export function SettingsTab({ draft, update }: TabProps) {
           ) : null}
           <Text variant="small" tone="muted">
             {draft.nonResident
-              ? 'Non-residents are subject to final withholding tax — income tiers do not apply.'
+              ? 'Non-residents are subject to final withholding tax — income tiers do not apply. On services and property lease you also withhold the 12% VAT (BIR Form 1600-VT), unless the vendor is a digital service provider registered with BIR. A treaty rate applies once the treaty income has an approved rate and a document, and the Certificate of Residence is on file and unexpired.'
               : payee === 'Individual'
-                ? 'Individuals: higher rate (e.g. WI011 10%) above ₱3M or when VAT-registered. Without a valid sworn declaration for this year, the higher rate applies regardless.'
+                ? draft.vatRegistered
+                  ? 'VAT-registered individuals always get the higher rate (e.g. WI011 10%), so no sworn declaration is needed.'
+                  : 'Individuals: higher rate (e.g. WI011 10%) above ₱3M. Without a valid sworn declaration for this year, the higher rate applies regardless.'
                 : 'Corporations: higher rate (e.g. WC011 15%) above ₱720,000. Without a valid sworn declaration for this year, the higher rate applies regardless.'
             }{' '}
             {!draft.nonResident ? 'Also adjusts an override set to an income-tiered ATC.' : ''}

@@ -124,9 +124,19 @@ export interface WithholdingGroup {
   atcIndividualGov: string | null;
   /** ATC used instead of atcCorporate when the withholding agent is a government entity. null = same as private. */
   atcCorporateGov: string | null;
+  /**
+   * VAT on this income from a non-resident (NIRC Sec. 114(C)): you withhold the 12% and claim it back.
+   * 'Lease' = lease or use of property or property rights (WV040 / WV050), 'Services' = other services
+   * rendered in the Philippines (WV060 / WV070), null = not subject to VAT (e.g. interest, goods).
+   */
+  nrVat: NonResidentVat | null;
+  /** Income type looked up in the vendor's treaty incomes. null = no treaty relief. */
+  treatyIncomeType: TreatyIncomeType | null;
   active: boolean;
   notes: string;
 }
+
+export type NonResidentVat = 'Lease' | 'Services';
 
 /** All 115 BIR Revenue District Offices (source: tinid.ph/bir-rdo-codes). Value is the RDO code. */
 export const RDOS: { value: string; label: string }[] = [
@@ -773,6 +783,7 @@ const wg = (
     requiresTopWA?: boolean; nrExempt?: boolean;
     atcNrIndividual?: string | null; atcNrCorporate?: string | null;
     atcIndividualGov?: string | null; atcCorporateGov?: string | null;
+    nrVat?: NonResidentVat | null; treatyIncomeType?: TreatyIncomeType | null;
     notes?: string;
   } = {},
 ): WithholdingGroup => ({
@@ -786,6 +797,8 @@ const wg = (
   atcNrCorporate: opts.atcNrCorporate ?? null,
   atcIndividualGov: opts.atcIndividualGov ?? null,
   atcCorporateGov: opts.atcCorporateGov ?? null,
+  nrVat: opts.nrVat ?? null,
+  treatyIncomeType: opts.treatyIncomeType ?? null,
   active: true,
   notes: opts.notes ?? '',
 });
@@ -815,9 +828,11 @@ export const SYSTEM_TAX_CODES = {
  * the seed data above.
  */
 export const SYSTEM_ATCS = {
-  // Non-resident digital services: 12% VAT withheld by the buyer
-  NR_VAT_GOV:        'WV060', // Government withholding agent
-  NR_VAT_PRIVATE:    'WV070', // Private withholding agent
+  // VAT withheld by the buyer on payments to non-residents (Sec. 114(C), BIR Form 1600-VT)
+  NR_LEASE_VAT_GOV:     'WV040', // Lease or use of property — government withholding agent
+  NR_LEASE_VAT_PRIVATE: 'WV050', // Lease or use of property — private withholding agent
+  NR_VAT_GOV:        'WV060', // Other services (incl. digital services) — government withholding agent
+  NR_VAT_PRIVATE:    'WV070', // Other services (incl. digital services) — private withholding agent
   // Government money payment taxes (GMP) on resident supplier purchases
   GMP_VAT_GOODS:     'WV010', // 5% creditable VAT on goods (Form 1600-VT)
   GMP_VAT_SERVICES:  'WV020', // 5% creditable VAT on services (Form 1600-VT)
@@ -825,29 +840,26 @@ export const SYSTEM_ATCS = {
   // Non-resident final tax catch-alls (used when the group has no specific NR ATC)
   NR_INDIVIDUAL:     'WI330', // NRANETB: 25% final tax
   NR_CORPORATE:      'WC230', // NRFC: 25% final tax on other payments
-  // GPP partner distributions
-  GPP_LOW:           'WI152', // Gross income ≤ ₱720,000
-  GPP_HIGH:          'WI153', // Gross income > ₱720,000
 } as const;
 
 export const SEED_WITHHOLDING_GROUPS: WithholdingGroup[] = [
   wg('WH-NONE', 'Not subject to withholding', null, null, null, null),
   // Government entities use WI640/WC640 (1%) and WI157/WC157 (2%) on all purchases; private top WAs use WI158/WC158 and WI160/WC160.
   wg('WH-GDS',  'Goods (general)',             'WI158', null, 'WC158', null, { requiresTopWA: true, nrExempt: true, atcIndividualGov: 'WI640', atcCorporateGov: 'WC640' }),
-  wg('WH-SVC',  'Services (general)',           'WI160', null, 'WC160', null, { requiresTopWA: true, atcIndividualGov: 'WI157', atcCorporateGov: 'WC157' }),
-  wg('WH-RENT', 'Rent / property lease',        'WI100', null, 'WC100', null),
-  wg('WH-CONT', 'Contractor',                   'WI120', null, 'WC120', null),
-  wg('WH-PROF', 'Professional fees',            'WI010', 'WI011', 'WC010', 'WC011'),
-  wg('WH-ROY',  'Royalties',                    'WI250', null, 'WC250', null),
-  wg('WH-INT',  'Interest on debt instruments', 'WI710', null, 'WC710', null, { atcNrCorporate: 'WC180' }),
+  wg('WH-SVC',  'Services (general)',           'WI160', null, 'WC160', null, { requiresTopWA: true, atcIndividualGov: 'WI157', atcCorporateGov: 'WC157', nrVat: 'Services', treatyIncomeType: 'Technical fees' }),
+  wg('WH-RENT', 'Rent / property lease',        'WI100', null, 'WC100', null, { nrVat: 'Lease' }),
+  wg('WH-CONT', 'Contractor',                   'WI120', null, 'WC120', null, { nrVat: 'Services' }),
+  wg('WH-PROF', 'Professional fees',            'WI010', 'WI011', 'WC010', 'WC011', { nrVat: 'Services', treatyIncomeType: 'Technical fees' }),
+  wg('WH-ROY',  'Royalties',                    'WI250', null, 'WC250', null, { nrVat: 'Lease', treatyIncomeType: 'Royalties' }),
+  wg('WH-INT',  'Interest on debt instruments', 'WI710', null, 'WC710', null, { atcNrCorporate: 'WC180', treatyIncomeType: 'Interest' }),
   wg('WH-PRIZE','Prizes',                       'WI260', null, null,    null),
   wg('WH-AGRI', 'Agricultural products',        'WI610', null, 'WC610', null, { nrExempt: true, notes: 'Applies on cumulative payments exceeding ₱300,000 within the same taxable year.' }),
   wg('WH-MIN',  'Minerals / quarry resources',  'WI630', null, 'WC630', null, { nrExempt: true }),
-  wg('WH-COMM', 'Commissions — brokers / real estate agents', 'WI139', 'WI140', 'WC139', 'WC140'),
-  wg('WH-SCOMM','Sales commissions — independent agents',     'WI515', 'WI516', null,    null),
-  wg('WH-FILM', 'Cinematographic film rentals', 'WI110', null, 'WC110', null),
-  wg('WH-VESSEL','Vessel / ship lease',         'WI100', null, 'WC100', null, { atcNrCorporate: 'WC290' }),
-  wg('WH-EQUIP','Aircraft / machinery / equipment lease', 'WI100', null, 'WC100', null, { atcNrCorporate: 'WC300' }),
+  wg('WH-COMM', 'Commissions — brokers / real estate agents', 'WI139', 'WI140', 'WC139', 'WC140', { nrVat: 'Services' }),
+  wg('WH-SCOMM','Sales commissions — independent agents',     'WI515', 'WI516', null,    null, { nrVat: 'Services' }),
+  wg('WH-FILM', 'Cinematographic film rentals', 'WI110', null, 'WC110', null, { nrVat: 'Lease', treatyIncomeType: 'Royalties' }),
+  wg('WH-VESSEL','Vessel / ship lease',         'WI100', null, 'WC100', null, { atcNrCorporate: 'WC290', nrVat: 'Lease' }),
+  wg('WH-EQUIP','Aircraft / machinery / equipment lease', 'WI100', null, 'WC100', null, { atcNrCorporate: 'WC300', nrVat: 'Lease' }),
 ];
 
 const ex = (code: string, name: string, basis: ExciseBasis, rate: string, legalBasis: string, notes = '', effective = '2026'): ExciseCategory => ({
