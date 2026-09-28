@@ -7,8 +7,17 @@ import { defaultShipTo, formatAddress, type PoTabProps } from './types';
 export function LogisticsTab({ draft, update, m, ctx }: PoTabProps) {
   const f = bind(draft, update);
   const warehouses = [...new Set(draft.lines.map((l) => l.warehouse).filter(Boolean))];
-  const bill = ctx.vendor?.addresses.find((a) => a.id === ctx.vendor?.defaultBillToId);
   const autoShipTo = defaultShipTo(draft.lines, m);
+
+  // Pay-to can be any of the vendor's addresses; the text stays editable, so a hand-edited
+  // pay-to shows as "Edited".
+  const vendorAddresses = ctx.vendor?.addresses ?? [];
+  const asPayTo = (id: string) => {
+    const a = vendorAddresses.find((x) => x.id === id);
+    return a ? formatAddress(a, ctx.vendor?.name) : '';
+  };
+  const payToAddress = vendorAddresses.find((a) => asPayTo(a.id) === draft.payTo)?.id ?? '';
+  const pick = bind({ payToAddress }, (p) => p.payToAddress && update({ payTo: asPayTo(p.payToAddress) }));
 
   return (
     <div className="flex flex-col gap-2">
@@ -27,19 +36,23 @@ export function LogisticsTab({ draft, update, m, ctx }: PoTabProps) {
               </>
             ),
           })}
-          {f.area('payTo', 'Pay to', {
-            rows: 4,
-            hint: (
-              <>
-                The vendor’s default pay-to address.{' '}
-                {bill ? (
-                  <Button type="button" size="small" variant="ghost" onClick={() => update({ payTo: formatAddress(bill, ctx.vendor?.name) })}>
-                    Use default
-                  </Button>
-                ) : null}
-              </>
-            ),
-          })}
+          <div className="flex flex-col gap-2">
+            {vendorAddresses.length
+              ? pick.choose(
+                  'payToAddress',
+                  'Pay-to address',
+                  [
+                    ...(payToAddress ? [] : [{ value: '', label: draft.payTo ? 'Edited' : '— None —' }]),
+                    ...vendorAddresses.map((a) => ({
+                      value: a.id,
+                      label: `${a.label || 'Untitled address'}${a.id === ctx.vendor?.defaultBillToId ? ' (default)' : ''}`,
+                    })),
+                  ],
+                  { hint: 'Any of the vendor’s addresses. Starts on its default bill-to.' },
+                )
+              : null}
+            {f.area('payTo', 'Pay to', { rows: 4 })}
+          </div>
         </Fields>
       </Section>
       <Section icon="route" title="Delivery">

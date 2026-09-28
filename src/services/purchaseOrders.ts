@@ -11,7 +11,7 @@ import { SYSTEM_ATCS } from '../mocks/taxes';
 import { createCollection } from './store';
 import { determineWithholding, type LineParty, type TaxMasterData } from './taxDetermination';
 
-const orders = createCollection<PurchaseOrder>('sikat-erp:purchase-orders:v4', SEED_PURCHASE_ORDERS, 'po');
+const orders = createCollection<PurchaseOrder>('sikat-erp:purchase-orders:v5', SEED_PURCHASE_ORDERS, 'po');
 
 export const listPurchaseOrders = orders.list;
 export const getPurchaseOrder = orders.get;

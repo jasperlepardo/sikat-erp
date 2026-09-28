@@ -4,7 +4,7 @@ import { RowMenu } from '../../../components/form/RowMenu';
 import { COUNTRIES, PH_PROVINCES } from '../../../mocks/masters';
 import { newAddress, type PartnerAddress } from '../../../mocks/partners';
 import { EditPanel } from './EditPanel';
-import { Fields, Flags, Section, bind, type Draft, type Errors } from './fields';
+import { Fields, Section, bind, type Draft, type Errors } from './fields';
 
 const mapUrl = (a: PartnerAddress) =>
   `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([addressLine(a), a.zip, a.country].filter(Boolean).join(', '))}`;
@@ -30,12 +30,14 @@ export function AddressesCards({
   update: (patch: Partial<Draft>) => void;
   onOpen: (address: PartnerAddress, isNew: boolean) => void;
 }) {
+  // Removing a default hands it to the first remaining address.
   const remove = (a: PartnerAddress) => {
     const addresses = draft.addresses.filter((x) => x.id !== a.id);
+    const next = addresses[0]?.id ?? '';
     update({
       addresses,
-      defaultBillToId: draft.defaultBillToId === a.id ? (addresses.find((x) => x.isBilling)?.id ?? '') : draft.defaultBillToId,
-      defaultShipToId: draft.defaultShipToId === a.id ? (addresses.find((x) => x.isShipping)?.id ?? '') : draft.defaultShipToId,
+      defaultBillToId: draft.defaultBillToId === a.id ? next : draft.defaultBillToId,
+      defaultShipToId: draft.defaultShipToId === a.id ? next : draft.defaultShipToId,
     });
   };
 
@@ -58,7 +60,7 @@ export function AddressesCards({
           {draft.addresses.map((a) => {
             const isDefaultBill = a.id === draft.defaultBillToId;
             const isDefaultShip = a.id === draft.defaultShipToId;
-            const tags = [a.isBilling && 'Billing', a.isShipping && 'Shipping'].filter(Boolean).join(' · ');
+            const tags = [isDefaultBill && 'Bill to', isDefaultShip && 'Ship to'].filter(Boolean).join(' · ');
             return (
               <List.Card
                 key={a.id}
@@ -66,7 +68,7 @@ export function AddressesCards({
                 icon={<Icon size={16}>location_on</Icon>}
                 badge={(isDefaultBill || isDefaultShip) ? <Icon size={12}>star</Icon> : undefined}
                 fields={[
-                  tags ? { label: 'Used as', value: tags } : null,
+                  tags ? { label: 'Default', value: tags } : null,
                   { label: 'Street', value: [[a.streetNo, a.street].filter(Boolean).join(' '), a.building].filter(Boolean).join(', ') },
                   { label: 'Barangay', value: a.block },
                   { label: 'City', value: a.city },
@@ -78,8 +80,8 @@ export function AddressesCards({
                     label={`Actions for ${a.label || 'address'}`}
                     items={[
                       { label: 'Edit', icon: 'edit', onSelect: () => onOpen(a, false) },
-                      { label: 'Set as default billing', icon: 'receipt_long', disabled: isDefaultBill || !a.isBilling, onSelect: () => update({ defaultBillToId: a.id }) },
-                      { label: 'Set as default shipping', icon: 'local_shipping', disabled: isDefaultShip || !a.isShipping, onSelect: () => update({ defaultShipToId: a.id }) },
+                      { label: 'Set as default bill-to', icon: 'receipt_long', disabled: isDefaultBill, onSelect: () => update({ defaultBillToId: a.id }) },
+                      { label: 'Set as default ship-to', icon: 'local_shipping', disabled: isDefaultShip, onSelect: () => update({ defaultShipToId: a.id }) },
                       { label: 'Show on map', icon: 'map', onSelect: () => window.open(mapUrl(a), '_blank', 'noopener') },
                       { label: 'Remove', icon: 'delete', onSelect: () => remove(a) },
                     ]}
@@ -156,12 +158,9 @@ export function AddressPanel({
         <Link href={mapUrl(address)} target="_blank" rel="noreferrer">
           Show location on map
         </Link>
-      </Section>
-      <Section icon="sell" title="Usage">
-        <Flags>
-          {f.check('isBilling', 'Billing address')}
-          {f.check('isShipping', 'Shipping address')}
-        </Flags>
+        <Text variant="small" tone="muted">
+          Any address can be picked as bill-to or ship-to on a document. Set the defaults from the address’s menu.
+        </Text>
       </Section>
     </EditPanel>
   );

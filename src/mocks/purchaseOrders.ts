@@ -14,7 +14,7 @@
  * - Return Reason is left out — it belongs to returns, not purchase orders.
  */
 import { SEED_ITEMS } from './items';
-import { SEED_PARTNERS } from './partners';
+import { SEED_PARTNERS, formatAddress } from './partners';
 
 export type PoStatus = 'Draft' | 'Open' | 'Not Confirmed' | 'Closed' | 'Cancelled';
 export const PO_STATUSES: PoStatus[] = ['Draft', 'Open', 'Not Confirmed', 'Closed', 'Cancelled'];
@@ -283,7 +283,12 @@ const importLine = (n: string, itemNo: string, quantity: number): PoLine => {
   return { ...l, unitPrice: Math.round((l.unitPrice / USD_PHP) * 100) / 100, taxCode: '46', deliveryDate: '2026-10-06' };
 };
 
-const APPLE_PAY_TO ='Luzon iDistribution Corp.\n6750 Ayala Ave.\nMakati 1226, Metro Manila';
+/** A seeded vendor's pay-to text, from its default bill-to address. */
+const payToOf = (vendorId: string) => {
+  const v = SEED_PARTNERS.find((p) => p.id === vendorId)!;
+  return formatAddress(v.addresses.find((x) => x.id === v.defaultBillToId) ?? v.addresses[0], v.name);
+};
+const APPLE_PAY_TO = payToOf('bp-016');
 const MNL_SHIP_TO = 'Manila distribution center\nPasig';
 
 const po = (id: string, docNum: number, patch: Partial<PurchaseOrder>): PurchaseOrder => ({
@@ -304,16 +309,9 @@ const po = (id: string, docNum: number, patch: Partial<PurchaseOrder>): Purchase
 /** A PO from any seeded vendor, with the vendor snapshot, currency, terms and pay-to taken from the partner. */
 const vendorPo = (id: string, docNum: number, vendorId: string, patch: Partial<PurchaseOrder>): PurchaseOrder => {
   const v = SEED_PARTNERS.find((p) => p.id === vendorId)!;
-  const a = v.addresses.find((x) => x.id === v.defaultBillToId) ?? v.addresses[0];
-  const payTo = [
-    v.name,
-    [a.building, [a.streetNo, a.street].filter(Boolean).join(' ')].filter(Boolean).join(', '),
-    [a.city, a.zip].filter(Boolean).join(' '),
-    a.country === 'Philippines' ? a.province : a.country,
-  ].filter(Boolean).join('\n');
   return po(id, docNum, {
     vendorId, vendorCode: v.code, vendorName: v.name, contactId: v.defaultContactId, currency: v.currency,
-    paymentTerms: v.vendorPaymentTerms, payTo, journalRemark: `Purchase Orders – ${v.code}`,
+    paymentTerms: v.vendorPaymentTerms, payTo: payToOf(vendorId), journalRemark: `Purchase Orders – ${v.code}`,
     ...patch,
   });
 };
@@ -379,7 +377,7 @@ export const SEED_PURCHASE_ORDERS: PurchaseOrder[] = [
     status: 'Open',
     vendorId: 'bp-015', vendorCode: 'BP-0015', vendorName: 'Amazon Web Services, Inc.', contactId: 'bp-015-c1',
     currency: 'USD', currencyView: 'BP', paymentTerms: 'Net 7', shipTo: COMPANY_ADDRESS,
-    payTo: 'Amazon Web Services, Inc.\n410 Terry Ave. North\nSeattle, WA 98109, United States', shippingType: '', journalRemark: 'Purchase Orders – BP-0015',
+    payTo: payToOf('bp-015'), shippingType: '', journalRemark: 'Purchase Orders – BP-0015',
     postingDate: '2026-09-26', documentDate: '2026-09-26', deliveryDate: '2026-10-01', dueDate: '2026-10-03',
     lines: [
       newPoLine({

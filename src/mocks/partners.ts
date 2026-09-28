@@ -32,10 +32,12 @@ export interface ContactPerson {
   eDocRecipient: boolean;
 }
 
+/**
+ * One of the partner's addresses. Any address can be picked as bill-to or ship-to on a
+ * document; the partner's defaultBillToId / defaultShipToId say which one is picked first.
+ */
 export interface PartnerAddress {
   id: string;
-  isBilling: boolean;
-  isShipping: boolean;
   /** Address ID — the label picked on documents, e.g. "Main office". */
   label: string;
   name2: string;
@@ -289,8 +291,6 @@ export const newBankAccount = (patch: Partial<PartnerBankAccount> = {}): Partner
 
 export const newAddress = (patch: Partial<PartnerAddress> = {}): PartnerAddress => ({
   id: `ad-${crypto.randomUUID().slice(0, 8)}`,
-  isBilling: false,
-  isShipping: false,
   label: '',
   name2: '',
   name3: '',
@@ -305,7 +305,20 @@ export const newAddress = (patch: Partial<PartnerAddress> = {}): PartnerAddress 
   ...patch,
 });
 
-export const contactName = (c?: ContactPerson) =>
+/** An address as printed on documents; the last line is the province at home, the country abroad. */
+export const formatAddress = (a?: PartnerAddress, name = '') =>
+  a
+    ? [
+        name,
+        [a.building, [a.streetNo, a.street].filter(Boolean).join(' ')].filter(Boolean).join(', '),
+        [a.block, a.city].filter(Boolean).join(', '),
+        [a.zip, a.country === 'Philippines' ? a.province : a.country].filter(Boolean).join(' '),
+      ]
+        .filter(Boolean)
+        .join('\n')
+    : '';
+
+export const contactName =(c?: ContactPerson) =>
   c ? [c.firstName, c.middleName, c.lastName].filter(Boolean).join(' ') || 'Unnamed contact' : '';
 
 /** A blank partner with sensible defaults for the role it's created from. */
@@ -421,7 +434,7 @@ function seed(
   address: Partial<PartnerAddress>,
 ): Partner {
   const c = newContact({ id: `${id}-c1`, ...contact });
-  const a = newAddress({ id: `${id}-a1`, label: 'Main office', isBilling: true, isShipping: true, ...address });
+  const a = newAddress({ id: `${id}-a1`, label: 'Main office', ...address });
   return {
     ...blankPartner(role),
     id,

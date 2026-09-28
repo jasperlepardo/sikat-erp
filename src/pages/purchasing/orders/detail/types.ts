@@ -1,7 +1,7 @@
 import type { Errors } from '../../../../components/form/fields';
 import type { Currency, ExchangeRate } from '../../../../mocks/currencies';
 import type { Item } from '../../../../mocks/items';
-import type { Partner, PartnerAddress } from '../../../../mocks/partners';
+import type { Partner } from '../../../../mocks/partners';
 import { COMPANY_ADDRESS, PURCHASING_SETTINGS, newPoLine, type PoLine } from '../../../../mocks/purchaseOrders';
 import { rateAt, vatNotPaidToVendor } from '../../../../mocks/taxes';
 import type { InventoryMasters } from '../../../../services/inventoryMasters';
@@ -61,12 +61,7 @@ export function buildContext(draft: PoDraft, m: PoMasters): PoContext {
   };
 }
 
-export const formatAddress = (a?: PartnerAddress, name = '') =>
-  a
-    ? [name, [a.streetNo, a.street].filter(Boolean).join(' '), [a.block, a.city].filter(Boolean).join(', '), [a.zip, a.province].filter(Boolean).join(' ')]
-        .filter(Boolean)
-        .join('\n')
-    : '';
+export { formatAddress } from '../../../../mocks/partners';
 
 /**
  * Ship To default: the address of the warehouse the goods go to (first stocked

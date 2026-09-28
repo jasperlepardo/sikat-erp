@@ -216,8 +216,9 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
       added
         ? {
             addresses: [...draft.addresses, a],
-            defaultBillToId: draft.defaultBillToId || (a.isBilling ? a.id : ''),
-            defaultShipToId: draft.defaultShipToId || (a.isShipping ? a.id : ''),
+            // The first address becomes the default for both until another is picked.
+            defaultBillToId: draft.defaultBillToId || a.id,
+            defaultShipToId: draft.defaultShipToId || a.id,
           }
         : { addresses: draft.addresses.map((x) => (x.id === a.id ? a : x)) },
     );
