@@ -82,6 +82,14 @@ export const STATUS_INTENT: Record<PoStatus, 'default' | 'primary' | 'warning' |
 const BUYERS = [CURRENT_USER, ...EMPLOYEES.filter((e) => e !== '— None —')];
 const TODAY = () => new Date().toISOString().slice(0, 10);
 
+/** How each kind of withholding tax reads in the footer. */
+const WITHHELD_LABEL: Record<string, string> = {
+  'Expanded (EWT)': 'EWT',
+  'Final (FWT)': 'Final tax',
+  'Withholding VAT': 'VAT',
+  'Percentage tax': 'Percentage tax',
+};
+
 /** Required and conditional fields from the PO field map, checked on Add / Save. Drafts only need a vendor. */
 function validate(d: PoDraft, ctx: PoContext, m: PoMasters, asDraft: boolean): Problem<TabId>[] {
   const { problems, need } = problemCollector<TabId>();
@@ -180,7 +188,7 @@ function PurchaseOrderForm() {
   const docCurrency = m.currencies.find((c) => c.code === draft.currency);
   const totals = poTotals(draft, ctx.rateOf, docCurrency?.rounding, ctx.isReverseCharge);
   const withholdingLines = poWithholding(draft, ctx.vendor, m.items, m.tax, draft.postingDate);
-  const withholdingTotal = withholdingLines.reduce((s, w) => s + w.amount, 0);
+  const withholdingTotal = withholdingLines.filter((w) => w.deducted).reduce((s, w) => s + w.amount, 0);
   const view = viewCurrency(draft, ctx, m);
   const received = draft.lines.some((l) => l.receivedQty > 0);
 
@@ -573,13 +581,19 @@ function PurchaseOrderForm() {
                       you withhold and remit (BIR 1600-VT), and import VAT is paid to the Bureau of Customs. Both are claimed as input VAT.
                     </Text>
                   ) : null}
-                  {withholdingLines.map((w) => (
+                  {withholdingLines.filter((w) => w.deducted).map((w) => (
                     <TotalRow
                       key={w.atc}
-                      label={`EWT withheld — ${w.atc} (${w.rate}%)`}
+                      label={`${WITHHELD_LABEL[w.kind] ?? 'Tax'} withheld — ${w.atc} (${w.rate}%)`}
                       value={-view.convert(w.amount)}
                       code={view.code}
                     />
+                  ))}
+                  {withholdingLines.filter((w) => !w.deducted).map((w) => (
+                    <Text key={w.atc} variant="small" tone="muted">
+                      VAT withheld — {w.atc} ({w.rate}%): {view.code} {formatAmount(view.convert(w.amount))} remitted by you on BIR 1600-VT, not
+                      deducted from the vendor.
+                    </Text>
                   ))}
                   <TotalRow
                     label="Net payment due"

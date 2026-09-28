@@ -7,10 +7,11 @@ import {
 } from '../mocks/purchaseOrders';
 import type { RoundingRule } from '../mocks/currencies';
 import type { Item } from '../mocks/items';
+import { SYSTEM_ATCS } from '../mocks/taxes';
 import { createCollection } from './store';
 import { determineWithholding, type LineParty, type TaxMasterData } from './taxDetermination';
 
-const orders = createCollection<PurchaseOrder>('sikat-erp:purchase-orders:v3', SEED_PURCHASE_ORDERS, 'po');
+const orders = createCollection<PurchaseOrder>('sikat-erp:purchase-orders:v4', SEED_PURCHASE_ORDERS, 'po');
 
 export const listPurchaseOrders = orders.list;
 export const getPurchaseOrder = orders.get;
@@ -62,8 +63,13 @@ export function poTotals(
   const freight = PURCHASING_SETTINGS.manageFreightInDocuments ? round2(po.freight) : 0;
   const taxOf = (l: PoLine) => (lineNet(l) * factor * rateOf(l.taxCode)) / 100;
   const lineTax = po.lines.filter((l) => !isReverseCharge(l.taxCode)).reduce((n, l) => n + taxOf(l), 0);
-  const reverseCharge = round2(po.lines.filter((l) => isReverseCharge(l.taxCode)).reduce((n, l) => n + taxOf(l), 0));
-  const tax = round2(lineTax + (freight * rateOf(po.freightTaxCode)) / 100);
+  // Freight on an import carries import VAT, paid to the Bureau of Customs like the goods' own.
+  const freightTax = (freight * rateOf(po.freightTaxCode)) / 100;
+  const freightReverse = isReverseCharge(po.freightTaxCode);
+  const reverseCharge = round2(
+    po.lines.filter((l) => isReverseCharge(l.taxCode)).reduce((n, l) => n + taxOf(l), 0) + (freightReverse ? freightTax : 0),
+  );
+  const tax = round2(lineTax + (freightReverse ? 0 : freightTax));
   const raw = round2(beforeDiscount - discount + freight + tax);
   const step = PURCHASING_SETTINGS.roundingMethod === 'By Currency' ? ROUNDING_STEP[rounding] : 0;
   const total = step ? Math.round(raw / step) * step : raw;
@@ -76,11 +82,21 @@ export interface WithholdingLine {
   rate: number;
   kind: string;
   amount: number;
+  /**
+   * Taken off the vendor's payment. False for the VAT you withhold on a non-resident's services
+   * (reverse charge): the vendor never charged it, so you remit it on top instead.
+   */
+  deducted: boolean;
 }
 
+/** Withholding VAT on payments to non-residents: the reverse charge, remitted on 1600-VT. */
+const REVERSE_CHARGE_ATCS: string[] = [
+  SYSTEM_ATCS.NR_LEASE_VAT_GOV, SYSTEM_ATCS.NR_LEASE_VAT_PRIVATE, SYSTEM_ATCS.NR_VAT_GOV, SYSTEM_ATCS.NR_VAT_PRIVATE,
+];
+
 /**
- * Withholding taxes deducted when paying the vendor — one entry per ATC,
- * amounts summed across all lines, in document currency.
+ * Withholding taxes on paying the vendor — one entry per ATC, amounts summed
+ * across all lines, in document currency.
  */
 export function poWithholding(
   po: Pick<PurchaseOrder, 'lines' | 'discountPct'>,
@@ -103,7 +119,10 @@ export function poWithholding(
       if (existing) {
         existing.amount = round2(existing.amount + amt);
       } else {
-        totals.set(wt.atc, { atc: wt.atc, description: wt.description, rate: wt.rate, kind: wt.kind, amount: amt });
+        totals.set(wt.atc, {
+          atc: wt.atc, description: wt.description, rate: wt.rate, kind: wt.kind, amount: amt,
+          deducted: !REVERSE_CHARGE_ATCS.includes(wt.atc),
+        });
       }
     }
   }

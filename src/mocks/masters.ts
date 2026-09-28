@@ -80,6 +80,7 @@ export const PAYMENT_METHODS = [
   { code: 'BANK', description: 'Bank transfer (InstaPay / PESONet)' },
   { code: 'GCASH', description: 'GCash' },
   { code: 'MAYA', description: 'Maya' },
+  { code: 'CARD', description: 'Corporate credit card' },
 ];
 
 export const PLANNING_GROUPS = ['— None —', 'Fast movers', 'Project-based', 'Seasonal'];
