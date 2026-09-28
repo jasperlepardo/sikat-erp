@@ -397,6 +397,33 @@ const PURCHASED_SERVICES: PurchasedService[] = [
   ['itm-030', 'SVC-POS-LICENSE', 'POS software licence (annual)', 'pc', 'WH-ROY', 'bp-030'],
   ['itm-031', 'FIN-LOAN-INT', 'Interest on inventory financing', 'pc', 'WH-INT', 'bp-032', 'P-VATX'],
   ['itm-032', 'SVC-POSTAGE', 'Registered mail and postage', 'pc', 'WH-SVC', 'bp-028'],
+  ['itm-033', 'SVC-LEGAL', 'Legal retainer and case fees', 'pc', 'WH-PROF', 'bp-033'],
+  ['itm-034', 'SVC-AIRCON', 'Aircon preventive maintenance (monthly)', 'pc', 'WH-SVC', 'bp-034'],
+  ['itm-035', 'SVC-DESIGN', 'Signage and campaign design', 'pc', 'WH-PROF', 'bp-035'],
+  ['itm-036', 'SVC-RNT-CEB', 'Cebu store space rent (monthly)', 'pc', 'WH-RENT', 'bp-036'],
+  ['itm-037', 'SVC-VIDEO-EDIT', 'Video editing', 'pc', 'WH-PROF', 'bp-037'],
+  ['itm-038', 'SVC-POS-LEASE', 'POS terminal and card reader lease (monthly)', 'pc', 'WH-EQUIP', 'bp-038'],
+  ['itm-039', 'SVC-SIGNAGE-LIC', 'Video wall content software licence (annual)', 'pc', 'WH-ROY', 'bp-039'],
+  ['itm-040', 'SVC-FREIGHT', 'Air freight and forwarding', 'pc', 'WH-SVC', 'bp-042'],
+  ['itm-041', 'SVC-ADVISORY', 'Retail operations advisory', 'pc', 'WH-PROF', 'bp-043'],
+  // Set up wrong on purpose: a foreign service with no withholding group — the rules warn instead of guessing.
+  ['itm-042', 'SVC-FOREIGN-MISC', 'Foreign service — to classify', 'pc', '', 'bp-029'],
+];
+
+/** Purchases whose tax treatment is fixed on the item rather than decided by the vendor. */
+const ITEM_TAX_CASES: Item[] = [
+  seed('itm-043', 'Services', {
+    itemNo: 'IMP-VAT-DISB', description: 'Import VAT advanced by customs broker', itemType: 'Items', inventoryUom: 'pc', purchasingUom: 'pc',
+    salesItem: false, inventoryItem: false, purchaseTaxGroup: 'P-VAT12', purchaseTaxCode: '46', withholdingGroup: 'WH-NONE',
+    defaultVendorId: 'bp-022', warehouses: [], cycleCountDays: 0, hasTransactions: false,
+    generalRemarks: 'The broker pays the import VAT to the Bureau of Customs for us and bills it back at cost: fixed code 46, and no withholding on a reimbursement.',
+  }),
+  seed('itm-044', 'Services', {
+    itemNo: 'IMP-MANUALS', description: 'Printed Apple training manuals (imported)', itemType: 'Items', inventoryUom: 'pc', purchasingUom: 'pc',
+    salesItem: false, inventoryItem: false, purchaseTaxGroup: 'P-VATX', withholdingGroup: 'WH-GDS',
+    defaultVendorId: 'bp-017', warehouses: [], cycleCountDays: 0, hasTransactions: false,
+    generalRemarks: 'Books and printed materials are VAT-exempt on importation (NIRC Sec. 109): imported from Apple they get code 49.',
+  }),
 ];
 
 export const SEED_ITEMS: Item[] = [
@@ -436,4 +463,5 @@ export const SEED_ITEMS: Item[] = [
       purchaseTaxGroup, withholdingGroup, defaultVendorId, warehouses: [], cycleCountDays: 0, hasTransactions: false,
     }),
   ),
+  ...ITEM_TAX_CASES,
 ];

@@ -49,7 +49,7 @@ export const HOLIDAY_CALENDARS = ['— None —', 'Philippines (national)', 'Phi
 /** Countries used on addresses, banks and items' country of origin. */
 export const COUNTRIES = [
   'Philippines', 'China', 'Japan', 'South Korea', 'Taiwan', 'Vietnam', 'Thailand', 'Malaysia', 'Singapore',
-  'Indonesia', 'India', 'Hong Kong', 'Ireland', 'United States', 'Germany', 'France',
+  'Indonesia', 'India', 'Hong Kong', 'Ireland', 'United Kingdom', 'United States', 'Germany', 'France',
 ];
 
 /** Countries with an existing tax treaty with the Philippines (BIR-recognized, as of 2024). */
