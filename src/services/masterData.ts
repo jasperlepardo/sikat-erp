@@ -5,10 +5,12 @@ import {
   SEED_TAX_CODES,
   SEED_TAX_GROUPS,
   SEED_WITHHOLDING,
+  SEED_WITHHOLDING_GROUPS,
   type CompanyTaxProfile,
   type ExciseCategory,
   type TaxCode,
   type TaxGroup,
+  type WithholdingGroup,
   type WithholdingTax,
 } from '../mocks/taxes';
 import {
@@ -36,6 +38,7 @@ export const compensationExclusions = createCollection<CompensationExclusion>('s
 export const deMinimisBenefits = createCollection<DeMinimisBenefit>('sikat-erp:de-minimis', SEED_DE_MINIMIS, 'dm');
 export const withholdingForms = createCollection<WithholdingForm>('sikat-erp:withholding-forms', SEED_WITHHOLDING_FORMS, 'wf');
 export const withholdingTaxes = createCollection<WithholdingTax>('sikat-erp:withholding:v5', SEED_WITHHOLDING, 'wt');
+export const withholdingGroups = createCollection<WithholdingGroup>('sikat-erp:withholding-groups:v1', SEED_WITHHOLDING_GROUPS, 'wg');
 export const exciseCategories = createCollection<ExciseCategory>('sikat-erp:excise', SEED_EXCISE, 'ex');
 export const currencies = createCollection<Currency>('sikat-erp:currencies', SEED_CURRENCIES, 'cur');
 export const exchangeRates = createCollection<ExchangeRate>('sikat-erp:exchange-rates', SEED_RATES, 'fx');

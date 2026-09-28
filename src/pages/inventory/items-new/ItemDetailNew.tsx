@@ -19,8 +19,7 @@ import {
 import type { Partner } from '../../../mocks/partners';
 import { ItemSaveError, getItem, isValidToday, saveItem } from '../../../services/items';
 import { listPartnersByRole } from '../../../services/partners';
-import { exciseCategories, taxCodes, taxGroups } from '../../../services/masterData';
-import { WITHHOLDING_CATEGORIES } from '../../../mocks/taxes';
+import { exciseCategories, taxCodes, taxGroups, withholdingGroups } from '../../../services/masterData';
 import { AttachmentsTab } from '../items/detail/AttachmentsTab';
 import { BarcodesTab } from '../items/detail/BarcodesTab';
 import { ConfigureTab, type ConfigurePanelTab } from '../items/detail/ConfigureTab';
@@ -28,7 +27,7 @@ import { InventoryTab } from '../items/detail/InventoryTab';
 import { ManufacturersTab } from '../items/detail/ManufacturersTab';
 import { PlanningTab } from '../items/detail/PlanningTab';
 import { RemarksTab } from '../items/detail/RemarksTab';
-import { LOCKED_HINT, asOptions, taxCodeOptions, taxGroupOptions, taxResolution, vendorOptions, type Draft, type TaxMasters } from '../items/detail/types';
+import { LOCKED_HINT, asOptions, taxCodeOptions, taxGroupOptions, taxResolution, vendorOptions, withholdingGroupOptions, type Draft, type TaxMasters } from '../items/detail/types';
 
 const BASE = '/inventory/items-new';
 
@@ -70,7 +69,7 @@ function ItemFormNew() {
 
   const [draft, setDraft] = useState<Draft | null | undefined>(isNew ? (copyFrom ?? blankItem()) : undefined);
   const [vendors, setVendors] = useState<Partner[]>([]);
-  const [tax, setTax] = useState<TaxMasters>({ groups: [], codes: [], excise: [] });
+  const [tax, setTax] = useState<TaxMasters>({ groups: [], codes: [], excise: [], withholdingGroups: [] });
   const [inv, setInv] = useState<InventoryMasters>(EMPTY_INVENTORY_MASTERS);
   const [mastersReady, setMastersReady] = useState(false);
   const [codeMode, setCodeMode] = useState<'auto' | 'manual'>('auto');
@@ -82,10 +81,10 @@ function ItemFormNew() {
 
   useEffect(() => {
     listPartnersByRole('vendor').then(setVendors);
-    Promise.all([loadInventoryMasters(), taxGroups.list(), taxCodes.list(), exciseCategories.list()]).then(
-      ([inventory, groups, codes, excise]) => {
+    Promise.all([loadInventoryMasters(), taxGroups.list(), taxCodes.list(), exciseCategories.list(), withholdingGroups.list()]).then(
+      ([inventory, groups, codes, excise, wGroups]) => {
         setInv(inventory);
-        setTax({ groups, codes, excise });
+        setTax({ groups, codes, excise, withholdingGroups: wGroups });
         setMastersReady(true);
       },
     );
@@ -339,8 +338,14 @@ function ItemFormNew() {
               {h.choose('defaultVendorId', 'Default vendor', vendorOptions(vendors), {
                 hint: 'Pre-fills new purchase orders.',
               })}
-              {h.pick('withholdingCategory', 'Withholding category', WITHHOLDING_CATEGORIES, {
-                hint: 'Picks the withholding tax; Goods from a non-resident supplier are treated as imports.',
+              {h.choose('withholdingGroup', 'Withholding group', withholdingGroupOptions(tax, draft.withholdingGroup), {
+                hint: (() => {
+                  const g = tax.withholdingGroups.find((x) => x.code === draft.withholdingGroup);
+                  if (!g) return 'Pick a withholding group.';
+                  if (!g.atcIndividual && !g.atcCorporate) return 'Not subject to withholding.';
+                  if (g.requiresTopWA) return `Top withholding agents withhold when paying for this (${g.atcCorporate ?? g.atcIndividual}).`;
+                  return `Withholding applies: ${g.atcIndividual ?? '—'} (individual) / ${g.atcCorporate ?? '—'} (corporate).`;
+                })(),
               })}
               {h.choose('salesTaxGroup', 'Sales tax group', taxGroupOptions(tax, 'Sales', draft.salesTaxGroup), {
                 hint: draft.taxLiable ? taxResolution(tax, draft.salesTaxGroup, draft.salesTaxCode) : 'Not tax liable: no VAT charged on sales.',

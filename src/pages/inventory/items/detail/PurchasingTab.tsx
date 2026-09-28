@@ -2,8 +2,7 @@ import { Button } from '@jasperlepardo/sikat-design-system';
 import { Fields, Section, bind } from '../../../../components/form/fields';
 import { volumeUnit } from '../../../../mocks/itemMasters';
 import { activeOptions } from '../../../../services/inventoryMasters';
-import { WITHHOLDING_CATEGORIES } from '../../../../mocks/taxes';
-import { taxCodeOptions, taxGroupOptions, taxResolution, vendorOptions, type TabProps } from './types';
+import { taxCodeOptions, taxGroupOptions, taxResolution, vendorOptions, withholdingGroupOptions, type TabProps } from './types';
 
 export function PurchasingTab({ draft, update, errors, vendors, tax, inv }: TabProps) {
   const { lengthUnit, weightUnit } = inv.settings;
@@ -54,13 +53,14 @@ export function PurchasingTab({ draft, update, errors, vendors, tax, inv }: TabP
           {f.choose('purchaseTaxCode', 'Fixed purchasing tax code', taxCodeOptions(tax, 'Purchase', draft.purchaseTaxCode), {
             hint: 'Overrides the tax group on every purchase.',
           })}
-          {f.pick('withholdingCategory', 'Withholding category', WITHHOLDING_CATEGORIES, {
-            hint:
-              draft.withholdingCategory === 'Goods' || draft.withholdingCategory === 'Services'
-                ? `Top withholding agents withhold ${draft.withholdingCategory === 'Goods' ? '1% (W?158)' : '2% (W?160)'} when paying for this.`
-                : draft.withholdingCategory === 'None'
-                  ? 'Never withheld.'
-                  : `Withheld as ${draft.withholdingCategory.toLowerCase()} whatever the company status.`,
+          {f.choose('withholdingGroup', 'Withholding group', withholdingGroupOptions(tax, draft.withholdingGroup), {
+            hint: (() => {
+              const g = tax.withholdingGroups.find((x) => x.code === draft.withholdingGroup);
+              if (!g) return 'Pick a withholding group.';
+              if (!g.atcIndividual && !g.atcCorporate) return 'Not subject to withholding.';
+              if (g.requiresTopWA) return `Top withholding agents withhold when paying for this (${g.atcCorporate ?? g.atcIndividual}).`;
+              return `Withholding applies: ${g.atcIndividual ?? '—'} (individual) / ${g.atcCorporate ?? '—'} (corporate).`;
+            })(),
           })}
         </Fields>
       </Section>

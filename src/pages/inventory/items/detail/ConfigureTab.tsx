@@ -8,7 +8,6 @@ import {
   volumeUnit,
 } from '../../../../mocks/itemMasters';
 import { COUNTRIES } from '../../../../mocks/masters';
-import { WITHHOLDING_CATEGORIES } from '../../../../mocks/taxes';
 import { activeOptions } from '../../../../services/inventoryMasters';
 import {
   LOCKED_HINT,
@@ -16,6 +15,7 @@ import {
   taxGroupOptions,
   taxResolution,
   vendorOptions,
+  withholdingGroupOptions,
   type TabProps,
 } from './types';
 
@@ -84,13 +84,14 @@ export function ConfigureTab({ draft, update, errors, vendors, tax, inv, activeT
               ) : (
                 <ReadOnly label="G/L accounts" value="Taken from each warehouse's account settings." />
               )}
-              {f.pick('withholdingCategory', 'Withholding category', WITHHOLDING_CATEGORIES, {
-                hint:
-                  draft.withholdingCategory === 'Goods' || draft.withholdingCategory === 'Services'
-                    ? `Top withholding agents withhold ${draft.withholdingCategory === 'Goods' ? '1% (WC158)' : '2% (WC160)'} when paying for this.`
-                    : draft.withholdingCategory === 'None'
-                      ? 'Never withheld.'
-                      : `Withheld as ${draft.withholdingCategory.toLowerCase()} whatever the company status.`,
+              {f.choose('withholdingGroup', 'Withholding group', withholdingGroupOptions(tax, draft.withholdingGroup), {
+                hint: (() => {
+                  const g = tax.withholdingGroups.find((x) => x.code === draft.withholdingGroup);
+                  if (!g) return 'Pick a withholding group.';
+                  if (!g.atcIndividual && !g.atcCorporate) return 'Not subject to withholding.';
+                  if (g.requiresTopWA) return `Top withholding agents withhold when paying for this (${g.atcCorporate ?? g.atcIndividual}).`;
+                  return `Withholding applies: ${g.atcIndividual ?? '—'} (individual) / ${g.atcCorporate ?? '—'} (corporate).`;
+                })(),
               })}
             </Fields>
           </Section>

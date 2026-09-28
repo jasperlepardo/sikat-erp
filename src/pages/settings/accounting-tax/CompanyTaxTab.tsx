@@ -43,7 +43,7 @@ export function CompanyTaxTab() {
       }
     >
       <Text variant="small" tone="muted">
-        From the company’s BIR Certificate of Registration (Form 2303). These settings run first in tax determination.
+        From the company's BIR Certificate of Registration (Form 2303). These settings run first in tax determination.
       </Text>
       <Fields cols={3}>
         {f.text('registeredName', 'Registered name')}
@@ -64,14 +64,17 @@ export function CompanyTaxTab() {
         {f.check('vatRegistered', 'VAT-registered')}
         {f.check('topWithholdingAgent', 'Top withholding agent (BIR-notified)')}
         {f.check('exportEnterprise', 'Registered export enterprise (PEZA, BOI or other IPA)')}
+        {f.check('governmentEntity', 'Government entity (NGA, LGU, GOCC)')}
       </Flags>
       <Text variant="small" tone="muted">
         {profile.vatRegistered
           ? 'VAT-registered: sales carry output VAT from the item and customer.'
           : 'Not VAT-registered: every sale uses percentage tax (PT010), whatever the item says.'}{' '}
-        {profile.topWithholdingAgent
-          ? 'As a top withholding agent, you withhold 1% on goods and 2% on services bought from regular suppliers.'
-          : 'Not a top withholding agent: regular goods and services aren’t withheld (rent, contractors and professional fees still are).'}{' '}
+        {profile.governmentEntity
+          ? 'Government entity: withholds 5% creditable VAT (WV010/WV020) or 3% percentage tax (WB080) from all supplier payments, and uses government EWT rates (WI640/WI157) on goods and services.'
+          : profile.topWithholdingAgent
+            ? 'As a top withholding agent, you withhold 1% on goods and 2% on services bought from regular suppliers.'
+            : 'Not a top withholding agent: regular goods and services are not withheld (rent, contractors and professional fees still are).'}{' '}
         {profile.exportEnterprise
           ? 'As a registered export enterprise, suppliers may zero-rate qualifying purchases.'
           : 'Not an export enterprise: purchases in a zero-rated tax group are charged 12% instead.'}

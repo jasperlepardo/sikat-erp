@@ -31,7 +31,7 @@ import {
 import { formatAmount } from '../../../../services/format';
 import { loadInventoryMasters } from '../../../../services/inventoryMasters';
 import { isValidToday, listItems } from '../../../../services/items';
-import { companyTax, currencies, exchangeRates, taxCodes, taxGroups, withholdingTaxes } from '../../../../services/masterData';
+import { companyTax, currencies, exchangeRates, taxCodes, taxGroups, withholdingGroups, withholdingTaxes } from '../../../../services/masterData';
 import { listPartnersByRole } from '../../../../services/partners';
 import {
   PoSaveError,
@@ -42,6 +42,7 @@ import {
   getPurchaseOrder,
   poNumber,
   poTotals,
+  poWithholding,
   savePurchaseOrder,
   seriesOf,
 } from '../../../../services/purchaseOrders';
@@ -146,10 +147,11 @@ function PurchaseOrderForm() {
       taxCodes.list(),
       taxGroups.list(),
       withholdingTaxes.list(),
+      withholdingGroups.list(),
       currencies.list(),
       exchangeRates.list(),
-    ]).then(([vendors, items, inv, [company], codes, groups, withholding, curs, rates]) =>
-      setM({ vendors, items, inv, tax: { company, codes, groups, withholding }, currencies: curs, rates }),
+    ]).then(([vendors, items, inv, [company], codes, groups, withholding, wGroups, curs, rates]) =>
+      setM({ vendors, items, inv, tax: { company, codes, groups, withholding, withholdingGroups: wGroups }, currencies: curs, rates }),
     );
     if (isNew || !id) return;
     let cancelled = false;
@@ -177,6 +179,8 @@ function PurchaseOrderForm() {
   const series = seriesOf(draft.seriesId);
   const docCurrency = m.currencies.find((c) => c.code === draft.currency);
   const totals = poTotals(draft, ctx.rateOf, docCurrency?.rounding, ctx.isReverseCharge);
+  const withholdingLines = poWithholding(draft, ctx.vendor, m.items, m.tax, draft.postingDate);
+  const withholdingTotal = withholdingLines.reduce((s, w) => s + w.amount, 0);
   const view = viewCurrency(draft, ctx, m);
   const received = draft.lines.some((l) => l.receivedQty > 0);
 
@@ -569,7 +573,20 @@ function PurchaseOrderForm() {
                       you withhold and remit (BIR 1600-VT), and import VAT is paid to the Bureau of Customs. Both are claimed as input VAT.
                     </Text>
                   ) : null}
-                  <TotalRow label="Total payment due" value={view.convert(totals.total)} code={view.code} strong />
+                  {withholdingLines.map((w) => (
+                    <TotalRow
+                      key={w.atc}
+                      label={`EWT withheld — ${w.atc} (${w.rate}%)`}
+                      value={-view.convert(w.amount)}
+                      code={view.code}
+                    />
+                  ))}
+                  <TotalRow
+                    label="Net payment due"
+                    value={view.convert(totals.total - withholdingTotal)}
+                    code={view.code}
+                    strong
+                  />
                   {draft.currency !== 'PHP' && draft.currencyView === 'BP' ? (
                     <Text variant="small" tone="muted">
                       ≈ PHP {formatAmount(totals.total * ctx.fx)} at {ctx.fx || '—'} ({draft.postingDate}).

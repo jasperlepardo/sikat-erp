@@ -16,7 +16,7 @@ import {
 import type { Partner } from '../../../../mocks/partners';
 import { ItemSaveError, getItem, isValidToday, saveItem } from '../../../../services/items';
 import { listPartnersByRole } from '../../../../services/partners';
-import { exciseCategories, taxCodes, taxGroups } from '../../../../services/masterData';
+import { exciseCategories, taxCodes, taxGroups, withholdingGroups } from '../../../../services/masterData';
 import { AttachmentsTab } from './AttachmentsTab';
 import { BarcodesTab } from './BarcodesTab';
 import { ConfigureTab } from './ConfigureTab';
@@ -116,7 +116,7 @@ function ItemForm() {
 
   const [draft, setDraft] = useState<Draft | null | undefined>(isNew ? (copyFrom ?? blankItem()) : undefined);
   const [vendors, setVendors] = useState<Partner[]>([]);
-  const [tax, setTax] = useState<TaxMasters>({ groups: [], codes: [], excise: [] });
+  const [tax, setTax] = useState<TaxMasters>({ groups: [], codes: [], excise: [], withholdingGroups: [] });
   const [inv, setInv] = useState<InventoryMasters>(EMPTY_INVENTORY_MASTERS);
   // Validation and pickers depend on master data, so the form waits for it.
   const [mastersReady, setMastersReady] = useState(false);
@@ -127,10 +127,10 @@ function ItemForm() {
 
   useEffect(() => {
     listPartnersByRole('vendor').then(setVendors);
-    Promise.all([loadInventoryMasters(), taxGroups.list(), taxCodes.list(), exciseCategories.list()]).then(
-      ([inventory, groups, codes, excise]) => {
+    Promise.all([loadInventoryMasters(), taxGroups.list(), taxCodes.list(), exciseCategories.list(), withholdingGroups.list()]).then(
+      ([inventory, groups, codes, excise, wGroups]) => {
         setInv(inventory);
-        setTax({ groups, codes, excise });
+        setTax({ groups, codes, excise, withholdingGroups: wGroups });
         setMastersReady(true);
       },
     );

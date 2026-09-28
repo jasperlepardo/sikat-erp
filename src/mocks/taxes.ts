@@ -7,6 +7,7 @@
  * confirmed from a primary source is flagged in `notes` for your accountant to check.
  */
 import { toAccountCode } from './chartOfAccounts';
+import type { Attachment } from './common';
 
 export type TaxDirection = 'Sales' | 'Purchase';
 export type TaxCategory =
@@ -72,24 +73,61 @@ export interface TaxGroup {
   active: boolean;
 }
 
-/** How a customer is treated for output VAT. */
-export type SalesVatTreatment = 'Regular' | 'Government' | 'Zero-rated' | 'Exempt entity';
-export const SALES_VAT_TREATMENTS: { value: SalesVatTreatment; label: string }[] = [
-  { value: 'Regular', label: 'Regular (12% VAT)' },
-  { value: 'Government', label: 'Government agency / GOCC' },
-  { value: 'Zero-rated', label: 'Zero-rated (export, PEZA / registered export enterprise)' },
-  { value: 'Exempt entity', label: 'VAT-exempt entity' },
-];
+/** A VAT exemption entry on a business partner, backed by an attached document. */
+export interface VatExemptionEntry {
+  id: string;
+  type: 'Zero-rated' | 'Exempt entity';
+  /** Certificate, ruling, or registration number. */
+  certificateRef: string;
+  /** Legal ground — only relevant for Exempt entity. */
+  basis: string;
+  /** YYYY-MM-DD expiry, or empty if the exemption has no expiry. */
+  validUntil: string;
+  /** The actual document file(s). The exemption is active only when this is non-empty. */
+  attachments: Attachment[];
+}
 
-/** A supplier's VAT status, which decides whether you get input VAT. */
-export type SupplierVatStatus = 'VAT-registered' | 'Non-VAT' | 'Non-resident digital services';
-export const SUPPLIER_VAT_STATUSES: { value: SupplierVatStatus; label: string }[] = [
-  { value: 'VAT-registered', label: 'VAT-registered' },
-  { value: 'Non-VAT', label: 'Non-VAT (percentage tax payer)' },
-  { value: 'Non-resident digital services', label: 'Non-resident digital service provider' },
-];
+export const newVatExemptionEntry = (): VatExemptionEntry => ({
+  id: `ve-${crypto.randomUUID().slice(0, 8)}`,
+  type: 'Zero-rated',
+  certificateRef: '',
+  basis: '',
+  validUntil: '',
+  attachments: [],
+});
 
-/** What an item's purchase is for withholding tax purposes. */
+/**
+ * What items point to for withholding tax determination. The group carries the
+ * ATCs for each payee type and income tier so `determineWithholding` is table-driven.
+ */
+export interface WithholdingGroup {
+  id: string;
+  code: string;
+  name: string;
+  /** ATC for a resident individual payee at the low/default income tier. null = not applicable. */
+  atcIndividual: string | null;
+  /** ATC for a resident individual payee at the high income tier. null = not tiered (use atcIndividual). */
+  atcIndividualHigh: string | null;
+  /** ATC for a resident corporate payee at the low/default income tier. null = not applicable. */
+  atcCorporate: string | null;
+  /** ATC for a resident corporate payee at the high income tier. null = not tiered (use atcCorporate). */
+  atcCorporateHigh: string | null;
+  /** Only withhold when the company is a top withholding agent. */
+  requiresTopWA: boolean;
+  /** Goods from a non-resident are foreign-source income to the seller — no Philippine withholding applies. Also flags the item as tangible goods for import VAT purposes. */
+  nrExempt: boolean;
+  /** ATC for a non-resident individual payee. null = fall back to the catch-all WI330. */
+  atcNrIndividual: string | null;
+  /** ATC for a non-resident corporate payee. null = fall back to the catch-all WC230. */
+  atcNrCorporate: string | null;
+  /** ATC used instead of atcIndividual when the withholding agent is a government entity (NGA/LGU/GOCC). null = same as private. */
+  atcIndividualGov: string | null;
+  /** ATC used instead of atcCorporate when the withholding agent is a government entity. null = same as private. */
+  atcCorporateGov: string | null;
+  active: boolean;
+  notes: string;
+}
+
 /** All 115 BIR Revenue District Offices (source: tinid.ph/bir-rdo-codes). Value is the RDO code. */
 export const RDOS: { value: string; label: string }[] = [
   { value: '001', label: '001 – Laoag City, Ilocos Norte' },
@@ -218,8 +256,6 @@ export const RDOS: { value: string; label: string }[] = [
   { value: '115', label: '115 – Digos City, Davao del Sur & Davao Occidental' },
 ];
 
-export type WithholdingCategory = 'Goods' | 'Services' | 'Rent' | 'Professional fees' | 'Contractor' | 'Royalties' | 'Interest' | 'Prizes' | 'None';
-export const WITHHOLDING_CATEGORIES: WithholdingCategory[] = ['Goods', 'Services', 'Rent', 'Professional fees', 'Contractor', 'Royalties', 'Interest', 'Prizes', 'None'];
 
 /**
  * BIR corporation type — relevant for withholding rates on FDAP income (dividends,
@@ -311,6 +347,13 @@ export interface CompanyTaxProfile {
    * suppliers zero-rate sales to the company (NIRC Secs. 106(A)(2), 108(B); RA 12066).
    */
   exportEnterprise: boolean;
+  /**
+   * NGA, LGU, GOCC or other government entity. Government entities withhold 5% creditable VAT
+   * (WV010/WV020) from all VAT-registered suppliers, 3% percentage tax (WB080) from non-VAT
+   * suppliers, and use government-specific EWT ATCs (WI640/WI157 for goods/services instead of
+   * WI158/WI160). They withhold on all purchases, not just as top withholding agents.
+   */
+  governmentEntity: boolean;
 }
 
 export const SEED_COMPANY_TAX: CompanyTaxProfile[] = [
@@ -322,6 +365,7 @@ export const SEED_COMPANY_TAX: CompanyTaxProfile[] = [
     vatRegistered: true,
     topWithholdingAgent: true,
     exportEnterprise: false,
+    governmentEntity: false,
   },
 ];
 
@@ -508,7 +552,7 @@ const both = (wi: string | null, wc: string | null, rate: number): Row[] => [
 const EXPANDED: WithholdingTax[] = [
   ...we('Professional fees (Lawyers, CPAs, Engineers, etc.)', [
     ['WI010', 'Individual', 5, IND_LE_3M],
-    ['WI011', 'Individual', 10, 'if gross income is more than ₱ 3M or VAT registered regardlessof amount'],
+    ['WI011', 'Individual', 10, 'if gross income is more than ₱ 3M or VAT registered regardless of amount'],
     ['WC010', 'Corporate', 10, CORP_LE],
     ['WC011', 'Corporate', 15, CORP_GT],
   ]),
@@ -533,7 +577,7 @@ const EXPANDED: WithholdingTax[] = [
   ),
   ...we(
     'Professional fees paid to medical practitioners (includes doctors of medicine, doctors of veterinary science & dentist) by hospitals & clinics or paid directly by HMO and/or other similar establishments',
-    tiers('WI151', 'WI150', 'WC151', 'WC150'),
+    tiers('WI150', 'WI151', 'WC150', 'WC151'),
   ),
   ...we('Payment by the General Professional Partnership (GPPs) to its partners', [
     ['WI152', 'Individual', 10, CORP_LE],
@@ -720,6 +764,91 @@ const GMP: WithholdingTax[] = [
 ];
 
 export const SEED_WITHHOLDING: WithholdingTax[] = [...EXPANDED, ...FINAL, ...GMP];
+
+const wg = (
+  code: string, name: string,
+  atcIndividual: string | null, atcIndividualHigh: string | null,
+  atcCorporate: string | null, atcCorporateHigh: string | null,
+  opts: {
+    requiresTopWA?: boolean; nrExempt?: boolean;
+    atcNrIndividual?: string | null; atcNrCorporate?: string | null;
+    atcIndividualGov?: string | null; atcCorporateGov?: string | null;
+    notes?: string;
+  } = {},
+): WithholdingGroup => ({
+  id: `wg-${code.toLowerCase()}`,
+  code, name,
+  atcIndividual, atcIndividualHigh,
+  atcCorporate, atcCorporateHigh,
+  requiresTopWA: opts.requiresTopWA ?? false,
+  nrExempt: opts.nrExempt ?? false,
+  atcNrIndividual: opts.atcNrIndividual ?? null,
+  atcNrCorporate: opts.atcNrCorporate ?? null,
+  atcIndividualGov: opts.atcIndividualGov ?? null,
+  atcCorporateGov: opts.atcCorporateGov ?? null,
+  active: true,
+  notes: opts.notes ?? '',
+});
+
+/**
+ * Tax code identifiers used directly in determination logic.
+ * These are the BIR line numbers (2550Q) and ATCs (2551Q) that the rules
+ * hard-wire; any change here must be matched in the seed data above.
+ */
+export const SYSTEM_TAX_CODES = {
+  // Sales
+  VATABLE:            '31',   // VATable Sales — 12%
+  ZERO_RATED:         '32',   // Zero-Rated Sales
+  EXEMPT:             '33',   // Exempt Sales
+  PERCENTAGE_TAX:     'PT010',// Non-VAT seller: percentage tax
+  // Purchases
+  DOMESTIC:           '44',   // Domestic Purchases — 12% input
+  NR_SERVICES:        '45',   // Services from non-residents — reverse charge
+  IMPORTATION:        '46',   // Importations — 12% import VAT via BoC
+  NO_INPUT_TAX:       '48',   // Non-VAT or exempt purchases
+  EXEMPT_IMPORTATION: '49',   // VAT-exempt importations
+} as const;
+
+/**
+ * Withholding tax ATCs used directly in determination logic (system-level rules,
+ * not configurable through withholding groups). Changes here must be matched in
+ * the seed data above.
+ */
+export const SYSTEM_ATCS = {
+  // Non-resident digital services: 12% VAT withheld by the buyer
+  NR_VAT_GOV:        'WV060', // Government withholding agent
+  NR_VAT_PRIVATE:    'WV070', // Private withholding agent
+  // Government money payment taxes (GMP) on resident supplier purchases
+  GMP_VAT_GOODS:     'WV010', // 5% creditable VAT on goods (Form 1600-VT)
+  GMP_VAT_SERVICES:  'WV020', // 5% creditable VAT on services (Form 1600-VT)
+  GMP_PT:            'WB080', // 3% percentage tax on non-VAT suppliers (Form 1600-PT)
+  // Non-resident final tax catch-alls (used when the group has no specific NR ATC)
+  NR_INDIVIDUAL:     'WI330', // NRANETB: 25% final tax
+  NR_CORPORATE:      'WC230', // NRFC: 25% final tax on other payments
+  // GPP partner distributions
+  GPP_LOW:           'WI152', // Gross income ≤ ₱720,000
+  GPP_HIGH:          'WI153', // Gross income > ₱720,000
+} as const;
+
+export const SEED_WITHHOLDING_GROUPS: WithholdingGroup[] = [
+  wg('WH-NONE', 'Not subject to withholding', null, null, null, null),
+  // Government entities use WI640/WC640 (1%) and WI157/WC157 (2%) on all purchases; private top WAs use WI158/WC158 and WI160/WC160.
+  wg('WH-GDS',  'Goods (general)',             'WI158', null, 'WC158', null, { requiresTopWA: true, nrExempt: true, atcIndividualGov: 'WI640', atcCorporateGov: 'WC640' }),
+  wg('WH-SVC',  'Services (general)',           'WI160', null, 'WC160', null, { requiresTopWA: true, atcIndividualGov: 'WI157', atcCorporateGov: 'WC157' }),
+  wg('WH-RENT', 'Rent / property lease',        'WI100', null, 'WC100', null),
+  wg('WH-CONT', 'Contractor',                   'WI120', null, 'WC120', null),
+  wg('WH-PROF', 'Professional fees',            'WI010', 'WI011', 'WC010', 'WC011'),
+  wg('WH-ROY',  'Royalties',                    'WI250', null, 'WC250', null),
+  wg('WH-INT',  'Interest on debt instruments', 'WI710', null, 'WC710', null, { atcNrCorporate: 'WC180' }),
+  wg('WH-PRIZE','Prizes',                       'WI260', null, null,    null),
+  wg('WH-AGRI', 'Agricultural products',        'WI610', null, 'WC610', null, { nrExempt: true, notes: 'Applies on cumulative payments exceeding ₱300,000 within the same taxable year.' }),
+  wg('WH-MIN',  'Minerals / quarry resources',  'WI630', null, 'WC630', null, { nrExempt: true }),
+  wg('WH-COMM', 'Commissions — brokers / real estate agents', 'WI139', 'WI140', 'WC139', 'WC140'),
+  wg('WH-SCOMM','Sales commissions — independent agents',     'WI515', 'WI516', null,    null),
+  wg('WH-FILM', 'Cinematographic film rentals', 'WI110', null, 'WC110', null),
+  wg('WH-VESSEL','Vessel / ship lease',         'WI100', null, 'WC100', null, { atcNrCorporate: 'WC290' }),
+  wg('WH-EQUIP','Aircraft / machinery / equipment lease', 'WI100', null, 'WC100', null, { atcNrCorporate: 'WC300' }),
+];
 
 const ex = (code: string, name: string, basis: ExciseBasis, rate: string, legalBasis: string, notes = '', effective = '2026'): ExciseCategory => ({
   id: `ex-${code}`, code, name, basis, rate, effective, legalBasis, active: true, notes,

@@ -2,7 +2,7 @@ import type { Item } from '../../../../mocks/items';
 import type { Partner } from '../../../../mocks/partners';
 import type { Errors } from '../../../../components/form/fields';
 import type { InventoryMasters } from '../../../../services/inventoryMasters';
-import { currentRate, type ExciseCategory, type TaxCode, type TaxDirection, type TaxGroup } from '../../../../mocks/taxes';
+import { currentRate, type ExciseCategory, type TaxCode, type TaxDirection, type TaxGroup, type WithholdingGroup } from '../../../../mocks/taxes';
 
 export type Draft = Omit<Item, 'id'> & { id?: string };
 
@@ -22,6 +22,7 @@ export interface TaxMasters {
   groups: TaxGroup[];
   codes: TaxCode[];
   excise: ExciseCategory[];
+  withholdingGroups: WithholdingGroup[];
 }
 
 /** Tax group options for one direction (active groups, plus the current value if inactive). */
@@ -37,6 +38,12 @@ export const taxCodeOptions = (tax: TaxMasters, direction: TaxDirection, current
     .filter((c) => c.direction === direction && (c.active || c.code === current))
     .map((c) => ({ value: c.code, label: `${c.code} · ${c.name} (${currentRate(c) ?? '—'}%)` })),
 ];
+
+/** Withholding group options (active groups, plus the current value if inactive). */
+export const withholdingGroupOptions = (tax: TaxMasters, current: string) =>
+  tax.withholdingGroups
+    .filter((g) => g.active || g.code === current)
+    .map((g) => ({ value: g.code, label: `${g.code} · ${g.name}` }));
 
 /** The item's default tax code, and a reminder that partner/company status can override it. */
 export function taxResolution(tax: TaxMasters, groupCode: string, fixedCode: string) {

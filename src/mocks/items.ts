@@ -5,7 +5,6 @@
  */
 import type { Attachment } from './common';
 import { SEED_ITEM_GROUPS, propertyId, type ItemGroup, type ValuationMethod } from './itemMasters';
-import type { WithholdingCategory } from './taxes';
 import { expandCatalog } from './appleCatalog';
 
 export type ItemType = 'Items' | 'Labor' | 'Travel';
@@ -87,8 +86,8 @@ export interface Item {
   purchaseTaxGroup: string;
   /** Fixed tax code overriding the group; '' for none. */
   purchaseTaxCode: string;
-  /** What buying this is for withholding tax: decides WC158 vs WC160 vs rent, etc. */
-  withholdingCategory: WithholdingCategory;
+  /** Withholding group code (Settings › Accounting & Tax › Withholding groups). */
+  withholdingGroup: string;
   length: number;
   width: number;
   height: number;
@@ -209,7 +208,7 @@ export function blankItem(groupOrName: ItemGroup | string = SEED_ITEM_GROUPS[0])
     dutyPct: 0,
     purchaseTaxGroup: 'P-VAT12',
     purchaseTaxCode: '',
-    withholdingCategory: 'Goods',
+    withholdingGroup: 'WH-GDS',
     length: 0,
     width: 0,
     height: 0,
@@ -354,7 +353,7 @@ const APPLE_ITEMS: Item[] = expandCatalog(prefixOf).map((e, n) => {
 const service = (id: string, group: string, patch: Partial<Item>): Item =>
   seed(id, group, {
     itemType: 'Items', inventoryUom: 'plan', purchasingUom: 'plan', salesUom: 'plan', inventoryItem: false, purchaseItem: false,
-    purchaseTaxGroup: 'P-VAT12S', withholdingCategory: 'Services', warehouses: [], cycleCountDays: 0, planningMethod: 'None',
+    purchaseTaxGroup: 'P-VAT12S', withholdingGroup: 'WH-SVC', warehouses: [], cycleCountDays: 0, planningMethod: 'None',
     ...patch,
   });
 
@@ -389,27 +388,27 @@ export const SEED_ITEMS: Item[] = [
   // Services the store sells or buys. Their ids stay stable: the tax rules tester and tests use them.
   seed('itm-016', 'Services', {
     itemNo: 'SVC-SETUP', description: 'Device setup & data transfer', itemType: 'Labor', inventoryUom: 'hour', purchaseItem: false,
-    purchaseTaxGroup: 'P-VAT12S', withholdingCategory: 'Services',
+    purchaseTaxGroup: 'P-VAT12S', withholdingGroup: 'WH-SVC',
     inventoryItem: false, basePrice: 990, commissionGroup: 'cm-std', cycleCountDays: 0, warehouses: [],
   }),
   seed('itm-017', 'Services', {
     itemNo: 'SVC-DLV-TRIP', description: 'Same-day delivery (Metro Manila)', itemType: 'Travel', inventoryUom: 'trip',
     purchaseItem: false, inventoryItem: false, basePrice: 350, cycleCountDays: 0, warehouses: [],
-    purchaseTaxGroup: 'P-VAT12S', withholdingCategory: 'Services',
+    purchaseTaxGroup: 'P-VAT12S', withholdingGroup: 'WH-SVC',
   }),
   seed('itm-018', 'Services', {
     itemNo: 'SVC-RNT-MALL', description: 'Mall store space rent (monthly)', itemType: 'Items', inventoryUom: 'pc', purchasingUom: 'pc',
-    salesItem: false, inventoryItem: false, purchaseTaxGroup: 'P-VAT12S', withholdingCategory: 'Rent', warehouses: [],
+    salesItem: false, inventoryItem: false, purchaseTaxGroup: 'P-VAT12S', withholdingGroup: 'WH-RENT', warehouses: [],
     cycleCountDays: 0, hasTransactions: false,
   }),
   seed('itm-019', 'Services', {
     itemNo: 'SVC-SUB-FITOUT', description: 'Store fit-out subcontract', itemType: 'Labor', inventoryUom: 'hour', purchasingUom: 'hour',
-    salesItem: false, inventoryItem: false, purchaseTaxGroup: 'P-VAT12S', withholdingCategory: 'Contractor', warehouses: [],
+    salesItem: false, inventoryItem: false, purchaseTaxGroup: 'P-VAT12S', withholdingGroup: 'WH-CONT', warehouses: [],
     cycleCountDays: 0, hasTransactions: false,
   }),
   seed('itm-020', 'Services', {
     itemNo: 'SVC-CLD-HOST', description: 'Cloud hosting subscription (monthly)', itemType: 'Items', inventoryUom: 'pc',
-    purchasingUom: 'pc', salesItem: false, inventoryItem: false, purchaseTaxGroup: 'P-VAT12S', withholdingCategory: 'Services',
+    purchasingUom: 'pc', salesItem: false, inventoryItem: false, purchaseTaxGroup: 'P-VAT12S', withholdingGroup: 'WH-SVC',
     defaultVendorId: 'bp-015', warehouses: [], cycleCountDays: 0, hasTransactions: false,
   }),
 ];

@@ -11,7 +11,7 @@ import {
 } from '@jasperlepardo/sikat-design-system';
 import { Fields, ReadOnly, Section } from '../../../components/form/fields';
 import type { TaxDirection } from '../../../mocks/taxes';
-import { companyTax, taxCodes, taxGroups, withholdingTaxes } from '../../../services/masterData';
+import { companyTax, taxCodes, taxGroups, withholdingGroups, withholdingTaxes } from '../../../services/masterData';
 import { listItems } from '../../../services/items';
 import { listPartners } from '../../../services/partners';
 import { determineTax, type TraceStep } from '../../../services/taxDetermination';
@@ -77,13 +77,14 @@ export function RulesTab() {
   const partners = useAsync(listPartners, []) ?? [];
   const items = useAsync(listItems, []) ?? [];
   const data = useAsync(async () => {
-    const [[company], codes, groups, withholding] = await Promise.all([
+    const [[company], codes, groups, withholding, wGroups] = await Promise.all([
       companyTax.list(),
       taxCodes.list(),
       taxGroups.list(),
       withholdingTaxes.list(),
+      withholdingGroups.list(),
     ]);
-    return { company, codes, groups, withholding };
+    return { company, codes, groups, withholding, withholdingGroups: wGroups };
   }, []);
 
   const [direction, setDirection] = useState<TaxDirection>('Purchase');
@@ -170,8 +171,8 @@ export function RulesTab() {
             value={
               partner
                 ? direction === 'Sales'
-                  ? `${partner.salesVatTreatment}${partner.salesVatTreatment === 'Zero-rated' ? ` · cert. ${partner.zeroRatedCertificate || 'missing'}${partner.zeroRatedValidUntil ? ` until ${partner.zeroRatedValidUntil}` : ''}` : ''}`
-                  : `${partner.supplierVatStatus} · ${partner.businessType}`
+                  ? (() => { const active = partner.vatExemptions.find((e) => e.attachments.length > 0); return active ? `${active.type} · cert. ${active.certificateRef || 'on file'}${active.validUntil ? ` until ${active.validUntil}` : ''}` : partner.businessType === 'Government' ? 'Government' : 'No exemption'; })()
+                  : `${partner.vatRegistered ? 'VAT-registered' : 'Non-VAT'}${partner.nonResidentDigitalServices ? ' · digital services' : ''} · ${partner.businessType}`
                 : '—'
             }
           />
@@ -179,7 +180,11 @@ export function RulesTab() {
             label="Company"
             value={
               data
-                ? `${data.company.vatRegistered ? 'VAT-registered' : 'Non-VAT'} · ${data.company.topWithholdingAgent ? 'Top withholding agent' : 'Not a TWA'}`
+                ? [
+                    data.company.vatRegistered ? 'VAT-registered' : 'Non-VAT',
+                    data.company.governmentEntity ? 'Government entity' : data.company.topWithholdingAgent ? 'Top withholding agent' : 'Not a TWA',
+                    data.company.exportEnterprise ? 'Export enterprise' : null,
+                  ].filter(Boolean).join(' · ')
                 : '—'
             }
           />
