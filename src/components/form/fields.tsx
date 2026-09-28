@@ -37,11 +37,28 @@ const toOptions = (values: readonly string[]) => values.map((value) => ({ value,
  */
 export function bind<T>(obj: T, update: (patch: Partial<T>) => void) {
   const patch = (key: keyof T, value: unknown) => update({ [key]: value } as Partial<T>);
-  const field = (key: keyof T, label: ReactNode, o: FieldOptions, control: (p: object) => ReactNode) => (
-    <FormField key={String(key)} label={label} required={o.required} error={o.error} tooltip={o.hint} className={o.className}>
-      {(p) => control(p)}
-    </FormField>
+
+  const lockedLabel = (label: ReactNode) => (
+    <span className="inline-flex items-center gap-1">
+      {label}
+      <Icon size={12}>lock</Icon>
+    </span>
   );
+
+  const field = (key: keyof T, label: ReactNode, o: FieldOptions, control: (p: object) => ReactNode, displayValue?: ReactNode) => {
+    if (o.disabled) {
+      return (
+        <FormField key={String(key)} label={lockedLabel(label)} tooltip={o.hint} className={o.className}>
+          <p className="px-2 py-2 text-sm text-body">{displayValue || '—'}</p>
+        </FormField>
+      );
+    }
+    return (
+      <FormField key={String(key)} label={label} required={o.required} error={o.error} tooltip={o.hint} className={o.className}>
+        {(p) => control(p)}
+      </FormField>
+    );
+  };
 
   return {
     text: (key: KeysOf<T, string>, label: ReactNode, o: FieldOptions = {}) =>
@@ -51,13 +68,12 @@ export function bind<T>(obj: T, update: (patch: Partial<T>) => void) {
           type={o.type}
           placeholder={o.placeholder}
           readOnly={o.readOnly}
-          disabled={o.disabled}
           prefix={o.prefix}
           suffix={o.suffix}
           value={(obj[key] as string | undefined) ?? ''}
           onChange={(e) => patch(key, e.currentTarget.value)}
         />
-      )),
+      ), (obj[key] as string | undefined) || '—'),
 
     num: (key: KeysOf<T, number>, label: ReactNode, o: FieldOptions = {}) =>
       field(key, label, o, (p) => (
@@ -66,13 +82,12 @@ export function bind<T>(obj: T, update: (patch: Partial<T>) => void) {
           type="number"
           min={0}
           readOnly={o.readOnly}
-          disabled={o.disabled}
           prefix={o.prefix}
           suffix={o.suffix}
           value={String(obj[key] ?? 0)}
           onChange={(e) => patch(key, Number(e.currentTarget.value))}
         />
-      )),
+      ), String(obj[key] ?? 0)),
 
     pick: (key: KeysOf<T, string>, label: ReactNode, values: readonly string[], o: FieldOptions = {}) =>
       field(key, label, o, (p) => (
@@ -84,7 +99,7 @@ export function bind<T>(obj: T, update: (patch: Partial<T>) => void) {
           value={(obj[key] as string | undefined) ?? ''}
           onValueChange={(v) => patch(key, v)}
         />
-      )),
+      ), (obj[key] as string | undefined) || '—'),
 
     /** A select whose options show a label but store a value (e.g. a partner id). */
     choose: (
@@ -102,7 +117,7 @@ export function bind<T>(obj: T, update: (patch: Partial<T>) => void) {
           value={(obj[key] as string | undefined) ?? ''}
           onValueChange={(v) => patch(key, v)}
         />
-      )),
+      ), options.find((opt) => opt.value === (obj[key] as string))?.label || '—'),
 
     date: (key: KeysOf<T, string>, label: ReactNode, o: FieldOptions = {}) =>
       field(key, label, o, (p) => (
@@ -112,7 +127,7 @@ export function bind<T>(obj: T, update: (patch: Partial<T>) => void) {
           value={(obj[key] as string | undefined) || null}
           onValueChange={(v) => patch(key, v)}
         />
-      )),
+      ), (obj[key] as string | undefined) || '—'),
 
     area: (key: KeysOf<T, string>, label: ReactNode, o: FieldOptions & { rows?: number } = {}) =>
       field(key, label, o, (p) => (
@@ -122,7 +137,7 @@ export function bind<T>(obj: T, update: (patch: Partial<T>) => void) {
           value={(obj[key] as string | undefined) ?? ''}
           onChange={(e) => patch(key, e.currentTarget.value)}
         />
-      )),
+      ), (obj[key] as string | undefined) || '—'),
 
     check: (key: KeysOf<T, boolean>, label: ReactNode, o: { disabled?: boolean } = {}) => (
       <Checkbox
@@ -176,7 +191,11 @@ export function Flags({ children }: { children: ReactNode }) {
 /** A read-only value shown like a field (system-calculated values). Use inside `Fields`. */
 export function ReadOnly({ label, value, hint, error }: { label: string; value: ReactNode; hint?: ReactNode; error?: string }) {
   return (
-    <FormField label={label} tooltip={hint} error={error}>
+    <FormField
+      label={<span className="inline-flex items-center gap-1">{label}<Icon size={12}>lock</Icon></span>}
+      tooltip={hint}
+      error={error}
+    >
       <p className="px-2 py-2 text-sm text-body">{value}</p>
     </FormField>
   );

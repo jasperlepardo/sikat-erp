@@ -1,14 +1,13 @@
 import { Badge, Button, Checkbox, Table, type TableColumn } from '@jasperlepardo/sikat-design-system';
-import { BANK_CHARGE_CODES, COUNTRIES, HOUSE_BANKS, PAYMENT_METHODS } from '../../../mocks/masters';
+import { BANK_CHARGE_CODES, PAYMENT_METHODS } from '../../../mocks/masters';
 import type { PaymentMethodSetting } from '../../../mocks/partners';
 import type { TabProps } from './GeneralTab';
-import { Fields, Flags, ReadOnly, Section, bind } from './fields';
+import { Fields, Flags, Section, bind } from './fields';
 
 type MethodRow = PaymentMethodSetting & { description: string };
 
 export function PaymentRunTab({ draft, update }: TabProps) {
   const f = bind(draft, update);
-  const houseBank = HOUSE_BANKS.find((b) => b.bank === draft.houseBank);
   const rows: MethodRow[] = PAYMENT_METHODS.map((m) => ({
     ...m,
     include: draft.paymentMethods.find((x) => x.code === m.code)?.include ?? false,
@@ -60,23 +59,11 @@ export function PaymentRunTab({ draft, update }: TabProps) {
 
   return (
     <>
-      <Section icon="account_balance" title="House bank">
+      <Section icon="published_with_changes" title="Payment run options">
         <Fields>
-          {f.pick('houseBankCountry', 'Country/region', COUNTRIES)}
-          {f.pick(
-            'houseBank',
-            'Bank',
-            HOUSE_BANKS.map((b) => b.bank),
-          )}
-          <ReadOnly label="Account" value={houseBank?.account ?? '—'} />
-          <ReadOnly label="Branch" value={houseBank?.branch ?? '—'} />
-          <ReadOnly label="BIC/SWIFT code" value={houseBank?.swift ?? '—'} />
+          {f.pick('bankChargesCode', 'Bank charges allocation', BANK_CHARGE_CODES)}
           {f.text('paymentReference', 'Reference details', { hint: 'Printed on the payment run file.' })}
         </Fields>
-      </Section>
-
-      <Section icon="published_with_changes" title="Payment run options">
-        <Fields>{f.pick('bankChargesCode', 'Bank charges allocation', BANK_CHARGE_CODES)}</Fields>
         <Flags>
           {f.check('paymentBlock', 'Payment block')}
           {f.check('singlePayment', 'Single payment per document')}

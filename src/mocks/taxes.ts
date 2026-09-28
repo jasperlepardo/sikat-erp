@@ -221,6 +221,81 @@ export const RDOS: { value: string; label: string }[] = [
 export type WithholdingCategory = 'Goods' | 'Services' | 'Rent' | 'Professional fees' | 'Contractor' | 'Royalties' | 'Interest' | 'Prizes' | 'None';
 export const WITHHOLDING_CATEGORIES: WithholdingCategory[] = ['Goods', 'Services', 'Rent', 'Professional fees', 'Contractor', 'Royalties', 'Interest', 'Prizes', 'None'];
 
+/**
+ * BIR corporation type — relevant for withholding rates on FDAP income (dividends,
+ * interest, royalties). Non-resident foreign is covered by the nonResident flag.
+ */
+export const CORPORATION_TYPES = ['Domestic', 'Resident foreign', 'Non-resident foreign'] as const;
+export type CorporationType = (typeof CORPORATION_TYPES)[number];
+
+/** Legal grounds for a customer's VAT exemption under Philippine law. */
+export const EXEMPTION_BASES = [
+  'RA 9520 — Cooperative Code',
+  'Sec. 109 NIRC — BIR tax exemption ruling',
+  'DepEd / CHED / TESDA — Educational institution',
+  'SEC registration — Non-stock non-profit / Religious / Charitable',
+  'DFA certificate — Diplomatic mission',
+  'RA 9994 / RA 10754 — Senior citizen / PWD',
+] as const;
+export type ExemptionBasis = (typeof EXEMPTION_BASES)[number];
+
+/** Income types relevant for tax treaty withholding rate lookups. */
+export const TREATY_INCOME_TYPES = ['Dividends', 'Interest', 'Royalties', 'Technical fees'] as const;
+export type TreatyIncomeType = (typeof TREATY_INCOME_TYPES)[number];
+
+/**
+ * Standard treaty withholding rates (%) by country and income type.
+ * Source: BIR-published treaty summaries. Verify against the actual treaty text
+ * before filing — some rates have additional conditions (ownership %, industry, etc.).
+ * A rate of 0 means the treaty does not specify a reduced rate for that income type
+ * (domestic rate applies).
+ */
+export const TREATY_RATES: Record<string, Record<TreatyIncomeType, number>> = {
+  'Australia':            { Dividends: 15, Interest: 15, Royalties: 25, 'Technical fees': 25 },
+  'Austria':              { Dividends: 10, Interest: 10, Royalties: 10, 'Technical fees': 10 },
+  'Bahrain':              { Dividends: 10, Interest: 10, Royalties: 10, 'Technical fees': 10 },
+  'Bangladesh':           { Dividends: 10, Interest: 15, Royalties: 10, 'Technical fees': 10 },
+  'Belgium':              { Dividends: 10, Interest: 10, Royalties: 15, 'Technical fees': 0  },
+  'Brazil':               { Dividends: 15, Interest: 15, Royalties: 15, 'Technical fees': 15 },
+  'Canada':               { Dividends: 15, Interest: 15, Royalties: 10, 'Technical fees': 0  },
+  'China':                { Dividends: 10, Interest: 10, Royalties: 15, 'Technical fees': 0  },
+  'Czech Republic':       { Dividends: 10, Interest: 10, Royalties: 10, 'Technical fees': 0  },
+  'Denmark':              { Dividends: 15, Interest: 10, Royalties: 15, 'Technical fees': 0  },
+  'Finland':              { Dividends: 15, Interest: 15, Royalties: 15, 'Technical fees': 0  },
+  'France':               { Dividends: 15, Interest: 15, Royalties: 15, 'Technical fees': 0  },
+  'Germany':              { Dividends: 10, Interest: 10, Royalties: 10, 'Technical fees': 10 },
+  'Hungary':              { Dividends: 10, Interest: 10, Royalties: 10, 'Technical fees': 0  },
+  'India':                { Dividends: 15, Interest: 15, Royalties: 15, 'Technical fees': 15 },
+  'Indonesia':            { Dividends: 15, Interest: 15, Royalties: 15, 'Technical fees': 0  },
+  'Israel':               { Dividends: 10, Interest: 10, Royalties: 10, 'Technical fees': 0  },
+  'Italy':                { Dividends: 10, Interest: 10, Royalties: 10, 'Technical fees': 0  },
+  'Japan':                { Dividends: 10, Interest: 10, Royalties: 10, 'Technical fees': 0  },
+  'Kuwait':               { Dividends: 10, Interest: 10, Royalties: 10, 'Technical fees': 0  },
+  'Malaysia':             { Dividends: 15, Interest: 15, Royalties: 25, 'Technical fees': 0  },
+  'Netherlands':          { Dividends: 10, Interest: 10, Royalties: 10, 'Technical fees': 0  },
+  'New Zealand':          { Dividends: 15, Interest: 10, Royalties: 15, 'Technical fees': 0  },
+  'Nigeria':              { Dividends: 12.5, Interest: 12.5, Royalties: 12.5, 'Technical fees': 0 },
+  'Norway':               { Dividends: 15, Interest: 15, Royalties: 25, 'Technical fees': 0  },
+  'Pakistan':             { Dividends: 15, Interest: 15, Royalties: 15, 'Technical fees': 0  },
+  'Poland':               { Dividends: 10, Interest: 10, Royalties: 10, 'Technical fees': 0  },
+  'Qatar':                { Dividends: 10, Interest: 10, Royalties: 10, 'Technical fees': 10 },
+  'Romania':              { Dividends: 10, Interest: 10, Royalties: 10, 'Technical fees': 0  },
+  'Russia':               { Dividends: 10, Interest: 10, Royalties: 15, 'Technical fees': 0  },
+  'Singapore':            { Dividends: 15, Interest: 15, Royalties: 15, 'Technical fees': 0  },
+  'South Korea':          { Dividends: 10, Interest: 10, Royalties: 10, 'Technical fees': 0  },
+  'Spain':                { Dividends: 10, Interest: 10, Royalties: 10, 'Technical fees': 0  },
+  'Sri Lanka':            { Dividends: 10, Interest: 10, Royalties: 10, 'Technical fees': 0  },
+  'Sweden':               { Dividends: 15, Interest: 15, Royalties: 15, 'Technical fees': 0  },
+  'Switzerland':          { Dividends: 15, Interest: 10, Royalties: 10, 'Technical fees': 0  },
+  'Thailand':             { Dividends: 15, Interest: 15, Royalties: 15, 'Technical fees': 0  },
+  'Turkey':               { Dividends: 15, Interest: 10, Royalties: 10, 'Technical fees': 0  },
+  'United Arab Emirates': { Dividends: 10, Interest: 10, Royalties: 10, 'Technical fees': 0  },
+  'United Kingdom':       { Dividends: 15, Interest: 10, Royalties: 15, 'Technical fees': 0  },
+  'United States':        { Dividends: 20, Interest: 15, Royalties: 15, 'Technical fees': 0  },
+  'Vietnam':              { Dividends: 10, Interest: 15, Royalties: 10, 'Technical fees': 0  },
+  'Zimbabwe':             { Dividends: 10, Interest: 10, Royalties: 10, 'Technical fees': 0  },
+};
+
 /** The company's own tax registration (Settings › Accounting & Tax › Company tax profile). */
 export interface CompanyTaxProfile {
   id: string;

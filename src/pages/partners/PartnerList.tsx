@@ -130,7 +130,7 @@ export function PartnerList({ scope }: { scope: PartnerScope }) {
       sortable: true,
       cell: (p) => {
         const name = defaultContactName(p);
-        return name ? <TableUser name={name} subcopy={defaultContact(p)?.email || p.email} initials={initials(name)} /> : '—';
+        return name ? <TableUser name={name} subcopy={defaultContact(p)?.email || p.contactChannels.find((c) => c.type === 'Email')?.value} initials={initials(name)} /> : '—';
       },
     },
     { key: 'city', header: 'City', sortable: true, cell: (p) => defaultBillTo(p)?.city || '—' },

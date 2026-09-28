@@ -1,13 +1,10 @@
 import { useState } from 'react';
-import { Button, Icon, Link, List, Text } from '@jasperlepardo/sikat-design-system';
+import { Icon, Link, List, Text } from '@jasperlepardo/sikat-design-system';
 import { RowMenu } from '../../../components/form/RowMenu';
 import { COUNTRIES, PH_PROVINCES } from '../../../mocks/masters';
-import { newAddress, type AddressType, type PartnerAddress } from '../../../mocks/partners';
+import { newAddress, type PartnerAddress } from '../../../mocks/partners';
 import { EditPanel } from './EditPanel';
-import { Fields, Section, bind, type Draft, type Errors } from './fields';
-
-export const TYPE_LABEL: Record<AddressType, string> = { bill: 'Bill to', ship: 'Ship to' };
-export const defaultKey = { bill: 'defaultBillToId', ship: 'defaultShipToId' } as const;
+import { Fields, Flags, Section, bind, type Draft, type Errors } from './fields';
 
 const mapUrl = (a: PartnerAddress) =>
   `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([addressLine(a), a.zip, a.country].filter(Boolean).join(', '))}`;
@@ -23,7 +20,7 @@ export function addressProblems(a: PartnerAddress): Errors {
   return e;
 }
 
-/** Bill-to and ship-to addresses as cards in the side column; adding and editing happen in `AddressPanel`. */
+/** Addresses as cards in the side column; adding and editing happen in `AddressPanel`. */
 export function AddressesCards({
   draft,
   update,
@@ -35,82 +32,69 @@ export function AddressesCards({
 }) {
   const remove = (a: PartnerAddress) => {
     const addresses = draft.addresses.filter((x) => x.id !== a.id);
-    const key = defaultKey[a.type];
     update({
       addresses,
-      [key]: draft[key] === a.id ? (addresses.find((x) => x.type === a.type)?.id ?? '') : draft[key],
+      defaultBillToId: draft.defaultBillToId === a.id ? (addresses.find((x) => x.isBilling)?.id ?? '') : draft.defaultBillToId,
+      defaultShipToId: draft.defaultShipToId === a.id ? (addresses.find((x) => x.isShipping)?.id ?? '') : draft.defaultShipToId,
     });
   };
 
   return (
-    <>
-      {(['bill', 'ship'] as const).map((type) => {
-        const rows = draft.addresses.filter((a) => a.type === type);
-        const other = type === 'bill' ? 'ship' : 'bill';
-        return (
-          <Section
-            key={type}
-            icon={type === 'bill' ? 'receipt_long' : 'local_shipping'}
-            title={`${TYPE_LABEL[type]}${rows.length ? ` · ${rows.length}` : ''}`}
-            actions={
-              <Button
-                type="button"
-                size="small"
-                variant="ghost"
-                aria-label={`New ${TYPE_LABEL[type].toLowerCase()} address`}
-                leadingIcon={<Icon size={16}>add</Icon>}
-                onClick={() => onOpen(newAddress(type, { label: rows.length ? '' : 'Main office' }), true)}
-              >
-                New
-              </Button>
-            }
-          >
-            {rows.length ? (
-              <List.Group>
-                {rows.map((a) => {
-                  const isDefault = a.id === draft[defaultKey[type]];
-                  return (
-                    <List.Card
-                      key={a.id}
-                      title={a.label || 'Untitled address'}
-                      icon={<Icon size={16}>location_on</Icon>}
-                      badge={isDefault ? <Icon size={12}>star</Icon> : undefined}
-                      fields={[
-                        { label: 'Street', value: [[a.streetNo, a.street].filter(Boolean).join(' '), a.building].filter(Boolean).join(', ') },
-                        { label: 'Barangay', value: a.block },
-                        { label: 'City', value: a.city },
-                        { label: 'Province', value: [a.province, a.zip].filter(Boolean) },
-                        { label: 'Country', value: a.country },
-                      ].filter((x) => (Array.isArray(x.value) ? x.value.length : x.value))}
-                      actions={
-                        <RowMenu
-                          label={`Actions for ${a.label || 'address'}`}
-                          items={[
-                            { label: 'Edit', icon: 'edit', onSelect: () => onOpen(a, false) },
-                            { label: 'Set as default', icon: 'star', disabled: isDefault, onSelect: () => update({ [defaultKey[type]]: a.id }) },
-                            {
-                              label: `Copy to ${TYPE_LABEL[other].toLowerCase()}`,
-                              icon: 'content_copy',
-                              onSelect: () => onOpen({ ...a, id: newAddress(other).id, type: other }, true),
-                            },
-                            { label: 'Show on map', icon: 'map', onSelect: () => window.open(mapUrl(a), '_blank', 'noopener') },
-                            { label: 'Remove', icon: 'delete', onSelect: () => remove(a) },
-                          ]}
-                        />
-                      }
-                    />
-                  );
-                })}
-              </List.Group>
-            ) : (
-              <Text variant="small" tone="muted">
-                No {TYPE_LABEL[type].toLowerCase()} address. At least one is recommended.
-              </Text>
-            )}
-          </Section>
-        );
-      })}
-    </>
+    <Section
+      icon="location_on"
+      title={`Addresses${draft.addresses.length ? ` · ${draft.addresses.length}` : ''}`}
+      actions={
+        <Link
+          aria-label="New address"
+          leadingIcon={<Icon size={20}>add</Icon>}
+          onClick={() => onOpen(newAddress({ label: draft.addresses.length ? '' : 'Main office' }), true)}
+        >
+          New
+        </Link>
+      }
+    >
+      {draft.addresses.length ? (
+        <List.Group>
+          {draft.addresses.map((a) => {
+            const isDefaultBill = a.id === draft.defaultBillToId;
+            const isDefaultShip = a.id === draft.defaultShipToId;
+            const tags = [a.isBilling && 'Billing', a.isShipping && 'Shipping'].filter(Boolean).join(' · ');
+            return (
+              <List.Card
+                key={a.id}
+                title={a.label || 'Untitled address'}
+                icon={<Icon size={16}>location_on</Icon>}
+                badge={(isDefaultBill || isDefaultShip) ? <Icon size={12}>star</Icon> : undefined}
+                fields={[
+                  tags ? { label: 'Used as', value: tags } : null,
+                  { label: 'Street', value: [[a.streetNo, a.street].filter(Boolean).join(' '), a.building].filter(Boolean).join(', ') },
+                  { label: 'Barangay', value: a.block },
+                  { label: 'City', value: a.city },
+                  { label: 'Province', value: [a.province, a.zip].filter(Boolean) },
+                  { label: 'Country', value: a.country },
+                ].filter((x): x is NonNullable<typeof x> => !!x && (Array.isArray(x.value) ? x.value.length > 0 : !!x.value))}
+                actions={
+                  <RowMenu
+                    label={`Actions for ${a.label || 'address'}`}
+                    items={[
+                      { label: 'Edit', icon: 'edit', onSelect: () => onOpen(a, false) },
+                      { label: 'Set as default billing', icon: 'receipt_long', disabled: isDefaultBill || !a.isBilling, onSelect: () => update({ defaultBillToId: a.id }) },
+                      { label: 'Set as default shipping', icon: 'local_shipping', disabled: isDefaultShip || !a.isShipping, onSelect: () => update({ defaultShipToId: a.id }) },
+                      { label: 'Show on map', icon: 'map', onSelect: () => window.open(mapUrl(a), '_blank', 'noopener') },
+                      { label: 'Remove', icon: 'delete', onSelect: () => remove(a) },
+                    ]}
+                  />
+                }
+              />
+            );
+          })}
+        </List.Group>
+      ) : (
+        <Text variant="small" tone="muted">
+          No addresses yet.
+        </Text>
+      )}
+    </Section>
   );
 }
 
@@ -133,7 +117,6 @@ export function AddressPanel({
   const [errors, setErrors] = useState<Errors>(formErrors);
   const f = bind(address, (p: Partial<PartnerAddress>) => {
     setAddress((a) => ({ ...a, ...p }));
-    // Editing a field clears its error.
     setErrors((e) => Object.fromEntries(Object.entries(e).filter(([k]) => !Object.keys(p).some((f) => k.endsWith(`:${f}`)))));
   });
   const err = (field: string) => errors[`address:${address.id}:${field}`];
@@ -146,7 +129,7 @@ export function AddressPanel({
   return (
     <EditPanel
       icon="location_on"
-      title={isNew ? `New ${TYPE_LABEL[value.type].toLowerCase()} address` : `${TYPE_LABEL[value.type]} · ${value.label || 'Untitled address'}`}
+      title={isNew ? 'New address' : (value.label || 'Untitled address')}
       onCancel={onCancel}
       onDone={done}
     >
@@ -173,6 +156,12 @@ export function AddressPanel({
         <Link href={mapUrl(address)} target="_blank" rel="noreferrer">
           Show location on map
         </Link>
+      </Section>
+      <Section icon="sell" title="Usage">
+        <Flags>
+          {f.check('isBilling', 'Billing address')}
+          {f.check('isShipping', 'Shipping address')}
+        </Flags>
       </Section>
     </EditPanel>
   );

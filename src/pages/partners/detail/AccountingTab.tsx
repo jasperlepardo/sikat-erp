@@ -3,8 +3,6 @@ import { Radio, Text } from '@jasperlepardo/sikat-design-system';
 import { AccountField, useAccounts } from '../../../components/form/AccountField';
 import { PLANNING_GROUPS } from '../../../mocks/masters';
 import type { Partner } from '../../../mocks/partners';
-import { SALES_VAT_TREATMENTS, SUPPLIER_VAT_STATUSES, type WithholdingTax } from '../../../mocks/taxes';
-import { withholdingTaxes } from '../../../services/masterData';
 import { listPartners } from '../../../services/partners';
 import type { TabProps } from './GeneralTab';
 import { Fields, Flags, ReadOnly, Section, bind } from './fields';
@@ -15,80 +13,15 @@ export function AccountingTab({ draft, update, errors }: TabProps) {
   const isVendor = draft.roles.includes('vendor');
   const chart = useAccounts();
   const [others, setOthers] = useState<Partner[]>([]);
-  const [withholding, setWithholding] = useState<WithholdingTax[]>([]);
   useEffect(() => {
     listPartners().then((all) => setOthers(all.filter((p) => p.id !== draft.id)));
-    withholdingTaxes.list().then(setWithholding);
   }, [draft.id]);
-
-  // Individuals and sole proprietors use WI codes; companies use WC codes.
-  const payee = ['Individual', 'Sole proprietorship'].includes(draft.businessType) ? 'Individual' : 'Corporate';
-  const withholdingOptions = [
-    { value: '', label: 'Use the rules (by item and company status)' },
-    ...withholding
-      .filter((w) => (w.active && (w.kind === 'Expanded (EWT)' || w.kind === 'Final (FWT)') && w.agent !== 'Government' && w.payee === payee) || w.id === draft.withholdingOverrideId)
-      .map((w) => ({ value: w.id, label: `${w.atc || 'ATC to confirm'}${w.kind === 'Final (FWT)' ? ' (final)' : ''} · ${w.description}${w.condition ? ` — ${w.condition}` : ''} (${w.rate}%)` })),
-  ];
 
   const consolidating = others.find((p) => p.id === draft.consolidatingPartnerId);
   const partnerOptions = ['— None —', ...others.map((p) => `${p.code} · ${p.name}`)];
 
   return (
     <>
-      <Section icon="receipt_long" title="Tax">
-        <Text variant="small" tone="muted">
-          Used by tax determination: these statuses override the item’s default tax code. Test them in Settings › Accounting &
-          Tax › Determination rules.
-        </Text>
-        <Fields>
-          {isCustomer
-            ? f.choose('salesVatTreatment', 'VAT treatment as a customer', SALES_VAT_TREATMENTS, {
-                hint: 'Government → 31 (buyer withholds 5% VAT) · Zero-rated → 32 · Exempt entity → 33 · Regular → the item’s code.',
-              })
-            : null}
-          {isCustomer && draft.salesVatTreatment === 'Zero-rated' ? (
-            <>
-              {f.text('zeroRatedCertificate', 'Zero-rating certificate no.', {
-                required: true,
-                error: errors.zeroRatedCertificate,
-                placeholder: 'e.g. PEZA-REE-2024-0183',
-              })}
-              {f.date('zeroRatedValidUntil', 'Certificate valid until', {
-                hint: 'After this date sales fall back to regular VAT.',
-              })}
-            </>
-          ) : null}
-          {isVendor
-            ? f.choose('supplierVatStatus', 'VAT status as a supplier', SUPPLIER_VAT_STATUSES, {
-                hint: 'Non-VAT → no input VAT (48) · Non-resident digital → you withhold the 12% VAT (45).',
-              })
-            : null}
-          {isVendor
-            ? f.choose('withholdingOverrideId', 'Withholding tax override', withholdingOptions, {
-                hint: 'Leave on “Use the rules” unless this vendor always gets one specific ATC.',
-              })
-            : null}
-          <ReadOnly label="Withholding payee type" value={payee} hint="From Type of business on the General tab." />
-        </Fields>
-        {isVendor ? (
-          <>
-            <Flags>
-              {f.check(
-                'grossIncomeAboveThreshold',
-                `Gross income this year exceeds ${payee === 'Individual' ? '₱3M' : '₱720,000'}`,
-              )}
-              {f.check('nonResident', 'Non-resident — not doing business in the Philippines (final tax instead of EWT)')}
-            </Flags>
-            <Text variant="small" tone="muted">
-              {payee === 'Individual'
-                ? 'Individuals get the higher rate (e.g. WI011 10% instead of WI010 5%) above ₱3M, or when VAT-registered regardless of amount.'
-                : 'Corporations get the higher rate (e.g. WC011 15% instead of WC010 10%) above ₱720,000.'}{' '}
-              Also adjusts an override set to an income-tiered ATC.
-            </Text>
-          </>
-        ) : null}
-      </Section>
-
       <Section icon="account_tree" title="Control accounts">
         <Fields>
           {isCustomer ? (

@@ -1,6 +1,5 @@
 import { Checkbox, Radio, Text } from '@jasperlepardo/sikat-design-system';
 import {
-  BUSINESS_TYPES,
   CHANNELS,
   EMPLOYEES,
   INDUSTRIES,
@@ -8,11 +7,11 @@ import {
   TECHNICIANS,
   TERRITORIES,
 } from '../../../mocks/masters';
-import { LEAD_SOURCES, LEAD_STAGES, contactName, type PartnerRole, type PartnerStatus } from '../../../mocks/partners';
+import { LEAD_SOURCES, LEAD_STAGES, type PartnerRole, type PartnerStatus } from '../../../mocks/partners';
 import { ROLE_CONFIG, ROLE_ORDER } from '../roles';
 import { activeOptions, shippingTypes } from '../../../services/inventoryMasters';
 import { useAsync } from '../../../services/useAsync';
-import { Fields, Flags, ReadOnly, Section, bind, type Draft, type Errors } from './fields';
+import { Fields, Flags, Section, bind, type Draft, type Errors } from './fields';
 
 export interface TabProps {
   draft: Draft;
@@ -32,36 +31,13 @@ export function GeneralTab({ draft, update, errors, lockedRole }: TabProps) {
       roles: ROLE_ORDER.filter((x) => (x === r ? on : draft.roles.includes(x))),
       ...(on && r === 'lead' && !draft.leadStage ? { leadStage: 'New' as const, leadSource: LEAD_SOURCES[0] } : {}),
     });
-  const defaultContact = draft.contacts.find((c) => c.id === draft.defaultContactId);
   const shipping = useAsync(shippingTypes.list, []) ?? [];
 
   return (
     <>
-      <Section icon="call" title="Contact channels">
-        <Fields>
-          {f.text('tel1', 'Tel 1', { type: 'tel' })}
-          {f.text('tel2', 'Tel 2', { type: 'tel' })}
-          {f.text('mobile', 'Mobile phone', { type: 'tel' })}
-          {f.text('fax', 'Fax', { type: 'tel' })}
-          {f.text('email', 'Email', {
-            type: 'email',
-            error: errors.email,
-            hint: 'Default recipient for emailed documents.',
-          })}
-          {f.text('website', 'Website', { type: 'url', placeholder: 'https://' })}
-          <ReadOnly
-            label="Contact person"
-            value={defaultContact ? contactName(defaultContact) : '—'}
-            hint="The default contact under Contact persons in the side column."
-          />
-        </Fields>
-        <Flags>{f.check('blockMarketing', 'Block sending marketing content')}</Flags>
-      </Section>
-
       <Section icon="category" title="Classification">
         <Fields>
           {f.pick('industry', 'Industry', INDUSTRIES)}
-          {f.pick('businessType', 'Type of business', BUSINESS_TYPES)}
           {f.text('aliasName', 'Alias name', { hint: 'Short name used in search and lookups.' })}
           {f.choose('shippingType', 'Shipping type', activeOptions(shipping, (x) => x.id, (x) => x.name, draft.shippingType, '— None —'), {
             hint: 'Defaults into new documents. Shipping types live in Settings › Inventory.',
@@ -70,6 +46,7 @@ export function GeneralTab({ draft, update, errors, lockedRole }: TabProps) {
           {f.text('unifiedTin', 'Unified TIN', { hint: 'For partners in a tax-consolidated group.' })}
           {f.text('gln', 'GLN', { hint: 'Global Location Number, for e-invoicing.' })}
         </Fields>
+        <Flags>{f.check('blockMarketing', 'Block sending marketing content')}</Flags>
       </Section>
 
       <Section icon="assignment_ind" title="Assignment">

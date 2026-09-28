@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Button, Icon, List, Text } from '@jasperlepardo/sikat-design-system';
+import { Icon, Link, List, Text } from '@jasperlepardo/sikat-design-system';
 import { RowMenu } from '../../../components/form/RowMenu';
 import { EMAIL_GROUPS } from '../../../mocks/masters';
 import { contactName, newContact, type ContactPerson } from '../../../mocks/partners';
@@ -29,16 +29,13 @@ export function ContactsCards({
       icon="contacts"
       title={`Contact persons${draft.contacts.length ? ` · ${draft.contacts.length}` : ''}`}
       actions={
-        <Button
-          type="button"
-          size="small"
-          variant="ghost"
+        <Link
           aria-label="New contact person"
-          leadingIcon={<Icon size={16}>add</Icon>}
+          leadingIcon={<Icon size={20}>add</Icon>}
           onClick={() => onOpen(newContact(), true)}
         >
           New
-        </Button>
+        </Link>
       }
     >
       {draft.contacts.length ? (

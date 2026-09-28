@@ -6,6 +6,7 @@ import {
   Badge,
   Button,
   Form,
+  MultiSelect,
   Panel,
   PanelHeader,
   Select,
@@ -14,18 +15,22 @@ import {
   FormField,
 } from '@jasperlepardo/sikat-design-system';
 import { BP_GROUPS } from '../../../mocks/masters';
+import { RDOS } from '../../../mocks/taxes';
 import { currencies } from '../../../services/masterData';
-import { blankPartner, type ContactPerson, type PartnerAddress, type PartnerBankAccount, type PartnerRole } from '../../../mocks/partners';
+import { blankPartner, type ContactPerson, type PartnerAddress, type PartnerBankAccount, type PartnerContactChannel, type PartnerRole } from '../../../mocks/partners';
 import { convertLeadToCustomer, getPartner, isActive, savePartner } from '../../../services/partners';
 import { MASTER_CONFIG, ROLE_CONFIG, ROLE_ORDER, type PartnerScope } from '../roles';
 import { AccountingTab } from './AccountingTab';
-import { AddressPanel, AddressesCards, defaultKey } from './AddressesTab';
+import { AddressPanel, AddressesCards } from './AddressesTab';
 import { AttachmentsTab } from './AttachmentsTab';
 import { BankAccountPanel, BankAccountsCards } from './BankAccountsTab';
+import { ContactChannelPanel, ContactChannelsCards } from './ContactChannelsTab';
+import { DefaultsCard } from './DefaultsCard';
 import { ContactPanel, ContactsCards } from './ContactsTab';
 import { GeneralTab } from './GeneralTab';
 import { PaymentRunTab } from './PaymentRunTab';
 import { PaymentTermsTab } from './PaymentTermsTab';
+import { SettingsTab } from './SettingsTab';
 import { PropertiesTab } from './PropertiesTab';
 import { RemarksTab } from './RemarksTab';
 import { Fields, Section, bind, type Draft, type Errors } from './fields';
@@ -36,6 +41,7 @@ const TABS = [
   { value: 'general', label: 'General', Component: GeneralTab },
   { value: 'payment-terms', label: 'Payment terms', Component: PaymentTermsTab },
   { value: 'payment-run', label: 'Payment run', Component: PaymentRunTab },
+  { value: 'settings', label: 'Settings', Component: SettingsTab },
   { value: 'accounting', label: 'Accounting', Component: AccountingTab },
   { value: 'properties', label: 'Properties', Component: PropertiesTab },
   { value: 'remarks', label: 'Remarks', Component: RemarksTab },
@@ -52,6 +58,7 @@ type Editing =
   | { kind: 'contact'; value: ContactPerson; isNew: boolean }
   | { kind: 'address'; value: PartnerAddress; isNew: boolean }
   | { kind: 'bank'; value: PartnerBankAccount; isNew: boolean }
+  | { kind: 'channel'; value: PartnerContactChannel; isNew: boolean }
   | null;
 
 /** Mandatory fields from the BP field mapping, checked on Add/Save. */
@@ -63,12 +70,17 @@ function validate(d: Draft, codeMode: 'auto' | 'manual', chart: Account[] | unde
   need(d.name.trim(), 'header', 'name', 'Name is required.');
   need(d.group, 'header', 'group', 'Group is required.');
   need(d.currency, 'header', 'currency', 'Currency is required.');
-  need(!d.email || /^\S+@\S+\.\S+$/.test(d.email), 'general', 'email', 'Enter a valid email address.');
   need(
     !d.roles.includes('customer') || d.salesVatTreatment !== 'Zero-rated' || d.zeroRatedCertificate.trim(),
-    'accounting',
+    'settings',
     'zeroRatedCertificate',
     'Zero-rated customers need their zero-rating certificate number.',
+  );
+  need(
+    !d.roles.includes('customer') || d.salesVatTreatment !== 'Exempt entity' || d.exemptionCertificate.trim(),
+    'settings',
+    'exemptionCertificate',
+    'Exempt entity customers need their exemption certificate number.',
   );
   if (d.status === 'Advanced') {
     need(d.statusFrom, 'general', 'statusFrom', 'Pick a start date.');
@@ -121,7 +133,6 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
   const [draft, setDraft] = useState<Draft | null | undefined>(
     isNew ? (copyFrom ?? blankPartner(initialType)) : undefined,
   );
-  const [type, setType] = useState<PartnerRole>(initialType);
   const [codeMode, setCodeMode] = useState<'auto' | 'manual'>('auto');
   const [tab, setTab] = useState<TabId>('general');
   const [problems, setProblems] = useState<Problem[]>([]);
@@ -143,7 +154,7 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
     };
   }, [id, isNew]);
 
-  const config = scope === 'all' ? MASTER_CONFIG : ROLE_CONFIG[isNew ? type : scope];
+  const config = scope === 'all' ? MASTER_CONFIG : ROLE_CONFIG[isNew ? (draft?.roles[0] ?? initialType) : scope];
 
   if (draft === undefined) return <p className="p-4 text-muted">Loading {config.singular.toLowerCase()}…</p>;
   if (draft === null) {
@@ -162,9 +173,13 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
   const h = bind(draft, update);
   const groups = BP_GROUPS.filter((g) => draft.roles.includes(g.role)).map((g) => g.value);
 
-  const changeType = (next: PartnerRole) => {
-    setType(next);
-    update({ roles: [next], group: blankPartner(next).group, ...(next === 'lead' ? { leadStage: 'New' } : {}) });
+  const changeRoles = (next: PartnerRole[]) => {
+    if (next.length === 0) return;
+    const hadLead = draft.roles.includes('lead');
+    update({
+      roles: next,
+      ...(!hadLead && next.includes('lead') && !draft.leadStage ? { leadStage: 'New' as const } : {}),
+    });
   };
 
   /** Show where a problem is: a tab, or the side panel of the address it's about. */
@@ -191,6 +206,15 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
     );
     setEditing(null);
   };
+  const applyChannel = (ch: PartnerContactChannel, added: boolean) => {
+    update(
+      added
+        ? { contactChannels: [...draft.contactChannels, ch] }
+        : { contactChannels: draft.contactChannels.map((x) => (x.id === ch.id ? ch : x)) },
+    );
+    setEditing(null);
+  };
+
   const applyBank = (b: PartnerBankAccount, added: boolean) => {
     update(
       added
@@ -200,10 +224,13 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
     setEditing(null);
   };
   const applyAddress = (a: PartnerAddress, added: boolean) => {
-    const key = defaultKey[a.type];
     update(
       added
-        ? { addresses: [...draft.addresses, a], [key]: draft[key] || a.id }
+        ? {
+            addresses: [...draft.addresses, a],
+            defaultBillToId: draft.defaultBillToId || (a.isBilling ? a.id : ''),
+            defaultShipToId: draft.defaultShipToId || (a.isShipping ? a.id : ''),
+          }
         : { addresses: draft.addresses.map((x) => (x.id === a.id ? a : x)) },
     );
     setProblems(problems.filter((p) => !p.key.startsWith(`address:${a.id}:`)));
@@ -299,6 +326,8 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
 
             <div className="grid gap-2 lg:grid-cols-12">
               <aside className="flex flex-col gap-2 lg:col-span-3">
+                <DefaultsCard draft={draft} />
+                <ContactChannelsCards draft={draft} update={update} onOpen={(value, added) => setEditing({ kind: 'channel', value, isNew: added })} />
                 <ContactsCards draft={draft} update={update} onOpen={(value, added) => setEditing({ kind: 'contact', value, isNew: added })} />
                 <AddressesCards draft={draft} update={update} onOpen={(value, added) => setEditing({ kind: 'address', value, isNew: added })} />
                 <BankAccountsCards draft={draft} update={update} onOpen={(value, added) => setEditing({ kind: 'bank', value, isNew: added })} />
@@ -333,14 +362,13 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
                         />
                       )}
                     </FormField>
-                    <FormField label="Type" tooltip={isNew ? 'Locks after the partner is added.' : 'Add more roles on the General tab.'}>
+                    <FormField label="Type">
                       {(p) => (
-                        <Select
+                        <MultiSelect
                           {...p}
                           options={ROLE_ORDER.map((r) => ({ value: r, label: ROLE_CONFIG[r].singular }))}
-                          value={isNew ? type : scope === 'all' ? draft.roles[0] : scope}
-                          disabled={!isNew}
-                          onValueChange={(v) => changeType(v as PartnerRole)}
+                          value={draft.roles}
+                          onValueChange={(v) => changeRoles(v as PartnerRole[])}
                         />
                       )}
                     </FormField>
@@ -353,6 +381,8 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
                       hint: 'Active currencies from Settings › Accounting & Tax.',
                     })}
                     {h.text('tin', 'TIN', { placeholder: '000-000-000-000', hint: 'BIR Taxpayer Identification Number.' })}
+                    {h.text('birCorNumber', 'BIR COR no.', { placeholder: '000-000-000-000', hint: 'BIR Certificate of Registration (Form 2303).' })}
+                    {h.choose('rdoCode', 'BIR RDO', [{ value: '', label: '— None —' }, ...RDOS], { hint: 'Revenue District Office where the partner is registered.' })}
                   </Fields>
                 </Section>
 
@@ -369,7 +399,7 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
                   draft={draft}
                   update={update}
                   errors={errors}
-                  lockedRole={scope === 'all' ? undefined : isNew ? type : scope}
+                  lockedRole={scope === 'all' ? undefined : scope}
                 />
               </div>
             </div>
@@ -402,6 +432,14 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
           isNew={editing.isNew}
           currencies={currencyCodes}
           onDone={(b) => applyBank(b, editing.isNew)}
+          onCancel={() => setEditing(null)}
+        />
+      ) : editing?.kind === 'channel' ? (
+        <ContactChannelPanel
+          key={editing.value.id}
+          value={editing.value}
+          isNew={editing.isNew}
+          onDone={(ch) => applyChannel(ch, editing.isNew)}
           onCancel={() => setEditing(null)}
         />
       ) : null}

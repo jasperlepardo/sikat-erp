@@ -7,7 +7,6 @@ import {
   PRICE_LISTS,
   PRIORITIES,
 } from '../../../mocks/masters';
-import { bankAccountTitle } from './BankAccountsTab';
 import type { TabProps } from './GeneralTab';
 import { Fields, Flags, ReadOnly, Section, bind } from './fields';
 
@@ -62,21 +61,6 @@ export function PaymentTermsTab({ draft, update, errors }: TabProps) {
             value={`${draft.averageDelayDays} day${draft.averageDelayDays === 1 ? '' : 's'}`}
             hint="Calculated from payment history."
           />
-        </Fields>
-      </Section>
-
-      <Section icon="account_balance" title="Bank">
-        <Fields>
-          {f.choose(
-            'defaultBankAccountId',
-            'Default bank account',
-            draft.bankAccounts.map((b) => ({ value: b.id, label: `${bankAccountTitle(b)}${b.accountName ? ` (${b.accountName})` : ''}` })),
-            {
-              placeholder: draft.bankAccounts.length ? 'Select an account' : 'No bank accounts yet',
-              disabled: !draft.bankAccounts.length,
-              hint: 'Used when paying this partner. Add or edit accounts under Bank accounts in the side column.',
-            },
-          )}
         </Fields>
       </Section>
 

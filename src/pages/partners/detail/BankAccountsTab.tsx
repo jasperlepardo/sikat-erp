@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Button, Icon, List, Text } from '@jasperlepardo/sikat-design-system';
+import { Icon, Link, List, Text } from '@jasperlepardo/sikat-design-system';
 import { RowMenu } from '../../../components/form/RowMenu';
 import { BANKS, COUNTRIES } from '../../../mocks/masters';
 import { newBankAccount, type PartnerBankAccount } from '../../../mocks/partners';
@@ -31,18 +31,15 @@ export function BankAccountsCards({
       icon="account_balance"
       title={`Bank accounts${draft.bankAccounts.length ? ` · ${draft.bankAccounts.length}` : ''}`}
       actions={
-        <Button
-          type="button"
-          size="small"
-          variant="ghost"
+        <Link
           aria-label="New bank account"
-          leadingIcon={<Icon size={16}>add</Icon>}
+          leadingIcon={<Icon size={20}>add</Icon>}
           onClick={() =>
             onOpen(newBankAccount({ accountName: draft.name, currency: draft.currency === 'All currencies' ? 'PHP' : draft.currency }), true)
           }
         >
           New
-        </Button>
+        </Link>
       }
     >
       {draft.bankAccounts.length ? (

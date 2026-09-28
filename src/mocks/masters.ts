@@ -15,7 +15,18 @@ export const BP_GROUPS: { value: string; role: PartnerRole }[] = [
 ];
 
 export const INDUSTRIES = ['Construction', 'Retail', 'Manufacturing', 'Real estate', 'Agriculture', 'Services', 'Government', 'Wholesale'];
-export const BUSINESS_TYPES = ['Company', 'Sole proprietorship', 'Partnership', 'Cooperative', 'Individual', 'Government'];
+export const BUSINESS_TYPES = [
+  'Company',
+  'Resident foreign company',
+  'Non-resident foreign company',
+  'Sole proprietorship',
+  'Partnership',
+  'Resident foreign partnership',
+  'Non-resident foreign partnership',
+  'Cooperative',
+  'Individual',
+  'Government',
+];
 export const EMPLOYEES = ['— None —', 'Andrea Ramos', 'Ben Salazar', 'Carla Uy', 'Dino Pascual'];
 export const TECHNICIANS = ['— None —', 'Edgar Bautista', 'Fe Lopez'];
 export const TERRITORIES = ['— None —', 'NCR', 'North Luzon', 'South Luzon', 'Visayas', 'Mindanao'];
@@ -36,6 +47,16 @@ export const COUNTRIES = [
   'Philippines', 'China', 'Japan', 'South Korea', 'Taiwan', 'Vietnam', 'Thailand', 'Malaysia', 'Singapore',
   'Indonesia', 'India', 'United States', 'Germany', 'France',
 ];
+
+/** Countries with an existing tax treaty with the Philippines (BIR-recognized, as of 2024). */
+export const TREATY_COUNTRIES = [
+  'Australia', 'Austria', 'Bahrain', 'Bangladesh', 'Belgium', 'Brazil', 'Canada', 'China',
+  'Czech Republic', 'Denmark', 'Finland', 'France', 'Germany', 'Hungary', 'India', 'Indonesia',
+  'Israel', 'Italy', 'Japan', 'Kuwait', 'Malaysia', 'Netherlands', 'New Zealand', 'Nigeria',
+  'Norway', 'Pakistan', 'Poland', 'Qatar', 'Romania', 'Russia', 'Singapore', 'South Korea',
+  'Spain', 'Sri Lanka', 'Sweden', 'Switzerland', 'Thailand', 'Turkey', 'United Arab Emirates',
+  'United Kingdom', 'United States', 'Vietnam', 'Zimbabwe',
+] as const;
 export const PH_PROVINCES = [
   'Metro Manila', 'Bulacan', 'Cavite', 'Laguna', 'Rizal', 'Pampanga', 'Benguet', 'Batangas',
   'Cebu', 'Iloilo', 'Negros Occidental', 'Davao del Sur', 'Misamis Oriental', 'Other',

@@ -1,15 +1,21 @@
 import { useRef, useState } from 'react';
-import { Button, Icon, TableActions, Text, TextField, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { Card, Icon, Link, List, Text, TextField, Button } from '@jasperlepardo/sikat-design-system';
 import { CURRENT_USER, type Attachment } from '../../mocks/common';
-import { DataTable } from './DataTable';
+import { RowMenu } from './RowMenu';
 
 const formatSize = (bytes: number) =>
   bytes < 1024 ? `${bytes} B` : bytes < 1024 ** 2 ? `${(bytes / 1024).toFixed(0)} KB` : `${(bytes / 1024 ** 2).toFixed(1)} MB`;
 
-/**
- * Attachments table with Browse / Display / Delete. Prototype: only file details
- * are saved; a file can be opened until the page reloads (there's no server).
- */
+const fileIcon = (name: string): string => {
+  const ext = name.split('.').pop()?.toLowerCase() ?? '';
+  if (ext === 'pdf') return 'picture_as_pdf';
+  if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext)) return 'image';
+  if (['xlsx', 'xls', 'csv'].includes(ext)) return 'table_chart';
+  if (['docx', 'doc'].includes(ext)) return 'description';
+  if (['zip', 'rar', '7z'].includes(ext)) return 'folder_zip';
+  return 'attach_file';
+};
+
 export function AttachmentsCard({
   attachments,
   onChange,
@@ -19,11 +25,12 @@ export function AttachmentsCard({
   attachments: Attachment[];
   onChange: (attachments: Attachment[]) => void;
   emptyHint: string;
-  /** Show an editable Description column and the Created by stamp. */
   withDescription?: boolean;
 }) {
   const input = useRef<HTMLInputElement>(null);
   const [urls, setUrls] = useState<Record<string, string>>({});
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDesc, setEditDesc] = useState('');
 
   const addFiles = (files: FileList | null) => {
     if (!files?.length) return;
@@ -45,62 +52,10 @@ export function AttachmentsCard({
     onChange([...attachments, ...added]);
   };
 
-  const columns: TableColumn<Attachment>[] = [
-    { key: 'fileName', header: 'File name', cell: (a) => a.fileName },
-    ...(withDescription
-      ? [
-          {
-            key: 'description',
-            header: 'Description',
-            cell: (a: Attachment) => (
-              <TextField
-                aria-label={`Description of ${a.fileName}`}
-                size="md"
-                placeholder="What is this file?"
-                value={a.description ?? ''}
-                onChange={(e) =>
-                  onChange(attachments.map((x) => (x.id === a.id ? { ...x, description: e.currentTarget.value } : x)))
-                }
-              />
-            ),
-          },
-          { key: 'createdBy', header: 'Created by', cell: (a: Attachment) => a.createdBy ?? '—' },
-        ]
-      : []),
-    { key: 'size', header: 'Size', cell: (a) => formatSize(a.size) },
-    { key: 'attachedOn', header: withDescription ? 'Created on' : 'Attached on', cell: (a) => a.attachedOn },
-    {
-      key: 'actions',
-      header: 'Actions',
-      srOnlyHeader: true,
-      cell: (a) => (
-        <TableActions>
-          {[
-            <Button
-              key="display"
-              type="button"
-              size="small"
-              variant="ghost"
-              disabled={!urls[a.id]}
-              onClick={() => window.open(urls[a.id], '_blank')}
-            >
-              Display
-            </Button>,
-            <Button
-              key="delete"
-              type="button"
-              size="small"
-              variant="ghost"
-              intent="danger"
-              onClick={() => onChange(attachments.filter((x) => x.id !== a.id))}
-            >
-              Delete
-            </Button>,
-          ]}
-        </TableActions>
-      ),
-    },
-  ];
+  const saveDesc = (id: string) => {
+    onChange(attachments.map((a) => (a.id === id ? { ...a, description: editDesc } : a)));
+    setEditingId(null);
+  };
 
   return (
     <>
@@ -109,38 +64,70 @@ export function AttachmentsCard({
         type="file"
         multiple
         hidden
-        onChange={(e) => {
-          addFiles(e.currentTarget.files);
-          e.currentTarget.value = '';
-        }}
+        onChange={(e) => { addFiles(e.currentTarget.files); e.currentTarget.value = ''; }}
       />
-      <DataTable
-        icon="attach_file"
-        title="Attachments"
-        description="Prototype: file details are saved, but files can only be opened until you reload."
-        rows={attachments}
-        getRowId={(a) => a.id}
-        columns={columns}
-        unsortable={['description', 'actions']}
-        onRemove={(picked) => onChange(attachments.filter((a) => !picked.includes(a)))}
-        actions={
-          <Button
-            type="button"
-            size="small"
-            intent="primary"
-            variant="solid"
-            leadingIcon={<Icon size={16}>upload</Icon>}
-            onClick={() => input.current?.click()}
-          >
-            Browse
-          </Button>
-        }
-        empty={
-          <Text variant="small" tone="muted">
-            {emptyHint}
-          </Text>
-        }
-      />
+      <Card>
+        <Card.Header
+          icon={<Icon size={24}>attach_file</Icon>}
+          actions={
+            <Link leadingIcon={<Icon size={20}>upload</Icon>} onClick={() => input.current?.click()}>
+              Browse
+            </Link>
+          }
+        >
+          {`Attachments${attachments.length ? ` · ${attachments.length}` : ''}`}
+        </Card.Header>
+        <Card.Content>
+          {attachments.length ? (
+            <List.Group>
+              {attachments.map((a) =>
+                editingId === a.id ? (
+                  <li key={a.id} className="flex items-center gap-2 px-3 py-2">
+                    <div className="min-w-0 flex-1">
+                      <TextField
+                        placeholder="What is this file?"
+                        value={editDesc}
+                        onChange={(e) => setEditDesc(e.currentTarget.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); saveDesc(a.id); } if (e.key === 'Escape') setEditingId(null); }}
+                      />
+                    </div>
+                    <Button type="button" size="small" intent="primary" variant="solid" onClick={() => saveDesc(a.id)}>
+                      Save
+                    </Button>
+                    <Button type="button" size="small" variant="ghost" onClick={() => setEditingId(null)}>
+                      Cancel
+                    </Button>
+                  </li>
+                ) : (
+                  <List.Card
+                    key={a.id}
+                    title={a.fileName}
+                    icon={<Icon size={16}>{fileIcon(a.fileName)}</Icon>}
+                    fields={[
+                      ...(withDescription && a.description ? [{ label: 'Description', value: a.description }] : []),
+                      { label: 'Size', value: formatSize(a.size) },
+                      { label: withDescription ? 'Created on' : 'Attached on', value: a.attachedOn },
+                      ...(withDescription && a.createdBy ? [{ label: 'Created by', value: a.createdBy }] : []),
+                    ].filter((f) => f.value)}
+                    actions={
+                      <RowMenu
+                        label={`Actions for ${a.fileName}`}
+                        items={[
+                          { label: 'Display', icon: 'open_in_new', disabled: !urls[a.id], onSelect: () => window.open(urls[a.id], '_blank') },
+                          ...(withDescription ? [{ label: 'Edit description', icon: 'edit', onSelect: () => { setEditingId(a.id); setEditDesc(a.description ?? ''); } }] : []),
+                          { label: 'Delete', icon: 'delete', onSelect: () => onChange(attachments.filter((x) => x.id !== a.id)) },
+                        ]}
+                      />
+                    }
+                  />
+                ),
+              )}
+            </List.Group>
+          ) : (
+            <Text variant="small" tone="muted">{emptyHint}</Text>
+          )}
+        </Card.Content>
+      </Card>
     </>
   );
 }

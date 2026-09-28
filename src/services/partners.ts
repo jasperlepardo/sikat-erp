@@ -2,7 +2,7 @@ import { SEED_PARTNERS, contactName, type Partner, type PartnerRole } from '../m
 import { createCollection } from './store';
 
 // v8: G/L accounts are stored as chart-of-accounts codes.
-const partners = createCollection<Partner>('sikat-erp:partners:v9', SEED_PARTNERS, 'bp');
+const partners = createCollection<Partner>('sikat-erp:partners:v20', SEED_PARTNERS, 'bp');
 
 export const listPartners = partners.list;
 export const getPartner = partners.get;
@@ -44,4 +44,4 @@ export function isActive(p: Pick<Partner, 'status' | 'statusFrom' | 'statusTo'>,
 export const defaultContact = (p: Partner) => p.contacts.find((c) => c.id === p.defaultContactId) ?? p.contacts[0];
 export const defaultContactName = (p: Partner) => contactName(defaultContact(p));
 export const defaultBillTo = (p: Partner) =>
-  p.addresses.find((a) => a.id === p.defaultBillToId) ?? p.addresses.find((a) => a.type === 'bill');
+  p.addresses.find((a) => a.id === p.defaultBillToId) ?? p.addresses.find((a) => a.isBilling);
