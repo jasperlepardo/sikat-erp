@@ -38,7 +38,7 @@ const toOptions = (values: readonly string[]) => values.map((value) => ({ value,
 export function bind<T>(obj: T, update: (patch: Partial<T>) => void) {
   const patch = (key: keyof T, value: unknown) => update({ [key]: value } as Partial<T>);
   const field = (key: keyof T, label: ReactNode, o: FieldOptions, control: (p: object) => ReactNode) => (
-    <FormField key={String(key)} label={label} required={o.required} error={o.error} hint={o.hint} className={o.className}>
+    <FormField key={String(key)} label={label} required={o.required} error={o.error} tooltip={o.hint} className={o.className}>
       {(p) => control(p)}
     </FormField>
   );
@@ -174,9 +174,9 @@ export function Flags({ children }: { children: ReactNode }) {
 }
 
 /** A read-only value shown like a field (system-calculated values). Use inside `Fields`. */
-export function ReadOnly({ label, value, hint }: { label: string; value: ReactNode; hint?: ReactNode }) {
+export function ReadOnly({ label, value, hint, error }: { label: string; value: ReactNode; hint?: ReactNode; error?: string }) {
   return (
-    <FormField label={label} hint={hint}>
+    <FormField label={label} tooltip={hint} error={error}>
       <p className="px-2 py-2 text-sm text-body">{value}</p>
     </FormField>
   );

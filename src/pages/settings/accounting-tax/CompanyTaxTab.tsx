@@ -48,7 +48,7 @@ export function CompanyTaxTab() {
       <Fields cols={3}>
         {f.text('registeredName', 'Registered name')}
         {f.text('tin', 'TIN', { placeholder: '000-000-000-000', error })}
-        <FormField label="RDO code" hint="Revenue District Office on the COR.">
+        <FormField label="RDO code" tooltip="Revenue District Office on the COR.">
           {(p) => (
             <Combobox
               {...p}

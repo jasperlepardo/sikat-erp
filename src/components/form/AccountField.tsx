@@ -50,7 +50,7 @@ export function AccountField({
   const problem = accounts && value ? accountProblem(value, role, all) : undefined;
 
   return (
-    <FormField label={label} required={required} error={error ?? problem} hint={hint}>
+    <FormField label={label} required={required} error={error ?? problem} tooltip={hint}>
       {(p) => (
         <Select
           {...p}

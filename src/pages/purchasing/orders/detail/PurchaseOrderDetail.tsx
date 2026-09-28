@@ -357,7 +357,7 @@ function PurchaseOrderForm() {
                     label="Vendor"
                     required
                     error={errors.vendorId}
-                    hint={ctx.added ? 'Can’t change once the PO is added.' : 'Only vendors are listed.'}
+                    tooltip={ctx.added ? 'Can’t change once the PO is added.' : 'Only vendors are listed.'}
                   >
                     {(p) => (
                       <Combobox
@@ -402,7 +402,7 @@ function PurchaseOrderForm() {
                     label="Currency"
                     required
                     error={errors.currency}
-                    hint={
+                    tooltip={
                       allCurrencies
                         ? currencyEditable
                           ? 'This vendor takes all currencies — pick the document currency.'
@@ -436,7 +436,7 @@ function PurchaseOrderForm() {
 
               <Section icon="tag" title="Document">
                 <Fields>
-                  <FormField label="No." required error={errors.docNum} hint={ctx.added ? undefined : series.manual ? 'Manual series: type the number.' : 'Assigned from the series when the PO is added.'}>
+                  <FormField label="No." required error={errors.docNum} tooltip={ctx.added ? undefined : series.manual ? 'Manual series: type the number.' : 'Assigned from the series when the PO is added.'}>
                     {(p) => (
                       <div className="flex gap-1">
                         <Select
@@ -462,7 +462,8 @@ function PurchaseOrderForm() {
                   <ReadOnly
                     label="Status"
                     value={<Badge intent={STATUS_INTENT[isNew ? 'Draft' : draft.status]}>{isNew ? 'New' : draft.status}</Badge>}
-                    hint={errors.status ?? 'Set by the system: Open, Not Confirmed, Closed, Cancelled or Draft.'}
+                    hint="Set by the system: Open, Not Confirmed, Closed, Cancelled or Draft."
+                    error={errors.status}
                   />
                   {h.date('postingDate', 'Posting date', {
                     required: true,

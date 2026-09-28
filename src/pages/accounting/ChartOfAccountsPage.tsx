@@ -314,7 +314,7 @@ export function ChartOfAccountsPage() {
                   <Fields cols={3}>
                     {f.date('validFrom', 'Valid from', { hint: 'Postings dated earlier are refused.' })}
                     {f.date('validTo', 'Valid to', { error: errors.validTo, hint: 'Freeze the account after this date.' })}
-                    <FormField label="Required dimensions" hint="Postings must fill these in, e.g. the store for revenue and expenses.">
+                    <FormField label="Required dimensions" tooltip="Postings must fill these in, e.g. the store for revenue and expenses.">
                       {() => (
                         <div className="flex flex-wrap gap-x-4 gap-y-2 py-1">
                           {DIMENSIONS.map((d) => (

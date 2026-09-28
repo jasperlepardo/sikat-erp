@@ -264,7 +264,7 @@ function ItemForm() {
           <Section icon="inventory_2" title="Item">
             <Fields cols={3}>
               {isNew ? (
-                <FormField label="Numbering" hint={`Auto uses the group series, e.g. ${group?.prefix ?? 'ITM'}-00001.`}>
+                <FormField label="Numbering" tooltip={`Auto uses the group series, e.g. ${group?.prefix ?? 'ITM'}-00001.`}>
                   {(p) => (
                     <Select
                       {...p}
@@ -282,7 +282,7 @@ function ItemForm() {
                 label="Item No."
                 required
                 error={errors.itemNo}
-                hint={isNew ? 'Prefix by group, e.g. IPH- iPhone, ACC- accessories.' : locked ? LOCKED_HINT : undefined}
+                tooltip={isNew ? 'Prefix by group, e.g. IPH- iPhone, ACC- accessories.' : locked ? LOCKED_HINT : undefined}
               >
                 {(p) => (
                   <TextField
@@ -294,7 +294,7 @@ function ItemForm() {
                   />
                 )}
               </FormField>
-              <FormField label="Item type" required hint={locked ? LOCKED_HINT : 'Labor and Travel are never stocked.'}>
+              <FormField label="Item type" required tooltip={locked ? LOCKED_HINT : 'Labor and Travel are never stocked.'}>
                 {(p) => (
                   <Select
                     {...p}
@@ -315,7 +315,7 @@ function ItemForm() {
                 label="Item group"
                 required
                 error={errors.itemGroup}
-                hint={locked ? 'Changing it after postings can misalign G/L — check with Finance.' : 'Sets valuation and G/L defaults.'}
+                tooltip={locked ? 'Changing it after postings can misalign G/L — check with Finance.' : 'Sets valuation and G/L defaults.'}
               >
                 {(p) => (
                   <Select

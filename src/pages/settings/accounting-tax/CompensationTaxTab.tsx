@@ -46,7 +46,7 @@ const today = () => new Date().toISOString().slice(0, 10);
 
 function Amount({ label, value, onChange, hint }: { label: string; value: number; onChange: (v: number) => void; hint?: string }) {
   return (
-    <FormField label={label} hint={hint}>
+    <FormField label={label} tooltip={hint}>
       {(p) => <TextField {...p} type="number" min={0} prefix="PHP" value={String(value)} onChange={(e) => onChange(Number(e.currentTarget.value))} />}
     </FormField>
   );

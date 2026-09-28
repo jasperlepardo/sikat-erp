@@ -254,7 +254,7 @@ function ItemFormNew() {
           <Section icon="inventory_2" title="Item">
             <Fields cols={3}>
               {isNew ? (
-                <FormField label="Numbering" hint={`Auto uses the group series, e.g. ${group?.prefix ?? 'ITM'}-00001.`}>
+                <FormField label="Numbering" tooltip={`Auto uses the group series, e.g. ${group?.prefix ?? 'ITM'}-00001.`}>
                   {(p) => (
                     <Select
                       {...p}
@@ -272,7 +272,7 @@ function ItemFormNew() {
                 label="Item No."
                 required
                 error={errors.itemNo}
-                hint={isNew ? undefined : locked ? LOCKED_HINT : undefined}
+                tooltip={isNew ? undefined : locked ? LOCKED_HINT : undefined}
               >
                 {(p) => (
                   <TextField
@@ -284,7 +284,7 @@ function ItemFormNew() {
                   />
                 )}
               </FormField>
-              <FormField label="Item type" required hint={locked ? LOCKED_HINT : 'Labor and Travel are never stocked.'}>
+              <FormField label="Item type" required tooltip={locked ? LOCKED_HINT : 'Labor and Travel are never stocked.'}>
                 {(p) => (
                   <Select
                     {...p}
@@ -305,7 +305,7 @@ function ItemFormNew() {
                 label="Item group"
                 required
                 error={errors.itemGroup}
-                hint={locked ? 'Changing after postings can misalign G/L.' : 'Sets valuation and G/L defaults.'}
+                tooltip={locked ? 'Changing after postings can misalign G/L.' : 'Sets valuation and G/L defaults.'}
               >
                 {(p) => (
                   <Select
@@ -405,7 +405,7 @@ function ItemFormNew() {
                   label="Close configure panel"
                   onClick={() => setConfigureOpen(false)}
                 >
-                  close
+                  <Icon size={20}>close</Icon>
                 </IconButton>
                 <Button type="submit" intent="primary" variant="solid" size="extra-large" disabled={saving}>
                   {saving ? 'Saving…' : 'Save item'}

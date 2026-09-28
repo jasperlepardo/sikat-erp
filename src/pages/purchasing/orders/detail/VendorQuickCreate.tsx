@@ -137,7 +137,7 @@ export function VendorQuickCreate({ currencies, initialName = '', onClose, onCre
               <Card.Header icon={<Icon size={24}>badge</Icon>}>Business partner</Card.Header>
               <Card.Content>
                 <Fields cols={3}>
-                  <FormField label="Code" hint="Assigned on save.">
+                  <FormField label="Code" tooltip="Assigned on save.">
                     {(p) => <TextField {...p} value="" placeholder="Assigned on save" readOnly />}
                   </FormField>
                   <FormField label="Name" required error={errors.name}>
@@ -153,7 +153,7 @@ export function VendorQuickCreate({ currencies, initialName = '', onClose, onCre
                       />
                     )}
                   </FormField>
-                  <FormField label="Foreign name" hint="For bilingual printouts.">
+                  <FormField label="Foreign name" tooltip="For bilingual printouts.">
                     {(p) => (
                       <TextField
                         {...p}
@@ -172,7 +172,7 @@ export function VendorQuickCreate({ currencies, initialName = '', onClose, onCre
                       />
                     )}
                   </FormField>
-                  <FormField label="Currency" required error={errors.currency} hint="Active currencies from Settings › Accounting & Tax.">
+                  <FormField label="Currency" required error={errors.currency} tooltip="Active currencies from Settings › Accounting & Tax.">
                     {(p) => (
                       <Select
                         {...p}
@@ -182,7 +182,7 @@ export function VendorQuickCreate({ currencies, initialName = '', onClose, onCre
                       />
                     )}
                   </FormField>
-                  <FormField label="TIN" hint="BIR Taxpayer Identification Number.">
+                  <FormField label="TIN" tooltip="BIR Taxpayer Identification Number.">
                     {(p) => (
                       <TextField
                         {...p}
