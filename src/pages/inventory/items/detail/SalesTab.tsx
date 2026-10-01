@@ -10,7 +10,7 @@ export function SalesTab({ draft, update, errors, tax, inv }: TabProps) {
     <>
       <Section icon="sell" title="Selling unit & price">
         <Fields>
-          {f.choose('salesUom', 'Sales UoM', activeOptions(inv.uoms, (u) => u.code, (u) => `${u.code} · ${u.name}`, draft.salesUom))}
+          {f.lookup('salesUom', 'Sales UoM', activeOptions(inv.uoms, (u) => u.code, (u) => `${u.code} · ${u.name}`, draft.salesUom))}
           {f.num('itemsPerSalesUnit', `${draft.inventoryUom} per ${draft.salesUom}`, {
             required: converts,
             error: errors.itemsPerSalesUnit,
@@ -29,17 +29,17 @@ export function SalesTab({ draft, update, errors, tax, inv }: TabProps) {
 
       <Section icon="percent" title="Tax & commission">
         <Fields>
-          {f.choose('salesTaxGroup', 'Tax group', taxGroupOptions(tax, 'Sales', draft.salesTaxGroup), {
+          {f.lookup('salesTaxGroup', 'Tax group', taxGroupOptions(tax, 'Sales', draft.salesTaxGroup), {
             required: draft.salesItem,
             error: errors.salesTaxGroup,
             hint: draft.taxLiable
               ? taxResolution(tax, draft.salesTaxGroup, draft.salesTaxCode)
               : 'Not tax liable (General tab): no tax is charged on sales.',
           })}
-          {f.choose('salesTaxCode', 'Fixed sales tax code', taxCodeOptions(tax, 'Sales', draft.salesTaxCode), {
+          {f.lookup('salesTaxCode', 'Fixed sales tax code', taxCodeOptions(tax, 'Sales', draft.salesTaxCode), {
             hint: 'Overrides the tax group on every sale.',
           })}
-          {f.choose(
+          {f.lookup(
             'commissionGroup',
             'Commission group',
             activeOptions(inv.commissions, (c) => c.id, (c) => `${c.name} (${c.pct}%)`, draft.commissionGroup, '— None —'),
@@ -52,8 +52,8 @@ export function SalesTab({ draft, update, errors, tax, inv }: TabProps) {
       <Section icon="local_shipping" title="Fulfillment">
         <Fields>
           {f.num('salesLeadTimeDays', 'Lead time', { suffix: 'days', hint: 'Sets the promised delivery date on orders.' })}
-          {f.choose('shippingType', 'Shipping type', activeOptions(inv.shipping, (x) => x.id, (x) => x.name, draft.shippingType, '— None —'))}
-          {f.choose('warrantyTemplate', 'Warranty template', activeOptions(inv.warranties, (w) => w.id, (w) => `${w.name} · ${w.coverage}`, draft.warrantyTemplate, '— None —'), {
+          {f.lookup('shippingType', 'Shipping type', activeOptions(inv.shipping, (x) => x.id, (x) => x.name, draft.shippingType, '— None —'))}
+          {f.lookup('warrantyTemplate', 'Warranty template', activeOptions(inv.warranties, (w) => w.id, (w) => `${w.name} · ${w.coverage}`, draft.warrantyTemplate, '— None —'), {
             hint: draft.manageBy === 'Serial Numbers' ? 'Assigned to each serial number sold.' : 'Used with serial-numbered items.',
           })}
         </Fields>

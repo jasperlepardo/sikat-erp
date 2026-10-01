@@ -4,7 +4,7 @@ import { RowMenu } from '../../../components/form/RowMenu';
 import { EMAIL_GROUPS } from '../../../mocks/masters';
 import { contactName, newContact, type ContactPerson } from '../../../mocks/partners';
 import { EditPanel } from './EditPanel';
-import { Fields, Flags, Section, bind, type Draft } from './fields';
+import { Fields, Flags, Section, bind, type Draft, DefaultFlags, useDefaultPicks, type DefaultPicks, type DefaultRole } from './fields';
 
 /** Contact persons as cards in the side column; adding and editing happen in `ContactPanel`. */
 export function ContactsCards({
@@ -27,7 +27,7 @@ export function ContactsCards({
   return (
     <Section
       icon="contacts"
-      title={`Contact persons${draft.contacts.length ? ` · ${draft.contacts.length}` : ''}`}
+      title={`Contact persons${draft.contacts.length ? ` (${draft.contacts.length})` : ''}`}
       actions={
         <Link
           aria-label="New contact person"
@@ -81,47 +81,54 @@ export function ContactsCards({
 export function ContactPanel({
   value,
   isNew,
+  defaults,
   onDone,
   onCancel,
 }: {
   value: ContactPerson;
   isNew: boolean;
-  onDone: (contact: ContactPerson) => void;
+  /** Defaults this contact can hold (default contact person). */
+  defaults: DefaultRole[];
+  onDone: (contact: ContactPerson, picks: DefaultPicks) => void;
   onCancel: () => void;
 }) {
   const [contact, setContact] = useState(value);
+  const [picks, setPicks] = useDefaultPicks(defaults);
   const f = bind(contact, (p: Partial<ContactPerson>) => setContact((c) => ({ ...c, ...p })));
   return (
     <EditPanel
       icon="person"
       title={isNew ? 'New contact person' : contactName(value)}
       onCancel={onCancel}
-      onDone={() => onDone(contact)}
+      onDone={() => onDone(contact, picks)}
     >
       <Section icon="person" title="Contact person">
         <Fields cols={3}>
-          {f.text('firstName', 'First name')}
-          {f.text('middleName', 'Middle name')}
-          {f.text('lastName', 'Last name')}
+          {f.text('firstName', 'First name', { placeholder: 'e.g. Maria' })}
+          {f.text('middleName', 'Middle name', { placeholder: 'e.g. Santos' })}
+          {f.text('lastName', 'Last name', { placeholder: 'e.g. Dela Cruz' })}
         </Fields>
         <Fields>
           {f.text('title', 'Title', { placeholder: 'Engr., Atty., Ms.' })}
-          {f.text('position', 'Position')}
-          {f.text('email', 'Email', { type: 'email', hint: 'Used when this contact is picked on a document.' })}
-          {f.pick('emailGroup', 'Email group', EMAIL_GROUPS)}
-          {f.text('tel1', 'Telephone 1', { type: 'tel' })}
-          {f.text('tel2', 'Telephone 2', { type: 'tel' })}
-          {f.text('mobile', 'Mobile phone', { type: 'tel' })}
-          {f.text('fax', 'Fax', { type: 'tel' })}
-          {f.text('address', 'Address', { className: 'md:col-span-2' })}
-          {f.text('remarks1', 'Remarks 1')}
-          {f.text('remarks2', 'Remarks 2')}
+          {f.text('position', 'Position', { placeholder: 'e.g. Purchasing manager' })}
+          {f.text('email', 'Email', { placeholder: 'name@company.com', type: 'email', hint: 'Used when this contact is picked on a document.' })}
+          {f.pick('emailGroup', 'Email group', EMAIL_GROUPS, { clearable: true })}
+          {f.text('tel1', 'Telephone 1', { placeholder: 'e.g. (02) 8123 4567', type: 'tel' })}
+          {f.text('tel2', 'Telephone 2', { placeholder: 'e.g. (02) 8123 4567', type: 'tel' })}
+          {f.text('mobile', 'Mobile phone', { placeholder: 'e.g. 0917 123 4567', type: 'tel' })}
+          {f.text('fax', 'Fax', { placeholder: 'e.g. (02) 8123 4568', type: 'tel' })}
+          {f.text('address', 'Address', { placeholder: 'Street, barangay, city', className: 'md:col-span-2' })}
+          {f.text('remarks1', 'Remarks 1', { placeholder: 'Add a note' })}
+          {f.text('remarks2', 'Remarks 2', { placeholder: 'Add a note' })}
         </Fields>
         <Flags>
           {f.check('active', 'Active')}
           {f.check('eDocRecipient', 'E-document recipient')}
           {f.check('blockMarketing', 'Block sending marketing content')}
         </Flags>
+      </Section>
+      <Section icon="star" title="Defaults">
+        <DefaultFlags roles={defaults} picks={picks} onChange={setPicks} />
       </Section>
     </EditPanel>
   );

@@ -69,7 +69,7 @@ export function TaxGroupsTab(route: ListRoute) {
               {f.text('code', 'Code', { required: true, error: errors.code, placeholder: 'e.g. S-VAT12' })}
               {f.text('name', 'Name', { required: true, error: errors.name })}
               {f.pick('direction', 'Used on', ['Sales', 'Purchase'])}
-              {f.choose(
+              {f.lookup(
                 'taxCode',
                 'Default tax code',
                 codes

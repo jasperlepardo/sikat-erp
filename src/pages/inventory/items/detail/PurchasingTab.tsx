@@ -15,10 +15,10 @@ export function PurchasingTab({ draft, update, errors, vendors, tax, inv }: TabP
     <>
       <Section icon="storefront" title="Sourcing">
         <Fields>
-          {f.choose('defaultVendorId', 'Default vendor', vendorOptions(vendors), {
+          {f.lookup('defaultVendorId', 'Default vendor', vendorOptions(vendors), {
             hint: 'Pre-fills new purchase orders.',
           })}
-          {f.choose(
+          {f.lookup(
             'manufacturer',
             'Manufacturer',
             activeOptions(inv.manufacturers, (m) => m.code, (m) => `${m.code} · ${m.name}`, draft.manufacturer, '— None —'),
@@ -30,7 +30,7 @@ export function PurchasingTab({ draft, update, errors, vendors, tax, inv }: TabP
 
       <Section icon="inventory" title="Purchasing unit">
         <Fields>
-          {f.choose('purchasingUom', 'Purchasing UoM', uomCodes)}
+          {f.lookup('purchasingUom', 'Purchasing UoM', uomCodes)}
           {f.num('itemsPerPurchaseUnit', `${draft.inventoryUom} per ${draft.purchasingUom}`, {
             required: converts,
             error: errors.itemsPerPurchaseUnit,
@@ -45,15 +45,15 @@ export function PurchasingTab({ draft, update, errors, vendors, tax, inv }: TabP
       <Section icon="receipt_long" title="Import & tax">
         <Fields>
           {f.num('dutyPct', 'Duty', { suffix: '%', hint: 'Used in landed cost.' })}
-          {f.choose('purchaseTaxGroup', 'Tax group', taxGroupOptions(tax, 'Purchase', draft.purchaseTaxGroup), {
+          {f.lookup('purchaseTaxGroup', 'Tax group', taxGroupOptions(tax, 'Purchase', draft.purchaseTaxGroup), {
             required: draft.purchaseItem,
             error: errors.purchaseTaxGroup,
             hint: taxResolution(tax, draft.purchaseTaxGroup, draft.purchaseTaxCode),
           })}
-          {f.choose('purchaseTaxCode', 'Fixed purchasing tax code', taxCodeOptions(tax, 'Purchase', draft.purchaseTaxCode), {
+          {f.lookup('purchaseTaxCode', 'Fixed purchasing tax code', taxCodeOptions(tax, 'Purchase', draft.purchaseTaxCode), {
             hint: 'Overrides the tax group on every purchase.',
           })}
-          {f.choose('withholdingGroup', 'Withholding group', withholdingGroupOptions(tax, draft.withholdingGroup), {
+          {f.lookup('withholdingGroup', 'Withholding group', withholdingGroupOptions(tax, draft.withholdingGroup), {
             hint: (() => {
               const g = tax.withholdingGroups.find((x) => x.code === draft.withholdingGroup);
               if (!g) return 'Pick a withholding group.';

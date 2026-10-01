@@ -6,48 +6,51 @@ import {
   Badge,
   Button,
   Form,
+  IconButton,
   MultiSelect,
   Panel,
   PanelHeader,
+  panelHeaderIcons,
   Select,
   Tabs,
   TextField,
   FormField,
+  Text,
 } from '@jasperlepardo/sikat-design-system';
 import { BP_GROUPS } from '../../../mocks/masters';
 import { RDOS } from '../../../mocks/taxes';
 import { currencies } from '../../../services/masterData';
-import { LEAD_SOURCES, PARTNER_STATUSES, blankPartner, newAddress, newBankAccount, newContact, type ContactPerson, type PartnerAddress, type PartnerBankAccount, type PartnerContactChannel, type PartnerRole } from '../../../mocks/partners';
-import { convertLeadToCustomer, getPartner, isActive, savePartner } from '../../../services/partners';
+import { LEAD_SOURCES, PARTNER_STATUSES, blankPartner, contactName, type ContactPerson, type PartnerAddress, type PartnerRole } from '../../../mocks/partners';
+import { convertLeadToCustomer, getPartner, isActive, listPartners, listPartnersByRole, savePartner } from '../../../services/partners';
 import { MASTER_CONFIG, ROLE_CONFIG, ROLE_ORDER, type PartnerScope } from '../roles';
-import { AccountingTab } from './AccountingTab';
 import { AddressPanel, AddressesCards } from './AddressesTab';
-import { AttachmentsTab } from './AttachmentsTab';
-import { BankAccountPanel, BankAccountsCards } from './BankAccountsTab';
-import { ContactChannelPanel, ContactChannelsCards } from './ContactChannelsTab';
-import { DefaultsCard } from './DefaultsCard';
+import { AttachmentsCards } from './AttachmentsTab';
+import { accountKind, newAccountFor } from './PaymentAccounts';
+import { ContactChannelsFields, channelErrorKey } from './ContactChannelsTab';
+import { PaymentEntryPanel, PaymentMethodsCards, accountsOf, includedMethods, methodTitle, saveEntry, type PaymentEntry } from './PaymentMethodsTab';
 import { ContactPanel, ContactsCards } from './ContactsTab';
-import { GeneralTab } from './GeneralTab';
 import { PaymentRunTab } from './PaymentRunTab';
-import { PaymentTermsTab } from './PaymentTermsTab';
 import { SettingsTab } from './SettingsTab';
-import { PropertiesTab } from './PropertiesTab';
-import { RemarksTab } from './RemarksTab';
-import { Fields, Section, bind, type Draft, type Errors } from './fields';
+import { TransactionsTab } from './TransactionsTab';
+import { TaxTab } from './TaxTab';
+import { FieldStack, Section, bind, type DefaultKey, type DefaultPicks, type DefaultRole, type Draft, type Errors } from './fields';
 import { MoreMenu } from '../../../components/form/MoreMenu';
 import { ProblemsAlert, problemCollector, type Problem as ProblemBase } from '../../../components/form/ProblemsAlert';
 
 const TABS = [
-  { value: 'general', label: 'General', Component: GeneralTab },
-  { value: 'payment-terms', label: 'Payment terms', Component: PaymentTermsTab },
-  { value: 'payment-run', label: 'Payment run', Component: PaymentRunTab },
   { value: 'settings', label: 'Settings', Component: SettingsTab },
-  { value: 'accounting', label: 'Accounting', Component: AccountingTab },
-  { value: 'properties', label: 'Properties', Component: PropertiesTab },
-  { value: 'remarks', label: 'Remarks', Component: RemarksTab },
-  { value: 'attachments', label: 'Attachments', Component: AttachmentsTab },
+  { value: 'payment-run', label: 'Payment run', Component: PaymentRunTab },
+  { value: 'tax', label: 'Tax', Component: TaxTab },
 ] as const;
 type TabId = (typeof TABS)[number]['value'];
+
+/** Top-level views in the panel header. Transactions and Activity are placeholders for now. */
+const PAGES = [
+  { value: 'details', label: 'Details' },
+  { value: 'transactions', label: 'Transactions' },
+  { value: 'activity', label: 'Activity' },
+] as const;
+type PageId = (typeof PAGES)[number]['value'];
 
 /** Address problems point at the side column ('addresses'), which opens the address's side panel. */
 type ProblemTab = TabId | 'addresses';
@@ -57,8 +60,7 @@ type Problem = ProblemBase<ProblemTab>;
 type Editing =
   | { kind: 'contact'; value: ContactPerson; isNew: boolean }
   | { kind: 'address'; value: PartnerAddress; isNew: boolean }
-  | { kind: 'bank'; value: PartnerBankAccount; isNew: boolean }
-  | { kind: 'channel'; value: PartnerContactChannel; isNew: boolean }
+  | { kind: 'payment'; value: PaymentEntry; isNew: boolean }
   | null;
 
 /** Mandatory fields from the BP field mapping, checked on Add/Save. */
@@ -75,26 +77,29 @@ function validate(d: Draft, codeMode: 'auto' | 'manual', chart: Account[] | unde
     need(d.statusTo, 'header', 'statusTo', 'Pick an end date.');
     need(!d.statusFrom || !d.statusTo || d.statusFrom <= d.statusTo, 'header', 'statusTo', 'End date is before the start date.');
   }
+  for (const ch of d.contactChannels) {
+    need(ch.value.trim(), 'header', channelErrorKey(ch.id), `Enter the ${ch.label || ch.type} value, or remove it.`);
+  }
   for (const a of d.addresses) {
     need(a.label.trim(), 'addresses', `address:${a.id}:label`, 'Every address needs an Address ID.');
     need(a.country, 'addresses', `address:${a.id}:country`, 'Every address needs a country.');
   }
   if (d.roles.includes('customer')) {
-    need(d.customerPaymentTerms, 'payment-terms', 'customerPaymentTerms', 'Customer payment terms are required.');
+    need(d.customerPaymentTerms, 'settings', 'customerPaymentTerms', 'Customer payment terms are required.');
     const ar = chart ? accountProblem(d.receivableAccount, 'receivable', chart, true) : d.receivableAccount ? undefined : 'Pick an account.';
-    need(!ar, 'accounting', 'receivableAccount', ar === 'Pick an account.' ? 'Customers need an accounts receivable account.' : `Accounts receivable: ${ar}`);
+    need(!ar, 'settings', 'receivableAccount', ar === 'Pick an account.' ? 'Customers need an accounts receivable account.' : `Accounts receivable: ${ar}`);
   }
   if (d.roles.includes('vendor')) {
-    need(d.vendorPaymentTerms, 'payment-terms', 'vendorPaymentTerms', 'Vendor payment terms are required.');
+    need(d.vendorPaymentTerms, 'settings', 'vendorPaymentTerms', 'Vendor payment terms are required.');
     const ap = chart ? accountProblem(d.payableAccount, 'payable', chart, true) : d.payableAccount ? undefined : 'Pick an account.';
-    need(!ap, 'accounting', 'payableAccount', ap === 'Pick an account.' ? 'Vendors need an accounts payable account.' : `Accounts payable: ${ap}`);
+    need(!ap, 'settings', 'payableAccount', ap === 'Pick an account.' ? 'Vendors need an accounts payable account.' : `Accounts payable: ${ap}`);
   }
   for (const [key, role, label] of [
     ['downPaymentClearingAccount', 'downPaymentClearing', 'Down payment clearing account'],
     ['downPaymentInterimAccount', 'downPaymentInterim', 'Down payment interim account'],
   ] as const) {
     const problem = chart && accountProblem(d[key], role, chart);
-    need(!problem, 'accounting', key, `${label}: ${problem}`);
+    need(!problem, 'settings', key, `${label}: ${problem}`);
   }
   return problems;
 }
@@ -122,13 +127,22 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
     isNew ? (copyFrom ?? blankPartner(initialType)) : undefined,
   );
   const [codeMode, setCodeMode] = useState<'auto' | 'manual'>('auto');
-  const [tab, setTab] = useState<TabId>('general');
+  const [page, setPage] = useState<PageId>('details');
+  const [tab, setTab] = useState<TabId>('settings');
   const [problems, setProblems] = useState<Problem[]>([]);
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState<Editing>(null);
   const [currencyCodes, setCurrencyCodes] = useState<string[]>([]);
 
   const chart = useAccounts();
+  // Partners in the list this form was opened from, in the list's default order (by name), for previous/next.
+  const [siblings, setSiblings] = useState<{ id: string }[]>([]);
+  useEffect(() => {
+    if (isNew) return;
+    (scope === 'all' ? listPartners() : listPartnersByRole(scope)).then((all) =>
+      setSiblings([...all].sort((a, b) => a.name.localeCompare(b.name))),
+    );
+  }, [scope, isNew]);
   useEffect(() => {
     currencies.list().then((all) => setCurrencyCodes(all.filter((c) => c.active).map((c) => c.code)));
   }, []);
@@ -144,7 +158,7 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
 
   const config = scope === 'all' ? MASTER_CONFIG : ROLE_CONFIG[isNew ? (draft?.roles[0] ?? initialType) : scope];
 
-  if (draft === undefined) return <p className="p-4 text-muted">Loading {config.singular.toLowerCase()}…</p>;
+  if (draft === undefined) return <Text tone="muted" className="p-4">Loading {config.singular.toLowerCase()}…</Text>;
   if (draft === null) {
     return (
       <Panel className="flex-1">
@@ -159,6 +173,8 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
   const update = (patch: Partial<Draft>) => setDraft({ ...draft, ...patch });
   const errors: Errors = Object.fromEntries(problems.map((p) => [p.key, p.message]));
   const h = bind(draft, update);
+  // Side-column fields: label beside the control.
+  const beside = { orientation: 'vertical' as const };
   const groups = BP_GROUPS.filter((g) => draft.roles.includes(g.role)).map((g) => g.value);
 
   // A partner always keeps at least one role, and the role of the list it was opened from.
@@ -183,50 +199,52 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
   const check = () => {
     const found = validate(draft, isNew ? codeMode : 'manual', chart);
     setProblems(found);
+    if (found.length) setPage('details');
     const first = found[0];
     if (first && first.tab !== 'header') openProblem(first.tab, found);
     return !found.length;
   };
 
-  const applyContact = (c: ContactPerson, added: boolean) => {
-    update(
-      added
-        ? { contacts: [...draft.contacts, c], defaultContactId: draft.defaultContactId || c.id }
-        : { contacts: draft.contacts.map((x) => (x.id === c.id ? c : x)) },
-    );
-    setEditing(null);
+  /** The defaults a record holds, or could take over, for its edit panel. A new record starts holding any that are free. */
+  const role = (key: DefaultKey, label: string, id: string, isNew: boolean, nameOf: (id: string) => string | undefined): DefaultRole => {
+    const current = draft[key];
+    return { key, label, checked: isNew ? !current : current === id, holder: current && current !== id ? nameOf(current) : undefined };
   };
-  const applyChannel = (ch: PartnerContactChannel, added: boolean) => {
-    update(
-      added
-        ? { contactChannels: [...draft.contactChannels, ch] }
-        : { contactChannels: draft.contactChannels.map((x) => (x.id === ch.id ? ch : x)) },
+  /** Points each picked default at `id`; an unticked default this record held is cleared. `was` is its id before a change. */
+  const pickDefaults = (picks: DefaultPicks, id: string, was = id): Partial<Draft> =>
+    Object.fromEntries(
+      (Object.keys(picks) as DefaultKey[]).map((k) => [k, picks[k] ? id : draft[k] === was ? '' : draft[k]]),
     );
-    setEditing(null);
-  };
 
-  const applyBank = (b: PartnerBankAccount, added: boolean) => {
-    update(
-      added
-        ? { bankAccounts: [...draft.bankAccounts, b], defaultBankAccountId: draft.defaultBankAccountId || b.id }
-        : { bankAccounts: draft.bankAccounts.map((x) => (x.id === b.id ? b : x)) },
-    );
+  const applyContact = (c: ContactPerson, added: boolean, picks: DefaultPicks) => {
+    update({
+      contacts: added ? [...draft.contacts, c] : draft.contacts.map((x) => (x.id === c.id ? c : x)),
+      ...pickDefaults(picks, c.id),
+    });
     setEditing(null);
   };
-  const applyAddress = (a: PartnerAddress, added: boolean) => {
-    update(
-      added
-        ? {
-            addresses: [...draft.addresses, a],
-            // The first address becomes the default for both until another is picked.
-            defaultBillToId: draft.defaultBillToId || a.id,
-            defaultShipToId: draft.defaultShipToId || a.id,
-          }
-        : { addresses: draft.addresses.map((x) => (x.id === a.id ? a : x)) },
-    );
+  /** Adds or updates a payment method entry; `from` is the entry as it was, when editing. */
+  const applyPayment = (entry: PaymentEntry, picks: DefaultPicks, from?: PaymentEntry) => {
+    update({
+      paymentMethods: saveEntry(draft, entry, !!picks.defaultAccount, from),
+      ...pickDefaults({ defaultPaymentMethod: picks.defaultPaymentMethod }, entry.code, from?.code ?? entry.code),
+    });
+    setEditing(null);
+  };
+  const applyAddress = (a: PartnerAddress, added: boolean, picks: DefaultPicks) => {
+    update({
+      addresses: added ? [...draft.addresses, a] : draft.addresses.map((x) => (x.id === a.id ? a : x)),
+      ...pickDefaults(picks, a.id),
+    });
     setProblems(problems.filter((p) => !p.key.startsWith(`address:${a.id}:`)));
     setEditing(null);
   };
+
+  const contactLabel = (id: string) => {
+    const c = draft.contacts.find((x) => x.id === id);
+    return c ? contactName(c) : undefined;
+  };
+  const addressLabel = (id: string) => draft.addresses.find((x) => x.id === id)?.label || undefined;
 
   const save = async () => {
     setSaving(true);
@@ -272,18 +290,58 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
       })),
   ].filter((m) => m.show);
 
-  const counts: Partial<Record<TabId, number>> = { attachments: draft.attachments.length };
   const ActiveTab = TABS.find((t) => t.value === tab)!.Component;
+  const at = siblings.findIndex((p) => p.id === draft.id);
+  const prevId = at > 0 ? siblings[at - 1].id : undefined;
+  const nextId = at >= 0 && at < siblings.length - 1 ? siblings[at + 1].id : undefined;
 
   return (
     <>
       <Form className="flex min-h-0 flex-1 flex-col" onSubmit={submit} noValidate>
         <Panel className="min-h-0 flex-1">
           <PanelHeader
-            type="forms"
+            type="details"
             icon={config.icon}
             title={isNew ? `New ${config.singular.toLowerCase()}` : draft.name}
             subcopy={isNew ? config.subcopy : draft.code}
+            // A saved partner leads with previous/next (through the list it was opened from); a new one with the icon.
+            leading={
+              isNew ? undefined : (
+                <>
+                  <IconButton
+                    type="button"
+                    label="Next"
+                    intent="default"
+                    variant="solid"
+                    size="extra-large"
+                    disabled={!nextId}
+                    onClick={() => navigate(`${config.basePath}/${nextId}`)}
+                  >
+                    {panelHeaderIcons.arrowDownward}
+                  </IconButton>
+                  <IconButton
+                    type="button"
+                    label="Previous"
+                    intent="default"
+                    variant="solid"
+                    size="extra-large"
+                    disabled={!prevId}
+                    onClick={() => navigate(`${config.basePath}/${prevId}`)}
+                  >
+                    {panelHeaderIcons.arrowUpward}
+                  </IconButton>
+                </>
+              )
+            }
+            tabs={
+              <Tabs
+                variant="outline"
+                value={page}
+                onValueChange={(v) => setPage(v as PageId)}
+                // A partner has no transactions or activity until it's added.
+                items={PAGES.map((p) => ({ ...p, disabled: isNew && p.value !== 'details' }))}
+              />
+            }
             status={
               isNew ? undefined : (
                 <div className="flex gap-1">
@@ -308,111 +366,122 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
               </>
             }
           />
-          {/* Side by side (lg), each column scrolls on its own; stacked, the body scrolls as one. */}
-          <Panel.Body className="flex flex-col gap-2 lg:overflow-hidden!">
-            <ProblemsAlert
-              problems={problems}
-              tabLabel={(t) => (t === 'addresses' ? 'Addresses' : TABS.find((x) => x.value === t)?.label)}
-              onOpenTab={(t) => openProblem(t)}
-            />
+          {page !== 'details' ? (
+            <Panel.Body>
+              {page === 'transactions' ? (
+                <TransactionsTab draft={draft} />
+              ) : (
+                <Text variant="small" tone="muted" className="p-4">Activity will show here.</Text>
+              )}
+            </Panel.Body>
+          ) : (
+            /* Side by side (lg), each column scrolls on its own; stacked, the body scrolls as one. */
+            <Panel.Body className="flex flex-col gap-2 lg:overflow-hidden!">
+              <ProblemsAlert
+                problems={problems}
+                tabLabel={(t) => (t === 'addresses' ? 'Addresses' : TABS.find((x) => x.value === t)?.label)}
+                onOpenTab={(t) => openProblem(t)}
+              />
 
-            <div className="grid gap-2 lg:min-h-0 lg:flex-1 lg:grid-cols-12 lg:grid-rows-1">
-              <aside className="flex flex-col gap-2 lg:col-span-3 lg:min-h-0 lg:overflow-y-auto">
-                <DefaultsCard
-                  draft={draft}
-                  update={update}
-                  onCreate={(what) => {
-                    if (what === 'contact') setEditing({ kind: 'contact', value: newContact(), isNew: true });
-                    else if (what === 'address') setEditing({ kind: 'address', value: newAddress({ label: 'Main office' }), isNew: true });
-                    else if (what === 'bank') setEditing({ kind: 'bank', value: newBankAccount({ accountName: draft.name, currency: draft.currency === 'All currencies' ? 'PHP' : draft.currency }), isNew: true });
-                    else setTab('payment-run');
-                  }}
-                />
-                <ContactChannelsCards draft={draft} update={update} onOpen={(value, added) => setEditing({ kind: 'channel', value, isNew: added })} />
-                <ContactsCards draft={draft} update={update} onOpen={(value, added) => setEditing({ kind: 'contact', value, isNew: added })} />
-                <AddressesCards draft={draft} update={update} onOpen={(value, added) => setEditing({ kind: 'address', value, isNew: added })} />
-                <BankAccountsCards draft={draft} update={update} onOpen={(value, added) => setEditing({ kind: 'bank', value, isNew: added })} />
-              </aside>
-
-              <div className="flex min-w-0 flex-col gap-2 lg:col-span-9 lg:min-h-0 lg:overflow-y-auto">
-                <Section icon="badge" title="Business partner">
-                  <Fields cols={3}>
-                    {isNew ? (
-                      <FormField label="Numbering" tooltip="Auto assigns the next BP code.">
+              <div className="grid gap-4 lg:min-h-0 lg:flex-1 lg:grid-cols-12 lg:grid-rows-1">
+                <aside className="flex flex-col gap-2 lg:col-span-3 lg:min-h-0 lg:overflow-y-auto">
+                  <Section icon="badge" title="Business partner">
+                    <FieldStack>
+                      {isNew ? (
+                        <FormField orientation="vertical" label="Numbering" tooltip="Auto assigns the next BP code.">
+                          {(p) => (
+                            <Select
+                              {...p}
+                              options={[
+                                { value: 'auto', label: 'Auto (BP-####)' },
+                                { value: 'manual', label: 'Manual' },
+                              ]}
+                              value={codeMode}
+                              onValueChange={(v) => setCodeMode(v as 'auto' | 'manual')}
+                            />
+                          )}
+                        </FormField>
+                      ) : null}
+                      <FormField orientation="vertical" label="Code" required error={errors.code} tooltip={isNew ? undefined : 'Locked after the partner is added.'}>
                         {(p) => (
-                          <Select
+                          <TextField
                             {...p}
-                            options={[
-                              { value: 'auto', label: 'Auto (BP-####)' },
-                              { value: 'manual', label: 'Manual' },
-                            ]}
-                            value={codeMode}
-                            onValueChange={(v) => setCodeMode(v as 'auto' | 'manual')}
+                            value={isNew && codeMode === 'auto' ? '' : draft.code}
+                            placeholder={isNew && codeMode === 'auto' ? 'Assigned on save' : 'e.g. C-ACME'}
+                            readOnly={!isNew || codeMode === 'auto'}
+                            onChange={(e) => update({ code: e.currentTarget.value })}
                           />
                         )}
                       </FormField>
-                    ) : null}
-                    <FormField label="Code" required error={errors.code} tooltip={isNew ? undefined : 'Locked after the partner is added.'}>
-                      {(p) => (
-                        <TextField
-                          {...p}
-                          value={isNew && codeMode === 'auto' ? '' : draft.code}
-                          placeholder={isNew && codeMode === 'auto' ? 'Assigned on save' : 'e.g. C-ACME'}
-                          readOnly={!isNew || codeMode === 'auto'}
-                          onChange={(e) => update({ code: e.currentTarget.value })}
-                        />
-                      )}
-                    </FormField>
-                    <FormField
-                      label="Type"
-                      tooltip="A partner can be a lead, a customer and a vendor at once. It shows in each matching list, and edits here show everywhere."
-                    >
-                      {(p) => (
-                        <MultiSelect
-                          {...p}
-                          options={ROLE_ORDER.map((r) => ({ value: r, label: ROLE_CONFIG[r].singular }))}
-                          value={draft.roles}
-                          onValueChange={(v) => changeRoles(v as PartnerRole[])}
-                        />
-                      )}
-                    </FormField>
-                    {h.text('name', 'Name', { required: true, error: errors.name })}
-                    {h.text('foreignName', 'Foreign name', { hint: 'For bilingual printouts.' })}
-                    {h.pick('group', 'Group', groups, { required: true, error: errors.group })}
-                    {h.pick('currency', 'Currency', [...new Set([...currencyCodes, draft.currency, 'All currencies'])], {
-                      required: true,
-                      error: errors.currency,
-                      hint: 'Active currencies from Settings › Accounting & Tax.',
-                    })}
-                    {h.text('tin', 'TIN', { placeholder: '000-000-000-000', hint: 'BIR Taxpayer Identification Number.' })}
-                    {h.text('birCorNumber', 'BIR COR no.', { placeholder: '000-000-000-000', hint: 'BIR Certificate of Registration (Form 2303).' })}
-                    {h.choose('rdoCode', 'BIR RDO', [{ value: '', label: '— None —' }, ...RDOS], { hint: 'Revenue District Office where the partner is registered.' })}
-                    {h.choose('status', 'Status', PARTNER_STATUSES.map((s) => ({ value: s, label: s })), {
-                      hint: 'Advanced: active only between the dates you set.',
-                    })}
-                    {draft.status === 'Advanced' ? (
-                      <>
-                        {h.date('statusFrom', 'Active from', { required: true, error: errors.statusFrom })}
-                        {h.date('statusTo', 'Active to', { required: true, error: errors.statusTo })}
-                      </>
-                    ) : null}
-                    {h.text('statusRemarks', 'Status remarks', { placeholder: 'Why the status changed' })}
-                  </Fields>
-                </Section>
+                      <FormField
+                        orientation="vertical"
+                        label="Type"
+                        tooltip="A partner can be a lead, a customer and a vendor at once. It shows in each matching list, and edits here show everywhere."
+                      >
+                        {(p) => (
+                          <MultiSelect
+                            {...p}
+                            options={ROLE_ORDER.map((r) => ({ value: r, label: ROLE_CONFIG[r].singular }))}
+                            value={draft.roles}
+                            onValueChange={(v) => changeRoles(v as PartnerRole[])}
+                          />
+                        )}
+                      </FormField>
+                      {h.text('name', 'Name', { ...beside, placeholder: 'e.g. Acme Trading Corp.', required: true, error: errors.name })}
+                      {h.text('foreignName', 'Foreign name', { ...beside, placeholder: 'Name in another language', hint: 'For bilingual printouts.' })}
+                      {h.pick('group', 'Group', groups, { ...beside, required: true, error: errors.group })}
+                      {h.pick('currency', 'Currency', [...new Set([...currencyCodes, draft.currency, 'All currencies'])], {
+                        ...beside,
+                        required: true,
+                        error: errors.currency,
+                        hint: 'Active currencies from Settings › Accounting & Tax.',
+                      })}
+                      {h.text('tin', 'TIN', { ...beside, placeholder: '000-000-000-000', hint: 'BIR Taxpayer Identification Number.' })}
+                      {h.text('birCorNumber', 'BIR COR no.', { ...beside, placeholder: '000-000-000-000', hint: 'BIR Certificate of Registration (Form 2303).' })}
+                      {h.lookup('rdoCode', 'BIR RDO', RDOS, { ...beside, clearable: true, hint: 'Revenue District Office where the partner is registered.' })}
+                      {h.choose('status', 'Status', PARTNER_STATUSES.map((s) => ({ value: s, label: s })), {
+                        ...beside,
+                        hint: 'Advanced: active only between the dates you set.',
+                      })}
+                      {draft.status === 'Advanced' ? (
+                        <>
+                          {h.date('statusFrom', 'Active from', { ...beside, required: true, error: errors.statusFrom })}
+                          {h.date('statusTo', 'Active to', { ...beside, required: true, error: errors.statusTo })}
+                        </>
+                      ) : null}
+                      {h.text('statusRemarks', 'Status remarks', { ...beside, placeholder: 'Why the status changed' })}
+                      {/* Free text: label above, so the box gets the column's full width. */}
+                      {h.area('generalRemarks', 'Remarks', { placeholder: 'Add a note about this partner', rows: 1 })}
+                      {h.area('remarks', 'Internal remarks', {
+                        placeholder: 'Add internal notes',
+                        rows: 1,
+                        hint: 'Not printed on documents sent to the partner.',
+                      })}
+                    </FieldStack>
+                  </Section>
+                  <ContactChannelsFields draft={draft} update={update} errors={errors} />
+                  <ContactsCards draft={draft} update={update} onOpen={(value, added) => setEditing({ kind: 'contact', value, isNew: added })} />
+                  <AddressesCards draft={draft} update={update} onOpen={(value, added) => setEditing({ kind: 'address', value, isNew: added })} />
+                  <PaymentMethodsCards draft={draft} update={update} onOpen={(value, added) => setEditing({ kind: 'payment', value, isNew: added })} />
+                  <AttachmentsCards draft={draft} update={update} />
+                </aside>
 
-                <Tabs
-                  value={tab}
-                  onValueChange={(v) => setTab(v as TabId)}
-                  items={TABS.map((t) => ({
-                    value: t.value,
-                    label: t.label,
-                    badge: problems.some((p) => p.tab === t.value) ? '!' : counts[t.value] ? String(counts[t.value]) : undefined,
-                  }))}
-                />
-                <ActiveTab draft={draft} update={update} errors={errors} />
+                <div className="flex min-w-0 flex-col gap-2 lg:col-span-9 lg:min-h-0 lg:overflow-y-auto">
+
+                  <Tabs
+                    value={tab}
+                    onValueChange={(v) => setTab(v as TabId)}
+                    items={TABS.map((t) => ({
+                      value: t.value,
+                      label: t.label,
+                      badge: problems.some((p) => p.tab === t.value) ? '!' : undefined,
+                    }))}
+                  />
+                  <ActiveTab draft={draft} update={update} errors={errors} />
+                </div>
               </div>
-            </div>
-          </Panel.Body>
+            </Panel.Body>
+          )}
         </Panel>
       </Form>
 
@@ -422,7 +491,8 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
           key={editing.value.id}
           value={editing.value}
           isNew={editing.isNew}
-          onDone={(c) => applyContact(c, editing.isNew)}
+          defaults={[role('defaultContactId', 'Default contact person', editing.value.id, editing.isNew, contactLabel)]}
+          onDone={(c, picks) => applyContact(c, editing.isNew, picks)}
           onCancel={() => setEditing(null)}
         />
       ) : editing?.kind === 'address' ? (
@@ -431,24 +501,32 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
           value={editing.value}
           isNew={editing.isNew}
           errors={errors}
-          onDone={(a) => applyAddress(a, editing.isNew)}
+          defaults={[
+            role('defaultBillToId', 'Default bill-to (mailing) address', editing.value.id, editing.isNew, addressLabel),
+            role('defaultShipToId', 'Default ship-to address', editing.value.id, editing.isNew, addressLabel),
+          ]}
+          onDone={(a, picks) => applyAddress(a, editing.isNew, picks)}
           onCancel={() => setEditing(null)}
         />
-      ) : editing?.kind === 'bank' ? (
-        <BankAccountPanel
-          key={editing.value.id}
+      ) : editing?.kind === 'payment' ? (
+        <PaymentEntryPanel
+          key={editing.value.account?.id ?? (editing.value.code || 'new')}
           value={editing.value}
           isNew={editing.isNew}
+          // Methods with accounts stay pickable: each pick adds another account.
+          taken={includedMethods(draft)
+            .map((m) => m.code)
+            .filter((c) => !accountKind(c) && (editing.isNew || c !== editing.value.code))}
+          defaultsFor={(code) => {
+            const r = role('defaultPaymentMethod', 'Default payment method', code, !includedMethods(draft).some((m) => m.code === code), methodTitle);
+            // Swapping the default method for another carries the default over.
+            const swappingDefault = !editing.isNew && code !== editing.value.code && draft.defaultPaymentMethod === editing.value.code;
+            return [swappingDefault ? { ...r, checked: true, holder: undefined } : r];
+          }}
+          accountsFor={(code) => accountsOf(draft, code)}
           currencies={currencyCodes}
-          onDone={(b) => applyBank(b, editing.isNew)}
-          onCancel={() => setEditing(null)}
-        />
-      ) : editing?.kind === 'channel' ? (
-        <ContactChannelPanel
-          key={editing.value.id}
-          value={editing.value}
-          isNew={editing.isNew}
-          onDone={(ch) => applyChannel(ch, editing.isNew)}
+          newAccount={(code) => newAccountFor(code, draft)}
+          onDone={(entry, picks) => applyPayment(entry, picks, editing.isNew ? undefined : editing.value)}
           onCancel={() => setEditing(null)}
         />
       ) : null}

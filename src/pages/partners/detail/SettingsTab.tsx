@@ -1,210 +1,155 @@
 import { useEffect, useState } from 'react';
-import { Text } from '@jasperlepardo/sikat-design-system';
-import { BUSINESS_TYPES, TREATY_COUNTRIES } from '../../../mocks/masters';
-import type { WithholdingTax } from '../../../mocks/taxes';
-import { ExemptionsSection } from './ExemptionsSection';
-import { TreatyIncomesPanel } from './TreatyIncomesPanel';
-import { withholdingTaxes } from '../../../services/masterData';
-import type { TabProps } from './GeneralTab';
-import { Fields, Flags, Section, bind } from './fields';
+import { Radio } from '@jasperlepardo/sikat-design-system';
+import {
+  CHANNELS,
+  DUNNING_TERMS,
+  EMPLOYEES,
+  HOLIDAY_CALENDARS,
+  INDUSTRIES,
+  PLANNING_GROUPS,
+  PRIORITIES,
+  PROJECTS,
+  TECHNICIANS,
+  TERRITORIES,
+} from '../../../mocks/masters';
+import { LEAD_SOURCES, LEAD_STAGES, type Partner, type PartnerRole } from '../../../mocks/partners';
+import { ROLE_CONFIG } from '../roles';
+import { listPartners } from '../../../services/partners';
+import { activeOptions, shippingTypes } from '../../../services/inventoryMasters';
+import { useAsync } from '../../../services/useAsync';
+import { ControlAccountsSection } from './ControlAccountsSection';
+import { PaymentTermsSection } from './PaymentTermsSection';
+import { PropertiesSection } from './PropertiesSection';
+import { Fields, Flags, ReadOnly, Section, bind, type TabProps } from './fields';
 
-const NON_RESIDENT_TYPES = ['Non-resident foreign company', 'Non-resident foreign partnership'];
-const RESIDENT_CORPORATE_TYPES = ['Company', 'Resident foreign company', 'Partnership', 'General professional partnership', 'Resident foreign partnership'];
-
-
-export function SettingsTab({ draft, update }: TabProps) {
+/** Everything set up once for a partner and rarely touched again. */
+export function SettingsTab(props: TabProps) {
+  const { draft, update } = props;
   const f = bind(draft, update);
-  const isCustomer = draft.roles.includes('customer');
-  const isVendor = draft.roles.includes('vendor');
-  // True when businessType itself determines nonResident (locks the checkbox either way).
-  const nonResidentDrivenByType = NON_RESIDENT_TYPES.includes(draft.businessType) || RESIDENT_CORPORATE_TYPES.includes(draft.businessType);
-  const [withholding, setWithholding] = useState<WithholdingTax[]>([]);
-  useEffect(() => { withholdingTaxes.list().then(setWithholding); }, [draft.id]);
-
-
-  // ── Residency and VAT registration rules ──────────────────────────────────
-  // One patch, so the rules can't overwrite each other:
-  // · non-resident foreign types are non-resident; resident types, cooperatives and government are not
-  // · digital services (RA 12023) implies non-resident
-  // · a non-resident is outside the VAT system unless it's a digital service provider registered with BIR
-  const alwaysResident = draft.businessType === 'Cooperative' || draft.businessType === 'Government';
+  const has = (r: PartnerRole) => draft.roles.includes(r);
+  const shipping = useAsync(shippingTypes.list, []) ?? [];
+  const [others, setOthers] = useState<Partner[]>([]);
   useEffect(() => {
-    let { nonResident, nonResidentDigitalServices, vatRegistered } = draft;
-    if (NON_RESIDENT_TYPES.includes(draft.businessType)) nonResident = true;
-    else if (RESIDENT_CORPORATE_TYPES.includes(draft.businessType) || alwaysResident) {
-      nonResident = false;
-      nonResidentDigitalServices = false;
-    } else if (nonResidentDigitalServices) nonResident = true;
-    if (!nonResident) nonResidentDigitalServices = false;
-    if (nonResident && !nonResidentDigitalServices) vatRegistered = false;
-    if (
-      nonResident !== draft.nonResident ||
-      nonResidentDigitalServices !== draft.nonResidentDigitalServices ||
-      vatRegistered !== draft.vatRegistered
-    ) {
-      update({ nonResident, nonResidentDigitalServices, vatRegistered });
-    }
-  }, [draft.businessType, draft.nonResident, draft.nonResidentDigitalServices, draft.vatRegistered]);
-
-  // ── Derived option lists ───────────────────────────────────────────────────
-  const payee = ['Individual', 'Sole proprietorship'].includes(draft.businessType) ? 'Individual' : 'Corporate';
-
-  // Non-resident → only FWT ATCs; otherwise EWT + FWT filtered by payee type.
-  const withholdingOptions = [
-    { value: '', label: 'Use the rules (by item and company status)' },
-    ...withholding
-      .filter((w) => {
-        if (w.id === draft.withholdingOverrideId) return true;
-        if (!w.active) return false;
-        if (draft.nonResident) {
-          if (w.kind !== 'Final (FWT)' || w.agent === 'Government') return false;
-        } else {
-          if (w.kind !== 'Expanded (EWT)' && w.kind !== 'Final (FWT)') return false;
-          if (w.agent === 'Government') return false;
-          if (w.payee !== payee && w.payee !== 'Any') return false;
-        }
-        return true;
-      })
-      .map((w) => ({
-        value: w.id,
-        label: `${w.atc || 'ATC to confirm'}${w.kind === 'Final (FWT)' ? ' (final)' : ''} · ${w.description}${w.condition ? ` — ${w.condition}` : ''} (${w.rate}%)`,
-      })),
-  ];
-
-  const nonResidentLocked = draft.nonResidentDigitalServices || nonResidentDrivenByType || alwaysResident;
+    listPartners().then((all) => setOthers(all.filter((p) => p.id !== draft.id)));
+  }, [draft.id]);
 
   return (
     <>
-      {/* ── Entity ── */}
-      <Section icon="badge" title="Entity">
+      <PaymentTermsSection {...props} />
+      <ControlAccountsSection {...props} />
+
+      <Section icon="category" title="Classification">
         <Fields>
-          {f.pick('businessType', 'Type of business', BUSINESS_TYPES, {
-            hint: 'Determines withholding payee type (Individual vs Corporate), non-resident status, and applicable ATC series.',
+          {f.pick('industry', 'Industry', INDUSTRIES)}
+          {f.text('aliasName', 'Alias name', { placeholder: 'e.g. Acme', hint: 'Short name used in search and lookups.' })}
+          {f.lookup('shippingType', 'Shipping type', activeOptions(shipping, (x) => x.id, (x) => x.name, draft.shippingType), {
+            clearable: true,
+            hint: 'Defaults into new documents. Shipping types live in Settings › Inventory.',
           })}
-          {!draft.nonResident ? f.text('birCorNumber', 'BIR Certificate of Registration no.', {
-            hint: 'Form 2303 number. Required for VAT and non-VAT registered entities.',
-            placeholder: 'e.g. RC-0000123456',
-          }) : null}
-          {draft.vatRegistered && !draft.nonResident ? f.date('vatRegistrationDate', 'VAT registration date', {
-            hint: 'Date BIR registered this partner for VAT. Used to validate input VAT claims on vendor invoices.',
-          }) : null}
+          {f.text('idNo2', 'ID no. 2', { placeholder: 'e.g. CS201912345', hint: 'Secondary ID, e.g. SEC or DTI registration no.' })}
+          {f.text('unifiedTin', 'Unified TIN', { placeholder: '000-000-000-000', hint: 'For partners in a tax-consolidated group.' })}
+          {f.text('gln', 'GLN', { placeholder: '13-digit GLN', hint: 'Global Location Number, for e-invoicing.' })}
         </Fields>
-        {draft.businessType !== 'Government' && !draft.nonResident ? (
-          <Flags>
-            {f.check('vatRegistered', 'BIR-registered for VAT')}
-          </Flags>
-        ) : null}
+        <Flags>{f.check('blockMarketing', 'Block sending marketing content')}</Flags>
       </Section>
 
-      {/* ── Government / non-resident customer notes ── */}
-      {isCustomer && draft.businessType === 'Government' ? (
-        <Section icon="sell" title="Customer tax">
-          <Text variant="small" tone="muted">
-            Government agency / GOCC — the buyer withholds 5% creditable VAT and issues BIR Form 2307. No exemption card needed.
-          </Text>
-        </Section>
-      ) : null}
-      {isCustomer && draft.nonResident && draft.businessType !== 'Government' ? (
-        <Section icon="sell" title="Customer tax">
-          <Text variant="small" tone="muted">
-            Non-resident customer — Philippine VAT exemption certificates do not apply. Standard VAT rules govern the transaction.
-          </Text>
-        </Section>
-      ) : null}
-      {isCustomer && !draft.nonResident && draft.businessType !== 'Government' ? (
-        <Section icon="sell" title="Customer tax">
-          <Flags>{f.check('topWithholdingAgent', 'Top withholding agent (BIR-designated)')}</Flags>
-          <Text variant="small" tone="muted">
-            {draft.topWithholdingAgent
-              ? 'Withholds 1% on goods and 2% on services from what it pays you, and gives you BIR Form 2307 to credit against income tax.'
-              : 'Tick when BIR has designated this customer a top withholding agent (large taxpayers, top corporations).'}
-          </Text>
-        </Section>
-      ) : null}
+      <Section icon="assignment_ind" title="Assignment">
+        <Fields>
+          {f.pick('salesEmployee', has('vendor') && !has('customer') ? 'Buyer' : 'Sales employee', EMPLOYEES, { clearable: true })}
+          {f.pick('territory', 'Territory', TERRITORIES, { clearable: true })}
+          {f.pick('channel', 'Channel', CHANNELS, { clearable: true })}
+          {f.pick('technician', 'Technician', TECHNICIANS, { clearable: true })}
+          {f.pick('project', 'Project', PROJECTS, { clearable: true, hint: 'Default project on documents.' })}
+        </Fields>
+      </Section>
 
-      {/* ── Exemptions (unified VAT + sworn declaration) ── */}
-      <ExemptionsSection
-        showVatExemptions={isCustomer && draft.businessType !== 'Government' && !draft.nonResident}
-        exemptions={draft.vatExemptions}
-        businessType={draft.businessType}
-        onExemptionsChange={(vatExemptions) => update({ vatExemptions })}
-        showSwornDeclaration={
-          isVendor && !draft.nonResident && draft.businessType !== 'Government' && !(payee === 'Individual' && draft.vatRegistered)
-        }
-        swornDeclaration={{
-          swornDeclarationRef: draft.swornDeclarationRef,
-          swornDeclarationDate: draft.swornDeclarationDate,
-          swornDeclarationAttachments: draft.swornDeclarationAttachments,
-        }}
-        payee={payee}
-        onSwornDeclarationChange={(patch) => update(patch)}
-      />
-
-      {/* ── Vendor tax ── */}
-      {isVendor ? (
-        draft.businessType === 'Government' ? (
-          <Section icon="shopping_cart" title="Vendor tax">
-            <Text variant="small" tone="muted">
-              Government agency / GOCC — payments to government entities are not subject to expanded withholding tax.
-            </Text>
-          </Section>
-        ) : (
-        <Section icon="shopping_cart" title="Vendor tax">
+      {has('lead') ? (
+        <Section icon={ROLE_CONFIG.lead.icon} title="Lead">
           <Fields>
-            {f.choose('withholdingOverrideId', 'Withholding tax override', withholdingOptions, {
-              hint: draft.nonResident
-                ? 'Non-resident: showing final withholding (FWT) ATCs only.'
-                : 'Leave on "Use the rules" unless this vendor always gets one specific ATC.',
-            })}
+            {f.pick('leadSource', 'Source', LEAD_SOURCES)}
+            {f.pick('leadStage', 'Stage', LEAD_STAGES)}
           </Fields>
-          {(!nonResidentLocked) ? (
-            <Flags>
-              {f.check(
-                'nonResident',
-                'Non-resident — not doing business in the Philippines (final tax instead of EWT)',
-              )}
-            </Flags>
-          ) : null}
-          {draft.nonResident ? (
-            <>
-            <Flags>
-              {f.check('nonResidentDigitalServices', 'Provides digital services to Philippine consumers (RA 12023)')}
-              {draft.nonResidentDigitalServices
-                ? f.check('vatRegistered', 'Registered with BIR as a digital service provider — charges 12% VAT on its invoices')
-                : null}
-            </Flags>
-            <Fields>
-              {f.pick('taxTreatyCountry', 'Treaty country', ['', ...TREATY_COUNTRIES], {
-                hint: 'Country whose tax treaty with the Philippines applies to this vendor.',
-              })}
-              {f.text('taxTreatyCertificate', 'Certificate of Residence ref', {
-                hint: 'Reference number on the Certificate of Residence issued by the foreign tax authority.',
-              })}
-              {f.date('taxTreatyCertificateExpiry', 'Certificate valid until')}
-            </Fields>
-            </>
-          ) : null}
-          <Text variant="small" tone="muted">
-            {draft.nonResident
-              ? 'Non-residents are subject to final withholding tax — income tiers do not apply. On services and property lease you also withhold the 12% VAT (BIR Form 1600-VT), unless the vendor is a digital service provider registered with BIR. A treaty rate applies once the treaty income has an approved rate and a document, and the Certificate of Residence is on file and unexpired.'
-              : payee === 'Individual'
-                ? draft.vatRegistered
-                  ? 'VAT-registered individuals always get the higher rate (e.g. WI011 10%), so no sworn declaration is needed.'
-                  : 'Individuals: higher rate (e.g. WI011 10%) above ₱3M. Without a valid sworn declaration for this year, the higher rate applies regardless.'
-                : 'Corporations: higher rate (e.g. WC011 15%) above ₱720,000. Without a valid sworn declaration for this year, the higher rate applies regardless.'
-            }{' '}
-            {!draft.nonResident ? 'Also adjusts an override set to an income-tiered ATC.' : ''}
-          </Text>
         </Section>
-        )
       ) : null}
-      {isVendor && draft.nonResident && draft.taxTreatyCountry ? (
-        <TreatyIncomesPanel
-          incomes={draft.taxTreatyIncomes}
-          treatyCountry={draft.taxTreatyCountry}
-          onChange={(taxTreatyIncomes) => update({ taxTreatyIncomes })}
-        />
-      ) : null}
+
+      <Section icon="credit_score" title="Credit & collection">
+        <Fields>
+          {f.num('creditLimit', 'Credit limit', { prefix: 'PHP', hint: 'Warns or blocks when the open balance exceeds it.' })}
+          {f.num('commitmentLimit', 'Commitment limit', { prefix: 'PHP', hint: 'Like credit limit, but includes open orders.' })}
+          {f.pick('dunningTerm', 'Dunning term', DUNNING_TERMS, { clearable: true })}
+          {f.pick('priority', 'Priority', PRIORITIES, { clearable: true, hint: 'Order in payment runs.' })}
+          {f.pick('holidays', 'Holidays', HOLIDAY_CALENDARS, { clearable: true, hint: 'Due dates skip these non-business days.' })}
+          <ReadOnly
+            label="Average delay"
+            value={`${draft.averageDelayDays} day${draft.averageDelayDays === 1 ? '' : 's'}`}
+            hint="Calculated from payment history."
+          />
+        </Fields>
+      </Section>
+
+      <Section icon="local_shipping" title="Delivery & checks">
+        <Flags>
+          {f.check('allowPartialDelivery', 'Allow partial delivery of sales order')}
+          {f.check('allowPartialDeliveryPerRow', 'Allow partial delivery per row')}
+          {f.check('endorsableChecks', 'Endorsable checks from this partner')}
+          {f.check('acceptsEndorsedChecks', 'This partner accepts endorsed checks')}
+        </Flags>
+      </Section>
+
+      <Section icon="hub" title="Consolidation">
+        <Fields>
+          {f.lookup('consolidatingPartnerId', 'Consolidating business partner', others.map((p) => ({ value: p.id, label: `${p.code} · ${p.name}` })), {
+            clearable: true,
+            hint: 'Parent partner for consolidated payments or deliveries.',
+          })}
+        </Fields>
+        {draft.consolidatingPartnerId ? (
+          <div className="flex gap-6" role="radiogroup" aria-label="Consolidation type">
+            <Radio
+              name="consolidation"
+              checked={draft.consolidationType === 'payment'}
+              onChange={() => update({ consolidationType: 'payment' })}
+            >
+              Payment consolidation
+            </Radio>
+            <Radio
+              name="consolidation"
+              checked={draft.consolidationType === 'delivery'}
+              onChange={() => update({ consolidationType: 'delivery' })}
+            >
+              Delivery consolidation
+            </Radio>
+          </div>
+        ) : null}
+        <Fields cols={1}>
+          <ReadOnly
+            label="Connected vendor / customer"
+            value={
+              has('customer') && has('vendor')
+                ? 'Same record — this partner is both a customer and a vendor, so AR and AP can be netted directly.'
+                : 'Not needed: add the Vendor or Customer role instead of linking a second record.'
+            }
+          />
+        </Fields>
+      </Section>
+
+      <Section icon="mark_email_unread" title="Dunning">
+        <Fields>
+          <ReadOnly label="Dunning level" value={draft.dunningLevel || '—'} hint="Updated by dunning runs." />
+          <ReadOnly label="Last dunning date" value={draft.dunningDate || '—'} hint="Updated by dunning runs." />
+        </Fields>
+        <Flags>{f.check('blockDunning', 'Block dunning letters')}</Flags>
+      </Section>
+
+      <Section icon="tune" title="Other">
+        <Fields>{f.pick('planningGroup', 'Planning group', PLANNING_GROUPS, { clearable: true })}</Fields>
+        <Flags>
+          {f.check('affiliate', 'Affiliate (related company)')}
+          {f.check('useShippedGoodsAccount', 'Use shipped goods account')}
+        </Flags>
+      </Section>
+
+      <PropertiesSection {...props} />
     </>
   );
 }

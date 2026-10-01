@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import {
   Button,
   Card,
+  Combobox,
   Form,
   FormField,
   Icon,
@@ -9,7 +10,7 @@ import {
   PanelHeader,
   Select,
   SidePanel,
-  Tabs,
+  Text,
   TextField,
 } from '@jasperlepardo/sikat-design-system';
 import { type Currency } from '../../../../mocks/currencies';
@@ -18,17 +19,7 @@ import { blankPartner, type Partner } from '../../../../mocks/partners';
 import { savePartner } from '../../../../services/partners';
 import { Fields } from '../../../../components/form/fields';
 import { type Draft } from '../../../partners/detail/fields';
-import { AccountingTab } from '../../../partners/detail/AccountingTab';
-import { GeneralTab } from '../../../partners/detail/GeneralTab';
-import { PaymentTermsTab } from '../../../partners/detail/PaymentTermsTab';
-
-type TabId = 'general' | 'payment-terms' | 'accounting';
-
-const TABS: { value: TabId; label: string }[] = [
-  { value: 'general', label: 'General' },
-  { value: 'payment-terms', label: 'Payment terms' },
-  { value: 'accounting', label: 'Accounting' },
-];
+import { SettingsTab } from '../../../partners/detail/SettingsTab';
 
 interface Props {
   currencies: Currency[];
@@ -39,7 +30,6 @@ interface Props {
 
 export function VendorQuickCreate({ currencies, initialName = '', onClose, onCreated }: Props) {
   const [draft, setDraft] = useState<Draft>(() => ({ ...blankPartner('vendor'), name: initialName }));
-  const [tab, setTab] = useState<TabId>('general');
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -106,17 +96,17 @@ export function VendorQuickCreate({ currencies, initialName = '', onClose, onCre
             <Card>
               <Card.Header icon={<Icon size={24}>contacts</Icon>}>Contact persons</Card.Header>
               <Card.Content>
-                <p className="text-sm" style={{ color: 'var(--color-text-caption)' }}>
+                <Text variant="small" tone="muted">
                   Add contacts after saving the vendor.
-                </p>
+                </Text>
               </Card.Content>
             </Card>
             <Card>
               <Card.Header icon={<Icon size={24}>location_on</Icon>}>Billing address</Card.Header>
               <Card.Content>
-                <p className="text-sm" style={{ color: 'var(--color-text-caption)' }}>
+                <Text variant="small" tone="muted">
                   Add addresses after saving the vendor.
-                </p>
+                </Text>
               </Card.Content>
             </Card>
             <Card>
@@ -174,11 +164,11 @@ export function VendorQuickCreate({ currencies, initialName = '', onClose, onCre
                   </FormField>
                   <FormField label="Currency" required error={errors.currency} tooltip="Active currencies from Settings › Accounting & Tax.">
                     {(p) => (
-                      <Select
+                      <Combobox
                         {...p}
                         options={activeCurrencies.map((c) => ({ value: c, label: c }))}
                         value={draft.currency}
-                        onValueChange={(v) => { setErrors((prev) => ({ ...prev, currency: '' })); update({ currency: v }); }}
+                        onValueChange={(v) => { setErrors((prev) => ({ ...prev, currency: '' })); update({ currency: v ?? '' }); }}
                       />
                     )}
                   </FormField>
@@ -196,21 +186,7 @@ export function VendorQuickCreate({ currencies, initialName = '', onClose, onCre
               </Card.Content>
             </Card>
 
-            <Tabs
-              value={tab}
-              onValueChange={(v) => setTab(v as TabId)}
-              items={TABS}
-            />
-
-            {tab === 'general' && (
-              <GeneralTab draft={draft} update={update} errors={errors} />
-            )}
-            {tab === 'payment-terms' && (
-              <PaymentTermsTab draft={draft} update={update} errors={errors} />
-            )}
-            {tab === 'accounting' && (
-              <AccountingTab draft={draft} update={update} errors={errors} />
-            )}
+            <SettingsTab draft={draft} update={update} errors={errors} />
           </Panel.Main>
         </Panel.Body>
       </Form>

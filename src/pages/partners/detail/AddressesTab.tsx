@@ -4,7 +4,7 @@ import { RowMenu } from '../../../components/form/RowMenu';
 import { COUNTRIES, PH_PROVINCES } from '../../../mocks/masters';
 import { newAddress, type PartnerAddress } from '../../../mocks/partners';
 import { EditPanel } from './EditPanel';
-import { Fields, Section, bind, type Draft, type Errors } from './fields';
+import { Fields, Section, bind, type Draft, type Errors, DefaultFlags, useDefaultPicks, type DefaultPicks, type DefaultRole } from './fields';
 
 const mapUrl = (a: PartnerAddress) =>
   `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([addressLine(a), a.zip, a.country].filter(Boolean).join(', '))}`;
@@ -44,7 +44,7 @@ export function AddressesCards({
   return (
     <Section
       icon="location_on"
-      title={`Addresses${draft.addresses.length ? ` · ${draft.addresses.length}` : ''}`}
+      title={`Addresses${draft.addresses.length ? ` (${draft.addresses.length})` : ''}`}
       actions={
         <Link
           aria-label="New address"
@@ -60,7 +60,7 @@ export function AddressesCards({
           {draft.addresses.map((a) => {
             const isDefaultBill = a.id === draft.defaultBillToId;
             const isDefaultShip = a.id === draft.defaultShipToId;
-            const tags = [isDefaultBill && 'Bill to', isDefaultShip && 'Ship to'].filter(Boolean).join(' · ');
+            const tags = [isDefaultBill && 'Bill to (mailing)', isDefaultShip && 'Ship to'].filter(Boolean).join(' · ');
             return (
               <List.Card
                 key={a.id}
@@ -105,6 +105,7 @@ export function AddressPanel({
   value,
   isNew,
   errors: formErrors,
+  defaults,
   onDone,
   onCancel,
 }: {
@@ -112,10 +113,13 @@ export function AddressPanel({
   isNew: boolean;
   /** The partner form's own errors, so a problem found on Save shows here too. */
   errors: Errors;
-  onDone: (address: PartnerAddress) => void;
+  /** Defaults this address can hold (bill-to and ship-to). */
+  defaults: DefaultRole[];
+  onDone: (address: PartnerAddress, picks: DefaultPicks) => void;
   onCancel: () => void;
 }) {
   const [address, setAddress] = useState(value);
+  const [picks, setPicks] = useDefaultPicks(defaults);
   const [errors, setErrors] = useState<Errors>(formErrors);
   const f = bind(address, (p: Partial<PartnerAddress>) => {
     setAddress((a) => ({ ...a, ...p }));
@@ -125,7 +129,7 @@ export function AddressPanel({
   const done = () => {
     const found = addressProblems(address);
     setErrors(found);
-    if (!Object.keys(found).length) onDone(address);
+    if (!Object.keys(found).length) onDone(address, picks);
   };
 
   return (
@@ -138,29 +142,33 @@ export function AddressPanel({
       <Section icon="location_on" title="Address">
         <Fields>
           {f.text('label', 'Address ID', {
+            placeholder: 'e.g. Main office',
             required: true,
             error: err('label'),
             hint: 'The name picked on documents, e.g. "Main office".',
           })}
           {f.pick('country', 'Country/Region', COUNTRIES, { required: true, error: err('country') })}
-          {f.text('name2', 'Address name 2')}
-          {f.text('name3', 'Address name 3')}
-          {f.text('streetNo', 'Street no.')}
-          {f.text('street', 'Street / PO box')}
-          {f.text('building', 'Building / floor / room')}
-          {f.text('block', 'Barangay')}
-          {f.text('city', 'City / municipality')}
+          {f.text('name2', 'Address name 2', { placeholder: 'e.g. Attn: Accounting' })}
+          {f.text('name3', 'Address name 3', { placeholder: 'e.g. c/o Warehouse' })}
+          {f.text('streetNo', 'Street no.', { placeholder: 'e.g. 123' })}
+          {f.text('street', 'Street / PO box', { placeholder: 'e.g. Ayala Avenue' })}
+          {f.text('building', 'Building / floor / room', { placeholder: 'e.g. Tower 1, 5F, Unit 502' })}
+          {f.text('block', 'Barangay', { placeholder: 'e.g. San Lorenzo' })}
+          {f.text('city', 'City / municipality', { placeholder: 'e.g. Makati City' })}
           {address.country === 'Philippines'
             ? f.pick('province', 'Province', PH_PROVINCES)
-            : f.text('province', 'State / province')}
-          {f.text('zip', 'ZIP code')}
+            : f.text('province', 'State / province', { placeholder: 'e.g. California' })}
+          {f.text('zip', 'ZIP code', { placeholder: 'e.g. 1223' })}
         </Fields>
         <Link href={mapUrl(address)} target="_blank" rel="noreferrer">
           Show location on map
         </Link>
         <Text variant="small" tone="muted">
-          Any address can be picked as bill-to or ship-to on a document. Set the defaults from the address’s menu.
+          Any address can be picked as bill-to or ship-to on a document; the defaults below are what new documents start with.
         </Text>
+      </Section>
+      <Section icon="star" title="Defaults">
+        <DefaultFlags roles={defaults} picks={picks} onChange={setPicks} />
       </Section>
     </EditPanel>
   );

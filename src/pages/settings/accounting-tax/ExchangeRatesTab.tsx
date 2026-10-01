@@ -114,7 +114,7 @@ export function ExchangeRatesTab(route: ListRoute) {
           return (
             <Fields cols={3}>
               {f.date('date', 'Date', { required: true, error: errors.date })}
-              {f.choose(
+              {f.lookup(
                 'currency',
                 'Currency',
                 foreign.map((c) => ({ value: c.code, label: `${c.code} · ${c.name}` })),

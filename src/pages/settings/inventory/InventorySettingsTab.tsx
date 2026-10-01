@@ -14,7 +14,7 @@ export function InventorySettingsTab() {
       setSaved(s);
     });
   }, []);
-  if (!settings) return <p className="p-4 text-muted">Loading…</p>;
+  if (!settings) return <Text tone="muted" className="p-4">Loading…</Text>;
   const f = bind(settings, (p) => setSettings({ ...settings, ...p }));
   const dirty = JSON.stringify(settings) !== JSON.stringify(saved);
 

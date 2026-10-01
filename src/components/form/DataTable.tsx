@@ -79,7 +79,7 @@ export function DataTable<T>({
         <div className="flex min-w-0 flex-1 items-start gap-2">
           <Icon size={24}>{icon}</Icon>
           <div className="min-w-0">
-            <p className="font-semibold text-heading">{title}</p>
+            <Text weight="semibold" tone="heading">{title}</Text>
             {description ? (
               <Text variant="small" tone="muted">
                 {description}

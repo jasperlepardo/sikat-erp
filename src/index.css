@@ -6,8 +6,7 @@
 
 /* Design system workaround (v0.17.1): these components paint with --color-bg-white,
    which stays white in dark mode. Point them at the themed surface token instead
-   (white in light, neutral-950 in dark). Remove once fixed upstream. */
-.sikat-panel,
+   (white in light, neutral-950 in dark). Remove once fixed upstream (Panel is, as of v0.25). */
 .sikat-sidenav__submenu,
 .sikat-tabs[data-variant='secondary'] .sikat-tabs__tab[aria-selected='true'],
 .sikat-tabs__tab:disabled {

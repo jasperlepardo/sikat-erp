@@ -1,4 +1,4 @@
-import { Alert } from '@jasperlepardo/sikat-design-system';
+import { Alert, Link } from '@jasperlepardo/sikat-design-system';
 
 export interface Problem<Tab extends string = string> {
   /** The tab holding the field, or 'header' for the always-visible header card. */
@@ -31,9 +31,9 @@ export function ProblemsAlert<Tab extends string>({
             {p.tab !== 'header' ? (
               <>
                 {' '}
-                <button type="button" className="text-primary underline" onClick={() => onOpenTab(p.tab as Tab)}>
+                <Link intent="primary" onClick={() => onOpenTab(p.tab as Tab)}>
                   {tabLabel(p.tab as Tab)}
-                </button>
+                </Link>
               </>
             ) : null}
           </li>

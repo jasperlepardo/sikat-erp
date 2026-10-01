@@ -31,20 +31,20 @@ export const BUSINESS_TYPES = [
   'Individual',
   'Government',
 ];
-export const EMPLOYEES = ['— None —', 'Andrea Ramos', 'Ben Salazar', 'Carla Uy', 'Dino Pascual'];
-export const TECHNICIANS = ['— None —', 'Edgar Bautista', 'Fe Lopez'];
-export const TERRITORIES = ['— None —', 'NCR', 'North Luzon', 'South Luzon', 'Visayas', 'Mindanao'];
-export const CHANNELS = ['— None —', 'Direct', 'Distributor', 'E-commerce', 'Walk-in'];
-export const PROJECTS = ['— None —', 'PRJ-001 Northgate store renovation', 'PRJ-002 DepEd Pasig iPad rollout', 'PRJ-003 Cebu store opening'];
-export const EMAIL_GROUPS = ['— None —', 'Newsletter', 'Promotions', 'Billing notices'];
+export const EMPLOYEES = ['Andrea Ramos', 'Ben Salazar', 'Carla Uy', 'Dino Pascual'];
+export const TECHNICIANS = ['Edgar Bautista', 'Fe Lopez'];
+export const TERRITORIES = ['NCR', 'North Luzon', 'South Luzon', 'Visayas', 'Mindanao'];
+export const CHANNELS = ['Direct', 'Distributor', 'E-commerce', 'Walk-in'];
+export const PROJECTS = ['PRJ-001 Northgate store renovation', 'PRJ-002 DepEd Pasig iPad rollout', 'PRJ-003 Cebu store opening'];
+export const EMAIL_GROUPS = ['Newsletter', 'Promotions', 'Billing notices'];
 
 export const PAYMENT_TERMS = ['COD', 'Net 7', 'Net 15', 'Net 30', 'Net 45', 'Net 60', '50% DP, balance on delivery'];
 export const PRICE_LISTS = ['Base price', 'Wholesale', 'Retail', 'Government', 'Last purchase price'];
-export const DUNNING_TERMS = ['— None —', 'Standard (7 / 15 / 30 days)', 'Strict (3 / 7 / 14 days)'];
+export const DUNNING_TERMS = ['Standard (7 / 15 / 30 days)', 'Strict (3 / 7 / 14 days)'];
 export const EFFECTIVE_DISCOUNT_GROUPS = ['Lowest discount', 'Highest discount', 'Average', 'Total', 'Discount multiples'];
 export const EFFECTIVE_PRICE = ['Default priority', 'Lowest price', 'Highest price'];
-export const PRIORITIES = ['— None —', 'High', 'Medium', 'Low'];
-export const HOLIDAY_CALENDARS = ['— None —', 'Philippines (national)', 'Philippines (national + NCR)'];
+export const PRIORITIES = ['High', 'Medium', 'Low'];
+export const HOLIDAY_CALENDARS = ['Philippines (national)', 'Philippines (national + NCR)'];
 
 /** Countries used on addresses, banks and items' country of origin. */
 export const COUNTRIES = [
@@ -71,7 +71,7 @@ export const HOUSE_BANKS: { bank: string; account: string; branch: string; swift
   { bank: 'BPI', account: '3141-5926-53', branch: 'Makati Ayala', swift: 'BOPIPHMM' },
   { bank: 'UnionBank', account: '1098-7654-3210', branch: 'Pasig Capitol Commons', swift: 'UBPHPHMM' },
 ];
-export const BANK_CHARGE_CODES = ['— None —', 'Shared (SHA)', 'We pay (OUR)', 'They pay (BEN)'];
+export const BANK_CHARGE_CODES = ['Shared (SHA)', 'We pay (OUR)', 'They pay (BEN)'];
 
 export const PAYMENT_METHODS = [
   { code: 'CASH', description: 'Cash' },
@@ -83,7 +83,7 @@ export const PAYMENT_METHODS = [
   { code: 'CARD', description: 'Corporate credit card' },
 ];
 
-export const PLANNING_GROUPS = ['— None —', 'Fast movers', 'Project-based', 'Seasonal'];
+export const PLANNING_GROUPS = ['Fast movers', 'Project-based', 'Seasonal'];
 
 /**
  * Labels for the Properties tab (the real product lets admins rename up to 64). Only facts with no

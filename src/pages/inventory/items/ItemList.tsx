@@ -15,6 +15,7 @@ import {
   TextField,
   type TableColumn,
   type TableSort,
+  Text,
 } from '@jasperlepardo/sikat-design-system';
 import type { Item } from '../../../mocks/items';
 import { isLowStock, isValidToday, listItems, stockTotals } from '../../../services/items';
@@ -170,6 +171,7 @@ export function ItemList({ basePath = '/inventory/items' }: { basePath?: string 
         }
         tabs={
           <Tabs
+            variant="outline"
             value={filter}
             onValueChange={(v) => {
               setFilter(v as Filter);
@@ -213,7 +215,7 @@ export function ItemList({ basePath = '/inventory/items' }: { basePath?: string 
               }}
             />
           ) : (
-            <p className="p-4 text-muted">Loading items…</p>
+            <Text tone="muted" className="p-4">Loading items…</Text>
           )}
         </Card>
       </Panel.Body>

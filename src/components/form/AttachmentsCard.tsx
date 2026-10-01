@@ -3,10 +3,10 @@ import { Card, Icon, Link, List, Text, TextField, Button } from '@jasperlepardo/
 import { CURRENT_USER, type Attachment } from '../../mocks/common';
 import { RowMenu } from './RowMenu';
 
-const formatSize = (bytes: number) =>
+export const formatSize = (bytes: number) =>
   bytes < 1024 ? `${bytes} B` : bytes < 1024 ** 2 ? `${(bytes / 1024).toFixed(0)} KB` : `${(bytes / 1024 ** 2).toFixed(1)} MB`;
 
-const fileIcon = (name: string): string => {
+export const fileIcon = (name: string): string => {
   const ext = name.split('.').pop()?.toLowerCase() ?? '';
   if (ext === 'pdf') return 'picture_as_pdf';
   if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext)) return 'image';
@@ -15,6 +15,17 @@ const fileIcon = (name: string): string => {
   if (['zip', 'rar', '7z'].includes(ext)) return 'folder_zip';
   return 'attach_file';
 };
+
+/** Attachment records for picked files, attached today by the current user. */
+export const toAttachments = (files: FileList): Attachment[] =>
+  Array.from(files).map((file) => ({
+    id: `att-${crypto.randomUUID().slice(0, 8)}`,
+    fileName: file.name,
+    size: file.size,
+    attachedOn: new Date().toISOString().slice(0, 10),
+    description: '',
+    createdBy: CURRENT_USER,
+  }));
 
 export function AttachmentsCard({
   attachments,
@@ -34,20 +45,9 @@ export function AttachmentsCard({
 
   const addFiles = (files: FileList | null) => {
     if (!files?.length) return;
-    const added: Attachment[] = [];
+    const added = toAttachments(files);
     const nextUrls = { ...urls };
-    for (const file of Array.from(files)) {
-      const id = `att-${crypto.randomUUID().slice(0, 8)}`;
-      added.push({
-        id,
-        fileName: file.name,
-        size: file.size,
-        attachedOn: new Date().toISOString().slice(0, 10),
-        description: '',
-        createdBy: CURRENT_USER,
-      });
-      nextUrls[id] = URL.createObjectURL(file);
-    }
+    Array.from(files).forEach((file, i) => (nextUrls[added[i].id] = URL.createObjectURL(file)));
     setUrls(nextUrls);
     onChange([...attachments, ...added]);
   };
@@ -75,29 +75,31 @@ export function AttachmentsCard({
             </Link>
           }
         >
-          {`Attachments${attachments.length ? ` · ${attachments.length}` : ''}`}
+          {`Attachments${attachments.length ? ` (${attachments.length})` : ''}`}
         </Card.Header>
         <Card.Content>
           {attachments.length ? (
             <List.Group>
               {attachments.map((a) =>
                 editingId === a.id ? (
-                  <li key={a.id} className="flex items-center gap-2 px-3 py-2">
-                    <div className="min-w-0 flex-1">
+                  <List.Item key={a.id}>
+                    <List.Content>
                       <TextField
                         placeholder="What is this file?"
                         value={editDesc}
                         onChange={(e) => setEditDesc(e.currentTarget.value)}
                         onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); saveDesc(a.id); } if (e.key === 'Escape') setEditingId(null); }}
                       />
-                    </div>
-                    <Button type="button" size="small" intent="primary" variant="solid" onClick={() => saveDesc(a.id)}>
-                      Save
-                    </Button>
-                    <Button type="button" size="small" variant="ghost" onClick={() => setEditingId(null)}>
-                      Cancel
-                    </Button>
-                  </li>
+                    </List.Content>
+                    <List.Trailing className="flex gap-1">
+                      <Button type="button" size="small" intent="primary" variant="solid" onClick={() => saveDesc(a.id)}>
+                        Save
+                      </Button>
+                      <Button type="button" size="small" variant="ghost" onClick={() => setEditingId(null)}>
+                        Cancel
+                      </Button>
+                    </List.Trailing>
+                  </List.Item>
                 ) : (
                   <List.Card
                     key={a.id}

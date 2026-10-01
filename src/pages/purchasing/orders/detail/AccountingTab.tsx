@@ -44,9 +44,9 @@ export function AccountingTab({ draft, update, errors, m, ctx }: PoTabProps) {
       <Section icon="account_balance" title="Journal & payment">
         <Fields>
           {f.text('journalRemark', 'Journal remark', { hint: 'Defaults to “Purchase Orders – vendor code”. With perpetual inventory, it’s the journal entry’s remark.' })}
-          {f.choose('project', 'BP project', asOptions(PROJECTS), { hint: 'Defaults from the vendor.' })}
+          {f.choose('project', 'BP project', asOptions(PROJECTS), { clearable: true, hint: 'Defaults from the vendor.' })}
           {f.pick('paymentTerms', 'Payment terms', PAYMENT_TERMS, { hint: 'Defaults from the vendor; sets the due date.' })}
-          {f.choose(
+          {f.lookup(
             'paymentMethod',
             'Payment method',
             PAYMENT_METHODS.map((p) => ({ value: p.code, label: `${p.code} · ${p.description}` })),

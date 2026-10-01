@@ -1,9 +1,8 @@
 import { Button, Checkbox, Text } from '@jasperlepardo/sikat-design-system';
 import { PROPERTY_LABELS } from '../../../mocks/masters';
-import type { TabProps } from './GeneralTab';
-import { Section } from './fields';
+import { Section, type TabProps } from './fields';
 
-export function PropertiesTab({ draft, update }: TabProps) {
+export function PropertiesSection({ draft, update }: TabProps) {
   const toggle = (label: string, on: boolean) =>
     update({ properties: PROPERTY_LABELS.filter((l) => (l === label ? on : draft.properties.includes(l))) });
 

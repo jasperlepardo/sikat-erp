@@ -1,4 +1,4 @@
-import { Button, Select, Text, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { Button, Combobox, type TableColumn, Text } from '@jasperlepardo/sikat-design-system';
 import { DataTable } from '../../../../components/form/DataTable';
 import { Fields, ReadOnly, Section, bind } from '../../../../components/form/fields';
 import { newItemWarehouse, type ItemWarehouse } from '../../../../mocks/items';
@@ -46,11 +46,11 @@ export function InventoryTab({ draft, update, errors, vendors, inv }: TabProps) 
       key: 'preferredVendorId',
       header: 'Preferred vendor',
       cell: (w) => (
-        <Select
+        <Combobox
           aria-label={`Preferred vendor for ${w.code}`}
           options={vendorOptions(vendors)}
           value={w.preferredVendorId}
-          onValueChange={(v) => patchRow(w.code, { preferredVendorId: v })}
+          onValueChange={(v) => patchRow(w.code, { preferredVendorId: v ?? '' })}
         />
       ),
     },
@@ -63,15 +63,15 @@ export function InventoryTab({ draft, update, errors, vendors, inv }: TabProps) 
         const error = errors[`wh:${w.code}:bin`];
         return (
           <div>
-            <Select
+            <Combobox
               aria-label={`Default bin in ${w.code}`}
               options={wh.bins.map((b) => ({ value: b, label: b }))}
               placeholder="Pick a bin"
               invalid={!!error}
               value={w.defaultBin}
-              onValueChange={(v) => patchRow(w.code, { defaultBin: v })}
+              onValueChange={(v) => patchRow(w.code, { defaultBin: v ?? '' })}
             />
-            {error ? <p className="mt-1 text-xs text-danger">{error}</p> : null}
+            {error ? <Text variant="caption" tone="danger" className="mt-1">{error}</Text> : null}
           </div>
         );
       },
@@ -146,12 +146,12 @@ export function InventoryTab({ draft, update, errors, vendors, inv }: TabProps) 
         }
         actions={
           missing.length ? (
-            <Select
+            <Combobox
               aria-label="Add warehouse"
               placeholder="Add warehouse…"
               options={missing.map((w) => ({ value: w.code, label: `${w.code} · ${w.name}` }))}
               value=""
-              onValueChange={(code) => update({ warehouses: [...draft.warehouses, newItemWarehouse(code)] })}
+              onValueChange={(code) => code && update({ warehouses: [...draft.warehouses, newItemWarehouse(code)] })}
             />
           ) : undefined
         }

@@ -143,7 +143,7 @@ function ListView<T extends { id: string }>({
         <div className="flex min-w-0 flex-1 items-start gap-2">
           <Icon size={24}>{icon}</Icon>
           <div className="min-w-0">
-            <p className="font-semibold text-heading">{title}</p>
+            <Text weight="semibold" tone="heading">{title}</Text>
             {description ? (
               <Text variant="small" tone="muted">
                 {description}
@@ -214,7 +214,7 @@ function ListView<T extends { id: string }>({
             }}
           />
         ) : (
-          <p className="p-4 text-muted">Loading…</p>
+          <Text tone="muted" className="p-4">Loading…</Text>
         )}
       </Card>
     </>
@@ -254,7 +254,7 @@ function RecordPage<T extends { id: string }>({
   const row = draft ?? fresh ?? (existing ? structuredClone(existing) : null);
   const back = () => navigate(basePath);
 
-  if (!loaded) return <p className="p-4 text-muted">Loading…</p>;
+  if (!loaded) return <Text tone="muted" className="p-4">Loading…</Text>;
   if (!row) {
     return (
       <Panel className="flex-1">

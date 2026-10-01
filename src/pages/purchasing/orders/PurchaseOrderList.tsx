@@ -16,12 +16,12 @@ import {
   TextField,
   type TableColumn,
   type TableSort,
+  Text,
 } from '@jasperlepardo/sikat-design-system';
 import { PO_STATUSES, type PoStatus, type PurchaseOrder } from '../../../mocks/purchaseOrders';
-import { rateAt, vatNotPaidToVendor } from '../../../mocks/taxes';
 import { formatAmount } from '../../../services/format';
 import { taxCodes } from '../../../services/masterData';
-import { listPurchaseOrders, openQty, poNumber, poTotals } from '../../../services/purchaseOrders';
+import { listPurchaseOrders, openQty, poNumber, poTotal } from '../../../services/purchaseOrders';
 import { useAsync } from '../../../services/useAsync';
 import { PO_LIST_PATH, STATUS_INTENT } from './detail/PurchaseOrderDetail';
 import { DEFAULT_PAGE_SIZE, PAGE_SIZES } from '../../../components/form/DataTable';
@@ -39,11 +39,7 @@ export function PurchaseOrderList() {
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
 
   const [orders, codes] = data ?? [undefined, []];
-  const totalOf = (po: PurchaseOrder) =>
-    poTotals(po, (code) => {
-      const c = codes.find((x) => x.code === code);
-      return c ? (rateAt(c, po.postingDate) ?? 0) : 0;
-    }, undefined, (code) => vatNotPaidToVendor(codes.find((x) => x.code === code))).total;
+  const totalOf = (po: PurchaseOrder) => poTotal(po, codes);
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -131,6 +127,7 @@ export function PurchaseOrderList() {
         }
         tabs={
           <Tabs
+            variant="outline"
             value={filter}
             onValueChange={(v) => {
               setFilter(v as Filter);
@@ -179,7 +176,7 @@ export function PurchaseOrderList() {
               }}
             />
           ) : (
-            <p className="p-4 text-muted">Loading purchase orders…</p>
+            <Text tone="muted" className="p-4">Loading purchase orders…</Text>
           )}
         </Card>
       </Panel.Body>

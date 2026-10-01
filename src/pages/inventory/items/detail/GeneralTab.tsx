@@ -101,7 +101,7 @@ export function GeneralTab({ draft, update, errors, tax, inv }: TabProps) {
             { value: '', label: '— None —' },
             ...COUNTRIES.map((c) => ({ value: c, label: c })),
           ])}
-          {f.choose(
+          {f.lookup(
             'customsGroup',
             'Customs group',
             activeOptions(
@@ -123,7 +123,7 @@ export function GeneralTab({ draft, update, errors, tax, inv }: TabProps) {
         </Flags>
         {draft.exciseTax ? (
           <Fields>
-            {f.choose(
+            {f.lookup(
               'exciseCategory',
               'Excise category',
               tax.excise

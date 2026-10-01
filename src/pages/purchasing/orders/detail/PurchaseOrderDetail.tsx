@@ -12,6 +12,7 @@ import {
   Radio,
   Select,
   Tabs,
+  List,
   Text,
   TextField,
 } from '@jasperlepardo/sikat-design-system';
@@ -79,7 +80,7 @@ export const STATUS_INTENT: Record<PoStatus, 'default' | 'primary' | 'warning' |
   Cancelled: 'danger',
 };
 
-const BUYERS = [CURRENT_USER, ...EMPLOYEES.filter((e) => e !== '— None —')];
+const BUYERS = [CURRENT_USER, ...EMPLOYEES];
 const TODAY = () => new Date().toISOString().slice(0, 10);
 
 /** How each kind of withholding tax reads in the footer. */
@@ -169,7 +170,7 @@ function PurchaseOrderForm() {
     };
   }, [id, isNew]);
 
-  if (draft === undefined || !m) return <p className="p-4 text-muted">Loading purchase order…</p>;
+  if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading purchase order…</Text>;
   if (draft === null) {
     return (
       <Panel className="flex-1">
@@ -400,7 +401,7 @@ function PurchaseOrderForm() {
                     value={draft.vendorName || '—'}
                     hint="Copied from the vendor when picked; later edits to the vendor don’t change this PO."
                   />
-                  {h.choose(
+                  {h.lookup(
                     'contactId',
                     'Contact person',
                     [{ value: '', label: '— None —' }, ...(vendor?.contacts ?? []).filter((c) => c.active || c.id === draft.contactId).map((c) => ({ value: c.id, label: contactName(c) }))],
@@ -431,13 +432,13 @@ function PurchaseOrderForm() {
                           </Radio>
                         ))}
                         {allCurrencies ? (
-                          <Select
+                          <Combobox
                             aria-label="Document currency"
                             className="w-36"
                             disabled={!currencyEditable}
                             options={m.currencies.filter((c) => c.active).map((c) => ({ value: c.code, label: c.code }))}
                             value={draft.currency}
-                            onValueChange={(currency) => update({ currency })}
+                            onValueChange={(currency) => update({ currency: currency ?? '' })}
                           />
                         ) : null}
                       </div>
@@ -526,7 +527,7 @@ function PurchaseOrderForm() {
                 {h.area('remarks', 'Remarks', { rows: 3, hint: 'Can be changed after the PO is added.' })}
               </Fields>
               <fieldset disabled={ctx.readOnly} className="contents">
-                <dl className="flex flex-col gap-1 text-sm">
+                <List.Group divider>
                   <TotalRow label="Total before discount" value={view.convert(totals.beforeDiscount)} code={view.code} />
                   <TotalRow
                     label="Discount"
@@ -560,12 +561,12 @@ function PurchaseOrderForm() {
                             value={String(draft.freight)}
                             onChange={(e) => update({ freight: Number(e.currentTarget.value) })}
                           />
-                          <Select
+                          <Combobox
                             aria-label="Freight tax code"
                             className="w-28"
                             options={m.tax.codes.filter((c) => c.direction === 'Purchase' && c.active).map((c) => ({ value: c.code, label: c.code }))}
                             value={draft.freightTaxCode}
-                            onValueChange={(freightTaxCode) => update({ freightTaxCode })}
+                            onValueChange={(freightTaxCode) => update({ freightTaxCode: freightTaxCode ?? '' })}
                           />
                         </div>
                       }
@@ -576,10 +577,10 @@ function PurchaseOrderForm() {
                   ) : null}
                   <TotalRow label="Tax" value={view.convert(totals.tax)} code={view.code} />
                   {totals.reverseCharge ? (
-                    <Text variant="small" tone="muted">
+                    <TotalNote>
                       VAT of {view.code} {formatAmount(view.convert(totals.reverseCharge))} isn’t paid to the vendor: reverse-charge VAT
                       you withhold and remit (BIR 1600-VT), and import VAT is paid to the Bureau of Customs. Both are claimed as input VAT.
-                    </Text>
+                    </TotalNote>
                   ) : null}
                   {withholdingLines.filter((w) => w.deducted).map((w) => (
                     <TotalRow
@@ -590,10 +591,10 @@ function PurchaseOrderForm() {
                     />
                   ))}
                   {withholdingLines.filter((w) => !w.deducted).map((w) => (
-                    <Text key={w.atc} variant="small" tone="muted">
+                    <TotalNote key={w.atc}>
                       VAT withheld — {w.atc} ({w.rate}%): {view.code} {formatAmount(view.convert(w.amount))} remitted by you on BIR 1600-VT, not
                       deducted from the vendor.
-                    </Text>
+                    </TotalNote>
                   ))}
                   <TotalRow
                     label="Net payment due"
@@ -606,7 +607,7 @@ function PurchaseOrderForm() {
                       ≈ PHP {formatAmount(totals.total * ctx.fx)} at {ctx.fx || '—'} ({draft.postingDate}).
                     </Text>
                   ) : null}
-                </dl>
+                </List.Group>
               </fieldset>
             </div>
           </Section>
@@ -641,15 +642,30 @@ function DeliveryDate({ draft, update, error }: { draft: PoDraft; update: (p: Pa
 }
 
 function TotalRow({ label, value, code, input, strong }: { label: string; value: number; code: string; input?: ReactNode; strong?: boolean }) {
+  const emphasis = (node: ReactNode) => (strong ? <Text as="span" weight="semibold" tone="heading">{node}</Text> : node);
   return (
-    <div className={`flex items-center justify-between gap-2 border-b border-default py-1 ${strong ? 'text-base font-semibold text-heading' : ''}`}>
-      <dt className="flex items-center gap-2">
-        {label}
-        {input}
-      </dt>
-      <dd className="whitespace-nowrap tabular-nums">
-        {code} {formatAmount(value)}
-      </dd>
-    </div>
+    <List.Item
+      title={
+        <span className="flex items-center gap-2">
+          <span className="whitespace-nowrap">{emphasis(label)}</span>
+          {input ? <span className="flex-none">{input}</span> : null}
+        </span>
+      }
+      content={<span className="whitespace-nowrap tabular-nums">{emphasis(`${code} ${formatAmount(value)}`)}</span>}
+    />
+  );
+}
+
+/** An explanatory line between the totals. */
+function TotalNote({ children }: { children: ReactNode }) {
+  return (
+    <List.Item
+      variant="value-only"
+      content={
+        <Text variant="small" tone="muted">
+          {children}
+        </Text>
+      }
+    />
   );
 }

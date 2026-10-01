@@ -1,9 +1,10 @@
 import React, { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import {
-  Badge, Button, Form, FormField, Icon, IconButton,
+  Badge, Button, Combobox, Form, FormField, Icon, IconButton,
   Panel, PanelHeader, Select, SidePanel, Tabs, TextField,
   type TabItem,
+  Text,
 } from '@jasperlepardo/sikat-design-system';
 import { Fields, Flags, Section, bind, type Errors } from '../../../components/form/fields';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../components/form/ProblemsAlert';
@@ -102,7 +103,7 @@ function ItemFormNew() {
     return () => window.removeEventListener('keydown', onKey);
   }, [configureOpen]);
 
-  if (draft === undefined || !mastersReady) return <p className="p-4 text-muted">Loading item…</p>;
+  if (draft === undefined || !mastersReady) return <Text tone="muted" className="p-4">Loading item…</Text>;
   if (draft === null) {
     return (
       <Panel className="flex-1">
@@ -307,15 +308,15 @@ function ItemFormNew() {
                 tooltip={locked ? 'Changing after postings can misalign G/L.' : 'Sets valuation and G/L defaults.'}
               >
                 {(p) => (
-                  <Select
+                  <Combobox
                     {...p}
                     options={activeOptions(inv.groups, (g) => g.name, (g) => `${g.name} (${g.prefix})`, draft.itemGroup)}
                     value={draft.itemGroup}
-                    onValueChange={changeGroup}
+                    onValueChange={(v) => changeGroup(v ?? '')}
                   />
                 )}
               </FormField>
-              {h.choose('inventoryUom', 'Inventory UoM', activeOptions(inv.uoms, (u) => u.code, (u) => `${u.code} · ${u.name}`, draft.inventoryUom), {
+              {h.lookup('inventoryUom', 'Inventory UoM', activeOptions(inv.uoms, (u) => u.code, (u) => `${u.code} · ${u.name}`, draft.inventoryUom), {
                 required: true,
                 error: errors.inventoryUom,
                 disabled: locked,
@@ -335,10 +336,10 @@ function ItemFormNew() {
                 prefix: 'PHP',
                 hint: 'Default price list. Customer price lists live in Inventory › Pricing.',
               })}
-              {h.choose('defaultVendorId', 'Default vendor', vendorOptions(vendors), {
+              {h.lookup('defaultVendorId', 'Default vendor', vendorOptions(vendors), {
                 hint: 'Pre-fills new purchase orders.',
               })}
-              {h.choose('withholdingGroup', 'Withholding group', withholdingGroupOptions(tax, draft.withholdingGroup), {
+              {h.lookup('withholdingGroup', 'Withholding group', withholdingGroupOptions(tax, draft.withholdingGroup), {
                 hint: (() => {
                   const g = tax.withholdingGroups.find((x) => x.code === draft.withholdingGroup);
                   if (!g) return 'Pick a withholding group.';
@@ -347,19 +348,19 @@ function ItemFormNew() {
                   return `Withholding applies: ${g.atcIndividual ?? '—'} (individual) / ${g.atcCorporate ?? '—'} (corporate).`;
                 })(),
               })}
-              {h.choose('salesTaxGroup', 'Sales tax group', taxGroupOptions(tax, 'Sales', draft.salesTaxGroup), {
+              {h.lookup('salesTaxGroup', 'Sales tax group', taxGroupOptions(tax, 'Sales', draft.salesTaxGroup), {
                 hint: draft.taxLiable ? taxResolution(tax, draft.salesTaxGroup, draft.salesTaxCode) : 'Not tax liable: no VAT charged on sales.',
               })}
-              {h.choose('salesTaxCode', 'Fixed sales tax code', taxCodeOptions(tax, 'Sales', draft.salesTaxCode), {
+              {h.lookup('salesTaxCode', 'Fixed sales tax code', taxCodeOptions(tax, 'Sales', draft.salesTaxCode), {
                 hint: 'Overrides the sales tax group on every sale.',
               })}
               <div className="md:pt-6">
                 <Flags>{h.check('taxLiable', 'Tax liable (VAT applies on sales)')}</Flags>
               </div>
-              {h.choose('purchaseTaxGroup', 'Purchase tax group', taxGroupOptions(tax, 'Purchase', draft.purchaseTaxGroup), {
+              {h.lookup('purchaseTaxGroup', 'Purchase tax group', taxGroupOptions(tax, 'Purchase', draft.purchaseTaxGroup), {
                 hint: taxResolution(tax, draft.purchaseTaxGroup, draft.purchaseTaxCode),
               })}
-              {h.choose('purchaseTaxCode', 'Fixed purchase tax code', taxCodeOptions(tax, 'Purchase', draft.purchaseTaxCode), {
+              {h.lookup('purchaseTaxCode', 'Fixed purchase tax code', taxCodeOptions(tax, 'Purchase', draft.purchaseTaxCode), {
                 hint: 'Overrides the purchase tax group, e.g. 49 for a VAT-exempt import.',
               })}
               <div className="hidden md:block" />

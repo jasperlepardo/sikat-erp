@@ -51,7 +51,9 @@ function EntryForm({
     >
       <Section icon="gavel" title="Treaty income details">
         <Fields>
-          {f.pick('incomeType', 'Income type', ['', ...TREATY_INCOME_TYPES], {
+          {f.pick('incomeType', 'Income type', [...TREATY_INCOME_TYPES], {
+            clearable: true,
+            placeholder: 'Select an income type',
             hint: 'Type of income being paid to this vendor.',
           })}
           {f.num('approvedRate', 'Approved rate', {
@@ -96,7 +98,7 @@ export function TreatyIncomesPanel({
     <>
       <Section
         icon="gavel"
-        title={`Treaty incomes${incomes.length ? ` · ${incomes.length}` : ''}`}
+        title={`Treaty incomes${incomes.length ? ` (${incomes.length})` : ''}`}
         actions={
           !editing ? (
             <Link leadingIcon={<Icon size={20}>add</Icon>} onClick={startAdd}>

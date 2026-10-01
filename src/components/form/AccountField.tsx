@@ -1,4 +1,4 @@
-import { FormField, Select } from '@jasperlepardo/sikat-design-system';
+import { Combobox, FormField } from '@jasperlepardo/sikat-design-system';
 import type { ReactNode } from 'react';
 import { accountLabel, accountProblem, accountText, fitsRole, type Account, type AccountRole } from '../../mocks/chartOfAccounts';
 import { accounts as accountsCollection } from '../../services/masterData';
@@ -38,7 +38,6 @@ export function AccountField({
 }) {
   const all = accounts ?? [];
   const options = [
-    ...(allowNone ? [{ value: '', label: '— None —' }] : []),
     ...all
       .filter((a) => !a.title && a.active && fitsRole(a, role, all))
       .sort((a, b) => a.code.localeCompare(b.code))
@@ -52,13 +51,14 @@ export function AccountField({
   return (
     <FormField label={label} required={required} error={error ?? problem} tooltip={hint}>
       {(p) => (
-        <Select
+        <Combobox
           {...p}
           options={options}
           disabled={disabled || !accounts}
-          placeholder={accounts ? 'Pick an account' : 'Loading accounts…'}
+          placeholder={accounts ? (allowNone ? 'None' : 'Search accounts') : 'Loading accounts…'}
+          clearable={allowNone}
           value={value}
-          onValueChange={onChange}
+          onValueChange={(v) => onChange(v ?? '')}
         />
       )}
     </FormField>

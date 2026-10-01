@@ -79,7 +79,9 @@ function ExemptionForm({
             placeholder: local.type === 'Zero-rated' ? 'e.g. PEZA-REE-2024-0183' : 'e.g. BIR ruling no.',
           })}
           {local.type === 'Exempt entity'
-            ? f.pick('basis', 'Legal basis', ['', ...bases], {
+            ? f.pick('basis', 'Legal basis', bases, {
+                clearable: true,
+                placeholder: 'Select a legal basis',
                 hint: 'Legal ground for the VAT exemption.',
                 disabled: locked,
               })

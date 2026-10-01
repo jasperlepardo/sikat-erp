@@ -84,7 +84,7 @@ export function ConfigureTab({ draft, update, errors, vendors, tax, inv, activeT
               ) : (
                 <ReadOnly label="G/L accounts" value="Taken from each warehouse's account settings." />
               )}
-              {f.choose('withholdingGroup', 'Withholding group', withholdingGroupOptions(tax, draft.withholdingGroup), {
+              {f.lookup('withholdingGroup', 'Withholding group', withholdingGroupOptions(tax, draft.withholdingGroup), {
                 hint: (() => {
                   const g = tax.withholdingGroups.find((x) => x.code === draft.withholdingGroup);
                   if (!g) return 'Pick a withholding group.';
@@ -107,7 +107,7 @@ export function ConfigureTab({ draft, update, errors, vendors, tax, inv, activeT
           </Flags>
           {draft.exciseTax ? (
             <Fields>
-              {f.choose(
+              {f.lookup(
                 'exciseCategory',
                 'Excise category',
                 tax.excise
@@ -128,22 +128,22 @@ export function ConfigureTab({ draft, update, errors, vendors, tax, inv, activeT
             </Fields>
           ) : null}
           <Fields>
-            {f.choose('salesTaxGroup', 'Sales tax group', taxGroupOptions(tax, 'Sales', draft.salesTaxGroup), {
+            {f.lookup('salesTaxGroup', 'Sales tax group', taxGroupOptions(tax, 'Sales', draft.salesTaxGroup), {
               required: draft.salesItem,
               error: errors.salesTaxGroup,
               hint: draft.taxLiable
                 ? taxResolution(tax, draft.salesTaxGroup, draft.salesTaxCode)
                 : 'Not tax liable: no VAT charged on sales.',
             })}
-            {f.choose('salesTaxCode', 'Fixed sales tax code', taxCodeOptions(tax, 'Sales', draft.salesTaxCode), {
+            {f.lookup('salesTaxCode', 'Fixed sales tax code', taxCodeOptions(tax, 'Sales', draft.salesTaxCode), {
               hint: 'Overrides the sales tax group on every sale.',
             })}
-            {f.choose('purchaseTaxGroup', 'Purchase tax group', taxGroupOptions(tax, 'Purchase', draft.purchaseTaxGroup), {
+            {f.lookup('purchaseTaxGroup', 'Purchase tax group', taxGroupOptions(tax, 'Purchase', draft.purchaseTaxGroup), {
               required: draft.purchaseItem,
               error: errors.purchaseTaxGroup,
               hint: taxResolution(tax, draft.purchaseTaxGroup, draft.purchaseTaxCode),
             })}
-            {f.choose('purchaseTaxCode', 'Fixed purchase tax code', taxCodeOptions(tax, 'Purchase', draft.purchaseTaxCode), {
+            {f.lookup('purchaseTaxCode', 'Fixed purchase tax code', taxCodeOptions(tax, 'Purchase', draft.purchaseTaxCode), {
               hint: 'Overrides the purchase tax group on every purchase.',
             })}
           </Fields>
@@ -155,17 +155,17 @@ export function ConfigureTab({ draft, update, errors, vendors, tax, inv, activeT
         <>
           <Section icon="storefront" title="Purchasing setup">
             <Fields>
-              {f.choose('defaultVendorId', 'Default vendor', vendorOptions(vendors), {
+              {f.lookup('defaultVendorId', 'Default vendor', vendorOptions(vendors), {
                 hint: 'Pre-fills new purchase orders.',
               })}
-              {f.choose(
+              {f.lookup(
                 'manufacturer',
                 'Manufacturer',
                 activeOptions(inv.manufacturers, (m) => m.code, (m) => `${m.code} · ${m.name}`, draft.manufacturer, '— None —'),
                 { hint: 'Who makes it — not necessarily who you buy from.' },
               )}
               {f.text('vendorItemNo', 'Purchasing item no.', { hint: "The vendor's part number, for matching their invoices." })}
-              {f.choose('purchasingUom', 'Purchasing UoM', activeOptions(inv.uoms, (u) => u.code, (u) => `${u.code} · ${u.name}`, draft.purchasingUom))}
+              {f.lookup('purchasingUom', 'Purchasing UoM', activeOptions(inv.uoms, (u) => u.code, (u) => `${u.code} · ${u.name}`, draft.purchasingUom))}
               {f.num('itemsPerPurchaseUnit', `${draft.inventoryUom} per ${draft.purchasingUom}`, {
                 required: convertsPurchase,
                 error: errors.itemsPerPurchaseUnit,
@@ -178,7 +178,7 @@ export function ConfigureTab({ draft, update, errors, vendors, tax, inv, activeT
                 { value: '', label: '— None —' },
                 ...COUNTRIES.map((c) => ({ value: c, label: c })),
               ])}
-              {f.choose(
+              {f.lookup(
                 'customsGroup',
                 'Customs group',
                 activeOptions(inv.customs, (c) => c.id, (c) => `${c.name} (HS ${c.hsCode}) · ${c.duty}% duty`, draft.customsGroup, '— None —'),
@@ -219,7 +219,7 @@ export function ConfigureTab({ draft, update, errors, vendors, tax, inv, activeT
         <>
           <Section icon="sell" title="Sales setup">
             <Fields>
-              {f.choose('salesUom', 'Sales UoM', activeOptions(inv.uoms, (u) => u.code, (u) => `${u.code} · ${u.name}`, draft.salesUom))}
+              {f.lookup('salesUom', 'Sales UoM', activeOptions(inv.uoms, (u) => u.code, (u) => `${u.code} · ${u.name}`, draft.salesUom))}
               {f.num('itemsPerSalesUnit', `${draft.inventoryUom} per ${draft.salesUom}`, {
                 required: convertsSales,
                 error: errors.itemsPerSalesUnit,
@@ -229,11 +229,11 @@ export function ConfigureTab({ draft, update, errors, vendors, tax, inv, activeT
                   : 'Same as the inventory unit.',
               })}
               {f.text('sellingItemNo', 'Selling item no.', { hint: 'Printed on sales documents instead of the Item No.' })}
-              {f.choose('shippingType', 'Shipping type', activeOptions(inv.shipping, (x) => x.id, (x) => x.name, draft.shippingType, '— None —'))}
-              {f.choose('warrantyTemplate', 'Warranty template', activeOptions(inv.warranties, (w) => w.id, (w) => `${w.name} · ${w.coverage}`, draft.warrantyTemplate, '— None —'), {
+              {f.lookup('shippingType', 'Shipping type', activeOptions(inv.shipping, (x) => x.id, (x) => x.name, draft.shippingType, '— None —'))}
+              {f.lookup('warrantyTemplate', 'Warranty template', activeOptions(inv.warranties, (w) => w.id, (w) => `${w.name} · ${w.coverage}`, draft.warrantyTemplate, '— None —'), {
                 hint: draft.manageBy === 'Serial Numbers' ? 'Assigned to each serial number sold.' : 'Used with serial-numbered items.',
               })}
-              {f.choose(
+              {f.lookup(
                 'commissionGroup',
                 'Commission group',
                 activeOptions(inv.commissions, (c) => c.id, (c) => `${c.name} (${c.pct}%)`, draft.commissionGroup, '— None —'),

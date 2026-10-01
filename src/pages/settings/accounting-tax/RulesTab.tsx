@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import {
   Badge,
   Card,
+  Combobox,
   DatePicker,
   FormField,
   Select,
@@ -50,7 +51,7 @@ const outcomeIntent = (o: TraceStep['outcome']) =>
 function Trace({ steps, caption }: { steps: TraceStep[]; caption: string }) {
   return (
     <div className="flex flex-col gap-1">
-      <p className="text-sm font-semibold text-heading">{caption}</p>
+      <Text variant="small" weight="semibold" tone="heading">{caption}</Text>
       <Card>
         <Table
           caption={caption}
@@ -120,7 +121,7 @@ export function RulesTab() {
             ['Withholding on purchases', WITHHOLDING_RULES],
           ].map(([title, rules]) => (
             <div key={title as string}>
-              <p className="mb-2 text-sm font-semibold text-heading">{title}</p>
+              <Text variant="small" weight="semibold" tone="heading" className="mb-2">{title}</Text>
               <ol className="list-decimal space-y-1 pl-5 text-sm text-body">
                 {(rules as string[]).map((r) => (
                   <li key={r}>{r}</li>
@@ -148,21 +149,21 @@ export function RulesTab() {
           </FormField>
           <FormField label={direction === 'Sales' ? 'Customer' : 'Vendor'}>
             {(p) => (
-              <Select
+              <Combobox
                 {...p}
                 options={partnerOptions.map((x) => ({ value: x.id, label: `${x.code} · ${x.name}` }))}
                 value={partner?.id ?? ''}
-                onValueChange={setPartnerId}
+                onValueChange={(v) => setPartnerId(v ?? '')}
               />
             )}
           </FormField>
           <FormField label="Item">
             {(p) => (
-              <Select
+              <Combobox
                 {...p}
                 options={itemOptions.map((x) => ({ value: x.id, label: `${x.itemNo} · ${x.description}` }))}
                 value={item?.id ?? ''}
-                onValueChange={setItemId}
+                onValueChange={(v) => setItemId(v ?? '')}
               />
             )}
           </FormField>

@@ -7,7 +7,7 @@ import {
 } from '../mocks/purchaseOrders';
 import type { RoundingRule } from '../mocks/currencies';
 import type { Item } from '../mocks/items';
-import { SYSTEM_ATCS } from '../mocks/taxes';
+import { SYSTEM_ATCS, rateAt, vatNotPaidToVendor, type TaxCode } from '../mocks/taxes';
 import { createCollection } from './store';
 import { determineWithholding, type LineParty, type TaxMasterData } from './taxDetermination';
 
@@ -75,6 +75,18 @@ export function poTotals(
   const total = step ? Math.round(raw / step) * step : raw;
   return { beforeDiscount, discount, freight, tax, reverseCharge, rounding: round2(total - raw), total: round2(total) };
 }
+
+/** A PO's document total, with tax rates from the tax codes as of its posting date. */
+export const poTotal = (po: PurchaseOrder, codes: TaxCode[]) =>
+  poTotals(
+    po,
+    (code) => {
+      const c = codes.find((x) => x.code === code);
+      return c ? (rateAt(c, po.postingDate) ?? 0) : 0;
+    },
+    undefined,
+    (code) => vatNotPaidToVendor(codes.find((x) => x.code === code)),
+  ).total;
 
 export interface WithholdingLine {
   atc: string;

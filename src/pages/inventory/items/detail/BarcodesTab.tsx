@@ -1,4 +1,4 @@
-import { Button, Icon, Select, Text, TextField, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { Button, Combobox, Icon, type TableColumn, Text, TextField } from '@jasperlepardo/sikat-design-system';
 import { DataTable } from '../../../../components/form/DataTable';
 import { newBarcodeRow, type ItemBarcode } from '../../../../mocks/items';
 import { activeOptions } from '../../../../services/inventoryMasters';
@@ -15,12 +15,12 @@ export function BarcodesTab({ draft, update, errors, inv }: TabProps) {
       key: 'uom',
       header: 'UoM',
       cell: (r) => (
-        <Select
+        <Combobox
           aria-label="Unit of measure"
           options={activeOptions(inv.uoms, (u) => u.code, (u) => `${u.code} · ${u.name}`, r.uom)}
           invalid={!!err(r, 'uom')}
           value={r.uom}
-          onValueChange={(uom) => patch(r.id, { uom })}
+          onValueChange={(uom) => patch(r.id, { uom: uom ?? '' })}
         />
       ),
     },
@@ -36,7 +36,7 @@ export function BarcodesTab({ draft, update, errors, inv }: TabProps) {
             value={r.barcode}
             onChange={(e) => patch(r.id, { barcode: e.currentTarget.value.trim() })}
           />
-          {err(r, 'barcode') ? <p className="mt-1 text-xs text-danger">{err(r, 'barcode')}</p> : null}
+          {err(r, 'barcode') ? <Text variant="caption" tone="danger" className="mt-1">{err(r, 'barcode')}</Text> : null}
         </div>
       ),
     },

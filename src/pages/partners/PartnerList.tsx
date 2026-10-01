@@ -17,6 +17,7 @@ import {
   TextField,
   type TableColumn,
   type TableSort,
+  Text,
 } from '@jasperlepardo/sikat-design-system';
 import { LEAD_STAGES, type Partner } from '../../mocks/partners';
 import {
@@ -189,6 +190,7 @@ export function PartnerList({ scope }: { scope: PartnerScope }) {
         }
         tabs={
           <Tabs
+            variant="outline"
             value={filter}
             onValueChange={(v) => {
               setFilter(v);
@@ -232,7 +234,7 @@ export function PartnerList({ scope }: { scope: PartnerScope }) {
               }}
             />
           ) : (
-            <p className="p-4 text-muted">Loading {config.title.toLowerCase()}…</p>
+            <Text tone="muted" className="p-4">Loading {config.title.toLowerCase()}…</Text>
           )}
         </Card>
       </Panel.Body>

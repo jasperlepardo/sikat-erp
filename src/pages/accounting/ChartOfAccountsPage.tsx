@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams } from 'react-router';
-import { Alert, Badge, Checkbox, FormField, Panel, PanelHeader, TableStatus, Tabs } from '@jasperlepardo/sikat-design-system';
+import { Alert, Badge, Checkbox, FormField, Panel, PanelHeader, TableStatus, Tabs, Text } from '@jasperlepardo/sikat-design-system';
 import { Fields, Flags, ReadOnly, Section, bind } from '../../components/form/fields';
 import { MasterList } from '../../components/form/MasterList';
 import {
@@ -251,7 +251,7 @@ export function ChartOfAccountsPage() {
               )}
               {isDrawerTop
                 ? null
-                : f.choose(
+                : f.lookup(
                     'parentCode',
                     'Under title account',
                     titles.map((t) => ({ value: t.code, label: `${t.code} ${t.name}` })),
@@ -268,7 +268,7 @@ export function ChartOfAccountsPage() {
               {f.check('active', 'Active')}
             </Flags>
             {errors.title || errors.control || errors.active ? (
-              <p className="text-sm text-danger">{errors.title ?? errors.control ?? errors.active}</p>
+              <Text variant="small" tone="danger">{errors.title ?? errors.control ?? errors.active}</Text>
             ) : null}
             <Fields cols={1}>
               <ReadOnly
@@ -334,7 +334,7 @@ export function ChartOfAccountsPage() {
 
                 <Section icon="event_repeat" title="Period-end and tax">
                   <Fields cols={3}>
-                    {f.choose('defaultTaxCode', 'Default tax code', taxOptions, {
+                    {f.lookup('defaultTaxCode', 'Default tax code', taxOptions, {
                       hint: 'Proposed on manual postings to this account. None = not VAT-relevant.',
                     })}
                   </Fields>
@@ -342,7 +342,7 @@ export function ChartOfAccountsPage() {
                     {f.check('revalue', 'Revalue at period-end (foreign currency)', { disabled: a.currency === 'PHP' || a.currency === 'All currencies' })}
                     {f.check('reconcile', 'Reconcile against bank statements', { disabled: !a.cash })}
                   </Flags>
-                  {errors.revalue || errors.reconcile ? <p className="text-sm text-danger">{errors.revalue ?? errors.reconcile}</p> : null}
+                  {errors.revalue || errors.reconcile ? <Text variant="small" tone="danger">{errors.revalue ?? errors.reconcile}</Text> : null}
                 </Section>
               </>
             )}
@@ -361,6 +361,7 @@ export function ChartOfAccountsPage() {
         subcopy="Balance sheet and income statement accounts for a VAT-registered Philippine retailer."
         tabs={
           <Tabs
+            variant="outline"
             value={drawer}
             onValueChange={(v) => setDrawer(v as 'all' | Drawer)}
             items={[

@@ -1,4 +1,4 @@
-import { Badge, Button, Icon, Select, Text, TextField, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { Badge, Button, Combobox, Icon, type TableColumn, Text, TextField } from '@jasperlepardo/sikat-design-system';
 import { DataTable } from '../../../../components/form/DataTable';
 import { newManufacturerRow, type ItemManufacturer } from '../../../../mocks/items';
 import { activeOptions } from '../../../../services/inventoryMasters';
@@ -31,12 +31,12 @@ export function ManufacturersTab({ draft, update, inv }: TabProps) {
       key: 'code',
       header: 'Manufacturer',
       cell: (r) => (
-        <Select
+        <Combobox
           aria-label="Manufacturer"
           options={activeOptions(inv.manufacturers, (m) => m.code, (m) => m.code, r.code)}
           placeholder="Pick a manufacturer"
           value={r.code}
-          onValueChange={(code) => patch(r.id, { code })}
+          onValueChange={(code) => patch(r.id, { code: code ?? '' })}
         />
       ),
     },

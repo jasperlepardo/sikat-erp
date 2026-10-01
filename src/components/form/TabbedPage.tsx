@@ -44,6 +44,7 @@ export function TabbedPage({
         subcopy={subcopy}
         tabs={
           <Tabs
+            variant="outline"
             value={active.value}
             onValueChange={(v) => navigate(`${base}/${v}`)}
             items={tabs.map((t) => ({ value: t.value, label: t.label }))}

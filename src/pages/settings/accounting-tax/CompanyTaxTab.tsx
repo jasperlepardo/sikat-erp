@@ -17,7 +17,7 @@ export function CompanyTaxTab() {
     });
   }, []);
 
-  if (!profile) return <p className="p-4 text-muted">Loading…</p>;
+  if (!profile) return <Text tone="muted" className="p-4">Loading…</Text>;
   const f = bind(profile, (patch) => setProfile({ ...profile, ...patch }));
   const dirty = JSON.stringify(profile) !== JSON.stringify(saved);
 

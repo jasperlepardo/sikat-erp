@@ -162,13 +162,13 @@ export function ContentsTab({ draft, update, errors, m, ctx }: PoTabProps) {
       return item && !item.inventoryItem ? (
         <span className="text-muted">Not stocked</span>
       ) : (
-        <Select
+        <Combobox
           aria-label="Warehouse"
           className="w-32"
           invalid={Boolean(err(l, 'warehouse'))}
           options={activeOptions(m.inv.warehouses, (w) => w.code, (w) => w.code, l.warehouse)}
           value={l.warehouse}
-          onValueChange={(warehouse) => patch(l.id, { warehouse })}
+          onValueChange={(warehouse) => patch(l.id, { warehouse: warehouse ?? '' })}
         />
       );
     }),
@@ -221,13 +221,13 @@ export function ContentsTab({ draft, update, errors, m, ctx }: PoTabProps) {
     )),
     col('priceAfterDiscount', 'Price after discount', (l) => formatAmount(priceAfterDiscount(l)), 'pricing'),
     col('taxCode', 'Tax code', (l) => (
-      <Select
+      <Combobox
         aria-label="Tax code"
         className="w-32"
         invalid={Boolean(err(l, 'taxCode'))}
         options={taxOptions}
         value={l.taxCode}
-        onValueChange={(taxCode) => patch(l.id, { taxCode })}
+        onValueChange={(taxCode) => patch(l.id, { taxCode: taxCode ?? '' })}
       />
     )),
     col('totalLc', 'Total (LC)', (l) => <span className="whitespace-nowrap">PHP {lc(lineNet(l))}</span>),
@@ -247,12 +247,12 @@ export function ContentsTab({ draft, update, errors, m, ctx }: PoTabProps) {
       <TableStatus intent={l.status === 'Open' ? 'primary' : 'success'}>{l.status}</TableStatus>
     ), 'delivery'),
     col('blanketAgreement', 'Blanket agreement', (l) => (
-      <Select
+      <Combobox
         aria-label="Blanket agreement"
         className="w-48"
         options={blanketOptions}
         value={l.blanketAgreement}
-        onValueChange={(blanketAgreement) => patch(l.id, { blanketAgreement })}
+        onValueChange={(blanketAgreement) => patch(l.id, { blanketAgreement: blanketAgreement ?? '' })}
       />
     ), 'references'),
     col('bpCatalogNo', 'BP catalog no.', (l) => (

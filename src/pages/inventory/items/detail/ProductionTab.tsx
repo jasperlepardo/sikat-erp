@@ -26,10 +26,10 @@ export function ProductionTab({ draft, update, inv }: TabProps) {
                 ? 'Components issue automatically when the finished good is received.'
                 : 'Staff post an issue for production explicitly.') + ' Same setting as on the General tab.',
           })}
-          {f.choose('productionWarehouse', 'Production warehouse', warehouseOptions(draft.productionWarehouse), {
+          {f.lookup('productionWarehouse', 'Production warehouse', warehouseOptions(draft.productionWarehouse), {
             hint: 'Where production orders pull components from.',
           })}
-          {f.choose('componentWarehouse', 'Component warehouse', warehouseOptions(draft.componentWarehouse), {
+          {f.lookup('componentWarehouse', 'Component warehouse', warehouseOptions(draft.componentWarehouse), {
             hint: 'Staging area for BOM components, if different.',
           })}
           <ReadOnly

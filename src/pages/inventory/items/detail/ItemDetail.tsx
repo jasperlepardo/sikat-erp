@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { Badge, Button, Form, FormField, Panel, PanelHeader, Select, Tabs, TextField } from '@jasperlepardo/sikat-design-system';
+import { Badge, Button, Combobox, Form, FormField, Panel, PanelHeader, Select, Tabs, TextField, Text } from '@jasperlepardo/sikat-design-system';
 import { Fields, Section, bind, type Errors } from '../../../../components/form/fields';
 import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
@@ -142,7 +142,7 @@ function ItemForm() {
     };
   }, [id, isNew]);
 
-  if (draft === undefined || !mastersReady) return <p className="p-4 text-muted">Loading item…</p>;
+  if (draft === undefined || !mastersReady) return <Text tone="muted" className="p-4">Loading item…</Text>;
   if (draft === null) {
     return (
       <Panel className="flex-1">
@@ -318,15 +318,15 @@ function ItemForm() {
                 tooltip={locked ? 'Changing it after postings can misalign G/L — check with Finance.' : 'Sets valuation and G/L defaults.'}
               >
                 {(p) => (
-                  <Select
+                  <Combobox
                     {...p}
                     options={activeOptions(inv.groups, (g) => g.name, (g) => `${g.name} (${g.prefix})`, draft.itemGroup)}
                     value={draft.itemGroup}
-                    onValueChange={changeGroup}
+                    onValueChange={(v) => changeGroup(v ?? '')}
                   />
                 )}
               </FormField>
-              {h.choose('inventoryUom', 'Inventory UoM', activeOptions(inv.uoms, (u) => u.code, (u) => `${u.code} · ${u.name}`, draft.inventoryUom), {
+              {h.lookup('inventoryUom', 'Inventory UoM', activeOptions(inv.uoms, (u) => u.code, (u) => `${u.code} · ${u.name}`, draft.inventoryUom), {
                 required: true,
                 error: errors.inventoryUom,
                 disabled: locked,

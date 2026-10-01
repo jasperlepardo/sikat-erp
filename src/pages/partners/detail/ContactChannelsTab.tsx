@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Icon, Link, List, Text } from '@jasperlepardo/sikat-design-system';
+import { Button, FormField, Select, Text, TextField } from '@jasperlepardo/sikat-design-system';
 import { RowMenu } from '../../../components/form/RowMenu';
 import {
   CONTACT_CHANNEL_TYPES,
@@ -7,8 +7,7 @@ import {
   type ContactChannelType,
   type PartnerContactChannel,
 } from '../../../mocks/partners';
-import { EditPanel } from './EditPanel';
-import { Fields, Section, bind, type Draft, type Errors } from './fields';
+import { FieldStack, Section, type Draft, type Errors } from './fields';
 
 const CHANNEL_ICON: Record<ContactChannelType, string> = {
   Phone: 'phone',
@@ -32,53 +31,96 @@ export const CHANNEL_PLACEHOLDER: Record<ContactChannelType, string> = {
   Website: 'https://', Other: '',
 };
 
-/** Contact channel cards shown in the side column. */
-export function ContactChannelsCards({
+/** Form error key for a channel's value. */
+export const channelErrorKey = (id: string) => `channel:${id}:value`;
+
+/** A label not used yet: the type's name, numbered if taken ("Mobile 2"). */
+function freeLabel(type: ContactChannelType, channels: PartnerContactChannel[]) {
+  const taken = new Set(channels.map((c) => c.label));
+  if (!taken.has(type)) return type;
+  let n = 2;
+  while (taken.has(`${type} ${n}`)) n++;
+  return `${type} ${n}`;
+}
+
+/**
+ * Contact channels as fields in the side column: the label beside, the value edited in place. Add picks a type; the ⋯ menu edits the label and type, or removes.
+ */
+export function ContactChannelsFields({
   draft,
   update,
-  onOpen,
+  errors,
 }: {
   draft: Draft;
   update: (patch: Partial<Draft>) => void;
-  onOpen: (channel: PartnerContactChannel, isNew: boolean) => void;
+  errors: Errors;
 }) {
-  const remove = (id: string) =>
-    update({ contactChannels: draft.contactChannels.filter((c) => c.id !== id) });
+  const channels = draft.contactChannels;
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [focusId, setFocusId] = useState<string | null>(null);
+  const set = (id: string, patch: Partial<PartnerContactChannel>) =>
+    update({ contactChannels: channels.map((c) => (c.id === id ? { ...c, ...patch } : c)) });
+
+  const add = (type: ContactChannelType) => {
+    const ch = { ...newContactChannel(type), label: freeLabel(type, channels) };
+    update({ contactChannels: [...channels, ch] });
+    setFocusId(ch.id);
+  };
 
   return (
     <Section
       icon="call"
-      title={`Contact channels${draft.contactChannels.length ? ` · ${draft.contactChannels.length}` : ''}`}
+      title={`Contact channels${channels.length ? ` (${channels.length})` : ''}`}
       actions={
-        <Link
-          aria-label="New contact channel"
-          leadingIcon={<Icon size={20}>add</Icon>}
-          onClick={() => onOpen(newContactChannel(), true)}
-        >
-          New
-        </Link>
+        <RowMenu
+          text="Add"
+          label="Add a contact channel"
+          items={CONTACT_CHANNEL_TYPES.map((t) => ({ label: t, icon: CHANNEL_ICON[t], onSelect: () => add(t) }))}
+        />
       }
     >
-      {draft.contactChannels.length ? (
-        <List.Group>
-          {draft.contactChannels.map((ch) => (
-            <List.Card
-              key={ch.id}
-              title={ch.label}
-              icon={<Icon size={16}>{CHANNEL_ICON[ch.type]}</Icon>}
-              fields={[{ label: ch.type, value: ch.value }].filter((x) => x.value)}
-              actions={
-                <RowMenu
-                  label={`Actions for ${ch.label}`}
-                  items={[
-                    { label: 'Edit', icon: 'edit', onSelect: () => onOpen(ch, false) },
-                    { label: 'Remove', icon: 'delete', onSelect: () => remove(ch.id) },
-                  ]}
-                />
-              }
-            />
-          ))}
-        </List.Group>
+      {channels.length ? (
+        <FieldStack>
+          {channels.map((ch) =>
+            ch.id === editingId ? (
+              <ChannelLabelEditor
+                key={ch.id}
+                value={ch}
+                others={channels.filter((c) => c.id !== ch.id)}
+                onDone={(patch) => {
+                  set(ch.id, patch);
+                  setEditingId(null);
+                }}
+                onCancel={() => setEditingId(null)}
+              />
+            ) : (
+              <FormField key={ch.id} orientation="vertical" label={ch.label || ch.type} error={errors[channelErrorKey(ch.id)]}>
+                {(p) => (
+                  // The ⋯ menu sits beside the input, not inside it. `w-full`: the field column doesn't stretch its children.
+                  <div className="flex w-full items-center gap-1">
+                    <div className="min-w-0 flex-1">
+                      <TextField
+                        {...p}
+                        type={CHANNEL_INPUT_TYPE[ch.type]}
+                        placeholder={CHANNEL_PLACEHOLDER[ch.type]}
+                        autoFocus={ch.id === focusId}
+                        value={ch.value}
+                        onChange={(e) => set(ch.id, { value: e.currentTarget.value })}
+                      />
+                    </div>
+                    <RowMenu
+                      label={`Actions for ${ch.label || ch.type}`}
+                      items={[
+                        { label: 'Edit label & type', icon: 'edit', onSelect: () => setEditingId(ch.id) },
+                        { label: 'Remove', icon: 'delete', onSelect: () => update({ contactChannels: channels.filter((c) => c.id !== ch.id) }) },
+                      ]}
+                    />
+                  </div>
+                )}
+              </FormField>
+            ),
+          )}
+        </FieldStack>
       ) : (
         <Text variant="small" tone="muted">
           No contact channels yet.
@@ -88,57 +130,56 @@ export function ContactChannelsCards({
   );
 }
 
-/** Add or edit one contact channel in a side panel. */
-export function ContactChannelPanel({
+/** Edits one channel's label and type in place of its field. Enter or Done saves; Escape cancels. */
+function ChannelLabelEditor({
   value,
-  isNew,
+  others,
   onDone,
   onCancel,
 }: {
   value: PartnerContactChannel;
-  isNew: boolean;
-  onDone: (channel: PartnerContactChannel) => void;
+  others: PartnerContactChannel[];
+  onDone: (patch: Pick<PartnerContactChannel, 'label' | 'type'>) => void;
   onCancel: () => void;
 }) {
-  const [channel, setChannel] = useState(value);
-  const [errors, setErrors] = useState<Errors>({});
-
-  const f = bind(channel, (p: Partial<PartnerContactChannel>) => {
-    setChannel((c) => {
-      const next = { ...c, ...p };
-      // Auto-update label when type changes if label still matches the old type name
-      if (p.type && c.label === c.type) next.label = p.type;
-      return next;
-    });
-    setErrors((e) => Object.fromEntries(Object.entries(e).filter(([k]) => !(k in p))));
-  });
-
-  const done = () => {
-    const found: Errors = {};
-    if (!channel.value.trim()) found.value = 'Enter a value.';
-    setErrors(found);
-    if (!Object.keys(found).length) onDone(channel);
+  const [label, setLabel] = useState(value.label);
+  const [type, setType] = useState(value.type);
+  // A label still named after the old type follows the new one.
+  const pickType = (next: ContactChannelType) => {
+    if (label === type || label.startsWith(`${type} `)) setLabel(freeLabel(next, others));
+    setType(next);
   };
+  const done = () => onDone({ label: label.trim() || freeLabel(type, others), type });
 
   return (
-    <EditPanel
-      icon={CHANNEL_ICON[channel.type]}
-      title={isNew ? 'New contact channel' : channel.label}
-      onCancel={onCancel}
-      onDone={done}
-    >
-      <Section icon="call" title="Contact channel">
-        <Fields>
-          {f.pick('type', 'Type', [...CONTACT_CHANNEL_TYPES])}
-          {f.text('label', 'Label', { placeholder: 'e.g. Office, Home, Direct' })}
-          {f.text('value', 'Value', {
-            type: CHANNEL_INPUT_TYPE[channel.type],
-            placeholder: CHANNEL_PLACEHOLDER[channel.type],
-            required: true,
-            error: errors.value,
-          })}
-        </Fields>
-      </Section>
-    </EditPanel>
+    <div className="flex items-center gap-1 px-2">
+      <div className="min-w-0 flex-1">
+        <TextField
+          aria-label="Channel label"
+          placeholder="e.g. Office, Home, Direct"
+          autoFocus
+          value={label}
+          onChange={(e) => setLabel(e.currentTarget.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              done();
+            }
+            if (e.key === 'Escape') onCancel();
+          }}
+        />
+      </div>
+      <div className="w-32">
+        <Select
+          aria-label="Channel type"
+          options={CONTACT_CHANNEL_TYPES.map((t) => ({ value: t, label: t }))}
+          value={type}
+          onValueChange={(v) => v && pickType(v as ContactChannelType)}
+        />
+      </div>
+      <Button type="button" size="small" intent="primary" variant="solid" onClick={done}>
+        Done
+      </Button>
+    </div>
   );
 }

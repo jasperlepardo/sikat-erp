@@ -56,21 +56,37 @@ export interface PartnerAddress {
 }
 
 /** One of the partner's bank accounts (where you pay a vendor, or refund a customer). */
-export interface PartnerBankAccount {
+/**
+ * One account under a payment method: a bank account, an e-wallet or a card. Which fields
+ * apply depends on the method (see the partner form's payment method panel).
+ */
+export interface PaymentAccount {
   id: string;
-  country: string;
-  bank: string;
-  branch: string;
-  accountNo: string;
+  /** Name on the account or card. */
   accountName: string;
-  swift: string;
-  currency: string;
   active: boolean;
+  // Bank transfer
+  country?: string;
+  bank?: string;
+  branch?: string;
+  accountNo?: string;
+  swift?: string;
+  currency?: string;
+  // E-wallets (GCash, Maya)
+  mobileNo?: string;
+  // Cards: brand, last 4 digits and expiry only — never the full card number.
+  cardBrand?: string;
+  last4?: string;
+  expiry?: string;
 }
 
 export interface PaymentMethodSetting {
   code: string;
   include: boolean;
+  /** The partner's accounts for this method (bank accounts, e-wallets, cards). */
+  accounts?: PaymentAccount[];
+  /** Which of `accounts` documents start with. */
+  defaultAccountId?: string;
 }
 
 export const CONTACT_CHANNEL_TYPES = ['Phone', 'Mobile', 'WhatsApp', 'Viber', 'Email', 'Fax', 'Website', 'Other'] as const;
@@ -172,8 +188,6 @@ export interface Partner {
   effectiveDiscountGroups: string;
   effectivePrice: string;
   effectivePriceAllSources: boolean;
-  bankAccounts: PartnerBankAccount[];
-  defaultBankAccountId: string;
   averageDelayDays: number;
   priority: string;
   holidays: string;
@@ -273,7 +287,7 @@ export const newContact = (patch: Partial<ContactPerson> = {}): ContactPerson =>
   mobile: '',
   fax: '',
   email: '',
-  emailGroup: '— None —',
+  emailGroup: '',
   remarks1: '',
   remarks2: '',
   blockMarketing: false,
@@ -282,15 +296,9 @@ export const newContact = (patch: Partial<ContactPerson> = {}): ContactPerson =>
   ...patch,
 });
 
-export const newBankAccount = (patch: Partial<PartnerBankAccount> = {}): PartnerBankAccount => ({
-  id: `ba-${crypto.randomUUID().slice(0, 8)}`,
-  country: 'Philippines',
-  bank: '',
-  branch: '',
-  accountNo: '',
+export const newPaymentAccount = (patch: Partial<PaymentAccount> = {}): PaymentAccount => ({
+  id: `pa-${crypto.randomUUID().slice(0, 8)}`,
   accountName: '',
-  swift: '',
-  currency: 'PHP',
   active: true,
   ...patch,
 });
@@ -327,6 +335,20 @@ export const formatAddress = (a?: PartnerAddress, name = '') =>
 export const contactName =(c?: ContactPerson) =>
   c ? [c.firstName, c.middleName, c.lastName].filter(Boolean).join(' ') || 'Unnamed contact' : '';
 
+/** The payment methods a new partner starts with. */
+const DEFAULT_PAYMENT_METHODS: PaymentMethodSetting[] = [
+  { code: 'CASH', include: true },
+  { code: 'CHECK', include: true },
+  { code: 'PDC', include: false },
+  { code: 'BANK', include: true },
+  { code: 'GCASH', include: false },
+  { code: 'MAYA', include: false },
+];
+
+/** The default methods, with `code` included and holding `accounts` (the first is the default). */
+const withAccounts = (code: string, accounts: PaymentAccount[]): PaymentMethodSetting[] =>
+  DEFAULT_PAYMENT_METHODS.map((m) => (m.code === code ? { ...m, include: true, accounts, defaultAccountId: accounts[0]?.id } : { ...m }));
+
 /** A blank partner with sensible defaults for the role it's created from. */
 export function blankPartner(role: PartnerRole): Omit<Partner, 'id'> {
   return {
@@ -339,7 +361,7 @@ export function blankPartner(role: PartnerRole): Omit<Partner, 'id'> {
     tin: '',
     contactChannels: [],
     shippingType: 'sh-own',
-    project: '— None —',
+    project: '',
     industry: 'Retail',
     businessType: 'Company',
     aliasName: '',
@@ -348,10 +370,10 @@ export function blankPartner(role: PartnerRole): Omit<Partner, 'id'> {
     idNo2: '',
     unifiedTin: '',
     generalRemarks: '',
-    salesEmployee: '— None —',
-    channel: '— None —',
-    technician: '— None —',
-    territory: '— None —',
+    salesEmployee: '',
+    channel: '',
+    technician: '',
+    territory: '',
     status: 'Active',
     statusFrom: '',
     statusTo: '',
@@ -369,14 +391,12 @@ export function blankPartner(role: PartnerRole): Omit<Partner, 'id'> {
     totalDiscount: 0,
     creditLimit: 0,
     commitmentLimit: 0,
-    dunningTerm: '— None —',
+    dunningTerm: '',
     effectiveDiscountGroups: 'Lowest discount',
     effectivePrice: 'Default priority',
     effectivePriceAllSources: false,
-    bankAccounts: [],
-    defaultBankAccountId: '',
     averageDelayDays: 0,
-    priority: '— None —',
+    priority: '',
     holidays: 'Philippines (national)',
     allowPartialDelivery: true,
     allowPartialDeliveryPerRow: true,
@@ -387,16 +407,9 @@ export function blankPartner(role: PartnerRole): Omit<Partner, 'id'> {
     paymentBlock: false,
     singlePayment: false,
     collectionAuthorization: false,
-    bankChargesCode: '— None —',
+    bankChargesCode: '',
     autoBankCharges: false,
-    paymentMethods: [
-      { code: 'CASH', include: true },
-      { code: 'CHECK', include: true },
-      { code: 'PDC', include: false },
-      { code: 'BANK', include: true },
-      { code: 'GCASH', include: false },
-      { code: 'MAYA', include: false },
-    ],
+    paymentMethods: DEFAULT_PAYMENT_METHODS.map((m) => ({ ...m })),
     defaultPaymentMethod: 'BANK',
     rdoCode: '',
     vatRegistrationDate: '',
@@ -423,7 +436,7 @@ export function blankPartner(role: PartnerRole): Omit<Partner, 'id'> {
     blockDunning: false,
     dunningLevel: 0,
     dunningDate: '',
-    planningGroup: '— None —',
+    planningGroup: '',
     affiliate: false,
     useShippedGoodsAccount: false,
     properties: [],
@@ -639,8 +652,9 @@ export const SEED_PARTNERS: Partner[] = [
     { roles: ['vendor', 'customer'], name: 'Luzon iDistribution Corp.', tin: '789-012-345-000', businessType: 'Company', group: 'Vendors – Local', industry: 'Wholesale',
       contactChannels: [phone('bp-016-ch1', '+63 2 8845 6000'), email('bp-016-ch2', 'reseller.orders@luzonidist.example.ph')],
       customerPaymentTerms: 'Net 30', vendorPaymentTerms: 'Net 30', properties: ['Preferred supplier', 'Accepts e-invoice'], ...sworn('bp-016', 'SD-LID-2026', '2026-01-03'),
-      bankAccounts: [newBankAccount({ id: 'bp-016-b1', bank: 'BDO Unibank', branch: 'Ayala Avenue', accountNo: '0045-8812-3301', accountName: 'Luzon iDistribution Corp.' })],
-      defaultBankAccountId: 'bp-016-b1',
+      paymentMethods: withAccounts('BANK', [
+        newPaymentAccount({ id: 'bp-016-b1', country: 'Philippines', bank: 'BDO Unibank', branch: 'Ayala Avenue', accountNo: '0045-8812-3301', accountName: 'Luzon iDistribution Corp.', currency: 'PHP' }),
+      ]),
       remarks: 'Authorized Apple distributor: our local source for iPhone, iPad, Mac and AppleCare+. Also buys surplus stock back from us.\n'
         + 'Tax scenario (purchase, goods): 44 input VAT · WC158 1% EWT. AppleCare+ (services): 44 · WC160 2%.\n'
         + 'Tax scenario (sales): 31 VATable.' },

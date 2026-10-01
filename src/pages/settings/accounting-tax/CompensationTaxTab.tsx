@@ -155,17 +155,17 @@ function YearEndCalculator({ rows, exclusions }: { rows: CompensationBracket[]; 
           <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-4">
             <div>
               <Text variant="small" tone="muted">Taxable compensation</Text>
-              <p className="font-semibold text-heading">{peso(r.taxable)}</p>
+              <Text weight="semibold" tone="heading">{peso(r.taxable)}</Text>
               <Text variant="small" tone="muted">{peso(input.gross)} less {peso(r.nonTaxable)} non-taxable</Text>
             </div>
             <div>
               <Text variant="small" tone="muted">Tax due</Text>
-              <p className="font-semibold text-heading">{peso(r.due.tax)}</p>
+              <Text weight="semibold" tone="heading">{peso(r.due.tax)}</Text>
               <Text variant="small" tone="muted">{r.due.bracket.taxText}</Text>
             </div>
             <div>
               <Text variant="small" tone="muted">Tax withheld</Text>
-              <p className="font-semibold text-heading">{peso(input.withheld)}</p>
+              <Text weight="semibold" tone="heading">{peso(input.withheld)}</Text>
             </div>
             <div>
               <Text variant="small" tone="muted">{r.outcome === 'Refund' ? 'Refund' : 'To withhold on last payroll'}</Text>

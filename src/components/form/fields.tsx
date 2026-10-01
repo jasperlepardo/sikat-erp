@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import {
   Card,
   Checkbox,
+  Combobox,
   DatePicker,
   Form,
   FormField,
@@ -27,9 +28,38 @@ interface FieldOptions {
   type?: string;
   prefix?: ReactNode;
   suffix?: ReactNode;
+  /** Dropdowns: show a ✕ that empties an optional field. */
+  clearable?: boolean;
+  /** `vertical` puts the label in a column beside the control (the design system's naming); default stacks it above. */
+  orientation?: 'horizontal' | 'vertical';
 }
 
 const toOptions = (values: readonly string[]) => values.map((value) => ({ value, label: value }));
+
+/** The old "nothing picked" option. Some lists and records still store it as the value itself. */
+const NONE_LABEL = '— None —';
+const isNone = (v: string | null | undefined) => !v || v === NONE_LABEL;
+
+type Option = { value: string; label: string };
+
+/**
+ * An optional dropdown clears with the field's ✕ (`clearable`), not a "— None —" option.
+ * A "— None —" or blank option still passed in is dropped and makes the field clearable; its
+ * wording, if it isn't just "None" (e.g. "Use the rules"), becomes the placeholder.
+ */
+export function emptyState(options: Option[], value: string | undefined, o: { placeholder?: string; clearable?: boolean }, fallback: string) {
+  const none = options.find((opt) => isNone(opt.value));
+  const clearable = o.clearable ?? Boolean(none);
+  const noneText = none?.label && none.label !== NONE_LABEL ? none.label : 'None';
+  return {
+    options: options.filter((opt) => !isNone(opt.value)),
+    value: isNone(value) ? '' : value!,
+    clearable,
+    placeholder: o.placeholder ?? (none ? noneText : clearable ? 'None' : fallback),
+    /** Read-only display of the current value. */
+    display: isNone(value) ? '—' : options.find((opt) => opt.value === value)?.label || '—',
+  };
+}
 
 /**
  * Field builders bound to one object (a partner, an item, a contact row…), so a
@@ -48,13 +78,21 @@ export function bind<T>(obj: T, update: (patch: Partial<T>) => void) {
   const field = (key: keyof T, label: ReactNode, o: FieldOptions, control: (p: object) => ReactNode, displayValue?: ReactNode) => {
     if (o.disabled) {
       return (
-        <FormField key={String(key)} label={lockedLabel(label)} tooltip={o.hint} className={o.className}>
+        <FormField key={String(key)} orientation={o.orientation} label={lockedLabel(label)} tooltip={o.hint} className={o.className}>
           <p className="px-2 py-2 text-sm text-body">{displayValue || '—'}</p>
         </FormField>
       );
     }
     return (
-      <FormField key={String(key)} label={label} required={o.required} error={o.error} tooltip={o.hint} className={o.className}>
+      <FormField
+        key={String(key)}
+        orientation={o.orientation}
+        label={label}
+        required={o.required}
+        error={o.error}
+        tooltip={o.hint}
+        className={o.className}
+      >
         {(p) => control(p)}
       </FormField>
     );
@@ -89,35 +127,62 @@ export function bind<T>(obj: T, update: (patch: Partial<T>) => void) {
         />
       ), String(obj[key] ?? 0)),
 
-    pick: (key: KeysOf<T, string>, label: ReactNode, values: readonly string[], o: FieldOptions = {}) =>
-      field(key, label, o, (p) => (
+    pick: (key: KeysOf<T, string>, label: ReactNode, values: readonly string[], o: FieldOptions = {}) => {
+      const e = emptyState(toOptions(values), obj[key] as string | undefined, o, 'Select…');
+      return field(key, label, o, (p) => (
         <Select
           {...p}
-          options={toOptions(values)}
+          options={e.options}
           disabled={o.disabled}
-          placeholder={o.placeholder}
-          value={(obj[key] as string | undefined) ?? ''}
-          onValueChange={(v) => patch(key, v)}
+          placeholder={e.placeholder}
+          clearable={e.clearable}
+          value={e.value}
+          onValueChange={(v) => patch(key, v ?? '')}
         />
-      ), (obj[key] as string | undefined) || '—'),
+      ), e.display);
+    },
 
     /** A select whose options show a label but store a value (e.g. a partner id). */
     choose: (
       key: KeysOf<T, string>,
       label: ReactNode,
-      options: { value: string; label: string }[],
+      options: Option[],
       o: FieldOptions = {},
-    ) =>
-      field(key, label, o, (p) => (
+    ) => {
+      const e = emptyState(options, obj[key] as string | undefined, o, 'Select…');
+      return field(key, label, o, (p) => (
         <Select
           {...p}
-          options={options}
+          options={e.options}
           disabled={o.disabled}
-          placeholder={o.placeholder}
-          value={(obj[key] as string | undefined) ?? ''}
-          onValueChange={(v) => patch(key, v)}
+          placeholder={e.placeholder}
+          clearable={e.clearable}
+          value={e.value}
+          onValueChange={(v) => patch(key, v ?? '')}
         />
-      ), options.find((opt) => opt.value === (obj[key] as string))?.label || '—'),
+      ), e.display);
+    },
+
+    /** Like `choose`, but searchable: for options drawn from another table (partners, tax codes, UoMs…). */
+    lookup: (
+      key: KeysOf<T, string>,
+      label: ReactNode,
+      options: Option[],
+      o: FieldOptions = {},
+    ) => {
+      const e = emptyState(options, obj[key] as string | undefined, o, 'Search…');
+      return field(key, label, o, (p) => (
+        <Combobox
+          {...p}
+          options={e.options}
+          disabled={o.disabled}
+          placeholder={e.placeholder}
+          clearable={e.clearable}
+          value={e.value}
+          onValueChange={(v) => patch(key, v ?? '')}
+        />
+      ), e.display);
+    },
 
     date: (key: KeysOf<T, string>, label: ReactNode, o: FieldOptions = {}) =>
       field(key, label, o, (p) => (
@@ -134,6 +199,7 @@ export function bind<T>(obj: T, update: (patch: Partial<T>) => void) {
         <Textarea
           {...p}
           rows={o.rows ?? 3}
+          placeholder={o.placeholder}
           value={(obj[key] as string | undefined) ?? ''}
           onChange={(e) => patch(key, e.currentTarget.value)}
         />
@@ -181,6 +247,15 @@ export function Section({
 export function Fields({ children, cols = 2 }: { children: ReactNode; cols?: 1 | 2 | 3 }) {
   const colClass = cols === 1 ? 'grid-cols-1' : cols === 2 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 md:grid-cols-3';
   return <Form.Group className={`grid! gap-2 ${colClass}`}>{children}</Form.Group>;
+}
+
+/**
+ * A single column of fields 4px apart, e.g. side-labelled fields in a narrow column. A plain div
+ * rather than Form.Group: Form.Group's 16px gap is unlayered design-system CSS a utility can't
+ * override. `-mx-2` matches Form.Group's negative margin so fields line up with other sections.
+ */
+export function FieldStack({ children }: { children: ReactNode }) {
+  return <div className="-mx-2 flex flex-col gap-1">{children}</div>;
 }
 
 /** A row of checkboxes (flags) under a grid. */
