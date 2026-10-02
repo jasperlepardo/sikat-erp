@@ -9,11 +9,15 @@
  * - "Approved" unticked saves the PO as Not Confirmed: it can't be copied to a
  *   goods receipt until someone approves it.
  * - Delivery date is required when the PO is added (drafts may leave it blank).
- * - UoM groups aren't modelled yet, so every line behaves like the "Manual" UoM
- *   group: UoM name and items per unit are editable on the line.
+ * - A line with an item picks its UoM from the item's purchasing units, and items per
+ *   unit follow the item's conversion. A line without an item has an editable UoM name and
+ *   items per unit. Either way the line keeps its own factor, so later item edits don't
+ *   change it.
  * - Return Reason is left out — it belongs to returns, not purchase orders.
  */
-import { SEED_ITEMS } from './items';
+import { SEED_COMPANIES } from './companies';
+import { SEED_WAREHOUSES } from './itemMasters';
+import { SEED_ITEMS, itemsPerUom } from './items';
 import { SEED_PARTNERS, formatAddress } from './partners';
 
 export type PoStatus = 'Draft' | 'Open' | 'Not Confirmed' | 'Closed' | 'Cancelled';
@@ -177,7 +181,8 @@ export const BLANKET_AGREEMENTS: BlanketAgreement[] = [
 ];
 
 /** Where service-only POs ship to (Company Details › General › Local Language). */
-export const COMPANY_ADDRESS = 'Sikat Tech Inc.\nUnit 1203, Tektite East Tower, Exchange Road\nOrtigas Center, Pasig 1605, Metro Manila';
+/** The seed company's address, as service-only POs print it for Ship To. */
+const COMPANY_ADDRESS = formatAddress(SEED_COMPANIES[0].address, SEED_COMPANIES[0].name);
 
 const TODAY = new Date().toISOString().slice(0, 10);
 
@@ -266,7 +271,7 @@ const line = (n: string, itemNo: string, quantity: number, patch: Partial<PoLine
     quantity,
     uomCode: item.purchasingUom,
     uomName: item.purchasingUom === 'pc' ? 'Piece' : item.purchasingUom,
-    itemsPerUnit: item.itemsPerPurchaseUnit,
+    itemsPerUnit: itemsPerUom(item, item.purchasingUom) ?? 1,
     unitPrice: item.itemCost,
     taxCode: '44',
     mfrNo: item.manufacturers[0]?.catalogNo ?? '',
@@ -289,7 +294,8 @@ const payToOf = (vendorId: string) => {
   return formatAddress(v.addresses.find((x) => x.id === v.defaultBillToId) ?? v.addresses[0], v.name);
 };
 const APPLE_PAY_TO = payToOf('bp-016');
-const MNL_SHIP_TO = 'Manila distribution center\nPasig';
+const mnl = SEED_WAREHOUSES.find((w) => w.code === 'WH-MNL')!;
+const MNL_SHIP_TO = formatAddress(mnl.address, mnl.name);
 
 const po = (id: string, docNum: number, patch: Partial<PurchaseOrder>): PurchaseOrder => ({
   ...blankPurchaseOrder('Andrea Ramos'),
@@ -326,7 +332,7 @@ const svc = (n: string, itemNo: string, quantity: number, unitPrice: number, tax
   return newPoLine({
     id: n, itemId: item.id, itemNo, description: item.description, quantity,
     uomCode: item.purchasingUom, uomName: item.purchasingUom === 'pc' ? 'Piece' : item.purchasingUom,
-    itemsPerUnit: item.itemsPerPurchaseUnit, unitPrice, taxCode, warehouse: '', ...patch,
+    itemsPerUnit: itemsPerUom(item, item.purchasingUom) ?? 1, unitPrice, taxCode, warehouse: '', ...patch,
   });
 };
 

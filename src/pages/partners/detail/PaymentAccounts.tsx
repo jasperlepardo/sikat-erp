@@ -1,9 +1,7 @@
 import type { ReactNode } from 'react';
-import { BANKS, COUNTRIES } from '../../../mocks/masters';
 import { newPaymentAccount, type PaymentAccount } from '../../../mocks/partners';
+import { bankDef, cardBrandDef, countryDef, currencyDef } from '../../settings/masterDefs';
 import { Fields, bind, type Errors } from './fields';
-
-const CARD_BRANDS = ['Visa', 'Mastercard', 'American Express', 'JCB', 'UnionPay'];
 
 export type Binder = ReturnType<typeof bind<PaymentAccount>>;
 
@@ -17,7 +15,7 @@ export interface AccountKind {
   details: (a: PaymentAccount) => { label: string; value?: string }[];
   /** Field errors that block saving the account. */
   check: (a: PaymentAccount) => Errors;
-  fields: (f: Binder, a: PaymentAccount, errors: Errors, currencies: string[]) => ReactNode;
+  fields: (f: Binder, a: PaymentAccount, errors: Errors) => ReactNode;
   /** Values a new account starts with, from the partner. */
   prefill: (partner: { name: string; currency: string }) => Partial<PaymentAccount>;
 }
@@ -53,15 +51,15 @@ const ACCOUNT_KINDS: Record<string, AccountKind> = {
       ...(a.bank ? {} : { bank: 'Pick the bank.' }),
       ...(a.accountNo?.trim() ? {} : { accountNo: 'Enter the account number.' }),
     }),
-    fields: (f, a, errors, currencies) => (
+    fields: (f, _a, errors) => (
       <Fields>
-        {f.pick('country', 'Bank country/region', COUNTRIES)}
-        {f.pick('bank', 'Bank name', BANKS, { required: true, error: errors.bank, placeholder: 'Select a bank' })}
+        {f.master('country', 'Bank country/region', countryDef)}
+        {f.master('bank', 'Bank name', bankDef, { required: true, error: errors.bank, placeholder: 'Search banks' })}
         {f.text('branch', 'Branch', { placeholder: 'e.g. Ayala Avenue' })}
         {f.text('accountNo', 'Account no.', { placeholder: 'e.g. 0012-3456-7890', required: true, error: errors.accountNo })}
         {f.text('accountName', 'Account name', { placeholder: 'e.g. Acme Trading Corp.', hint: 'As registered with the bank.' })}
         {f.text('swift', 'BIC/SWIFT code', { placeholder: 'e.g. BNORPHMM', hint: 'Needed for foreign transfers.' })}
-        {f.pick('currency', 'Currency', [...new Set([...currencies, a.currency ?? ''].filter(Boolean))])}
+        {f.master('currency', 'Currency', currencyDef)}
       </Fields>
     ),
     prefill: (p) => ({ country: 'Philippines', accountName: p.name, currency: p.currency === 'All currencies' ? 'PHP' : p.currency }),
@@ -82,7 +80,7 @@ const ACCOUNT_KINDS: Record<string, AccountKind> = {
     }),
     fields: (f, _a, errors) => (
       <Fields>
-        {f.pick('cardBrand', 'Brand', CARD_BRANDS, { required: true, error: errors.cardBrand })}
+        {f.master('cardBrand', 'Brand', cardBrandDef, { required: true, error: errors.cardBrand })}
         {f.text('last4', 'Last 4 digits', {
           placeholder: 'e.g. 4242',
           required: true,
@@ -91,6 +89,7 @@ const ACCOUNT_KINDS: Record<string, AccountKind> = {
         })}
         {f.text('accountName', 'Cardholder name', { placeholder: 'As printed on the card' })}
         {f.text('expiry', 'Expiry', { placeholder: 'MM/YY' })}
+        {f.text('idNumber', 'ID number', { placeholder: 'e.g. cardholder’s ID no.', hint: 'Identification tied to this card, if the issuer asks for it.' })}
       </Fields>
     ),
     prefill: (p) => ({ accountName: p.name }),

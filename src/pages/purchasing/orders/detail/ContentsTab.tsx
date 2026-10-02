@@ -14,7 +14,8 @@ import {
   type TableColumn,
 } from '@jasperlepardo/sikat-design-system';
 import { DataTable } from '../../../../components/form/DataTable';
-import { PRICE_LISTS } from '../../../../mocks/masters';
+import { MasterLookup } from '../../../../components/form/MasterLookup';
+import { priceListDef } from '../../../settings/masterDefs';
 import {
   BLANKET_AGREEMENTS,
   DEPARTMENTS,
@@ -24,6 +25,7 @@ import {
   type PoLine,
   type PriceMode,
 } from '../../../../mocks/purchaseOrders';
+import { itemUnits, itemsPerUom } from '../../../../mocks/items';
 import { formatAmount } from '../../../../services/format';
 import { activeOptions } from '../../../../services/inventoryMasters';
 import { isValidToday, stockTotals } from '../../../../services/items';
@@ -49,6 +51,18 @@ export function ContentsTab({ draft, update, errors, m, ctx }: PoTabProps) {
   const lines = draft.lines;
   const itemOf = (l: PoLine) => m.items.find((i) => i.id === l.itemId);
   const patch = (id: string, p: Partial<PoLine>) => update({ lines: lines.map((l) => (l.id === id ? { ...l, ...p } : l)) });
+  /** Switch the line to another of the item's units: factor from the item, price rescaled to the new unit. */
+  const changeUom = (l: PoLine, uomCode: string) => {
+    const item = itemOf(l);
+    const itemsPerUnit = item ? itemsPerUom(item, uomCode) : undefined;
+    if (!itemsPerUnit) return;
+    patch(l.id, {
+      uomCode,
+      uomName: m.inv.uoms.find((u) => u.code === uomCode)?.name ?? uomCode,
+      itemsPerUnit,
+      unitPrice: round2((l.unitPrice / (l.itemsPerUnit || 1)) * itemsPerUnit),
+    });
+  };
   const lc = (n: number) => formatAmount(n * ctx.fx);
   const showNet = draft.priceMode !== 'Gross';
   const showGross = draft.priceMode !== 'Net';
@@ -135,22 +149,40 @@ export function ContentsTab({ draft, update, errors, m, ctx }: PoTabProps) {
         </div>
       );
     }),
-    col('uomCode', 'UoM code', (l) => l.uomCode),
-    col('uomGroup', 'UoM group', () => 'Manual', 'quantities'),
-    col('uomName', 'UoM name', (l) => (
-      // Manual UoM group: the name is editable on the line.
-      <TextField aria-label="UoM name" className="w-28" value={l.uomName} onChange={(e) => patch(l.id, { uomName: e.currentTarget.value })} />
-    ), 'quantities'),
-    col('itemsPerUnit', 'Items per unit', (l) => (
-      <TextField
-        aria-label="Items per unit"
-        type="number"
-        min={1}
-        className="w-24"
-        value={String(l.itemsPerUnit)}
-        onChange={(e) => patch(l.id, { itemsPerUnit: num(e.currentTarget.value) })}
-      />
-    ), 'quantities'),
+    col('uomCode', 'UoM code', (l) => {
+      const item = itemOf(l);
+      // Any of the item's purchasing units, until goods are received.
+      if (!item || l.receivedQty > 0) return l.uomCode;
+      return (
+        <Combobox
+          aria-label="UoM code"
+          className="w-28"
+          options={itemUnits(item, 'purchase').map((u) => ({ value: u.uom, label: u.uom }))}
+          value={l.uomCode}
+          onValueChange={(v) => v && changeUom(l, v)}
+        />
+      );
+    }),
+    col('uomName', 'UoM name', (l) =>
+      itemOf(l) ? (
+        l.uomName
+      ) : (
+        // No item: the name is editable on the line.
+        <TextField aria-label="UoM name" className="w-28" value={l.uomName} onChange={(e) => patch(l.id, { uomName: e.currentTarget.value })} />
+      ), 'quantities'),
+    col('itemsPerUnit', 'Items per unit', (l) =>
+      itemOf(l) ? (
+        String(l.itemsPerUnit)
+      ) : (
+        <TextField
+          aria-label="Items per unit"
+          type="number"
+          min={1}
+          className="w-24"
+          value={String(l.itemsPerUnit)}
+          onChange={(e) => patch(l.id, { itemsPerUnit: num(e.currentTarget.value) })}
+        />
+      ), 'quantities'),
     col('inventoryUom', 'Inventory UoM', (l) => (l.itemsPerUnit === 1 ? 'Yes' : 'No'), 'quantities'),
     col('inventoryQty', 'Qty (inventory UoM)', (l) => {
       const item = itemOf(l);
@@ -173,7 +205,7 @@ export function ContentsTab({ draft, update, errors, m, ctx }: PoTabProps) {
       );
     }),
     col('priceList', 'Price list', (l) => (
-      <Select aria-label="Price list" className="w-44" options={asOptions(PRICE_LISTS)} value={l.priceList} onValueChange={(v) => changePriceList(l, v)} />
+      <MasterLookup def={priceListDef} fieldProps={{ 'aria-label': 'Price list', className: 'w-44' }} value={l.priceList} onChange={(v) => changePriceList(l, v)} />
     ), 'pricing'),
     ...(showNet
       ? [

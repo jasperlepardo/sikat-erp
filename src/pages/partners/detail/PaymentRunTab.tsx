@@ -1,13 +1,14 @@
-import { BANK_CHARGE_CODES } from '../../../mocks/masters';
-import { Fields, Flags, Section, bind, type TabProps } from './fields';
+import { bankChargeCodeDef } from '../../settings/masterDefs';
+import { Fields, Flags, ReadOnly, Section, bind, type TabProps } from './fields';
 
 export function PaymentRunTab({ draft, update }: TabProps) {
   const f = bind(draft, update);
   return (
     <Section icon="published_with_changes" title="Payment run options">
       <Fields>
-        {f.pick('bankChargesCode', 'Bank charges allocation', BANK_CHARGE_CODES, { clearable: true })}
+        {f.master('bankChargesCode', 'Bank charges allocation', bankChargeCodeDef, { clearable: true })}
         {f.text('paymentReference', 'Reference details', { placeholder: 'e.g. Invoice no. or account ref', hint: 'Printed on the payment run file.' })}
+        <ReadOnly label="Control no." value={draft.controlNo || '—'} hint="Assigned by the bank or the payment run." />
       </Fields>
       <Flags>
         {f.check('paymentBlock', 'Payment block')}

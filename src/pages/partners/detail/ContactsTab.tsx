@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Icon, Link, List, Text } from '@jasperlepardo/sikat-design-system';
 import { RowMenu } from '../../../components/form/RowMenu';
-import { EMAIL_GROUPS } from '../../../mocks/masters';
+import { countryDef, emailGroupDef } from '../../settings/masterDefs';
 import { contactName, newContact, type ContactPerson } from '../../../mocks/partners';
 import { EditPanel } from './EditPanel';
 import { Fields, Flags, Section, bind, type Draft, DefaultFlags, useDefaultPicks, type DefaultPicks, type DefaultRole } from './fields';
@@ -112,11 +112,14 @@ export function ContactPanel({
           {f.text('title', 'Title', { placeholder: 'Engr., Atty., Ms.' })}
           {f.text('position', 'Position', { placeholder: 'e.g. Purchasing manager' })}
           {f.text('email', 'Email', { placeholder: 'name@company.com', type: 'email', hint: 'Used when this contact is picked on a document.' })}
-          {f.pick('emailGroup', 'Email group', EMAIL_GROUPS, { clearable: true })}
+          {f.master('emailGroup', 'Email group', emailGroupDef, { clearable: true })}
           {f.text('tel1', 'Telephone 1', { placeholder: 'e.g. (02) 8123 4567', type: 'tel' })}
           {f.text('tel2', 'Telephone 2', { placeholder: 'e.g. (02) 8123 4567', type: 'tel' })}
           {f.text('mobile', 'Mobile phone', { placeholder: 'e.g. 0917 123 4567', type: 'tel' })}
           {f.text('fax', 'Fax', { placeholder: 'e.g. (02) 8123 4568', type: 'tel' })}
+          {f.text('pager', 'Pager', { hint: 'Kept for older records; rarely used.' })}
+          {f.master('birthCountry', 'Country of birth', countryDef, { clearable: true })}
+          {f.text('portalPassword', 'Portal password', { type: 'password', placeholder: 'Not set', hint: 'This contact’s own portal login.' })}
           {f.text('address', 'Address', { placeholder: 'Street, barangay, city', className: 'md:col-span-2' })}
           {f.text('remarks1', 'Remarks 1', { placeholder: 'Add a note' })}
           {f.text('remarks2', 'Remarks 2', { placeholder: 'Add a note' })}

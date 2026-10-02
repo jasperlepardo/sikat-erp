@@ -2,33 +2,30 @@ import { useState, type FormEvent } from 'react';
 import {
   Button,
   Card,
-  Combobox,
   Form,
   FormField,
   Icon,
   Panel,
   PanelHeader,
-  Select,
   SidePanel,
   Text,
   TextField,
 } from '@jasperlepardo/sikat-design-system';
-import { type Currency } from '../../../../mocks/currencies';
-import { BP_GROUPS } from '../../../../mocks/masters';
 import { blankPartner, type Partner } from '../../../../mocks/partners';
 import { savePartner } from '../../../../services/partners';
 import { Fields } from '../../../../components/form/fields';
 import { type Draft } from '../../../partners/detail/fields';
 import { SettingsTab } from '../../../partners/detail/SettingsTab';
+import { MasterLookup } from '../../../../components/form/MasterLookup';
+import { bpGroupDef, currencyDef } from '../../../settings/masterDefs';
 
 interface Props {
-  currencies: Currency[];
   initialName?: string;
   onClose: () => void;
   onCreated: (vendor: Partner) => void;
 }
 
-export function VendorQuickCreate({ currencies, initialName = '', onClose, onCreated }: Props) {
+export function VendorQuickCreate({ initialName = '', onClose, onCreated }: Props) {
   const [draft, setDraft] = useState<Draft>(() => ({ ...blankPartner('vendor'), name: initialName }));
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -56,10 +53,6 @@ export function VendorQuickCreate({ currencies, initialName = '', onClose, onCre
     }
   };
 
-  const vendorGroups = BP_GROUPS.filter((g) => g.role === 'vendor').map((g) => g.value);
-  const activeCurrencies = [
-    ...new Set([...currencies.filter((c) => c.active).map((c) => c.code), 'All currencies', draft.currency]),
-  ];
 
   return (
     <SidePanel
@@ -152,23 +145,28 @@ export function VendorQuickCreate({ currencies, initialName = '', onClose, onCre
                       />
                     )}
                   </FormField>
-                  <FormField label="Group" required error={errors.group}>
+                  <FormField label="Group" required error={errors.group} tooltip="Vendor groups from Settings › Sales & CRM.">
                     {(p) => (
-                      <Select
-                        {...p}
-                        options={vendorGroups.map((g) => ({ value: g, label: g }))}
+                      <MasterLookup
+                        def={bpGroupDef}
+                        fieldProps={p}
+                        where={(g) => g.role === 'vendor'}
+                        seed={{ role: 'vendor' }}
+                        placeholder="Search…"
                         value={draft.group}
-                        onValueChange={(v) => { setErrors((prev) => ({ ...prev, group: '' })); update({ group: v }); }}
+                        onChange={(v) => { setErrors((prev) => ({ ...prev, group: '' })); update({ group: v }); }}
                       />
                     )}
                   </FormField>
                   <FormField label="Currency" required error={errors.currency} tooltip="Active currencies from Settings › Accounting & Tax.">
                     {(p) => (
-                      <Combobox
-                        {...p}
-                        options={activeCurrencies.map((c) => ({ value: c, label: c }))}
+                      <MasterLookup
+                        def={currencyDef}
+                        fieldProps={p}
+                        extra={['All currencies']}
+                        placeholder="Search…"
                         value={draft.currency}
-                        onValueChange={(v) => { setErrors((prev) => ({ ...prev, currency: '' })); update({ currency: v ?? '' }); }}
+                        onChange={(v) => { setErrors((prev) => ({ ...prev, currency: '' })); update({ currency: v }); }}
                       />
                     )}
                   </FormField>

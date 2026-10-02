@@ -6,7 +6,20 @@ import { currencies, exchangeRates, rateOn } from '../../../services/masterData'
 import { useAsync } from '../../../services/useAsync';
 import { newId, useCollectionRows } from '../../../services/useCollectionRows';
 
-const blank = (): Currency => ({
+/** Code, name and decimals checks, shared with "+ Add" on currency fields. */
+export function validateCurrency(c: Currency, all: Currency[]) {
+  const e: Record<string, string> = {};
+  const code = c.code.trim().toUpperCase();
+  if (!/^[A-Z]{3}$/.test(code)) e.code = 'Use the 3-letter ISO 4217 code, e.g. USD.';
+  else if (all.some((x) => x.id !== c.id && x.code === code)) e.code = `${code} already exists.`;
+  if (!c.name.trim()) e.name = 'Name is required.';
+  if (c.decimals < 0 || c.decimals > 4) e.decimals = 'Use 0 to 4 decimals.';
+  if (c.isLocal && !c.active) e.active = 'The local currency must stay active.';
+  if (c.isSystem && !c.active) e.active = 'The system currency must stay active.';
+  return e;
+}
+
+export const blankCurrency = (): Currency => ({
   id: newId('cur'),
   code: '',
   name: '',
@@ -86,19 +99,9 @@ export function CurrenciesTab(route: ListRoute) {
         },
       ]}
       searchText={(c) => `${c.code} ${c.name} ${c.unitName}`}
-      blank={blank}
+      blank={blankCurrency}
       label={(c) => `${c.code} · ${c.name}`}
-      validate={(c, all) => {
-        const e: Record<string, string> = {};
-        const code = c.code.trim().toUpperCase();
-        if (!/^[A-Z]{3}$/.test(code)) e.code = 'Use the 3-letter ISO 4217 code, e.g. USD.';
-        else if (all.some((x) => x.id !== c.id && x.code === code)) e.code = `${code} already exists.`;
-        if (!c.name.trim()) e.name = 'Name is required.';
-        if (c.decimals < 0 || c.decimals > 4) e.decimals = 'Use 0 to 4 decimals.';
-        if (c.isLocal && !c.active) e.active = 'The local currency must stay active.';
-        if (c.isSystem && !c.active) e.active = 'The system currency must stay active.';
-        return e;
-      }}
+      validate={validateCurrency}
       onSave={async (c) => {
         // Only one system currency: saving a new one clears the flag on the old one.
         if (c.isSystem) {

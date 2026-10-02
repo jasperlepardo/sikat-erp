@@ -4,10 +4,13 @@ import {
   Button,
   Card,
   Icon,
+  IconButton,
   Panel,
   PanelHeader,
+  panelHeaderIcons,
   Table,
   TableLink,
+  TableStatus,
   Text,
   TextField,
   type TableColumn,
@@ -50,6 +53,25 @@ export interface MasterListProps<T extends { id: string }> {
   basePath: string;
   /** When set, render that record's page ('new' for a new record) instead of the list. */
   recordId?: string;
+}
+
+export const statusColumn = <T extends { active: boolean }>() => ({
+  key: 'active',
+  header: 'Status',
+  cell: (r: T) => <TableStatus intent={r.active ? 'success' : 'default'}>{r.active ? 'Active' : 'Inactive'}</TableStatus>,
+});
+
+/** "is required" + "already exists" check on one text field. */
+export function uniqueRequired<T extends { id: string }>(
+  e: Errors,
+  row: T,
+  all: T[],
+  key: keyof T & string,
+  label: string,
+) {
+  const v = String(row[key] ?? '').trim();
+  if (!v) e[key] = `${label} is required.`;
+  else if (all.some((x) => x.id !== row.id && String(x[key]).trim().toLowerCase() === v.toLowerCase())) e[key] = `${v} already exists.`;
 }
 
 /** Route props every master-data list tab receives from its page. */
@@ -266,6 +288,11 @@ function RecordPage<T extends { id: string }>({
     );
   }
 
+  const siblings = [...(rows ?? [])].sort((a, b) => label(a).localeCompare(label(b))).map((r) => r.id);
+  const at = siblings.indexOf(recordId);
+  const prevId = at > 0 ? siblings[at - 1] : undefined;
+  const nextId = at >= 0 && at < siblings.length - 1 ? siblings[at + 1] : undefined;
+
   const save = async () => {
     const found = validate(row, rows ?? []);
     setErrors(found);
@@ -282,10 +309,39 @@ function RecordPage<T extends { id: string }>({
   return (
     <Panel className="flex-1">
       <PanelHeader
-        type="forms"
+        type="details"
         icon={icon}
         title={isNew ? `New ${noun}` : label(row)}
         subcopy={title}
+        // A saved record leads with previous/next (through the list, by name); a new one with the icon.
+        leading={
+          isNew ? undefined : (
+            <>
+              <IconButton
+                type="button"
+                label="Next"
+                intent="default"
+                variant="solid"
+                size="extra-large"
+                disabled={!nextId}
+                onClick={() => navigate(`${basePath}/${nextId}`)}
+              >
+                {panelHeaderIcons.arrowDownward}
+              </IconButton>
+              <IconButton
+                type="button"
+                label="Previous"
+                intent="default"
+                variant="solid"
+                size="extra-large"
+                disabled={!prevId}
+                onClick={() => navigate(`${basePath}/${prevId}`)}
+              >
+                {panelHeaderIcons.arrowUpward}
+              </IconButton>
+            </>
+          )
+        }
         actions={
           <>
             <Button type="button" intent="default" variant="solid" size="extra-large" onClick={back}>

@@ -8,10 +8,11 @@ import {
 import type { RoundingRule } from '../mocks/currencies';
 import type { Item } from '../mocks/items';
 import { SYSTEM_ATCS, rateAt, vatNotPaidToVendor, type TaxCode } from '../mocks/taxes';
+import { paymentTerms } from './partnerMasters';
 import { createCollection } from './store';
 import { determineWithholding, type LineParty, type TaxMasterData } from './taxDetermination';
 
-const orders = createCollection<PurchaseOrder>('sikat-erp:purchase-orders:v5', SEED_PURCHASE_ORDERS, 'po');
+const orders = createCollection<PurchaseOrder>('sikat-erp:purchase-orders:v9', SEED_PURCHASE_ORDERS, 'po');
 
 export const listPurchaseOrders = orders.list;
 export const getPurchaseOrder = orders.get;
@@ -149,8 +150,12 @@ const ROUNDING_STEP: Record<RoundingRule, number> = {
   'Round to 10': 10,
 };
 
-/** Days until payment for a payment term ("Net 30" → 30; COD and down-payment terms → 0). */
-export const termDays = (terms: string) => Number(/Net (\d+)/.exec(terms)?.[1] ?? 0);
+/**
+ * Days until payment for a payment term, from Settings › Banking › Payment terms. A term not in
+ * the list falls back to its name ("Net 30" → 30; COD and down-payment terms → 0).
+ */
+export const termDays = (terms: string) =>
+  paymentTerms.snapshot().find((t) => t.name === terms)?.days ?? Number(/Net (\d+)/.exec(terms)?.[1] ?? 0);
 
 /** Due date = posting date + the payment term's days. */
 export function dueDateFor(postingDate: string, terms: string) {

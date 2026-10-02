@@ -17,9 +17,8 @@ import {
   FormField,
   Text,
 } from '@jasperlepardo/sikat-design-system';
-import { BP_GROUPS } from '../../../mocks/masters';
+import { bpGroupDef, currencyDef } from '../../settings/masterDefs';
 import { RDOS } from '../../../mocks/taxes';
-import { currencies } from '../../../services/masterData';
 import { LEAD_SOURCES, PARTNER_STATUSES, blankPartner, contactName, type ContactPerson, type PartnerAddress, type PartnerRole } from '../../../mocks/partners';
 import { convertLeadToCustomer, getPartner, isActive, listPartners, listPartnersByRole, savePartner } from '../../../services/partners';
 import { MASTER_CONFIG, ROLE_CONFIG, ROLE_ORDER, type PartnerScope } from '../roles';
@@ -132,7 +131,6 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
   const [problems, setProblems] = useState<Problem[]>([]);
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState<Editing>(null);
-  const [currencyCodes, setCurrencyCodes] = useState<string[]>([]);
 
   const chart = useAccounts();
   // Partners in the list this form was opened from, in the list's default order (by name), for previous/next.
@@ -143,9 +141,6 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
       setSiblings([...all].sort((a, b) => a.name.localeCompare(b.name))),
     );
   }, [scope, isNew]);
-  useEffect(() => {
-    currencies.list().then((all) => setCurrencyCodes(all.filter((c) => c.active).map((c) => c.code)));
-  }, []);
 
   useEffect(() => {
     if (isNew || !id) return;
@@ -175,7 +170,6 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
   const h = bind(draft, update);
   // Side-column fields: label beside the control.
   const beside = { orientation: 'vertical' as const };
-  const groups = BP_GROUPS.filter((g) => draft.roles.includes(g.role)).map((g) => g.value);
 
   // A partner always keeps at least one role, and the role of the list it was opened from.
   const changeRoles = (picked: PartnerRole[]) => {
@@ -429,12 +423,18 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
                       </FormField>
                       {h.text('name', 'Name', { ...beside, placeholder: 'e.g. Acme Trading Corp.', required: true, error: errors.name })}
                       {h.text('foreignName', 'Foreign name', { ...beside, placeholder: 'Name in another language', hint: 'For bilingual printouts.' })}
-                      {h.pick('group', 'Group', groups, { ...beside, required: true, error: errors.group })}
-                      {h.pick('currency', 'Currency', [...new Set([...currencyCodes, draft.currency, 'All currencies'])], {
+                      {h.master('group', 'Group', bpGroupDef, {
+                        ...beside,
+                        required: true,
+                        error: errors.group,
+                        where: (g) => draft.roles.includes(g.role),
+                        seed: { role: draft.roles.find((r) => r !== 'lead') ?? draft.roles[0] },
+                      })}
+                      {h.master('currency', 'Currency', currencyDef, {
                         ...beside,
                         required: true,
                         error: errors.currency,
-                        hint: 'Active currencies from Settings › Accounting & Tax.',
+                        extra: ['All currencies'],
                       })}
                       {h.text('tin', 'TIN', { ...beside, placeholder: '000-000-000-000', hint: 'BIR Taxpayer Identification Number.' })}
                       {h.text('birCorNumber', 'BIR COR no.', { ...beside, placeholder: '000-000-000-000', hint: 'BIR Certificate of Registration (Form 2303).' })}
@@ -524,7 +524,6 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
             return [swappingDefault ? { ...r, checked: true, holder: undefined } : r];
           }}
           accountsFor={(code) => accountsOf(draft, code)}
-          currencies={currencyCodes}
           newAccount={(code) => newAccountFor(code, draft)}
           onDone={(entry, picks) => applyPayment(entry, picks, editing.isNew ? undefined : editing.value)}
           onCancel={() => setEditing(null)}

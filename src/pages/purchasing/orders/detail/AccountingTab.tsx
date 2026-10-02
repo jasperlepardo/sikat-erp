@@ -1,7 +1,8 @@
 import { Button, Icon, Select, Text, TextField, DatePicker, type TableColumn } from '@jasperlepardo/sikat-design-system';
 import { DataTable } from '../../../../components/form/DataTable';
 import { Fields, ReadOnly, Section, bind } from '../../../../components/form/fields';
-import { PAYMENT_METHODS, PAYMENT_TERMS, PROJECTS } from '../../../../mocks/masters';
+import { PAYMENT_METHODS } from '../../../../mocks/masters';
+import { paymentTermDef, projectDef } from '../../../settings/masterDefs';
 import { INDICATORS, REFERENCE_DOC_TYPES, type PoReference } from '../../../../mocks/purchaseOrders';
 import { dueDateFor, termDays } from '../../../../services/purchaseOrders';
 import type { PoTabProps } from './types';
@@ -44,8 +45,8 @@ export function AccountingTab({ draft, update, errors, m, ctx }: PoTabProps) {
       <Section icon="account_balance" title="Journal & payment">
         <Fields>
           {f.text('journalRemark', 'Journal remark', { hint: 'Defaults to “Purchase Orders – vendor code”. With perpetual inventory, it’s the journal entry’s remark.' })}
-          {f.choose('project', 'BP project', asOptions(PROJECTS), { clearable: true, hint: 'Defaults from the vendor.' })}
-          {f.pick('paymentTerms', 'Payment terms', PAYMENT_TERMS, { hint: 'Defaults from the vendor; sets the due date.' })}
+          {f.master('project', 'BP project', projectDef, { clearable: true, hint: 'Defaults from the vendor.' })}
+          {f.master('paymentTerms', 'Payment terms', paymentTermDef, { hint: 'Defaults from the vendor; sets the due date.' })}
           {f.lookup(
             'paymentMethod',
             'Payment method',

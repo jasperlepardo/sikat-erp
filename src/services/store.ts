@@ -10,6 +10,8 @@ const wait = () => new Promise((r) => setTimeout(r, LATENCY_MS));
 
 export function createCollection<T extends { id: string }>(storageKey: string, seed: T[], idPrefix: string) {
   let records: T[] = load();
+  const listeners = new Set<() => void>();
+  const changed = () => listeners.forEach((fn) => fn());
 
   function load(): T[] {
     try {
@@ -47,13 +49,28 @@ export function createCollection<T extends { id: string }>(storageKey: string, s
       const index = records.findIndex((r) => r.id === record.id);
       records = index === -1 ? [...records, record] : records.map((r) => (r.id === record.id ? record : r));
       persist();
+      changed();
       return structuredClone(record);
+    },
+
+    /** The records as they are now, without the fake latency — for sync lookups such as a payment term's days. */
+    snapshot(): readonly T[] {
+      return records;
+    },
+
+    /** Call `fn` after every write, so open pickers pick up a record added elsewhere. Returns the unsubscribe. */
+    subscribe(fn: () => void): () => void {
+      listeners.add(fn);
+      return () => listeners.delete(fn);
     },
 
     /** Restore the seed data (handy while demoing). */
     async reset(): Promise<void> {
       records = structuredClone(seed);
       persist();
+      changed();
     },
   };
 }
+
+export type Collection<T extends { id: string }> = ReturnType<typeof createCollection<T>>;

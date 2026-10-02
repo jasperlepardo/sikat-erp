@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Icon, Link, List, Text } from '@jasperlepardo/sikat-design-system';
 import { RowMenu } from '../../../components/form/RowMenu';
-import { COUNTRIES, PH_PROVINCES } from '../../../mocks/masters';
+import { AddressFields } from '../../../components/form/AddressFields';
 import { newAddress, type PartnerAddress } from '../../../mocks/partners';
 import { EditPanel } from './EditPanel';
 import { Fields, Section, bind, type Draft, type Errors, DefaultFlags, useDefaultPicks, type DefaultPicks, type DefaultRole } from './fields';
@@ -126,6 +126,11 @@ export function AddressPanel({
     setErrors((e) => Object.fromEntries(Object.entries(e).filter(([k]) => !Object.keys(p).some((f) => k.endsWith(`:${f}`)))));
   });
   const err = (field: string) => errors[`address:${address.id}:${field}`];
+  // Clears the country error once a country is picked.
+  const setLocation = (p: Partial<PartnerAddress>) => {
+    setAddress((a) => ({ ...a, ...p }));
+    if (p.country) setErrors((e) => Object.fromEntries(Object.entries(e).filter(([k]) => !k.endsWith(':country'))));
+  };
   const done = () => {
     const found = addressProblems(address);
     setErrors(found);
@@ -147,18 +152,9 @@ export function AddressPanel({
             error: err('label'),
             hint: 'The name picked on documents, e.g. "Main office".',
           })}
-          {f.pick('country', 'Country/Region', COUNTRIES, { required: true, error: err('country') })}
           {f.text('name2', 'Address name 2', { placeholder: 'e.g. Attn: Accounting' })}
           {f.text('name3', 'Address name 3', { placeholder: 'e.g. c/o Warehouse' })}
-          {f.text('streetNo', 'Street no.', { placeholder: 'e.g. 123' })}
-          {f.text('street', 'Street / PO box', { placeholder: 'e.g. Ayala Avenue' })}
-          {f.text('building', 'Building / floor / room', { placeholder: 'e.g. Tower 1, 5F, Unit 502' })}
-          {f.text('block', 'Barangay', { placeholder: 'e.g. San Lorenzo' })}
-          {f.text('city', 'City / municipality', { placeholder: 'e.g. Makati City' })}
-          {address.country === 'Philippines'
-            ? f.pick('province', 'Province', PH_PROVINCES)
-            : f.text('province', 'State / province', { placeholder: 'e.g. California' })}
-          {f.text('zip', 'ZIP code', { placeholder: 'e.g. 1223' })}
+          <AddressFields value={address} onChange={setLocation} countryError={err('country')} />
         </Fields>
         <Link href={mapUrl(address)} target="_blank" rel="noreferrer">
           Show location on map

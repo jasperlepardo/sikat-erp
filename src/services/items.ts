@@ -3,7 +3,7 @@ import { itemGroups } from './inventoryMasters';
 import { createCollection } from './store';
 
 // v8: G/L accounts are stored as chart-of-accounts codes.
-const items = createCollection<Item>('sikat-erp:items:v10', SEED_ITEMS, 'itm');
+const items = createCollection<Item>('sikat-erp:items:v14', SEED_ITEMS, 'itm');
 
 export const listItems = items.list;
 export const getItem = items.get;

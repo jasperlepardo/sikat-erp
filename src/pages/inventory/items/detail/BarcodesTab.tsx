@@ -1,11 +1,11 @@
-import { Button, Combobox, Icon, type TableColumn, Text, TextField } from '@jasperlepardo/sikat-design-system';
+import { Button, Icon, Select, type TableColumn, Text, TextField } from '@jasperlepardo/sikat-design-system';
 import { DataTable } from '../../../../components/form/DataTable';
 import { newBarcodeRow, type ItemBarcode } from '../../../../mocks/items';
-import { activeOptions } from '../../../../services/inventoryMasters';
-import type { TabProps } from './types';
+import { unitOptions, type TabProps } from './types';
 
-export function BarcodesTab({ draft, update, errors, inv }: TabProps) {
+export function BarcodesTab({ draft, update, errors }: TabProps) {
   const rows = draft.barcodes;
+  const units = unitOptions(draft);
   const patch = (id: string, p: Partial<ItemBarcode>) =>
     update({ barcodes: rows.map((r) => (r.id === id ? { ...r, ...p } : r)) });
   const err = (r: ItemBarcode, field: string) => errors[`barcode:${r.id}:${field}`];
@@ -15,12 +15,12 @@ export function BarcodesTab({ draft, update, errors, inv }: TabProps) {
       key: 'uom',
       header: 'UoM',
       cell: (r) => (
-        <Combobox
+        <Select
           aria-label="Unit of measure"
-          options={activeOptions(inv.uoms, (u) => u.code, (u) => `${u.code} · ${u.name}`, r.uom)}
           invalid={!!err(r, 'uom')}
+          options={units}
           value={r.uom}
-          onValueChange={(uom) => patch(r.id, { uom: uom ?? '' })}
+          onValueChange={(uom) => uom && patch(r.id, { uom })}
         />
       ),
     },

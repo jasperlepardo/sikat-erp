@@ -2,7 +2,7 @@ import { SEED_PARTNERS, contactName, type Partner, type PartnerRole } from '../m
 import { createCollection } from './store';
 
 // v8: G/L accounts are stored as chart-of-accounts codes.
-const partners = createCollection<Partner>('sikat-erp:partners:v25', SEED_PARTNERS, 'bp');
+const partners = createCollection<Partner>('sikat-erp:partners:v26', SEED_PARTNERS, 'bp');
 
 export const listPartners = partners.list;
 export const getPartner = partners.get;

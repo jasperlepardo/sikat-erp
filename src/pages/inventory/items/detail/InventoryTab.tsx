@@ -1,14 +1,77 @@
-import { Button, Combobox, type TableColumn, Text } from '@jasperlepardo/sikat-design-system';
-import { DataTable } from '../../../../components/form/DataTable';
+import { Text } from '@jasperlepardo/sikat-design-system';
 import { Fields, ReadOnly, Section, bind } from '../../../../components/form/fields';
-import { newItemWarehouse, type ItemWarehouse } from '../../../../mocks/items';
-import { stockTotals } from '../../../../services/items';
+import type { ItemWarehouse } from '../../../../mocks/items';
 import { formatAmount } from '../../../../services/format';
-import { vendorOptions, type TabProps } from './types';
+import type { TabProps } from './types';
 
 const qty = (n: number) => n.toLocaleString('en-PH');
 
-export function InventoryTab({ draft, update, errors, vendors, inv }: TabProps) {
+type StockStatus = 'inStock' | 'committed' | 'ordered' | 'available';
+const available = (w: ItemWarehouse) => w.inStock - w.committed + w.ordered;
+const STATUSES: { key: StockStatus; title: string; icon: string; hint: string }[] = [
+  { key: 'inStock', title: 'In stock', icon: 'inventory_2', hint: 'On hand now.' },
+  { key: 'committed', title: 'Committed', icon: 'assignment', hint: 'On open sales and production orders.' },
+  { key: 'ordered', title: 'Ordered', icon: 'local_shipping', hint: 'On open purchase orders.' },
+  { key: 'available', title: 'Available', icon: 'task_alt', hint: 'In stock − committed + ordered.' },
+];
+
+/** One stock status: the total across warehouses, then each warehouse's share. */
+function StockCard({
+  status,
+  rows,
+  uom,
+  warehouseName,
+}: {
+  status: (typeof STATUSES)[number];
+  rows: ItemWarehouse[];
+  uom: string;
+  warehouseName: (code: string) => string;
+}) {
+  const value = (w: ItemWarehouse) => (status.key === 'available' ? available(w) : w[status.key]);
+  const total = rows.reduce((n, w) => n + value(w), 0);
+  // Bars compare warehouses within the card; negatives (overcommitted) show no bar.
+  const largest = Math.max(0, ...rows.map(value));
+  return (
+    <Section icon={status.icon} title={status.title}>
+      <div className="flex flex-col gap-1">
+        <p className={`text-3xl font-semibold tabular-nums ${total < 0 ? 'text-danger' : 'text-heading'}`}>
+          {qty(total)} <span className="text-base font-normal text-muted">{uom}</span>
+        </p>
+        <Text variant="small" tone="muted">
+          {status.hint}
+        </Text>
+      </div>
+      {rows.length ? (
+        <ul className="flex flex-col gap-3">
+          {rows.map((w) => {
+            const v = value(w);
+            return (
+              <li key={w.code} className="flex flex-col gap-1">
+                <div className="flex items-baseline justify-between gap-2 text-sm">
+                  <span className="min-w-0 truncate text-body" title={warehouseName(w.code)}>
+                    {w.code} <span className="text-muted">· {warehouseName(w.code)}</span>
+                  </span>
+                  <span className={`tabular-nums ${v < 0 ? 'text-danger' : v === 0 ? 'text-muted' : 'text-heading'}`}>{qty(v)}</span>
+                </div>
+                <div className="h-1 rounded-full bg-[var(--color-border-default)]">
+                  {v > 0 && largest > 0 ? (
+                    <div className="h-1 rounded-full bg-[var(--color-text-primary)]" style={{ width: `${(v / largest) * 100}%` }} />
+                  ) : null}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <Text variant="small" tone="muted">
+          Not stocked in any warehouse yet.
+        </Text>
+      )}
+    </Section>
+  );
+}
+
+export function InventoryTab({ draft, update, errors, inv }: TabProps) {
   const f = bind(draft, update);
   if (!draft.inventoryItem) {
     return (
@@ -20,94 +83,21 @@ export function InventoryTab({ draft, update, errors, vendors, inv }: TabProps) 
     );
   }
 
-  const totals = stockTotals(draft);
   const uom = draft.inventoryUom;
   const standard = draft.valuationMethod === 'Standard Price';
-  const missing = inv.warehouses.filter((w) => w.active && !draft.warehouses.some((x) => x.code === w.code));
   const warehouseOf = (code: string) => inv.warehouses.find((x) => x.code === code);
-  const hasActivity = (w: ItemWarehouse) => w.inStock + w.committed + w.ordered > 0;
-  const patchRow = (code: string, p: Partial<ItemWarehouse>) =>
-    update({ warehouses: draft.warehouses.map((w) => (w.code === code ? { ...w, ...p } : w)) });
-
-  const columns: TableColumn<ItemWarehouse>[] = [
-    { key: 'code', header: 'Warehouse', cell: (w) => `${w.code} · ${warehouseOf(w.code)?.name ?? 'Unknown warehouse'}` },
-    { key: 'inStock', header: 'In stock', cell: (w) => qty(w.inStock) },
-    { key: 'committed', header: 'Committed', cell: (w) => qty(w.committed) },
-    { key: 'ordered', header: 'Ordered', cell: (w) => qty(w.ordered) },
-    {
-      key: 'available',
-      header: 'Available',
-      cell: (w) => {
-        const a = w.inStock - w.committed + w.ordered;
-        return <span className={a < 0 ? 'text-danger' : undefined}>{qty(a)}</span>;
-      },
-    },
-    {
-      key: 'preferredVendorId',
-      header: 'Preferred vendor',
-      cell: (w) => (
-        <Combobox
-          aria-label={`Preferred vendor for ${w.code}`}
-          options={vendorOptions(vendors)}
-          value={w.preferredVendorId}
-          onValueChange={(v) => patchRow(w.code, { preferredVendorId: v ?? '' })}
-        />
-      ),
-    },
-    {
-      key: 'defaultBin',
-      header: 'Default bin',
-      cell: (w) => {
-        const wh = warehouseOf(w.code);
-        if (!wh?.binEnabled) return <span className="text-muted">No bins</span>;
-        const error = errors[`wh:${w.code}:bin`];
-        return (
-          <div>
-            <Combobox
-              aria-label={`Default bin in ${w.code}`}
-              options={wh.bins.map((b) => ({ value: b, label: b }))}
-              placeholder="Pick a bin"
-              invalid={!!error}
-              value={w.defaultBin}
-              onValueChange={(v) => patchRow(w.code, { defaultBin: v ?? '' })}
-            />
-            {error ? <Text variant="caption" tone="danger" className="mt-1">{error}</Text> : null}
-          </div>
-        );
-      },
-    },
-    {
-      key: 'remove',
-      header: 'Remove',
-      srOnlyHeader: true,
-      cell: (w) => (
-        <Button
-          type="button"
-          size="small"
-          variant="ghost"
-          intent="danger"
-          disabled={hasActivity(w)}
-          title={hasActivity(w) ? 'Has stock or open documents' : undefined}
-          onClick={() => update({ warehouses: draft.warehouses.filter((x) => x.code !== w.code) })}
-        >
-          Remove
-        </Button>
-      ),
-    },
-  ];
+  const warehouseName = (code: string) => warehouseOf(code)?.name ?? 'Unknown warehouse';
 
   return (
     <>
-      <Section icon="stacks" title={`Stock · in ${uom}`}>
-        <Fields cols={3}>
-          <ReadOnly label="In stock" value={qty(totals.inStock)} hint="All warehouses." />
-          <ReadOnly label="Committed" value={qty(totals.committed)} hint="On open sales and production orders." />
-          <ReadOnly label="Ordered" value={qty(totals.ordered)} hint="On open purchase orders." />
-          <ReadOnly
-            label="Available"
-            value={<span className={totals.available < 0 ? 'text-danger' : undefined}>{qty(totals.available)}</span>}
-            hint="In stock − committed + ordered."
-          />
+      <div className="grid grid-cols-1 gap-2 md:grid-cols-2 2xl:grid-cols-4">
+        {STATUSES.map((status) => (
+          <StockCard key={status.key} status={status} rows={draft.warehouses} uom={uom} warehouseName={warehouseName} />
+        ))}
+      </div>
+
+      <Section icon="low_priority" title="Cost & stock levels">
+        <Fields>
           {standard
             ? f.num('itemCost', `Item cost per ${uom}`, {
                 prefix: 'PHP',
@@ -121,46 +111,12 @@ export function InventoryTab({ draft, update, errors, vendors, inv }: TabProps) 
                   hint={`${draft.valuationMethod}: recalculated from receipts.`}
                 />,
               ]}
-        </Fields>
-      </Section>
-
-      <Section icon="low_priority" title="Stock levels">
-        <Fields>
           {f.num('minStock', 'Minimum stock', { suffix: uom, hint: 'Below this, the item is flagged and MRP suggests a reorder.' })}
           {f.num('maxStock', 'Maximum stock', { suffix: uom, error: errors.maxStock, hint: 'MRP won’t replenish above this.' })}
           {f.num('minOrderQty', 'Minimum order quantity', { suffix: uom })}
           {f.num('cycleCountDays', 'Cycle count period', { suffix: 'days', hint: 'How often to count this item.' })}
         </Fields>
       </Section>
-
-      <DataTable
-        icon="warehouse"
-        title="Warehouses"
-        description="Stock, preferred vendor and default bin per warehouse. Warehouses with stock or open documents can't be removed."
-        rows={draft.warehouses}
-        getRowId={(w) => w.code}
-        columns={columns}
-        unsortable={['preferredVendorId', 'defaultBin', 'remove']}
-        sortValue={(w, key) =>
-          key === 'available' ? w.inStock - w.committed + w.ordered : (w[key as keyof ItemWarehouse] as string | number)
-        }
-        actions={
-          missing.length ? (
-            <Combobox
-              aria-label="Add warehouse"
-              placeholder="Add warehouse…"
-              options={missing.map((w) => ({ value: w.code, label: `${w.code} · ${w.name}` }))}
-              value=""
-              onValueChange={(code) => code && update({ warehouses: [...draft.warehouses, newItemWarehouse(code)] })}
-            />
-          ) : undefined
-        }
-        empty={
-          <Text variant="small" tone="muted">
-            Not stocked in any warehouse yet.
-          </Text>
-        }
-      />
     </>
   );
 }

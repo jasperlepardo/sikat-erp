@@ -343,6 +343,14 @@ export const TREATY_RATES: Record<string, Record<TreatyIncomeType, number>> = {
 };
 
 /** The company's own tax registration (Settings › Accounting & Tax › Company tax profile). */
+/**
+ * What the company does with the goods it sells. Excise is paid where goods enter the market:
+ * by the manufacturer before removal from the plant (NIRC Sec. 130) or by the importer before
+ * release from customs (Sec. 131). A reseller pays none — it's already in the purchase price.
+ */
+export type BusinessActivity = 'Manufacturer' | 'Importer' | 'Reseller';
+export const BUSINESS_ACTIVITIES: BusinessActivity[] = ['Manufacturer', 'Importer', 'Reseller'];
+
 export interface CompanyTaxProfile {
   id: string;
   registeredName: string;
@@ -364,7 +372,13 @@ export interface CompanyTaxProfile {
    * WI158/WI160). They withhold on all purchases, not just as top withholding agents.
    */
   governmentEntity: boolean;
+  /** One or more; decides whether the company itself pays excise. */
+  businessActivities: BusinessActivity[];
 }
+
+/** Whether the company pays excise itself (manufacturer or importer), rather than in the purchase price. */
+export const paysExcise = (p: Pick<CompanyTaxProfile, 'businessActivities'>) =>
+  (p.businessActivities ?? []).some((a) => a !== 'Reseller');
 
 export const SEED_COMPANY_TAX: CompanyTaxProfile[] = [
   {
@@ -376,6 +390,8 @@ export const SEED_COMPANY_TAX: CompanyTaxProfile[] = [
     topWithholdingAgent: true,
     exportEnterprise: false,
     governmentEntity: false,
+    // Buys Apple products locally and imports from Apple directly (mocks/partners.ts bp-017).
+    businessActivities: ['Reseller', 'Importer'],
   },
 ];
 

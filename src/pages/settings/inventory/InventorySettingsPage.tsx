@@ -4,6 +4,7 @@ import {
   CommissionGroupsTab,
   CustomsGroupsTab,
   ItemGroupsTab,
+  UomGroupsTab,
   ItemPropertiesTab,
   ManufacturersTab,
   ShippingTypesTab,
@@ -14,6 +15,7 @@ import {
 const TABS: PageTab[] = [
   { value: 'item-groups', label: 'Item groups', Component: ItemGroupsTab },
   { value: 'uoms', label: 'Units of measure', Component: UnitsTab },
+  { value: 'uom-groups', label: 'UoM groups', Component: UomGroupsTab },
   { value: 'manufacturers', label: 'Manufacturers', Component: ManufacturersTab },
   { value: 'customs', label: 'Customs groups', Component: CustomsGroupsTab },
   { value: 'commission', label: 'Commission groups', Component: CommissionGroupsTab },
@@ -30,7 +32,7 @@ export function InventorySettingsPage() {
       base="/settings/inventory"
       icon="inventory"
       title="Inventory settings"
-      subcopy="Item groups, units, manufacturers, customs and commission groups, shipping, warranties and item properties."
+      subcopy="Item groups, units and UoM groups, manufacturers, customs and commission groups, shipping, warranties and item properties."
       tabs={TABS}
     />
   );

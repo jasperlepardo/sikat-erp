@@ -1,0 +1,83 @@
+code,name,region_code,is_active
+0128,Ilocos Norte,01,True
+0129,Ilocos Sur,01,True
+0133,La Union,01,True
+0155,Pangasinan,01,True
+0209,Batanes,02,True
+0215,Cagayan,02,True
+0231,Isabela,02,True
+0250,Nueva Vizcaya,02,True
+0257,Quirino,02,True
+0308,Bataan,03,True
+0314,Bulacan,03,True
+0349,Nueva Ecija,03,True
+0354,Pampanga,03,True
+0369,Tarlac,03,True
+0371,Zambales,03,True
+0377,Aurora,03,True
+0410,Batangas,04,True
+0421,Cavite,04,True
+0434,Laguna,04,True
+0456,Quezon,04,True
+0458,Rizal,04,True
+0505,Albay,05,True
+0516,Camarines Norte,05,True
+0517,Camarines Sur,05,True
+0520,Catanduanes,05,True
+0541,Masbate,05,True
+0562,Sorsogon,05,True
+0604,Aklan,06,True
+0606,Antique,06,True
+0619,Capiz,06,True
+0630,Iloilo,06,True
+0645,Negros Occidental,06,True
+0679,Guimaras,06,True
+0712,Bohol,07,True
+0722,Cebu,07,True
+0746,Negros Oriental,07,True
+0761,Siquijor,07,True
+0826,Eastern Samar,08,True
+0837,Leyte,08,True
+0848,Northern Samar,08,True
+0860,Samar,08,True
+0864,Southern Leyte,08,True
+0878,Biliran,08,True
+0972,Zamboanga del Norte,09,True
+0973,Zamboanga del Sur,09,True
+0983,Zamboanga Sibugay,09,True
+1013,Bukidnon,10,True
+1018,Camiguin,10,True
+1035,Lanao del Norte,10,True
+1042,Misamis Occidental,10,True
+1043,Misamis Oriental,10,True
+1123,Davao del Norte,11,True
+1124,Davao del Sur,11,True
+1125,Davao Oriental,11,True
+1182,Davao de Oro,11,True
+1186,Davao Occidental,11,True
+1247,Cotabato,12,True
+1263,South Cotabato,12,True
+1265,Sultan Kudarat,12,True
+1280,Sarangani,12,True
+1401,Abra,14,True
+1411,Benguet,14,True
+1427,Ifugao,14,True
+1432,Kalinga,14,True
+1444,Mountain Province,14,True
+1481,Apayao,14,True
+1507,Basilan,15,True
+1536,Lanao del Sur,15,True
+1566,Sulu,15,True
+1570,Tawi-Tawi,15,True
+1602,Agusan del Norte,16,True
+1603,Agusan del Sur,16,True
+1667,Surigao del Norte,16,True
+1668,Surigao del Sur,16,True
+1685,Dinagat Islands,16,True
+1740,Marinduque,17,True
+1751,Occidental Mindoro,17,True
+1752,Oriental Mindoro,17,True
+1753,Palawan,17,True
+1759,Romblon,17,True
+19087,Maguindanao del Norte,15,True
+19088,Maguindanao del Sur,15,True

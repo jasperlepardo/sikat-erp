@@ -1,4 +1,4 @@
-import type { Item } from '../../../../mocks/items';
+import { itemUnits, uomSummary, type Item } from '../../../../mocks/items';
 import type { Partner } from '../../../../mocks/partners';
 import type { Errors } from '../../../../components/form/fields';
 import type { InventoryMasters } from '../../../../services/inventoryMasters';
@@ -44,6 +44,21 @@ export const withholdingGroupOptions = (tax: TaxMasters, current: string) =>
   tax.withholdingGroups
     .filter((g) => g.active || g.code === current)
     .map((g) => ({ value: g.code, label: `${g.code} · ${g.name}` }));
+
+/** The item's units for a picker ("box · 1 box = 24 pc"), optionally only those usable on purchase or sales documents. */
+export const unitOptions = (draft: TabProps['draft'], use?: 'purchase' | 'sales') =>
+  itemUnits(draft, use).map((u) => ({ value: u.uom, label: u.uom === draft.inventoryUom ? `${u.uom} · inventory unit` : `${u.uom} · ${uomSummary(draft, u.uom)}` }));
+
+/** " The X group default is Y." when the item's tax setting differs from its group's default, else ''. */
+export function groupTaxNote(
+  inv: TabProps['inv'],
+  draft: TabProps['draft'],
+  key: 'purchaseTaxGroup' | 'salesTaxGroup' | 'withholdingGroup' | 'exciseCategory',
+) {
+  const g = inv.groups.find((x) => x.name === draft.itemGroup);
+  const value = g?.[key];
+  return value && value !== draft[key] ? ` The ${g.name} group default is ${value}.` : '';
+}
 
 /** The item's default tax code, and a reminder that partner/company status can override it. */
 export function taxResolution(tax: TaxMasters, groupCode: string, fixedCode: string) {

@@ -1,8 +1,9 @@
 import type { Errors } from '../../../../components/form/fields';
 import type { Currency, ExchangeRate } from '../../../../mocks/currencies';
-import type { Item } from '../../../../mocks/items';
+import { itemsPerUom, type Item } from '../../../../mocks/items';
 import type { Partner } from '../../../../mocks/partners';
-import { COMPANY_ADDRESS, PURCHASING_SETTINGS, newPoLine, type PoLine } from '../../../../mocks/purchaseOrders';
+import type { Company } from '../../../../mocks/companies';
+import { PURCHASING_SETTINGS, newPoLine, type PoLine } from '../../../../mocks/purchaseOrders';
 import { rateAt, vatNotPaidToVendor } from '../../../../mocks/taxes';
 import type { InventoryMasters } from '../../../../services/inventoryMasters';
 import { rateOn } from '../../../../services/masterData';
@@ -19,6 +20,8 @@ export interface PoMasters {
   tax: TaxMasterData;
   currencies: Currency[];
   rates: ExchangeRate[];
+  /** The company picked in the navbar switcher: "our" address on service-only POs. */
+  company: Company;
 }
 
 export interface PoTabProps {
@@ -27,6 +30,8 @@ export interface PoTabProps {
   errors: Errors;
   m: PoMasters;
   ctx: PoContext;
+  /** A vendor changed from inside the PO (e.g. an address added), so the form uses the saved record. */
+  onVendorSaved: (vendor: Partner) => void;
 }
 
 /** Values derived from the draft and master data that several tabs need. */
@@ -61,16 +66,18 @@ export function buildContext(draft: PoDraft, m: PoMasters): PoContext {
   };
 }
 
-export { formatAddress } from '../../../../mocks/partners';
+import { formatAddress } from '../../../../mocks/address';
+
+export { formatAddress };
 
 /**
  * Ship To default: the address of the warehouse the goods go to (first stocked
- * line), or the company address when the PO only has services.
+ * line), or the current company's address when the PO only has services.
  */
 export function defaultShipTo(lines: PoLine[], m: PoMasters) {
   const stocked = lines.find((l) => l.warehouse && m.items.find((i) => i.id === l.itemId)?.inventoryItem);
   const wh = stocked && m.inv.warehouses.find((w) => w.code === stocked.warehouse);
-  return wh ? `${wh.name}\n${wh.city}` : lines.length ? COMPANY_ADDRESS : '';
+  return wh ? formatAddress(wh.address, wh.name) : lines.length ? formatAddress(m.company.address, m.company.name) : '';
 }
 
 /**
@@ -79,7 +86,7 @@ export function defaultShipTo(lines: PoLine[], m: PoMasters) {
  * base price.
  */
 export const listPrice = (item: Item, priceList: string) =>
-  (priceList === 'Last purchase price' ? item.itemCost : item.basePrice) * (item.itemsPerPurchaseUnit || 1);
+  (priceList === 'Last purchase price' ? item.itemCost : item.basePrice) * (itemsPerUom(item, item.purchasingUom) ?? 1);
 
 /** Proposed tax code for an item bought from the vendor (Settings › Accounting & Tax rules). */
 export const proposedTaxCode = (item: Item, vendor: Partner | undefined, m: PoMasters, date: string) =>
@@ -95,10 +102,10 @@ export function lineFromItem(item: Item, draft: PoDraft, ctx: PoContext, m: PoMa
     itemNo: item.itemNo,
     description: item.description,
     bpCatalogNo:
-      PURCHASING_SETTINGS.useBpCatalogNumbers && item.defaultVendorId === draft.vendorId ? item.vendorItemNo : '',
+      (PURCHASING_SETTINGS.useBpCatalogNumbers && item.vendors.find((v) => v.vendorId === draft.vendorId)?.vendorItemNo) || '',
     uomCode: item.purchasingUom,
     uomName: uom?.name ?? item.purchasingUom,
-    itemsPerUnit: item.itemsPerPurchaseUnit || 1,
+    itemsPerUnit: itemsPerUom(item, item.purchasingUom) ?? 1,
     warehouse: item.inventoryItem ? (item.warehouses[0]?.code ?? 'WH-MNL') : '',
     priceList,
     unitPrice: ctx.fx ? Math.round((listPrice(item, priceList) / ctx.fx) * 100) / 100 : 0,

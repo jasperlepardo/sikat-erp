@@ -24,8 +24,13 @@ export interface ContactPerson {
   tel2: string;
   mobile: string;
   fax: string;
+  pager: string;
   email: string;
   emailGroup: string;
+  /** Country of birth (some compliance checks ask for it). */
+  birthCountry: string;
+  /** Contact's own customer-portal login. Prototype only: stored as typed. */
+  portalPassword: string;
   remarks1: string;
   remarks2: string;
   blockMarketing: boolean;
@@ -37,22 +42,12 @@ export interface ContactPerson {
  * One of the partner's addresses. Any address can be picked as bill-to or ship-to on a
  * document; the partner's defaultBillToId / defaultShipToId say which one is picked first.
  */
-export interface PartnerAddress {
+export interface PartnerAddress extends PostalAddress {
   id: string;
   /** Address ID — the label picked on documents, e.g. "Main office". */
   label: string;
   name2: string;
   name3: string;
-  street: string;
-  streetNo: string;
-  building: string;
-  /** Barangay (SAP "Block"). */
-  block: string;
-  city: string;
-  zip: string;
-  /** Province (SAP "State"). */
-  province: string;
-  country: string;
 }
 
 /** One of the partner's bank accounts (where you pay a vendor, or refund a customer). */
@@ -76,6 +71,8 @@ export interface PaymentAccount {
   mobileNo?: string;
   // Cards: brand, last 4 digits and expiry only — never the full card number.
   cardBrand?: string;
+  /** ID number tied to the card, e.g. the cardholder's ID. */
+  idNumber?: string;
   last4?: string;
   expiry?: string;
 }
@@ -107,6 +104,7 @@ export const newContactChannel = (type: ContactChannelType = 'Phone'): PartnerCo
   value: '',
 });
 
+import { blankPostalAddress, formatAddress, type PostalAddress } from './address';
 import type { Attachment } from './common';
 import type { VatExemptionEntry } from './taxes';
 export type { VatExemptionEntry };
@@ -156,6 +154,12 @@ export interface Partner {
   idNo2: string;
   unifiedTin: string;
   generalRemarks: string;
+  /** Customer/vendor portal login. Prototype only: stored as typed. */
+  portalPassword: string;
+  /** Factoring company the receivables are sold to (Settings › Banking › Factoring companies). */
+  factoringCompany: string;
+  /** The partner's reference with the factoring company. */
+  factoringRef: string;
   salesEmployee: string;
   channel: string;
   technician: string;
@@ -191,6 +195,8 @@ export interface Partner {
   averageDelayDays: number;
   priority: string;
   holidays: string;
+  /** Days of the month payments may fall on (1–31); empty means any day. */
+  paymentDates: number[];
   allowPartialDelivery: boolean;
   allowPartialDeliveryPerRow: boolean;
   noDiscountGroups: boolean;
@@ -199,6 +205,8 @@ export interface Partner {
 
   // Payment run
   paymentReference: string;
+  /** Payment control no., assigned by the bank or the payment run. */
+  controlNo: string;
   paymentBlock: boolean;
   singlePayment: boolean;
   collectionAuthorization: boolean;
@@ -256,6 +264,11 @@ export interface Partner {
   // Accounting
   consolidatingPartnerId: string;
   consolidationType: 'payment' | 'delivery';
+  /**
+   * A separate partner record for the same company in the other role, so AR and AP can be netted.
+   * Not needed when one record holds both the customer and vendor roles.
+   */
+  connectedPartnerId: string;
   /** G/L account codes (Accounting › Chart of Accounts); '' for none. */
   receivableAccount: string;
   payableAccount: string;
@@ -286,8 +299,11 @@ export const newContact = (patch: Partial<ContactPerson> = {}): ContactPerson =>
   tel2: '',
   mobile: '',
   fax: '',
+  pager: '',
   email: '',
   emailGroup: '',
+  birthCountry: '',
+  portalPassword: '',
   remarks1: '',
   remarks2: '',
   blockMarketing: false,
@@ -308,29 +324,11 @@ export const newAddress = (patch: Partial<PartnerAddress> = {}): PartnerAddress 
   label: '',
   name2: '',
   name3: '',
-  street: '',
-  streetNo: '',
-  building: '',
-  block: '',
-  city: '',
-  zip: '',
-  province: '',
-  country: 'Philippines',
+  ...blankPostalAddress(),
   ...patch,
 });
 
-/** An address as printed on documents; the last line is the province at home, the country abroad. */
-export const formatAddress = (a?: PartnerAddress, name = '') =>
-  a
-    ? [
-        name,
-        [a.building, [a.streetNo, a.street].filter(Boolean).join(' ')].filter(Boolean).join(', '),
-        [a.block, a.city].filter(Boolean).join(', '),
-        [a.zip, a.country === 'Philippines' ? a.province : a.country].filter(Boolean).join(' '),
-      ]
-        .filter(Boolean)
-        .join('\n')
-    : '';
+export { formatAddress };
 
 export const contactName =(c?: ContactPerson) =>
   c ? [c.firstName, c.middleName, c.lastName].filter(Boolean).join(' ') || 'Unnamed contact' : '';
@@ -370,6 +368,9 @@ export function blankPartner(role: PartnerRole): Omit<Partner, 'id'> {
     idNo2: '',
     unifiedTin: '',
     generalRemarks: '',
+    portalPassword: '',
+    factoringCompany: '',
+    factoringRef: '',
     salesEmployee: '',
     channel: '',
     technician: '',
@@ -398,12 +399,14 @@ export function blankPartner(role: PartnerRole): Omit<Partner, 'id'> {
     averageDelayDays: 0,
     priority: '',
     holidays: 'Philippines (national)',
+    paymentDates: [],
     allowPartialDelivery: true,
     allowPartialDeliveryPerRow: true,
     noDiscountGroups: false,
     endorsableChecks: false,
     acceptsEndorsedChecks: false,
     paymentReference: '',
+    controlNo: '',
     paymentBlock: false,
     singlePayment: false,
     collectionAuthorization: false,
@@ -429,6 +432,7 @@ export function blankPartner(role: PartnerRole): Omit<Partner, 'id'> {
     taxTreatyIncomes: [],
     consolidatingPartnerId: '',
     consolidationType: 'payment',
+    connectedPartnerId: '',
     receivableAccount: '1120',
     payableAccount: '2010',
     downPaymentClearingAccount: '',
@@ -501,7 +505,7 @@ export const SEED_PARTNERS: Partner[] = [
       customerPaymentTerms: 'COD', vatRegistered: false,
       remarks: 'Tax scenario (sales): regular consumer → 31 VATable sales, 12% output VAT.' },
     { firstName: 'Walk-in', lastName: 'Customer', position: 'Consumer' },
-    { street: 'Ortigas Ave.', block: 'San Antonio', city: 'Pasig', zip: '1605', province: 'Metro Manila' },
+    { street: 'Ortigas Ave.', block: 'San Antonio', city: 'City of Pasig', zip: '1605', province: 'Metro Manila', provinceCode: '1300', cityCode: '137403', barangayCode: '137403019' },
   ),
   seed(
     'bp-002', 'vendor',
@@ -512,7 +516,7 @@ export const SEED_PARTNERS: Partner[] = [
         + 'Tax scenario (purchase, mall rent): 44 input VAT · WC100 5% EWT on rent.\n'
         + 'Tax scenario (sales): 31 VATable; as a top withholding agent it withholds 1% and sends us BIR Form 2307.' },
     { firstName: 'Patricia', lastName: 'Gonzales', position: 'Leasing Manager', email: 'patricia.gonzales@northgateprime.example.ph' },
-    { street: 'Northgate Ave.', block: 'Filinvest City', city: 'Muntinlupa', zip: '1781', province: 'Metro Manila' },
+    { street: 'Northgate Ave.', block: 'Alabang', city: 'City of Muntinlupa', zip: '1781', province: 'Metro Manila', provinceCode: '1300', cityCode: '137603', barangayCode: '137603001' },
   ),
   seed(
     'bp-003', 'customer',
@@ -522,7 +526,7 @@ export const SEED_PARTNERS: Partner[] = [
       remarks: 'Corporate fleet of MacBooks and iPhones for branch staff.\n'
         + 'Tax scenario (sales): 31 VATable. Top withholding agent: withholds 1% on goods / 2% on services and issues BIR Form 2307.' },
     { firstName: 'Miguel', lastName: 'Ferrer', position: 'Head of Procurement', email: 'miguel.ferrer@bayanihanbank.example.ph' },
-    { street: 'Paseo de Roxas', streetNo: '8750', block: 'Bel-Air', city: 'Makati', zip: '1226', province: 'Metro Manila' },
+    { street: 'Paseo de Roxas', streetNo: '8750', block: 'Bel-Air', city: 'City of Makati', zip: '1226', province: 'Metro Manila', provinceCode: '1300', cityCode: '137602', barangayCode: '137602002' },
   ),
   seed(
     'bp-004', 'customer',
@@ -533,7 +537,7 @@ export const SEED_PARTNERS: Partner[] = [
       remarks: 'PEZA-registered IT-BPM company in Clark Freeport. Buys Macs and iPads for its delivery floor.\n'
         + 'Tax scenario (sales): valid zero-rating certificate → 32 zero-rated sales; the invoice must say "ZERO-RATED SALE".' },
     { firstName: 'Anne', lastName: 'Sison', position: 'IT Asset Manager', email: 'anne.sison@clarkfieldgs.example.ph' },
-    { street: 'Manuel A. Roxas Hwy.', streetNo: 'Bldg 7', block: 'Clark Freeport Zone', city: 'Mabalacat', zip: '2023', province: 'Pampanga' },
+    { building: 'Clark Freeport Zone', street: 'Manuel A. Roxas Hwy.', streetNo: 'Bldg 7', city: 'Mabalacat City', zip: '2023', province: 'Pampanga', provinceCode: '0354', cityCode: '035409' },
   ),
   seed(
     'bp-005', 'customer',
@@ -544,7 +548,7 @@ export const SEED_PARTNERS: Partner[] = [
       remarks: 'Animation studio in Mactan Economic Zone.\n'
         + 'Tax scenario (sales): zero-rating certificate expired on 30 Jun 2026 → warning, charged 31 VATable until they send the renewal.' },
     { firstName: 'Kevin', lastName: 'Ong', position: 'Admin Head', email: 'kevin.ong@mactanpixel.example.ph' },
-    { street: 'MEPZ 1', block: 'Mactan Economic Zone', city: 'Lapu-Lapu City', zip: '6015', province: 'Cebu' },
+    { street: 'MEPZ 1', block: 'Mactan', city: 'City of Lapu-Lapu', zip: '6015', province: 'Cebu', provinceCode: '0722', cityCode: '072226', barangayCode: '072226015' },
   ),
   seed(
     'bp-006', 'customer',
@@ -555,7 +559,7 @@ export const SEED_PARTNERS: Partner[] = [
       remarks: 'Senior citizen, buys for personal use.\n'
         + 'Tax scenario (sales): senior citizen exemption with ID on file → 33 VAT-exempt sales (the 20% senior discount applies too).' },
     { firstName: 'Lourdes', middleName: 'M.', lastName: 'Villanueva', position: 'Senior citizen' },
-    { street: 'Dr. Sixto Antonio Ave.', streetNo: '41', block: 'Kapasigan', city: 'Pasig', zip: '1600', province: 'Metro Manila' },
+    { street: 'Dr. Sixto Antonio Ave.', streetNo: '41', block: 'Kapasigan', city: 'City of Pasig', zip: '1600', province: 'Metro Manila', provinceCode: '1300', cityCode: '137403', barangayCode: '137403008' },
   ),
   seed(
     'bp-007', 'customer',
@@ -566,7 +570,7 @@ export const SEED_PARTNERS: Partner[] = [
       remarks: 'Teachers’ cooperative; buys iPads for members through salary loans.\n'
         + 'Tax scenario (sales): cooperative with CDA certificate on file → 33 VAT-exempt sales.' },
     { firstName: 'Teresita', lastName: 'Ramos', position: 'Treasurer', email: 'treasurer@gurongbayancoop.example.ph' },
-    { street: 'Caruncho Ave.', streetNo: '118', block: 'San Nicolas', city: 'Pasig', zip: '1600', province: 'Metro Manila' },
+    { street: 'Caruncho Ave.', streetNo: '118', block: 'San Nicolas', city: 'City of Pasig', zip: '1600', province: 'Metro Manila', provinceCode: '1300', cityCode: '137403', barangayCode: '137403023' },
   ),
   seed(
     'bp-008', 'vendor',
@@ -578,7 +582,7 @@ export const SEED_PARTNERS: Partner[] = [
         + 'Tax scenario (purchase, courier): non-VAT → 48 no input tax · WC160 2% EWT.\n'
         + 'Tax scenario (sales): exemption entered but no certificate attached → warning, charged 31 VATable.' },
     { firstName: 'Rodel', lastName: 'Manalo', position: 'Manager', email: 'kapitbahayan.tsc@example.ph' },
-    { street: 'C. Raymundo Ave.', streetNo: '22', block: 'Maybunga', city: 'Pasig', zip: '1607', province: 'Metro Manila' },
+    { street: 'C. Raymundo Ave.', streetNo: '22', block: 'Maybunga', city: 'City of Pasig', zip: '1607', province: 'Metro Manila', provinceCode: '1300', cityCode: '137403', barangayCode: '137403012' },
   ),
   seed(
     'bp-009', 'customer',
@@ -587,7 +591,7 @@ export const SEED_PARTNERS: Partner[] = [
       remarks: 'iPads for teachers under a public bidding award (PhilGEPS).\n'
         + 'Tax scenario (sales): 31 VATable. The agency withholds 5% creditable VAT and 1% EWT and issues BIR Form 2307 — claim the VAT on 2550Q item 16.' },
     { firstName: 'Ramil', lastName: 'Ocampo', position: 'Supply Officer', email: 'supply.office@depedpasig.example.gov.ph' },
-    { street: 'Caruncho Ave.', block: 'Malinao', city: 'Pasig', zip: '1600', province: 'Metro Manila' },
+    { street: 'Caruncho Ave.', block: 'Malinao', city: 'City of Pasig', zip: '1600', province: 'Metro Manila', provinceCode: '1300', cityCode: '137403', barangayCode: '137403010' },
   ),
   seed(
     'bp-010', 'customer',
@@ -597,7 +601,7 @@ export const SEED_PARTNERS: Partner[] = [
       remarks: 'Singapore travel company buying iPhones for its Manila-based staff, delivered here.\n'
         + 'Tax scenario (sales): non-resident buyer, goods consumed in the Philippines → 31 VATable (no exemption applies).' },
     { firstName: 'Rachel', lastName: 'Tan', position: 'Finance Manager', email: 'finance@harbourline.example.sg' },
-    { street: 'Cecil St.', streetNo: '138', city: 'Singapore', zip: '069538', province: 'Other', country: 'Singapore' },
+    { street: 'Cecil St.', streetNo: '138', city: 'Singapore', zip: '069538', country: 'Singapore' },
   ),
 
   // ── Leads ──────────────────────────────────────────────────────────────────
@@ -607,7 +611,7 @@ export const SEED_PARTNERS: Partner[] = [
       contactChannels: [email('bp-011-ch1', 'registrar@mabiniacademy.example.edu.ph')],
       remarks: 'Private school planning a 1:1 iPad program for Grade 7. Needs a quote for 180 iPads with education pricing.' },
     { firstName: 'Paolo', lastName: 'Aquino', position: 'IT Coordinator', email: 'paolo.aquino@mabiniacademy.example.edu.ph' },
-    { street: 'Mabini St.', streetNo: '15', city: 'Marikina', zip: '1800', province: 'Metro Manila' },
+    { street: 'Mabini St.', streetNo: '15', city: 'City of Marikina', zip: '1800', province: 'Metro Manila', provinceCode: '1300', cityCode: '137402' },
   ),
   seed(
     'bp-012', 'lead',
@@ -615,7 +619,7 @@ export const SEED_PARTNERS: Partner[] = [
       contactChannels: [email('bp-012-ch1', 'hello@talacreative.example.ph')],
       remarks: 'Wanted 12 MacBook Pros on 0% installment; went with another reseller on price.' },
     { firstName: 'Ella', lastName: 'Navarro', position: 'Operations', email: 'ella@talacreative.example.ph' },
-    { street: 'Kalayaan Ave.', streetNo: '220', block: 'Poblacion', city: 'Makati', zip: '1210', province: 'Metro Manila' },
+    { street: 'Kalayaan Ave.', streetNo: '220', block: 'Poblacion', city: 'City of Makati', zip: '1210', province: 'Metro Manila', provinceCode: '1300', cityCode: '137602', barangayCode: '137602020' },
   ),
 
   // ── Vendors: local suppliers ───────────────────────────────────────────────
@@ -626,7 +630,7 @@ export const SEED_PARTNERS: Partner[] = [
       remarks: 'Third-party accessories (cases, screen protectors, chargers).\n'
         + 'Tax scenario (purchase, goods): 44 input VAT · WC158 1% EWT (we are a top withholding agent). The 1% is flat, so no sworn declaration is needed.' },
     { firstName: 'Janine', lastName: 'Co', position: 'Account Manager', email: 'janine.co@techzone.example.ph' },
-    { street: 'Pioneer St.', streetNo: '55', block: 'Buayang Bato', city: 'Mandaluyong', zip: '1550', province: 'Metro Manila' },
+    { street: 'Pioneer St.', streetNo: '55', block: 'Buayang Bato', city: 'City of Mandaluyong', zip: '1550', province: 'Metro Manila', provinceCode: '1300', cityCode: '137401', barangayCode: '137401008' },
   ),
   seed(
     'bp-014', 'vendor',
@@ -635,7 +639,7 @@ export const SEED_PARTNERS: Partner[] = [
       remarks: 'Security guards for the Pasig and Muntinlupa stores.\n'
         + 'Tax scenario (purchase, contractor): 44 input VAT · WC120 2% EWT.' },
     { firstName: 'Ernesto', lastName: 'Dizon', position: 'Operations Manager', email: 'ernesto.dizon@sentinelguard.example.ph' },
-    { street: 'Shaw Blvd.', streetNo: '410', block: 'Oranbo', city: 'Pasig', zip: '1600', province: 'Metro Manila' },
+    { street: 'Shaw Blvd.', streetNo: '410', block: 'Oranbo', city: 'City of Pasig', zip: '1600', province: 'Metro Manila', provinceCode: '1300', cityCode: '137403', barangayCode: '137403013' },
   ),
   seed(
     'bp-015', 'vendor',
@@ -645,7 +649,7 @@ export const SEED_PARTNERS: Partner[] = [
       remarks: 'Cloud hosting for our online store and POS back office, billed monthly in USD.\n'
         + 'Tax scenario (purchase, digital services, provider not registered with BIR — demo setting): 45 reverse-charge VAT · WV070 12% withholding VAT (1600-VT) · WC230 25% final tax.' },
     { firstName: 'AWS', lastName: 'Billing', position: 'Accounts receivable' },
-    { street: 'Terry Ave. North', streetNo: '410', city: 'Seattle, WA', zip: '98109', province: 'Other', country: 'United States' },
+    { street: 'Terry Ave. North', streetNo: '410', city: 'Seattle, WA', zip: '98109', country: 'United States' },
   ),
   seed(
     'bp-016', 'vendor',
@@ -659,7 +663,7 @@ export const SEED_PARTNERS: Partner[] = [
         + 'Tax scenario (purchase, goods): 44 input VAT · WC158 1% EWT. AppleCare+ (services): 44 · WC160 2%.\n'
         + 'Tax scenario (sales): 31 VATable.' },
     { firstName: 'Trade', lastName: 'Desk', position: 'Reseller accounts', email: 'reseller.orders@luzonidist.example.ph' },
-    { street: 'Ayala Ave.', streetNo: '6750', city: 'Makati', zip: '1226', province: 'Metro Manila' },
+    { street: 'Ayala Ave.', streetNo: '6750', city: 'City of Makati', zip: '1226', province: 'Metro Manila', provinceCode: '1300', cityCode: '137602' },
   ),
 
   // ── Vendors: non-resident ──────────────────────────────────────────────────
@@ -670,7 +674,7 @@ export const SEED_PARTNERS: Partner[] = [
       remarks: 'Direct imports of Apple products, shipped from Singapore and cleared through our customs broker.\n'
         + 'Tax scenario (purchase, imported goods): 46 importations — the 12% import VAT is paid to the Bureau of Customs on the import entry, not to Apple · no withholding (foreign-source income).' },
     { firstName: 'Channel', lastName: 'Operations', position: 'Reseller channel' },
-    { street: 'Ang Mo Kio Street 64', streetNo: '7', city: 'Singapore', zip: '569086', province: 'Other', country: 'Singapore' },
+    { street: 'Ang Mo Kio Street 64', streetNo: '7', city: 'Singapore', zip: '569086', country: 'Singapore' },
   ),
   seed(
     'bp-018', 'vendor',
@@ -680,7 +684,7 @@ export const SEED_PARTNERS: Partner[] = [
       remarks: 'ChatGPT Team seats for the store and marketing teams, charged to the company card monthly.\n'
         + 'Tax scenario (purchase, digital services, provider not registered with BIR — demo setting): 45 · WV070 12% · WC230 25%.' },
     { firstName: 'OpenAI', lastName: 'Billing', position: 'Accounts receivable' },
-    { street: '3rd Street', streetNo: '1455', city: 'San Francisco, CA', zip: '94158', province: 'Other', country: 'United States' },
+    { street: '3rd Street', streetNo: '1455', city: 'San Francisco, CA', zip: '94158', country: 'United States' },
   ),
   seed(
     'bp-019', 'vendor',
@@ -690,7 +694,7 @@ export const SEED_PARTNERS: Partner[] = [
       remarks: 'Google Ads (search and YouTube) and Google Workspace.\n'
         + 'Tax scenario (purchase, digital services, provider registered with BIR — demo setting): it charges 12% VAT on the invoice → 44 input VAT · WC230 25% final tax.' },
     { firstName: 'Google Ads', lastName: 'Billing', position: 'Collections' },
-    { street: 'Pasir Panjang Rd.', streetNo: '70', building: '#03-71 Mapletree Business City II', city: 'Singapore', zip: '117371', province: 'Other', country: 'Singapore' },
+    { street: 'Pasir Panjang Rd.', streetNo: '70', building: '#03-71 Mapletree Business City II', city: 'Singapore', zip: '117371', country: 'Singapore' },
   ),
   seed(
     'bp-020', 'vendor',
@@ -700,7 +704,7 @@ export const SEED_PARTNERS: Partner[] = [
       remarks: 'Facebook and Instagram ads for launches and promos.\n'
         + 'Tax scenario (purchase, digital services, provider registered with BIR — demo setting): 44 input VAT from its invoice · WC230 25% final tax.' },
     { firstName: 'Meta Ads', lastName: 'Billing', position: 'Collections' },
-    { street: 'Merrion Rd.', city: 'Dublin 4', zip: 'D04 X2K5', province: 'Other', country: 'Ireland' },
+    { street: 'Merrion Rd.', city: 'Dublin 4', zip: 'D04 X2K5', country: 'Ireland' },
   ),
 
   // ── Vendors: professionals and service providers ───────────────────────────
@@ -711,7 +715,7 @@ export const SEED_PARTNERS: Partner[] = [
       remarks: 'External auditor (annual audit and BIR filings). No sworn declaration on file.\n'
         + 'Tax scenario (purchase, professional fees): 44 input VAT · WC011 15% EWT (juridical payee, no declaration → higher rate).' },
     { firstName: 'Victor', lastName: 'Tan', position: 'Audit Partner', email: 'victor.tan@rtaco.example.ph' },
-    { street: 'Valero St.', streetNo: '120', block: 'Salcedo Village', city: 'Makati', zip: '1227', province: 'Metro Manila' },
+    { street: 'Valero St.', streetNo: '120', block: 'Bel-Air', city: 'City of Makati', zip: '1227', province: 'Metro Manila', provinceCode: '1300', cityCode: '137602', barangayCode: '137602002' },
   ),
   seed(
     'bp-022', 'vendor',
@@ -720,7 +724,7 @@ export const SEED_PARTNERS: Partner[] = [
       remarks: 'Clears our Apple imports at NAIA and the Port of Manila. Small firm: declared gross income ≤ ₱720,000.\n'
         + 'Tax scenario (purchase, broker commission): 44 input VAT · WC139 10% EWT (sworn declaration on file → lower rate).' },
     { firstName: 'Arnel', lastName: 'Bautista', position: 'Licensed Customs Broker', email: 'arnel.bautista@pierfour.example.ph' },
-    { street: 'Railroad St.', building: 'Pier 4 Bldg., 2F', block: 'Port Area', city: 'Manila', zip: '1018', province: 'Metro Manila' },
+    { street: 'Railroad St.', building: 'Pier 4 Bldg., 2F, Port Area', city: 'City of Manila', zip: '1018', province: 'Metro Manila', provinceCode: '1300', cityCode: '133900' },
   ),
   seed(
     'bp-023', 'vendor',
@@ -729,7 +733,7 @@ export const SEED_PARTNERS: Partner[] = [
       remarks: 'Freelance product photographer for launch visuals. Non-VAT; declared gross income ≤ ₱3M.\n'
         + 'Tax scenario (purchase, professional fees): 48 no input tax · WI010 5% EWT.' },
     { firstName: 'Bea', lastName: 'Salonga', position: 'Photographer', email: 'bea@beasalonga.example.ph' },
-    { street: 'Maginhawa St.', streetNo: '88', block: 'Teachers Village', city: 'Quezon City', zip: '1101', province: 'Metro Manila' },
+    { street: 'Maginhawa St.', streetNo: '88', block: 'Teachers Village East', city: 'Quezon City', zip: '1101', province: 'Metro Manila', provinceCode: '1300', cityCode: '137404', barangayCode: '137404122' },
   ),
   seed(
     'bp-024', 'vendor',
@@ -738,7 +742,7 @@ export const SEED_PARTNERS: Partner[] = [
       remarks: 'Independent IT consultant: network and MDM setup for corporate deployments. VAT-registered.\n'
         + 'Tax scenario (purchase, professional fees): 44 input VAT · WI011 10% EWT (VAT-registered individual → higher rate; no declaration needed).' },
     { firstName: 'Marco', middleName: 'D.', lastName: 'Lim', position: 'IT Consultant', email: 'marco.lim@example.ph' },
-    { street: 'Scout Rallos St.', streetNo: '17', block: 'Laging Handa', city: 'Quezon City', zip: '1103', province: 'Metro Manila' },
+    { street: 'Scout Rallos St.', streetNo: '17', block: 'Laging Handa', city: 'Quezon City', zip: '1103', province: 'Metro Manila', provinceCode: '1300', cityCode: '137404', barangayCode: '137404052' },
   ),
   seed(
     'bp-025', 'vendor',
@@ -747,7 +751,7 @@ export const SEED_PARTNERS: Partner[] = [
       remarks: 'Store fit-out and repairs. Non-VAT sole proprietor.\n'
         + 'Tax scenario (purchase, contractor): 48 no input tax · WI120 2% EWT.' },
     { firstName: 'Rolando', lastName: 'Dizon', position: 'Owner', email: 'rjdizon.interiors@example.ph' },
-    { street: 'A. Mabini St.', streetNo: '301', block: 'Santolan', city: 'Pasig', zip: '1610', province: 'Metro Manila' },
+    { street: 'A. Mabini St.', streetNo: '301', block: 'Santolan', city: 'City of Pasig', zip: '1610', province: 'Metro Manila', provinceCode: '1300', cityCode: '137403', barangayCode: '137403027' },
   ),
   seed(
     'bp-026', 'vendor',
@@ -758,7 +762,7 @@ export const SEED_PARTNERS: Partner[] = [
       remarks: 'Independent sales agent for corporate accounts, paid a commission per closed deal. Non-VAT.\n'
         + 'Tax scenario (purchase, sales commission): 48 no input tax · WI516 10% EWT — her sworn declaration is for 2025, so the higher rate applies until she submits the 2026 one.' },
     { firstName: 'Jolina', middleName: 'P.', lastName: 'Cruz', position: 'Sales agent', email: 'jolina.cruz@example.ph' },
-    { street: 'Col. Bonny Serrano Ave.', streetNo: '9', block: 'Bagong Lipunan', city: 'Quezon City', zip: '1111', province: 'Metro Manila' },
+    { street: 'Col. Bonny Serrano Ave.', streetNo: '9', block: 'Bagong Lipunan Ng Crame', city: 'Quezon City', zip: '1111', province: 'Metro Manila', provinceCode: '1300', cityCode: '137404', barangayCode: '137404008' },
   ),
   seed(
     'bp-027', 'vendor',
@@ -767,7 +771,7 @@ export const SEED_PARTNERS: Partner[] = [
       remarks: 'Nationwide courier for provincial deliveries and store-to-store transfers.\n'
         + 'Tax scenario (purchase, services): 44 input VAT · WC160 2% EWT.' },
     { firstName: 'Liza', lastName: 'Mercado', position: 'Corporate Accounts', email: 'liza.mercado@swiftcargo.example.ph' },
-    { street: 'Domestic Rd.', streetNo: '1480', block: 'Barangay 191', city: 'Pasay', zip: '1301', province: 'Metro Manila' },
+    { street: 'Domestic Rd.', streetNo: '1480', block: 'Barangay 191', city: 'Pasay City', zip: '1301', province: 'Metro Manila', provinceCode: '1300', cityCode: '137605', barangayCode: '137605191' },
   ),
   seed(
     'bp-028', 'vendor',
@@ -776,7 +780,7 @@ export const SEED_PARTNERS: Partner[] = [
       remarks: 'Registered mail for warranty documents and BIR correspondence.\n'
         + 'Tax scenario (purchase, services): government payee → 44 input VAT · no withholding.' },
     { firstName: 'Business', lastName: 'Center', position: 'Corporate accounts' },
-    { street: 'Liwasang Bonifacio', block: 'Ermita', city: 'Manila', zip: '1000', province: 'Metro Manila' },
+    { building: 'Ermita', street: 'Liwasang Bonifacio', city: 'City of Manila', zip: '1000', province: 'Metro Manila', provinceCode: '1300', cityCode: '133900' },
   ),
   seed(
     'bp-029', 'vendor',
@@ -786,7 +790,7 @@ export const SEED_PARTNERS: Partner[] = [
       remarks: 'Singapore firm integrating our POS with the ERP; its consultants work remotely and on site.\n'
         + 'Tax scenario (purchase, services from a non-resident, not digital services): 45 reverse-charge VAT · WV070 12% · WC230 25% final tax (no treaty income entered — the Philippines–Singapore treaty has no reduced rate for technical fees).' },
     { firstName: 'Daniel', lastName: 'Koh', position: 'Project Director', email: 'daniel.koh@kestrelretail.example.sg' },
-    { street: 'Tanjong Pagar Rd.', streetNo: '1', city: 'Singapore', zip: '088537', province: 'Other', country: 'Singapore' },
+    { street: 'Tanjong Pagar Rd.', streetNo: '1', city: 'Singapore', zip: '088537', country: 'Singapore' },
   ),
   seed(
     'bp-030', 'vendor',
@@ -798,7 +802,7 @@ export const SEED_PARTNERS: Partner[] = [
       remarks: 'Licenses the POS software we run in every store (annual licence fee).\n'
         + 'Tax scenario (purchase, royalties from a non-resident with treaty relief): 45 · WV050 12% withholding VAT on use of property rights · WC230 at the 10% Japan treaty rate instead of 25%.' },
     { firstName: 'Haruto', lastName: 'Sato', position: 'Licensing', email: 'licensing@nakamura-rs.example.jp' },
-    { street: 'Shiba-koen', streetNo: '2-4-1', city: 'Minato-ku, Tokyo', zip: '105-0011', province: 'Other', country: 'Japan' },
+    { street: 'Shiba-koen', streetNo: '2-4-1', city: 'Minato-ku, Tokyo', zip: '105-0011', country: 'Japan' },
   ),
   seed(
     'bp-031', 'vendor',
@@ -807,7 +811,7 @@ export const SEED_PARTNERS: Partner[] = [
       remarks: 'Freelance motion designer in Jakarta; makes our launch videos remotely.\n'
         + 'Tax scenario (purchase, services from a non-resident individual): 45 · WV070 12% · WI330 25% final tax.' },
     { firstName: 'Ayu', lastName: 'Pratama', position: 'Motion designer', email: 'ayu.pratama@example.id' },
-    { street: 'Jl. Kemang Raya', streetNo: '12', city: 'Jakarta', zip: '12730', province: 'Other', country: 'Indonesia' },
+    { street: 'Jl. Kemang Raya', streetNo: '12', city: 'Jakarta', zip: '12730', country: 'Indonesia' },
   ),
   seed(
     'bp-032', 'vendor',
@@ -816,7 +820,7 @@ export const SEED_PARTNERS: Partner[] = [
       remarks: 'Hong Kong lender: USD inventory financing for the iPhone launch season.\n'
         + 'Tax scenario (purchase, interest): 48 no input tax (interest is not VATable) · WC180 20% final tax on interest on foreign loans.' },
     { firstName: 'Winnie', lastName: 'Chan', position: 'Relationship Manager', email: 'winnie.chan@harbourcapital.example.hk' },
-    { street: 'Queen’s Rd. Central', streetNo: '99', city: 'Hong Kong', zip: '', province: 'Other', country: 'Hong Kong' },
+    { street: 'Queen’s Rd. Central', streetNo: '99', city: 'Hong Kong', zip: '', country: 'Hong Kong' },
   ),
 
   // ── Edge cases: overrides, incomplete paperwork, other business types ──────
@@ -828,7 +832,7 @@ export const SEED_PARTNERS: Partner[] = [
       remarks: 'Corporate counsel on retainer (contracts, labor cases, BIR assessments).\n'
         + 'Tax scenario (purchase, vendor override): withholding fixed to professional fees WC010 on the vendor, adjusted for the income tier — no sworn declaration, so WC011 15% · 44 input VAT.' },
     { firstName: 'Andres', lastName: 'Villareal', position: 'Managing Partner', email: 'andres.villareal@svplaw.example.ph' },
-    { street: 'Rufino St.', streetNo: '6780', block: 'Legaspi Village', city: 'Makati', zip: '1229', province: 'Metro Manila' },
+    { street: 'Rufino St.', streetNo: '6780', block: 'San Lorenzo', city: 'City of Makati', zip: '1229', province: 'Metro Manila', provinceCode: '1300', cityCode: '137602', barangayCode: '137602025' },
   ),
   seed(
     'bp-034', 'vendor',
@@ -837,7 +841,7 @@ export const SEED_PARTNERS: Partner[] = [
       remarks: 'Aircon maintenance for all stores under a service contract.\n'
         + 'Tax scenario (purchase, vendor override): the contract is treated as a contractor’s service, so the vendor carries WC120 2% instead of the item’s services ATC (WC160) · 44 input VAT.' },
     { firstName: 'Noel', lastName: 'Pineda', position: 'Service Manager', email: 'service@metroaircon.example.ph' },
-    { street: 'E. Rodriguez Jr. Ave.', streetNo: '1520', block: 'Bagumbayan', city: 'Quezon City', zip: '1110', province: 'Metro Manila' },
+    { street: 'E. Rodriguez Jr. Ave.', streetNo: '1520', block: 'Bagumbayan', city: 'Quezon City', zip: '1110', province: 'Metro Manila', provinceCode: '1300', cityCode: '137404', barangayCode: '137404011' },
   ),
   seed(
     'bp-035', 'vendor',
@@ -847,7 +851,7 @@ export const SEED_PARTNERS: Partner[] = [
       remarks: 'In-store signage and campaign design. Sent the sworn declaration reference by email but not the signed copy.\n'
         + 'Tax scenario (purchase, professional fees): declaration without a document → warning, WC011 15% until the file is uploaded · 44 input VAT.' },
     { firstName: 'Carmela', lastName: 'Reyes', position: 'Studio Manager', email: 'carmela.reyes@pixelhaus.example.ph' },
-    { street: 'Tomas Morato Ave.', streetNo: '255', block: 'South Triangle', city: 'Quezon City', zip: '1103', province: 'Metro Manila' },
+    { street: 'Tomas Morato Ave.', streetNo: '255', block: 'South Triangle', city: 'Quezon City', zip: '1103', province: 'Metro Manila', provinceCode: '1300', cityCode: '137404', barangayCode: '137404116' },
   ),
   seed(
     'bp-036', 'vendor',
@@ -856,7 +860,7 @@ export const SEED_PARTNERS: Partner[] = [
       remarks: 'Owns the building on Osmeña Blvd. where our Cebu store is. Non-VAT individual lessor.\n'
         + 'Tax scenario (purchase, rent from an individual): 48 no input tax · WI100 5% EWT.' },
     { firstName: 'Rosario', middleName: 'T.', lastName: 'Uy', position: 'Lessor' },
-    { street: 'Osmeña Blvd.', streetNo: '210', block: 'Capitol Site', city: 'Cebu City', zip: '6000', province: 'Cebu' },
+    { street: 'Osmeña Blvd.', streetNo: '210', block: 'Capitol Site', city: 'City of Cebu', zip: '6000', province: 'Cebu', provinceCode: '0722', cityCode: '072217', barangayCode: '072217020' },
   ),
   seed(
     'bp-037', 'vendor',
@@ -865,7 +869,7 @@ export const SEED_PARTNERS: Partner[] = [
       remarks: 'Freelance video editor for unboxing and launch content. New vendor, non-VAT, no sworn declaration yet.\n'
         + 'Tax scenario (purchase, professional fees): 48 no input tax · WI011 10% EWT until he submits a declaration (then WI010 5%).' },
     { firstName: 'Kyle', lastName: 'Andrada', position: 'Video editor', email: 'kyle.andrada@example.ph' },
-    { street: 'P. Tuazon Blvd.', streetNo: '64', block: 'Socorro', city: 'Quezon City', zip: '1109', province: 'Metro Manila' },
+    { street: 'P. Tuazon Blvd.', streetNo: '64', block: 'Socorro', city: 'Quezon City', zip: '1109', province: 'Metro Manila', provinceCode: '1300', cityCode: '137404', barangayCode: '137404115' },
   ),
   seed(
     'bp-038', 'vendor',
@@ -874,7 +878,7 @@ export const SEED_PARTNERS: Partner[] = [
       remarks: 'Hong Kong lessor of our POS terminals and card readers (36-month operating lease).\n'
         + 'Tax scenario (purchase, equipment lease from a non-resident): 45 · WV050 12% withholding VAT on use of property · WC300 7.5% final tax on equipment rentals.' },
     { firstName: 'Kelvin', lastName: 'Lau', position: 'Lease Administrator', email: 'kelvin.lau@pacificrimleasing.example.hk' },
-    { street: 'Connaught Rd. Central', streetNo: '28', city: 'Hong Kong', zip: '', province: 'Other', country: 'Hong Kong' },
+    { street: 'Connaught Rd. Central', streetNo: '28', city: 'Hong Kong', zip: '', country: 'Hong Kong' },
   ),
   seed(
     'bp-039', 'vendor',
@@ -886,7 +890,7 @@ export const SEED_PARTNERS: Partner[] = [
       remarks: 'Licenses the content software for our in-store video walls.\n'
         + 'Tax scenario (purchase, royalties, treaty paperwork lapsed): Certificate of Residence expired 30 Jun 2026 → warning, WC230 25% instead of the 10% treaty rate until a new one arrives · 45 · WV050 12%.' },
     { firstName: 'Ji-woo', lastName: 'Park', position: 'Global Accounts', email: 'global@hanilsignage.example.kr' },
-    { street: 'Teheran-ro', streetNo: '152', city: 'Gangnam-gu, Seoul', zip: '06236', province: 'Other', country: 'South Korea' },
+    { street: 'Teheran-ro', streetNo: '152', city: 'Gangnam-gu, Seoul', zip: '06236', country: 'South Korea' },
   ),
   seed(
     'bp-040', 'customer',
@@ -896,7 +900,7 @@ export const SEED_PARTNERS: Partner[] = [
       remarks: 'New SBMA-registered export enterprise ordering iPads for its terminal crew. Gave the certificate number; the copy is still to follow.\n'
         + 'Tax scenario (sales): zero-rating entered without a document → warning, charged 31 VATable until the certificate is attached.' },
     { firstName: 'Rafael', lastName: 'Domingo', position: 'Purchasing Officer', email: 'rafael.domingo@sbml.example.ph' },
-    { street: 'Rizal Hwy.', streetNo: 'Bldg 229', block: 'Subic Bay Freeport Zone', city: 'Olongapo', zip: '2222', province: 'Other' },
+    { building: 'Subic Bay Freeport Zone', street: 'Rizal Hwy.', streetNo: 'Bldg 229', city: 'City of Olongapo', zip: '2222', province: 'Zambales', provinceCode: '0371', cityCode: '037107' },
   ),
   seed(
     'bp-041', 'customer',
@@ -907,7 +911,7 @@ export const SEED_PARTNERS: Partner[] = [
       remarks: 'Regional research institute buying MacBooks for its Manila office. Its exemption ruling lapsed on 31 Mar 2026.\n'
         + 'Tax scenario (sales): exempt-entity ruling expired → warning, charged 31 VATable until the renewed ruling is on file.' },
     { firstName: 'Nadia', lastName: 'Rahman', position: 'Procurement Officer', email: 'nadia.rahman@arhi.example.org' },
-    { street: 'Pedro Gil St.', streetNo: '625', block: 'Ermita', city: 'Manila', zip: '1000', province: 'Metro Manila' },
+    { building: 'Ermita', street: 'Pedro Gil St.', streetNo: '625', city: 'City of Manila', zip: '1000', province: 'Metro Manila', provinceCode: '1300', cityCode: '133900' },
   ),
   seed(
     'bp-042', 'vendor',
@@ -916,7 +920,7 @@ export const SEED_PARTNERS: Partner[] = [
       remarks: 'Philippine branch of a Norwegian freight forwarder: air freight for our Apple imports from Singapore.\n'
         + 'Tax scenario (purchase, services): a resident foreign corporation is taxed like a domestic one → 44 input VAT · WC160 2% EWT.' },
     { firstName: 'Erik', lastName: 'Haugen', position: 'Branch Manager', email: 'erik.haugen@nordlysfreight.example.com' },
-    { street: 'NAIA Rd.', building: 'Cargo Terminal 3', block: 'Barangay 191', city: 'Pasay', zip: '1301', province: 'Metro Manila' },
+    { street: 'NAIA Rd.', building: 'Cargo Terminal 3', block: 'Barangay 191', city: 'Pasay City', zip: '1301', province: 'Metro Manila', provinceCode: '1300', cityCode: '137605', barangayCode: '137605191' },
   ),
   seed(
     'bp-043', 'vendor',
@@ -925,7 +929,7 @@ export const SEED_PARTNERS: Partner[] = [
       remarks: 'UK retail consultancy that reviewed our store layouts and staffing, working remotely.\n'
         + 'Tax scenario (purchase, services from a non-resident partnership): 45 · WV070 12% · WC230 25% final tax.' },
     { firstName: 'Olivia', lastName: 'Hart', position: 'Partner', email: 'olivia.hart@brightline.example.co.uk' },
-    { street: 'Old Broad St.', streetNo: '25', city: 'London', zip: 'EC2N 1HN', province: 'Other', country: 'United Kingdom' },
+    { street: 'Old Broad St.', streetNo: '25', city: 'London', zip: 'EC2N 1HN', country: 'United Kingdom' },
   ),
   seed(
     'bp-044', 'customer',
@@ -934,6 +938,6 @@ export const SEED_PARTNERS: Partner[] = [
       remarks: 'Manila office of a German architecture firm; buys MacBook Pros and Studio Displays for its designers.\n'
         + 'Tax scenario (sales): 31 VATable.' },
     { firstName: 'Lukas', lastName: 'Brandt', position: 'Office Manager', email: 'office.manila@kesslervoss.example.de' },
-    { street: '5th Ave.', streetNo: '30', block: 'Bonifacio Global City', city: 'Taguig', zip: '1634', province: 'Metro Manila' },
+    { street: '5th Ave.', streetNo: '30', block: 'Fort Bonifacio', city: 'City of Taguig', zip: '1634', province: 'Metro Manila', provinceCode: '1300', cityCode: '137607', barangayCode: '137607020' },
   ),
 ];

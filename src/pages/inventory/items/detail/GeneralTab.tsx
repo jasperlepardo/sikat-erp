@@ -3,10 +3,10 @@ import { Fields, Flags, ReadOnly, Section, bind } from '../../../../components/f
 import { AccountField } from '../../../../components/form/AccountField';
 import { accountText } from '../../../../mocks/chartOfAccounts';
 import { GL_BY, ISSUE_METHODS, VALUATION_METHODS } from '../../../../mocks/itemMasters';
-import { COUNTRIES } from '../../../../mocks/masters';
+import { countryDef } from '../../../settings/masterDefs';
 import { activeOptions } from '../../../../services/inventoryMasters';
 import { isValidToday } from '../../../../services/items';
-import { LOCKED_HINT, type TabProps } from './types';
+import { LOCKED_HINT, groupTaxNote, type TabProps } from './types';
 
 export function GeneralTab({ draft, update, errors, tax, inv }: TabProps) {
   const f = bind(draft, update);
@@ -97,10 +97,7 @@ export function GeneralTab({ draft, update, errors, tax, inv }: TabProps) {
 
       <Section icon="public" title="Trade & tax">
         <Fields>
-          {f.choose('countryOfOrigin', 'Country of origin', [
-            { value: '', label: '— None —' },
-            ...COUNTRIES.map((c) => ({ value: c, label: c })),
-          ])}
+          {f.master('countryOfOrigin', 'Country of origin', countryDef, { clearable: true })}
           {f.lookup(
             'customsGroup',
             'Customs group',
@@ -136,7 +133,7 @@ export function GeneralTab({ draft, update, errors, tax, inv }: TabProps) {
                 hint: (() => {
                   const x = tax.excise.find((e) => e.code === draft.exciseCategory);
                   return x ? `${x.basis}: ${x.rate || 'rate not set — update it in Settings › Accounting & Tax'}` : 'Rates are kept in Settings › Accounting & Tax.';
-                })(),
+                })() + groupTaxNote(inv, draft, 'exciseCategory'),
               },
             )}
           </Fields>
@@ -147,7 +144,7 @@ export function GeneralTab({ draft, update, errors, tax, inv }: TabProps) {
         <Fields>
           {f.pick('issueMethod', 'Issue method', ISSUE_METHODS, {
             required: true,
-            hint: 'Manual: staff post the issue. Backflush: issued automatically on the production receipt. Same setting as the Production tab.',
+            hint: 'Manual: staff post the issue. Backflush: issued automatically on the production receipt. Same setting as the Production data tab.',
           })}
         </Fields>
         <Flags>{f.check('phantom', 'Phantom item (never stocked; its BOM explodes into the parent)')}</Flags>

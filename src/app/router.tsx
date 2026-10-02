@@ -3,11 +3,10 @@ import { AppShell } from './AppShell';
 import { Home } from '../pages/Home';
 import { ItemList } from '../pages/inventory/items/ItemList';
 import { ItemDetail } from '../pages/inventory/items/detail/ItemDetail';
-import { ItemListNew } from '../pages/inventory/items-new/ItemListNew';
-import { ItemDetailNew } from '../pages/inventory/items-new/ItemDetailNew';
 import { Placeholder } from '../pages/Placeholder';
 import { AccountingTaxPage } from '../pages/settings/accounting-tax/AccountingTaxPage';
 import { InventorySettingsPage } from '../pages/settings/inventory/InventorySettingsPage';
+import { BankingSettingsPage, CompanySettingsPage, SalesCrmSettingsPage } from '../pages/settings/MasterSettingsPages';
 import { WarehousesPage } from '../pages/inventory/WarehousesPage';
 import { PurchaseOrderList } from '../pages/purchasing/orders/PurchaseOrderList';
 import { PurchaseOrderDetail } from '../pages/purchasing/orders/detail/PurchaseOrderDetail';
@@ -36,14 +35,15 @@ export const router = createHashRouter([
       { index: true, element: <Home /> },
       { path: 'inventory/items', element: <ItemList /> },
       { path: 'inventory/items/:id', element: <ItemDetail /> },
-      { path: 'inventory/items-new', element: <ItemListNew /> },
-      { path: 'inventory/items-new/:id', element: <ItemDetailNew /> },
       ...partnerRoutes,
       { path: 'purchasing/purchase-orders', element: <PurchaseOrderList /> },
       { path: 'purchasing/purchase-orders/:id', element: <PurchaseOrderDetail /> },
       // Settings pages keep the tab and an opened record in the URL.
       { path: 'settings/accounting-and-tax/:tab?/:recordId?', element: <AccountingTaxPage /> },
       { path: 'settings/inventory/:tab?/:recordId?', element: <InventorySettingsPage /> },
+      { path: 'settings/sales-and-crm/:tab?/:recordId?', element: <SalesCrmSettingsPage /> },
+      { path: 'settings/banking/:tab?/:recordId?', element: <BankingSettingsPage /> },
+      { path: 'settings/company/:tab?/:recordId?', element: <CompanySettingsPage /> },
       { path: 'inventory/warehouses-and-bins/:recordId?', element: <WarehousesPage /> },
       { path: 'accounting/chart-of-accounts/:recordId?', element: <ChartOfAccountsPage /> },
       { path: '*', element: <Placeholder /> },

@@ -4,7 +4,7 @@
  * The seed is an Apple Premium Reseller's catalog (mocks/appleCatalog.ts).
  */
 import type { Attachment } from './common';
-import { SEED_ITEM_GROUPS, propertyId, type ItemGroup, type ValuationMethod } from './itemMasters';
+import { SEED_ITEM_GROUPS, SEED_UOM_GROUPS, groupUoms, propertyId, uomFactor, type ItemGroup, type UomGroup, type ValuationMethod } from './itemMasters';
 import { expandCatalog } from './appleCatalog';
 
 export type ItemType = 'Items' | 'Labor' | 'Travel';
@@ -30,6 +30,37 @@ export interface ItemManufacturer {
   catalogNo: string;
 }
 
+/** A vendor the item can be bought from, with that vendor's own part number. */
+export interface ItemVendor {
+  id: string;
+  vendorId: string;
+  /** The vendor's part number (BP catalog no.), for matching their invoices. */
+  vendorItemNo: string;
+}
+
+/**
+ * One unit the item is counted, bought or sold in, and how many inventory units it holds
+ * (box = 24 pc). The inventory UoM is always one of them, with qty 1.
+ */
+export interface ItemUom {
+  id: string;
+  /** Unit code (Settings › Inventory › Units of measure). */
+  uom: string;
+  /** Inventory units in one of this unit. */
+  qty: number;
+  /** Can be picked on purchase documents. */
+  purchase: boolean;
+  /** Can be picked on sales documents. */
+  sales: boolean;
+  /** Dimensions and weights of one of this unit, in the company's length / weight units. */
+  length: number;
+  width: number;
+  height: number;
+  volume: number;
+  netWeight: number;
+  grossWeight: number;
+}
+
 export interface ItemBarcode {
   id: string;
   uom: string;
@@ -46,7 +77,10 @@ export interface Item {
   foreignName: string;
   itemType: ItemType;
   itemGroup: string;
+  /** Unit stock is kept in; always one of `uoms`, with qty 1. */
   inventoryUom: string;
+  /** Every unit the item uses, with its conversion to the inventory UoM. */
+  uoms: ItemUom[];
   manageBy: ManageBy;
   /** Once documents post against the item, Item No., type, UoM, tracking and valuation lock. */
   hasTransactions: boolean;
@@ -75,12 +109,12 @@ export interface Item {
   generalRemarks: string;
 
   // Purchasing
+  /** Default vendor id (also the main one of the item's vendors), '' for none. */
   defaultVendorId: string;
-  /** Main manufacturer code (also the main row on the Manufacturers tab), '' for none. */
+  /** Main manufacturer code (also the main one of the item's manufacturers), '' for none. */
   manufacturer: string;
+  /** Default unit on purchase documents; one of `uoms`. */
   purchasingUom: string;
-  itemsPerPurchaseUnit: number;
-  vendorItemNo: string;
   dutyPct: number;
   /** Tax group code (Settings › Accounting & Tax › Tax groups). */
   purchaseTaxGroup: string;
@@ -88,18 +122,10 @@ export interface Item {
   purchaseTaxCode: string;
   /** Withholding group code (Settings › Accounting & Tax › Withholding groups). */
   withholdingGroup: string;
-  length: number;
-  width: number;
-  height: number;
-  volume: number;
-  netWeight: number;
-  grossWeight: number;
-  itemsPerPackage: number;
-  packagesPerPallet: number;
 
   // Sales
+  /** Default unit on sales documents; one of `uoms`. */
   salesUom: string;
-  itemsPerSalesUnit: number;
   sellingItemNo: string;
   /** Tax group code (Settings › Accounting & Tax › Tax groups). */
   salesTaxGroup: string;
@@ -149,6 +175,7 @@ export interface Item {
   remarks: string;
   foreignRemarks: string;
   attachments: Attachment[];
+  vendors: ItemVendor[];
   manufacturers: ItemManufacturer[];
   barcodes: ItemBarcode[];
 }
@@ -165,9 +192,64 @@ export const newItemWarehouse = (code: string, patch: Partial<ItemWarehouse> = {
 
 const rowId = (prefix: string) => `${prefix}-${crypto.randomUUID().slice(0, 8)}`;
 export const newManufacturerRow = (code = ''): ItemManufacturer => ({ id: rowId('mf'), code, catalogNo: '' });
+export const newVendorRow = (vendorId = ''): ItemVendor => ({ id: rowId('vd'), vendorId, vendorItemNo: '' });
 export const newBarcodeRow = (uom: string): ItemBarcode => ({ id: rowId('bc'), uom, barcode: '', freeText: '' });
 
-/** A blank item with defaults from its group (valuation, G/L accounts). */
+export const newItemUom = (uom = '', patch: Partial<ItemUom> = {}): ItemUom => ({
+  id: rowId('uom'),
+  uom,
+  qty: 1,
+  purchase: true,
+  sales: true,
+  length: 0,
+  width: 0,
+  height: 0,
+  volume: 0,
+  netWeight: 0,
+  grossWeight: 0,
+  ...patch,
+});
+
+type ItemUoms = Pick<Item, 'inventoryUom' | 'uoms'>;
+
+/** Inventory units in one `uom` of the item (box → 24), or undefined when the item doesn't use that unit. */
+export const itemsPerUom = (item: ItemUoms, uom: string): number | undefined =>
+  uom === item.inventoryUom ? 1 : item.uoms.find((u) => u.uom === uom)?.qty || undefined;
+
+/** The item's units usable on purchase or sales documents, inventory UoM first. */
+export const itemUnits = (item: ItemUoms, use?: 'purchase' | 'sales') =>
+  item.uoms.filter((u) => !use || u[use] || u.uom === item.inventoryUom);
+
+/** "1 box = 24 pc", for hints and cards. */
+export const uomSummary = (item: ItemUoms, uom: string) => {
+  const qty = itemsPerUom(item, uom);
+  return uom === item.inventoryUom ? `${uom} (inventory unit)` : qty ? `1 ${uom} = ${qty} ${item.inventoryUom}` : uom;
+};
+
+/**
+ * Makes the inventory UoM a unit of the item with qty 1 (renaming the old inventory row, so
+ * its dimensions stay), and moves default purchasing / sales units it no longer has onto it.
+ */
+export function withInventoryUom<T extends ItemUoms & Pick<Item, 'purchasingUom' | 'salesUom'>>(item: T, inventoryUom: string): T {
+  const base = item.uoms.find((u) => u.uom === item.inventoryUom) ?? newItemUom();
+  const uoms = [{ ...base, uom: inventoryUom, qty: 1 }, ...item.uoms.filter((u) => u !== base && u.uom !== inventoryUom)];
+  const keep = (uom: string) => (uoms.some((u) => u.uom === uom) ? uom : inventoryUom);
+  return { ...item, inventoryUom, uoms, purchasingUom: keep(item.purchasingUom), salesUom: keep(item.salesUom) };
+}
+
+/**
+ * The units of a UoM group (Settings › Inventory › UoM groups), converted to the item's
+ * inventory UoM, that the item doesn't have yet. Empty when the group lacks the inventory UoM.
+ */
+export function unitsFromGroup(item: ItemUoms, g: UomGroup): ItemUom[] {
+  const units = groupUoms(g);
+  if (!units.includes(item.inventoryUom)) return [];
+  return units
+    .filter((u) => !item.uoms.some((x) => x.uom === u))
+    .map((u) => newItemUom(u, { qty: uomFactor(g, u, item.inventoryUom) ?? 1 }));
+}
+
+/** A blank item with defaults from its group (valuation, G/L accounts, tax). */
 export function blankItem(groupOrName: ItemGroup | string = SEED_ITEM_GROUPS[0]): Omit<Item, 'id'> {
   const group =
     typeof groupOrName === 'string'
@@ -180,6 +262,7 @@ export function blankItem(groupOrName: ItemGroup | string = SEED_ITEM_GROUPS[0])
     itemType: 'Items',
     itemGroup: group.name,
     inventoryUom: 'pc',
+    uoms: [newItemUom('pc')],
     manageBy: 'None',
     hasTransactions: false,
     purchaseItem: true,
@@ -195,32 +278,21 @@ export function blankItem(groupOrName: ItemGroup | string = SEED_ITEM_GROUPS[0])
     customsGroup: '',
     gtin: '',
     taxLiable: true,
-    exciseTax: false,
-    exciseCategory: '',
+    exciseTax: !!group.exciseCategory,
+    exciseCategory: group.exciseCategory,
     validFrom: '',
     validTo: '',
     generalRemarks: '',
     defaultVendorId: '',
     manufacturer: '',
     purchasingUom: 'pc',
-    itemsPerPurchaseUnit: 1,
-    vendorItemNo: '',
     dutyPct: 0,
-    purchaseTaxGroup: 'P-VAT12',
+    purchaseTaxGroup: group.purchaseTaxGroup || 'P-VAT12',
     purchaseTaxCode: '',
-    withholdingGroup: 'WH-GDS',
-    length: 0,
-    width: 0,
-    height: 0,
-    volume: 0,
-    netWeight: 0,
-    grossWeight: 0,
-    itemsPerPackage: 0,
-    packagesPerPallet: 0,
+    withholdingGroup: group.withholdingGroup,
     salesUom: 'pc',
-    itemsPerSalesUnit: 1,
     sellingItemNo: '',
-    salesTaxGroup: 'S-VAT12',
+    salesTaxGroup: group.salesTaxGroup || 'S-VAT12',
     salesTaxCode: '',
     commissionGroup: '',
     commissionPct: 0,
@@ -251,6 +323,7 @@ export function blankItem(groupOrName: ItemGroup | string = SEED_ITEM_GROUPS[0])
     remarks: '',
     foreignRemarks: '',
     attachments: [],
+    vendors: [],
     manufacturers: [],
     barcodes: [],
   };
@@ -260,23 +333,34 @@ export function blankItem(groupOrName: ItemGroup | string = SEED_ITEM_GROUPS[0])
 function seed(
   id: string,
   group: string,
-  patch: Partial<Item>,
+  patch: Partial<Item> & { uomGroup?: string; weightKg?: number },
   stock: Record<string, [inStock: number, committed?: number, ordered?: number]> = {},
 ): Item {
+  const { uomGroup, weightKg, ...rest } = patch;
   const base = blankItem(group);
   const uom = patch.inventoryUom ?? base.inventoryUom;
+  // The inventory unit (with its weight), plus the other units of a UoM group when given.
+  const own = { inventoryUom: uom, uoms: [newItemUom(uom, { id: `${id}-u0`, ...seedWeight(weightKg) })] };
+  const g = SEED_UOM_GROUPS.find((x) => x.code === uomGroup);
+  const uoms = g ? [...own.uoms, ...unitsFromGroup(own, g).map((u, n) => ({ ...u, id: `${id}-u${n + 1}` }))] : own.uoms;
   return {
     ...base,
     id,
     hasTransactions: true,
     purchasingUom: uom,
     salesUom: uom,
+    uoms,
     warehouses: Object.entries(stock).map(([code, [inStock, committed = 0, ordered = 0]]) =>
       // Manila main uses bins, so stocked items there need a default bin.
       newItemWarehouse(code, { inStock, committed, ordered, defaultBin: code === 'WH-MNL' ? 'A-01-01' : '' }),
     ),
-    ...patch,
-    // The main manufacturer is always one of the Manufacturers tab rows.
+    ...rest,
+    // The default vendor and main manufacturer are always among the item's vendors / manufacturers.
+    vendors:
+      patch.defaultVendorId && !patch.vendors?.some((v) => v.vendorId === patch.defaultVendorId)
+        ? [{ id: `${id}-v0`, vendorId: patch.defaultVendorId, vendorItemNo: '' }, ...(patch.vendors ?? [])]
+        : (patch.vendors ?? []),
+    // The main manufacturer is always one of the item's manufacturers.
     manufacturers:
       patch.manufacturer && !patch.manufacturers?.some((m) => m.code === patch.manufacturer)
         ? [...(patch.manufacturers ?? []), { id: `${id}-m0`, code: patch.manufacturer, catalogNo: '' }]
@@ -284,7 +368,11 @@ function seed(
   };
 }
 
+const seedWeight = (kg?: number) => (kg ? { netWeight: kg, grossWeight: Math.round(kg * 1.4 * 100) / 100 } : {});
+
 const APPLE_VENDOR = 'bp-016';
+/** Apple itself, bought from direct (in USD) when the distributor is short. */
+const APPLE_DIRECT = 'bp-017';
 
 const CUSTOMS_BY_GROUP: Record<string, string> = {
   iPhone: 'cg-8517', 'Apple Watch': 'cg-8517', iPad: 'cg-8471', Mac: 'cg-8471', AirPods: 'cg-8518', 'Home & TV': 'cg-8528',
@@ -292,6 +380,11 @@ const CUSTOMS_BY_GROUP: Record<string, string> = {
 const ACCESSORY_CUSTOMS: [RegExp, string][] = [
   [/^ACC-(PWR|MAGSF)/, 'cg-8504'], [/^ACC-(CBL|USBC)/, 'cg-8544'], [/^ACC-(CASE|SPBAND)/, 'cg-4202'],
 ];
+
+// Demo of item units: chargers, cables and adapters get the PIECE group's units (stocked and
+// sold by the piece); MagSafe chargers and the Lightning adapter are bought by the box of 24.
+const PIECE_GROUP_ITEMS = /^ACC-(PWR|CBL|MAGSF|USBC)/;
+const BOUGHT_BY_THE_BOX = /^ACC-(MAGSF|USBC)/;
 
 /** Small deterministic hash so seeded stock looks varied but never changes between reloads. */
 const hash = (s: string) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
@@ -317,6 +410,10 @@ const APPLE_ITEMS: Item[] = expandCatalog(prefixOf).map((e, n) => {
     countryOfOrigin: '',
     customsGroup: CUSTOMS_BY_GROUP[family.group] ?? ACCESSORY_CUSTOMS.find(([re]) => re.test(e.itemNo))?.[1] ?? '',
     defaultVendorId: APPLE_VENDOR,
+    vendors: [{ id: `apl-${n}-v1`, vendorId: APPLE_DIRECT, vendorItemNo: e.itemNo }],
+    ...(PIECE_GROUP_ITEMS.test(e.itemNo)
+      ? { uomGroup: 'PIECE', purchasingUom: BOUGHT_BY_THE_BOX.test(e.itemNo) ? 'box' : 'pc' }
+      : {}),
     manufacturer: 'MFR-APL',
     warrantyTemplate: 'wr-apl1',
     basePrice: e.price,
@@ -324,8 +421,7 @@ const APPLE_ITEMS: Item[] = expandCatalog(prefixOf).map((e, n) => {
     itemCost: Math.round((e.price / 1.12) * 0.88),
     commissionGroup: accessory ? 'cm-high' : 'cm-std',
     validFrom: family.validFrom ?? '',
-    netWeight: family.weightKg ?? 0,
-    grossWeight: family.weightKg ? Math.round(family.weightKg * 1.4 * 100) / 100 : 0,
+    weightKg: family.weightKg,
     minStock: accessory ? 4 : 1,
     maxStock: accessory ? 60 : 15,
     minOrderQty: accessory ? 10 : 1,
@@ -441,7 +537,7 @@ export const SEED_ITEMS: Item[] = [
     purchaseItem: false, inventoryItem: false, basePrice: 350, cycleCountDays: 0, warehouses: [],
     purchaseTaxGroup: 'P-VAT12S', withholdingGroup: 'WH-SVC',
   }),
-  seed('itm-018', 'Services', {
+  seed('itm-018', 'Rent & Leases', {
     itemNo: 'SVC-RNT-MALL', description: 'Mall store space rent (monthly)', itemType: 'Items', inventoryUom: 'pc', purchasingUom: 'pc',
     salesItem: false, inventoryItem: false, purchaseTaxGroup: 'P-VAT12S', withholdingGroup: 'WH-RENT', warehouses: [],
     defaultVendorId: 'bp-002', cycleCountDays: 0, hasTransactions: false,
@@ -458,7 +554,7 @@ export const SEED_ITEMS: Item[] = [
   }),
   // Other things the store buys — one per withholding group, so every vendor's tax scenario can be tried.
   ...PURCHASED_SERVICES.map(([id, itemNo, description, uom, withholdingGroup, defaultVendorId, purchaseTaxGroup = 'P-VAT12S']) =>
-    seed(id, 'Services', {
+    seed(id, withholdingGroup === 'WH-RENT' ? 'Rent & Leases' : 'Services', {
       itemNo, description, itemType: 'Items', inventoryUom: uom, purchasingUom: uom, salesItem: false, inventoryItem: false,
       purchaseTaxGroup, withholdingGroup, defaultVendorId, warehouses: [], cycleCountDays: 0, hasTransactions: false,
     }),

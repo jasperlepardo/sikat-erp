@@ -5,6 +5,7 @@
  * Seeds only — the app edits them in Settings › Inventory and Inventory ›
  * Warehouses & Bins (services/inventoryMasters.ts).
  */
+import { blankPostalAddress, type PostalAddress } from './address';
 
 export type ValuationMethod = 'Moving Average' | 'FIFO' | 'Standard Price' | 'Serial/Batch';
 
@@ -28,6 +29,14 @@ export interface ItemGroup {
   inventoryAccount: string;
   cogsAccount: string;
   revenueAccount: string;
+  /**
+   * Tax defaults copied onto an item when it's created in or moved to the group; the item can
+   * override them. Codes from Settings › Accounting & Tax. '' = no default (excise: none applies).
+   */
+  purchaseTaxGroup: string;
+  salesTaxGroup: string;
+  withholdingGroup: string;
+  exciseCategory: string;
   active: boolean;
 }
 
@@ -35,14 +44,88 @@ export interface UnitOfMeasure {
   id: string;
   code: string;
   name: string;
+  /**
+   * Optional size and gross weight of one unit, for shipping weight, space and 3PL
+   * calculations. 0 = not recorded. Volume is in the cube of `lengthUnit`.
+   */
+  length: number;
+  width: number;
+  height: number;
+  volume: number;
+  lengthUnit: InventorySettings['lengthUnit'];
+  weight: number;
+  weightUnit: InventorySettings['weightUnit'];
   active: boolean;
 }
+
+/** One conversion row: `altQty` of `altUom` = `baseQty` of the group's base unit (1 box = 24 pc). */
+export interface UomConversion {
+  id: string;
+  altQty: number;
+  altUom: string;
+  baseQty: number;
+}
+
+/**
+ * A template of related units and how they convert to the group's base unit. Items own their
+ * units; "Add from UoM group" on the item copies a group's units in once (no link stays).
+ */
+export interface UomGroup {
+  id: string;
+  /** Short code, e.g. PIECE (max 20 characters). Items store it. */
+  code: string;
+  name: string;
+  /** Unit every conversion is expressed in. */
+  baseUom: string;
+  conversions: UomConversion[];
+  active: boolean;
+}
+
+/** Units in a group: the base unit, then its alternatives. */
+export const groupUoms = (g: UomGroup) => [g.baseUom, ...g.conversions.map((c) => c.altUom)].filter(Boolean);
+
+/** How many base units one `uom` is, or undefined when the group doesn't have it. */
+export function baseQtyPer(g: UomGroup, uom: string): number | undefined {
+  if (uom === g.baseUom) return 1;
+  const c = g.conversions.find((x) => x.altUom === uom);
+  return c && c.altQty > 0 && c.baseQty > 0 ? c.baseQty / c.altQty : undefined;
+}
+
+/** How many `to` units are in one `from` unit (1 box → 24 pc), rounded to 6 decimals. */
+export function uomFactor(g: UomGroup, from: string, to: string): number | undefined {
+  const a = baseQtyPer(g, from);
+  const b = baseQtyPer(g, to);
+  return a && b ? Math.round((a / b) * 1e6) / 1e6 : undefined;
+}
+
+/** "box = 24 pc · carton = 48 pc", for lists and hints. */
+export const conversionSummary = (g: UomGroup) =>
+  g.conversions.length
+    ? g.conversions.map((c) => `${c.altQty === 1 ? '' : `${c.altQty} `}${c.altUom} = ${c.baseQty} ${g.baseUom}`).join(' · ')
+    : `${g.baseUom} only`;
+
+const conv = (altUom: string, baseQty: number, altQty = 1): UomConversion => ({ id: `uc-${altUom}`, altQty, altUom, baseQty });
+const uomGroup = (code: string, name: string, baseUom: string, conversions: UomConversion[] = []): UomGroup => ({
+  id: `ug-${code}`, code, name, baseUom, conversions, active: true,
+});
+export const SEED_UOM_GROUPS: UomGroup[] = [
+  uomGroup('PIECE', 'Piece (each / pack / box / carton)', 'pc', [conv('pack', 6), conv('box', 24), conv('carton', 48)]),
+  uomGroup('WEIGHT', 'Weight (gram / kilogram)', 'kg', [conv('g', 1, 1000)]),
+  uomGroup('VOLUME', 'Volume (liter / gallon)', 'L', [conv('gal', 3.785)]),
+  uomGroup('LENGTH', 'Length (meter / foot / roll)', 'm', [conv('ft', 0.3048), conv('roll', 50)]),
+];
+
+/** A unit of measure with no dimensions recorded. */
+export const blankUom = (code = ''): UnitOfMeasure => ({
+  id: `uom-${code}`, code, name: '', length: 0, width: 0, height: 0, volume: 0, lengthUnit: 'cm', weight: 0, weightUnit: 'kg', active: true,
+});
 
 export interface Warehouse {
   id: string;
   code: string;
   name: string;
-  city: string;
+  /** Where goods are delivered: the Ship To of purchase orders for this warehouse. */
+  address: PostalAddress;
   binEnabled: boolean;
   bins: string[];
   active: boolean;
@@ -111,12 +194,19 @@ export const WEIGHT_UNITS = ['kg', 'lb'] as const;
 /** Volume unit follows the length unit. */
 export const volumeUnit = (length: InventorySettings['lengthUnit']) => `${length}³`;
 
+type TaxDefaults = Pick<ItemGroup, 'purchaseTaxGroup' | 'salesTaxGroup' | 'withholdingGroup' | 'exciseCategory'>;
+const GOODS_TAX: TaxDefaults = { purchaseTaxGroup: 'P-VAT12', salesTaxGroup: 'S-VAT12', withholdingGroup: 'WH-GDS', exciseCategory: '' };
+const SERVICE_TAX: TaxDefaults = { purchaseTaxGroup: 'P-VAT12S', salesTaxGroup: 'S-VAT12', withholdingGroup: 'WH-SVC', exciseCategory: '' };
+const RENT_TAX: TaxDefaults = { ...SERVICE_TAX, withholdingGroup: 'WH-RENT' };
+
 const group = (
   name: string, prefix: string, valuationMethod: ValuationMethod,
   inventoryAccount: string, cogsAccount: string, revenueAccount: string,
-): ItemGroup => ({ id: `ig-${prefix}`, name, prefix, valuationMethod, inventoryAccount, cogsAccount, revenueAccount, active: true });
+  tax: TaxDefaults = GOODS_TAX,
+): ItemGroup => ({ id: `ig-${prefix}`, name, prefix, valuationMethod, inventoryAccount, cogsAccount, revenueAccount, ...tax, active: true });
 
 const MERCH = ['1310', '5010', '4010'] as const;
+const NON_STOCK = ['', '5030', '4030'] as const;
 export const SEED_ITEM_GROUPS: ItemGroup[] = [
   // Apple Premium Reseller catalog (mocks/appleCatalog.ts).
   group('iPhone', 'IPH', 'Serial/Batch', ...MERCH),
@@ -126,23 +216,34 @@ export const SEED_ITEM_GROUPS: ItemGroup[] = [
   group('AirPods', 'APD', 'Serial/Batch', ...MERCH),
   group('Home & TV', 'HOM', 'Serial/Batch', ...MERCH),
   group('Accessories', 'ACC', 'Moving Average', ...MERCH),
-  group('AppleCare', 'ACP', 'Moving Average', '', '5030', '4030'),
-  group('Gift Certificates', 'GC', 'Moving Average', '', '5030', '2160'),
-  group('Services', 'SVC', 'Moving Average', '', '5030', '4030'),
+  group('AppleCare', 'ACP', 'Moving Average', ...NON_STOCK, SERVICE_TAX),
+  group('Gift Certificates', 'GC', 'Moving Average', '', '5030', '2160', SERVICE_TAX),
+  group('Services', 'SVC', 'Moving Average', ...NON_STOCK, SERVICE_TAX),
+  group('Rent & Leases', 'RNT', 'Moving Average', ...NON_STOCK, RENT_TAX),
 ];
 
-const uom = (code: string, name: string): UnitOfMeasure => ({ id: `uom-${code}`, code, name, active: true });
+const uom = (code: string, name: string): UnitOfMeasure => ({ ...blankUom(code), name });
 export const SEED_UOMS: UnitOfMeasure[] = [
   uom('pc', 'Piece'), uom('box', 'Box'), uom('carton', 'Carton'), uom('pack', 'Pack'), uom('roll', 'Roll'),
-  uom('m', 'Meter'), uom('ft', 'Foot'), uom('kg', 'Kilogram'), uom('L', 'Liter'), uom('gal', 'Gallon'),
+  uom('m', 'Meter'), uom('ft', 'Foot'), uom('g', 'Gram'), uom('kg', 'Kilogram'), uom('L', 'Liter'), uom('gal', 'Gallon'),
   uom('set', 'Set'), uom('pail', 'Pail'), uom('hour', 'Hour'), uom('trip', 'Trip'), uom('plan', 'Plan'), uom('seat', 'Seat'),
 ];
 
+const PH_PROVINCE: Record<string, string> = { '1300': 'Metro Manila', '0722': 'Cebu', '1124': 'Davao del Sur' };
+const ph = (
+  city: string, barangay: string, street: string, streetNo: string, zip: string,
+  provinceCode: string, cityCode: string, barangayCode: string, building = '',
+): PostalAddress =>
+  blankPostalAddress({
+    street, streetNo, building, block: barangay, city: `City of ${city}`, zip,
+    province: PH_PROVINCE[provinceCode], provinceCode, cityCode, barangayCode,
+  });
+
 export const SEED_WAREHOUSES: Warehouse[] = [
-  { id: 'wh-MNL', code: 'WH-MNL', name: 'Manila distribution center', city: 'Pasig', binEnabled: true, bins: ['A-01-01', 'A-01-02', 'A-02-01', 'B-01-01', 'B-02-03', 'C-01-01'], active: true },
-  { id: 'wh-CEB', code: 'WH-CEB', name: 'Cebu store', city: 'Cebu City', binEnabled: false, bins: [], active: true },
-  { id: 'wh-DVO', code: 'WH-DVO', name: 'Davao store', city: 'Davao City', binEnabled: false, bins: [], active: true },
-  { id: 'wh-PRD', code: 'WH-PRD', name: 'Service center (repairs)', city: 'Makati', binEnabled: false, bins: [], active: true },
+  { id: 'wh-MNL', code: 'WH-MNL', name: 'Manila distribution center', address: ph('Pasig', 'Ugong', 'C. Raymundo Ave.', '20', '1604', '1300', '137403', '137403029'), binEnabled: true, bins: ['A-01-01', 'A-01-02', 'A-02-01', 'B-01-01', 'B-02-03', 'C-01-01'], active: true },
+  { id: 'wh-CEB', code: 'WH-CEB', name: 'Cebu store', address: ph('Cebu', 'Lahug', 'Salinas Dr.', '', '6000', '0722', '072217', '072217041', 'Ground floor, IT Park Bldg. 2'), binEnabled: false, bins: [], active: true },
+  { id: 'wh-DVO', code: 'WH-DVO', name: 'Davao store', address: ph('Davao', 'Buhangin', 'J.P. Laurel Ave.', '', '8000', '1124', '112402', '112402021'), binEnabled: false, bins: [], active: true },
+  { id: 'wh-PRD', code: 'WH-PRD', name: 'Service center (repairs)', address: ph('Makati', 'San Lorenzo', 'Arnaiz Ave.', '', '1223', '1300', '137602', '137602025', 'Greenbelt 3, 2F'), binEnabled: false, bins: [], active: true },
 ];
 
 const mfr = (code: string, name: string, country: string, contactPerson = '', email = '', phone = ''): Manufacturer => ({

@@ -2,67 +2,58 @@
  * Settings › Inventory lists. Each is a MasterList over one inventory master-data
  * collection; the item master reads them (services/inventoryMasters.ts).
  */
-import { TableStatus } from '@jasperlepardo/sikat-design-system';
+import { Button, Icon, Text, TextField, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { DataTable } from '../../../components/form/DataTable';
 import { Fields, Flags, bind } from '../../../components/form/fields';
-import { MasterList, type ListRoute } from '../../../components/form/MasterList';
+import { MasterList, statusColumn, uniqueRequired, type ListRoute } from '../../../components/form/MasterList';
+import { MasterDefList, MasterLookup } from '../../../components/form/MasterLookup';
+import { manufacturerDef, shippingTypeDef, uomDef, warrantyTemplateDef } from '../masterDefs';
 import { AccountField, useAccounts } from '../../../components/form/AccountField';
 import { accountProblem, accountText } from '../../../mocks/chartOfAccounts';
 import {
   MAX_ITEM_PROPERTIES,
   VALUATION_METHODS,
+  conversionSummary,
   type CommissionGroup,
   type CustomsGroup,
   type ItemGroup,
   type ItemProperty,
-  type Manufacturer,
-  type ShippingType,
-  type UnitOfMeasure,
-  type WarrantyTemplate,
+  type UomConversion,
+  type UomGroup,
 } from '../../../mocks/itemMasters';
-import { COUNTRIES } from '../../../mocks/masters';
 import {
   commissionGroups,
   customsGroups,
   itemGroups,
   itemProperties,
-  manufacturers,
-  shippingTypes,
-  unitsOfMeasure,
-  warrantyTemplates,
+  uomGroups,
 } from '../../../services/inventoryMasters';
 import { newId, useCollectionRows } from '../../../services/useCollectionRows';
+import { exciseCategories, taxGroups, withholdingGroups } from '../../../services/masterData';
+import { useAsync } from '../../../services/useAsync';
+import { taxGroupOptions, withholdingGroupOptions, type TaxMasters } from '../../inventory/items/detail/types';
 
 type Errors = Record<string, string>;
 
-export const statusColumn = <T extends { active: boolean }>() => ({
-  key: 'active',
-  header: 'Status',
-  cell: (r: T) => <TableStatus intent={r.active ? 'success' : 'default'}>{r.active ? 'Active' : 'Inactive'}</TableStatus>,
-});
-
-/** "is required" + "already exists" check on one text field. */
-export function uniqueRequired<T extends { id: string }>(
-  e: Errors,
-  row: T,
-  all: T[],
-  key: keyof T & string,
-  label: string,
-) {
-  const v = String(row[key] ?? '').trim();
-  if (!v) e[key] = `${label} is required.`;
-  else if (all.some((x) => x.id !== row.id && String(x[key]).trim().toLowerCase() === v.toLowerCase())) e[key] = `${v} already exists.`;
-}
+export { statusColumn, uniqueRequired };
 
 export function ItemGroupsTab(route: ListRoute) {
   const { rows, save, setActive } = useCollectionRows(itemGroups);
   const chart = useAccounts();
+  const tax = useAsync(
+    () =>
+      Promise.all([taxGroups.list(), exciseCategories.list(), withholdingGroups.list()]).then(
+        ([groups, excise, wGroups]): TaxMasters => ({ groups, codes: [], excise, withholdingGroups: wGroups }),
+      ),
+    [],
+  );
   return (
     <MasterList<ItemGroup>
       {...route}
       icon="category"
       title="Item groups"
       noun="item group"
-      description="Groups set an item's numbering prefix, default valuation method and G/L accounts."
+      description="Groups set an item's numbering prefix, default valuation method, G/L accounts and tax defaults (withholding, excise)."
       rows={rows}
       onSetActive={setActive}
       columns={[
@@ -71,6 +62,8 @@ export function ItemGroupsTab(route: ListRoute) {
         { key: 'valuationMethod', header: 'Valuation', cell: (g) => g.valuationMethod },
         { key: 'inventoryAccount', header: 'Inventory account', cell: (g) => accountText(g.inventoryAccount, chart) },
         { key: 'revenueAccount', header: 'Revenue account', cell: (g) => accountText(g.revenueAccount, chart) },
+        { key: 'withholdingGroup', header: 'Withholding', cell: (g) => g.withholdingGroup || '—' },
+        { key: 'exciseCategory', header: 'Excise', cell: (g) => g.exciseCategory || '—' },
         statusColumn<ItemGroup>(),
       ]}
       searchText={(g) => `${g.name} ${g.prefix} ${g.valuationMethod}`}
@@ -82,6 +75,10 @@ export function ItemGroupsTab(route: ListRoute) {
         inventoryAccount: '1310',
         cogsAccount: '5010',
         revenueAccount: '4010',
+        purchaseTaxGroup: 'P-VAT12',
+        salesTaxGroup: 'S-VAT12',
+        withholdingGroup: 'WH-GDS',
+        exciseCategory: '',
         active: true,
       })}
       label={(g) => g.name}
@@ -97,6 +94,14 @@ export function ItemGroupsTab(route: ListRoute) {
           revenueAccount: accountProblem(g.revenueAccount, 'revenue', chart ?? [], true),
         };
         for (const [k, v] of Object.entries(accountErrors)) if (v && chart) e[k] = v;
+        if (tax) {
+          const missing = (code: string, list: { code: string; active: boolean }[]) =>
+            !!code && !list.some((x) => x.code === code && x.active);
+          if (missing(g.purchaseTaxGroup, tax.groups)) e.purchaseTaxGroup = `${g.purchaseTaxGroup} is missing or inactive.`;
+          if (missing(g.salesTaxGroup, tax.groups)) e.salesTaxGroup = `${g.salesTaxGroup} is missing or inactive.`;
+          if (missing(g.withholdingGroup, tax.withholdingGroups)) e.withholdingGroup = `${g.withholdingGroup} is missing or inactive.`;
+          if (missing(g.exciseCategory, tax.excise)) e.exciseCategory = `${g.exciseCategory} is missing or inactive.`;
+        }
         return e;
       }}
       onSave={(g) => save({ ...g, prefix: g.prefix.trim().toUpperCase() })}
@@ -137,6 +142,36 @@ export function ItemGroupsTab(route: ListRoute) {
                 onChange={(revenueAccount) => update({ revenueAccount })}
               />
             </Fields>
+            <Fields cols={3}>
+              {f.lookup('purchaseTaxGroup', 'Purchase tax group', tax ? taxGroupOptions(tax, 'Purchase', g.purchaseTaxGroup) : [], {
+                clearable: true,
+                error: errors.purchaseTaxGroup,
+              })}
+              {f.lookup('salesTaxGroup', 'Sales tax group', tax ? taxGroupOptions(tax, 'Sales', g.salesTaxGroup) : [], {
+                clearable: true,
+                error: errors.salesTaxGroup,
+              })}
+              {f.lookup('withholdingGroup', 'Withholding group', tax ? withholdingGroupOptions(tax, g.withholdingGroup) : [], {
+                clearable: true,
+                error: errors.withholdingGroup,
+                hint: 'E.g. WH-RENT for rent, WH-PROF for professional fees.',
+              })}
+              {f.lookup(
+                'exciseCategory',
+                'Excise category',
+                (tax?.excise ?? [])
+                  .filter((x) => x.active || x.code === g.exciseCategory)
+                  .map((x) => ({ value: x.code, label: `${x.code} · ${x.name}` })),
+                {
+                  clearable: true,
+                  error: errors.exciseCategory,
+                  hint: 'Leave empty unless every item in the group is excisable (tobacco, alcohol, fuel…).',
+                },
+              )}
+            </Fields>
+            <Text variant="small" tone="muted">
+              Tax defaults are copied onto an item when it's created in or moved to this group. Each item can still change them.
+            </Text>
             <Flags>{f.check('active', 'Active')}</Flags>
           </>
         );
@@ -145,40 +180,138 @@ export function ItemGroupsTab(route: ListRoute) {
   );
 }
 
-export function UnitsTab(route: ListRoute) {
-  const { rows, save, setActive } = useCollectionRows(unitsOfMeasure);
+const convKey = (c: UomConversion, field: keyof UomConversion) => `conv:${c.id}:${field}`;
+
+export function UomGroupsTab(route: ListRoute) {
+  const { rows, save, setActive } = useCollectionRows(uomGroups);
+
   return (
-    <MasterList<UnitOfMeasure>
+    <MasterList<UomGroup>
       {...route}
-      icon="straighten"
-      title="Units of measure"
-      noun="unit of measure"
-      description="Units items are stocked, bought and sold in. Items convert purchasing and sales units to their inventory unit."
+      icon="scale"
+      title="UoM groups"
+      noun="UoM group"
+      description="Templates of related units and how they convert. On an item, “Add from UoM group” copies a group’s units in; changing a group later doesn’t change items."
       rows={rows}
       onSetActive={setActive}
       columns={[
-        { key: 'code', header: 'Code', cell: (u) => u.code },
-        { key: 'name', header: 'Name', cell: (u) => u.name },
-        statusColumn<UnitOfMeasure>(),
+        { key: 'code', header: 'Group', cell: (g) => g.code },
+        { key: 'name', header: 'Description', cell: (g) => g.name },
+        { key: 'baseUom', header: 'Base UoM', cell: (g) => g.baseUom || '—' },
+        { key: 'conversions', header: 'Conversions', cell: conversionSummary },
+        statusColumn<UomGroup>(),
       ]}
-      searchText={(u) => `${u.code} ${u.name}`}
-      blank={() => ({ id: newId('uom'), code: '', name: '', active: true })}
-      label={(u) => `${u.code} · ${u.name}`}
-      validate={(u, all) => {
+      sortValue={(g, key) => (key === 'conversions' ? conversionSummary(g) : String(g[key as keyof UomGroup] ?? ''))}
+      searchText={(g) => `${g.code} ${g.name} ${g.baseUom} ${g.conversions.map((c) => c.altUom).join(' ')}`}
+      blank={() => ({ id: newId('ug'), code: '', name: '', baseUom: 'pc', conversions: [], active: true })}
+      label={(g) => g.code}
+      validate={(g, all) => {
         const e: Errors = {};
-        uniqueRequired(e, u, all, 'code', 'Code');
-        if (!u.name.trim()) e.name = 'Name is required.';
+        uniqueRequired(e, g, all, 'code', 'Group');
+        if (g.code.trim().length > 20) e.code = 'Use at most 20 characters.';
+        if (!g.name.trim()) e.name = 'Description is required.';
+        if (!g.baseUom) e.baseUom = 'Pick the base unit.';
+        const seen = new Set<string>();
+        for (const c of g.conversions) {
+          if (!c.altUom) e[convKey(c, 'altUom')] = 'Pick a unit.';
+          else if (c.altUom === g.baseUom) e[convKey(c, 'altUom')] = `${c.altUom} is the base unit.`;
+          else if (seen.has(c.altUom)) e[convKey(c, 'altUom')] = `${c.altUom} is listed twice.`;
+          seen.add(c.altUom);
+          if (!(c.altQty > 0)) e[convKey(c, 'altQty')] = 'Enter more than 0.';
+          if (!(c.baseQty > 0)) e[convKey(c, 'baseQty')] = 'Enter more than 0.';
+        }
         return e;
       }}
-      onSave={(u) => save({ ...u, code: u.code.trim() })}
-      editor={(u, update, errors, isNew) => {
-        const f = bind(u, update);
+      onSave={(g) => save({ ...g, code: g.code.trim().toUpperCase(), name: g.name.trim() })}
+      editor={(g, update, errors, isNew) => {
+        const f = bind(g, update);
+        const patchConv = (id: string, p: Partial<UomConversion>) =>
+          update({ conversions: g.conversions.map((c) => (c.id === id ? { ...c, ...p } : c)) });
+        const err = (c: UomConversion, field: keyof UomConversion) =>
+          errors[convKey(c, field)] ? (
+            <Text variant="caption" tone="danger" className="mt-1">
+              {errors[convKey(c, field)]}
+            </Text>
+          ) : null;
+        const qty = (c: UomConversion, field: 'altQty' | 'baseQty', label: string) => (
+          <div className="w-28">
+            <TextField
+              aria-label={label}
+              type="number"
+              min={0}
+              invalid={!!errors[convKey(c, field)]}
+              value={String(c[field])}
+              onChange={(e) => patchConv(c.id, { [field]: Number(e.currentTarget.value) })}
+            />
+            {err(c, field)}
+          </div>
+        );
+        const columns: TableColumn<UomConversion>[] = [
+          { key: 'altQty', header: 'Alt. qty', cell: (c) => qty(c, 'altQty', 'Alternative quantity') },
+          {
+            key: 'altUom',
+            header: 'Alt. UoM',
+            cell: (c) => (
+              <div className="w-44">
+                <MasterLookup
+                  def={uomDef}
+                  fieldProps={{ 'aria-label': 'Alternative unit', invalid: !!errors[convKey(c, 'altUom')] }}
+                  value={c.altUom}
+                  onChange={(altUom) => patchConv(c.id, { altUom })}
+                />
+                {err(c, 'altUom')}
+              </div>
+            ),
+          },
+          { key: 'equals', header: '', cell: () => <span className="text-muted">=</span> },
+          { key: 'baseQty', header: 'Base qty', cell: (c) => qty(c, 'baseQty', 'Base quantity') },
+          { key: 'baseUom', header: 'Base UoM', cell: () => g.baseUom || '—' },
+        ];
         return (
           <>
             <Fields cols={3}>
-              {f.text('code', 'Code', { required: true, error: errors.code, placeholder: 'e.g. carton', readOnly: !isNew, hint: isNew ? undefined : 'Can’t change once saved — items refer to it. Deactivate instead.' })}
-              {f.text('name', 'Name', { required: true, error: errors.name })}
+              {f.text('code', 'Group', {
+                required: true,
+                error: errors.code,
+                placeholder: 'e.g. PIECE',
+                readOnly: !isNew,
+                hint: isNew ? 'Up to 20 characters.' : 'Can’t change once saved. Deactivate instead.',
+              })}
+              {f.text('name', 'Description', { required: true, error: errors.name, placeholder: 'e.g. Piece (each / box / carton)' })}
+              {f.master('baseUom', 'Base UoM', uomDef, {
+                required: true,
+                error: errors.baseUom,
+                hint: 'Every conversion is expressed in this unit.',
+              })}
             </Fields>
+            <DataTable
+              icon="swap_horiz"
+              title="Conversions"
+              description={`Read each row as “1 box = 24 ${g.baseUom || 'pc'}”. Factors between two alternatives follow from these (1 carton = 2 box when carton = 48 and box = 24).`}
+              rows={g.conversions}
+              getRowId={(c) => c.id}
+              columns={columns}
+              unsortable={columns.map((c) => c.key)}
+              onRemove={(picked) => update({ conversions: g.conversions.filter((c) => !picked.includes(c)) })}
+              actions={
+                <Button
+                  type="button"
+                  size="small"
+                  intent="primary"
+                  variant="solid"
+                  aria-label="New conversion"
+                  leadingIcon={<Icon size={16}>add</Icon>}
+                  onClick={() => update({ conversions: [...g.conversions, { id: newId('uc'), altQty: 1, altUom: '', baseQty: 1 }] })}
+                >
+                  New
+                </Button>
+              }
+              empty={
+                <Text variant="small" tone="muted">
+                  No conversions — the group has {g.baseUom || 'the base unit'} only.
+                </Text>
+              }
+            />
             <Flags>{f.check('active', 'Active')}</Flags>
           </>
         );
@@ -187,54 +320,9 @@ export function UnitsTab(route: ListRoute) {
   );
 }
 
-export function ManufacturersTab(route: ListRoute) {
-  const { rows, save, setActive } = useCollectionRows(manufacturers);
-  return (
-    <MasterList<Manufacturer>
-      {...route}
-      icon="factory"
-      title="Manufacturers"
-      noun="manufacturer"
-      description="Who makes an item — separate from the vendor you buy it from."
-      rows={rows}
-      onSetActive={setActive}
-      columns={[
-        { key: 'code', header: 'Code', cell: (m) => m.code },
-        { key: 'name', header: 'Name', cell: (m) => m.name },
-        { key: 'country', header: 'Country', cell: (m) => m.country || '—' },
-        { key: 'contactPerson', header: 'Contact', cell: (m) => [m.contactPerson, m.email].filter(Boolean).join(' · ') || '—' },
-        statusColumn<Manufacturer>(),
-      ]}
-      searchText={(m) => `${m.code} ${m.name} ${m.country} ${m.contactPerson}`}
-      blank={() => ({ id: newId('mfr'), code: '', name: '', country: 'Philippines', contactPerson: '', email: '', phone: '', active: true })}
-      label={(m) => `${m.code} · ${m.name}`}
-      validate={(m, all) => {
-        const e: Errors = {};
-        uniqueRequired(e, m, all, 'code', 'Code');
-        if (!m.name.trim()) e.name = 'Name is required.';
-        if (m.email && !/^\S+@\S+\.\S+$/.test(m.email)) e.email = 'Enter a valid email address.';
-        return e;
-      }}
-      onSave={(m) => save({ ...m, code: m.code.trim().toUpperCase() })}
-      editor={(m, update, errors, isNew) => {
-        const f = bind(m, update);
-        return (
-          <>
-            <Fields cols={3}>
-              {f.text('code', 'Code', { required: true, error: errors.code, placeholder: 'e.g. MFR-007', readOnly: !isNew, hint: isNew ? undefined : 'Can’t change once saved — items refer to it. Deactivate instead.' })}
-              {f.text('name', 'Name', { required: true, error: errors.name })}
-              {f.pick('country', 'Country', COUNTRIES)}
-              {f.text('contactPerson', 'Contact person')}
-              {f.text('email', 'Email', { type: 'email', error: errors.email })}
-              {f.text('phone', 'Phone', { type: 'tel' })}
-            </Fields>
-            <Flags>{f.check('active', 'Active')}</Flags>
-          </>
-        );
-      }}
-    />
-  );
-}
+export const UnitsTab = (route: ListRoute) => <MasterDefList def={uomDef} {...route} />;
+
+export const ManufacturersTab = (route: ListRoute) => <MasterDefList def={manufacturerDef} {...route} />;
 
 export function CustomsGroupsTab(route: ListRoute) {
   const { rows, save, setActive } = useCollectionRows(customsGroups);
@@ -322,91 +410,9 @@ export function CommissionGroupsTab(route: ListRoute) {
   );
 }
 
-export function ShippingTypesTab(route: ListRoute) {
-  const { rows, save, setActive } = useCollectionRows(shippingTypes);
-  return (
-    <MasterList<ShippingType>
-      {...route}
-      icon="local_shipping"
-      title="Shipping types"
-      noun="shipping type"
-      description="Delivery methods defaulted from items and business partners onto documents."
-      rows={rows}
-      onSetActive={setActive}
-      columns={[
-        { key: 'name', header: 'Name', cell: (x) => x.name },
-        { key: 'trackingUrl', header: 'Tracking page', cell: (x) => x.trackingUrl || '—' },
-        statusColumn<ShippingType>(),
-      ]}
-      searchText={(x) => x.name}
-      blank={() => ({ id: newId('sh'), name: '', trackingUrl: '', active: true })}
-      label={(x) => x.name}
-      validate={(x, all) => {
-        const e: Errors = {};
-        uniqueRequired(e, x, all, 'name', 'Name');
-        if (x.trackingUrl && !/^https?:\/\//.test(x.trackingUrl)) e.trackingUrl = 'Start the address with https://';
-        return e;
-      }}
-      onSave={save}
-      editor={(x, update, errors) => {
-        const f = bind(x, update);
-        return (
-          <>
-            <Fields cols={3}>
-              {f.text('name', 'Name', { required: true, error: errors.name })}
-              {f.text('trackingUrl', 'Tracking page', { type: 'url', error: errors.trackingUrl, placeholder: 'https://', className: 'md:col-span-2' })}
-            </Fields>
-            <Flags>{f.check('active', 'Active')}</Flags>
-          </>
-        );
-      }}
-    />
-  );
-}
+export const ShippingTypesTab = (route: ListRoute) => <MasterDefList def={shippingTypeDef} {...route} />;
 
-export function WarrantyTemplatesTab(route: ListRoute) {
-  const { rows, save, setActive } = useCollectionRows(warrantyTemplates);
-  return (
-    <MasterList<WarrantyTemplate>
-      {...route}
-      icon="verified_user"
-      title="Warranty templates"
-      noun="warranty template"
-      description="Warranty terms assigned to serial-numbered items when they're sold."
-      rows={rows}
-      onSetActive={setActive}
-      columns={[
-        { key: 'name', header: 'Name', cell: (w) => w.name },
-        { key: 'months', header: 'Period', cell: (w) => `${w.months} month${w.months === 1 ? '' : 's'}` },
-        { key: 'coverage', header: 'Coverage', cell: (w) => w.coverage },
-        statusColumn<WarrantyTemplate>(),
-      ]}
-      searchText={(w) => `${w.name} ${w.coverage}`}
-      blank={() => ({ id: newId('wr'), name: '', months: 12, coverage: 'Parts', active: true })}
-      label={(w) => w.name}
-      validate={(w, all) => {
-        const e: Errors = {};
-        uniqueRequired(e, w, all, 'name', 'Name');
-        if (w.months <= 0) e.months = 'Enter the warranty period in months.';
-        return e;
-      }}
-      onSave={save}
-      editor={(w, update, errors) => {
-        const f = bind(w, update);
-        return (
-          <>
-            <Fields cols={3}>
-              {f.text('name', 'Name', { required: true, error: errors.name })}
-              {f.num('months', 'Period', { suffix: 'months', error: errors.months })}
-              {f.pick('coverage', 'Coverage', ['Parts', 'Parts & labor', 'Manufacturer'])}
-            </Fields>
-            <Flags>{f.check('active', 'Active')}</Flags>
-          </>
-        );
-      }}
-    />
-  );
-}
+export const WarrantyTemplatesTab = (route: ListRoute) => <MasterDefList def={warrantyTemplateDef} {...route} />;
 
 export function ItemPropertiesTab(route: ListRoute) {
   const { rows, save, setActive } = useCollectionRows(itemProperties);

@@ -72,27 +72,16 @@ export const NAV: SideNavSection[] = [
         'Agreements',
         'Insights',
       ]),
-      (() => {
-        const base = hub('Inventory', 'inventory_2', [
-          'Items',
-          'Stock on Hand',
-          'Stock Movements',
-          'Stock Counts',
-          'Pick & Pack',
-          'Pricing',
-          'Warehouses & Bins',
-          'Insights',
-        ]);
-        const items = base.items ?? [];
-        return {
-          ...base,
-          items: [
-            items[0],
-            { id: 'inventory/items-new', label: 'Items (new)' },
-            ...items.slice(1),
-          ],
-        };
-      })(),
+      hub('Inventory', 'inventory_2', [
+        'Items',
+        'Stock on Hand',
+        'Stock Movements',
+        'Stock Counts',
+        'Pick & Pack',
+        'Pricing',
+        'Warehouses & Bins',
+        'Insights',
+      ]),
       hub('Manufacturing', 'precision_manufacturing', [
         'Bills of Materials',
         'Production Orders',

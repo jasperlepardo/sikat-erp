@@ -4,6 +4,8 @@ import { Button, Icon, Panel, PanelHeader, Text, TextField } from '@jasperlepard
 import { DataTable } from '../../components/form/DataTable';
 import { Fields, Flags, bind } from '../../components/form/fields';
 import { MasterList } from '../../components/form/MasterList';
+import { AddressFields } from '../../components/form/AddressFields';
+import { addressSummary, blankPostalAddress } from '../../mocks/address';
 import type { Warehouse } from '../../mocks/itemMasters';
 import { warehouses } from '../../services/inventoryMasters';
 import { newId, useCollectionRows } from '../../services/useCollectionRows';
@@ -25,7 +27,7 @@ export function WarehousesPage() {
       columns={[
         { key: 'code', header: 'Code', cell: (w) => w.code },
         { key: 'name', header: 'Name', cell: (w) => w.name },
-        { key: 'city', header: 'City', cell: (w) => w.city || '—' },
+        { key: 'address', header: 'Address', cell: (w) => addressSummary(w.address) || '—' },
         {
           key: 'bins',
           header: 'Bins',
@@ -40,10 +42,12 @@ export function WarehousesPage() {
             : -1
           : key === 'active'
             ? Number(w.active)
-            : String(w[key as keyof Warehouse] ?? '').toLowerCase()
+            : key === 'address'
+              ? addressSummary(w.address).toLowerCase()
+              : String(w[key as keyof Warehouse] ?? '').toLowerCase()
       }
-      searchText={(w) => `${w.code} ${w.name} ${w.city} ${w.bins.join(' ')}`}
-      blank={() => ({ id: newId('wh'), code: '', name: '', city: '', binEnabled: false, bins: [], active: true })}
+      searchText={(w) => `${w.code} ${w.name} ${addressSummary(w.address)} ${w.bins.join(' ')}`}
+      blank={() => ({ id: newId('wh'), code: '', name: '', address: blankPostalAddress(), binEnabled: false, bins: [], active: true })}
       label={(w) => `${w.code} · ${w.name}`}
       validate={(w, all) => {
         const e: Record<string, string> = {};
@@ -69,7 +73,12 @@ export function WarehousesPage() {
                 hint: isNew ? undefined : 'Can’t change once saved — items refer to it. Deactivate instead.',
               })}
               {f.text('name', 'Name', { required: true, error: errors.name })}
-              {f.text('city', 'City')}
+            </Fields>
+            <Text variant="small" tone="muted">
+              Address: where goods are delivered. Purchase orders for this warehouse print it as Ship To.
+            </Text>
+            <Fields cols={3}>
+              <AddressFields value={w.address} onChange={(p) => update({ address: { ...w.address, ...p } })} />
             </Fields>
             <Flags>
               {f.check('binEnabled', 'Bin management (items need a default bin here)')}

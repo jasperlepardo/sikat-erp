@@ -2,17 +2,19 @@ import { Outlet, useLocation, useNavigate } from 'react-router';
 import { Navbar, Page, SideNav, useTheme, type NavbarMenuItem } from '@jasperlepardo/sikat-design-system';
 import { useEffect, useState } from 'react';
 import { NAV, leafForPath, moduleOf, pathOf } from './nav';
+import { useCollection } from '../components/form/MasterLookup';
+import { companies, setCurrentCompanyId, useCurrentCompany } from '../services/companies';
 
-const ORGS: NavbarMenuItem[] = [
-  { id: 'sikat', label: 'Sikat Tech Inc.' },
-  { id: 'acme', label: 'Acme Corp' },
-];
 
 /** Navbar on top, SideNav on the left, the routed screen on the right. */
 export function AppShell() {
   const location = useLocation();
   const navigate = useNavigate();
   const [, setTheme, resolved] = useTheme();
+  const company = useCurrentCompany();
+  const orgs: NavbarMenuItem[] = (useCollection(companies) ?? [])
+    .filter((c) => c.active || c.id === company?.id)
+    .map((c) => ({ id: c.id, label: c.name }));
   const activeId = leafForPath(location.pathname)?.id;
   // Open the current page's hub whenever the route moves to another hub (links,
   // Back, deep links) — not only when the user clicks the sidebar.
@@ -36,8 +38,9 @@ export function AppShell() {
     <Page>
       <Navbar
         appName="Sikat ERP"
-        organizations={ORGS}
-        organizationId="sikat"
+        organizations={orgs}
+        organizationId={company?.id}
+        onOrganizationChange={setCurrentCompanyId}
         avatar={<span className="grid size-full place-items-center bg-primary text-sm font-semibold text-heading_on-primary">JL</span>}
         accountItems={accountItems}
       />

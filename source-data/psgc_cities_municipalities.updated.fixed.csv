@@ -1,0 +1,1643 @@
+code,name,province_code,type,is_independent
+012801,Adams,0128,municipality,False
+012802,Bacarra,0128,municipality,False
+012803,Badoc,0128,municipality,False
+012804,Bangui,0128,municipality,False
+012805,City of Batac,0128,component city,False
+012806,Burgos,0128,municipality,False
+012807,Carasi,0128,municipality,False
+012808,Currimao,0128,municipality,False
+012809,Dingras,0128,municipality,False
+012810,Dumalneg,0128,municipality,False
+012811,Banna,0128,municipality,False
+012812,City of Laoag,0128,component city,False
+012813,Marcos,0128,municipality,False
+012814,Nueva Era,0128,municipality,False
+012815,Pagudpud,0128,municipality,False
+012816,Paoay,0128,municipality,False
+012817,Pasuquin,0128,municipality,False
+012818,Piddig,0128,municipality,False
+012819,Pinili,0128,municipality,False
+012820,San Nicolas,0128,municipality,False
+012821,Sarrat,0128,municipality,False
+012822,Solsona,0128,municipality,False
+012823,Vintar,0128,municipality,False
+012901,Alilem,0129,municipality,False
+012902,Banayoyo,0129,municipality,False
+012903,Bantay,0129,municipality,False
+012904,Burgos,0129,municipality,False
+012905,Cabugao,0129,municipality,False
+012906,City of Candon,0129,component city,False
+012907,Caoayan,0129,municipality,False
+012908,Cervantes,0129,municipality,False
+012909,Galimuyod,0129,municipality,False
+012910,Gregorio del Pilar,0129,municipality,False
+012911,Lidlidda,0129,municipality,False
+012912,Magsingal,0129,municipality,False
+012913,Nagbukel,0129,municipality,False
+012914,Narvacan,0129,municipality,False
+012915,Quirino,0129,municipality,False
+012916,Salcedo,0129,municipality,False
+012917,San Emilio,0129,municipality,False
+012918,San Esteban,0129,municipality,False
+012919,San Ildefonso,0129,municipality,False
+012920,San Juan,0129,municipality,False
+012921,San Vicente,0129,municipality,False
+012922,Santa,0129,municipality,False
+012923,Santa Catalina,0129,municipality,False
+012924,Santa Cruz,0129,municipality,False
+012925,Santa Lucia,0129,municipality,False
+012926,Santa Maria,0129,municipality,False
+012927,Santiago,0129,municipality,False
+012928,Santo Domingo,0129,municipality,False
+012929,Sigay,0129,municipality,False
+012930,Sinait,0129,municipality,False
+012931,Sugpon,0129,municipality,False
+012932,Suyo,0129,municipality,False
+012933,Tagudin,0129,municipality,False
+012934,City of Vigan,0129,component city,False
+013301,Agoo,0133,municipality,False
+013302,Aringay,0133,municipality,False
+013303,Bacnotan,0133,municipality,False
+013304,Bagulin,0133,municipality,False
+013305,Balaoan,0133,municipality,False
+013306,Bangar,0133,municipality,False
+013307,Bauang,0133,municipality,False
+013308,Burgos,0133,municipality,False
+013309,Caba,0133,municipality,False
+013310,Luna,0133,municipality,False
+013311,Naguilian,0133,municipality,False
+013312,Pugo,0133,municipality,False
+013313,Rosario,0133,municipality,False
+013314,City of San Fernando,0133,component city,False
+013315,San Gabriel,0133,municipality,False
+013316,San Juan,0133,municipality,False
+013317,Santo Tomas,0133,municipality,False
+013318,Santol,0133,municipality,False
+013319,Sudipen,0133,municipality,False
+013320,Tubao,0133,municipality,False
+015501,Agno,0155,municipality,False
+015502,Aguilar,0155,municipality,False
+015503,City of Alaminos,0155,component city,False
+015504,Alcala,0155,municipality,False
+015505,Anda,0155,municipality,False
+015506,Asingan,0155,municipality,False
+015507,Balungao,0155,municipality,False
+015508,Bani,0155,municipality,False
+015509,Basista,0155,municipality,False
+015510,Bautista,0155,municipality,False
+015511,Bayambang,0155,municipality,False
+015512,Binalonan,0155,municipality,False
+015513,Binmaley,0155,municipality,False
+015514,Bolinao,0155,municipality,False
+015515,Bugallon,0155,municipality,False
+015516,Burgos,0155,municipality,False
+015517,Calasiao,0155,municipality,False
+015518,City of Dagupan,0155,independent component city,True
+015519,Dasol,0155,municipality,False
+015520,Infanta,0155,municipality,False
+015521,Labrador,0155,municipality,False
+015522,Lingayen,0155,municipality,False
+015523,Mabini,0155,municipality,False
+015524,Malasiqui,0155,municipality,False
+015525,Manaoag,0155,municipality,False
+015526,Mangaldan,0155,municipality,False
+015527,Mangatarem,0155,municipality,False
+015528,Mapandan,0155,municipality,False
+015529,Natividad,0155,municipality,False
+015530,Pozorrubio,0155,municipality,False
+015531,Rosales,0155,municipality,False
+015532,City of San Carlos,0155,component city,False
+015533,San Fabian,0155,municipality,False
+015534,San Jacinto,0155,municipality,False
+015535,San Manuel,0155,municipality,False
+015536,San Nicolas,0155,municipality,False
+015537,San Quintin,0155,municipality,False
+015538,Santa Barbara,0155,municipality,False
+015539,Santa Maria,0155,municipality,False
+015540,Santo Tomas,0155,municipality,False
+015541,Sison,0155,municipality,False
+015542,Sual,0155,municipality,False
+015543,Tayug,0155,municipality,False
+015544,Umingan,0155,municipality,False
+015545,Urbiztondo,0155,municipality,False
+015546,City of Urdaneta,0155,component city,False
+015547,Villasis,0155,municipality,False
+015548,Laoac,0155,municipality,False
+020901,Basco,0209,municipality,False
+020902,Itbayat,0209,municipality,False
+020903,Ivana,0209,municipality,False
+020904,Mahatao,0209,municipality,False
+020905,Sabtang,0209,municipality,False
+020906,Uyugan,0209,municipality,False
+021501,Abulug,0215,municipality,False
+021502,Alcala,0215,municipality,False
+021503,Allacapan,0215,municipality,False
+021504,Amulung,0215,municipality,False
+021505,Aparri,0215,municipality,False
+021506,Baggao,0215,municipality,False
+021507,Ballesteros,0215,municipality,False
+021508,Buguey,0215,municipality,False
+021509,Calayan,0215,municipality,False
+021510,Camalaniugan,0215,municipality,False
+021511,Claveria,0215,municipality,False
+021512,Enrile,0215,municipality,False
+021513,Gattaran,0215,municipality,False
+021514,Gonzaga,0215,municipality,False
+021515,Iguig,0215,municipality,False
+021516,Lal-Lo,0215,municipality,False
+021517,Lasam,0215,municipality,False
+021518,Pamplona,0215,municipality,False
+021519,Peñablanca,0215,municipality,False
+021520,Piat,0215,municipality,False
+021521,Rizal,0215,municipality,False
+021522,Sanchez-Mira,0215,municipality,False
+021523,Santa Ana,0215,municipality,False
+021524,Santa Praxedes,0215,municipality,False
+021525,Santa Teresita,0215,municipality,False
+021526,Santo Niño,0215,municipality,False
+021527,Solana,0215,municipality,False
+021528,Tuao,0215,municipality,False
+021529,Tuguegarao City,0215,component city,False
+023101,Alicia,0231,municipality,False
+023102,Angadanan,0231,municipality,False
+023103,Aurora,0231,municipality,False
+023104,Benito Soliven,0231,municipality,False
+023105,Burgos,0231,municipality,False
+023106,Cabagan,0231,municipality,False
+023107,Cabatuan,0231,municipality,False
+023108,City of Cauayan,0231,component city,False
+023109,Cordon,0231,municipality,False
+023110,Dinapigue,0231,municipality,False
+023111,Divilacan,0231,municipality,False
+023112,Echague,0231,municipality,False
+023113,Gamu,0231,municipality,False
+023114,City of Ilagan,0231,component city,False
+023115,Jones,0231,municipality,False
+023116,Luna,0231,municipality,False
+023117,Maconacon,0231,municipality,False
+023118,Delfin Albano,0231,municipality,False
+023119,Mallig,0231,municipality,False
+023120,Naguilian,0231,municipality,False
+023121,Palanan,0231,municipality,False
+023122,Quezon,0231,municipality,False
+023123,Quirino,0231,municipality,False
+023124,Ramon,0231,municipality,False
+023125,Reina Mercedes,0231,municipality,False
+023126,Roxas,0231,municipality,False
+023127,San Agustin,0231,municipality,False
+023128,San Guillermo,0231,municipality,False
+023129,San Isidro,0231,municipality,False
+023130,San Manuel,0231,municipality,False
+023131,San Mariano,0231,municipality,False
+023132,San Mateo,0231,municipality,False
+023133,San Pablo,0231,municipality,False
+023134,Santa Maria,0231,municipality,False
+023135,City of Santiago,0231,independent component city,True
+023136,Santo Tomas,0231,municipality,False
+023137,Tumauini,0231,municipality,False
+025001,Ambaguio,0250,municipality,False
+025002,Aritao,0250,municipality,False
+025003,Bagabag,0250,municipality,False
+025004,Bambang,0250,municipality,False
+025005,Bayombong,0250,municipality,False
+025006,Diadi,0250,municipality,False
+025007,Dupax del Norte,0250,municipality,False
+025008,Dupax del Sur,0250,municipality,False
+025009,Kasibu,0250,municipality,False
+025010,Kayapa,0250,municipality,False
+025011,Quezon,0250,municipality,False
+025012,Santa Fe,0250,municipality,False
+025013,Solano,0250,municipality,False
+025014,Villaverde,0250,municipality,False
+025015,Alfonso Castaneda,0250,municipality,False
+025701,Aglipay,0257,municipality,False
+025702,Cabarroguis,0257,municipality,False
+025703,Diffun,0257,municipality,False
+025704,Maddela,0257,municipality,False
+025705,Saguday,0257,municipality,False
+025706,Nagtipunan,0257,municipality,False
+030801,Abucay,0308,municipality,False
+030802,Bagac,0308,municipality,False
+030803,City of Balanga,0308,component city,False
+030804,Dinalupihan,0308,municipality,False
+030805,Hermosa,0308,municipality,False
+030806,Limay,0308,municipality,False
+030807,Mariveles,0308,municipality,False
+030808,Morong,0308,municipality,False
+030809,Orani,0308,municipality,False
+030810,Orion,0308,municipality,False
+030811,Pilar,0308,municipality,False
+030812,Samal,0308,municipality,False
+031401,Angat,0314,municipality,False
+031402,Balagtas,0314,municipality,False
+031403,City of Baliwag,0314,component city,False
+031404,Bocaue,0314,municipality,False
+031405,Bulacan,0314,municipality,False
+031406,Bustos,0314,municipality,False
+031407,Calumpit,0314,municipality,False
+031408,Guiguinto,0314,municipality,False
+031409,Hagonoy,0314,municipality,False
+031410,City of Malolos,0314,component city,False
+031411,Marilao,0314,municipality,False
+031412,City of Meycauayan,0314,component city,False
+031413,Norzagaray,0314,municipality,False
+031414,Obando,0314,municipality,False
+031415,Pandi,0314,municipality,False
+031416,Paombong,0314,municipality,False
+031417,Plaridel,0314,municipality,False
+031418,Pulilan,0314,municipality,False
+031419,San Ildefonso,0314,municipality,False
+031420,City of San Jose Del Monte,0314,component city,False
+031421,San Miguel,0314,municipality,False
+031422,San Rafael,0314,municipality,False
+031423,Santa Maria,0314,municipality,False
+031424,Doña Remedios Trinidad,0314,municipality,False
+034901,Aliaga,0349,municipality,False
+034902,Bongabon,0349,municipality,False
+034903,City of Cabanatuan,0349,component city,False
+034904,Cabiao,0349,municipality,False
+034905,Carranglan,0349,municipality,False
+034906,Cuyapo,0349,municipality,False
+034907,Gabaldon,0349,municipality,False
+034908,City of Gapan,0349,component city,False
+034909,General Mamerto Natividad,0349,municipality,False
+034910,General Tinio,0349,municipality,False
+034911,Guimba,0349,municipality,False
+034912,Jaen,0349,municipality,False
+034913,Laur,0349,municipality,False
+034914,Licab,0349,municipality,False
+034915,Llanera,0349,municipality,False
+034916,Lupao,0349,municipality,False
+034917,Science City of Muñoz,0349,component city,False
+034918,Nampicuan,0349,municipality,False
+034919,City of Palayan,0349,component city,False
+034920,Pantabangan,0349,municipality,False
+034921,Peñaranda,0349,municipality,False
+034922,Quezon,0349,municipality,False
+034923,Rizal,0349,municipality,False
+034924,San Antonio,0349,municipality,False
+034925,San Isidro,0349,municipality,False
+034926,San Jose City,0349,component city,False
+034927,San Leonardo,0349,municipality,False
+034928,Santa Rosa,0349,municipality,False
+034929,Santo Domingo,0349,municipality,False
+034930,Talavera,0349,municipality,False
+034931,Talugtug,0349,municipality,False
+034932,Zaragoza,0349,municipality,False
+035401,City of Angeles,0354,highly urbanized city,True
+035402,Apalit,0354,municipality,False
+035403,Arayat,0354,municipality,False
+035404,Bacolor,0354,municipality,False
+035405,Candaba,0354,municipality,False
+035406,Floridablanca,0354,municipality,False
+035407,Guagua,0354,municipality,False
+035408,Lubao,0354,municipality,False
+035409,Mabalacat City,0354,component city,False
+035410,Macabebe,0354,municipality,False
+035411,Magalang,0354,municipality,False
+035412,Masantol,0354,municipality,False
+035413,Mexico,0354,municipality,False
+035414,Minalin,0354,municipality,False
+035415,Porac,0354,municipality,False
+035416,City of San Fernando,0354,component city,False
+035417,San Luis,0354,municipality,False
+035418,San Simon,0354,municipality,False
+035419,Santa Ana,0354,municipality,False
+035420,Santa Rita,0354,municipality,False
+035421,Sto. Tomas,0354,municipality,False
+035422,Sasmuan,0354,municipality,False
+036901,Anao,0369,municipality,False
+036902,Bamban,0369,municipality,False
+036903,Camiling,0369,municipality,False
+036904,Capas,0369,municipality,False
+036905,Concepcion,0369,municipality,False
+036906,Gerona,0369,municipality,False
+036907,La Paz,0369,municipality,False
+036908,Mayantoc,0369,municipality,False
+036909,Moncada,0369,municipality,False
+036910,Paniqui,0369,municipality,False
+036911,Pura,0369,municipality,False
+036912,Ramos,0369,municipality,False
+036913,San Clemente,0369,municipality,False
+036914,San Manuel,0369,municipality,False
+036915,Santa Ignacia,0369,municipality,False
+036916,City of Tarlac,0369,component city,False
+036917,Victoria,0369,municipality,False
+036918,San Jose,0369,municipality,False
+037101,Botolan,0371,municipality,False
+037102,Cabangan,0371,municipality,False
+037103,Candelaria,0371,municipality,False
+037104,Castillejos,0371,municipality,False
+037105,Iba,0371,municipality,False
+037106,Masinloc,0371,municipality,False
+037107,City of Olongapo,0371,highly urbanized city,True
+037108,Palauig,0371,municipality,False
+037109,San Antonio,0371,municipality,False
+037110,San Felipe,0371,municipality,False
+037111,San Marcelino,0371,municipality,False
+037112,San Narciso,0371,municipality,False
+037113,Santa Cruz,0371,municipality,False
+037114,Subic,0371,municipality,False
+037701,Baler,0377,municipality,False
+037702,Casiguran,0377,municipality,False
+037703,Dilasag,0377,municipality,False
+037704,Dinalungan,0377,municipality,False
+037705,Dingalan,0377,municipality,False
+037706,Dipaculao,0377,municipality,False
+037707,Maria Aurora,0377,municipality,False
+037708,San Luis,0377,municipality,False
+041001,Agoncillo,0410,municipality,False
+041002,Alitagtag,0410,municipality,False
+041003,Balayan,0410,municipality,False
+041004,Balete,0410,municipality,False
+041005,Batangas City,0410,component city,False
+041006,Bauan,0410,municipality,False
+041007,City of Calaca,0410,component city,False
+041008,Calatagan,0410,municipality,False
+041009,Cuenca,0410,municipality,False
+041010,Ibaan,0410,municipality,False
+041011,Laurel,0410,municipality,False
+041012,Lemery,0410,municipality,False
+041013,Lian,0410,municipality,False
+041014,City of Lipa,0410,component city,False
+041015,Lobo,0410,municipality,False
+041016,Mabini,0410,municipality,False
+041017,Malvar,0410,municipality,False
+041018,Mataasnakahoy,0410,municipality,False
+041019,Nasugbu,0410,municipality,False
+041020,Padre Garcia,0410,municipality,False
+041021,Rosario,0410,municipality,False
+041022,San Jose,0410,municipality,False
+041023,San Juan,0410,municipality,False
+041024,San Luis,0410,municipality,False
+041025,San Nicolas,0410,municipality,False
+041026,San Pascual,0410,municipality,False
+041027,Santa Teresita,0410,municipality,False
+041028,City of Sto. Tomas,0410,component city,False
+041029,Taal,0410,municipality,False
+041030,Talisay,0410,municipality,False
+041031,City of Tanauan,0410,component city,False
+041032,Taysan,0410,municipality,False
+041033,Tingloy,0410,municipality,False
+041034,Tuy,0410,municipality,False
+042101,Alfonso,0421,municipality,False
+042102,Amadeo,0421,municipality,False
+042103,City of Bacoor,0421,component city,False
+042104,City of Carmona,0421,component city,False
+042105,City of Cavite,0421,component city,False
+042106,City of Dasmariñas,0421,component city,False
+042107,General Emilio Aguinaldo,0421,municipality,False
+042108,City of General Trias,0421,component city,False
+042109,City of Imus,0421,component city,False
+042110,Indang,0421,municipality,False
+042111,Kawit,0421,municipality,False
+042112,Magallanes,0421,municipality,False
+042113,Maragondon,0421,municipality,False
+042114,Mendez,0421,municipality,False
+042115,Naic,0421,municipality,False
+042116,Noveleta,0421,municipality,False
+042117,Rosario,0421,municipality,False
+042118,Silang,0421,municipality,False
+042119,City of Tagaytay,0421,component city,False
+042120,Tanza,0421,municipality,False
+042121,Ternate,0421,municipality,False
+042122,City of Trece Martires,0421,component city,False
+042123,Gen. Mariano Alvarez,0421,municipality,False
+043401,Alaminos,0434,municipality,False
+043402,Bay,0434,municipality,False
+043403,City of Biñan,0434,component city,False
+043404,City of Cabuyao,0434,component city,False
+043405,City of Calamba,0434,component city,False
+043406,Calauan,0434,municipality,False
+043407,Cavinti,0434,municipality,False
+043408,Famy,0434,municipality,False
+043409,Kalayaan,0434,municipality,False
+043410,Liliw,0434,municipality,False
+043411,Los Baños,0434,municipality,False
+043412,Luisiana,0434,municipality,False
+043413,Lumban,0434,municipality,False
+043414,Mabitac,0434,municipality,False
+043415,Magdalena,0434,municipality,False
+043416,Majayjay,0434,municipality,False
+043417,Nagcarlan,0434,municipality,False
+043418,Paete,0434,municipality,False
+043419,Pagsanjan,0434,municipality,False
+043420,Pakil,0434,municipality,False
+043421,Pangil,0434,municipality,False
+043422,Pila,0434,municipality,False
+043423,Rizal,0434,municipality,False
+043424,City of San Pablo,0434,component city,False
+043425,City of San Pedro,0434,component city,False
+043426,Santa Cruz,0434,municipality,False
+043427,Santa Maria,0434,municipality,False
+043428,City of Santa Rosa,0434,component city,False
+043429,Siniloan,0434,municipality,False
+043430,Victoria,0434,municipality,False
+045601,Agdangan,0456,municipality,False
+045602,Alabat,0456,municipality,False
+045603,Atimonan,0456,municipality,False
+045605,Buenavista,0456,municipality,False
+045606,Burdeos,0456,municipality,False
+045607,Calauag,0456,municipality,False
+045608,Candelaria,0456,municipality,False
+045610,Catanauan,0456,municipality,False
+045615,Dolores,0456,municipality,False
+045616,General Luna,0456,municipality,False
+045617,General Nakar,0456,municipality,False
+045618,Guinayangan,0456,municipality,False
+045619,Gumaca,0456,municipality,False
+045620,Infanta,0456,municipality,False
+045621,Jomalig,0456,municipality,False
+045622,Lopez,0456,municipality,False
+045623,Lucban,0456,municipality,False
+045624,City of Lucena,0456,highly urbanized city,True
+045625,Macalelon,0456,municipality,False
+045627,Mauban,0456,municipality,False
+045628,Mulanay,0456,municipality,False
+045629,Padre Burgos,0456,municipality,False
+045630,Pagbilao,0456,municipality,False
+045631,Panukulan,0456,municipality,False
+045632,Patnanungan,0456,municipality,False
+045633,Perez,0456,municipality,False
+045634,Pitogo,0456,municipality,False
+045635,Plaridel,0456,municipality,False
+045636,Polillo,0456,municipality,False
+045637,Quezon,0456,municipality,False
+045638,Real,0456,municipality,False
+045639,Sampaloc,0456,municipality,False
+045640,San Andres,0456,municipality,False
+045641,San Antonio,0456,municipality,False
+045642,San Francisco,0456,municipality,False
+045644,San Narciso,0456,municipality,False
+045645,Sariaya,0456,municipality,False
+045646,Tagkawayan,0456,municipality,False
+045647,City of Tayabas,0456,component city,False
+045648,Tiaong,0456,municipality,False
+045649,Unisan,0456,municipality,False
+045801,Angono,0458,municipality,False
+045802,City of Antipolo,0458,component city,False
+045803,Baras,0458,municipality,False
+045804,Binangonan,0458,municipality,False
+045805,Cainta,0458,municipality,False
+045806,Cardona,0458,municipality,False
+045807,Jala-Jala,0458,municipality,False
+045808,Rodriguez,0458,municipality,False
+045809,Morong,0458,municipality,False
+045810,Pililla,0458,municipality,False
+045811,San Mateo,0458,municipality,False
+045812,Tanay,0458,municipality,False
+045813,Taytay,0458,municipality,False
+045814,Teresa,0458,municipality,False
+050501,Bacacay,0505,municipality,False
+050502,Camalig,0505,municipality,False
+050503,Daraga,0505,municipality,False
+050504,Guinobatan,0505,municipality,False
+050505,Jovellar,0505,municipality,False
+050506,City of Legazpi,0505,component city,False
+050507,Libon,0505,municipality,False
+050508,City of Ligao,0505,component city,False
+050509,Malilipot,0505,municipality,False
+050510,Malinao,0505,municipality,False
+050511,Manito,0505,municipality,False
+050512,Oas,0505,municipality,False
+050513,Pio Duran,0505,municipality,False
+050514,Polangui,0505,municipality,False
+050515,Rapu-Rapu,0505,municipality,False
+050516,Santo Domingo,0505,municipality,False
+050517,City of Tabaco,0505,component city,False
+050518,Tiwi,0505,municipality,False
+051601,Basud,0516,municipality,False
+051602,Capalonga,0516,municipality,False
+051603,Daet,0516,municipality,False
+051604,San Lorenzo Ruiz,0516,municipality,False
+051605,Jose Panganiban,0516,municipality,False
+051606,Labo,0516,municipality,False
+051607,Mercedes,0516,municipality,False
+051608,Paracale,0516,municipality,False
+051609,San Vicente,0516,municipality,False
+051610,Santa Elena,0516,municipality,False
+051611,Talisay,0516,municipality,False
+051612,Vinzons,0516,municipality,False
+051701,Baao,0517,municipality,False
+051702,Balatan,0517,municipality,False
+051703,Bato,0517,municipality,False
+051704,Bombon,0517,municipality,False
+051705,Buhi,0517,municipality,False
+051706,Bula,0517,municipality,False
+051707,Cabusao,0517,municipality,False
+051708,Calabanga,0517,municipality,False
+051709,Camaligan,0517,municipality,False
+051710,Canaman,0517,municipality,False
+051711,Caramoan,0517,municipality,False
+051712,Del Gallego,0517,municipality,False
+051713,Gainza,0517,municipality,False
+051714,Garchitorena,0517,municipality,False
+051715,Goa,0517,municipality,False
+051716,City of Iriga,0517,component city,False
+051717,Lagonoy,0517,municipality,False
+051718,Libmanan,0517,municipality,False
+051719,Lupi,0517,municipality,False
+051720,Magarao,0517,municipality,False
+051721,Milaor,0517,municipality,False
+051722,Minalabac,0517,municipality,False
+051723,Nabua,0517,municipality,False
+051724,City of Naga,0517,independent component city,True
+051725,Ocampo,0517,municipality,False
+051726,Pamplona,0517,municipality,False
+051727,Pasacao,0517,municipality,False
+051728,Pili,0517,municipality,False
+051729,Presentacion,0517,municipality,False
+051730,Ragay,0517,municipality,False
+051731,Sagñay,0517,municipality,False
+051732,San Fernando,0517,municipality,False
+051733,San Jose,0517,municipality,False
+051734,Sipocot,0517,municipality,False
+051735,Siruma,0517,municipality,False
+051736,Tigaon,0517,municipality,False
+051737,Tinambac,0517,municipality,False
+052001,Bagamanoc,0520,municipality,False
+052002,Baras,0520,municipality,False
+052003,Bato,0520,municipality,False
+052004,Caramoran,0520,municipality,False
+052005,Gigmoto,0520,municipality,False
+052006,Pandan,0520,municipality,False
+052007,Panganiban,0520,municipality,False
+052008,San Andres,0520,municipality,False
+052009,San Miguel,0520,municipality,False
+052010,Viga,0520,municipality,False
+052011,Virac,0520,municipality,False
+054101,Aroroy,0541,municipality,False
+054102,Baleno,0541,municipality,False
+054103,Balud,0541,municipality,False
+054104,Batuan,0541,municipality,False
+054105,Cataingan,0541,municipality,False
+054106,Cawayan,0541,municipality,False
+054107,Claveria,0541,municipality,False
+054108,Dimasalang,0541,municipality,False
+054109,Esperanza,0541,municipality,False
+054110,Mandaon,0541,municipality,False
+054111,City of Masbate,0541,component city,False
+054112,Milagros,0541,municipality,False
+054113,Mobo,0541,municipality,False
+054114,Monreal,0541,municipality,False
+054115,Palanas,0541,municipality,False
+054116,Pio V. Corpus,0541,municipality,False
+054117,Placer,0541,municipality,False
+054118,San Fernando,0541,municipality,False
+054119,San Jacinto,0541,municipality,False
+054120,San Pascual,0541,municipality,False
+054121,Uson,0541,municipality,False
+056202,Barcelona,0562,municipality,False
+056203,Bulan,0562,municipality,False
+056204,Bulusan,0562,municipality,False
+056205,Casiguran,0562,municipality,False
+056206,Castilla,0562,municipality,False
+056207,Donsol,0562,municipality,False
+056208,Gubat,0562,municipality,False
+056209,Irosin,0562,municipality,False
+056210,Juban,0562,municipality,False
+056211,Magallanes,0562,municipality,False
+056212,Matnog,0562,municipality,False
+056213,Pilar,0562,municipality,False
+056214,Prieto Diaz,0562,municipality,False
+056215,Santa Magdalena,0562,municipality,False
+056216,City of Sorsogon,0562,component city,False
+060401,Altavas,0604,municipality,False
+060402,Balete,0604,municipality,False
+060403,Banga,0604,municipality,False
+060404,Batan,0604,municipality,False
+060405,Buruanga,0604,municipality,False
+060406,Ibajay,0604,municipality,False
+060407,Kalibo,0604,municipality,False
+060408,Lezo,0604,municipality,False
+060409,Libacao,0604,municipality,False
+060410,Madalag,0604,municipality,False
+060411,Makato,0604,municipality,False
+060412,Malay,0604,municipality,False
+060413,Malinao,0604,municipality,False
+060414,Nabas,0604,municipality,False
+060415,New Washington,0604,municipality,False
+060416,Numancia,0604,municipality,False
+060417,Tangalan,0604,municipality,False
+060601,Anini-Y,0606,municipality,False
+060602,Barbaza,0606,municipality,False
+060603,Belison,0606,municipality,False
+060604,Bugasong,0606,municipality,False
+060605,Caluya,0606,municipality,False
+060606,Culasi,0606,municipality,False
+060607,Tobias Fornier,0606,municipality,False
+060608,Hamtic,0606,municipality,False
+060609,Laua-An,0606,municipality,False
+060610,Libertad,0606,municipality,False
+060611,Pandan,0606,municipality,False
+060612,Patnongon,0606,municipality,False
+060613,San Jose,0606,municipality,False
+060614,San Remigio,0606,municipality,False
+060615,Sebaste,0606,municipality,False
+060616,Sibalom,0606,municipality,False
+060617,Tibiao,0606,municipality,False
+060618,Valderrama,0606,municipality,False
+061901,Cuartero,0619,municipality,False
+061902,Dao,0619,municipality,False
+061903,Dumalag,0619,municipality,False
+061904,Dumarao,0619,municipality,False
+061905,Ivisan,0619,municipality,False
+061906,Jamindan,0619,municipality,False
+061907,Ma-Ayon,0619,municipality,False
+061908,Mambusao,0619,municipality,False
+061909,Panay,0619,municipality,False
+061910,Panitan,0619,municipality,False
+061911,Pilar,0619,municipality,False
+061912,Pontevedra,0619,municipality,False
+061913,President Roxas,0619,municipality,False
+061914,City of Roxas,0619,component city,False
+061915,Sapi-An,0619,municipality,False
+061916,Sigma,0619,municipality,False
+061917,Tapaz,0619,municipality,False
+063001,Ajuy,0630,municipality,False
+063002,Alimodian,0630,municipality,False
+063003,Anilao,0630,municipality,False
+063004,Badiangan,0630,municipality,False
+063005,Balasan,0630,municipality,False
+063006,Banate,0630,municipality,False
+063007,Barotac Nuevo,0630,municipality,False
+063008,Barotac Viejo,0630,municipality,False
+063009,Batad,0630,municipality,False
+063010,Bingawan,0630,municipality,False
+063012,Cabatuan,0630,municipality,False
+063013,Calinog,0630,municipality,False
+063014,Carles,0630,municipality,False
+063015,Concepcion,0630,municipality,False
+063016,Dingle,0630,municipality,False
+063017,Dueñas,0630,municipality,False
+063018,Dumangas,0630,municipality,False
+063019,Estancia,0630,municipality,False
+063020,Guimbal,0630,municipality,False
+063021,Igbaras,0630,municipality,False
+063022,City of Iloilo,0630,highly urbanized city,True
+063023,Janiuay,0630,municipality,False
+063025,Lambunao,0630,municipality,False
+063026,Leganes,0630,municipality,False
+063027,Lemery,0630,municipality,False
+063028,Leon,0630,municipality,False
+063029,Maasin,0630,municipality,False
+063030,Miagao,0630,municipality,False
+063031,Mina,0630,municipality,False
+063032,New Lucena,0630,municipality,False
+063034,Oton,0630,municipality,False
+063035,City of Passi,0630,component city,False
+063036,Pavia,0630,municipality,False
+063037,Pototan,0630,municipality,False
+063038,San Dionisio,0630,municipality,False
+063039,San Enrique,0630,municipality,False
+063040,San Joaquin,0630,municipality,False
+063041,San Miguel,0630,municipality,False
+063042,San Rafael,0630,municipality,False
+063043,Santa Barbara,0630,municipality,False
+063044,Sara,0630,municipality,False
+063045,Tigbauan,0630,municipality,False
+063046,Tubungan,0630,municipality,False
+063047,Zarraga,0630,municipality,False
+064501,City of Bacolod,0645,highly urbanized city,True
+064502,City of Bago,0645,component city,False
+064503,Binalbagan,0645,municipality,False
+064504,City of Cadiz,0645,component city,False
+064505,Calatrava,0645,municipality,False
+064506,Candoni,0645,municipality,False
+064507,Cauayan,0645,municipality,False
+064508,Enrique B. Magalona,0645,municipality,False
+064509,City of Escalante,0645,component city,False
+064510,City of Himamaylan,0645,component city,False
+064511,Hinigaran,0645,municipality,False
+064512,Hinoba-an,0645,municipality,False
+064513,Ilog,0645,municipality,False
+064514,Isabela,0645,municipality,False
+064515,City of Kabankalan,0645,component city,False
+064516,City of La Carlota,0645,component city,False
+064517,La Castellana,0645,municipality,False
+064518,Manapla,0645,municipality,False
+064519,Moises Padilla,0645,municipality,False
+064520,Murcia,0645,municipality,False
+064521,Pontevedra,0645,municipality,False
+064522,Pulupandan,0645,municipality,False
+064523,City of Sagay,0645,component city,False
+064524,City of San Carlos,0645,component city,False
+064525,San Enrique,0645,municipality,False
+064526,City of Silay,0645,component city,False
+064527,City of Sipalay,0645,component city,False
+064528,City of Talisay,0645,component city,False
+064529,Toboso,0645,municipality,False
+064530,Valladolid,0645,municipality,False
+064531,City of Victorias,0645,component city,False
+064532,Salvador Benedicto,0645,municipality,False
+067901,Buenavista,0679,municipality,False
+067902,Jordan,0679,municipality,False
+067903,Nueva Valencia,0679,municipality,False
+067904,San Lorenzo,0679,municipality,False
+067905,Sibunag,0679,municipality,False
+071201,Alburquerque,0712,municipality,False
+071202,Alicia,0712,municipality,False
+071203,Anda,0712,municipality,False
+071204,Antequera,0712,municipality,False
+071205,Baclayon,0712,municipality,False
+071206,Balilihan,0712,municipality,False
+071207,Batuan,0712,municipality,False
+071208,Bilar,0712,municipality,False
+071209,Buenavista,0712,municipality,False
+071210,Calape,0712,municipality,False
+071211,Candijay,0712,municipality,False
+071212,Carmen,0712,municipality,False
+071213,Catigbian,0712,municipality,False
+071214,Clarin,0712,municipality,False
+071215,Corella,0712,municipality,False
+071216,Cortes,0712,municipality,False
+071217,Dagohoy,0712,municipality,False
+071218,Danao,0712,municipality,False
+071219,Dauis,0712,municipality,False
+071220,Dimiao,0712,municipality,False
+071221,Duero,0712,municipality,False
+071222,Garcia Hernandez,0712,municipality,False
+071223,Guindulman,0712,municipality,False
+071224,Inabanga,0712,municipality,False
+071225,Jagna,0712,municipality,False
+071226,Getafe,0712,municipality,False
+071227,Lila,0712,municipality,False
+071228,Loay,0712,municipality,False
+071229,Loboc,0712,municipality,False
+071230,Loon,0712,municipality,False
+071231,Mabini,0712,municipality,False
+071232,Maribojoc,0712,municipality,False
+071233,Panglao,0712,municipality,False
+071234,Pilar,0712,municipality,False
+071235,President Carlos P. Garcia,0712,municipality,False
+071236,Sagbayan,0712,municipality,False
+071237,San Isidro,0712,municipality,False
+071238,San Miguel,0712,municipality,False
+071239,Sevilla,0712,municipality,False
+071240,Sierra Bullones,0712,municipality,False
+071241,Sikatuna,0712,municipality,False
+071242,City of Tagbilaran,0712,component city,False
+071243,Talibon,0712,municipality,False
+071244,Trinidad,0712,municipality,False
+071245,Tubigon,0712,municipality,False
+071246,Ubay,0712,municipality,False
+071247,Valencia,0712,municipality,False
+071248,Bien Unido,0712,municipality,False
+072201,Alcantara,0722,municipality,False
+072202,Alcoy,0722,municipality,False
+072203,Alegria,0722,municipality,False
+072204,Aloguinsan,0722,municipality,False
+072205,Argao,0722,municipality,False
+072206,Asturias,0722,municipality,False
+072207,Badian,0722,municipality,False
+072208,Balamban,0722,municipality,False
+072209,Bantayan,0722,municipality,False
+072210,Barili,0722,municipality,False
+072211,City of Bogo,0722,component city,False
+072212,Boljoon,0722,municipality,False
+072213,Borbon,0722,municipality,False
+072214,City of Carcar,0722,component city,False
+072215,Carmen,0722,municipality,False
+072216,Catmon,0722,municipality,False
+072217,City of Cebu,0722,highly urbanized city,True
+072218,Compostela,0722,municipality,False
+072219,Consolacion,0722,municipality,False
+072220,Cordova,0722,municipality,False
+072221,Daanbantayan,0722,municipality,False
+072222,Dalaguete,0722,municipality,False
+072223,Danao City,0722,component city,False
+072224,Dumanjug,0722,municipality,False
+072225,Ginatilan,0722,municipality,False
+072226,City of Lapu-Lapu,0722,highly urbanized city,True
+072227,Liloan,0722,municipality,False
+072228,Madridejos,0722,municipality,False
+072229,Malabuyoc,0722,municipality,False
+072230,City of Mandaue,0722,highly urbanized city,True
+072231,Medellin,0722,municipality,False
+072232,Minglanilla,0722,municipality,False
+072233,Moalboal,0722,municipality,False
+072234,City of Naga,0722,component city,False
+072235,Oslob,0722,municipality,False
+072236,Pilar,0722,municipality,False
+072237,Pinamungajan,0722,municipality,False
+072238,Poro,0722,municipality,False
+072239,Ronda,0722,municipality,False
+072240,Samboan,0722,municipality,False
+072241,San Fernando,0722,municipality,False
+072242,San Francisco,0722,municipality,False
+072243,San Remigio,0722,municipality,False
+072244,Santa Fe,0722,municipality,False
+072245,Santander,0722,municipality,False
+072246,Sibonga,0722,municipality,False
+072247,Sogod,0722,municipality,False
+072248,Tabogon,0722,municipality,False
+072249,Tabuelan,0722,municipality,False
+072250,City of Talisay,0722,component city,False
+072251,City of Toledo,0722,component city,False
+072252,Tuburan,0722,municipality,False
+072253,Tudela,0722,municipality,False
+074601,Amlan,0746,municipality,False
+074602,Ayungon,0746,municipality,False
+074603,Bacong,0746,municipality,False
+074604,City of Bais,0746,component city,False
+074605,Basay,0746,municipality,False
+074606,City of Bayawan,0746,component city,False
+074607,Bindoy,0746,municipality,False
+074608,City of Canlaon,0746,component city,False
+074609,Dauin,0746,municipality,False
+074610,City of Dumaguete,0746,component city,False
+074611,City of Guihulngan,0746,component city,False
+074612,Jimalalud,0746,municipality,False
+074613,La Libertad,0746,municipality,False
+074614,Mabinay,0746,municipality,False
+074615,Manjuyod,0746,municipality,False
+074616,Pamplona,0746,municipality,False
+074617,San Jose,0746,municipality,False
+074618,Santa Catalina,0746,municipality,False
+074619,Siaton,0746,municipality,False
+074620,Sibulan,0746,municipality,False
+074621,City of Tanjay,0746,component city,False
+074622,Tayasan,0746,municipality,False
+074623,Valencia,0746,municipality,False
+074624,Vallehermoso,0746,municipality,False
+074625,Zamboanguita,0746,municipality,False
+076101,Enrique Villanueva,0761,municipality,False
+076102,Larena,0761,municipality,False
+076103,Lazi,0761,municipality,False
+076104,Maria,0761,municipality,False
+076105,San Juan,0761,municipality,False
+076106,Siquijor,0761,municipality,False
+082601,Arteche,0826,municipality,False
+082602,Balangiga,0826,municipality,False
+082603,Balangkayan,0826,municipality,False
+082604,City of Borongan,0826,component city,False
+082605,Can-Avid,0826,municipality,False
+082606,Dolores,0826,municipality,False
+082607,General Macarthur,0826,municipality,False
+082608,Giporlos,0826,municipality,False
+082609,Guiuan,0826,municipality,False
+082610,Hernani,0826,municipality,False
+082611,Jipapad,0826,municipality,False
+082612,Lawaan,0826,municipality,False
+082613,Llorente,0826,municipality,False
+082614,Maslog,0826,municipality,False
+082615,Maydolong,0826,municipality,False
+082616,Mercedes,0826,municipality,False
+082617,Oras,0826,municipality,False
+082618,Quinapondan,0826,municipality,False
+082619,Salcedo,0826,municipality,False
+082620,San Julian,0826,municipality,False
+082621,San Policarpo,0826,municipality,False
+082622,Sulat,0826,municipality,False
+082623,Taft,0826,municipality,False
+083701,Abuyog,0837,municipality,False
+083702,Alangalang,0837,municipality,False
+083703,Albuera,0837,municipality,False
+083705,Babatngon,0837,municipality,False
+083706,Barugo,0837,municipality,False
+083707,Bato,0837,municipality,False
+083708,City of Baybay,0837,component city,False
+083710,Burauen,0837,municipality,False
+083713,Calubian,0837,municipality,False
+083714,Capoocan,0837,municipality,False
+083715,Carigara,0837,municipality,False
+083717,Dagami,0837,municipality,False
+083718,Dulag,0837,municipality,False
+083719,Hilongos,0837,municipality,False
+083720,Hindang,0837,municipality,False
+083721,Inopacan,0837,municipality,False
+083722,Isabel,0837,municipality,False
+083723,Jaro,0837,municipality,False
+083724,Javier,0837,municipality,False
+083725,Julita,0837,municipality,False
+083726,Kananga,0837,municipality,False
+083728,La Paz,0837,municipality,False
+083729,Leyte,0837,municipality,False
+083730,Macarthur,0837,municipality,False
+083731,Mahaplag,0837,municipality,False
+083733,Matag-Ob,0837,municipality,False
+083734,Matalom,0837,municipality,False
+083735,Mayorga,0837,municipality,False
+083736,Merida,0837,municipality,False
+083738,Ormoc City,0837,independent component city,True
+083739,Palo,0837,municipality,False
+083740,Palompon,0837,municipality,False
+083741,Pastrana,0837,municipality,False
+083742,San Isidro,0837,municipality,False
+083743,San Miguel,0837,municipality,False
+083744,Santa Fe,0837,municipality,False
+083745,Tabango,0837,municipality,False
+083746,Tabontabon,0837,municipality,False
+083747,City of Tacloban,0837,highly urbanized city,True
+083748,Tanauan,0837,municipality,False
+083749,Tolosa,0837,municipality,False
+083750,Tunga,0837,municipality,False
+083751,Villaba,0837,municipality,False
+084801,Allen,0848,municipality,False
+084802,Biri,0848,municipality,False
+084803,Bobon,0848,municipality,False
+084804,Capul,0848,municipality,False
+084805,Catarman,0848,municipality,False
+084806,Catubig,0848,municipality,False
+084807,Gamay,0848,municipality,False
+084808,Laoang,0848,municipality,False
+084809,Lapinig,0848,municipality,False
+084810,Las Navas,0848,municipality,False
+084811,Lavezares,0848,municipality,False
+084812,Mapanas,0848,municipality,False
+084813,Mondragon,0848,municipality,False
+084814,Palapag,0848,municipality,False
+084815,Pambujan,0848,municipality,False
+084816,Rosario,0848,municipality,False
+084817,San Antonio,0848,municipality,False
+084818,San Isidro,0848,municipality,False
+084819,San Jose,0848,municipality,False
+084820,San Roque,0848,municipality,False
+084821,San Vicente,0848,municipality,False
+084822,Silvino Lobos,0848,municipality,False
+084823,Victoria,0848,municipality,False
+084824,Lope De Vega,0848,municipality,False
+086001,Almagro,0860,municipality,False
+086002,Basey,0860,municipality,False
+086003,City of Calbayog,0860,component city,False
+086004,Calbiga,0860,municipality,False
+086005,City of Catbalogan,0860,component city,False
+086006,Daram,0860,municipality,False
+086007,Gandara,0860,municipality,False
+086008,Hinabangan,0860,municipality,False
+086009,Jiabong,0860,municipality,False
+086010,Marabut,0860,municipality,False
+086011,Matuguinao,0860,municipality,False
+086012,Motiong,0860,municipality,False
+086013,Pinabacdao,0860,municipality,False
+086014,San Jose De Buan,0860,municipality,False
+086015,San Sebastian,0860,municipality,False
+086016,Santa Margarita,0860,municipality,False
+086017,Santa Rita,0860,municipality,False
+086018,Santo Niño,0860,municipality,False
+086019,Talalora,0860,municipality,False
+086020,Tarangnan,0860,municipality,False
+086021,Villareal,0860,municipality,False
+086022,Paranas,0860,municipality,False
+086023,Zumarraga,0860,municipality,False
+086024,Tagapul-An,0860,municipality,False
+086025,San Jorge,0860,municipality,False
+086026,Pagsanghan,0860,municipality,False
+086401,Anahawan,0864,municipality,False
+086402,Bontoc,0864,municipality,False
+086403,Hinunangan,0864,municipality,False
+086404,Hinundayan,0864,municipality,False
+086405,Libagon,0864,municipality,False
+086406,Liloan,0864,municipality,False
+086407,City of Maasin,0864,component city,False
+086408,Macrohon,0864,municipality,False
+086409,Malitbog,0864,municipality,False
+086410,Padre Burgos,0864,municipality,False
+086411,Pintuyan,0864,municipality,False
+086412,Saint Bernard,0864,municipality,False
+086413,San Francisco,0864,municipality,False
+086414,San Juan,0864,municipality,False
+086415,San Ricardo,0864,municipality,False
+086416,Silago,0864,municipality,False
+086417,Sogod,0864,municipality,False
+086418,Tomas Oppus,0864,municipality,False
+086419,Limasawa,0864,municipality,False
+087801,Almeria,0878,municipality,False
+087802,Biliran,0878,municipality,False
+087803,Cabucgayan,0878,municipality,False
+087804,Caibiran,0878,municipality,False
+087805,Culaba,0878,municipality,False
+087806,Kawayan,0878,municipality,False
+087807,Maripipi,0878,municipality,False
+087808,Naval,0878,municipality,False
+097201,City of Dapitan,0972,component city,False
+097202,City of Dipolog,0972,component city,False
+097203,Katipunan,0972,municipality,False
+097204,La Libertad,0972,municipality,False
+097205,Labason,0972,municipality,False
+097206,Liloy,0972,municipality,False
+097207,Manukan,0972,municipality,False
+097208,Mutia,0972,municipality,False
+097209,Piñan,0972,municipality,False
+097210,Polanco,0972,municipality,False
+097211,Pres. Manuel A. Roxas,0972,municipality,False
+097212,Rizal,0972,municipality,False
+097213,Salug,0972,municipality,False
+097214,Sergio Osmeña Sr.,0972,municipality,False
+097215,Siayan,0972,municipality,False
+097216,Sibuco,0972,municipality,False
+097217,Sibutad,0972,municipality,False
+097218,Sindangan,0972,municipality,False
+097219,Siocon,0972,municipality,False
+097220,Sirawai,0972,municipality,False
+097221,Tampilisan,0972,municipality,False
+097222,Jose Dalman,0972,municipality,False
+097223,Gutalac,0972,municipality,False
+097224,Baliguian,0972,municipality,False
+097225,Godod,0972,municipality,False
+097226,Leon T. Postigo,0972,municipality,False
+097227,Kalawit,0972,municipality,False
+097302,Aurora,0973,municipality,False
+097303,Bayog,0973,municipality,False
+097305,Dimataling,0973,municipality,False
+097306,Dinas,0973,municipality,False
+097307,Dumalinao,0973,municipality,False
+097308,Dumingag,0973,municipality,False
+097311,Kumalarang,0973,municipality,False
+097312,Labangan,0973,municipality,False
+097313,Lapuyan,0973,municipality,False
+097315,Mahayag,0973,municipality,False
+097317,Margosatubig,0973,municipality,False
+097318,Midsalip,0973,municipality,False
+097319,Molave,0973,municipality,False
+097322,City of Pagadian,0973,component city,False
+097323,Ramon Magsaysay,0973,municipality,False
+097324,San Miguel,0973,municipality,False
+097325,San Pablo,0973,municipality,False
+097327,Tabina,0973,municipality,False
+097328,Tambulig,0973,municipality,False
+097330,Tukuran,0973,municipality,False
+097332,City of Zamboanga,0973,highly urbanized city,True
+097333,Lakewood,0973,municipality,False
+097337,Josefina,0973,municipality,False
+097338,Pitogo,0973,municipality,False
+097340,Sominot,0973,municipality,False
+097341,Vincenzo A. Sagun,0973,municipality,False
+097343,Guipos,0973,municipality,False
+097344,Tigbao,0973,municipality,False
+098301,Alicia,0983,municipality,False
+098302,Buug,0983,municipality,False
+098303,Diplahan,0983,municipality,False
+098304,Imelda,0983,municipality,False
+098305,Ipil,0983,municipality,False
+098306,Kabasalan,0983,municipality,False
+098307,Mabuhay,0983,municipality,False
+098308,Malangas,0983,municipality,False
+098309,Naga,0983,municipality,False
+098310,Olutanga,0983,municipality,False
+098311,Payao,0983,municipality,False
+098312,Roseller Lim,0983,municipality,False
+098313,Siay,0983,municipality,False
+098314,Talusan,0983,municipality,False
+098315,Titay,0983,municipality,False
+098316,Tungawan,0983,municipality,False
+099701,City of Isabela,0997,component city,False
+101301,Baungon,1013,municipality,False
+101302,Damulog,1013,municipality,False
+101303,Dangcagan,1013,municipality,False
+101304,Don Carlos,1013,municipality,False
+101305,Impasug-ong,1013,municipality,False
+101306,Kadingilan,1013,municipality,False
+101307,Kalilangan,1013,municipality,False
+101308,Kibawe,1013,municipality,False
+101309,Kitaotao,1013,municipality,False
+101310,Lantapan,1013,municipality,False
+101311,Libona,1013,municipality,False
+101312,City of Malaybalay,1013,component city,False
+101313,Malitbog,1013,municipality,False
+101314,Manolo Fortich,1013,municipality,False
+101315,Maramag,1013,municipality,False
+101316,Pangantucan,1013,municipality,False
+101317,Quezon,1013,municipality,False
+101318,San Fernando,1013,municipality,False
+101319,Sumilao,1013,municipality,False
+101320,Talakag,1013,municipality,False
+101321,City of Valencia,1013,component city,False
+101322,Cabanglasan,1013,municipality,False
+101801,Catarman,1018,municipality,False
+101802,Guinsiliban,1018,municipality,False
+101803,Mahinog,1018,municipality,False
+101804,Mambajao,1018,municipality,False
+101805,Sagay,1018,municipality,False
+103501,Bacolod,1035,municipality,False
+103502,Baloi,1035,municipality,False
+103503,Baroy,1035,municipality,False
+103504,City of Iligan,1035,highly urbanized city,True
+103505,Kapatagan,1035,municipality,False
+103506,Sultan Naga Dimaporo,1035,municipality,False
+103507,Kauswagan,1035,municipality,False
+103508,Kolambugan,1035,municipality,False
+103509,Lala,1035,municipality,False
+103510,Linamon,1035,municipality,False
+103511,Magsaysay,1035,municipality,False
+103512,Maigo,1035,municipality,False
+103513,Matungao,1035,municipality,False
+103514,Munai,1035,municipality,False
+103515,Nunungan,1035,municipality,False
+103516,Pantao Ragat,1035,municipality,False
+103517,Poona Piagapo,1035,municipality,False
+103518,Salvador,1035,municipality,False
+103519,Sapad,1035,municipality,False
+103520,Tagoloan,1035,municipality,False
+103521,Tangcal,1035,municipality,False
+103522,Tubod,1035,municipality,False
+103523,Pantar,1035,municipality,False
+104201,Aloran,1042,municipality,False
+104202,Baliangao,1042,municipality,False
+104203,Bonifacio,1042,municipality,False
+104204,Calamba,1042,municipality,False
+104205,Clarin,1042,municipality,False
+104206,Concepcion,1042,municipality,False
+104207,Jimenez,1042,municipality,False
+104208,Lopez Jaena,1042,municipality,False
+104209,City of Oroquieta,1042,component city,False
+104210,City of Ozamiz,1042,component city,False
+104211,Panaon,1042,municipality,False
+104212,Plaridel,1042,municipality,False
+104213,Sapang Dalaga,1042,municipality,False
+104214,Sinacaban,1042,municipality,False
+104215,City of Tangub,1042,component city,False
+104216,Tudela,1042,municipality,False
+104217,Don Victoriano Chiongbian,1042,municipality,False
+104301,Alubijid,1043,municipality,False
+104302,Balingasag,1043,municipality,False
+104303,Balingoan,1043,municipality,False
+104304,Binuangan,1043,municipality,False
+104305,City of Cagayan De Oro,1043,highly urbanized city,True
+104306,Claveria,1043,municipality,False
+104307,City of El Salvador,1043,component city,False
+104308,City of Gingoog,1043,component city,False
+104309,Gitagum,1043,municipality,False
+104310,Initao,1043,municipality,False
+104311,Jasaan,1043,municipality,False
+104312,Kinoguitan,1043,municipality,False
+104313,Lagonglong,1043,municipality,False
+104314,Laguindingan,1043,municipality,False
+104315,Libertad,1043,municipality,False
+104316,Lugait,1043,municipality,False
+104317,Magsaysay,1043,municipality,False
+104318,Manticao,1043,municipality,False
+104319,Medina,1043,municipality,False
+104320,Naawan,1043,municipality,False
+104321,Opol,1043,municipality,False
+104322,Salay,1043,municipality,False
+104323,Sugbongcogon,1043,municipality,False
+104324,Tagoloan,1043,municipality,False
+104325,Talisayan,1043,municipality,False
+104326,Villanueva,1043,municipality,False
+112301,Asuncion,1123,municipality,False
+112303,Carmen,1123,municipality,False
+112305,Kapalong,1123,municipality,False
+112314,New Corella,1123,municipality,False
+112315,City of Panabo,1123,component city,False
+112317,Island Garden City of Samal,1123,component city,False
+112318,Santo Tomas,1123,municipality,False
+112319,City of Tagum,1123,component city,False
+112322,Talaingod,1123,municipality,False
+112323,Braulio E. Dujali,1123,municipality,False
+112324,San Isidro,1123,municipality,False
+112401,Bansalan,1124,municipality,False
+112402,City of Davao,1124,highly urbanized city,True
+112403,City of Digos,1124,component city,False
+112404,Hagonoy,1124,municipality,False
+112406,Kiblawan,1124,municipality,False
+112407,Magsaysay,1124,municipality,False
+112408,Malalag,1124,municipality,False
+112410,Matanao,1124,municipality,False
+112411,Padada,1124,municipality,False
+112412,Santa Cruz,1124,municipality,False
+112414,Sulop,1124,municipality,False
+112501,Baganga,1125,municipality,False
+112502,Banaybanay,1125,municipality,False
+112503,Boston,1125,municipality,False
+112504,Caraga,1125,municipality,False
+112505,Cateel,1125,municipality,False
+112506,Governor Generoso,1125,municipality,False
+112507,Lupon,1125,municipality,False
+112508,Manay,1125,municipality,False
+112509,City of Mati,1125,component city,False
+112510,San Isidro,1125,municipality,False
+112511,Tarragona,1125,municipality,False
+118201,Compostela,1182,municipality,False
+118202,Laak,1182,municipality,False
+118203,Mabini,1182,municipality,False
+118204,Maco,1182,municipality,False
+118205,Maragusan,1182,municipality,False
+118206,Mawab,1182,municipality,False
+118207,Monkayo,1182,municipality,False
+118208,Montevista,1182,municipality,False
+118209,Nabunturan,1182,municipality,False
+118210,New Bataan,1182,municipality,False
+118211,Pantukan,1182,municipality,False
+118601,Don Marcelino,1186,municipality,False
+118602,Jose Abad Santos,1186,municipality,False
+118603,Malita,1186,municipality,False
+118604,Santa Maria,1186,municipality,False
+118605,Sarangani,1186,municipality,False
+124701,Alamada,1247,municipality,False
+124702,Carmen,1247,municipality,False
+124703,Kabacan,1247,municipality,False
+124704,City of Kidapawan,1247,component city,False
+124705,Libungan,1247,municipality,False
+124706,Magpet,1247,municipality,False
+124707,Makilala,1247,municipality,False
+124708,Matalam,1247,municipality,False
+124709,Midsayap,1247,municipality,False
+124710,M'Lang,1247,municipality,False
+124711,Pigkawayan,1247,municipality,False
+124712,Pikit,1247,municipality,False
+124713,President Roxas,1247,municipality,False
+124714,Tulunan,1247,municipality,False
+124715,Antipas,1247,municipality,False
+124716,Banisilan,1247,municipality,False
+124717,Aleosan,1247,municipality,False
+124718,Arakan,1247,municipality,False
+126302,Banga,1263,municipality,False
+126303,City of General Santos,1263,highly urbanized city,True
+126306,City of Koronadal,1263,component city,False
+126311,Norala,1263,municipality,False
+126312,Polomolok,1263,municipality,False
+126313,Surallah,1263,municipality,False
+126314,Tampakan,1263,municipality,False
+126315,Tantangan,1263,municipality,False
+126316,T'Boli,1263,municipality,False
+126317,Tupi,1263,municipality,False
+126318,Santo Niño,1263,municipality,False
+126319,Lake Sebu,1263,municipality,False
+126501,Bagumbayan,1265,municipality,False
+126502,Columbio,1265,municipality,False
+126503,Esperanza,1265,municipality,False
+126504,Isulan,1265,municipality,False
+126505,Kalamansig,1265,municipality,False
+126506,Lebak,1265,municipality,False
+126507,Lutayan,1265,municipality,False
+126508,Lambayong,1265,municipality,False
+126509,Palimbang,1265,municipality,False
+126510,President Quirino,1265,municipality,False
+126511,City of Tacurong,1265,component city,False
+126512,Sen. Ninoy Aquino,1265,municipality,False
+128001,Alabel,1280,municipality,False
+128002,Glan,1280,municipality,False
+128003,Kiamba,1280,municipality,False
+128004,Maasim,1280,municipality,False
+128005,Maitum,1280,municipality,False
+128006,Malapatan,1280,municipality,False
+128007,Malungon,1280,municipality,False
+129804,City of Cotabato,1298,independent component city,True
+133900,City of Manila,1339,highly urbanized city,True
+137401,City of Mandaluyong,1374,highly urbanized city,True
+137402,City of Marikina,1374,highly urbanized city,True
+137403,City of Pasig,1374,highly urbanized city,True
+137404,Quezon City,1374,highly urbanized city,True
+137405,City of San Juan,1374,highly urbanized city,True
+137501,City of Caloocan,1375,highly urbanized city,True
+137502,City of Malabon,1375,highly urbanized city,True
+137503,City of Navotas,1375,highly urbanized city,True
+137504,City of Valenzuela,1375,highly urbanized city,True
+137601,City of Las Piñas,1376,highly urbanized city,True
+137602,City of Makati,1376,highly urbanized city,True
+137603,City of Muntinlupa,1376,highly urbanized city,True
+137604,City of Parañaque,1376,highly urbanized city,True
+137605,Pasay City,1376,highly urbanized city,True
+137606,Pateros,1376,municipality,False
+137607,City of Taguig,1376,highly urbanized city,True
+140101,Bangued,1401,municipality,False
+140102,Boliney,1401,municipality,False
+140103,Bucay,1401,municipality,False
+140104,Bucloc,1401,municipality,False
+140105,Daguioman,1401,municipality,False
+140106,Danglas,1401,municipality,False
+140107,Dolores,1401,municipality,False
+140108,La Paz,1401,municipality,False
+140109,Lacub,1401,municipality,False
+140110,Lagangilang,1401,municipality,False
+140111,Lagayan,1401,municipality,False
+140112,Langiden,1401,municipality,False
+140113,Licuan-Baay,1401,municipality,False
+140114,Luba,1401,municipality,False
+140115,Malibcong,1401,municipality,False
+140116,Manabo,1401,municipality,False
+140117,Peñarrubia,1401,municipality,False
+140118,Pidigan,1401,municipality,False
+140119,Pilar,1401,municipality,False
+140120,Sallapadan,1401,municipality,False
+140121,San Isidro,1401,municipality,False
+140122,San Juan,1401,municipality,False
+140123,San Quintin,1401,municipality,False
+140124,Tayum,1401,municipality,False
+140125,Tineg,1401,municipality,False
+140126,Tubo,1401,municipality,False
+140127,Villaviciosa,1401,municipality,False
+141101,Atok,1411,municipality,False
+141102,City of Baguio,1411,highly urbanized city,True
+141103,Bakun,1411,municipality,False
+141104,Bokod,1411,municipality,False
+141105,Buguias,1411,municipality,False
+141106,Itogon,1411,municipality,False
+141107,Kabayan,1411,municipality,False
+141108,Kapangan,1411,municipality,False
+141109,Kibungan,1411,municipality,False
+141110,La Trinidad,1411,municipality,False
+141111,Mankayan,1411,municipality,False
+141112,Sablan,1411,municipality,False
+141113,Tuba,1411,municipality,False
+141114,Tublay,1411,municipality,False
+142701,Banaue,1427,municipality,False
+142702,Hungduan,1427,municipality,False
+142703,Kiangan,1427,municipality,False
+142704,Lagawe,1427,municipality,False
+142705,Lamut,1427,municipality,False
+142706,Mayoyao,1427,municipality,False
+142707,Alfonso Lista,1427,municipality,False
+142708,Aguinaldo,1427,municipality,False
+142709,Hingyon,1427,municipality,False
+142710,Tinoc,1427,municipality,False
+142711,Asipulo,1427,municipality,False
+143201,Balbalan,1432,municipality,False
+143206,Lubuagan,1432,municipality,False
+143208,Pasil,1432,municipality,False
+143209,Pinukpuk,1432,municipality,False
+143211,Rizal,1432,municipality,False
+143213,City of Tabuk,1432,component city,False
+143214,Tanudan,1432,municipality,False
+143215,Tinglayan,1432,municipality,False
+144401,Barlig,1444,municipality,False
+144402,Bauko,1444,municipality,False
+144403,Besao,1444,municipality,False
+144404,Bontoc,1444,municipality,False
+144405,Natonin,1444,municipality,False
+144406,Paracelis,1444,municipality,False
+144407,Sabangan,1444,municipality,False
+144408,Sadanga,1444,municipality,False
+144409,Sagada,1444,municipality,False
+144410,Tadian,1444,municipality,False
+148101,Calanasan,1481,municipality,False
+148102,Conner,1481,municipality,False
+148103,Flora,1481,municipality,False
+148104,Kabugao,1481,municipality,False
+148105,Luna,1481,municipality,False
+148106,Pudtol,1481,municipality,False
+148107,Santa Marcela,1481,municipality,False
+150702,City of Lamitan,1507,component city,False
+150703,Lantawan,1507,municipality,False
+150704,Maluso,1507,municipality,False
+150705,Sumisip,1507,municipality,False
+150706,Tipo-Tipo,1507,municipality,False
+150707,Tuburan,1507,municipality,False
+150708,Akbar,1507,municipality,False
+150709,Al-Barka,1507,municipality,False
+150710,Hadji Mohammad Ajul,1507,municipality,False
+150711,Ungkaya Pukan,1507,municipality,False
+150712,Hadji Muhtamad,1507,municipality,False
+150713,Tabuan-Lasa,1507,municipality,False
+153601,Bacolod-Kalawi,1536,municipality,False
+153602,Balabagan,1536,municipality,False
+153603,Balindong,1536,municipality,False
+153604,Bayang,1536,municipality,False
+153605,Binidayan,1536,municipality,False
+153606,Bubong,1536,municipality,False
+153607,Butig,1536,municipality,False
+153609,Ganassi,1536,municipality,False
+153610,Kapai,1536,municipality,False
+153611,Lumba-Bayabao,1536,municipality,False
+153612,Lumbatan,1536,municipality,False
+153613,Madalum,1536,municipality,False
+153614,Madamba,1536,municipality,False
+153615,Malabang,1536,municipality,False
+153616,Marantao,1536,municipality,False
+153617,City of Marawi,1536,component city,False
+153618,Masiu,1536,municipality,False
+153619,Mulondo,1536,municipality,False
+153620,Pagayawan,1536,municipality,False
+153621,Piagapo,1536,municipality,False
+153622,Poona Bayabao,1536,municipality,False
+153623,Pualas,1536,municipality,False
+153624,Ditsaan-Ramain,1536,municipality,False
+153625,Saguiaran,1536,municipality,False
+153626,Tamparan,1536,municipality,False
+153627,Taraka,1536,municipality,False
+153628,Tubaran,1536,municipality,False
+153629,Tugaya,1536,municipality,False
+153630,Wao,1536,municipality,False
+153631,Marogong,1536,municipality,False
+153632,Calanogas,1536,municipality,False
+153633,Buadiposo-Buntong,1536,municipality,False
+153634,Maguing,1536,municipality,False
+153635,Picong,1536,municipality,False
+153636,Lumbayanague,1536,municipality,False
+153637,Amai Manabilang,1536,municipality,False
+153638,Tagoloan Ii,1536,municipality,False
+153639,Kapatagan,1536,municipality,False
+153640,Sultan Dumalondong,1536,municipality,False
+153641,Lumbaca-Unayan,1536,municipality,False
+153801,Ampatuan,1538,municipality,False
+153802,Buldon,1538,municipality,False
+153803,Buluan,1538,municipality,False
+153805,Datu Paglas,1538,municipality,False
+153806,Datu Piang,1538,municipality,False
+153807,Datu Odin Sinsuat,1538,municipality,False
+153808,Shariff Aguak,1538,municipality,False
+153809,Matanog,1538,municipality,False
+153810,Pagalungan,1538,municipality,False
+153811,Parang,1538,municipality,False
+153812,Sultan Kudarat,1538,municipality,False
+153813,Sultan Sa Barongis,1538,municipality,False
+153814,Kabuntalan,1538,municipality,False
+153815,Upi,1538,municipality,False
+153816,Talayan,1538,municipality,False
+153817,South Upi,1538,municipality,False
+153818,Barira,1538,municipality,False
+153819,Gen. S.K. Pendatun,1538,municipality,False
+153820,Mamasapano,1538,municipality,False
+153821,Talitay,1538,municipality,False
+153822,Pagagawan,1538,municipality,False
+153823,Paglat,1538,municipality,False
+153824,Sultan Mastura,1538,municipality,False
+153825,Guindulungan,1538,municipality,False
+153826,Datu Saudi Ampatuan,1538,municipality,False
+153827,Datu Unsay,1538,municipality,False
+153828,Datu Abdullah Sangki,1538,municipality,False
+153829,Rajah Buayan,1538,municipality,False
+153830,Datu Blah T. Sinsuat,1538,municipality,False
+153831,Datu Anggal Midtimbang,1538,municipality,False
+153832,Mangudadatu,1538,municipality,False
+153833,Pandag,1538,municipality,False
+153834,Northern Kabuntalan,1538,municipality,False
+153835,Datu Hoffer Ampatuan,1538,municipality,False
+153836,Datu Salibo,1538,municipality,False
+153837,Shariff Saydona Mustapha,1538,municipality,False
+156601,Indanan,1566,municipality,False
+156602,Jolo,1566,municipality,False
+156603,Kalingalan Caluang,1566,municipality,False
+156604,Luuk,1566,municipality,False
+156605,Maimbung,1566,municipality,False
+156606,Hadji Panglima Tahil,1566,municipality,False
+156607,Old Panamao,1566,municipality,False
+156608,Pangutaran,1566,municipality,False
+156609,Parang,1566,municipality,False
+156610,Pata,1566,municipality,False
+156611,Patikul,1566,municipality,False
+156612,Siasi,1566,municipality,False
+156613,Talipao,1566,municipality,False
+156614,Tapul,1566,municipality,False
+156615,Tongkil,1566,municipality,False
+156616,Panglima Estino,1566,municipality,False
+156617,Lugus,1566,municipality,False
+156618,Pandami,1566,municipality,False
+156619,Omar,1566,municipality,False
+157001,Panglima Sugala,1570,municipality,False
+157002,Bongao,1570,municipality,False
+157003,Mapun,1570,municipality,False
+157004,Simunul,1570,municipality,False
+157005,Sitangkai,1570,municipality,False
+157006,South Ubian,1570,municipality,False
+157007,Tandubas,1570,municipality,False
+157008,Turtle Islands,1570,municipality,False
+157009,Languyan,1570,municipality,False
+157010,Sapa-Sapa,1570,municipality,False
+157011,Sibutu,1570,municipality,False
+160201,Buenavista,1602,municipality,False
+160202,City of Butuan,1602,highly urbanized city,True
+160203,City of Cabadbaran,1602,component city,False
+160204,Carmen,1602,municipality,False
+160205,Jabonga,1602,municipality,False
+160206,Kitcharao,1602,municipality,False
+160207,Las Nieves,1602,municipality,False
+160208,Magallanes,1602,municipality,False
+160209,Nasipit,1602,municipality,False
+160210,Santiago,1602,municipality,False
+160211,Tubay,1602,municipality,False
+160212,Remedios T. Romualdez,1602,municipality,False
+160301,City of Bayugan,1603,component city,False
+160302,Bunawan,1603,municipality,False
+160303,Esperanza,1603,municipality,False
+160304,La Paz,1603,municipality,False
+160305,Loreto,1603,municipality,False
+160306,Prosperidad,1603,municipality,False
+160307,Rosario,1603,municipality,False
+160308,San Francisco,1603,municipality,False
+160309,San Luis,1603,municipality,False
+160310,Santa Josefa,1603,municipality,False
+160311,Talacogon,1603,municipality,False
+160312,Trento,1603,municipality,False
+160313,Veruela,1603,municipality,False
+160314,Sibagat,1603,municipality,False
+166701,Alegria,1667,municipality,False
+166702,Bacuag,1667,municipality,False
+166704,Burgos,1667,municipality,False
+166706,Claver,1667,municipality,False
+166707,Dapa,1667,municipality,False
+166708,Del Carmen,1667,municipality,False
+166710,General Luna,1667,municipality,False
+166711,Gigaquit,1667,municipality,False
+166714,Mainit,1667,municipality,False
+166715,Malimono,1667,municipality,False
+166716,Pilar,1667,municipality,False
+166717,Placer,1667,municipality,False
+166718,San Benito,1667,municipality,False
+166719,San Francisco,1667,municipality,False
+166720,San Isidro,1667,municipality,False
+166721,Santa Monica,1667,municipality,False
+166722,Sison,1667,municipality,False
+166723,Socorro,1667,municipality,False
+166724,City of Surigao,1667,component city,False
+166725,Tagana-An,1667,municipality,False
+166727,Tubod,1667,municipality,False
+166801,Barobo,1668,municipality,False
+166802,Bayabas,1668,municipality,False
+166803,City of Bislig,1668,component city,False
+166804,Cagwait,1668,municipality,False
+166805,Cantilan,1668,municipality,False
+166806,Carmen,1668,municipality,False
+166807,Carrascal,1668,municipality,False
+166808,Cortes,1668,municipality,False
+166809,Hinatuan,1668,municipality,False
+166810,Lanuza,1668,municipality,False
+166811,Lianga,1668,municipality,False
+166812,Lingig,1668,municipality,False
+166813,Madrid,1668,municipality,False
+166814,Marihatag,1668,municipality,False
+166815,San Agustin,1668,municipality,False
+166816,San Miguel,1668,municipality,False
+166817,Tagbina,1668,municipality,False
+166818,Tago,1668,municipality,False
+166819,City of Tandag,1668,component city,False
+168501,Basilisa,1685,municipality,False
+168502,Cagdianao,1685,municipality,False
+168503,Dinagat,1685,municipality,False
+168504,Libjo,1685,municipality,False
+168505,Loreto,1685,municipality,False
+168506,San Jose,1685,municipality,False
+168507,Tubajon,1685,municipality,False
+174001,Boac,1740,municipality,False
+174002,Buenavista,1740,municipality,False
+174003,Gasan,1740,municipality,False
+174004,Mogpog,1740,municipality,False
+174005,Santa Cruz,1740,municipality,False
+174006,Torrijos,1740,municipality,False
+175101,Abra De Ilog,1751,municipality,False
+175102,Calintaan,1751,municipality,False
+175103,Looc,1751,municipality,False
+175104,Lubang,1751,municipality,False
+175105,Magsaysay,1751,municipality,False
+175106,Mamburao,1751,municipality,False
+175107,Paluan,1751,municipality,False
+175108,Rizal,1751,municipality,False
+175109,Sablayan,1751,municipality,False
+175110,San Jose,1751,municipality,False
+175111,Santa Cruz,1751,municipality,False
+175201,Baco,1752,municipality,False
+175202,Bansud,1752,municipality,False
+175203,Bongabong,1752,municipality,False
+175204,Bulalacao,1752,municipality,False
+175205,City of Calapan,1752,component city,False
+175206,Gloria,1752,municipality,False
+175207,Mansalay,1752,municipality,False
+175208,Naujan,1752,municipality,False
+175209,Pinamalayan,1752,municipality,False
+175210,Pola,1752,municipality,False
+175211,Puerto Galera,1752,municipality,False
+175212,Roxas,1752,municipality,False
+175213,San Teodoro,1752,municipality,False
+175214,Socorro,1752,municipality,False
+175215,Victoria,1752,municipality,False
+175301,Aborlan,1753,municipality,False
+175302,Agutaya,1753,municipality,False
+175303,Araceli,1753,municipality,False
+175304,Balabac,1753,municipality,False
+175305,Bataraza,1753,municipality,False
+175306,Brooke's Point,1753,municipality,False
+175307,Busuanga,1753,municipality,False
+175308,Cagayancillo,1753,municipality,False
+175309,Coron,1753,municipality,False
+175310,Cuyo,1753,municipality,False
+175311,Dumaran,1753,municipality,False
+175312,El Nido,1753,municipality,False
+175313,Linapacan,1753,municipality,False
+175314,Magsaysay,1753,municipality,False
+175315,Narra,1753,municipality,False
+175316,City of Puerto Princesa,1753,highly urbanized city,True
+175317,Quezon,1753,municipality,False
+175318,Roxas,1753,municipality,False
+175319,San Vicente,1753,municipality,False
+175320,Taytay,1753,municipality,False
+175321,Kalayaan,1753,municipality,False
+175322,Culion,1753,municipality,False
+175323,Dr. Jose P. Rizal,1753,municipality,False
+175324,Sofronio Española,1753,municipality,False
+175901,Alcantara,1759,municipality,False
+175902,Banton,1759,municipality,False
+175903,Cajidiocan,1759,municipality,False
+175904,Calatrava,1759,municipality,False
+175905,Concepcion,1759,municipality,False
+175906,Corcuera,1759,municipality,False
+175907,Looc,1759,municipality,False
+175908,Magdiwang,1759,municipality,False
+175909,Odiongan,1759,municipality,False
+175910,Romblon,1759,municipality,False
+175911,San Agustin,1759,municipality,False
+175912,San Andres,1759,municipality,False
+175913,San Fernando,1759,municipality,False
+175914,San Jose,1759,municipality,False
+175915,Santa Fe,1759,municipality,False
+175916,Ferrol,1759,municipality,False
+175917,Santa Maria,1759,municipality,False
+1999901,Kapalawan,1536,municipality,False
+1999902,Old Kaabakan,1536,municipality,False
+1999903,Kadayangan,1536,municipality,False
+1999904,Nabalawag,1536,municipality,False
+1999905,Pahamuddin,1536,municipality,False
+1999906,Malidegao,1536,municipality,False
+1999907,Ligawasan,1536,municipality,False
+1999908,Tugunan,1536,municipality,False

@@ -193,7 +193,6 @@ export function PaymentEntryPanel({
   taken,
   defaultsFor,
   accountsFor,
-  currencies,
   newAccount,
   onDone,
   onCancel,
@@ -206,8 +205,6 @@ export function PaymentEntryPanel({
   defaultsFor: (code: string) => DefaultRole[];
   /** The partner's accounts for a method and its default account. */
   accountsFor: (code: string) => { accounts: PaymentAccount[]; defaultAccountId: string };
-  /** Currency codes for a bank account (the partner form's active currencies). */
-  currencies: string[];
   /** A blank account for a method, prefilled from the partner. */
   newAccount: (code: string) => PaymentAccount;
   /** `picks.defaultAccount` is the "Default … account" tick. */
@@ -278,7 +275,7 @@ export function PaymentEntryPanel({
       </Section>
       {kind && account && accountFields ? (
         <Section icon={kind.icon} title={capitalize(kind.noun)}>
-          {kind.fields(accountFields, account, errors, currencies)}
+          {kind.fields(accountFields, account, errors)}
           <Flags>{accountFields.check('active', 'Active')}</Flags>
         </Section>
       ) : null}

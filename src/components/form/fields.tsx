@@ -11,6 +11,8 @@ import {
   TextField,
   Textarea,
 } from '@jasperlepardo/sikat-design-system';
+import { MasterLookup, type MasterDef, type MasterRow } from './MasterLookup';
+
 /** Field errors by key: top-level fields by name, row fields as `<row kind>:<id>:<field>`. */
 export type Errors = Record<string, string>;
 
@@ -182,6 +184,33 @@ export function bind<T>(obj: T, update: (patch: Partial<T>) => void) {
           onValueChange={(v) => patch(key, v ?? '')}
         />
       ), e.display);
+    },
+
+    /**
+     * Searchable picker over a master-data list, with "+ Add" when nothing matches. `where`
+     * narrows the rows offered; `seed` presets fields on a row added from here.
+     */
+    master: <R extends MasterRow>(
+      key: KeysOf<T, string>,
+      label: ReactNode,
+      def: MasterDef<R>,
+      o: FieldOptions & { where?: (row: R) => boolean; seed?: Partial<R>; extra?: string[] } = {},
+    ) => {
+      const value = (obj[key] as string | undefined) ?? '';
+      return field(key, label, { ...o, hint: o.hint ?? `From ${def.title} in ${def.home}.` }, (p) => (
+        <MasterLookup<R>
+          def={def}
+          fieldProps={p}
+          value={value}
+          onChange={(v) => patch(key, v)}
+          where={o.where}
+          seed={o.seed}
+          extra={o.extra}
+          placeholder={o.placeholder ?? (o.clearable ? 'None' : 'Search…')}
+          clearable={o.clearable}
+          disabled={o.disabled}
+        />
+      ), value || '—');
     },
 
     date: (key: KeysOf<T, string>, label: ReactNode, o: FieldOptions = {}) =>

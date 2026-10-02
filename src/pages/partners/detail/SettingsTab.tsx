@@ -1,22 +1,24 @@
 import { useEffect, useState } from 'react';
 import { Radio } from '@jasperlepardo/sikat-design-system';
-import {
-  CHANNELS,
-  DUNNING_TERMS,
-  EMPLOYEES,
-  HOLIDAY_CALENDARS,
-  INDUSTRIES,
-  PLANNING_GROUPS,
-  PRIORITIES,
-  PROJECTS,
-  TECHNICIANS,
-  TERRITORIES,
-} from '../../../mocks/masters';
-import { LEAD_SOURCES, LEAD_STAGES, type Partner, type PartnerRole } from '../../../mocks/partners';
+import { PRIORITIES } from '../../../mocks/masters';
+import { LEAD_STAGES, type Partner, type PartnerRole } from '../../../mocks/partners';
 import { ROLE_CONFIG } from '../roles';
 import { listPartners } from '../../../services/partners';
-import { activeOptions, shippingTypes } from '../../../services/inventoryMasters';
-import { useAsync } from '../../../services/useAsync';
+import {
+  channelDef,
+  dunningTermDef,
+  factoringCompanyDef,
+  holidayCalendarDef,
+  industryDef,
+  leadSourceDef,
+  planningGroupDef,
+  projectDef,
+  salesEmployeeDef,
+  shippingTypeDef,
+  technicianDef,
+  territoryDef,
+} from '../../settings/masterDefs';
+import { PaymentDatesField } from './PaymentDatesField';
 import { ControlAccountsSection } from './ControlAccountsSection';
 import { PaymentTermsSection } from './PaymentTermsSection';
 import { PropertiesSection } from './PropertiesSection';
@@ -27,7 +29,6 @@ export function SettingsTab(props: TabProps) {
   const { draft, update } = props;
   const f = bind(draft, update);
   const has = (r: PartnerRole) => draft.roles.includes(r);
-  const shipping = useAsync(shippingTypes.list, []) ?? [];
   const [others, setOthers] = useState<Partner[]>([]);
   useEffect(() => {
     listPartners().then((all) => setOthers(all.filter((p) => p.id !== draft.id)));
@@ -40,9 +41,9 @@ export function SettingsTab(props: TabProps) {
 
       <Section icon="category" title="Classification">
         <Fields>
-          {f.pick('industry', 'Industry', INDUSTRIES)}
+          {f.master('industry', 'Industry', industryDef)}
           {f.text('aliasName', 'Alias name', { placeholder: 'e.g. Acme', hint: 'Short name used in search and lookups.' })}
-          {f.lookup('shippingType', 'Shipping type', activeOptions(shipping, (x) => x.id, (x) => x.name, draft.shippingType), {
+          {f.master('shippingType', 'Shipping type', shippingTypeDef, {
             clearable: true,
             hint: 'Defaults into new documents. Shipping types live in Settings › Inventory.',
           })}
@@ -55,18 +56,18 @@ export function SettingsTab(props: TabProps) {
 
       <Section icon="assignment_ind" title="Assignment">
         <Fields>
-          {f.pick('salesEmployee', has('vendor') && !has('customer') ? 'Buyer' : 'Sales employee', EMPLOYEES, { clearable: true })}
-          {f.pick('territory', 'Territory', TERRITORIES, { clearable: true })}
-          {f.pick('channel', 'Channel', CHANNELS, { clearable: true })}
-          {f.pick('technician', 'Technician', TECHNICIANS, { clearable: true })}
-          {f.pick('project', 'Project', PROJECTS, { clearable: true, hint: 'Default project on documents.' })}
+          {f.master('salesEmployee', has('vendor') && !has('customer') ? 'Buyer' : 'Sales employee', salesEmployeeDef, { clearable: true })}
+          {f.master('territory', 'Territory', territoryDef, { clearable: true })}
+          {f.master('channel', 'Channel', channelDef, { clearable: true })}
+          {f.master('technician', 'Technician', technicianDef, { clearable: true })}
+          {f.master('project', 'Project', projectDef, { clearable: true, hint: 'Default project on documents. Projects live in Settings › Company.' })}
         </Fields>
       </Section>
 
       {has('lead') ? (
         <Section icon={ROLE_CONFIG.lead.icon} title="Lead">
           <Fields>
-            {f.pick('leadSource', 'Source', LEAD_SOURCES)}
+            {f.master('leadSource', 'Source', leadSourceDef)}
             {f.pick('leadStage', 'Stage', LEAD_STAGES)}
           </Fields>
         </Section>
@@ -76,9 +77,10 @@ export function SettingsTab(props: TabProps) {
         <Fields>
           {f.num('creditLimit', 'Credit limit', { prefix: 'PHP', hint: 'Warns or blocks when the open balance exceeds it.' })}
           {f.num('commitmentLimit', 'Commitment limit', { prefix: 'PHP', hint: 'Like credit limit, but includes open orders.' })}
-          {f.pick('dunningTerm', 'Dunning term', DUNNING_TERMS, { clearable: true })}
+          {f.master('dunningTerm', 'Dunning term', dunningTermDef, { clearable: true })}
           {f.pick('priority', 'Priority', PRIORITIES, { clearable: true, hint: 'Order in payment runs.' })}
-          {f.pick('holidays', 'Holidays', HOLIDAY_CALENDARS, { clearable: true, hint: 'Due dates skip these non-business days.' })}
+          {f.master('holidays', 'Holidays', holidayCalendarDef, { clearable: true, hint: 'Due dates skip these non-business days.' })}
+          <PaymentDatesField value={draft.paymentDates} onChange={(paymentDates) => update({ paymentDates })} />
           <ReadOnly
             label="Average delay"
             value={`${draft.averageDelayDays} day${draft.averageDelayDays === 1 ? '' : 's'}`}
@@ -86,6 +88,18 @@ export function SettingsTab(props: TabProps) {
           />
         </Fields>
       </Section>
+
+      {has('customer') ? (
+        <Section icon="handshake" title="Factoring">
+          <Fields>
+            {f.master('factoringCompany', 'Factoring company', factoringCompanyDef, {
+              clearable: true,
+              hint: 'Set when this partner’s receivables are sold to a third party.',
+            })}
+            {f.text('factoringRef', 'Factoring reference', { disabled: !draft.factoringCompany, placeholder: 'e.g. FA-2026-0142' })}
+          </Fields>
+        </Section>
+      ) : null}
 
       <Section icon="local_shipping" title="Delivery & checks">
         <Flags>
@@ -122,14 +136,24 @@ export function SettingsTab(props: TabProps) {
           </div>
         ) : null}
         <Fields cols={1}>
-          <ReadOnly
-            label="Connected vendor / customer"
-            value={
-              has('customer') && has('vendor')
-                ? 'Same record — this partner is both a customer and a vendor, so AR and AP can be netted directly.'
-                : 'Not needed: add the Vendor or Customer role instead of linking a second record.'
-            }
-          />
+          {has('customer') && has('vendor') ? (
+            <ReadOnly
+              label="Connected vendor / customer"
+              value="Same record — this partner is both a customer and a vendor, so AR and AP can be netted directly."
+            />
+          ) : (
+            f.lookup(
+              'connectedPartnerId',
+              has('vendor') ? 'Connected customer' : 'Connected vendor',
+              others
+                .filter((p) => p.id === draft.connectedPartnerId || p.roles.includes(has('vendor') ? 'customer' : 'vendor'))
+                .map((p) => ({ value: p.id, label: `${p.code} · ${p.name}` })),
+              {
+                clearable: true,
+                hint: 'A separate record for the same company in the other role, so AR and AP can be netted. Simpler: add that role to this record instead.',
+              },
+            )
+          )}
         </Fields>
       </Section>
 
@@ -142,7 +166,14 @@ export function SettingsTab(props: TabProps) {
       </Section>
 
       <Section icon="tune" title="Other">
-        <Fields>{f.pick('planningGroup', 'Planning group', PLANNING_GROUPS, { clearable: true })}</Fields>
+        <Fields>
+          {f.master('planningGroup', 'Planning group', planningGroupDef, { clearable: true })}
+          {f.text('portalPassword', 'Portal password', {
+            type: 'password',
+            placeholder: 'Not set',
+            hint: 'For the partner’s customer or vendor portal login.',
+          })}
+        </Fields>
         <Flags>
           {f.check('affiliate', 'Affiliate (related company)')}
           {f.check('useShippedGoodsAccount', 'Use shipped goods account')}
