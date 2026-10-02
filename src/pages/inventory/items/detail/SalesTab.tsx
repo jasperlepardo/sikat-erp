@@ -14,7 +14,7 @@ export function SalesTab({ draft, update, errors, tax, inv }: TabProps) {
         <Fields>
           {f.choose('salesUom', 'Default sales UoM', unitOptions(draft, 'sales'), {
             error: errors.salesUom,
-            hint: 'Pre-fills sales documents. Add units and their conversions under Units of measure in the side column.',
+            hint: 'Pre-fills sales documents. Add units and their conversions on the Units of measure tab.',
           })}
           {f.num('basePrice', `Base price per ${draft.inventoryUom}`, {
             prefix: 'PHP',

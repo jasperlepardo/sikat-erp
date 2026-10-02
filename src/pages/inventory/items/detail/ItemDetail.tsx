@@ -26,7 +26,6 @@ import {
   withInventoryUom,
   type ItemManufacturer,
   type ItemType,
-  type ItemUom,
   type ItemVendor,
   type ItemWarehouse,
 } from '../../../../mocks/items';
@@ -57,7 +56,7 @@ import { PurchasingTab } from './PurchasingTab';
 import { RemarksTab } from './RemarksTab';
 import { SalesTab } from './SalesTab';
 import { TransactionsTab } from './TransactionsTab';
-import { UomGroupPanel, UomPanel, UomsCards, type UomDefaults } from './UomsSection';
+import { UomGroupPanel, UomsTab, uomErrorKey } from './UomsTab';
 import { VendorPanel, VendorsCards } from './VendorsSection';
 import { WarehousePanel, WarehousesCards, binErrorKey } from './WarehousesSection';
 import { uomDef } from '../../../settings/masterDefs';
@@ -67,6 +66,7 @@ const LIST_PATH = '/inventory/items';
 
 const TABS = [
   { value: 'general', label: 'General', Component: GeneralTab },
+  { value: 'uoms', label: 'Units of measure', Component: UomsTab },
   { value: 'purchasing', label: 'Purchasing', Component: PurchasingTab },
   { value: 'sales', label: 'Sales data', Component: SalesTab },
   { value: 'inventory', label: 'Inventory data', Component: InventoryTab },
@@ -97,6 +97,14 @@ function validate(d: Draft, codeMode: 'auto' | 'manual', inv: InventoryMasters):
   need(d.description.trim(), 'header', 'description', 'Description is required.');
   need(d.itemGroup, 'header', 'itemGroup', 'Item group is required.');
   need(d.inventoryUom, 'header', 'inventoryUom', 'Inventory UoM is required.');
+  const seenUoms = new Set<string>();
+  for (const u of d.uoms) {
+    need(u.uom, 'uoms', uomErrorKey(u, 'uom'), 'Pick a unit.');
+    need(!u.uom || !seenUoms.has(u.uom), 'uoms', uomErrorKey(u, 'uom'), `${u.uom} is listed twice.`);
+    seenUoms.add(u.uom);
+    need(u.qty > 0, 'uoms', uomErrorKey(u, 'qty'), 'Enter more than 0.');
+    need(u.price >= 0, 'uoms', uomErrorKey(u, 'price'), 'Price can’t be negative.');
+  }
   // Default units must be among the item's units and allowed on their documents; barcodes too.
   const usable = (use: 'purchase' | 'sales') => itemUnits(d, use).map((u) => u.uom);
   const notUsable = (uom: string, use: 'purchase' | 'sales', doc: string) =>
@@ -173,7 +181,6 @@ function ItemForm() {
   const [problems, setProblems] = useState<Problem<ProblemTab>[]>([]);
   const [editingWarehouse, setEditingWarehouse] = useState<{ value: ItemWarehouse; isNew: boolean } | null>(null);
   const [editingManufacturer, setEditingManufacturer] = useState<{ value: ItemManufacturer; isNew: boolean } | null>(null);
-  const [editingUom, setEditingUom] = useState<{ value: ItemUom; isNew: boolean } | null>(null);
   const [addingFromGroup, setAddingFromGroup] = useState(false);
   // Units saved on the item when it was opened: with transactions, their factors lock.
   const [savedUomIds, setSavedUomIds] = useState<Set<string>>(new Set());
@@ -246,20 +253,6 @@ function ItemForm() {
     });
   };
   const lockedUomIds = locked ? savedUomIds : new Set<string>();
-  // Ticking a default makes this unit the default; unticking the current one falls back to the
-  // inventory unit. A renamed unit takes its barcodes along.
-  const applyUom = (row: ItemUom, added: boolean, defaults: UomDefaults) => {
-    const was = added ? undefined : draft.uoms.find((u) => u.id === row.id)?.uom;
-    const pick = (current: string, isDefault: boolean) =>
-      isDefault ? row.uom : current === was ? draft.inventoryUom : current;
-    update({
-      uoms: added ? [...draft.uoms, row] : draft.uoms.map((u) => (u.id === row.id ? row : u)),
-      purchasingUom: pick(draft.purchasingUom, defaults.purchasing),
-      salesUom: pick(draft.salesUom, defaults.sales),
-      barcodes: was && was !== row.uom ? draft.barcodes.map((b) => (b.uom === was ? { ...b, uom: row.uom } : b)) : draft.barcodes,
-    });
-    setEditingUom(null);
-  };
 
   // Labor and Travel are never stocked or tracked.
   const changeType = (itemType: ItemType) =>
@@ -348,6 +341,7 @@ function ItemForm() {
   const counts: Partial<Record<TabId, number>> = {
     attachments: draft.attachments.length,
     barcodes: draft.barcodes.length,
+    uoms: draft.uoms.length,
   };
   const ActiveTab = TABS.find((t) => t.value === tab)!.Component;
   const at = draft.id ? siblings.indexOf(draft.id) : -1;
@@ -524,14 +518,6 @@ function ItemForm() {
                       })}
                     </FieldStack>
                   </Section>
-                  <UomsCards
-                    draft={draft}
-                    update={update}
-                    inv={inv}
-                    lockedIds={lockedUomIds}
-                    onOpen={(value, added) => setEditingUom({ value, isNew: added })}
-                    onAddFromGroup={() => setAddingFromGroup(true)}
-                  />
                   <WarehousesCards
                     draft={draft}
                     update={update}
@@ -580,6 +566,8 @@ function ItemForm() {
                     vendors={vendors}
                     inv={inv}
                     tax={tax}
+                    lockedUomIds={lockedUomIds}
+                    onAddUomsFromGroup={() => setAddingFromGroup(true)}
                   />
                 </div>
               </div>
@@ -599,17 +587,6 @@ function ItemForm() {
           vendors={vendors}
           onDone={(row) => applyWarehouse(row, editingWarehouse.isNew)}
           onCancel={() => setEditingWarehouse(null)}
-        />
-      ) : editingUom ? (
-        <UomPanel
-          key={editingUom.value.id}
-          value={editingUom.value}
-          isNew={editingUom.isNew}
-          locked={lockedUomIds.has(editingUom.value.id)}
-          draft={draft}
-          inv={inv}
-          onDone={(row, defaults) => applyUom(row, editingUom.isNew, defaults)}
-          onCancel={() => setEditingUom(null)}
         />
       ) : addingFromGroup ? (
         <UomGroupPanel

@@ -10,7 +10,7 @@ export function PurchasingTab({ draft, update, errors, tax, inv }: TabProps) {
         <Fields>
           {f.choose('purchasingUom', 'Default purchasing UoM', unitOptions(draft, 'purchase'), {
             error: errors.purchasingUom,
-            hint: 'Pre-fills purchase orders. Add units, their conversions and sizes under Units of measure in the side column.',
+            hint: 'Pre-fills purchase orders. Add units, their conversions and sizes on the Units of measure tab.',
           })}
         </Fields>
       </Section>

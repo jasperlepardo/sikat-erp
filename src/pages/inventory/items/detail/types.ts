@@ -16,6 +16,10 @@ export interface TabProps {
   tax: TaxMasters;
   /** Inventory master data from Settings › Inventory and Warehouses & Bins. */
   inv: InventoryMasters;
+  /** Units saved on an item with transactions: their unit and qty can't change, and they can't be removed. */
+  lockedUomIds: Set<string>;
+  /** Opens "Add units from a UoM group". */
+  onAddUomsFromGroup: () => void;
 }
 
 export interface TaxMasters {
