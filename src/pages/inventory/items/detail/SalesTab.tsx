@@ -1,3 +1,5 @@
+import { unitPrice } from '../../../../mocks/items';
+import { formatAmount } from '../../../../services/format';
 import { Fields, Section, bind } from '../../../../components/form/fields';
 import { activeOptions } from '../../../../services/inventoryMasters';
 import { shippingTypeDef, warrantyTemplateDef } from '../../../settings/masterDefs';
@@ -14,9 +16,11 @@ export function SalesTab({ draft, update, errors, tax, inv }: TabProps) {
             error: errors.salesUom,
             hint: 'Pre-fills sales documents. Add units and their conversions under Units of measure in the side column.',
           })}
-          {f.num('basePrice', `Base price per ${draft.salesUom}`, {
+          {f.num('basePrice', `Base price per ${draft.inventoryUom}`, {
             prefix: 'PHP',
-            hint: 'Retail SRP, VAT inclusive (default price list). Customer price lists live in Inventory › Pricing.',
+            hint:
+              'Retail SRP, VAT inclusive (default price list). Other units cost their qty × this, unless the unit sets its own price.' +
+              (draft.salesUom !== draft.inventoryUom ? ` Default sales unit: ${formatAmount(unitPrice(draft, draft.salesUom))} per ${draft.salesUom}.` : ''),
           })}
           {f.text('sellingItemNo', 'Selling item no.', { hint: 'Printed on sales documents instead of the Item No.' })}
         </Fields>

@@ -1,6 +1,6 @@
 import type { Errors } from '../../../../components/form/fields';
 import type { Currency, ExchangeRate } from '../../../../mocks/currencies';
-import { itemsPerUom, type Item } from '../../../../mocks/items';
+import { itemsPerUom, unitCost, unitPrice, type Item } from '../../../../mocks/items';
 import type { Partner } from '../../../../mocks/partners';
 import type { Company } from '../../../../mocks/companies';
 import { PURCHASING_SETTINGS, newPoLine, type PoLine } from '../../../../mocks/purchaseOrders';
@@ -81,12 +81,12 @@ export function defaultShipTo(lines: PoLine[], m: PoMasters) {
 }
 
 /**
- * Unit price per purchasing unit in PHP from a price list. Price lists aren't
- * built yet: "Last purchase price" is the item cost; the others use the item's
- * base price.
+ * Price in PHP of one `uom` of the item from a price list. Price lists aren't built yet:
+ * "Last purchase price" is the item cost; the others use the item's selling price for that
+ * unit (its own price, or qty × base price).
  */
-export const listPrice = (item: Item, priceList: string) =>
-  (priceList === 'Last purchase price' ? item.itemCost : item.basePrice) * (itemsPerUom(item, item.purchasingUom) ?? 1);
+export const listPrice = (item: Item, priceList: string, uom = item.purchasingUom) =>
+  priceList === 'Last purchase price' ? unitCost(item, uom) : unitPrice(item, uom);
 
 /** Proposed tax code for an item bought from the vendor (Settings › Accounting & Tax rules). */
 export const proposedTaxCode = (item: Item, vendor: Partner | undefined, m: PoMasters, date: string) =>

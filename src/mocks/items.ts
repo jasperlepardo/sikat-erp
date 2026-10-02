@@ -52,6 +52,8 @@ export interface ItemUom {
   purchase: boolean;
   /** Can be picked on sales documents. */
   sales: boolean;
+  /** Selling price for one of this unit (VAT inclusive), overriding qty × base price; 0 to derive it. */
+  price: number;
   /** Dimensions and weights of one of this unit, in the company's length / weight units. */
   length: number;
   width: number;
@@ -139,7 +141,7 @@ export interface Item {
   shippingType: string;
   /** Warranty template id, '' for none. */
   warrantyTemplate: string;
-  /** Base selling price per sales unit (the default price list). */
+  /** Base selling price per inventory unit (VAT inclusive); other units derive from it unless they set their own. */
   basePrice: number;
 
   // Inventory
@@ -201,6 +203,7 @@ export const newItemUom = (uom = '', patch: Partial<ItemUom> = {}): ItemUom => (
   qty: 1,
   purchase: true,
   sales: true,
+  price: 0,
   length: 0,
   width: 0,
   height: 0,
@@ -219,6 +222,16 @@ export const itemsPerUom = (item: ItemUoms, uom: string): number | undefined =>
 /** The item's units usable on purchase or sales documents, inventory UoM first. */
 export const itemUnits = (item: ItemUoms, use?: 'purchase' | 'sales') =>
   item.uoms.filter((u) => !use || u[use] || u.uom === item.inventoryUom);
+
+/** Selling price of one `uom` (VAT inclusive): the unit's own price, else qty × base price. */
+export function unitPrice(item: ItemUoms & Pick<Item, 'basePrice'>, uom: string): number {
+  const u = item.uoms.find((x) => x.uom === uom);
+  return u?.price || Math.round(item.basePrice * (itemsPerUom(item, uom) ?? 1) * 100) / 100;
+}
+
+/** Cost of one `uom`: item cost (per inventory unit) × qty. */
+export const unitCost = (item: ItemUoms & Pick<Item, 'itemCost'>, uom: string) =>
+  Math.round(item.itemCost * (itemsPerUom(item, uom) ?? 1) * 100) / 100;
 
 /** "1 box = 24 pc", for hints and cards. */
 export const uomSummary = (item: ItemUoms, uom: string) => {
@@ -343,6 +356,9 @@ function seed(
   const own = { inventoryUom: uom, uoms: [newItemUom(uom, { id: `${id}-u0`, ...seedWeight(weightKg) })] };
   const g = SEED_UOM_GROUPS.find((x) => x.code === uomGroup);
   const uoms = g ? [...own.uoms, ...unitsFromGroup(own, g).map((u, n) => ({ ...u, id: `${id}-u${n + 1}` }))] : own.uoms;
+  // Demo of a unit's own price: a sealed box sells at 10% off its pieces.
+  const box = uoms.find((u) => u.uom === 'box');
+  if (box && rest.basePrice) box.price = Math.round(rest.basePrice * box.qty * 0.9);
   return {
     ...base,
     id,

@@ -3,7 +3,8 @@ import { Button, Checkbox, FormField, Icon, Link, List, Select, Text } from '@ja
 import { Fields, Flags, Section, bind, type Errors } from '../../../../components/form/fields';
 import { RowMenu } from '../../../../components/form/RowMenu';
 import { conversionSummary, groupUoms, volumeUnit } from '../../../../mocks/itemMasters';
-import { newItemUom, unitsFromGroup, uomSummary, type ItemUom } from '../../../../mocks/items';
+import { newItemUom, unitPrice, unitsFromGroup, uomSummary, type ItemUom } from '../../../../mocks/items';
+import { formatAmount } from '../../../../services/format';
 import type { InventoryMasters } from '../../../../services/inventoryMasters';
 import { EditPanel } from '../../../partners/detail/EditPanel';
 import { uomDef } from '../../../settings/masterDefs';
@@ -14,6 +15,14 @@ export interface UomDefaults {
   purchasing: boolean;
   sales: boolean;
 }
+
+/** "PHP 30,000 / box (1,250 per pc)" when the unit has its own price, else the derived price. */
+const priceText = (draft: Draft, u: ItemUom) => {
+  if (!draft.basePrice && !u.price) return '';
+  const price = unitPrice(draft, u.uom);
+  const own = u.price && u.uom !== draft.inventoryUom ? ` (own price, ${formatAmount(price / (u.qty || 1))} per ${draft.inventoryUom})` : '';
+  return `PHP ${formatAmount(price)} / ${u.uom}${own}`;
+};
 
 const dims = (u: ItemUom, inv: InventoryMasters) => {
   const { lengthUnit, weightUnit } = inv.settings;
@@ -86,6 +95,7 @@ export function UomsCards({
               badge={base ? <Icon size={12}>star</Icon> : undefined}
               fields={[
                 { label: 'Conversion', value: uomSummary(draft, r.uom) },
+                { label: 'Price', value: draft.salesItem && r.sales ? priceText(draft, r) : '' },
                 { label: 'Used for', value: use.length ? use.join(' · ') : 'Not on purchase or sales documents' },
                 { label: 'Size', value: dims(r, inv) },
                 { label: 'Barcodes', value: n ? `${n} barcode${n === 1 ? '' : 's'}` : '' },
@@ -147,6 +157,7 @@ export function UomPanel({
     if (!row.uom) e.uom = 'Pick a unit.';
     else if (draft.uoms.some((u) => u.id !== row.id && u.uom === row.uom)) e.uom = `${row.uom} is already a unit of this item.`;
     if (!(row.qty > 0)) e.qty = 'Enter more than 0.';
+    if (row.price < 0) e.price = 'Price can’t be negative.';
     if (defaults.purchasing && !row.purchase) e.purchase = 'The default purchasing unit must be usable on purchase documents.';
     if (defaults.sales && !row.sales) e.sales = 'The default sales unit must be usable on sales documents.';
     setErrors(e);
@@ -173,6 +184,25 @@ export function UomPanel({
                 ? 'Locked: a different factor would misstate stock and cost already posted.'
                 : `Buying 5 ${row.uom || 'units'} adds ${5 * (row.qty || 0)} ${draft.inventoryUom} to stock.`,
           })}
+        </Fields>
+      </Section>
+
+      <Section icon="sell" title="Price">
+        <Fields>
+          {base ? (
+            <Text variant="small" tone="muted">
+              The inventory unit sells at the base price on the Sales data tab (PHP {formatAmount(draft.basePrice)}).
+            </Text>
+          ) : (
+            f.num('price', `Price per ${row.uom || 'unit'}`, {
+              prefix: 'PHP',
+              error: errors.price,
+              placeholder: formatAmount(Math.round(draft.basePrice * (row.qty || 0) * 100) / 100),
+              hint: row.price
+                ? `Own price: ${formatAmount(row.price / (row.qty || 1))} per ${draft.inventoryUom}, vs. ${formatAmount(draft.basePrice)} base. Clear it to use ${row.qty} × base price.`
+                : `Leave at 0 to use ${row.qty || 0} × the base price (PHP ${formatAmount(draft.basePrice)}). Set it for a pack or case price.`,
+            })
+          )}
         </Fields>
       </Section>
 

@@ -51,7 +51,7 @@ export function ContentsTab({ draft, update, errors, m, ctx }: PoTabProps) {
   const lines = draft.lines;
   const itemOf = (l: PoLine) => m.items.find((i) => i.id === l.itemId);
   const patch = (id: string, p: Partial<PoLine>) => update({ lines: lines.map((l) => (l.id === id ? { ...l, ...p } : l)) });
-  /** Switch the line to another of the item's units: factor from the item, price rescaled to the new unit. */
+  /** Switch the line to another of the item's units: factor and price for that unit from the item. */
   const changeUom = (l: PoLine, uomCode: string) => {
     const item = itemOf(l);
     const itemsPerUnit = item ? itemsPerUom(item, uomCode) : undefined;
@@ -60,7 +60,7 @@ export function ContentsTab({ draft, update, errors, m, ctx }: PoTabProps) {
       uomCode,
       uomName: m.inv.uoms.find((u) => u.code === uomCode)?.name ?? uomCode,
       itemsPerUnit,
-      unitPrice: round2((l.unitPrice / (l.itemsPerUnit || 1)) * itemsPerUnit),
+      unitPrice: item && ctx.fx ? round2(listPrice(item, l.priceList, uomCode) / ctx.fx) : round2((l.unitPrice / (l.itemsPerUnit || 1)) * itemsPerUnit),
     });
   };
   const lc = (n: number) => formatAmount(n * ctx.fx);
@@ -91,7 +91,7 @@ export function ContentsTab({ draft, update, errors, m, ctx }: PoTabProps) {
   };
   const changePriceList = (l: PoLine, priceList: string) => {
     const item = itemOf(l);
-    patch(l.id, { priceList, ...(item && ctx.fx ? { unitPrice: round2(listPrice(item, priceList) / ctx.fx) } : {}) });
+    patch(l.id, { priceList, ...(item && ctx.fx ? { unitPrice: round2(listPrice(item, priceList, l.uomCode) / ctx.fx) } : {}) });
   };
 
   const col = (key: string, header: string, cell: (l: PoLine) => React.ReactNode, group?: Group): TableColumn<PoLine> & { group?: Group } => ({

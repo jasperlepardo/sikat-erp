@@ -19,6 +19,7 @@ import {
   type TableSort,
 } from '@jasperlepardo/sikat-design-system';
 import { DEFAULT_PAGE_SIZE, PAGE_SIZES } from '../../../components/form/DataTable';
+import { Stat } from '../../../components/Stat';
 import { formatAmount } from '../../../services/format';
 import { useAsync } from '../../../services/useAsync';
 import { EditPanel } from './EditPanel';
@@ -235,23 +236,6 @@ export function TransactionsTab({ draft }: { draft: Draft }) {
         />
       ) : null}
     </div>
-  );
-}
-
-/** A labelled figure in a card (a stand-in until the design system has a Stat tile). */
-function Stat({ icon, label, value, sub }: { icon: string; label: string; value: string; sub: string }) {
-  return (
-    <Card>
-      <Card.Header icon={<Icon size={24}>{icon}</Icon>}>{label}</Card.Header>
-      <Card.Content>
-        <Text variant="h3" as="p">
-          {value}
-        </Text>
-        <Text variant="small" tone="muted">
-          {sub}
-        </Text>
-      </Card.Content>
-    </Card>
   );
 }
 

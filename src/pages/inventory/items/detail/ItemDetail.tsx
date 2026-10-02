@@ -56,6 +56,7 @@ import { PropertiesTab } from './PropertiesTab';
 import { PurchasingTab } from './PurchasingTab';
 import { RemarksTab } from './RemarksTab';
 import { SalesTab } from './SalesTab';
+import { TransactionsTab } from './TransactionsTab';
 import { UomGroupPanel, UomPanel, UomsCards, type UomDefaults } from './UomsSection';
 import { VendorPanel, VendorsCards } from './VendorsSection';
 import { WarehousePanel, WarehousesCards, binErrorKey } from './WarehousesSection';
@@ -78,7 +79,7 @@ const TABS = [
 ] as const;
 type TabId = (typeof TABS)[number]['value'];
 
-/** Top-level views in the panel header. Transactions and Activity are placeholders for now. */
+/** Top-level views in the panel header. Activity is a placeholder for now. */
 const PAGES = [
   { value: 'details', label: 'Details' },
   { value: 'transactions', label: 'Transactions' },
@@ -423,9 +424,11 @@ function ItemForm() {
           />
           {page !== 'details' ? (
             <Panel.Body>
-              <Text variant="small" tone="muted" className="p-4">
-                {page === 'transactions' ? 'Documents posted for this item will show here.' : 'Activity will show here.'}
-              </Text>
+              {page === 'transactions' ? (
+                <TransactionsTab draft={draft} />
+              ) : (
+                <Text variant="small" tone="muted" className="p-4">Activity will show here.</Text>
+              )}
             </Panel.Body>
           ) : (
             /* Side by side (lg), each column scrolls on its own; stacked, the body scrolls as one. */
