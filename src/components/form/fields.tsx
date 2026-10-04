@@ -7,6 +7,7 @@ import {
   Form,
   FormField,
   Icon,
+  ReadOnly as DSReadOnly,
   Select,
   TextField,
   Textarea,
@@ -276,12 +277,8 @@ export function Flags({ children }: { children: ReactNode }) {
 /** A read-only value shown like a field (system-calculated values). Use inside `Fields`. */
 export function ReadOnly({ label, value, hint, error }: { label: string; value: ReactNode; hint?: ReactNode; error?: string }) {
   return (
-    <FormField
-      label={<span className="inline-flex items-center gap-1">{label}<Icon size={12}>lock</Icon></span>}
-      tooltip={hint}
-      error={error}
-    >
-      <p className="px-2 py-2 text-sm text-body">{value}</p>
+    <FormField label={label} disabled tooltip={hint} error={error}>
+      <DSReadOnly value={value} />
     </FormField>
   );
 }
