@@ -181,7 +181,7 @@ export const paymentTermDef: MasterDef<PaymentTerm> = {
   validate: (t, all) => {
     const e: Errors = {};
     uniqueRequired(e, t, all, 'name', 'Name');
-    if (t.days < 0) e.days = 'Days can’t be negative.';
+    if (t.days < 0) e.days = 'Days can't be negative.';
     return e;
   },
   editor: (t, update, errors, isNew) => {
@@ -314,7 +314,7 @@ export const companyDef: MasterDef<Company> = {
   title: 'Companies',
   noun: 'company',
   home: COMPANY,
-  description: 'Our own companies, switched in the top bar. Documents use the current company’s address as ours, e.g. a service-only purchase order’s Ship To.',
+  description: 'Our own companies, switched in the top bar. Documents use the current company's address as ours, e.g. a service-only purchase order's Ship To.',
   blank: (name) => ({ id: newId('co'), name, address: blankPostalAddress(), active: true }),
   value: (c) => c.id,
   label: (c) => c.name,
@@ -347,7 +347,7 @@ export const companyDef: MasterDef<Company> = {
 
 export const countryDef = namedDef({
   collection: lists.countries, idPrefix: 'cty', icon: 'public', title: 'Countries', noun: 'country', home: COMPANY,
-  description: 'Countries on addresses, banks and items’ country of origin.',
+  description: 'Countries on addresses, banks and items' country of origin.',
 });
 
 // ── Lists owned by other settings pages ──────────────────────────────────────
@@ -387,7 +387,7 @@ export const currencyDef: MasterDef<Currency> = {
 // ── Inventory ────────────────────────────────────────────────────────────────
 
 const INVENTORY = 'Settings › Inventory';
-const CODE_LOCK = "Can’t change once saved — items refer to it. Deactivate instead.";
+const CODE_LOCK = "Can't change once saved — items refer to it. Deactivate instead.";
 
 export const uomDef: MasterDef<UnitOfMeasure> = {
   collection: unitsOfMeasure,
@@ -505,7 +505,7 @@ export const warrantyTemplateDef: MasterDef<WarrantyTemplate> = {
   title: 'Warranty templates',
   noun: 'warranty template',
   home: INVENTORY,
-  description: 'Warranty terms assigned to serial-numbered items when they’re sold.',
+  description: 'Warranty terms assigned to serial-numbered items when they're sold.',
   blank: (name) => ({ id: newId('wr'), name, months: 12, coverage: 'Parts', active: true }),
   value: (w) => w.id,
   label: (w) => `${w.name} · ${w.coverage}`,

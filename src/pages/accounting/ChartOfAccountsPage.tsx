@@ -191,7 +191,7 @@ export function ChartOfAccountsPage() {
         if (a.reconcile && !a.cash) e.reconcile = 'Only cash accounts are reconciled against bank statements.';
         const used = usedBy(a.code);
         if (usageCount(used) && !a.active) e.active = `Still used by ${describeUsage(used)} — move them to another account before deactivating.`;
-        if (usageCount(used) && a.title) e.title = `Used by ${describeUsage(used)} — a title account can’t take postings.`;
+        if (usageCount(used) && a.title) e.title = `Used by ${describeUsage(used)} — a title account can't take postings.`;
         return e;
       }}
       onSave={(a) => save({ ...a, code: a.code.trim(), name: a.name.trim() })}
@@ -234,11 +234,11 @@ export function ChartOfAccountsPage() {
         return (
           <>
             <Fields cols={3}>
-              {f.text(‘code’, ‘Code’, {
+              {f.text(‘code', ‘Code', {
                 required: true,
                 error: errors.code,
                 disabled: !isNew,
-                hint: isNew ? ‘Number it inside its title\’s range, e.g. 6330 under 6195.’ : "Can’t change once saved — documents refer to it.",
+                hint: isNew ? ‘Number it inside its title\'s range, e.g. 6330 under 6195.' : "Can't change once saved — documents refer to it.",
               })}
               {f.text('name', 'Name', { required: true, error: errors.name, className: 'md:col-span-2' })}
               {isDrawerTop ? (
