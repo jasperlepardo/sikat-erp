@@ -103,16 +103,16 @@ function validate(d: Draft, codeMode: 'auto' | 'manual', inv: InventoryMasters):
     need(!u.uom || !seenUoms.has(u.uom), 'uoms', uomErrorKey(u, 'uom'), `${u.uom} is listed twice.`);
     seenUoms.add(u.uom);
     need(u.qty > 0, 'uoms', uomErrorKey(u, 'qty'), 'Enter more than 0.');
-    need(u.price >= 0, 'uoms', uomErrorKey(u, 'price'), 'Price can’t be negative.');
+    need(u.price >= 0, 'uoms', uomErrorKey(u, 'price'), 'Price can't be negative.');
   }
   // Default units must be among the item's units and allowed on their documents; barcodes too.
   const usable = (use: 'purchase' | 'sales') => itemUnits(d, use).map((u) => u.uom);
   const notUsable = (uom: string, use: 'purchase' | 'sales', doc: string) =>
-    `${uom} isn’t one of the item’s units for ${doc} — pick one of ${usable(use).join(', ') || 'its units'}, or tick it on the unit.`;
+    `${uom} isn't one of the item's units for ${doc} — pick one of ${usable(use).join(', ') || 'its units'}, or tick it on the unit.`;
   need(!d.purchaseItem || usable('purchase').includes(d.purchasingUom), 'purchasing', 'purchasingUom', notUsable(d.purchasingUom, 'purchase', 'purchasing'));
   need(!d.salesItem || usable('sales').includes(d.salesUom), 'sales', 'salesUom', notUsable(d.salesUom, 'sales', 'sales'));
   for (const b of d.barcodes) {
-    need(!b.uom || d.uoms.some((u) => u.uom === b.uom), 'barcodes', `barcode:${b.id}:uom`, `${b.uom} isn’t one of the item’s units.`);
+    need(!b.uom || d.uoms.some((u) => u.uom === b.uom), 'barcodes', `barcode:${b.id}:uom`, `${b.uom} isn't one of the item's units.`);
   }
 
   need(d.purchaseItem || d.salesItem || d.inventoryItem, 'general', 'usage', 'Tick at least one of purchase, sales or inventory item.');

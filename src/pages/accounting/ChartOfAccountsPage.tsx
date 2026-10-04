@@ -234,11 +234,11 @@ export function ChartOfAccountsPage() {
         return (
           <>
             <Fields cols={3}>
-              {f.text(‘code', ‘Code', {
+              {f.text('code', 'Code', {
                 required: true,
                 error: errors.code,
                 disabled: !isNew,
-                hint: isNew ? ‘Number it inside its title\'s range, e.g. 6330 under 6195.' : "Can't change once saved — documents refer to it.",
+                hint: isNew ? 'Number it inside its title\'s range, e.g. 6330 under 6195.' : "Can't change once saved — documents refer to it.",
               })}
               {f.text('name', 'Name', { required: true, error: errors.name, className: 'md:col-span-2' })}
               {isDrawerTop ? (
