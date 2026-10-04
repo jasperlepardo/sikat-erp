@@ -103,7 +103,7 @@ function validate(d: Draft, codeMode: 'auto' | 'manual', inv: InventoryMasters):
     need(!u.uom || !seenUoms.has(u.uom), 'uoms', uomErrorKey(u, 'uom'), `${u.uom} is listed twice.`);
     seenUoms.add(u.uom);
     need(u.qty > 0, 'uoms', uomErrorKey(u, 'qty'), 'Enter more than 0.');
-    need(u.price >= 0, 'uoms', uomErrorKey(u, 'price'), 'Price can't be negative.');
+    need(u.price >= 0, 'uoms', uomErrorKey(u, 'price'), "Price can't be negative.");
   }
   // Default units must be among the item's units and allowed on their documents; barcodes too.
   const usable = (use: 'purchase' | 'sales') => itemUnits(d, use).map((u) => u.uom);
