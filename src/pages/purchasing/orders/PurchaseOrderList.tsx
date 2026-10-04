@@ -153,7 +153,7 @@ export function PurchaseOrderList() {
             setPage(1);
           }}
         />
-        <Card className="table-fill">
+        <Card className="flex-initial min-h-72">
           {orders ? (
             <Table
               caption="Purchase orders"
@@ -162,6 +162,7 @@ export function PurchaseOrderList() {
               getRowId={(po) => po.id}
               sort={sort}
               onSortChange={setSort}
+              layout="fill"
               onRowAction={open}
               pagination={{
                 page,

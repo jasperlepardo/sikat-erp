@@ -211,7 +211,7 @@ export function PartnerList({ scope }: { scope: PartnerScope }) {
             setPage(1);
           }}
         />
-        <Card className="table-fill">
+        <Card className="flex-initial min-h-72">
           {partners ? (
             <Table
               caption={config.title}
@@ -220,6 +220,7 @@ export function PartnerList({ scope }: { scope: PartnerScope }) {
               getRowId={(p) => p.id}
               sort={sort}
               onSortChange={setSort}
+              layout="fill"
               onRowAction={open}
               pagination={{
                 page,

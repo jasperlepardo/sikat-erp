@@ -150,7 +150,7 @@ export function TransactionsTab({ draft }: { draft: Draft }) {
               setPage(1);
             }}
           />
-          <Card className="table-scroll">
+          <Card>
             {rows.length ? (
               <Table
                 caption="Transactions"
@@ -159,6 +159,7 @@ export function TransactionsTab({ draft }: { draft: Draft }) {
                 getRowId={(d) => d.id}
                 sort={sort}
                 onSortChange={setSort}
+                layout="scroll"
                 onRowAction={(d) => navigate(d.href)}
                 pagination={{
                   page,

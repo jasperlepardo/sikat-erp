@@ -114,7 +114,7 @@ export function DataTable<T>({
         </div>
       </div>
       {rows.length ? (
-        <Card className="table-scroll">
+        <Card>
           <Table
             caption={title}
             columns={columns.map((c) => ({ sortable: !unsortable.includes(c.key), ...c }))}
@@ -122,6 +122,7 @@ export function DataTable<T>({
             getRowId={getRowId}
             sort={sort}
             onSortChange={setSort}
+            layout="scroll"
             {...(onRowAction ? { onRowAction } : {})}
             {...(onColumnSettings ? { onColumnSettings } : {})}
             {...(onRemove ? { selectable: true, selectedIds: liveSelection, onSelectionChange: setSelected } : {})}

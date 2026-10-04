@@ -192,7 +192,7 @@ export function ItemList({ basePath = '/inventory/items' }: { basePath?: string 
             setPage(1);
           }}
         />
-        <Card className="table-fill">
+        <Card className="flex-initial min-h-72">
           {items ? (
             <Table
               caption="Items"
@@ -201,6 +201,7 @@ export function ItemList({ basePath = '/inventory/items' }: { basePath?: string 
               getRowId={(i) => i.id}
               sort={sort}
               onSortChange={setSort}
+              layout="fill"
               onRowAction={open}
               pagination={{
                 page,

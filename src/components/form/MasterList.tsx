@@ -212,7 +212,7 @@ function ListView<T extends { id: string }>({
           setPage(1);
         }}
       />
-      <Card className="table-fill">
+      <Card className="flex-initial min-h-72">
         {rows ? (
           <Table
             caption={title}
@@ -221,6 +221,7 @@ function ListView<T extends { id: string }>({
             getRowId={(r) => r.id}
             sort={sort}
             onSortChange={setSort}
+            layout="fill"
             onRowAction={(r) => open(r)}
             {...(onSetActive ? { selectable: true, selectedIds: selected, onSelectionChange: setSelected } : {})}
             pagination={{
