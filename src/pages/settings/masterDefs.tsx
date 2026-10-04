@@ -347,7 +347,7 @@ export const companyDef: MasterDef<Company> = {
 
 export const countryDef = namedDef({
   collection: lists.countries, idPrefix: 'cty', icon: 'public', title: 'Countries', noun: 'country', home: COMPANY,
-  description: 'Countries on addresses, banks and items' country of origin.',
+  description: "Countries on addresses, banks and items' country of origin.",
 });
 
 // ── Lists owned by other settings pages ──────────────────────────────────────
