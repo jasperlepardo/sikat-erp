@@ -69,8 +69,8 @@ export function WarehousesPage() {
                 required: true,
                 error: errors.code,
                 placeholder: 'e.g. WH-CDO',
-                readOnly: !isNew,
-                hint: isNew ? undefined : 'Can’t change once saved — items refer to it. Deactivate instead.',
+                disabled: !isNew,
+                hint: !isNew ? "Can’t change once saved — items refer to it. Deactivate instead." : undefined,
               })}
               {f.text('name', 'Name', { required: true, error: errors.name })}
             </Fields>

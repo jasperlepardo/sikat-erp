@@ -110,7 +110,7 @@ export function ItemGroupsTab(route: ListRoute) {
         return (
           <>
             <Fields cols={3}>
-              {f.text('name', 'Name', { required: true, error: errors.name, readOnly: !isNew, hint: isNew ? undefined : 'Can’t change once saved — items refer to it. Deactivate instead.' })}
+              {f.text(‘name’, ‘Name’, { required: true, error: errors.name, disabled: !isNew, hint: !isNew ? "Can’t change once saved — items refer to it. Deactivate instead." : undefined })}
               {f.text('prefix', 'Item No. prefix', { required: true, error: errors.prefix, hint: 'Auto-numbered items become PREFIX-00001.' })}
               {f.pick('valuationMethod', 'Default valuation method', VALUATION_METHODS)}
               <AccountField
@@ -274,8 +274,8 @@ export function UomGroupsTab(route: ListRoute) {
                 required: true,
                 error: errors.code,
                 placeholder: 'e.g. PIECE',
-                readOnly: !isNew,
-                hint: isNew ? 'Up to 20 characters.' : 'Can’t change once saved. Deactivate instead.',
+                disabled: !isNew,
+                hint: !isNew ? "Can’t change once saved. Deactivate instead." : ‘Up to 20 characters.’,
               })}
               {f.text('name', 'Description', { required: true, error: errors.name, placeholder: 'e.g. Piece (each / box / carton)' })}
               {f.master('baseUom', 'Base UoM', uomDef, {

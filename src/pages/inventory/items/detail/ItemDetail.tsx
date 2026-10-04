@@ -456,20 +456,30 @@ function ItemForm() {
                         orientation="responsive"
                         label="Item No."
                         required
+                        disabled={locked}
                         error={errors.itemNo}
-                        tooltip={isNew ? 'Prefix by group, e.g. IPH- iPhone, ACC- accessories.' : locked ? LOCKED_HINT : undefined}
+                        tooltip={!locked ? 'Prefix by group, e.g. IPH- iPhone, ACC- accessories.' : undefined}
+                        hint={locked ? LOCKED_HINT : undefined}
                       >
                         {(p) => (
                           <TextField
                             {...p}
                             value={isNew && codeMode === 'auto' ? '' : draft.itemNo}
                             placeholder={isNew && codeMode === 'auto' ? 'Assigned on save' : 'e.g. IPH-18P-256-BLK'}
-                            readOnly={(isNew && codeMode === 'auto') || locked}
+                            readOnly={isNew && codeMode === 'auto'}
+                            disabled={locked}
                             onChange={(e) => update({ itemNo: e.currentTarget.value })}
                           />
                         )}
                       </FormField>
-                      <FormField orientation="responsive" label="Item type" required tooltip={locked ? LOCKED_HINT : 'Labor and Travel are never stocked.'}>
+                      <FormField
+                        orientation="responsive"
+                        label="Item type"
+                        required
+                        disabled={locked}
+                        hint={locked ? LOCKED_HINT : undefined}
+                        tooltip={!locked ? 'Labor and Travel are never stocked.' : undefined}
+                      >
                         {(p) => (
                           <Select
                             {...p}

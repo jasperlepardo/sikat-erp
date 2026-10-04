@@ -234,11 +234,11 @@ export function ChartOfAccountsPage() {
         return (
           <>
             <Fields cols={3}>
-              {f.text('code', 'Code', {
+              {f.text(‘code’, ‘Code’, {
                 required: true,
                 error: errors.code,
-                readOnly: !isNew,
-                hint: isNew ? 'Number it inside its title’s range, e.g. 6330 under 6195.' : 'Can’t change once saved — documents refer to it.',
+                disabled: !isNew,
+                hint: isNew ? ‘Number it inside its title\’s range, e.g. 6330 under 6195.’ : "Can’t change once saved — documents refer to it.",
               })}
               {f.text('name', 'Name', { required: true, error: errors.name, className: 'md:col-span-2' })}
               {isDrawerTop ? (
@@ -246,7 +246,7 @@ export function ChartOfAccountsPage() {
               ) : (
                 f.pick('drawer', 'Drawer', DRAWERS, {
                   disabled: !isNew,
-                  hint: `${statementOf(a.drawer)}.`,
+                  hint: !isNew ? "Can't change once saved — affects financial statement mapping." : `${statementOf(a.drawer)}.`,
                 })
               )}
               {isDrawerTop

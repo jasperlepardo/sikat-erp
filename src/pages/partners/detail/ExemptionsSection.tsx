@@ -73,7 +73,7 @@ function ExemptionForm({
       <Section icon="verified" title="Exemption details">
         <Fields>
           {types.length > 1
-            ? f.choose('type', 'Exemption type', types.map((t) => ({ value: t, label: t })), { disabled: locked })
+            ? f.choose('type', 'Exemption type', types.map((t) => ({ value: t, label: t })), { disabled: locked, hint: locked ? 'Fixed for cooperative partners.' : undefined })
             : null}
           {f.text('certificateRef', 'Certificate / registration no.', {
             placeholder: local.type === 'Zero-rated' ? 'e.g. PEZA-REE-2024-0183' : 'e.g. BIR ruling no.',
@@ -82,7 +82,7 @@ function ExemptionForm({
             ? f.pick('basis', 'Legal basis', bases, {
                 clearable: true,
                 placeholder: 'Select a legal basis',
-                hint: 'Legal ground for the VAT exemption.',
+                hint: locked ? 'Fixed for cooperative partners.' : 'Legal ground for the VAT exemption.',
                 disabled: locked,
               })
             : null}

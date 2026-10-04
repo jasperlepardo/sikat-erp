@@ -34,7 +34,7 @@ const SALES = 'Settings › Sales & CRM';
 const BANKING = 'Settings › Banking';
 const COMPANY = 'Settings › Company';
 
-const lockHint = (isNew: boolean) => (isNew ? undefined : 'Partners store this name, so renaming leaves them on the old one. Deactivate and add a new entry instead.');
+const NAME_LOCK = 'Partners store this name, so renaming leaves them on the old one. Deactivate and add a new entry instead.';
 
 /** A list whose entries are just a name. */
 function namedDef(o: {
@@ -73,7 +73,7 @@ function namedDef(o: {
       return (
         <>
           <Fields>
-            {f.text('name', 'Name', { required: true, error: errors.name, placeholder: o.placeholder, readOnly: !isNew, hint: lockHint(isNew) })}
+            {f.text('name', 'Name', { required: true, error: errors.name, placeholder: o.placeholder, disabled: !isNew, hint: !isNew ? NAME_LOCK : undefined })}
           </Fields>
           <Flags>{f.check('active', 'Active')}</Flags>
         </>
@@ -111,7 +111,7 @@ export const bpGroupDef: MasterDef<BpGroup> = {
     return (
       <>
         <Fields>
-          {f.text('name', 'Name', { required: true, error: errors.name, placeholder: 'e.g. Customers – Export', readOnly: !isNew, hint: lockHint(isNew) })}
+          {f.text('name', 'Name', { required: true, error: errors.name, placeholder: 'e.g. Customers – Export', disabled: !isNew, hint: !isNew ? NAME_LOCK : undefined })}
           {f.choose('role', 'For', ROLE_ORDER.map((r) => ({ value: r, label: ROLE_CONFIG[r].title })), {
             disabled: !isNew,
             hint: 'Which partners can be put in this group.',
@@ -189,7 +189,7 @@ export const paymentTermDef: MasterDef<PaymentTerm> = {
     return (
       <>
         <Fields>
-          {f.text('name', 'Name', { required: true, error: errors.name, placeholder: 'e.g. Net 90', readOnly: !isNew, hint: lockHint(isNew) })}
+          {f.text('name', 'Name', { required: true, error: errors.name, placeholder: 'e.g. Net 90', disabled: !isNew, hint: !isNew ? NAME_LOCK : undefined })}
           {f.num('days', 'Due after', { suffix: 'days', error: errors.days, hint: 'Posting date + these days = due date. 0 for COD.' })}
         </Fields>
         <Flags>{f.check('active', 'Active')}</Flags>
@@ -235,7 +235,7 @@ export const bankDef: MasterDef<Bank> = {
     return (
       <>
         <Fields>
-          {f.text('name', 'Name', { required: true, error: errors.name, readOnly: !isNew, hint: lockHint(isNew) })}
+          {f.text('name', 'Name', { required: true, error: errors.name, disabled: !isNew, hint: !isNew ? NAME_LOCK : undefined })}
           {f.text('swift', 'BIC / SWIFT', { error: errors.swift, placeholder: 'e.g. BNORPHMM' })}
         </Fields>
         <Flags>{f.check('active', 'Active')}</Flags>
@@ -291,8 +291,8 @@ export const projectDef: MasterDef<Project> = {
     return (
       <>
         <Fields>
-          {f.text('code', 'Code', { required: true, error: errors.code, readOnly: !isNew, hint: lockHint(isNew) })}
-          {f.text('name', 'Name', { required: true, error: errors.name, readOnly: !isNew, placeholder: 'e.g. Davao store opening' })}
+          {f.text('code', 'Code', { required: true, error: errors.code, disabled: !isNew, hint: !isNew ? NAME_LOCK : undefined })}
+          {f.text('name', 'Name', { required: true, error: errors.name, disabled: !isNew, hint: !isNew ? NAME_LOCK : undefined, placeholder: 'e.g. Davao store opening' })}
         </Fields>
         <Flags>{f.check('active', 'Active')}</Flags>
       </>
@@ -387,7 +387,7 @@ export const currencyDef: MasterDef<Currency> = {
 // ── Inventory ────────────────────────────────────────────────────────────────
 
 const INVENTORY = 'Settings › Inventory';
-const codeLockHint = (isNew: boolean) => (isNew ? undefined : 'Can’t change once saved — items refer to it. Deactivate instead.');
+const CODE_LOCK = "Can’t change once saved — items refer to it. Deactivate instead.";
 
 export const uomDef: MasterDef<UnitOfMeasure> = {
   collection: unitsOfMeasure,
@@ -425,7 +425,7 @@ export const uomDef: MasterDef<UnitOfMeasure> = {
     return (
       <>
         <Fields cols={3}>
-          {f.text('code', 'Code', { required: true, error: errors.code, placeholder: 'e.g. carton', readOnly: !isNew, hint: codeLockHint(isNew) })}
+          {f.text('code', 'Code', { required: true, error: errors.code, placeholder: 'e.g. carton', disabled: !isNew, hint: !isNew ? CODE_LOCK : undefined })}
           {f.text('name', 'Name', { required: true, error: errors.name })}
         </Fields>
         <Fields cols={3}>
@@ -486,7 +486,7 @@ export const manufacturerDef: MasterDef<Manufacturer> = {
     return (
       <>
         <Fields cols={3}>
-          {f.text('code', 'Code', { required: true, error: errors.code, placeholder: 'e.g. MFR-007', readOnly: !isNew, hint: codeLockHint(isNew) })}
+          {f.text('code', 'Code', { required: true, error: errors.code, placeholder: 'e.g. MFR-007', disabled: !isNew, hint: !isNew ? CODE_LOCK : undefined })}
           {f.text('name', 'Name', { required: true, error: errors.name })}
           {f.master('country', 'Country', countryDef)}
           {f.text('contactPerson', 'Contact person')}
