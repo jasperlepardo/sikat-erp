@@ -169,7 +169,7 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
   const errors: Errors = Object.fromEntries(problems.map((p) => [p.key, p.message]));
   const h = bind(draft, update);
   // Side-column fields: label beside the control.
-  const beside = { orientation: 'vertical' as const };
+  const beside = { orientation: 'responsive' as const };
 
   // A partner always keeps at least one role, and the role of the list it was opened from.
   const changeRoles = (picked: PartnerRole[]) => {

@@ -233,7 +233,7 @@ function ItemForm() {
   const errors: Errors = Object.fromEntries(problems.map((p) => [p.key, p.message]));
   const h = bind(draft, update);
   // Side-column fields: label beside the control.
-  const beside = { orientation: 'vertical' as const };
+  const beside = { orientation: 'responsive' as const };
   const locked = draft.hasTransactions;
   const group = inv.groups.find((g) => g.name === draft.itemGroup);
 
