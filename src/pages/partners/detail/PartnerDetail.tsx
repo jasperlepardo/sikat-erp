@@ -382,7 +382,7 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
                   <Section icon="badge" title="Business partner">
                     <FieldStack>
                       {isNew ? (
-                        <FormField orientation="vertical" label="Numbering" tooltip="Auto assigns the next BP code.">
+                        <FormField orientation="responsive" label="Numbering" tooltip="Auto assigns the next BP code.">
                           {(p) => (
                             <Select
                               {...p}
@@ -396,7 +396,7 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
                           )}
                         </FormField>
                       ) : null}
-                      <FormField orientation="vertical" label="Code" required error={errors.code} tooltip={isNew ? undefined : 'Locked after the partner is added.'}>
+                      <FormField orientation="responsive" label="Code" required error={errors.code} tooltip={isNew ? undefined : 'Locked after the partner is added.'}>
                         {(p) => (
                           <TextField
                             {...p}
@@ -408,7 +408,7 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
                         )}
                       </FormField>
                       <FormField
-                        orientation="vertical"
+                        orientation="responsive"
                         label="Type"
                         tooltip="A partner can be a lead, a customer and a vendor at once. It shows in each matching list, and edits here show everywhere."
                       >

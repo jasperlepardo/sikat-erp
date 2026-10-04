@@ -33,7 +33,7 @@ interface FieldOptions {
   /** Dropdowns: show a ✕ that empties an optional field. */
   clearable?: boolean;
   /** `vertical` puts the label in a column beside the control (the design system's naming); default stacks it above. */
-  orientation?: 'horizontal' | 'vertical';
+  orientation?: 'horizontal' | 'vertical' | 'responsive';
 }
 
 const toOptions = (values: readonly string[]) => values.map((value) => ({ value, label: value }));
@@ -278,13 +278,9 @@ export function Fields({ children, cols = 2 }: { children: ReactNode; cols?: 1 |
   return <Form.Group className={`grid! gap-2 ${colClass}`}>{children}</Form.Group>;
 }
 
-/**
- * A single column of fields 4px apart, e.g. side-labelled fields in a narrow column. A plain div
- * rather than Form.Group: Form.Group's 16px gap is unlayered design-system CSS a utility can't
- * override. `-mx-2` matches Form.Group's negative margin so fields line up with other sections.
- */
+/** A column of side-labelled fields: 4px gap when wide, 16px when narrow (stacked). */
 export function FieldStack({ children }: { children: ReactNode }) {
-  return <div className="-mx-2 flex flex-col gap-1">{children}</div>;
+  return <Form.Group orientation="responsive">{children}</Form.Group>;
 }
 
 /** A row of checkboxes (flags) under a grid. */

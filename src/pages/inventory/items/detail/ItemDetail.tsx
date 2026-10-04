@@ -438,7 +438,7 @@ function ItemForm() {
                   <Section icon="inventory_2" title="Item">
                     <FieldStack>
                       {isNew ? (
-                        <FormField orientation="vertical" label="Numbering" tooltip={`Auto uses the group series, e.g. ${group?.prefix ?? 'ITM'}-00001.`}>
+                        <FormField orientation="responsive" label="Numbering" tooltip={`Auto uses the group series, e.g. ${group?.prefix ?? 'ITM'}-00001.`}>
                           {(p) => (
                             <Select
                               {...p}
@@ -453,7 +453,7 @@ function ItemForm() {
                         </FormField>
                       ) : null}
                       <FormField
-                        orientation="vertical"
+                        orientation="responsive"
                         label="Item No."
                         required
                         error={errors.itemNo}
@@ -469,7 +469,7 @@ function ItemForm() {
                           />
                         )}
                       </FormField>
-                      <FormField orientation="vertical" label="Item type" required tooltip={locked ? LOCKED_HINT : 'Labor and Travel are never stocked.'}>
+                      <FormField orientation="responsive" label="Item type" required tooltip={locked ? LOCKED_HINT : 'Labor and Travel are never stocked.'}>
                         {(p) => (
                           <Select
                             {...p}
@@ -488,7 +488,7 @@ function ItemForm() {
                       })}
                       {h.text('foreignName', 'Foreign name', { ...beside, hint: 'Second-language name or alias.' })}
                       <FormField
-                        orientation="vertical"
+                        orientation="responsive"
                         label="Item group"
                         required
                         error={errors.itemGroup}

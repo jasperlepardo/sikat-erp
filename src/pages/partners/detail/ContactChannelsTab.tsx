@@ -94,7 +94,7 @@ export function ContactChannelsFields({
                 onCancel={() => setEditingId(null)}
               />
             ) : (
-              <FormField key={ch.id} orientation="vertical" label={ch.label || ch.type} error={errors[channelErrorKey(ch.id)]}>
+              <FormField key={ch.id} orientation="responsive" label={ch.label || ch.type} error={errors[channelErrorKey(ch.id)]}>
                 {(p) => (
                   // The ⋯ menu sits beside the input, not inside it. `w-full`: the field column doesn't stretch its children.
                   <div className="flex w-full items-center gap-1">
