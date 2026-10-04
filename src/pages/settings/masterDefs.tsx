@@ -181,7 +181,7 @@ export const paymentTermDef: MasterDef<PaymentTerm> = {
   validate: (t, all) => {
     const e: Errors = {};
     uniqueRequired(e, t, all, 'name', 'Name');
-    if (t.days < 0) e.days = 'Days can't be negative.';
+    if (t.days < 0) e.days = "Days can't be negative.";
     return e;
   },
   editor: (t, update, errors, isNew) => {
