@@ -173,6 +173,7 @@ export interface MasterLookupProps<T extends MasterRow> {
   placeholder?: string;
   clearable?: boolean;
   disabled?: boolean;
+  readOnly?: boolean;
   /** Props from FormField (id, aria-*). */
   fieldProps?: object;
 }
@@ -192,6 +193,7 @@ export function MasterLookup<T extends MasterRow>({
   placeholder,
   clearable,
   disabled,
+  readOnly,
   fieldProps,
 }: MasterLookupProps<T>) {
   const rows = useCollection(def.collection);
@@ -234,6 +236,7 @@ export function MasterLookup<T extends MasterRow>({
         {...fieldProps}
         options={options}
         disabled={disabled || !rows}
+        readOnly={readOnly}
         placeholder={rows ? placeholder : 'Loading…'}
         clearable={clearable}
         value={value || null}

@@ -16,7 +16,7 @@ export const SEED_COMPANIES: Company[] = [
     id: 'sikat',
     name: 'Sikat Tech Inc.',
     address: blankPostalAddress({
-      building: 'Unit 1203, Tektite East Tower', street: 'Exchange Road', block: 'San Antonio', city: 'City of Pasig', zip: '1605',
+      addressLine: 'Unit 1203, Tektite East Tower, Exchange Road', block: 'San Antonio', city: 'City of Pasig', zip: '1605',
       province: 'Metro Manila', provinceCode: '1300', cityCode: '137403', barangayCode: '137403019',
     }),
     active: true,
@@ -25,7 +25,7 @@ export const SEED_COMPANIES: Company[] = [
     id: 'acme',
     name: 'Acme Corp',
     address: blankPostalAddress({
-      building: '18F, One World Place', street: '32nd Street', block: 'Fort Bonifacio', city: 'City of Taguig', zip: '1634',
+      addressLine: '18F, One World Place, 32nd Street', block: 'Fort Bonifacio', city: 'City of Taguig', zip: '1634',
       province: 'Metro Manila', provinceCode: '1300', cityCode: '137607', barangayCode: '137607020',
     }),
     active: true,

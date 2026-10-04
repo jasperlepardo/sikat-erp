@@ -327,6 +327,9 @@ export const phEstimate = (usd: number) => Math.max(990, Math.round((usd * 79.2)
 export interface CatalogEntry {
   family: Family;
   itemNo: string;
+  /** Short product name, e.g. "iPhone 18 Pro Max". */
+  name: string;
+  /** Full variant description, e.g. "iPhone 18 Pro Max, 256GB, Black". */
   description: string;
   /** Option key for `family.ph` lookups, e.g. "256" or "11-256-SG-WF". */
   key: string;
@@ -352,6 +355,7 @@ export function expandCatalog(prefixOf: (group: string) => string, families = AP
           key,
           colour,
           itemNo: [prefixOf(family.group), family.code, key, colour && COLOUR_CODES[colour]].filter(Boolean).join('-'),
+          name: family.name,
           description: [family.name, ...opts.map((x) => x.label), colour].filter(Boolean).join(', '),
           price: known ?? phEstimate(us),
           estimated: known === undefined,

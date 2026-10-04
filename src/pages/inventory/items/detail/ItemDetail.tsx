@@ -94,6 +94,7 @@ function validate(d: Draft, codeMode: 'auto' | 'manual', inv: InventoryMasters):
   const { problems, need } = problemCollector<ProblemTab>();
 
   need(codeMode === 'auto' || d.itemNo.trim(), 'header', 'itemNo', 'Enter an Item No., or switch numbering to Auto.');
+  need(d.name.trim(), 'header', 'name', 'Name is required.');
   need(d.description.trim(), 'header', 'description', 'Description is required.');
   need(d.itemGroup, 'header', 'itemGroup', 'Item group is required.');
   need(d.inventoryUom, 'header', 'inventoryUom', 'Inventory UoM is required.');
@@ -355,7 +356,7 @@ function ItemForm() {
           <PanelHeader
             type="details"
             icon="inventory_2"
-            title={isNew ? 'New item' : draft.description}
+            title={isNew ? 'New item' : (draft.name || draft.description)}
             subcopy={isNew ? 'Add a product, material or service to the item master.' : draft.itemNo}
             // A saved record leads with previous/next (through the list it was opened from); a new one with the icon.
             leading={
@@ -458,8 +459,7 @@ function ItemForm() {
                         required
                         disabled={locked}
                         error={errors.itemNo}
-                        tooltip={!locked ? 'Prefix by group, e.g. IPH- iPhone, ACC- accessories.' : undefined}
-                        hint={locked ? LOCKED_HINT : undefined}
+                        tooltip={locked ? LOCKED_HINT : 'Prefix by group, e.g. IPH- iPhone, ACC- accessories.'}
                       >
                         {(p) => (
                           <TextField
@@ -477,8 +477,7 @@ function ItemForm() {
                         label="Item type"
                         required
                         disabled={locked}
-                        hint={locked ? LOCKED_HINT : undefined}
-                        tooltip={!locked ? 'Labor and Travel are never stocked.' : undefined}
+                        tooltip={locked ? LOCKED_HINT : 'Labor and Travel are never stocked.'}
                       >
                         {(p) => (
                           <Select
@@ -490,11 +489,17 @@ function ItemForm() {
                           />
                         )}
                       </FormField>
+                      {h.text('name', 'Name', {
+                        ...beside,
+                        required: true,
+                        error: errors.name,
+                        hint: 'Short display name, e.g. "iPhone 18 Pro Max".',
+                      })}
                       {h.text('description', 'Description', {
                         ...beside,
                         required: true,
                         error: errors.description,
-                        hint: 'Printed on every document.',
+                        hint: 'Full variant detail, e.g. "iPhone 18 Pro Max, 256GB, Black".',
                       })}
                       {h.text('foreignName', 'Foreign name', { ...beside, hint: 'Second-language name or alias.' })}
                       <FormField

@@ -5,6 +5,7 @@ import {
   Checkbox,
   Combobox,
   Icon,
+  Link,
   Radio,
   Select,
   TableStatus,
@@ -48,6 +49,7 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 export function ContentsTab({ draft, update, errors, m, ctx }: PoTabProps) {
   const [shown, setShown] = useState<Group[]>(['delivery']);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<Set<string>>(new Set());
   const lines = draft.lines;
   const itemOf = (l: PoLine) => m.items.find((i) => i.id === l.itemId);
   const patch = (id: string, p: Partial<PoLine>) => update({ lines: lines.map((l) => (l.id === id ? { ...l, ...p } : l)) });
@@ -73,7 +75,17 @@ export function ContentsTab({ draft, update, errors, m, ctx }: PoTabProps) {
   const itemOptions = (current: string) =>
     m.items
       .filter((i) => i.id === current || (i.purchaseItem && isValidToday(i, draft.postingDate)))
-      .map((i) => ({ value: i.id, label: `${i.itemNo} · ${i.description}`, text: `${i.itemNo} ${i.description}` }));
+      .map((i) => ({
+        value: i.id,
+        label: (
+          <div className="flex flex-col gap-0.5">
+            <span className="text-xs opacity-60">{i.itemNo}</span>
+            <span>{i.name}</span>
+            <span className="text-xs opacity-60">{i.description}</span>
+          </div>
+        ),
+        text: `${i.itemNo} ${i.description}`,
+      }));
   const taxOptions = m.tax.codes
     .filter((c) => c.direction === 'Purchase' && c.active)
     .map((c) => ({ value: c.code, label: `${c.code} (${ctx.rateOf(c.code)}%)` }));
@@ -102,37 +114,73 @@ export function ContentsTab({ draft, update, errors, m, ctx }: PoTabProps) {
   });
 
   const columns = [
-    col('itemNo', 'Item No.', (l) => (
-      <div className="min-w-64">
-        <Combobox
-          aria-label="Item No."
-          placeholder="Search items"
-          options={itemOptions(l.itemId)}
-          value={l.itemId || null}
-          invalid={Boolean(err(l, 'item'))}
-          onValueChange={(v) => pickItem(l, v)}
-        />
-        {l.bpCatalogNo ? (
-          <Text variant="small" tone="muted">
-            Vendor catalog no. {l.bpCatalogNo}
-          </Text>
-        ) : null}
-      </div>
-    )),
-    col('description', 'Item description', (l) => (
-      <TextField
-        aria-label="Item description"
-        className="min-w-56"
-        value={l.description}
-        onChange={(e) => patch(l.id, { description: e.currentTarget.value })}
-      />
-    )),
-    col('quantity', 'Quantity', (l) => {
+    col('item', 'Item / Description', (l) => {
+      const item = itemOf(l);
+      const isEditingItem = editingItem.has(l.id);
+      const toggleEdit = () => setEditingItem((prev) => {
+        const next = new Set(prev);
+        next.has(l.id) ? next.delete(l.id) : next.add(l.id);
+        return next;
+      });
+      return (
+        <div className="flex flex-col gap-1 w-64">
+          {item ? (
+            <>
+              <Text variant="small" tone="muted">{item.itemNo}</Text>
+              {isEditingItem ? (
+                <>
+                  <TextField
+                    aria-label="Item name"
+                    placeholder="Item name"
+                    value={l.name}
+                    onChange={(e) => patch(l.id, { name: e.currentTarget.value })}
+                  />
+                  <TextField
+                    aria-label="Description"
+                    placeholder="Description"
+                    value={l.description}
+                    onChange={(e) => patch(l.id, { description: e.currentTarget.value })}
+                  />
+                </>
+              ) : (
+                <>
+                  <Text>{l.name}</Text>
+                  <Text variant="small" tone="muted">{l.description}</Text>
+                </>
+              )}
+              <div className="flex gap-3">
+                <Link intent="primary" onClick={toggleEdit}>{isEditingItem ? 'Done' : 'Edit'}</Link>
+                <Link intent="primary" onClick={() => {
+                  patch(l.id, { itemId: '', itemNo: '', name: '', description: '' });
+                  setEditingItem((prev) => { const next = new Set(prev); next.delete(l.id); return next; });
+                }}>Change</Link>
+              </div>
+            </>
+          ) : (
+            <Combobox
+              aria-label="Item No."
+              placeholder="Search items"
+              options={itemOptions(l.itemId)}
+              value={l.itemId || null}
+              invalid={Boolean(err(l, 'item'))}
+              onValueChange={(v) => pickItem(l, v)}
+            />
+          )}
+          {l.bpCatalogNo ? (
+            <Text variant="small" tone="muted">
+              Vendor catalog no. {l.bpCatalogNo}
+            </Text>
+          ) : null}
+        </div>
+      );
+    }),
+    col('qty', 'Qty / UoM', (l) => {
+      if (!l.itemId) return null;
       const item = itemOf(l);
       const available = item?.inventoryItem ? stockTotals(item).available : undefined;
       const short = item && available !== undefined && available < item.minStock;
       return (
-        <div className="w-28">
+        <div className="flex flex-col gap-1 w-32">
           <TextField
             aria-label="Quantity"
             type="number"
@@ -141,6 +189,16 @@ export function ContentsTab({ draft, update, errors, m, ctx }: PoTabProps) {
             value={String(l.quantity)}
             onChange={(e) => patch(l.id, { quantity: num(e.currentTarget.value) })}
           />
+          {!item || l.receivedQty > 0 ? (
+            <Text variant="small" tone="muted">{l.uomCode}</Text>
+          ) : (
+            <Combobox
+              aria-label="UoM code"
+              options={itemUnits(item, 'purchase').map((u) => ({ value: u.uom, label: u.uom }))}
+              value={l.uomCode}
+              onValueChange={(v) => v && changeUom(l, v)}
+            />
+          )}
           {short ? (
             <Text variant="small" tone="muted">
               Below min: {available} available, min {item.minStock}
@@ -149,47 +207,25 @@ export function ContentsTab({ draft, update, errors, m, ctx }: PoTabProps) {
         </div>
       );
     }),
-    col('uomCode', 'UoM code', (l) => {
-      const item = itemOf(l);
-      // Any of the item's purchasing units, until goods are received.
-      if (!item || l.receivedQty > 0) return l.uomCode;
-      return (
-        <Combobox
-          aria-label="UoM code"
-          className="w-28"
-          options={itemUnits(item, 'purchase').map((u) => ({ value: u.uom, label: u.uom }))}
-          value={l.uomCode}
-          onValueChange={(v) => v && changeUom(l, v)}
-        />
+    col('uomName', 'UoM name', (l) => {
+      if (!l.itemId) return null;
+      return itemOf(l) ? l.uomName : <TextField aria-label="UoM name" className="w-28" value={l.uomName} onChange={(e) => patch(l.id, { uomName: e.currentTarget.value })} />;
+    }, 'quantities'),
+    col('itemsPerUnit', 'Items per unit', (l) => {
+      if (!l.itemId) return null;
+      return itemOf(l) ? String(l.itemsPerUnit) : (
+        <TextField aria-label="Items per unit" type="number" min={1} className="w-24" value={String(l.itemsPerUnit)} onChange={(e) => patch(l.id, { itemsPerUnit: num(e.currentTarget.value) })} />
       );
-    }),
-    col('uomName', 'UoM name', (l) =>
-      itemOf(l) ? (
-        l.uomName
-      ) : (
-        // No item: the name is editable on the line.
-        <TextField aria-label="UoM name" className="w-28" value={l.uomName} onChange={(e) => patch(l.id, { uomName: e.currentTarget.value })} />
-      ), 'quantities'),
-    col('itemsPerUnit', 'Items per unit', (l) =>
-      itemOf(l) ? (
-        String(l.itemsPerUnit)
-      ) : (
-        <TextField
-          aria-label="Items per unit"
-          type="number"
-          min={1}
-          className="w-24"
-          value={String(l.itemsPerUnit)}
-          onChange={(e) => patch(l.id, { itemsPerUnit: num(e.currentTarget.value) })}
-        />
-      ), 'quantities'),
-    col('inventoryUom', 'Inventory UoM', (l) => (l.itemsPerUnit === 1 ? 'Yes' : 'No'), 'quantities'),
+    }, 'quantities'),
+    col('inventoryUom', 'Inventory UoM', (l) => l.itemId ? (l.itemsPerUnit === 1 ? 'Yes' : 'No') : null, 'quantities'),
     col('inventoryQty', 'Qty (inventory UoM)', (l) => {
+      if (!l.itemId) return null;
       const item = itemOf(l);
       return `${inventoryQty(l).toLocaleString('en-PH')} ${item?.inventoryUom ?? ''}`;
     }, 'quantities'),
-    col('openQty', 'Open qty', (l) => openQty(l).toLocaleString('en-PH'), 'quantities'),
+    col('openQty', 'Open qty', (l) => l.itemId ? openQty(l).toLocaleString('en-PH') : null, 'quantities'),
     col('warehouse', 'Whse', (l) => {
+      if (!l.itemId) return null;
       const item = itemOf(l);
       return item && !item.inventoryItem ? (
         <span className="text-muted">Not stocked</span>
@@ -204,109 +240,88 @@ export function ContentsTab({ draft, update, errors, m, ctx }: PoTabProps) {
         />
       );
     }),
-    col('priceList', 'Price list', (l) => (
+    col('priceList', 'Price list', (l) => l.itemId ? (
       <MasterLookup def={priceListDef} fieldProps={{ 'aria-label': 'Price list', className: 'w-44' }} value={l.priceList} onChange={(v) => changePriceList(l, v)} />
-    ), 'pricing'),
-    ...(showNet
-      ? [
-          col('unitPrice', 'Unit price', (l) => (
+    ) : null, 'pricing'),
+    col('pricing', 'Unit price / Tax / Discount', (l) => {
+      if (!l.itemId) return null;
+      const rate = ctx.rateOf(l.taxCode);
+      return (
+        <div className="flex flex-col gap-1 w-44">
+          {showNet ? (
             <TextField
               aria-label="Unit price"
               type="number"
               min={0}
-              className="w-32"
               prefix={draft.currency}
               invalid={Boolean(err(l, 'unitPrice'))}
               value={String(l.unitPrice)}
               onChange={(e) => patch(l.id, { unitPrice: num(e.currentTarget.value) })}
             />
-          )),
-        ]
-      : []),
-    ...(showGross
-      ? [
-          col('grossPrice', 'Gross price', (l) => {
-            const rate = ctx.rateOf(l.taxCode);
-            return (
-              <TextField
-                aria-label="Gross price"
-                type="number"
-                min={0}
-                className="w-32"
-                prefix={draft.currency}
-                value={String(round2(grossPrice(l, rate)))}
-                onChange={(e) => patch(l.id, { unitPrice: round2(num(e.currentTarget.value) / (1 + rate / 100)) })}
-              />
-            );
-          }),
-        ]
-      : []),
-    col('discountPct', 'Discount %', (l) => (
-      <TextField
-        aria-label="Discount %"
-        type="number"
-        min={0}
-        className="w-24"
-        value={String(l.discountPct)}
-        onChange={(e) => patch(l.id, { discountPct: Math.min(100, num(e.currentTarget.value)) })}
-      />
-    )),
-    col('priceAfterDiscount', 'Price after discount', (l) => formatAmount(priceAfterDiscount(l)), 'pricing'),
-    col('taxCode', 'Tax code', (l) => (
-      <Combobox
-        aria-label="Tax code"
-        className="w-32"
-        invalid={Boolean(err(l, 'taxCode'))}
-        options={taxOptions}
-        value={l.taxCode}
-        onValueChange={(taxCode) => patch(l.id, { taxCode: taxCode ?? '' })}
-      />
-    )),
-    col('totalLc', 'Total (LC)', (l) => <span className="whitespace-nowrap">PHP {lc(lineNet(l))}</span>),
-    col('grossTotalLc', 'Gross total (LC)', (l) => (
+          ) : null}
+          {showGross ? (
+            <TextField
+              aria-label="Gross price"
+              type="number"
+              min={0}
+              prefix={draft.currency}
+              value={String(round2(grossPrice(l, rate)))}
+              onChange={(e) => patch(l.id, { unitPrice: round2(num(e.currentTarget.value) / (1 + rate / 100)) })}
+            />
+          ) : null}
+          <Combobox
+            aria-label="Tax code"
+            invalid={Boolean(err(l, 'taxCode'))}
+            options={taxOptions}
+            value={l.taxCode}
+            onValueChange={(taxCode) => patch(l.id, { taxCode: taxCode ?? '' })}
+          />
+          <TextField
+            aria-label="Discount %"
+            type="number"
+            min={0}
+            suffix="%"
+            value={String(l.discountPct)}
+            onChange={(e) => patch(l.id, { discountPct: Math.min(100, num(e.currentTarget.value)) })}
+          />
+        </div>
+      );
+    }),
+    col('priceAfterDiscount', 'Price after discount', (l) => l.itemId ? formatAmount(priceAfterDiscount(l)) : null, 'pricing'),
+    col('totalLc', 'Total (LC)', (l) => l.itemId ? <span className="whitespace-nowrap">PHP {lc(lineNet(l))}</span> : null),
+    col('grossTotalLc', 'Gross total (LC)', (l) => l.itemId ? (
       <span className="whitespace-nowrap">PHP {lc(lineNet(l) * (1 + ctx.rateOf(l.taxCode) / 100))}</span>
-    ), 'pricing'),
-    col('deliveryDate', 'Del. date', (l) => (
+    ) : null, 'pricing'),
+    col('deliveryDate', 'Del. date', (l) => l.itemId ? (
       <DatePicker
         aria-label="Line delivery date"
-        className="w-40"
+        className="w-fit"
         invalid={Boolean(err(l, 'deliveryDate'))}
         value={l.deliveryDate || null}
         onValueChange={(v) => patch(l.id, { deliveryDate: v ?? '' })}
       />
-    ), 'delivery'),
-    col('status', 'Row status', (l) => (
+    ) : null, 'delivery'),
+    col('status', 'Row status', (l) => l.itemId ? (
       <TableStatus intent={l.status === 'Open' ? 'primary' : 'success'}>{l.status}</TableStatus>
-    ), 'delivery'),
-    col('blanketAgreement', 'Blanket agreement', (l) => (
-      <Combobox
-        aria-label="Blanket agreement"
-        className="w-48"
-        options={blanketOptions}
-        value={l.blanketAgreement}
-        onValueChange={(blanketAgreement) => patch(l.id, { blanketAgreement: blanketAgreement ?? '' })}
-      />
-    ), 'references'),
-    col('bpCatalogNo', 'BP catalog no.', (l) => (
+    ) : null, 'delivery'),
+    col('blanketAgreement', 'Blanket agreement', (l) => l.itemId ? (
+      <Combobox aria-label="Blanket agreement" className="w-48" options={blanketOptions} value={l.blanketAgreement} onValueChange={(blanketAgreement) => patch(l.id, { blanketAgreement: blanketAgreement ?? '' })} />
+    ) : null, 'references'),
+    col('bpCatalogNo', 'BP catalog no.', (l) => l.itemId ? (
       <TextField aria-label="BP catalog no." className="w-36" value={l.bpCatalogNo} onChange={(e) => patch(l.id, { bpCatalogNo: e.currentTarget.value })} />
-    ), 'references'),
-    col('mfrNo', 'Mfr no.', (l) => (
+    ) : null, 'references'),
+    col('mfrNo', 'Mfr no.', (l) => l.itemId ? (
       <TextField aria-label="Mfr no." className="w-36" value={l.mfrNo} onChange={(e) => patch(l.id, { mfrNo: e.currentTarget.value })} />
-    ), 'references'),
-    col('requisitionSlipNo', 'Requisition slip no.', (l) => (
-      <TextField
-        aria-label="Requisition slip no."
-        className="w-36"
-        value={l.requisitionSlipNo}
-        onChange={(e) => patch(l.id, { requisitionSlipNo: e.currentTarget.value })}
-      />
-    ), 'references'),
-    col('department', 'Department', (l) => (
+    ) : null, 'references'),
+    col('requisitionSlipNo', 'Requisition slip no.', (l) => l.itemId ? (
+      <TextField aria-label="Requisition slip no." className="w-36" value={l.requisitionSlipNo} onChange={(e) => patch(l.id, { requisitionSlipNo: e.currentTarget.value })} />
+    ) : null, 'references'),
+    col('department', 'Department', (l) => l.itemId ? (
       <Select aria-label="Department" className="w-40" options={asOptions(DEPARTMENTS)} value={l.department} onValueChange={(department) => patch(l.id, { department })} />
-    ), 'references'),
-    col('freeText', 'Free text', (l) => (
+    ) : null, 'references'),
+    col('freeText', 'Free text', (l) => l.itemId ? (
       <TextField aria-label="Free text" className="w-48" value={l.freeText} onChange={(e) => patch(l.id, { freeText: e.currentTarget.value })} />
-    ), 'references'),
+    ) : null, 'references'),
   ].filter((c) => !c.group || is(c.group));
 
   return (
@@ -351,6 +366,7 @@ export function ContentsTab({ draft, update, errors, m, ctx }: PoTabProps) {
       ) : null}
 
       <DataTable
+        noPagination
         icon="list_alt"
         title="Contents"
         description={
@@ -360,8 +376,8 @@ export function ContentsTab({ draft, update, errors, m, ctx }: PoTabProps) {
         rows={lines}
         getRowId={(l) => l.id}
         columns={columns}
-        unsortable={columns.map((c) => c.key).filter((k) => k !== 'itemNo' && k !== 'description')}
-        sortValue={(l, key) => String(l[key as keyof PoLine] ?? '').toLowerCase()}
+        unsortable={columns.map((c) => c.key).filter((k) => k !== 'item')}
+        sortValue={(l, key) => (key === 'item' ? l.itemNo : String(l[key as keyof PoLine] ?? '')).toLowerCase()}
         onRemove={ctx.readOnly ? undefined : (picked) => update({ lines: lines.filter((l) => !picked.includes(l)) })}
         onColumnSettings={() => setSettingsOpen(!settingsOpen)}
         actions={

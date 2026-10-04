@@ -22,6 +22,8 @@ export interface DataTableProps<T> {
   pageSize?: number;
   /** Shows the table's column-settings ("tune") button. */
   onColumnSettings?: () => void;
+  /** Show all rows with no pagination controls. */
+  noPagination?: boolean;
 }
 
 /** Page sizes every paginated table offers; tables open at `DEFAULT_PAGE_SIZE`. */
@@ -52,6 +54,7 @@ export function DataTable<T>({
   empty,
   pageSize: initialPageSize = DEFAULT_PAGE_SIZE,
   onColumnSettings,
+  noPagination = false,
 }: DataTableProps<T>) {
   const [sort, setSort] = useState<TableSort | null>(null);
   const [page, setPage] = useState(1);
@@ -70,7 +73,7 @@ export function DataTable<T>({
 
   const pages = Math.max(1, Math.ceil(sorted.length / pageSize));
   const current = Math.min(page, pages);
-  const visible = sorted.slice((current - 1) * pageSize, current * pageSize);
+  const visible = noPagination ? sorted : sorted.slice((current - 1) * pageSize, current * pageSize);
   const liveSelection = selected.filter((id) => rows.some((r) => getRowId(r) === id));
 
   return (
@@ -122,17 +125,19 @@ export function DataTable<T>({
             {...(onRowAction ? { onRowAction } : {})}
             {...(onColumnSettings ? { onColumnSettings } : {})}
             {...(onRemove ? { selectable: true, selectedIds: liveSelection, onSelectionChange: setSelected } : {})}
-            pagination={{
-              page: current,
-              pageSize,
-              total: rows.length,
-              pageSizes: PAGE_SIZES,
-              onPageChange: setPage,
-              onPageSizeChange: (size) => {
-                setPageSize(size);
-                setPage(1);
+            {...(!noPagination && {
+              pagination: {
+                page: current,
+                pageSize,
+                total: rows.length,
+                pageSizes: PAGE_SIZES,
+                onPageChange: setPage,
+                onPageSizeChange: (size) => {
+                  setPageSize(size);
+                  setPage(1);
+                },
               },
-            }}
+            })}
           />
         </Card>
       ) : (

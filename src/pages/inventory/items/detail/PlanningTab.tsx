@@ -28,23 +28,23 @@ export function PlanningTab({ draft, update }: TabProps) {
           {f.pick('procurementMethod', 'Procurement method', PROCUREMENT_METHODS, {
             required: planned,
             disabled: !planned,
-            hint: draft.procurementMethod === 'Make' ? 'Replenished by production orders (needs a BOM).' : 'Replenished by purchase orders.',
+            hint: !planned ? 'Set a planning method first.' : draft.procurementMethod === 'Make' ? 'Replenished by production orders (needs a BOM).' : 'Replenished by purchase orders.',
           })}
           {f.num('leadTimeDays', 'Lead time', {
             suffix: 'days',
             disabled: !planned,
-            hint: draft.procurementMethod === 'Make' ? 'Production release to receipt.' : 'PO to arrival.',
+            hint: !planned ? 'Set a planning method first.' : draft.procurementMethod === 'Make' ? 'Production release to receipt.' : 'PO to arrival.',
           })}
-          {f.num('toleranceDays', 'Tolerance', { suffix: 'days', disabled: !planned, hint: 'Early/late days that don’t trigger rescheduling.' })}
-          {f.num('horizonDays', 'Planning horizon', { suffix: 'days', disabled: !planned })}
+          {f.num('toleranceDays', 'Tolerance', { suffix: 'days', disabled: !planned, hint: !planned ? 'Set a planning method first.' : 'Early/late days that don’t trigger rescheduling.' })}
+          {f.num('horizonDays', 'Planning horizon', { suffix: 'days', disabled: !planned, hint: 'Set a planning method first.' })}
         </Fields>
       </Section>
 
       <Section icon="rule" title="Order rules">
         <Fields cols={3}>
-          {f.num('orderMultiple', 'Order multiple', { suffix: uom, disabled: !planned })}
-          {f.num('mrpMinOrderQty', 'Minimum order quantity', { suffix: uom, disabled: !planned })}
-          {f.num('maxOrderQty', 'Maximum order quantity', { suffix: uom, disabled: !planned, hint: 'Larger needs split into several orders.' })}
+          {f.num('orderMultiple', 'Order multiple', { suffix: uom, disabled: !planned, hint: 'Set a planning method first.' })}
+          {f.num('mrpMinOrderQty', 'Minimum order quantity', { suffix: uom, disabled: !planned, hint: 'Set a planning method first.' })}
+          {f.num('maxOrderQty', 'Maximum order quantity', { suffix: uom, disabled: !planned, hint: !planned ? 'Set a planning method first.' : 'Larger needs split into several orders.' })}
         </Fields>
         {planned ? (
           <Text variant="small" tone="muted">

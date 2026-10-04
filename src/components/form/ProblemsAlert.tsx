@@ -15,7 +15,7 @@ export function ProblemsAlert<Tab extends string>({
 }: {
   problems: Problem<Tab>[];
   tabLabel: (tab: Tab) => string | undefined;
-  onOpenTab: (tab: Tab) => void;
+  onOpenTab?: (tab: Tab) => void;
 }) {
   if (!problems.length) return null;
   return (
@@ -31,7 +31,7 @@ export function ProblemsAlert<Tab extends string>({
             {p.tab !== 'header' ? (
               <>
                 {' '}
-                <Link intent="primary" onClick={() => onOpenTab(p.tab as Tab)}>
+                <Link intent="primary" onClick={() => onOpenTab?.(p.tab as Tab)}>
                   {tabLabel(p.tab as Tab)}
                 </Link>
               </>

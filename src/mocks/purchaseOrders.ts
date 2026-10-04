@@ -34,6 +34,8 @@ export interface PoLine {
   itemId: string;
   itemNo: string;
   /** Defaults from the item; editing it here doesn't change the item. */
+  name: string;
+  /** Defaults from the item; editing it here doesn't change the item. */
   description: string;
   /** Vendor's own catalog number for the item (BP catalog numbers). */
   bpCatalogNo: string;
@@ -190,6 +192,7 @@ export const newPoLine = (patch: Partial<PoLine> = {}): PoLine => ({
   id: `ln-${crypto.randomUUID().slice(0, 8)}`,
   itemId: '',
   itemNo: '',
+  name: '',
   description: '',
   bpCatalogNo: '',
   quantity: 1,
@@ -267,6 +270,7 @@ const line = (n: string, itemNo: string, quantity: number, patch: Partial<PoLine
     id: n,
     itemId: item.id,
     itemNo,
+    name: item.name,
     description: item.description,
     quantity,
     uomCode: item.purchasingUom,
@@ -330,7 +334,7 @@ const svcPo = (id: string, docNum: number, vendorId: string, patch: Partial<Purc
 const svc = (n: string, itemNo: string, quantity: number, unitPrice: number, taxCode: string, patch: Partial<PoLine> = {}): PoLine => {
   const item = byNo(itemNo);
   return newPoLine({
-    id: n, itemId: item.id, itemNo, description: item.description, quantity,
+    id: n, itemId: item.id, itemNo, name: item.name, description: item.description, quantity,
     uomCode: item.purchasingUom, uomName: item.purchasingUom === 'pc' ? 'Piece' : item.purchasingUom,
     itemsPerUnit: itemsPerUom(item, item.purchasingUom) ?? 1, unitPrice, taxCode, warehouse: '', ...patch,
   });
@@ -387,7 +391,7 @@ export const SEED_PURCHASE_ORDERS: PurchaseOrder[] = [
     postingDate: '2026-09-26', documentDate: '2026-09-26', deliveryDate: '2026-10-01', dueDate: '2026-10-03',
     lines: [
       newPoLine({
-        id: 'po-005-1', itemId: 'itm-020', itemNo: 'SVC-CLD-HOST', description: 'Cloud hosting subscription (October 2026)',
+        id: 'po-005-1', itemId: 'itm-020', itemNo: 'SVC-CLD-HOST', name: 'Cloud hosting subscription', description: 'Cloud hosting subscription (October 2026)',
         quantity: 1, unitPrice: 420, taxCode: '45', warehouse: '', deliveryDate: '2026-10-01', blanketAgreement: 'BA-2026-003',
         department: 'IT',
       }),

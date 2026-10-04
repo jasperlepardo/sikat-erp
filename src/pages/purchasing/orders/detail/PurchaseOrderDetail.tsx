@@ -27,6 +27,7 @@ import {
   PO_SERIES,
   PURCHASING_SETTINGS,
   blankPurchaseOrder,
+  newPoLine,
   type PoStatus,
   type PurchaseOrder,
 } from '../../../../mocks/purchaseOrders';
@@ -69,12 +70,7 @@ import {
 
 export const PO_LIST_PATH = '/purchasing/purchase-orders';
 
-const TABS = [
-  { value: 'contents', label: 'Contents', Component: ContentsTab },
-  { value: 'logistics', label: 'Logistics', Component: LogisticsTab },
-  { value: 'accounting', label: 'Accounting', Component: AccountingTab },
-] as const;
-type TabId = (typeof TABS)[number]['value'];
+type TabId = 'contents' | 'logistics' | 'accounting';
 
 /** Top-level views in the panel header. Transactions and Activity are placeholders for now. */
 const PAGES = [
@@ -125,9 +121,9 @@ function validate(d: PoDraft, ctx: PoContext, m: PoMasters, asDraft: boolean): P
     need(l.quantity > 0, 'contents', `line:${l.id}:quantity`, `${n}: quantity must be more than 0.`);
     need(!item?.inventoryItem || l.warehouse, 'contents', `line:${l.id}:warehouse`, `${n}: pick the warehouse.`);
     need(l.taxCode, 'contents', `line:${l.id}:taxCode`, `${n}: pick a tax code.`);
-    need(l.unitPrice >= 0, 'contents', `line:${l.id}:unitPrice`, `${n}: price can’t be negative.`);
+    need(l.unitPrice >= 0, 'contents', `line:${l.id}:unitPrice`, `${n}: price can't be negative.`);
     need(!l.deliveryDate || l.deliveryDate >= d.postingDate, 'contents', `line:${l.id}:deliveryDate`, `${n}: delivery date is before the posting date.`);
-    need(!item || d.status !== 'Draft' || isValidToday(item, d.postingDate), 'contents', `line:${l.id}:item`, `${n}: ${item?.itemNo} isn’t valid on ${d.postingDate}.`);
+    need(!item || d.status !== 'Draft' || isValidToday(item, d.postingDate), 'contents', `line:${l.id}:item`, `${n}: ${item?.itemNo} isn't valid on ${d.postingDate}.`);
   }
 
   need(!d.requiredDate || !d.deliveryDate || d.requiredDate <= d.deliveryDate, 'accounting', 'requiredDate', 'Required date is after the delivery date.');
@@ -149,9 +145,9 @@ function PurchaseOrderForm() {
   const navigate = useNavigate();
   const copyFrom = (useLocation().state as { copyFrom?: PoDraft } | null)?.copyFrom;
 
-  const [draft, setDraft] = useState<PoDraft | null | undefined>(isNew ? (copyFrom ?? blankPurchaseOrder(CURRENT_USER)) : undefined);
+  const blank = blankPurchaseOrder(CURRENT_USER);
+  const [draft, setDraft] = useState<PoDraft | null | undefined>(isNew ? (copyFrom ?? { ...blank, lines: [newPoLine()] }) : undefined);
   const [m, setM] = useState<PoMasters>();
-  const [tab, setTab] = useState<TabId>('contents');
   const [page, setPage] = useState<PageId>('details');
   // POs in the list's default order (newest posting date first), for previous/next.
   const [siblings, setSiblings] = useState<string[]>([]);
@@ -178,9 +174,15 @@ function PurchaseOrderForm() {
       currencies.list(),
       exchangeRates.list(),
       loadCurrentCompany(),
-    ]).then(([vendors, items, inv, [company], codes, groups, withholding, wGroups, curs, rates, ours]) =>
-      setM({ vendors, items, inv, tax: { company, codes, groups, withholding, withholdingGroups: wGroups }, currencies: curs, rates, company: ours }),
-    );
+    ]).then(([vendors, items, inv, [company], codes, groups, withholding, wGroups, curs, rates, ours]) => {
+      const masters = { vendors, items, inv, tax: { company, codes, groups, withholding, withholdingGroups: wGroups }, currencies: curs, rates, company: ours };
+      setM(masters);
+      if (isNew) setDraft((d) => {
+        if (!d) return d;
+        const companyAddress = formatAddress(masters.company.address, masters.company.name);
+        return { ...d, shipTo: d.shipTo || defaultShipTo(d.lines, masters), payTo: d.payTo || companyAddress };
+      });
+    });
     if (isNew || !id) return;
     let cancelled = false;
     getPurchaseOrder(id).then((po) => !cancelled && setDraft(po ?? null));
@@ -227,7 +229,6 @@ function PurchaseOrderForm() {
   const pickVendor = (vendorId: string | null, override?: Partner) => {
     const v = override ?? m.vendors.find((x) => x.id === vendorId);
     if (!v) return update({ vendorId: '', vendorCode: '', vendorName: '', contactId: '' });
-    const bill = v.addresses.find((a) => a.id === v.defaultBillToId);
     const next = { ...draft, vendorId: v.id };
     update({
       vendorId: v.id,
@@ -236,7 +237,6 @@ function PurchaseOrderForm() {
       contactId: v.defaultContactId,
       currency: v.currency === ALL_CURRENCIES ? 'PHP' : v.currency,
       currencyView: 'BP',
-      payTo: formatAddress(bill, v.name),
       paymentTerms: v.vendorPaymentTerms,
       paymentMethod: v.defaultPaymentMethod,
       dueDate: dueDateFor(draft.postingDate, v.vendorPaymentTerms),
@@ -263,8 +263,6 @@ function PurchaseOrderForm() {
     const doc = { ...draft, ...patch };
     const found = validate(doc, buildContext(doc, m), m, asDraft);
     setProblems(found);
-    const first = found[0];
-    if (first && first.tab !== 'header') setTab(first.tab);
     if (found.length) return;
 
     // "When duplicate Vendor Ref. No. occurs": Warn asks once, then lets it through.
@@ -338,7 +336,6 @@ function PurchaseOrderForm() {
 
   const allCurrencies = vendor?.currency === ALL_CURRENCIES;
   const currencyEditable = allCurrencies && !ctx.readOnly && !received;
-  const ActiveTab = TABS.find((t) => t.value === tab)!.Component;
   const title = isNew ? 'New purchase order' : draft.status === 'Draft' ? `Draft purchase order` : `Purchase order ${poNumber(draft)}`;
   const postingMoved = draft.postingDate && draft.postingDate !== TODAY() && !ctx.added;
 
@@ -417,7 +414,7 @@ function PurchaseOrderForm() {
           </Panel.Body>
         ) : (
           <Panel.Body className="flex flex-col gap-2">
-            <ProblemsAlert problems={problems} tabLabel={(t) => TABS.find((x) => x.value === t)?.label} onOpenTab={setTab} />
+            <ProblemsAlert problems={problems} tabLabel={(t) => ({ contents: 'Contents', logistics: 'Logistics', accounting: 'Accounting' }[t])} />
             {dupWarning ? (
               <Alert intent="warning" variant="outline" title="Duplicate vendor reference">
                 {dupWarning} Press {ctx.added ? 'Save' : 'Add'} again to keep it, or change the Vendor Ref. No.
@@ -433,50 +430,59 @@ function PurchaseOrderForm() {
               <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
                 <Section icon="storefront" title="Vendor">
                   <Fields>
-                    <FormField
-                      label="Vendor"
-                      required
-                      error={errors.vendorId}
-                      tooltip={ctx.added ? 'Can’t change once the PO is added.' : 'Only vendors are listed.'}
-                    >
-                      {(p) => (
-                        <Combobox
-                          {...p}
-                          placeholder="Search vendors"
-                          disabled={ctx.added}
-                          options={m.vendors
-                            .filter((v) => v.status !== 'Inactive' || v.id === draft.vendorId)
-                            .map((v) => ({ value: v.id, label: `${v.code} · ${v.name}`, text: `${v.code} ${v.name}` }))}
-                          value={draft.vendorId || null}
-                          onValueChange={pickVendor}
-                          onQueryChange={setVendorQuery}
-                          emptyContent={(close) => (
-                            <button
-                              type="button"
-                              className="w-full cursor-pointer rounded-xl px-4 py-2 text-left text-sm font-medium hover:bg-[var(--color-bg-primary-subtle)]"
-                              style={{ color: 'var(--color-text-primary)' }}
-                              onClick={() => { close(); setShowVendorCreate(true); }}
-                            >
-                              {vendorQuery.trim() ? `+ Create "${vendorQuery.trim()}"` : '+ Create new vendor'}
-                            </button>
+                    {vendor && ctx.added ? (
+                      <ReadOnly
+                        label="Vendor"
+                        value={draft.vendorName}
+                        description={`${draft.vendorCode} · ${draft.currency}`}
+                      />
+                    ) : (
+                      <FormField
+                          label="Vendor"
+                          required
+                          error={errors.vendorId}
+                          tooltip="Only vendors are listed."
+                        >
+                          {(p) => (
+                            <Combobox
+                              {...p}
+                              placeholder="Search vendors"
+                              options={m.vendors
+                                .filter((v) => v.status !== 'Inactive' || v.id === draft.vendorId)
+                                .map((v) => ({
+                                  value: v.id,
+                                  label: v.name,
+                                  subLabel: v.code,
+                                  subLabelPlacement: 'top' as const,
+                                  description: v.currency,
+                                  text: `${v.code} ${v.name}`,
+                                }))}
+                              value={draft.vendorId || null}
+                              onValueChange={pickVendor}
+                              onQueryChange={setVendorQuery}
+                              emptyContent={(close) => (
+                                <button
+                                  type="button"
+                                  className="w-full cursor-pointer rounded-xl px-4 py-2 text-left text-sm font-medium hover:bg-[var(--color-bg-primary-subtle)]"
+                                  style={{ color: 'var(--color-text-primary)' }}
+                                  onClick={() => { close(); setShowVendorCreate(true); }}
+                                >
+                                  {vendorQuery.trim() ? `+ Create "${vendorQuery.trim()}"` : '+ Create new vendor'}
+                                </button>
+                              )}
+                            />
                           )}
-                        />
-                      )}
-                    </FormField>
-                    <ReadOnly
-                      label="Name"
-                      value={draft.vendorName || '—'}
-                      hint="Copied from the vendor when picked; later edits to the vendor don’t change this PO."
-                    />
+                        </FormField>
+                    )}
                     {h.lookup(
                       'contactId',
                       'Contact person',
                       [{ value: '', label: '— None —' }, ...(vendor?.contacts ?? []).filter((c) => c.active || c.id === draft.contactId).map((c) => ({ value: c.id, label: contactName(c) }))],
-                      { hint: 'Defaults to the vendor’s default contact.', disabled: !vendor },
+                      { hint: !vendor ? 'Pick a vendor first.' : "Defaults to the vendor's default contact.", disabled: !vendor },
                     )}
                     {h.text('vendorRef', 'Vendor ref. no.', {
                       error: errors.vendorRef,
-                      hint: 'The vendor’s own reference, e.g. their sales order no.',
+                      hint: "The vendor's own reference, e.g. their sales order no.",
                     })}
                     <FormField
                       label="Currency"
@@ -487,7 +493,7 @@ function PurchaseOrderForm() {
                           ? currencyEditable
                             ? 'This vendor takes all currencies — pick the document currency.'
                             : 'Locked: goods were already received on this PO.'
-                          : `The vendor’s currency (${draft.currency}). Amounts show in the currency picked here.`
+                          : `The vendor's currency (${draft.currency}). Amounts show in the currency picked here.`
                       }
                       className="md:col-span-2"
                     >
@@ -564,29 +570,9 @@ function PurchaseOrderForm() {
                 </Section>
               </div>
 
-              <Tabs
-                value={tab}
-                onValueChange={(v) => setTab(v as TabId)}
-                items={TABS.map((t) => ({
-                  value: t.value,
-                  label: t.label,
-                  badge: problems.some((p) => p.tab === t.value)
-                    ? '!'
-                    : t.value === 'contents' && draft.lines.length
-                      ? String(draft.lines.length)
-                      : t.value === 'accounting' && draft.references.length
-                        ? String(draft.references.length)
-                        : undefined,
-                }))}
-              />
-              <ActiveTab
-                draft={draft}
-                update={update}
-                errors={errors}
-                m={m}
-                ctx={ctx}
-                onVendorSaved={(v) => setM((prev) => prev && { ...prev, vendors: prev.vendors.map((x) => (x.id === v.id ? v : x)) })}
-              />
+              <ContentsTab draft={draft} update={update} errors={errors} m={m} ctx={ctx} onVendorSaved={(v) => setM((prev) => prev && { ...prev, vendors: prev.vendors.map((x) => (x.id === v.id ? v : x)) })} />
+              <LogisticsTab draft={draft} update={update} errors={errors} m={m} ctx={ctx} onVendorSaved={(v) => setM((prev) => prev && { ...prev, vendors: prev.vendors.map((x) => (x.id === v.id ? v : x)) })} />
+              <AccountingTab draft={draft} update={update} errors={errors} m={m} ctx={ctx} onVendorSaved={(v) => setM((prev) => prev && { ...prev, vendors: prev.vendors.map((x) => (x.id === v.id ? v : x)) })} />
             </fieldset>
 
             <Section icon="functions" title="Totals">
@@ -652,7 +638,7 @@ function PurchaseOrderForm() {
                     <TotalRow label="Tax" value={view.convert(totals.tax)} code={view.code} />
                     {totals.reverseCharge ? (
                       <TotalNote>
-                        VAT of {view.code} {formatAmount(view.convert(totals.reverseCharge))} isn’t paid to the vendor: reverse-charge VAT
+                        VAT of {view.code} {formatAmount(view.convert(totals.reverseCharge))} isn't paid to the vendor: reverse-charge VAT
                         you withhold and remit (BIR 1600-VT), and import VAT is paid to the Bureau of Customs. Both are claimed as input VAT.
                       </TotalNote>
                     ) : null}

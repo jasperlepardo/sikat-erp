@@ -100,6 +100,7 @@ export function lineFromItem(item: Item, draft: PoDraft, ctx: PoContext, m: PoMa
     ...base,
     itemId: item.id,
     itemNo: item.itemNo,
+    name: item.name,
     description: item.description,
     bpCatalogNo:
       (PURCHASING_SETTINGS.useBpCatalogNumbers && item.vendors.find((v) => v.vendorId === draft.vendorId)?.vendorItemNo) || '',

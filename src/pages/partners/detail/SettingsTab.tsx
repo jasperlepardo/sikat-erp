@@ -96,7 +96,7 @@ export function SettingsTab(props: TabProps) {
               clearable: true,
               hint: 'Set when this partner’s receivables are sold to a third party.',
             })}
-            {f.text('factoringRef', 'Factoring reference', { disabled: !draft.factoringCompany, placeholder: 'e.g. FA-2026-0142' })}
+            {f.text('factoringRef', 'Factoring reference', { disabled: !draft.factoringCompany, hint: !draft.factoringCompany ? 'Set a factoring company first.' : undefined, placeholder: 'e.g. FA-2026-0142' })}
           </Fields>
         </Section>
       ) : null}

@@ -120,8 +120,8 @@ export function VendorQuickCreate({ initialName = '', onClose, onCreated }: Prop
               <Card.Header icon={<Icon size={24}>badge</Icon>}>Business partner</Card.Header>
               <Card.Content>
                 <Fields cols={3}>
-                  <FormField label="Code" tooltip="Assigned on save.">
-                    {(p) => <TextField {...p} value="" placeholder="Assigned on save" readOnly />}
+                  <FormField label="Code" disabled tooltip="Assigned on save.">
+                    {(p) => <TextField {...p} value="" placeholder="Assigned on save" />}
                   </FormField>
                   <FormField label="Name" required error={errors.name}>
                     {(p) => (

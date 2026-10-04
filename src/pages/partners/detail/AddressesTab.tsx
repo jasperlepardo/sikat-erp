@@ -10,7 +10,7 @@ const mapUrl = (a: PartnerAddress) =>
   `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([addressLine(a), a.zip, a.country].filter(Boolean).join(', '))}`;
 
 export const addressLine = (a: PartnerAddress) =>
-  [[a.streetNo, a.street].filter(Boolean).join(' '), a.block, a.city, a.province].filter(Boolean).join(', ');
+  [a.addressLine, a.block, a.city, a.province].filter(Boolean).join(', ');
 
 /** Problems that block saving an address (same messages as the partner form's validation). */
 export function addressProblems(a: PartnerAddress): Errors {
@@ -69,7 +69,7 @@ export function AddressesCards({
                 badge={(isDefaultBill || isDefaultShip) ? <Icon size={12}>star</Icon> : undefined}
                 fields={[
                   tags ? { label: 'Default', value: tags } : null,
-                  { label: 'Street', value: [[a.streetNo, a.street].filter(Boolean).join(' '), a.building].filter(Boolean).join(', ') },
+                  { label: 'Address', value: a.addressLine },
                   { label: 'Barangay', value: a.block },
                   { label: 'City', value: a.city },
                   { label: 'Province', value: [a.province, a.zip].filter(Boolean) },
@@ -145,7 +145,7 @@ export function AddressPanel({
       onDone={done}
     >
       <Section icon="location_on" title="Address">
-        <Fields>
+        <Fields cols={1}>
           {f.text('label', 'Address ID', {
             placeholder: 'e.g. Main office',
             required: true,
@@ -154,8 +154,8 @@ export function AddressPanel({
           })}
           {f.text('name2', 'Address name 2', { placeholder: 'e.g. Attn: Accounting' })}
           {f.text('name3', 'Address name 3', { placeholder: 'e.g. c/o Warehouse' })}
-          <AddressFields value={address} onChange={setLocation} countryError={err('country')} />
         </Fields>
+        <AddressFields value={address} onChange={setLocation} countryError={err('country')} cols={1} />
         <Link href={mapUrl(address)} target="_blank" rel="noreferrer">
           Show location on map
         </Link>

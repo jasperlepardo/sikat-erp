@@ -336,9 +336,7 @@ export const companyDef: MasterDef<Company> = {
     return (
       <>
         <Fields>{f.text('name', 'Registered name', { required: true, error: errors.name })}</Fields>
-        <Fields cols={3}>
-          <AddressFields value={c.address} onChange={(p) => update({ address: { ...c.address, ...p } })} countryError={errors.country} />
-        </Fields>
+        <AddressFields value={c.address} onChange={(p) => update({ address: { ...c.address, ...p } })} countryError={errors.country} />
         <Flags>{f.check('active', 'Active')}</Flags>
       </>
     );

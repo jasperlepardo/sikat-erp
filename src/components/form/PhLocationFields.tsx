@@ -1,4 +1,5 @@
-import { Combobox, FormField, TextField } from '@jasperlepardo/sikat-design-system';
+import { Combobox, TextField } from '@jasperlepardo/sikat-design-system';
+import { CtxFormField as FormField } from './fields';
 import { findBarangay, findCity, findProvince, useBarangays, useLocations } from '../../services/locations';
 
 /** The location part of a Philippine address: names as printed, plus their PSGC codes. */
@@ -78,32 +79,6 @@ export function PhLocationFields({ value, onChange }: { value: PhLocation; onCha
 
   return (
     <>
-      <FormField key="province" label="Province" tooltip="Philippine Standard Geographic Code (PSA).">
-        {(p) => (
-          <Combobox
-            {...p}
-            options={provinceOptions}
-            disabled={loading}
-            placeholder={loading ? 'Loading…' : 'Search…'}
-            clearable
-            value={legacyOr(province?.code, value.province)}
-            onValueChange={pickProvince}
-          />
-        )}
-      </FormField>
-      <FormField key="city" label="City / municipality" tooltip={province ? `In ${province.name}.` : 'Picking a city fills in its province.'}>
-        {(p) => (
-          <Combobox
-            {...p}
-            options={cityOptions}
-            disabled={loading}
-            placeholder={loading ? 'Loading…' : 'Search…'}
-            clearable
-            value={legacyOr(city?.code, value.city)}
-            onValueChange={pickCity}
-          />
-        )}
-      </FormField>
       {city && barangays && !barangays.length ? (
         // A few new municipalities have no barangays in the PSGC yet.
         <FormField key="barangay" label="Barangay" tooltip={`The PSGC lists no barangays for ${city.name} yet.`}>
@@ -126,6 +101,32 @@ export function PhLocationFields({ value, onChange }: { value: PhLocation; onCha
           )}
         </FormField>
       )}
+      <FormField key="city" label="City / municipality" tooltip={province ? `In ${province.name}.` : 'Picking a city fills in its province.'}>
+        {(p) => (
+          <Combobox
+            {...p}
+            options={cityOptions}
+            disabled={loading}
+            placeholder={loading ? 'Loading…' : 'Search…'}
+            clearable
+            value={legacyOr(city?.code, value.city)}
+            onValueChange={pickCity}
+          />
+        )}
+      </FormField>
+      <FormField key="province" label="Province" tooltip="Philippine Standard Geographic Code (PSA).">
+        {(p) => (
+          <Combobox
+            {...p}
+            options={provinceOptions}
+            disabled={loading}
+            placeholder={loading ? 'Loading…' : 'Search…'}
+            clearable
+            value={legacyOr(province?.code, value.province)}
+            onValueChange={pickProvince}
+          />
+        )}
+      </FormField>
     </>
   );
 }

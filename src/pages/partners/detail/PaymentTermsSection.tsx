@@ -29,6 +29,7 @@ export function PaymentTermsSection({ draft, update, errors }: TabProps) {
         {f.num('interestOnArrears', 'Interest on arrears', { suffix: '%' })}
         {f.pick('effectiveDiscountGroups', 'Effective discount groups', EFFECTIVE_DISCOUNT_GROUPS, {
           disabled: draft.noDiscountGroups,
+          hint: draft.noDiscountGroups ? 'Not used — discount groups are off.' : undefined,
         })}
         {f.pick('effectivePrice', 'Effective price', EFFECTIVE_PRICE)}
       </Fields>

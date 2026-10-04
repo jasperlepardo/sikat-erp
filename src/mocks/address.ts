@@ -3,16 +3,13 @@
  * Philippine address the province, city and barangay come from the PSGC (services/locations.ts).
  */
 export interface PostalAddress {
-  street: string;
-  streetNo: string;
-  building: string;
-  /** Barangay (SAP "Block"); district or neighborhood abroad. */
+  /** Free-text address line (street number, street name, building/unit). */
+  addressLine: string;
+  /** Barangay name (PH) or district/neighborhood (abroad). */
   block: string;
   city: string;
   zip: string;
-  /** County / district, for foreign address formats. */
-  county: string;
-  /** Province (SAP "State"). */
+  /** Province (PH) or state/province abroad. */
   province: string;
   /** PSGC codes of the province, city and barangay picked for a Philippine address ('' when typed). */
   provinceCode: string;
@@ -22,13 +19,10 @@ export interface PostalAddress {
 }
 
 export const blankPostalAddress = (patch: Partial<PostalAddress> = {}): PostalAddress => ({
-  street: '',
-  streetNo: '',
-  building: '',
+  addressLine: '',
   block: '',
   city: '',
   zip: '',
-  county: '',
   province: '',
   provinceCode: '',
   cityCode: '',
@@ -42,7 +36,7 @@ export const formatAddress = (a?: PostalAddress, name = '') =>
   a
     ? [
         name,
-        [a.building, [a.streetNo, a.street].filter(Boolean).join(' ')].filter(Boolean).join(', '),
+        a.addressLine,
         [a.block, a.city].filter(Boolean).join(', '),
         [a.zip, a.country === 'Philippines' ? a.province : a.country].filter(Boolean).join(' '),
       ]

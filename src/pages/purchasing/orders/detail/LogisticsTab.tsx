@@ -1,100 +1,33 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Button, Combobox, FormField, Text, Textarea } from '@jasperlepardo/sikat-design-system';
+import { Button, CardField, Icon, Text, type CardFieldOption } from '@jasperlepardo/sikat-design-system';
 import { Fields, Flags, Section, bind } from '../../../../components/form/fields';
+import { blankPostalAddress, type PostalAddress } from '../../../../mocks/address';
 import { newAddress, type PartnerAddress } from '../../../../mocks/partners';
 import { LANGUAGES, PURCHASING_SETTINGS } from '../../../../mocks/purchaseOrders';
 import { activeOptions } from '../../../../services/inventoryMasters';
 import { savePartner } from '../../../../services/partners';
+import { AddressFields } from '../../../../components/form/AddressFields';
 import { AddressPanel } from '../../../partners/detail/AddressesTab';
+import { EditPanel } from '../../../partners/detail/EditPanel';
 import { defaultShipTo, formatAddress, type PoTabProps } from './types';
 
 type AddressKey = 'shipTo' | 'payTo';
 const OURS = 'ours';
+const WH_PREFIX = 'wh:';
 
-/**
- * One document address: a dropdown picks it (the vendor's addresses, or ours for ship-to), the
- * address shows under it, and "Edit for this PO" changes the copy on this PO only. "+ New
- * address" adds one to the vendor.
- */
-function AddressField({
-  label,
-  hint,
-  options,
-  picked,
-  text,
-  canAdd,
-  readOnly,
-  onPick,
-  onText,
-  onNew,
-}: {
-  label: string;
-  hint: string;
-  options: { value: string; label: string }[];
-  /** The option whose address matches the text ('' when edited or empty). */
-  picked: string;
-  text: string;
-  canAdd: boolean;
-  readOnly: boolean;
-  onPick: (value: string) => void;
-  onText: (text: string) => void;
-  onNew: () => void;
-}) {
-  // Bumped to remount (and so close) the dropdown after its footer is used.
-  const [mount, setMount] = useState(0);
-  const [editing, setEditing] = useState(false);
-  return (
-    <div className="flex flex-col gap-2">
-      <FormField label={label} tooltip={hint}>
-        {(p) => (
-          <Combobox
-            key={mount}
-            {...p}
-            options={options}
-            placeholder={text ? 'Edited for this PO' : 'None'}
-            value={picked || null}
-            onValueChange={(v) => {
-              if (!v) return;
-              setEditing(false);
-              onPick(v);
-            }}
-            footer={
-              canAdd ? (
-                <div className="border-t border-[var(--color-border-default)] pt-1">
-                  <button
-                    type="button"
-                    className="w-full cursor-pointer rounded-xl px-4 py-2 text-left text-sm font-medium hover:bg-[var(--color-bg-primary-subtle)]"
-                    style={{ color: 'var(--color-text-primary)' }}
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => {
-                      setMount((m) => m + 1);
-                      onNew();
-                    }}
-                  >
-                    + New address
-                  </button>
-                </div>
-              ) : undefined
-            }
-          />
-        )}
-      </FormField>
-      {editing ? (
-        <Textarea aria-label={`${label} for this PO`} rows={5} value={text} onChange={(e) => onText(e.currentTarget.value)} />
-      ) : (
-        <p className="whitespace-pre-line px-2 text-sm text-body">{text || '—'}</p>
-      )}
-      {!readOnly ? (
-        <div>
-          <Button type="button" size="small" variant="ghost" onClick={() => setEditing(!editing)}>
-            {editing ? 'Done editing' : 'Edit for this PO'}
-          </Button>
-        </div>
-      ) : null}
-    </div>
-  );
+/** Builds List.Card field rows from a postal address. */
+function addressFields(a: PostalAddress): { label: string; value: string }[] {
+  return [
+    { label: 'Address', value: a.addressLine },
+    { label: 'Barangay', value: a.block },
+    { label: 'City', value: a.city },
+    { label: 'Province', value: [a.province, a.zip].filter(Boolean).join(' ') },
+    ...(a.country !== 'Philippines' ? [{ label: 'Country', value: a.country }] : []),
+  ].filter((x) => !!x.value);
 }
+
+const locationIcon = <Icon size={16}>location_on</Icon>;
 
 export function LogisticsTab({ draft, update, m, ctx, onVendorSaved }: PoTabProps) {
   const f = bind(draft, update);
@@ -102,28 +35,82 @@ export function LogisticsTab({ draft, update, m, ctx, onVendorSaved }: PoTabProp
   const ours = defaultShipTo(draft.lines, m);
   const vendor = ctx.vendor;
   const [adding, setAdding] = useState<{ field: AddressKey; address: PartnerAddress } | null>(null);
+  const [editingAddr, setEditingAddr] = useState<{ field: AddressKey; address: PostalAddress; entityName: string } | null>(null);
 
   const vendorAddresses = vendor?.addresses ?? [];
-  const text = (a: PartnerAddress) => formatAddress(a, vendor?.name);
-  const vendorOptions = (defaultId: string | undefined, tag: string) =>
+  const vendorText = (a: PartnerAddress) => formatAddress(a, vendor?.name);
+  const companyText = formatAddress(m.company.address, m.company.name);
+  const whText = (code: string) => {
+    const wh = m.inv.warehouses.find((w) => w.code === code);
+    return wh ? formatAddress(wh.address, wh.name) : '';
+  };
+
+  const resolveAddr = (value: string): string => {
+    if (value === OURS) return companyText;
+    if (value.startsWith(WH_PREFIX)) return whText(value.slice(WH_PREFIX.length));
+    return vendorText(vendorAddresses.find((a) => a.id === value)!);
+  };
+
+  const ourOptions = (current: string): CardFieldOption[] => [
+    {
+      value: OURS,
+      label: `${m.company.name}${ours === companyText ? ' (default)' : ''}`,
+      icon: locationIcon,
+      fields: addressFields(m.company.address),
+    },
+    ...m.inv.warehouses
+      .filter((w) => w.active || whText(w.code) === current)
+      .map((w) => ({
+        value: `${WH_PREFIX}${w.code}`,
+        label: `${w.name}${ours === formatAddress(w.address, w.name) ? ' (default)' : ''}`,
+        icon: locationIcon,
+        fields: addressFields(w.address),
+      })),
+  ];
+
+  const vendorCardOptions = (defaultId: string | undefined, tag: string): CardFieldOption[] =>
     vendorAddresses.map((a) => ({
       value: a.id,
       label: `${a.label || 'Untitled address'} · ${vendor?.name}${a.id === defaultId ? ` (${tag})` : ''}`,
+      icon: locationIcon,
+      fields: addressFields(a),
     }));
-  // Ours first: goods come to our warehouse (or office, for services) unless they're drop-shipped.
-  const shipOptions = [
-    ...(ours ? [{ value: OURS, label: `${ours.split('\n')[0]} (default)` }] : []),
-    ...vendorOptions(vendor?.defaultShipToId, 'vendor’s ship-to'),
-  ];
-  const payOptions = vendorOptions(vendor?.defaultBillToId, 'default bill-to');
-  const picked = (current: string, options: { value: string }[]) =>
-    options.find((o) => (o.value === OURS ? ours : text(vendorAddresses.find((a) => a.id === o.value)!)) === current)?.value ?? '';
-  const shipPicked = picked(draft.shipTo, shipOptions);
-  const payPicked = picked(draft.payTo, payOptions);
-  const fill = (field: AddressKey, value: string) =>
-    update({ [field]: value === OURS ? ours : text(vendorAddresses.find((a) => a.id === value)!) });
 
-  // A new address goes straight onto the vendor record, then fills the field it was added from.
+  const baseShipOptions: CardFieldOption[] = [
+    ...ourOptions(draft.shipTo),
+    ...vendorCardOptions(vendor?.defaultShipToId, "vendor's ship-to"),
+  ];
+  const baseBillOptions = ourOptions(draft.payTo);
+
+  const findPicked = (current: string, options: CardFieldOption[]) =>
+    options.find((o) => resolveAddr(o.value) === current)?.value ?? '';
+
+  // When the address text has been manually edited and no longer matches a known
+  // option, inject a pseudo-option so the card view still shows.
+  const CUSTOM = '__custom__';
+  const customOption = (text: string, base: CardFieldOption[]): CardFieldOption | null => {
+    if (!text || findPicked(text, base)) return null;
+    const lines = text.split('\n').filter(Boolean);
+    return {
+      value: CUSTOM,
+      label: lines[0] ?? 'Custom address',
+      icon: locationIcon,
+      fields: lines.slice(1).map((line) => ({ label: '', value: line })),
+    };
+  };
+
+  const shipCustom = customOption(draft.shipTo, baseShipOptions);
+  const billCustom = customOption(draft.payTo, baseBillOptions);
+  const shipOptions = shipCustom ? [shipCustom, ...baseShipOptions] : baseShipOptions;
+  const billOptions = billCustom ? [billCustom, ...baseBillOptions] : baseBillOptions;
+  const shipPicked = shipCustom ? CUSTOM : findPicked(draft.shipTo, shipOptions);
+  const billPicked = billCustom ? CUSTOM : findPicked(draft.payTo, billOptions);
+
+  const fill = (field: AddressKey, value: string) => {
+    if (!value || value === CUSTOM) { update({ [field]: '' }); return; }
+    update({ [field]: resolveAddr(value) });
+  };
+
   const addAddress = async (a: PartnerAddress, picks: Partial<Record<string, boolean>>) => {
     if (!vendor || !adding) return;
     const saved = await savePartner({
@@ -133,50 +120,94 @@ export function LogisticsTab({ draft, update, m, ctx, onVendorSaved }: PoTabProp
       defaultShipToId: picks.defaultShipToId ? a.id : vendor.defaultShipToId,
     });
     onVendorSaved(saved);
-    update({ [adding.field]: formatAddress(a, saved.name) });
+    update({ [adding.field]: vendorText(a) });
     setAdding(null);
   };
+  const openEdit = (field: AddressKey) => {
+    const text = field === 'shipTo' ? draft.shipTo : draft.payTo;
+    let address: PostalAddress = blankPostalAddress();
+    let entityName = '';
+    if (text === companyText) { address = m.company.address; entityName = m.company.name; }
+    else {
+      const wh = m.inv.warehouses.find((w) => whText(w.code) === text);
+      if (wh) { address = wh.address; entityName = wh.name; }
+      else {
+        const va = vendorAddresses.find((a) => vendorText(a) === text);
+        if (va) { address = va; entityName = vendor?.name ?? ''; }
+      }
+    }
+    setEditingAddr({ field, address, entityName });
+  };
+  const saveEdit = (address: PostalAddress) => {
+    if (!editingAddr) return;
+    update({ [editingAddr.field]: formatAddress(address, editingAddr.entityName) });
+    setEditingAddr(null);
+  };
+
   const holder = (id: string) => (id ? vendorAddresses.find((a) => a.id === id)?.label || 'another address' : undefined);
-  const canAdd = !!vendor && !ctx.readOnly;
+  const canAddShip = !!vendor && !ctx.readOnly;
 
   return (
     <div className="flex flex-col gap-2">
       <Section icon="local_shipping" title="Addresses">
         <Fields>
-          <AddressField
-              label="Ship to"
-              hint="Where the goods are delivered: the line warehouse’s address, or the company address when the PO only has services. Pick a vendor address to drop-ship."
-              options={shipOptions}
-              picked={shipPicked}
-              text={draft.shipTo}
-              canAdd={canAdd}
-              readOnly={ctx.readOnly}
-              onPick={(v) => fill('shipTo', v)}
-              onText={(shipTo) => update({ shipTo })}
-              onNew={() => setAdding({ field: 'shipTo', address: newAddress() })}
-            />
-          <AddressField
-              label="Pay to"
-              hint="One of the vendor’s addresses. Starts on its default bill-to."
-              options={payOptions}
-              picked={payPicked}
-              text={draft.payTo}
-              canAdd={canAdd}
-              readOnly={ctx.readOnly}
-              onPick={(v) => fill('payTo', v)}
-              onText={(payTo) => update({ payTo })}
-              onNew={() => setAdding({ field: 'payTo', address: newAddress() })}
-            />
+          <CardField
+            label="Ship to"
+            options={shipOptions}
+            value={shipPicked}
+            onValueChange={(v) => fill('shipTo', v)}
+            onEdit={() => openEdit('shipTo')}
+            placeholder="Select a delivery address"
+            readOnly={ctx.readOnly}
+            footer={canAddShip ? (
+              <Button
+                type="button"
+                size="small"
+                variant="ghost"
+                onClick={() => setAdding({ field: 'shipTo', address: newAddress() })}
+              >
+                + New address
+              </Button>
+            ) : undefined}
+          />
+          <CardField
+            label="Bill to"
+            options={billOptions}
+            value={billPicked}
+            onValueChange={(v) => fill('payTo', v)}
+            onEdit={() => openEdit('payTo')}
+            placeholder="Select a billing address"
+            readOnly={ctx.readOnly}
+          />
         </Fields>
-        {vendor ? (
+        {vendor && canAddShip ? (
           <Text variant="small" tone="muted">
-            New addresses are saved to {vendor.name} right away, so later documents can pick them too.
+            New ship-to addresses are saved to {vendor.name} right away, so later documents can pick them too.
           </Text>
-        ) : (
-          <Text variant="small" tone="muted">Pick a vendor to fill these from its addresses.</Text>
-        )}
+        ) : null}
       </Section>
-      {/* In a portal, outside the PO's <form>, so Enter in a panel field doesn't save the PO. */}
+      {editingAddr
+        ? createPortal(
+            <EditPanel
+              icon="location_on"
+              title={editingAddr.field === 'shipTo' ? 'Edit ship-to address' : 'Edit bill-to address'}
+              onCancel={() => setEditingAddr(null)}
+              onDone={() => saveEdit(editingAddr.address)}
+            >
+              <Section icon="location_on" title="Address">
+                <AddressFields
+                  value={editingAddr.address}
+                  onChange={(p) => setEditingAddr({ ...editingAddr, address: { ...editingAddr.address, ...p } })}
+                  cols={1}
+                />
+                <Text variant="small" tone="muted">
+                  Changes apply to this PO only and won't affect the address book.
+                </Text>
+              </Section>
+            </EditPanel>,
+            document.body,
+          )
+        : null}
       {adding && vendor
         ? createPortal(
             <AddressPanel
@@ -184,8 +215,8 @@ export function LogisticsTab({ draft, update, m, ctx, onVendorSaved }: PoTabProp
               isNew
               errors={{}}
               defaults={[
-                { key: 'defaultBillToId', label: 'Vendor’s default bill-to (mailing) address', checked: !vendor.defaultBillToId, holder: holder(vendor.defaultBillToId) },
-                { key: 'defaultShipToId', label: 'Vendor’s default ship-to address', checked: !vendor.defaultShipToId, holder: holder(vendor.defaultShipToId) },
+                { key: 'defaultBillToId', label: "Vendor's default bill-to (mailing) address", checked: !vendor.defaultBillToId, holder: holder(vendor.defaultBillToId) },
+                { key: 'defaultShipToId', label: "Vendor's default ship-to address", checked: !vendor.defaultShipToId, holder: holder(vendor.defaultShipToId) },
               ]}
               onDone={addAddress}
               onCancel={() => setAdding(null)}
@@ -202,7 +233,7 @@ export function LogisticsTab({ draft, update, m, ctx, onVendorSaved }: PoTabProp
             { hint: 'Defaults from the vendor.' },
           )}
           {PURCHASING_SETTINGS.multiLanguageSupport
-            ? f.pick('language', 'Language', LANGUAGES, { hint: 'Prints the PO in the vendor’s language.' })
+            ? f.pick('language', 'Language', LANGUAGES, { hint: "Prints the PO in the vendor's language." })
             : null}
         </Fields>
         <Flags>
@@ -215,7 +246,7 @@ export function LogisticsTab({ draft, update, m, ctx, onVendorSaved }: PoTabProp
             : draft.splitByWarehouse && warehouses.length > 1
               ? `Adding creates ${warehouses.length} POs, one per warehouse (${warehouses.join(', ')}).`
               : 'Split purchase order creates one PO per warehouse when lines go to several.'}{' '}
-          Unapproved POs are saved as Not Confirmed and can’t be received until approved.
+          Unapproved POs are saved as Not Confirmed and cannot be received until approved.
         </Text>
       </Section>
     </div>

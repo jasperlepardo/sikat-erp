@@ -227,23 +227,24 @@ export const SEED_UOMS: UnitOfMeasure[] = [
   uom('pc', 'Piece'), uom('box', 'Box'), uom('carton', 'Carton'), uom('pack', 'Pack'), uom('roll', 'Roll'),
   uom('m', 'Meter'), uom('ft', 'Foot'), uom('g', 'Gram'), uom('kg', 'Kilogram'), uom('L', 'Liter'), uom('gal', 'Gallon'),
   uom('set', 'Set'), uom('pail', 'Pail'), uom('hour', 'Hour'), uom('trip', 'Trip'), uom('plan', 'Plan'), uom('seat', 'Seat'),
+  uom('month', 'Month'), uom('year', 'Year'), uom('job', 'Job'),
 ];
 
 const PH_PROVINCE: Record<string, string> = { '1300': 'Metro Manila', '0722': 'Cebu', '1124': 'Davao del Sur' };
 const ph = (
-  city: string, barangay: string, street: string, streetNo: string, zip: string,
-  provinceCode: string, cityCode: string, barangayCode: string, building = '',
+  city: string, barangay: string, address: string, zip: string,
+  provinceCode: string, cityCode: string, barangayCode: string,
 ): PostalAddress =>
   blankPostalAddress({
-    street, streetNo, building, block: barangay, city: `City of ${city}`, zip,
+    addressLine: address, block: barangay, city: `City of ${city}`, zip,
     province: PH_PROVINCE[provinceCode], provinceCode, cityCode, barangayCode,
   });
 
 export const SEED_WAREHOUSES: Warehouse[] = [
-  { id: 'wh-MNL', code: 'WH-MNL', name: 'Manila distribution center', address: ph('Pasig', 'Ugong', 'C. Raymundo Ave.', '20', '1604', '1300', '137403', '137403029'), binEnabled: true, bins: ['A-01-01', 'A-01-02', 'A-02-01', 'B-01-01', 'B-02-03', 'C-01-01'], active: true },
-  { id: 'wh-CEB', code: 'WH-CEB', name: 'Cebu store', address: ph('Cebu', 'Lahug', 'Salinas Dr.', '', '6000', '0722', '072217', '072217041', 'Ground floor, IT Park Bldg. 2'), binEnabled: false, bins: [], active: true },
-  { id: 'wh-DVO', code: 'WH-DVO', name: 'Davao store', address: ph('Davao', 'Buhangin', 'J.P. Laurel Ave.', '', '8000', '1124', '112402', '112402021'), binEnabled: false, bins: [], active: true },
-  { id: 'wh-PRD', code: 'WH-PRD', name: 'Service center (repairs)', address: ph('Makati', 'San Lorenzo', 'Arnaiz Ave.', '', '1223', '1300', '137602', '137602025', 'Greenbelt 3, 2F'), binEnabled: false, bins: [], active: true },
+  { id: 'wh-MNL', code: 'WH-MNL', name: 'Manila distribution center', address: ph('Pasig', 'Ugong', '20 C. Raymundo Ave.', '1604', '1300', '137403', '137403029'), binEnabled: true, bins: ['A-01-01', 'A-01-02', 'A-02-01', 'B-01-01', 'B-02-03', 'C-01-01'], active: true },
+  { id: 'wh-CEB', code: 'WH-CEB', name: 'Cebu store', address: ph('Cebu', 'Lahug', 'Ground floor, IT Park Bldg. 2, Salinas Dr.', '6000', '0722', '072217', '072217041'), binEnabled: false, bins: [], active: true },
+  { id: 'wh-DVO', code: 'WH-DVO', name: 'Davao store', address: ph('Davao', 'Buhangin', 'J.P. Laurel Ave.', '8000', '1124', '112402', '112402021'), binEnabled: false, bins: [], active: true },
+  { id: 'wh-PRD', code: 'WH-PRD', name: 'Service center (repairs)', address: ph('Makati', 'San Lorenzo', 'Greenbelt 3, 2F, Arnaiz Ave.', '1223', '1300', '137602', '137602025'), binEnabled: false, bins: [], active: true },
 ];
 
 const mfr = (code: string, name: string, country: string, contactPerson = '', email = '', phone = ''): Manufacturer => ({

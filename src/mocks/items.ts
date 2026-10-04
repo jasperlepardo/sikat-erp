@@ -75,6 +75,9 @@ export interface Item {
 
   // Header
   itemNo: string;
+  /** Short display name, e.g. "iPhone 18 Pro Max". Printed on documents. */
+  name: string;
+  /** Full variant description, e.g. "iPhone 18 Pro Max, 256GB, Black". */
   description: string;
   foreignName: string;
   itemType: ItemType;
@@ -270,6 +273,7 @@ export function blankItem(groupOrName: ItemGroup | string = SEED_ITEM_GROUPS[0])
       : groupOrName;
   return {
     itemNo: '',
+    name: '',
     description: '',
     foreignName: '',
     itemType: 'Items',
@@ -397,9 +401,7 @@ const ACCESSORY_CUSTOMS: [RegExp, string][] = [
   [/^ACC-(PWR|MAGSF)/, 'cg-8504'], [/^ACC-(CBL|USBC)/, 'cg-8544'], [/^ACC-(CASE|SPBAND)/, 'cg-4202'],
 ];
 
-// Demo of item units: chargers, cables and adapters get the PIECE group's units (stocked and
-// sold by the piece); MagSafe chargers and the Lightning adapter are bought by the box of 24.
-const PIECE_GROUP_ITEMS = /^ACC-(PWR|CBL|MAGSF|USBC)/;
+// MagSafe chargers and the USB-C to Lightning adapter are bought from the distributor by the box of 24.
 const BOUGHT_BY_THE_BOX = /^ACC-(MAGSF|USBC)/;
 
 /** Small deterministic hash so seeded stock looks varied but never changes between reloads. */
@@ -421,15 +423,15 @@ const APPLE_ITEMS: Item[] = expandCatalog(prefixOf).map((e, n) => {
   const dvo = preOrder ? 0 : ((h >>> 8) % 3) * scale;
   return seed(`apl-${String(n + 1).padStart(4, '0')}`, family.group, {
     itemNo: e.itemNo,
+    name: e.name,
     description: e.description,
     manageBy: family.serial ? 'Serial Numbers' : 'None',
     countryOfOrigin: '',
     customsGroup: CUSTOMS_BY_GROUP[family.group] ?? ACCESSORY_CUSTOMS.find(([re]) => re.test(e.itemNo))?.[1] ?? '',
     defaultVendorId: APPLE_VENDOR,
     vendors: [{ id: `apl-${n}-v1`, vendorId: APPLE_DIRECT, vendorItemNo: e.itemNo }],
-    ...(PIECE_GROUP_ITEMS.test(e.itemNo)
-      ? { uomGroup: 'PIECE', purchasingUom: BOUGHT_BY_THE_BOX.test(e.itemNo) ? 'box' : 'pc' }
-      : {}),
+    uomGroup: 'PIECE',
+    purchasingUom: BOUGHT_BY_THE_BOX.test(e.itemNo) ? 'box' : 'pc',
     manufacturer: 'MFR-APL',
     warrantyTemplate: 'wr-apl1',
     basePrice: e.price,
@@ -473,7 +475,7 @@ const APPLECARE: Item[] = ([
   ['IPH', 'iPhone', 12990], ['IPD', 'iPad', 5990], ['MAC', 'Mac', 15990], ['AW', 'Apple Watch', 4990], ['APD', 'AirPods', 1990],
 ] as const).map(([code, product, price], n) =>
   service(`acp-${String(n + 1).padStart(3, '0')}`, 'AppleCare', {
-    itemNo: `ACP-${code}-2Y`, description: `AppleCare+ for ${product} (2 years)`, basePrice: price, commissionGroup: 'cm-high',
+    itemNo: `ACP-${code}-2Y`, name: `AppleCare+ for ${product}`, description: `AppleCare+ for ${product} (2 years)`, basePrice: price, commissionGroup: 'cm-high',
     purchaseItem: true, defaultVendorId: APPLE_VENDOR, properties: [propertyId('PH SRP to confirm')],
     remarks: 'Sold with a serial-tracked device; the plan registers against that serial. Confirm AppleCare+ availability and pricing for PH.',
   }),
@@ -485,7 +487,7 @@ const ean13 = (d12: string) =>
 
 const GIFT_CERTIFICATES: Item[] = [1000, 5000, 10000].map((amount, n) =>
   service(`gc-${String(n + 1).padStart(3, '0')}`, 'Gift Certificates', {
-    itemNo: `GC-${amount / 1000}K`, description: `Store gift certificate ₱${amount.toLocaleString('en-PH')}`, inventoryUom: 'pc',
+    itemNo: `GC-${amount / 1000}K`, name: `Gift Certificate ₱${amount.toLocaleString('en-PH')}`, description: `Store gift certificate ₱${amount.toLocaleString('en-PH')}`, inventoryUom: 'pc',
     purchasingUom: 'pc', salesUom: 'pc', basePrice: amount, taxLiable: false,
     // EAN-13 with a 2xx prefix: reserved for in-store numbering, so it can't clash with a GS1 product code.
     barcodes: [{ id: `gc-${n + 1}-b1`, uom: 'pc', barcode: ean13(`20000000${String(amount / 1000).padStart(4, '0')}`), freeText: 'In-store code' }],
@@ -498,26 +500,26 @@ type PurchasedService = [
 ];
 const PURCHASED_SERVICES: PurchasedService[] = [
   ['itm-021', 'SVC-AI-SEAT', 'AI assistant subscription (per seat, monthly)', 'seat', 'WH-SVC', 'bp-018'],
-  ['itm-022', 'SVC-ADS-DIGITAL', 'Digital advertising (search, video, social)', 'pc', 'WH-SVC', 'bp-019'],
-  ['itm-023', 'SVC-SECURITY', 'Store security guard services (monthly)', 'pc', 'WH-CONT', 'bp-014'],
+  ['itm-022', 'SVC-ADS-DIGITAL', 'Digital advertising (search, video, social)', 'month', 'WH-SVC', 'bp-019'],
+  ['itm-023', 'SVC-SECURITY', 'Store security guard services (monthly)', 'month', 'WH-CONT', 'bp-014'],
   ['itm-024', 'SVC-COURIER', 'Courier and logistics', 'trip', 'WH-SVC', 'bp-027'],
-  ['itm-025', 'SVC-AUDIT', 'External audit and tax compliance fee', 'pc', 'WH-PROF', 'bp-021'],
-  ['itm-026', 'SVC-CUSTOMS', 'Customs brokerage fee (per import entry)', 'pc', 'WH-COMM', 'bp-022'],
-  ['itm-027', 'SVC-PHOTO', 'Product photography and creative services', 'pc', 'WH-PROF', 'bp-023'],
+  ['itm-025', 'SVC-AUDIT', 'External audit and tax compliance fee', 'job', 'WH-PROF', 'bp-021'],
+  ['itm-026', 'SVC-CUSTOMS', 'Customs brokerage fee (per import entry)', 'job', 'WH-COMM', 'bp-022'],
+  ['itm-027', 'SVC-PHOTO', 'Product photography and creative services', 'job', 'WH-PROF', 'bp-023'],
   ['itm-028', 'SVC-IT-CONSULT', 'IT consulting and systems integration', 'hour', 'WH-PROF', 'bp-024'],
-  ['itm-029', 'SVC-SALES-COMM', 'Sales agent commission', 'pc', 'WH-SCOMM', 'bp-026'],
-  ['itm-030', 'SVC-POS-LICENSE', 'POS software licence (annual)', 'pc', 'WH-ROY', 'bp-030'],
-  ['itm-031', 'FIN-LOAN-INT', 'Interest on inventory financing', 'pc', 'WH-INT', 'bp-032', 'P-VATX'],
+  ['itm-029', 'SVC-SALES-COMM', 'Sales agent commission', 'month', 'WH-SCOMM', 'bp-026'],
+  ['itm-030', 'SVC-POS-LICENSE', 'POS software licence (annual)', 'year', 'WH-ROY', 'bp-030'],
+  ['itm-031', 'FIN-LOAN-INT', 'Interest on inventory financing', 'month', 'WH-INT', 'bp-032', 'P-VATX'],
   ['itm-032', 'SVC-POSTAGE', 'Registered mail and postage', 'pc', 'WH-SVC', 'bp-028'],
-  ['itm-033', 'SVC-LEGAL', 'Legal retainer and case fees', 'pc', 'WH-PROF', 'bp-033'],
-  ['itm-034', 'SVC-AIRCON', 'Aircon preventive maintenance (monthly)', 'pc', 'WH-SVC', 'bp-034'],
-  ['itm-035', 'SVC-DESIGN', 'Signage and campaign design', 'pc', 'WH-PROF', 'bp-035'],
-  ['itm-036', 'SVC-RNT-CEB', 'Cebu store space rent (monthly)', 'pc', 'WH-RENT', 'bp-036'],
-  ['itm-037', 'SVC-VIDEO-EDIT', 'Video editing', 'pc', 'WH-PROF', 'bp-037'],
-  ['itm-038', 'SVC-POS-LEASE', 'POS terminal and card reader lease (monthly)', 'pc', 'WH-EQUIP', 'bp-038'],
-  ['itm-039', 'SVC-SIGNAGE-LIC', 'Video wall content software licence (annual)', 'pc', 'WH-ROY', 'bp-039'],
-  ['itm-040', 'SVC-FREIGHT', 'Air freight and forwarding', 'pc', 'WH-SVC', 'bp-042'],
-  ['itm-041', 'SVC-ADVISORY', 'Retail operations advisory', 'pc', 'WH-PROF', 'bp-043'],
+  ['itm-033', 'SVC-LEGAL', 'Legal retainer and case fees', 'month', 'WH-PROF', 'bp-033'],
+  ['itm-034', 'SVC-AIRCON', 'Aircon preventive maintenance (monthly)', 'month', 'WH-SVC', 'bp-034'],
+  ['itm-035', 'SVC-DESIGN', 'Signage and campaign design', 'job', 'WH-PROF', 'bp-035'],
+  ['itm-036', 'SVC-RNT-CEB', 'Cebu store space rent (monthly)', 'month', 'WH-RENT', 'bp-036'],
+  ['itm-037', 'SVC-VIDEO-EDIT', 'Video editing', 'job', 'WH-PROF', 'bp-037'],
+  ['itm-038', 'SVC-POS-LEASE', 'POS terminal and card reader lease (monthly)', 'month', 'WH-EQUIP', 'bp-038'],
+  ['itm-039', 'SVC-SIGNAGE-LIC', 'Video wall content software licence (annual)', 'year', 'WH-ROY', 'bp-039'],
+  ['itm-040', 'SVC-FREIGHT', 'Air freight and forwarding', 'job', 'WH-SVC', 'bp-042'],
+  ['itm-041', 'SVC-ADVISORY', 'Retail operations advisory', 'month', 'WH-PROF', 'bp-043'],
   // Set up wrong on purpose: a foreign service with no withholding group — the rules warn instead of guessing.
   ['itm-042', 'SVC-FOREIGN-MISC', 'Foreign service — to classify', 'pc', '', 'bp-029'],
 ];
@@ -525,13 +527,13 @@ const PURCHASED_SERVICES: PurchasedService[] = [
 /** Purchases whose tax treatment is fixed on the item rather than decided by the vendor. */
 const ITEM_TAX_CASES: Item[] = [
   seed('itm-043', 'Services', {
-    itemNo: 'IMP-VAT-DISB', description: 'Import VAT advanced by customs broker', itemType: 'Items', inventoryUom: 'pc', purchasingUom: 'pc',
+    itemNo: 'IMP-VAT-DISB', name: 'Import VAT disbursement', description: 'Import VAT advanced by customs broker', itemType: 'Items', inventoryUom: 'pc', purchasingUom: 'pc',
     salesItem: false, inventoryItem: false, purchaseTaxGroup: 'P-VAT12', purchaseTaxCode: '46', withholdingGroup: 'WH-NONE',
     defaultVendorId: 'bp-022', warehouses: [], cycleCountDays: 0, hasTransactions: false,
     generalRemarks: 'The broker pays the import VAT to the Bureau of Customs for us and bills it back at cost: fixed code 46, and no withholding on a reimbursement.',
   }),
   seed('itm-044', 'Services', {
-    itemNo: 'IMP-MANUALS', description: 'Printed Apple training manuals (imported)', itemType: 'Items', inventoryUom: 'pc', purchasingUom: 'pc',
+    itemNo: 'IMP-MANUALS', name: 'Printed Apple training manuals', description: 'Printed Apple training manuals (imported)', itemType: 'Items', inventoryUom: 'pc', purchasingUom: 'pc',
     salesItem: false, inventoryItem: false, purchaseTaxGroup: 'P-VATX', withholdingGroup: 'WH-GDS',
     defaultVendorId: 'bp-017', warehouses: [], cycleCountDays: 0, hasTransactions: false,
     generalRemarks: 'Books and printed materials are VAT-exempt on importation (NIRC Sec. 109): imported from Apple they get code 49.',
@@ -544,34 +546,34 @@ export const SEED_ITEMS: Item[] = [
   ...GIFT_CERTIFICATES,
   // Services the store sells or buys. Their ids stay stable: the tax rules tester and tests use them.
   seed('itm-016', 'Services', {
-    itemNo: 'SVC-SETUP', description: 'Device setup & data transfer', itemType: 'Labor', inventoryUom: 'hour', purchaseItem: false,
+    itemNo: 'SVC-SETUP', name: 'Device setup & data transfer', description: 'Device setup & data transfer', itemType: 'Labor', inventoryUom: 'hour', purchaseItem: false,
     purchaseTaxGroup: 'P-VAT12S', withholdingGroup: 'WH-SVC',
     inventoryItem: false, basePrice: 990, commissionGroup: 'cm-std', cycleCountDays: 0, warehouses: [],
   }),
   seed('itm-017', 'Services', {
-    itemNo: 'SVC-DLV-TRIP', description: 'Same-day delivery (Metro Manila)', itemType: 'Travel', inventoryUom: 'trip',
+    itemNo: 'SVC-DLV-TRIP', name: 'Same-day delivery', description: 'Same-day delivery (Metro Manila)', itemType: 'Travel', inventoryUom: 'trip',
     purchaseItem: false, inventoryItem: false, basePrice: 350, cycleCountDays: 0, warehouses: [],
     purchaseTaxGroup: 'P-VAT12S', withholdingGroup: 'WH-SVC',
   }),
   seed('itm-018', 'Rent & Leases', {
-    itemNo: 'SVC-RNT-MALL', description: 'Mall store space rent (monthly)', itemType: 'Items', inventoryUom: 'pc', purchasingUom: 'pc',
+    itemNo: 'SVC-RNT-MALL', name: 'Mall store space rent', description: 'Mall store space rent (monthly)', itemType: 'Items', inventoryUom: 'month', purchasingUom: 'month',
     salesItem: false, inventoryItem: false, purchaseTaxGroup: 'P-VAT12S', withholdingGroup: 'WH-RENT', warehouses: [],
     defaultVendorId: 'bp-002', cycleCountDays: 0, hasTransactions: false,
   }),
   seed('itm-019', 'Services', {
-    itemNo: 'SVC-SUB-FITOUT', description: 'Store fit-out subcontract', itemType: 'Labor', inventoryUom: 'hour', purchasingUom: 'hour',
+    itemNo: 'SVC-SUB-FITOUT', name: 'Store fit-out subcontract', description: 'Store fit-out subcontract', itemType: 'Labor', inventoryUom: 'hour', purchasingUom: 'hour',
     salesItem: false, inventoryItem: false, purchaseTaxGroup: 'P-VAT12S', withholdingGroup: 'WH-CONT', warehouses: [],
     defaultVendorId: 'bp-025', cycleCountDays: 0, hasTransactions: false,
   }),
   seed('itm-020', 'Services', {
-    itemNo: 'SVC-CLD-HOST', description: 'Cloud hosting subscription (monthly)', itemType: 'Items', inventoryUom: 'pc',
-    purchasingUom: 'pc', salesItem: false, inventoryItem: false, purchaseTaxGroup: 'P-VAT12S', withholdingGroup: 'WH-SVC',
+    itemNo: 'SVC-CLD-HOST', name: 'Cloud hosting subscription', description: 'Cloud hosting subscription (monthly)', itemType: 'Items', inventoryUom: 'month',
+    purchasingUom: 'month', salesItem: false, inventoryItem: false, purchaseTaxGroup: 'P-VAT12S', withholdingGroup: 'WH-SVC',
     defaultVendorId: 'bp-015', warehouses: [], cycleCountDays: 0, hasTransactions: false,
   }),
   // Other things the store buys — one per withholding group, so every vendor's tax scenario can be tried.
   ...PURCHASED_SERVICES.map(([id, itemNo, description, uom, withholdingGroup, defaultVendorId, purchaseTaxGroup = 'P-VAT12S']) =>
     seed(id, withholdingGroup === 'WH-RENT' ? 'Rent & Leases' : 'Services', {
-      itemNo, description, itemType: 'Items', inventoryUom: uom, purchasingUom: uom, salesItem: false, inventoryItem: false,
+      itemNo, name: description.replace(/ \(.*\)$/, ''), description, itemType: 'Items', inventoryUom: uom, purchasingUom: uom, salesItem: false, inventoryItem: false,
       purchaseTaxGroup, withholdingGroup, defaultVendorId, warehouses: [], cycleCountDays: 0, hasTransactions: false,
     }),
   ),
