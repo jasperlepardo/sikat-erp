@@ -104,7 +104,9 @@ export function DiscountGroupsTab() {
             header: c.name,
             cell: (r: DiscountGroupRow) => {
               const v = r.discounts[c.name];
+              // Fixed width: short headers (iPad, Mac) would otherwise squeeze the input to nothing.
               return (
+                <div className="w-24 min-w-24">
                 <TextField
                   aria-label={`${r.bpGroup} × ${c.name} discount`}
                   type="number"
@@ -112,11 +114,11 @@ export function DiscountGroupsTab() {
                   max={100}
                   suffix="%"
                   placeholder="0"
-                  className="w-24"
                   invalid={v !== undefined && !(v >= 0 && v <= 100)}
                   value={v === undefined ? '' : String(v)}
                   onChange={(e) => setCell(r, c.name, e.currentTarget.value)}
                 />
+                </div>
               );
             },
           })),

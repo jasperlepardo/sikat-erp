@@ -129,7 +129,6 @@ export interface Delivery {
 export const DN_SERIES = [{ id: 'dns-primary', name: 'Primary', firstNo: 420001 }];
 
 export const newDnLine = (patch: Partial<DnLine> = {}): DnLine => ({
-  id: `dl-${crypto.randomUUID().slice(0, 8)}`,
   itemId: '',
   itemNo: '',
   description: '',
@@ -151,6 +150,8 @@ export const newDnLine = (patch: Partial<DnLine> = {}): DnLine => ({
   unitCostLc: 0,
   invoicedQty: 0,
   ...patch,
+  // A copied line passes id: undefined; it still needs an id of its own.
+  id: patch.id ?? `dl-${crypto.randomUUID().slice(0, 8)}`,
 });
 
 export function blankDelivery(today: string, owner: string): Omit<Delivery, 'id'> {

@@ -26,8 +26,8 @@ function addressFields(a: PostalAddress) {
   ].filter((x) => !!x.value);
 }
 
-export function DnLogistics({ draft, update, m, ctx }: DnSectionProps) {
-  const f = bind(draft, update);
+/** Ship To / Bill To cards from the customer's addresses (any sales document). */
+export function AddressCards({ draft, update, ctx }: { draft: { shipTo: string; billTo: string }; update: (p: { shipTo?: string; billTo?: string }) => void; ctx: Pick<DnSectionProps['ctx'], 'customer' | 'readOnly'> }) {
   const customer = ctx.customer;
   const addresses = customer?.addresses ?? [];
   const text = (a: PartnerAddress) => formatAddress(a, customer?.name);
@@ -44,13 +44,21 @@ export function DnLogistics({ draft, update, m, ctx }: DnSectionProps) {
   };
 
   return (
+    <Section icon="local_shipping" title="Addresses">
+      <Fields>
+        <CardField label="Ship to" options={options(draft.shipTo, customer?.defaultShipToId, 'default ship-to')} value={picked(draft.shipTo)} onValueChange={(v) => fill('shipTo', v)} placeholder={customer ? 'Select a delivery address' : 'Pick a customer first'} readOnly={ctx.readOnly} />
+        <CardField label="Bill to" options={options(draft.billTo, customer?.defaultBillToId, 'default bill-to')} value={picked(draft.billTo)} onValueChange={(v) => fill('billTo', v)} placeholder={customer ? 'Select a billing address' : 'Pick a customer first'} readOnly={ctx.readOnly} />
+      </Fields>
+    </Section>
+  );
+}
+
+export function DnLogistics({ draft, update, m, ctx }: DnSectionProps) {
+  const f = bind(draft, update);
+  const customer = ctx.customer;
+  return (
     <div className="flex flex-col gap-2">
-      <Section icon="local_shipping" title="Addresses">
-        <Fields>
-          <CardField label="Ship to" options={options(draft.shipTo, customer?.defaultShipToId, 'default ship-to')} value={picked(draft.shipTo)} onValueChange={(v) => fill('shipTo', v)} placeholder={customer ? 'Select a delivery address' : 'Pick a customer first'} readOnly={ctx.readOnly} />
-          <CardField label="Bill to" options={options(draft.billTo, customer?.defaultBillToId, 'default bill-to')} value={picked(draft.billTo)} onValueChange={(v) => fill('billTo', v)} placeholder={customer ? 'Select a billing address' : 'Pick a customer first'} readOnly={ctx.readOnly} />
-        </Fields>
-      </Section>
+      <AddressCards draft={draft} update={update} ctx={ctx} />
       <Section icon="route" title="Shipment">
         <Fields>
           {f.lookup('shippingType', 'Shipping type', [{ value: '', label: '— None —' }, ...activeOptions(m.inv.shipping, (s) => s.id, (s) => s.name, draft.shippingType)])}

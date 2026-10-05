@@ -168,6 +168,25 @@ export async function addDelivery(input: DnInput, fx: number): Promise<Delivery>
   return saved;
 }
 
+/**
+ * A/R invoice lines copied from delivery lines: move each line's Invoiced Qty by `sign` (back on
+ * a cancelled invoice). A delivery closes when every line is billed in full, and reopens below it.
+ */
+export async function applyInvoiced(lines: { baseId: string; baseLineId: string; quantity: number }[], sign: 1 | -1) {
+  const ids = [...new Set(lines.map((l) => l.baseId))];
+  for (const id of ids) {
+    const d = await deliveries.get(id);
+    if (!d) continue;
+    const next = d.lines.map((dl) => {
+      const qty = lines.filter((l) => l.baseId === id && l.baseLineId === dl.id).reduce((n, l) => n + l.quantity, 0);
+      return qty ? { ...dl, invoicedQty: Math.max(0, round4(dl.invoicedQty + qty * sign)) } : dl;
+    });
+    const billed = next.every((l) => l.invoicedQty >= l.quantity);
+    const status = d.status === 'Cancelled' ? d.status : billed ? 'Closed' : 'Open';
+    await deliveries.save({ ...d, lines: next, status, closeDate: status === 'Closed' ? d.closeDate || todayISO() : '' });
+  }
+}
+
 /** Close: nothing more will be invoiced against it. */
 export async function closeDelivery(d: Delivery) {
   return deliveries.save({ ...d, status: 'Closed', closeDate: todayISO() });

@@ -17,7 +17,7 @@
  * - Amounts are in PHP (local currency); the document's own currency stays on the document.
  * - Posting periods: everything through CLOSED_THROUGH is closed, and periods exist only through
  *   FISCAL_YEAR_END. Period 13 (year-end adjustment) postings are dated FISCAL_YEAR_END.
- * - Origin codes follow SAP's legend (JE, IM, PD, PU, PS, RD, PC, DN); IQ for Inventory Posting is a
+ * - Origin codes follow SAP's legend (JE, IM, PD, PU, PS, RD, PC, DN, IN); IQ for Inventory Posting is a
  *   placeholder until the "Transaction Type Abbreviations Legend" is confirmed.
  * - Seeded documents from before the prototype's data have no entries (except the seeded
  *   September count), so balances start from what's posted in the app.
@@ -26,7 +26,7 @@ import type { Attachment } from './common';
 
 export type JeStatus = 'Posted' | 'Reversed';
 
-export type OriginType = 'JE' | 'IM' | 'IQ' | 'PD' | 'PU' | 'PS' | 'RD' | 'PC' | 'DN';
+export type OriginType = 'JE' | 'IM' | 'IQ' | 'PD' | 'PU' | 'PS' | 'RD' | 'PC' | 'DN' | 'IN';
 export const ORIGIN_LABEL: Record<OriginType, string> = {
   JE: 'Journal Entry',
   IM: 'Inventory Transfer',
@@ -37,6 +37,7 @@ export const ORIGIN_LABEL: Record<OriginType, string> = {
   RD: 'Goods Return',
   PC: 'A/P Credit Memo',
   DN: 'Delivery',
+  IN: 'A/R Invoice',
 };
 /** Where each origin document opens (once its screens exist). */
 export const ORIGIN_PATH: Partial<Record<OriginType, string>> = {
@@ -123,7 +124,6 @@ export interface JournalEntry {
 export const JE_SERIES = [{ id: 'je-primary', name: 'Primary', firstNo: 1 }];
 
 export const newJeLine = (patch: Partial<JeLine> = {}): JeLine => ({
-  id: `jl-${crypto.randomUUID().slice(0, 8)}`,
   account: '',
   partnerId: '',
   debit: 0,
@@ -133,6 +133,8 @@ export const newJeLine = (patch: Partial<JeLine> = {}): JeLine => ({
   project: '',
   remarks: '',
   ...patch,
+  // A copied line passes id: undefined; it still needs an id of its own.
+  id: patch.id ?? `jl-${crypto.randomUUID().slice(0, 8)}`,
 });
 
 export function blankJournalEntry(today: string): Omit<JournalEntry, 'id'> {

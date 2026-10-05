@@ -144,7 +144,6 @@ export const countedQty = (l: Pick<CountLine | PostingLine, 'uomCountedQty' | 'i
   Math.round(l.uomCountedQty * (l.itemsPerUnit || 1) * 1000) / 1000;
 
 export const newCountLine = (patch: Partial<CountLine> = {}): CountLine => ({
-  id: `cl-${crypto.randomUUID().slice(0, 8)}`,
   itemId: '',
   itemNo: '',
   description: '',
@@ -158,10 +157,11 @@ export const newCountLine = (patch: Partial<CountLine> = {}): CountLine => ({
   counted: false,
   uomCountedQty: 0,
   ...patch,
+  // A copied line passes id: undefined; it still needs an id of its own.
+  id: patch.id ?? `cl-${crypto.randomUUID().slice(0, 8)}`,
 });
 
 export const newPostingLine = (patch: Partial<PostingLine> = {}): PostingLine => ({
-  id: `pl-${crypto.randomUUID().slice(0, 8)}`,
   baseLineId: '',
   itemId: '',
   itemNo: '',
@@ -174,6 +174,8 @@ export const newPostingLine = (patch: Partial<PostingLine> = {}): PostingLine =>
   uomCountedQty: 0,
   price: 0,
   ...patch,
+  // A copied line passes id: undefined; it still needs an id of its own.
+  id: patch.id ?? `pl-${crypto.randomUUID().slice(0, 8)}`,
 });
 
 export function blankCounting(today: string, now: string, counter: string): Omit<InventoryCounting, 'id'> {

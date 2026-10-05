@@ -18,8 +18,15 @@ import { createCollection } from './store';
 
 const entries = createCollection<JournalEntry>('sikat-erp:journal-entries', SEED_JOURNAL_ENTRIES, 'je');
 
-export const listJournalEntries = entries.list;
-export const getJournalEntry = entries.get;
+/** Reversals made before line ids were guaranteed saved rows without one; give them a stable id on read. */
+const withLineIds = (je: JournalEntry): JournalEntry =>
+  je.lines.every((l) => l.id) ? je : { ...je, lines: je.lines.map((l, i) => (l.id ? l : { ...l, id: `${je.id}-row${i + 1}` })) };
+
+export const listJournalEntries = async () => (await entries.list()).map(withLineIds);
+export const getJournalEntry = async (id: string) => {
+  const je = await entries.get(id);
+  return je && withLineIds(je);
+};
 
 export type JeInput = Omit<JournalEntry, 'id'> & { id?: string };
 

@@ -267,6 +267,9 @@ function SalesOrderForm() {
     ...(draft.status === 'Open' && draft.docType === 'Item' && draft.lines.some((l) => openQty(l) > 0)
       ? [{ label: 'Copy to delivery', icon: 'local_shipping', onSelect: () => navigate('/sales/deliveries/new', { state: { fromOrder: draft.id } }) }]
       : []),
+    ...(draft.status === 'Open' && draft.lines.some((l) => openQty(l) > 0)
+      ? [{ label: 'Copy to A/R invoice', icon: 'receipt', onSelect: () => navigate('/sales/invoices/new', { state: { fromOrder: draft.id } }) }]
+      : []),
     ...(!isNew ? [{ label: 'Duplicate', icon: 'content_copy', onSelect: duplicate }] : []),
     ...(draft.status === 'Open' ? [{ label: 'Close', icon: 'task_alt', onSelect: () => act(() => closeSalesOrder(saved), 'closed') }] : []),
     ...(draft.status === 'Open' && !delivered ? [{ label: 'Cancel sales order', icon: 'cancel', onSelect: () => act(() => cancelSalesOrder(saved), 'cancelled') }] : []),

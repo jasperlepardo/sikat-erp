@@ -20,6 +20,8 @@ import { SalesOrderList } from '../pages/sales/orders/SalesOrderList';
 import { SalesOrderDetail } from '../pages/sales/orders/detail/SalesOrderDetail';
 import { DeliveryList } from '../pages/sales/deliveries/DeliveryList';
 import { DeliveryDetail } from '../pages/sales/deliveries/detail/DeliveryDetail';
+import { ArInvoiceList } from '../pages/sales/invoices/ArInvoiceList';
+import { ArInvoiceDetail } from '../pages/sales/invoices/detail/ArInvoiceDetail';
 import { PurchaseOrderDetail } from '../pages/purchasing/orders/detail/PurchaseOrderDetail';
 import { GoodsReceiptList } from '../pages/purchasing/receipts/GoodsReceiptList';
 import { GoodsReceiptDetail } from '../pages/purchasing/receipts/detail/GoodsReceiptDetail';
@@ -72,6 +74,8 @@ export const router = createHashRouter([
       { path: 'sales/sales-orders/:id', element: <SalesOrderDetail /> },
       { path: 'sales/deliveries', element: <DeliveryList /> },
       { path: 'sales/deliveries/:id', element: <DeliveryDetail /> },
+      { path: 'sales/invoices', element: <ArInvoiceList /> },
+      { path: 'sales/invoices/:id', element: <ArInvoiceDetail /> },
       { path: 'purchasing/purchase-orders', element: <PurchaseOrderList /> },
       { path: 'purchasing/purchase-orders/:id', element: <PurchaseOrderDetail /> },
       { path: 'purchasing/goods-receipts', element: <GoodsReceiptList /> },

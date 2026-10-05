@@ -147,7 +147,6 @@ export const NO_SALES_EMPLOYEE = '-No Sales Employee-';
 const TODAY = todayISO();
 
 export const newSoLine = (patch: Partial<SoLine> = {}): SoLine => ({
-  id: `sl-${crypto.randomUUID().slice(0, 8)}`,
   itemId: '',
   itemNo: '',
   description: '',
@@ -165,6 +164,8 @@ export const newSoLine = (patch: Partial<SoLine> = {}): SoLine => ({
   glAccount: '',
   status: 'Open',
   ...patch,
+  // A copied line passes id: undefined; it still needs an id of its own.
+  id: patch.id ?? `sl-${crypto.randomUUID().slice(0, 8)}`,
 });
 
 export function blankSalesOrder(owner: string): Omit<SalesOrder, 'id'> {

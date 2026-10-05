@@ -208,6 +208,9 @@ function DeliveryForm() {
   const invoiced = draft.lines.some((l) => l.invoicedQty > 0);
   const menu: MoreMenuItem[] = [
     ...(!ctx.added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
+    ...(draft.status === 'Open' && draft.lines.some((l) => l.quantity > l.invoicedQty)
+      ? [{ label: 'Copy to A/R invoice', icon: 'receipt', onSelect: () => navigate('/sales/invoices/new', { state: { fromDelivery: draft.id } }) }]
+      : []),
     ...(draft.status === 'Open' ? [{ label: 'Close', icon: 'task_alt', onSelect: () => act(() => closeDelivery(saved), 'closed') }] : []),
     ...(draft.status === 'Open' && !invoiced ? [{ label: 'Cancel delivery', icon: 'cancel', onSelect: () => act(() => cancelDelivery(saved), 'cancelled — the stock is back and the order lines are open again') }] : []),
     ...baseOrders.map((soId) => ({ label: `Open sales order ${draft.lines.find((l) => l.baseId === soId)?.baseDocNo}`, icon: 'shopping_bag', onSelect: () => navigate(`${SO_LIST_PATH}/${soId}`) })),
