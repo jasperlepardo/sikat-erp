@@ -24,7 +24,7 @@ import { taxCodes } from '../../../services/masterData';
 import { listPurchaseOrders, openQty, poNumber, poTotal } from '../../../services/purchaseOrders';
 import { useAsync } from '../../../services/useAsync';
 import { PO_LIST_PATH, STATUS_INTENT } from './detail/PurchaseOrderDetail';
-import { DEFAULT_PAGE_SIZE, PAGE_SIZES } from '../../../components/form/DataTable';
+import { DEFAULT_PAGE_SIZE, PAGE_SIZES, fillCardClass } from '../../../components/form/DataTable';
 
 type Filter = 'all' | PoStatus;
 
@@ -153,7 +153,7 @@ export function PurchaseOrderList() {
             setPage(1);
           }}
         />
-        <Card className="flex-initial min-h-72">
+        <Card className={fillCardClass(rows.slice((page - 1) * pageSize, page * pageSize).length)}>
           {orders ? (
             <Table
               caption="Purchase orders"

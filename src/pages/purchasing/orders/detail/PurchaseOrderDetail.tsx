@@ -11,7 +11,6 @@ import {
   Panel,
   PanelHeader,
   panelHeaderIcons,
-  Radio,
   Select,
   Tabs,
   List,
@@ -67,6 +66,7 @@ import {
   type PoDraft,
   type PoMasters,
 } from './types';
+import { formatDate, todayISO } from '../../../../services/dates';
 
 export const PO_LIST_PATH = '/purchasing/purchase-orders';
 
@@ -88,7 +88,7 @@ export const STATUS_INTENT: Record<PoStatus, 'default' | 'primary' | 'warning' |
   Cancelled: 'danger',
 };
 
-const TODAY = () => new Date().toISOString().slice(0, 10);
+const TODAY = () => todayISO();
 
 /** How each kind of withholding tax reads in the footer. */
 const WITHHELD_LABEL: Record<string, string> = {
@@ -180,7 +180,7 @@ function PurchaseOrderForm() {
       if (isNew) setDraft((d) => {
         if (!d) return d;
         const companyAddress = formatAddress(masters.company.address, masters.company.name);
-        return { ...d, shipTo: d.shipTo || defaultShipTo(d.lines, masters), payTo: d.payTo || companyAddress };
+        return { ...d, shipTo: d.shipTo || defaultShipTo(d.lines, masters), billTo: d.billTo || companyAddress };
       });
     });
     if (isNew || !id) return;
@@ -335,7 +335,6 @@ function PurchaseOrderForm() {
   ];
 
   const allCurrencies = vendor?.currency === ALL_CURRENCIES;
-  const currencyEditable = allCurrencies && !ctx.readOnly && !received;
   const title = isNew ? 'New purchase order' : draft.status === 'Draft' ? `Draft purchase order` : `Purchase order ${poNumber(draft)}`;
   const postingMoved = draft.postingDate && draft.postingDate !== TODAY() && !ctx.added;
 
@@ -430,6 +429,7 @@ function PurchaseOrderForm() {
               <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
                 <Section icon="storefront" title="Vendor">
                   <Fields>
+                    <div className="md:col-span-2">
                     {vendor && ctx.added ? (
                       <ReadOnly
                         label="Vendor"
@@ -474,6 +474,7 @@ function PurchaseOrderForm() {
                           )}
                         </FormField>
                     )}
+                    </div>
                     {h.lookup(
                       'contactId',
                       'Contact person',
@@ -489,32 +490,22 @@ function PurchaseOrderForm() {
                       required
                       error={errors.currency}
                       tooltip={
-                        allCurrencies
-                          ? currencyEditable
+                        received
+                          ? 'Locked: goods were already received on this PO.'
+                          : allCurrencies
                             ? 'This vendor takes all currencies — pick the document currency.'
-                            : 'Locked: goods were already received on this PO.'
-                          : `The vendor's currency (${draft.currency}). Amounts show in the currency picked here.`
+                            : `Defaults to the vendor's currency (${vendor?.currency ?? '—'}).`
                       }
                       className="md:col-span-2"
                     >
-                      {() => (
-                        <div className="flex flex-wrap items-center gap-6" role="radiogroup" aria-label="Show amounts in">
-                          {(['Local', 'System', 'BP'] as const).map((v) => (
-                            <Radio key={v} name="po-currency-view" checked={draft.currencyView === v} onChange={() => update({ currencyView: v })}>
-                              {v === 'Local' ? 'Local (PHP)' : v === 'System' ? `System (${m.currencies.find((c) => c.isSystem)?.code ?? 'USD'})` : `BP (${draft.currency})`}
-                            </Radio>
-                          ))}
-                          {allCurrencies ? (
-                            <Combobox
-                              aria-label="Document currency"
-                              className="w-36"
-                              disabled={!currencyEditable}
-                              options={m.currencies.filter((c) => c.active).map((c) => ({ value: c.code, label: c.code }))}
-                              value={draft.currency}
-                              onValueChange={(currency) => update({ currency: currency ?? '' })}
-                            />
-                          ) : null}
-                        </div>
+                      {(p) => (
+                        <Select
+                          {...p}
+                          disabled={ctx.readOnly || received}
+                          options={m.currencies.map((c) => ({ value: c.code, label: `${c.code} — ${c.name}` }))}
+                          value={draft.currency}
+                          onValueChange={(currency) => update({ currency, currencyView: 'BP' })}
+                        />
                       )}
                     </FormField>
                   </Fields>
@@ -664,7 +655,7 @@ function PurchaseOrderForm() {
                     />
                     {draft.currency !== 'PHP' && draft.currencyView === 'BP' ? (
                       <Text variant="small" tone="muted">
-                        ≈ PHP {formatAmount(totals.total * ctx.fx)} at {ctx.fx || '—'} ({draft.postingDate}).
+                        ≈ PHP {formatAmount(totals.total * ctx.fx)} at {ctx.fx ? `${ctx.fx} (${formatDate(ctx.fxDate)} rate)` : '—'}.
                       </Text>
                     ) : null}
                   </List.Group>

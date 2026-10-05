@@ -21,8 +21,9 @@ import {
 } from '../../../mocks/taxes';
 import { taxCodes } from '../../../services/masterData';
 import { newId, useCollectionRows } from '../../../services/useCollectionRows';
+import { todayISO } from '../../../services/dates';
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => todayISO();
 
 const blank = (): TaxCode => ({
   id: newId('tc'),

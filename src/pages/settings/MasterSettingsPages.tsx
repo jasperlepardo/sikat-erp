@@ -17,7 +17,6 @@ const SALES_TABS = [
   tab('territories', d.territoryDef),
   tab('channels', d.channelDef),
   tab('lead-sources', d.leadSourceDef),
-  tab('price-lists', d.priceListDef),
   tab('email-groups', d.emailGroupDef),
   tab('partner-properties', d.partnerPropertyDef),
 ];
@@ -46,7 +45,7 @@ export function SalesCrmSettingsPage() {
       base="/settings/sales-and-crm"
       icon="handshake"
       title="Sales & CRM settings"
-      subcopy="Partner groups, industries, sales employees, territories, channels, lead sources, price lists, e-mail groups and partner properties."
+      subcopy="Partner groups, industries, sales employees, territories, channels, lead sources, e-mail groups and partner properties."
       tabs={SALES_TABS}
     />
   );

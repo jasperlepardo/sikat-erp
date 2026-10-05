@@ -19,6 +19,7 @@ import { SEED_COMPANIES } from './companies';
 import { SEED_WAREHOUSES } from './itemMasters';
 import { SEED_ITEMS, itemsPerUom } from './items';
 import { SEED_PARTNERS, formatAddress } from './partners';
+import { todayISO } from '../services/dates';
 
 export type PoStatus = 'Draft' | 'Open' | 'Not Confirmed' | 'Closed' | 'Cancelled';
 export const PO_STATUSES: PoStatus[] = ['Draft', 'Open', 'Not Confirmed', 'Closed', 'Cancelled'];
@@ -97,7 +98,8 @@ export interface PurchaseOrder {
 
   // Logistics
   shipTo: string;
-  payTo: string;
+  /** Our billing address — where the vendor sends its invoice. Always the company's registered address. */
+  billTo: string;
   shippingType: string;
   language: string;
   splitByWarehouse: boolean;
@@ -186,7 +188,7 @@ export const BLANKET_AGREEMENTS: BlanketAgreement[] = [
 /** The seed company's address, as service-only POs print it for Ship To. */
 const COMPANY_ADDRESS = formatAddress(SEED_COMPANIES[0].address, SEED_COMPANIES[0].name);
 
-const TODAY = new Date().toISOString().slice(0, 10);
+const TODAY = todayISO();
 
 export const newPoLine = (patch: Partial<PoLine> = {}): PoLine => ({
   id: `ln-${crypto.randomUUID().slice(0, 8)}`,
@@ -234,7 +236,7 @@ export function blankPurchaseOrder(buyer: string): Omit<PurchaseOrder, 'id'> {
     priceMode: 'Net',
     lines: [],
     shipTo: '',
-    payTo: '',
+    billTo: '',
     shippingType: '',
     language: 'English',
     splitByWarehouse: false,
@@ -292,12 +294,6 @@ const importLine = (n: string, itemNo: string, quantity: number): PoLine => {
   return { ...l, unitPrice: Math.round((l.unitPrice / USD_PHP) * 100) / 100, taxCode: '46', deliveryDate: '2026-10-06' };
 };
 
-/** A seeded vendor's pay-to text, from its default bill-to address. */
-const payToOf = (vendorId: string) => {
-  const v = SEED_PARTNERS.find((p) => p.id === vendorId)!;
-  return formatAddress(v.addresses.find((x) => x.id === v.defaultBillToId) ?? v.addresses[0], v.name);
-};
-const APPLE_PAY_TO = payToOf('bp-016');
 const mnl = SEED_WAREHOUSES.find((w) => w.code === 'WH-MNL')!;
 const MNL_SHIP_TO = formatAddress(mnl.address, mnl.name);
 
@@ -310,18 +306,18 @@ const po = (id: string, docNum: number, patch: Partial<PurchaseOrder>): Purchase
   vendorName: 'Luzon iDistribution Corp.',
   contactId: 'bp-016-c1',
   shipTo: MNL_SHIP_TO,
-  payTo: APPLE_PAY_TO,
+  billTo: COMPANY_ADDRESS,
   shippingType: 'sh-own',
   journalRemark: 'Purchase Orders – BP-0016',
   ...patch,
 });
 
-/** A PO from any seeded vendor, with the vendor snapshot, currency, terms and pay-to taken from the partner. */
+/** A PO from any seeded vendor, with the vendor snapshot, currency and terms taken from the partner. */
 const vendorPo = (id: string, docNum: number, vendorId: string, patch: Partial<PurchaseOrder>): PurchaseOrder => {
   const v = SEED_PARTNERS.find((p) => p.id === vendorId)!;
   return po(id, docNum, {
     vendorId, vendorCode: v.code, vendorName: v.name, contactId: v.defaultContactId, currency: v.currency,
-    paymentTerms: v.vendorPaymentTerms, payTo: payToOf(vendorId), journalRemark: `Purchase Orders – ${v.code}`,
+    paymentTerms: v.vendorPaymentTerms, journalRemark: `Purchase Orders – ${v.code}`,
     ...patch,
   });
 };
@@ -387,7 +383,7 @@ export const SEED_PURCHASE_ORDERS: PurchaseOrder[] = [
     status: 'Open',
     vendorId: 'bp-015', vendorCode: 'BP-0015', vendorName: 'Amazon Web Services, Inc.', contactId: 'bp-015-c1',
     currency: 'USD', currencyView: 'BP', paymentTerms: 'Net 7', shipTo: COMPANY_ADDRESS,
-    payTo: payToOf('bp-015'), shippingType: '', journalRemark: 'Purchase Orders – BP-0015',
+    shippingType: '', journalRemark: 'Purchase Orders – BP-0015',
     postingDate: '2026-09-26', documentDate: '2026-09-26', deliveryDate: '2026-10-01', dueDate: '2026-10-03',
     lines: [
       newPoLine({

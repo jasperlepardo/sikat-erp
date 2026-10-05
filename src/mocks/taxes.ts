@@ -8,6 +8,7 @@
  */
 import { toAccountCode } from './chartOfAccounts';
 import type { Attachment } from './common';
+import { todayISO } from '../services/dates';
 
 export type TaxDirection = 'Sales' | 'Purchase';
 export type TaxCategory =
@@ -55,7 +56,7 @@ export function rateAt(code: Pick<TaxCode, 'rates'>, date: string): number | und
 }
 
 /** The rate in force today. */
-export const currentRate = (code: Pick<TaxCode, 'rates'>) => rateAt(code, new Date().toISOString().slice(0, 10));
+export const currentRate = (code: Pick<TaxCode, 'rates'>) => rateAt(code, todayISO());
 
 /**
  * What items carry: the default tax code for the item's nature (goods, services,
@@ -383,7 +384,7 @@ export const paysExcise = (p: Pick<CompanyTaxProfile, 'businessActivities'>) =>
 export const SEED_COMPANY_TAX: CompanyTaxProfile[] = [
   {
     id: 'company',
-    registeredName: 'Sikat Tech Inc.',
+    registeredName: 'Power Mac Center, Inc.',
     tin: '',
     rdoCode: '',
     vatRegistered: true,

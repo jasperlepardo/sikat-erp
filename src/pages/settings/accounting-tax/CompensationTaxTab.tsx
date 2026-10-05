@@ -18,11 +18,12 @@ import {
 import { formatAmount } from '../../../services/format';
 import { compensationExclusions, compensationTax } from '../../../services/masterData';
 import { newId, useCollectionRows } from '../../../services/useCollectionRows';
+import { todayISO } from '../../../services/dates';
 
 const blank = (): CompensationBracket => ({
   id: newId('ct'),
   frequency: 'Monthly',
-  effectiveFrom: new Date().toISOString().slice(0, 10),
+  effectiveFrom: todayISO(),
   effectiveTo: '',
   bracket: 1,
   rangeText: '',
@@ -42,7 +43,7 @@ const tableName = (r: CompensationBracket) => (r.frequency === 'Annual' ? 'Annua
 const order = (r: CompensationBracket) =>
   `${9999 - Number(r.effectiveFrom.slice(0, 4))}-${PAY_FREQUENCIES.indexOf(r.frequency)}-${String(r.bracket).padStart(2, '0')}`;
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => todayISO();
 
 function Amount({ label, value, onChange, hint }: { label: string; value: number; onChange: (v: number) => void; hint?: string }) {
   return (

@@ -17,7 +17,7 @@ import {
   type TableSort,
 } from '@jasperlepardo/sikat-design-system';
 import { Section, type Errors } from './fields';
-import { DEFAULT_PAGE_SIZE, PAGE_SIZES } from './DataTable';
+import { DEFAULT_PAGE_SIZE, PAGE_SIZES, fillCardClass } from './DataTable';
 
 export interface MasterListProps<T extends { id: string }> {
   icon: string;
@@ -212,7 +212,7 @@ function ListView<T extends { id: string }>({
           setPage(1);
         }}
       />
-      <Card className="flex-initial min-h-72">
+      <Card className={fillCardClass(visible.length)}>
         {rows ? (
           <Table
             caption={title}

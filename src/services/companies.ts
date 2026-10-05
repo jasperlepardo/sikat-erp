@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { SEED_COMPANIES, type Company } from '../mocks/companies';
 import { createCollection } from './store';
 
-export const companies = createCollection<Company>('sikat-erp:companies', SEED_COMPANIES, 'co');
+export const companies = createCollection<Company>('sikat-erp:companies:v5', SEED_COMPANIES, 'co');
 
 const CURRENT_KEY = 'sikat-erp:current-company';
 const listeners = new Set<() => void>();

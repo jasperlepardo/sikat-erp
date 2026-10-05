@@ -2,11 +2,13 @@
  * The master-data lists the business partner form picks from. Each definition drives its
  * Settings tab and the "+ Add" panel of every field that uses it (components/form/MasterLookup).
  */
-import { Button } from '@jasperlepardo/sikat-design-system';
+import { Button, Text } from '@jasperlepardo/sikat-design-system';
 import { Fields, Flags, bind, type Errors } from '../../components/form/fields';
 import { statusColumn, uniqueRequired } from '../../components/form/MasterList';
 import type { MasterDef } from '../../components/form/MasterLookup';
-import { MAX_PARTNER_PROPERTIES, projectValue, type Bank, type BpGroup, type NamedEntry, type PaymentTerm, type Project } from '../../mocks/partnerMasters';
+import { MAX_PARTNER_PROPERTIES, projectValue, type Bank, type BpGroup, type NamedEntry, PRICE_ROUNDING, type PaymentTerm, type PriceList, type Project } from '../../mocks/partnerMasters';
+import { ItemPricesTable } from '../inventory/pricing/ItemPricesTable';
+import { describeChain, priceChain, roundingLabel, samplePrice } from '../../services/priceLists';
 import type { Collection } from '../../services/store';
 import { newId } from '../../services/useCollectionRows';
 import * as lists from '../../services/partnerMasters';
@@ -143,10 +145,127 @@ export const leadSourceDef = namedDef({
   collection: lists.leadSources, idPrefix: 'lds', icon: 'campaign', title: 'Lead sources', noun: 'lead source', home: SALES,
   description: 'Where a lead came from.',
 });
-export const priceListDef = namedDef({
-  collection: lists.priceLists, idPrefix: 'prl', icon: 'sell', title: 'Price lists', noun: 'price list', home: SALES,
-  description: 'Price lists partners default to. Item prices per list are set on the item.',
-});
+// ── Inventory › Price Lists ──────────────────────────────────────────────────
+
+const based = (l: PriceList) => {
+  if (!l.basePriceList) return `Independent · item ${l.source === 'cost' ? 'cost' : 'SRP'}`;
+  return `${l.basePriceList} × ${l.factor}`;
+};
+
+const validity = (l: PriceList) =>
+  !l.validFrom && !l.validTo ? 'Always' : `${l.validFrom || '…'} – ${l.validTo || '…'}`;
+
+export const priceListDef: MasterDef<PriceList> = {
+  collection: lists.priceLists,
+  icon: 'sell',
+  title: 'Price lists',
+  noun: 'price list',
+  home: 'Inventory › Price Lists',
+  description:
+    'Price tiers partners and document lines default to. Independent lists take the item’s cost or SRP; dependent lists are another list × a factor, so repricing the base reprices the whole chain.',
+  blank: (name) => ({
+    id: newId('prl'),
+    name,
+    basePriceList: 'Base price',
+    factor: 1,
+    source: 'srp',
+    rounding: 'none',
+    gross: true,
+    validFrom: '',
+    validTo: '',
+    remarks: '',
+    itemPrices: [],
+    active: true,
+  }),
+  value: (l) => l.name,
+  label: (l) => l.name,
+  columns: [
+    { key: 'name', header: 'Name', cell: (l) => l.name },
+    { key: 'basePriceList', header: 'Based on', cell: based },
+    { key: 'rounding', header: 'Rounding', cell: (l) => (l.basePriceList ? roundingLabel(l.rounding) : '—') },
+    { key: 'gross', header: 'Prices', cell: (l) => (l.gross ? 'Gross (VAT incl.)' : 'Net of VAT') },
+    { key: 'validTo', header: 'Valid', cell: validity },
+    statusColumn<PriceList>(),
+  ],
+  searchText: (l) => `${l.name} ${l.basePriceList} ${l.remarks}`,
+  normalize: (l) => ({
+    ...l,
+    name: l.name.trim(),
+    // Independent lists have no factor or rounding of their own.
+    ...(l.basePriceList ? {} : { factor: 1, rounding: 'none' as const }),
+  }),
+  validate: (l, all) => {
+    const e: Errors = {};
+    uniqueRequired(e, l, all, 'name', 'Name');
+    if (l.basePriceList) {
+      if (!(l.factor > 0)) e.factor = 'Factor must be more than 0.';
+      if (l.basePriceList.trim().toLowerCase() === l.name.trim().toLowerCase()) e.basePriceList = 'A list can’t be based on itself.';
+      else if (!all.some((x) => x.name === l.basePriceList)) e.basePriceList = `${l.basePriceList} doesn’t exist.`;
+      else if (!priceChain(l, all)) e.basePriceList = `${l.basePriceList} is based on this list (directly or further up), which would loop.`;
+    }
+    if (l.validFrom && l.validTo && l.validTo < l.validFrom) e.validTo = 'Valid to is before valid from.';
+    if (l.itemPrices.some((p) => !(p.price >= 0))) e.itemPrices = 'Manual prices can’t be negative.';
+    return e;
+  },
+  editor: (l, update, errors, isNew) => {
+    const f = bind(l, update);
+    const all = lists.priceLists.snapshot();
+    const bases = all.filter((x) => x.id !== l.id && (x.active || x.name === l.basePriceList));
+    const chain = priceChain(l, all);
+    const sample = samplePrice(l, all);
+    return (
+      <>
+        <Fields>
+          {f.text('name', 'Name', { required: true, error: errors.name, placeholder: 'e.g. Corporate', disabled: !isNew, hint: !isNew ? NAME_LOCK : undefined })}
+          {f.choose(
+            'basePriceList',
+            'Base price list',
+            [{ value: '', label: 'None — independent list' }, ...bases.map((x) => ({ value: x.name, label: x.name }))],
+            { error: errors.basePriceList, hint: 'Leave empty for a list with its own prices.' },
+          )}
+        </Fields>
+        {l.basePriceList ? (
+          <Fields cols={3}>
+            {f.num('factor', 'Factor', { required: true, error: errors.factor, hint: '1.30 = 30% markup, 0.92 = 8% off the base.' })}
+            {f.choose('rounding', 'Rounding', PRICE_ROUNDING)}
+          </Fields>
+        ) : (
+          <Fields>
+            {f.choose('source', 'Item price from', [
+              { value: 'srp', label: 'Item SRP (sales price)' },
+              { value: 'cost', label: 'Item cost (last purchase price)' },
+            ], { hint: 'Set on the item form, Sales and Purchasing tabs.' })}
+          </Fields>
+        )}
+        <Fields>
+          {f.date('validFrom', 'Valid from', { hint: 'Empty = no start date.' })}
+          {f.date('validTo', 'Valid to', { error: errors.validTo, hint: 'Documents can’t pick the list outside these dates.' })}
+        </Fields>
+        <Fields>{f.area('remarks', 'Remarks')}</Fields>
+        <Flags>
+          {f.check('gross', 'Gross price (VAT inclusive)')}
+          {f.check('active', 'Active')}
+        </Flags>
+        {chain && chain.length > 1 ? (
+          <Text variant="small" tone="muted">
+            {describeChain(chain)}
+            {sample ? ` · e.g. ${sample}` : ''}
+          </Text>
+        ) : null}
+        {isNew ? (
+          <Text variant="small" tone="muted">
+            Item prices can be set once the list is added.
+          </Text>
+        ) : (
+          <>
+            <ItemPricesTable list={l} update={update} />
+            {errors.itemPrices ? <Text variant="small" tone="danger">{errors.itemPrices}</Text> : null}
+          </>
+        )}
+      </>
+    );
+  },
+};
 export const emailGroupDef = namedDef({
   collection: lists.emailGroups, idPrefix: 'emg', icon: 'forward_to_inbox', title: 'E-mail groups', noun: 'e-mail group', home: SALES,
   description: 'Distribution groups a contact person can belong to, for bulk mailing.',

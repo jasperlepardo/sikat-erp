@@ -1,9 +1,10 @@
 import { SEED_ITEMS, type Item } from '../mocks/items';
 import { itemGroups } from './inventoryMasters';
 import { createCollection } from './store';
+import { todayISO } from './dates';
 
-// v8: G/L accounts are stored as chart-of-accounts codes.
-const items = createCollection<Item>('sikat-erp:items:v15', SEED_ITEMS, 'itm');
+// v8: G/L accounts are stored as chart-of-accounts codes. v16: default bins are full bin codes (WH-MNL-A-01-01).
+const items = createCollection<Item>('sikat-erp:items:v16', SEED_ITEMS, 'itm');
 
 export const listItems = items.list;
 export const getItem = items.get;
@@ -61,6 +62,6 @@ export function stockTotals(item: Pick<Item, 'warehouses'>) {
 export const isLowStock = (item: Item) => item.inventoryItem && stockTotals(item).inStock <= item.minStock;
 
 /** Usable on documents today: inside Valid From / Valid To (either may be blank). */
-export function isValidToday(item: Pick<Item, 'validFrom' | 'validTo'>, today = new Date().toISOString().slice(0, 10)) {
+export function isValidToday(item: Pick<Item, 'validFrom' | 'validTo'>, today = todayISO()) {
   return (!item.validFrom || item.validFrom <= today) && (!item.validTo || today <= item.validTo);
 }

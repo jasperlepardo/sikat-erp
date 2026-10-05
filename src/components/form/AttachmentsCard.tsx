@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { Card, Icon, Link, List, Text, TextField, Button } from '@jasperlepardo/sikat-design-system';
 import { CURRENT_USER, type Attachment } from '../../mocks/common';
 import { RowMenu } from './RowMenu';
+import { todayISO } from '../../services/dates';
 
 export const formatSize = (bytes: number) =>
   bytes < 1024 ? `${bytes} B` : bytes < 1024 ** 2 ? `${(bytes / 1024).toFixed(0)} KB` : `${(bytes / 1024 ** 2).toFixed(1)} MB`;
@@ -22,7 +23,7 @@ export const toAttachments = (files: FileList): Attachment[] =>
     id: `att-${crypto.randomUUID().slice(0, 8)}`,
     fileName: file.name,
     size: file.size,
-    attachedOn: new Date().toISOString().slice(0, 10),
+    attachedOn: todayISO(),
     description: '',
     createdBy: CURRENT_USER,
   }));

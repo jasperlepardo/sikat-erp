@@ -1,5 +1,6 @@
 import { SEED_PARTNERS, contactName, type Partner, type PartnerRole } from '../mocks/partners';
 import { createCollection } from './store';
+import { todayISO } from './dates';
 
 // v8: G/L accounts are stored as chart-of-accounts codes.
 const partners = createCollection<Partner>('sikat-erp:partners:v26', SEED_PARTNERS, 'bp');
@@ -36,7 +37,7 @@ export async function convertLeadToCustomer(id: string): Promise<Partner | undef
 }
 
 /** Active now: Active, or Advanced with today inside From/To. */
-export function isActive(p: Pick<Partner, 'status' | 'statusFrom' | 'statusTo'>, today = new Date().toISOString().slice(0, 10)) {
+export function isActive(p: Pick<Partner, 'status' | 'statusFrom' | 'statusTo'>, today = todayISO()) {
   if (p.status === 'Advanced') return (!p.statusFrom || p.statusFrom <= today) && (!p.statusTo || today <= p.statusTo);
   return p.status === 'Active';
 }

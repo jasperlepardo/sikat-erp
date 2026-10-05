@@ -11,8 +11,9 @@ import { SYSTEM_ATCS, rateAt, vatNotPaidToVendor, type TaxCode } from '../mocks/
 import { paymentTerms } from './partnerMasters';
 import { createCollection } from './store';
 import { determineWithholding, type LineParty, type TaxMasterData } from './taxDetermination';
+import { todayISO } from './dates';
 
-const orders = createCollection<PurchaseOrder>('sikat-erp:purchase-orders:v9', SEED_PURCHASE_ORDERS, 'po');
+const orders = createCollection<PurchaseOrder>('sikat-erp:purchase-orders:v14', SEED_PURCHASE_ORDERS, 'po');
 
 export const listPurchaseOrders = orders.list;
 export const getPurchaseOrder = orders.get;
@@ -21,7 +22,7 @@ export const resetPurchaseOrders = orders.reset;
 export type PoInput = Omit<PurchaseOrder, 'id'> & { id?: string };
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
-const TODAY = () => new Date().toISOString().slice(0, 10);
+const TODAY = () => todayISO();
 
 export const seriesOf = (id: string) => PO_SERIES.find((s) => s.id === id) ?? PO_SERIES[0];
 /** "Primary 260012", or "Draft" before a number is assigned. */

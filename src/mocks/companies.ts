@@ -14,19 +14,12 @@ export interface Company {
 export const SEED_COMPANIES: Company[] = [
   {
     id: 'sikat',
-    name: 'Sikat Tech Inc.',
+    name: 'Power Mac Center, Inc.',
+    // Head office per a maps listing ("Power Mac Center - Head Office"). Not confirmed against the
+    // SEC/BIR registration — the demo uses it as the registered address.
     address: blankPostalAddress({
-      addressLine: 'Unit 1203, Tektite East Tower, Exchange Road', block: 'San Antonio', city: 'City of Pasig', zip: '1605',
-      province: 'Metro Manila', provinceCode: '1300', cityCode: '137403', barangayCode: '137403019',
-    }),
-    active: true,
-  },
-  {
-    id: 'acme',
-    name: 'Acme Corp',
-    address: blankPostalAddress({
-      addressLine: '18F, One World Place, 32nd Street', block: 'Fort Bonifacio', city: 'City of Taguig', zip: '1634',
-      province: 'Metro Manila', provinceCode: '1300', cityCode: '137607', barangayCode: '137607020',
+      addressLine: 'Kapitolyo Bldg., 7A 2nd St.', block: 'Kapitolyo', city: 'City of Pasig', zip: '1600',
+      province: 'Metro Manila', provinceCode: '1300', cityCode: '137403', barangayCode: '137403009',
     }),
     active: true,
   },

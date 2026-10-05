@@ -22,10 +22,11 @@ import { useAsync } from '../../../../services/useAsync';
 import { DOC_SOURCES, type DocType } from '../../../partners/detail/partnerDocuments';
 import { docTypesFor, isBuilt, listItemDocuments, type ItemDocument } from './itemDocuments';
 import type { Draft } from './types';
+import { todayISO } from '../../../../services/dates';
 
 type Filter = 'open' | 'overdue' | 'all';
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => todayISO();
 const isOverdue = (d: ItemDocument) => d.open && !!d.dueDate && d.dueDate < today();
 const qty = (n: number) => n.toLocaleString('en-PH');
 const rowsLabel = (n: number) => `${n} document row${n === 1 ? '' : 's'}`;

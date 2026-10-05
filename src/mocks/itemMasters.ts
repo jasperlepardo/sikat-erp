@@ -6,6 +6,7 @@
  * Warehouses & Bins (services/inventoryMasters.ts).
  */
 import { blankPostalAddress, type PostalAddress } from './address';
+import { SEED_STORE_WAREHOUSES } from './storeWarehouses';
 
 export type ValuationMethod = 'Moving Average' | 'FIFO' | 'Standard Price' | 'Serial/Batch';
 
@@ -126,8 +127,8 @@ export interface Warehouse {
   name: string;
   /** Where goods are delivered: the Ship To of purchase orders for this warehouse. */
   address: PostalAddress;
+  /** Stock is kept in bin locations (Inventory › Warehouses & Bins › Bin locations). */
   binEnabled: boolean;
-  bins: string[];
   active: boolean;
 }
 
@@ -240,12 +241,17 @@ const ph = (
     province: PH_PROVINCE[provinceCode], provinceCode, cityCode, barangayCode,
   });
 
-export const SEED_WAREHOUSES: Warehouse[] = [
-  { id: 'wh-MNL', code: 'WH-MNL', name: 'Manila distribution center', address: ph('Pasig', 'Ugong', '20 C. Raymundo Ave.', '1604', '1300', '137403', '137403029'), binEnabled: true, bins: ['A-01-01', 'A-01-02', 'A-02-01', 'B-01-01', 'B-02-03', 'C-01-01'], active: true },
-  { id: 'wh-CEB', code: 'WH-CEB', name: 'Cebu store', address: ph('Cebu', 'Lahug', 'Ground floor, IT Park Bldg. 2, Salinas Dr.', '6000', '0722', '072217', '072217041'), binEnabled: false, bins: [], active: true },
-  { id: 'wh-DVO', code: 'WH-DVO', name: 'Davao store', address: ph('Davao', 'Buhangin', 'J.P. Laurel Ave.', '8000', '1124', '112402', '112402021'), binEnabled: false, bins: [], active: true },
-  { id: 'wh-PRD', code: 'WH-PRD', name: 'Service center (repairs)', address: ph('Makati', 'San Lorenzo', 'Greenbelt 3, 2F, Arnaiz Ave.', '1223', '1300', '137602', '137602025'), binEnabled: false, bins: [], active: true },
+// Store addresses per powermaccenter.com/pages/store-list (Oct 2026). WH-MNL: the warehouse address the
+// user supplied; its barangay isn't confirmed, so it's left blank (1600 is Pasig's general ZIP).
+const CORE_WAREHOUSES: Warehouse[] = [
+  { id: 'wh-MNL', code: 'WH-MNL', name: 'Pasig warehouse', address: ph('Pasig', '', '155 Dr. Sixto Antonio Ave.', '1600', '1300', '137403', ''), binEnabled: true, active: true },
+  { id: 'wh-CEB', code: 'WH-CEB', name: 'Cebu store (Robinsons Galleria)', address: ph('Cebu', 'Tejero', '1/L Robinsons Galleria Cebu, Maxilom-Osmeña Blvd., 13th Ave. cor. Benedict St.', '6000', '0722', '072217', '072217083'), binEnabled: false, active: true },
+  { id: 'wh-DVO', code: 'WH-DVO', name: 'Davao store (Abreeza)', address: ph('Davao', 'Barangay 20-B', '2nd Flr., Abreeza Mall, J.P. Laurel Ave., Bajada', '8000', '1124', '112402', '112402153'), binEnabled: false, active: true },
+  { id: 'wh-PRD', code: 'WH-PRD', name: 'Mobile Care (Greenbelt 3)', address: ph('Makati', 'San Lorenzo', '2/F Greenbelt 3, Greenbelt Complex, Ayala Center', '1223', '1300', '137602', '137602025'), binEnabled: false, active: true },
 ];
+
+/** The core warehouses, then every store (mocks/storeWarehouses.ts). */
+export const SEED_WAREHOUSES: Warehouse[] = [...CORE_WAREHOUSES, ...SEED_STORE_WAREHOUSES];
 
 const mfr = (code: string, name: string, country: string, contactPerson = '', email = '', phone = ''): Manufacturer => ({
   id: `mfr-${code}`, code, name, country, contactPerson, email, phone, active: true,

@@ -30,7 +30,7 @@ import {
 } from '../../services/partners';
 import { useAsync } from '../../services/useAsync';
 import { formatAmount } from '../../services/format';
-import { DEFAULT_PAGE_SIZE, PAGE_SIZES } from '../../components/form/DataTable';
+import { DEFAULT_PAGE_SIZE, PAGE_SIZES, fillCardClass } from '../../components/form/DataTable';
 import { ROLE_CONFIG, ROLE_ORDER, STAGE_INTENT, scopeConfig, type PartnerScope } from './roles';
 
 const initials = (name: string) =>
@@ -211,7 +211,7 @@ export function PartnerList({ scope }: { scope: PartnerScope }) {
             setPage(1);
           }}
         />
-        <Card className="flex-initial min-h-72">
+        <Card className={fillCardClass(rows.slice((page - 1) * pageSize, page * pageSize).length)}>
           {partners ? (
             <Table
               caption={config.title}

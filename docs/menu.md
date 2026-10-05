@@ -1,0 +1,437 @@
+# Sidebar Menu
+
+The sidebar is defined in [`src/app/nav.tsx`](../src/app/nav.tsx) as `NAV`. It condenses SAP Business One's ~590 menu entries into module **hubs**. Each hub opens a submenu of pages.
+
+**How routes work**
+
+- A leaf's `id` is its route: `/#/${id}` (Home is `/#/`).
+- Hub pages get the id `<hub-slug>/<page-slug>`. Slugs are lower-case, `&` becomes `and`, text in parentheses is dropped, and anything else that isn't a word character becomes `-`. For example, `Returns & Credits` → `returns-and-credits`, and `Quotations (RFQ)` → `quotations`.
+- Pages that don't have a route in [`src/app/router.tsx`](../src/app/router.tsx) show the **Placeholder** screen ("This screen hasn't been prototyped yet.").
+- Global services (the ⌘K command bar, Print / Email / Export, Recurring and the profile) live in the Navbar and on each record, not in the sidebar.
+
+**Status legend:** ✅ built · ⬜ placeholder. For placeholders, *What it does* describes what the page is meant to do (its SAP Business One counterpart), not current behavior.
+
+**Shared patterns on built pages**
+
+- **List pages** have a header with filter tabs (with counts), a search box, a sortable table and a **New** button. Clicking a row opens the record.
+- **Document and record pages** have a side column (identity fields and subsidiary cards), tabbed main content, Prev/Next buttons, Cancel/Save, and a **"You can also"** menu (`MoreMenu`) for extra actions. Items, Partners and Purchase Orders also have top-level views: **Details · Transactions · Activity**. Activity is still a placeholder.
+- **Tabbed settings pages** (`TabbedPage`) keep the active tab and the open record in the URL: `…/:tab?/:recordId?`. Each tab is a master list: a table, then a record form when a row is opened.
+
+---
+
+## Core
+
+| Menu item | Route | Status | What it does |
+|---|---|---|---|
+| Home | `/` | ✅ | Dashboard with three stat cards: **Stocked items**, **Low or out of stock**, and **Inventory value at cost (PHP)**. |
+| Inbox › Approvals | `/inbox/approvals` | ⬜ | Documents waiting for your approval (approval procedures). |
+| Inbox › Tasks | `/inbox/tasks` | ⬜ | Activities and to-dos assigned to you. |
+| Inbox › Drafts | `/inbox/drafts` | ⬜ | Your saved, unposted draft documents. |
+| Business Partners | `/business-partners` | ✅ | The master list of every lead, customer and vendor, with one record per company or person. See [Business partner record](#business-partner-record). |
+
+**Business Partners list:** filters are All · Leads · Customers · Vendors · Inactive. Columns are Partner, Group, Contact and City.
+
+## Customers
+
+### CRM
+
+| Menu item | Route | Status | What it does |
+|---|---|---|---|
+| Leads | `/crm/leads` | ✅ | "Prospects you haven't sold to yet." Partner list scoped to the `lead` role. Filters: All · New · Contacted · Qualified · Lost. Has a Source column. Opening a lead shows the [Business partner record](#business-partner-record), which offers **Convert to customer**. |
+| Pipeline | `/crm/pipeline` | ⬜ | Sales opportunities by stage, with expected value and close date. |
+| Activities | `/crm/activities` | ⬜ | Calls, meetings, tasks and notes logged against partners. |
+| Campaigns | `/crm/campaigns` | ⬜ | Marketing campaigns and their target partner lists. |
+| Insights | `/crm/insights` | ⬜ | CRM reports such as pipeline and win/loss. |
+
+### Sales
+
+| Menu item | Route | Status | What it does |
+|---|---|---|---|
+| Customers | `/sales/customers` | ✅ | "Businesses and people you sell to." Partner list scoped to the `customer` role. Filters: All · Active · Inactive. Has a Credit limit column (with payment terms). |
+| Quotations | `/sales/quotations` | ⬜ | Price offers to customers. |
+| Sales Orders | `/sales/sales-orders` | ⬜ | Confirmed customer orders that commit stock. |
+| Deliveries | `/sales/deliveries` | ⬜ | Goods shipped to customers. Reduces stock. |
+| Invoices | `/sales/invoices` | ⬜ | A/R invoices (BIR sales invoices) that post revenue and output VAT. |
+| Returns & Credits | `/sales/returns-and-credits` | ⬜ | Customer returns and A/R credit memos. |
+| Payments Received | `/sales/payments-received` | ⬜ | Incoming payments applied to invoices, including creditable withholding tax. |
+| Collections | `/sales/collections` | ⬜ | Overdue receivables and dunning. |
+| Agreements | `/sales/agreements` | ⬜ | Blanket agreements and contracts with customers. |
+| Insights | `/sales/insights` | ⬜ | Sales reports. |
+
+## Operations
+
+### Purchasing
+
+| Menu item | Route | Status | What it does |
+|---|---|---|---|
+| Vendors | `/purchasing/vendors` | ✅ | "Suppliers you buy from." Partner list scoped to the `vendor` role. Filters: All · Active · Inactive. Has a Payment terms column. |
+| Requests | `/purchasing/requests` | ⬜ | Internal purchase requests. |
+| Quotations (RFQ) | `/purchasing/quotations` | ⬜ | Requests for quotation sent to vendors. |
+| Purchase Orders | `/purchasing/purchase-orders` | ✅ | "Orders placed with vendors, from draft to fully received." See [Purchase order record](#purchase-order-record). |
+| Goods Receipts | `/purchasing/goods-receipts` | ⬜ | Receiving against POs. Increases stock. |
+| Bills | `/purchasing/bills` | ⬜ | A/P invoices that post input VAT and expanded withholding tax (EWT). |
+| Returns & Debits | `/purchasing/returns-and-debits` | ⬜ | Goods returned to vendors and A/P debit memos. |
+| Payments Made | `/purchasing/payments-made` | ⬜ | Outgoing payments to vendors. |
+| Landed Costs | `/purchasing/landed-costs` | ⬜ | Spreads freight, duty and brokerage onto imported item costs. |
+| Agreements | `/purchasing/agreements` | ⬜ | Blanket agreements with vendors. |
+| Insights | `/purchasing/insights` | ⬜ | Purchasing reports. |
+
+**Purchase Orders list:** filters are All · Draft · Open · Not Confirmed · Closed · Cancelled. Columns are No. (with the vendor reference), Vendor, Posting date, Delivery date, Received, Total and Status.
+
+### Inventory
+
+| Menu item | Route | Status | What it does |
+|---|---|---|---|
+| Items | `/inventory/items` | ✅ | "The item master: products, materials and services you buy, sell and stock." See [Item record](#item-record). |
+| Stock on Hand | `/inventory/stock-on-hand` | ✅ | "In stock, committed, ordered and available — per warehouse or per item." Read-only. |
+| Stock Movements | `/inventory/stock-movements` | ✅ | "Inventory transfers between warehouses." Company-wide stock doesn't change, only where it sits. See [Inventory transfer record](#inventory-transfer-record). |
+| Stock Counts | `/inventory/stock-counts` | ✅ | "Physical counts compared with In Stock." Posting a count sets stock to what was counted and books the difference at cost. See [Stock count record](#stock-count-record). |
+| Pick & Pack | `/inventory/pick-and-pack` | ⬜ | Pick lists and packing for open sales orders. |
+| Price Lists | `/inventory/price-lists` | ✅ | Price tiers assigned to partners, and the rules on top of them. A document line takes the first match: a special price, then a period or volume discount, then a discount group. |
+| Warehouses & Bins | `/inventory/warehouses-and-bins` | ✅ | Where stock is kept. Bin-enabled warehouses hold stock in bin locations, and items stocked there need a default bin. |
+| Insights | `/inventory/insights` | ⬜ | Inventory reports (valuation, aging, movement). |
+
+**Items list:** filters are All · Inventory · Low stock · Non-stock · Not valid. Columns are Item, Group, In stock (with the minimum), Available, Base price and Status.
+
+**Stock on Hand:**
+- Filters: All · Below minimum · Out of stock.
+- View switch: **By warehouse** or **By item (all warehouses)**.
+- It can also be narrowed by warehouse and item group, and searched.
+- Each row shows a status badge: In stock, Below minimum or Out of stock.
+
+**Stock Movements list:** filters are All · Draft · Posted. Columns are No., From → To, Posting date, Quantity, Value at cost and Status.
+
+**Stock Counts list:** filters are All · Open · Posted · Closed. Columns are No., Warehouse, Count date, Counted by, Counted (with how many lines have a variance), Net variance and Status.
+
+**Price Lists tabs:**
+
+| Tab | What it does |
+|---|---|
+| Price lists | Price tiers (base price, factor, gross/net of VAT), plus an **Item prices** table per list. Tick *Manual* to set an item's price by hand. |
+| Special prices | Negotiated prices for one business partner, item by item: a fixed unit price or a % off a price list. Can have validity dates and quantity tiers. Checked first. |
+| Period & volume discounts | Promotions for a date range, or % breaks by line quantity, for a partner or BP group on an item or item group. |
+| Discount groups | % off the price list for every partner in a BP group buying from an item group. Has no dates. |
+
+**Warehouses & Bins tabs:**
+
+| Tab | What it does |
+|---|---|
+| Warehouses | Warehouse code, name, address, the bin-enabled flag and active status. |
+| Bin locations | Storage positions in bin-enabled warehouses, coded Warehouse-Aisle-Shelf-Level. Shows each bin's item quantity, number of items and weight. Tools: **Generate bins** (bulk-create from sublevel ranges) and **Modify bin codes** (rename in bulk, with a preview and a list of affected draft transfers). |
+| Sublevel codes | The aisle, shelf and level codes that bins are addressed by, e.g. `WH-MNL-A-01-02`. |
+
+### Manufacturing
+
+| Menu item | Route | Status | What it does |
+|---|---|---|---|
+| Bills of Materials | `/manufacturing/bills-of-materials` | ⬜ | Components and resources that make up a finished item. |
+| Production Orders | `/manufacturing/production-orders` | ⬜ | Issue components and receive finished goods. |
+| Planning (MRP) | `/manufacturing/planning` | ⬜ | Material requirements planning: recommends purchase and production orders. |
+| Resources | `/manufacturing/resources` | ⬜ | Machines and labor, with their capacity and cost. |
+| Costing | `/manufacturing/costing` | ⬜ | Standard and actual production cost roll-ups. |
+
+### Projects
+
+| Menu item | Route | Status | What it does |
+|---|---|---|---|
+| Projects | `/projects/projects` | ⬜ | Projects with stages, budgets and linked documents. |
+| Timesheets | `/projects/timesheets` | ⬜ | Time logged against projects. |
+| Insights | `/projects/insights` | ⬜ | Project profitability reports. |
+
+### Service
+
+| Menu item | Route | Status | What it does |
+|---|---|---|---|
+| Service Calls | `/service/service-calls` | ⬜ | Customer service tickets. |
+| Contracts | `/service/contracts` | ⬜ | Service and warranty contracts. |
+| Equipment | `/service/equipment` | ⬜ | Customer equipment cards (serial-numbered units sold). |
+| Insights | `/service/insights` | ⬜ | Service reports. |
+
+## Finance
+
+### Banking
+
+| Menu item | Route | Status | What it does |
+|---|---|---|---|
+| Accounts | `/banking/accounts` | ⬜ | The company's house bank accounts and their balances. |
+| Reconciliation | `/banking/reconciliation` | ⬜ | Match bank statements to book entries. |
+| Deposits | `/banking/deposits` | ⬜ | Deposit cash, checks and card receipts to the bank. |
+| Checks | `/banking/checks` | ⬜ | Checks issued for payment. |
+| Cards | `/banking/cards` | ⬜ | Credit card receipts and settlements. |
+| Payment Orders | `/banking/payment-orders` | ⬜ | Payment runs: batch vendor payments. |
+| Insights | `/banking/insights` | ⬜ | Cash position reports. |
+
+### Accounting
+
+| Menu item | Route | Status | What it does |
+|---|---|---|---|
+| Statements | `/accounting/statements` | ⬜ | Balance sheet, income statement and trial balance. |
+| Journal Entries | `/accounting/journal-entries` | ⬜ | Manual and system-generated G/L postings. |
+| Chart of Accounts | `/accounting/chart-of-accounts` | ✅ | "Balance sheet and income statement accounts for a VAT-registered Philippine retailer." See below. |
+| Reconciliations | `/accounting/reconciliations` | ⬜ | Match open G/L and partner items. |
+| Period Close | `/accounting/period-close` | ⬜ | Posting periods, closing and year-end. |
+| Budgets | `/accounting/budgets` | ⬜ | Budgets per account and cost center. |
+| Cost Accounting | `/accounting/cost-accounting` | ⬜ | Dimensions, cost centers and distribution rules. |
+| Fixed Assets | `/accounting/fixed-assets` | ⬜ | The asset register and depreciation. |
+| Tax | `/accounting/tax` | ⬜ | BIR returns and reports (2550Q, 1601-EQ, SLSP, alphalists). |
+| Insights | `/accounting/insights` | ⬜ | Financial analytics. |
+
+**Chart of Accounts:**
+- **Filters:** All, plus one tab per drawer (Assets, Liabilities, Equity, Revenue, Cost of sales, Operating expenses, and so on).
+- **Columns:** Account, Drawer, Level (Title or Active account), Normal balance, Statement line, Flags, Currency, Used in and Status.
+- **Title accounts** group the accounts below them. Documents post only to active accounts.
+- **Control accounts** take postings only through business partners.
+- A warning appears when accounts that are in use are changed.
+- **Account record sections:**
+  - **Reporting:** current vs. non-current classification.
+  - **Posting controls:** required dimensions.
+  - **Period-end and tax.**
+
+## People
+
+| Menu item | Route | Status | What it does |
+|---|---|---|---|
+| Employees | `/people/employees` | ⬜ | The employee master (feeds compensation withholding tax). |
+| Absences | `/people/absences` | ⬜ | Leave and absence records. |
+
+## Insights
+
+### Reports
+
+| Menu item | Route | Status | What it does |
+|---|---|---|---|
+| Library | `/reports/library` | ⬜ | The standard report catalog. |
+| Dashboards | `/reports/dashboards` | ⬜ | KPI dashboards. |
+| Builder | `/reports/builder` | ⬜ | Build custom reports and queries. |
+
+## Settings
+
+| Menu item | Route | Status | What it does |
+|---|---|---|---|
+| Setup Guide | `/settings/setup-guide` | ⬜ | Step-by-step company setup checklist. |
+| Company | `/settings/company` | ✅ | Companies, projects and other company-wide lists. |
+| Users & Access | `/settings/users-and-access` | ⬜ | Users, roles, authorizations and approval procedures. |
+| Documents & Templates | `/settings/documents-and-templates` | ⬜ | Numbering series and print layouts. |
+| Accounting & Tax | `/settings/accounting-and-tax` | ✅ | "Philippine VAT, percentage, withholding, compensation and excise taxes; currencies and BSP exchange rates." |
+| Sales & CRM | `/settings/sales-and-crm` | ✅ | The lists the business partner form picks from. |
+| Purchasing | `/settings/purchasing` | ⬜ | Purchasing defaults. |
+| Inventory | `/settings/inventory` | ✅ | Item groups, units and UoM groups, manufacturers, customs and commission groups, shipping, warranties and item properties. |
+| Banking | `/settings/banking` | ✅ | Payment terms, banks and other payment lists. |
+| Operations | `/settings/operations` | ⬜ | Manufacturing, project and service settings. |
+| Automation | `/settings/automation` | ⬜ | Alerts, workflows and recurring postings. |
+| Data | `/settings/data` | ⬜ | Import, export and data cleanup. |
+| Customization | `/settings/customization` | ⬜ | User-defined fields, tables and forms. |
+| Apps & Integrations | `/settings/apps-and-integrations` | ⬜ | Connected apps and APIs. |
+| Subscription | `/settings/subscription` | ⬜ | Plan and billing. |
+
+### Settings › Company tabs
+
+| Tab | What it does |
+|---|---|
+| Companies | Our own companies, switched in the top bar. Documents use the current company's address as ours (e.g. a service-only PO's Ship To). |
+| Projects | Projects that documents can be tagged with. Partners default one onto their documents. |
+| Technicians | Service technicians assigned to partners. |
+| Planning groups | Groups for MRP and forecasting. |
+| Countries | Countries used on addresses, banks and items' country of origin. |
+
+### Settings › Accounting & Tax tabs
+
+| Tab | What it does |
+|---|---|
+| Determination rules | Explains how a tax code is chosen for a document line, with a **Try it** simulator that traces the decision. |
+| Company tax profile | Our own BIR tax status (VAT registration, TIN, etc.), used by tax determination. |
+| Tax codes | VAT and percentage tax applied on document rows. Rates are kept with effective dates. |
+| Tax groups | Default sales and purchase tax codes by kind of item (goods, services, capital goods, exempt…). The partner's or company's tax status can override them. |
+| Withholding tax | BIR Alphanumeric Tax Codes (ATC): WE expanded, WF final, WV/WB government money payments (GMP) VAT/percentage. |
+| Compensation tax | BIR revised withholding tables (daily to monthly) and annual tables. Payroll picks the table in force on the pay date. |
+| Tax-free compensation | Exclusions from gross income and the minimum wage earner exemption, with annual caps. |
+| De minimis benefits | De minimis benefits that aren't subject to withholding tax. |
+| Withholding forms | BIR withholding forms and their filing and payment due dates. |
+| Excise tax | Excise on top of VAT for sin and other covered products. Rates step up every January. |
+| Currencies | Currencies that partners and documents can use. Books are in PHP. |
+| Exchange rates | Daily rates, with **Import BSP Reference Exchange Rate Bulletin** (paste and parse) and per-currency rate history. |
+
+### Settings › Sales & CRM tabs
+
+| Tab | What it does |
+|---|---|
+| Business partner groups | Classify partners for reporting and filtering. Each group is for customers, vendors or leads. |
+| Industries | A partner's industry, for segmentation and reports. |
+| Sales employees & buyers | People assigned to partners. Defaults onto the partner's documents. |
+| Territories | Sales territories, for territory-based reports. |
+| Channels | How a partner buys from you. |
+| Lead sources | Where a lead came from. |
+| E-mail groups | Distribution groups for contact persons, used for bulk mailing. |
+| Partner properties | Yes/no tags on partners for filtering and marketing lists. |
+
+### Settings › Inventory tabs
+
+| Tab | What it does |
+|---|---|
+| Item groups | Set an item's numbering prefix, valuation method, G/L accounts and tax defaults. |
+| Units of measure | Units that items are stocked, bought and sold in. |
+| UoM groups | Templates of related units and their conversions (e.g. 1 box = 24 pc). |
+| Manufacturers | Who makes an item. This is separate from the vendor you buy it from. |
+| Customs groups | Import duty by tariff heading, used for landed cost. |
+| Commission groups | Sales commission % by item. |
+| Shipping types | Delivery methods defaulted onto documents. |
+| Warranty templates | Warranty terms for serial-numbered items. |
+| Item properties | Yes/no flags for filtering items. |
+| Inventory settings | Company-wide inventory defaults. |
+
+### Settings › Banking tabs
+
+| Tab | What it does |
+|---|---|
+| Payment terms | Default terms for partners. The days set document due dates. |
+| Dunning terms | Schedules for dunning letters on overdue invoices. |
+| Holiday calendars | Non-business days that due dates skip. |
+| Banks | Banks that partners hold accounts with. |
+| Bank charge allocation | Who bears bank transfer charges on payment runs. |
+| Card brands | Credit card types. |
+| Factoring companies | Third parties that receivables are sold to. |
+
+---
+
+## Record pages (submenus inside built pages)
+
+### Item record
+
+`/inventory/items/:id`. Views: Details · Transactions · Activity. **You can also:** Duplicate.
+
+**Side column**
+
+| Part | What it holds |
+|---|---|
+| **Item** section | Numbering (Auto from the group series, or Manual), Item No., Item type and Item group, plus the other identity fields. |
+| **Warehouses** card | Stock per warehouse, with a default bin. Rows open a side panel. |
+| **Vendors** card | Vendors you buy the item from. |
+| **Manufacturers** card | Who makes the item. |
+
+**Tabs**
+
+| Tab | Sections |
+|---|---|
+| General | Usage · Valuation & G/L accounts · Trade & tax · Production · Validity |
+| Units of measure | The item's units and conversions, with an **Add units from a UoM group** panel. |
+| Purchasing | Purchasing unit · Import & tax |
+| Sales data | Selling unit & price · Tax & commission · Fulfillment |
+| Inventory data | Stock status · Inventory data · Cost & stock levels |
+| Planning data | Planning · Order rules |
+| Production data | Production. Warns when the item has no bill of materials yet. |
+| Properties | Yes/no item properties. |
+| Remarks | Free-text remarks. |
+| Attachments | Files. |
+| Barcodes | Barcodes per unit (must be unique). |
+
+**Transactions view:** documents that reference the item.
+
+### Business partner record
+
+The URL is the role's list path plus `/:id` (for example `/business-partners/:id` or `/sales/customers/:id`). Views: Details · Transactions · Activity.
+
+**You can also:** Duplicate, and **Convert to customer** (leads only).
+
+**Side column**
+
+| Part | What it holds |
+|---|---|
+| **Business partner** section | Numbering (Auto `BP-####` or Manual), Code (locked once added), Type, Name and roles. |
+| **Contacts** card | Contact persons. Each opens a panel with Contact person and Defaults. |
+| **Addresses** card | Bill-to and ship-to addresses (PSGC province → city → barangay). Each opens a panel with Address and Defaults. |
+| **Payment methods** card | Bank accounts and cards. Each opens a panel with Payment method and Defaults. |
+| **Attachments** card | Files. |
+
+**Tabs**
+
+| Tab | Sections |
+|---|---|
+| Settings | Classification · Assignment · Lead (leads only) · Credit & collection · Factoring · Delivery & checks · Consolidation · Dunning · Other. Also Terms & pricing, Control accounts and Properties. |
+| Payment run | Payment run options. |
+| Tax | Entity · Customer tax · Vendor tax. Also tax exemptions (with the Sworn Declaration of Gross Income) and tax-treaty income details for non-residents. |
+
+**Transactions view:** the partner's documents and payments.
+
+### Purchase order record
+
+`/purchasing/purchase-orders/:id`. Views: Details · Transactions · Activity.
+
+**You can also:**
+- **Save as draft** (before the PO is added)
+- **Approve**
+- **Duplicate**
+- **Close** (open POs)
+- **Cancel purchase order** (open and not yet received)
+
+**Side column**
+
+| Part | What it holds |
+|---|---|
+| **Vendor** section | Vendor (with **New vendor** quick-create), contact and currency. |
+| **Document** section | Series and No., Status, dates, and the close date. |
+
+**Tabs**
+
+| Tab | What it holds |
+|---|---|
+| Contents | Item or service lines with quantity, price, discount and tax code, plus a **Columns** chooser. |
+| Logistics | Addresses (ship-to and bill-to, each editable in a panel) · Delivery |
+| Accounting | Journal & payment · Dates & references · Referenced documents |
+
+**Totals:** total before discount, document discount %, freight (with its tax code), tax, withholding, and net payment due. A warning appears for a duplicate vendor reference.
+
+### Inventory transfer record
+
+`/inventory/stock-movements/:id`.
+
+**You can also:**
+- **Save as draft** (unposted)
+- **Duplicate**
+- **Transfer back** (posted, single destination)
+
+| Part | What it holds |
+|---|---|
+| **Warehouses** section | From warehouse, To warehouse, the default To bin, and the value at cost. |
+| **Document** section | No. and Status. |
+| **Contents** | Lines with item, quantity, from bin, to warehouse and to bin. Each line can override the destination. |
+| **Remarks** | Free text. |
+| **Journal entry** | The resulting posting. |
+
+### Stock count record
+
+`/inventory/stock-counts/:id`.
+
+**You can also:**
+- **Close without posting** (open counts)
+- **Duplicate as a recount**
+- **Recount variances** (posted counts with variances)
+
+| Part | What it holds |
+|---|---|
+| **Document** section | No. and Status. |
+| **Counter** section | Who counted. |
+| **Summary** section | Lines counted, lines with variance, and net variance at cost. |
+| **Count sheet** | Pick the warehouse to count and filter by item group, then enter the counted quantity and remarks per line. |
+| **Remarks** | Free text. |
+| **Journal entry** | The variance posting. |
+
+---
+
+## Summary
+
+| Hub | Pages | Built |
+|---|---|---|
+| Core (Home, Inbox, Business Partners) | 5 | 2 |
+| CRM | 5 | 1 |
+| Sales | 10 | 1 |
+| Purchasing | 11 | 2 |
+| Inventory | 8 | 6 |
+| Manufacturing | 5 | 0 |
+| Projects | 3 | 0 |
+| Service | 4 | 0 |
+| Banking | 7 | 0 |
+| Accounting | 10 | 1 |
+| People | 2 | 0 |
+| Reports | 3 | 0 |
+| Settings | 15 | 5 |
+| **Total** | **88** | **18** |

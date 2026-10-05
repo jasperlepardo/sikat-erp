@@ -6,6 +6,7 @@ import type { Attachment } from '../../../mocks/common';
 import { EXEMPTION_BASES, newVatExemptionEntry, type VatExemptionEntry } from '../../../mocks/taxes';
 import { EditPanel } from './EditPanel';
 import { Fields, Section, bind } from './fields';
+import { todayISO } from '../../../services/dates';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -33,7 +34,7 @@ function exemptionConfig(businessType: string) {
   };
 }
 
-function isExemptionActive(e: VatExemptionEntry, today = new Date().toISOString().slice(0, 10)) {
+function isExemptionActive(e: VatExemptionEntry, today = todayISO()) {
   return e.attachments.length > 0 && (!e.validUntil || e.validUntil >= today);
 }
 
@@ -199,7 +200,7 @@ export function ExemptionsSection({
 
   const swornActive = swornDeclaration.swornDeclarationAttachments.length > 0 &&
     (() => {
-      const today = new Date().toISOString().slice(0, 10);
+      const today = todayISO();
       const year = swornDeclaration.swornDeclarationDate?.slice(0, 4);
       return year === today.slice(0, 4);
     })();

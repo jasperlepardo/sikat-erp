@@ -8,6 +8,12 @@ import { AccountingTaxPage } from '../pages/settings/accounting-tax/AccountingTa
 import { InventorySettingsPage } from '../pages/settings/inventory/InventorySettingsPage';
 import { BankingSettingsPage, CompanySettingsPage, SalesCrmSettingsPage } from '../pages/settings/MasterSettingsPages';
 import { WarehousesPage } from '../pages/inventory/WarehousesPage';
+import { StockOnHandPage } from '../pages/inventory/StockOnHandPage';
+import { InventoryTransferList } from '../pages/inventory/transfers/InventoryTransferList';
+import { InventoryTransferDetail } from '../pages/inventory/transfers/InventoryTransferDetail';
+import { PriceListsPage } from '../pages/inventory/pricing/PriceListsPage';
+import { StockCountList } from '../pages/inventory/counts/StockCountList';
+import { StockCountDetail } from '../pages/inventory/counts/StockCountDetail';
 import { PurchaseOrderList } from '../pages/purchasing/orders/PurchaseOrderList';
 import { PurchaseOrderDetail } from '../pages/purchasing/orders/detail/PurchaseOrderDetail';
 import { ChartOfAccountsPage } from '../pages/accounting/ChartOfAccountsPage';
@@ -35,6 +41,11 @@ export const router = createHashRouter([
       { index: true, element: <Home /> },
       { path: 'inventory/items', element: <ItemList /> },
       { path: 'inventory/items/:id', element: <ItemDetail /> },
+      { path: 'inventory/stock-on-hand', element: <StockOnHandPage /> },
+      { path: 'inventory/stock-movements', element: <InventoryTransferList /> },
+      { path: 'inventory/stock-movements/:id', element: <InventoryTransferDetail /> },
+      { path: 'inventory/stock-counts', element: <StockCountList /> },
+      { path: 'inventory/stock-counts/:id', element: <StockCountDetail /> },
       ...partnerRoutes,
       { path: 'purchasing/purchase-orders', element: <PurchaseOrderList /> },
       { path: 'purchasing/purchase-orders/:id', element: <PurchaseOrderDetail /> },
@@ -44,7 +55,8 @@ export const router = createHashRouter([
       { path: 'settings/sales-and-crm/:tab?/:recordId?', element: <SalesCrmSettingsPage /> },
       { path: 'settings/banking/:tab?/:recordId?', element: <BankingSettingsPage /> },
       { path: 'settings/company/:tab?/:recordId?', element: <CompanySettingsPage /> },
-      { path: 'inventory/warehouses-and-bins/:recordId?', element: <WarehousesPage /> },
+      { path: 'inventory/warehouses-and-bins/:tab?/:recordId?', element: <WarehousesPage /> },
+      { path: 'inventory/price-lists/:tab?/:recordId?', element: <PriceListsPage /> },
       { path: 'accounting/chart-of-accounts/:recordId?', element: <ChartOfAccountsPage /> },
       { path: '*', element: <Placeholder /> },
     ],

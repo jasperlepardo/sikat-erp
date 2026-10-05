@@ -1,12 +1,14 @@
 import type { Errors } from '../../../../components/form/fields';
 import type { Currency, ExchangeRate } from '../../../../mocks/currencies';
-import { itemsPerUom, unitCost, unitPrice, type Item } from '../../../../mocks/items';
+import { determinePrice } from '../../../../services/priceLists';
+import { itemsPerUom, type Item } from '../../../../mocks/items';
 import type { Partner } from '../../../../mocks/partners';
 import type { Company } from '../../../../mocks/companies';
 import { PURCHASING_SETTINGS, newPoLine, type PoLine } from '../../../../mocks/purchaseOrders';
 import { rateAt, vatNotPaidToVendor } from '../../../../mocks/taxes';
 import type { InventoryMasters } from '../../../../services/inventoryMasters';
 import { rateOn } from '../../../../services/masterData';
+import { todayISO } from '../../../../services/dates';
 import type { PoInput } from '../../../../services/purchaseOrders';
 import { determineTax, type TaxMasterData } from '../../../../services/taxDetermination';
 
@@ -43,6 +45,10 @@ export interface PoContext {
   isReverseCharge: (taxCode: string) => boolean;
   /** PHP per unit of the document currency on the posting date (1 for PHP, 0 when missing). */
   fx: number;
+  /** The day `fx` comes from: the latest rate on or before the posting date ('' for PHP or none). */
+  fxDate: string;
+  /** Where that rate came from: "BSP" for the BSP bulletin, "manual" otherwise. */
+  fxSource: string;
   /** Closed or cancelled: read-only except remarks. */
   readOnly: boolean;
   /** Added (has a number): vendor, series and number can't change. */
@@ -52,7 +58,8 @@ export interface PoContext {
 export const ALL_CURRENCIES = 'All currencies';
 
 export function buildContext(draft: PoDraft, m: PoMasters): PoContext {
-  const date = draft.postingDate || new Date().toISOString().slice(0, 10);
+  const date = draft.postingDate || todayISO();
+  const fxRate = draft.currency === 'PHP' ? undefined : rateOn(m.rates, draft.currency, date);
   return {
     vendor: m.vendors.find((v) => v.id === draft.vendorId),
     rateOf: (code) => {
@@ -60,7 +67,9 @@ export function buildContext(draft: PoDraft, m: PoMasters): PoContext {
       return c ? (rateAt(c, date) ?? 0) : 0;
     },
     isReverseCharge: (code) => vatNotPaidToVendor(m.tax.codes.find((x) => x.code === code)),
-    fx: draft.currency === 'PHP' ? 1 : (rateOn(m.rates, draft.currency, date)?.rate ?? 0),
+    fx: draft.currency === 'PHP' ? 1 : (fxRate?.rate ?? 0),
+    fxDate: fxRate?.date ?? '',
+    fxSource: fxRate?.source === 'BSP RERB' ? 'BSP' : 'manual',
     readOnly: draft.status === 'Closed' || draft.status === 'Cancelled',
     added: draft.status !== 'Draft',
   };
@@ -81,12 +90,13 @@ export function defaultShipTo(lines: PoLine[], m: PoMasters) {
 }
 
 /**
- * Price in PHP of one `uom` of the item from a price list. Price lists aren't built yet:
- * "Last purchase price" is the item cost; the others use the item's selling price for that
- * unit (its own price, or qty × base price).
+ * A line's unit price (document currency) and discount: the price list's price, then the first
+ * period/volume discount or discount group that matches (Inventory › Price Lists).
  */
-export const listPrice = (item: Item, priceList: string, uom = item.purchasingUom) =>
-  priceList === 'Last purchase price' ? unitCost(item, uom) : unitPrice(item, uom);
+export function linePricing(item: Item, l: Pick<PoLine, 'priceList' | 'uomCode' | 'quantity'>, draft: PoDraft, ctx: PoContext) {
+  const p = determinePrice({ item, partner: ctx.vendor, priceList: l.priceList, uom: l.uomCode, quantity: l.quantity, date: draft.postingDate });
+  return { unitPrice: ctx.fx ? Math.round((p.price / ctx.fx) * 100) / 100 : 0, discountPct: p.discountPct, source: p.source };
+}
 
 /** Proposed tax code for an item bought from the vendor (Settings › Accounting & Tax rules). */
 export const proposedTaxCode = (item: Item, vendor: Partner | undefined, m: PoMasters, date: string) =>
@@ -96,7 +106,7 @@ export const proposedTaxCode = (item: Item, vendor: Partner | undefined, m: PoMa
 export function lineFromItem(item: Item, draft: PoDraft, ctx: PoContext, m: PoMasters, base: Partial<PoLine> = {}): PoLine {
   const priceList = ctx.vendor?.priceList && ctx.vendor.priceList !== 'Base price' ? ctx.vendor.priceList : 'Last purchase price';
   const uom = m.inv.uoms.find((u) => u.code === item.purchasingUom);
-  return newPoLine({
+  const line = newPoLine({
     ...base,
     itemId: item.id,
     itemNo: item.itemNo,
@@ -109,11 +119,12 @@ export function lineFromItem(item: Item, draft: PoDraft, ctx: PoContext, m: PoMa
     itemsPerUnit: itemsPerUom(item, item.purchasingUom) ?? 1,
     warehouse: item.inventoryItem ? (item.warehouses[0]?.code ?? 'WH-MNL') : '',
     priceList,
-    unitPrice: ctx.fx ? Math.round((listPrice(item, priceList) / ctx.fx) * 100) / 100 : 0,
     taxCode: proposedTaxCode(item, ctx.vendor, m, draft.postingDate),
     mfrNo: item.manufacturers.find((x) => x.code === item.manufacturer)?.catalogNo ?? '',
     deliveryDate: draft.deliveryDate,
   });
+  const { unitPrice, discountPct } = linePricing(item, line, draft, ctx);
+  return { ...line, unitPrice, discountPct };
 }
 
 /** Amount conversion for the Local / System / BP currency toggle. */

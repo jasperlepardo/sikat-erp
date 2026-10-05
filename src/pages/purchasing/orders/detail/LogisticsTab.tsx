@@ -12,7 +12,7 @@ import { AddressPanel } from '../../../partners/detail/AddressesTab';
 import { EditPanel } from '../../../partners/detail/EditPanel';
 import { defaultShipTo, formatAddress, type PoTabProps } from './types';
 
-type AddressKey = 'shipTo' | 'payTo';
+type AddressKey = 'shipTo' | 'billTo';
 const OURS = 'ours';
 const WH_PREFIX = 'wh:';
 
@@ -22,7 +22,8 @@ function addressFields(a: PostalAddress): { label: string; value: string }[] {
     { label: 'Address', value: a.addressLine },
     { label: 'Barangay', value: a.block },
     { label: 'City', value: a.city },
-    { label: 'Province', value: [a.province, a.zip].filter(Boolean).join(' ') },
+    ...(a.country === 'Philippines' ? [{ label: 'Province', value: a.province }] : []),
+    { label: 'ZIP code', value: a.zip },
     ...(a.country !== 'Philippines' ? [{ label: 'Country', value: a.country }] : []),
   ].filter((x) => !!x.value);
 }
@@ -80,7 +81,10 @@ export function LogisticsTab({ draft, update, m, ctx, onVendorSaved }: PoTabProp
     ...ourOptions(draft.shipTo),
     ...vendorCardOptions(vendor?.defaultShipToId, "vendor's ship-to"),
   ];
-  const baseBillOptions = ourOptions(draft.payTo);
+  // Bill to is always the company: its registered address is the one BIR invoices must carry.
+  const baseBillOptions: CardFieldOption[] = [
+    { value: OURS, label: m.company.name, icon: locationIcon, fields: addressFields(m.company.address) },
+  ];
 
   const findPicked = (current: string, options: CardFieldOption[]) =>
     options.find((o) => resolveAddr(o.value) === current)?.value ?? '';
@@ -100,11 +104,11 @@ export function LogisticsTab({ draft, update, m, ctx, onVendorSaved }: PoTabProp
   };
 
   const shipCustom = customOption(draft.shipTo, baseShipOptions);
-  const billCustom = customOption(draft.payTo, baseBillOptions);
+  const billCustom = customOption(draft.billTo, baseBillOptions);
   const shipOptions = shipCustom ? [shipCustom, ...baseShipOptions] : baseShipOptions;
   const billOptions = billCustom ? [billCustom, ...baseBillOptions] : baseBillOptions;
   const shipPicked = shipCustom ? CUSTOM : findPicked(draft.shipTo, shipOptions);
-  const billPicked = billCustom ? CUSTOM : findPicked(draft.payTo, billOptions);
+  const billPicked = billCustom ? CUSTOM : findPicked(draft.billTo, billOptions);
 
   const fill = (field: AddressKey, value: string) => {
     if (!value || value === CUSTOM) { update({ [field]: '' }); return; }
@@ -124,7 +128,7 @@ export function LogisticsTab({ draft, update, m, ctx, onVendorSaved }: PoTabProp
     setAdding(null);
   };
   const openEdit = (field: AddressKey) => {
-    const text = field === 'shipTo' ? draft.shipTo : draft.payTo;
+    const text = field === 'shipTo' ? draft.shipTo : draft.billTo;
     let address: PostalAddress = blankPostalAddress();
     let entityName = '';
     if (text === companyText) { address = m.company.address; entityName = m.company.name; }
@@ -174,8 +178,8 @@ export function LogisticsTab({ draft, update, m, ctx, onVendorSaved }: PoTabProp
             label="Bill to"
             options={billOptions}
             value={billPicked}
-            onValueChange={(v) => fill('payTo', v)}
-            onEdit={() => openEdit('payTo')}
+            onValueChange={(v) => fill('billTo', v)}
+            onEdit={() => openEdit('billTo')}
             placeholder="Select a billing address"
             readOnly={ctx.readOnly}
           />

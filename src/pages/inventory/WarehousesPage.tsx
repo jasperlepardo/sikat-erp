@@ -1,24 +1,47 @@
-import { useState } from 'react';
-import { useParams } from 'react-router';
-import { Button, Icon, Panel, PanelHeader, Text, TextField } from '@jasperlepardo/sikat-design-system';
-import { DataTable } from '../../components/form/DataTable';
+import { useNavigate } from 'react-router';
+import { Link, Text } from '@jasperlepardo/sikat-design-system';
 import { Fields, Flags, bind } from '../../components/form/fields';
-import { MasterList } from '../../components/form/MasterList';
+import { MasterList, type ListRoute } from '../../components/form/MasterList';
+import { useCollection } from '../../components/form/MasterLookup';
+import { TabbedPage, type PageTab } from '../../components/form/TabbedPage';
 import { AddressFields } from '../../components/form/AddressFields';
 import { addressSummary, blankPostalAddress } from '../../mocks/address';
 import type { Warehouse } from '../../mocks/itemMasters';
-import { warehouses } from '../../services/inventoryMasters';
+import { binLocations, warehouses } from '../../services/inventoryMasters';
 import { newId, useCollectionRows } from '../../services/useCollectionRows';
 import { statusColumn, uniqueRequired } from '../settings/inventory/lists';
+import { BinLocationsTab } from './bins/BinLocationsTab';
+import { SublevelCodesTab } from './bins/sublevels';
 
-/** Inventory › Warehouses & Bins: warehouses (master data) and their bin locations. */
+const BASE = '/inventory/warehouses-and-bins';
+
+const TABS: PageTab[] = [
+  { value: 'warehouses', label: 'Warehouses', Component: WarehousesTab },
+  { value: 'bin-locations', label: 'Bin locations', Component: BinLocationsTab },
+  { value: 'sublevel-codes', label: 'Sublevel codes', Component: SublevelCodesTab },
+];
+
+/** Inventory › Warehouses & Bins: warehouses, their bin locations and the codes bins are addressed by. */
 export function WarehousesPage() {
-  const { recordId } = useParams();
+  return (
+    <TabbedPage
+      base={BASE}
+      icon="warehouse"
+      title="Warehouses & Bins"
+      subcopy="Where stock is kept. Bin-enabled warehouses hold stock in bin locations, and items stocked there need a default bin."
+      tabs={TABS}
+    />
+  );
+}
+
+function WarehousesTab(route: ListRoute) {
+  const navigate = useNavigate();
   const { rows, save, setActive } = useCollectionRows(warehouses);
-  const list = (
+  const bins = useCollection(binLocations) ?? [];
+  const binCount = (w: Warehouse) => bins.filter((b) => b.warehouse === w.code).length;
+  return (
     <MasterList<Warehouse>
-      basePath="/inventory/warehouses-and-bins"
-      recordId={recordId}
+      {...route}
       icon="warehouse"
       title="Warehouses"
       noun="warehouse"
@@ -31,14 +54,14 @@ export function WarehousesPage() {
         {
           key: 'bins',
           header: 'Bins',
-          cell: (w) => (w.binEnabled ? `${w.bins.length} bin${w.bins.length === 1 ? '' : 's'}` : 'No bin management'),
+          cell: (w) => (w.binEnabled ? `${binCount(w)} bin${binCount(w) === 1 ? '' : 's'}` : 'No bin management'),
         },
         statusColumn<Warehouse>(),
       ]}
       sortValue={(w, key) =>
         key === 'bins'
           ? w.binEnabled
-            ? w.bins.length
+            ? binCount(w)
             : -1
           : key === 'active'
             ? Number(w.active)
@@ -46,22 +69,19 @@ export function WarehousesPage() {
               ? addressSummary(w.address).toLowerCase()
               : String(w[key as keyof Warehouse] ?? '').toLowerCase()
       }
-      searchText={(w) => `${w.code} ${w.name} ${addressSummary(w.address)} ${w.bins.join(' ')}`}
-      blank={() => ({ id: newId('wh'), code: '', name: '', address: blankPostalAddress(), binEnabled: false, bins: [], active: true })}
+      searchText={(w) => `${w.code} ${w.name} ${addressSummary(w.address)}`}
+      blank={() => ({ id: newId('wh'), code: '', name: '', address: blankPostalAddress(), binEnabled: false, active: true })}
       label={(w) => `${w.code} · ${w.name}`}
       validate={(w, all) => {
         const e: Record<string, string> = {};
         uniqueRequired(e, w, all, 'code', 'Code');
         if (!w.name.trim()) e.name = 'Name is required.';
-        if (w.binEnabled && !w.bins.length) e.bins = 'Bin-enabled warehouses need at least one bin.';
-        else if (w.bins.some((b) => !b.trim())) e.bins = 'Bins need a code.';
-        else if (new Set(w.bins.map((b) => b.trim().toUpperCase())).size !== w.bins.length)
-          e.bins = 'Bin codes must be unique.';
         return e;
       }}
-      onSave={(w) => save({ ...w, code: w.code.trim().toUpperCase(), bins: w.bins.map((b) => b.trim().toUpperCase()) })}
+      onSave={(w) => save({ ...w, code: w.code.trim().toUpperCase() })}
       editor={(w, update, errors, isNew) => {
         const f = bind(w, update);
+        const count = binCount(w);
         return (
           <>
             <Fields cols={3}>
@@ -85,95 +105,19 @@ export function WarehousesPage() {
               {f.check('active', 'Active')}
             </Flags>
             {w.binEnabled ? (
-              <BinsEditor bins={w.bins} error={errors.bins} onChange={(bins) => update({ bins })} />
+              <Text variant="small" tone="muted">
+                {isNew ? 'Save the warehouse, then add its bins' : count ? `${count} bin location${count === 1 ? '' : 's'} — manage them` : 'No bins yet — add them'}{' '}
+                on the{' '}
+                <Link onClick={() => navigate(`${BASE}/bin-locations`)}>Bin locations</Link> tab (Generate bins creates a whole rack at once).
+              </Text>
+            ) : count ? (
+              <Text variant="small" tone="muted">
+                Its {count} bin{count === 1 ? '' : 's'} are kept but not offered while bin management is off.
+              </Text>
             ) : null}
           </>
         );
       }}
     />
-  );
-
-  // A record opens on its own page; the list sits in the page panel.
-  if (recordId) return list;
-  return (
-    <Panel className="flex-1">
-      <PanelHeader
-        icon="warehouse"
-        title="Warehouses & Bins"
-        subcopy="Where stock is kept. Bin-enabled warehouses need a default bin on every item stocked there."
-      />
-      <Panel.Body className="flex flex-col gap-2">{list}</Panel.Body>
-    </Panel>
-  );
-}
-
-function BinsEditor({ bins, error, onChange }: { bins: string[]; error?: string; onChange: (bins: string[]) => void }) {
-  const [next, setNext] = useState('');
-  const rows = bins.map((code, i) => ({ id: String(i), code }));
-  const add = () => {
-    if (!next.trim()) return;
-    onChange([...bins, next.trim().toUpperCase()]);
-    setNext('');
-  };
-  return (
-    <>
-      <DataTable
-        icon="grid_view"
-        title="Bin locations"
-        description="Aisle-rack-level codes, e.g. A-01-02."
-        rows={rows}
-        getRowId={(r) => r.id}
-        columns={[
-          {
-            key: 'code',
-            header: 'Bin code',
-            cell: (r) => (
-              <TextField
-                aria-label="Bin code"
-                value={r.code}
-                onChange={(e) => onChange(bins.map((b, i) => (i === Number(r.id) ? e.currentTarget.value : b)))}
-              />
-            ),
-          },
-        ]}
-        onRemove={(picked) => onChange(bins.filter((_, i) => !picked.some((p) => Number(p.id) === i)))}
-        actions={
-          <div className="flex items-center gap-1">
-            <TextField
-              aria-label="New bin code"
-              placeholder="New bin, e.g. C-02-01"
-              value={next}
-              onChange={(e) => setNext(e.currentTarget.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  add();
-                }
-              }}
-            />
-            <Button
-              type="button"
-              size="small"
-              intent="primary"
-              variant="solid"
-              leadingIcon={<Icon size={16}>add</Icon>}
-              onClick={add}
-            >
-              Add bin
-            </Button>
-          </div>
-        }
-        empty={
-          <Text variant="small" tone="muted">
-            No bins yet.
-          </Text>
-        }
-      />
-      {error ? (
-        <Text variant="small" tone="danger">
-          {error}
-        </Text>
-      ) : null}
-    </>
   );
 }

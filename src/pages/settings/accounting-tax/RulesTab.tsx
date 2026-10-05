@@ -17,6 +17,7 @@ import { listItems } from '../../../services/items';
 import { listPartners } from '../../../services/partners';
 import { determineTax, type TraceStep } from '../../../services/taxDetermination';
 import { useAsync } from '../../../services/useAsync';
+import { todayISO } from '../../../services/dates';
 
 const SALES_RULES = [
   'Company is not VAT-registered → PT010 percentage tax on every sale',
@@ -94,7 +95,7 @@ export function RulesTab() {
   const [direction, setDirection] = useState<TaxDirection>('Purchase');
   const [partnerId, setPartnerId] = useState('bp-002');
   const [itemId, setItemId] = useState('itm-018');
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(todayISO());
 
   const role = direction === 'Sales' ? 'customer' : 'vendor';
   const partnerOptions = partners.filter((p) => p.roles.includes(role));

@@ -23,6 +23,7 @@ import {
   type BpGroup,
   type NamedEntry,
   type PaymentTerm,
+  type PriceList,
   type Project,
 } from '../mocks/partnerMasters';
 import { createCollection } from './store';
@@ -34,7 +35,7 @@ export const salesEmployees = createCollection<NamedEntry>('sikat-erp:sales-empl
 export const territories = createCollection<NamedEntry>('sikat-erp:territories', SEED_TERRITORIES, 'ter');
 export const channels = createCollection<NamedEntry>('sikat-erp:channels', SEED_CHANNELS, 'chn');
 export const leadSources = createCollection<NamedEntry>('sikat-erp:lead-sources', SEED_LEAD_SOURCES, 'lds');
-export const priceLists = createCollection<NamedEntry>('sikat-erp:price-lists', SEED_PRICE_LISTS, 'prl');
+export const priceLists = createCollection<PriceList>('sikat-erp:price-lists:v3', SEED_PRICE_LISTS, 'prl');
 export const emailGroups = createCollection<NamedEntry>('sikat-erp:email-groups', SEED_EMAIL_GROUPS, 'emg');
 export const partnerProperties = createCollection<NamedEntry>('sikat-erp:partner-properties', SEED_PARTNER_PROPERTIES, 'bpp');
 

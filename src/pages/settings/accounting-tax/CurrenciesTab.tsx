@@ -4,6 +4,7 @@ import { MasterList, type ListRoute } from '../../../components/form/MasterList'
 import { ROUNDING_RULES, type Currency } from '../../../mocks/currencies';
 import { currencies, exchangeRates, rateOn } from '../../../services/masterData';
 import { useAsync } from '../../../services/useAsync';
+import { CurrencyRateHistory } from './CurrencyRateHistory';
 import { newId, useCollectionRows } from '../../../services/useCollectionRows';
 
 /** Code, name and decimals checks, shared with "+ Add" on currency fields. */
@@ -143,6 +144,8 @@ export function CurrenciesTab(route: ListRoute) {
               <Text variant="small" tone="muted">
                 The local currency can’t be changed once books are open.
               </Text>
+            ) : c.code ? (
+              <CurrencyRateHistory code={c.code.trim().toUpperCase()} days={rates} />
             ) : null}
           </>
         );

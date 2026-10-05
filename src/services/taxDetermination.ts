@@ -20,6 +20,7 @@ import {
   type WithholdingGroup,
   type WithholdingTax,
 } from '../mocks/taxes';
+import { todayISO } from './dates';
 
 export interface TaxMasterData {
   company: CompanyTaxProfile;
@@ -115,7 +116,7 @@ export function determineTax(
   item: LineItem,
   partner: LineParty,
   data: TaxMasterData,
-  date = new Date().toISOString().slice(0, 10),
+  date = todayISO(),
 ): Determination {
   const trace: TraceStep[] = [];
   const notes: string[] = [];
@@ -277,7 +278,7 @@ export function determineWithholding(
   item: LineItem,
   partner: LineParty,
   data: TaxMasterData,
-  date = new Date().toISOString().slice(0, 10),
+  date = todayISO(),
 ) {
   const withholdingTrace: TraceStep[] = [];
   const withholding: WithholdingTax[] = [];

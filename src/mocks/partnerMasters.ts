@@ -45,6 +45,49 @@ export interface Bank extends NamedEntry {
   swift: string;
 }
 
+/** How a dependent list rounds its calculated prices. */
+export type PriceRounding = 'none' | 'peso' | 'ten-centavos' | 'tens' | 'hundreds';
+
+export const PRICE_ROUNDING: { value: PriceRounding; label: string }[] = [
+  { value: 'none', label: 'No rounding' },
+  { value: 'peso', label: 'Round to full peso' },
+  { value: 'ten-centavos', label: 'Round to ₱0.10' },
+  { value: 'tens', label: 'Round to full tens' },
+  { value: 'hundreds', label: 'Round to full hundreds' },
+];
+
+/** Where an independent list takes each item's price from (the item form holds one cost and one SRP). */
+export type PriceSource = 'cost' | 'srp';
+
+/**
+ * A named price tier partners and document lines default to. Independent lists take the item's
+ * own price; dependent lists are another list × factor, rounded — so changing the base reprices
+ * every list down the chain. Prices are calculated when read, never stored per list.
+ */
+export interface PriceList extends NamedEntry {
+  /** Name of the list prices are derived from; '' for an independent list. */
+  basePriceList: string;
+  /** Multiplier on the base list's price (1.3 = 30% markup, 0.92 = 8% off). */
+  factor: number;
+  /** Independent lists only. */
+  source: PriceSource;
+  rounding: PriceRounding;
+  /** Prices include VAT (gross) rather than exclude it (net). */
+  gross: boolean;
+  /** ISO dates; '' = open-ended. */
+  validFrom: string;
+  validTo: string;
+  remarks: string;
+  /** Prices set by hand for single items (Manual), overriding the list's calculation. */
+  itemPrices: ItemListPrice[];
+}
+
+/** A hand-set price: PHP per inventory unit, gross or net as the list is. */
+export interface ItemListPrice {
+  itemId: string;
+  price: number;
+}
+
 export interface Project extends NamedEntry {
   code: string;
 }
@@ -72,7 +115,27 @@ export const SEED_SALES_EMPLOYEES = named('emp', EMPLOYEES);
 export const SEED_TERRITORIES = named('ter', TERRITORIES);
 export const SEED_CHANNELS = named('chn', CHANNELS);
 export const SEED_LEAD_SOURCES = named('lds', LEAD_SOURCES);
-export const SEED_PRICE_LISTS = named('prl', PRICE_LISTS);
+const PRICE_LIST_SETUP: Record<string, Partial<PriceList>> = {
+  'Base price': { source: 'srp', gross: true, remarks: 'Apple SRP, VAT inclusive — the price on the item.' },
+  'Last purchase price': { source: 'cost', gross: false, remarks: 'Item cost, for purchasing.' },
+  Wholesale: { basePriceList: 'Base price', factor: 0.92, rounding: 'tens', gross: true, remarks: 'Resellers and corporate accounts: 8% off SRP.' },
+  Retail: { basePriceList: 'Base price', factor: 1, rounding: 'none', gross: true, remarks: 'Walk-in and online store.' },
+  Government: { basePriceList: 'Base price', factor: 0.95, rounding: 'peso', gross: true, validFrom: '2026-01-01', validTo: '2026-12-31', remarks: 'Public bidding (RA 9184) quotes: 5% off SRP for the year.' },
+};
+
+export const SEED_PRICE_LISTS: PriceList[] = named('prl', PRICE_LISTS).map((l) => ({
+  ...l,
+  basePriceList: '',
+  factor: 1,
+  source: 'srp',
+  rounding: 'none',
+  gross: true,
+  validFrom: '',
+  validTo: '',
+  remarks: '',
+  itemPrices: [],
+  ...PRICE_LIST_SETUP[l.name],
+}));
 export const SEED_EMAIL_GROUPS = named('emg', EMAIL_GROUPS);
 export const SEED_PARTNER_PROPERTIES = named('bpp', PROPERTY_LABELS);
 

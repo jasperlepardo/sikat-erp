@@ -6,6 +6,7 @@ import { addressSummary } from '../../../../mocks/address';
 import { newItemWarehouse, type ItemWarehouse } from '../../../../mocks/items';
 import type { Partner } from '../../../../mocks/partners';
 import type { InventoryMasters } from '../../../../services/inventoryMasters';
+import { binsOf } from '../../../../services/binLocations';
 import { EditPanel } from '../../../partners/detail/EditPanel';
 import { vendorOptions, type Draft } from './types';
 
@@ -168,7 +169,11 @@ export function WarehousePanel({
               {(p) => (
                 <Combobox
                   {...p}
-                  options={wh.bins.map((b) => ({ value: b, label: b }))}
+                  options={binsOf(inv.bins, wh.code, row.defaultBin).map((b) => ({
+                    value: b.code,
+                    label: b.code,
+                    subLabel: b.description || undefined,
+                  }))}
                   placeholder="Pick a bin"
                   value={row.defaultBin || null}
                   onValueChange={(v) => setRow({ ...row, defaultBin: v ?? '' })}

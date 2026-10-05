@@ -24,11 +24,26 @@ export interface DataTableProps<T> {
   onColumnSettings?: () => void;
   /** Show all rows with no pagination controls. */
   noPagination?: boolean;
+  /**
+   * `card` puts the whole thing in a Card: icon, title and actions in its header; the
+   * description, `children` and the table inside its content.
+   */
+  variant?: 'plain' | 'card';
+  /** Content above the table (card variant only), e.g. options that apply to every row. */
+  children?: ReactNode;
 }
 
 /** Page sizes every paginated table offers; tables open at `DEFAULT_PAGE_SIZE`. */
 export const PAGE_SIZES = [10, 25, 50, 100, 250];
 export const DEFAULT_PAGE_SIZE = 50;
+
+/**
+ * Classes for the Card around a `layout="fill"` list table. The 288px minimum stops the
+ * table collapsing in a short window, but on a short list it would hold the card open
+ * and the fill table would stretch, leaving empty space above the pagination. So it
+ * applies only once the page has enough rows (6) to be that tall anyway.
+ */
+export const fillCardClass = (rowsOnPage: number) => (rowsOnPage >= 6 ? 'flex-initial min-h-72' : 'flex-initial');
 
 const defaultSortValue = (row: unknown, key: string): string | number => {
   const v = (row as Record<string, unknown>)[key];
@@ -55,6 +70,8 @@ export function DataTable<T>({
   pageSize: initialPageSize = DEFAULT_PAGE_SIZE,
   onColumnSettings,
   noPagination = false,
+  variant = 'plain',
+  children,
 }: DataTableProps<T>) {
   const [sort, setSort] = useState<TableSort | null>(null);
   const [page, setPage] = useState(1);
@@ -76,6 +93,82 @@ export function DataTable<T>({
   const visible = noPagination ? sorted : sorted.slice((current - 1) * pageSize, current * pageSize);
   const liveSelection = selected.filter((id) => rows.some((r) => getRowId(r) === id));
 
+  const toolbar = (
+    <div className="flex flex-wrap items-center gap-1">
+      {onRemove && liveSelection.length ? (
+        <>
+          <Text variant="small" tone="muted">
+            {liveSelection.length} selected
+          </Text>
+          <Button
+            type="button"
+            size="small"
+            variant="ghost"
+            intent="danger"
+            onClick={() => {
+              onRemove(rows.filter((r) => liveSelection.includes(getRowId(r))));
+              setSelected([]);
+            }}
+          >
+            Remove selected
+          </Button>
+        </>
+      ) : null}
+      {actions}
+    </div>
+  );
+  const table = rows.length ? (
+    <Card>
+      <Table
+        // The card variant names the table in its header; no hidden caption.
+        {...(variant === 'card' ? {} : { caption: title })}
+        columns={columns.map((c) => ({ sortable: !unsortable.includes(c.key), ...c }))}
+        rows={visible}
+        getRowId={getRowId}
+        sort={sort}
+        onSortChange={setSort}
+        layout="scroll"
+        {...(onRowAction ? { onRowAction } : {})}
+        {...(onColumnSettings ? { onColumnSettings } : {})}
+        {...(onRemove ? { selectable: true, selectedIds: liveSelection, onSelectionChange: setSelected } : {})}
+        {...(!noPagination && {
+          pagination: {
+            page: current,
+            pageSize,
+            total: rows.length,
+            pageSizes: PAGE_SIZES,
+            onPageChange: setPage,
+            onPageSizeChange: (size) => {
+              setPageSize(size);
+              setPage(1);
+            },
+          },
+        })}
+      />
+    </Card>
+  ) : (
+    <div className="px-2">{empty}</div>
+  );
+
+  if (variant === 'card') {
+    return (
+      <Card>
+        <Card.Header icon={<Icon size={24}>{icon}</Icon>} actions={toolbar}>
+          {title}
+        </Card.Header>
+        <Card.Content>
+          {description ? (
+            <Text variant="small" tone="muted">
+              {description}
+            </Text>
+          ) : null}
+          {children}
+          {table}
+        </Card.Content>
+      </Card>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-start justify-between gap-2 px-2 pt-2">
@@ -90,60 +183,9 @@ export function DataTable<T>({
             ) : null}
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-1">
-          {onRemove && liveSelection.length ? (
-            <>
-              <Text variant="small" tone="muted">
-                {liveSelection.length} selected
-              </Text>
-              <Button
-                type="button"
-                size="small"
-                variant="ghost"
-                intent="danger"
-                onClick={() => {
-                  onRemove(rows.filter((r) => liveSelection.includes(getRowId(r))));
-                  setSelected([]);
-                }}
-              >
-                Remove selected
-              </Button>
-            </>
-          ) : null}
-          {actions}
-        </div>
+        {toolbar}
       </div>
-      {rows.length ? (
-        <Card>
-          <Table
-            caption={title}
-            columns={columns.map((c) => ({ sortable: !unsortable.includes(c.key), ...c }))}
-            rows={visible}
-            getRowId={getRowId}
-            sort={sort}
-            onSortChange={setSort}
-            layout="scroll"
-            {...(onRowAction ? { onRowAction } : {})}
-            {...(onColumnSettings ? { onColumnSettings } : {})}
-            {...(onRemove ? { selectable: true, selectedIds: liveSelection, onSelectionChange: setSelected } : {})}
-            {...(!noPagination && {
-              pagination: {
-                page: current,
-                pageSize,
-                total: rows.length,
-                pageSizes: PAGE_SIZES,
-                onPageChange: setPage,
-                onPageSizeChange: (size) => {
-                  setPageSize(size);
-                  setPage(1);
-                },
-              },
-            })}
-          />
-        </Card>
-      ) : (
-        <div className="px-2">{empty}</div>
-      )}
+      {table}
     </div>
   );
 }

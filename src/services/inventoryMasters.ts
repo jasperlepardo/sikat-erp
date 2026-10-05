@@ -22,6 +22,7 @@ import {
   type Warehouse,
   type WarrantyTemplate,
 } from '../mocks/itemMasters';
+import { SEED_BINS, SEED_BIN_SUBLEVELS, type BinLocation, type BinSublevel } from '../mocks/binLocations';
 import type { Account } from '../mocks/chartOfAccounts';
 import { accounts } from './masterData';
 import { createCollection } from './store';
@@ -30,7 +31,10 @@ import { createCollection } from './store';
 export const itemGroups = createCollection<ItemGroup>('sikat-erp:item-groups:v5', SEED_ITEM_GROUPS, 'ig');
 export const unitsOfMeasure = createCollection<UnitOfMeasure>('sikat-erp:uoms:v5', SEED_UOMS, 'uom');
 export const uomGroups = createCollection<UomGroup>('sikat-erp:uom-groups:v2', SEED_UOM_GROUPS, 'ug');
-export const warehouses = createCollection<Warehouse>('sikat-erp:warehouses:v3', SEED_WAREHOUSES, 'wh');
+export const warehouses = createCollection<Warehouse>('sikat-erp:warehouses:v7', SEED_WAREHOUSES, 'wh');
+/** Bin locations and the aisle / shelf / level codes they're addressed by (services/binLocations.ts). */
+export const binLocations = createCollection<BinLocation>('sikat-erp:bin-locations:v1', SEED_BINS, 'bin');
+export const binSublevels = createCollection<BinSublevel>('sikat-erp:bin-sublevels:v1', SEED_BIN_SUBLEVELS, 'bsl');
 export const manufacturers = createCollection<Manufacturer>('sikat-erp:manufacturers:v2', SEED_MANUFACTURERS, 'mfr');
 export const customsGroups = createCollection<CustomsGroup>('sikat-erp:customs-groups:v2', SEED_CUSTOMS_GROUPS, 'cg');
 export const commissionGroups = createCollection<CommissionGroup>('sikat-erp:commission-groups', SEED_COMMISSION_GROUPS, 'cm');
@@ -45,6 +49,8 @@ export interface InventoryMasters {
   uoms: UnitOfMeasure[];
   uomGroups: UomGroup[];
   warehouses: Warehouse[];
+  /** Every warehouse's bin locations. */
+  bins: BinLocation[];
   manufacturers: Manufacturer[];
   customs: CustomsGroup[];
   commissions: CommissionGroup[];
@@ -57,11 +63,12 @@ export interface InventoryMasters {
 }
 
 export async function loadInventoryMasters(): Promise<InventoryMasters> {
-  const [groups, uoms, uomGroupRows, whs, mfrs, customs, commissions, shipping, warranties, properties, [settings], chart] = await Promise.all([
+  const [groups, uoms, uomGroupRows, whs, bins, mfrs, customs, commissions, shipping, warranties, properties, [settings], chart] = await Promise.all([
     itemGroups.list(),
     unitsOfMeasure.list(),
     uomGroups.list(),
     warehouses.list(),
+    binLocations.list(),
     manufacturers.list(),
     customsGroups.list(),
     commissionGroups.list(),
@@ -72,13 +79,13 @@ export async function loadInventoryMasters(): Promise<InventoryMasters> {
     accounts.list(),
   ]);
   return {
-    groups, uoms, uomGroups: uomGroupRows, warehouses: whs, manufacturers: mfrs, customs, commissions, shipping, warranties,
+    groups, uoms, uomGroups: uomGroupRows, warehouses: whs, bins, manufacturers: mfrs, customs, commissions, shipping, warranties,
     properties: properties.sort((a, b) => a.number - b.number), settings, accounts: chart,
   };
 }
 
 export const EMPTY_INVENTORY_MASTERS: InventoryMasters = {
-  groups: [], uoms: [], uomGroups: [], warehouses: [], manufacturers: [], customs: [], commissions: [], shipping: [], warranties: [],
+  groups: [], uoms: [], uomGroups: [], warehouses: [], bins: [], manufacturers: [], customs: [], commissions: [], shipping: [], warranties: [],
   properties: [], settings: SEED_INVENTORY_SETTINGS[0], accounts: [],
 };
 

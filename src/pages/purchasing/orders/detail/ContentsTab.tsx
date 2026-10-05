@@ -17,6 +17,7 @@ import {
 import { DataTable } from '../../../../components/form/DataTable';
 import { MasterLookup } from '../../../../components/form/MasterLookup';
 import { priceListDef } from '../../../settings/masterDefs';
+import { isPriceListValid } from '../../../../services/priceLists';
 import {
   BLANKET_AGREEMENTS,
   DEPARTMENTS,
@@ -31,7 +32,8 @@ import { formatAmount } from '../../../../services/format';
 import { activeOptions } from '../../../../services/inventoryMasters';
 import { isValidToday, stockTotals } from '../../../../services/items';
 import { grossPrice, inventoryQty, lineNet, openQty, priceAfterDiscount } from '../../../../services/purchaseOrders';
-import { listPrice, lineFromItem, type PoTabProps } from './types';
+import { linePricing, lineFromItem, type PoTabProps } from './types';
+import { formatDate } from '../../../../services/dates';
 
 /** Optional column groups (the table's column settings). Item, quantity, price, tax and totals always show. */
 const GROUPS = {
@@ -58,11 +60,14 @@ export function ContentsTab({ draft, update, errors, m, ctx }: PoTabProps) {
     const item = itemOf(l);
     const itemsPerUnit = item ? itemsPerUom(item, uomCode) : undefined;
     if (!itemsPerUnit) return;
+    const priced = item && ctx.fx ? linePricing(item, { ...l, uomCode }, draft, ctx) : undefined;
     patch(l.id, {
       uomCode,
       uomName: m.inv.uoms.find((u) => u.code === uomCode)?.name ?? uomCode,
       itemsPerUnit,
-      unitPrice: item && ctx.fx ? round2(listPrice(item, l.priceList, uomCode) / ctx.fx) : round2((l.unitPrice / (l.itemsPerUnit || 1)) * itemsPerUnit),
+      ...(priced
+        ? { unitPrice: priced.unitPrice, discountPct: priced.discountPct }
+        : { unitPrice: round2((l.unitPrice / (l.itemsPerUnit || 1)) * itemsPerUnit) }),
     });
   };
   const lc = (n: number) => formatAmount(n * ctx.fx);
@@ -103,7 +108,23 @@ export function ContentsTab({ draft, update, errors, m, ctx }: PoTabProps) {
   };
   const changePriceList = (l: PoLine, priceList: string) => {
     const item = itemOf(l);
-    patch(l.id, { priceList, ...(item && ctx.fx ? { unitPrice: round2(listPrice(item, priceList, l.uomCode) / ctx.fx) } : {}) });
+    const priced = item && ctx.fx ? linePricing(item, { ...l, priceList }, draft, ctx) : undefined;
+    patch(l.id, { priceList, ...(priced ? { unitPrice: priced.unitPrice, discountPct: priced.discountPct } : {}) });
+  };
+  /**
+   * A new quantity can reach another volume tier or special price break. The unit price stays as
+   * entered unless a special price sets it (its breaks can be fixed prices).
+   */
+  const changeQuantity = (l: PoLine, quantity: number) => {
+    const item = itemOf(l);
+    const p = item && linePricing(item, { ...l, quantity }, draft, ctx);
+    patch(l.id, { quantity, ...(p ? { discountPct: p.discountPct, ...(p.source.kind === 'special' && ctx.fx ? { unitPrice: p.unitPrice } : {}) } : {}) });
+  };
+  /** Where the line's discount came from, while it's still the one the rules give. */
+  const discountSource = (l: PoLine) => {
+    const item = itemOf(l);
+    const p = item && linePricing(item, l, draft, ctx);
+    return p && p.source.kind !== 'list' && p.discountPct === l.discountPct && (p.source.kind !== 'special' || p.unitPrice === l.unitPrice) ? p.source.label : undefined;
   };
 
   const col = (key: string, header: string, cell: (l: PoLine) => React.ReactNode, group?: Group): TableColumn<PoLine> & { group?: Group } => ({
@@ -126,9 +147,9 @@ export function ContentsTab({ draft, update, errors, m, ctx }: PoTabProps) {
         <div className="flex flex-col gap-1 w-64">
           {item ? (
             <>
-              <Text variant="small" tone="muted">{item.itemNo}</Text>
               {isEditingItem ? (
                 <>
+                  <Text variant="caption">{item.itemNo}</Text>
                   <TextField
                     aria-label="Item name"
                     placeholder="Item name"
@@ -143,10 +164,12 @@ export function ContentsTab({ draft, update, errors, m, ctx }: PoTabProps) {
                   />
                 </>
               ) : (
-                <>
-                  <Text>{l.name}</Text>
+                // Item no., name and description read as one block; the links sit 4px below.
+                <div className="flex flex-col">
+                  <Text variant="caption">{item.itemNo}</Text>
+                  <Text variant="small">{l.name}</Text>
                   <Text variant="small" tone="muted">{l.description}</Text>
-                </>
+                </div>
               )}
               <div className="flex gap-3">
                 <Link intent="primary" onClick={toggleEdit}>{isEditingItem ? 'Done' : 'Edit'}</Link>
@@ -187,7 +210,7 @@ export function ContentsTab({ draft, update, errors, m, ctx }: PoTabProps) {
             min={0}
             invalid={Boolean(err(l, 'quantity'))}
             value={String(l.quantity)}
-            onChange={(e) => patch(l.id, { quantity: num(e.currentTarget.value) })}
+            onChange={(e) => changeQuantity(l, num(e.currentTarget.value))}
           />
           {!item || l.receivedQty > 0 ? (
             <Text variant="small" tone="muted">{l.uomCode}</Text>
@@ -241,7 +264,7 @@ export function ContentsTab({ draft, update, errors, m, ctx }: PoTabProps) {
       );
     }),
     col('priceList', 'Price list', (l) => l.itemId ? (
-      <MasterLookup def={priceListDef} fieldProps={{ 'aria-label': 'Price list', className: 'w-44' }} value={l.priceList} onChange={(v) => changePriceList(l, v)} />
+      <MasterLookup def={priceListDef} fieldProps={{ 'aria-label': 'Price list', className: 'w-44' }} where={(r) => isPriceListValid(r, draft.postingDate)} value={l.priceList} onChange={(v) => changePriceList(l, v)} />
     ) : null, 'pricing'),
     col('pricing', 'Unit price / Tax / Discount', (l) => {
       if (!l.itemId) return null;
@@ -284,6 +307,11 @@ export function ContentsTab({ draft, update, errors, m, ctx }: PoTabProps) {
             value={String(l.discountPct)}
             onChange={(e) => patch(l.id, { discountPct: Math.min(100, num(e.currentTarget.value)) })}
           />
+          {discountSource(l) ? (
+            <Text variant="small" tone="muted">
+              {discountSource(l)}
+            </Text>
+          ) : null}
         </div>
       );
     }),
@@ -326,52 +354,14 @@ export function ContentsTab({ draft, update, errors, m, ctx }: PoTabProps) {
 
   return (
     <div className="flex flex-col gap-2">
-      {PURCHASING_SETTINGS.separateNetGrossPriceMode ? (
-        <div className="flex flex-wrap items-center gap-6 px-2" role="radiogroup" aria-label="Price mode">
-          <Text variant="small" tone="muted">
-            Price mode
-          </Text>
-          {PRICE_MODES.map((mode: PriceMode) => (
-            <Radio key={mode} name="po-price-mode" checked={draft.priceMode === mode} onChange={() => update({ priceMode: mode })}>
-              {mode}
-            </Radio>
-          ))}
-          <Text variant="small" tone="muted">
-            {draft.priceMode === 'Net'
-              ? 'Enter net prices; gross is calculated.'
-              : draft.priceMode === 'Gross'
-                ? 'Enter prices including tax; net is calculated.'
-                : 'Edit either price; the other follows.'}
-          </Text>
-        </div>
-      ) : null}
-
-      {settingsOpen ? (
-        <Card>
-          <Card.Header icon={<Icon size={24}>tune</Icon>}>Columns</Card.Header>
-          <Card.Content>
-            <div className="flex flex-wrap gap-x-6 gap-y-3">
-              {(Object.keys(GROUPS) as Group[]).map((g) => (
-                <Checkbox
-                  key={g}
-                  checked={is(g)}
-                  onChange={(e) => setShown(e.currentTarget.checked ? [...shown, g] : shown.filter((x) => x !== g))}
-                >
-                  {GROUPS[g]}
-                </Checkbox>
-              ))}
-            </div>
-          </Card.Content>
-        </Card>
-      ) : null}
-
       <DataTable
+        variant="card"
         noPagination
         icon="list_alt"
         title="Contents"
         description={
           errors.lines ??
-          `Items to order, in the purchasing unit. Prices are in ${draft.currency}${draft.currency === 'PHP' ? '' : `; totals in PHP at ${ctx.fx || '—'}`}.`
+          `Items to order, in the purchasing unit. Prices are in ${draft.currency}${draft.currency === 'PHP' ? '' : `; totals in PHP at ${ctx.fx ? `${ctx.fx} (${ctx.fxSource}, ${formatDate(ctx.fxDate)})` : '—'}`}.`
         }
         rows={lines}
         getRowId={(l) => l.id}
@@ -401,7 +391,46 @@ export function ContentsTab({ draft, update, errors, m, ctx }: PoTabProps) {
             {draft.vendorId ? 'No lines yet. Add a line and pick an item.' : 'Pick a vendor first, then add lines.'}
           </Text>
         }
-      />
+      >
+        {PURCHASING_SETTINGS.separateNetGrossPriceMode ? (
+          <div className="flex flex-wrap items-center gap-6" role="radiogroup" aria-label="Price mode">
+            <Text variant="small" tone="muted">
+              Price mode
+            </Text>
+            {PRICE_MODES.map((mode: PriceMode) => (
+              <Radio key={mode} name="po-price-mode" checked={draft.priceMode === mode} onChange={() => update({ priceMode: mode })}>
+                {mode}
+              </Radio>
+            ))}
+            <Text variant="small" tone="muted">
+              {draft.priceMode === 'Net'
+                ? 'Enter net prices; gross is calculated.'
+                : draft.priceMode === 'Gross'
+                  ? 'Enter prices including tax; net is calculated.'
+                  : 'Edit either price; the other follows.'}
+            </Text>
+          </div>
+        ) : null}
+
+        {settingsOpen ? (
+          <Card>
+            <Card.Header icon={<Icon size={24}>tune</Icon>}>Columns</Card.Header>
+            <Card.Content>
+              <div className="flex flex-wrap gap-x-6 gap-y-3">
+                {(Object.keys(GROUPS) as Group[]).map((g) => (
+                  <Checkbox
+                    key={g}
+                    checked={is(g)}
+                    onChange={(e) => setShown(e.currentTarget.checked ? [...shown, g] : shown.filter((x) => x !== g))}
+                  >
+                    {GROUPS[g]}
+                  </Checkbox>
+                ))}
+              </div>
+            </Card.Content>
+          </Card>
+        ) : null}
+      </DataTable>
     </div>
   );
 }

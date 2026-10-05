@@ -21,7 +21,7 @@ import type { Item } from '../../../mocks/items';
 import { isLowStock, isValidToday, listItems, stockTotals } from '../../../services/items';
 import { useAsync } from '../../../services/useAsync';
 import { formatAmount } from '../../../services/format';
-import { DEFAULT_PAGE_SIZE, PAGE_SIZES } from '../../../components/form/DataTable';
+import { DEFAULT_PAGE_SIZE, PAGE_SIZES, fillCardClass } from '../../../components/form/DataTable';
 
 type Filter = 'all' | 'stocked' | 'low' | 'services' | 'inactive';
 
@@ -192,7 +192,7 @@ export function ItemList({ basePath = '/inventory/items' }: { basePath?: string 
             setPage(1);
           }}
         />
-        <Card className="flex-initial min-h-72">
+        <Card className={fillCardClass(rows.slice((page - 1) * pageSize, page * pageSize).length)}>
           {items ? (
             <Table
               caption="Items"

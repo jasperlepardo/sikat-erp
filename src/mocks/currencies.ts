@@ -4,6 +4,8 @@
  * the BSP Reference Exchange Rate Bulletin (RERB), published every banking day.
  */
 
+import { RERB_CODES, RERB_HISTORY } from './rerbHistory';
+
 export type RoundingRule = 'No rounding' | 'Round to 0.05' | 'Round to 1' | 'Round to 5' | 'Round to 10';
 export const ROUNDING_RULES: RoundingRule[] = ['No rounding', 'Round to 0.05', 'Round to 1', 'Round to 5', 'Round to 10'];
 
@@ -27,13 +29,15 @@ export interface Currency {
   active: boolean;
 }
 
+/** One day's rates — a BSP bulletin or a manual entry. One record per date. */
 export interface ExchangeRate {
   id: string;
   /** YYYY-MM-DD. */
   date: string;
-  currency: string;
-  /** PHP per 1 unit of `currency`. */
-  rate: number;
+  /** PHP per 1 unit, by currency code. Currencies with no rate that day are left out. */
+  rates: Record<string, number>;
+  /** Quoted as N/A on that day's bulletin (e.g. the Kuwaiti dinar). */
+  unavailable: string[];
   source: 'BSP RERB' | 'Manual';
 }
 
@@ -87,25 +91,20 @@ export const SEED_CURRENCIES: Currency[] = [
   cur('VES', 'Venezuelan bolívar', 'Bs.', 'bolívar', 'céntimo'),
 ];
 
-/** Phil. peso equivalents from the BSP RERB of 25 September 2026 (Kuwaiti dinar was N/A). */
-const RERB_2026_09_25: Record<string, number> = {
-  USD: 62.756, JPY: 0.3952, GBP: 82.9446, HKD: 8.0025, CHF: 75.8381, CAD: 44.3756, SGD: 49.0626, AUD: 43.9857,
-  BHD: 166.5322, SAR: 16.7144, BND: 48.8716, IDR: 0.0035, THB: 1.8779, AED: 17.0871, EUR: 71.4101, KRW: 0.0459,
-  CNY: 9.3515, ARS: 0.0413, BRL: 12.0877, DKK: 9.5525, INR: 0.654, MYR: 15.3663, MXN: 3.5371, NZD: 35.5136,
-  NOK: 6.5997, PKR: 0.2267, ZAR: 3.8176, SEK: 6.3401, SYP: 0.5165, TWD: 1.9732, VES: 0.0736,
-};
+const rerb = (date: string, rates: Record<string, number>, unavailable: string[] = []): ExchangeRate => ({
+  id: `fx-${date}`, date, rates, unavailable, source: 'BSP RERB',
+});
 
-/** Sample history: the RERBs of 30 April 2026 (partial) and 25 September 2026. */
+/** One day of the bulletin history: quoted rates by code, N/A codes as unavailable. */
+const rerbDay = ([date, row]: (typeof RERB_HISTORY)[number]): ExchangeRate =>
+  rerb(
+    date,
+    Object.fromEntries(RERB_CODES.flatMap((code, i) => (row[i] == null ? [] : [[code, row[i]]]))),
+    RERB_CODES.filter((_, i) => row[i] == null),
+  );
+
+/** Sample history: the RERB of 30 April 2026 (partial), then every banking day 1 Jul – 5 Oct 2026. */
 export const SEED_RATES: ExchangeRate[] = [
-  { id: 'fx-2026-04-30-USD', date: '2026-04-30', currency: 'USD', rate: 61.506, source: 'BSP RERB' },
-  { id: 'fx-2026-04-30-JPY', date: '2026-04-30', currency: 'JPY', rate: 0.3836, source: 'BSP RERB' },
-  { id: 'fx-2026-04-30-BHD', date: '2026-04-30', currency: 'BHD', rate: 163.0378, source: 'BSP RERB' },
-  { id: 'fx-2026-04-30-BND', date: '2026-04-30', currency: 'BND', rate: 47.8311, source: 'BSP RERB' },
-  ...Object.entries(RERB_2026_09_25).map(([currency, rate]) => ({
-    id: `fx-2026-09-25-${currency}`,
-    date: '2026-09-25',
-    currency,
-    rate,
-    source: 'BSP RERB' as const,
-  })),
+  rerb('2026-04-30', { USD: 61.506, JPY: 0.3836, BHD: 163.0378, BND: 47.8311 }),
+  ...RERB_HISTORY.map(rerbDay),
 ];

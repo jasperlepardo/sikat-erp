@@ -27,10 +27,11 @@ import { accountKind } from './PaymentAccounts';
 import { accountsOf, methodTitle, paymentEntries, type PaymentEntry } from './PaymentMethodsTab';
 import { DOC_SOURCES, docTypesFor, listPartnerDocuments, type DocType, type PartnerDocument } from './partnerDocuments';
 import { Fields, Section, bind, type Draft } from './fields';
+import { todayISO } from '../../../services/dates';
 
 type Filter = 'open' | 'overdue' | 'all';
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => todayISO();
 const isOverdue = (d: PartnerDocument) => d.open && !!d.dueDate && d.dueDate < today();
 
 const entryLabel = (e: PaymentEntry) => {

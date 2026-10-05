@@ -78,7 +78,7 @@ export const NAV: SideNavSection[] = [
         'Stock Movements',
         'Stock Counts',
         'Pick & Pack',
-        'Pricing',
+        'Price Lists',
         'Warehouses & Bins',
         'Insights',
       ]),
