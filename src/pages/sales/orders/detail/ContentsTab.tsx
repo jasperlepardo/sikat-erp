@@ -105,7 +105,7 @@ export function ContentsTab({ draft, update, errors, m, ctx }: SoTabProps) {
       const item = itemOf(l);
       if (!item) return null;
       return (
-        <div className="flex w-36 flex-col gap-1">
+        <div className="flex w-40 shrink-0 flex-col gap-1 whitespace-normal">
           <TextField
             aria-label="Quantity"
             type="number"
@@ -137,7 +137,7 @@ export function ContentsTab({ draft, update, errors, m, ctx }: SoTabProps) {
       const avail = availableIn(item, l.warehouse);
       const need = inventoryQty(l, openQty(l));
       return (
-        <div className="flex w-44 flex-col gap-1">
+        <div className="flex w-44 shrink-0 flex-col gap-1 whitespace-normal">
           <Combobox
             aria-label="Warehouse"
             disabled={locked(l)}
@@ -170,7 +170,7 @@ export function ContentsTab({ draft, update, errors, m, ctx }: SoTabProps) {
     col('pricing', 'Unit price / Discount', (l) => {
       if (!itemOf(l)) return null;
       return (
-        <div className="flex w-44 flex-col gap-1">
+        <div className="flex w-44 shrink-0 flex-col gap-1 whitespace-normal">
           <TextField
             aria-label="Unit price"
             type="number"

@@ -91,7 +91,7 @@ export function DnContents({ draft, update, errors, m, ctx, onCopy }: DnSectionP
         if (!item) return null;
         const base = l.baseLineId ? m.orders.flatMap((o) => o.lines).find((x) => x.id === l.baseLineId) : undefined;
         return (
-          <div className="flex w-36 flex-col gap-1">
+          <div className="flex w-40 shrink-0 flex-col gap-1 whitespace-normal">
             <TextField aria-label="Quantity" type="number" min={0} readOnly={ro} invalid={Boolean(err(l, 'quantity'))} value={String(l.quantity)} onChange={(e) => reprice(l, { quantity: num(e.currentTarget.value) })} />
             {l.baseId || ro ? (
               <Text variant="small" tone="muted">{l.uomCode} · {l.uomName}</Text>
@@ -115,7 +115,7 @@ export function DnContents({ draft, update, errors, m, ctx, onCopy }: DnSectionP
         if (!item) return null;
         const inWhse = item.warehouses.find((w) => w.code === l.warehouse)?.inStock ?? 0;
         return (
-          <div className="flex w-44 flex-col gap-1">
+          <div className="flex w-44 shrink-0 flex-col gap-1 whitespace-normal">
             <Combobox aria-label="Warehouse" disabled={ro} invalid={Boolean(err(l, 'warehouse'))} options={warehouseOptions(m.inv.warehouses, l.warehouse)} value={l.warehouse || null} onValueChange={(v) => patch(l.id, { warehouse: v ?? '' })} />
             {ro ? null : (
               <Text variant="small" tone={dnInventoryQty(l) > inWhse ? 'danger' : 'muted'}>
@@ -143,7 +143,7 @@ export function DnContents({ draft, update, errors, m, ctx, onCopy }: DnSectionP
       header: 'Unit price / Discount',
       cell: (l) =>
         itemOf(l) ? (
-          <div className="flex w-44 flex-col gap-1">
+          <div className="flex w-44 shrink-0 flex-col gap-1 whitespace-normal">
             <TextField aria-label="Unit price" type="number" min={0} prefix={draft.currency} readOnly={ro} invalid={Boolean(err(l, 'unitPrice'))} value={String(l.unitPrice)} onChange={(e) => patch(l.id, { unitPrice: num(e.currentTarget.value), priceSource: 'Manual' })} />
             <TextField aria-label="Discount %" type="number" min={0} suffix="%" readOnly={ro} value={String(l.discountPct)} onChange={(e) => patch(l.id, { discountPct: Math.min(100, num(e.currentTarget.value)), priceSource: 'Manual' })} />
             <Text variant="small" tone="muted">{l.priceSource || '—'}</Text>

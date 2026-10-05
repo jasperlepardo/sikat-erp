@@ -229,7 +229,7 @@ export const SEED_AR_INVOICES: ArInvoice[] = [
     journalRemark: `A/R Invoices – ${dn.customerCode}`,
     orderNumber: dn.orderNumber,
     controlAccount: '1120',
-    appliedAmount: 142215.09,
+    appliedAmount: 126977.76,
     remarks: 'Paid by bank transfer 18 Sep 2026.',
     lines: dn.lines.map((l) => newArLine({ ...l, id: `ar-001-${l.id}`, baseType: 'DN', baseId: dn.id, baseLineId: l.id, baseDocNo: `Primary ${dn.docNum}`, baseRow: 1, glAccount: '', shippedGoods: false })),
   },
