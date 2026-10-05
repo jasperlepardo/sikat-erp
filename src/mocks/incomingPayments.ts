@@ -21,6 +21,7 @@
  *   exist, and branches aren't enabled, so those fields show but don't change anything.
  */
 import type { Attachment } from './common';
+import { SEED_AR_INVOICES, seedNetDue, type ArInvoice } from './arInvoices';
 import type { PoReference } from './purchaseOrders';
 
 export type IncomingType = 'Customer' | 'Account';
@@ -213,5 +214,83 @@ export function blankIncomingPayment(today: string): Omit<IncomingPayment, 'id'>
   };
 }
 
-/** No payments are seeded: the paid seeded invoice was settled before the prototype's data. */
-export const SEED_INCOMING_PAYMENTS: IncomingPayment[] = [];
+// ── Seed ─────────────────────────────────────────────────────────────────────
+// The payments behind the seeded invoices' applied amounts. History, so no journal entries.
+
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
+/** A payment row settling `amount` of a seeded invoice. */
+function row(inv: ArInvoice, amount: number): IncomingRow {
+  const due = seedNetDue(inv);
+  return {
+    id: `${inv.id}-1`,
+    invoiceId: inv.id,
+    docNo: `Primary ${inv.docNum}`,
+    installment: 0,
+    installments: 1,
+    docDate: inv.postingDate,
+    dueDate: inv.dueDate,
+    total: due,
+    wtAmount: round2(arTotal(inv) - due),
+    balanceDue: due,
+    blocked: false,
+    cashDiscountPct: 0,
+    amount,
+    invoiceFx: 1,
+    controlAccount: inv.controlAccount,
+    project: '',
+    selected: true,
+  };
+}
+/** The invoice's total before withholding. */
+const arTotal = (inv: ArInvoice) =>
+  round2(inv.lines.reduce((n, l) => {
+    const net = round2(l.quantity * l.unitPrice * (1 - l.discountPct / 100));
+    return n + net + round2((net * (l.taxCode === '31' ? 12 : 0)) / 100);
+  }, 0));
+
+function customerPayment(id: string, docNum: number, invoiceId: string, patch: Partial<IncomingPayment>, meansPatch: Partial<IncomingMeans>): IncomingPayment {
+  const inv = SEED_AR_INVOICES.find((a) => a.id === invoiceId)!;
+  const base = blankIncomingPayment(patch.postingDate ?? inv.postingDate);
+  return {
+    ...base,
+    id,
+    docNum,
+    status: 'Posted',
+    customerId: inv.customerId,
+    customerCode: inv.customerCode,
+    customerName: inv.customerName,
+    billTo: inv.billTo,
+    contactId: inv.contactId,
+    controlAccount: inv.controlAccount,
+    journalRemark: `Incoming - ${inv.customerCode}`,
+    rows: [row(inv, inv.appliedAmount)],
+    means: { ...base.means, ...meansPatch },
+    ...patch,
+  };
+}
+
+const total = (id: string) => SEED_AR_INVOICES.find((a) => a.id === id)!.appliedAmount;
+
+export const SEED_INCOMING_PAYMENTS: IncomingPayment[] = [
+  customerPayment('rc-001', 440001, 'ar-001', { postingDate: '2026-09-18', documentDate: '2026-09-18', dueDate: '2026-09-18', reference: 'CGS-RTGS-0918', remarks: 'Clarkfield, bank transfer to BDO.' }, {
+    transfer: { account: '1015', date: '2026-09-18', reference: 'BDO RTGS 2026091800417', amount: total('ar-001') },
+  }),
+  customerPayment('rc-002', 440002, 'ar-002', { postingDate: '2026-09-10', documentDate: '2026-09-10', dueDate: '2026-09-10', reference: 'MPAS-PAY-0910' }, {
+    transfer: { account: '1016', date: '2026-09-10', reference: 'BPI InstaPay 51420177', amount: total('ar-002') },
+  }),
+  customerPayment('rc-003', 440003, 'ar-003', { postingDate: '2026-10-02', documentDate: '2026-10-02', dueDate: '2026-10-09', reference: 'NPM-CHK-2026-1002', remarks: 'Half of invoice 430003; BIR Form 2307 for the 1% to follow.' }, {
+    checks: [newReceivedCheck({ id: 'rc-003-chk1', dueDate: '2026-10-09', amount: total('ar-003'), bank: 'Metrobank', branch: 'Ortigas', accountNo: '7-012-55210-3', checkNo: '0004417' })],
+  }),
+  {
+    ...blankIncomingPayment('2026-09-30'),
+    id: 'rc-004',
+    docNum: 440004,
+    status: 'Posted',
+    type: 'Account',
+    journalRemark: 'Incoming – 7010',
+    remarks: 'September interest on the BDO operating account.',
+    accountRows: [newIncomingAccountRow({ id: 'rc-004-1', account: '7010', remarks: 'Interest income, September 2026', amount: 1842.65 })],
+    means: { ...blankIncomingMeans('2026-09-30'), transfer: { account: '1015', date: '2026-09-30', reference: 'BDO interest credit', amount: 1842.65 } },
+  },
+];

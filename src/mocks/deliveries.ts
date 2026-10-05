@@ -295,6 +295,23 @@ export const SEED_DELIVERIES: Delivery[] = [
     closeDate: '2026-08-21',
     remarks: 'Delivered in full and invoiced.',
   }),
+  fromOrder('dn-003', 420003, 'so-005', ['so-005-1', 'so-005-2'], {
+    postingDate: '2026-08-28',
+    documentDate: '2026-08-28',
+    deliveryDate: '2026-08-28',
+    status: 'Closed',
+    closeDate: '2026-08-28',
+    trackingNo: '2GO-CEB-88140223',
+    remarks: 'Shipped to the Mactan studio by 2GO Express; invoiced the same day.',
+  }),
+  fromOrder('dn-004', 420004, 'so-006', ['so-006-1'], {
+    postingDate: '2026-09-18',
+    documentDate: '2026-09-18',
+    deliveryDate: '2026-09-18',
+    status: 'Closed',
+    closeDate: '2026-09-18',
+    remarks: 'First 6 of 10 iPhones, picked up by Northgate’s admin. Invoiced on delivery.',
+  }),
 ];
-// The closed delivery's lines were invoiced in full.
-SEED_DELIVERIES[1].lines.forEach((l) => (l.invoicedQty = l.quantity));
+// The closed deliveries were invoiced in full (A/R invoices 430001–430003).
+for (const d of SEED_DELIVERIES.filter((x) => x.status === 'Closed')) d.lines.forEach((l) => (l.invoicedQty = l.quantity));

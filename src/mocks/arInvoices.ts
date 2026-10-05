@@ -26,6 +26,7 @@
  */
 import type { Attachment } from './common';
 import { SEED_DELIVERIES, type DnLine } from './deliveries';
+import { SEED_PARTNERS, formatAddress } from './partners';
 import type { PoReference } from './purchaseOrders';
 import type { SoDocType } from './salesOrders';
 
@@ -208,29 +209,99 @@ export function blankArInvoice(today: string, owner: string): Omit<ArInvoice, 'i
 }
 
 // ── Seed ─────────────────────────────────────────────────────────────────────
-// The invoice behind the closed Clarkfield delivery: billed and paid in August. History, so no
-// journal entry, like other seeded documents.
+// History, so no journal entries, like other seeded documents. Applied amounts tie out to the
+// seeded incoming payments (mocks/incomingPayments).
 
-const dn = SEED_DELIVERIES.find((d) => d.id === 'dn-002')!;
+const round2 = (n: number) => Math.round(n * 100) / 100;
+const RATE: Record<string, number> = { '31': 12, '32': 0, '33': 0 };
 
-export const SEED_AR_INVOICES: ArInvoice[] = [
-  {
-    ...blankArInvoice('2026-08-21', 'Jasper L.'),
+/**
+ * What a seeded invoice asks the customer to pay: total (net + VAT) less the 1% / 2% creditable
+ * withholding on WTax Liable lines — the same arithmetic as services/arInvoices.
+ */
+export function seedNetDue(a: Pick<ArInvoice, 'lines' | 'docType'>) {
+  let total = 0;
+  let goods = 0;
+  let services = 0;
+  for (const l of a.lines) {
+    const net = round2(l.quantity * l.unitPrice * (1 - l.discountPct / 100));
+    total += net + round2((net * (RATE[l.taxCode] ?? 0)) / 100);
+    if (l.wtaxLiable) (a.docType === 'Service' ? (services += net) : (goods += net));
+  }
+  const wtax = round2(goods * 0.01) + round2(services * 0.02);
+  return round2(round2(total) - wtax);
+}
+
+const fromDelivery = (id: string, docNum: number, dnId: string, patch: Partial<ArInvoice> & { wtaxLiable?: boolean }): ArInvoice => {
+  const dn = SEED_DELIVERIES.find((d) => d.id === dnId)!;
+  const { wtaxLiable = false, ...rest } = patch;
+  return {
+    ...blankArInvoice(dn.postingDate, 'Jasper L.'),
     ...dn,
-    id: 'ar-001',
+    id,
     seriesId: AR_SERIES[0].id,
-    docNum: 430001,
-    status: 'Closed',
-    postingDate: '2026-08-21',
-    documentDate: '2026-08-21',
-    dueDate: '2026-09-20',
-    closeDate: '2026-09-18',
+    docNum,
+    status: 'Open',
     docType: 'Item',
+    closeDate: '',
     journalRemark: `A/R Invoices – ${dn.customerCode}`,
     orderNumber: dn.orderNumber,
     controlAccount: '1120',
-    appliedAmount: 126977.76,
+    appliedAmount: 0,
+    remarks: '',
+    lines: dn.lines.map((l, i) =>
+      newArLine({ ...l, id: `${id}-${l.id}`, baseType: 'DN', baseId: dn.id, baseLineId: l.id, baseDocNo: `Primary ${dn.docNum}`, baseRow: i + 1, glAccount: '', shippedGoods: false, wtaxLiable }),
+    ),
+    ...rest,
+  };
+};
+
+/** Header fields of the service invoice's customer, from the partner record. */
+function subic(): Partial<ArInvoice> {
+  const c = SEED_PARTNERS.find((p) => p.id === 'bp-040')!;
+  const addr = c.addresses.find((a) => a.id === c.defaultBillToId) ?? c.addresses[0];
+  return { customerId: c.id, customerCode: c.code, customerName: c.name, contactId: c.defaultContactId, federalTaxId: c.tin, billTo: addr ? formatAddress(addr, c.name) : '', shipTo: addr ? formatAddress(addr, c.name) : '' };
+}
+
+const invoices: ArInvoice[] = [
+  fromDelivery('ar-001', 430001, 'dn-002', {
+    postingDate: '2026-08-21', documentDate: '2026-08-21', dueDate: '2026-09-20', status: 'Closed', closeDate: '2026-09-18',
     remarks: 'Paid by bank transfer 18 Sep 2026.',
-    lines: dn.lines.map((l) => newArLine({ ...l, id: `ar-001-${l.id}`, baseType: 'DN', baseId: dn.id, baseLineId: l.id, baseDocNo: `Primary ${dn.docNum}`, baseRow: 1, glAccount: '', shippedGoods: false })),
+  }),
+  fromDelivery('ar-002', 430002, 'dn-003', {
+    postingDate: '2026-08-28', documentDate: '2026-08-28', dueDate: '2026-09-12', status: 'Closed', closeDate: '2026-09-10',
+    remarks: 'Paid in full by BPI transfer, 10 Sep 2026.',
+  }),
+  fromDelivery('ar-003', 430003, 'dn-004', {
+    postingDate: '2026-09-18', documentDate: '2026-09-18', dueDate: '2026-10-18', wtaxLiable: true,
+    remarks: 'Northgate withholds 1% (top withholding agent); half paid by check on 2 Oct, balance due 18 Oct.',
+  }),
+  {
+    ...blankArInvoice('2026-09-30', 'Jasper L.'),
+    id: 'ar-004',
+    docNum: 430004,
+    status: 'Open',
+    docType: 'Service',
+    ...subic(),
+    customerRef: 'SBML-WO-2026-114',
+    dueDate: '2026-10-30',
+    paymentTerms: 'Net 30',
+    controlAccount: '1120',
+    journalRemark: 'A/R Invoices – BP-0040',
+    remarks: 'Fleet device setup and MDM enrolment, 60 iPads at the Subic yard. Not yet paid.',
+    lines: [
+      newArLine({ id: 'ar-004-1', description: 'Device setup and MDM enrolment — 60 iPads, on site', glAccount: '4030', quantity: 1, unitPrice: 45000, taxCode: '31', priceSource: 'Manual' }),
+      newArLine({ id: 'ar-004-2', description: 'Staff training, half day', glAccount: '4030', quantity: 1, unitPrice: 12000, taxCode: '31', priceSource: 'Manual' }),
+    ],
   },
 ];
+
+/** Paid so far by the seeded incoming payments (document currency). */
+const APPLIED: Record<string, number | 'full' | 'half'> = { 'ar-001': 'full', 'ar-002': 'full', 'ar-003': 'half' };
+
+export const SEED_AR_INVOICES: ArInvoice[] = invoices.map((a) => {
+  const rule = APPLIED[a.id];
+  const due = seedNetDue(a);
+  const appliedAmount = rule === 'full' ? due : rule === 'half' ? round2(due / 2) : (rule ?? 0);
+  return { ...a, appliedAmount };
+});

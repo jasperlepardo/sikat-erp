@@ -12,7 +12,7 @@ import { postDocumentEntry, reverseDocumentEntry } from './journalEntries';
 import { applyDelivered, listSalesOrders, openQty as soOpenQty, soNumber, soTotals } from './salesOrders';
 import { createCollection } from './store';
 
-const deliveries = createCollection<Delivery>('sikat-erp:deliveries', SEED_DELIVERIES, 'dn');
+const deliveries = createCollection<Delivery>('sikat-erp:deliveries:v2', SEED_DELIVERIES, 'dn');
 
 export const listDeliveries = deliveries.list;
 export const getDelivery = deliveries.get;

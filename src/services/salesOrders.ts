@@ -6,7 +6,7 @@ import { todayISO } from './dates';
 import { listItems, saveItem } from './items';
 import { createCollection } from './store';
 
-const orders = createCollection<SalesOrder>('sikat-erp:sales-orders', SEED_SALES_ORDERS, 'so');
+const orders = createCollection<SalesOrder>('sikat-erp:sales-orders:v2', SEED_SALES_ORDERS, 'so');
 
 export const listSalesOrders = orders.list;
 export const getSalesOrder = orders.get;
