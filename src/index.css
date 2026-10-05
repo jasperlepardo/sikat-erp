@@ -35,3 +35,23 @@
 .sikat-panel__body > :not(:has(.sikat-table--fill)) {
   flex-shrink: 0;
 }
+
+
+/* Design system fields are width: 100% and that rule is unlayered, so it beats Tailwind's
+   layered w-* utilities: a width given to a field was ignored, and in a shrink-to-fit spot
+   (a table cell, a totals row) the field collapsed to its suffix. Re-apply the widths the
+   app gives fields. */
+.sikat-field.w-20 { width: calc(var(--spacing) * 20); }
+.sikat-field.w-24 { width: calc(var(--spacing) * 24); }
+.sikat-field.w-28 { width: calc(var(--spacing) * 28); }
+.sikat-field.w-32 { width: calc(var(--spacing) * 32); }
+.sikat-field.w-36 { width: calc(var(--spacing) * 36); }
+.sikat-field.w-40 { width: calc(var(--spacing) * 40); }
+.sikat-field.w-44 { width: calc(var(--spacing) * 44); }
+.sikat-field.w-48 { width: calc(var(--spacing) * 48); }
+.sikat-field.w-52 { width: calc(var(--spacing) * 52); }
+.sikat-field.w-56 { width: calc(var(--spacing) * 56); }
+.sikat-field.w-60 { width: calc(var(--spacing) * 60); }
+.sikat-field.w-64 { width: calc(var(--spacing) * 64); }
+.sikat-field.w-72 { width: calc(var(--spacing) * 72); }
+.sikat-field.w-fit { width: fit-content; }

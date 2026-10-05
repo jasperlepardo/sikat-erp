@@ -715,7 +715,8 @@ export function TotalRow({ label, value, code, input, strong }: { label: string;
       title={
         <span className="flex items-center gap-2">
           <span className="whitespace-nowrap">{emphasis(label)}</span>
-          {input ? <span className="flex-none">{input}</span> : null}
+          {/* Design system fields are width: 100% (unlayered, so it beats w-* utilities): give the input room here or it collapses to its suffix. */}
+          {input ? <span className="min-w-24 flex-none">{input}</span> : null}
         </span>
       }
       content={<span className="whitespace-nowrap tabular-nums">{emphasis(`${code} ${formatAmount(value)}`)}</span>}
