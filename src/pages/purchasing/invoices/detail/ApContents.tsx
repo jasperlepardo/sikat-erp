@@ -76,7 +76,7 @@ export function ApContents({ draft, update, errors, m, ctx, onCopy }: ApSectionP
     col('item', 'Item / Description', (l) => {
       const item = itemOf(l);
       return (
-        <div className="flex w-60 flex-col gap-1">
+        <div className="flex w-60 flex-col gap-1 whitespace-normal">
           {item ? (
             <>
               <div className="flex flex-col">
@@ -101,7 +101,7 @@ export function ApContents({ draft, update, errors, m, ctx, onCopy }: ApSectionP
       const gl = gr?.lines.find((x) => x.id === l.baseLineId);
       const pl = l.baseType === 'PO' ? m.orders.find((p) => p.id === l.baseId)?.lines.find((x) => x.id === l.baseLineId) : undefined;
       return (
-        <div className="flex w-32 flex-col gap-1">
+        <div className="flex w-32 flex-col gap-1 whitespace-normal">
           <TextField aria-label="Quantity" type="number" min={0} invalid={Boolean(err(l, 'quantity'))} value={String(l.quantity)} onChange={(e) => patch(l.id, { quantity: num(e.currentTarget.value) })} />
           {l.baseType || ctx.readOnly ? (
             <Text variant="small" tone="muted">{l.uomCode}</Text>

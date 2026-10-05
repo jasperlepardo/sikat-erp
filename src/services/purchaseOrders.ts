@@ -12,8 +12,9 @@ import { paymentTerms } from './partnerMasters';
 import { createCollection } from './store';
 import { determineWithholding, type LineParty, type TaxMasterData } from './taxDetermination';
 import { todayISO } from './dates';
+import { applyOrderedChange } from './items';
 
-const orders = createCollection<PurchaseOrder>('sikat-erp:purchase-orders:v14', SEED_PURCHASE_ORDERS, 'po');
+const orders = createCollection<PurchaseOrder>('sikat-erp:purchase-orders:v15', SEED_PURCHASE_ORDERS, 'po');
 
 export const listPurchaseOrders = orders.list;
 export const getPurchaseOrder = orders.get;
@@ -200,7 +201,12 @@ export async function savePurchaseOrder(input: PoInput, { asDraft = false } = {}
   const all = await orders.list();
   const series = seriesOf(input.seriesId);
 
-  if (asDraft) return [await orders.save({ ...input, status: 'Draft', docNum: 0 })];
+  const before = input.id ? all.find((o) => o.id === input.id) : undefined;
+  if (asDraft) {
+    const draft = await orders.save({ ...input, status: 'Draft', docNum: 0 });
+    await applyOrderedChange(before, draft);
+    return [draft];
+  }
 
   if (PURCHASING_SETTINGS.duplicateVendorRef === 'Block') {
     const dup = await findDuplicateVendorRef(input);
@@ -222,7 +228,11 @@ export async function savePurchaseOrder(input: PoInput, { asDraft = false } = {}
 
   const warehouses = [...new Set(input.lines.map((l) => l.warehouse).filter(Boolean))];
   const splitting = input.splitByWarehouse && input.status === 'Draft' && warehouses.length > 1;
-  if (!splitting) return [await orders.save(withStatus({ ...input, docNum: number(input.docNum) }))];
+  if (!splitting) {
+    const saved = await orders.save(withStatus({ ...input, docNum: number(input.docNum) }));
+    await applyOrderedChange(before, saved);
+    return [saved];
+  }
 
   // One PO per warehouse: the first keeps this record (and a manual number); the rest get new ones.
   const saved: PurchaseOrder[] = [];
@@ -238,6 +248,9 @@ export async function savePurchaseOrder(input: PoInput, { asDraft = false } = {}
     };
     saved.push(await orders.save(withStatus(part)));
   }
+  // The split parts together take over what the original had on order.
+  await applyOrderedChange(before, undefined);
+  for (const part of saved) await applyOrderedChange(undefined, part);
   return saved;
 }
 
@@ -246,16 +259,20 @@ export const saveReceivedQuantities = (po: PurchaseOrder) => orders.save(po);
 
 /** Close: the PO and its open rows stop expecting deliveries. */
 export async function closePurchaseOrder(po: PurchaseOrder) {
-  return orders.save({
+  const closed = await orders.save({
     ...po,
     status: 'Closed',
     closeDate: TODAY(),
     lines: po.lines.map((l) => ({ ...l, status: 'Closed' as const })),
   });
+  await applyOrderedChange(po, closed);
+  return closed;
 }
 
 /** Cancel: only while nothing has been received. */
 export async function cancelPurchaseOrder(po: PurchaseOrder) {
   if (po.lines.some((l) => l.receivedQty > 0)) throw new Error('Goods were already received on this PO — close it instead.');
-  return orders.save({ ...po, status: 'Cancelled', closeDate: TODAY(), lines: po.lines.map((l) => ({ ...l, status: 'Closed' as const })) });
+  const cancelled = await orders.save({ ...po, status: 'Cancelled', closeDate: TODAY(), lines: po.lines.map((l) => ({ ...l, status: 'Closed' as const })) });
+  await applyOrderedChange(po, cancelled);
+  return cancelled;
 }

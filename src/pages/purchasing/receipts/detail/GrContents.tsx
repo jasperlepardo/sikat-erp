@@ -105,7 +105,7 @@ export function GrContents({ draft, update, errors, m, ctx, onCopy }: GrSectionP
     col('item', 'Item / Description', (l) => {
       const item = itemOf(l);
       return (
-        <div className="flex w-64 flex-col gap-1">
+        <div className="flex w-64 flex-col gap-1 whitespace-normal">
           {item ? (
             <>
               <div className="flex flex-col">
@@ -137,7 +137,7 @@ export function GrContents({ draft, update, errors, m, ctx, onCopy }: GrSectionP
       if (!item) return null;
       const pl = l.baseId ? m.orders.find((p) => p.id === l.baseId)?.lines.find((x) => x.id === l.baseLineId) : undefined;
       return (
-        <div className="flex w-32 flex-col gap-1">
+        <div className="flex w-32 flex-col gap-1 whitespace-normal">
           <TextField
             aria-label="Quantity"
             type="number"

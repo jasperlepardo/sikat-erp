@@ -17,7 +17,7 @@ import { listItems, saveItem } from './items';
 import { lineNet, listPurchaseOrders, openQty, poTotals, priceAfterDiscount, saveReceivedQuantities } from './purchaseOrders';
 import { createCollection } from './store';
 
-const receipts = createCollection<GoodsReceipt>('sikat-erp:goods-receipts:v2', SEED_GOODS_RECEIPTS, 'gr');
+const receipts = createCollection<GoodsReceipt>('sikat-erp:goods-receipts:v3', SEED_GOODS_RECEIPTS, 'gr');
 
 export const listGoodsReceipts = receipts.list;
 export const getGoodsReceipt = receipts.get;

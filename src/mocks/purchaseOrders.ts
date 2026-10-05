@@ -190,6 +190,22 @@ const COMPANY_ADDRESS = formatAddress(SEED_COMPANIES[0].address, SEED_COMPANIES[
 
 const TODAY = todayISO();
 
+/**
+ * What a PO still has on order, per "itemId@warehouse", in inventory units: the open quantity of its
+ * open rows. Only added POs that still expect deliveries (Open, Not Confirmed) count. Items' Ordered
+ * is the sum of this over every PO.
+ */
+export function openOrdered(po: Pick<PurchaseOrder, 'status' | 'lines'> | undefined) {
+  const out = new Map<string, number>();
+  if (!po || (po.status !== 'Open' && po.status !== 'Not Confirmed')) return out;
+  for (const l of po.lines) {
+    if (l.status !== 'Open' || !l.warehouse || !l.itemId) continue;
+    const qty = Math.max(0, l.quantity - l.receivedQty) * (l.itemsPerUnit || 1);
+    if (qty) out.set(`${l.itemId}@${l.warehouse}`, (out.get(`${l.itemId}@${l.warehouse}`) ?? 0) + qty);
+  }
+  return out;
+}
+
 export const newPoLine = (patch: Partial<PoLine> = {}): PoLine => ({
   id: `ln-${crypto.randomUUID().slice(0, 8)}`,
   itemId: '',
@@ -281,6 +297,8 @@ const line = (n: string, itemNo: string, quantity: number, patch: Partial<PoLine
     unitPrice: item.itemCost,
     taxCode: '44',
     mfrNo: item.manufacturers[0]?.catalogNo ?? '',
+    // Non-stock items (services, imported manuals) go to no warehouse.
+    warehouse: item.inventoryItem ? 'WH-MNL' : '',
     ...patch,
   });
 };
@@ -404,7 +422,7 @@ export const SEED_PURCHASE_ORDERS: PurchaseOrder[] = [
       importLine('po-006-3', 'IPH-18PM-512-GLC', 10),
     ].map((l) => ({ ...l, blanketAgreement: 'BA-2026-004' })).concat(
       // Printed materials are VAT-exempt on importation.
-      svc('po-006-4', 'IMP-MANUALS', 200, 3.5, '49', { warehouse: 'WH-MNL', deliveryDate: '2026-10-06' }),
+      svc('po-006-4', 'IMP-MANUALS', 200, 3.5, '49', { deliveryDate: '2026-10-06' }),
     ),
     remarks: 'Direct import from Apple. Import VAT (46) is paid to the Bureau of Customs on the import entry, not to Apple; the printed manuals are exempt (49). Pier Four Customs Brokerage files the entry; Nordlys Freight flies it in.',
   }),
@@ -446,7 +464,7 @@ export const SEED_PURCHASE_ORDERS: PurchaseOrder[] = [
   }),
   po('po-010', 260007, {
     status: 'Cancelled',
-    postingDate: '2026-09-08', documentDate: '2026-09-08', deliveryDate: '2026-09-20', dueDate: '2026-10-08',
+    postingDate: '2026-09-08', documentDate: '2026-09-08', deliveryDate: '2026-09-20', dueDate: '2026-10-08', closeDate: '2026-09-12',
     lines: [line('po-010-1', 'APD-PRO3', 20, { deliveryDate: '2026-09-20', status: 'Closed' })],
     remarks: 'Cancelled: AirPods Pro allocation moved to the direct Apple import.',
   }),

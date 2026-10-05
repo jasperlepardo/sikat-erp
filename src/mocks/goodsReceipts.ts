@@ -19,6 +19,9 @@
 import { SEED_ITEMS } from './items';
 import { SEED_RATES } from './currencies';
 import { PO_SERIES, SEED_PURCHASE_ORDERS, type PoReference } from './purchaseOrders';
+import { todayISO } from '../services/dates';
+
+const SEED_TODAY = todayISO();
 
 export type GrStatus = 'Draft' | 'Open' | 'Closed' | 'Cancelled';
 export const GR_STATUSES: GrStatus[] = ['Draft', 'Open', 'Closed', 'Cancelled'];
@@ -207,9 +210,16 @@ const seedFx = (currency: string, date: string) =>
     ? 1
     : ([...SEED_RATES].filter((d) => d.date <= date && d.rates[currency] > 0).sort((a, b) => b.date.localeCompare(a.date))[0]?.rates[currency] ?? 0);
 
+/** The last delivery date, but never in the future (it records goods already received) and never before the PO. */
+const receiptDate = (po: (typeof SEED_PURCHASE_ORDERS)[number]) => {
+  const planned = po.lines.map((l) => l.deliveryDate).filter(Boolean).sort().at(-1) || po.deliveryDate || po.postingDate;
+  const capped = planned > SEED_TODAY ? SEED_TODAY : planned;
+  return capped < po.postingDate ? po.postingDate : capped;
+};
+
 const received = SEED_PURCHASE_ORDERS.filter((po) => po.status !== 'Cancelled' && po.lines.some((l) => l.receivedQty > 0)).map((po) => ({
   po,
-  date: po.lines.map((l) => l.deliveryDate).filter(Boolean).sort().at(-1) || po.deliveryDate || po.postingDate,
+  date: receiptDate(po),
 }));
 
 export const SEED_GOODS_RECEIPTS: GoodsReceipt[] = received
@@ -267,7 +277,8 @@ export const SEED_GOODS_RECEIPTS: GoodsReceipt[] = received
             baseId: po.id,
             baseLineId: l.id,
             baseDocNo: poNo,
-            unitCostLc: item?.itemCost ?? 0,
+            // What the goods came in at: the PO's net price, at the receipt's rate, per inventory unit.
+            unitCostLc: Math.round(((l.unitPrice * (1 - l.discountPct / 100) * (1 - po.discountPct / 100) * fxRate) / (l.itemsPerUnit || 1)) * 10000) / 10000,
             // Receipts for finished POs have been billed in full (see the seeded A/P invoices).
             invoicedQty: po.status === 'Closed' ? l.receivedQty : 0,
           });

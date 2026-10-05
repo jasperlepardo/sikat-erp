@@ -78,7 +78,7 @@ export function DprLines({
     col('item', 'Item / Description', (l) => {
       const item = itemOf(l);
       return item ? (
-        <div className="flex w-60 flex-col">
+        <div className="flex w-60 flex-col whitespace-normal">
           <Text variant="caption">{item.itemNo}</Text>
           <Text variant="small">{l.name}</Text>
           <Text variant="small" tone="muted">{l.description}</Text>
@@ -92,7 +92,7 @@ export function DprLines({
       const item = itemOf(l);
       if (!item) return null;
       return (
-        <div className="flex w-32 flex-col gap-1">
+        <div className="flex w-32 flex-col gap-1 whitespace-normal">
           <TextField aria-label="Quantity" type="number" min={0} invalid={Boolean(err(l, 'quantity'))} value={String(l.quantity)} onChange={(e) => patch(l.id, { quantity: num(e.currentTarget.value) })} />
           {l.baseType || readOnly ? <Text variant="small" tone="muted">{l.uomCode}</Text> : <Combobox aria-label="UoM code" options={itemUnits(item, 'purchase').map((u) => ({ value: u.uom, label: u.uom }))} value={l.uomCode} onValueChange={(v) => v && changeUom(l, v)} />}
         </div>

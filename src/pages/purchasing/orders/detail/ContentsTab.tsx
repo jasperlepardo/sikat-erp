@@ -144,7 +144,7 @@ export function ContentsTab({ draft, update, errors, m, ctx }: PoTabProps) {
         return next;
       });
       return (
-        <div className="flex flex-col gap-1 w-64">
+        <div className="flex flex-col gap-1 w-64 whitespace-normal">
           {item ? (
             <>
               {isEditingItem ? (
@@ -203,7 +203,7 @@ export function ContentsTab({ draft, update, errors, m, ctx }: PoTabProps) {
       const available = item?.inventoryItem ? stockTotals(item).available : undefined;
       const short = item && available !== undefined && available < item.minStock;
       return (
-        <div className="flex flex-col gap-1 w-32">
+        <div className="flex flex-col gap-1 w-32 whitespace-normal">
           <TextField
             aria-label="Quantity"
             type="number"

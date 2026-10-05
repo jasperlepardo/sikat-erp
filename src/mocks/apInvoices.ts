@@ -158,7 +158,8 @@ const plusDays = (date: string, days: number) => {
 const termDays = (terms: string) => Number(/Net (\d+)/.exec(terms)?.[1] ?? 0);
 
 export const SEED_AP_INVOICES: ApInvoice[] = SEED_GOODS_RECEIPTS.filter((gr) => gr.status === 'Closed').map((gr, n): ApInvoice => {
-  const posting = gr.closeDate || gr.postingDate;
+  // Billed when the receipt was closed, but never before the goods arrived.
+  const posting = gr.closeDate && gr.closeDate > gr.postingDate ? gr.closeDate : gr.postingDate;
   const vendor = SEED_PARTNERS.find((p) => p.id === gr.vendorId);
   return {
     ...blankApInvoice(posting, gr.buyer),

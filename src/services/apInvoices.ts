@@ -23,7 +23,7 @@ import { createCollection } from './store';
 import { taxCodes } from './masterData';
 import { drawDownPayments, drawableAmount, dprTotal, listDownPayments } from './apDownPayments';
 
-const invoices = createCollection<ApInvoice>('sikat-erp:ap-invoices:v1', SEED_AP_INVOICES, 'ap');
+const invoices = createCollection<ApInvoice>('sikat-erp:ap-invoices:v2', SEED_AP_INVOICES, 'ap');
 
 export const listApInvoices = invoices.list;
 export const getApInvoice = invoices.get;
