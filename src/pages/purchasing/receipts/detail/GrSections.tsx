@@ -2,8 +2,9 @@ import { CardField, Icon, type CardFieldOption } from '@jasperlepardo/sikat-desi
 import { Fields, ReadOnly, Section, bind } from '../../../../components/form/fields';
 import { formatAddress, type PostalAddress } from '../../../../mocks/address';
 import { PAYMENT_METHODS } from '../../../../mocks/masters';
-import { INDICATORS, LANGUAGES, PURCHASING_SETTINGS } from '../../../../mocks/purchaseOrders';
+import { INDICATORS, LANGUAGES } from '../../../../mocks/purchaseOrders';
 import { activeOptions } from '../../../../services/inventoryMasters';
+import { getPurchasingSettings } from '../../../../services/purchaseOrders';
 import { paymentTermDef, projectDef } from '../../../settings/masterDefs';
 import { ReferencesTable } from '../../orders/detail/AccountingTab';
 import type { PoMasters } from '../../orders/detail/types';
@@ -86,7 +87,7 @@ export function GrLogistics({
           [{ value: '', label: '— None —' }, ...activeOptions(m.inv.shipping, (s) => s.id, (s) => s.name, draft.shippingType)],
           { hint: 'Defaults from the vendor or the PO.' },
         )}
-        {PURCHASING_SETTINGS.multiLanguageSupport ? f.pick('language', 'Language', LANGUAGES, { hint: 'Language the receipt prints in.' }) : null}
+        {getPurchasingSettings().multiLanguageSupport ? f.pick('language', 'Language', LANGUAGES, { hint: 'Language the receipt prints in.' }) : null}
       </Fields>
     </Section>
   );

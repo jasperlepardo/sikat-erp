@@ -27,7 +27,7 @@ import { CURRENT_USER } from '../../../../mocks/common';
 import type { GoodsReceipt } from '../../../../mocks/goodsReceipts';
 import type { Item } from '../../../../mocks/items';
 import { contactName, type Partner } from '../../../../mocks/partners';
-import { PURCHASING_SETTINGS, type PurchaseOrder } from '../../../../mocks/purchaseOrders';
+import { type PurchaseOrder } from '../../../../mocks/purchaseOrders';
 import {
   ApPostError,
   addApInvoice,
@@ -56,7 +56,7 @@ import { loadInventoryMasters } from '../../../../services/inventoryMasters';
 import { isValidToday, listItems } from '../../../../services/items';
 import { companyTax, currencies, exchangeRates, taxCodes, taxGroups, withholdingGroups, withholdingTaxes } from '../../../../services/masterData';
 import { listPartnersByRole } from '../../../../services/partners';
-import { dueDateFor, listPurchaseOrders, openQty, poWithholding } from '../../../../services/purchaseOrders';
+import { dueDateFor, getPurchasingSettings, listPurchaseOrders, openQty, poWithholding } from '../../../../services/purchaseOrders';
 import { salesEmployeeDef } from '../../../settings/masterDefs';
 import { TotalNote, TotalRow } from '../../orders/detail/PurchaseOrderDetail';
 import { proposedTaxCode } from '../../orders/detail/types';
@@ -295,11 +295,11 @@ function ApInvoiceForm() {
     setProblems(found);
     if (found.length) return;
     // The same vendor invoice number twice is usually the same bill entered twice: ask once.
-    if (!asDraft && PURCHASING_SETTINGS.duplicateVendorRef !== 'Allow' && !dupWarning) {
+    if (!asDraft && getPurchasingSettings().duplicateVendorRef !== 'Allow' && !dupWarning) {
       const dup = await findDuplicateInvoice(draft);
       if (dup) {
         const message = `A/P invoice ${apNumber(dup)} from ${draft.vendorName} already has Vendor Ref. No. ${draft.vendorRef}.`;
-        if (PURCHASING_SETTINGS.duplicateVendorRef === 'Block') return setProblems([{ tab: 'header', key: 'vendorRef', message }]);
+        if (getPurchasingSettings().duplicateVendorRef === 'Block') return setProblems([{ tab: 'header', key: 'vendorRef', message }]);
         return setDupWarning(message);
       }
     }
@@ -560,7 +560,7 @@ function ApInvoiceForm() {
                         code={code}
                         input={<TextField aria-label="Document discount %" type="number" min={0} className="w-24" suffix="%" value={String(draft.discountPct)} onChange={(e) => update({ discountPct: Math.min(100, Number(e.currentTarget.value)) })} />}
                       />
-                      {PURCHASING_SETTINGS.manageFreightInDocuments ? (
+                      {getPurchasingSettings().manageFreightInDocuments ? (
                         <TotalRow
                           label="Freight"
                           value={totals.freight}
@@ -579,7 +579,7 @@ function ApInvoiceForm() {
                           }
                         />
                       ) : null}
-                      {PURCHASING_SETTINGS.roundingMethod === 'By Currency' ? <TotalRow label={`Rounding (${docCurrency?.rounding ?? 'No rounding'})`} value={totals.rounding} code={code} /> : null}
+                      {getPurchasingSettings().roundingMethod === 'By Currency' ? <TotalRow label={`Rounding (${docCurrency?.rounding ?? 'No rounding'})`} value={totals.rounding} code={code} /> : null}
                       <TotalRow label="Tax" value={totals.tax} code={code} />
                       {totals.reverseCharge ? <TotalNote>VAT of {code} {formatAmount(totals.reverseCharge)} isn't owed to the vendor (reverse charge or import VAT).</TotalNote> : null}
                       <TotalRow label="Total payment due" value={totals.total} code={code} strong />

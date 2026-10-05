@@ -25,7 +25,7 @@ import { accountText } from '../../../../mocks/chartOfAccounts';
 import { CURRENT_USER } from '../../../../mocks/common';
 import { GR_SERIES, blankGoodsReceipt, newGrLine, type GoodsReceipt, type GrLine, type GrStatus } from '../../../../mocks/goodsReceipts';
 import { contactName, type Partner } from '../../../../mocks/partners';
-import { PURCHASING_SETTINGS, type PurchaseOrder } from '../../../../mocks/purchaseOrders';
+import { type PurchaseOrder } from '../../../../mocks/purchaseOrders';
 import { loadCurrentCompany } from '../../../../services/companies';
 import { formatDate, todayISO } from '../../../../services/dates';
 import { formatAmount } from '../../../../services/format';
@@ -48,7 +48,7 @@ import { loadInventoryMasters } from '../../../../services/inventoryMasters';
 import { isValidToday, listItems } from '../../../../services/items';
 import { companyTax, currencies, exchangeRates, taxCodes, taxGroups, withholdingGroups, withholdingTaxes } from '../../../../services/masterData';
 import { listPartnersByRole } from '../../../../services/partners';
-import { dueDateFor, listPurchaseOrders, openQty, poNumber } from '../../../../services/purchaseOrders';
+import { dueDateFor, getPurchasingSettings, listPurchaseOrders, openQty, poNumber } from '../../../../services/purchaseOrders';
 import { transferBlock } from '../../../../services/binLocations';
 import { salesEmployeeDef } from '../../../settings/masterDefs';
 import { TotalNote, TotalRow } from '../../orders/detail/PurchaseOrderDetail';
@@ -506,7 +506,7 @@ function GoodsReceiptForm() {
                           />
                         }
                       />
-                      {PURCHASING_SETTINGS.manageFreightInDocuments ? (
+                      {getPurchasingSettings().manageFreightInDocuments ? (
                         <TotalRow
                           label="Freight"
                           value={totals.freight}
@@ -533,7 +533,7 @@ function GoodsReceiptForm() {
                           }
                         />
                       ) : null}
-                      {PURCHASING_SETTINGS.roundingMethod === 'By Currency' ? (
+                      {getPurchasingSettings().roundingMethod === 'By Currency' ? (
                         <TotalRow label={`Rounding (${docCurrency?.rounding ?? 'No rounding'})`} value={totals.rounding} code={draft.currency} />
                       ) : null}
                       <TotalRow label="Tax" value={totals.tax} code={draft.currency} />
