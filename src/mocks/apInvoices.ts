@@ -39,6 +39,8 @@ export interface ApLine extends Omit<GrLine, 'invoicedQty'> {
    * Received Not Invoiced for it. 0 otherwise.
    */
   receiptCostLc: number;
+  /** Goods sent back after billing (goods returns, or credit memos that return goods). Missing = 0. */
+  returnedQty?: number;
 }
 
 export interface ApInvoice extends Omit<GoodsReceipt, 'lines' | 'status'> {

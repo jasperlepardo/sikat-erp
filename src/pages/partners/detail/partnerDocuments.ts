@@ -8,8 +8,12 @@ import { apNumber, apTotal, listApInvoices } from '../../../services/apInvoices'
 import { AP_LIST_PATH, AP_STATUS_INTENT } from '../../purchasing/invoices/detail/ApInvoiceDetail';
 import { listPayments, overallAmount, paymentNumber } from '../../../services/outgoingPayments';
 import { PAYMENT_LIST_PATH, PAYMENT_STATUS_INTENT } from '../../purchasing/payments/detail/PaymentDetail';
+import { listGoodsReturns, returnNumber, returnTotal } from '../../../services/goodsReturns';
+import { listCreditMemos, memoNumber, memoTotal } from '../../../services/apCreditMemos';
+import { RETURN_STATUS_INTENT } from '../../purchasing/returns/GoodsReturnDetail';
+import { MEMO_LIST_PATH, MEMO_STATUS_INTENT, RETURN_LIST_PATH } from '../../purchasing/returns/types';
 
-export type DocType = 'PR' | 'RFQ' | 'PO' | 'GRPO' | 'APINV' | 'PAY' | 'SQ' | 'SO';
+export type DocType = 'PR' | 'RFQ' | 'PO' | 'GRPO' | 'APINV' | 'PAY' | 'GRET' | 'APCM' | 'SQ' | 'SO';
 export type StatusIntent = 'default' | 'primary' | 'warning' | 'success' | 'danger';
 
 /**
@@ -142,6 +146,54 @@ export const DOC_SOURCES: Record<DocType, DocSource> = {
           href: `${PAYMENT_LIST_PATH}/${p.id}`,
           payable: false,
         })),
+  },
+  GRET: {
+    label: 'Goods return',
+    role: 'vendor',
+    list: async (partnerId) => {
+      const [returns, codes] = await Promise.all([listGoodsReturns(), taxCodes.list()]);
+      return returns
+        .filter((r) => r.vendorId === partnerId)
+        .map((r) => ({
+          id: r.id,
+          type: 'GRET' as const,
+          number: returnNumber(r),
+          subcopy: r.vendorRef ? `RMA ${r.vendorRef}` : undefined,
+          date: r.postingDate,
+          dueDate: r.dueDate,
+          status: r.status,
+          intent: RETURN_STATUS_INTENT[r.status],
+          open: r.status === 'Open',
+          currency: r.currency,
+          total: returnTotal(r, codes),
+          href: `${RETURN_LIST_PATH}/${r.id}`,
+          payable: false,
+        }));
+    },
+  },
+  APCM: {
+    label: 'A/P credit memo',
+    role: 'vendor',
+    list: async (partnerId) => {
+      const [memos, codes] = await Promise.all([listCreditMemos(), taxCodes.list()]);
+      return memos
+        .filter((c) => c.vendorId === partnerId)
+        .map((c) => ({
+          id: c.id,
+          type: 'APCM' as const,
+          number: memoNumber(c),
+          subcopy: c.vendorRef ? `ref. ${c.vendorRef}` : undefined,
+          date: c.postingDate,
+          dueDate: c.dueDate,
+          status: c.status,
+          intent: MEMO_STATUS_INTENT[c.status],
+          open: c.status === 'Open',
+          currency: c.currency,
+          total: memoTotal(c, codes),
+          href: `${MEMO_LIST_PATH}/${c.id}`,
+          payable: false,
+        }));
+    },
   },
   SQ: { label: 'Sales quotation', role: 'customer' },
   SO: { label: 'Sales order', role: 'customer' },

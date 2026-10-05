@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
+import { postDocumentEntry, reverseDocumentEntry } from '../../../../services/journalEntries';
 import {
   Alert,
   Badge,
@@ -251,6 +252,9 @@ function GoodsReceiptForm() {
     setSaving(true);
     try {
       const saved = asDraft ? await saveGrDraft(draft) : await addGoodsReceipt(draft, ctx.fx);
+      if (!asDraft) {
+        await postDocumentEntry({ origin: 'PD', originNo: saved.docNum, originId: saved.id, postingDate: saved.postingDate, remarks: saved.journalRemark, lines: journal });
+      }
       navigate(GR_LIST_PATH, {
         state: { notice: asDraft ? `Draft saved — ${saved.vendorName}.` : `Goods receipt ${grNumber(saved)} added — stock is in and the PO lines are updated.` },
       });
@@ -296,12 +300,15 @@ function GoodsReceiptForm() {
   const menu: MoreMenuItem[] = [
     ...(!added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
     ...(draft.status === 'Open' && draft.lines.some((l) => grOpenQty(l, draft) > 0)
-      ? [{ label: 'Copy to A/P invoice', icon: 'request_quote', onSelect: () => navigate('/purchasing/bills/new', { state: { fromReceipt: saved.id } }) }]
+      ? [
+          { label: 'Copy to A/P invoice', icon: 'request_quote', onSelect: () => navigate('/purchasing/bills/new', { state: { fromReceipt: saved.id } }) },
+          { label: 'Copy to goods return', icon: 'assignment_return', onSelect: () => navigate('/purchasing/returns-and-debits/returns/new', { state: { fromReceipt: saved.id } }) },
+        ]
       : []),
     ...(!isNew ? [{ label: 'Duplicate', icon: 'content_copy', onSelect: duplicate }] : []),
     ...(draft.status === 'Open' ? [{ label: 'Close', icon: 'task_alt', onSelect: () => act(() => closeGoodsReceipt(saved), 'closed') }] : []),
     ...(draft.status === 'Open'
-      ? [{ label: 'Cancel goods receipt', icon: 'cancel', onSelect: () => act(() => cancelGoodsReceipt(saved), 'cancelled — the stock is back out and the PO lines are open again') }]
+      ? [{ label: 'Cancel goods receipt', icon: 'cancel', onSelect: () => act(async () => { const gr = await cancelGoodsReceipt(saved); await reverseDocumentEntry(saved.id); return gr; }, 'cancelled — the stock is back out and the PO lines are open again') }]
       : []),
     ...basePos.map((poId) => ({ label: `Open PO ${draft.lines.find((l) => l.baseId === poId)?.baseDocNo}`, icon: 'receipt_long', onSelect: () => navigate(`/purchasing/purchase-orders/${poId}`) })),
     ...(vendor ? [{ label: `Open vendor ${vendor.code}`, icon: 'local_shipping', onSelect: () => navigate(`/purchasing/vendors/${vendor.id}`) }] : []),

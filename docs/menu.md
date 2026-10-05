@@ -70,7 +70,7 @@ The sidebar is defined in [`src/app/nav.tsx`](../src/app/nav.tsx) as `NAV`. It c
 | Purchase Orders | `/purchasing/purchase-orders` | ✅ | "Orders placed with vendors, from draft to fully received." See [Purchase order record](#purchase-order-record). |
 | Goods Receipts | `/purchasing/goods-receipts` | ✅ | "Goods and services received from vendors." Adding a receipt puts the stock in and updates the PO it came from. See [Goods receipt record](#goods-receipt-record). |
 | Bills | `/purchasing/bills` | ✅ | "A/P invoices from vendors: what you owe, billed against goods receipts or purchase orders." See [A/P invoice record](#ap-invoice-record). |
-| Returns & Debits | `/purchasing/returns-and-debits` | ⬜ | Goods returned to vendors and A/P debit memos. |
+| Returns & Debits | `/purchasing/returns-and-debits` | ✅ | Goods sent back to vendors (goods returns) and the vendors' credit notes (A/P credit memos), one tab each. See [Goods return record](#goods-return-record) and [A/P credit memo record](#ap-credit-memo-record). |
 | Payments Made | `/purchasing/payments-made` | ✅ | Outgoing payments: money paid to vendors against their bills (or on account), or straight to G/L accounts. This is where realized exchange gains and losses post. See [Outgoing payment record](#outgoing-payment-record). |
 | Landed Costs | `/purchasing/landed-costs` | ⬜ | Spreads freight, duty and brokerage onto imported item costs. |
 | Agreements | `/purchasing/agreements` | ⬜ | Blanket agreements with vendors. |
@@ -396,10 +396,10 @@ The URL is the role's list path plus `/:id` (for example `/business-partners/:id
 
 **You can also:**
 - **Save as draft** (before it's added)
-- **Copy to A/P invoice** (open receipts with quantity left to bill)
+- **Copy to A/P invoice** and **Copy to goods return** (open receipts with quantity left to bill)
 - **Duplicate** (a new draft, unlinked from the POs)
 - **Close** (open receipts)
-- **Cancel goods receipt** (open receipts not yet billed: the stock goes back out and the PO lines reopen)
+- **Cancel goods receipt** (open receipts not yet billed or returned: the stock goes back out and the PO lines reopen)
 - **Open PO …** for each base PO, and **Open vendor**
 
 | Part | What it holds |
@@ -429,6 +429,7 @@ After that, only remarks can change.
 **You can also:**
 - **Save as draft** (before it's added)
 - **Pay** (open bills with a balance and no payment block; opens an outgoing payment with this bill ticked)
+- **Copy to goods return** (bills with stocked goods left to send back) and **Copy to A/P credit memo**
 - **Duplicate** (a new draft, unlinked from its base documents)
 - **Cancel A/P invoice** (open and unpaid: receipts reopen for billing, POs it received on reopen, stock it brought in goes back out)
 - **Open receipt … / Open PO …** for each base document, and **Open vendor**
@@ -446,6 +447,43 @@ After that, only remarks can change.
 **Price and exchange-rate differences:** a line from a receipt clears Goods Received Not Invoiced at the receipt's cost. If the bill's price or exchange rate differs, an alert shows the difference per line. It posts to inventory while the stock is on hand (re-averaging the item cost), to cost of sales once the stock is gone, or to the item's cost account for non-stock items. Realized FX gain or loss (7020 / 8020) comes when the bill is paid; see [Outgoing payment record](#outgoing-payment-record).
 
 **Left out:** Item/Service type, Summary type, VAT code (the tax code is the VAT code here), Central Bank Ind., Stamp No., Net procedure, QR code, distribution rules, commodity classification and serial numbers. Down payments, installments and deferred tax wait for payments.
+
+### Goods return record
+
+`/purchasing/returns-and-debits/returns/:id`. Views: Details · Transactions · Activity. Transactions is the related-documents chain; Activity is a placeholder.
+
+**You can also:** **Save as draft**, **Copy to A/P credit memo** (open returns with goods left to credit), **Cancel goods return** (not yet credited: the stock comes back in), **Open receipt / A/P invoice …** and **Open vendor**.
+
+| Part | What it holds |
+|---|---|
+| **Vendor** section | Vendor, contact person, vendor ref. no. (their RMA) and currency. |
+| **Document** section | Series and No., Status, Posting date, Due date, Document date and Close date. |
+| **Contents** | Lines with item, quantity and UoM, warehouse and bin the goods leave from, unit price, tax code, discount, total (LC) and return reason. **Copy from** takes goods receipts (goods not yet billed) or A/P invoices (goods already billed). Optional columns: inventory-UoM quantity, country of origin, warranty, unit cost price, withholding code and rate with taxable amount, base document, blanket agreement and free text. |
+| **Logistics** | Ship to (the vendor's return address), Pay to and shipping type. |
+| **Accounting** | Journal remark, payment terms and method, cash discount offset, BP project, indicator, the vendor's TIN, order number and consolidating BP. |
+| **Totals** | Buyer, owner, total before discount, discount %, tax and **Total credit**, plus remarks. |
+| **Journal entry** | Dr Goods Received Not Invoiced / Cr Inventory (or the cost account for non-stock items), at the cost the goods came in at. |
+| **Referenced documents** and **Attachments** | As on other documents. |
+
+**What adding it does:** stock leaves the warehouse (it can't send back more than the warehouse holds, or items frozen by an open count). Lines from a receipt lower what's left to bill on it and close at once. Lines from a bill (or entered by hand) wait for an A/P credit memo, so the return stays **Open** until they're credited.
+
+### A/P credit memo record
+
+`/purchasing/returns-and-debits/credit-memos/:id`. Views: Details · Transactions · Activity.
+
+**You can also:** **Save as draft**, **Apply credit to an invoice** (open memos with credit left; puts it against the vendor's other open bills), **Cancel credit memo** (takes the credit off the bills, brings returned goods back in, reopens the return), **Open A/P invoice / goods return …** and **Open vendor**.
+
+| Part | What it holds |
+|---|---|
+| **Vendor** and **Document** sections | As on the bill; the vendor ref. no. is their credit note no. |
+| **Contents** | As on the goods return, plus **Return goods** per line: send the goods back (stock out) or credit the price only. **Copy from** takes A/P invoices or goods returns. Lines from a return never move stock. |
+| **Logistics** and **Accounting** | As on the bill, including the control account, payment block and max. cash discount. |
+| **Totals** | Total before discount, discount, total down payment, tax, **Total credit**, the withholding reversed, **Net credit**, **Applied amount** and **Open balance**. Also payment block, payment run and remarks. |
+| **Journal entry** | Dr the vendor and the withholding reversed / Cr Inventory (goods sent back, or price adjustments on stock still on hand; cost of sales once it's gone), Goods Received Not Invoiced (lines from a goods return), Freight-in and input VAT. |
+
+**What adding it does:** goods marked to go back leave stock at the bill's cost, and price adjustments lower the item cost. Bill and return lines count what was returned or credited. The net credit goes to the bills it came from, up to their balances. A memo copied from a bill uses that bill's exchange rate, so it carries no exchange difference.
+
+**Left out:** copying a credit memo from a goods receipt (an unbilled receipt owes nothing to credit, so use a goods return), using leftover credit in an outgoing payment, the client's custom print UDFs, serial numbers, distribution rules and the QR code.
 
 ### Outgoing payment record
 
@@ -517,7 +555,7 @@ Adding the payment re-checks each bill's balance, numbers automatic checks per b
 | Core (Home, Inbox, Business Partners) | 5 | 2 |
 | CRM | 5 | 1 |
 | Sales | 10 | 3 |
-| Purchasing | 11 | 5 |
+| Purchasing | 11 | 6 |
 | Inventory | 8 | 6 |
 | Manufacturing | 5 | 0 |
 | Projects | 3 | 0 |
@@ -527,4 +565,4 @@ Adding the payment re-checks each bill's balance, numbers automatic checks per b
 | People | 2 | 0 |
 | Reports | 3 | 0 |
 | Settings | 15 | 5 |
-| **Total** | **88** | **25** |
+| **Total** | **88** | **26** |

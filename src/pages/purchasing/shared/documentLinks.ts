@@ -8,6 +8,10 @@ import { apNumber, apTotal, listApInvoices } from '../../../services/apInvoices'
 import { listPayments, overallAmount, paymentNumber, rowSettled } from '../../../services/outgoingPayments';
 import { PAYMENT_LIST_PATH, PAYMENT_STATUS_INTENT } from '../payments/detail/PaymentDetail';
 import { formatAmount } from '../../../services/format';
+import { listGoodsReturns, returnNumber, returnTotal } from '../../../services/goodsReturns';
+import { listCreditMemos, memoNumber, memoTotal } from '../../../services/apCreditMemos';
+import { RETURN_STATUS_INTENT } from '../returns/GoodsReturnDetail';
+import { MEMO_LIST_PATH, MEMO_STATUS_INTENT, RETURN_LIST_PATH } from '../returns/types';
 import { lineage, type LinkedDocument } from './lineage';
 
 export type { LinkedDocument, Relation } from './lineage';
@@ -16,7 +20,7 @@ export type { LinkedDocument, Relation } from './lineage';
  * Every document type that takes part in copy-from / copy-to. Adding one (purchase request,
  * RFQ, A/P invoice, goods return…) is a new entry in SOURCES whose documents name their bases.
  */
-export type DocKind = 'PO' | 'GRPO' | 'APINV' | 'PAY';
+export type DocKind = 'PO' | 'GRPO' | 'APINV' | 'PAY' | 'GRET' | 'APCM';
 
 /** Lines of a document copied from one base document. */
 export interface CoveredLine {
@@ -121,6 +125,48 @@ const SOURCES: Record<DocKind, () => Promise<DocNode[]>> = {
         .filter((r) => r.selected && r.amount > 0)
         .map((r) => ({ kind: 'APINV' as const, id: r.invoiceId, lines: [], note: `Paid ${p.currency} ${formatAmount(rowSettled(r))}` })),
     })),
+  // Return lines come from receipt lines (unbilled goods) or invoice lines (billed goods).
+  GRET: async () => {
+    const [returns, codes] = await Promise.all([listGoodsReturns(), taxCodes.list()]);
+    return returns.map((r) => ({
+      kind: 'GRET',
+      id: r.id,
+      type: 'Goods return',
+      number: returnNumber(r),
+      href: `${RETURN_LIST_PATH}/${r.id}`,
+      date: r.postingDate,
+      status: r.status,
+      intent: RETURN_STATUS_INTENT[r.status],
+      currency: r.currency,
+      total: returnTotal(r, codes),
+      bases: [...new Map(r.lines.filter((l) => l.baseType).map((l) => [`${l.baseType}:${l.baseId}`, l])).values()].map((b) => ({
+        kind: (b.baseType === 'GRPO' ? 'GRPO' : 'APINV') as DocKind,
+        id: b.baseId,
+        lines: r.lines.filter((l) => l.baseType === b.baseType && l.baseId === b.baseId),
+      })),
+    }));
+  },
+  // Credit memo lines come from invoice lines or goods return lines.
+  APCM: async () => {
+    const [memos, codes] = await Promise.all([listCreditMemos(), taxCodes.list()]);
+    return memos.map((m) => ({
+      kind: 'APCM',
+      id: m.id,
+      type: 'A/P credit memo',
+      number: memoNumber(m),
+      href: `${MEMO_LIST_PATH}/${m.id}`,
+      date: m.postingDate,
+      status: m.status,
+      intent: MEMO_STATUS_INTENT[m.status],
+      currency: m.currency,
+      total: memoTotal(m, codes),
+      bases: [...new Map(m.lines.filter((l) => l.baseType).map((l) => [`${l.baseType}:${l.baseId}`, l])).values()].map((b) => ({
+        kind: (b.baseType === 'GRET' ? 'GRET' : 'APINV') as DocKind,
+        id: b.baseId,
+        lines: m.lines.filter((l) => l.baseType === b.baseType && l.baseId === b.baseId),
+      })),
+    }));
+  },
 };
 
 /** Every document linked to this one, however far back or forward. See `lineage`. */

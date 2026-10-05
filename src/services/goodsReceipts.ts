@@ -38,8 +38,9 @@ export const grNumber = (gr: Pick<GoodsReceipt, 'seriesId' | 'docNum'>) =>
 /** Quantity × Items per Unit. */
 export const grInventoryQty = (l: Pick<GrLine, 'quantity' | 'itemsPerUnit'>) => l.quantity * (l.itemsPerUnit || 1);
 
-/** Left to invoice: received less what A/P invoices have billed. Nothing once closed or cancelled. */
-export const grOpenQty = (l: GrLine, gr: Pick<GoodsReceipt, 'status'>) => (gr.status === 'Open' ? Math.max(0, round4(l.quantity - (l.invoicedQty ?? 0))) : 0);
+/** Left to invoice: received less what A/P invoices have billed and goods returns sent back. Nothing once closed or cancelled. */
+export const grOpenQty = (l: GrLine, gr: Pick<GoodsReceipt, 'status'>) =>
+  gr.status === 'Open' ? Math.max(0, round4(l.quantity - (l.invoicedQty ?? 0) - (l.returnedQty ?? 0))) : 0;
 
 /** Receipts an A/P invoice can copy from: the vendor's open receipts with quantity still to invoice. */
 export const invoiceableReceipts = (receipts: GoodsReceipt[], vendorId: string) =>
@@ -250,9 +251,31 @@ export async function applyInvoicedQty(lines: { baseId: string; baseLineId: stri
     touched.set(gr.id, gr);
   }
   for (const gr of touched.values()) {
-    const billed = gr.lines.every((x) => x.invoicedQty >= x.quantity);
+    const billed = gr.lines.every((x) => (x.invoicedQty ?? 0) + (x.returnedQty ?? 0) >= x.quantity);
     if (billed && gr.status === 'Open') Object.assign(gr, { status: 'Closed', closeDate: todayISO() });
     if (!billed && gr.status === 'Closed') Object.assign(gr, { status: 'Open', closeDate: '' });
+    await receipts.save(gr);
+  }
+}
+
+/**
+ * Move returned quantities on receipt lines by `sign`, from goods returns copied from them. A
+ * receipt closes when every line is billed or returned in full, and reopens when a return is cancelled.
+ */
+export async function applyReturnedQty(lines: { baseId: string; baseLineId: string; quantity: number }[], sign: 1 | -1) {
+  const all = await receipts.list();
+  const touched = new Map<string, GoodsReceipt>();
+  for (const l of lines) {
+    const gr = touched.get(l.baseId) ?? all.find((r) => r.id === l.baseId);
+    const gl = gr?.lines.find((x) => x.id === l.baseLineId);
+    if (!gr || !gl) continue;
+    gl.returnedQty = Math.max(0, round4((gl.returnedQty ?? 0) + l.quantity * sign));
+    touched.set(gr.id, gr);
+  }
+  for (const gr of touched.values()) {
+    const done = gr.lines.every((x) => (x.invoicedQty ?? 0) + (x.returnedQty ?? 0) >= x.quantity);
+    if (done && gr.status === 'Open') Object.assign(gr, { status: 'Closed', closeDate: todayISO() });
+    if (!done && gr.status === 'Closed') Object.assign(gr, { status: 'Open', closeDate: '' });
     await receipts.save(gr);
   }
 }
@@ -270,6 +293,10 @@ export async function cancelGoodsReceipt(gr: GoodsReceipt) {
   const billed = gr.lines.filter((l) => l.invoicedQty > 0);
   if (billed.length) {
     throw new GrPostError(billed.map((l) => l.id), 'Already billed on an A/P invoice — cancel the invoice first, then the receipt.');
+  }
+  const returned = gr.lines.filter((l) => (l.returnedQty ?? 0) > 0);
+  if (returned.length) {
+    throw new GrPostError(returned.map((l) => l.id), 'Goods from this receipt were returned — cancel the goods return first, then the receipt.');
   }
   const [items, pos] = await Promise.all([listItems(), listPurchaseOrders()]);
   const blocked = await frozenLines(gr.lines);

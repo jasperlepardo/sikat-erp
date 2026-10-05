@@ -230,7 +230,9 @@ export async function addApInvoice(input: ApInput, fx: number): Promise<ApInvoic
  * reopen, and stock it brought in goes back out — blocked if that stock has already left.
  */
 export async function cancelApInvoice(inv: ApInvoice) {
-  if (inv.appliedAmount > 0) throw new ApPostError([], 'Payments are applied to this invoice — cancel them first.');
+  if (inv.appliedAmount > 0) throw new ApPostError([], 'Payments or credit memos are applied to this invoice — cancel them first.');
+  const returned = inv.lines.filter((l) => (l.returnedQty ?? 0) > 0);
+  if (returned.length) throw new ApPostError(returned.map((l) => l.id), 'Goods on this invoice were returned — cancel the goods return or credit memo first.');
   const [items, pos] = await Promise.all([listItems(), listPurchaseOrders()]);
   const stockLines = inv.lines.filter((l) => movesStock(l, items));
   const blocked = await frozenLines(stockLines);
@@ -270,3 +272,19 @@ export async function applyPayments(rows: { invoiceId: string; amount: number; t
     });
   }
 }
+
+/** Move returned quantities on invoice lines by `sign` (goods returns, and credit memos that return goods). */
+export async function applyInvoiceReturns(lines: { baseId: string; baseLineId: string; quantity: number }[], sign: 1 | -1) {
+  const touched = new Map<string, ApInvoice>();
+  for (const l of lines) {
+    const inv = touched.get(l.baseId) ?? (await invoices.get(l.baseId));
+    const il = inv?.lines.find((x) => x.id === l.baseLineId);
+    if (!inv || !il) continue;
+    il.returnedQty = Math.max(0, round2((il.returnedQty ?? 0) + l.quantity * sign));
+    touched.set(inv.id, inv);
+  }
+  for (const inv of touched.values()) await invoices.save(inv);
+}
+
+/** What's left to send back on an invoice line: billed less already returned. */
+export const returnableQty = (l: ApLine) => Math.max(0, round2(l.quantity - (l.returnedQty ?? 0)));

@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
+import { postDocumentEntry, reverseDocumentEntry } from '../../../../services/journalEntries';
 import {
   Alert,
   Badge,
@@ -42,6 +43,7 @@ import {
   movesStock,
   netDue,
   receiptValueLc,
+  returnableQty,
   saveApDraft,
   saveApRemarks,
 } from '../../../../services/apInvoices';
@@ -299,6 +301,19 @@ function ApInvoiceForm() {
     setSaving(true);
     try {
       const saved = asDraft ? await saveApDraft(draft) : await addApInvoice(draft, ctx.fx);
+      if (!asDraft) {
+        await postDocumentEntry({
+          origin: 'PU',
+          originNo: saved.docNum,
+          originId: saved.id,
+          postingDate: saved.postingDate,
+          dueDate: saved.dueDate,
+          remarks: saved.journalRemark,
+          partnerId: saved.vendorId,
+          controlAccount: saved.controlAccount,
+          lines: journal,
+        });
+      }
       navigate(AP_LIST_PATH, { state: { notice: asDraft ? `Draft saved — ${saved.vendorName}.` : `A/P invoice ${apNumber(saved)} added — ${saved.vendorName} is owed ${saved.currency} ${formatAmount(due)}.` } });
     } catch (err) {
       if (!(err instanceof ApPostError)) throw err;
@@ -345,9 +360,17 @@ function ApInvoiceForm() {
     ...(draft.status === 'Open' && balance > 0 && !draft.paymentBlock
       ? [{ label: 'Pay', icon: 'payments', onSelect: () => navigate('/purchasing/payments-made/new', { state: { vendorId: draft.vendorId, invoiceIds: [saved.id] } }) }]
       : []),
+    ...(draft.status === 'Open' || draft.status === 'Closed'
+      ? [
+          ...(draft.lines.some((l) => returnableQty(l) > 0 && m.items.find((i) => i.id === l.itemId)?.inventoryItem)
+            ? [{ label: 'Copy to goods return', icon: 'assignment_return', onSelect: () => navigate('/purchasing/returns-and-debits/returns/new', { state: { fromInvoice: saved.id } }) }]
+            : []),
+          { label: 'Copy to A/P credit memo', icon: 'receipt', onSelect: () => navigate('/purchasing/returns-and-debits/credit-memos/new', { state: { fromInvoice: saved.id } }) },
+        ]
+      : []),
     ...(!isNew ? [{ label: 'Duplicate', icon: 'content_copy', onSelect: duplicate }] : []),
     ...(draft.status === 'Open' && !draft.appliedAmount
-      ? [{ label: 'Cancel A/P invoice', icon: 'cancel', onSelect: () => act(() => cancelApInvoice(saved), 'cancelled — the receipts and POs it billed are open again') }]
+      ? [{ label: 'Cancel A/P invoice', icon: 'cancel', onSelect: () => act(async () => { const inv = await cancelApInvoice(saved); await reverseDocumentEntry(saved.id); return inv; }, 'cancelled — the receipts and POs it billed are open again') }]
       : []),
     ...bases.map((l) => ({
       label: `Open ${l.baseType === 'GRPO' ? 'receipt' : 'PO'} ${l.baseDocNo}`,

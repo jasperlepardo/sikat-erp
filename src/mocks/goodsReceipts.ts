@@ -59,6 +59,8 @@ export interface GrLine {
   unitCostLc: number;
   /** Billed so far on A/P invoices copied from this line, in the line's unit. */
   invoicedQty: number;
+  /** Sent back on goods returns copied from this line (before it was billed). Missing = 0. */
+  returnedQty?: number;
 }
 
 export interface GoodsReceipt {

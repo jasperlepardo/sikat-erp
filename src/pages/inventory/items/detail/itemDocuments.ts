@@ -5,6 +5,10 @@ import { grNumber, listGoodsReceipts } from '../../../../services/goodsReceipts'
 import { GR_LIST_PATH, GR_STATUS_INTENT } from '../../../purchasing/receipts/detail/GoodsReceiptDetail';
 import { apNumber, listApInvoices } from '../../../../services/apInvoices';
 import { AP_LIST_PATH, AP_STATUS_INTENT } from '../../../purchasing/invoices/detail/ApInvoiceDetail';
+import { listGoodsReturns, returnNumber } from '../../../../services/goodsReturns';
+import { listCreditMemos, memoNumber } from '../../../../services/apCreditMemos';
+import { RETURN_STATUS_INTENT } from '../../../purchasing/returns/GoodsReturnDetail';
+import { MEMO_LIST_PATH, MEMO_STATUS_INTENT, RETURN_LIST_PATH } from '../../../purchasing/returns/types';
 import type { Draft } from './types';
 
 /**
@@ -116,6 +120,27 @@ const ITEM_SOURCES: Partial<Record<DocType, (itemId: string) => Promise<ItemDocu
           unitPrice: l.unitPrice,
           total: lineNet(l),
           href: `${AP_LIST_PATH}/${inv.id}`,
+        })),
+    ),
+  // Goods sent back: nothing on a return or credit memo is still expected.
+  GRET: async (itemId) =>
+    (await listGoodsReturns()).flatMap((r) =>
+      r.lines
+        .filter((l) => l.itemId === itemId)
+        .map((l) => ({
+          id: `${r.id}:${l.id}`, type: 'GRET' as const, number: returnNumber(r), subcopy: r.vendorName, date: r.postingDate, dueDate: r.postingDate,
+          status: r.status, intent: RETURN_STATUS_INTENT[r.status], open: false, quantity: l.quantity, openQty: 0, uom: l.uomCode || l.uomName,
+          openInventoryQty: 0, currency: r.currency, unitPrice: l.unitPrice, total: lineNet(l), href: `${RETURN_LIST_PATH}/${r.id}`,
+        })),
+    ),
+  APCM: async (itemId) =>
+    (await listCreditMemos()).flatMap((c) =>
+      c.lines
+        .filter((l) => l.itemId === itemId)
+        .map((l) => ({
+          id: `${c.id}:${l.id}`, type: 'APCM' as const, number: memoNumber(c), subcopy: c.vendorName, date: c.postingDate, dueDate: c.dueDate,
+          status: c.status, intent: MEMO_STATUS_INTENT[c.status], open: false, quantity: l.quantity, openQty: 0, uom: l.uomCode || l.uomName,
+          openInventoryQty: 0, currency: c.currency, unitPrice: l.unitPrice, total: lineNet(l), href: `${MEMO_LIST_PATH}/${c.id}`,
         })),
     ),
 };
