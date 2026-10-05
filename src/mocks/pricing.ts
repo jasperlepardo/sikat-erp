@@ -103,7 +103,7 @@ const rule = (r: Partial<PeriodVolumeDiscount> & Pick<PeriodVolumeDiscount, 'id'
 
 export const SEED_PERIOD_VOLUME_DISCOUNTS: PeriodVolumeDiscount[] = [
   rule({
-    id: 'pvd-001', kind: 'period', bpGroup: 'Customers – Retail', itemGroup: 'AirPods', priceList: 'Retail',
+    id: 'pvd-001', kind: 'period', bpGroup: 'Customers – Retail', itemGroup: 'AirPods', priceList: 'Base price',
     validFrom: '2026-10-01', validTo: '2026-10-31', discountPct: 10, remarks: '10.10 sale: 10% off AirPods for walk-in and online customers.',
   }),
   rule({

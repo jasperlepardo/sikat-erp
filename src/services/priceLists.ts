@@ -134,6 +134,8 @@ export interface PriceSource {
 export interface LinePrice {
   /** PHP per `uom`, before discount. */
   price: number;
+  /** The list `price` comes from — for whether it includes VAT. */
+  basisList: string;
   discountPct: number;
   source: PriceSource;
 }
@@ -162,9 +164,10 @@ export function determinePrice(o: {
   if (set && special) {
     const t = specialTerms(special, qty);
     const at = t.tier ? ` (${t.tier.qtyFrom}+)` : '';
-    if (t.unitPrice !== null) return { price: round2(t.unitPrice * perUnit), discountPct: 0, source: { kind: 'special', label: `Special price${at}` } };
+    if (t.unitPrice !== null) return { price: round2(t.unitPrice * perUnit), basisList: set.priceList, discountPct: 0, source: { kind: 'special', label: `Special price${at}` } };
     return {
       price: listPrice(item, set.priceList, o.uom),
+      basisList: set.priceList,
       discountPct: t.discountPct,
       source: { kind: 'special', label: `Special price${at}: ${t.discountPct}% off ${set.priceList}` },
     };
@@ -186,19 +189,22 @@ export function determinePrice(o: {
     )
     .sort((a, b) => specificity(b) - specificity(a));
   for (const r of matching) {
-    if (r.kind === 'period') return { price, discountPct: r.discountPct, source: { kind: 'period', label: `Period discount ${r.discountPct}%` } };
+    if (r.kind === 'period') return { price, basisList: o.priceList, discountPct: r.discountPct, source: { kind: 'period', label: `Period discount ${r.discountPct}%` } };
     // A quantity in a gap between tiers isn't covered: fall through to the next rule.
     const t = tierFor(r.tiers, qty);
-    if (t) return { price, discountPct: t.discountPct, source: { kind: 'volume', label: `Volume discount ${tierLabel(t)}: ${t.discountPct}%` } };
+    if (t) return { price, basisList: o.priceList, discountPct: t.discountPct, source: { kind: 'volume', label: `Volume discount ${tierLabel(t)}: ${t.discountPct}%` } };
   }
 
   if (partner && !partner.noDiscountGroups) {
     const row = groups.find((g) => g.active && g.bpGroup === partner.group);
     const pct = row?.discounts[item.itemGroup];
-    if (pct) return { price, discountPct: pct, source: { kind: 'group', label: `Discount group ${partner.group} × ${item.itemGroup}: ${pct}%` } };
+    if (pct) return { price, basisList: o.priceList, discountPct: pct, source: { kind: 'group', label: `Discount group ${partner.group} × ${item.itemGroup}: ${pct}%` } };
   }
 
-  return { price, discountPct: 0, source: { kind: 'list', label: o.priceList } };
+  return { price, basisList: o.priceList, discountPct: 0, source: { kind: 'list', label: o.priceList } };
 }
+
+/** Whether a list's prices include VAT (an unknown list counts as net). */
+export const isGrossList = (name: string, all: readonly PriceList[] = priceLists.snapshot()) => byName(all, name)?.gross ?? false;
 
 export const tierLabel = (t: VolumeTier) => (t.qtyTo === null ? `${t.qtyFrom}+` : `${t.qtyFrom}–${t.qtyTo}`);

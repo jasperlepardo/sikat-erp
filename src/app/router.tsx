@@ -16,6 +16,8 @@ import { InventoryPostingList, StockCountList } from '../pages/inventory/counts/
 import { InventoryPostingDetail } from '../pages/inventory/counts/InventoryPostingDetail';
 import { StockCountDetail } from '../pages/inventory/counts/StockCountDetail';
 import { PurchaseOrderList } from '../pages/purchasing/orders/PurchaseOrderList';
+import { SalesOrderList } from '../pages/sales/orders/SalesOrderList';
+import { SalesOrderDetail } from '../pages/sales/orders/detail/SalesOrderDetail';
 import { PurchaseOrderDetail } from '../pages/purchasing/orders/detail/PurchaseOrderDetail';
 import { GoodsReceiptList } from '../pages/purchasing/receipts/GoodsReceiptList';
 import { GoodsReceiptDetail } from '../pages/purchasing/receipts/detail/GoodsReceiptDetail';
@@ -56,6 +58,8 @@ export const router = createHashRouter([
       { path: 'inventory/stock-counts/postings/:id', element: <InventoryPostingDetail /> },
       { path: 'inventory/stock-counts/:id', element: <StockCountDetail /> },
       ...partnerRoutes,
+      { path: 'sales/sales-orders', element: <SalesOrderList /> },
+      { path: 'sales/sales-orders/:id', element: <SalesOrderDetail /> },
       { path: 'purchasing/purchase-orders', element: <PurchaseOrderList /> },
       { path: 'purchasing/purchase-orders/:id', element: <PurchaseOrderDetail /> },
       { path: 'purchasing/goods-receipts', element: <GoodsReceiptList /> },
