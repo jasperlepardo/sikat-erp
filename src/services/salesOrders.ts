@@ -1,4 +1,4 @@
-import { SALES_SETTINGS, SEED_SALES_ORDERS, SO_SERIES, type SalesOrder, type SoLine } from '../mocks/salesOrders';
+import { SALES_SETTINGS, SEED_SALES_ORDERS, SO_SERIES, openCommitted, type SalesOrder, type SoLine } from '../mocks/salesOrders';
 import type { RoundingRule } from '../mocks/currencies';
 import type { Item } from '../mocks/items';
 import { rateAt, type TaxCode } from '../mocks/taxes';
@@ -78,41 +78,31 @@ export function soDueDate(postingDate: string, termDays: number, months = 0, day
 // ── Stock commitment ─────────────────────────────────────────────────────────
 
 /** Open inventory quantity per "itemId@warehouse" that an order commits (none while draft, closed or cancelled). */
-function commitments(so: Pick<SalesOrder, 'status' | 'docType' | 'lines'> | undefined) {
-  const out = new Map<string, number>();
-  if (!so || so.status !== 'Open' || so.docType !== 'Item') return out;
-  for (const l of so.lines) {
-    if (!l.itemId || !l.warehouse) continue;
-    const key = `${l.itemId}@${l.warehouse}`;
-    out.set(key, (out.get(key) ?? 0) + inventoryQty(l, openQty(l)));
-  }
-  return out;
+const commitments = (so: Pick<SalesOrder, 'status' | 'docType' | 'lines'> | undefined) => (so ? openCommitted(so) : new Map<string, number>());
+
+/** Move each item's Committed by the change in what the order commits (it starts as the seeded open orders'). */
+async function recommit(before: SalesOrder | undefined, after: SalesOrder) {
+  const was = commitments(before);
+  const now = commitments(after);
+  const deltas = [...new Set([...was.keys(), ...now.keys()])].map((k) => [k, (now.get(k) ?? 0) - (was.get(k) ?? 0)] as const).filter(([, d]) => d);
+  await applyCommitDeltas(deltas);
 }
 
-/**
- * Re-total Committed for every item and warehouse the order touches (before or after the change):
- * the open quantity of all open orders there. Totalling rather than adding the change keeps it
- * right even when the starting figure wasn't (e.g. seeded stock).
- */
-async function recommit(before: SalesOrder | undefined, after: SalesOrder) {
-  const keys = new Set([...commitments(before).keys(), ...commitments(after).keys()]);
-  if (!keys.size) return;
-  const totals = new Map<string, number>();
-  for (const o of await orders.list()) for (const [k, q] of commitments(o)) if (keys.has(k)) totals.set(k, (totals.get(k) ?? 0) + q);
+async function applyCommitDeltas(deltas: (readonly [string, number])[]) {
+  if (!deltas.length) return;
   const items = await listItems();
   const touched = new Map<string, Item>();
-  for (const key of keys) {
+  for (const [key, delta] of deltas) {
     const [itemId, wh] = key.split('@');
     const item = touched.get(itemId) ?? structuredClone(items.find((i) => i.id === itemId));
     const row = item?.warehouses.find((w) => w.code === wh);
     if (!item || !row) continue;
-    const committed = round2(totals.get(key) ?? 0);
-    if (row.committed === committed) continue;
-    row.committed = committed;
+    row.committed = Math.max(0, round2(row.committed + delta));
     touched.set(itemId, item);
   }
   for (const item of touched.values()) await saveItem(item);
 }
+
 
 // ── Saving ───────────────────────────────────────────────────────────────────
 

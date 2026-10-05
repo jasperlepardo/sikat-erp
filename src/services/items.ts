@@ -1,5 +1,6 @@
 import { SEED_ITEMS, newItemWarehouse, type Item } from '../mocks/items';
 import { SEED_PURCHASE_ORDERS, openOrdered } from '../mocks/purchaseOrders';
+import { SEED_SALES_ORDERS, openCommitted } from '../mocks/salesOrders';
 import { itemGroups } from './inventoryMasters';
 import { createCollection } from './store';
 import { todayISO } from './dates';
@@ -22,9 +23,20 @@ function withOrdered(seed: Item[]): Item[] {
   });
 }
 
+/**
+ * Committed: what the seeded open sales orders still have to deliver, per warehouse — like Ordered,
+ * it ties out to documents, so the catalog's own flat figures are replaced. After that the sales
+ * order service moves it as orders change.
+ */
+function withCommitted(seed: Item[]): Item[] {
+  const committed = new Map<string, number>();
+  for (const so of SEED_SALES_ORDERS) for (const [key, qty] of openCommitted(so)) committed.set(key, (committed.get(key) ?? 0) + qty);
+  return seed.map((item) => ({ ...item, warehouses: item.warehouses.map((w) => ({ ...w, committed: committed.get(`${item.id}@${w.code}`) ?? 0 })) }));
+}
+
 // v8: G/L accounts are stored as chart-of-accounts codes. v16: default bins are full bin codes (WH-MNL-A-01-01).
-// v17: Ordered comes from the open POs.
-const items = createCollection<Item>('sikat-erp:items:v17', withOrdered(SEED_ITEMS), 'itm');
+// v17: Ordered comes from the open POs. v18: Committed includes the seeded open sales orders.
+const items = createCollection<Item>('sikat-erp:items:v18', withCommitted(withOrdered(SEED_ITEMS)), 'itm');
 
 export const listItems = items.list;
 export const getItem = items.get;

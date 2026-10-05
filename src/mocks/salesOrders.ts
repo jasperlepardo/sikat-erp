@@ -144,6 +144,18 @@ export const SO_SERIES: SoSeries[] = [
 
 export const NO_SALES_EMPLOYEE = '-No Sales Employee-';
 
+/** What an open item order commits, in inventory units per "itemId@warehouse" (none while draft, closed or cancelled). */
+export function openCommitted(so: Pick<SalesOrder, 'status' | 'docType' | 'lines'>) {
+  const out = new Map<string, number>();
+  if (so.status !== 'Open' || so.docType !== 'Item') return out;
+  for (const l of so.lines) {
+    if (!l.itemId || !l.warehouse || l.status === 'Closed') continue;
+    const key = `${l.itemId}@${l.warehouse}`;
+    out.set(key, (out.get(key) ?? 0) + Math.max(0, l.quantity - l.deliveredQty) * (l.itemsPerUnit || 1));
+  }
+  return out;
+}
+
 const TODAY = todayISO();
 
 export const newSoLine = (patch: Partial<SoLine> = {}): SoLine => ({
