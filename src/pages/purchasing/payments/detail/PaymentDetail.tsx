@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
+import { postDocumentEntry, reverseDocumentEntry } from '../../../../services/journalEntries';
 import {
   Alert,
   Badge,
@@ -217,6 +218,18 @@ function PaymentForm() {
       const fresh = await listApInvoices();
       const balances = new Map(fresh.map((inv) => [inv.id, invoiceBalance(inv, m).balanceDue]));
       const saved = asDraft ? await savePaymentDraft(draft) : await addPayment(draft, fx, balances);
+      if (!asDraft) {
+        await postDocumentEntry({
+          origin: 'PS',
+          originNo: saved.docNum,
+          originId: saved.id,
+          postingDate: saved.postingDate,
+          remarks: saved.journalRemark,
+          partnerId: saved.vendorId,
+          controlAccount: saved.controlAccount,
+          lines: journal,
+        });
+      }
       navigate(PAYMENT_LIST_PATH, {
         state: {
           notice: asDraft
@@ -243,6 +256,7 @@ function PaymentForm() {
             icon: 'cancel',
             onSelect: async () => {
               const p = await cancelPayment(saved);
+              await reverseDocumentEntry(saved.id);
               navigate(PAYMENT_LIST_PATH, { state: { notice: `Payment ${paymentNumber(p)} cancelled — the invoices it paid are open again${p.means.checks.length ? ' and its checks are void' : ''}.` } });
             },
           },

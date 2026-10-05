@@ -16,6 +16,8 @@ import type { ItemGroup } from '../mocks/itemMasters';
 import { newItemWarehouse, type Item } from '../mocks/items';
 import { inStockAt, inventoryAccountFor, type JournalLine } from './inventoryTransfers';
 import { listItems, saveItem } from './items';
+import { itemGroups } from './inventoryMasters';
+import { postDocumentEntry } from './journalEntries';
 import { listPrice } from './priceLists';
 import { createCollection } from './store';
 
@@ -201,6 +203,15 @@ export async function addPosting(input: PostingInput): Promise<InventoryPosting>
 
   const docNum = await nextNumber(POSTING_SERIES, input.seriesId, postings.list);
   const posted = await postings.save({ ...input, docNum });
+  await postDocumentEntry({
+    origin: 'IQ',
+    originNo: docNum,
+    originId: posted.id,
+    postingDate: input.postingDate,
+    remarks: input.journalRemark,
+    ref2: input.reference,
+    lines: postingJournal(input, items, await itemGroups.list()),
+  });
   if (input.countingId) {
     const count = await countings.get(input.countingId);
     if (count) await countings.save({ ...count, status: 'Closed', postingId: posted.id });

@@ -163,5 +163,17 @@ export async function postTransfer(input: TransferInput): Promise<InventoryTrans
   const series = seriesOf(input.seriesId);
   const all = await transfers.list();
   const docNum = Math.max(series.firstNo - 1, ...all.filter((t) => t.seriesId === series.id).map((t) => t.docNum)) + 1;
-  return transfers.save({ ...input, lines, docNum, status: 'Posted' });
+  const posted = await transfers.save({ ...input, lines, docNum, status: 'Posted' });
+  // A journal entry only when the two warehouses use different inventory accounts.
+  const { itemGroups } = await import('./inventoryMasters');
+  const { postDocumentEntry } = await import('./journalEntries');
+  await postDocumentEntry({
+    origin: 'IM',
+    originNo: docNum,
+    originId: posted.id,
+    postingDate: input.postingDate,
+    remarks: input.journalRemark,
+    lines: transferJournal(posted, items, await itemGroups.list()),
+  });
+  return posted;
 }

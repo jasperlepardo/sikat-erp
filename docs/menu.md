@@ -49,8 +49,8 @@ The sidebar is defined in [`src/app/nav.tsx`](../src/app/nav.tsx) as `NAV`. It c
 |---|---|---|---|
 | Customers | `/sales/customers` | ✅ | "Businesses and people you sell to." Partner list scoped to the `customer` role. Filters: All · Active · Inactive. Has a Credit limit column (with payment terms). |
 | Quotations | `/sales/quotations` | ⬜ | Price offers to customers. |
-| Sales Orders | `/sales/sales-orders` | ⬜ | Confirmed customer orders that commit stock. |
-| Deliveries | `/sales/deliveries` | ⬜ | Goods shipped to customers. Reduces stock. |
+| Sales Orders | `/sales/sales-orders` | ✅ | Customer orders, priced by the customer's price list and pricing rules. Open lines commit stock. **Copy to delivery** ships them. |
+| Deliveries | `/sales/deliveries` | ✅ | Goods shipped to customers, usually copied from a sales order. Adding one takes stock out, updates the order's delivered quantities and posts Dr COGS (or Shipped Goods) / Cr Inventory at item cost. Cancel reverses all three. |
 | Invoices | `/sales/invoices` | ⬜ | A/R invoices (BIR sales invoices) that post revenue and output VAT. |
 | Returns & Credits | `/sales/returns-and-credits` | ⬜ | Customer returns and A/R credit memos. |
 | Payments Received | `/sales/payments-received` | ⬜ | Incoming payments applied to invoices, including creditable withholding tax. |
@@ -89,7 +89,7 @@ The sidebar is defined in [`src/app/nav.tsx`](../src/app/nav.tsx) as `NAV`. It c
 | Items | `/inventory/items` | ✅ | "The item master: products, materials and services you buy, sell and stock." See [Item record](#item-record). |
 | Stock on Hand | `/inventory/stock-on-hand` | ✅ | "In stock, committed, ordered and available — per warehouse or per item." Read-only. |
 | Stock Movements | `/inventory/stock-movements` | ✅ | "Inventory transfers between warehouses." Company-wide stock doesn't change, only where it sits. See [Inventory transfer record](#inventory-transfer-record). |
-| Stock Counts | `/inventory/stock-counts` | ✅ | "Physical counts compared with In Stock." Posting a count sets stock to what was counted and books the difference at cost. See [Stock count record](#stock-count-record). |
+| Stock Counts | `/inventory/stock-counts` | ✅ | Two steps, as in SAP: an Inventory Counting records what was found against the book quantity (no stock change); an Inventory Posting copied from it adjusts stock by the variance and books it. Single or multiple counters; Freeze blocks stock movements while the count is open. See [Stock count record](#stock-count-record). |
 | Pick & Pack | `/inventory/pick-and-pack` | ⬜ | Pick lists and packing for open sales orders. |
 | Price Lists | `/inventory/price-lists` | ✅ | Price tiers assigned to partners, and the rules on top of them. A document line takes the first match: a special price, then a period or volume discount, then a discount group. |
 | Warehouses & Bins | `/inventory/warehouses-and-bins` | ✅ | Where stock is kept. Bin-enabled warehouses hold stock in bin locations, and items stocked there need a default bin. |
@@ -105,7 +105,7 @@ The sidebar is defined in [`src/app/nav.tsx`](../src/app/nav.tsx) as `NAV`. It c
 
 **Stock Movements list:** filters are All · Draft · Posted. Columns are No., From → To, Posting date, Quantity, Value at cost and Status.
 
-**Stock Counts list:** filters are All · Open · Posted · Closed. Columns are No., Warehouse, Count date, Counted by, Counted (with how many lines have a variance), Net variance and Status.
+**Stock Counts list:** tabs are All counts · Open · Closed · Inventory postings. Counts show No., Warehouse, Count date and time, Counted by, Counted (with variances and counter disagreements) and Status; postings show No., Warehouse, Posting date, From count, Lines and Total.
 
 **Price Lists tabs:**
 
@@ -170,7 +170,8 @@ The sidebar is defined in [`src/app/nav.tsx`](../src/app/nav.tsx) as `NAV`. It c
 | Menu item | Route | Status | What it does |
 |---|---|---|---|
 | Statements | `/accounting/statements` | ⬜ | Balance sheet, income statement and trial balance. |
-| Journal Entries | `/accounting/journal-entries` | ⬜ | Manual and system-generated G/L postings. |
+| Journal Entries | `/accounting/journal-entries` | ✅ | Every ledger posting: manual entries (balanced, in an open period, never edited — reversed instead) and the ones documents make on add and cancel (inventory transfers and postings, goods receipts, A/P invoices, payments, deliveries). |
+| Journal Vouchers | `/accounting/journal-vouchers` | ✅ | Folders of draft manual journal entries, reviewed before they post. An entry can be saved unbalanced (with a warning); posting one entry or the whole voucher makes real journal entries, so a voucher can be partly posted. Open entries and vouchers with nothing posted can be deleted. |
 | Chart of Accounts | `/accounting/chart-of-accounts` | ✅ | "Balance sheet and income statement accounts for a VAT-registered Philippine retailer." See below. |
 | Reconciliations | `/accounting/reconciliations` | ⬜ | Match open G/L and partner items. |
 | Period Close | `/accounting/period-close` | ⬜ | Posting periods, closing and year-end. |
@@ -489,21 +490,23 @@ Adding the payment re-checks each bill's balance, numbers automatic checks per b
 
 ### Stock count record
 
-`/inventory/stock-counts/:id`.
+`/inventory/stock-counts/:id` (Inventory Counting) and `/inventory/stock-counts/postings/:id` (Inventory Posting).
 
-**You can also:**
-- **Close without posting** (open counts)
-- **Duplicate as a recount**
-- **Recount variances** (posted counts with variances)
+**Inventory Counting — you can also:**
+- **Copy to inventory posting** (open counts with counted lines; blocked while counters disagree)
+- **Close without posting**
+- **Duplicate as a recount** / **Recount variances only**
 
 | Part | What it holds |
 |---|---|
-| **Document** section | No. and Status. |
-| **Counter** section | Who counted. |
-| **Summary** section | Lines counted, lines with variance, and net variance at cost. |
-| **Count sheet** | Pick the warehouse to count and filter by item group, then enter the counted quantity and remarks per line. |
-| **Remarks** | Free text. |
-| **Journal entry** | The variance posting. |
+| **Document** section | No., Status, count date and time, Ref. 2, end of fiscal year. |
+| **Counting** section | Counting type (single or multiple counters), the inventory counter(s) as User or Employee, referenced document. |
+| **Summary** section | Lines counted, with variance, where counters differ, and frozen. |
+| **Contents** | Find by item or warehouse, **Add Items** by warehouse and item group, **Adjust counted quantities**. Per line: item, description, Freeze, warehouse, In-Whse Qty on count date (snapshot), each counter's count, Counted, UoM counted qty, UoM code, Counted Qty and Variance. |
+| **Attachments** | Count sheets and photos. |
+| **Remarks** | Free text, including who approved the results. |
+
+**Inventory Posting** — posting and count dates, time, price source (item cost or a price list), Ref. 2, the count it came from. Lines show In-Whse Qty, counted qty, variance and variance %, price and total, and stock after. Adding it moves stock by the variance, posts Dr 5050 / Cr Inventory (losses) or the reverse, and closes the count.
 
 ---
 
@@ -513,15 +516,15 @@ Adding the payment re-checks each bill's balance, numbers automatic checks per b
 |---|---|---|
 | Core (Home, Inbox, Business Partners) | 5 | 2 |
 | CRM | 5 | 1 |
-| Sales | 10 | 1 |
+| Sales | 10 | 3 |
 | Purchasing | 11 | 5 |
 | Inventory | 8 | 6 |
 | Manufacturing | 5 | 0 |
 | Projects | 3 | 0 |
 | Service | 4 | 0 |
 | Banking | 7 | 0 |
-| Accounting | 10 | 1 |
+| Accounting | 10 | 3 |
 | People | 2 | 0 |
 | Reports | 3 | 0 |
 | Settings | 15 | 5 |
-| **Total** | **88** | **21** |
+| **Total** | **88** | **25** |

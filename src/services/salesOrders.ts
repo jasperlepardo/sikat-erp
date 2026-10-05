@@ -89,22 +89,26 @@ function commitments(so: Pick<SalesOrder, 'status' | 'docType' | 'lines'> | unde
   return out;
 }
 
-/** Move each item's Committed by the change in what the order commits. */
+/**
+ * Re-total Committed for every item and warehouse the order touches (before or after the change):
+ * the open quantity of all open orders there. Totalling rather than adding the change keeps it
+ * right even when the starting figure wasn't (e.g. seeded stock).
+ */
 async function recommit(before: SalesOrder | undefined, after: SalesOrder) {
-  const was = commitments(before);
-  const now = commitments(after);
-  const keys = new Set([...was.keys(), ...now.keys()]);
-  const deltas = [...keys].map((k) => [k, (now.get(k) ?? 0) - (was.get(k) ?? 0)] as const).filter(([, d]) => d);
-  if (!deltas.length) return;
+  const keys = new Set([...commitments(before).keys(), ...commitments(after).keys()]);
+  if (!keys.size) return;
+  const totals = new Map<string, number>();
+  for (const o of await orders.list()) for (const [k, q] of commitments(o)) if (keys.has(k)) totals.set(k, (totals.get(k) ?? 0) + q);
   const items = await listItems();
   const touched = new Map<string, Item>();
-  for (const [key, delta] of deltas) {
+  for (const key of keys) {
     const [itemId, wh] = key.split('@');
     const item = touched.get(itemId) ?? structuredClone(items.find((i) => i.id === itemId));
-    if (!item) continue;
-    const row = item.warehouses.find((w) => w.code === wh);
-    if (!row) continue;
-    row.committed = Math.max(0, round2(row.committed + delta));
+    const row = item?.warehouses.find((w) => w.code === wh);
+    if (!item || !row) continue;
+    const committed = round2(totals.get(key) ?? 0);
+    if (row.committed === committed) continue;
+    row.committed = committed;
     touched.set(itemId, item);
   }
   for (const item of touched.values()) await saveItem(item);
@@ -140,6 +144,30 @@ export async function saveSalesOrder(input: SoInput, { asDraft = false } = {}): 
   const saved = await orders.save({ ...input, lines, docNum, status });
   await recommit(before, saved);
   return saved;
+}
+
+/**
+ * Deliveries copied from order lines: move each line's Delivered Qty by `sign` (back on a
+ * cancelled delivery). A line delivered in full closes, and the order closes when every line
+ * has; a cancellation reopens them. Committed stock follows the open quantities.
+ */
+export async function applyDelivered(lines: { baseId: string; baseLineId: string; quantity: number }[], sign: 1 | -1) {
+  const byOrder = new Map<string, typeof lines>();
+  for (const l of lines) if (l.baseId) byOrder.set(l.baseId, [...(byOrder.get(l.baseId) ?? []), l]);
+  for (const [orderId, rows] of byOrder) {
+    const before = await orders.get(orderId);
+    if (!before) continue;
+    const linesNow = before.lines.map((ol) => {
+      const qty = rows.filter((r) => r.baseLineId === ol.id).reduce((n, r) => n + r.quantity, 0);
+      if (!qty) return ol;
+      const deliveredQty = Math.max(0, round2(ol.deliveredQty + qty * sign));
+      return { ...ol, deliveredQty, status: deliveredQty >= ol.quantity ? ('Closed' as const) : ('Open' as const) };
+    });
+    const allClosed = linesNow.every((l) => l.status === 'Closed');
+    const status = before.status === 'Cancelled' ? before.status : allClosed ? 'Closed' : 'Open';
+    const saved = await orders.save({ ...before, lines: linesNow, status, closeDate: status === 'Closed' ? before.closeDate || todayISO() : '' });
+    await recommit(before, saved);
+  }
 }
 
 /** Close: open rows stop expecting deliveries and their stock is released. */
