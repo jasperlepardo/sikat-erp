@@ -103,7 +103,7 @@ export function ReturnLines<L extends AnyReturnLine>({
     col('item', 'Item / Description', (l) => {
       const item = itemOf(l);
       return item ? (
-        <div className="flex w-60 flex-col">
+        <div className="flex w-60 shrink-0 flex-col whitespace-normal">
           <Text variant="caption">{item.itemNo}</Text>
           <Text variant="small">{l.name}</Text>
           <Text variant="small" tone="muted">{l.description}</Text>
@@ -117,7 +117,7 @@ export function ReturnLines<L extends AnyReturnLine>({
       const item = itemOf(l);
       if (!item) return null;
       return (
-        <div className="flex w-32 flex-col gap-1">
+        <div className="flex w-40 shrink-0 flex-col gap-1 whitespace-normal">
           <TextField aria-label="Quantity" type="number" min={0} invalid={Boolean(err(l, 'quantity'))} value={String(l.quantity)} onChange={(e) => patch(l.id, { quantity: num(e.currentTarget.value) })} />
           {l.baseType || readOnly ? (
             <Text variant="small" tone="muted">{l.uomCode}</Text>
@@ -136,7 +136,7 @@ export function ReturnLines<L extends AnyReturnLine>({
       const wh = m.inv.warehouses.find((w) => w.code === l.warehouse);
       if (l.baseType) return <Text variant="small">{l.warehouse}{l.bin ? ` · ${l.bin}` : ''}</Text>;
       return (
-        <div className="flex w-44 flex-col gap-1">
+        <div className="flex w-44 shrink-0 flex-col gap-1 whitespace-normal">
           <Combobox aria-label="Warehouse" invalid={Boolean(err(l, 'warehouse'))} options={activeOptions(m.inv.warehouses, (w) => w.code, (w) => w.code, l.warehouse)} value={l.warehouse} onValueChange={(warehouse) => patch(l.id, { warehouse: warehouse ?? '', bin: warehouse ? defaultBin(item, warehouse, m) : '' })} />
           {wh?.binEnabled ? <Combobox aria-label="Bin location" invalid={Boolean(err(l, 'bin'))} options={binOptions(m.inv.bins, wh, l.bin)} value={l.bin} onValueChange={(bin) => patch(l.id, { bin: bin ?? '' })} /> : null}
         </div>
@@ -144,7 +144,7 @@ export function ReturnLines<L extends AnyReturnLine>({
     }),
     col('pricing', 'Unit price / Tax / Discount', (l) =>
       l.itemId ? (
-        <div className="flex w-44 flex-col gap-1">
+        <div className="flex w-44 shrink-0 flex-col gap-1 whitespace-normal">
           <TextField aria-label="Unit price" type="number" min={0} prefix={currency} invalid={Boolean(err(l, 'unitPrice'))} value={String(l.unitPrice)} onChange={(e) => patch(l.id, { unitPrice: round2(num(e.currentTarget.value)) })} />
           <Combobox aria-label="Tax code" invalid={Boolean(err(l, 'taxCode'))} options={taxOptions} value={l.taxCode} onValueChange={(taxCode) => patch(l.id, { taxCode: taxCode ?? '' })} />
           <TextField aria-label="Discount %" type="number" min={0} suffix="%" value={String(l.discountPct)} onChange={(e) => patch(l.id, { discountPct: Math.min(100, num(e.currentTarget.value)) })} />
