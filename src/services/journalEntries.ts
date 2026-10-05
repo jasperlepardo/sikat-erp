@@ -16,7 +16,7 @@ import { rateAt, type TaxCode } from '../mocks/taxes';
 import { formatDate, todayISO } from './dates';
 import { createCollection } from './store';
 
-const entries = createCollection<JournalEntry>('sikat-erp:journal-entries', SEED_JOURNAL_ENTRIES, 'je');
+const entries = createCollection<JournalEntry>('sikat-erp:journal-entries:v2', SEED_JOURNAL_ENTRIES, 'je');
 
 /** Reversals made before line ids were guaranteed saved rows without one; give them a stable id on read. */
 const withLineIds = (je: JournalEntry): JournalEntry =>

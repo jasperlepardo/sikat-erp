@@ -22,6 +22,7 @@
  */
 import type { Attachment } from './common';
 import { SEED_AR_INVOICES, seedNetDue, type ArInvoice } from './arInvoices';
+import { seedRateOn } from './salesOrders';
 import type { PoReference } from './purchaseOrders';
 
 export type IncomingType = 'Customer' | 'Account';
@@ -236,7 +237,7 @@ function row(inv: ArInvoice, amount: number): IncomingRow {
     blocked: false,
     cashDiscountPct: 0,
     amount,
-    invoiceFx: 1,
+    invoiceFx: inv.fxRate || 1,
     controlAccount: inv.controlAccount,
     project: '',
     selected: true,
@@ -281,6 +282,9 @@ export const SEED_INCOMING_PAYMENTS: IncomingPayment[] = [
   }),
   customerPayment('rc-003', 440003, 'ar-003', { postingDate: '2026-10-02', documentDate: '2026-10-02', dueDate: '2026-10-09', reference: 'NPM-CHK-2026-1002', remarks: 'Half of invoice 430003; BIR Form 2307 for the 1% to follow.' }, {
     checks: [newReceivedCheck({ id: 'rc-003-chk1', dueDate: '2026-10-09', amount: total('ar-003'), bank: 'Metrobank', branch: 'Ortigas', accountNo: '7-012-55210-3', checkNo: '0004417' })],
+  }),
+  customerPayment('rc-005', 440005, 'ar-005', { postingDate: '2026-09-22', documentDate: '2026-09-22', dueDate: '2026-09-22', currency: 'USD', fxRate: seedRateOn('USD', '2026-09-22'), reference: 'HBL-TT-0922', remarks: 'Half of USD invoice 430005, wired to the BDO USD account. Collected at the 22 Sep rate.' }, {
+    transfer: { account: '1018', date: '2026-09-22', reference: 'BDO USD TT 26092200188', amount: total('ar-005') },
   }),
   {
     ...blankIncomingPayment('2026-09-30'),

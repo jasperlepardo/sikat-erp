@@ -21,8 +21,9 @@
  * - Negative stock isn't allowed: a line can't ship more than the warehouse holds.
  */
 import type { Attachment } from './common';
-import { SEED_SALES_ORDERS, type SalesOrder } from './salesOrders';
+import { SEED_SALES_ORDERS, seedRateOn, type SalesOrder } from './salesOrders';
 import type { PoReference } from './purchaseOrders';
+import { SEED_ITEMS } from './items';
 
 export type DnStatus = 'Draft' | 'Open' | 'Closed' | 'Cancelled';
 export const DN_STATUSES: DnStatus[] = ['Draft', 'Open', 'Closed', 'Cancelled'];
@@ -273,6 +274,8 @@ function fromOrder(id: string, docNum: number, orderId: string, lineIds: string[
         baseLineId: l.id,
         baseDocNo: `${order.seriesId === 'sos-gov' ? 'Government' : 'Primary'} ${order.docNum}`,
         baseRow: order.lines.indexOf(l) + 1,
+        // History went out at the item's cost.
+        unitCostLc: SEED_ITEMS.find((i) => i.id === l.itemId)?.itemCost ?? 0,
       });
     }),
     ...patch,
@@ -303,6 +306,16 @@ export const SEED_DELIVERIES: Delivery[] = [
     closeDate: '2026-08-28',
     trackingNo: '2GO-CEB-88140223',
     remarks: 'Shipped to the Mactan studio by 2GO Express; invoiced the same day.',
+  }),
+  fromOrder('dn-005', 420005, 'so-009', ['so-009-1'], {
+    postingDate: '2026-09-10',
+    documentDate: '2026-09-10',
+    deliveryDate: '2026-09-10',
+    status: 'Closed',
+    closeDate: '2026-09-10',
+    fxRate: seedRateOn('USD', '2026-09-10'),
+    trackingNo: 'LBC-7740-1185-02',
+    remarks: 'Delivered to Harbourline’s BGC office; invoiced the same day.',
   }),
   fromOrder('dn-004', 420004, 'so-006', ['so-006-1'], {
     postingDate: '2026-09-18',

@@ -14,7 +14,7 @@ import { postDocumentEntry, reverseDocumentEntry } from './journalEntries';
 import { applyDelivered, lineNet, soTotals } from './salesOrders';
 import { createCollection } from './store';
 
-const invoices = createCollection<ArInvoice>('sikat-erp:ar-invoices:v2', SEED_AR_INVOICES, 'ar');
+const invoices = createCollection<ArInvoice>('sikat-erp:ar-invoices:v3', SEED_AR_INVOICES, 'ar');
 
 export const listArInvoices = invoices.list;
 export const getArInvoice = invoices.get;

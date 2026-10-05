@@ -25,6 +25,7 @@ import { SEED_ITEMS, itemsPerUom } from './items';
 import { SEED_PARTNERS, formatAddress } from './partners';
 import type { PoReference } from './purchaseOrders';
 import { todayISO } from '../services/dates';
+import { SEED_RATES } from './currencies';
 
 export type SoStatus = 'Draft' | 'Open' | 'Closed' | 'Cancelled';
 export const SO_STATUSES: SoStatus[] = ['Draft', 'Open', 'Closed', 'Cancelled'];
@@ -238,6 +239,12 @@ const byId = (id: string) => SEED_ITEMS.find((i) => i.id === id)!;
 const partner = (id: string) => SEED_PARTNERS.find((p) => p.id === id)!;
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
+/** The BSP reference rate on a date (the latest on or before it), PHP per unit — for seeded foreign-currency documents. */
+export function seedRateOn(currency: string, date: string) {
+  const day = SEED_RATES.filter((d) => d.date <= date && d.rates[currency] > 0).sort((a, b) => b.date.localeCompare(a.date))[0];
+  return day?.rates[currency] ?? 0;
+}
+
 /** A seeded line: SRP-based list price net of 12% VAT, with the rule that priced it. */
 const line = (id: string, itemId: string, quantity: number, patch: Partial<SoLine> = {}): SoLine => {
   const item = byId(itemId);
@@ -354,6 +361,25 @@ export const SEED_SALES_ORDERS: SalesOrder[] = [
     customerRef: 'GNB-2026-RAFFLE',
     remarks: 'AirPods for the cooperative’s members’ raffle. VAT-exempt sale to a cooperative.',
     lines: [line('so-007-1', 'apl-0352', 6, { taxCode: '33' })],
+  }),
+  // A USD export order: priced in PHP from the price list, converted at the BSP rate on the posting date.
+  header('so-009', 410007, 'bp-010', {
+    postingDate: '2026-09-08',
+    documentDate: '2026-09-08',
+    deliveryDate: '2026-09-10',
+    customerRef: 'HBL-PO-SG-2026-077',
+    status: 'Closed',
+    closeDate: '2026-09-10',
+    remarks: 'MacBooks for Harbourline’s Manila sales office, billed in USD. Delivered and invoiced 10 Sep; half paid 22 Sep, balance outstanding.',
+    lines: [
+      line('so-009-1', 'apl-0240', 3, {
+        deliveredQty: 3,
+        status: 'Closed',
+        discountPct: 3,
+        unitPrice: round2(byId('apl-0240').basePrice / 1.12 / seedRateOn('USD', '2026-09-08')),
+        priceSource: 'Discount group Customers – Trade × Mac: 3%',
+      }),
+    ],
   }),
   header('so-008', 0, 'bp-006', {
     postingDate: '2026-10-03',

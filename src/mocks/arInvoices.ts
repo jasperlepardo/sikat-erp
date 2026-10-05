@@ -276,6 +276,10 @@ const invoices: ArInvoice[] = [
     postingDate: '2026-09-18', documentDate: '2026-09-18', dueDate: '2026-10-18', wtaxLiable: true,
     remarks: 'Northgate withholds 1% (top withholding agent); half paid by check on 2 Oct, balance due 18 Oct.',
   }),
+  fromDelivery('ar-005', 430005, 'dn-005', {
+    postingDate: '2026-09-10', documentDate: '2026-09-10', dueDate: '2026-09-10',
+    remarks: 'USD invoice at the 10 Sep BSP rate. Half paid 22 Sep at that day’s rate (realized difference on the payment); the open half is revalued at month-end.',
+  }),
   {
     ...blankArInvoice('2026-09-30', 'Jasper L.'),
     id: 'ar-004',
@@ -297,7 +301,7 @@ const invoices: ArInvoice[] = [
 ];
 
 /** Paid so far by the seeded incoming payments (document currency). */
-const APPLIED: Record<string, number | 'full' | 'half'> = { 'ar-001': 'full', 'ar-002': 'full', 'ar-003': 'half' };
+const APPLIED: Record<string, number | 'full' | 'half'> = { 'ar-001': 'full', 'ar-002': 'full', 'ar-003': 'half', 'ar-005': 'half' };
 
 export const SEED_AR_INVOICES: ArInvoice[] = invoices.map((a) => {
   const rule = APPLIED[a.id];

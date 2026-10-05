@@ -110,6 +110,7 @@ export const NAV: SideNavSection[] = [
         'Statements',
         'Journal Entries',
         'Journal Vouchers',
+        'Exchange Rate Differences',
         'Chart of Accounts',
         'Reconciliations',
         'Period Close',

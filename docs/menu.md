@@ -172,6 +172,7 @@ The sidebar is defined in [`src/app/nav.tsx`](../src/app/nav.tsx) as `NAV`. It c
 | Statements | `/accounting/statements` | ⬜ | Balance sheet, income statement and trial balance. |
 | Journal Entries | `/accounting/journal-entries` | ✅ | Every ledger posting: manual entries (balanced, in an open period, never edited — reversed instead) and the ones documents make on add and cancel (inventory transfers and postings, goods receipts, A/P invoices, payments, deliveries). |
 | Journal Vouchers | `/accounting/journal-vouchers` | ✅ | Folders of draft manual journal entries, reviewed before they post. An entry can be saved unbalanced (with a warning); posting one entry or the whole voucher makes real journal entries, so a voucher can be partly posted. Open entries and vouchers with nothing posted can be deleted. |
+| Exchange Rate Differences | `/accounting/exchange-rate-differences` | ✅ | Period-end revaluation of open foreign-currency A/R invoices and A/P bills at the BSP rate (or a typed one): open balance × (rate − booked rate), posted to 7020 / 8020 against each partner's control account and reversed the next day. Payments still realize against the booked rate. |
 | Chart of Accounts | `/accounting/chart-of-accounts` | ✅ | "Balance sheet and income statement accounts for a VAT-registered Philippine retailer." See below. |
 | Reconciliations | `/accounting/reconciliations` | ⬜ | Match open G/L and partner items. |
 | Period Close | `/accounting/period-close` | ⬜ | Posting periods, closing and year-end. |
@@ -582,8 +583,8 @@ Adding the payment re-checks each bill's balance, numbers automatic checks per b
 | Projects | 3 | 0 |
 | Service | 4 | 0 |
 | Banking | 7 | 0 |
-| Accounting | 10 | 3 |
+| Accounting | 11 | 4 |
 | People | 2 | 0 |
 | Reports | 3 | 0 |
 | Settings | 15 | 5 |
-| **Total** | **88** | **26** |
+| **Total** | **89** | **27** |

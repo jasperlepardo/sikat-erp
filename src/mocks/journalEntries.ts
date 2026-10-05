@@ -19,10 +19,14 @@
  *   FISCAL_YEAR_END. Period 13 (year-end adjustment) postings are dated FISCAL_YEAR_END.
  * - Origin codes follow SAP's legend (JE, IM, PD, PU, PS, RD, PC, DN, IN, RC); IQ for Inventory Posting is a
  *   placeholder until the "Transaction Type Abbreviations Legend" is confirmed.
- * - Seeded documents from before the prototype's data have no entries (except the seeded
- *   September count), so balances start from what's posted in the app.
+ * - Seeded documents from before the prototype's data have no entries, except the September count
+ *   and the foreign-currency chains (USD sale to Harbourline, USD import from Apple), so realized
+ *   exchange differences show in the ledger. Other balances start from what's posted in the app.
  */
 import type { Attachment } from './common';
+import { SEED_AR_INVOICES } from './arInvoices';
+import { SEED_DELIVERIES } from './deliveries';
+import { SEED_INCOMING_PAYMENTS } from './incomingPayments';
 
 export type JeStatus = 'Posted' | 'Reversed';
 
@@ -52,7 +56,7 @@ export const ORIGIN_PATH: Partial<Record<OriginType, string>> = {
   PC: '/purchasing/returns-and-debits/credit-memos',
 };
 
-export const TRANS_CODES = ['', 'ACCR', 'DEPR', 'RECL', 'CORR', 'YEND'];
+export const TRANS_CODES = ['', 'ACCR', 'DEPR', 'RECL', 'CORR', 'YEND', 'FXRV'];
 export const TRANS_CODE_LABEL: Record<string, string> = {
   '': '— None —',
   ACCR: 'ACCR · Accrual',
@@ -60,6 +64,7 @@ export const TRANS_CODE_LABEL: Record<string, string> = {
   RECL: 'RECL · Reclassification',
   CORR: 'CORR · Correction',
   YEND: 'YEND · Year-end adjustment',
+  FXRV: 'FXRV · Exchange rate revaluation',
 };
 
 /** Posting periods through this date are closed. */
@@ -182,6 +187,71 @@ const je = (id: string, number: number, transNo: number, patch: Partial<JournalE
   ...patch,
 });
 
+/**
+ * An entry a seeded document made when it posted. Rows on `controlAccount` carry the partner,
+ * as live document entries do.
+ */
+export function historyEntry(
+  id: string,
+  number: number,
+  o: { origin: OriginType; originNo: string | number; originId: string; postingDate: string; remarks: string; ref2?: string; partnerId?: string; controlAccount?: string; lines: [account: string, debit: number, credit: number][] },
+): JournalEntry {
+  return {
+    ...blankJournalEntry(o.postingDate),
+    id,
+    number,
+    transNo: number,
+    origin: o.origin,
+    originNo: String(o.originNo),
+    originId: o.originId,
+    remarks: o.remarks,
+    ref2: o.ref2 ?? '',
+    lines: o.lines.map(([account, debit, credit], i) =>
+      newJeLine({ id: `${id}-${i + 1}`, account, debit, credit, partnerId: o.partnerId && account === o.controlAccount ? o.partnerId : '' }),
+    ),
+  };
+}
+
+const r2 = (n: number) => Math.round(n * 100) / 100;
+
+/**
+ * The USD sales chain (order 410007 → delivery 420005 → invoice 430005 → half paid by 440005),
+ * computed from the seeded documents as the posting code does: cost at item cost, the invoice at
+ * its BSP rate, the payment clearing A/R at the invoice's rate with the rest realized in 7020/8020.
+ */
+function usdSalesChain(): JournalEntry[] {
+  const dn = SEED_DELIVERIES.find((d) => d.id === 'dn-005')!;
+  const inv = SEED_AR_INVOICES.find((a) => a.id === 'ar-005')!;
+  const pay = SEED_INCOMING_PAYMENTS.find((p) => p.id === 'rc-005')!;
+  const cost = r2(dn.lines.reduce((n, l) => n + l.quantity * l.itemsPerUnit * l.unitCostLc, 0));
+  const net = r2(inv.lines.reduce((n, l) => n + r2(r2(l.quantity * l.unitPrice * (1 - l.discountPct / 100)) * inv.fxRate), 0));
+  const vat = r2(inv.lines.reduce((n, l) => n + (l.taxCode === '31' ? r2(r2(r2(l.quantity * l.unitPrice * (1 - l.discountPct / 100)) * inv.fxRate) * 0.12) : 0), 0));
+  const received = r2(pay.means.transfer.amount * pay.fxRate);
+  const cleared = r2(pay.rows[0].amount * pay.rows[0].invoiceFx);
+  const fx = r2(received - cleared);
+  return [
+    historyEntry('je-005', 5, { origin: 'DN', originNo: dn.docNum, originId: dn.id, postingDate: dn.postingDate, remarks: dn.journalRemark, lines: [['5010', cost, 0], ['1310', 0, cost]] }),
+    historyEntry('je-006', 6, {
+      origin: 'IN', originNo: inv.docNum, originId: inv.id, postingDate: inv.postingDate, remarks: inv.journalRemark, partnerId: inv.customerId, controlAccount: inv.controlAccount,
+      lines: [[inv.controlAccount, r2(net + vat), 0], ['4010', 0, net], ...(vat ? [['2310', 0, vat] as [string, number, number]] : [])],
+    }),
+    historyEntry('je-007', 7, {
+      origin: 'RC', originNo: pay.docNum, originId: pay.id, postingDate: pay.postingDate, remarks: pay.journalRemark, ref2: pay.reference, partnerId: pay.customerId, controlAccount: pay.controlAccount,
+      lines: [['1018', received, 0], [pay.controlAccount, 0, cleared], ...(fx > 0 ? [['7020', 0, fx] as [string, number, number]] : fx < 0 ? [['8020', -fx, 0] as [string, number, number]] : [])],
+    }),
+  ];
+}
+
+/**
+ * The USD purchase chain (receipt 280001 → bill 290001 → payment 510004), as the purchasing
+ * module's grJournal / apJournal / paymentJournal give it (lines from sikat-erp purchasing).
+ */
+const usdPurchaseChain = (): JournalEntry[] => [
+  historyEntry('je-009', 9, { origin: 'PD', originNo: 280001, originId: 'gr-001', postingDate: '2026-09-01', remarks: 'Goods Receipt PO – BP-0017', lines: [['1310', 3459951.36, 0], ['2025', 0, 3459951.36]] }),
+  historyEntry('je-010', 10, { origin: 'PU', originNo: 290001, originId: 'ap-001', postingDate: '2026-09-02', remarks: 'A/P Invoices – BP-0017', partnerId: 'bp-017', controlAccount: '2010', lines: [['2025', 3459951.36, 0], ['2010', 0, 3459951.36]] }),
+  historyEntry('je-011', 11, { origin: 'PS', originNo: 510004, originId: 'op-004', postingDate: '2026-10-01', remarks: 'Outgoing – BP-0017', partnerId: 'bp-017', controlAccount: '2010', lines: [['2010', 3459951.36, 0], ['8020', 21802.33, 0], ['1018', 0, 3481753.69]] }),
+];
+
 export const SEED_JOURNAL_ENTRIES: JournalEntry[] = [
   je('je-001', 1, 1, {
     remarks: 'Accrue September Greenbelt 3 store rent — invoice not yet received.',
@@ -221,4 +291,7 @@ export const SEED_JOURNAL_ENTRIES: JournalEntry[] = [
       row('je-004-3', '1531', 0, 118000, { remarks: 'IT and office equipment' }),
     ],
   }),
+  // Foreign-currency history: the documents' own entries, so realized differences reach the ledger.
+  ...usdSalesChain(),
+  ...usdPurchaseChain(),
 ];
