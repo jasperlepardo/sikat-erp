@@ -1,5 +1,5 @@
 import { GRNI_ACCOUNT } from '../mocks/goodsReceipts';
-import { RETURN_SERIES, SEED_GOODS_RETURNS, needsCredit, type GoodsReturn, type ReturnLine } from '../mocks/goodsReturns';
+import { RETURN_SERIES, needsCredit, type GoodsReturn, type ReturnLine } from '../mocks/goodsReturns';
 import type { ItemGroup } from '../mocks/itemMasters';
 import type { Item } from '../mocks/items';
 import { rateAt, vatNotPaidToVendor, type TaxCode } from '../mocks/taxes';
@@ -10,8 +10,9 @@ import { inventoryAccountFor, type JournalLine } from './inventoryTransfers';
 import { listItems, saveItem } from './items';
 import { poTotals } from './purchaseOrders';
 import { createCollection } from './store';
+import { PURCHASING_HISTORY } from './purchasingHistory';
 
-const returns = createCollection<GoodsReturn>('sikat-erp:goods-returns:v1', SEED_GOODS_RETURNS, 'rt');
+const returns = createCollection<GoodsReturn>('sikat-erp:goods-returns:v2', PURCHASING_HISTORY.returns, 'rt');
 
 export const listGoodsReturns = returns.list;
 export const getGoodsReturn = returns.get;

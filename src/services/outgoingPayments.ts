@@ -5,7 +5,6 @@ import {
   FX_LOSS_ACCOUNT,
   HOUSE_BANKS,
   PAYMENT_SERIES,
-  SEED_PAYMENTS,
   type OutgoingPayment,
   type PaymentMeans,
   type PaymentRow,
@@ -15,8 +14,9 @@ import type { JournalLine } from './inventoryTransfers';
 import { applyPayments } from './apInvoices';
 import { applyDownPaymentPayments } from './apDownPayments';
 import { createCollection } from './store';
+import { PURCHASING_HISTORY } from './purchasingHistory';
 
-const payments = createCollection<OutgoingPayment>('sikat-erp:outgoing-payments:v1', SEED_PAYMENTS, 'op');
+const payments = createCollection<OutgoingPayment>('sikat-erp:outgoing-payments:v2', PURCHASING_HISTORY.payments, 'op');
 
 export const listPayments = payments.list;
 export const getPayment = payments.get;

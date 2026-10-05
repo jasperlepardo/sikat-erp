@@ -1,4 +1,4 @@
-import { AP_SERIES, SEED_AP_INVOICES, WITHHOLDING_PAYABLE, type ApInvoice, type ApLine, type DownPaymentDraw } from '../mocks/apInvoices';
+import { AP_SERIES, WITHHOLDING_PAYABLE, type ApInvoice, type ApLine, type DownPaymentDraw } from '../mocks/apInvoices';
 import { FREIGHT_IN_ACCOUNT, GRNI_ACCOUNT } from '../mocks/goodsReceipts';
 import type { RoundingRule } from '../mocks/currencies';
 import type { ItemGroup } from '../mocks/itemMasters';
@@ -20,10 +20,11 @@ import { inventoryAccountFor, type JournalLine } from './inventoryTransfers';
 import { listItems, saveItem } from './items';
 import { lineNet, listPurchaseOrders, openQty, poTotals, saveReceivedQuantities, type WithholdingLine } from './purchaseOrders';
 import { createCollection } from './store';
+import { PURCHASING_HISTORY } from './purchasingHistory';
 import { taxCodes } from './masterData';
 import { drawDownPayments, drawableAmount, dprTotal, listDownPayments } from './apDownPayments';
 
-const invoices = createCollection<ApInvoice>('sikat-erp:ap-invoices:v2', SEED_AP_INVOICES, 'ap');
+const invoices = createCollection<ApInvoice>('sikat-erp:ap-invoices:v3', PURCHASING_HISTORY.invoices, 'ap');
 
 export const listApInvoices = invoices.list;
 export const getApInvoice = invoices.get;

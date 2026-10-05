@@ -1,10 +1,11 @@
-import { DPR_SERIES, SEED_DOWN_PAYMENTS, type DownPaymentRequest } from '../mocks/apDownPayments';
+import { DPR_SERIES, type DownPaymentRequest } from '../mocks/apDownPayments';
 import { rateAt, vatNotPaidToVendor, type TaxCode } from '../mocks/taxes';
 import { todayISO } from './dates';
 import { poTotals } from './purchaseOrders';
 import { createCollection } from './store';
+import { PURCHASING_HISTORY } from './purchasingHistory';
 
-const requests = createCollection<DownPaymentRequest>('sikat-erp:ap-down-payments:v1', SEED_DOWN_PAYMENTS, 'dp');
+const requests = createCollection<DownPaymentRequest>('sikat-erp:ap-down-payments:v2', PURCHASING_HISTORY.downPayments, 'dp');
 
 export const listDownPayments = requests.list;
 export const getDownPayment = requests.get;

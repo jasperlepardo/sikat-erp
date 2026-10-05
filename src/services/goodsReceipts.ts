@@ -2,7 +2,6 @@ import {
   FREIGHT_IN_ACCOUNT,
   GRNI_ACCOUNT,
   GR_SERIES,
-  SEED_GOODS_RECEIPTS,
   type GoodsReceipt,
   type GrLine,
 } from '../mocks/goodsReceipts';
@@ -16,8 +15,9 @@ import { inventoryAccountFor, type JournalLine } from './inventoryTransfers';
 import { listItems, saveItem } from './items';
 import { lineNet, listPurchaseOrders, openQty, poTotals, priceAfterDiscount, saveReceivedQuantities } from './purchaseOrders';
 import { createCollection } from './store';
+import { PURCHASING_HISTORY } from './purchasingHistory';
 
-const receipts = createCollection<GoodsReceipt>('sikat-erp:goods-receipts:v3', SEED_GOODS_RECEIPTS, 'gr');
+const receipts = createCollection<GoodsReceipt>('sikat-erp:goods-receipts:v4', PURCHASING_HISTORY.receipts, 'gr');
 
 export const listGoodsReceipts = receipts.list;
 export const getGoodsReceipt = receipts.get;

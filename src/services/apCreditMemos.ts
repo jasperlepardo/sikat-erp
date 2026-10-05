@@ -1,5 +1,5 @@
 import { WITHHOLDING_PAYABLE } from '../mocks/apInvoices';
-import { MEMO_SERIES, SEED_CREDIT_MEMOS, type ApCreditMemo, type CreditApplication, type MemoLine } from '../mocks/apCreditMemos';
+import { MEMO_SERIES, type ApCreditMemo, type CreditApplication, type MemoLine } from '../mocks/apCreditMemos';
 import { FREIGHT_IN_ACCOUNT, GRNI_ACCOUNT } from '../mocks/goodsReceipts';
 import type { ItemGroup } from '../mocks/itemMasters';
 import type { Item } from '../mocks/items';
@@ -12,8 +12,9 @@ import { inventoryAccountFor, type JournalLine } from './inventoryTransfers';
 import { listItems, saveItem } from './items';
 import { lineNet, poTotals, type WithholdingLine } from './purchaseOrders';
 import { createCollection } from './store';
+import { PURCHASING_HISTORY } from './purchasingHistory';
 
-const memos = createCollection<ApCreditMemo>('sikat-erp:ap-credit-memos:v1', SEED_CREDIT_MEMOS, 'cm');
+const memos = createCollection<ApCreditMemo>('sikat-erp:ap-credit-memos:v2', PURCHASING_HISTORY.memos, 'cm');
 
 export const listCreditMemos = memos.list;
 export const getCreditMemo = memos.get;
