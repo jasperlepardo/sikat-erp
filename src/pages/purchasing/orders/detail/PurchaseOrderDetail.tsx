@@ -333,6 +333,7 @@ function PurchaseOrderForm() {
       ? [
           { label: 'Copy to goods receipt', icon: 'inventory', onSelect: () => navigate('/purchasing/goods-receipts/new', { state: { fromPo: saved.id } }) },
           { label: 'Copy to A/P invoice', icon: 'request_quote', onSelect: () => navigate('/purchasing/bills/new', { state: { fromPo: saved.id } }) },
+          { label: 'Copy to A/P down payment request', icon: 'savings', onSelect: () => navigate('/purchasing/bills/down-payment-requests/new', { state: { fromPo: saved.id } }) },
         ]
       : []),
     ...(!isNew ? [{ label: 'Duplicate', icon: 'content_copy', onSelect: duplicate }] : []),

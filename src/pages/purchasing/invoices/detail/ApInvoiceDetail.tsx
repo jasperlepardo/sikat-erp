@@ -63,6 +63,9 @@ import { proposedTaxCode } from '../../orders/detail/types';
 import { GrLogistics } from '../../receipts/detail/GrSections';
 import { buildGrContext, defaultPayTo, defaultShipTo, linesFromPo } from '../../receipts/detail/types';
 import { DocumentFlow } from '../../shared/DocumentFlow';
+import { createPortal } from 'react-dom';
+import { DrawPanel } from './DrawPanel';
+import { drawableAmount, listDownPayments } from '../../../../services/apDownPayments';
 import { ApAccounting } from './ApAccounting';
 import { ApContents } from './ApContents';
 import { linesFromReceipt, orderNumbersOf, toApLine, type ApContext, type ApDraft, type ApMasters } from './types';
@@ -169,6 +172,7 @@ function ApInvoiceForm() {
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [dupWarning, setDupWarning] = useState<string>();
   const [saving, setSaving] = useState(false);
+  const [drawing, setDrawing] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -185,9 +189,10 @@ function ApInvoiceForm() {
       loadCurrentCompany(),
       listPurchaseOrders(),
       listGoodsReceipts(),
-    ]).then(([vendors, items, inv, [company], codes, groups, withholding, wGroups, curs, rates, ours, orders, receipts]) => {
+      listDownPayments(),
+    ]).then(([vendors, items, inv, [company], codes, groups, withholding, wGroups, curs, rates, ours, orders, receipts, downPayments]) => {
       const masters: ApMasters = {
-        vendors, items, inv, tax: { company, codes, groups, withholding, withholdingGroups: wGroups }, currencies: curs, rates, company: ours, orders, receipts, accounts: inv.accounts,
+        vendors, items, inv, tax: { company, codes, groups, withholding, withholdingGroups: wGroups }, currencies: curs, rates, company: ours, orders, receipts, accounts: inv.accounts, downPayments,
       };
       setM(masters);
       // Copy to › A/P Invoice from a receipt or PO: every open line at its open quantity.
@@ -300,7 +305,7 @@ function ApInvoiceForm() {
     }
     setSaving(true);
     try {
-      const saved = asDraft ? await saveApDraft(draft) : await addApInvoice(draft, ctx.fx);
+      const saved = asDraft ? await saveApDraft(draft) : await addApInvoice(draft, ctx.fx, due);
       if (!asDraft) {
         await postDocumentEntry({
           origin: 'PU',
@@ -348,6 +353,8 @@ function ApInvoiceForm() {
       orderNumber: '',
       fxRate: 1,
       appliedAmount: 0,
+      downPayment: 0,
+      drawnDownPayments: [],
       lines: draft.lines.map((l) => ({ ...l, id: newApLine().id, baseType: '', baseId: '', baseLineId: '', baseDocNo: '', receiptCostLc: 0, unitCostLc: 0 })),
     };
     navigate(`${AP_LIST_PATH}/new`, { state: { copyFrom: copy } });
@@ -384,8 +391,13 @@ function ApInvoiceForm() {
   const title = isNew ? 'New A/P invoice' : added ? `A/P invoice ${apNumber(draft)}` : 'Draft A/P invoice';
   const series = apSeriesOf(draft.seriesId);
   const code = draft.currency;
+  // Paid down payment requests of this vendor not yet drawn, in this currency.
+  const drawable = m.downPayments
+    .filter((d) => d.vendorId === draft.vendorId && d.currency === code && (d.status === 'Open' || (draft.drawnDownPayments ?? []).some((x) => x.requestId === d.id)))
+    .filter((d) => drawableAmount(d) > 0 || (draft.drawnDownPayments ?? []).some((x) => x.requestId === d.id));
 
   return (
+    <>
     <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
       <Panel className="flex-1">
         <PanelHeader
@@ -574,7 +586,24 @@ function ApInvoiceForm() {
                       {withholding.filter((w) => w.deducted).map((w) => (
                         <TotalRow key={w.atc} label={`${WITHHELD_LABEL[w.kind] ?? 'Tax'} withheld — ${w.atc} (${w.rate}%)`} value={-w.amount} code={code} />
                       ))}
-                      <TotalRow label="Total down payment" value={-draft.downPayment} code={code} />
+                      <TotalRow
+                        label="Total down payment"
+                        value={-draft.downPayment}
+                        code={code}
+                        input={
+                          !added && drawable.length ? (
+                            <Button type="button" size="small" variant="ghost" onClick={() => setDrawing(true)}>
+                              {draft.downPayment ? 'Change…' : `Draw… (${drawable.length})`}
+                            </Button>
+                          ) : undefined
+                        }
+                      />
+                      {(draft.drawnDownPayments ?? []).length ? (
+                        <TotalNote>
+                          Drawn from {(draft.drawnDownPayments ?? []).map((d) => `request ${d.docNo} (${code} ${formatAmount(d.amount)})`).join(', ')} — clears PHP{' '}
+                          {formatAmount((draft.drawnDownPayments ?? []).reduce((n, d) => n + d.amountLc, 0))} from the advance account.
+                        </TotalNote>
+                      ) : null}
                       <TotalRow label="Net payment due" value={due} code={code} strong />
                       <TotalRow label="Applied amount" value={-draft.appliedAmount} code={code} />
                       <TotalRow label="Balance due" value={balance} code={code} strong />
@@ -623,6 +652,23 @@ function ApInvoiceForm() {
         )}
       </Panel>
     </Form>
+    {drawing
+      ? createPortal(
+          <DrawPanel
+            code={code}
+            requests={drawable}
+            current={draft.drawnDownPayments ?? []}
+            max={Math.max(0, Math.round((totals.total - withholding.filter((w) => w.deducted).reduce((n, w) => n + w.amount, 0)) * 100) / 100)}
+            onCancel={() => setDrawing(false)}
+            onDone={(draws) => {
+              update({ drawnDownPayments: draws, downPayment: Math.round(draws.reduce((n, d) => n + d.amount, 0) * 100) / 100 });
+              setDrawing(false);
+            }}
+          />,
+          document.body,
+        )
+      : null}
+    </>
   );
 }
 

@@ -27,6 +27,8 @@ import { GoodsReceiptList } from '../pages/purchasing/receipts/GoodsReceiptList'
 import { GoodsReceiptDetail } from '../pages/purchasing/receipts/detail/GoodsReceiptDetail';
 import { ApInvoiceList } from '../pages/purchasing/invoices/ApInvoiceList';
 import { ApInvoiceDetail } from '../pages/purchasing/invoices/detail/ApInvoiceDetail';
+import { DprList } from '../pages/purchasing/down-payments/DprList';
+import { DprDetail } from '../pages/purchasing/down-payments/DprDetail';
 import { PaymentList } from '../pages/purchasing/payments/PaymentList';
 import { PaymentDetail } from '../pages/purchasing/payments/detail/PaymentDetail';
 import { ReturnsList } from '../pages/purchasing/returns/ReturnsList';
@@ -81,6 +83,8 @@ export const router = createHashRouter([
       { path: 'purchasing/goods-receipts', element: <GoodsReceiptList /> },
       { path: 'purchasing/goods-receipts/:id', element: <GoodsReceiptDetail /> },
       { path: 'purchasing/bills', element: <ApInvoiceList /> },
+      { path: 'purchasing/bills/down-payment-requests', element: <DprList /> },
+      { path: 'purchasing/bills/down-payment-requests/:id', element: <DprDetail /> },
       { path: 'purchasing/bills/:id', element: <ApInvoiceDetail /> },
       { path: 'purchasing/payments-made', element: <PaymentList /> },
       { path: 'purchasing/payments-made/:id', element: <PaymentDetail /> },

@@ -57,7 +57,8 @@ import { ReferencesTable } from '../../orders/detail/AccountingTab';
 import { DocumentFlow } from '../../shared/DocumentFlow';
 import { AccountRows, VendorRows } from './PaymentContents';
 import { PaymentMeansSection } from './PaymentMeansSection';
-import { invoiceBalance, openRows, type PayMasters, type PaymentDraft } from './types';
+import { invoiceBalance, openRows, requestBalance, type PayMasters, type PaymentDraft } from './types';
+import { listDownPayments } from '../../../../services/apDownPayments';
 
 export const PAYMENT_LIST_PATH = '/purchasing/payments-made';
 
@@ -141,8 +142,9 @@ function PaymentForm() {
       exchangeRates.list(),
       listApInvoices(),
       cardBrands.list(),
-    ]).then(([vendors, items, inv, [company], codes, groups, withholding, wGroups, curs, rates, invoices, cards]) => {
-      const masters: PayMasters = { vendors, items, tax: { company, codes, groups, withholding, withholdingGroups: wGroups }, currencies: curs, rates, invoices, accounts: inv.accounts, cardBrands: cards };
+      listDownPayments(),
+    ]).then(([vendors, items, inv, [company], codes, groups, withholding, wGroups, curs, rates, invoices, cards, downPayments]) => {
+      const masters: PayMasters = { vendors, items, tax: { company, codes, groups, withholding, withholdingGroups: wGroups }, currencies: curs, rates, invoices, accounts: inv.accounts, cardBrands: cards, downPayments };
       setM(masters);
       // Pay from a vendor's page or an invoice: the vendor, with those invoices ticked.
       const vendor = state?.vendorId ? vendors.find((v) => v.id === state.vendorId) : undefined;
@@ -215,8 +217,11 @@ function PaymentForm() {
     setSaving(true);
     try {
       // Balances as they are now, so a payment added elsewhere since this form opened counts.
-      const fresh = await listApInvoices();
-      const balances = new Map(fresh.map((inv) => [inv.id, invoiceBalance(inv, m).balanceDue]));
+      const [fresh, requests] = await Promise.all([listApInvoices(), listDownPayments()]);
+      const balances = new Map([
+        ...fresh.map((inv) => [inv.id, invoiceBalance(inv, m).balanceDue] as const),
+        ...requests.map((d) => [d.id, requestBalance(d, m).balanceDue] as const),
+      ]);
       const saved = asDraft ? await savePaymentDraft(draft) : await addPayment(draft, fx, balances);
       if (!asDraft) {
         await postDocumentEntry({
@@ -262,7 +267,11 @@ function PaymentForm() {
           },
         ]
       : []),
-    ...paidInvoices.map((r) => ({ label: `Open A/P invoice ${r.docNo}`, icon: 'request_quote', onSelect: () => navigate(`/purchasing/bills/${r.invoiceId}`) })),
+    ...paidInvoices.map((r) =>
+      r.docType === 'DPR'
+        ? { label: `Open down payment request ${r.docNo}`, icon: 'savings', onSelect: () => navigate(`/purchasing/bills/down-payment-requests/${r.invoiceId}`) }
+        : { label: `Open A/P invoice ${r.docNo}`, icon: 'request_quote', onSelect: () => navigate(`/purchasing/bills/${r.invoiceId}`) },
+    ),
     ...(vendor ? [{ label: `Open vendor ${vendor.code}`, icon: 'local_shipping', onSelect: () => navigate(`/purchasing/vendors/${vendor.id}`) }] : []),
   ];
 

@@ -43,6 +43,17 @@ export interface ApLine extends Omit<GrLine, 'invoicedQty'> {
   returnedQty?: number;
 }
 
+/** An amount drawn on an A/P invoice from a paid down payment request. */
+export interface DownPaymentDraw {
+  requestId: string;
+  docNo: string;
+  /** In the document currency. */
+  amount: number;
+  /** PHP it clears from the advance account: the amount at the rate the request was paid at. */
+  amountLc: number;
+  account: string;
+}
+
 export interface ApInvoice extends Omit<GoodsReceipt, 'lines' | 'status'> {
   status: ApStatus;
   lines: ApLine[];
@@ -58,8 +69,10 @@ export interface ApInvoice extends Omit<GoodsReceipt, 'lines' | 'status'> {
   consolidatingBpId: string;
 
   // Footer
-  /** Down payments applied. Down payment invoices aren't built, so 0. */
+  /** Total Down Payment: what's drawn from paid down payment requests, in the document currency. */
   downPayment: number;
+  /** The down payment requests drawn, with the PHP each draw clears from its advance account. */
+  drawnDownPayments?: DownPaymentDraw[];
   /** Include in payment runs (Payment Order Ref.). */
   paymentOrderRun: boolean;
   /** Paid or reconciled so far, in the document currency. Payments aren't built, so 0. */

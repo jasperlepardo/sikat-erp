@@ -12,8 +12,10 @@ import { listGoodsReturns, returnNumber, returnTotal } from '../../../services/g
 import { listCreditMemos, memoNumber, memoTotal } from '../../../services/apCreditMemos';
 import { RETURN_STATUS_INTENT } from '../../purchasing/returns/GoodsReturnDetail';
 import { MEMO_LIST_PATH, MEMO_STATUS_INTENT, RETURN_LIST_PATH } from '../../purchasing/returns/types';
+import { dprNumber, dprTotal, listDownPayments } from '../../../services/apDownPayments';
+import { DPR_LIST_PATH, DPR_STATUS_INTENT } from '../../purchasing/down-payments/DprDetail';
 
-export type DocType = 'PR' | 'RFQ' | 'PO' | 'GRPO' | 'APINV' | 'PAY' | 'GRET' | 'APCM' | 'SQ' | 'SO';
+export type DocType = 'PR' | 'RFQ' | 'PO' | 'DPR' | 'GRPO' | 'APINV' | 'PAY' | 'GRET' | 'APCM' | 'SQ' | 'SO';
 export type StatusIntent = 'default' | 'primary' | 'warning' | 'success' | 'danger';
 
 /**
@@ -74,6 +76,31 @@ export const DOC_SOURCES: Record<DocType, DocSource> = {
           href: `${PO_LIST_PATH}/${po.id}`,
           // Bills are paid now, not orders.
           payable: false,
+        }));
+    },
+  },
+  DPR: {
+    label: 'A/P down payment request',
+    role: 'vendor',
+    list: async (partnerId) => {
+      const [requests, codes] = await Promise.all([listDownPayments(), taxCodes.list()]);
+      return requests
+        .filter((d) => d.vendorId === partnerId)
+        .map((d) => ({
+          id: d.id,
+          type: 'DPR' as const,
+          number: dprNumber(d),
+          subcopy: d.orderNumber ? `PO ${d.orderNumber}` : undefined,
+          date: d.postingDate,
+          dueDate: d.dueDate,
+          status: d.status,
+          intent: DPR_STATUS_INTENT[d.status],
+          open: d.status === 'Open',
+          currency: d.currency,
+          total: dprTotal(d, codes),
+          href: `${DPR_LIST_PATH}/${d.id}`,
+          // Unpaid requests are paid like bills.
+          payable: d.status === 'Open' && !d.paymentBlock && d.appliedAmount < dprTotal(d, codes) - 0.005,
         }));
     },
   },

@@ -12,6 +12,8 @@ import { listGoodsReturns, returnNumber, returnTotal } from '../../../services/g
 import { listCreditMemos, memoNumber, memoTotal } from '../../../services/apCreditMemos';
 import { RETURN_STATUS_INTENT } from '../returns/GoodsReturnDetail';
 import { MEMO_LIST_PATH, MEMO_STATUS_INTENT, RETURN_LIST_PATH } from '../returns/types';
+import { dprNumber, dprTotal, listDownPayments } from '../../../services/apDownPayments';
+import { DPR_LIST_PATH, DPR_STATUS_INTENT } from '../down-payments/DprDetail';
 import { lineage, type LinkedDocument } from './lineage';
 
 export type { LinkedDocument, Relation } from './lineage';
@@ -20,7 +22,7 @@ export type { LinkedDocument, Relation } from './lineage';
  * Every document type that takes part in copy-from / copy-to. Adding one (purchase request,
  * RFQ, A/P invoice, goods return…) is a new entry in SOURCES whose documents name their bases.
  */
-export type DocKind = 'PO' | 'GRPO' | 'APINV' | 'PAY' | 'GRET' | 'APCM';
+export type DocKind = 'PO' | 'GRPO' | 'APINV' | 'PAY' | 'GRET' | 'APCM' | 'DPR';
 
 /** Lines of a document copied from one base document. */
 export interface CoveredLine {
@@ -101,11 +103,15 @@ const SOURCES: Record<DocKind, () => Promise<DocNode[]>> = {
       intent: AP_STATUS_INTENT[inv.status],
       currency: inv.currency,
       total: apTotal(inv, codes),
-      bases: [...new Map(inv.lines.filter((l) => l.baseType).map((l) => [`${l.baseType}:${l.baseId}`, l])).values()].map((b) => ({
-        kind: b.baseType as 'GRPO' | 'PO',
-        id: b.baseId,
-        lines: inv.lines.filter((l) => l.baseType === b.baseType && l.baseId === b.baseId),
-      })),
+      bases: [
+        ...[...new Map(inv.lines.filter((l) => l.baseType).map((l) => [`${l.baseType}:${l.baseId}`, l])).values()].map((b) => ({
+          kind: b.baseType as DocKind,
+          id: b.baseId,
+          lines: inv.lines.filter((l) => l.baseType === b.baseType && l.baseId === b.baseId),
+        })),
+        // Down payments it drew count as bases too: the advance came before the bill.
+        ...(inv.drawnDownPayments ?? []).map((d) => ({ kind: 'DPR' as const, id: d.requestId, lines: [], note: `Drew ${inv.currency} ${formatAmount(d.amount)}` })),
+      ],
     }));
   },
   // A payment's bases are the invoices it paid; an Account payment has none.
@@ -123,7 +129,7 @@ const SOURCES: Record<DocKind, () => Promise<DocNode[]>> = {
       total: overallAmount(p),
       bases: p.rows
         .filter((r) => r.selected && r.amount > 0)
-        .map((r) => ({ kind: 'APINV' as const, id: r.invoiceId, lines: [], note: `Paid ${p.currency} ${formatAmount(rowSettled(r))}` })),
+        .map((r) => ({ kind: (r.docType === 'DPR' ? 'DPR' : 'APINV') as DocKind, id: r.invoiceId, lines: [], note: `Paid ${p.currency} ${formatAmount(rowSettled(r))}` })),
     })),
   // Return lines come from receipt lines (unbilled goods) or invoice lines (billed goods).
   GRET: async () => {
@@ -164,6 +170,27 @@ const SOURCES: Record<DocKind, () => Promise<DocNode[]>> = {
         kind: (b.baseType === 'GRET' ? 'GRET' : 'APINV') as DocKind,
         id: b.baseId,
         lines: m.lines.filter((l) => l.baseType === b.baseType && l.baseId === b.baseId),
+      })),
+    }));
+  },
+  // A down payment request is figured on PO lines.
+  DPR: async () => {
+    const [requests, codes] = await Promise.all([listDownPayments(), taxCodes.list()]);
+    return requests.map((d) => ({
+      kind: 'DPR',
+      id: d.id,
+      type: 'A/P down payment request',
+      number: dprNumber(d),
+      href: `${DPR_LIST_PATH}/${d.id}`,
+      date: d.postingDate,
+      status: d.status,
+      intent: DPR_STATUS_INTENT[d.status],
+      currency: d.currency,
+      total: dprTotal(d, codes),
+      bases: [...new Set(d.lines.filter((l) => l.baseType).map((l) => l.baseId))].map((poId) => ({
+        kind: 'PO' as const,
+        id: poId,
+        lines: d.lines.filter((l) => l.baseId === poId),
       })),
     }));
   },

@@ -69,7 +69,7 @@ The sidebar is defined in [`src/app/nav.tsx`](../src/app/nav.tsx) as `NAV`. It c
 | Quotations (RFQ) | `/purchasing/quotations` | ⬜ | Requests for quotation sent to vendors. |
 | Purchase Orders | `/purchasing/purchase-orders` | ✅ | "Orders placed with vendors, from draft to fully received." See [Purchase order record](#purchase-order-record). |
 | Goods Receipts | `/purchasing/goods-receipts` | ✅ | "Goods and services received from vendors." Adding a receipt puts the stock in and updates the PO it came from. See [Goods receipt record](#goods-receipt-record). |
-| Bills | `/purchasing/bills` | ✅ | "A/P invoices from vendors: what you owe, billed against goods receipts or purchase orders." See [A/P invoice record](#ap-invoice-record). |
+| Bills | `/purchasing/bills` | ✅ | Two tabs: **A/P invoices** (what you owe, billed against goods receipts or purchase orders) and **Down payment requests** (advances vendors ask for before delivering). See [A/P invoice record](#ap-invoice-record) and [A/P down payment request record](#ap-down-payment-request-record). |
 | Returns & Debits | `/purchasing/returns-and-debits` | ✅ | Goods sent back to vendors (goods returns) and the vendors' credit notes (A/P credit memos), one tab each. See [Goods return record](#goods-return-record) and [A/P credit memo record](#ap-credit-memo-record). |
 | Payments Made | `/purchasing/payments-made` | ✅ | Outgoing payments: money paid to vendors against their bills (or on account), or straight to G/L accounts. This is where realized exchange gains and losses post. See [Outgoing payment record](#outgoing-payment-record). |
 | Landed Costs | `/purchasing/landed-costs` | ⬜ | Spreads freight, duty and brokerage onto imported item costs. |
@@ -441,7 +441,7 @@ After that, only remarks can change.
 | **Contents** | Lines with item, quantity and UoM, unit price, tax code, discount and total (LC). **Copy from** pulls in the open lines of the vendor's goods receipts or open POs. Lines from a receipt show where they were received; other stocked lines pick a warehouse and bin, because the invoice receives them. Optional columns: inventory-UoM quantity, BP catalog no., country of origin, unit cost price, base document, blanket agreement and free text. |
 | **Logistics** | Ship to, Pay to and shipping type (the same section as on receipts). |
 | **Accounting** | Journal remark, control account (the vendor's payable account by default), payment terms, payment method, installments, cash discount offset, consolidating BP, BP project, indicator, the vendor's TIN, the order number (POs behind the lines), max. cash discount, and referenced documents. |
-| **Totals** | Buyer, owner, total before discount, discount %, freight, rounding, tax, total payment due, withholding taken off (EWT, final tax), down payment, net payment due, applied amount and balance due. Also payment block, include in payment runs, and remarks. |
+| **Totals** | Buyer, owner, total before discount, discount %, freight, rounding, tax, total payment due, withholding taken off (EWT, final tax), **total down payment** (Draw… picks the vendor's paid down payment requests; the drawn amount clears Advances to Suppliers in the journal entry), net payment due, applied amount and balance due. A bill its down payments cover in full closes when it's added. Also payment block, include in payment runs, and remarks. |
 | **Journal entry** | Dr Goods Received Not Invoiced (lines from receipts) or Inventory / the cost account (other lines), Freight-in and Input VAT. Cr withholding tax payable and the vendor's control account. In PHP. |
 
 **Price and exchange-rate differences:** a line from a receipt clears Goods Received Not Invoiced at the receipt's cost. If the bill's price or exchange rate differs, an alert shows the difference per line. It posts to inventory while the stock is on hand (re-averaging the item cost), to cost of sales once the stock is gone, or to the item's cost account for non-stock items. Realized FX gain or loss (7020 / 8020) comes when the bill is paid; see [Outgoing payment record](#outgoing-payment-record).
@@ -485,6 +485,27 @@ After that, only remarks can change.
 
 **Left out:** copying a credit memo from a goods receipt (an unbilled receipt owes nothing to credit, so use a goods return), using leftover credit in an outgoing payment, the client's custom print UDFs, serial numbers, distribution rules and the QR code.
 
+### A/P down payment request record
+
+`/purchasing/bills/down-payment-requests/:id`. Views: Details · Transactions · Activity. Transactions is the related-documents chain (the PO, the payments that paid it, and the A/P invoices that drew it).
+
+**Ways to start one:** **You can also › Copy to A/P down payment request** on a PO, or **New down payment request** on the Bills page's Down payment requests tab.
+
+**You can also:** **Save as draft**, **Pay** (opens an outgoing payment with the request ticked), **Cancel request** (unpaid only), **Close**, **Open PO …** and **Open vendor**.
+
+| Part | What it holds |
+|---|---|
+| **Vendor** and **Document** sections | Vendor, contact person, vendor ref. no., currency; series and No., Status, Posting date, Due date (from the payment terms), Document date and Close date. |
+| **Contents** | What the advance is for, at the full order price: item, quantity and UoM, unit price, tax code, discount and total (LC). **Copy from PO** doesn't change the PO's quantities. Optional columns: country of origin, warranty, unit cost price, withholding code and rate with taxable amount, base PO, blanket agreement and free text. |
+| **Logistics** | Ship to, Pay to and shipping type. |
+| **Accounting** | Journal remark, the **down payment account** (the vendor's, else 1150 Advances to Suppliers), payment terms and method, installments, cash discount offset, BP project, indicator, the vendor's TIN, order number and payment block. |
+| **Totals** | Buyer, owner, **DPM %** (default 100), total before discount, discount, the down payment share, tax on that share, **Total payment due**, applied amount and balance due, plus drawn so far. Payment run flag and remarks. |
+| **Attachments** | The vendor's proforma or quotation. |
+
+**How it flows:** adding a request posts nothing. Paying it posts Dr Advances to Suppliers / Cr the payment means. The A/P invoice that bills the goods draws the paid amount, crediting Advances to Suppliers at the rate it was paid at and lowering what the vendor is owed. The request closes once drawn in full.
+
+**Left out:** the A/P down payment invoice (the tax document for the payment), installment schedules, distribution rules, commodity classification, serial numbers, the QR code, Central Bank Ind. and the client's custom print UDFs.
+
 ### Outgoing payment record
 
 `/purchasing/payments-made/:id` (Banking › Outgoing Payments in SAP). Views: Details · Transactions · Activity. Activity is a placeholder.
@@ -497,7 +518,7 @@ After that, only remarks can change.
 |---|---|
 | **Payee** section | Payment type (**Vendor** or **Account**). Vendor: vendor, pay to, contact person, currency (the vendor's), project. Account: to order of, pay to, doc. currency, project. |
 | **Document** section | Series and No., Status (Draft / Posted / Cancelled), Posting date (sets the payment's exchange rate), Document date, Due date (the payment means' dates, weighted by amount) and Reference. |
-| **Open documents** (Vendor) | The vendor's open A/P invoices in the payment currency, oldest due first. Columns: Document (* = overdue or blocked), Date, Overdue days, Total, WT amount, Balance due, Cash discount % and Total payment. A foreign-currency row also shows the rate it was booked at and the gain or loss at today's rate. Blocked invoices can't be ticked. |
+| **Open documents** (Vendor) | The vendor's open A/P invoices and unpaid down payment requests in the payment currency, oldest due first. A request row debits its advance account (Advances to Suppliers) at the payment's rate, so it never carries an exchange difference. Columns: Document (* = overdue or blocked), Date, Overdue days, Total, WT amount, Balance due, Cash discount % and Total payment. A foreign-currency row also shows the rate it was booked at and the gain or loss at today's rate. Blocked invoices can't be ticked. |
 | **Payment on account** (Vendor) | An amount not matched to any invoice, its control account, and **Pro forma** (a down payment to the vendor). |
 | **Accounts** (Account) | G/L lines with account, doc. remarks, project and amount. |
 | **Payment means** | Tabs for **Bank transfer** (account, amount, date, reference), **Cash** (cash fund, amount), **Check** (bank account, due date, manual check no. or numbered when added, endorsable, amount) and **Credit card** (card, account, voucher no., no. of payments, amount). A summary shows currency, overall amount, bank charge, paid and balance due, which must be 0. Each tab has **Pay the balance**. |

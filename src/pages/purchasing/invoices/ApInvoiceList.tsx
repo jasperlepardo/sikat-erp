@@ -27,20 +27,22 @@ import { taxCodes } from '../../../services/masterData';
 import { useAsync } from '../../../services/useAsync';
 import { DEFAULT_PAGE_SIZE, PAGE_SIZES, fillCardClass } from '../../../components/form/DataTable';
 import { AP_LIST_PATH, AP_STATUS_INTENT } from './detail/ApInvoiceDetail';
+import { BillsTabs } from './BillsTabs';
+import { listDownPayments } from '../../../services/apDownPayments';
 
 type Filter = 'all' | ApStatus;
 
 export function ApInvoiceList() {
   const navigate = useNavigate();
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
-  const data = useAsync(() => Promise.all([listApInvoices(), taxCodes.list()]), []);
+  const data = useAsync(() => Promise.all([listApInvoices(), taxCodes.list(), listDownPayments()]), []);
   const [filter, setFilter] = useState<Filter>('all');
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<TableSort | null>({ key: 'postingDate', direction: 'desc' });
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
 
-  const [invoices, codes] = data ?? [undefined, []];
+  const [invoices, codes, requests] = data ?? [undefined, [], undefined];
   const totalOf = (inv: ApInvoice) => apTotal(inv, codes);
   const today = todayISO();
 
@@ -114,19 +116,18 @@ export function ApInvoiceList() {
             New A/P invoice
           </Button>
         }
-        tabs={
-          <Tabs
-            variant="outline"
-            value={filter}
-            onValueChange={(v) => {
-              setFilter(v as Filter);
-              setPage(1);
-            }}
-            items={(['all', ...AP_STATUSES] as Filter[]).map((f) => ({ value: f, label: f === 'all' ? 'All' : f, badge: count(f) }))}
-          />
-        }
+        tabs={<BillsTabs value="invoices" counts={invoices && requests ? { invoices: invoices.length, requests: requests.length } : undefined} />}
       />
       <Panel.Body className="flex flex-col gap-2">
+        <Tabs
+              variant="outline"
+              value={filter}
+              onValueChange={(v) => {
+                setFilter(v as Filter);
+                setPage(1);
+              }}
+              items={(['all', ...AP_STATUSES] as Filter[]).map((f) => ({ value: f, label: f === 'all' ? 'All' : f, badge: count(f) }))}
+            />
         {notice ? (
           <Alert intent="success" variant="outline" title="Saved">
             {notice}

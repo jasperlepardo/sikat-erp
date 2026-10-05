@@ -149,8 +149,8 @@ export const isBuilt = (type: DocType) => !!ITEM_SOURCES[type];
 
 /** The document types that apply to the item: purchasing ones for a purchase item, sales ones for a sales item. */
 export const docTypesFor = (item: Pick<Draft, 'purchaseItem' | 'salesItem'>) =>
-  // Payments have no item rows, so they never apply to an item.
-  (Object.keys(DOC_SOURCES) as DocType[]).filter((t) => t !== 'PAY' && (DOC_SOURCES[t].role === 'vendor' ? item.purchaseItem : item.salesItem));
+  // Payments have no item rows, and down payment requests move no stock, so neither applies to an item.
+  (Object.keys(DOC_SOURCES) as DocType[]).filter((t) => t !== 'PAY' && t !== 'DPR' && (DOC_SOURCES[t].role === 'vendor' ? item.purchaseItem : item.salesItem));
 
 /** Every row of these document types with the item on it, newest first. */
 export async function listItemDocuments(itemId: string, types: DocType[]): Promise<ItemDocument[]> {

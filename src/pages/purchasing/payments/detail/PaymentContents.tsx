@@ -17,7 +17,7 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 /** Vendor payments: the vendor's open invoices, ticked and paid in full or in part, plus any amount on account. */
 export function VendorRows({ draft, update, errors, m, fx, readOnly }: PaySectionProps) {
   const rows = draft.rows;
-  const blocked = (r: PaymentRow) => Boolean(m.invoices.find((i) => i.id === r.invoiceId)?.paymentBlock);
+  const blocked = (r: PaymentRow) => Boolean(r.blocked ?? m.invoices.find((i) => i.id === r.invoiceId)?.paymentBlock);
   const patch = (id: string, p: Partial<PaymentRow>) => update({ rows: rows.map((r) => (r.id === id ? { ...r, ...p } : r)) });
   const code = draft.currency;
   const foreign = code !== 'PHP';
@@ -40,12 +40,12 @@ export function VendorRows({ draft, update, errors, m, fx, readOnly }: PaySectio
       header: 'Document',
       cell: (r) => (
         <div className="flex flex-col">
-          <Link intent="primary" href={`#${AP_LIST_PATH}/${r.invoiceId}`}>
+          <Link intent="primary" href={r.docType === 'DPR' ? `#${AP_LIST_PATH}/down-payment-requests/${r.invoiceId}` : `#${AP_LIST_PATH}/${r.invoiceId}`}>
             {r.docNo}
             {overdueDays(r.dueDate, draft.postingDate) > 0 ? ' *' : ''}
           </Link>
           <Text variant="small" tone="muted">
-            A/P invoice{r.vendorRef ? ` · ${r.vendorRef}` : ''}
+            {r.docType === 'DPR' ? 'Down payment request' : 'A/P invoice'}{r.vendorRef ? ` · ${r.vendorRef}` : ''}
             {blocked(r) ? ' · Blocked *' : ''}
           </Text>
         </div>
@@ -100,7 +100,7 @@ export function VendorRows({ draft, update, errors, m, fx, readOnly }: PaySectio
             onChange={(e) => patch(r.id, { amount: round2(num(e.currentTarget.value)) })}
           />
           {r.selected && rowDiscount(r) ? <Text variant="small" tone="muted">+ {formatAmount(rowDiscount(r))} discount</Text> : null}
-          {r.selected && foreign && fx ? (
+          {r.selected && foreign && fx && r.docType !== 'DPR' ? (
             <Text variant="small" tone="muted">
               Booked at {r.invoiceFx}; {rowFxDifference(r, fx) > 0 ? 'loss' : rowFxDifference(r, fx) < 0 ? 'gain' : 'no difference'}
               {rowFxDifference(r, fx) ? ` PHP ${formatAmount(Math.abs(rowFxDifference(r, fx)))}` : ''}
@@ -120,7 +120,7 @@ export function VendorRows({ draft, update, errors, m, fx, readOnly }: PaySectio
         title="Open documents"
         description={
           errors.rows ??
-          `${draft.payeeName ? `${draft.payeeName}'s` : "The vendor's"} open A/P invoices in ${code}, oldest due first. Tick what this payment settles; lower Total payment to pay part. * = overdue or blocked.`
+          `${draft.payeeName ? `${draft.payeeName}'s` : "The vendor's"} open A/P invoices and down payment requests in ${code}, oldest due first. Tick what this payment settles; lower Total payment to pay part. * = overdue or blocked.`
         }
         rows={rows}
         getRowId={(r) => r.id}

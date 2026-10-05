@@ -1,4 +1,4 @@
-import { AP_SERIES, SEED_AP_INVOICES, WITHHOLDING_PAYABLE, type ApInvoice, type ApLine } from '../mocks/apInvoices';
+import { AP_SERIES, SEED_AP_INVOICES, WITHHOLDING_PAYABLE, type ApInvoice, type ApLine, type DownPaymentDraw } from '../mocks/apInvoices';
 import { FREIGHT_IN_ACCOUNT, GRNI_ACCOUNT } from '../mocks/goodsReceipts';
 import type { RoundingRule } from '../mocks/currencies';
 import type { ItemGroup } from '../mocks/itemMasters';
@@ -20,6 +20,8 @@ import { inventoryAccountFor, type JournalLine } from './inventoryTransfers';
 import { listItems, saveItem } from './items';
 import { lineNet, listPurchaseOrders, openQty, poTotals, saveReceivedQuantities, type WithholdingLine } from './purchaseOrders';
 import { createCollection } from './store';
+import { taxCodes } from './masterData';
+import { drawDownPayments, drawableAmount, dprTotal, listDownPayments } from './apDownPayments';
 
 const invoices = createCollection<ApInvoice>('sikat-erp:ap-invoices:v1', SEED_AP_INVOICES, 'ap');
 
@@ -85,7 +87,7 @@ const onHand = (item: Item) => item.warehouses.reduce((n, w) => n + w.inStock, 0
  * - Withholding: Cr the withholding tax payable. The vendor's control account takes the rest.
  */
 export function apJournal(
-  inv: Pick<ApInvoice, 'lines' | 'discountPct' | 'freight' | 'freightTaxCode' | 'controlAccount'>,
+  inv: Pick<ApInvoice, 'lines' | 'discountPct' | 'freight' | 'freightTaxCode' | 'controlAccount' | 'drawnDownPayments'>,
   fx: number,
   ctx: { items: Item[]; groups: ItemGroup[]; codes: TaxCode[]; rateOf: (code: string) => number; withholding: WithholdingLine[] },
 ): JournalLine[] {
@@ -124,7 +126,13 @@ export function apJournal(
     add(WITHHOLDING_PAYABLE[w.kind] ?? '2340', -amt);
     withheld += amt;
   }
-  if (debits) add(inv.controlAccount || '2010', -round2(debits - withheld));
+  // Down payments drawn clear the advance at the rate it was paid at; the vendor is owed the rest.
+  let drawn = 0;
+  for (const d of inv.drawnDownPayments ?? []) {
+    add(d.account, -d.amountLc);
+    drawn += d.amountLc;
+  }
+  if (debits) add(inv.controlAccount || '2010', -round2(debits - withheld - drawn));
 
   return [...totals.entries()]
     .filter(([, n]) => n !== 0)
@@ -188,7 +196,8 @@ function applyCostDifferences(lines: ApLine[], inv: Pick<ApInvoice, 'discountPct
  * freezes are re-checked as they are now. Then lines from receipts bill them (closing receipts
  * billed in full), and other stocked lines receive the stock as a receipt would.
  */
-export async function addApInvoice(input: ApInput, fx: number): Promise<ApInvoice> {
+/** `due` is the net payment due after down payments, from the form: a bill they cover in full closes at once. */
+export async function addApInvoice(input: ApInput, fx: number, due?: number): Promise<ApInvoice> {
   const [items, pos, receipts] = await Promise.all([listItems(), listPurchaseOrders(), listGoodsReceipts()]);
   const stockLines = input.lines.filter((l) => movesStock(l, items));
 
@@ -209,6 +218,12 @@ export async function addApInvoice(input: ApInput, fx: number): Promise<ApInvoic
     if (qty > open) over.push({ lineId: line.id, message: `${line.itemNo}: billing ${qty} ${line.uomCode} but PO ${line.baseDocNo} has ${open} open.` });
   }
   if (over.length) throw new ApPostError(over.map((o) => o.lineId), over.map((o) => o.message).join(' '));
+  const requests = await listDownPayments();
+  const overDrawn = (input.drawnDownPayments ?? []).filter((d) => {
+    const r = requests.find((x) => x.id === d.requestId);
+    return !r || d.amount > drawableAmount(r) + 0.005;
+  });
+  if (overDrawn.length) throw new ApPostError([], `Down payment ${overDrawn.map((d) => d.docNo).join(', ')} doesn't have that much paid and undrawn any more.`);
 
   const lines = input.lines.map((l) => ({ ...l, unitCostLc: unitCostLc(l, input, fx) }));
   const touched = new Map(applyStock(lines.filter((l) => movesStock(l, items)), items, 1).map((i) => [i.id, i]));
@@ -218,11 +233,13 @@ export async function addApInvoice(input: ApInput, fx: number): Promise<ApInvoic
 
   for (const po of applyToOrders(lines.filter((l) => l.baseType === 'PO'), pos, 1)) await saveReceivedQuantities(po);
   await applyInvoicedQty(lines.filter((l) => l.baseType === 'GRPO'), 1);
+  await drawRequests(input.drawnDownPayments ?? [], 1);
 
   const series = apSeriesOf(input.seriesId);
   const all = await invoices.list();
   const docNum = Math.max(series.firstNo - 1, ...all.filter((r) => r.seriesId === series.id).map((r) => r.docNum)) + 1;
-  return invoices.save({ ...input, lines, docNum, status: 'Open', fxRate: fx });
+  const settled = due !== undefined && due <= 0.005;
+  return invoices.save({ ...input, lines, docNum, status: settled ? 'Closed' : 'Open', closeDate: settled ? todayISO() : '', fxRate: fx });
 }
 
 /**
@@ -251,6 +268,7 @@ export async function cancelApInvoice(inv: ApInvoice) {
 
   for (const po of applyToOrders(inv.lines.filter((l) => l.baseType === 'PO'), pos, -1)) await saveReceivedQuantities(po);
   await applyInvoicedQty(inv.lines.filter((l) => l.baseType === 'GRPO'), -1);
+  await drawRequests(inv.drawnDownPayments ?? [], -1);
   return invoices.save({ ...inv, status: 'Cancelled', closeDate: todayISO() });
 }
 
@@ -288,3 +306,10 @@ export async function applyInvoiceReturns(lines: { baseId: string; baseLineId: s
 
 /** What's left to send back on an invoice line: billed less already returned. */
 export const returnableQty = (l: ApLine) => Math.max(0, round2(l.quantity - (l.returnedQty ?? 0)));
+
+/** Draw (or give back) amounts on down payment requests; a request closes once fully paid and drawn. */
+async function drawRequests(draws: DownPaymentDraw[], sign: 1 | -1) {
+  if (!draws.length) return;
+  const codes = await taxCodes.list();
+  await drawDownPayments(draws.map((d) => ({ requestId: d.requestId, amount: d.amount })), (r) => dprTotal(r, codes), sign);
+}
