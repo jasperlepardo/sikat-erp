@@ -22,6 +22,8 @@ import { DeliveryList } from '../pages/sales/deliveries/DeliveryList';
 import { DeliveryDetail } from '../pages/sales/deliveries/detail/DeliveryDetail';
 import { ArInvoiceList } from '../pages/sales/invoices/ArInvoiceList';
 import { ArInvoiceDetail } from '../pages/sales/invoices/detail/ArInvoiceDetail';
+import { IncomingPaymentList } from '../pages/sales/payments/IncomingPaymentList';
+import { IncomingPaymentDetail } from '../pages/sales/payments/detail/IncomingPaymentDetail';
 import { PurchaseOrderDetail } from '../pages/purchasing/orders/detail/PurchaseOrderDetail';
 import { GoodsReceiptList } from '../pages/purchasing/receipts/GoodsReceiptList';
 import { GoodsReceiptDetail } from '../pages/purchasing/receipts/detail/GoodsReceiptDetail';
@@ -78,6 +80,8 @@ export const router = createHashRouter([
       { path: 'sales/deliveries/:id', element: <DeliveryDetail /> },
       { path: 'sales/invoices', element: <ArInvoiceList /> },
       { path: 'sales/invoices/:id', element: <ArInvoiceDetail /> },
+      { path: 'sales/payments-received', element: <IncomingPaymentList /> },
+      { path: 'sales/payments-received/:id', element: <IncomingPaymentDetail /> },
       { path: 'purchasing/purchase-orders', element: <PurchaseOrderList /> },
       { path: 'purchasing/purchase-orders/:id', element: <PurchaseOrderDetail /> },
       { path: 'purchasing/goods-receipts', element: <GoodsReceiptList /> },

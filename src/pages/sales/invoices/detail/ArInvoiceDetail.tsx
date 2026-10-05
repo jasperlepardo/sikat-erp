@@ -278,6 +278,9 @@ function ArInvoiceForm() {
   const bases = [...new Map(draft.lines.filter((l) => l.baseId).map((l) => [l.baseId, l])).values()];
   const menu: MoreMenuItem[] = [
     ...(!ctx.added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
+    ...(draft.status === 'Open' && balance > 0 && !draft.paymentBlock
+      ? [{ label: 'Receive payment', icon: 'savings', onSelect: () => navigate('/sales/payments-received/new', { state: { fromInvoice: draft.id } }) }]
+      : []),
     ...(draft.status === 'Open' ? [{ label: 'Close', icon: 'task_alt', onSelect: () => act(() => closeArInvoice(saved), 'closed') }] : []),
     ...(draft.status === 'Open' && !draft.appliedAmount ? [{ label: 'Cancel A/R invoice', icon: 'cancel', onSelect: () => act(() => cancelArInvoice(saved), 'cancelled — the entry is reversed and its deliveries and orders are open again') }] : []),
     ...bases.map((l) => ({ label: `Open ${l.baseType === 'DN' ? 'delivery' : 'sales order'} ${l.baseDocNo}`, icon: l.baseType === 'DN' ? 'local_shipping' : 'shopping_bag', onSelect: () => navigate(`${l.baseType === 'DN' ? DN_LIST_PATH : SO_LIST_PATH}/${l.baseId}`) })),

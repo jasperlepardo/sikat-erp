@@ -263,4 +263,30 @@ export function installmentSchedule(dueDate: string, count: number, balance: num
   });
 }
 
+/** An invoice's total, the customer's withholding, and what's still unpaid (document currency). */
+export function arAmounts(a: ArInvoice, customer: Pick<Partner, 'businessType' | 'topWithholdingAgent'> | undefined, items: readonly Item[], codes: readonly TaxCode[]) {
+  const rateOf = rateFrom(codes, a.postingDate);
+  const total = arTotals(a, rateOf).total;
+  const wtAmount = round2(arWithholding(a, customer, items, rateOf).reduce((n, w) => n + w.amount, 0));
+  const due = round2(total - wtAmount);
+  return { total, wtAmount, due, balanceDue: round2(due - a.appliedAmount) };
+}
+
+/**
+ * Incoming payments settling invoices: move each invoice's Applied Amount by `sign` (back on a
+ * cancelled payment). An invoice closes when nothing is left to pay, and reopens when it is.
+ */
+export async function applyArPayments(rows: { invoiceId: string; amount: number; due: number }[], sign: 1 | -1) {
+  const byInvoice = new Map<string, { amount: number; due: number }>();
+  for (const r of rows) byInvoice.set(r.invoiceId, { amount: (byInvoice.get(r.invoiceId)?.amount ?? 0) + r.amount, due: r.due });
+  for (const [id, { amount, due }] of byInvoice) {
+    const inv = await invoices.get(id);
+    if (!inv) continue;
+    const appliedAmount = Math.max(0, round2(inv.appliedAmount + amount * sign));
+    const paid = appliedAmount >= due - 0.005;
+    const status = inv.status === 'Cancelled' ? inv.status : paid ? 'Closed' : 'Open';
+    await invoices.save({ ...inv, appliedAmount, status, closeDate: status === 'Closed' ? inv.closeDate || todayISO() : '' });
+  }
+}
+
 export const arTotal = (a: ArInvoice, codes: TaxCode[]) => arTotals(a, rateFrom(codes, a.postingDate)).total;
