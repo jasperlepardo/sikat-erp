@@ -35,8 +35,8 @@ function withCommitted(seed: Item[]): Item[] {
 }
 
 // v8: G/L accounts are stored as chart-of-accounts codes. v16: default bins are full bin codes (WH-MNL-A-01-01).
-// v17: Ordered comes from the open POs. v18: Committed includes the seeded open sales orders.
-const items = createCollection<Item>('sikat-erp:items:v18', withCommitted(withOrdered(SEED_ITEMS)), 'itm');
+// v17: Ordered comes from the open POs. v18: Committed comes from the open sales orders. v19: backorder POs.
+const items = createCollection<Item>('sikat-erp:items:v19', withCommitted(withOrdered(SEED_ITEMS)), 'itm');
 
 export const listItems = items.list;
 export const getItem = items.get;

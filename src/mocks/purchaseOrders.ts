@@ -591,5 +591,23 @@ export const SEED_PURCHASE_ORDERS: PurchaseOrder[] = [
     status: 'Open', currencyView: 'BP', postingDate: '2026-09-28', documentDate: '2026-09-28', deliveryDate: '2026-09-30', dueDate: '2026-10-05',
     lines: [svc('po-037-1', 'FIN-LOAN-INT', 1, 18750, '48', { freeText: 'Interest, Q3 2026 — USD 1.5M facility', deliveryDate: '2026-09-30', department: 'Finance' })],
   }),
+
+  // ── Backorders for open sales orders ───────────────────────────────────────
+  // Bought to cover what the seeded sales orders want beyond stock on hand.
+  po('po-038', 260034, {
+    status: 'Open', postingDate: '2026-09-23', documentDate: '2026-09-23', deliveryDate: '2026-10-07', dueDate: '2026-10-23',
+    vendorRef: 'LID-SO-562114',
+    lines: [line('po-038-1', 'MAC-MBA13-M5-8G-16-512-SKB', 10, { deliveryDate: '2026-10-07' })],
+    references: [{ id: 'po-038-r1', docType: 'Sales order', docNo: 'Primary 410001', docDate: '2026-09-22', remarks: 'Bayanihan Savings Bank — 12 MacBook Air, 3 on hand' }],
+    remarks: 'Backorder for Bayanihan Savings Bank’s laptop refresh (SO 410001): 9 short, ordering 10.',
+  }),
+  vendorPo('po-039', 860003, 'bp-017', {
+    status: 'Open', seriesId: 'ser-import', currencyView: 'BP', shipTo: MNL_SHIP_TO, shippingType: 'sh-own',
+    postingDate: '2026-09-30', documentDate: '2026-09-30', deliveryDate: '2026-10-14', dueDate: '2026-10-30', project: 'PRJ-002 DepEd Pasig iPad rollout',
+    vendorRef: 'ASA-PH-2026-10-0081',
+    lines: [{ ...importLine('po-039-1', 'IPD-PRO-11-256-SG-WF-SBK', 120), deliveryDate: '2026-10-14' }],
+    references: [{ id: 'po-039-r1', docType: 'Sales order', docNo: 'Government 470001', docDate: '2026-09-30', remarks: 'DepEd Pasig — 120 iPad Pro, 4 on hand' }],
+    remarks: 'Direct import for the DepEd Pasig award (SO 470001). Ships with the next Apple allocation; 4 already on hand stay as buffer.',
+  }),
 ];
 

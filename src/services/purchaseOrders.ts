@@ -14,7 +14,7 @@ import { determineWithholding, type LineParty, type TaxMasterData } from './taxD
 import { todayISO } from './dates';
 import { applyOrderedChange } from './items';
 
-const orders = createCollection<PurchaseOrder>('sikat-erp:purchase-orders:v15', SEED_PURCHASE_ORDERS, 'po');
+const orders = createCollection<PurchaseOrder>('sikat-erp:purchase-orders:v16', SEED_PURCHASE_ORDERS, 'po');
 
 export const listPurchaseOrders = orders.list;
 export const getPurchaseOrder = orders.get;
