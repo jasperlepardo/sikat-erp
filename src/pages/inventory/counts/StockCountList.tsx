@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import {
   Alert,
@@ -19,104 +19,57 @@ import {
   type TableSort,
 } from '@jasperlepardo/sikat-design-system';
 import { DEFAULT_PAGE_SIZE, PAGE_SIZES, fillCardClass } from '../../../components/form/DataTable';
-import { COUNT_STATUSES, type CountStatus, type InventoryCounting } from '../../../mocks/inventoryCountings';
+import { COUNT_STATUSES, type CountStatus, type InventoryCounting, type InventoryPosting } from '../../../mocks/inventoryCountings';
 import { formatAmount } from '../../../services/format';
 import { formatDate } from '../../../services/dates';
-import { countNumber, countSummary, countWarehouses, listCountings } from '../../../services/inventoryCountings';
-import { listItems } from '../../../services/items';
+import { countNumber, countSummary, countWarehouses, listCountings, listPostings, postingNumber, postingTotal } from '../../../services/inventoryCountings';
 import { useAsync } from '../../../services/useAsync';
-import { COUNT_LIST_PATH, COUNT_STATUS_INTENT } from './StockCountDetail';
+import { COUNT_STATUS_INTENT } from './StockCountDetail';
+import { COUNT_LIST_PATH, POSTING_LIST_PATH } from './shared';
 
-type Filter = 'all' | CountStatus;
+type View = 'all' | CountStatus | 'postings';
 
-export function StockCountList() {
+/** Stock Counts: the counting documents by status, and the postings made from them. */
+function CountsShell({
+  view,
+  counts,
+  onView,
+  search,
+  children,
+}: {
+  view: View;
+  counts: Partial<Record<View, number>>;
+  onView: (v: View) => void;
+  search: ReactNode;
+  children: ReactNode;
+}) {
   const navigate = useNavigate();
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
-  const data = useAsync(() => Promise.all([listCountings(), listItems()]), []);
-  const [filter, setFilter] = useState<Filter>('all');
-  const [query, setQuery] = useState('');
-  const [sort, setSort] = useState<TableSort | null>({ key: 'countDate', direction: 'desc' });
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
-  const counts = data?.[0];
-  const items = data?.[1] ?? [];
-
-  const rows = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const filtered = (counts ?? []).filter(
-      (c) =>
-        (filter === 'all' || c.status === filter) &&
-        (!q ||
-          [countNumber(c), c.counter, c.reference, c.remarks, ...countWarehouses(c), ...c.lines.map((l) => `${l.itemNo} ${l.name}`)]
-            .join(' ')
-            .toLowerCase()
-            .includes(q)),
-    );
-    if (!sort) return filtered;
-    const dir = sort.direction === 'asc' ? 1 : -1;
-    const value = (c: InventoryCounting): string | number =>
-      sort.key === 'value' ? countSummary(c, items).value : sort.key === 'docNum' ? c.docNum : String(c[sort.key as keyof InventoryCounting] ?? '');
-    return [...filtered].sort((a, b) => {
-      const x = value(a);
-      const y = value(b);
-      return (x < y ? -1 : x > y ? 1 : 0) * dir;
-    });
-  }, [counts, items, filter, query, sort]);
-
-  const open = (c: InventoryCounting) => navigate(`${COUNT_LIST_PATH}/${c.id}`);
-  const count = (f: Filter) => String(counts?.filter((c) => f === 'all' || c.status === f).length ?? '');
-  const onPage = rows.slice((page - 1) * pageSize, page * pageSize);
-
-  const columns: TableColumn<InventoryCounting>[] = [
-    { key: 'docNum', header: 'No.', sortable: true, cell: (c) => <TableLink onClick={() => open(c)}>{countNumber(c)}</TableLink> },
-    {
-      key: 'warehouses',
-      header: 'Warehouse',
-      cell: (c) => <TableSubcontent subcopy={c.remarks || undefined}>{countWarehouses(c).join(', ') || '—'}</TableSubcontent>,
-    },
-    { key: 'countDate', header: 'Count date', sortable: true, cell: (c) => formatDate(c.countDate) },
-    { key: 'counter', header: 'Counted by', sortable: true, cell: (c) => c.counter },
-    {
-      key: 'progress',
-      header: 'Counted',
-      cell: (c) => {
-        const s = countSummary(c, items);
-        return (
-          <TableSubcontent subcopy={s.withVariance ? `${s.withVariance} with variance` : undefined}>
-            {s.counted} of {s.lines}
-          </TableSubcontent>
-        );
-      },
-    },
-    {
-      key: 'value',
-      header: 'Net variance',
-      sortable: true,
-      cell: (c) => <TableAmount currency="PHP">{formatAmount(countSummary(c, items).value)}</TableAmount>,
-    },
-    { key: 'status', header: 'Status', sortable: true, cell: (c) => <TableStatus intent={COUNT_STATUS_INTENT[c.status]}>{c.status}</TableStatus> },
-  ];
-
+  const postings = view === 'postings';
+  const label = (v: View) => (v === 'all' ? 'All counts' : v === 'postings' ? 'Inventory postings' : v);
   return (
     <Panel className="flex-1">
       <PanelHeader
         icon="inventory"
         title="Stock Counts"
-        subcopy="Physical counts compared with In Stock. Posting a count sets stock to what was counted and books the difference at cost."
+        subcopy="Count, review, then post: an Inventory Counting records what was found against the books; an Inventory Posting made from it adjusts stock and books the difference."
         actions={
-          <Button intent="primary" variant="solid" size="extra-large" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${COUNT_LIST_PATH}/new`)}>
-            New count
+          <Button
+            intent="primary"
+            variant="solid"
+            size="extra-large"
+            leadingIcon={<Icon size={20}>add</Icon>}
+            onClick={() => navigate(`${postings ? POSTING_LIST_PATH : COUNT_LIST_PATH}/new`)}
+          >
+            {postings ? 'New posting' : 'New count'}
           </Button>
         }
         tabs={
           <Tabs
             variant="outline"
-            value={filter}
-            onValueChange={(v) => {
-              setFilter(v as Filter);
-              setPage(1);
-            }}
-            items={(['all', ...COUNT_STATUSES] as Filter[]).map((f) => ({ value: f, label: f === 'all' ? 'All' : f, badge: count(f) }))}
+            value={view}
+            onValueChange={(v) => onView(v as View)}
+            items={(['all', ...COUNT_STATUSES, 'postings'] as View[]).map((v) => ({ value: v, label: label(v), badge: counts[v] === undefined ? '' : String(counts[v]) }))}
           />
         }
       />
@@ -126,44 +79,180 @@ export function StockCountList() {
             {notice}
           </Alert>
         ) : null}
-        <TextField
-          aria-label="Search counts"
-          placeholder="Search by count no., warehouse, counter, item or remarks"
-          leadingIcon={<Icon size={20}>search</Icon>}
-          value={query}
-          onChange={(e) => {
-            setQuery(e.currentTarget.value);
-            setPage(1);
-          }}
-        />
-        <Card className={fillCardClass(onPage.length)}>
-          {counts ? (
-            <Table
-              caption="Stock counts"
-              columns={columns}
-              rows={onPage}
-              getRowId={(c) => c.id}
-              sort={sort}
-              onSortChange={setSort}
-              layout="fill"
-              onRowAction={open}
-              pagination={{
-                page,
-                pageSize,
-                total: rows.length,
-                pageSizes: PAGE_SIZES,
-                onPageChange: setPage,
-                onPageSizeChange: (size) => {
-                  setPageSize(size);
-                  setPage(1);
-                },
-              }}
-            />
-          ) : (
-            <Text tone="muted" className="p-4">Loading counts…</Text>
-          )}
-        </Card>
+        {search}
+        {children}
       </Panel.Body>
     </Panel>
+  );
+}
+
+/** Search box + sortable, paginated table, shared by both lists. */
+function useListState<T>(initialSort: TableSort) {
+  const [query, setQuery] = useState('');
+  const [sort, setSort] = useState<TableSort | null>(initialSort);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const sortRows = (rows: T[], value: (row: T, key: string) => string | number) => {
+    if (!sort) return rows;
+    const dir = sort.direction === 'asc' ? 1 : -1;
+    return [...rows].sort((a, b) => {
+      const x = value(a, sort.key);
+      const y = value(b, sort.key);
+      return (x < y ? -1 : x > y ? 1 : 0) * dir;
+    });
+  };
+  const table = (caption: string, columns: TableColumn<T>[], rows: T[] | undefined, getRowId: (r: T) => string, onOpen: (r: T) => void) => {
+    const onPage = (rows ?? []).slice((page - 1) * pageSize, page * pageSize);
+    return (
+      <Card className={fillCardClass(onPage.length)}>
+        {rows ? (
+          <Table
+            caption={caption}
+            columns={columns}
+            rows={onPage}
+            getRowId={getRowId}
+            sort={sort}
+            onSortChange={setSort}
+            layout="fill"
+            onRowAction={onOpen}
+            pagination={{
+              page,
+              pageSize,
+              total: rows.length,
+              pageSizes: PAGE_SIZES,
+              onPageChange: setPage,
+              onPageSizeChange: (size) => {
+                setPageSize(size);
+                setPage(1);
+              },
+            }}
+          />
+        ) : (
+          <Text tone="muted" className="p-4">Loading…</Text>
+        )}
+      </Card>
+    );
+  };
+  const search = (placeholder: string) => (
+    <TextField
+      aria-label="Search"
+      placeholder={placeholder}
+      leadingIcon={<Icon size={20}>search</Icon>}
+      value={query}
+      onChange={(e) => {
+        setQuery(e.currentTarget.value);
+        setPage(1);
+      }}
+    />
+  );
+  return { query: query.trim().toLowerCase(), sortRows, table, search, resetPage: () => setPage(1) };
+}
+
+export function StockCountList() {
+  const navigate = useNavigate();
+  const data = useAsync(() => Promise.all([listCountings(), listPostings()]), []);
+  const [filter, setFilter] = useState<'all' | CountStatus>((useLocation().state as { filter?: CountStatus } | null)?.filter ?? 'all');
+  const list = useListState<InventoryCounting>({ key: 'countDate', direction: 'desc' });
+  const counts = data?.[0];
+
+  const rows = useMemo(() => {
+    if (!counts) return undefined;
+    const filtered = counts.filter(
+      (c) =>
+        (filter === 'all' || c.status === filter) &&
+        (!list.query ||
+          [countNumber(c), c.reference, c.remarks, ...c.counters.map((x) => x.name), ...countWarehouses(c), ...c.lines.map((l) => `${l.itemNo} ${l.description}`)]
+            .join(' ')
+            .toLowerCase()
+            .includes(list.query)),
+    );
+    return list.sortRows(filtered, (c, key) => (key === 'docNum' ? c.docNum : String(c[key as keyof InventoryCounting] ?? '')));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [counts, filter, list.query, list.sortRows]);
+
+  const open = (c: InventoryCounting) => navigate(`${COUNT_LIST_PATH}/${c.id}`);
+  const columns: TableColumn<InventoryCounting>[] = [
+    { key: 'docNum', header: 'No.', sortable: true, cell: (c) => <TableLink onClick={() => open(c)}>{countNumber(c)}</TableLink> },
+    { key: 'warehouses', header: 'Warehouse', cell: (c) => <TableSubcontent subcopy={c.remarks || undefined}>{countWarehouses(c).join(', ') || '—'}</TableSubcontent> },
+    { key: 'countDate', header: 'Count date', sortable: true, cell: (c) => `${formatDate(c.countDate)} ${c.countTime}` },
+    {
+      key: 'counters',
+      header: 'Counted by',
+      cell: (c) => (
+        <TableSubcontent subcopy={c.countingType === 'multiple' ? 'Multiple counters' : undefined}>{c.counters.map((x) => x.name).join(', ')}</TableSubcontent>
+      ),
+    },
+    {
+      key: 'progress',
+      header: 'Counted',
+      cell: (c) => {
+        const s = countSummary(c);
+        const notes = [s.withVariance ? `${s.withVariance} with variance` : '', s.disagreements ? `${s.disagreements} counters differ` : ''].filter(Boolean).join(' · ');
+        return (
+          <TableSubcontent subcopy={notes || undefined}>
+            {s.counted} of {s.lines}
+          </TableSubcontent>
+        );
+      },
+    },
+    { key: 'status', header: 'Status', sortable: true, cell: (c) => <TableStatus intent={COUNT_STATUS_INTENT[c.status]}>{c.status}</TableStatus> },
+  ];
+
+  return (
+    <CountsShell
+      view={filter}
+      counts={{ all: counts?.length, Open: counts?.filter((c) => c.status === 'Open').length, Closed: counts?.filter((c) => c.status === 'Closed').length, postings: data?.[1].length }}
+      onView={(v) => {
+        if (v === 'postings') return navigate(POSTING_LIST_PATH);
+        setFilter(v);
+        list.resetPage();
+      }}
+      search={list.search('Search by count no., warehouse, counter, item or remarks')}
+    >
+      {list.table('Inventory countings', columns, rows, (c) => c.id, open)}
+    </CountsShell>
+  );
+}
+
+export function InventoryPostingList() {
+  const navigate = useNavigate();
+  const data = useAsync(() => Promise.all([listCountings(), listPostings()]), []);
+  const list = useListState<InventoryPosting>({ key: 'postingDate', direction: 'desc' });
+  const [counts, postings] = data ?? [];
+
+  const rows = useMemo(() => {
+    if (!postings) return undefined;
+    const filtered = postings.filter(
+      (p) =>
+        !list.query ||
+        [postingNumber(p), p.reference, p.remarks, p.journalRemark, ...countWarehouses(p), ...p.lines.map((l) => `${l.itemNo} ${l.description}`)]
+          .join(' ')
+          .toLowerCase()
+          .includes(list.query),
+    );
+    return list.sortRows(filtered, (p, key) => (key === 'total' ? postingTotal(p) : key === 'docNum' ? p.docNum : String(p[key as keyof InventoryPosting] ?? '')));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [postings, list.query, list.sortRows]);
+
+  const open = (p: InventoryPosting) => navigate(`${POSTING_LIST_PATH}/${p.id}`);
+  const countOf = (p: InventoryPosting) => counts?.find((c) => c.id === p.countingId);
+  const columns: TableColumn<InventoryPosting>[] = [
+    { key: 'docNum', header: 'No.', sortable: true, cell: (p) => <TableLink onClick={() => open(p)}>{postingNumber(p)}</TableLink> },
+    { key: 'warehouses', header: 'Warehouse', cell: (p) => <TableSubcontent subcopy={p.remarks || undefined}>{countWarehouses(p).join(', ') || '—'}</TableSubcontent> },
+    { key: 'postingDate', header: 'Posting date', sortable: true, cell: (p) => formatDate(p.postingDate) },
+    { key: 'count', header: 'From count', cell: (p) => (countOf(p) ? countNumber(countOf(p)!) : '— Direct') },
+    { key: 'lines', header: 'Lines', cell: (p) => String(p.lines.length) },
+    { key: 'total', header: 'Total', sortable: true, cell: (p) => <TableAmount currency="PHP">{formatAmount(postingTotal(p))}</TableAmount> },
+  ];
+
+  return (
+    <CountsShell
+      view="postings"
+      counts={{ all: counts?.length, Open: counts?.filter((c) => c.status === 'Open').length, Closed: counts?.filter((c) => c.status === 'Closed').length, postings: postings?.length }}
+      onView={(v) => navigate(COUNT_LIST_PATH, { state: v === 'all' ? undefined : { filter: v } })}
+      search={list.search('Search by posting no., warehouse, item or remarks')}
+    >
+      {list.table('Inventory postings', columns, rows, (p) => p.id, open)}
+    </CountsShell>
   );
 }

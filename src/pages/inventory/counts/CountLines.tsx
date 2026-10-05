@@ -2,37 +2,35 @@ import { useState } from 'react';
 import { Button, Checkbox, Combobox, Icon, Link, Select, Text, TextField, type TableColumn } from '@jasperlepardo/sikat-design-system';
 import { DataTable } from '../../../components/form/DataTable';
 import type { Errors } from '../../../components/form/fields';
-import { newCountLine, type CountLine, type InventoryCounting } from '../../../mocks/inventoryCountings';
+import { countedQty, newCountLine, type CountLine, type InventoryCounting } from '../../../mocks/inventoryCountings';
 import type { Item } from '../../../mocks/items';
-import type { ItemGroup, Warehouse } from '../../../mocks/itemMasters';
-import { formatAmount } from '../../../services/format';
-import { lineVariance, lineVarianceValue, systemQty } from '../../../services/inventoryCountings';
+import { counterStatus, countVariance } from '../../../services/inventoryCountings';
+import { inStockAt } from '../../../services/inventoryTransfers';
 import { warehouseOptions } from '../transfers/TransferLines';
+import { AddItemsBar, FindBar, findRows, itemOptions, itemsPer, num, signed, uomOptions, type CountMasters } from './shared';
 
 export type CountingDraft = Omit<InventoryCounting, 'id'> & { id?: string };
 
-export interface CountMasters {
-  items: Item[];
-  warehouses: Warehouse[];
-  groups: ItemGroup[];
-}
-
-const num = (v: string) => (v === '' ? 0 : Number(v));
-
-export function lineFor(item: Item, warehouse: string, base: Partial<CountLine> = {}): CountLine {
+/** A count line for the item in a warehouse, with In-Whse Qty snapshotted now. */
+export function countLineFor(item: Item, warehouse: string, base: Partial<CountLine> = {}): CountLine {
   return newCountLine({
     ...base,
     itemId: item.id,
     itemNo: item.itemNo,
-    name: item.name,
+    description: item.name,
     warehouse,
     bin: item.warehouses.find((w) => w.code === warehouse)?.defaultBin ?? '',
-    uom: item.inventoryUom,
+    inWhseQty: inStockAt(item, warehouse),
+    uomCode: item.inventoryUom,
+    itemsPerUnit: 1,
   });
 }
 
-/** Signed quantity, e.g. "+2" / "−1" / "0". */
-const signed = (n: number) => (n > 0 ? `+${n}` : n < 0 ? `−${-n}` : '0');
+const ADJUST = [
+  { value: 'match', label: 'Uncounted lines: counted = In-Whse Qty' },
+  { value: 'agreed', label: 'Take quantities the counters agree on' },
+  { value: 'clear', label: 'Clear all counted quantities' },
+];
 
 export function CountLines({
   draft,
@@ -48,31 +46,17 @@ export function CountLines({
   readOnly: boolean;
 }) {
   const [changing, setChanging] = useState<Set<string>>(new Set());
-  const [pickWh, setPickWh] = useState('');
-  const [pickGroup, setPickGroup] = useState('');
+  const [find, setFind] = useState({ query: '', warehouse: '' });
   const lines = draft.lines;
-  const posted = draft.status === 'Posted';
+  const multiple = draft.countingType === 'multiple';
+  const names = draft.counters.map((c) => c.name).filter(Boolean);
   const itemOf = (l: CountLine) => m.items.find((i) => i.id === l.itemId);
   const patch = (id: string, p: Partial<CountLine>) => update({ lines: lines.map((l) => (l.id === id ? { ...l, ...p } : l)) });
   const err = (l: CountLine, field: string) => errors[`line:${l.id}:${field}`];
 
-  const itemOptions = (current: string) =>
-    m.items
-      .filter((i) => i.id === current || i.inventoryItem)
-      .map((i) => ({
-        value: i.id,
-        label: (
-          <div className="flex flex-col gap-0.5">
-            <span className="text-xs opacity-60">{i.itemNo}</span>
-            <span>{i.name}</span>
-          </div>
-        ),
-        text: `${i.itemNo} ${i.name} ${i.description}`,
-      }));
-
   const pickItem = (l: CountLine, itemId: string | null) => {
     const item = m.items.find((i) => i.id === itemId);
-    patch(l.id, item ? lineFor(item, l.warehouse, { id: l.id }) : { itemId: '' });
+    patch(l.id, item ? countLineFor(item, l.warehouse, { id: l.id, freeze: l.freeze }) : { itemId: '' });
     setChanging((prev) => {
       const next = new Set(prev);
       next.delete(l.id);
@@ -80,32 +64,75 @@ export function CountLines({
     });
   };
 
-  /** SAP's "select items by criteria": every stocked item in the warehouse (and group) not already listed. */
-  const listed = new Set(lines.filter((l) => l.itemId).map((l) => `${l.itemId}@${l.warehouse}`));
-  const matching = pickWh
-    ? m.items
-        .filter(
-          (i) =>
-            i.inventoryItem &&
-            (!pickGroup || i.itemGroup === pickGroup) &&
-            i.warehouses.some((w) => w.code === pickWh && w.inStock > 0) &&
-            !listed.has(`${i.id}@${pickWh}`),
-        )
-        .sort((a, b) => a.itemNo.localeCompare(b.itemNo))
+  /** A counter's figure; when every counter is in and they agree, that becomes the counted qty. */
+  const setCounterQty = (l: CountLine, name: string, value: string) => {
+    const counterQtys = { ...l.counterQtys };
+    if (value === '') delete counterQtys[name];
+    else counterQtys[name] = num(value);
+    const s = counterStatus({ ...l, counterQtys }, names);
+    patch(l.id, { counterQtys, ...(s.agree ? { counted: true, uomCountedQty: s.agreed! } : {}) });
+  };
+
+  const adjust = (how: string) => {
+    update({
+      lines: lines.map((l) => {
+        if (!l.itemId) return l;
+        if (how === 'match' && !l.counted) return { ...l, counted: true, uomCountedQty: Math.round((l.inWhseQty / (l.itemsPerUnit || 1)) * 1000) / 1000 };
+        if (how === 'clear') return { ...l, counted: false, uomCountedQty: 0, counterQtys: {} };
+        if (how === 'agreed') {
+          const s = counterStatus(l, names);
+          return s.agree ? { ...l, counted: true, uomCountedQty: s.agreed! } : l;
+        }
+        return l;
+      }),
+    });
+  };
+
+  const counterColumns: TableColumn<CountLine>[] = multiple
+    ? [
+        ...names.map((name) => ({
+          key: `counter:${name}`,
+          header: name,
+          cell: (l: CountLine) =>
+            itemOf(l) ? (
+              <TextField
+                aria-label={`${name}'s count`}
+                type="number"
+                min={0}
+                className="w-24"
+                readOnly={readOnly}
+                placeholder="—"
+                value={l.counterQtys[name] === undefined ? '' : String(l.counterQtys[name])}
+                onChange={(e) => setCounterQty(l, name, e.currentTarget.value)}
+              />
+            ) : null,
+        })),
+        {
+          key: 'agreement',
+          header: 'Counters',
+          cell: (l: CountLine) => {
+            if (!itemOf(l)) return null;
+            const s = counterStatus(l, names);
+            return (
+              <Text variant="small" tone={!s.all ? 'muted' : s.agree ? 'success' : 'danger'}>
+                {!s.all ? 'Waiting' : s.agree ? 'Agree' : 'Differ — recount'}
+              </Text>
+            );
+          },
+        },
+      ]
     : [];
-  const addMatching = () => update({ lines: [...lines.filter((l) => l.itemId), ...matching.map((i) => lineFor(i, pickWh))] });
 
   const columns: TableColumn<CountLine>[] = [
     {
       key: 'item',
-      header: 'Item',
+      header: 'Item No.',
       cell: (l) => {
         const item = itemOf(l);
         if (item && !changing.has(l.id)) {
           return (
-            <div className="flex w-60 flex-col">
+            <div className="flex w-48 flex-col">
               <Text variant="caption">{l.itemNo}</Text>
-              <Text variant="small">{l.name}</Text>
               {readOnly ? null : (
                 <Link intent="primary" onClick={() => setChanging((prev) => new Set(prev).add(l.id))}>
                   Change
@@ -115,24 +142,30 @@ export function CountLines({
           );
         }
         return (
-          <div className="w-60">
-            <Combobox
-              aria-label="Item No."
-              placeholder="Search items"
-              options={itemOptions(l.itemId)}
-              value={l.itemId || null}
-              invalid={Boolean(err(l, 'item'))}
-              onValueChange={(v) => pickItem(l, v)}
-            />
+          <div className="w-56">
+            <Combobox aria-label="Item No." placeholder="Search items" options={itemOptions(m.items, l.itemId)} value={l.itemId || null} invalid={Boolean(err(l, 'item'))} onValueChange={(v) => pickItem(l, v)} />
           </div>
         );
       },
     },
     {
+      key: 'description',
+      header: 'Item description',
+      cell: (l) =>
+        itemOf(l) ? (
+          <TextField aria-label="Item description" className="w-56" readOnly={readOnly} value={l.description} onChange={(e) => patch(l.id, { description: e.currentTarget.value })} />
+        ) : null,
+    },
+    {
+      key: 'freeze',
+      header: 'Freeze',
+      cell: (l) => (itemOf(l) ? <Checkbox aria-label={`Freeze ${l.itemNo}`} disabled={readOnly} checked={l.freeze} onChange={(e) => patch(l.id, { freeze: e.currentTarget.checked })} /> : null),
+    },
+    {
       key: 'warehouse',
-      header: 'Warehouse / bin',
+      header: 'Whse',
       cell: (l) => (
-        <div className="flex w-52 flex-col gap-1">
+        <div className="flex w-48 flex-col gap-1">
           <Combobox
             aria-label="Warehouse"
             disabled={readOnly}
@@ -141,7 +174,8 @@ export function CountLines({
             value={l.warehouse || null}
             onValueChange={(v) => {
               const item = itemOf(l);
-              patch(l.id, { warehouse: v ?? '', bin: item?.warehouses.find((w) => w.code === v)?.defaultBin ?? '' });
+              // A new warehouse means a new book quantity.
+              patch(l.id, item ? countLineFor(item, v ?? '', { ...l, warehouse: v ?? '' }) : { warehouse: v ?? '' });
             }}
           />
           {l.bin ? <Text variant="small" tone="muted">Bin {l.bin}</Text> : null}
@@ -150,98 +184,103 @@ export function CountLines({
     },
     {
       key: 'inWhse',
-      header: 'In stock',
-      cell: (l) =>
-        itemOf(l) && l.warehouse ? (
+      header: 'In-Whse Qty on Count Date',
+      cell: (l) => {
+        const item = itemOf(l);
+        if (!item || !l.warehouse) return null;
+        const now = inStockAt(item, l.warehouse);
+        return (
           <div className="flex flex-col whitespace-nowrap tabular-nums">
             <Text variant="small">
-              {systemQty(l, m.items, posted)} {l.uom}
+              {l.inWhseQty} {item.inventoryUom}
             </Text>
-            <Text variant="small" tone="muted">
-              {posted ? 'when posted' : 'now'}
-            </Text>
+            {draft.status === 'Open' && now !== l.inWhseQty ? (
+              <Text variant="small" tone="danger">
+                {now} now — stock moved since
+              </Text>
+            ) : null}
           </div>
-        ) : null,
+        );
+      },
     },
+    ...counterColumns,
     {
       key: 'counted',
       header: 'Counted',
       cell: (l) =>
         itemOf(l) ? (
-          <Checkbox
-            aria-label={`Counted ${l.itemNo}`}
-            disabled={readOnly}
-            checked={l.counted}
-            // Ticking an untouched line starts it at In Stock, so a match is one click.
-            onChange={(e) =>
-              patch(l.id, {
-                counted: e.currentTarget.checked,
-                ...(e.currentTarget.checked && !l.countedQty ? { countedQty: systemQty(l, m.items, posted) } : {}),
-              })
-            }
-          />
+          <Checkbox aria-label={`Counted ${l.itemNo}`} disabled={readOnly} checked={l.counted} onChange={(e) => patch(l.id, { counted: e.currentTarget.checked })} />
         ) : null,
     },
     {
-      key: 'countedQty',
-      header: 'Counted qty',
+      key: 'uomCountedQty',
+      header: multiple ? 'Agreed qty' : 'UoM Counted Qty',
       cell: (l) =>
         itemOf(l) ? (
           <TextField
-            aria-label="Counted quantity"
+            aria-label="UoM counted quantity"
             type="number"
             min={0}
-            className="w-32"
-            suffix={l.uom}
-            readOnly={readOnly}
+            className="w-28"
+            readOnly={readOnly || !l.counted}
             invalid={Boolean(err(l, 'countedQty'))}
-            value={l.counted ? String(l.countedQty) : ''}
-            placeholder="Not counted"
-            onChange={(e) => patch(l.id, { counted: e.currentTarget.value !== '', countedQty: num(e.currentTarget.value) })}
+            placeholder={l.counted ? '0' : 'Tick Counted'}
+            value={l.counted ? String(l.uomCountedQty) : ''}
+            onChange={(e) => patch(l.id, { uomCountedQty: num(e.currentTarget.value) })}
           />
         ) : null,
     },
     {
-      key: 'variance',
-      header: 'Variance',
+      key: 'uomCode',
+      header: 'UoM Code',
       cell: (l) => {
-        if (!itemOf(l) || !l.counted) return null;
-        const v = lineVariance(l, m.items, posted);
+        const item = itemOf(l);
+        if (!item) return null;
         return (
-          <div className="flex flex-col whitespace-nowrap tabular-nums">
-            <Text variant="small" tone={v < 0 ? 'danger' : v > 0 ? 'success' : 'muted'}>
-              {signed(v)} {l.uom}
-            </Text>
+          <div className="flex w-28 flex-col gap-1">
+            <Select aria-label="UoM code" disabled={readOnly} options={uomOptions(item)} value={l.uomCode} onValueChange={(uomCode) => patch(l.id, { uomCode, itemsPerUnit: itemsPer(item, uomCode) })} />
             <Text variant="small" tone="muted">
-              PHP {formatAmount(lineVarianceValue(l, m.items, posted))}
+              {l.itemsPerUnit} per unit
             </Text>
           </div>
         );
       },
     },
     {
-      key: 'remarks',
-      header: 'Remarks',
-      cell: (l) =>
-        itemOf(l) ? (
-          <TextField aria-label="Line remarks" className="w-48" placeholder="e.g. damaged box" value={l.remarks} readOnly={readOnly} onChange={(e) => patch(l.id, { remarks: e.currentTarget.value })} />
-        ) : null,
+      key: 'countedQty',
+      header: 'Counted Qty',
+      cell: (l) => (itemOf(l) && l.counted ? <span className="tabular-nums whitespace-nowrap">{countedQty(l)} {itemOf(l)!.inventoryUom}</span> : null),
+    },
+    {
+      key: 'variance',
+      header: 'Variance',
+      cell: (l) => {
+        if (!itemOf(l) || !l.counted) return null;
+        const v = countVariance(l);
+        return (
+          <Text variant="small" tone={v < 0 ? 'danger' : v > 0 ? 'success' : 'muted'}>
+            <span className="tabular-nums whitespace-nowrap">{signed(v)}</span>
+          </Text>
+        );
+      },
     },
   ];
 
   const lastWh = lines[lines.length - 1]?.warehouse ?? '';
+  const listed = new Set(lines.filter((l) => l.itemId).map((l) => `${l.itemId}@${l.warehouse}`));
+  const shown = findRows(lines, find.query, find.warehouse);
 
   return (
     <DataTable
       variant="card"
       noPagination
       icon="checklist"
-      title="Count sheet"
+      title="Contents"
       description={
         errors.lines ??
-        'Items to count, in their inventory unit. Enter what’s on the shelf; the variance is against In Stock, which keeps moving until the count is posted.'
+        'Count first, then compare: In-Whse Qty is the book quantity when the line was added. Counted Qty is the UoM Counted Qty in the inventory unit. Nothing changes stock until an Inventory Posting is made from this count.'
       }
-      rows={lines}
+      rows={shown}
       getRowId={(l) => l.id}
       columns={columns}
       unsortable={columns.map((c) => c.key).filter((k) => k !== 'item' && k !== 'warehouse')}
@@ -249,41 +288,24 @@ export function CountLines({
       onRemove={readOnly ? undefined : (picked) => update({ lines: lines.filter((l) => !picked.includes(l)) })}
       actions={
         readOnly ? null : (
-          <Button
-            type="button"
-            size="small"
-            variant="outline"
-            leadingIcon={<Icon size={16}>add</Icon>}
-            onClick={() => update({ lines: [...lines, newCountLine({ warehouse: lastWh })] })}
-          >
-            Add line
-          </Button>
+          <div className="flex items-center gap-1">
+            <Select aria-label="Adjust counted quantities" className="w-72" placeholder="Adjust counted quantities…" options={ADJUST.filter((a) => multiple || a.value !== 'agreed')} value="" onValueChange={adjust} />
+            <Button type="button" size="small" variant="outline" leadingIcon={<Icon size={16}>add</Icon>} onClick={() => update({ lines: [...lines, newCountLine({ warehouse: lastWh })] })}>
+              Add line
+            </Button>
+          </div>
         )
       }
       empty={
         <Text variant="small" tone={errors.lines ? 'danger' : 'muted'}>
-          No items yet. Add everything stocked in a warehouse below, or add lines one by one.
+          {lines.length ? 'No lines match the Find filter.' : 'No items yet. Use Add Items to load everything stocked in a warehouse, or add lines one by one.'}
         </Text>
       }
     >
-      {readOnly ? null : (
-        <div className="flex flex-wrap items-end gap-1">
-          <div className="w-64">
-            <Combobox aria-label="Warehouse to count" placeholder="Warehouse to count" options={warehouseOptions(m.warehouses, pickWh)} value={pickWh || null} onValueChange={(v) => setPickWh(v ?? '')} />
-          </div>
-          <Select
-            aria-label="Item group"
-            className="w-48"
-            options={[{ value: '', label: 'All item groups' }, ...m.groups.map((g) => ({ value: g.name, label: g.name }))]}
-            value={pickGroup}
-            onValueChange={setPickGroup}
-          />
-          <Button type="button" size="small" intent="primary" variant="solid" leadingIcon={<Icon size={16}>playlist_add</Icon>} disabled={!matching.length} onClick={addMatching}>
-            {pickWh ? `Add ${matching.length} stocked item${matching.length === 1 ? '' : 's'}` : 'Add stocked items'}
-          </Button>
-        </div>
-      )}
+      <div className="flex flex-wrap items-end justify-between gap-2">
+        <FindBar m={m} query={find.query} warehouse={find.warehouse} onChange={(query, warehouse) => setFind({ query, warehouse })} />
+        {readOnly ? null : <AddItemsBar m={m} listed={listed} onAdd={(items, wh) => update({ lines: [...lines.filter((l) => l.itemId), ...items.map((i) => countLineFor(i, wh))] })} />}
+      </div>
     </DataTable>
   );
 }
-

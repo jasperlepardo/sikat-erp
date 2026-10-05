@@ -12,7 +12,8 @@ import { StockOnHandPage } from '../pages/inventory/StockOnHandPage';
 import { InventoryTransferList } from '../pages/inventory/transfers/InventoryTransferList';
 import { InventoryTransferDetail } from '../pages/inventory/transfers/InventoryTransferDetail';
 import { PriceListsPage } from '../pages/inventory/pricing/PriceListsPage';
-import { StockCountList } from '../pages/inventory/counts/StockCountList';
+import { InventoryPostingList, StockCountList } from '../pages/inventory/counts/StockCountList';
+import { InventoryPostingDetail } from '../pages/inventory/counts/InventoryPostingDetail';
 import { StockCountDetail } from '../pages/inventory/counts/StockCountDetail';
 import { PurchaseOrderList } from '../pages/purchasing/orders/PurchaseOrderList';
 import { PurchaseOrderDetail } from '../pages/purchasing/orders/detail/PurchaseOrderDetail';
@@ -45,6 +46,8 @@ export const router = createHashRouter([
       { path: 'inventory/stock-movements', element: <InventoryTransferList /> },
       { path: 'inventory/stock-movements/:id', element: <InventoryTransferDetail /> },
       { path: 'inventory/stock-counts', element: <StockCountList /> },
+      { path: 'inventory/stock-counts/postings', element: <InventoryPostingList /> },
+      { path: 'inventory/stock-counts/postings/:id', element: <InventoryPostingDetail /> },
       { path: 'inventory/stock-counts/:id', element: <StockCountDetail /> },
       ...partnerRoutes,
       { path: 'purchasing/purchase-orders', element: <PurchaseOrderList /> },

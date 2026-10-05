@@ -128,6 +128,16 @@ export async function saveTransferRemarks(t: InventoryTransfer, patch: Pick<Inve
  */
 export async function postTransfer(input: TransferInput): Promise<InventoryTransfer> {
   const items = await listItems();
+  // Items frozen by an open inventory count can't move in or out of that warehouse.
+  const { frozenStock } = await import('./inventoryCountings');
+  const frozen = await frozenStock();
+  const blocked = input.lines.flatMap((l) =>
+    [input.fromWarehouse, l.toWarehouse || input.toWarehouse].flatMap((wh) => {
+      const count = frozen.get(`${l.itemId}@${wh}`);
+      return count ? [{ itemId: l.itemId, message: `${l.itemNo} is frozen in ${wh} by inventory count ${count}. Post or close the count first.` }] : [];
+    }),
+  );
+  if (blocked.length) throw new TransferPostError(blocked.map((b) => b.itemId), blocked.map((b) => b.message).join(' '));
   const short = shortages(input, items);
   if (short.length) throw new TransferPostError(short.map((s) => s.itemId), short.map((s) => s.message).join(' '));
 
