@@ -7,6 +7,7 @@ import { Placeholder } from '../pages/Placeholder';
 import { AccountingTaxPage } from '../pages/settings/accounting-tax/AccountingTaxPage';
 import { InventorySettingsPage } from '../pages/settings/inventory/InventorySettingsPage';
 import { BankingSettingsPage, CompanySettingsPage, SalesCrmSettingsPage } from '../pages/settings/MasterSettingsPages';
+import { PurchasingSettingsPage } from '../pages/settings/purchasing/PurchasingSettingsPage';
 import { WarehousesPage } from '../pages/inventory/WarehousesPage';
 import { StockOnHandPage } from '../pages/inventory/StockOnHandPage';
 import { InventoryTransferList } from '../pages/inventory/transfers/InventoryTransferList';
@@ -101,6 +102,7 @@ export const router = createHashRouter([
       // Settings pages keep the tab and an opened record in the URL.
       { path: 'settings/accounting-and-tax/:tab?/:recordId?', element: <AccountingTaxPage /> },
       { path: 'settings/inventory/:tab?/:recordId?', element: <InventorySettingsPage /> },
+      { path: 'settings/purchasing/:tab?/:recordId?', element: <PurchasingSettingsPage /> },
       { path: 'settings/sales-and-crm/:tab?/:recordId?', element: <SalesCrmSettingsPage /> },
       { path: 'settings/banking/:tab?/:recordId?', element: <BankingSettingsPage /> },
       { path: 'settings/company/:tab?/:recordId?', element: <CompanySettingsPage /> },

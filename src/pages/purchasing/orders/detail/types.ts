@@ -4,7 +4,8 @@ import { determinePrice } from '../../../../services/priceLists';
 import { itemsPerUom, type Item } from '../../../../mocks/items';
 import type { Partner } from '../../../../mocks/partners';
 import type { Company } from '../../../../mocks/companies';
-import { PURCHASING_SETTINGS, newPoLine, type PoLine } from '../../../../mocks/purchaseOrders';
+import { newPoLine, type PoLine } from '../../../../mocks/purchaseOrders';
+import { getPurchasingSettings } from '../../../../services/purchaseOrders';
 import { rateAt, vatNotPaidToVendor } from '../../../../mocks/taxes';
 import type { InventoryMasters } from '../../../../services/inventoryMasters';
 import { rateOn } from '../../../../services/masterData';
@@ -113,7 +114,7 @@ export function lineFromItem(item: Item, draft: PoDraft, ctx: PoContext, m: PoMa
     name: item.name,
     description: item.description,
     bpCatalogNo:
-      (PURCHASING_SETTINGS.useBpCatalogNumbers && item.vendors.find((v) => v.vendorId === draft.vendorId)?.vendorItemNo) || '',
+      (getPurchasingSettings().useBpCatalogNumbers && item.vendors.find((v) => v.vendorId === draft.vendorId)?.vendorItemNo) || '',
     uomCode: item.purchasingUom,
     uomName: uom?.name ?? item.purchasingUom,
     itemsPerUnit: itemsPerUom(item, item.purchasingUom) ?? 1,

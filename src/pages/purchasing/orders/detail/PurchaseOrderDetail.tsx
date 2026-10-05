@@ -23,8 +23,6 @@ import { ProblemsAlert, problemCollector, type Problem } from '../../../../compo
 import { CURRENT_USER } from '../../../../mocks/common';
 import { contactName, type Partner } from '../../../../mocks/partners';
 import {
-  PO_SERIES,
-  PURCHASING_SETTINGS,
   blankPurchaseOrder,
   newPoLine,
   type PoStatus,
@@ -44,8 +42,10 @@ import {
   dueDateFor,
   findDuplicateVendorRef,
   getPurchaseOrder,
+  getPurchasingSettings,
   listPurchaseOrders,
   poNumber,
+  poSeries,
   poTotals,
   poWithholding,
   savePurchaseOrder,
@@ -267,7 +267,7 @@ function PurchaseOrderForm() {
     if (found.length) return;
 
     // "When duplicate Vendor Ref. No. occurs": Warn asks once, then lets it through.
-    if (!asDraft && PURCHASING_SETTINGS.duplicateVendorRef === 'Warn' && !dupWarning) {
+    if (!asDraft && getPurchasingSettings().duplicateVendorRef === 'Warn' && !dupWarning) {
       const dup = await findDuplicateVendorRef(doc);
       if (dup) {
         setDupWarning(`PO ${poNumber(dup)} from ${doc.vendorName} already has Vendor Ref. No. ${doc.vendorRef}.`);
@@ -342,7 +342,7 @@ function PurchaseOrderForm() {
     ...(vendor ? [{ label: `Open vendor ${vendor.code}`, icon: 'local_shipping', onSelect: () => navigate(`/purchasing/vendors/${vendor.id}`) }] : []),
   ];
 
-  const allCurrencies = vendor?.currency === ALL_CURRENCIES;
+  const currencyEditable = !ctx.readOnly && !received;
   const title = isNew ? 'New purchase order' : draft.status === 'Draft' ? `Draft purchase order` : `Purchase order ${poNumber(draft)}`;
   const postingMoved = draft.postingDate && draft.postingDate !== TODAY() && !ctx.added;
 
@@ -447,48 +447,51 @@ function PurchaseOrderForm() {
                   <Fields>
                     <div className="md:col-span-2">
                     {vendor && ctx.added ? (
-                      <ReadOnly
-                        label="Vendor"
-                        value={draft.vendorName}
-                        description={`${draft.vendorCode} · ${draft.currency}`}
-                      />
+                      <div className="md:col-span-2">
+                        <ReadOnly
+                          label="Vendor"
+                          value={draft.vendorName}
+                          description={`${draft.vendorCode} · ${draft.currency}`}
+                        />
+                      </div>
                     ) : (
                       <FormField
-                          label="Vendor"
-                          required
-                          error={errors.vendorId}
-                          tooltip="Only vendors are listed."
-                        >
-                          {(p) => (
-                            <Combobox
-                              {...p}
-                              placeholder="Search vendors"
-                              options={m.vendors
-                                .filter((v) => v.status !== 'Inactive' || v.id === draft.vendorId)
-                                .map((v) => ({
-                                  value: v.id,
-                                  label: v.name,
-                                  subLabel: v.code,
-                                  subLabelPlacement: 'top' as const,
-                                  description: v.currency,
-                                  text: `${v.code} ${v.name}`,
-                                }))}
-                              value={draft.vendorId || null}
-                              onValueChange={pickVendor}
-                              onQueryChange={setVendorQuery}
-                              emptyContent={(close) => (
-                                <button
-                                  type="button"
-                                  className="w-full cursor-pointer rounded-xl px-4 py-2 text-left text-sm font-medium hover:bg-[var(--color-bg-primary-subtle)]"
-                                  style={{ color: 'var(--color-text-primary)' }}
-                                  onClick={() => { close(); setShowVendorCreate(true); }}
-                                >
-                                  {vendorQuery.trim() ? `+ Create "${vendorQuery.trim()}"` : '+ Create new vendor'}
-                                </button>
-                              )}
-                            />
-                          )}
-                        </FormField>
+                        label="Vendor"
+                        required
+                        error={errors.vendorId}
+                        tooltip="Only vendors are listed."
+                        className="md:col-span-2"
+                      >
+                        {(p) => (
+                          <Combobox
+                            {...p}
+                            placeholder="Search vendors"
+                            options={m.vendors
+                              .filter((v) => v.status !== 'Inactive' || v.id === draft.vendorId)
+                              .map((v) => ({
+                                value: v.id,
+                                label: v.name,
+                                subLabel: v.code,
+                                subLabelPlacement: 'top' as const,
+                                description: v.currency,
+                                text: `${v.code} ${v.name}`,
+                              }))}
+                            value={draft.vendorId || null}
+                            onValueChange={pickVendor}
+                            onQueryChange={setVendorQuery}
+                            emptyContent={(close) => (
+                              <button
+                                type="button"
+                                className="w-full cursor-pointer rounded-xl px-4 py-2 text-left text-sm font-medium hover:bg-[var(--color-bg-primary-subtle)]"
+                                style={{ color: 'var(--color-text-primary)' }}
+                                onClick={() => { close(); setShowVendorCreate(true); }}
+                              >
+                                {vendorQuery.trim() ? `+ Create "${vendorQuery.trim()}"` : '+ Create new vendor'}
+                              </button>
+                            )}
+                          />
+                        )}
+                      </FormField>
                     )}
                     </div>
                     {h.lookup(
@@ -508,19 +511,20 @@ function PurchaseOrderForm() {
                       tooltip={
                         received
                           ? 'Locked: goods were already received on this PO.'
-                          : allCurrencies
-                            ? 'This vendor takes all currencies — pick the document currency.'
-                            : `Defaults to the vendor's currency (${vendor?.currency ?? '—'}).`
+                          : vendor && vendor.currency !== ALL_CURRENCIES
+                          ? `Defaults to the vendor's currency. You can override it before receiving goods.`
+                          : 'Pick the document currency for this order.'
                       }
-                      className="md:col-span-2"
                     >
                       {(p) => (
                         <Select
                           {...p}
-                          disabled={ctx.readOnly || received}
-                          options={m.currencies.map((c) => ({ value: c.code, label: `${c.code} — ${c.name}` }))}
+                          disabled={!currencyEditable}
+                          options={m.currencies
+                            .filter((c) => c.active || c.code === draft.currency)
+                            .map((c) => ({ value: c.code, label: c.code }))}
                           value={draft.currency}
-                          onValueChange={(currency) => update({ currency, currencyView: 'BP' })}
+                          onValueChange={(currency) => currency && update({ currency, currencyView: 'BP' })}
                         />
                       )}
                     </FormField>
@@ -536,7 +540,7 @@ function PurchaseOrderForm() {
                             aria-label="Series"
                             className="w-40"
                             disabled={ctx.added}
-                            options={PO_SERIES.filter((s) => s.active).map((s) => ({ value: s.id, label: s.name }))}
+                            options={poSeries.snapshot().filter((s) => s.active).map((s) => ({ value: s.id, label: s.name }))}
                             value={draft.seriesId}
                             onValueChange={(seriesId) => update({ seriesId, docNum: 0 })}
                           />
@@ -612,7 +616,7 @@ function PurchaseOrderForm() {
                         />
                       }
                     />
-                    {PURCHASING_SETTINGS.manageFreightInDocuments ? (
+                    {getPurchasingSettings().manageFreightInDocuments ? (
                       <TotalRow
                         label="Freight"
                         value={view.convert(totals.freight)}
@@ -639,7 +643,7 @@ function PurchaseOrderForm() {
                         }
                       />
                     ) : null}
-                    {PURCHASING_SETTINGS.roundingMethod === 'By Currency' ? (
+                    {getPurchasingSettings().roundingMethod === 'By Currency' ? (
                       <TotalRow label={`Rounding (${docCurrency?.rounding ?? 'No rounding'})`} value={view.convert(totals.rounding)} code={view.code} />
                     ) : null}
                     <TotalRow label="Tax" value={view.convert(totals.tax)} code={view.code} />

@@ -22,11 +22,11 @@ import {
   BLANKET_AGREEMENTS,
   DEPARTMENTS,
   PRICE_MODES,
-  PURCHASING_SETTINGS,
   newPoLine,
   type PoLine,
   type PriceMode,
 } from '../../../../mocks/purchaseOrders';
+import { getPurchasingSettings } from '../../../../services/purchaseOrders';
 import { itemUnits, itemsPerUom } from '../../../../mocks/items';
 import { formatAmount } from '../../../../services/format';
 import { activeOptions } from '../../../../services/inventoryMasters';
@@ -354,6 +354,46 @@ export function ContentsTab({ draft, update, errors, m, ctx }: PoTabProps) {
 
   return (
     <div className="flex flex-col gap-2">
+      {getPurchasingSettings().separateNetGrossPriceMode ? (
+        <div className="flex flex-wrap items-center gap-6 px-2" role="radiogroup" aria-label="Price mode">
+          <Text variant="small" tone="muted">
+            Price mode
+          </Text>
+          {PRICE_MODES.map((mode: PriceMode) => (
+            <Radio key={mode} name="po-price-mode" checked={draft.priceMode === mode} onChange={() => update({ priceMode: mode })}>
+              {mode}
+            </Radio>
+          ))}
+          <Text variant="small" tone="muted">
+            {draft.priceMode === 'Net'
+              ? 'Enter net prices; gross is calculated.'
+              : draft.priceMode === 'Gross'
+                ? 'Enter prices including tax; net is calculated.'
+                : 'Edit either price; the other follows.'}
+          </Text>
+        </div>
+      ) : null}
+
+      {settingsOpen ? (
+        <Card>
+          <Card.Header icon={<Icon size={24}>tune</Icon>}>Columns</Card.Header>
+          <Card.Content>
+            <div className="flex flex-wrap gap-x-6 gap-y-3">
+              {(Object.keys(GROUPS) as Group[]).map((g) => (
+                <Checkbox
+                  key={g}
+                  checked={is(g)}
+                  onChange={(e) => setShown(e.currentTarget.checked ? [...shown, g] : shown.filter((x) => x !== g))}
+                >
+                  {GROUPS[g]}
+                </Checkbox>
+              ))}
+            </div>
+          </Card.Content>
+        </Card>
+      ) : null}
+
+
       <DataTable
         variant="card"
         noPagination
@@ -392,7 +432,7 @@ export function ContentsTab({ draft, update, errors, m, ctx }: PoTabProps) {
           </Text>
         }
       >
-        {PURCHASING_SETTINGS.separateNetGrossPriceMode ? (
+        {getPurchasingSettings().separateNetGrossPriceMode ? (
           <div className="flex flex-wrap items-center gap-6" role="radiogroup" aria-label="Price mode">
             <Text variant="small" tone="muted">
               Price mode

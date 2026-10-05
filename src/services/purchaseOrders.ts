@@ -1,9 +1,11 @@
 import {
   PO_SERIES,
-  PURCHASING_SETTINGS,
   SEED_PURCHASE_ORDERS,
+  SEED_PURCHASING_SETTINGS,
+  type DocumentSeries,
   type PoLine,
   type PurchaseOrder,
+  type PurchasingSettings,
 } from '../mocks/purchaseOrders';
 import type { RoundingRule } from '../mocks/currencies';
 import type { Item } from '../mocks/items';
@@ -15,6 +17,8 @@ import { todayISO } from './dates';
 import { applyOrderedChange } from './items';
 
 const orders = createCollection<PurchaseOrder>('sikat-erp:purchase-orders:v16', SEED_PURCHASE_ORDERS, 'po');
+export const poSeries = createCollection<DocumentSeries>('sikat-erp:po-series', PO_SERIES, 'ser');
+export const purchasingSettings = createCollection<PurchasingSettings>('sikat-erp:purchasing-settings', SEED_PURCHASING_SETTINGS, 'ps');
 
 export const listPurchaseOrders = orders.list;
 export const getPurchaseOrder = orders.get;
@@ -25,7 +29,14 @@ export type PoInput = Omit<PurchaseOrder, 'id'> & { id?: string };
 const round2 = (n: number) => Math.round(n * 100) / 100;
 const TODAY = () => todayISO();
 
-export const seriesOf = (id: string) => PO_SERIES.find((s) => s.id === id) ?? PO_SERIES[0];
+export const seriesOf = (id: string) => {
+  const all = poSeries.snapshot();
+  return all.find((s) => s.id === id) ?? all[0] ?? PO_SERIES[0];
+};
+
+/** The active purchasing settings; falls back to seed defaults if the collection is empty. */
+export const getPurchasingSettings = (): PurchasingSettings =>
+  purchasingSettings.snapshot()[0] ?? SEED_PURCHASING_SETTINGS[0];
 /** "Primary 260012", or "Draft" before a number is assigned. */
 export const poNumber = (po: Pick<PurchaseOrder, 'seriesId' | 'docNum'>) =>
   po.docNum ? `${seriesOf(po.seriesId).name} ${po.docNum}` : 'Draft';
@@ -66,7 +77,7 @@ export function poTotals(
   const beforeDiscount = round2(po.lines.reduce((n, l) => n + lineNet(l), 0));
   const factor = 1 - po.discountPct / 100;
   const discount = round2(beforeDiscount - beforeDiscount * factor);
-  const freight = PURCHASING_SETTINGS.manageFreightInDocuments ? round2(po.freight) : 0;
+  const freight = getPurchasingSettings().manageFreightInDocuments ? round2(po.freight) : 0;
   const taxOf = (l: PricedLine) => (lineNet(l) * factor * rateOf(l.taxCode)) / 100;
   const lineTax = po.lines.filter((l) => !isReverseCharge(l.taxCode)).reduce((n, l) => n + taxOf(l), 0);
   // Freight on an import carries import VAT, paid to the Bureau of Customs like the goods' own.
@@ -77,7 +88,7 @@ export function poTotals(
   );
   const tax = round2(lineTax + (freightReverse ? 0 : freightTax));
   const raw = round2(beforeDiscount - discount + freight + tax);
-  const step = PURCHASING_SETTINGS.roundingMethod === 'By Currency' ? ROUNDING_STEP[rounding] : 0;
+  const step = getPurchasingSettings().roundingMethod === 'By Currency' ? ROUNDING_STEP[rounding] : 0;
   const total = step ? Math.round(raw / step) * step : raw;
   return { beforeDiscount, discount, freight, tax, reverseCharge, rounding: round2(total - raw), total: round2(total) };
 }
@@ -208,7 +219,7 @@ export async function savePurchaseOrder(input: PoInput, { asDraft = false } = {}
     return [draft];
   }
 
-  if (PURCHASING_SETTINGS.duplicateVendorRef === 'Block') {
+  if (getPurchasingSettings().duplicateVendorRef === 'Block') {
     const dup = await findDuplicateVendorRef(input);
     if (dup) throw new PoSaveError('vendorRef', `Vendor Ref. No. ${input.vendorRef} is already on PO ${poNumber(dup)}.`);
   }

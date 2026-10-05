@@ -4,7 +4,8 @@ import { Button, CardField, Icon, Text, type CardFieldOption } from '@jasperlepa
 import { Fields, Flags, Section, bind } from '../../../../components/form/fields';
 import { blankPostalAddress, type PostalAddress } from '../../../../mocks/address';
 import { newAddress, type PartnerAddress } from '../../../../mocks/partners';
-import { LANGUAGES, PURCHASING_SETTINGS } from '../../../../mocks/purchaseOrders';
+import { LANGUAGES } from '../../../../mocks/purchaseOrders';
+import { getPurchasingSettings } from '../../../../services/purchaseOrders';
 import { activeOptions } from '../../../../services/inventoryMasters';
 import { savePartner } from '../../../../services/partners';
 import { AddressFields } from '../../../../components/form/AddressFields';
@@ -236,7 +237,7 @@ export function LogisticsTab({ draft, update, m, ctx, onVendorSaved }: PoTabProp
             [{ value: '', label: '— None —' }, ...activeOptions(m.inv.shipping, (s) => s.id, (s) => s.name, draft.shippingType)],
             { hint: 'Defaults from the vendor.' },
           )}
-          {PURCHASING_SETTINGS.multiLanguageSupport
+          {getPurchasingSettings().multiLanguageSupport
             ? f.pick('language', 'Language', LANGUAGES, { hint: "Prints the PO in the vendor's language." })
             : null}
         </Fields>

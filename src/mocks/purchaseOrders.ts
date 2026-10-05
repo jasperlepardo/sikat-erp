@@ -130,25 +130,25 @@ export interface PurchaseOrder {
   splitFrom?: string;
 }
 
-/**
- * Purchasing document settings (Administration › Document settings / General
- * settings in SAP). Fixed for the prototype; the form reads them to show or
- * hide conditional fields.
- */
-export const PURCHASING_SETTINGS = {
-  /** Shows the Net / Gross / Net and Gross price mode on documents. */
+export interface PurchasingSettings {
+  id: string;
+  separateNetGrossPriceMode: boolean;
+  manageFreightInDocuments: boolean;
+  roundingMethod: 'By Currency' | 'No rounding';
+  multiLanguageSupport: boolean;
+  duplicateVendorRef: 'Allow' | 'Warn' | 'Block';
+  useBpCatalogNumbers: boolean;
+}
+
+export const SEED_PURCHASING_SETTINGS: PurchasingSettings[] = [{
+  id: 'purchasing',
   separateNetGrossPriceMode: true,
-  /** Shows Freight in the footer. */
   manageFreightInDocuments: true,
-  /** 'By Currency' shows the Rounding row, using the document currency's rounding rule. */
-  roundingMethod: 'By Currency' as 'By Currency' | 'No rounding',
-  /** Shows Language on Logistics. */
+  roundingMethod: 'By Currency',
   multiLanguageSupport: false,
-  /** What happens when another PO from the same vendor has the same Vendor Ref. No. */
-  duplicateVendorRef: 'Warn' as 'Allow' | 'Warn' | 'Block',
-  /** Uses the vendor's catalog number on lines when one is defined. */
+  duplicateVendorRef: 'Warn',
   useBpCatalogNumbers: true,
-};
+}];
 
 export interface DocumentSeries {
   id: string;
