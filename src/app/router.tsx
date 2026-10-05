@@ -33,6 +33,9 @@ import { CreditMemoDetail } from '../pages/purchasing/returns/CreditMemoDetail';
 import { ChartOfAccountsPage } from '../pages/accounting/ChartOfAccountsPage';
 import { JournalEntryList } from '../pages/accounting/journal/JournalEntryList';
 import { JournalEntryDetail } from '../pages/accounting/journal/JournalEntryDetail';
+import { JournalVoucherList } from '../pages/accounting/vouchers/JournalVoucherList';
+import { JournalVoucherDetail } from '../pages/accounting/vouchers/JournalVoucherDetail';
+import { VoucherEntryDetail } from '../pages/accounting/vouchers/VoucherEntryDetail';
 import { PartnerList } from '../pages/partners/PartnerList';
 import { PartnerDetail } from '../pages/partners/detail/PartnerDetail';
 import { ROLE_CONFIG, scopeConfig, type PartnerScope } from '../pages/partners/roles';
@@ -93,6 +96,9 @@ export const router = createHashRouter([
       { path: 'accounting/chart-of-accounts/:recordId?', element: <ChartOfAccountsPage /> },
       { path: 'accounting/journal-entries', element: <JournalEntryList /> },
       { path: 'accounting/journal-entries/:id', element: <JournalEntryDetail /> },
+      { path: 'accounting/journal-vouchers', element: <JournalVoucherList /> },
+      { path: 'accounting/journal-vouchers/:id', element: <JournalVoucherDetail /> },
+      { path: 'accounting/journal-vouchers/:id/entries/:entryId', element: <VoucherEntryDetail /> },
       { path: '*', element: <Placeholder /> },
     ],
   },

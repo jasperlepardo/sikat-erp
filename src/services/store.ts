@@ -53,6 +53,14 @@ export function createCollection<T extends { id: string }>(storageKey: string, s
       return structuredClone(record);
     },
 
+    /** Delete a record (for records nothing refers to yet, such as unposted drafts). */
+    async remove(id: string): Promise<void> {
+      await wait();
+      records = records.filter((r) => r.id !== id);
+      persist();
+      changed();
+    },
+
     /** The records as they are now, without the fake latency — for sync lookups such as a payment term's days. */
     snapshot(): readonly T[] {
       return records;

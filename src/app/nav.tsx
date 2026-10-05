@@ -109,6 +109,7 @@ export const NAV: SideNavSection[] = [
       hub('Accounting', 'account_tree', [
         'Statements',
         'Journal Entries',
+        'Journal Vouchers',
         'Chart of Accounts',
         'Reconciliations',
         'Period Close',
