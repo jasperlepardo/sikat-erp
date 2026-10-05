@@ -482,7 +482,7 @@ function PurchaseOrderForm() {
                             emptyContent={(close) => (
                               <button
                                 type="button"
-                                className="w-full cursor-pointer rounded-xl px-4 py-2 text-left text-sm font-medium hover:bg-[var(--color-bg-primary-subtle)]"
+                                className="w-full cursor-pointer rounded-xl px-4 py-2 text-left text-sm font-medium hover:bg-primary-subtle"
                                 style={{ color: 'var(--color-text-primary)' }}
                                 onClick={() => { close(); setShowVendorCreate(true); }}
                               >
