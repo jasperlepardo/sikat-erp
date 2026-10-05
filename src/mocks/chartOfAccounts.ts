@@ -216,7 +216,9 @@ const CHART: Account[] = [
       ['2010', 'Accounts Payable – Trade', ['control']],
       ['2015', 'Accounts Payable – Import', ['control']],
       ['2020', 'Accounts Payable – Non-trade'],
+      ['2025', 'Goods Received Not Invoiced'],
       ['2030', 'Accrued Expenses'],
+      ['2035', 'Corporate Credit Card Payable'],
     ]],
     ['2100', 'Deposits and Unearned Revenue', [
       ['2150', 'Customer Down Payments'],
@@ -287,6 +289,7 @@ const CHART: Account[] = [
       ['6200', 'Advertising and Promotions'],
       ['6210', 'Delivery and Freight-out'],
       ['6220', 'Card and E-wallet Fees'],
+      ['6225', 'Bank Charges'],
       ['6230', 'Store Supplies'],
       ['6240', 'Communication'],
       ['6250', 'Professional Fees'],
@@ -389,7 +392,9 @@ export type AccountRole =
   | 'payable'
   | 'downPaymentClearing'
   | 'downPaymentInterim'
-  | 'tax';
+  | 'tax'
+  | 'cash'
+  | 'general';
 
 export const ACCOUNT_ROLES: Record<AccountRole, { what: string; fits: (a: Account, all: Account[]) => boolean }> = {
   inventory: { what: 'an inventory account (under 1300 Inventories)', fits: (a, all) => isUnder(a, '1300', all) },
@@ -405,6 +410,8 @@ export const ACCOUNT_ROLES: Record<AccountRole, { what: string; fits: (a: Accoun
     fits: (a, all) => !a.control && (isUnder(a, '1100', all) || isUnder(a, '2100', all)),
   },
   downPaymentInterim: { what: 'a deposit account (under 2100)', fits: (a, all) => isUnder(a, '2100', all) },
+  cash: { what: 'a cash or bank account', fits: (a) => a.cash },
+  general: { what: 'an account that isn’t a control account (control accounts post through partners)', fits: (a) => !a.control },
   tax: {
     what: 'a tax account (under 1400 Tax credits or 2300 Taxes payable)',
     fits: (a, all) => isUnder(a, '1400', all) || isUnder(a, '2300', all),

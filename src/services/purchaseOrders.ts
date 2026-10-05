@@ -34,8 +34,8 @@ export const poNumber = (po: Pick<PurchaseOrder, 'seriesId' | 'docNum'>) =>
 export const openQty = (l: PoLine) => Math.max(0, l.quantity - l.receivedQty);
 /** Quantity × Items per Unit. */
 export const inventoryQty = (l: PoLine) => l.quantity * (l.itemsPerUnit || 1);
-export const priceAfterDiscount = (l: PoLine) => l.unitPrice * (1 - l.discountPct / 100);
-export const lineNet = (l: PoLine) => round2(l.quantity * priceAfterDiscount(l));
+export const priceAfterDiscount = (l: Pick<PoLine, 'unitPrice' | 'discountPct'>) => l.unitPrice * (1 - l.discountPct / 100);
+export const lineNet = (l: Pick<PoLine, 'quantity' | 'unitPrice' | 'discountPct'>) => round2(l.quantity * priceAfterDiscount(l));
 export const grossPrice = (l: PoLine, rate: number) => l.unitPrice * (1 + rate / 100);
 
 export interface PoTotals {
@@ -53,8 +53,11 @@ export interface PoTotals {
  * Footer totals in the document currency. The document discount reduces each
  * line's tax base proportionally; freight carries its own tax code.
  */
+/** What the totals read from a line; goods receipt lines have the same fields. */
+type PricedLine = Pick<PoLine, 'itemId' | 'quantity' | 'unitPrice' | 'discountPct' | 'taxCode'>;
+
 export function poTotals(
-  po: Pick<PurchaseOrder, 'lines' | 'discountPct' | 'freight' | 'freightTaxCode'>,
+  po: Pick<PurchaseOrder, 'discountPct' | 'freight' | 'freightTaxCode'> & { lines: PricedLine[] },
   rateOf: (taxCode: string) => number,
   rounding: RoundingRule = 'No rounding',
   isReverseCharge: (taxCode: string) => boolean = () => false,
@@ -63,7 +66,7 @@ export function poTotals(
   const factor = 1 - po.discountPct / 100;
   const discount = round2(beforeDiscount - beforeDiscount * factor);
   const freight = PURCHASING_SETTINGS.manageFreightInDocuments ? round2(po.freight) : 0;
-  const taxOf = (l: PoLine) => (lineNet(l) * factor * rateOf(l.taxCode)) / 100;
+  const taxOf = (l: PricedLine) => (lineNet(l) * factor * rateOf(l.taxCode)) / 100;
   const lineTax = po.lines.filter((l) => !isReverseCharge(l.taxCode)).reduce((n, l) => n + taxOf(l), 0);
   // Freight on an import carries import VAT, paid to the Bureau of Customs like the goods' own.
   const freightTax = (freight * rateOf(po.freightTaxCode)) / 100;
@@ -113,7 +116,7 @@ const REVERSE_CHARGE_ATCS: string[] = [
  * across all lines, in document currency.
  */
 export function poWithholding(
-  po: Pick<PurchaseOrder, 'lines' | 'discountPct'>,
+  po: Pick<PurchaseOrder, 'discountPct'> & { lines: PricedLine[] },
   vendor: LineParty | undefined,
   items: Item[],
   tax: TaxMasterData,
@@ -237,6 +240,9 @@ export async function savePurchaseOrder(input: PoInput, { asDraft = false } = {}
   }
   return saved;
 }
+
+/** Write back received quantities and row/PO status after a goods receipt is added or cancelled. */
+export const saveReceivedQuantities = (po: PurchaseOrder) => orders.save(po);
 
 /** Close: the PO and its open rows stop expecting deliveries. */
 export async function closePurchaseOrder(po: PurchaseOrder) {

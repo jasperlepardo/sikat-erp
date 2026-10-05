@@ -1,6 +1,10 @@
 import { lineNet, listPurchaseOrders, openQty, poNumber } from '../../../../services/purchaseOrders';
 import { DOC_SOURCES, type DocType, type StatusIntent } from '../../../partners/detail/partnerDocuments';
 import { PO_LIST_PATH, STATUS_INTENT } from '../../../purchasing/orders/detail/PurchaseOrderDetail';
+import { grNumber, listGoodsReceipts } from '../../../../services/goodsReceipts';
+import { GR_LIST_PATH, GR_STATUS_INTENT } from '../../../purchasing/receipts/detail/GoodsReceiptDetail';
+import { apNumber, listApInvoices } from '../../../../services/apInvoices';
+import { AP_LIST_PATH, AP_STATUS_INTENT } from '../../../purchasing/invoices/detail/ApInvoiceDetail';
 import type { Draft } from './types';
 
 /**
@@ -64,13 +68,64 @@ const ITEM_SOURCES: Partial<Record<DocType, (itemId: string) => Promise<ItemDocu
           };
         });
     }),
+  // A receipt is a delivery that's happened: nothing on it is still expected.
+  GRPO: async (itemId) =>
+    (await listGoodsReceipts()).flatMap((gr) =>
+      gr.lines
+        .filter((l) => l.itemId === itemId)
+        .map((l) => ({
+          id: `${gr.id}:${l.id}`,
+          type: 'GRPO' as const,
+          number: grNumber(gr),
+          subcopy: gr.vendorName,
+          date: gr.postingDate,
+          dueDate: gr.postingDate,
+          status: gr.status,
+          intent: GR_STATUS_INTENT[gr.status],
+          open: false,
+          quantity: l.quantity,
+          openQty: 0,
+          uom: l.uomCode || l.uomName,
+          openInventoryQty: 0,
+          currency: gr.currency,
+          unitPrice: l.unitPrice,
+          total: lineNet(l),
+          href: `${GR_LIST_PATH}/${gr.id}`,
+        })),
+    ),
+  // A bill is for what's been delivered: nothing on it is still expected.
+  APINV: async (itemId) =>
+    (await listApInvoices()).flatMap((inv) =>
+      inv.lines
+        .filter((l) => l.itemId === itemId)
+        .map((l) => ({
+          id: `${inv.id}:${l.id}`,
+          type: 'APINV' as const,
+          number: apNumber(inv),
+          subcopy: inv.vendorName,
+          date: inv.postingDate,
+          dueDate: inv.dueDate,
+          status: inv.status,
+          intent: AP_STATUS_INTENT[inv.status],
+          open: false,
+          quantity: l.quantity,
+          openQty: 0,
+          uom: l.uomCode || l.uomName,
+          openInventoryQty: 0,
+          currency: inv.currency,
+          unitPrice: l.unitPrice,
+          total: lineNet(l),
+          href: `${AP_LIST_PATH}/${inv.id}`,
+        })),
+    ),
 };
 
 export const isBuilt = (type: DocType) => !!ITEM_SOURCES[type];
 
 /** The document types that apply to the item: purchasing ones for a purchase item, sales ones for a sales item. */
 export const docTypesFor = (item: Pick<Draft, 'purchaseItem' | 'salesItem'>) =>
-  (Object.keys(DOC_SOURCES) as DocType[]).filter((t) => (DOC_SOURCES[t].role === 'vendor' ? item.purchaseItem : item.salesItem));
+  // Payments have no item rows, so they never apply to an item.
+  (Object.keys(DOC_SOURCES) as DocType[]).filter((t) => t !== 'PAY' && (DOC_SOURCES[t].role === 'vendor' ? item.purchaseItem : item.salesItem));
 
 /** Every row of these document types with the item on it, newest first. */
 export async function listItemDocuments(itemId: string, types: DocType[]): Promise<ItemDocument[]> {

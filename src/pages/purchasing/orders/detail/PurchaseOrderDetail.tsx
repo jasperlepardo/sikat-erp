@@ -55,6 +55,7 @@ import { AccountingTab } from './AccountingTab';
 import { ContentsTab } from './ContentsTab';
 import { LogisticsTab } from './LogisticsTab';
 import { VendorQuickCreate } from './VendorQuickCreate';
+import { DocumentFlow } from '../../shared/DocumentFlow';
 import {
   ALL_CURRENCIES,
   buildContext,
@@ -328,6 +329,12 @@ function PurchaseOrderForm() {
     ...(draft.status === 'Not Confirmed'
       ? [{ label: 'Approve', icon: 'verified', onSelect: () => submit(null, false, { approved: true }) }]
       : []),
+    ...(draft.status === 'Open' && draft.lines.some((l) => l.status === 'Open' && l.receivedQty < l.quantity)
+      ? [
+          { label: 'Copy to goods receipt', icon: 'inventory', onSelect: () => navigate('/purchasing/goods-receipts/new', { state: { fromPo: saved.id } }) },
+          { label: 'Copy to A/P invoice', icon: 'request_quote', onSelect: () => navigate('/purchasing/bills/new', { state: { fromPo: saved.id } }) },
+        ]
+      : []),
     ...(!isNew ? [{ label: 'Duplicate', icon: 'content_copy', onSelect: duplicate }] : []),
     ...(open ? [{ label: 'Close', icon: 'task_alt', onSelect: () => act(() => closePurchaseOrder(saved), 'closed') }] : []),
     ...(open && !received ? [{ label: 'Cancel purchase order', icon: 'cancel', onSelect: () => act(() => cancelPurchaseOrder(saved), 'cancelled') }] : []),
@@ -405,10 +412,18 @@ function PurchaseOrderForm() {
             </>
           }
         />
-        {page !== 'details' ? (
+        {page === 'transactions' && draft.id ? (
+          <Panel.Body className="flex flex-col gap-2">
+            <DocumentFlow
+              kind="PO"
+              id={draft.id}
+              notes="Everything linked to this PO, however far back or forward: the purchase requests and quotations it came from (once built), and the goods receipts and invoices that followed. Cancelled receipts no longer count as received."
+            />
+          </Panel.Body>
+        ) : page !== 'details' ? (
           <Panel.Body>
             <Text variant="small" tone="muted" className="p-4">
-              {page === 'transactions' ? 'Goods receipts and bills copied from this PO will show here.' : 'Activity will show here.'}
+              Activity will show here.
             </Text>
           </Panel.Body>
         ) : (
@@ -692,7 +707,7 @@ function DeliveryDate({ draft, update, error }: { draft: PoDraft; update: (p: Pa
   });
 }
 
-function TotalRow({ label, value, code, input, strong }: { label: string; value: number; code: string; input?: ReactNode; strong?: boolean }) {
+export function TotalRow({ label, value, code, input, strong }: { label: string; value: number; code: string; input?: ReactNode; strong?: boolean }) {
   const emphasis = (node: ReactNode) => (strong ? <Text as="span" weight="semibold" tone="heading">{node}</Text> : node);
   return (
     <List.Item
@@ -708,7 +723,7 @@ function TotalRow({ label, value, code, input, strong }: { label: string; value:
 }
 
 /** An explanatory line between the totals. */
-function TotalNote({ children }: { children: ReactNode }) {
+export function TotalNote({ children }: { children: ReactNode }) {
   return (
     <List.Item
       variant="value-only"

@@ -68,15 +68,19 @@ The sidebar is defined in [`src/app/nav.tsx`](../src/app/nav.tsx) as `NAV`. It c
 | Requests | `/purchasing/requests` | ⬜ | Internal purchase requests. |
 | Quotations (RFQ) | `/purchasing/quotations` | ⬜ | Requests for quotation sent to vendors. |
 | Purchase Orders | `/purchasing/purchase-orders` | ✅ | "Orders placed with vendors, from draft to fully received." See [Purchase order record](#purchase-order-record). |
-| Goods Receipts | `/purchasing/goods-receipts` | ⬜ | Receiving against POs. Increases stock. |
-| Bills | `/purchasing/bills` | ⬜ | A/P invoices that post input VAT and expanded withholding tax (EWT). |
+| Goods Receipts | `/purchasing/goods-receipts` | ✅ | "Goods and services received from vendors." Adding a receipt puts the stock in and updates the PO it came from. See [Goods receipt record](#goods-receipt-record). |
+| Bills | `/purchasing/bills` | ✅ | "A/P invoices from vendors: what you owe, billed against goods receipts or purchase orders." See [A/P invoice record](#ap-invoice-record). |
 | Returns & Debits | `/purchasing/returns-and-debits` | ⬜ | Goods returned to vendors and A/P debit memos. |
-| Payments Made | `/purchasing/payments-made` | ⬜ | Outgoing payments to vendors. |
+| Payments Made | `/purchasing/payments-made` | ✅ | Outgoing payments: money paid to vendors against their bills (or on account), or straight to G/L accounts. This is where realized exchange gains and losses post. See [Outgoing payment record](#outgoing-payment-record). |
 | Landed Costs | `/purchasing/landed-costs` | ⬜ | Spreads freight, duty and brokerage onto imported item costs. |
 | Agreements | `/purchasing/agreements` | ⬜ | Blanket agreements with vendors. |
 | Insights | `/purchasing/insights` | ⬜ | Purchasing reports. |
 
 **Purchase Orders list:** filters are All · Draft · Open · Not Confirmed · Closed · Cancelled. Columns are No. (with the vendor reference), Vendor, Posting date, Delivery date, Received, Total and Status.
+
+**Bills list:** filters are All · Draft · Open · Closed · Cancelled. Columns are No. (with the vendor's invoice no.), Vendor, Posting date, Due date (flagged Overdue or Payment block), Purchase order, Total and Status.
+
+**Goods Receipts list:** filters are All · Draft · Open · Closed · Cancelled. Columns are No. (with the vendor reference), Vendor, Posting date, Purchase order, Quantity (with the line count), Total and Status.
 
 ### Inventory
 
@@ -359,6 +363,7 @@ The URL is the role's list path plus `/:id` (for example `/business-partners/:id
 **You can also:**
 - **Save as draft** (before the PO is added)
 - **Approve**
+- **Copy to goods receipt** and **Copy to A/P invoice** (open POs with quantity left to receive; billing straight from a PO receives the stock too)
 - **Duplicate**
 - **Close** (open POs)
 - **Cancel purchase order** (open and not yet received)
@@ -379,6 +384,91 @@ The URL is the role's list path plus `/:id` (for example `/business-partners/:id
 | Accounting | Journal & payment · Dates & references · Referenced documents |
 
 **Totals:** total before discount, document discount %, freight (with its tax code), tax, withholding, and net payment due. A warning appears for a duplicate vendor reference.
+
+**Transactions view:** one **Related documents** table with the PO's whole chain of linked documents, in order. Base documents (← Base) come first, however far back, then the PO itself, then target documents (Target →), however far forward. Indirect links say which document they go through ("via …"). Today that means the PO's goods receipts. Purchase requests and RFQs will appear as bases once they're built.
+
+### Goods receipt record
+
+`/purchasing/goods-receipts/:id`. Views: Details · Transactions · Activity. Activity is a placeholder.
+
+**Transactions view:** the same **Related documents** table, with the receipt's whole chain of linked documents. Bases are its PO and that PO's own bases. Targets will be A/P invoices and goods returns (and anything copied from those) once they're built. The links come from `src/pages/purchasing/shared/documentLinks.ts`. Registering a new document type there adds it to every chain.
+
+**You can also:**
+- **Save as draft** (before it's added)
+- **Copy to A/P invoice** (open receipts with quantity left to bill)
+- **Duplicate** (a new draft, unlinked from the POs)
+- **Close** (open receipts)
+- **Cancel goods receipt** (open receipts not yet billed: the stock goes back out and the PO lines reopen)
+- **Open PO …** for each base PO, and **Open vendor**
+
+| Part | What it holds |
+|---|---|
+| **Vendor** section | Vendor (locked while lines from its POs are on the receipt), contact person, vendor ref. no. (their delivery receipt) and currency. |
+| **Document** section | Series and No., Status, Posting date, Due date, Document date and Close date. |
+| **Contents** | Lines with item, quantity and UoM, warehouse and bin, unit price, tax code, discount and total (LC). **Copy from PO** pulls in the open lines of the vendor's open POs at their open quantity. Optional columns: inventory-UoM quantity, no. of packages, open qty, price list, price after discount, base document, blanket agreement, line vendor, requisition slip no. and free text. |
+| **Logistics** | Ship to (the company or a warehouse), Pay to (the vendor's address), shipping type. |
+| **Accounting** | Journal remark, BP project, payment terms, payment method, cash discount offset, indicator, the vendor's TIN, the order number (base PO), and referenced documents. |
+| **Totals** | Buyer, owner, total before discount, discount %, freight, rounding, tax, total payment due, and remarks. |
+| **Journal entry** | Dr Inventory (or the cost account for non-stock items) and Freight-in / Cr 2025 Goods Received Not Invoiced, in PHP. |
+
+**Adding a receipt** checks that no PO line receives more than it has open and that no item is frozen by an open count. It then:
+- adds the stock to each line's warehouse and bin
+- lowers Ordered for lines copied from a PO
+- re-averages the item cost (except for Standard Price items)
+- marks the PO lines received, closing the PO once every line is received
+
+After that, only remarks can change.
+
+### A/P invoice record
+
+`/purchasing/bills/:id`. Views: Details · Transactions · Activity. Activity is a placeholder.
+
+**Transactions view:** the **Related documents** table, with the invoice's whole chain of linked documents. That means the receipts and POs it billed, and the POs behind those receipts. Payments and credit memos will join once they're built.
+
+**You can also:**
+- **Save as draft** (before it's added)
+- **Pay** (open bills with a balance and no payment block; opens an outgoing payment with this bill ticked)
+- **Duplicate** (a new draft, unlinked from its base documents)
+- **Cancel A/P invoice** (open and unpaid: receipts reopen for billing, POs it received on reopen, stock it brought in goes back out)
+- **Open receipt … / Open PO …** for each base document, and **Open vendor**
+
+| Part | What it holds |
+|---|---|
+| **Vendor** section | Vendor, contact person, vendor ref. no. (their invoice no., checked for duplicates) and currency. |
+| **Document** section | Series and No., Status, Posting date, Due date (from the payment terms), Document date and Close date. |
+| **Contents** | Lines with item, quantity and UoM, unit price, tax code, discount and total (LC). **Copy from** pulls in the open lines of the vendor's goods receipts or open POs. Lines from a receipt show where they were received; other stocked lines pick a warehouse and bin, because the invoice receives them. Optional columns: inventory-UoM quantity, BP catalog no., country of origin, unit cost price, base document, blanket agreement and free text. |
+| **Logistics** | Ship to, Pay to and shipping type (the same section as on receipts). |
+| **Accounting** | Journal remark, control account (the vendor's payable account by default), payment terms, payment method, installments, cash discount offset, consolidating BP, BP project, indicator, the vendor's TIN, the order number (POs behind the lines), max. cash discount, and referenced documents. |
+| **Totals** | Buyer, owner, total before discount, discount %, freight, rounding, tax, total payment due, withholding taken off (EWT, final tax), down payment, net payment due, applied amount and balance due. Also payment block, include in payment runs, and remarks. |
+| **Journal entry** | Dr Goods Received Not Invoiced (lines from receipts) or Inventory / the cost account (other lines), Freight-in and Input VAT. Cr withholding tax payable and the vendor's control account. In PHP. |
+
+**Price and exchange-rate differences:** a line from a receipt clears Goods Received Not Invoiced at the receipt's cost. If the bill's price or exchange rate differs, an alert shows the difference per line. It posts to inventory while the stock is on hand (re-averaging the item cost), to cost of sales once the stock is gone, or to the item's cost account for non-stock items. Realized FX gain or loss (7020 / 8020) comes when the bill is paid; see [Outgoing payment record](#outgoing-payment-record).
+
+**Left out:** Item/Service type, Summary type, VAT code (the tax code is the VAT code here), Central Bank Ind., Stamp No., Net procedure, QR code, distribution rules, commodity classification and serial numbers. Down payments, installments and deferred tax wait for payments.
+
+### Outgoing payment record
+
+`/purchasing/payments-made/:id` (Banking › Outgoing Payments in SAP). Views: Details · Transactions · Activity. Activity is a placeholder.
+
+**Ways to start one:** **New outgoing payment**, **You can also › Pay** on a bill, or pick bills on a vendor's **Transactions** tab and press **Pay** (this replaced the old preview).
+
+**You can also:** **Save as draft**, **Cancel payment** (posted payments: the bills it paid are open again and its checks are void), **Open A/P invoice …** and **Open vendor**.
+
+| Part | What it holds |
+|---|---|
+| **Payee** section | Payment type (**Vendor** or **Account**). Vendor: vendor, pay to, contact person, currency (the vendor's), project. Account: to order of, pay to, doc. currency, project. |
+| **Document** section | Series and No., Status (Draft / Posted / Cancelled), Posting date (sets the payment's exchange rate), Document date, Due date (the payment means' dates, weighted by amount) and Reference. |
+| **Open documents** (Vendor) | The vendor's open A/P invoices in the payment currency, oldest due first. Columns: Document (* = overdue or blocked), Date, Overdue days, Total, WT amount, Balance due, Cash discount % and Total payment. A foreign-currency row also shows the rate it was booked at and the gain or loss at today's rate. Blocked invoices can't be ticked. |
+| **Payment on account** (Vendor) | An amount not matched to any invoice, its control account, and **Pro forma** (a down payment to the vendor). |
+| **Accounts** (Account) | G/L lines with account, doc. remarks, project and amount. |
+| **Payment means** | Tabs for **Bank transfer** (account, amount, date, reference), **Cash** (cash fund, amount), **Check** (bank account, due date, manual check no. or numbered when added, endorsable, amount) and **Credit card** (card, account, voucher no., no. of payments, amount). A summary shows currency, overall amount, bank charge, paid and balance due, which must be 0. Each tab has **Pay the balance**. |
+| **Remarks** | Journal remarks (default "Outgoing – vendor code") and remarks. |
+| **Journal entry** | Dr the vendor for each invoice at the rate it was booked at (or Dr the G/L lines), Dr Bank Charges / Cr each payment means, Cr Purchase Discounts for cash discounts. The rest is **Dr 8020 Foreign Exchange Loss** or **Cr 7020 Foreign Exchange Gain**, called out in an alert with the per-invoice difference. |
+| **Referenced documents** and **Attachments** | As on other documents. |
+
+Adding the payment re-checks each bill's balance, numbers automatic checks per bank account (from the house bank's first check no.), and applies the amounts to the bills. A bill paid in full closes. Partial payments leave it open with its balance due.
+
+**Left out:** the Customer type (refunds need A/R credit memos), endorsing incoming checks (no check register), the Payment Wizard, over/under-payment allowances, Checks for Payment (printing and voiding), and the journal entry's Transaction No. (journal entries aren't a module yet). House bank accounts aren't built either, so the bank accounts in the chart of accounts stand in for them.
 
 ### Inventory transfer record
 
@@ -424,7 +514,7 @@ The URL is the role's list path plus `/:id` (for example `/business-partners/:id
 | Core (Home, Inbox, Business Partners) | 5 | 2 |
 | CRM | 5 | 1 |
 | Sales | 10 | 1 |
-| Purchasing | 11 | 2 |
+| Purchasing | 11 | 5 |
 | Inventory | 8 | 6 |
 | Manufacturing | 5 | 0 |
 | Projects | 3 | 0 |
@@ -434,4 +524,4 @@ The URL is the role's list path plus `/:id` (for example `/business-partners/:id
 | People | 2 | 0 |
 | Reports | 3 | 0 |
 | Settings | 15 | 5 |
-| **Total** | **88** | **18** |
+| **Total** | **88** | **21** |

@@ -12,34 +12,6 @@ const asOptions = (values: readonly string[]) => values.map((v) => ({ value: v, 
 export function AccountingTab({ draft, update, errors, m, ctx }: PoTabProps) {
   const f = bind(draft, update);
   const computedDue = dueDateFor(draft.postingDate, draft.paymentTerms);
-  const refs = draft.references;
-  const patchRef = (id: string, p: Partial<PoReference>) => update({ references: refs.map((r) => (r.id === id ? { ...r, ...p } : r)) });
-
-  const refColumns: TableColumn<PoReference>[] = [
-    {
-      key: 'docType',
-      header: 'Document type',
-      cell: (r) => (
-        <Select aria-label="Document type" options={asOptions(REFERENCE_DOC_TYPES)} value={r.docType} onValueChange={(docType) => patchRef(r.id, { docType })} />
-      ),
-    },
-    {
-      key: 'docNo',
-      header: 'Document no.',
-      cell: (r) => <TextField aria-label="Document no." value={r.docNo} onChange={(e) => patchRef(r.id, { docNo: e.currentTarget.value })} />,
-    },
-    {
-      key: 'docDate',
-      header: 'Date',
-      cell: (r) => <DatePicker aria-label="Document date" value={r.docDate || null} onValueChange={(docDate) => patchRef(r.id, { docDate: docDate ?? '' })} />,
-    },
-    {
-      key: 'remarks',
-      header: 'Remarks',
-      cell: (r) => <TextField aria-label="Reference remarks" value={r.remarks} onChange={(e) => patchRef(r.id, { remarks: e.currentTarget.value })} />,
-    },
-  ];
-
   return (
     <div className="flex flex-col gap-2">
       <Section icon="account_balance" title="Journal & payment">
@@ -91,40 +63,85 @@ export function AccountingTab({ draft, update, errors, m, ctx }: PoTabProps) {
           {f.text('orderNumber', 'Order number', { hint: 'Chain-store order number, for direct distribution to a chain’s stores.' })}
         </Fields>
       </Section>
-      <DataTable
-        icon="link"
-        title="Referenced documents"
+      <ReferencesTable
+        refs={draft.references}
+        onChange={(references) => update({ references })}
+        readOnly={ctx.readOnly}
         description="Other documents this PO refers to, or that refer to it."
-        rows={refs}
-        getRowId={(r) => r.id}
-        columns={refColumns}
-        unsortable={['docNo', 'remarks']}
-        onRemove={ctx.readOnly ? undefined : (picked) => update({ references: refs.filter((r) => !picked.includes(r)) })}
-        actions={
-          ctx.readOnly ? null : (
-            <Button
-              type="button"
-              size="small"
-              intent="primary"
-              variant="solid"
-              aria-label="Add reference"
-              leadingIcon={<Icon size={16}>add</Icon>}
-              onClick={() =>
-                update({
-                  references: [...refs, { id: `ref-${crypto.randomUUID().slice(0, 8)}`, docType: 'Purchase request', docNo: '', docDate: '', remarks: '' }],
-                })
-              }
-            >
-              Add
-            </Button>
-          )
-        }
-        empty={
-          <Text variant="small" tone="muted">
-            No referenced documents.
-          </Text>
-        }
       />
     </div>
+  );
+}
+
+/** Referenced Document: other documents a purchasing document refers to, or that refer to it. */
+export function ReferencesTable({
+  refs,
+  onChange,
+  readOnly,
+  description,
+}: {
+  refs: PoReference[];
+  onChange: (refs: PoReference[]) => void;
+  readOnly: boolean;
+  description: string;
+}) {
+  const patchRef = (id: string, p: Partial<PoReference>) => onChange(refs.map((r) => (r.id === id ? { ...r, ...p } : r)));
+
+  const refColumns: TableColumn<PoReference>[] = [
+    {
+      key: 'docType',
+      header: 'Document type',
+      cell: (r) => (
+        <Select aria-label="Document type" options={asOptions(REFERENCE_DOC_TYPES)} value={r.docType} onValueChange={(docType) => patchRef(r.id, { docType })} />
+      ),
+    },
+    {
+      key: 'docNo',
+      header: 'Document no.',
+      cell: (r) => <TextField aria-label="Document no." value={r.docNo} onChange={(e) => patchRef(r.id, { docNo: e.currentTarget.value })} />,
+    },
+    {
+      key: 'docDate',
+      header: 'Date',
+      cell: (r) => <DatePicker aria-label="Document date" value={r.docDate || null} onValueChange={(docDate) => patchRef(r.id, { docDate: docDate ?? '' })} />,
+    },
+    {
+      key: 'remarks',
+      header: 'Remarks',
+      cell: (r) => <TextField aria-label="Reference remarks" value={r.remarks} onChange={(e) => patchRef(r.id, { remarks: e.currentTarget.value })} />,
+    },
+  ];
+
+  return (
+    <DataTable
+      icon="link"
+      title="Referenced documents"
+      description={description}
+      rows={refs}
+      getRowId={(r) => r.id}
+      columns={refColumns}
+      unsortable={['docNo', 'remarks']}
+      onRemove={readOnly ? undefined : (picked) => onChange(refs.filter((r) => !picked.includes(r)))}
+      actions={
+        readOnly ? null : (
+          <Button
+            type="button"
+            size="small"
+            intent="primary"
+            variant="solid"
+            aria-label="Add reference"
+            leadingIcon={<Icon size={16}>add</Icon>}
+            onClick={() => onChange([...refs, { id: `ref-${crypto.randomUUID().slice(0, 8)}`, docType: 'Purchase request', docNo: '', docDate: '', remarks: '' }])}
+          >
+            Add
+          </Button>
+        )
+      }
+      empty={
+        <Text variant="small" tone="muted">
+          No referenced documents.
+        </Text>
+      }
+    />
   );
 }

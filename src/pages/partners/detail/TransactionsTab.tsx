@@ -1,11 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import {
-  Alert,
   Button,
   Card,
   Icon,
-  List,
   Select,
   Table,
   TableAmount,
@@ -22,23 +20,14 @@ import { DEFAULT_PAGE_SIZE, PAGE_SIZES } from '../../../components/form/DataTabl
 import { Stat } from '../../../components/Stat';
 import { formatAmount } from '../../../services/format';
 import { useAsync } from '../../../services/useAsync';
-import { EditPanel } from './EditPanel';
-import { accountKind } from './PaymentAccounts';
-import { accountsOf, methodTitle, paymentEntries, type PaymentEntry } from './PaymentMethodsTab';
 import { DOC_SOURCES, docTypesFor, listPartnerDocuments, type DocType, type PartnerDocument } from './partnerDocuments';
-import { Fields, Section, bind, type Draft } from './fields';
+import type { Draft } from './fields';
 import { todayISO } from '../../../services/dates';
 
 type Filter = 'open' | 'overdue' | 'all';
 
 const today = () => todayISO();
 const isOverdue = (d: PartnerDocument) => d.open && !!d.dueDate && d.dueDate < today();
-
-const entryLabel = (e: PaymentEntry) => {
-  const kind = accountKind(e.code);
-  return e.account && kind ? `${methodTitle(e.code)} · ${kind.title(e.account)}` : methodTitle(e.code);
-};
-const entryId = (e: PaymentEntry) => e.account?.id ?? e.code;
 
 /** Amounts summed per currency, e.g. "PHP 1,200.00 · USD 300.00". */
 const sum = (docs: PartnerDocument[]) => {
@@ -49,7 +38,7 @@ const sum = (docs: PartnerDocument[]) => {
 
 /**
  * Every document the partner is on — purchase requests, RFQs, POs, quotations, sales orders —
- * in one list. Types without a module yet show as "not built". Paying is a preview that isn't saved.
+ * in one list. Types without a module yet show as "not built". Paying opens an outgoing payment with the picked bills.
  */
 export function TransactionsTab({ draft }: { draft: Draft }) {
   const navigate = useNavigate();
@@ -62,8 +51,6 @@ export function TransactionsTab({ draft }: { draft: Draft }) {
   const [sort, setSort] = useState<TableSort | null>({ key: 'date', direction: 'desc' });
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
-  const [paying, setPaying] = useState<PartnerDocument[] | null>(null);
-  const [notice, setNotice] = useState('');
 
   if (!docs) return <Text tone="muted" className="p-4">Loading transactions…</Text>;
 
@@ -107,7 +94,6 @@ export function TransactionsTab({ draft }: { draft: Draft }) {
 
   return (
     <div className="flex flex-col gap-2">
-      {notice ? <Alert intent="success" variant="outline" title={notice} /> : null}
 
       <div className="grid gap-2 md:grid-cols-3">
         <Stat icon="pending_actions" label="Open" value={sum(open)} sub={`${open.length} document${open.length === 1 ? '' : 's'}`} />
@@ -137,8 +123,8 @@ export function TransactionsTab({ draft }: { draft: Draft }) {
                     intent="primary"
                     variant="solid"
                     disabled={!payable || draft.paymentBlock}
-                    title={draft.paymentBlock ? 'Payment block is on for this partner.' : payable ? undefined : 'Pick open purchase orders in one currency.'}
-                    onClick={() => setPaying(picked)}
+                    title={draft.paymentBlock ? 'Payment block is on for this partner.' : payable ? undefined : 'Pick open A/P invoices in one currency, without a payment block.'}
+                    onClick={() => navigate('/purchasing/payments-made/new', { state: { vendorId: draft.id, invoiceIds: picked.map((d) => d.id) } })}
                   >
                     Pay {sum(picked)}
                   </Button>
@@ -225,79 +211,6 @@ export function TransactionsTab({ draft }: { draft: Draft }) {
         </Text>
       ) : null}
 
-      {paying ? (
-        <PayPanel
-          draft={draft}
-          docs={paying}
-          onCancel={() => setPaying(null)}
-          onDone={(summary) => {
-            setPaying(null);
-            setSelected([]);
-            setNotice(summary);
-          }}
-        />
-      ) : null}
     </div>
-  );
-}
-
-/** Preview of paying the selected documents: amounts, date and how. Not saved — there are no payments yet. */
-function PayPanel({
-  draft,
-  docs,
-  onCancel,
-  onDone,
-}: {
-  draft: Draft;
-  docs: PartnerDocument[];
-  onCancel: () => void;
-  onDone: (summary: string) => void;
-}) {
-  const entries = paymentEntries(draft);
-  // Start with the partner's default: its default method, and that method's default account.
-  const preferred =
-    entries.find((e) => e.code === draft.defaultPaymentMethod && (!e.account || accountsOf(draft, e.code).defaultAccountId === e.account.id)) ??
-    entries[0];
-  const [form, setForm] = useState({ date: today(), via: preferred ? entryId(preferred) : '' });
-  const f = bind(form, (p: Partial<typeof form>) => setForm((x) => ({ ...x, ...p })));
-  const currency = docs[0].currency;
-  const total = docs.reduce((n, d) => n + d.total, 0);
-  const via = entries.find((e) => entryId(e) === form.via);
-
-  return (
-    <EditPanel
-      icon="payments"
-      title={`Pay ${draft.name}`}
-      onCancel={onCancel}
-      onDone={() =>
-        onDone(`Preview only: ${currency} ${formatAmount(total)} to ${draft.name} by ${via ? entryLabel(via) : 'no method'} on ${form.date} — not saved.`)
-      }
-    >
-      <Section icon="receipt_long" title={`${docs.length} document${docs.length === 1 ? '' : 's'}`}>
-        <List.Group divider>
-          {docs.map((d) => (
-            <List.Item key={d.id} title={d.number} content={`${currency} ${formatAmount(d.total)}`} />
-          ))}
-          <List.Item
-            title={<Text as="span" weight="semibold" tone="heading">Total</Text>}
-            content={<Text as="span" weight="semibold" tone="heading">{`${currency} ${formatAmount(total)}`}</Text>}
-          />
-        </List.Group>
-      </Section>
-      <Section icon="payments" title="Payment">
-        <Fields>
-          {f.date('date', 'Payment date')}
-          {f.choose(
-            'via',
-            'Pay by',
-            entries.map((e) => ({ value: entryId(e), label: entryLabel(e) })),
-            { hint: 'The partner’s payment methods and accounts (side column).' },
-          )}
-        </Fields>
-        <Text variant="small" tone="muted">
-          Sketch: in the real flow you pay bills, not orders, and expanded withholding tax is deducted here with BIR Form 2307 issued.
-        </Text>
-      </Section>
-    </EditPanel>
   );
 }

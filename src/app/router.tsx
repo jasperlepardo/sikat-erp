@@ -17,6 +17,12 @@ import { InventoryPostingDetail } from '../pages/inventory/counts/InventoryPosti
 import { StockCountDetail } from '../pages/inventory/counts/StockCountDetail';
 import { PurchaseOrderList } from '../pages/purchasing/orders/PurchaseOrderList';
 import { PurchaseOrderDetail } from '../pages/purchasing/orders/detail/PurchaseOrderDetail';
+import { GoodsReceiptList } from '../pages/purchasing/receipts/GoodsReceiptList';
+import { GoodsReceiptDetail } from '../pages/purchasing/receipts/detail/GoodsReceiptDetail';
+import { ApInvoiceList } from '../pages/purchasing/invoices/ApInvoiceList';
+import { ApInvoiceDetail } from '../pages/purchasing/invoices/detail/ApInvoiceDetail';
+import { PaymentList } from '../pages/purchasing/payments/PaymentList';
+import { PaymentDetail } from '../pages/purchasing/payments/detail/PaymentDetail';
 import { ChartOfAccountsPage } from '../pages/accounting/ChartOfAccountsPage';
 import { PartnerList } from '../pages/partners/PartnerList';
 import { PartnerDetail } from '../pages/partners/detail/PartnerDetail';
@@ -52,6 +58,12 @@ export const router = createHashRouter([
       ...partnerRoutes,
       { path: 'purchasing/purchase-orders', element: <PurchaseOrderList /> },
       { path: 'purchasing/purchase-orders/:id', element: <PurchaseOrderDetail /> },
+      { path: 'purchasing/goods-receipts', element: <GoodsReceiptList /> },
+      { path: 'purchasing/goods-receipts/:id', element: <GoodsReceiptDetail /> },
+      { path: 'purchasing/bills', element: <ApInvoiceList /> },
+      { path: 'purchasing/bills/:id', element: <ApInvoiceDetail /> },
+      { path: 'purchasing/payments-made', element: <PaymentList /> },
+      { path: 'purchasing/payments-made/:id', element: <PaymentDetail /> },
       // Settings pages keep the tab and an opened record in the URL.
       { path: 'settings/accounting-and-tax/:tab?/:recordId?', element: <AccountingTaxPage /> },
       { path: 'settings/inventory/:tab?/:recordId?', element: <InventorySettingsPage /> },
