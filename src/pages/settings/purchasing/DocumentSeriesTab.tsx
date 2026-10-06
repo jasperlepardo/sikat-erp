@@ -1,4 +1,4 @@
-import { Fields, Flags, bind } from '../../../components/form/fields';
+import { FieldStack, bind } from '../../../components/form/fields';
 import { MasterList, statusColumn, uniqueRequired, type ListRoute } from '../../../components/form/MasterList';
 import type { DocumentSeries } from '../../../mocks/purchaseOrders';
 import { poSeries } from '../../../services/purchaseOrders';
@@ -54,26 +54,22 @@ export function DocumentSeriesTab(route: ListRoute) {
       editor={(s, update, errors, isNew) => {
         const f = bind(s, update);
         return (
-          <>
-            <Fields cols={2}>
-              {f.text('name', 'Name', {
-                required: true,
-                error: errors.name,
-                disabled: !isNew,
-                hint: !isNew ? 'Renaming changes how existing POs display their number.' : undefined,
-              })}
-              {!s.manual
-                ? f.num('firstNo', 'First number', {
-                    error: errors.firstNo,
-                    hint: 'New numbers start here; existing PO numbers are not affected.',
-                  })
-                : null}
-            </Fields>
-            <Flags>
-              {f.check('manual', 'Manual numbering')}
-              {f.check('active', 'Active')}
-            </Flags>
-          </>
+          <FieldStack>
+            {f.text('name', 'Name', {
+              required: true,
+              error: errors.name,
+              disabled: !isNew,
+              hint: !isNew ? 'Renaming changes how existing POs display their number.' : undefined,
+            })}
+            {!s.manual
+              ? f.num('firstNo', 'First number', {
+                  error: errors.firstNo,
+                  hint: 'New numbers start here; existing PO numbers are not affected.',
+                })
+              : null}
+            {f.check('manual', 'Manual numbering')}
+            {f.check('active', 'Active')}
+          </FieldStack>
         );
       }}
     />

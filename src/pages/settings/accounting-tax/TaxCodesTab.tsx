@@ -9,7 +9,7 @@ import {
   TextField,
 } from '@jasperlepardo/sikat-design-system';
 import { AccountField, useAccounts } from '../../../components/form/AccountField';
-import { Fields, Flags, Section, bind } from '../../../components/form/fields';
+import { FieldStack, Section, bind } from '../../../components/form/fields';
 import { accountProblem } from '../../../mocks/chartOfAccounts';
 import { MasterList, type ListRoute } from '../../../components/form/MasterList';
 import {
@@ -64,7 +64,7 @@ export function TaxCodesTab(route: ListRoute) {
         {
           key: 'direction',
           header: 'Used on',
-          cell: (t) => (t.direction === 'Sales' ? 'Sales (output)' : 'Purchases (input)'),
+          cell: (t) => t.direction,
         },
         {
           key: 'rate',
@@ -116,29 +116,27 @@ export function TaxCodesTab(route: ListRoute) {
       editor={(t, update, errors) => {
         const f = bind(t, update);
         return (
-          <>
-            <Fields cols={3}>
-              {f.text('code', 'Code', { required: true, error: errors.code, placeholder: 'e.g. 31' })}
-              {f.text('name', 'Name', { required: true, error: errors.name })}
-              {f.pick('direction', 'Used on', ['Sales', 'Purchase'])}
-              {f.pick('category', 'Category', TAX_CATEGORIES)}
-              {f.pick('birReturn', 'BIR return', BIR_RETURNS)}
-              <AccountField
-                label="G/L account"
-                role="tax"
-                accounts={chart}
-                allowNone
-                error={errors.glAccount}
-                hint="Where this tax posts: a tax credit (input) or tax payable (output) account."
-                value={t.glAccount}
-                onChange={(glAccount) => update({ glAccount })}
-              />
-              {f.text('legalBasis', 'Legal basis', { placeholder: 'e.g. NIRC Sec. 106', className: 'md:col-span-3' })}
-              {f.area('notes', 'Notes', { rows: 2, className: 'md:col-span-3' })}
-            </Fields>
+          <FieldStack>
+            {f.text('code', 'Code', { required: true, error: errors.code, placeholder: 'e.g. 31' })}
+            {f.text('name', 'Name', { required: true, error: errors.name })}
+            {f.pick('direction', 'Used on', ['Sales', 'Purchase'])}
+            {f.pick('category', 'Category', TAX_CATEGORIES)}
+            {f.pick('birReturn', 'BIR return', BIR_RETURNS)}
+            <AccountField
+              label="G/L account"
+              role="tax"
+              accounts={chart}
+              allowNone
+              error={errors.glAccount}
+              hint="Where this tax posts: a tax credit (input) or tax payable (output) account."
+              value={t.glAccount}
+              onChange={(glAccount) => update({ glAccount })}
+            />
+            {f.text('legalBasis', 'Legal basis', { placeholder: 'e.g. NIRC Sec. 106' })}
+            {f.area('notes', 'Notes', { rows: 2 })}
             <RateHistory rates={t.rates} error={errors.rates} onChange={(rates) => update({ rates })} />
-            <Flags>{f.check('active', 'Active')}</Flags>
-          </>
+            {f.check('active', 'Active')}
+          </FieldStack>
         );
       }}
     />

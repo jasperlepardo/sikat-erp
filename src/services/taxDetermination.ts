@@ -9,11 +9,13 @@
 import type { Item } from '../mocks/items';
 import type { Partner } from '../mocks/partners';
 import {
+  currentWithholdingRate,
   rateAt,
   SYSTEM_ATCS,
   SYSTEM_TAX_CODES,
   type CompanyTaxProfile,
   type NonResidentVat,
+  type ResolvedWithholdingTax,
   type TaxCode,
   type TaxDirection,
   type TaxGroup,
@@ -63,7 +65,7 @@ export interface Determination {
   taxCode?: TaxCode;
   rate?: number;
   trace: TraceStep[];
-  withholding: WithholdingTax[];
+  withholding: ResolvedWithholdingTax[];
   withholdingTrace: TraceStep[];
   /** Things the other side does, for information (e.g. government withholding). */
   notes: string[];
@@ -281,17 +283,19 @@ export function determineWithholding(
   date = todayISO(),
 ) {
   const withholdingTrace: TraceStep[] = [];
-  const withholding: WithholdingTax[] = [];
+  const withholding: ResolvedWithholdingTax[] = [];
   const step = (rule: string, outcome: TraceStep['outcome'], detail: string) =>
     withholdingTrace.push({ rule, outcome, detail });
   const done = () => ({ withholding, withholdingTrace });
   const payee = payeeOf(partner);
   const byAtc = (atc: string) => data.withholding.find((w) => w.atc === atc && w.active);
+  const resolve = (w: WithholdingTax): ResolvedWithholdingTax => ({ ...w, rate: currentWithholdingRate(w, date) ?? 0 });
   const take = (rule: string, atc: string, why: string) => {
     const w = byAtc(atc);
     if (!w) return step(rule, 'warning', `${why} — but ${atc} is missing or inactive in Settings.`);
-    withholding.push(w);
-    step(rule, 'applied', `${why} → ${w.atc} ${w.rate}% (${w.description})`);
+    const resolved = resolve(w);
+    withholding.push(resolved);
+    step(rule, 'applied', `${why} → ${resolved.atc} ${resolved.rate}% (${resolved.description})`);
   };
 
   const group = data.withholdingGroups.find((g) => g.code === item.withholdingGroup && g.active);
@@ -363,17 +367,17 @@ export function determineWithholding(
         const siblings = data.withholding.filter(
           (x) => x.active && x.condition && x.kind === set.kind && x.payee === set.payee && x.description === set.description,
         );
-        const rates = siblings.map((x) => x.rate);
-        w = siblings.find((x) => x.rate === (high ? Math.max(...rates) : Math.min(...rates))) ?? set;
+        w = siblings.find((x) => high ? x.attachmentRequired === null : x.attachmentRequired === 'sworn-declaration') ?? set;
         reportTier();
       }
-      withholding.push(w);
+      const resolved = resolve(w);
+      withholding.push(resolved);
       step(
         'Vendor override',
         'applied',
         w === set
-          ? `Set on the vendor → ${w.atc || 'ATC to confirm'} ${w.rate}%`
-          : `Set on the vendor as ${set.atc}, adjusted for ${tierLabel} → ${w.atc} ${w.rate}%`,
+          ? `Set on the vendor → ${resolved.atc || 'ATC to confirm'} ${resolved.rate}%`
+          : `Set on the vendor as ${set.atc}, adjusted for ${tierLabel} → ${resolved.atc} ${resolved.rate}%`,
       );
       return done();
     }
@@ -409,15 +413,16 @@ export function determineWithholding(
       step('Non-resident: final tax', 'warning', `${group.name}, non-resident payee — but ${nrAtc} is missing or inactive in Settings.`);
       return done();
     }
+    const domesticRate = currentWithholdingRate(w, date) ?? 0;
     const treaty = treatyRelief(group, partner, date);
-    if (treaty?.valid && treaty.rate < w.rate) {
+    if (treaty?.valid && treaty.rate < domesticRate) {
       withholding.push({ ...w, rate: treaty.rate, description: `${w.description} (${treaty.label} rate)` });
-      step('Non-resident: final tax', 'applied', `${group.name}, non-resident payee, ${treaty.label} → ${w.atc} ${treaty.rate}% instead of ${w.rate}%`);
+      step('Non-resident: final tax', 'applied', `${group.name}, non-resident payee, ${treaty.label} → ${w.atc} ${treaty.rate}% instead of ${domesticRate}%`);
     } else {
-      withholding.push(w);
+      withholding.push({ ...w, rate: domesticRate });
       if (treaty && !treaty.valid) step('Tax treaty', 'warning', treaty.why);
-      else if (treaty?.valid) step('Tax treaty', 'skipped', `${treaty.label}: ${treaty.rate}% is not lower than the domestic ${w.rate}%.`);
-      step('Non-resident: final tax', 'applied', `${group.name}, non-resident payee → ${w.atc} ${w.rate}% (${w.description})`);
+      else if (treaty?.valid) step('Tax treaty', 'skipped', `${treaty.label}: ${treaty.rate}% is not lower than the domestic ${domesticRate}%.`);
+      step('Non-resident: final tax', 'applied', `${group.name}, non-resident payee → ${w.atc} ${domesticRate}% (${w.description})`);
     }
     return done();
   }

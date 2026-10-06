@@ -1,5 +1,5 @@
 import { TableStatus } from '@jasperlepardo/sikat-design-system';
-import { Fields, Flags, bind } from '../../../components/form/fields';
+import { FieldStack, bind } from '../../../components/form/fields';
 import { MasterList, type ListRoute } from '../../../components/form/MasterList';
 import type { DeMinimisBenefit } from '../../../mocks/compensation';
 import { deMinimisBenefits } from '../../../services/masterData';
@@ -34,8 +34,8 @@ export function DeMinimisTab(route: ListRoute) {
         const f = bind(d, update);
         return (
           <>
-            <Fields cols={1}>{f.area('description', 'Benefit', { required: true, error: errors.description, rows: 4 })}</Fields>
-            <Flags>{f.check('active', 'Active')}</Flags>
+            <FieldStack>{f.area('description', 'Benefit', { required: true, error: errors.description, rows: 4 })}</FieldStack>
+            {f.check('active', 'Active')}
           </>
         );
       }}

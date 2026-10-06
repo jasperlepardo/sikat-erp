@@ -64,7 +64,7 @@ export function TaxTab({ draft, update }: TabProps) {
     })
     .map((w) => ({
       value: w.id,
-      label: `${w.atc || 'ATC to confirm'}${w.kind === 'Final (FWT)' ? ' (final)' : ''} · ${w.description}${w.condition ? ` — ${w.condition}` : ''} (${w.rate}%)`,
+      label: `${w.atc || 'ATC to confirm'}${w.kind === 'Final (FWT)' ? ' (final)' : ''} · ${w.description}${w.condition ? ` — ${w.condition}` : ''}`,
     }));
 
   const nonResidentLocked = draft.nonResidentDigitalServices || nonResidentDrivenByType || alwaysResident;

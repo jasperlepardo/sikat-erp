@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Button, Text } from '@jasperlepardo/sikat-design-system';
-import { Fields, Flags, Section, bind } from '../../../components/form/fields';
+import { FieldStack, Section, bind } from '../../../components/form/fields';
 import type { PurchasingSettings } from '../../../mocks/purchaseOrders';
 import { purchasingSettings } from '../../../services/purchaseOrders';
 
@@ -24,6 +24,8 @@ export function PurchasingSettingsTab() {
   const dirty = JSON.stringify(settings) !== JSON.stringify(saved);
 
   return (
+    <div className="grid grid-cols-12 gap-2">
+      <div className="col-span-6 col-start-4 flex flex-col gap-2">
     <Section
       icon="tune"
       title="Purchasing settings"
@@ -44,20 +46,20 @@ export function PurchasingSettingsTab() {
         </Button>
       }
     >
-      <Fields cols={2}>
+      <FieldStack>
         {f.pick('duplicateVendorRef', 'Duplicate vendor reference', [...DUP_VENDOR_REF], {
           hint: 'What to do when another open PO from the same vendor already has the same Vendor Ref. No.',
         })}
         {f.pick('roundingMethod', 'Rounding method', [...ROUNDING_METHODS], {
           hint: '"By Currency" shows a rounding row in the PO footer using the document currency\'s rounding rule.',
         })}
-      </Fields>
-      <Flags>
         {f.check('separateNetGrossPriceMode', 'Show separate Net / Gross price modes')}
         {f.check('manageFreightInDocuments', 'Manage freight on documents')}
         {f.check('multiLanguageSupport', 'Multi-language support')}
         {f.check('useBpCatalogNumbers', "Use vendor catalog numbers on lines")}
-      </Flags>
+      </FieldStack>
     </Section>
+      </div>
+    </div>
   );
 }

@@ -31,7 +31,7 @@ export function InventorySettingsPage() {
     <TabbedPage
       base="/settings/inventory"
       icon="inventory"
-      title="Inventory settings"
+      title="Inventory"
       subcopy="Item groups, units and UoM groups, manufacturers, customs and commission groups, shipping, warranties and item properties."
       tabs={TABS}
     />

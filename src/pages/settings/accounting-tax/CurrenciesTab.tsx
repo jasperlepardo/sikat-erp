@@ -1,5 +1,5 @@
 import { Badge, TableStatus, Text } from '@jasperlepardo/sikat-design-system';
-import { Fields, Flags, bind } from '../../../components/form/fields';
+import { FieldStack, bind } from '../../../components/form/fields';
 import { MasterList, type ListRoute } from '../../../components/form/MasterList';
 import { ROUNDING_RULES, type Currency } from '../../../mocks/currencies';
 import { currencies, exchangeRates, rateOn } from '../../../services/masterData';
@@ -117,7 +117,7 @@ export function CurrenciesTab(route: ListRoute) {
         const f = bind(c, update);
         return (
           <>
-            <Fields cols={3}>
+            <FieldStack>
               {f.text('code', 'Code (ISO 4217)', { required: true, error: errors.code, readOnly: c.isLocal })}
               {f.text('name', 'Name', { required: true, error: errors.name })}
               {f.text('symbol', 'Symbol')}
@@ -130,11 +130,9 @@ export function CurrenciesTab(route: ListRoute) {
                 : f.pick('rateSource', 'Rate source', ['BSP RERB', 'Manual'], {
                     hint: 'BSP RERB rates are imported from the daily bulletin.',
                   })}
-            </Fields>
-            <Flags>
               {f.check('active', 'Active', { disabled: c.isLocal })}
               {f.check('isSystem', 'System currency (second reporting currency)', { disabled: c.isLocal })}
-            </Flags>
+            </FieldStack>
             {errors.active ? (
               <Text variant="small" tone="danger">
                 {errors.active}

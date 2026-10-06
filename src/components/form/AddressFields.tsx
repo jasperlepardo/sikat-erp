@@ -9,25 +9,28 @@ import { countryDef } from '../../pages/settings/masterDefs';
  * PH: Address | Barangay | City/Muni | Province | ZIP | Country.
  * Foreign: Address | City | State/Province | ZIP | Country.
  * Renders its own grid — do not wrap in Fields.
+ * Pass `unwrapped` when already inside a Fields grid to avoid a nested sikat-form__group.
  */
 export function AddressFields({
   value,
   onChange,
   countryError,
   cols = 2,
+  unwrapped = false,
 }: {
   value: PostalAddress;
   onChange: (patch: Partial<PostalAddress>) => void;
   countryError?: string;
   cols?: 1 | 2 | 3;
+  unwrapped?: boolean;
 }) {
   const f = bind(value, (p: Partial<PostalAddress>) =>
     p.country !== undefined && p.country !== value.country
       ? onChange({ country: p.country, province: '', provinceCode: '', city: '', cityCode: '', block: '', barangayCode: '' })
       : onChange(p),
   );
-  return (
-    <Fields cols={cols}>
+  const fields = (
+    <>
       {f.text('addressLine', 'Address', { placeholder: 'e.g. Unit 1203, Tektite East Tower, Exchange Road' })}
       {value.country === PHILIPPINES ? (
         <PhLocationFields value={value} onChange={onChange} />
@@ -39,6 +42,7 @@ export function AddressFields({
       )}
       {f.text('zip', 'ZIP code', { placeholder: 'e.g. 1223' })}
       {f.master('country', 'Country/Region', countryDef, { required: true, error: countryError })}
-    </Fields>
+    </>
   );
+  return unwrapped ? fields : <Fields cols={cols}>{fields}</Fields>;
 }

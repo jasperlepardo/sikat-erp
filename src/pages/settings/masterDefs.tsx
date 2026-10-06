@@ -3,7 +3,7 @@
  * Settings tab and the "+ Add" panel of every field that uses it (components/form/MasterLookup).
  */
 import { Button, Text } from '@jasperlepardo/sikat-design-system';
-import { Fields, Flags, bind, type Errors } from '../../components/form/fields';
+import { FieldStack, bind, type Errors } from '../../components/form/fields';
 import { statusColumn, uniqueRequired } from '../../components/form/MasterList';
 import type { MasterDef } from '../../components/form/MasterLookup';
 import { MAX_PARTNER_PROPERTIES, projectValue, type Bank, type BpGroup, type NamedEntry, PRICE_ROUNDING, type PaymentTerm, type PriceList, type Project } from '../../mocks/partnerMasters';
@@ -73,12 +73,10 @@ function namedDef(o: {
     editor: (r, update, errors, isNew) => {
       const f = bind(r, update);
       return (
-        <>
-          <Fields>
-            {f.text('name', 'Name', { required: true, error: errors.name, placeholder: o.placeholder, disabled: !isNew, hint: !isNew ? NAME_LOCK : undefined })}
-          </Fields>
-          <Flags>{f.check('active', 'Active')}</Flags>
-        </>
+        <FieldStack>
+          {f.text('name', 'Name', { required: true, error: errors.name, placeholder: o.placeholder, disabled: !isNew, hint: !isNew ? NAME_LOCK : undefined })}
+          {f.check('active', 'Active')}
+        </FieldStack>
       );
     },
   };
@@ -111,16 +109,14 @@ export const bpGroupDef: MasterDef<BpGroup> = {
   editor: (g, update, errors, isNew) => {
     const f = bind(g, update);
     return (
-      <>
-        <Fields>
-          {f.text('name', 'Name', { required: true, error: errors.name, placeholder: 'e.g. Customers – Export', disabled: !isNew, hint: !isNew ? NAME_LOCK : undefined })}
-          {f.choose('role', 'For', ROLE_ORDER.map((r) => ({ value: r, label: ROLE_CONFIG[r].title })), {
-            disabled: !isNew,
-            hint: 'Which partners can be put in this group.',
-          })}
-        </Fields>
-        <Flags>{f.check('active', 'Active')}</Flags>
-      </>
+      <FieldStack>
+        {f.text('name', 'Name', { required: true, error: errors.name, placeholder: 'e.g. Customers – Export', disabled: !isNew, hint: !isNew ? NAME_LOCK : undefined })}
+        {f.choose('role', 'For', ROLE_ORDER.map((r) => ({ value: r, label: ROLE_CONFIG[r].title })), {
+          disabled: !isNew,
+          hint: 'Which partners can be put in this group.',
+        })}
+        {f.check('active', 'Active')}
+      </FieldStack>
     );
   },
 };
@@ -162,7 +158,7 @@ export const priceListDef: MasterDef<PriceList> = {
   noun: 'price list',
   home: 'Inventory › Price Lists',
   description:
-    'Price tiers partners and document lines default to. Independent lists take the item’s cost or SRP; dependent lists are another list × a factor, so repricing the base reprices the whole chain.',
+    "Price tiers partners and document lines default to. Independent lists take the item's cost or SRP; dependent lists are another list × a factor, so repricing the base reprices the whole chain.",
   blank: (name) => ({
     id: newId('prl'),
     name,
@@ -199,12 +195,12 @@ export const priceListDef: MasterDef<PriceList> = {
     uniqueRequired(e, l, all, 'name', 'Name');
     if (l.basePriceList) {
       if (!(l.factor > 0)) e.factor = 'Factor must be more than 0.';
-      if (l.basePriceList.trim().toLowerCase() === l.name.trim().toLowerCase()) e.basePriceList = 'A list can’t be based on itself.';
-      else if (!all.some((x) => x.name === l.basePriceList)) e.basePriceList = `${l.basePriceList} doesn’t exist.`;
+      if (l.basePriceList.trim().toLowerCase() === l.name.trim().toLowerCase()) e.basePriceList = "A list can't be based on itself.";
+      else if (!all.some((x) => x.name === l.basePriceList)) e.basePriceList = `${l.basePriceList} doesn't exist.`;
       else if (!priceChain(l, all)) e.basePriceList = `${l.basePriceList} is based on this list (directly or further up), which would loop.`;
     }
     if (l.validFrom && l.validTo && l.validTo < l.validFrom) e.validTo = 'Valid to is before valid from.';
-    if (l.itemPrices.some((p) => !(p.price >= 0))) e.itemPrices = 'Manual prices can’t be negative.';
+    if (l.itemPrices.some((p) => !(p.price >= 0))) e.itemPrices = "Manual prices can't be negative.";
     return e;
   },
   editor: (l, update, errors, isNew) => {
@@ -214,38 +210,30 @@ export const priceListDef: MasterDef<PriceList> = {
     const chain = priceChain(l, all);
     const sample = samplePrice(l, all);
     return (
-      <>
-        <Fields>
-          {f.text('name', 'Name', { required: true, error: errors.name, placeholder: 'e.g. Corporate', disabled: !isNew, hint: !isNew ? NAME_LOCK : undefined })}
-          {f.choose(
-            'basePriceList',
-            'Base price list',
-            [{ value: '', label: 'None — independent list' }, ...bases.map((x) => ({ value: x.name, label: x.name }))],
-            { error: errors.basePriceList, hint: 'Leave empty for a list with its own prices.' },
-          )}
-        </Fields>
+      <FieldStack>
+        {f.text('name', 'Name', { required: true, error: errors.name, placeholder: 'e.g. Corporate', disabled: !isNew, hint: !isNew ? NAME_LOCK : undefined })}
+        {f.choose(
+          'basePriceList',
+          'Base price list',
+          [{ value: '', label: 'None — independent list' }, ...bases.map((x) => ({ value: x.name, label: x.name }))],
+          { error: errors.basePriceList, hint: 'Leave empty for a list with its own prices.' },
+        )}
         {l.basePriceList ? (
-          <Fields cols={3}>
+          <>
             {f.num('factor', 'Factor', { required: true, error: errors.factor, hint: '1.30 = 30% markup, 0.92 = 8% off the base.' })}
             {f.choose('rounding', 'Rounding', PRICE_ROUNDING)}
-          </Fields>
+          </>
         ) : (
-          <Fields>
-            {f.choose('source', 'Item price from', [
-              { value: 'srp', label: 'Item SRP (sales price)' },
-              { value: 'cost', label: 'Item cost (last purchase price)' },
-            ], { hint: 'Set on the item form, Sales and Purchasing tabs.' })}
-          </Fields>
+          f.choose('source', 'Item price from', [
+            { value: 'srp', label: 'Item SRP (sales price)' },
+            { value: 'cost', label: 'Item cost (last purchase price)' },
+          ], { hint: 'Set on the item form, Sales and Purchasing tabs.' })
         )}
-        <Fields>
-          {f.date('validFrom', 'Valid from', { hint: 'Empty = no start date.' })}
-          {f.date('validTo', 'Valid to', { error: errors.validTo, hint: 'Documents can’t pick the list outside these dates.' })}
-        </Fields>
-        <Fields>{f.area('remarks', 'Remarks')}</Fields>
-        <Flags>
-          {f.check('gross', 'Gross price (VAT inclusive)')}
-          {f.check('active', 'Active')}
-        </Flags>
+        {f.date('validFrom', 'Valid from', { hint: 'Empty = no start date.' })}
+        {f.date('validTo', 'Valid to', { error: errors.validTo, hint: "Documents can't pick the list outside these dates." })}
+        {f.area('remarks', 'Remarks')}
+        {f.check('gross', 'Gross price (VAT inclusive)')}
+        {f.check('active', 'Active')}
         {chain && chain.length > 1 ? (
           <Text variant="small" tone="muted">
             {describeChain(chain)}
@@ -262,7 +250,7 @@ export const priceListDef: MasterDef<PriceList> = {
             {errors.itemPrices ? <Text variant="small" tone="danger">{errors.itemPrices}</Text> : null}
           </>
         )}
-      </>
+      </FieldStack>
     );
   },
 };
@@ -306,13 +294,11 @@ export const paymentTermDef: MasterDef<PaymentTerm> = {
   editor: (t, update, errors, isNew) => {
     const f = bind(t, update);
     return (
-      <>
-        <Fields>
-          {f.text('name', 'Name', { required: true, error: errors.name, placeholder: 'e.g. Net 90', disabled: !isNew, hint: !isNew ? NAME_LOCK : undefined })}
-          {f.num('days', 'Due after', { suffix: 'days', error: errors.days, hint: 'Posting date + these days = due date. 0 for COD.' })}
-        </Fields>
-        <Flags>{f.check('active', 'Active')}</Flags>
-      </>
+      <FieldStack>
+        {f.text('name', 'Name', { required: true, error: errors.name, placeholder: 'e.g. Net 90', disabled: !isNew, hint: !isNew ? NAME_LOCK : undefined })}
+        {f.num('days', 'Due after', { suffix: 'days', error: errors.days, hint: 'Posting date + these days = due date. 0 for COD.' })}
+        {f.check('active', 'Active')}
+      </FieldStack>
     );
   },
 };
@@ -352,13 +338,11 @@ export const bankDef: MasterDef<Bank> = {
   editor: (b, update, errors, isNew) => {
     const f = bind(b, update);
     return (
-      <>
-        <Fields>
-          {f.text('name', 'Name', { required: true, error: errors.name, disabled: !isNew, hint: !isNew ? NAME_LOCK : undefined })}
-          {f.text('swift', 'BIC / SWIFT', { error: errors.swift, placeholder: 'e.g. BNORPHMM' })}
-        </Fields>
-        <Flags>{f.check('active', 'Active')}</Flags>
-      </>
+      <FieldStack>
+        {f.text('name', 'Name', { required: true, error: errors.name, disabled: !isNew, hint: !isNew ? NAME_LOCK : undefined })}
+        {f.text('swift', 'BIC / SWIFT', { error: errors.swift, placeholder: 'e.g. BNORPHMM' })}
+        {f.check('active', 'Active')}
+      </FieldStack>
     );
   },
 };
@@ -408,13 +392,11 @@ export const projectDef: MasterDef<Project> = {
   editor: (p, update, errors, isNew) => {
     const f = bind(p, update);
     return (
-      <>
-        <Fields>
-          {f.text('code', 'Code', { required: true, error: errors.code, disabled: !isNew, hint: !isNew ? NAME_LOCK : undefined })}
-          {f.text('name', 'Name', { required: true, error: errors.name, disabled: !isNew, hint: !isNew ? NAME_LOCK : undefined, placeholder: 'e.g. Davao store opening' })}
-        </Fields>
-        <Flags>{f.check('active', 'Active')}</Flags>
-      </>
+      <FieldStack>
+        {f.text('code', 'Code', { required: true, error: errors.code, disabled: !isNew, hint: !isNew ? NAME_LOCK : undefined })}
+        {f.text('name', 'Name', { required: true, error: errors.name, disabled: !isNew, hint: !isNew ? NAME_LOCK : undefined, placeholder: 'e.g. Davao store opening' })}
+        {f.check('active', 'Active')}
+      </FieldStack>
     );
   },
 };
@@ -454,9 +436,11 @@ export const companyDef: MasterDef<Company> = {
     const f = bind(c, update);
     return (
       <>
-        <Fields>{f.text('name', 'Registered name', { required: true, error: errors.name })}</Fields>
-        <AddressFields value={c.address} onChange={(p) => update({ address: { ...c.address, ...p } })} countryError={errors.country} />
-        <Flags>{f.check('active', 'Active')}</Flags>
+        <FieldStack>
+          {f.text('name', 'Registered name', { required: true, error: errors.name })}
+          <AddressFields value={c.address} onChange={(p) => update({ address: { ...c.address, ...p } })} countryError={errors.country} unwrapped />
+          {f.check('active', 'Active')}
+        </FieldStack>
       </>
     );
   },
@@ -491,12 +475,12 @@ export const currencyDef: MasterDef<Currency> = {
   editor: (c, update, errors) => {
     const f = bind(c, update);
     return (
-      <Fields>
+      <FieldStack>
         {f.text('code', 'Code (ISO 4217)', { required: true, error: errors.code, placeholder: 'e.g. AUD' })}
         {f.text('name', 'Name', { required: true, error: errors.name, placeholder: 'e.g. Australian dollar' })}
         {f.text('symbol', 'Symbol')}
         {f.num('decimals', 'Decimals', { error: errors.decimals })}
-      </Fields>
+      </FieldStack>
     );
   },
 };
@@ -540,34 +524,26 @@ export const uomDef: MasterDef<UnitOfMeasure> = {
     const f = bind(u, update);
     const computed = Math.round(u.length * u.width * u.height * 100) / 100;
     return (
-      <>
-        <Fields cols={3}>
-          {f.text('code', 'Code', { required: true, error: errors.code, placeholder: 'e.g. carton', disabled: !isNew, hint: !isNew ? CODE_LOCK : undefined })}
-          {f.text('name', 'Name', { required: true, error: errors.name })}
-        </Fields>
-        <Fields cols={3}>
-          {f.pick('lengthUnit', 'Length unit', LENGTH_UNITS)}
-          {f.pick('weightUnit', 'Weight unit', WEIGHT_UNITS)}
-        </Fields>
-        <Fields cols={3}>
-          {f.num('length', 'Length', { suffix: u.lengthUnit })}
-          {f.num('width', 'Width', { suffix: u.lengthUnit })}
-          {f.num('height', 'Height', { suffix: u.lengthUnit })}
-        </Fields>
+      <FieldStack>
+        {f.text('code', 'Code', { required: true, error: errors.code, placeholder: 'e.g. carton', disabled: !isNew, hint: !isNew ? CODE_LOCK : undefined })}
+        {f.text('name', 'Name', { required: true, error: errors.name })}
+        {f.pick('lengthUnit', 'Length unit', LENGTH_UNITS)}
+        {f.pick('weightUnit', 'Weight unit', WEIGHT_UNITS)}
+        {f.num('length', 'Length', { suffix: u.lengthUnit })}
+        {f.num('width', 'Width', { suffix: u.lengthUnit })}
+        {f.num('height', 'Height', { suffix: u.lengthUnit })}
         <div>
           <Button type="button" size="small" variant="ghost" disabled={!computed} onClick={() => update({ volume: computed })}>
             Calculate volume
           </Button>
         </div>
-        <Fields cols={3}>
-          {f.num('volume', 'Volume', {
-            suffix: volumeUnit(u.lengthUnit),
-            hint: computed && computed !== u.volume ? `L × W × H = ${computed} ${volumeUnit(u.lengthUnit)}.` : 'Optional. Enter it, or calculate it from the dimensions.',
-          })}
-          {f.num('weight', 'Weight', { suffix: u.weightUnit, hint: 'Gross weight of one unit, with packaging.' })}
-        </Fields>
-        <Flags>{f.check('active', 'Active')}</Flags>
-      </>
+        {f.num('volume', 'Volume', {
+          suffix: volumeUnit(u.lengthUnit),
+          hint: computed && computed !== u.volume ? `L × W × H = ${computed} ${volumeUnit(u.lengthUnit)}.` : 'Optional. Enter it, or calculate it from the dimensions.',
+        })}
+        {f.num('weight', 'Weight', { suffix: u.weightUnit, hint: 'Gross weight of one unit, with packaging.' })}
+        {f.check('active', 'Active')}
+      </FieldStack>
     );
   },
 };
@@ -601,17 +577,15 @@ export const manufacturerDef: MasterDef<Manufacturer> = {
   editor: (m, update, errors, isNew) => {
     const f = bind(m, update);
     return (
-      <>
-        <Fields cols={3}>
-          {f.text('code', 'Code', { required: true, error: errors.code, placeholder: 'e.g. MFR-007', disabled: !isNew, hint: !isNew ? CODE_LOCK : undefined })}
-          {f.text('name', 'Name', { required: true, error: errors.name })}
-          {f.master('country', 'Country', countryDef)}
-          {f.text('contactPerson', 'Contact person')}
-          {f.text('email', 'Email', { type: 'email', error: errors.email })}
-          {f.text('phone', 'Phone', { type: 'tel' })}
-        </Fields>
-        <Flags>{f.check('active', 'Active')}</Flags>
-      </>
+      <FieldStack>
+        {f.text('code', 'Code', { required: true, error: errors.code, placeholder: 'e.g. MFR-007', disabled: !isNew, hint: !isNew ? CODE_LOCK : undefined })}
+        {f.text('name', 'Name', { required: true, error: errors.name })}
+        {f.master('country', 'Country', countryDef)}
+        {f.text('contactPerson', 'Contact person')}
+        {f.text('email', 'Email', { type: 'email', error: errors.email })}
+        {f.text('phone', 'Phone', { type: 'tel' })}
+        {f.check('active', 'Active')}
+      </FieldStack>
     );
   },
 };
@@ -643,14 +617,12 @@ export const warrantyTemplateDef: MasterDef<WarrantyTemplate> = {
   editor: (w, update, errors) => {
     const f = bind(w, update);
     return (
-      <>
-        <Fields cols={3}>
-          {f.text('name', 'Name', { required: true, error: errors.name })}
-          {f.num('months', 'Period', { suffix: 'months', error: errors.months })}
-          {f.pick('coverage', 'Coverage', ['Parts', 'Parts & labor', 'Manufacturer'])}
-        </Fields>
-        <Flags>{f.check('active', 'Active')}</Flags>
-      </>
+      <FieldStack>
+        {f.text('name', 'Name', { required: true, error: errors.name })}
+        {f.num('months', 'Period', { suffix: 'months', error: errors.months })}
+        {f.pick('coverage', 'Coverage', ['Parts', 'Parts & labor', 'Manufacturer'])}
+        {f.check('active', 'Active')}
+      </FieldStack>
     );
   },
 };
@@ -681,13 +653,11 @@ export const shippingTypeDef: MasterDef<ShippingType> = {
   editor: (x, update, errors) => {
     const f = bind(x, update);
     return (
-      <>
-        <Fields>
-          {f.text('name', 'Name', { required: true, error: errors.name })}
-          {f.text('trackingUrl', 'Tracking page', { type: 'url', error: errors.trackingUrl, placeholder: 'https://' })}
-        </Fields>
-        <Flags>{f.check('active', 'Active')}</Flags>
-      </>
+      <FieldStack>
+        {f.text('name', 'Name', { required: true, error: errors.name })}
+        {f.text('trackingUrl', 'Tracking page', { type: 'url', error: errors.trackingUrl, placeholder: 'https://' })}
+        {f.check('active', 'Active')}
+      </FieldStack>
     );
   },
 };

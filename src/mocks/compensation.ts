@@ -7,40 +7,40 @@
 export type PayFrequency = 'Daily' | 'Weekly' | 'Semi-monthly' | 'Monthly' | 'Annual';
 export const PAY_FREQUENCIES: PayFrequency[] = ['Daily', 'Weekly', 'Semi-monthly', 'Monthly', 'Annual'];
 
-/** One bracket of the withholding tax table (or the annual tax table). */
-export interface CompensationBracket {
+/** One bracket of a withholding tax table (embedded in CompensationTable). */
+export interface BracketRow {
+  /** Bracket applies when compensation ≥ from (PHP). */
+  from: number;
+  /** Fixed tax for this bracket (PHP). */
+  base: number;
+  /** Marginal rate on the excess (%). 0 = flat amount only or no tax. */
+  rate: number;
+  /** Marginal rate applies to the excess over this amount (PHP). */
+  over: number;
+}
+
+/** One withholding tax table (one frequency × one effective period). */
+export interface CompensationTable {
   id: string;
   frequency: PayFrequency;
   effectiveFrom: string;
   /** '' = and onwards. */
   effectiveTo: string;
-  /** Bracket number, 1–6. */
-  bracket: number;
-  /** BIR's "Compensation Range", verbatim. */
-  rangeText: string;
-  /** BIR's "Prescribed Withholding Tax", verbatim. */
-  taxText: string;
-  /** Parsed: the bracket starts at this compensation. */
-  min: number;
-  /** Parsed: fixed tax for the bracket. */
-  base: number;
-  /** Parsed: % on the excess over `over`. */
-  rate: number;
-  over: number;
+  brackets: BracketRow[];
   active: boolean;
 }
 
 const amount = (s: string) => Number(s.replace(/[₱,\s]/g, ''));
 
 /** "₱685 - ₱1,095" / "₱21,918 and above" / "Over ₱ 250,000.00 but not over …" → where the bracket starts. */
-export function parseRangeStart(text: string) {
+function parseRangeStart(text: string) {
   if (/and below|^Not over/i.test(text)) return 0;
   const m = /₱\s?([\d,.]+)/.exec(text);
   return m ? amount(m[1]) : 0;
 }
 
 /** "₱82.19 +25% over ₱1,096" / "₱ 30,000.00 + 25% of the excess over ₱ 400,000.00" / "0%" → base, rate, over. */
-export function parseTax(text: string) {
+function parseTax(text: string) {
   const rate = /([\d.]+)%/.exec(text);
   if (!rate || Number(rate[1]) === 0) return { base: 0, rate: 0, over: 0 };
   const over = /over ₱\s?([\d,.]+)/.exec(text);
@@ -48,26 +48,24 @@ export function parseTax(text: string) {
   return { base: base ? amount(base[1]) : 0, rate: Number(rate[1]), over: over ? amount(over[1]) : 0 };
 }
 
-const table = (frequency: PayFrequency, effectiveFrom: string, effectiveTo: string, rows: [string, string][]) =>
-  rows.map(([rangeText, taxText], i): CompensationBracket => ({
-    id: `ct-${frequency.toLowerCase()}-${effectiveFrom.slice(0, 4)}-${i + 1}`,
-    frequency,
-    effectiveFrom,
-    effectiveTo,
-    bracket: i + 1,
-    rangeText,
-    taxText,
-    min: parseRangeStart(rangeText),
+const makeTable = (frequency: PayFrequency, effectiveFrom: string, effectiveTo: string, rows: [string, string][]): CompensationTable => ({
+  id: `ct-${frequency.toLowerCase().replace(/\s+/g, '-')}-${effectiveFrom.slice(0, 4)}`,
+  frequency,
+  effectiveFrom,
+  effectiveTo,
+  brackets: rows.map(([rangeText, taxText]): BracketRow => ({
+    from: parseRangeStart(rangeText),
     ...parseTax(taxText),
-    active: true,
-  }));
+  })),
+  active: true,
+});
 
 const TRAIN_1 = ['2018-01-01', '2022-12-31'] as const; // Effective January 1, 2018 to December 31, 2022
 const TRAIN_2 = ['2023-01-01', ''] as const; // Effective January 1, 2023 and onwards
 
-export const SEED_COMPENSATION_TAX: CompensationBracket[] = [
+export const SEED_COMPENSATION_TAX: CompensationTable[] = [
   // REVISED WITHHOLDING TAX TABLE — Effective January 1, 2018 to December 31, 2022
-  ...table('Daily', ...TRAIN_1, [
+  makeTable('Daily', ...TRAIN_1, [
     ['₱685 and below', '0.00'],
     ['₱685 - ₱1,095', '0.00 +20% over ₱685'],
     ['₱1,096 - ₱2,191', '₱82.19 +25% over ₱1,096'],
@@ -75,7 +73,7 @@ export const SEED_COMPENSATION_TAX: CompensationBracket[] = [
     ['₱5,479 - ₱21,917', '₱1,342.47 +32% over ₱5,479'],
     ['₱21,918 and above', '₱6,602.74 +35% over ₱21,918'],
   ]),
-  ...table('Weekly', ...TRAIN_1, [
+  makeTable('Weekly', ...TRAIN_1, [
     ['₱4,808 and below', '0.00'],
     ['₱4,808 - ₱7,691', '0.00 +20% over ₱4,808'],
     ['₱7,692 - ₱15,384', '₱576.92 +25% over ₱7,692'],
@@ -83,7 +81,7 @@ export const SEED_COMPENSATION_TAX: CompensationBracket[] = [
     ['₱38,462 - ₱153,845', '₱9,423.08 +32% over ₱38,462'],
     ['₱153,846 and above', '₱46,346.15 +35% over ₱153,846'],
   ]),
-  ...table('Semi-monthly', ...TRAIN_1, [
+  makeTable('Semi-monthly', ...TRAIN_1, [
     ['₱10,417 and below', '0.00'],
     ['₱10,417 - ₱16,666', '0.00 +20% over ₱10,417'],
     ['₱16,667 - ₱33,332', '₱1,250.00 +25% over ₱16,667'],
@@ -91,7 +89,7 @@ export const SEED_COMPENSATION_TAX: CompensationBracket[] = [
     ['₱83,333 - ₱333,332', '₱20,416.67 +32% over ₱83,333'],
     ['₱333,333 and above', '₱100,416.67 +35% over ₱333,333'],
   ]),
-  ...table('Monthly', ...TRAIN_1, [
+  makeTable('Monthly', ...TRAIN_1, [
     ['₱20,833 and below', '0.00'],
     ['₱20,833 - ₱33,332', '0.00 +20% over ₱20,833'],
     ['₱33,333 - ₱66,666', '₱2,500.00 +25% over ₱33,333'],
@@ -99,43 +97,7 @@ export const SEED_COMPENSATION_TAX: CompensationBracket[] = [
     ['₱166,667 - ₱666,666', '₱40,833.33 +32% over ₱166,667'],
     ['₱666,667 and above', '₱200,833.33 +35% over ₱666,667'],
   ]),
-
-  // REVISED WITHHOLDING TAX TABLE — Effective January 1, 2023 and onwards
-  ...table('Daily', ...TRAIN_2, [
-    ['₱685 and below', '0.00'],
-    ['₱685 -₱1,095', '0.00 +15% over ₱685'],
-    ['₱1,096 - ₱2,191', '₱61.65 +20% over ₱1,096'],
-    ['₱2,192 - ₱5,478', '₱280.85 +25% over ₱2,192'],
-    ['₱5,479 - ₱21,917', '₱1,102.60 +30% over ₱5,479'],
-    ['₱21,918 and above', '₱6,034.30 +35% over ₱21,918'],
-  ]),
-  ...table('Weekly', ...TRAIN_2, [
-    ['₱4,808 and below', '0.00'],
-    ['₱4,808 - ₱7,691', '0.00 +15% over ₱4,808'],
-    ['₱7,692 - ₱15,384', '₱432.60 +20% over ₱7,692'],
-    ['₱15,385 - ₱38,461', '₱1,971.20 +25% over ₱15,385'],
-    ['₱38,462 - ₱153,845', '₱7,740.45 +30% over ₱38,462'],
-    ['₱153,846 and above', '₱42,355.65 +35% over ₱153,846'],
-  ]),
-  ...table('Semi-monthly', ...TRAIN_2, [
-    ['₱10,417 and below', '0.00'],
-    ['₱10,417 - ₱16,666', '0.00 +15% over ₱10,417'],
-    ['₱16,667 - ₱33,332', '₱937.50 +20% over ₱16,667'],
-    ['₱33,333 - ₱83,332', '₱4,270.70 +25% over ₱33,333'],
-    ['₱83,333 - ₱333,332', '₱16,770.70 +30% over ₱83,333'],
-    ['₱333,333 and above', '₱91,770.70 +35% over ₱333,333'],
-  ]),
-  ...table('Monthly', ...TRAIN_2, [
-    ['₱20,833 and below', '0.00'],
-    ['₱20,833 - ₱33,332', '0.00 +15% over ₱20,833'],
-    ['₱33,333 - ₱66,666', '₱1,875.00 +20% over ₱33,333'],
-    ['₱66,667 - ₱166,666', '₱8,541.80 +25% over ₱66,667'],
-    ['₱166,667 - ₱666,666', '₱33,541.80 +30% over ₱166,667'],
-    ['₱666,667 and above', '₱183,541.80 +35% over ₱666,667'],
-  ]),
-
-  // ANNUAL TAX TABLE — EFFECTIVE DATE JANUARY 1, 2018 to DECEMBER 31, 2022
-  ...table('Annual', ...TRAIN_1, [
+  makeTable('Annual', ...TRAIN_1, [
     ['Not over ₱ 250,000.00', '0%'],
     ['Over ₱ 250,000.00 but not over ₱ 400,000.00', '20% of the excess over ₱ 250,000.00'],
     ['Over ₱ 400,000.00 but not over ₱ 800,000.00', '₱ 30,000.00 + 25% of the excess over ₱ 400,000.00'],
@@ -143,8 +105,41 @@ export const SEED_COMPENSATION_TAX: CompensationBracket[] = [
     ['Over ₱ 2,000,000.00 but not over ₱ 8,000,000.00', '₱ 490,000.00 + 32% of the excess over ₱ 2,000,000.00'],
     ['Over ₱ 8,000,000.00', '₱ 2,410,000.00 + 35% of the excess over ₱ 8,000,000.00'],
   ]),
-  // ANNUAL TAX TABLE — EFFECTIVE DATE JANUARY 1, 2023
-  ...table('Annual', ...TRAIN_2, [
+
+  // REVISED WITHHOLDING TAX TABLE — Effective January 1, 2023 and onwards
+  makeTable('Daily', ...TRAIN_2, [
+    ['₱685 and below', '0.00'],
+    ['₱685 - ₱1,095', '0.00 +15% over ₱685'],
+    ['₱1,096 - ₱2,191', '₱61.65 +20% over ₱1,096'],
+    ['₱2,192 - ₱5,478', '₱280.85 +25% over ₱2,192'],
+    ['₱5,479 - ₱21,917', '₱1,102.60 +30% over ₱5,479'],
+    ['₱21,918 and above', '₱6,034.30 +35% over ₱21,918'],
+  ]),
+  makeTable('Weekly', ...TRAIN_2, [
+    ['₱4,808 and below', '0.00'],
+    ['₱4,808 - ₱7,691', '0.00 +15% over ₱4,808'],
+    ['₱7,692 - ₱15,384', '₱432.60 +20% over ₱7,692'],
+    ['₱15,385 - ₱38,461', '₱1,971.20 +25% over ₱15,385'],
+    ['₱38,462 - ₱153,845', '₱7,740.45 +30% over ₱38,462'],
+    ['₱153,846 and above', '₱42,355.65 +35% over ₱153,846'],
+  ]),
+  makeTable('Semi-monthly', ...TRAIN_2, [
+    ['₱10,417 and below', '0.00'],
+    ['₱10,417 - ₱16,666', '0.00 +15% over ₱10,417'],
+    ['₱16,667 - ₱33,332', '₱937.50 +20% over ₱16,667'],
+    ['₱33,333 - ₱83,332', '₱4,270.70 +25% over ₱33,333'],
+    ['₱83,333 - ₱333,332', '₱16,770.70 +30% over ₱83,333'],
+    ['₱333,333 and above', '₱91,770.70 +35% over ₱333,333'],
+  ]),
+  makeTable('Monthly', ...TRAIN_2, [
+    ['₱20,833 and below', '0.00'],
+    ['₱20,833 - ₱33,332', '0.00 +15% over ₱20,833'],
+    ['₱33,333 - ₱66,666', '₱1,875.00 +20% over ₱33,333'],
+    ['₱66,667 - ₱166,666', '₱8,541.80 +25% over ₱66,667'],
+    ['₱166,667 - ₱666,666', '₱33,541.80 +30% over ₱166,667'],
+    ['₱666,667 and above', '₱183,541.80 +35% over ₱666,667'],
+  ]),
+  makeTable('Annual', ...TRAIN_2, [
     ['Not over ₱ 250,000.00', '0%'],
     ['Over ₱ 250,000.00 but not over ₱ 400,000.00', '15% of the excess over ₱ 250,000.00'],
     ['Over ₱ 400,000.00 but not over ₱ 800,000.00', '₱ 22,500.00 + 20% of the excess over ₱ 400,000.00'],
@@ -159,11 +154,14 @@ export const SEED_COMPENSATION_TAX: CompensationBracket[] = [
  * force on `date`: fixed tax + rate × (compensation − "over"). The last bracket whose
  * range starts at or below the compensation applies.
  */
-export function compensationTax(rows: CompensationBracket[], compensation: number, frequency: PayFrequency, date: string) {
-  const bracket = rows
-    .filter((r) => r.active && r.frequency === frequency && r.effectiveFrom <= date && (!r.effectiveTo || date <= r.effectiveTo))
-    .sort((a, b) => a.min - b.min)
-    .filter((r) => r.min <= compensation)
+export function compensationTax(tables: CompensationTable[], compensation: number, frequency: PayFrequency, date: string) {
+  const table = tables.find(
+    (t) => t.active && t.frequency === frequency && t.effectiveFrom <= date && (!t.effectiveTo || date <= t.effectiveTo),
+  );
+  if (!table) return undefined;
+  const bracket = [...table.brackets]
+    .sort((a, b) => a.from - b.from)
+    .filter((r) => r.from <= compensation)
     .at(-1);
   if (!bracket) return undefined;
   const tax = bracket.base + (bracket.rate / 100) * Math.max(0, compensation - bracket.over);
@@ -272,13 +270,13 @@ export type YearEndOutcome = 'Collect' | 'Refund' | 'Break even';
  * Exclusions on a capped line (13th month pay and other benefits: ₱90,000) count only
  * up to the cap; the excess stays taxable.
  */
-export function yearEndAdjustment(brackets: CompensationBracket[], exclusions: CompensationExclusion[], input: YearEndInput, date: string) {
+export function yearEndAdjustment(tables: CompensationTable[], exclusions: CompensationExclusion[], input: YearEndInput, date: string) {
   const caps = exclusions.filter((x) => x.active && x.line === '13th month pay and other benefits' && x.annualCap > 0).map((x) => x.annualCap);
   const benefitsCap = caps.length ? Math.max(...caps) : Infinity;
   const benefitsExcluded = Math.min(input.benefits, benefitsCap);
   const nonTaxable = benefitsExcluded + input.contributions + input.otherNonTaxable;
   const taxable = Math.max(0, input.gross - nonTaxable);
-  const due = compensationTax(brackets, taxable, 'Annual', date);
+  const due = compensationTax(tables, taxable, 'Annual', date);
   if (!due) return undefined;
   const balance = Math.round((due.tax - input.withheld) * 100) / 100;
   const outcome: YearEndOutcome = balance > 0 ? 'Collect' : balance < 0 ? 'Refund' : 'Break even';

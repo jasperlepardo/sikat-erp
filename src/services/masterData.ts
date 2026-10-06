@@ -18,7 +18,7 @@ import {
   SEED_DE_MINIMIS,
   SEED_EXCLUSIONS,
   SEED_WITHHOLDING_FORMS,
-  type CompensationBracket,
+  type CompensationTable,
   type CompensationExclusion,
   type DeMinimisBenefit,
   type WithholdingForm,
@@ -34,13 +34,13 @@ export const taxGroups = createCollection<TaxGroup>('sikat-erp:tax-groups:v5', S
 export const companyTax = createCollection<CompanyTaxProfile>('sikat-erp:company-tax:v2', SEED_COMPANY_TAX, 'company');
 /** Accounting › Chart of Accounts. */
 export const accounts = createCollection<Account>('sikat-erp:accounts:v5', SEED_ACCOUNTS, 'acct');
-export const compensationTax = createCollection<CompensationBracket>('sikat-erp:compensation-tax', SEED_COMPENSATION_TAX, 'ct');
+export const compensationTax = createCollection<CompensationTable>('sikat-erp:compensation-tax:v2', SEED_COMPENSATION_TAX, 'ct');
 export const compensationExclusions = createCollection<CompensationExclusion>('sikat-erp:compensation-exclusions', SEED_EXCLUSIONS, 'cx');
 export const deMinimisBenefits = createCollection<DeMinimisBenefit>('sikat-erp:de-minimis', SEED_DE_MINIMIS, 'dm');
 export const withholdingForms = createCollection<WithholdingForm>('sikat-erp:withholding-forms', SEED_WITHHOLDING_FORMS, 'wf');
-export const withholdingTaxes = createCollection<WithholdingTax>('sikat-erp:withholding:v5', SEED_WITHHOLDING, 'wt');
+export const withholdingTaxes = createCollection<WithholdingTax>('sikat-erp:withholding:v10', SEED_WITHHOLDING, 'wt');
 export const withholdingGroups = createCollection<WithholdingGroup>('sikat-erp:withholding-groups:v2', SEED_WITHHOLDING_GROUPS, 'wg');
-export const exciseCategories = createCollection<ExciseCategory>('sikat-erp:excise', SEED_EXCISE, 'ex');
+export const exciseCategories = createCollection<ExciseCategory>('sikat-erp:excise:v3', SEED_EXCISE, 'ex');
 export const currencies = createCollection<Currency>('sikat-erp:currencies', SEED_CURRENCIES, 'cur');
 /** One record per day (v2 — v1 stored one record per currency per day). */
 export const exchangeRates = createCollection<ExchangeRate>('sikat-erp:exchange-rates:v5', SEED_RATES, 'fx');

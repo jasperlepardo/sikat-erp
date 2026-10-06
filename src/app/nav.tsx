@@ -132,28 +132,6 @@ export const NAV: SideNavSection[] = [
     title: 'Insights',
     items: [hub('Reports', 'bar_chart', ['Library', 'Dashboards', 'Builder'])],
   },
-  {
-    id: 'settings',
-    items: [
-      hub('Settings', 'settings', [
-        'Setup Guide',
-        'Company',
-        'Users & Access',
-        'Documents & Templates',
-        'Accounting & Tax',
-        'Sales & CRM',
-        'Purchasing',
-        'Inventory',
-        'Banking',
-        'Operations',
-        'Automation',
-        'Data',
-        'Customization',
-        'Apps & Integrations',
-        'Subscription',
-      ]),
-    ],
-  },
 ];
 
 const LEAVES = NAV.flatMap((s) => s.items.flatMap((i) => (i.items?.length ? i.items : [i])));

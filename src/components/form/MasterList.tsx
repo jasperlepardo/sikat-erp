@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import { useNavigate } from 'react-router';
+import { useLocation, useNavigate } from 'react-router';
 import {
   Button,
   Card,
@@ -113,6 +113,8 @@ function ListView<T extends { id: string }>({
   basePath,
 }: MasterListProps<T>) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const isSettings = location.pathname.startsWith('/settings');
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<TableSort | null>(defaultSort ?? { key: columns[0].key, direction: 'asc' });
   const [page, setPage] = useState(1);
@@ -159,48 +161,56 @@ function ListView<T extends { id: string }>({
       : {}),
   }));
 
+  const showHeader = !isSettings || !!(onSetActive && selected.length) || !!actions;
+
   return (
     <>
-      <div className="flex flex-wrap items-start justify-between gap-2 px-2 pt-2">
-        <div className="flex min-w-0 flex-1 items-start gap-2">
-          <Icon size={24}>{icon}</Icon>
-          <div className="min-w-0">
-            <Text weight="semibold" tone="heading">{title}</Text>
-            {description ? (
-              <Text variant="small" tone="muted">
-                {description}
-              </Text>
+      {showHeader && (
+        <div className="flex flex-wrap items-start justify-between gap-2 px-2 pt-2">
+          {!isSettings && (
+            <div className="flex min-w-0 flex-1 items-start gap-2">
+              <Icon size={24}>{icon}</Icon>
+              <div className="min-w-0">
+                <Text weight="semibold" tone="heading">{title}</Text>
+                {description ? (
+                  <Text variant="small" tone="muted">
+                    {description}
+                  </Text>
+                ) : null}
+              </div>
+            </div>
+          )}
+          <div className={`flex flex-wrap items-center gap-1${isSettings ? ' ml-auto' : ''}`}>
+            {onSetActive && selected.length ? (
+              <>
+                <Text variant="small" tone="muted">
+                  {selected.length} selected
+                </Text>
+                <Button type="button" size="small" variant="ghost" onClick={() => setActive(true)}>
+                  Activate
+                </Button>
+                <Button type="button" size="small" variant="ghost" intent="danger" onClick={() => setActive(false)}>
+                  Deactivate
+                </Button>
+              </>
             ) : null}
+            {actions}
+            {!isSettings && (
+              <Button
+                type="button"
+                size="small"
+                intent="primary"
+                variant="solid"
+                aria-label={`New ${noun}`}
+                leadingIcon={<Icon size={16}>add</Icon>}
+                onClick={() => navigate(`${basePath}/new`)}
+              >
+                New
+              </Button>
+            )}
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-1">
-          {onSetActive && selected.length ? (
-            <>
-              <Text variant="small" tone="muted">
-                {selected.length} selected
-              </Text>
-              <Button type="button" size="small" variant="ghost" onClick={() => setActive(true)}>
-                Activate
-              </Button>
-              <Button type="button" size="small" variant="ghost" intent="danger" onClick={() => setActive(false)}>
-                Deactivate
-              </Button>
-            </>
-          ) : null}
-          {actions}
-          <Button
-            type="button"
-            size="small"
-            intent="primary"
-            variant="solid"
-            aria-label={`New ${noun}`}
-            leadingIcon={<Icon size={16}>add</Icon>}
-            onClick={() => navigate(`${basePath}/new`)}
-          >
-            New
-          </Button>
-        </div>
-      </div>
+      )}
       {intro}
       <TextField
         aria-label={`Search ${title.toLowerCase()}`}
@@ -262,6 +272,8 @@ function RecordPage<T extends { id: string }>({
   recordId,
 }: MasterListProps<T> & { recordId: string }) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const isSettings = location.pathname.startsWith('/settings');
   const isNew = recordId === 'new';
   const [draft, setDraft] = useState<T | null>(null);
   // A new record's defaults can depend on the other rows (e.g. the next free
@@ -355,14 +367,18 @@ function RecordPage<T extends { id: string }>({
         }
       />
       <Panel.Body className="flex flex-col gap-2">
-        {Object.keys(errors).length ? (
-          <Text variant="small" tone="danger">
-            Fix the highlighted fields to save.
-          </Text>
-        ) : null}
-        <Section icon={isNew ? 'add_circle' : 'edit'} title="Details">
-          {editor(row, (patch) => setDraft({ ...row, ...patch }), errors, isNew)}
-        </Section>
+        <div className={isSettings ? 'grid grid-cols-12 gap-2' : 'contents'}>
+          <div className={isSettings ? 'col-span-6 col-start-4 flex flex-col gap-2' : 'contents'}>
+            {Object.keys(errors).length ? (
+              <Text variant="small" tone="danger">
+                Fix the highlighted fields to save.
+              </Text>
+            ) : null}
+            <Section icon={isNew ? 'add_circle' : 'edit'} title="Details">
+              {editor(row, (patch) => setDraft({ ...row, ...patch }), errors, isNew)}
+            </Section>
+          </div>
+        </div>
       </Panel.Body>
     </Panel>
   );

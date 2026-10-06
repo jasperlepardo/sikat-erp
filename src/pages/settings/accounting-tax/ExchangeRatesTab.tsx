@@ -13,7 +13,7 @@ import {
   Textarea,
   TextField,
 } from '@jasperlepardo/sikat-design-system';
-import { Fields, Section, bind } from '../../../components/form/fields';
+import { CtxFormField, FieldStack, Section, bind } from '../../../components/form/fields';
 import { MasterList, type ListRoute } from '../../../components/form/MasterList';
 import { BSP_RERB_URL, type ExchangeRate } from '../../../mocks/currencies';
 import { currencies, exchangeRates, parseBspBulletin } from '../../../services/masterData';
@@ -124,18 +124,18 @@ export function ExchangeRatesTab(route: ListRoute) {
           };
           return (
             <>
-              <Fields cols={3}>
+              <FieldStack>
                 {f.date('date', 'Date', { required: true, error: errors.date })}
                 {f.pick('source', 'Source', ['BSP RERB', 'Manual'])}
-              </Fields>
+              </FieldStack>
               {errors.rates ? (
                 <Alert intent="danger" variant="outline" title={errors.rates}>
                   Pesos per 1 unit of the currency. Leave a currency blank if it has no rate that day.
                 </Alert>
               ) : null}
-              <Fields cols={3}>
+              <FieldStack>
                 {foreign.map((c) => (
-                  <FormField
+                  <CtxFormField
                     key={c.code}
                     label={`${c.code} · ${c.name}`}
                     error={errors[`rate-${c.code}`]}
@@ -151,9 +151,9 @@ export function ExchangeRatesTab(route: ListRoute) {
                         onChange={(e) => setRate(c.code, e.currentTarget.value)}
                       />
                     )}
-                  </FormField>
+                  </CtxFormField>
                 ))}
-              </Fields>
+              </FieldStack>
             </>
           );
         }}
@@ -253,11 +253,11 @@ function BspImport({
         <li>Upload it below — or copy the bulletin table from the web page or PDF and paste it.</li>
         <li>Check the preview. Rates are pesos per unit (the “Phil. peso equivalent” column).</li>
       </ol>
-      <Fields cols={3}>
-        <FormField label="Bulletin date" required>
+      <FieldStack>
+        <CtxFormField label="Bulletin date" required>
           {(p) => <DatePicker {...p} value={date} onValueChange={setDate} />}
-        </FormField>
-        <FormField label="Bulletin file" error={fileError} hint={fileName || 'RERB.xlsx from the BSP site.'}>
+        </CtxFormField>
+        <CtxFormField label="Bulletin file" error={fileError} hint={fileName || 'RERB.xlsx from the BSP site.'}>
           {() => (
             <div>
               <input
@@ -280,8 +280,8 @@ function BspImport({
               </Button>
             </div>
           )}
-        </FormField>
-      </Fields>
+        </CtxFormField>
+      </FieldStack>
       <FormField label="Bulletin text">
         {(p) => (
           <Textarea

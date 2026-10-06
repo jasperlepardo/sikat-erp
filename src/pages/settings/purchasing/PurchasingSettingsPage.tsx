@@ -12,7 +12,7 @@ export function PurchasingSettingsPage() {
     <TabbedPage
       base="/settings/purchasing"
       icon="shopping_cart"
-      title="Purchasing settings"
+      title="Purchasing"
       subcopy="Document series for purchase order numbering, and document behaviour settings."
       tabs={TABS}
     />

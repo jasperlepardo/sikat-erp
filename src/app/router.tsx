@@ -1,4 +1,4 @@
-import { createHashRouter } from 'react-router';
+import { createHashRouter, Navigate } from 'react-router';
 import { AppShell } from './AppShell';
 import { Home } from '../pages/Home';
 import { ItemList } from '../pages/inventory/items/ItemList';
@@ -99,6 +99,8 @@ export const router = createHashRouter([
       { path: 'purchasing/returns-and-debits/returns/:id', element: <GoodsReturnDetail /> },
       { path: 'purchasing/returns-and-debits/credit-memos', element: <ReturnsList key="memos" kind="memos" /> },
       { path: 'purchasing/returns-and-debits/credit-memos/:id', element: <CreditMemoDetail /> },
+      // Settings shell: redirect bare /settings to the first settings module.
+      { path: 'settings', element: <Navigate to="/settings/company" replace /> },
       // Settings pages keep the tab and an opened record in the URL.
       { path: 'settings/accounting-and-tax/:tab?/:recordId?', element: <AccountingTaxPage /> },
       { path: 'settings/inventory/:tab?/:recordId?', element: <InventorySettingsPage /> },

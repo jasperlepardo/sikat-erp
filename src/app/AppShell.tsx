@@ -2,6 +2,7 @@ import { Outlet, useLocation, useNavigate } from 'react-router';
 import { Navbar, Page, SideNav, useTheme, type NavbarMenuItem } from '@jasperlepardo/sikat-design-system';
 import { useEffect, useState } from 'react';
 import { NAV, leafForPath, moduleOf, pathOf } from './nav';
+import { SETTINGS_NAV, settingsLeafForPath, settingsModuleOf } from './settingsNav';
 import { useCollection } from '../components/form/MasterLookup';
 import { companies, setCurrentCompanyId, useCurrentCompany } from '../services/companies';
 
@@ -15,14 +16,24 @@ export function AppShell() {
   const orgs: NavbarMenuItem[] = (useCollection(companies) ?? [])
     .filter((c) => c.active || c.id === company?.id)
     .map((c) => ({ id: c.id, label: c.name }));
+
+  const isSettings = location.pathname.startsWith('/settings');
+
+  // Main nav state
   const activeId = leafForPath(location.pathname)?.id;
-  // Open the current page's hub whenever the route moves to another hub (links,
-  // Back, deep links) — not only when the user clicks the sidebar.
-  const [openId, setOpenId] = useState<string | null>(moduleOf(activeId));
+  const [mainOpenId, setMainOpenId] = useState<string | null>(() => moduleOf(activeId));
   const activeModule = moduleOf(activeId);
   useEffect(() => {
-    if (activeModule) setOpenId(activeModule);
+    if (activeModule) setMainOpenId(activeModule);
   }, [activeModule]);
+
+  // Settings nav state
+  const settingsActiveId = settingsLeafForPath(location.pathname)?.id;
+  const [settingsOpenId, setSettingsOpenId] = useState<string | null>(() => settingsModuleOf(settingsActiveId));
+  const settingsModule = settingsModuleOf(settingsActiveId);
+  useEffect(() => {
+    if (settingsModule) setSettingsOpenId(settingsModule);
+  }, [settingsModule]);
 
   const accountItems: NavbarMenuItem[] = [
     {
@@ -34,6 +45,15 @@ export function AppShell() {
     { id: 'sign-out', label: 'Sign out', onSelect: () => navigate('/') },
   ];
 
+  const sideNavStyle: React.CSSProperties = {
+    position: 'sticky',
+    top: 64,
+    height: 'calc(100vh - 64px)',
+    flex: 'none',
+    width: 280,
+    overflowY: 'auto',
+  };
+
   return (
     <Page>
       <Navbar
@@ -43,16 +63,28 @@ export function AppShell() {
         onOrganizationChange={setCurrentCompanyId}
         avatar={<span className="grid size-full place-items-center bg-primary text-sm font-semibold text-heading_on-primary">JL</span>}
         accountItems={accountItems}
+        onSettingsClick={() => navigate('/settings')}
       />
       <div className="flex flex-1">
-        <SideNav
-          sections={NAV}
-          activeId={activeId}
-          openId={openId}
-          onOpenChange={setOpenId}
-          onNavigate={(id) => navigate(pathOf(id))}
-          style={{ position: 'sticky', top: 64, height: 'calc(100vh - 64px)', flex: 'none', width: 280, overflowY: 'auto' }}
-        />
+        {isSettings ? (
+          <SideNav
+            sections={SETTINGS_NAV}
+            activeId={settingsActiveId}
+            openId={settingsOpenId}
+            onOpenChange={setSettingsOpenId}
+            onNavigate={(id) => navigate(pathOf(id))}
+            style={sideNavStyle}
+          />
+        ) : (
+          <SideNav
+            sections={NAV}
+            activeId={activeId}
+            openId={mainOpenId}
+            onOpenChange={setMainOpenId}
+            onNavigate={(id) => navigate(pathOf(id))}
+            style={sideNavStyle}
+          />
+        )}
         {/* Bounded to the viewport so a Panel fills it and scrolls its own body; list tables then scroll their rows. */}
         <main className="flex h-[calc(100dvh-64px)] min-w-0 flex-1 flex-col gap-2 overflow-y-auto p-2 *:min-h-0">
           <Outlet />

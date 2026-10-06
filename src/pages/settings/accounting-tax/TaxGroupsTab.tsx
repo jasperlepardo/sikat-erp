@@ -1,5 +1,5 @@
 import { TableStatus } from '@jasperlepardo/sikat-design-system';
-import { Fields, Flags, bind } from '../../../components/form/fields';
+import { FieldStack, bind } from '../../../components/form/fields';
 import { MasterList, type ListRoute } from '../../../components/form/MasterList';
 import { currentRate, type TaxGroup } from '../../../mocks/taxes';
 import { taxCodes, taxGroups } from '../../../services/masterData';
@@ -65,7 +65,7 @@ export function TaxGroupsTab(route: ListRoute) {
         const f = bind(g, update);
         return (
           <>
-            <Fields cols={3}>
+            <FieldStack>
               {f.text('code', 'Code', { required: true, error: errors.code, placeholder: 'e.g. S-VAT12' })}
               {f.text('name', 'Name', { required: true, error: errors.name })}
               {f.pick('direction', 'Used on', ['Sales', 'Purchase'])}
@@ -75,13 +75,13 @@ export function TaxGroupsTab(route: ListRoute) {
                 codes
                   .filter((c) => c.direction === g.direction && (c.active || c.code === g.taxCode))
                   .map((c) => ({ value: c.code, label: `${c.code} · ${c.name} (${currentRate(c) ?? '—'}%)` })),
-                { required: true, error: errors.taxCode, placeholder: 'Pick a tax code', className: 'md:col-span-3' },
+                { required: true, error: errors.taxCode, placeholder: 'Pick a tax code',  },
               )}
-            </Fields>
-            <Flags>
+            </FieldStack>
+            
               {f.check('zeroRated', 'Zero-rated — suppliers may zero-rate it only for a registered export enterprise')}
               {f.check('active', 'Active')}
-            </Flags>
+            
           </>
         );
       }}

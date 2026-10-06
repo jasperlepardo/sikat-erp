@@ -132,7 +132,7 @@ export function GeneralTab({ draft, update, errors, tax, inv }: TabProps) {
                 placeholder: 'Pick a category',
                 hint: (() => {
                   const x = tax.excise.find((e) => e.code === draft.exciseCategory);
-                  return x ? `${x.basis}: ${x.rate || 'rate not set — update it in Settings › Accounting & Tax'}` : 'Rates are kept in Settings › Accounting & Tax.';
+                  return x ? `${x.basis}${x.rates.length ? '' : ' — rate not set, update it in Settings › Accounting & Tax'}` : 'Rates are kept in Settings › Accounting & Tax.';
                 })() + groupTaxNote(inv, draft, 'exciseCategory'),
               },
             )}

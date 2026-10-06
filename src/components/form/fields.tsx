@@ -5,6 +5,7 @@ import {
   ReadOnlyField,
   bind as dsBind,
   CtxFormField,
+  FieldOrientationCtx,
   Fields,
   FieldStack,
   Flags,
@@ -13,7 +14,7 @@ import type { FieldOptions, KeysOf, Option } from '@jasperlepardo/sikat-design-s
 import { MasterLookup, type MasterDef, type MasterRow } from './MasterLookup';
 
 export type { FieldOptions, KeysOf, Option };
-export { CtxFormField, Fields, FieldStack, Flags };
+export { CtxFormField, FieldOrientationCtx, Fields, FieldStack, Flags };
 
 /** Field errors by key: top-level fields by name, row fields as `<row kind>:<id>:<field>`. */
 export type Errors = Record<string, string>;

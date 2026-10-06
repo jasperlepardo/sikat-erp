@@ -2,11 +2,13 @@
 import { MasterDefList, type MasterDef, type MasterRow } from '../../components/form/MasterLookup';
 import type { ListRoute } from '../../components/form/MasterList';
 import { TabbedPage, type PageTab } from '../../components/form/TabbedPage';
+import { CompaniesTab } from './company/CompanyTab';
 import * as d from './masterDefs';
 
 const tab = <T extends MasterRow>(value: string, def: MasterDef<T>): PageTab => ({
   value,
   label: def.title,
+  description: typeof def.description === 'string' ? def.description : undefined,
   Component: (route: ListRoute) => <MasterDefList def={def} {...route} />,
 });
 
@@ -32,7 +34,7 @@ const BANKING_TABS = [
 ];
 
 const COMPANY_TABS = [
-  tab('companies', d.companyDef),
+  { value: 'companies', label: 'Companies', Component: CompaniesTab },
   tab('projects', d.projectDef),
   tab('technicians', d.technicianDef),
   tab('planning-groups', d.planningGroupDef),
@@ -44,7 +46,7 @@ export function SalesCrmSettingsPage() {
     <TabbedPage
       base="/settings/sales-and-crm"
       icon="handshake"
-      title="Sales & CRM settings"
+      title="Sales & CRM"
       subcopy="Partner groups, industries, sales employees, territories, channels, lead sources, e-mail groups and partner properties."
       tabs={SALES_TABS}
     />
@@ -55,8 +57,8 @@ export function BankingSettingsPage() {
   return (
     <TabbedPage
       base="/settings/banking"
-      icon="account_balance"
-      title="Banking settings"
+      icon="savings"
+      title="Banking"
       subcopy="Payment terms, dunning terms, holiday calendars, banks, bank charges, card brands and factoring companies."
       tabs={BANKING_TABS}
     />
@@ -68,7 +70,7 @@ export function CompanySettingsPage() {
     <TabbedPage
       base="/settings/company"
       icon="domain"
-      title="Company settings"
+      title="Company"
       subcopy="Our companies and their addresses, projects, technicians, planning groups and countries."
       tabs={COMPANY_TABS}
     />

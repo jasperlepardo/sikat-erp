@@ -438,19 +438,44 @@ export type WithholdingBase = '' | 'Amount net of VAT' | 'Gross amount' | 'VAT-e
 export const WITHHOLDING_BASES: WithholdingBase[] = ['Amount net of VAT', 'Gross amount', 'VAT-exclusive amount'];
 
 /** A creditable withholding tax, by BIR Alphanumeric Tax Code (ATC). */
+/** One effective rate period for a withholding tax ATC. */
+export interface WithholdingRatePeriod {
+  /** YYYY-MM-DD the rate takes effect. */
+  effectiveFrom: string;
+  /** YYYY-MM-DD the rate expires, or '' if still in force. */
+  effectiveTo: string;
+  rate: number;
+}
+
+/**
+ * Document the vendor must have on file for this ATC's rate to apply.
+ * 'sworn-declaration' = the low-rate tier; vendor needs a valid current-year
+ * sworn declaration with attachment before the reduced rate can be used.
+ * null = no attachment required (flat rate, or the higher tier of a tiered pair).
+ */
+export type WithholdingAttachment = 'sworn-declaration' | null;
+
 export interface WithholdingTax {
   id: string;
   /** BIR ATC, e.g. WC158. Blank when the ATC still has to be confirmed. */
   atc: string;
   /** Nature of the income payment, as worded in the BIR ATC table. */
   description: string;
-  /** When this ATC applies instead of its sibling, e.g. "Gross income this year ≤ ₱3M". '' = always. */
+  /** Display label for this tier (BIR verbatim). '' = no condition. */
   condition: string;
+  /**
+   * Attachment the vendor must have on file for this rate to apply.
+   * 'sworn-declaration' = reduced-rate tier; vendor needs a current-year sworn declaration.
+   * null = no attachment required (flat rate, or the higher-rate sibling in a tiered pair).
+   * The sibling pair is identified by both ATCs sharing the same description + non-empty condition.
+   */
+  attachmentRequired: WithholdingAttachment;
   kind: WithholdingKind;
   /** Who may use this ATC as withholding agent. */
   agent: WithholdingAgent;
   payee: 'Individual' | 'Corporate' | 'Any';
-  rate: number;
+  /** Rate history; a document uses the rate in force on its posting date. */
+  rates: WithholdingRatePeriod[];
   base: WithholdingBase;
   birForms: string;
   legalBasis: string;
@@ -458,7 +483,36 @@ export interface WithholdingTax {
   notes: string;
 }
 
+/** The rate in force on `date`, if any. */
+export const currentWithholdingRate = (tax: WithholdingTax, date: string): number | undefined =>
+  [...(tax.rates ?? [])]
+    .sort((a, b) => b.effectiveFrom.localeCompare(a.effectiveFrom))
+    .find((p) => p.effectiveFrom <= date && (!p.effectiveTo || date <= p.effectiveTo))?.rate;
+
+/** WithholdingTax with the date-resolved rate attached (used in Determination results). */
+export type ResolvedWithholdingTax = WithholdingTax & { rate: number };
+
 export type ExciseBasis = 'Specific' | 'Ad valorem' | 'Specific + ad valorem';
+export const EXCISE_BASES: ExciseBasis[] = ['Specific', 'Ad valorem', 'Specific + ad valorem'];
+
+/** One rate band. Single entry = flat rate; multiple entries = tiered by price band (upTo). */
+export interface ExciseTier {
+  /** Upper bound of the price band (PHP, inclusive). null = no upper limit. */
+  upTo: number | null;
+  /** Ad valorem rate (%). 0 for pure specific. */
+  adValoremRate: number;
+  /** Specific amount per unit (PHP). 0 for pure ad valorem. */
+  specificAmount: number;
+}
+
+/** One effective period of an excise rate schedule. */
+export interface ExciseRatePeriod {
+  /** YYYY-MM-DD the rate takes effect. */
+  effectiveFrom: string;
+  /** YYYY-MM-DD the rate expires, or '' if still in force. */
+  effectiveTo: string;
+  tiers: ExciseTier[];
+}
 
 /** An excise tax category an item can fall under (NIRC Title VI). */
 export interface ExciseCategory {
@@ -466,12 +520,36 @@ export interface ExciseCategory {
   code: string;
   name: string;
   basis: ExciseBasis;
-  /** Rate as published — schedules mix pesos per unit and percentages. Blank = not confirmed. */
-  rate: string;
-  effective: string;
+  /** Unit label for the specific component (e.g. "pack", "liter", "proof liter"). */
+  unit: string;
+  /** Base value for the ad valorem component (e.g. "net manufacturer price"). */
+  adValoremBase: string;
+  /** Rate history; a document uses the period in force on its posting date. */
+  rates: ExciseRatePeriod[];
   legalBasis: string;
   active: boolean;
   notes: string;
+}
+
+/** The rate period in force on `date`, if any. */
+export const currentExcisePeriod = (category: ExciseCategory, date: string) =>
+  [...category.rates]
+    .sort((a, b) => b.effectiveFrom.localeCompare(a.effectiveFrom))
+    .find((p) => p.effectiveFrom <= date && (!p.effectiveTo || date <= p.effectiveTo));
+
+/**
+ * Excise tax on a line. Finds the rate period in force on `date`, then the
+ * applicable price band tier, and applies the ad valorem and/or specific rate.
+ */
+export function exciseTax(category: ExciseCategory, unitPrice: number, quantity: number, date: string): number {
+  const period = currentExcisePeriod(category, date);
+  if (!period) return 0;
+  const sorted = [...period.tiers].sort((a, b) => (a.upTo ?? Infinity) - (b.upTo ?? Infinity));
+  const tier = sorted.find((t) => t.upTo === null || unitPrice <= t.upTo) ?? sorted.at(-1);
+  if (!tier) return 0;
+  const adValorem = (tier.adValoremRate / 100) * unitPrice * quantity;
+  const specific = tier.specificAmount * quantity;
+  return Math.round((adValorem + specific) * 100) / 100;
 }
 
 export const TAX_CATEGORIES: TaxCategory[] = [
@@ -500,7 +578,7 @@ const tc = (
  */
 export const SEED_TAX_CODES: TaxCode[] = [
   // Sales — 2550Q Part IV, "Total Sales and Output Tax"
-  tc('31', 'VATable Sales', 'Sales', 'Standard', 12, '2310 Output VAT Payable', '2550Q', 'NIRC Secs. 106, 108',
+  tc('31', 'Output VAT', 'Sales', 'Standard', 12, '2310 Output VAT Payable', '2550Q', 'NIRC Secs. 106, 108',
     '2550Q guidelines: "On Sale of Goods or Properties – twelve percent (12%) of the gross sales of the goods or properties sold, bartered or exchanged" and '
     + '"On Sale of Services and Use or Lease of Properties – twelve percent (12%) of gross sales derived from the sale or exchange of services, including the use or lease of properties". '
     + 'Sales to government are VATable too: the buyer withholds 5% creditable VAT, claimed on 2550Q item 16 (Creditable VAT Withheld).'),
@@ -508,23 +586,23 @@ export const SEED_TAX_CODES: TaxCode[] = [
     'BIR: "It is a taxable transaction for VAT purposes, but shall not result in any output tax." The invoice must show "ZERO-RATED SALE".'),
   tc('33', 'Exempt Sales', 'Sales', 'Exempt', 0, '— None —', '2550Q', 'NIRC Sec. 109',
     'BIR: a sale "which is not subject to output tax and whereby the buyer is not allowed any tax credit or input tax related to such exempt sale". The invoice must show "VAT-EXEMPT SALE".'),
-  tc('PT010', 'Persons exempt from VAT under Sec. 109(BB) (Sec. 116)', 'Sales', 'Percentage tax',
+  tc('PT010', 'Percentage Tax', 'Sales', 'Percentage tax',
     [{ from: '2018-01-01', rate: 3 }, { from: '2020-07-01', rate: 1 }, { from: '2023-07-01', rate: 3 }],
     '2320 Percentage Tax Payable', '2551Q', 'NIRC Sec. 116 as amended by TRAIN and CREATE (RA 11534)',
     'ATC from BIR Form 2551Q. For sellers whose gross annual sales do not exceed Three Million Pesos (Php 3,000,000.00). CREATE cut the rate to 1% from 1 Jul 2020 to 30 Jun 2023.'),
   // Purchases — 2550Q Part IV, "Current Transactions"
-  tc('44', 'Domestic Purchases', 'Purchase', 'Standard', 12, '1410 Input VAT', '2550Q', 'NIRC Sec. 110',
+  tc('44', 'Input VAT', 'Purchase', 'Standard', 12, '1410 Input VAT', '2550Q', 'NIRC Sec. 110',
     'Goods, services, lease and capital goods bought locally from VAT-registered suppliers. 2550Q guidelines: input tax is "the value-added tax due from or paid by a VAT-registered person '
     + 'in the course of his trade or business on importation of goods, or local purchase of goods or services, including lease or use of property, from a VAT-registered person".'),
-  tc('45', 'Services Rendered by Non-Residents', 'Purchase', 'Reverse charge', 12, '1410 Input VAT', '2550Q / 1600-VT', 'NIRC Sec. 114(C); RA 12023 (digital services)',
+  tc('45', 'Withholding VAT', 'Purchase', 'Reverse charge', 12, '1410 Input VAT', '2550Q / 1600-VT', 'NIRC Sec. 114(C); RA 12023 (digital services)',
     'You withhold the 12% VAT and remit it on 1600-VT (ATC WV050 / WV070), then claim it as input tax. BIR: buyers "shall withhold twelve percent (12%) VAT" on '
     + '"Lease or use of properties or property rights owned by non-residents" and "Other services rendered in the Philippines by non-residents".'),
-  tc('46', 'Importations', 'Purchase', 'Importation', 12, '1420 Input VAT – Importation', '2550Q', 'NIRC Sec. 107',
+  tc('46', 'Import VAT', 'Purchase', 'Importation', 12, '1420 Input VAT – Importation', '2550Q', 'NIRC Sec. 107',
     '2550Q guidelines: "twelve percent (12%) based on the total value used by the Bureau of Customs in determining tariff and customs duties, plus customs duties, excise taxes, if any, and other charges". '
     + 'Entered on the import entry / landed cost, not the foreign supplier’s bill.'),
-  tc('48', 'Domestic Purchases with No Input Tax', 'Purchase', 'Non-VAT', 0, '— None —', '2550Q', 'NIRC Sec. 110',
+  tc('48', 'Non-VAT Purchases', 'Purchase', 'Non-VAT', 0, '— None —', '2550Q', 'NIRC Sec. 110',
     'Purchases from non-VAT suppliers, and VAT-exempt or zero-rated purchases: no input tax to claim.'),
-  tc('49', 'VAT-Exempt Importations', 'Purchase', 'Exempt', 0, '— None —', '2550Q', 'NIRC Sec. 109',
+  tc('49', 'Exempt Importations', 'Purchase', 'Exempt', 0, '— None —', '2550Q', 'NIRC Sec. 109',
     'Importations exempt under Sec. 109 (e.g. agricultural and marine food products in their original state, books). Entered on the import entry.'),
 ];
 
@@ -533,23 +611,39 @@ const tg = (code: string, name: string, direction: TaxDirection, taxCode: string
 });
 
 export const SEED_TAX_GROUPS: TaxGroup[] = [
-  tg('S-VAT12', 'VAT 12% – output', 'Sales', '31'),
-  tg('S-VATX', 'VAT-exempt goods or services', 'Sales', '33'),
-  tg('S-VAT0', 'Zero-rated goods or services', 'Sales', '32', true),
-  tg('P-VAT12', 'VAT 12% – input (goods)', 'Purchase', '44'),
-  tg('P-VAT12S', 'VAT 12% – input (services)', 'Purchase', '44'),
-  tg('P-VAT12C', 'VAT 12% – input (capital goods)', 'Purchase', '44'),
-  tg('P-VATX', 'VAT-exempt purchase', 'Purchase', '48'),
-  tg('P-VAT0', 'Zero-rated purchase', 'Purchase', '48', true),
+  tg('S-VAT12', 'Taxable Sales', 'Sales', '31'),
+  tg('S-VATX', 'Exempt Sales', 'Sales', '33'),
+  tg('S-VAT0', 'Zero-Rated Sales', 'Sales', '32', true),
+  tg('P-VAT12', 'Taxable Goods', 'Purchase', '44'),
+  tg('P-VAT12S', 'Taxable Services', 'Purchase', '44'),
+  tg('P-VAT12C', 'Capital Goods', 'Purchase', '44'),
+  tg('P-VATX', 'Exempt Purchases', 'Purchase', '48'),
+  tg('P-VAT0', 'Zero-Rated Purchases', 'Purchase', '48', true),
 ];
+
+const BASE_FOR_KIND: Record<WithholdingKind, WithholdingBase> = {
+  'Expanded (EWT)':  'Amount net of VAT',
+  'Final (FWT)':     'Amount net of VAT',
+  'Withholding VAT': 'VAT-exclusive amount',
+  'Percentage tax':  'Gross amount',
+};
+
+/** Default effectiveFrom per kind — when the current rate schedule took effect. */
+const RATE_FROM: Record<WithholdingKind, string> = {
+  'Expanded (EWT)':  '2018-01-01',  // TRAIN Law (RA 10963) — revised income tiers and rates
+  'Final (FWT)':     '1997-12-11',  // NIRC enacted (RA 8424)
+  'Withholding VAT': '2006-02-01',  // 12% VAT rate (RA 9337)
+  'Percentage tax':  '1997-12-11',  // NIRC enacted (RA 8424)
+};
 
 const wt = (
   kind: WithholdingKind, atc: string, payee: WithholdingTax['payee'], rate: number, description: string,
-  condition = '', agent: WithholdingAgent = 'Any',
+  condition = '', agent: WithholdingAgent = 'Any', effectiveFrom?: string, attachmentRequired: WithholdingAttachment = null,
 ): WithholdingTax => ({
   id: `wt-${atc}`,
-  atc, description, condition, kind, agent, payee, rate,
-  base: '', birForms: WITHHOLDING_KIND_INFO[kind].forms, legalBasis: '', active: true, notes: '',
+  atc, description, condition, attachmentRequired, kind, agent, payee,
+  rates: [{ effectiveFrom: effectiveFrom ?? RATE_FROM[kind], effectiveTo: '', rate }],
+  base: BASE_FOR_KIND[kind], birForms: WITHHOLDING_KIND_INFO[kind].forms, legalBasis: '', active: true, notes: '',
 });
 
 /*
@@ -558,30 +652,30 @@ const wt = (
  */
 
 // Expanded withholding tax (WE)
-type Row = [atc: string, payee: WithholdingTax['payee'], rate: number, condition?: string];
-const we = (description: string, rows: Row[]) =>
-  rows.map(([atc, payee, rate, condition]) => wt('Expanded (EWT)', atc, payee, rate, description, condition));
+type Row = [atc: string, payee: WithholdingTax['payee'], rate: number, condition?: string, attachmentRequired?: WithholdingAttachment];
+const we = (description: string, rows: Row[], effectiveFrom?: string) =>
+  rows.map(([atc, payee, rate, condition, attachmentRequired = null]) => wt('Expanded (EWT)', atc, payee, rate, description, condition, 'Any', effectiveFrom, attachmentRequired));
 
 const IND_LE_3M = 'if the gross income for the current year did not exceed ₱ 3M';
 const IND_GT_3M = 'if gross income is more than ₱ 3M or VAT registered regardless of amount';
 const CORP_LE = 'if gross income for the current year did not exceed ₱ 720,000.00';
 const CORP_GT = 'if gross income exceeds ₱ 720,000.00';
 const tiers = (wi: string, wiHigh: string, wc: string | null, wcHigh: string | null): Row[] => [
-  [wi, 'Individual', 5, IND_LE_3M],
-  [wiHigh, 'Individual', 10, IND_GT_3M],
-  ...(wc && wcHigh ? ([[wc, 'Corporate', 10, CORP_LE], [wcHigh, 'Corporate', 15, CORP_GT]] as Row[]) : []),
+  [wi, 'Individual', 5, IND_LE_3M, 'sworn-declaration'],
+  [wiHigh, 'Individual', 10, IND_GT_3M, null],
+  ...(wc && wcHigh ? ([[wc, 'Corporate', 10, CORP_LE, 'sworn-declaration'], [wcHigh, 'Corporate', 15, CORP_GT, null]] as Row[]) : []),
 ];
 const both = (wi: string | null, wc: string | null, rate: number): Row[] => [
-  ...(wi ? ([[wi, 'Individual', rate]] as Row[]) : []),
-  ...(wc ? ([[wc, 'Corporate', rate]] as Row[]) : []),
+  ...(wi ? ([[wi, 'Individual', rate, undefined, null]] as Row[]) : []),
+  ...(wc ? ([[wc, 'Corporate', rate, undefined, null]] as Row[]) : []),
 ];
 
 const EXPANDED: WithholdingTax[] = [
   ...we('Professional fees (Lawyers, CPAs, Engineers, etc.)', [
-    ['WI010', 'Individual', 5, IND_LE_3M],
-    ['WI011', 'Individual', 10, 'if gross income is more than ₱ 3M or VAT registered regardless of amount'],
-    ['WC010', 'Corporate', 10, CORP_LE],
-    ['WC011', 'Corporate', 15, CORP_GT],
+    ['WI010', 'Individual', 5, IND_LE_3M, 'sworn-declaration'],
+    ['WI011', 'Individual', 10, 'if gross income is more than ₱ 3M or VAT registered regardless of amount', null],
+    ['WC010', 'Corporate', 10, CORP_LE, 'sworn-declaration'],
+    ['WC011', 'Corporate', 15, CORP_GT, null],
   ]),
   ...we('Professional entertainer such as, but not limited to actors and actresses, singers, lyricist, composers, emcees', tiers('WI020', 'WI021', 'WC020', 'WC021')),
   ...we('Professional athletes including basketball players, pelotaris and jockeys', tiers('WI030', 'WI031', 'WC030', 'WC031')),
@@ -604,23 +698,31 @@ const EXPANDED: WithholdingTax[] = [
   ),
   ...we(
     'Professional fees paid to medical practitioners (includes doctors of medicine, doctors of veterinary science & dentist) by hospitals & clinics or paid directly by HMO and/or other similar establishments',
-    tiers('WI150', 'WI151', 'WC150', 'WC151'),
+    tiers('WI151', 'WI150', 'WC151', 'WC150'),
   ),
   ...we('Payment by the General Professional Partnership (GPPs) to its partners', [
-    ['WI152', 'Individual', 10, CORP_LE],
-    ['WI153', 'Individual', 15, CORP_GT],
+    ['WI152', 'Individual', 10, CORP_LE, 'sworn-declaration'],
+    ['WI153', 'Individual', 15, CORP_GT, null],
   ]),
   ...we('Income payments made by credit card companies', both('WI156', 'WC156', 0.5)),
   ...we('Additional Income Payments to govt personnel from importers, shipping and airline companies or their agents for overtime services', both('WI159', null, 15)),
-  ...we('Income Payment made by NGAs, LGU, & etc to its local/resident suppliers of goods other than those covered by other rates of withholding tax', both('WI640', 'WC640', 1)),
-  ...we('Income Payment made by NGAs, LGU, & etc to its local/resident suppliers of services other than those covered by other rates of withholding tax', both('WI157', 'WC157', 2)),
-  ...we('Income Payment made by top withholding agents to their local/resident suppliers of goods other than those covered by other rates of withholding tax', both('WI158', 'WC158', 1)),
-  ...we('Income Payment made by top withholding agents to their local/resident suppliers of services other than those covered by other rates of withholding tax', both('WI160', 'WC160', 2)),
+  // RR 1-2012: NGA/LGU withholding on supplier payments
+  ...[
+    wt('Expanded (EWT)', 'WI640', 'Individual', 1, 'Income Payment made by NGAs, LGU, & etc to its local/resident suppliers of goods other than those covered by other rates of withholding tax', '', 'Government', '2012-01-01'),
+    wt('Expanded (EWT)', 'WC640', 'Corporate', 1, 'Income Payment made by NGAs, LGU, & etc to its local/resident suppliers of goods other than those covered by other rates of withholding tax', '', 'Government', '2012-01-01'),
+  ],
+  ...[
+    wt('Expanded (EWT)', 'WI157', 'Individual', 2, 'Income Payment made by NGAs, LGU, & etc to its local/resident suppliers of services other than those covered by other rates of withholding tax', '', 'Government', '2012-01-01'),
+    wt('Expanded (EWT)', 'WC157', 'Corporate', 2, 'Income Payment made by NGAs, LGU, & etc to its local/resident suppliers of services other than those covered by other rates of withholding tax', '', 'Government', '2012-01-01'),
+  ],
+  // RR 11-2018: top withholding agent suppliers effective 2019-01-01
+  ...we('Income Payment made by top withholding agents to their local/resident suppliers of goods other than those covered by other rates of withholding tax', both('WI158', 'WC158', 1), '2019-01-01'),
+  ...we('Income Payment made by top withholding agents to their local/resident suppliers of services other than those covered by other rates of withholding tax', both('WI160', 'WC160', 2), '2019-01-01'),
   ...we(
     'Commissions, rebates, discounts and other similar considerations paid/granted to independent and/or exclusive sales representatives and marketing agents and sub-agents of companies, including multi-level marketing companies',
     [
-      ['WI515', 'Individual', 5, IND_LE_3M],
-      ['WI516', 'Individual', 10, 'if the gross income is more than ₱ 3M or VAT registered regardless of amount'],
+      ['WI515', 'Individual', 5, IND_LE_3M, 'sworn-declaration'],
+      ['WI516', 'Individual', 10, 'if the gross income is more than ₱ 3M or VAT registered regardless of amount', null],
     ],
   ),
   ...we('Gross payments to embalmers by funeral parlors', both('WI530', null, 1)),
@@ -632,7 +734,7 @@ const EXPANDED: WithholdingTax[] = [
     both('WI630', 'WC630', 5),
   ),
   ...we(
-    'Income payments on purchases of minerals, mineral products and quarry resources by Bangko Sentral ng Pilipinas ((BSP) from gold miners/suppliers under PD 1899, as amended by RA No. 7076',
+    'Income payments on purchases of minerals, mineral products and quarry resources by Bangko Sentral ng Pilipinas (BSP) from gold miners/suppliers under PD 1899, as amended by RA No. 7076',
     both('WI632', 'WC632', 1),
   ),
   ...we('On gross amount of refund given by MERALCO to customers with active contracts as classified by MERALCO', both('WI650', 'WC650', 15)),
@@ -646,7 +748,7 @@ const EXPANDED: WithholdingTax[] = [
     both('WI661', 'WC661', 15),
   ),
   ...we(
-    "On gross amount of interest on the refund of meter deposits whether paid directly to the customers or applied against customer's billings of Residential and General Service customers whose monthly electricity consumption exceeds 200 kwh as classified by other by other electric Distribution Utilities (DU)",
+    "On gross amount of interest on the refund of meter deposits whether paid directly to the customers or applied against customer's billings of Residential and General Service customers whose monthly electricity consumption exceeds 200 kwh as classified by other electric Distribution Utilities (DU)",
     both('WI662', 'WC662', 10),
   ),
   ...we(
@@ -654,10 +756,11 @@ const EXPANDED: WithholdingTax[] = [
     both('WI663', 'WC663', 15),
   ),
   ...we(
-    'Income payments made by political parties and candidates of local and national elections on all their purchases of goods and services related to campaign expenditures, and income payments made by individuals or juridical persons for their purchases of goods and services intented to be given as campaign contribution to political parties and candidates',
+    'Income payments made by political parties and candidates of local and national elections on all their purchases of goods and services related to campaign expenditures, and income payments made by individuals or juridical persons for their purchases of goods and services intended to be given as campaign contribution to political parties and candidates',
     both('WI680', 'WC680', 5),
   ),
-  ...we('Income payments received by Real Estate Investment Trust (REIT)', both(null, 'WC690', 1)),
+  // REIT Act (RA 9856) implementing rules effective 2020
+  ...we('Income payments received by Real Estate Investment Trust (REIT)', both(null, 'WC690', 1), '2020-08-20'),
   ...we('Interest income derived from any other debt instruments not within the coverage of deposit substitutes and Revenue Regulations 14-2012', both('WI710', 'WC710', 15)),
   ...we('Income payments on locally produced raw sugar', both('WI720', 'WC720', 1)),
   ...we('Income payments made by joint ventures, whether incorporated or not, taxable or non-taxable, to their local/resident supplier of goods', both('WI770', 'WC770', 1)),
@@ -666,24 +769,26 @@ const EXPANDED: WithholdingTax[] = [
     'On the share of each co-venturer/member from the net income of the joint venture/consortium not taxable as corporation prior to actual or constructive distribution thereof',
     both(null, 'WC790', 15),
   ),
-  ...we('On the gross remittances by e-marketplace operators to the sellers/merchants for the goods or services sold/paid through their platform/facility', both('WI820', 'WC820', 0.5)),
-  ...we('On the gross remittances by digital financial services providers to the sellers/merchants for the goods or services sold/paid through their platform/facility', both('WI830', 'WC830', 0.5)),
+  // RMC 60-2020 / RR 16-2023: digital economy withholding
+  ...we('On the gross remittances by e-marketplace operators to the sellers/merchants for the goods or services sold/paid through their platform/facility', both('WI820', 'WC820', 0.5), '2021-07-14'),
+  ...we('On the gross remittances by digital financial services providers to the sellers/merchants for the goods or services sold/paid through their platform/facility', both('WI830', 'WC830', 0.5), '2021-07-14'),
+  // RR 14-2018: top WA manufacturer/importer withholding effective 2019-01-01
   ...we(
     'Income payments made by top withholding agents, either private corporations or individuals, to the manufacturers and direct importers of motor vehicles in Completely Built Units (CBUs) or Semi-Knockdown (SKD) units, motor vehicle parts and accessories.',
-    both('WI840', 'WC840', 0.5),
+    both('WI840', 'WC840', 0.5), '2019-01-01',
   ),
   ...we(
     'Income payments made by top withholding agents, either private corporations or individuals, to the manufacturers and direct importers of medicine/pharmaceutical products',
-    both('WI850', 'WC850', 0.5),
+    both('WI850', 'WC850', 0.5), '2019-01-01',
   ),
   ...we(
     'Income payments made by top withholding agents, either private corporations or individuals, to the manufacturers and direct importers of solid or liquid fuels and related products',
-    both('WI860', 'WC860', 0.5),
+    both('WI860', 'WC860', 0.5), '2019-01-01',
   ),
 ];
 
 // Final withholding tax (WF)
-const wf = (description: string, rows: Row[]) => rows.map(([atc, payee, rate]) => wt('Final (FWT)', atc, payee, rate, description));
+const wf = (description: string, rows: Row[], effectiveFrom?: string) => rows.map(([atc, payee, rate]) => wt('Final (FWT)', atc, payee, rate, description, '', 'Any', effectiveFrom));
 
 const FINAL: WithholdingTax[] = [
   ...wf('Interest on Foreign loans payable to Non-Resident Foreign Corporation (NRFCs)', both(null, 'WC180', 20)),
@@ -717,7 +822,7 @@ const FINAL: WithholdingTax[] = [
   ...wf('On gross rentals, charter and other fees derived by non-resident lessor or aircraft, machineries and equipment', both(null, 'WC300', 7.5)),
   ...wf('On payments to oil exploration service contractors/sub-contractors', both('WI310', 'WC310', 8)),
   ...wf(
-    'Payments to non-resident alien not engage in trade or business within the Philippines (NRANETB) except on sale of shares in domestic corporation and real property',
+    'Payments to non-resident alien not engaged in trade or business within the Philippines (NRANETB) except on sale of shares in domestic corporation and real property',
     both('WI330', null, 25),
   ),
   ...wf('On payments to non-resident individual/foreign corporate cinematographic film owners, lessors or distributors', both('WI340', 'WC340', 25)),
@@ -726,9 +831,9 @@ const FINAL: WithholdingTax[] = [
     'Final tax on interest or other payments upon tax-free covenant bonds, mortgages, deeds of trust or other obligations under Sec. 57C of the NIRC of 1997, as amended',
     both('WI350', null, 30),
   ),
-  ...wf('Royalties paid to citizens, resident aliens and nraetb on books, other literary works and musical compositions', both('WI380', null, 10)),
+  ...wf('Royalties paid to citizens, resident aliens and NRAETB on books, other literary works and musical compositions', both('WI380', null, 10)),
   ...wf('Informers cash reward to individuals/juridical persons', both('WI410', 'WC410', 10)),
-  ...wf('Cash on property dividend paid by a Real Estate Investment Trust', both('WI700', 'WC700', 10)),
+  ...wf('Cash on property dividend paid by a Real Estate Investment Trust', both('WI700', 'WC700', 10), '2020-08-20'),
 ];
 
 // Withholding tax on government money payments (GMP): VAT (WV) and percentage taxes (WB)
@@ -739,9 +844,9 @@ const wvBoth = gmp('Withholding VAT', 'Any');
 const wbGov = gmp('Percentage tax', 'Government');
 const wbBoth = gmp('Percentage tax', 'Any');
 
-const BANKS = 'Tax on Banks and Non-banks Financial Intermediaries Performing Quasi Banking Dunctions';
+const BANKS = 'Tax on Banks and Non-banks Financial Intermediaries Performing Quasi-Banking Functions';
 const BANKS_A = 'A. On interest, commissions and discounts from lending activities as well as income from financial leasing on the basis of the remaining maturities of instruments from which receipts are derived';
-const NON_BANKS = 'Tax on Other Non-Banks Financial Intermediaries nor performing Quasi-Banking Functions';
+const NON_BANKS = 'Tax on Other Non-Banks Financial Intermediaries not performing Quasi-Banking Functions';
 const NON_BANKS_A = 'A. On interest, commissions and discounts from lending activities as well as income from financial leasing on the basis of the remaining maturities of instruments from which such receipts are derived';
 const IPO = 'Tax on shares of stocks sold or exchanged through initial and secondary public offering';
 
@@ -750,10 +855,10 @@ const GMP: WithholdingTax[] = [
   wvGov('WV010', 5, 'VAT withholding on Purchase of Goods'),
   wvGov('WV020', 5, 'VAT Withholding on Purchase of Services'),
   // Applicable to Both Government and Private Withholding Agents
-  wvBoth('WV040', 12, 'VAT Withholding from non-residents (Government Withholding Agents)'),
-  wvBoth('WV050', 12, 'VAT Withholding from non-residents (Private Withholding Agents)'),
-  wvBoth('WV060', 12, 'Final Withholding VAT on Other Services rendered in the Philippines by non-residents (Government Withholding Agent)'),
-  wvBoth('WV070', 12, 'Final Withholding VAT on Other Services rendered in the Philippines by non-residents (Private Withholding Agent)'),
+  wvBoth('WV040', 12, 'Final Withholding VAT on lease or use of properties or property rights owned by non-residents (Government Withholding Agent)'),
+  wvBoth('WV050', 12, 'Final Withholding VAT on lease or use of properties or property rights owned by non-residents (Private Withholding Agent)'),
+  wvBoth('WV060', 12, 'Final Withholding VAT on other services rendered in the Philippines by non-residents (Government Withholding Agent)'),
+  wvBoth('WV070', 12, 'Final Withholding VAT on other services rendered in the Philippines by non-residents (Private Withholding Agent)'),
   wvBoth('WV012', 12, 'VAT Withholding on Purchases of Goods (with waiver of privilege to claim tax credit) creditable'),
   wvBoth('WV014', 12, 'VAT Withholding on Purchases of Goods (with waiver of privilege to claim input tax credit) final'),
   wvBoth('WV022', 12, 'VAT Withholding on Purchases of Services (with waiver of privilege to claim input tax credit) creditable'),
@@ -768,7 +873,7 @@ const GMP: WithholdingTax[] = [
   wbGov('WB121', 5, 'Business tax on Agents of Foreign Insurance companies - owner of the property'),
   wbGov('WB130', 3, 'Tax on international carriers'),
   wbGov('WB140', 18, 'Tax on Cockpits'),
-  wbGov('WB150', 18, 'Tax on amusement places, such as cabarets, night and day clubs, videoke bars, karaoke bars, karaoke televion, karaoke boxes, music lounges and other similar establishments'),
+  wbGov('WB150', 18, 'Tax on amusement places, such as cabarets, night and day clubs, videoke bars, karaoke bars, karaoke television, karaoke boxes, music lounges and other similar establishments'),
   wbGov('WB160', 10, 'Taxes on Boxing exhibitions'),
   wbGov('WB170', 15, 'Taxes on professional basketball games'),
   wbGov('WB180', 30, 'Tax on jai-alai and race tracks'),
@@ -785,9 +890,9 @@ const GMP: WithholdingTax[] = [
   wbGov('WB109', 1, `${NON_BANKS} — ${NON_BANKS_A}`, 'Maturity period is more than five years'),
   wbGov('WB110', 5, `${NON_BANKS} — B. On all other items treated as gross income under the Code`),
   // Applicable to Both Government and Private Withholding Agents
-  wbBoth('WB080', 3, 'Persons exempt from VAT under Sec. 108BB (creditable) Government Withholding Agent'),
-  wbBoth('WB082', 3, 'Persons exempt from VAT under Sec. 108BB (creditable) Private Withholding Agent'),
-  wbBoth('WB084', 3, 'Persons exempt from VAT under Section 109BB (Section 116 applies)'),
+  wbBoth('WB080', 3, 'Persons exempt from VAT under Sec. 109(BB) (creditable) Government Withholding Agent'),
+  wbBoth('WB082', 3, 'Persons exempt from VAT under Sec. 109(BB) (creditable) Private Withholding Agent'),
+  wbBoth('WB084', 3, 'Persons exempt from VAT under Sec. 109(BB) (Sec. 116 applies)'),
 ];
 
 export const SEED_WITHHOLDING: WithholdingTax[] = [...EXPANDED, ...FINAL, ...GMP];
@@ -879,23 +984,74 @@ export const SEED_WITHHOLDING_GROUPS: WithholdingGroup[] = [
   wg('WH-EQUIP','Aircraft / machinery / equipment lease', 'WI100', null, 'WC100', null, { atcNrCorporate: 'WC300', nrVat: 'Lease' }),
 ];
 
-const ex = (code: string, name: string, basis: ExciseBasis, rate: string, legalBasis: string, notes = '', effective = '2026'): ExciseCategory => ({
-  id: `ex-${code}`, code, name, basis, rate, effective, legalBasis, active: true, notes,
+type TierDef = [number | null, number, number]; // [upTo, adValoremRate, specificAmount]
+const ex = (
+  code: string, name: string, basis: ExciseBasis,
+  unit: string, adValoremBase: string,
+  rates: [string, TierDef[]][],  // [effectiveFrom, tiers][]
+  legalBasis: string, notes = '',
+): ExciseCategory => ({
+  id: `ex-${code}`, code, name, basis, unit, adValoremBase,
+  rates: rates.map(([effectiveFrom, tiers]) => ({
+    effectiveFrom,
+    effectiveTo: '',
+    tiers: tiers.map(([upTo, adValoremRate, specificAmount]) => ({ upTo, adValoremRate, specificAmount })),
+  })),
+  legalBasis, active: true, notes,
 });
 
 export const SEED_EXCISE: ExciseCategory[] = [
-  ex('EX-CIG', 'Cigarettes', 'Specific', '₱69.46 per pack of 20', 'RA 11346, RA 11467'),
-  ex('EX-HTP', 'Heated tobacco products', 'Specific', '₱37.63 per pack', 'RA 11467'),
-  ex('EX-VAP', 'Vapor products (nicotine salt / freebase)', 'Specific', '₱60.20 per mL', 'RA 11467'),
-  ex('EX-SPR', 'Distilled spirits', 'Specific + ad valorem', '22% of net retail price + ₱74.16 per proof liter', 'RA 11467'),
-  ex('EX-BER', 'Fermented liquors (beer)', 'Specific', '', 'RA 11467', 'Indexed yearly. Enter the 2026 BIR/BOC schedule rate.'),
-  ex('EX-WIN', 'Wines', 'Specific', '', 'RA 11467', 'Indexed yearly. Enter the 2026 BIR/BOC schedule rate.'),
-  ex('EX-SSB', 'Sweetened beverages', 'Specific', '₱6 per liter; ₱12 per liter with high-fructose corn syrup', 'RA 10963 (TRAIN), NIRC Sec. 150-B', '', '2018'),
-  ex('EX-PET', 'Petroleum products', 'Specific', 'Gasoline ₱10/L · diesel ₱6/L · LPG ₱3/kg', 'RA 10963 (TRAIN), NIRC Sec. 148',
-    'Excise on LPG and kerosene was suspended 16 Apr–16 Jul 2026.', '2020'),
-  ex('EX-AUT', 'Automobiles', 'Ad valorem', '4% / 10% / 20% / 50% by net manufacturer price (≤₱600k / ≤₱1M / ≤₱4M / above)', 'RA 10963 (TRAIN), NIRC Sec. 149',
-    'Hybrid vehicles are taxed at half the rate; pure electric vehicles are exempt.', '2018'),
-  ex('EX-MIN', 'Mineral products', 'Ad valorem', '4% of market value; coal ₱150 per metric ton', 'RA 10963 (TRAIN), NIRC Sec. 151', '', '2018'),
-  ex('EX-NEG', 'Non-essential goods (jewelry, perfumes, yachts)', 'Ad valorem', '20% of wholesale price or customs value', 'NIRC Sec. 150'),
-  ex('EX-COS', 'Invasive cosmetic procedures', 'Ad valorem', '5% of gross receipts', 'RA 10963 (TRAIN), NIRC Sec. 150-A', '', '2018'),
+  ex('EX-CIG', 'Cigarettes', 'Specific', 'pack of 20', '', [
+    ['2020-01-01', [[null, 0, 45]]],
+    ['2022-01-01', [[null, 0, 55]]],
+    ['2024-01-01', [[null, 0, 62.50]]],
+    ['2026-01-01', [[null, 0, 69.46]]],
+  ], 'RA 11346, RA 11467', 'Rate steps up yearly as indexed by RA 11346.'),
+  ex('EX-HTP', 'Heated tobacco products', 'Specific', 'pack', '', [
+    ['2020-01-01', [[null, 0, 25]]],
+    ['2022-01-01', [[null, 0, 30]]],
+    ['2024-01-01', [[null, 0, 32.50]]],
+    ['2026-01-01', [[null, 0, 37.63]]],
+  ], 'RA 11467'),
+  ex('EX-VAP', 'Vapor products', 'Specific', 'mL', '', [
+    ['2020-01-01', [[null, 0, 45]]],
+    ['2022-01-01', [[null, 0, 50]]],
+    ['2024-01-01', [[null, 0, 55]]],
+    ['2026-01-01', [[null, 0, 60.20]]],
+  ], 'RA 11467', 'Covers nicotine salt and freebase vapor products.'),
+  ex('EX-SPR', 'Distilled spirits', 'Specific + ad valorem', 'proof liter', 'net retail price', [
+    ['2020-01-01', [[null, 22, 52.87]]],
+    ['2022-01-01', [[null, 22, 59.27]]],
+    ['2024-01-01', [[null, 22, 66.44]]],
+    ['2026-01-01', [[null, 22, 74.16]]],
+  ], 'RA 11467'),
+  ex('EX-BER', 'Fermented liquors (beer)', 'Specific', 'liter', '', [
+    ['2026-01-01', [[null, 0, 0]]],
+  ], 'RA 11467', 'Indexed yearly — enter the current BIR/BOC schedule rate.'),
+  ex('EX-WIN', 'Wines', 'Specific', 'liter', '', [
+    ['2026-01-01', [[null, 0, 0]]],
+  ], 'RA 11467', 'Indexed yearly — enter the current BIR/BOC schedule rate.'),
+  ex('EX-SSB', 'Sweetened beverages', 'Specific', 'liter', '', [
+    ['2018-01-01', [[null, 0, 6]]],
+  ], 'RA 10963 (TRAIN), NIRC Sec. 150-B', 'Products with high-fructose corn syrup: ₱12 per liter — create a separate category for HFCS variants.'),
+  ex('EX-PET', 'Petroleum products', 'Specific', 'liter', '', [
+    ['2020-01-01', [[null, 0, 0]]],
+  ], 'RA 10963 (TRAIN), NIRC Sec. 148', 'Rates vary by product: gasoline ₱10/L, diesel ₱6/L, LPG ₱3/kg. Create separate categories per product as needed.'),
+  ex('EX-AUT', 'Automobiles', 'Ad valorem', '', 'net manufacturer price', [
+    ['2018-01-01', [
+      [600000, 4, 0],
+      [1000000, 10, 0],
+      [4000000, 20, 0],
+      [null, 50, 0],
+    ]],
+  ], 'RA 10963 (TRAIN), NIRC Sec. 149', 'Hybrid vehicles: half the applicable rate. Pure electric vehicles: exempt.'),
+  ex('EX-MIN', 'Mineral products', 'Ad valorem', '', 'market value', [
+    ['2018-01-01', [[null, 4, 0]]],
+  ], 'RA 10963 (TRAIN), NIRC Sec. 151', 'Coal: ₱150 per metric ton (specific) instead of ad valorem — create a separate EX-COA category if needed.'),
+  ex('EX-NEG', 'Non-essential goods', 'Ad valorem', '', 'wholesale price or customs value', [
+    ['2018-01-01', [[null, 20, 0]]],
+  ], 'NIRC Sec. 150', 'Jewelry, perfumes, yachts, and similar luxury items.'),
+  ex('EX-COS', 'Invasive cosmetic procedures', 'Ad valorem', '', 'gross receipts', [
+    ['2018-01-01', [[null, 5, 0]]],
+  ], 'RA 10963 (TRAIN), NIRC Sec. 150-A'),
 ];

@@ -4,7 +4,7 @@
  */
 import { Button, Icon, Text, TextField, type TableColumn } from '@jasperlepardo/sikat-design-system';
 import { DataTable } from '../../../components/form/DataTable';
-import { Fields, Flags, bind } from '../../../components/form/fields';
+import { FieldStack, bind } from '../../../components/form/fields';
 import { MasterList, statusColumn, uniqueRequired, type ListRoute } from '../../../components/form/MasterList';
 import { MasterDefList, MasterLookup } from '../../../components/form/MasterLookup';
 import { manufacturerDef, shippingTypeDef, uomDef, warrantyTemplateDef } from '../masterDefs';
@@ -109,7 +109,7 @@ export function ItemGroupsTab(route: ListRoute) {
         const f = bind(g, update);
         return (
           <>
-            <Fields cols={3}>
+            <FieldStack>
               {f.text('name', 'Name', { required: true, error: errors.name, disabled: !isNew, hint: !isNew ? "Can't change once saved — items refer to it. Deactivate instead." : undefined })}
               {f.text('prefix', 'Item No. prefix', { required: true, error: errors.prefix, hint: 'Auto-numbered items become PREFIX-00001.' })}
               {f.pick('valuationMethod', 'Default valuation method', VALUATION_METHODS)}
@@ -141,8 +141,6 @@ export function ItemGroupsTab(route: ListRoute) {
                 value={g.revenueAccount}
                 onChange={(revenueAccount) => update({ revenueAccount })}
               />
-            </Fields>
-            <Fields cols={3}>
               {f.lookup('purchaseTaxGroup', 'Purchase tax group', tax ? taxGroupOptions(tax, 'Purchase', g.purchaseTaxGroup) : [], {
                 clearable: true,
                 error: errors.purchaseTaxGroup,
@@ -168,11 +166,11 @@ export function ItemGroupsTab(route: ListRoute) {
                   hint: 'Leave empty unless every item in the group is excisable (tobacco, alcohol, fuel…).',
                 },
               )}
-            </Fields>
+              {f.check('active', 'Active')}
+            </FieldStack>
             <Text variant="small" tone="muted">
               Tax defaults are copied onto an item when it's created in or moved to this group. Each item can still change them.
             </Text>
-            <Flags>{f.check('active', 'Active')}</Flags>
           </>
         );
       }}
@@ -269,7 +267,7 @@ export function UomGroupsTab(route: ListRoute) {
         ];
         return (
           <>
-            <Fields cols={3}>
+            <FieldStack>
               {f.text('code', 'Group', {
                 required: true,
                 error: errors.code,
@@ -283,7 +281,7 @@ export function UomGroupsTab(route: ListRoute) {
                 error: errors.baseUom,
                 hint: 'Every conversion is expressed in this unit.',
               })}
-            </Fields>
+            </FieldStack>
             <DataTable
               icon="swap_horiz"
               title="Conversions"
@@ -312,7 +310,7 @@ export function UomGroupsTab(route: ListRoute) {
                 </Text>
               }
             />
-            <Flags>{f.check('active', 'Active')}</Flags>
+            <FieldStack>{f.check('active', 'Active')}</FieldStack>
           </>
         );
       }}
@@ -354,14 +352,12 @@ export function CustomsGroupsTab(route: ListRoute) {
       editor={(c, update, errors) => {
         const f = bind(c, update);
         return (
-          <>
-            <Fields cols={3}>
-              {f.text('name', 'Name', { required: true, error: errors.name })}
-              {f.text('hsCode', 'HS heading', { placeholder: 'e.g. 7318', hint: 'AHTN / Harmonized System heading.' })}
-              {f.num('duty', 'Duty', { suffix: '%', error: errors.duty, hint: 'Confirm against the current Customs tariff.' })}
-            </Fields>
-            <Flags>{f.check('active', 'Active')}</Flags>
-          </>
+          <FieldStack>
+            {f.text('name', 'Name', { required: true, error: errors.name })}
+            {f.text('hsCode', 'HS heading', { placeholder: 'e.g. 7318', hint: 'AHTN / Harmonized System heading.' })}
+            {f.num('duty', 'Duty', { suffix: '%', error: errors.duty, hint: 'Confirm against the current Customs tariff.' })}
+            {f.check('active', 'Active')}
+          </FieldStack>
         );
       }}
     />
@@ -397,13 +393,11 @@ export function CommissionGroupsTab(route: ListRoute) {
       editor={(c, update, errors) => {
         const f = bind(c, update);
         return (
-          <>
-            <Fields cols={3}>
-              {f.text('name', 'Name', { required: true, error: errors.name })}
-              {f.num('pct', 'Commission', { suffix: '%', error: errors.pct })}
-            </Fields>
-            <Flags>{f.check('active', 'Active')}</Flags>
-          </>
+          <FieldStack>
+            {f.text('name', 'Name', { required: true, error: errors.name })}
+            {f.num('pct', 'Commission', { suffix: '%', error: errors.pct })}
+            {f.check('active', 'Active')}
+          </FieldStack>
         );
       }}
     />
@@ -453,17 +447,15 @@ export function ItemPropertiesTab(route: ListRoute) {
       editor={(p, update, errors) => {
         const f = bind(p, update);
         return (
-          <>
-            <Fields cols={3}>
-              {f.num('number', 'Property no.', { error: errors.number, hint: `1–${MAX_ITEM_PROPERTIES}` })}
-              {f.text('name', 'Name', { required: true, error: errors.name })}
-              {f.text('group', 'Property group', {
-                placeholder: groups.join(', ') || 'e.g. Compliance',
-                hint: 'Type an existing group or a new one.',
-              })}
-            </Fields>
-            <Flags>{f.check('active', 'Active')}</Flags>
-          </>
+          <FieldStack>
+            {f.num('number', 'Property no.', { error: errors.number, hint: `1–${MAX_ITEM_PROPERTIES}` })}
+            {f.text('name', 'Name', { required: true, error: errors.name })}
+            {f.text('group', 'Property group', {
+              placeholder: groups.join(', ') || 'e.g. Compliance',
+              hint: 'Type an existing group or a new one.',
+            })}
+            {f.check('active', 'Active')}
+          </FieldStack>
         );
       }}
     />

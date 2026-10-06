@@ -1,5 +1,5 @@
 import { Card, Icon, TableStatus, Text } from '@jasperlepardo/sikat-design-system';
-import { Fields, Flags, bind } from '../../../components/form/fields';
+import { FieldStack, bind } from '../../../components/form/fields';
 import { MasterList, type ListRoute } from '../../../components/form/MasterList';
 import { EFPS_FILING_GROUPS, EFPS_FILING_NOTE, FORM_SECTIONS, type WithholdingForm } from '../../../mocks/compensation';
 import { withholdingForms } from '../../../services/masterData';
@@ -61,14 +61,14 @@ export function WithholdingFormsTab(route: ListRoute) {
         const f = bind(x, update);
         return (
           <>
-            <Fields>
+            <FieldStack>
               {f.text('form', 'Form', { required: true, error: errors.form })}
               {f.pick('section', 'Type', FORM_SECTIONS)}
-              {f.text('description', 'Description', { required: true, error: errors.description, className: 'md:col-span-2' })}
+              {f.text('description', 'Description', { required: true, error: errors.description,  })}
               {f.area('dueEfps', 'Due date · eFPS', { rows: 2 })}
               {f.area('dueManual', 'Due date · Manual/eBIRForms', { rows: 2 })}
-            </Fields>
-            <Flags>{f.check('active', 'Active')}</Flags>
+            </FieldStack>
+            {f.check('active', 'Active')}
           </>
         );
       }}

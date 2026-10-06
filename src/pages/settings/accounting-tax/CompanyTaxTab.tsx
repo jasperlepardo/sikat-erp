@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Button, Checkbox, Combobox, FormField, Text } from '@jasperlepardo/sikat-design-system';
-import { Fields, Flags, Section, bind } from '../../../components/form/fields';
+import { Button, Checkbox, Combobox, Text } from '@jasperlepardo/sikat-design-system';
+import { CtxFormField, FieldStack, Flags, Section, bind } from '../../../components/form/fields';
 import { BUSINESS_ACTIVITIES, RDOS, paysExcise, type BusinessActivity, type CompanyTaxProfile } from '../../../mocks/taxes';
 import { companyTax } from '../../../services/masterData';
 
@@ -53,6 +53,8 @@ export function CompanyTaxTab() {
   };
 
   return (
+    <div className="grid grid-cols-12 gap-2">
+      <div className="col-span-6 col-start-4 flex flex-col gap-2">
     <Section
       icon="corporate_fare"
       title="Company tax profile"
@@ -65,10 +67,10 @@ export function CompanyTaxTab() {
       <Text variant="small" tone="muted">
         From the company's BIR Certificate of Registration (Form 2303). These settings run first in tax determination.
       </Text>
-      <Fields cols={3}>
+      <FieldStack>
         {f.text('registeredName', 'Registered name')}
         {f.text('tin', 'TIN', { placeholder: '000-000-000-000', error })}
-        <FormField label="RDO code" tooltip="Revenue District Office on the COR.">
+        <CtxFormField label="RDO code" tooltip="Revenue District Office on the COR.">
           {(p) => (
             <Combobox
               {...p}
@@ -78,14 +80,12 @@ export function CompanyTaxTab() {
               onValueChange={(v) => setProfile({ ...profile, rdoCode: v ?? '' })}
             />
           )}
-        </FormField>
-      </Fields>
-      <Flags>
+        </CtxFormField>
         {f.check('vatRegistered', 'VAT-registered')}
         {f.check('topWithholdingAgent', 'Top withholding agent (BIR-notified)')}
         {f.check('exportEnterprise', 'Registered export enterprise (PEZA, BOI or other IPA)')}
         {f.check('governmentEntity', 'Government entity (NGA, LGU, GOCC)')}
-      </Flags>
+      </FieldStack>
       <Text variant="small" weight="medium">Business activities</Text>
       <Flags>
         {BUSINESS_ACTIVITIES.map((a) => (
@@ -121,5 +121,7 @@ export function CompanyTaxTab() {
           : 'Not an export enterprise: purchases in a zero-rated tax group are charged 12% instead.'}
       </Text>
     </Section>
+      </div>
+    </div>
   );
 }

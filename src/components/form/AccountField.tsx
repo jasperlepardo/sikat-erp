@@ -1,5 +1,6 @@
-import { Combobox, FormField } from '@jasperlepardo/sikat-design-system';
+import { Combobox } from '@jasperlepardo/sikat-design-system';
 import type { ReactNode } from 'react';
+import { CtxFormField as FormField } from './fields';
 import { accountLabel, accountProblem, accountText, fitsRole, type Account, type AccountRole } from '../../mocks/chartOfAccounts';
 import { accounts as accountsCollection } from '../../services/masterData';
 import { useAsync } from '../../services/useAsync';

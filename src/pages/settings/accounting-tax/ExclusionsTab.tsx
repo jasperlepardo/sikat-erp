@@ -1,5 +1,5 @@
 import { TableStatus } from '@jasperlepardo/sikat-design-system';
-import { Fields, Flags, bind } from '../../../components/form/fields';
+import { FieldStack, bind } from '../../../components/form/fields';
 import { MasterList, type ListRoute } from '../../../components/form/MasterList';
 import { EXCLUSION_KINDS, EXCLUSION_LINES, type CompensationExclusion } from '../../../mocks/compensation';
 import { formatAmount } from '../../../services/format';
@@ -46,13 +46,13 @@ export function ExclusionsTab(route: ListRoute) {
         const f = bind(x, update);
         return (
           <>
-            <Fields cols={3}>
-              {f.area('description', 'Compensation', { required: true, error: errors.description, rows: 3, className: 'md:col-span-3' })}
+            <FieldStack>
+              {f.area('description', 'Compensation', { required: true, error: errors.description, rows: 3,  })}
               {f.pick('kind', 'Kind', EXCLUSION_KINDS, { hint: 'Minimum wage earner items are exempt only for MWEs.' })}
               {f.pick('line', 'Year-end line', EXCLUSION_LINES)}
               {f.num('annualCap', 'Annual limit', { prefix: 'PHP', error: errors.annualCap, hint: '0 = no limit.' })}
-            </Fields>
-            <Flags>{f.check('active', 'Active')}</Flags>
+            </FieldStack>
+            {f.check('active', 'Active')}
           </>
         );
       }}
