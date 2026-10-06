@@ -186,6 +186,17 @@ export function VariantsTab({ draft, update }: TabProps) {
       },
     },
     {
+      key: 'barcode',
+      header: 'Barcode',
+      cell: (v) => {
+        const primary = v.gtin || v.barcodes.find((b) => b.uom === v.inventoryUom)?.barcode || v.barcodes[0]?.barcode;
+        const extra = v.barcodes.length > 1 ? ` +${v.barcodes.length - 1}` : '';
+        return primary
+          ? <span className="tabular-nums text-sm">{primary}{extra && <span className="opacity-40 text-xs">{extra}</span>}</span>
+          : <span className="text-muted">—</span>;
+      },
+    },
+    {
       key: 'inStock',
       header: 'In stock',
       cell: (v) => {

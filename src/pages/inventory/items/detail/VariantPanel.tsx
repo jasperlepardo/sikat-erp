@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Icon, Link, Text } from '@jasperlepardo/sikat-design-system';
+import { Button, Icon, Link, Select, Text, TextField } from '@jasperlepardo/sikat-design-system';
 import { Fields, FieldStack, ReadOnly, Section, bind, type Errors } from '../../../../components/form/fields';
-import { type Item, type VariantAxis } from '../../../../mocks/items';
+import { newBarcodeRow, type Item, type VariantAxis } from '../../../../mocks/items';
 import { ItemSaveError, saveItem, stockTotals } from '../../../../services/items';
 import { formatAmount } from '../../../../services/format';
 import { EditPanel } from '../../../partners/detail/EditPanel';
@@ -155,6 +155,60 @@ export function VariantPanel({ variant, axes, title, onDone, onCancel }: Props) 
           </Fields>
         </Section>
       )}
+
+      {/* Barcodes */}
+      <Section icon="barcode" title="Barcodes">
+        {draft.barcodes.length === 0 && (
+          <Text variant="small" tone="muted">
+            No barcodes.{draft.gtin ? ` GTIN ${draft.gtin} (above) still scans.` : ''}
+          </Text>
+        )}
+        {draft.barcodes.map((b) => (
+          <div key={b.id} className="flex items-center gap-2">
+            <Select
+              aria-label="UoM"
+              className="w-20 shrink-0"
+              options={draft.uoms.map((u) => ({ value: u.uom, label: u.uom }))}
+              value={b.uom}
+              onValueChange={(uom) => uom && update({ barcodes: draft.barcodes.map((x) => x.id === b.id ? { ...x, uom } : x) })}
+            />
+            <TextField
+              aria-label="Barcode"
+              placeholder="EAN-13, UPC-A…"
+              className="flex-1"
+              value={b.barcode}
+              invalid={!!errors[`barcode:${b.id}:barcode`]}
+              onChange={(e) => update({ barcodes: draft.barcodes.map((x) => x.id === b.id ? { ...x, barcode: e.currentTarget.value.trim() } : x) })}
+            />
+            <TextField
+              aria-label="Label"
+              placeholder="Label (optional)"
+              className="w-28 shrink-0"
+              value={b.freeText}
+              onChange={(e) => update({ barcodes: draft.barcodes.map((x) => x.id === b.id ? { ...x, freeText: e.currentTarget.value } : x) })}
+            />
+            <button
+              type="button"
+              aria-label="Remove barcode"
+              className="opacity-40 hover:opacity-100 hover:text-danger shrink-0"
+              onClick={() => update({ barcodes: draft.barcodes.filter((x) => x.id !== b.id) })}
+            >
+              <Icon size={16}>close</Icon>
+            </button>
+          </div>
+        ))}
+        <Button
+          type="button"
+          intent="default"
+          variant="outline"
+          size="medium"
+          leadingIcon={<Icon size={16}>add</Icon>}
+          onClick={() => update({ barcodes: [...draft.barcodes, newBarcodeRow(draft.inventoryUom)] })}
+        >
+          Add barcode
+        </Button>
+        {errors.barcodes && <Text variant="small" tone="danger">{errors.barcodes}</Text>}
+      </Section>
 
       {/* Open full record */}
       <div className="flex items-center gap-1 px-1">
