@@ -1,7 +1,7 @@
 import { Outlet, useLocation, useNavigate } from 'react-router';
-import { Navbar, Page, SideNav, useTheme, type NavbarMenuItem } from '@jasperlepardo/sikat-design-system';
+import { Navbar, Page, SideNav, useHoverIntent, useTheme, type NavbarMenuItem } from '@jasperlepardo/sikat-design-system';
 import { useEffect, useState } from 'react';
-import { NAV, leafForPath, moduleOf, pathOf } from './nav';
+import { APPS, appNav, firstPageOf, leafForPath, moduleOf, pathOf } from './nav';
 import { SETTINGS_NAV, settingsLeafForPath, settingsModuleOf } from './settingsNav';
 import { useCollection } from '../components/form/MasterLookup';
 import { companies, setCurrentCompanyId, useCurrentCompany } from '../services/companies';
@@ -19,6 +19,10 @@ export function AppShell() {
 
   const isSettings = location.pathname.startsWith('/settings');
 
+  // Navbar toggle slides the side nav out; hovering the toggle (or the bar) peeks it back as an overlay.
+  const [navExpanded, setNavExpanded] = useState(true);
+  const peek = useHoverIntent();
+
   // Main nav state
   const activeId = leafForPath(location.pathname)?.id;
   const [mainOpenId, setMainOpenId] = useState<string | null>(() => moduleOf(activeId));
@@ -26,6 +30,13 @@ export function AppShell() {
   useEffect(() => {
     if (activeModule) setMainOpenId(activeModule);
   }, [activeModule]);
+
+  // Current app: follows the route; Home, Inbox, Business Partners and Settings keep the last one.
+  const routeApp = APPS.some((a) => a.id === activeModule) ? activeModule : null;
+  const [appId, setAppId] = useState(() => routeApp ?? APPS[0].id);
+  useEffect(() => {
+    if (routeApp) setAppId(routeApp);
+  }, [routeApp]);
 
   // Settings nav state
   const settingsActiveId = settingsLeafForPath(location.pathname)?.id;
@@ -45,19 +56,39 @@ export function AppShell() {
     { id: 'sign-out', label: 'Sign out', onSelect: () => navigate('/') },
   ];
 
-  const sideNavStyle: React.CSSProperties = {
-    position: 'sticky',
-    top: 64,
-    height: 'calc(100vh - 64px)',
-    flex: 'none',
-    width: 280,
-    overflowY: 'auto',
+  const sideNavProps = {
+    id: 'app-sidenav',
+    collapsed: !navExpanded,
+    peek: peek.hovering,
+    onMouseEnter: () => peek.onHover(true),
+    onMouseLeave: () => peek.onHover(false),
+    style: {
+      '--sidenav-width': '280px',
+      position: 'sticky',
+      top: 64,
+      height: 'calc(100vh - 64px)',
+      flex: 'none',
+      overflowY: 'auto',
+    } as React.CSSProperties,
   };
 
   return (
     <Page>
       <Navbar
-        appName="Sikat ERP"
+        onSideNavToggle={() => {
+          setNavExpanded((v) => !v);
+          peek.reset();
+        }}
+        onSideNavToggleHover={peek.onHover}
+        sideNavExpanded={navExpanded}
+        sideNavId="app-sidenav"
+        appName={APPS.find((a) => a.id === appId)?.label}
+        apps={APPS}
+        appId={appId}
+        onAppChange={(id) => {
+          setAppId(id);
+          navigate(firstPageOf(id));
+        }}
         organizations={orgs}
         organizationId={company?.id}
         onOrganizationChange={setCurrentCompanyId}
@@ -73,16 +104,16 @@ export function AppShell() {
             openId={settingsOpenId}
             onOpenChange={setSettingsOpenId}
             onNavigate={(id) => navigate(pathOf(id))}
-            style={sideNavStyle}
+            {...sideNavProps}
           />
         ) : (
           <SideNav
-            sections={NAV}
+            sections={appNav(appId)}
             activeId={activeId}
             openId={mainOpenId}
             onOpenChange={setMainOpenId}
             onNavigate={(id) => navigate(pathOf(id))}
-            style={sideNavStyle}
+            {...sideNavProps}
           />
         )}
         {/* Bounded to the viewport so a Panel fills it and scrolls its own body; list tables then scroll their rows. */}
