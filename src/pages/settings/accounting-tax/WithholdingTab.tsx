@@ -160,14 +160,6 @@ export function WithholdingTab(route: ListRoute) {
                     />
                   ),
                 )}
-                {f.pick('tier', 'Income tier', ['low', 'high'], {
-                  clearable: true,
-                  hint: w.tier === 'low'
-                    ? 'Low tier — vendor must have a valid sworn declaration on file for the current year.'
-                    : w.tier === 'high'
-                      ? 'High tier — applies when no sworn declaration is on file, or vendor is VAT-registered.'
-                      : 'Set when this ATC is one side of an income-tiered pair.',
-                })}
                 {f.text('birForms', 'BIR forms')}
                 {f.text('legalBasis', 'Legal basis', { placeholder: 'e.g. RR 2-98 Sec. 2.57.2(A)' })}
                 {f.area('notes', 'Notes', { rows: 2 })}
