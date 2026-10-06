@@ -133,7 +133,6 @@ export function ReturnsList({ kind }: { kind: Kind }) {
       <PanelHeader
         icon="assignment_return"
         title={presets.menu}
-        subcopy="Goods sent back to vendors, and the vendors' credit notes for them or for price adjustments."
         actions={
           <Button intent="primary" variant="solid" size="extra-large" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${path}/new`)}>
             {kind === 'returns' ? 'New goods return' : 'New A/P credit memo'}

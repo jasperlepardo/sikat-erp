@@ -55,3 +55,18 @@
 .sikat-field.w-64 { width: calc(var(--spacing) * 64); }
 .sikat-field.w-72 { width: calc(var(--spacing) * 72); }
 .sikat-field.w-fit { width: fit-content; }
+
+/* Right-aligned (numeric) Table columns: the design system Table has no column align, so a
+   column opts in with a `table-num` header and cell wrapper. The header flips so the label
+   sits flush right and the sort control moves to its left. */
+.sikat-table__th:has(.table-num) .sikat-table__th-inner {
+  flex-direction: row-reverse;
+}
+div.table-num {
+  display: flex;
+  justify-content: flex-end;
+  text-align: right;
+}
+div.table-num .sikat-table-cell__stack {
+  align-items: flex-end;
+}

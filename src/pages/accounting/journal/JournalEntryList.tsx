@@ -121,7 +121,6 @@ export function JournalEntryList() {
       <PanelHeader
         icon="menu_book"
         title={presets.menu}
-        subcopy="Every posting in the ledger: entries typed in by hand, and the ones documents make when they're added or cancelled."
         actions={
           <Button intent="primary" variant="solid" size="extra-large" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${JE_LIST_PATH}/new`)}>
             New journal entry

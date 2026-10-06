@@ -130,7 +130,6 @@ export function PurchaseOrderList() {
       <PanelHeader
         icon="receipt_long"
         title={presets.menu}
-        subcopy="Orders placed with vendors, from draft to fully received."
         actions={
           <Button
             intent="primary"

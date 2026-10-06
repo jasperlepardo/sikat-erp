@@ -124,7 +124,6 @@ export function JournalVoucherList() {
       <PanelHeader
         icon="folder_open"
         title={presets.menu}
-        subcopy="Draft journal entries, grouped for review before they post. Nothing here touches the ledger until it's posted."
         actions={
           <Button intent="primary" variant="solid" size="extra-large" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${JV_LIST_PATH}/new/entries/new`)}>
             New voucher

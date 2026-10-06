@@ -120,7 +120,6 @@ export function PaymentList() {
       <PanelHeader
         icon="payments"
         title={presets.menu}
-        subcopy="Outgoing payments: money paid to vendors against their bills (or on account), or straight to G/L accounts."
         actions={
           <Button intent="primary" variant="solid" size="extra-large" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${PAYMENT_LIST_PATH}/new`)}>
             New outgoing payment

@@ -122,7 +122,6 @@ export function GoodsReceiptList() {
       <PanelHeader
         icon="inventory"
         title={presets.menu}
-        subcopy="Goods and services received from vendors. Adding a receipt puts the stock in and updates the PO it came from."
         actions={
           <Button intent="primary" variant="solid" size="extra-large" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${GR_LIST_PATH}/new`)}>
             New goods receipt

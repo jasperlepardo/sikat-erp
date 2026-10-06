@@ -106,7 +106,6 @@ export function ArInvoiceList() {
       <PanelHeader
         icon="receipt"
         title={presets.menu}
-        subcopy="A/R invoices: billing customers for deliveries, orders or services. Adding one posts the receivable, revenue and output VAT."
         actions={
           <Button intent="primary" variant="solid" size="extra-large" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${AR_LIST_PATH}/new`)}>
             New A/R invoice

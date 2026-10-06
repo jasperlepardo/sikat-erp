@@ -169,7 +169,6 @@ export function ItemList({ basePath = '/inventory/items' }: { basePath?: string 
       <PanelHeader
         icon="inventory_2"
         title={presets.menu}
-        subcopy="The item master: products, materials and services you buy, sell and stock."
         actions={
           <Button
             intent="primary"

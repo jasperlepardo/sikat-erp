@@ -113,7 +113,6 @@ export function SalesOrderList() {
       <PanelHeader
         icon="shopping_bag"
         title={presets.menu}
-        subcopy="Customer orders. Prices come from the customer's price list and pricing rules; open lines commit stock."
         actions={
           <Button intent="primary" variant="solid" size="extra-large" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${SO_LIST_PATH}/new`)}>
             New sales order

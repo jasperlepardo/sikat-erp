@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
 import {
   Card,
@@ -8,10 +8,7 @@ import {
   PanelHeader,
   Select,
   Table,
-  TableAmount,
-  TableLink,
   TableStatus,
-  TableSubcontent,
   Text,
   TextField,
   type TableColumn,
@@ -30,17 +27,20 @@ import { warehouseOptions } from './transfers/TransferLines';
 
 /**
  * Stock on Hand — SAP B1's Inventory Status report: In Stock, Committed, Ordered and Available
- * per item and warehouse (OITW), or per item across all warehouses (OITM). Read-only; stock
- * changes through documents such as inventory transfers.
+ * per item (OITM), expanding to one row per warehouse (OITW) and, in bin-managed warehouses, per
+ * bin. Read-only; stock changes through
+ * documents such as inventory transfers.
  */
-
-type View = 'warehouse' | 'item';
 
 interface Row {
   id: string;
   item: Item;
-  /** '' on a per-item row (all warehouses). */
+  /** '' on an item row (all warehouses); the warehouse code on its child rows. */
   warehouse: string;
+  /** The bin code on a bin row; '' otherwise. */
+  bin: string;
+  /** Warehouse rows under an item row; bin rows under a warehouse row. */
+  children?: Row[];
   inStock: number;
   committed: number;
   ordered: number;
@@ -50,13 +50,25 @@ interface Row {
   value: number;
 }
 
+/** Right-aligned numeric column (see `.table-num` in index.css). */
+const numHeader = (label: string) => <span className="table-num">{label}</span>;
+const num = (content: ReactNode) => <div className="table-num gap-1">{content}</div>;
+/** A unit or currency beside a number, styled like a field's prefix/suffix. */
+const affix = (text: string) => <span className="text-(--color-text-caption)">{text}</span>;
+
+/** The item's full variant name, e.g. "AirTag, 1 pack". */
+const itemName = (item: Item) => item.description || item.name;
+
+/** A zero in a table cell: a muted dash, so the figures that matter stand out. */
+const DASH = <span className="text-(--color-text-caption)">-</span>;
+
 const ITEMS_PATH = '/inventory/items';
 const ALL_GROUPS = '';
 
 const statusOf = (r: Row) =>
   r.inStock <= 0
     ? ({ label: 'Out of stock', intent: 'danger' } as const)
-    : isLowStock(r.item)
+    : !r.warehouse && isLowStock(r.item)
       ? ({ label: 'Below minimum', intent: 'warning' } as const)
       : ({ label: 'In stock', intent: 'success' } as const);
 
@@ -64,7 +76,7 @@ const STOCK_FIELDS = [
   textField<Row>('itemNo', 'Item no.', (r) => r.item.itemNo),
   textField<Row>('name', 'Item name', (r) => [r.item.name, r.item.description]),
   textField<Row>('itemGroup', 'Item group', (r) => r.item.itemGroup),
-  textField<Row>('warehouse', 'Warehouse', (r) => r.warehouse),
+  textField<Row>('warehouse', 'Warehouse', (r) => r.children?.map((c) => c.warehouse) ?? r.warehouse),
   choiceField<Row>('stockStatus', 'Stock status', ['In stock', 'Below minimum', 'Out of stock'], (r) => statusOf(r).label),
   numberField<Row>('inStock', 'In stock', (r) => r.inStock),
   numberField<Row>('committed', 'Committed', (r) => r.committed),
@@ -82,12 +94,13 @@ const STOCK_VIEWS: BuiltInView[] = [
 export function StockOnHandPage() {
   const navigate = useNavigate();
   const data = useAsync(() => Promise.all([listItems(), loadInventoryMasters()]), []);
-  const [view, setView] = useState<View>('warehouse');
   const [warehouse, setWarehouse] = useState('');
   const [group, setGroup] = useState(ALL_GROUPS);
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  /** Selected warehouse rows; the Table checks an item row when all its warehouses are. */
+  const [selected, setSelected] = useState<string[]>([]);
 
   const [items, inv] = data ?? [undefined, undefined];
   const resetPage = <T,>(set: (v: T) => void) => (v: T) => {
@@ -95,30 +108,39 @@ export function StockOnHandPage() {
     setPage(1);
   };
 
-  /** Every row for the view and warehouse, before the tab and search filters. */
+  /** One row per item (totals over the shown warehouses), before the tab and search filters. */
   const base = useMemo<Row[]>(() => {
     const stocked = (items ?? []).filter((i) => i.inventoryItem && (!group || i.itemGroup === group));
-    if (view === 'warehouse') {
-      return stocked.flatMap((item) =>
-        item.warehouses
-          .filter((w) => !warehouse || w.code === warehouse)
-          .map((w) => ({
-            id: `${item.id}:${w.code}`,
-            item,
-            warehouse: w.code,
-            inStock: w.inStock,
-            committed: w.committed,
-            ordered: w.ordered,
-            available: w.inStock - w.committed + w.ordered,
-            value: w.inStock * item.itemCost,
-          })),
-      );
-    }
-    return stocked.map((item) => {
-      const t = stockTotals(item);
-      return { id: item.id, item, warehouse: '', ...t, value: t.inStock * item.itemCost };
+    return stocked.flatMap((item) => {
+      const shown = item.warehouses.filter((w) => !warehouse || w.code === warehouse);
+      if (warehouse && !shown.length) return [];
+      const children = shown.map((w): Row => {
+        const value = w.inStock * item.itemCost;
+        return {
+          id: `${item.id}:${w.code}`,
+          item,
+          warehouse: w.code,
+          bin: '',
+          inStock: w.inStock,
+          committed: w.committed,
+          ordered: w.ordered,
+          available: w.inStock - w.committed + w.ordered,
+          value,
+          // Per-bin quantities aren't tracked yet: the warehouse's stock sits in its default bin
+          // (as binStock() counts it). Committed and ordered are warehouse-level, so a bin has neither.
+          children: w.defaultBin
+            ? [{ id: `${item.id}:${w.code}:${w.defaultBin}`, item, warehouse: w.code, bin: w.defaultBin, inStock: w.inStock, committed: 0, ordered: 0, available: 0, value }]
+            : undefined,
+        };
+      });
+      const t = stockTotals({ warehouses: shown });
+      return [{ id: item.id, item, warehouse: '', bin: '', children, ...t, value: t.inStock * item.itemCost }];
     });
-  }, [items, view, warehouse, group]);
+  }, [items, warehouse, group]);
+
+  const whName = (code: string) => inv?.warehouses.find((w) => w.code === code)?.name ?? '';
+
+  const rowLabel = (r: Row) => r.bin || (r.warehouse ? whName(r.warehouse) || r.warehouse : itemName(r.item));
 
   const presets = useListPresets({
     list: 'stock-on-hand',
@@ -134,73 +156,71 @@ export function StockOnHandPage() {
     const q = query.trim().toLowerCase();
     const filtered = presets.apply(base).filter(
       (r) =>
-        !q || `${r.item.itemNo} ${r.item.name} ${r.item.description} ${r.warehouse}`.toLowerCase().includes(q),
+        !q ||
+        `${r.item.itemNo} ${r.item.name} ${r.item.description} ${r.children?.map((c) => `${c.warehouse} ${whName(c.warehouse)} ${c.children?.[0]?.bin ?? ''}`).join(' ')}`
+          .toLowerCase()
+          .includes(q),
     );
     if (!sort) return filtered;
     const dir = sort.direction === 'asc' ? 1 : -1;
     const value = (r: Row): string | number =>
-      sort.key === 'item' ? r.item.itemNo : sort.key === 'warehouse' ? r.warehouse : (r[sort.key as keyof Row] as number);
-    return [...filtered].sort((a, b) => {
+      sort.key === 'item'
+        ? rowLabel(r).toLowerCase()
+        : sort.key === 'minStock'
+          ? r.item.minStock
+          : (r[sort.key as keyof Row] as number);
+    const byKey = (a: Row, b: Row) => {
       const x = value(a);
       const y = value(b);
       return (x < y ? -1 : x > y ? 1 : 0) * dir;
-    });
+    };
+    const sortTree = (list: Row[]): Row[] => list.map((r) => ({ ...r, children: r.children && sortTree(r.children) })).sort(byKey);
+    return sortTree(filtered);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [base, presets.filter, query, sort]);
+  }, [base, presets.filter, query, sort, inv]);
 
   const onPage = rows.slice((page - 1) * pageSize, page * pageSize);
   const totals = rows.reduce(
     (t, r) => ({ inStock: t.inStock + r.inStock, available: t.available + r.available, value: t.value + r.value }),
     { inStock: 0, available: 0, value: 0 },
   );
-  const whName = (code: string) => inv?.warehouses.find((w) => w.code === code)?.name ?? '';
+  /** Selected ids include fully-checked item rows and bins; count only the warehouse rows (`item:wh`). */
+  const picked = selected.filter((id) => id.split(':').length === 2).length;
   const qty = (n: number) => n.toLocaleString('en-PH');
+  const cellQty = (n: number) => (n ? qty(n) : DASH);
   const open = (r: Row) => navigate(`${ITEMS_PATH}/${r.item.id}`);
 
   const columns: TableColumn<Row>[] = [
     {
       key: 'item',
-      header: 'Item',
+      header: 'Item / Warehouse / Bin',
       sortable: true,
-      cell: (r) => (
-        <TableSubcontent subcopy={r.item.description}>
-          <TableLink onClick={() => open(r)}>{r.item.itemNo}</TableLink>
-        </TableSubcontent>
-      ),
+      // Cells don't wrap, so a long name would widen the column and push Status off the card:
+      // cap the width and let the name wrap instead.
+      cell: (r) => <span className="block max-w-64 whitespace-normal">{rowLabel(r)}</span>,
     },
-    ...(view === 'warehouse'
-      ? [
-          {
-            key: 'warehouse',
-            header: 'Warehouse',
-            sortable: true,
-            cell: (r: Row) => <TableSubcontent subcopy={whName(r.warehouse)}>{r.warehouse}</TableSubcontent>,
-          },
-        ]
-      : [
-          {
-            key: 'warehouses',
-            header: 'Warehouses',
-            cell: (r: Row) => {
-              const holding = r.item.warehouses.filter((w) => w.inStock > 0);
-              return (
-                <TableSubcontent subcopy={holding.map((w) => `${w.code} ${qty(w.inStock)}`).join(' · ') || undefined}>
-                  {holding.length} holding stock
-                </TableSubcontent>
-              );
-            },
-          },
-        ]),
-    { key: 'inStock', header: 'In stock', sortable: true, cell: (r) => `${qty(r.inStock)} ${r.item.inventoryUom}` },
-    { key: 'committed', header: 'Committed', sortable: true, cell: (r) => qty(r.committed) },
-    { key: 'ordered', header: 'Ordered', sortable: true, cell: (r) => qty(r.ordered) },
+    { key: 'inStock', header: numHeader('In stock'), sortable: true, cell: (r) => num(r.inStock ? <>{qty(r.inStock)}{affix(r.item.inventoryUom)}</> : DASH) },
+    { key: 'committed', header: numHeader('Committed'), sortable: true, cell: (r) => (r.bin ? null : num(cellQty(r.committed))) },
+    { key: 'ordered', header: numHeader('Ordered'), sortable: true, cell: (r) => (r.bin ? null : num(cellQty(r.ordered))) },
     {
       key: 'available',
-      header: 'Available',
+      header: numHeader('Available'),
       sortable: true,
-      cell: (r) => (view === 'item' ? <TableSubcontent subcopy={`Min ${qty(r.item.minStock)}`}>{qty(r.available)}</TableSubcontent> : qty(r.available)),
+      cell: (r) => (r.bin ? null : num(cellQty(r.available))),
     },
-    { key: 'value', header: 'Value at cost', sortable: true, cell: (r) => <TableAmount currency="PHP">{formatAmount(r.value)}</TableAmount> },
+    {
+      key: 'minStock',
+      header: numHeader('Minimum'),
+      sortable: true,
+      // The minimum is set per item, so warehouse rows leave it blank.
+      cell: (r) => (r.warehouse ? null : num(cellQty(r.item.minStock))),
+    },
+    {
+      key: 'value',
+      header: numHeader('Value at cost'),
+      sortable: true,
+      cell: (r) => num(r.value ? <>{affix('PHP')}{formatAmount(r.value)}</> : DASH),
+    },
     {
       key: 'status',
       header: 'Status',
@@ -216,36 +236,24 @@ export function StockOnHandPage() {
       <PanelHeader
         icon="inventory"
         title={presets.menu}
-        subcopy="In stock, committed, ordered and available — per warehouse or per item."
       />
       <Panel.Body className="flex flex-col gap-2">
         {presets.bar(
-          <div className="grid grid-cols-1 gap-2 md:grid-cols-[1fr_auto_auto_auto]">
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-[1fr_auto_auto]">
             <TextField
               aria-label="Search stock"
-              placeholder="Search by item no., name or warehouse"
+              placeholder="Search by item no., name, warehouse or bin"
               leadingIcon={<Icon size={20}>search</Icon>}
               value={query}
               onChange={(e) => resetPage(setQuery)(e.currentTarget.value)}
-            />
-            <Select
-              aria-label="View"
-              className="md:w-44"
-              options={[
-                { value: 'warehouse', label: 'By warehouse' },
-                { value: 'item', label: 'By item (all warehouses)' },
-              ]}
-              value={view}
-              onValueChange={(v) => resetPage(setView)(v as View)}
             />
             <div className="md:w-64">
               <Combobox
                 aria-label="Warehouse"
                 placeholder="All warehouses"
                 clearable
-                disabled={view === 'item'}
                 options={inv ? warehouseOptions(inv.warehouses, warehouse) : []}
-                value={view === 'item' ? null : warehouse || null}
+                value={warehouse || null}
                 onValueChange={(v) => resetPage(setWarehouse)(v ?? '')}
               />
             </div>
@@ -260,8 +268,9 @@ export function StockOnHandPage() {
         )}
         {items ? (
           <Text variant="small" tone="muted">
-            {qty(rows.length)} row{rows.length === 1 ? '' : 's'} · {qty(totals.inStock)} in stock · {qty(totals.available)} available · PHP{' '}
+            {qty(rows.length)} item{rows.length === 1 ? '' : 's'} · {qty(totals.inStock)} in stock · {qty(totals.available)} available · PHP{' '}
             {formatAmount(totals.value)} at cost
+            {picked ? ` · ${qty(picked)} warehouse row${picked === 1 ? '' : 's'} selected` : ''}
           </Text>
         ) : null}
         <Card className={fillCardClass(onPage.length)}>
@@ -271,6 +280,10 @@ export function StockOnHandPage() {
               columns={columns}
               rows={onPage}
               getRowId={(r) => r.id}
+              getSubRows={(r) => r.children}
+              selectable
+              selectedIds={selected}
+              onSelectionChange={setSelected}
               sort={sort}
               onSortChange={setSort}
               layout="fill"

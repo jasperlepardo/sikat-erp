@@ -115,7 +115,6 @@ export function DeliveryList() {
       <PanelHeader
         icon="local_shipping"
         title={presets.menu}
-        subcopy="Goods shipped to customers. Adding a delivery takes the stock out, updates its sales order and posts the cost to COGS."
         actions={
           <Button intent="primary" variant="solid" size="extra-large" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${DN_LIST_PATH}/new`)}>
             New delivery

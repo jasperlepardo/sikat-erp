@@ -170,7 +170,6 @@ export function PartnerList({ scope }: { scope: PartnerScope }) {
       <PanelHeader
         icon={config.icon}
         title={presets.menu}
-        subcopy={config.subcopy}
         actions={
           <Button
             intent="primary"

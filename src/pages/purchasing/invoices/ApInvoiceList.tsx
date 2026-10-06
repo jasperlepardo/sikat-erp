@@ -128,7 +128,6 @@ export function ApInvoiceList() {
       <PanelHeader
         icon="request_quote"
         title={presets.menu}
-        subcopy="A/P invoices from vendors: what you owe, billed against goods receipts or purchase orders."
         actions={
           <Button intent="primary" variant="solid" size="extra-large" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${AP_LIST_PATH}/new`)}>
             New A/P invoice

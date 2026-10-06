@@ -126,7 +126,6 @@ export function InventoryTransferList() {
       <PanelHeader
         icon="move_down"
         title={presets.menu}
-        subcopy="Inventory transfers between warehouses. Company-wide stock doesn't change — only where it sits."
         actions={
           <Button
             intent="primary"

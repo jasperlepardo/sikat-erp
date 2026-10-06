@@ -58,7 +58,6 @@ function CountsShell({
       <PanelHeader
         icon="inventory"
         title={title}
-        subcopy="Count, review, then post: an Inventory Counting records what was found against the books; an Inventory Posting made from it adjusts stock and books the difference."
         actions={
           <Button
             intent="primary"

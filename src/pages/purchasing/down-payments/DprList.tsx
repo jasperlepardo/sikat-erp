@@ -103,7 +103,6 @@ export function DprList() {
       <PanelHeader
         icon="request_quote"
         title={presets.menu}
-        subcopy="Advances vendors ask for before they deliver. Paid from Payments Made, then drawn on the A/P invoice that bills the goods."
         actions={
           <Button intent="primary" variant="solid" size="extra-large" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${DPR_LIST_PATH}/new`)}>
             New down payment request

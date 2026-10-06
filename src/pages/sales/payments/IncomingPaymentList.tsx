@@ -110,7 +110,6 @@ export function IncomingPaymentList() {
       <PanelHeader
         icon="savings"
         title={presets.menu}
-        subcopy="Incoming payments: money received from customers against their invoices or on account, or to G/L accounts. Adding one posts Dr the bank or clearing account / Cr the customer."
         actions={
           <Button intent="primary" variant="solid" size="extra-large" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${RC_LIST_PATH}/new`)}>
             New incoming payment
