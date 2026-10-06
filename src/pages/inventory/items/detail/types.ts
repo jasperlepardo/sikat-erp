@@ -85,5 +85,32 @@ export const vendorOptions = (vendors: Partner[]) => [
 /** Pickers over plain strings. */
 export const asOptions = (values: readonly string[]) => values.map((value) => ({ value, label: value }));
 
+/**
+ * Creates a new variant Draft pre-filled from a parent item's settings.
+ * `attrs` is the axis selections, e.g. { Storage: '256GB', Color: 'Black' }.
+ * The variant inherits group, tax, UoMs and other template settings from the parent.
+ */
+export function variantFromParent(parent: Draft, attrs: Record<string, string>): Draft {
+  const attrValues = Object.values(attrs).filter(Boolean);
+  return {
+    ...parent,
+    id: undefined,
+    itemNo: '',
+    description: attrValues.length ? [parent.name, ...attrValues].join(', ') : parent.name,
+    parentItemId: parent.id ?? '',
+    variantAxes: [],
+    variantAttributes: attrs,
+    purchaseItem: true,
+    salesItem: true,
+    inventoryItem: parent.itemType === 'Items',
+    hasTransactions: false,
+    warehouses: [],
+    barcodes: [],
+    attachments: [],
+    gtin: '',
+    sellingItemNo: '',
+  };
+}
+
 /** Locked once documents post against the item (SAP: can't change after the first transaction). */
 export const LOCKED_HINT = 'Locked: documents have been posted for this item.';

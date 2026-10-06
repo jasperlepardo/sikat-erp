@@ -6,7 +6,9 @@ import {
   Combobox,
   Form,
   FormField,
+  Icon,
   IconButton,
+  Link,
   Panel,
   PanelHeader,
   panelHeaderIcons,
@@ -24,6 +26,7 @@ import {
   blankItem,
   itemUnits,
   withInventoryUom,
+  type Item,
   type ItemManufacturer,
   type ItemType,
   type ItemVendor,
@@ -45,6 +48,7 @@ import { ItemSaveError, getItem, isValidToday, listItems, saveItem } from '../..
 import { listPartnersByRole } from '../../../../services/partners';
 import { exciseCategories, taxCodes, taxGroups, withholdingGroups } from '../../../../services/masterData';
 import { AttachmentsTab } from './AttachmentsTab';
+import { VariantsTab } from './VariantsTab';
 import { BarcodesTab } from './BarcodesTab';
 import { GeneralTab } from './GeneralTab';
 import { InventoryTab } from './InventoryTab';
@@ -60,12 +64,13 @@ import { UomGroupPanel, UomsTab, uomErrorKey } from './UomsTab';
 import { VendorPanel, VendorsCards } from './VendorsSection';
 import { WarehousePanel, WarehousesCards, binErrorKey } from './WarehousesSection';
 import { uomDef } from '../../../settings/masterDefs';
-import { LOCKED_HINT, asOptions, type Draft, type TaxMasters } from './types';
+import { LOCKED_HINT, asOptions, variantFromParent, type Draft, type TaxMasters } from './types';
 
 const LIST_PATH = '/inventory/items';
 
 const TABS = [
   { value: 'general', label: 'General', Component: GeneralTab },
+  { value: 'variants', label: 'Variants', Component: VariantsTab },
   { value: 'uoms', label: 'Units of measure', Component: UomsTab },
   { value: 'purchasing', label: 'Purchasing', Component: PurchasingTab },
   { value: 'sales', label: 'Sales data', Component: SalesTab },
@@ -116,7 +121,7 @@ function validate(d: Draft, codeMode: 'auto' | 'manual', inv: InventoryMasters):
     need(!b.uom || d.uoms.some((u) => u.uom === b.uom), 'barcodes', `barcode:${b.id}:uom`, `${b.uom} isn't one of the item's units.`);
   }
 
-  need(d.purchaseItem || d.salesItem || d.inventoryItem, 'general', 'usage', 'Tick at least one of purchase, sales or inventory item.');
+  need(d.variantAxes.length > 0 || d.purchaseItem || d.salesItem || d.inventoryItem, 'general', 'usage', 'Tick at least one of purchase, sales or inventory item.');
   need(!d.validFrom || !d.validTo || d.validFrom <= d.validTo, 'general', 'validTo', 'Valid to is before Valid from.');
   need(!d.exciseTax || d.exciseCategory, 'general', 'exciseCategory', 'Pick the excise category.');
   if (d.glBy === 'Item Level') {
@@ -163,9 +168,14 @@ function ItemForm() {
   const { id } = useParams();
   const isNew = id === 'new';
   const navigate = useNavigate();
-  const copyFrom = (useLocation().state as { copyFrom?: Draft } | null)?.copyFrom;
+  const locationState = useLocation().state as { copyFrom?: Draft; variantOf?: Draft } | null;
+  const copyFrom = locationState?.copyFrom;
+  const variantOf = locationState?.variantOf;
 
-  const [draft, setDraft] = useState<Draft | null | undefined>(isNew ? (copyFrom ?? blankItem()) : undefined);
+  const initialDraft = isNew
+    ? variantOf ? variantFromParent(variantOf, {}) : (copyFrom ?? blankItem())
+    : undefined;
+  const [draft, setDraft] = useState<Draft | null | undefined>(initialDraft);
   const [vendors, setVendors] = useState<Partner[]>([]);
   const [tax, setTax] = useState<TaxMasters>({ groups: [], codes: [], excise: [], withholdingGroups: [] });
   const [inv, setInv] = useState<InventoryMasters>(EMPTY_INVENTORY_MASTERS);
@@ -187,6 +197,10 @@ function ItemForm() {
   const [savedUomIds, setSavedUomIds] = useState<Set<string>>(new Set());
   const [editingVendor, setEditingVendor] = useState<{ value: ItemVendor; isNew: boolean } | null>(null);
   const [saving, setSaving] = useState(false);
+  // parentItem: loaded for variant items so the side column can show "Part of" + attribute pickers.
+  const [parentItem, setParentItem] = useState<Item | undefined>(
+    variantOf ? (variantOf as unknown as Item) : undefined,
+  );
 
   useEffect(() => {
     listPartnersByRole('vendor').then(setVendors);
@@ -206,6 +220,7 @@ function ItemForm() {
       if (cancelled) return;
       setDraft(item ?? null);
       setSavedUomIds(new Set(item?.uoms.map((u) => u.id)));
+      if (item?.parentItemId) getItem(item.parentItemId).then((p) => { if (!cancelled) setParentItem(p); });
     });
     return () => {
       cancelled = true;
@@ -400,6 +415,8 @@ function ItemForm() {
               isNew ? undefined : (
                 <div className="flex gap-1">
                   <Badge intent="primary">{draft.itemType}</Badge>
+                  {draft.variantAxes.length > 0 ? <Badge variant="outline">Parent item</Badge> : null}
+                  {draft.parentItemId ? <Badge variant="outline">Variant</Badge> : null}
                   {!isValidToday(draft) ? <Badge intent="danger">Not valid today</Badge> : null}
                   {locked ? <Badge variant="outline">Has transactions</Badge> : null}
                 </div>
@@ -531,8 +548,42 @@ function ItemForm() {
                         disabled: locked || draft.itemType !== 'Items',
                         hint: locked ? LOCKED_HINT : 'Batches for lots/expiry; serial numbers for each unit.',
                       })}
+                      {parentItem && (
+                        <FormField orientation="responsive" label="Part of">
+                          {() => (
+                            <Link onClick={() => navigate(`${LIST_PATH}/${parentItem.id}`)}>
+                              {parentItem.name}
+                            </Link>
+                          )}
+                        </FormField>
+                      )}
                     </FieldStack>
                   </Section>
+
+                  {/* Attribute selectors — shown on variant items */}
+                  {parentItem && draft.parentItemId && (parentItem as Item).variantAxes?.length > 0 && (
+                    <Section icon="tune" title="Variant attributes">
+                      <FieldStack>
+                        {(parentItem as Item).variantAxes.map((axis) => (
+                          <FormField key={axis.name} orientation="responsive" label={axis.name}>
+                            {(p) => (
+                              <Select
+                                {...p}
+                                options={[
+                                  { value: '', label: '— Not set —' },
+                                  ...axis.options.map((o) => ({ value: o, label: o })),
+                                ]}
+                                value={draft.variantAttributes[axis.name] ?? ''}
+                                onValueChange={(v) =>
+                                  update({ variantAttributes: { ...draft.variantAttributes, [axis.name]: v ?? '' } })
+                                }
+                              />
+                            )}
+                          </FormField>
+                        ))}
+                      </FieldStack>
+                    </Section>
+                  )}
                   <WarehousesCards
                     draft={draft}
                     update={update}
@@ -556,14 +607,28 @@ function ItemForm() {
                 </aside>
 
                 <div className="flex min-w-0 flex-col gap-2 lg:col-span-9 lg:min-h-0 lg:overflow-y-auto">
+                  {draft.parentItemId && parentItem && (
+                    <div className="flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm">
+                      <Icon size={16} className="shrink-0 text-muted">info</Icon>
+                      <Text variant="small" tone="muted">
+                        Tax, UoMs, planning and other settings are inherited from{' '}
+                        <Link onClick={() => navigate(`${LIST_PATH}/${parentItem.id}`)}>
+                          {parentItem.name}
+                        </Link>
+                        . Changes to those fields here are overridden by the parent.
+                      </Text>
+                    </div>
+                  )}
                   <Tabs
                     value={tab}
                     onValueChange={(v) => setTab(v as TabId)}
-                    items={TABS.map((t) => ({
-                      value: t.value,
-                      label: t.label,
-                      badge: problems.some((p) => p.tab === t.value) ? '!' : counts[t.value] ? String(counts[t.value]) : undefined,
-                    }))}
+                    items={TABS
+                      .filter((t) => t.value !== 'variants' || draft.variantAxes.length > 0)
+                      .map((t) => ({
+                        value: t.value,
+                        label: t.label,
+                        badge: problems.some((p) => p.tab === t.value) ? '!' : counts[t.value] ? String(counts[t.value]) : undefined,
+                      }))}
                   />
                   <ActiveTab
                     draft={draft}

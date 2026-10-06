@@ -1,4 +1,5 @@
 import { AP_SERIES, WITHHOLDING_PAYABLE, type ApInvoice, type ApLine, type DownPaymentDraw } from '../mocks/apInvoices';
+import { apSeries, seriesLookup, formatDocNum } from './allSeries';
 import { FREIGHT_IN_ACCOUNT, GRNI_ACCOUNT } from '../mocks/goodsReceipts';
 import type { RoundingRule } from '../mocks/currencies';
 import type { ItemGroup } from '../mocks/itemMasters';
@@ -18,6 +19,7 @@ import {
 } from './goodsReceipts';
 import { inventoryAccountFor, type JournalLine } from './inventoryTransfers';
 import { listItems, saveItem } from './items';
+import { addLayer, removeLayersBySource, updateFifoCosts } from './costLayers';
 import { lineNet, listPurchaseOrders, openQty, poTotals, saveReceivedQuantities, type WithholdingLine } from './purchaseOrders';
 import { createCollection } from './store';
 import { PURCHASING_HISTORY } from './purchasingHistory';
@@ -34,9 +36,9 @@ export type ApInput = Omit<ApInvoice, 'id'> & { id?: string };
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
-export const apSeriesOf = (id: string) => AP_SERIES.find((s) => s.id === id) ?? AP_SERIES[0];
+export const apSeriesOf = (id: string) => seriesLookup(apSeries, id, AP_SERIES);
 /** "Primary 290004", or "Draft" before it's added. */
-export const apNumber = (inv: Pick<ApInvoice, 'seriesId' | 'docNum'>) => (inv.docNum ? `${apSeriesOf(inv.seriesId).name} ${inv.docNum}` : 'Draft');
+export const apNumber = (inv: Pick<ApInvoice, 'seriesId' | 'docNum'>) => formatDocNum(apSeriesOf(inv.seriesId), inv.docNum);
 
 // ── Totals ───────────────────────────────────────────────────────────────────
 
@@ -240,7 +242,16 @@ export async function addApInvoice(input: ApInput, fx: number, due?: number): Pr
   const all = await invoices.list();
   const docNum = Math.max(series.firstNo - 1, ...all.filter((r) => r.seriesId === series.id).map((r) => r.docNum)) + 1;
   const settled = due !== undefined && due <= 0.005;
-  return invoices.save({ ...input, lines, docNum, status: settled ? 'Closed' : 'Open', closeDate: settled ? todayISO() : '', fxRate: fx });
+  const saved = await invoices.save({ ...input, lines, docNum, status: settled ? 'Closed' : 'Open', closeDate: settled ? todayISO() : '', fxRate: fx });
+
+  // FIFO: create layers for lines that bring stock in directly (not via a GR).
+  const fifoStockLines = lines.filter((l) => movesStock(l, items) && items.find((i) => i.id === l.itemId)?.valuationMethod === 'FIFO');
+  for (const l of fifoStockLines) {
+    if (grInventoryQty(l) > 0) await addLayer({ itemId: l.itemId, warehouse: l.warehouse, receivedOn: saved.postingDate, qty: grInventoryQty(l), unitCost: l.unitCostLc, sourceId: saved.id });
+  }
+  await updateFifoCosts([...new Set(fifoStockLines.map((l) => l.itemId))]);
+
+  return saved;
 }
 
 /**
@@ -270,6 +281,12 @@ export async function cancelApInvoice(inv: ApInvoice) {
   for (const po of applyToOrders(inv.lines.filter((l) => l.baseType === 'PO'), pos, -1)) await saveReceivedQuantities(po);
   await applyInvoicedQty(inv.lines.filter((l) => l.baseType === 'GRPO'), -1);
   await drawRequests(inv.drawnDownPayments ?? [], -1);
+
+  // FIFO: remove the layers this invoice created on direct stock-in.
+  await removeLayersBySource(inv.id);
+  const fifoItemIds = [...new Set(stockLines.filter((l) => items.find((i) => i.id === l.itemId)?.valuationMethod === 'FIFO').map((l) => l.itemId))];
+  await updateFifoCosts(fifoItemIds);
+
   return invoices.save({ ...inv, status: 'Cancelled', closeDate: todayISO() });
 }
 

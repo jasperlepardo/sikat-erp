@@ -72,10 +72,19 @@ export function ItemList({ basePath = '/inventory/items' }: { basePath?: string 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
 
+  const variantCounts = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const i of items ?? []) {
+      if (i.parentItemId) map.set(i.parentItemId, (map.get(i.parentItemId) ?? 0) + 1);
+    }
+    return map;
+  }, [items]);
+
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
     const filtered = presets.apply(items ?? []).filter(
       (i) =>
+        !i.parentItemId &&
         (!q ||
           [i.itemNo, i.description, i.foreignName, i.itemGroup, i.gtin, ...i.barcodes.map((b) => b.barcode)]
             .join(' ')
@@ -115,7 +124,9 @@ export function ItemList({ basePath = '/inventory/items' }: { basePath?: string 
       header: 'In stock',
       sortable: true,
       cell: (i) =>
-        i.inventoryItem ? (
+        i.variantAxes.length > 0 ? (
+          <span className="text-muted">{variantCounts.get(i.id) ?? 0} variants</span>
+        ) : i.inventoryItem ? (
           <TableSubcontent subcopy={`Min ${i.minStock}`}>
             {stockTotals(i).inStock.toLocaleString('en-PH')} {i.inventoryUom}
           </TableSubcontent>
@@ -128,6 +139,7 @@ export function ItemList({ basePath = '/inventory/items' }: { basePath?: string 
       header: 'Available',
       sortable: true,
       cell: (i) => {
+        if (i.variantAxes.length > 0) return '—';
         if (!i.inventoryItem) return '—';
         const a = stockTotals(i).available;
         return <span className={a < 0 ? 'text-danger' : undefined}>{a.toLocaleString('en-PH')}</span>;
@@ -150,7 +162,9 @@ export function ItemList({ basePath = '/inventory/items' }: { basePath?: string 
       key: 'status',
       header: 'Status',
       cell: (i) =>
-        !isValidToday(i) ? (
+        i.variantAxes.length > 0 ? (
+          <TableStatus intent="primary">Parent item</TableStatus>
+        ) : !isValidToday(i) ? (
           <TableStatus intent="default">Not valid</TableStatus>
         ) : !i.inventoryItem ? (
           <TableStatus intent="primary">{i.itemType === 'Items' ? 'Non-stock' : i.itemType}</TableStatus>

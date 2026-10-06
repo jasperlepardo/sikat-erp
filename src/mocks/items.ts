@@ -70,6 +70,12 @@ export interface ItemBarcode {
   freeText: string;
 }
 
+/** One dimension along which an item varies, e.g. { name: 'Storage', options: ['256GB', '512GB', '1TB'] }. */
+export interface VariantAxis {
+  name: string;
+  options: string[];
+}
+
 export interface Item {
   id: string;
 
@@ -89,6 +95,14 @@ export interface Item {
   manageBy: ManageBy;
   /** Once documents post against the item, Item No., type, UoM, tracking and valuation lock. */
   hasTransactions: boolean;
+
+  // Variants
+  /** Axis definitions when this item is a variant parent (template). Empty on standalone and variant items. */
+  variantAxes: VariantAxis[];
+  /** Parent item id when this is a variant; '' on standalone and parent items. */
+  parentItemId: string;
+  /** Attribute values keyed by axis name, e.g. { Storage: '256GB', Color: 'Black' }. '' parentItemId means ignored. */
+  variantAttributes: Record<string, string>;
 
   // General
   purchaseItem: boolean;
@@ -236,6 +250,72 @@ export function unitPrice(item: ItemUoms & Pick<Item, 'basePrice'>, uom: string)
 export const unitCost = (item: ItemUoms & Pick<Item, 'itemCost'>, uom: string) =>
   Math.round(item.itemCost * (itemsPerUom(item, uom) ?? 1) * 100) / 100;
 
+/**
+ * Fields that belong to the variant itself. Everything else (tax, UoMs, planning,
+ * G/L accounts, etc.) is inherited from the parent item at read time via mergeVariant().
+ */
+export const VARIANT_OWN_FIELDS = new Set<keyof Item>([
+  'id', 'itemNo', 'description', 'foreignName', 'sellingItemNo', 'gtin',
+  'parentItemId', 'variantAxes', 'variantAttributes',
+  // Usage flags: variants are the actual saleable/purchasable items; parent is a template only.
+  'purchaseItem', 'salesItem', 'inventoryItem', 'fixedAsset',
+  // UoMs are per-variant: each variant carries its own unit list (pc/box/carton with weight).
+  // All siblings typically share the same setup, but storing it per-variant preserves weight/
+  // dimension data and lets the parent's UoM tab define the canonical setup for new variants.
+  'uoms', 'purchasingUom', 'salesUom',
+  'basePrice', 'itemCost',
+  'barcodes', 'warehouses', 'attachments',
+  'validFrom', 'validTo', 'hasTransactions',
+  'remarks', 'foreignRemarks', 'properties',
+]);
+
+/**
+ * Returns the variant with all global fields taken from the parent, keeping the
+ * variant's own fields (price, SKU, stock, barcodes, attributes).
+ */
+export function mergeVariant(variant: Item, parent: Item): Item {
+  const result = { ...parent } as unknown as Record<string, unknown>;
+  for (const key of VARIANT_OWN_FIELDS) {
+    result[key] = variant[key as keyof Item];
+  }
+  return result as unknown as Item;
+}
+
+/** Zero-value skeleton for all global (non-own) Item fields. */
+const VARIANT_GLOBAL_ZEROS: Omit<Item, 'id'> = {
+  itemNo: '', name: '', description: '', foreignName: '', sellingItemNo: '', gtin: '',
+  itemType: 'Items', itemGroup: '', inventoryUom: 'pc', uoms: [], purchasingUom: 'pc', salesUom: 'pc',
+  manageBy: 'None', hasTransactions: false,
+  variantAxes: [], parentItemId: '', variantAttributes: {},
+  purchaseItem: false, salesItem: false, inventoryItem: false, fixedAsset: false,
+  valuationMethod: 'Moving Average', glBy: 'Item Group',
+  inventoryAccount: '', cogsAccount: '', revenueAccount: '',
+  countryOfOrigin: '', customsGroup: '', taxLiable: false, exciseTax: false,
+  exciseCategory: '', validFrom: '', validTo: '', generalRemarks: '',
+  defaultVendorId: '', manufacturer: '',
+  dutyPct: 0, purchaseTaxGroup: '', purchaseTaxCode: '', withholdingGroup: '',
+  salesTaxGroup: '', salesTaxCode: '',
+  commissionGroup: '', commissionPct: 0, salesLeadTimeDays: 0,
+  shippingType: '', warrantyTemplate: '', basePrice: 0,
+  minStock: 0, maxStock: 0, minOrderQty: 0, itemCost: 0, cycleCountDays: 0,
+  warehouses: [], planningMethod: 'None', procurementMethod: 'Buy',
+  leadTimeDays: 0, orderMultiple: 0, mrpMinOrderQty: 0, maxOrderQty: 0,
+  horizonDays: 0, toleranceDays: 0, issueMethod: 'Manual', phantom: false,
+  productionWarehouse: '', componentWarehouse: '', bomCode: '',
+  properties: [], remarks: '', foreignRemarks: '',
+  attachments: [], vendors: [], manufacturers: [], barcodes: [],
+};
+
+/**
+ * Returns a lean variant record for storage — only VARIANT_OWN_FIELDS are kept;
+ * global fields are zeroed so they don't get stale when the parent changes.
+ */
+export function toVariantRecord(item: Item): Item {
+  const result = { ...VARIANT_GLOBAL_ZEROS } as unknown as Record<string, unknown>;
+  for (const key of VARIANT_OWN_FIELDS) result[key] = item[key as keyof Item];
+  return result as unknown as Item;
+}
+
 /** "1 box = 24 pc", for hints and cards. */
 export const uomSummary = (item: ItemUoms, uom: string) => {
   const qty = itemsPerUom(item, uom);
@@ -282,6 +362,9 @@ export function blankItem(groupOrName: ItemGroup | string = SEED_ITEM_GROUPS[0])
     uoms: [newItemUom('pc')],
     manageBy: 'None',
     hasTransactions: false,
+    variantAxes: [],
+    parentItemId: '',
+    variantAttributes: {},
     purchaseItem: true,
     salesItem: true,
     inventoryItem: true,
@@ -410,8 +493,37 @@ const hash = (s: string) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >
 const prefixOf = (group: string) => SEED_ITEM_GROUPS.find((g) => g.name === group)!.prefix;
 const TODAY = '2026-09-27';
 
-/** One flat item per Apple configuration. */
-const APPLE_ITEMS: Item[] = expandCatalog(prefixOf).map((e, n) => {
+const catalog = expandCatalog(prefixOf);
+
+/** One parent (template) item per multi-variant family. Not purchasable or saleable directly. */
+const APPLE_PARENT_ITEMS: Item[] = catalog.families.map((f) => ({
+  ...blankItem(f.family.group),
+  id: f.id,
+  itemNo: f.itemNo,
+  name: f.family.name,
+  description: f.family.name,
+  manageBy: (f.family.serial ? 'Serial Numbers' : 'None') as ManageBy,
+  hasTransactions: false,
+  variantAxes: f.variantAxes,
+  parentItemId: '',
+  variantAttributes: {},
+  purchaseItem: false,
+  salesItem: false,
+  inventoryItem: false,
+  warehouses: [],
+  cycleCountDays: 0,
+  planningMethod: 'None' as PlanningMethod,
+  countryOfOrigin: '',
+  customsGroup: CUSTOMS_BY_GROUP[f.family.group] ?? '',
+  defaultVendorId: APPLE_VENDOR,
+  manufacturer: 'MFR-APL',
+  warrantyTemplate: 'wr-apl1',
+  validFrom: f.family.validFrom ?? '',
+}));
+
+/** One lean variant record per Apple configuration — only own fields stored; global fields come from parent at read time. */
+const APPLE_ITEMS: Item[] = catalog.entries.map((e, n) => {
+  let full: Item;
   const { family } = e;
   const h = hash(e.itemNo);
   const preOrder = !!family.validFrom && family.validFrom > TODAY;
@@ -421,10 +533,12 @@ const APPLE_ITEMS: Item[] = expandCatalog(prefixOf).map((e, n) => {
   const mnl = preOrder ? 0 : (h % 9) * scale;
   const ceb = preOrder ? 0 : ((h >>> 4) % 4) * scale;
   const dvo = preOrder ? 0 : ((h >>> 8) % 3) * scale;
-  return seed(`apl-${String(n + 1).padStart(4, '0')}`, family.group, {
+  full = seed(`apl-${String(n + 1).padStart(4, '0')}`, family.group, {
     itemNo: e.itemNo,
     name: e.name,
     description: e.description,
+    parentItemId: e.familyId,
+    variantAttributes: e.variantAttributes,
     manageBy: family.serial ? 'Serial Numbers' : 'None',
     countryOfOrigin: '',
     customsGroup: CUSTOMS_BY_GROUP[family.group] ?? ACCESSORY_CUSTOMS.find(([re]) => re.test(e.itemNo))?.[1] ?? '',
@@ -461,6 +575,8 @@ const APPLE_ITEMS: Item[] = expandCatalog(prefixOf).map((e, n) => {
     'WH-CEB': [ceb],
     'WH-DVO': [dvo],
   });
+  // Strip global fields — only own fields are stored; parent provides the rest at read time.
+  return e.familyId ? toVariantRecord(full) : full;
 });
 
 /** Non-stock sales items: AppleCare plans and store gift certificates. */
@@ -541,6 +657,7 @@ const ITEM_TAX_CASES: Item[] = [
 ];
 
 export const SEED_ITEMS: Item[] = [
+  ...APPLE_PARENT_ITEMS,
   ...APPLE_ITEMS,
   ...APPLECARE,
   ...GIFT_CERTIFICATES,

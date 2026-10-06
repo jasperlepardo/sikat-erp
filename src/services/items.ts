@@ -1,4 +1,4 @@
-import { SEED_ITEMS, newItemWarehouse, type Item } from '../mocks/items';
+import { SEED_ITEMS, mergeVariant, toVariantRecord, newItemWarehouse, type Item } from '../mocks/items';
 import { SEED_PURCHASE_ORDERS, openOrdered } from '../mocks/purchaseOrders';
 import { SEED_SALES_ORDERS, openCommitted } from '../mocks/salesOrders';
 import { itemGroups } from './inventoryMasters';
@@ -36,15 +36,36 @@ function withCommitted(seed: Item[]): Item[] {
 
 // v8: G/L accounts are stored as chart-of-accounts codes. v16: default bins are full bin codes (WH-MNL-A-01-01).
 // v17: Ordered comes from the open POs. v18: Committed comes from the open sales orders. v19: backorder POs. v20: more seeded sales orders.
-const items = createCollection<Item>('sikat-erp:items:v20', withCommitted(withOrdered(SEED_ITEMS)), 'itm');
+// v21: variant system — parentItemId, variantAttributes, variantAxes fields; parent (template) items added to seed.
+// v22: merge-at-read — variant items inherit global fields from their parent at runtime.
+// v23: uoms/purchasingUom/salesUom added to VARIANT_OWN_FIELDS — variants now carry their own unit data.
+const items = createCollection<Item>('sikat-erp:items:v23', withCommitted(withOrdered(SEED_ITEMS)), 'itm');
 
-export const listItems = items.list;
-export const getItem = items.get;
+/** All items, with variant items' global fields merged from their parent. */
+export async function listItems(): Promise<Item[]> {
+  const all = await items.list();
+  const byId = new Map(all.map((i) => [i.id, i]));
+  return all.map((i) => {
+    if (!i.parentItemId) return i;
+    const parent = byId.get(i.parentItemId);
+    return parent ? mergeVariant(i, parent) : i;
+  });
+}
+
+/** Single item, with global fields merged from parent when it's a variant. */
+export async function getItem(id: string): Promise<Item | undefined> {
+  const item = await items.get(id);
+  if (!item?.parentItemId) return item;
+  const parent = await items.get(item.parentItemId);
+  return parent ? mergeVariant(item, parent) : item;
+}
+
 export const resetItems = items.reset;
 
 /**
  * Item No. is unique. Auto-numbered items get the next number in their group's
  * series (e.g. ACC-00012); barcodes must be unique across all items.
+ * Variant items are stored lean — only VARIANT_OWN_FIELDS are persisted.
  */
 export async function saveItem(input: Omit<Item, 'id'> & { id?: string }): Promise<Item> {
   const all = await items.list();
@@ -57,19 +78,35 @@ export async function saveItem(input: Omit<Item, 'id'> & { id?: string }): Promi
   }
 
   const itemNo = input.itemNo.trim();
+  const store = (withItemNo: string) => {
+    const record = { ...input, itemNo: withItemNo };
+    // Strip global fields for variants — they come from the parent at read time.
+    return items.save(input.parentItemId ? toVariantRecord(record as Item) : record);
+  };
+
   if (itemNo) {
     if (others.some((o) => o.itemNo.toLowerCase() === itemNo.toLowerCase())) {
       throw new ItemSaveError('itemNo', `Item No. ${itemNo} is already used by another item.`);
     }
-    return items.save({ ...input, itemNo });
+    return store(itemNo);
   }
-  const prefix = (await itemGroups.list()).find((g) => g.name === input.itemGroup)?.prefix ?? 'ITM';
+
+  // Auto-number: for variants, look up the parent's item group for the prefix.
+  const groupName = input.parentItemId
+    ? (await items.get(input.parentItemId))?.itemGroup ?? ''
+    : input.itemGroup;
+  const prefix = (await itemGroups.list()).find((g) => g.name === groupName)?.prefix ?? 'ITM';
   const next =
     Math.max(
       0,
       ...all.filter((i) => i.itemNo.startsWith(`${prefix}-`)).map((i) => Number(i.itemNo.slice(prefix.length + 1)) || 0),
     ) + 1;
-  return items.save({ ...input, itemNo: `${prefix}-${String(next).padStart(5, '0')}` });
+  return store(`${prefix}-${String(next).padStart(5, '0')}`);
+}
+
+/** All variant items of a parent, with global fields merged from the parent. */
+export async function listVariants(parentId: string): Promise<Item[]> {
+  return (await listItems()).filter((i) => i.parentItemId === parentId);
 }
 
 /** A save rejected by a uniqueness rule; `field` says which one. */

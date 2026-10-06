@@ -1,5 +1,6 @@
 import { GRNI_ACCOUNT } from '../mocks/goodsReceipts';
 import { RETURN_SERIES, needsCredit, type GoodsReturn, type ReturnLine } from '../mocks/goodsReturns';
+import { returnSeries, seriesLookup, formatDocNum } from './allSeries';
 import type { ItemGroup } from '../mocks/itemMasters';
 import type { Item } from '../mocks/items';
 import { rateAt, vatNotPaidToVendor, type TaxCode } from '../mocks/taxes';
@@ -8,6 +9,7 @@ import { todayISO } from './dates';
 import { applyReturnedQty, applyStock, expenseAccountFor, frozenLines, grInventoryQty, grOpenQty, listGoodsReceipts } from './goodsReceipts';
 import { inventoryAccountFor, type JournalLine } from './inventoryTransfers';
 import { listItems, saveItem } from './items';
+import { consumeLayers, restoreLayer, updateFifoCosts } from './costLayers';
 import { poTotals } from './purchaseOrders';
 import { createCollection } from './store';
 import { PURCHASING_HISTORY } from './purchasingHistory';
@@ -24,7 +26,7 @@ const round4 = (n: number) => Math.round(n * 10000) / 10000;
 
 /** "Primary 610004", or "Draft" before it's added. */
 export const returnNumber = (r: Pick<GoodsReturn, 'seriesId' | 'docNum'>) =>
-  r.docNum ? `${(RETURN_SERIES.find((s) => s.id === r.seriesId) ?? RETURN_SERIES[0]).name} ${r.docNum}` : 'Draft';
+  formatDocNum(seriesLookup(returnSeries, r.seriesId, RETURN_SERIES), r.docNum);
 
 /** Footer totals in the document currency; the total is the Total Credit the vendor owes back. */
 export const returnTotals = (
@@ -138,15 +140,25 @@ export async function addGoodsReturn(input: ReturnInput): Promise<GoodsReturn> {
   }
   if (problems.length) throw new ReturnPostError(problems.map((p) => p.lineId), problems.map((p) => p.message).join(' '));
 
-  // Lines entered by hand go out at the item's cost now.
-  const lines = input.lines.map((l) => (l.unitCostLc ? l : { ...l, unitCostLc: items.find((i) => i.id === l.itemId)?.itemCost ?? 0 }));
+  // Lines entered by hand go out at the item's cost; FIFO items consume from the oldest layer.
+  const fifoItemIds = new Set<string>();
+  const lines = await Promise.all(input.lines.map(async (l) => {
+    if (l.unitCostLc) return l;
+    const item = items.find((i) => i.id === l.itemId);
+    if (item?.valuationMethod === 'FIFO' && item.inventoryItem) {
+      fifoItemIds.add(l.itemId);
+      return { ...l, unitCostLc: await consumeLayers(l.itemId, l.warehouse, grInventoryQty(l)) };
+    }
+    return { ...l, unitCostLc: item?.itemCost ?? 0 };
+  }));
   // baseLineId is cleared for the stock move: a return doesn't put the quantity back on order.
   for (const item of applyStock(lines.map((l) => ({ ...l, baseLineId: '' })), items, -1)) await saveItem(item);
+  await updateFifoCosts([...fifoItemIds]);
   await applyReturnedQty(lines.filter((l) => l.baseType === 'GRPO'), 1);
   await applyInvoiceReturns(lines.filter((l) => l.baseType === 'APINV'), 1);
 
   const all = await returns.list();
-  const series = RETURN_SERIES.find((s) => s.id === input.seriesId) ?? RETURN_SERIES[0];
+  const series = seriesLookup(returnSeries, input.seriesId, RETURN_SERIES);
   const docNum = Math.max(series.firstNo - 1, ...all.filter((r) => r.seriesId === series.id).map((r) => r.docNum)) + 1;
   const status = lines.some(needsCredit) ? 'Open' : 'Closed';
   return returns.save({ ...input, lines, docNum, status, closeDate: status === 'Closed' ? todayISO() : '' });
@@ -161,6 +173,18 @@ export async function cancelGoodsReturn(r: GoodsReturn) {
   for (const item of applyStock(r.lines.map((l) => ({ ...l, baseLineId: '' })), items, 1)) await saveItem(item);
   await applyReturnedQty(r.lines.filter((l) => l.baseType === 'GRPO'), -1);
   await applyInvoiceReturns(r.lines.filter((l) => l.baseType === 'APINV'), -1);
+
+  // FIFO: restore layers at the cost they went out at (frozen on the return line).
+  const fifoItemIds = new Set<string>();
+  for (const l of r.lines) {
+    const item = items.find((i) => i.id === l.itemId);
+    if (item?.valuationMethod === 'FIFO' && item.inventoryItem && l.unitCostLc > 0) {
+      await restoreLayer({ itemId: l.itemId, warehouse: l.warehouse, receivedOn: r.postingDate, qty: grInventoryQty(l), unitCost: l.unitCostLc, sourceId: `rtn-restore-${r.id}` });
+      fifoItemIds.add(l.itemId);
+    }
+  }
+  await updateFifoCosts([...fifoItemIds]);
+
   return returns.save({ ...r, status: 'Cancelled', closeDate: todayISO() });
 }
 

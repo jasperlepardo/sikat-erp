@@ -1,4 +1,5 @@
 import { DN_SERIES, SEED_DELIVERIES, SHIPPED_GOODS_ACCOUNT, type Delivery, type DnLine } from '../mocks/deliveries';
+import { dnSeries, seriesLookup, formatDocNum } from './allSeries';
 import type { ItemGroup } from '../mocks/itemMasters';
 import type { Item } from '../mocks/items';
 import type { SoLine } from '../mocks/salesOrders';
@@ -8,6 +9,7 @@ import { frozenStock } from './inventoryCountings';
 import { itemGroups } from './inventoryMasters';
 import { inventoryAccountFor, type JournalLine } from './inventoryTransfers';
 import { listItems, saveItem } from './items';
+import { consumeLayers, restoreLayer, updateFifoCosts } from './costLayers';
 import { postDocumentEntry, reverseDocumentEntry } from './journalEntries';
 import { applyDelivered, listSalesOrders, openQty as soOpenQty, soNumber, soTotals } from './salesOrders';
 import { createCollection } from './store';
@@ -22,8 +24,8 @@ export type DnInput = Omit<Delivery, 'id'> & { id?: string };
 const round2 = (n: number) => Math.round(n * 100) / 100;
 const round4 = (n: number) => Math.round(n * 10000) / 10000;
 
-export const dnSeriesOf = (id: string) => DN_SERIES.find((s) => s.id === id) ?? DN_SERIES[0];
-export const dnNumber = (d: Pick<Delivery, 'seriesId' | 'docNum'>) => (d.docNum ? `${dnSeriesOf(d.seriesId).name} ${d.docNum}` : 'Draft');
+export const dnSeriesOf = (id: string) => seriesLookup(dnSeries, id, DN_SERIES);
+export const dnNumber = (d: Pick<Delivery, 'seriesId' | 'docNum'>) => formatDocNum(dnSeriesOf(d.seriesId), d.docNum);
 
 /** Quantity × Items per Unit. */
 export const dnInventoryQty = (l: Pick<DnLine, 'quantity' | 'itemsPerUnit'>) => round4(l.quantity * (l.itemsPerUnit || 1));
@@ -139,7 +141,21 @@ export async function addDelivery(input: DnInput, fx: number): Promise<Delivery>
   const problems = await deliveryProblems(input, items);
   if (problems.length) throw new DnPostError(problems.map((p) => p.lineId), problems.map((p) => p.message).join(' '));
 
-  const lines = input.lines.map((l) => ({ ...l, unitCostLc: items.find((i) => i.id === l.itemId)?.itemCost ?? 0 }));
+  // FIFO: consume layers per item+warehouse to get the true FIFO cost for each line.
+  const fifoCosts = new Map<string, number>();
+  for (const [key, { qty }] of qtyByStock(input.lines)) {
+    const [itemId, warehouse] = key.split('@');
+    const item = items.find((i) => i.id === itemId);
+    if (item?.valuationMethod === 'FIFO' && item.inventoryItem) {
+      fifoCosts.set(key, await consumeLayers(itemId, warehouse, qty));
+    }
+  }
+  const lines = input.lines.map((l) => ({
+    ...l,
+    unitCostLc: fifoCosts.has(`${l.itemId}@${l.warehouse}`)
+      ? fifoCosts.get(`${l.itemId}@${l.warehouse}`)!
+      : (items.find((i) => i.id === l.itemId)?.itemCost ?? 0),
+  }));
   const touched = new Map<string, Item>();
   for (const l of lines) {
     const item = touched.get(l.itemId) ?? structuredClone(items.find((i) => i.id === l.itemId));
@@ -165,6 +181,11 @@ export async function addDelivery(input: DnInput, fx: number): Promise<Delivery>
     remarks: saved.journalRemark,
     lines: dnJournal(saved, items, await itemGroups.list(), true),
   });
+
+  // FIFO: refresh itemCost from remaining layers after consumption.
+  const fifoItemIds = [...new Set(lines.filter((l) => items.find((i) => i.id === l.itemId)?.valuationMethod === 'FIFO').map((l) => l.itemId))];
+  await updateFifoCosts(fifoItemIds);
+
   return saved;
 }
 
@@ -210,6 +231,18 @@ export async function cancelDelivery(d: Delivery) {
   }
   for (const item of touched.values()) await saveItem(item);
   await applyDelivered(d.lines.filter((l) => l.baseType === 'SO'), -1);
+
+  // FIFO: put the consumed stock back as a new layer at the cost it was taken out at.
+  const fifoItemIds = new Set<string>();
+  for (const l of d.lines) {
+    const item = items.find((i) => i.id === l.itemId);
+    if (item?.valuationMethod === 'FIFO' && item.inventoryItem && l.unitCostLc > 0) {
+      await restoreLayer({ itemId: l.itemId, warehouse: l.warehouse, receivedOn: d.postingDate, qty: dnInventoryQty(l), unitCost: l.unitCostLc, sourceId: `dn-restore-${d.id}` });
+      fifoItemIds.add(l.itemId);
+    }
+  }
+  await updateFifoCosts([...fifoItemIds]);
+
   const saved = await deliveries.save({ ...d, status: 'Cancelled', closeDate: todayISO() });
   await reverseDocumentEntry(d.id);
   return saved;

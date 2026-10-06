@@ -7,15 +7,17 @@ import {
   countedQty,
   newPostingLine,
   type CountLine,
-  type DocSeries,
   type InventoryCounting,
   type InventoryPosting,
   type PostingLine,
 } from '../mocks/inventoryCountings';
+import type { DocumentSeries } from '../mocks/common';
+import { countSeries, postingSeries, seriesLookup, formatDocNum } from './allSeries';
 import type { ItemGroup } from '../mocks/itemMasters';
 import { newItemWarehouse, type Item } from '../mocks/items';
 import { inStockAt, inventoryAccountFor, type JournalLine } from './inventoryTransfers';
 import { listItems, saveItem } from './items';
+import { addLayer, consumeLayers, updateFifoCosts } from './costLayers';
 import { itemGroups } from './inventoryMasters';
 import { postDocumentEntry } from './journalEntries';
 import { listPrice } from './priceLists';
@@ -34,14 +36,23 @@ export type PostingInput = Omit<InventoryPosting, 'id'> & { id?: string };
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
-const seriesIn = (all: DocSeries[], id: string) => all.find((s) => s.id === id) ?? all[0];
-const number = (all: DocSeries[]) => (d: { seriesId: string; docNum: number }) => (d.docNum ? `${seriesIn(all, d.seriesId).name} ${d.docNum}` : 'New');
-/** "Primary 310002", or "New" before it's added. */
-export const countNumber = number(COUNT_SERIES);
-export const postingNumber = number(POSTING_SERIES);
+const makeNumberFn = (
+  col: { snapshot: () => readonly DocumentSeries[] },
+  fallback: readonly DocumentSeries[],
+) => (d: { seriesId: string; docNum: number }) =>
+  formatDocNum(seriesLookup(col, d.seriesId, fallback), d.docNum, 'New');
 
-async function nextNumber<T extends { seriesId: string; docNum: number }>(series: DocSeries[], seriesId: string, list: () => Promise<T[]>) {
-  const s = seriesIn(series, seriesId);
+/** "Primary 310002", or "New" before it's added. */
+export const countNumber = makeNumberFn(countSeries, COUNT_SERIES);
+export const postingNumber = makeNumberFn(postingSeries, POSTING_SERIES);
+
+async function nextNumber<T extends { seriesId: string; docNum: number }>(
+  col: { snapshot: () => readonly DocumentSeries[] },
+  fallback: readonly DocumentSeries[],
+  seriesId: string,
+  list: () => Promise<T[]>,
+) {
+  const s = seriesLookup(col, seriesId, fallback);
   const all = await list();
   return Math.max(s.firstNo - 1, ...all.filter((d) => d.seriesId === s.id).map((d) => d.docNum)) + 1;
 }
@@ -87,7 +98,7 @@ export async function frozenStock() {
 
 /** Add (numbering it) or update an open count. */
 export async function saveCounting(input: CountingInput) {
-  const docNum = input.docNum || (await nextNumber(COUNT_SERIES, input.seriesId, countings.list));
+  const docNum = input.docNum || (await nextNumber(countSeries, COUNT_SERIES, input.seriesId, countings.list));
   return countings.save({ ...input, docNum });
 }
 
@@ -201,8 +212,24 @@ export async function addPosting(input: PostingInput): Promise<InventoryPosting>
   }
   for (const item of touched.values()) await saveItem(item);
 
-  const docNum = await nextNumber(POSTING_SERIES, input.seriesId, postings.list);
+  const docNum = await nextNumber(postingSeries, POSTING_SERIES, input.seriesId, postings.list);
   const posted = await postings.save({ ...input, docNum });
+
+  // FIFO: adjust layers for variance. Surplus → new opening layer; shortage → consume oldest first.
+  const fifoItemIds = new Set<string>();
+  for (const l of input.lines) {
+    const v = postingVariance(l);
+    if (!v) continue;
+    const item = items.find((i) => i.id === l.itemId);
+    if (item?.valuationMethod !== 'FIFO' || !item.inventoryItem) continue;
+    fifoItemIds.add(l.itemId);
+    if (v > 0) {
+      await addLayer({ itemId: l.itemId, warehouse: l.warehouse, receivedOn: posted.postingDate, qty: v, unitCost: item.itemCost, sourceId: `iq-${posted.id}` });
+    } else {
+      await consumeLayers(l.itemId, l.warehouse, -v);
+    }
+  }
+  await updateFifoCosts([...fifoItemIds]);
   await postDocumentEntry({
     origin: 'IQ',
     originNo: docNum,

@@ -5,6 +5,7 @@ import {
   type GoodsReceipt,
   type GrLine,
 } from '../mocks/goodsReceipts';
+import { grSeries, seriesLookup, formatDocNum } from './allSeries';
 import type { RoundingRule } from '../mocks/currencies';
 import type { ItemGroup } from '../mocks/itemMasters';
 import { newItemWarehouse, type Item } from '../mocks/items';
@@ -13,6 +14,7 @@ import { rateAt, vatNotPaidToVendor, type TaxCode } from '../mocks/taxes';
 import { todayISO } from './dates';
 import { inventoryAccountFor, type JournalLine } from './inventoryTransfers';
 import { listItems, saveItem } from './items';
+import { addLayer, removeLayersBySource, updateFifoCosts } from './costLayers';
 import { lineNet, listPurchaseOrders, openQty, poTotals, priceAfterDiscount, saveReceivedQuantities } from './purchaseOrders';
 import { createCollection } from './store';
 import { PURCHASING_HISTORY } from './purchasingHistory';
@@ -28,10 +30,10 @@ export type GrInput = Omit<GoodsReceipt, 'id'> & { id?: string };
 const round2 = (n: number) => Math.round(n * 100) / 100;
 const round4 = (n: number) => Math.round(n * 10000) / 10000;
 
-export const grSeriesOf = (id: string) => GR_SERIES.find((s) => s.id === id) ?? GR_SERIES[0];
+export const grSeriesOf = (id: string) => seriesLookup(grSeries, id, GR_SERIES);
 /** "Primary 280004", or "Draft" before it's added. */
 export const grNumber = (gr: Pick<GoodsReceipt, 'seriesId' | 'docNum'>) =>
-  gr.docNum ? `${grSeriesOf(gr.seriesId).name} ${gr.docNum}` : 'Draft';
+  formatDocNum(grSeriesOf(gr.seriesId), gr.docNum);
 
 // ── Line and document math ───────────────────────────────────────────────────
 
@@ -124,8 +126,8 @@ export function grJournal(gr: Pick<GoodsReceipt, 'lines' | 'discountPct' | 'frei
 /**
  * Stock in (`sign` 1) or back out (−1) for each stocked line. In Stock moves in the line's
  * warehouse; a line from a PO also moves Ordered the other way. The item cost re-averages over
- * company-wide stock, except for standard-priced items. FIFO layers aren't kept, so FIFO items
- * average too.
+ * company-wide stock for Moving Average items. FIFO items skip re-averaging here — their cost
+ * is maintained by the cost layer service (updateFifoCosts) after each receipt or delivery.
  */
 /** What moving stock reads from a line; A/P invoice lines that bring stock in have the same fields. */
 export type StockLine = Pick<GrLine, 'itemId' | 'quantity' | 'itemsPerUnit' | 'warehouse' | 'bin' | 'baseLineId' | 'unitCostLc'>;
@@ -138,7 +140,8 @@ export function applyStock(lines: StockLine[], items: Item[], sign: 1 | -1) {
     const item = touched.has(l.itemId) ? base : structuredClone(base);
     const qty = grInventoryQty(l) * sign;
     const onHand = item.warehouses.reduce((n, w) => n + w.inStock, 0);
-    if (item.valuationMethod !== 'Standard Price' && onHand + qty > 0) {
+    const reAverage = item.valuationMethod !== 'Standard Price' && item.valuationMethod !== 'FIFO';
+    if (reAverage && onHand + qty > 0) {
       item.itemCost = round2((onHand * item.itemCost + qty * l.unitCostLc) / (onHand + qty));
     }
     let row = item.warehouses.find((w) => w.code === l.warehouse);
@@ -233,7 +236,20 @@ export async function addGoodsReceipt(input: GrInput, fx: number): Promise<Goods
   const series = grSeriesOf(input.seriesId);
   const all = await receipts.list();
   const docNum = Math.max(series.firstNo - 1, ...all.filter((r) => r.seriesId === series.id).map((r) => r.docNum)) + 1;
-  return receipts.save({ ...input, lines, docNum, status: 'Open', fxRate: fx });
+  const saved = await receipts.save({ ...input, lines, docNum, status: 'Open', fxRate: fx });
+
+  // FIFO: create a cost layer per stocked line, then refresh itemCost from remaining layers.
+  const fifoItemIds = new Set<string>();
+  for (const l of lines) {
+    const item = items.find((i) => i.id === l.itemId);
+    if (item?.valuationMethod === 'FIFO' && item.inventoryItem && grInventoryQty(l) > 0) {
+      await addLayer({ itemId: l.itemId, warehouse: l.warehouse, receivedOn: saved.postingDate, qty: grInventoryQty(l), unitCost: l.unitCostLc, sourceId: saved.id });
+      fifoItemIds.add(l.itemId);
+    }
+  }
+  await updateFifoCosts([...fifoItemIds]);
+
+  return saved;
 }
 
 /**
@@ -318,5 +334,11 @@ export async function cancelGoodsReceipt(gr: GoodsReceipt) {
 
   for (const item of applyStock(gr.lines, items, -1)) await saveItem(item);
   for (const po of applyToOrders(gr.lines, pos, -1)) await saveReceivedQuantities(po);
+
+  // FIFO: zero out the layers this receipt created, then refresh itemCost.
+  await removeLayersBySource(gr.id);
+  const fifoItemIds = [...new Set(gr.lines.filter((l) => items.find((i) => i.id === l.itemId)?.valuationMethod === 'FIFO').map((l) => l.itemId))];
+  await updateFifoCosts(fifoItemIds);
+
   return receipts.save({ ...gr, status: 'Cancelled', closeDate: todayISO() });
 }

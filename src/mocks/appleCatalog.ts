@@ -324,8 +324,38 @@ export const APPLE_FAMILIES: Family[] = [
  */
 export const phEstimate = (usd: number) => Math.max(990, Math.round((usd * 79.2) / 1000) * 1000 - 10);
 
+/** Infer a human axis name from the option labels of one axis. */
+function axisName(axis: Opt[]): string {
+  const labels = axis.map((o) => o.label.toLowerCase());
+  if (labels.every((l) => /^\d+(gb|tb)$/.test(l.trim()))) return 'Storage';
+  if (labels.some((l) => /\d+-inch/.test(l))) return 'Size';
+  if (labels.some((l) => /\b\d+mm\b/.test(l))) return 'Size';
+  if (labels.some((l) => /wi-fi|cellular/.test(l)))
+    return labels.some((l) => /\d+(gb|tb)/.test(l)) ? 'Configuration' : 'Connectivity';
+  if (labels.some((l) => /glass/.test(l))) return 'Display glass';
+  if (labels.some((l) => /stand|vesa|mount/.test(l))) return 'Stand';
+  if (labels.some((l) => /\d+ pack/.test(l))) return 'Pack';
+  if (labels.some((l) => /charging case/.test(l))) return 'Charging case';
+  if (labels.some((l) => /for iphone|for ipad/.test(l))) return 'Fits';
+  if (labels.some((l) => /s\/m|m\/l/.test(l))) return 'Band size';
+  return 'Configuration';
+}
+
+/** A parent (template) item representing one product family. */
+export interface FamilyEntry {
+  /** Stable id for the parent item, e.g. 'apl-fam-001'. */
+  id: string;
+  /** Item No. for the parent item, e.g. 'IPH-18PM'. */
+  itemNo: string;
+  family: Family;
+  /** Axis definitions including Color when the family has multiple colours. */
+  variantAxes: { name: string; options: string[] }[];
+}
+
 export interface CatalogEntry {
   family: Family;
+  /** Parent item id; '' when this family has only one variant (stays flat). */
+  familyId: string;
   itemNo: string;
   /** Short product name, e.g. "iPhone 18 Pro Max". */
   name: string;
@@ -337,23 +367,63 @@ export interface CatalogEntry {
   /** VAT-inclusive PH SRP. */
   price: number;
   estimated: boolean;
+  /** Attribute values for this variant, e.g. { Storage: '256GB', Color: 'Black' }. Empty when familyId is ''. */
+  variantAttributes: Record<string, string>;
 }
 
-/** Every allowed option × colour combination of every family. */
-export function expandCatalog(prefixOf: (group: string) => string, families = APPLE_FAMILIES): CatalogEntry[] {
+export interface CatalogResult {
+  families: FamilyEntry[];
+  entries: CatalogEntry[];
+}
+
+/** Every allowed option × colour combination of every family, plus one parent entry per multi-variant family. */
+export function expandCatalog(prefixOf: (group: string) => string, familyList = APPLE_FAMILIES): CatalogResult {
+  const familyEntries: FamilyEntry[] = [];
   const out: CatalogEntry[] = [];
-  for (const family of families) {
+
+  for (const [fi, family] of familyList.entries()) {
+    const colourCount = family.colours?.length ?? 0;
     const combos = family.axes.reduce<Opt[][]>((acc, axis) => acc.flatMap((c) => axis.map((opt) => [...c, opt])), [[]]);
+    const totalVariants = combos.length * Math.max(colourCount, 1);
+    // Only create a parent item when there are multiple variants for this family.
+    const isMulti = totalVariants > 1;
+
+    const familyId = isMulti ? `apl-fam-${String(fi + 1).padStart(3, '0')}` : '';
+    if (isMulti) {
+      const axisNames = family.axes.map(axisName);
+      const variantAxes: FamilyEntry['variantAxes'] = family.axes.map((axis, ai) => ({
+        name: axisNames[ai],
+        options: axis.map((o) => o.label),
+      }));
+      if (colourCount > 1) variantAxes.push({ name: 'Color', options: family.colours! });
+      familyEntries.push({
+        id: familyId,
+        itemNo: [prefixOf(family.group), family.code].join('-'),
+        family,
+        variantAxes,
+      });
+    }
+
     for (const opts of combos) {
       for (const colour of family.colours ?? ['']) {
         if (family.allow && !family.allow(opts, colour)) continue;
         const key = opts.map((x) => x.code).join('-');
         const known = family.ph?.[key];
         const us = family.usFrom + opts.reduce((n, x) => n + x.us, 0);
+
+        const variantAttributes: Record<string, string> = {};
+        if (isMulti) {
+          const axisNames = family.axes.map(axisName);
+          opts.forEach((opt, oi) => { variantAttributes[axisNames[oi]] = opt.label; });
+          if (colour) variantAttributes['Color'] = colour;
+        }
+
         out.push({
           family,
+          familyId,
           key,
           colour,
+          variantAttributes,
           itemNo: [prefixOf(family.group), family.code, key, colour && COLOUR_CODES[colour]].filter(Boolean).join('-'),
           name: family.name,
           description: [family.name, ...opts.map((x) => x.label), colour].filter(Boolean).join(', '),
@@ -363,5 +433,5 @@ export function expandCatalog(prefixOf: (group: string) => string, families = AP
       }
     }
   }
-  return out;
+  return { families: familyEntries, entries: out };
 }

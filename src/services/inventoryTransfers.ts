@@ -4,9 +4,11 @@ import {
   type InventoryTransfer,
   type TransferLine,
 } from '../mocks/inventoryTransfers';
+import { transferSeries, seriesLookup, formatDocNum } from './allSeries';
 import type { ItemGroup } from '../mocks/itemMasters';
 import { newItemWarehouse, type Item } from '../mocks/items';
 import { listItems, saveItem } from './items';
+import { transferLayers, updateFifoCosts } from './costLayers';
 import { createCollection } from './store';
 
 const transfers = createCollection<InventoryTransfer>('sikat-erp:inventory-transfers:v2', SEED_TRANSFERS, 'it');
@@ -19,10 +21,10 @@ export type TransferInput = Omit<InventoryTransfer, 'id'> & { id?: string };
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
-export const seriesOf = (id: string) => TRANSFER_SERIES.find((s) => s.id === id) ?? TRANSFER_SERIES[0];
+export const seriesOf = (id: string) => seriesLookup(transferSeries, id, TRANSFER_SERIES);
 /** "Primary 270004", or "Draft" before posting. */
 export const transferNumber = (t: Pick<InventoryTransfer, 'seriesId' | 'docNum'>) =>
-  t.docNum ? `${seriesOf(t.seriesId).name} ${t.docNum}` : 'Draft';
+  formatDocNum(seriesOf(t.seriesId), t.docNum);
 
 export const lineValue = (l: TransferLine) => round2(l.quantity * l.unitCost);
 export const transferValue = (t: Pick<InventoryTransfer, 'lines'>) => round2(t.lines.reduce((n, l) => n + lineValue(l), 0));
@@ -164,6 +166,18 @@ export async function postTransfer(input: TransferInput): Promise<InventoryTrans
   const all = await transfers.list();
   const docNum = Math.max(series.firstNo - 1, ...all.filter((t) => t.seriesId === series.id).map((t) => t.docNum)) + 1;
   const posted = await transfers.save({ ...input, lines, docNum, status: 'Posted' });
+
+  // FIFO: move layers from the source warehouse to each line's destination, preserving FIFO order.
+  const fifoItemIds = new Set<string>();
+  for (const l of lines) {
+    const item = items.find((i) => i.id === l.itemId);
+    if (item?.valuationMethod === 'FIFO' && item.inventoryItem) {
+      await transferLayers(l.itemId, input.fromWarehouse, l.toWarehouse, l.quantity, posted.postingDate, `tr-${posted.id}`);
+      fifoItemIds.add(l.itemId);
+    }
+  }
+  await updateFifoCosts([...fifoItemIds]);
+
   // A journal entry only when the two warehouses use different inventory accounts.
   const { itemGroups } = await import('./inventoryMasters');
   const { postDocumentEntry } = await import('./journalEntries');

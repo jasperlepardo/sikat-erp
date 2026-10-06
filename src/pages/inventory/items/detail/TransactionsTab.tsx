@@ -20,6 +20,7 @@ import { Stat } from '../../../../components/Stat';
 import { formatAmount } from '../../../../services/format';
 import { useAsync } from '../../../../services/useAsync';
 import { DOC_SOURCES, type DocType } from '../../../partners/detail/partnerDocuments';
+import { listVariants } from '../../../../services/items';
 import { docTypesFor, isBuilt, listItemDocuments, type ItemDocument } from './itemDocuments';
 import type { Draft } from './types';
 import { todayISO } from '../../../../services/dates';
@@ -37,8 +38,23 @@ const rowsLabel = (n: number) => `${n} document row${n === 1 ? '' : 's'}`;
  */
 export function TransactionsTab({ draft }: { draft: Draft }) {
   const navigate = useNavigate();
-  const types = docTypesFor(draft);
-  const docs = useAsync(() => (draft.id ? listItemDocuments(draft.id, types) : Promise.resolve([])), [draft.id, types.join()]);
+  const isParent = draft.variantAxes.length > 0;
+  // For parent items: load all variants and aggregate their transactions across all doc types.
+  // For regular items: use just the item's own id filtered by its purchase/sales roles.
+  const allTypes = (Object.keys(DOC_SOURCES) as DocType[]).filter((t) => t !== 'PAY' && t !== 'DPR');
+  const types = isParent ? allTypes : docTypesFor(draft);
+  const variants = useAsync(() => (isParent && draft.id ? listVariants(draft.id) : Promise.resolve([])), [draft.id, isParent]);
+  const docs = useAsync(
+    () => {
+      if (!draft.id) return Promise.resolve([]);
+      if (isParent) {
+        const ids = variants?.map((v) => v.id ?? '').filter(Boolean) ?? [];
+        return ids.length ? listItemDocuments(ids, types) : Promise.resolve([]);
+      }
+      return listItemDocuments(draft.id, types);
+    },
+    [draft.id, isParent, variants?.map((v) => v.id).join(), types.join()],
+  );
   const [filter, setFilter] = useState<Filter>('open');
   const [type, setType] = useState<DocType | 'all'>('all');
   const [query, setQuery] = useState('');
@@ -46,7 +62,13 @@ export function TransactionsTab({ draft }: { draft: Draft }) {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
 
-  if (!docs) return <Text tone="muted" className="p-4">Loading transactions…</Text>;
+  if (!docs || (isParent && !variants)) return <Text tone="muted" className="p-4">Loading transactions…</Text>;
+  const variantLabel = (itemId: string) => {
+    const v = variants?.find((x) => x.id === itemId);
+    if (!v) return undefined;
+    const axes = draft.variantAxes;
+    return axes.map((a) => v.variantAttributes[a.name]).filter(Boolean).join(' / ') || v.itemNo || undefined;
+  };
 
   const ofType = docs.filter((d) => type === 'all' || d.type === type);
   const open = ofType.filter((d) => d.open);
@@ -70,6 +92,11 @@ export function TransactionsTab({ draft }: { draft: Draft }) {
   const notBuilt = types.filter((t) => !isBuilt(t)).map((t) => DOC_SOURCES[t].label.toLowerCase());
 
   const columns: TableColumn<ItemDocument>[] = [
+    ...(isParent ? [{
+      key: 'variant',
+      header: 'Variant',
+      cell: (d: ItemDocument) => variantLabel(d.itemId) ?? <span className="text-muted">—</span>,
+    }] : []),
     {
       key: 'number',
       header: 'Document',

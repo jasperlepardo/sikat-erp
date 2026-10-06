@@ -17,6 +17,8 @@ import type { Draft } from './types';
  */
 export interface ItemDocument {
   id: string;
+  /** The item this row belongs to — useful when aggregating across variants. */
+  itemId: string;
   type: DocType;
   number: string;
   /** Extra line under the number: the partner on the document. */
@@ -53,6 +55,7 @@ const ITEM_SOURCES: Partial<Record<DocType, (itemId: string) => Promise<ItemDocu
           const left = openQty(l);
           return {
             id: `${po.id}:${l.id}`,
+            itemId,
             type: 'PO' as const,
             number: poNumber(po),
             subcopy: po.vendorName,
@@ -79,6 +82,7 @@ const ITEM_SOURCES: Partial<Record<DocType, (itemId: string) => Promise<ItemDocu
         .filter((l) => l.itemId === itemId)
         .map((l) => ({
           id: `${gr.id}:${l.id}`,
+          itemId,
           type: 'GRPO' as const,
           number: grNumber(gr),
           subcopy: gr.vendorName,
@@ -104,6 +108,7 @@ const ITEM_SOURCES: Partial<Record<DocType, (itemId: string) => Promise<ItemDocu
         .filter((l) => l.itemId === itemId)
         .map((l) => ({
           id: `${inv.id}:${l.id}`,
+          itemId,
           type: 'APINV' as const,
           number: apNumber(inv),
           subcopy: inv.vendorName,
@@ -128,7 +133,7 @@ const ITEM_SOURCES: Partial<Record<DocType, (itemId: string) => Promise<ItemDocu
       r.lines
         .filter((l) => l.itemId === itemId)
         .map((l) => ({
-          id: `${r.id}:${l.id}`, type: 'GRET' as const, number: returnNumber(r), subcopy: r.vendorName, date: r.postingDate, dueDate: r.postingDate,
+          id: `${r.id}:${l.id}`, itemId, type: 'GRET' as const, number: returnNumber(r), subcopy: r.vendorName, date: r.postingDate, dueDate: r.postingDate,
           status: r.status, intent: RETURN_STATUS_INTENT[r.status], open: false, quantity: l.quantity, openQty: 0, uom: l.uomCode || l.uomName,
           openInventoryQty: 0, currency: r.currency, unitPrice: l.unitPrice, total: lineNet(l), href: `${RETURN_LIST_PATH}/${r.id}`,
         })),
@@ -138,7 +143,7 @@ const ITEM_SOURCES: Partial<Record<DocType, (itemId: string) => Promise<ItemDocu
       c.lines
         .filter((l) => l.itemId === itemId)
         .map((l) => ({
-          id: `${c.id}:${l.id}`, type: 'APCM' as const, number: memoNumber(c), subcopy: c.vendorName, date: c.postingDate, dueDate: c.dueDate,
+          id: `${c.id}:${l.id}`, itemId, type: 'APCM' as const, number: memoNumber(c), subcopy: c.vendorName, date: c.postingDate, dueDate: c.dueDate,
           status: c.status, intent: MEMO_STATUS_INTENT[c.status], open: false, quantity: l.quantity, openQty: 0, uom: l.uomCode || l.uomName,
           openInventoryQty: 0, currency: c.currency, unitPrice: l.unitPrice, total: lineNet(l), href: `${MEMO_LIST_PATH}/${c.id}`,
         })),
@@ -152,8 +157,9 @@ export const docTypesFor = (item: Pick<Draft, 'purchaseItem' | 'salesItem'>) =>
   // Payments have no item rows, and down payment requests move no stock, so neither applies to an item.
   (Object.keys(DOC_SOURCES) as DocType[]).filter((t) => t !== 'PAY' && t !== 'DPR' && (DOC_SOURCES[t].role === 'vendor' ? item.purchaseItem : item.salesItem));
 
-/** Every row of these document types with the item on it, newest first. */
-export async function listItemDocuments(itemId: string, types: DocType[]): Promise<ItemDocument[]> {
-  const lists = await Promise.all(types.map((t) => ITEM_SOURCES[t]?.(itemId) ?? []));
-  return lists.flat().sort((a, b) => b.date.localeCompare(a.date));
+/** Every row of these document types with any of the given item IDs on it, newest first. */
+export async function listItemDocuments(itemId: string | string[], types: DocType[]): Promise<ItemDocument[]> {
+  const ids = Array.isArray(itemId) ? itemId : [itemId];
+  const rows = await Promise.all(types.flatMap((t) => ids.map((id) => ITEM_SOURCES[t]?.(id) ?? Promise.resolve([]))));
+  return rows.flat().sort((a, b) => b.date.localeCompare(a.date));
 }

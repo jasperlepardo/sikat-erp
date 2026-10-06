@@ -1,4 +1,5 @@
 import { AR_SERIES, CREDITABLE_VAT_ACCOUNT, CWT_ACCOUNT, FREIGHT_INCOME_ACCOUNT, SEED_AR_INVOICES, type ArInvoice, type ArLine } from '../mocks/arInvoices';
+import { arSeries, seriesLookup, formatDocNum } from './allSeries';
 import { SHIPPED_GOODS_ACCOUNT } from '../mocks/deliveries';
 import type { ItemGroup } from '../mocks/itemMasters';
 import type { Item } from '../mocks/items';
@@ -10,6 +11,7 @@ import { frozenStock } from './inventoryCountings';
 import { itemGroups } from './inventoryMasters';
 import { inventoryAccountFor, type JournalLine } from './inventoryTransfers';
 import { listItems, saveItem } from './items';
+import { consumeLayers, restoreLayer, updateFifoCosts } from './costLayers';
 import { postDocumentEntry, reverseDocumentEntry } from './journalEntries';
 import { applyDelivered, lineNet, soTotals } from './salesOrders';
 import { createCollection } from './store';
@@ -24,8 +26,8 @@ export type ArInput = Omit<ArInvoice, 'id'> & { id?: string };
 const round2 = (n: number) => Math.round(n * 100) / 100;
 const round4 = (n: number) => Math.round(n * 10000) / 10000;
 
-export const arSeriesOf = (id: string) => AR_SERIES.find((s) => s.id === id) ?? AR_SERIES[0];
-export const arNumber = (a: Pick<ArInvoice, 'seriesId' | 'docNum'>) => (a.docNum ? `${arSeriesOf(a.seriesId).name} ${a.docNum}` : 'Draft');
+export const arSeriesOf = (id: string) => seriesLookup(arSeries, id, AR_SERIES);
+export const arNumber = (a: Pick<ArInvoice, 'seriesId' | 'docNum'>) => formatDocNum(arSeriesOf(a.seriesId), a.docNum);
 
 /** Lines that take stock out when the invoice is added: stocked items not already shipped by a delivery. */
 export const shipsStock = (l: ArLine, items: readonly Item[]) => l.baseType !== 'DN' && Boolean(items.find((i) => i.id === l.itemId)?.inventoryItem);
@@ -204,8 +206,17 @@ export async function addArInvoice(input: ArInput, fx: number, ctx: { codes: rea
   const problems = await invoiceProblems(input, items);
   if (problems.length) throw new ArPostError(problems.map((p) => p.lineId), problems.map((p) => p.message).join(' '));
 
-  // Lines from a delivery keep its cost; the rest go out at today's item cost.
-  const lines = input.lines.map((l) => (l.baseType === 'DN' ? l : { ...l, unitCostLc: items.find((i) => i.id === l.itemId)?.itemCost ?? 0 }));
+  // Lines from a delivery keep its cost; the rest go out at today's item cost (FIFO: consume layers).
+  const fifoItemIds = new Set<string>();
+  const lines = await Promise.all(input.lines.map(async (l) => {
+    if (l.baseType === 'DN') return l;
+    const item = items.find((i) => i.id === l.itemId);
+    if (item?.valuationMethod === 'FIFO' && item.inventoryItem && l.warehouse) {
+      fifoItemIds.add(l.itemId);
+      return { ...l, unitCostLc: await consumeLayers(l.itemId, l.warehouse, dnInventoryQty(l)) };
+    }
+    return { ...l, unitCostLc: item?.itemCost ?? 0 };
+  }));
   await moveStock(lines, items, -1);
   await applyDelivered(lines.filter((l) => l.baseType === 'SO' && shipsStock(l, items)), 1);
   await applyInvoiced(lines.filter((l) => l.baseType === 'DN'), 1);
@@ -213,6 +224,7 @@ export async function addArInvoice(input: ArInput, fx: number, ctx: { codes: rea
   const series = arSeriesOf(input.seriesId);
   const all = await invoices.list();
   const docNum = Math.max(series.firstNo - 1, ...all.filter((a) => a.seriesId === series.id).map((a) => a.docNum)) + 1;
+  await updateFifoCosts([...fifoItemIds]);
   const saved = await invoices.save({ ...input, lines, docNum, status: 'Open', fxRate: fx });
   await postDocumentEntry({
     origin: 'IN',
@@ -243,6 +255,19 @@ export async function cancelArInvoice(a: ArInvoice) {
   await moveStock(a.lines, items, 1);
   await applyDelivered(a.lines.filter((l) => l.baseType === 'SO' && shipsStock(l, items)), -1);
   await applyInvoiced(a.lines.filter((l) => l.baseType === 'DN'), -1);
+
+  // FIFO: restore layers for non-DN lines that shipped stock (DN lines were handled by the delivery).
+  const cancelFifoIds = new Set<string>();
+  for (const l of a.lines) {
+    if (!shipsStock(l, items)) continue;
+    const item = items.find((i) => i.id === l.itemId);
+    if (item?.valuationMethod === 'FIFO' && l.unitCostLc > 0) {
+      await restoreLayer({ itemId: l.itemId, warehouse: l.warehouse, receivedOn: a.postingDate, qty: dnInventoryQty(l), unitCost: l.unitCostLc, sourceId: `in-restore-${a.id}` });
+      cancelFifoIds.add(l.itemId);
+    }
+  }
+  await updateFifoCosts([...cancelFifoIds]);
+
   const saved = await invoices.save({ ...a, status: 'Cancelled', closeDate: todayISO() });
   await reverseDocumentEntry(a.id);
   return saved;
