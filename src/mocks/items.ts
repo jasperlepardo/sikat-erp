@@ -259,10 +259,8 @@ export const VARIANT_OWN_FIELDS = new Set<keyof Item>([
   'parentItemId', 'variantAxes', 'variantAttributes',
   // Usage flags: variants are the actual saleable/purchasable items; parent is a template only.
   'purchaseItem', 'salesItem', 'inventoryItem', 'fixedAsset',
-  // UoMs are per-variant: each variant carries its own unit list (pc/box/carton with weight).
-  // All siblings typically share the same setup, but storing it per-variant preserves weight/
-  // dimension data and lets the parent's UoM tab define the canonical setup for new variants.
-  'uoms', 'purchasingUom', 'salesUom',
+  // uoms, purchasingUom, salesUom are global — inherited from the parent so updating the
+  // parent's unit setup propagates to all variants instantly at read time.
   'basePrice', 'itemCost',
   'barcodes', 'warehouses', 'attachments',
   'validFrom', 'validTo', 'hasTransactions',
@@ -496,30 +494,44 @@ const TODAY = '2026-09-27';
 const catalog = expandCatalog(prefixOf);
 
 /** One parent (template) item per multi-variant family. Not purchasable or saleable directly. */
-const APPLE_PARENT_ITEMS: Item[] = catalog.families.map((f) => ({
-  ...blankItem(f.family.group),
-  id: f.id,
-  itemNo: f.itemNo,
-  name: f.family.name,
-  description: f.family.name,
-  manageBy: (f.family.serial ? 'Serial Numbers' : 'None') as ManageBy,
-  hasTransactions: false,
-  variantAxes: f.variantAxes,
-  parentItemId: '',
-  variantAttributes: {},
-  purchaseItem: false,
-  salesItem: false,
-  inventoryItem: false,
-  warehouses: [],
-  cycleCountDays: 0,
-  planningMethod: 'None' as PlanningMethod,
-  countryOfOrigin: '',
-  customsGroup: CUSTOMS_BY_GROUP[f.family.group] ?? '',
-  defaultVendorId: APPLE_VENDOR,
-  manufacturer: 'MFR-APL',
-  warrantyTemplate: 'wr-apl1',
-  validFrom: f.family.validFrom ?? '',
-}));
+const APPLE_PARENT_ITEMS: Item[] = catalog.families.map((f) => {
+  const base = blankItem(f.family.group);
+  // Build the same PIECE UoM group the variants use, with the family's weight.
+  const baseUom = newItemUom('pc', { id: `${f.id}-u0`, ...seedWeight(f.family.weightKg) });
+  const pieceGroup = SEED_UOM_GROUPS.find((g) => g.code === 'PIECE');
+  const uoms = pieceGroup
+    ? [baseUom, ...unitsFromGroup({ inventoryUom: 'pc', uoms: [baseUom] }, pieceGroup).map((u, n) => ({ ...u, id: `${f.id}-u${n + 1}` }))]
+    : [baseUom];
+  const purchasingUom = BOUGHT_BY_THE_BOX.test(f.itemNo) ? 'box' : 'pc';
+  return {
+    ...base,
+    id: f.id,
+    itemNo: f.itemNo,
+    name: f.family.name,
+    description: f.family.name,
+    inventoryUom: 'pc',
+    uoms,
+    purchasingUom,
+    salesUom: 'pc',
+    manageBy: (f.family.serial ? 'Serial Numbers' : 'None') as ManageBy,
+    hasTransactions: false,
+    variantAxes: f.variantAxes,
+    parentItemId: '',
+    variantAttributes: {},
+    purchaseItem: false,
+    salesItem: false,
+    inventoryItem: false,
+    warehouses: [],
+    cycleCountDays: 0,
+    planningMethod: 'None' as PlanningMethod,
+    countryOfOrigin: '',
+    customsGroup: CUSTOMS_BY_GROUP[f.family.group] ?? '',
+    defaultVendorId: APPLE_VENDOR,
+    manufacturer: 'MFR-APL',
+    warrantyTemplate: 'wr-apl1',
+    validFrom: f.family.validFrom ?? '',
+  };
+});
 
 /** One lean variant record per Apple configuration — only own fields stored; global fields come from parent at read time. */
 const APPLE_ITEMS: Item[] = catalog.entries.map((e, n) => {
