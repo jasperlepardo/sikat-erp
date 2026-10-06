@@ -12,41 +12,59 @@ import {
   TableLink,
   TableStatus,
   TableSubcontent,
-  Tabs,
   TextField,
   type TableColumn,
-  type TableSort,
   Text,
 } from '@jasperlepardo/sikat-design-system';
-import { GR_STATUSES, type GoodsReceipt, type GrStatus } from '../../../mocks/goodsReceipts';
+import { GR_STATUSES, type GoodsReceipt } from '../../../mocks/goodsReceipts';
 import { formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
 import { grNumber, grTotal, listGoodsReceipts } from '../../../services/goodsReceipts';
 import { taxCodes } from '../../../services/masterData';
 import { useAsync } from '../../../services/useAsync';
+import { dateField, linesField, masterField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
+import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
+import { currencyDef, salesEmployeeDef } from '../../settings/masterDefs';
 import { DEFAULT_PAGE_SIZE, PAGE_SIZES, fillCardClass } from '../../../components/form/DataTable';
 import { GR_LIST_PATH, GR_STATUS_INTENT } from './detail/GoodsReceiptDetail';
-
-type Filter = 'all' | GrStatus;
 
 export function GoodsReceiptList() {
   const navigate = useNavigate();
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const data = useAsync(() => Promise.all([listGoodsReceipts(), taxCodes.list()]), []);
-  const [filter, setFilter] = useState<Filter>('all');
   const [query, setQuery] = useState('');
-  const [sort, setSort] = useState<TableSort | null>({ key: 'postingDate', direction: 'desc' });
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
 
   const [receipts, codes] = data ?? [undefined, []];
   const totalOf = (gr: GoodsReceipt) => grTotal(gr, codes);
+  const fields = [
+    textField<GoodsReceipt>('no', 'No.', grNumber),
+    textField<GoodsReceipt>('vendor', 'Vendor', (d) => d.vendorName),
+    textField<GoodsReceipt>('vendorCode', 'Vendor code', (d) => d.vendorCode),
+    textField<GoodsReceipt>('vendorRef', 'Vendor ref.', (d) => d.vendorRef),
+    dateField<GoodsReceipt>('postingDate', 'Posting date', (d) => d.postingDate),
+    textField<GoodsReceipt>('order', 'Purchase order', (d) => d.orderNumber),
+    numberField<GoodsReceipt>('total', 'Total', totalOf),
+    statusField<GoodsReceipt>(GR_STATUSES),
+    masterField<GoodsReceipt>('currency', 'Currency', currencyDef, (d) => d.currency),
+    masterField<GoodsReceipt>('buyer', 'Buyer', salesEmployeeDef, (d) => d.buyer),
+    linesField<GoodsReceipt>(),
+  ];
+  const presets = useListPresets({
+    list: 'goods-receipts',
+    fields,
+    builtIns: statusViews('goods receipts', GR_STATUSES),
+    defaultSort: { key: 'postingDate', direction: 'desc' },
+    rows: receipts,
+    onChange: () => setPage(1),
+  });
+  const { sort, setSort } = presets;
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const filtered = (receipts ?? []).filter(
+    const filtered = presets.apply(receipts ?? []).filter(
       (gr) =>
-        (filter === 'all' || gr.status === filter) &&
         (!q ||
           [grNumber(gr), gr.vendorCode, gr.vendorName, gr.vendorRef, gr.orderNumber, ...gr.lines.map((l) => `${l.itemNo} ${l.description}`)]
             .join(' ')
@@ -63,10 +81,9 @@ export function GoodsReceiptList() {
       return (x < y ? -1 : x > y ? 1 : 0) * dir;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [receipts, filter, query, sort, codes]);
+  }, [receipts, presets.filter, query, sort, codes]);
 
   const open = (gr: GoodsReceipt) => navigate(`${GR_LIST_PATH}/${gr.id}`);
-  const count = (f: Filter) => String(receipts?.filter((gr) => f === 'all' || gr.status === f).length ?? '');
 
   const columns: TableColumn<GoodsReceipt>[] = [
     {
@@ -104,23 +121,12 @@ export function GoodsReceiptList() {
     <Panel className="flex-1">
       <PanelHeader
         icon="inventory"
-        title="Goods Receipts"
+        title={presets.menu}
         subcopy="Goods and services received from vendors. Adding a receipt puts the stock in and updates the PO it came from."
         actions={
           <Button intent="primary" variant="solid" size="extra-large" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${GR_LIST_PATH}/new`)}>
             New goods receipt
           </Button>
-        }
-        tabs={
-          <Tabs
-            variant="outline"
-            value={filter}
-            onValueChange={(v) => {
-              setFilter(v as Filter);
-              setPage(1);
-            }}
-            items={(['all', ...GR_STATUSES] as Filter[]).map((f) => ({ value: f, label: f === 'all' ? 'All' : f, badge: count(f) }))}
-          />
         }
       />
       <Panel.Body className="flex flex-col gap-2">
@@ -129,16 +135,18 @@ export function GoodsReceiptList() {
             {notice}
           </Alert>
         ) : null}
-        <TextField
-          aria-label="Search goods receipts"
-          placeholder="Search by receipt no., vendor, vendor ref., PO no. or item"
-          leadingIcon={<Icon size={20}>search</Icon>}
-          value={query}
-          onChange={(e) => {
-            setQuery(e.currentTarget.value);
-            setPage(1);
-          }}
-        />
+        {presets.bar(
+          <TextField
+            aria-label="Search goods receipts"
+            placeholder="Search by receipt no., vendor, vendor ref., PO no. or item"
+            leadingIcon={<Icon size={20}>search</Icon>}
+            value={query}
+            onChange={(e) => {
+              setQuery(e.currentTarget.value);
+              setPage(1);
+            }}
+          />,
+        )}
         <Card className={fillCardClass(rows.slice((page - 1) * pageSize, page * pageSize).length)}>
           {receipts ? (
             <Table
@@ -167,6 +175,7 @@ export function GoodsReceiptList() {
           )}
         </Card>
       </Panel.Body>
+      {presets.panel}
     </Panel>
   );
 }

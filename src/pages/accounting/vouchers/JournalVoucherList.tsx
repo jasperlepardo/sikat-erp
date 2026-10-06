@@ -12,12 +12,12 @@ import {
   TableLink,
   TableStatus,
   TableSubcontent,
-  Tabs,
   Text,
   TextField,
   type TableColumn,
-  type TableSort,
 } from '@jasperlepardo/sikat-design-system';
+import { boolField, choiceField, dateField, numberField, textField } from '../../../components/filter/fieldKit';
+import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { DEFAULT_PAGE_SIZE, PAGE_SIZES, fillCardClass } from '../../../components/form/DataTable';
 import type { JournalVoucher } from '../../../mocks/journalVouchers';
 import { formatDate } from '../../../services/dates';
@@ -38,29 +38,38 @@ export function voucherState(v: JournalVoucher) {
 
 const debitOf = (v: JournalVoucher) => v.entries.reduce((n, e) => n + jeTotals(e.lines).debit, 0);
 
-type Filter = 'all' | 'Open' | 'Closed';
-const FILTERS: { value: Filter; label: string; test: (v: JournalVoucher) => boolean }[] = [
-  { value: 'all', label: 'All', test: () => true },
-  { value: 'Open', label: 'Open', test: (v) => voucherStatus(v) === 'Open' },
-  { value: 'Closed', label: 'Closed', test: (v) => voucherStatus(v) === 'Closed' },
-];
-
 export function JournalVoucherList() {
   const navigate = useNavigate();
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const vouchers = useAsync(listVouchers, []);
-  const [filter, setFilter] = useState<Filter>('all');
+  const fields = [
+    numberField<JournalVoucher>('voucherNo', 'Voucher no.', (v) => v.voucherNo),
+    dateField<JournalVoucher>('createdOn', 'Created', (v) => v.createdOn),
+    textField<JournalVoucher>('createdBy', 'Created by', (v) => v.createdBy),
+    textField<JournalVoucher>('remarks', 'Remarks', (v) => v.entries.map((e) => e.remarks)),
+    textField<JournalVoucher>('account', 'Account', (v) => v.entries.flatMap((e) => e.lines.map((l) => l.account))),
+    numberField<JournalVoucher>('entries', 'Entries', (v) => v.entries.length),
+    numberField<JournalVoucher>('amount', 'Debits', debitOf),
+    choiceField<JournalVoucher>('status', 'Status', ['Open', 'Closed'], voucherStatus),
+    boolField<JournalVoucher>('partlyPosted', 'Partly posted', (v) => voucherState(v).label === 'Partly posted'),
+  ];
+  const presets = useListPresets({
+    list: 'journal-vouchers',
+    fields,
+    builtIns: statusViews('journal vouchers', ['Open', 'Closed']),
+    defaultSort: { key: 'voucherNo', direction: 'desc' },
+    rows: vouchers,
+    onChange: () => setPage(1),
+  });
+  const { sort, setSort } = presets;
   const [query, setQuery] = useState('');
-  const [sort, setSort] = useState<TableSort | null>({ key: 'voucherNo', direction: 'desc' });
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const test = FILTERS.find((f) => f.value === filter)!.test;
-    const filtered = (vouchers ?? []).filter(
+    const filtered = presets.apply(vouchers ?? []).filter(
       (v) =>
-        test(v) &&
         (!q ||
           [String(v.voucherNo), v.createdBy, ...v.entries.flatMap((e) => [e.remarks, e.ref1, e.ref2, e.ref3, ...e.lines.map((l) => `${l.account} ${l.remarks}`)])]
             .join(' ')
@@ -76,7 +85,7 @@ export function JournalVoucherList() {
       const y = value(b);
       return (x < y ? -1 : x > y ? 1 : 0) * dir;
     });
-  }, [vouchers, filter, query, sort]);
+  }, [vouchers, presets.filter, query, sort]);
 
   const open = (v: JournalVoucher) => navigate(`${JV_LIST_PATH}/${v.id}`);
   const onPage = rows.slice((page - 1) * pageSize, page * pageSize);
@@ -114,23 +123,12 @@ export function JournalVoucherList() {
     <Panel className="flex-1">
       <PanelHeader
         icon="folder_open"
-        title="Journal Vouchers"
+        title={presets.menu}
         subcopy="Draft journal entries, grouped for review before they post. Nothing here touches the ledger until it's posted."
         actions={
           <Button intent="primary" variant="solid" size="extra-large" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${JV_LIST_PATH}/new/entries/new`)}>
             New voucher
           </Button>
-        }
-        tabs={
-          <Tabs
-            variant="outline"
-            value={filter}
-            onValueChange={(v) => {
-              setFilter(v as Filter);
-              setPage(1);
-            }}
-            items={FILTERS.map((f) => ({ value: f.value, label: f.label, badge: String(vouchers?.filter(f.test).length ?? '') }))}
-          />
         }
       />
       <Panel.Body className="flex flex-col gap-2">
@@ -139,16 +137,18 @@ export function JournalVoucherList() {
             {notice}
           </Alert>
         ) : null}
-        <TextField
-          aria-label="Search journal vouchers"
-          placeholder="Search by voucher number, remarks, reference, account or who created it"
-          leadingIcon={<Icon size={20}>search</Icon>}
-          value={query}
-          onChange={(e) => {
-            setQuery(e.currentTarget.value);
-            setPage(1);
-          }}
-        />
+        {presets.bar(
+          <TextField
+            aria-label="Search journal vouchers"
+            placeholder="Search by voucher number, remarks, reference, account or who created it"
+            leadingIcon={<Icon size={20}>search</Icon>}
+            value={query}
+            onChange={(e) => {
+              setQuery(e.currentTarget.value);
+              setPage(1);
+            }}
+          />,
+        )}
         <Card className={fillCardClass(onPage.length)}>
           {vouchers ? (
             <Table
@@ -177,6 +177,7 @@ export function JournalVoucherList() {
           )}
         </Card>
       </Panel.Body>
+      {presets.panel}
     </Panel>
   );
 }

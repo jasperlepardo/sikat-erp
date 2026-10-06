@@ -12,14 +12,15 @@ import {
   TableLink,
   TableStatus,
   TableSubcontent,
-  Tabs,
   Text,
   TextField,
   type TableColumn,
-  type TableSort,
 } from '@jasperlepardo/sikat-design-system';
+import { dateField, linesField, masterField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
+import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
+import { currencyDef, salesEmployeeDef } from '../../settings/masterDefs';
 import { DEFAULT_PAGE_SIZE, PAGE_SIZES, fillCardClass } from '../../../components/form/DataTable';
-import { DN_STATUSES, type Delivery, type DnStatus } from '../../../mocks/deliveries';
+import { DN_STATUSES, type Delivery } from '../../../mocks/deliveries';
 import { formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
 import { taxCodes } from '../../../services/masterData';
@@ -28,25 +29,44 @@ import { useAsync } from '../../../services/useAsync';
 import { DN_STATUS_INTENT } from './detail/DeliveryDetail';
 import { DN_LIST_PATH } from './detail/types';
 
-type Filter = 'all' | DnStatus;
-
 export function DeliveryList() {
   const navigate = useNavigate();
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const data = useAsync(() => Promise.all([listDeliveries(), taxCodes.list()]), []);
-  const [filter, setFilter] = useState<Filter>('all');
   const [query, setQuery] = useState('');
-  const [sort, setSort] = useState<TableSort | null>({ key: 'postingDate', direction: 'desc' });
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [orders, codes] = data ?? [undefined, []];
   const totalOf = (so: Delivery) => dnTotal(so, codes);
+  const fields = [
+    textField<Delivery>('no', 'No.', dnNumber),
+    textField<Delivery>('customer', 'Customer', (d) => d.customerName),
+    textField<Delivery>('customerCode', 'Customer code', (d) => d.customerCode),
+    textField<Delivery>('customerRef', 'Customer ref.', (d) => d.customerRef),
+    dateField<Delivery>('postingDate', 'Posting date', (d) => d.postingDate),
+    dateField<Delivery>('deliveryDate', 'Delivery date', (d) => d.deliveryDate),
+    textField<Delivery>('order', 'Order', (d) => d.orderNumber),
+    textField<Delivery>('trackingNo', 'Tracking no.', (d) => d.trackingNo),
+    numberField<Delivery>('total', 'Total', totalOf),
+    statusField<Delivery>(DN_STATUSES),
+    masterField<Delivery>('currency', 'Currency', currencyDef, (d) => d.currency),
+    masterField<Delivery>('salesEmployee', 'Sales employee', salesEmployeeDef, (d) => d.salesEmployee),
+    linesField<Delivery>(),
+  ];
+  const presets = useListPresets({
+    list: 'deliveries',
+    fields,
+    builtIns: statusViews('deliveries', DN_STATUSES),
+    defaultSort: { key: 'postingDate', direction: 'desc' },
+    rows: orders,
+    onChange: () => setPage(1),
+  });
+  const { sort, setSort } = presets;
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const filtered = (orders ?? []).filter(
+    const filtered = presets.apply(orders ?? []).filter(
       (so) =>
-        (filter === 'all' || so.status === filter) &&
         (!q || [dnNumber(so), so.customerCode, so.customerName, so.customerRef, so.orderNumber, so.trackingNo, ...so.lines.map((l) => `${l.itemNo} ${l.description}`)].join(' ').toLowerCase().includes(q)),
     );
     if (!sort) return filtered;
@@ -58,10 +78,9 @@ export function DeliveryList() {
       return (x < y ? -1 : x > y ? 1 : 0) * dir;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orders, filter, query, sort, codes]);
+  }, [orders, presets.filter, query, sort, codes]);
 
   const open = (so: Delivery) => navigate(`${DN_LIST_PATH}/${so.id}`);
-  const count = (f: Filter) => String(orders?.filter((so) => f === 'all' || so.status === f).length ?? '');
   const onPage = rows.slice((page - 1) * pageSize, page * pageSize);
 
   const columns: TableColumn<Delivery>[] = [
@@ -95,23 +114,12 @@ export function DeliveryList() {
     <Panel className="flex-1">
       <PanelHeader
         icon="local_shipping"
-        title="Sales Orders"
+        title={presets.menu}
         subcopy="Goods shipped to customers. Adding a delivery takes the stock out, updates its sales order and posts the cost to COGS."
         actions={
           <Button intent="primary" variant="solid" size="extra-large" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${DN_LIST_PATH}/new`)}>
             New delivery
           </Button>
-        }
-        tabs={
-          <Tabs
-            variant="outline"
-            value={filter}
-            onValueChange={(v) => {
-              setFilter(v as Filter);
-              setPage(1);
-            }}
-            items={(['all', ...DN_STATUSES] as Filter[]).map((f) => ({ value: f, label: f === 'all' ? 'All' : f, badge: count(f) }))}
-          />
         }
       />
       <Panel.Body className="flex flex-col gap-2">
@@ -120,16 +128,18 @@ export function DeliveryList() {
             {notice}
           </Alert>
         ) : null}
-        <TextField
-          aria-label="Search deliveries"
-          placeholder="Search by delivery no., customer, order, tracking no. or item"
-          leadingIcon={<Icon size={20}>search</Icon>}
-          value={query}
-          onChange={(e) => {
-            setQuery(e.currentTarget.value);
-            setPage(1);
-          }}
-        />
+        {presets.bar(
+          <TextField
+            aria-label="Search deliveries"
+            placeholder="Search by delivery no., customer, order, tracking no. or item"
+            leadingIcon={<Icon size={20}>search</Icon>}
+            value={query}
+            onChange={(e) => {
+              setQuery(e.currentTarget.value);
+              setPage(1);
+            }}
+          />,
+        )}
         <Card className={fillCardClass(onPage.length)}>
           {orders ? (
             <Table
@@ -158,6 +168,7 @@ export function DeliveryList() {
           )}
         </Card>
       </Panel.Body>
+      {presets.panel}
     </Panel>
   );
 }

@@ -12,14 +12,15 @@ import {
   TableLink,
   TableStatus,
   TableSubcontent,
-  Tabs,
   Text,
   TextField,
   type TableColumn,
-  type TableSort,
 } from '@jasperlepardo/sikat-design-system';
+import { dateField, linesField, masterField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
+import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
+import { currencyDef, salesEmployeeDef } from '../../settings/masterDefs';
 import { DEFAULT_PAGE_SIZE, PAGE_SIZES, fillCardClass } from '../../../components/form/DataTable';
-import { SO_STATUSES, type SalesOrder, type SoStatus } from '../../../mocks/salesOrders';
+import { SO_STATUSES, type SalesOrder } from '../../../mocks/salesOrders';
 import { formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
 import { taxCodes } from '../../../services/masterData';
@@ -28,25 +29,42 @@ import { useAsync } from '../../../services/useAsync';
 import { SO_STATUS_INTENT } from './detail/SalesOrderDetail';
 import { SO_LIST_PATH } from './detail/types';
 
-type Filter = 'all' | SoStatus;
-
 export function SalesOrderList() {
   const navigate = useNavigate();
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const data = useAsync(() => Promise.all([listSalesOrders(), taxCodes.list()]), []);
-  const [filter, setFilter] = useState<Filter>('all');
   const [query, setQuery] = useState('');
-  const [sort, setSort] = useState<TableSort | null>({ key: 'postingDate', direction: 'desc' });
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [orders, codes] = data ?? [undefined, []];
   const totalOf = (so: SalesOrder) => soTotal(so, codes);
+  const fields = [
+    textField<SalesOrder>('no', 'No.', soNumber),
+    textField<SalesOrder>('customer', 'Customer', (d) => d.customerName),
+    textField<SalesOrder>('customerCode', 'Customer code', (d) => d.customerCode),
+    textField<SalesOrder>('customerRef', 'Customer ref.', (d) => d.customerRef),
+    dateField<SalesOrder>('postingDate', 'Posting date', (d) => d.postingDate),
+    dateField<SalesOrder>('deliveryDate', 'Delivery date', (d) => d.deliveryDate),
+    numberField<SalesOrder>('total', 'Total', totalOf),
+    statusField<SalesOrder>(SO_STATUSES),
+    masterField<SalesOrder>('currency', 'Currency', currencyDef, (d) => d.currency),
+    masterField<SalesOrder>('salesEmployee', 'Sales employee', salesEmployeeDef, (d) => d.salesEmployee),
+    linesField<SalesOrder>(),
+  ];
+  const presets = useListPresets({
+    list: 'sales-orders',
+    fields,
+    builtIns: statusViews('sales orders', SO_STATUSES),
+    defaultSort: { key: 'postingDate', direction: 'desc' },
+    rows: orders,
+    onChange: () => setPage(1),
+  });
+  const { sort, setSort } = presets;
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const filtered = (orders ?? []).filter(
+    const filtered = presets.apply(orders ?? []).filter(
       (so) =>
-        (filter === 'all' || so.status === filter) &&
         (!q || [soNumber(so), so.customerCode, so.customerName, so.customerRef, ...so.lines.map((l) => `${l.itemNo} ${l.description}`)].join(' ').toLowerCase().includes(q)),
     );
     if (!sort) return filtered;
@@ -58,10 +76,9 @@ export function SalesOrderList() {
       return (x < y ? -1 : x > y ? 1 : 0) * dir;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orders, filter, query, sort, codes]);
+  }, [orders, presets.filter, query, sort, codes]);
 
   const open = (so: SalesOrder) => navigate(`${SO_LIST_PATH}/${so.id}`);
-  const count = (f: Filter) => String(orders?.filter((so) => f === 'all' || so.status === f).length ?? '');
   const onPage = rows.slice((page - 1) * pageSize, page * pageSize);
 
   const columns: TableColumn<SalesOrder>[] = [
@@ -95,23 +112,12 @@ export function SalesOrderList() {
     <Panel className="flex-1">
       <PanelHeader
         icon="shopping_bag"
-        title="Sales Orders"
+        title={presets.menu}
         subcopy="Customer orders. Prices come from the customer's price list and pricing rules; open lines commit stock."
         actions={
           <Button intent="primary" variant="solid" size="extra-large" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${SO_LIST_PATH}/new`)}>
             New sales order
           </Button>
-        }
-        tabs={
-          <Tabs
-            variant="outline"
-            value={filter}
-            onValueChange={(v) => {
-              setFilter(v as Filter);
-              setPage(1);
-            }}
-            items={(['all', ...SO_STATUSES] as Filter[]).map((f) => ({ value: f, label: f === 'all' ? 'All' : f, badge: count(f) }))}
-          />
         }
       />
       <Panel.Body className="flex flex-col gap-2">
@@ -120,16 +126,18 @@ export function SalesOrderList() {
             {notice}
           </Alert>
         ) : null}
-        <TextField
-          aria-label="Search sales orders"
-          placeholder="Search by order no., customer, customer ref. or item"
-          leadingIcon={<Icon size={20}>search</Icon>}
-          value={query}
-          onChange={(e) => {
-            setQuery(e.currentTarget.value);
-            setPage(1);
-          }}
-        />
+        {presets.bar(
+          <TextField
+            aria-label="Search sales orders"
+            placeholder="Search by order no., customer, customer ref. or item"
+            leadingIcon={<Icon size={20}>search</Icon>}
+            value={query}
+            onChange={(e) => {
+              setQuery(e.currentTarget.value);
+              setPage(1);
+            }}
+          />,
+        )}
         <Card className={fillCardClass(onPage.length)}>
           {orders ? (
             <Table
@@ -158,6 +166,7 @@ export function SalesOrderList() {
           )}
         </Card>
       </Panel.Body>
+      {presets.panel}
     </Panel>
   );
 }

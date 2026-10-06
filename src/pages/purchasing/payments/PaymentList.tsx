@@ -12,21 +12,20 @@ import {
   TableLink,
   TableStatus,
   TableSubcontent,
-  Tabs,
   TextField,
   type TableColumn,
-  type TableSort,
   Text,
 } from '@jasperlepardo/sikat-design-system';
-import { PAYMENT_STATUSES, type OutgoingPayment, type PaymentStatus } from '../../../mocks/outgoingPayments';
+import { PAYMENT_STATUSES, type OutgoingPayment } from '../../../mocks/outgoingPayments';
 import { formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
 import { listPayments, overallAmount, paymentNumber } from '../../../services/outgoingPayments';
 import { useAsync } from '../../../services/useAsync';
+import { choiceField, dateField, masterField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
+import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
+import { currencyDef } from '../../settings/masterDefs';
 import { DEFAULT_PAGE_SIZE, PAGE_SIZES, fillCardClass } from '../../../components/form/DataTable';
 import { PAYMENT_LIST_PATH, PAYMENT_STATUS_INTENT } from './detail/PaymentDetail';
-
-type Filter = 'all' | PaymentStatus;
 
 /** How a payment went out, in words: "Bank transfer", "2 checks", "Cash + card". */
 const meansText = (p: OutgoingPayment) =>
@@ -43,17 +42,36 @@ export function PaymentList() {
   const navigate = useNavigate();
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const payments = useAsync(listPayments, []);
-  const [filter, setFilter] = useState<Filter>('all');
+  const fields = [
+    textField<OutgoingPayment>('no', 'No.', paymentNumber),
+    choiceField<OutgoingPayment>('type', 'Type', ['Vendor', 'Account'], (d) => d.type),
+    textField<OutgoingPayment>('payee', 'Paid to', (d) => d.payeeName),
+    textField<OutgoingPayment>('vendorCode', 'Vendor code', (d) => d.vendorCode),
+    dateField<OutgoingPayment>('postingDate', 'Posting date', (d) => d.postingDate),
+    textField<OutgoingPayment>('reference', 'Reference', (d) => d.reference),
+    textField<OutgoingPayment>('invoice', 'Invoice no.', (d) => d.rows.map((r) => r.docNo)),
+    numberField<OutgoingPayment>('amount', 'Amount', overallAmount),
+    statusField<OutgoingPayment>(PAYMENT_STATUSES),
+    masterField<OutgoingPayment>('currency', 'Currency', currencyDef, (d) => d.currency),
+    textField<OutgoingPayment>('remarks', 'Remarks', (d) => d.remarks),
+  ];
+  const presets = useListPresets({
+    list: 'outgoing-payments',
+    fields,
+    builtIns: statusViews('payments made', PAYMENT_STATUSES),
+    defaultSort: { key: 'postingDate', direction: 'desc' },
+    rows: payments,
+    onChange: () => setPage(1),
+  });
+  const { sort, setSort } = presets;
   const [query, setQuery] = useState('');
-  const [sort, setSort] = useState<TableSort | null>({ key: 'postingDate', direction: 'desc' });
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const filtered = (payments ?? []).filter(
+    const filtered = presets.apply(payments ?? []).filter(
       (p) =>
-        (filter === 'all' || p.status === filter) &&
         (!q || [paymentNumber(p), p.vendorCode, p.payeeName, p.reference, ...p.rows.map((r) => `${r.docNo} ${r.vendorRef}`)].join(' ').toLowerCase().includes(q)),
     );
     if (!sort) return filtered;
@@ -65,10 +83,9 @@ export function PaymentList() {
       const y = value(b);
       return (x < y ? -1 : x > y ? 1 : 0) * dir;
     });
-  }, [payments, filter, query, sort]);
+  }, [payments, presets.filter, query, sort]);
 
   const open = (p: OutgoingPayment) => navigate(`${PAYMENT_LIST_PATH}/${p.id}`);
-  const count = (f: Filter) => String(payments?.filter((p) => f === 'all' || p.status === f).length ?? '');
 
   const columns: TableColumn<OutgoingPayment>[] = [
     {
@@ -102,23 +119,12 @@ export function PaymentList() {
     <Panel className="flex-1">
       <PanelHeader
         icon="payments"
-        title="Payments Made"
+        title={presets.menu}
         subcopy="Outgoing payments: money paid to vendors against their bills (or on account), or straight to G/L accounts."
         actions={
           <Button intent="primary" variant="solid" size="extra-large" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${PAYMENT_LIST_PATH}/new`)}>
             New outgoing payment
           </Button>
-        }
-        tabs={
-          <Tabs
-            variant="outline"
-            value={filter}
-            onValueChange={(v) => {
-              setFilter(v as Filter);
-              setPage(1);
-            }}
-            items={(['all', ...PAYMENT_STATUSES] as Filter[]).map((f) => ({ value: f, label: f === 'all' ? 'All' : f, badge: count(f) }))}
-          />
         }
       />
       <Panel.Body className="flex flex-col gap-2">
@@ -127,16 +133,18 @@ export function PaymentList() {
             {notice}
           </Alert>
         ) : null}
-        <TextField
-          aria-label="Search payments"
-          placeholder="Search by payment no., payee, reference or invoice no."
-          leadingIcon={<Icon size={20}>search</Icon>}
-          value={query}
-          onChange={(e) => {
-            setQuery(e.currentTarget.value);
-            setPage(1);
-          }}
-        />
+        {presets.bar(
+          <TextField
+            aria-label="Search payments"
+            placeholder="Search by payment no., payee, reference or invoice no."
+            leadingIcon={<Icon size={20}>search</Icon>}
+            value={query}
+            onChange={(e) => {
+              setQuery(e.currentTarget.value);
+              setPage(1);
+            }}
+          />,
+        )}
         <Card className={fillCardClass(rows.slice((page - 1) * pageSize, page * pageSize).length)}>
           {payments ? (
             rows.length || payments.length ? (
@@ -171,6 +179,7 @@ export function PaymentList() {
           )}
         </Card>
       </Panel.Body>
+      {presets.panel}
     </Panel>
   );
 }

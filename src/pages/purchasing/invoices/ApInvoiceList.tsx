@@ -12,45 +12,64 @@ import {
   TableLink,
   TableStatus,
   TableSubcontent,
-  Tabs,
   TextField,
   type TableColumn,
-  type TableSort,
   Text,
 } from '@jasperlepardo/sikat-design-system';
-import { AP_STATUSES, type ApInvoice, type ApStatus } from '../../../mocks/apInvoices';
+import { AP_STATUSES, type ApInvoice } from '../../../mocks/apInvoices';
 import { formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
 import { apNumber, apTotal, listApInvoices } from '../../../services/apInvoices';
 import { todayISO } from '../../../services/dates';
 import { taxCodes } from '../../../services/masterData';
 import { useAsync } from '../../../services/useAsync';
+import { dateField, linesField, masterField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
+import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
+import { currencyDef, salesEmployeeDef } from '../../settings/masterDefs';
 import { DEFAULT_PAGE_SIZE, PAGE_SIZES, fillCardClass } from '../../../components/form/DataTable';
 import { AP_LIST_PATH, AP_STATUS_INTENT } from './detail/ApInvoiceDetail';
 import { BillsTabs } from './BillsTabs';
 import { listDownPayments } from '../../../services/apDownPayments';
 
-type Filter = 'all' | ApStatus;
-
 export function ApInvoiceList() {
   const navigate = useNavigate();
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const data = useAsync(() => Promise.all([listApInvoices(), taxCodes.list(), listDownPayments()]), []);
-  const [filter, setFilter] = useState<Filter>('all');
   const [query, setQuery] = useState('');
-  const [sort, setSort] = useState<TableSort | null>({ key: 'postingDate', direction: 'desc' });
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
 
   const [invoices, codes, requests] = data ?? [undefined, [], undefined];
   const totalOf = (inv: ApInvoice) => apTotal(inv, codes);
+  const fields = [
+    textField<ApInvoice>('no', 'No.', apNumber),
+    textField<ApInvoice>('vendor', 'Vendor', (d) => d.vendorName),
+    textField<ApInvoice>('vendorCode', 'Vendor code', (d) => d.vendorCode),
+    textField<ApInvoice>('vendorRef', 'Vendor ref.', (d) => d.vendorRef),
+    dateField<ApInvoice>('postingDate', 'Posting date', (d) => d.postingDate),
+    dateField<ApInvoice>('dueDate', 'Due date', (d) => d.dueDate),
+    textField<ApInvoice>('order', 'Purchase order', (d) => d.orderNumber),
+    numberField<ApInvoice>('total', 'Total', totalOf),
+    statusField<ApInvoice>(AP_STATUSES),
+    masterField<ApInvoice>('currency', 'Currency', currencyDef, (d) => d.currency),
+    masterField<ApInvoice>('buyer', 'Buyer', salesEmployeeDef, (d) => d.buyer),
+    linesField<ApInvoice>(),
+  ];
+  const presets = useListPresets({
+    list: 'ap-invoices',
+    fields,
+    builtIns: statusViews('A/P invoices', AP_STATUSES),
+    defaultSort: { key: 'postingDate', direction: 'desc' },
+    rows: invoices,
+    onChange: () => setPage(1),
+  });
+  const { sort, setSort } = presets;
   const today = todayISO();
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const filtered = (invoices ?? []).filter(
+    const filtered = presets.apply(invoices ?? []).filter(
       (inv) =>
-        (filter === 'all' || inv.status === filter) &&
         (!q ||
           [apNumber(inv), inv.vendorCode, inv.vendorName, inv.vendorRef, inv.orderNumber, ...inv.lines.map((l) => `${l.itemNo} ${l.description} ${l.baseDocNo}`)]
             .join(' ')
@@ -67,10 +86,9 @@ export function ApInvoiceList() {
       return (x < y ? -1 : x > y ? 1 : 0) * dir;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [invoices, filter, query, sort, codes]);
+  }, [invoices, presets.filter, query, sort, codes]);
 
   const open = (inv: ApInvoice) => navigate(`${AP_LIST_PATH}/${inv.id}`);
-  const count = (f: Filter) => String(invoices?.filter((inv) => f === 'all' || inv.status === f).length ?? '');
 
   const columns: TableColumn<ApInvoice>[] = [
     {
@@ -109,7 +127,7 @@ export function ApInvoiceList() {
     <Panel className="flex-1">
       <PanelHeader
         icon="request_quote"
-        title="Bills"
+        title={presets.menu}
         subcopy="A/P invoices from vendors: what you owe, billed against goods receipts or purchase orders."
         actions={
           <Button intent="primary" variant="solid" size="extra-large" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${AP_LIST_PATH}/new`)}>
@@ -119,30 +137,23 @@ export function ApInvoiceList() {
         tabs={<BillsTabs value="invoices" counts={invoices && requests ? { invoices: invoices.length, requests: requests.length } : undefined} />}
       />
       <Panel.Body className="flex flex-col gap-2">
-        <Tabs
-              variant="outline"
-              value={filter}
-              onValueChange={(v) => {
-                setFilter(v as Filter);
-                setPage(1);
-              }}
-              items={(['all', ...AP_STATUSES] as Filter[]).map((f) => ({ value: f, label: f === 'all' ? 'All' : f, badge: count(f) }))}
-            />
         {notice ? (
           <Alert intent="success" variant="outline" title="Saved">
             {notice}
           </Alert>
         ) : null}
-        <TextField
-          aria-label="Search bills"
-          placeholder="Search by invoice no., vendor, vendor invoice no., PO or receipt no., or item"
-          leadingIcon={<Icon size={20}>search</Icon>}
-          value={query}
-          onChange={(e) => {
-            setQuery(e.currentTarget.value);
-            setPage(1);
-          }}
-        />
+        {presets.bar(
+          <TextField
+            aria-label="Search bills"
+            placeholder="Search by invoice no., vendor, vendor invoice no., PO or receipt no., or item"
+            leadingIcon={<Icon size={20}>search</Icon>}
+            value={query}
+            onChange={(e) => {
+              setQuery(e.currentTarget.value);
+              setPage(1);
+            }}
+          />,
+        )}
         <Card className={fillCardClass(rows.slice((page - 1) * pageSize, page * pageSize).length)}>
           {invoices ? (
             <Table
@@ -171,6 +182,7 @@ export function ApInvoiceList() {
           )}
         </Card>
       </Panel.Body>
+      {presets.panel}
     </Panel>
   );
 }

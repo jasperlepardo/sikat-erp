@@ -12,11 +12,9 @@ import {
   TableLink,
   TableStatus,
   TableSubcontent,
-  Tabs,
   Text,
   TextField,
   type TableColumn,
-  type TableSort,
 } from '@jasperlepardo/sikat-design-system';
 import type { Item } from '../../mocks/items';
 import { formatAmount } from '../../services/format';
@@ -24,6 +22,10 @@ import { loadInventoryMasters } from '../../services/inventoryMasters';
 import { isLowStock, listItems, stockTotals } from '../../services/items';
 import { useAsync } from '../../services/useAsync';
 import { DEFAULT_PAGE_SIZE, PAGE_SIZES, fillCardClass } from '../../components/form/DataTable';
+import { EMPTY_FILTER, oneRule } from '../../components/filter/engine';
+import { choiceField, numberField, textField } from '../../components/filter/fieldKit';
+import { useListPresets } from '../../components/filter/useListPresets';
+import type { BuiltInView } from '../../components/filter/useListViews';
 import { warehouseOptions } from './transfers/TransferLines';
 
 /**
@@ -33,7 +35,6 @@ import { warehouseOptions } from './transfers/TransferLines';
  */
 
 type View = 'warehouse' | 'item';
-type Filter = 'all' | 'low' | 'out';
 
 interface Row {
   id: string;
@@ -59,15 +60,32 @@ const statusOf = (r: Row) =>
       ? ({ label: 'Below minimum', intent: 'warning' } as const)
       : ({ label: 'In stock', intent: 'success' } as const);
 
+const STOCK_FIELDS = [
+  textField<Row>('itemNo', 'Item no.', (r) => r.item.itemNo),
+  textField<Row>('name', 'Item name', (r) => [r.item.name, r.item.description]),
+  textField<Row>('itemGroup', 'Item group', (r) => r.item.itemGroup),
+  textField<Row>('warehouse', 'Warehouse', (r) => r.warehouse),
+  choiceField<Row>('stockStatus', 'Stock status', ['In stock', 'Below minimum', 'Out of stock'], (r) => statusOf(r).label),
+  numberField<Row>('inStock', 'In stock', (r) => r.inStock),
+  numberField<Row>('committed', 'Committed', (r) => r.committed),
+  numberField<Row>('ordered', 'Ordered', (r) => r.ordered),
+  numberField<Row>('available', 'Available', (r) => r.available),
+  numberField<Row>('value', 'Value at cost', (r) => r.value),
+];
+
+const STOCK_VIEWS: BuiltInView[] = [
+  { id: 'all', name: 'All stock', filter: EMPTY_FILTER },
+  { id: 'low', name: 'Below minimum', filter: oneRule('stockStatus', 'is', 'Below minimum') },
+  { id: 'out', name: 'Out of stock', filter: oneRule('stockStatus', 'is', 'Out of stock') },
+];
+
 export function StockOnHandPage() {
   const navigate = useNavigate();
   const data = useAsync(() => Promise.all([listItems(), loadInventoryMasters()]), []);
   const [view, setView] = useState<View>('warehouse');
-  const [filter, setFilter] = useState<Filter>('all');
   const [warehouse, setWarehouse] = useState('');
   const [group, setGroup] = useState(ALL_GROUPS);
   const [query, setQuery] = useState('');
-  const [sort, setSort] = useState<TableSort | null>({ key: 'item', direction: 'asc' });
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
 
@@ -102,14 +120,21 @@ export function StockOnHandPage() {
     });
   }, [items, view, warehouse, group]);
 
-  const matches = (r: Row, f: Filter) => f === 'all' || (f === 'out' ? r.inStock <= 0 : r.inStock > 0 && isLowStock(r.item));
+  const presets = useListPresets({
+    list: 'stock-on-hand',
+    fields: STOCK_FIELDS,
+    builtIns: STOCK_VIEWS,
+    defaultSort: { key: 'item', direction: 'asc' },
+    rows: items ? base : undefined,
+    onChange: () => setPage(1),
+  });
+  const { sort, setSort } = presets;
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const filtered = base.filter(
+    const filtered = presets.apply(base).filter(
       (r) =>
-        matches(r, filter) &&
-        (!q || `${r.item.itemNo} ${r.item.name} ${r.item.description} ${r.warehouse}`.toLowerCase().includes(q)),
+        !q || `${r.item.itemNo} ${r.item.name} ${r.item.description} ${r.warehouse}`.toLowerCase().includes(q),
     );
     if (!sort) return filtered;
     const dir = sort.direction === 'asc' ? 1 : -1;
@@ -121,9 +146,8 @@ export function StockOnHandPage() {
       return (x < y ? -1 : x > y ? 1 : 0) * dir;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [base, filter, query, sort]);
+  }, [base, presets.filter, query, sort]);
 
-  const count = (f: Filter) => (items ? String(base.filter((r) => matches(r, f)).length) : '');
   const onPage = rows.slice((page - 1) * pageSize, page * pageSize);
   const totals = rows.reduce(
     (t, r) => ({ inStock: t.inStock + r.inStock, available: t.available + r.available, value: t.value + r.value }),
@@ -191,59 +215,49 @@ export function StockOnHandPage() {
     <Panel className="flex-1">
       <PanelHeader
         icon="inventory"
-        title="Stock on Hand"
+        title={presets.menu}
         subcopy="In stock, committed, ordered and available — per warehouse or per item."
-        tabs={
-          <Tabs
-            variant="outline"
-            value={filter}
-            onValueChange={(v) => resetPage(setFilter)(v as Filter)}
-            items={[
-              { value: 'all', label: 'All', badge: count('all') },
-              { value: 'low', label: 'Below minimum', badge: count('low') },
-              { value: 'out', label: 'Out of stock', badge: count('out') },
-            ]}
-          />
-        }
       />
       <Panel.Body className="flex flex-col gap-2">
-        <div className="grid grid-cols-1 gap-2 md:grid-cols-[1fr_auto_auto_auto]">
-          <TextField
-            aria-label="Search stock"
-            placeholder="Search by item no., name or warehouse"
-            leadingIcon={<Icon size={20}>search</Icon>}
-            value={query}
-            onChange={(e) => resetPage(setQuery)(e.currentTarget.value)}
-          />
-          <Select
-            aria-label="View"
-            className="md:w-44"
-            options={[
-              { value: 'warehouse', label: 'By warehouse' },
-              { value: 'item', label: 'By item (all warehouses)' },
-            ]}
-            value={view}
-            onValueChange={(v) => resetPage(setView)(v as View)}
-          />
-          <div className="md:w-64">
-            <Combobox
-              aria-label="Warehouse"
-              placeholder="All warehouses"
-              clearable
-              disabled={view === 'item'}
-              options={inv ? warehouseOptions(inv.warehouses, warehouse) : []}
-              value={view === 'item' ? null : warehouse || null}
-              onValueChange={(v) => resetPage(setWarehouse)(v ?? '')}
+        {presets.bar(
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-[1fr_auto_auto_auto]">
+            <TextField
+              aria-label="Search stock"
+              placeholder="Search by item no., name or warehouse"
+              leadingIcon={<Icon size={20}>search</Icon>}
+              value={query}
+              onChange={(e) => resetPage(setQuery)(e.currentTarget.value)}
             />
-          </div>
-          <Select
-            aria-label="Item group"
-            className="md:w-44"
-            options={[{ value: ALL_GROUPS, label: 'All item groups' }, ...(inv?.groups ?? []).map((g) => ({ value: g.name, label: g.name }))]}
-            value={group}
-            onValueChange={resetPage(setGroup)}
-          />
-        </div>
+            <Select
+              aria-label="View"
+              className="md:w-44"
+              options={[
+                { value: 'warehouse', label: 'By warehouse' },
+                { value: 'item', label: 'By item (all warehouses)' },
+              ]}
+              value={view}
+              onValueChange={(v) => resetPage(setView)(v as View)}
+            />
+            <div className="md:w-64">
+              <Combobox
+                aria-label="Warehouse"
+                placeholder="All warehouses"
+                clearable
+                disabled={view === 'item'}
+                options={inv ? warehouseOptions(inv.warehouses, warehouse) : []}
+                value={view === 'item' ? null : warehouse || null}
+                onValueChange={(v) => resetPage(setWarehouse)(v ?? '')}
+              />
+            </div>
+            <Select
+              aria-label="Item group"
+              className="md:w-44"
+              options={[{ value: ALL_GROUPS, label: 'All item groups' }, ...(inv?.groups ?? []).map((g) => ({ value: g.name, label: g.name }))]}
+              value={group}
+              onValueChange={resetPage(setGroup)}
+            />
+          </div>,
+        )}
         {items ? (
           <Text variant="small" tone="muted">
             {qty(rows.length)} row{rows.length === 1 ? '' : 's'} · {qty(totals.inStock)} in stock · {qty(totals.available)} available · PHP{' '}
@@ -278,6 +292,7 @@ export function StockOnHandPage() {
           )}
         </Card>
       </Panel.Body>
+      {presets.panel}
     </Panel>
   );
 }

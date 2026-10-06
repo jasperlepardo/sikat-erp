@@ -11,35 +11,41 @@ import {
   TableLink,
   TableStatus,
   TableSubcontent,
-  Tabs,
   TextField,
   type TableColumn,
-  type TableSort,
   Text,
 } from '@jasperlepardo/sikat-design-system';
 import type { Item } from '../../../mocks/items';
 import { isLowStock, isValidToday, listItems, stockTotals } from '../../../services/items';
 import { useAsync } from '../../../services/useAsync';
 import { formatAmount } from '../../../services/format';
+import { EMPTY_FILTER, oneRule } from '../../../components/filter/engine';
+import { boolField, numberField, textField } from '../../../components/filter/fieldKit';
+import { useListPresets } from '../../../components/filter/useListPresets';
+import type { BuiltInView } from '../../../components/filter/useListViews';
 import { DEFAULT_PAGE_SIZE, PAGE_SIZES, fillCardClass } from '../../../components/form/DataTable';
 
-type Filter = 'all' | 'stocked' | 'low' | 'services' | 'inactive';
+const ITEM_VIEWS: BuiltInView[] = [
+  { id: 'all', name: 'All items', filter: EMPTY_FILTER },
+  { id: 'stocked', name: 'Inventory items', filter: oneRule('inventoryItem', 'isTrue') },
+  { id: 'low', name: 'Low stock', filter: oneRule('lowStock', 'isTrue') },
+  { id: 'services', name: 'Non-stock items', filter: oneRule('inventoryItem', 'isFalse') },
+  { id: 'inactive', name: 'Items not valid today', filter: oneRule('valid', 'isFalse') },
+];
 
-const FILTERS: Record<Filter, (i: Item) => boolean> = {
-  all: () => true,
-  stocked: (i) => i.inventoryItem,
-  low: (i) => isValidToday(i) && isLowStock(i),
-  services: (i) => !i.inventoryItem,
-  inactive: (i) => !isValidToday(i),
-};
-
-const FILTER_LABELS: Record<Filter, string> = {
-  all: 'All',
-  stocked: 'Inventory',
-  low: 'Low stock',
-  services: 'Non-stock',
-  inactive: 'Not valid',
-};
+const ITEM_FIELDS = [
+  textField<Item>('itemNo', 'Item no.', (i) => i.itemNo),
+  textField<Item>('description', 'Description', (i) => i.description),
+  textField<Item>('foreignName', 'Foreign name', (i) => i.foreignName),
+  textField<Item>('itemGroup', 'Item group', (i) => i.itemGroup),
+  textField<Item>('barcode', 'Barcode', (i) => [i.gtin, ...i.barcodes.map((b) => b.barcode)]),
+  boolField<Item>('inventoryItem', 'Inventory item', (i) => i.inventoryItem),
+  boolField<Item>('valid', 'Valid today', (i) => isValidToday(i)),
+  boolField<Item>('lowStock', 'Low stock', (i) => isValidToday(i) && isLowStock(i)),
+  numberField<Item>('inStock', 'In stock', (i) => stockTotals(i).inStock),
+  numberField<Item>('available', 'Available', (i) => stockTotals(i).available),
+  numberField<Item>('basePrice', 'Base price', (i) => i.basePrice),
+];
 
 /** Sort key → comparable value. */
 function sortValue(i: Item, key: string): string | number {
@@ -52,17 +58,24 @@ function sortValue(i: Item, key: string): string | number {
 export function ItemList({ basePath = '/inventory/items' }: { basePath?: string }) {
   const navigate = useNavigate();
   const items = useAsync(listItems, []);
-  const [filter, setFilter] = useState<Filter>('all');
+  const fields = ITEM_FIELDS;
+  const presets = useListPresets({
+    list: 'items',
+    fields,
+    builtIns: ITEM_VIEWS,
+    defaultSort: { key: 'description', direction: 'asc' },
+    rows: items,
+    onChange: () => setPage(1),
+  });
+  const { sort, setSort } = presets;
   const [query, setQuery] = useState('');
-  const [sort, setSort] = useState<TableSort | null>({ key: 'description', direction: 'asc' });
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const filtered = (items ?? []).filter(
+    const filtered = presets.apply(items ?? []).filter(
       (i) =>
-        FILTERS[filter](i) &&
         (!q ||
           [i.itemNo, i.description, i.foreignName, i.itemGroup, i.gtin, ...i.barcodes.map((b) => b.barcode)]
             .join(' ')
@@ -76,9 +89,8 @@ export function ItemList({ basePath = '/inventory/items' }: { basePath?: string 
       const y = sortValue(b, sort.key);
       return (x < y ? -1 : x > y ? 1 : 0) * dir;
     });
-  }, [items, filter, query, sort]);
+  }, [items, presets.filter, query, sort]);
 
-  const count = (f: Filter) => String(items?.filter(FILTERS[f]).length ?? '');
   const open = (i: Item) => navigate(`${basePath}/${i.id}`);
 
   const columns: TableColumn<Item>[] = [
@@ -156,7 +168,7 @@ export function ItemList({ basePath = '/inventory/items' }: { basePath?: string 
     <Panel className="flex-1">
       <PanelHeader
         icon="inventory_2"
-        title="Items"
+        title={presets.menu}
         subcopy="The item master: products, materials and services you buy, sell and stock."
         actions={
           <Button
@@ -169,29 +181,20 @@ export function ItemList({ basePath = '/inventory/items' }: { basePath?: string 
             New item
           </Button>
         }
-        tabs={
-          <Tabs
-            variant="outline"
-            value={filter}
-            onValueChange={(v) => {
-              setFilter(v as Filter);
-              setPage(1);
-            }}
-            items={(Object.keys(FILTERS) as Filter[]).map((f) => ({ value: f, label: FILTER_LABELS[f], badge: count(f) }))}
-          />
-        }
       />
       <Panel.Body className="flex flex-col gap-2">
-        <TextField
-          aria-label="Search items"
-          placeholder="Search by item no., description, group or barcode"
-          leadingIcon={<Icon size={20}>search</Icon>}
-          value={query}
-          onChange={(e) => {
-            setQuery(e.currentTarget.value);
-            setPage(1);
-          }}
-        />
+        {presets.bar(
+          <TextField
+            aria-label="Search items"
+            placeholder="Search by item no., description, group or barcode"
+            leadingIcon={<Icon size={20}>search</Icon>}
+            value={query}
+            onChange={(e) => {
+              setQuery(e.currentTarget.value);
+              setPage(1);
+            }}
+          />,
+        )}
         <Card className={fillCardClass(rows.slice((page - 1) * pageSize, page * pageSize).length)}>
           {items ? (
             <Table
@@ -220,6 +223,7 @@ export function ItemList({ basePath = '/inventory/items' }: { basePath?: string 
           )}
         </Card>
       </Panel.Body>
+      {presets.panel}
     </Panel>
   );
 }

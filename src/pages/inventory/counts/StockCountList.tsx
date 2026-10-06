@@ -19,7 +19,10 @@ import {
   type TableSort,
 } from '@jasperlepardo/sikat-design-system';
 import { DEFAULT_PAGE_SIZE, PAGE_SIZES, fillCardClass } from '../../../components/form/DataTable';
-import { COUNT_STATUSES, type CountStatus, type InventoryCounting, type InventoryPosting } from '../../../mocks/inventoryCountings';
+import { EMPTY_FILTER } from '../../../components/filter/engine';
+import { dateField, linesField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
+import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
+import { COUNT_STATUSES, type InventoryCounting, type InventoryPosting } from '../../../mocks/inventoryCountings';
 import { formatAmount } from '../../../services/format';
 import { formatDate } from '../../../services/dates';
 import { countNumber, countSummary, countWarehouses, listCountings, listPostings, postingNumber, postingTotal } from '../../../services/inventoryCountings';
@@ -27,31 +30,34 @@ import { useAsync } from '../../../services/useAsync';
 import { COUNT_STATUS_INTENT } from './StockCountDetail';
 import { COUNT_LIST_PATH, POSTING_LIST_PATH } from './shared';
 
-type View = 'all' | CountStatus | 'postings';
+type View = 'counts' | 'postings';
 
-/** Stock Counts: the counting documents by status, and the postings made from them. */
+/** Stock Counts: the counting documents, and the postings made from them — a tab each, with their own presets. */
 function CountsShell({
   view,
+  title,
   counts,
-  onView,
   search,
+  panel,
   children,
 }: {
   view: View;
+  /** The preset menu. */
+  title: ReactNode;
   counts: Partial<Record<View, number>>;
-  onView: (v: View) => void;
   search: ReactNode;
+  /** The preset side panel. */
+  panel: ReactNode;
   children: ReactNode;
 }) {
   const navigate = useNavigate();
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const postings = view === 'postings';
-  const label = (v: View) => (v === 'all' ? 'All counts' : v === 'postings' ? 'Inventory postings' : v);
   return (
     <Panel className="flex-1">
       <PanelHeader
         icon="inventory"
-        title="Stock Counts"
+        title={title}
         subcopy="Count, review, then post: an Inventory Counting records what was found against the books; an Inventory Posting made from it adjusts stock and books the difference."
         actions={
           <Button
@@ -68,8 +74,12 @@ function CountsShell({
           <Tabs
             variant="outline"
             value={view}
-            onValueChange={(v) => onView(v as View)}
-            items={(['all', ...COUNT_STATUSES, 'postings'] as View[]).map((v) => ({ value: v, label: label(v), badge: counts[v] === undefined ? '' : String(counts[v]) }))}
+            onValueChange={(v) => navigate(v === 'postings' ? POSTING_LIST_PATH : COUNT_LIST_PATH)}
+            items={(['counts', 'postings'] as View[]).map((v) => ({
+              value: v,
+              label: v === 'counts' ? 'Counts' : 'Inventory postings',
+              badge: counts[v] === undefined ? '' : String(counts[v]),
+            }))}
           />
         }
       />
@@ -82,14 +92,14 @@ function CountsShell({
         {search}
         {children}
       </Panel.Body>
+      {panel}
     </Panel>
   );
 }
 
-/** Search box + sortable, paginated table, shared by both lists. */
-function useListState<T>(initialSort: TableSort) {
+/** Search box + sortable, paginated table, shared by both lists. Sort comes from the list's presets. */
+function useListState<T>({ sort, setSort }: { sort: TableSort | null; setSort: (sort: TableSort | null) => void }) {
   const [query, setQuery] = useState('');
-  const [sort, setSort] = useState<TableSort | null>(initialSort);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const sortRows = (rows: T[], value: (row: T, key: string) => string | number) => {
@@ -148,27 +158,47 @@ function useListState<T>(initialSort: TableSort) {
   return { query: query.trim().toLowerCase(), sortRows, table, search, resetPage: () => setPage(1) };
 }
 
+const COUNT_FIELDS = [
+  textField<InventoryCounting>('no', 'No.', countNumber),
+  textField<InventoryCounting>('warehouse', 'Warehouse', countWarehouses),
+  dateField<InventoryCounting>('countDate', 'Count date', (c) => c.countDate),
+  textField<InventoryCounting>('counter', 'Counted by', (c) => c.counters.map((x) => x.name)),
+  textField<InventoryCounting>('reference', 'Reference', (c) => c.reference),
+  textField<InventoryCounting>('remarks', 'Remarks', (c) => c.remarks),
+  numberField<InventoryCounting>('variance', 'Lines with variance', (c) => countSummary(c).withVariance),
+  statusField<InventoryCounting>(COUNT_STATUSES),
+  linesField<InventoryCounting>(),
+];
+
 export function StockCountList() {
   const navigate = useNavigate();
   const data = useAsync(() => Promise.all([listCountings(), listPostings()]), []);
-  const [filter, setFilter] = useState<'all' | CountStatus>((useLocation().state as { filter?: CountStatus } | null)?.filter ?? 'all');
-  const list = useListState<InventoryCounting>({ key: 'countDate', direction: 'desc' });
   const counts = data?.[0];
+  const presets = useListPresets({
+    list: 'stock-counts',
+    fields: COUNT_FIELDS,
+    builtIns: statusViews('counts', COUNT_STATUSES),
+    defaultSort: { key: 'countDate', direction: 'desc' },
+    rows: counts,
+    onChange: () => {
+      list.resetPage();
+    },
+  });
+  const list = useListState<InventoryCounting>(presets);
 
   const rows = useMemo(() => {
     if (!counts) return undefined;
-    const filtered = counts.filter(
+    const filtered = presets.apply(counts).filter(
       (c) =>
-        (filter === 'all' || c.status === filter) &&
-        (!list.query ||
+        !list.query ||
           [countNumber(c), c.reference, c.remarks, ...c.counters.map((x) => x.name), ...countWarehouses(c), ...c.lines.map((l) => `${l.itemNo} ${l.description}`)]
             .join(' ')
             .toLowerCase()
-            .includes(list.query)),
+            .includes(list.query),
     );
     return list.sortRows(filtered, (c, key) => (key === 'docNum' ? c.docNum : String(c[key as keyof InventoryCounting] ?? '')));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [counts, filter, list.query, list.sortRows]);
+  }, [counts, presets.filter, list.query, list.sortRows]);
 
   const open = (c: InventoryCounting) => navigate(`${COUNT_LIST_PATH}/${c.id}`);
   const columns: TableColumn<InventoryCounting>[] = [
@@ -200,14 +230,11 @@ export function StockCountList() {
 
   return (
     <CountsShell
-      view={filter}
-      counts={{ all: counts?.length, Open: counts?.filter((c) => c.status === 'Open').length, Closed: counts?.filter((c) => c.status === 'Closed').length, postings: data?.[1].length }}
-      onView={(v) => {
-        if (v === 'postings') return navigate(POSTING_LIST_PATH);
-        setFilter(v);
-        list.resetPage();
-      }}
-      search={list.search('Search by count no., warehouse, counter, item or remarks')}
+      view="counts"
+      title={presets.menu}
+      counts={{ counts: counts?.length, postings: data?.[1].length }}
+      search={presets.bar(list.search('Search by count no., warehouse, counter, item or remarks'))}
+      panel={presets.panel}
     >
       {list.table('Inventory countings', columns, rows, (c) => c.id, open)}
     </CountsShell>
@@ -217,12 +244,35 @@ export function StockCountList() {
 export function InventoryPostingList() {
   const navigate = useNavigate();
   const data = useAsync(() => Promise.all([listCountings(), listPostings()]), []);
-  const list = useListState<InventoryPosting>({ key: 'postingDate', direction: 'desc' });
   const [counts, postings] = data ?? [];
+  const countOf = (p: InventoryPosting) => counts?.find((c) => c.id === p.countingId);
+  const presets = useListPresets({
+    list: 'inventory-postings',
+    fields: [
+      textField<InventoryPosting>('no', 'No.', postingNumber),
+      textField<InventoryPosting>('warehouse', 'Warehouse', countWarehouses),
+      dateField<InventoryPosting>('postingDate', 'Posting date', (p) => p.postingDate),
+      textField<InventoryPosting>('count', 'From count', (p) => {
+        const c = countOf(p);
+        return c ? countNumber(c) : '';
+      }),
+      textField<InventoryPosting>('reference', 'Reference', (p) => p.reference),
+      textField<InventoryPosting>('remarks', 'Remarks', (p) => p.remarks),
+      numberField<InventoryPosting>('total', 'Total', postingTotal),
+      linesField<InventoryPosting>(),
+    ],
+    builtIns: [{ id: 'all', name: 'All inventory postings', filter: EMPTY_FILTER }],
+    defaultSort: { key: 'postingDate', direction: 'desc' },
+    rows: postings,
+    onChange: () => {
+      list.resetPage();
+    },
+  });
+  const list = useListState<InventoryPosting>(presets);
 
   const rows = useMemo(() => {
     if (!postings) return undefined;
-    const filtered = postings.filter(
+    const filtered = presets.apply(postings).filter(
       (p) =>
         !list.query ||
         [postingNumber(p), p.reference, p.remarks, p.journalRemark, ...countWarehouses(p), ...p.lines.map((l) => `${l.itemNo} ${l.description}`)]
@@ -232,10 +282,9 @@ export function InventoryPostingList() {
     );
     return list.sortRows(filtered, (p, key) => (key === 'total' ? postingTotal(p) : key === 'docNum' ? p.docNum : String(p[key as keyof InventoryPosting] ?? '')));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [postings, list.query, list.sortRows]);
+  }, [postings, presets.filter, list.query, list.sortRows]);
 
   const open = (p: InventoryPosting) => navigate(`${POSTING_LIST_PATH}/${p.id}`);
-  const countOf = (p: InventoryPosting) => counts?.find((c) => c.id === p.countingId);
   const columns: TableColumn<InventoryPosting>[] = [
     { key: 'docNum', header: 'No.', sortable: true, cell: (p) => <TableLink onClick={() => open(p)}>{postingNumber(p)}</TableLink> },
     { key: 'warehouses', header: 'Warehouse', cell: (p) => <TableSubcontent subcopy={p.remarks || undefined}>{countWarehouses(p).join(', ') || '—'}</TableSubcontent> },
@@ -248,9 +297,10 @@ export function InventoryPostingList() {
   return (
     <CountsShell
       view="postings"
-      counts={{ all: counts?.length, Open: counts?.filter((c) => c.status === 'Open').length, Closed: counts?.filter((c) => c.status === 'Closed').length, postings: postings?.length }}
-      onView={(v) => navigate(COUNT_LIST_PATH, { state: v === 'all' ? undefined : { filter: v } })}
-      search={list.search('Search by posting no., warehouse, item or remarks')}
+      title={presets.menu}
+      counts={{ counts: counts?.length, postings: postings?.length }}
+      search={presets.bar(list.search('Search by posting no., warehouse, item or remarks'))}
+      panel={presets.panel}
     >
       {list.table('Inventory postings', columns, rows, (p) => p.id, open)}
     </CountsShell>

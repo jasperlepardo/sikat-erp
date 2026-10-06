@@ -12,12 +12,14 @@ import {
   TableLink,
   TableStatus,
   TableSubcontent,
-  Tabs,
   Text,
   TextField,
   type TableColumn,
-  type TableSort,
 } from '@jasperlepardo/sikat-design-system';
+import { EMPTY_FILTER, oneRule } from '../../../components/filter/engine';
+import { choiceField, dateField, numberField, textField } from '../../../components/filter/fieldKit';
+import { useListPresets } from '../../../components/filter/useListPresets';
+import type { BuiltInView } from '../../../components/filter/useListViews';
 import { DEFAULT_PAGE_SIZE, PAGE_SIZES, fillCardClass } from '../../../components/form/DataTable';
 import { ORIGIN_LABEL, type JournalEntry } from '../../../mocks/journalEntries';
 import { formatDate } from '../../../services/dates';
@@ -26,30 +28,47 @@ import { jeNumber, jeTotals, listJournalEntries } from '../../../services/journa
 import { useAsync } from '../../../services/useAsync';
 import { JE_LIST_PATH, JE_STATUS_INTENT } from './JournalEntryDetail';
 
-type Filter = 'all' | 'manual' | 'documents' | 'reversed';
-const FILTERS: { value: Filter; label: string; test: (e: JournalEntry) => boolean }[] = [
-  { value: 'all', label: 'All', test: () => true },
-  { value: 'manual', label: 'Manual', test: (e) => e.origin === 'JE' },
-  { value: 'documents', label: 'From documents', test: (e) => e.origin !== 'JE' },
-  { value: 'reversed', label: 'Reversed', test: (e) => e.status === 'Reversed' },
+const JE_VIEWS: BuiltInView[] = [
+  { id: 'all', name: 'All journal entries', filter: EMPTY_FILTER },
+  { id: 'manual', name: 'Manual entries', filter: oneRule('origin', 'is', 'JE') },
+  { id: 'documents', name: 'Entries from documents', filter: oneRule('origin', 'isNot', 'JE') },
+  { id: 'reversed', name: 'Reversed entries', filter: oneRule('status', 'is', 'Reversed') },
 ];
 
 export function JournalEntryList() {
   const navigate = useNavigate();
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const entries = useAsync(listJournalEntries, []);
-  const [filter, setFilter] = useState<Filter>('all');
+  const fields = [
+    numberField<JournalEntry>('transNo', 'Trans. no.', (e) => e.transNo),
+    textField<JournalEntry>('no', 'No.', jeNumber),
+    dateField<JournalEntry>('postingDate', 'Posting date', (e) => e.postingDate),
+    dateField<JournalEntry>('dueDate', 'Due date', (e) => e.dueDate),
+    choiceField<JournalEntry>('origin', 'Origin', ORIGIN_LABEL, (e) => e.origin),
+    textField<JournalEntry>('originNo', 'Origin no.', (e) => e.originNo),
+    textField<JournalEntry>('remarks', 'Remarks', (e) => e.remarks),
+    textField<JournalEntry>('ref', 'Reference', (e) => [e.ref1, e.ref2, e.ref3]),
+    textField<JournalEntry>('account', 'Account', (e) => e.lines.map((l) => l.account)),
+    numberField<JournalEntry>('amount', 'Amount', (e) => jeTotals(e.lines).debit),
+    choiceField<JournalEntry>('status', 'Status', ['Posted', 'Reversed'], (e) => e.status),
+  ];
+  const presets = useListPresets({
+    list: 'journal-entries',
+    fields,
+    builtIns: JE_VIEWS,
+    defaultSort: { key: 'transNo', direction: 'desc' },
+    rows: entries,
+    onChange: () => setPage(1),
+  });
+  const { sort, setSort } = presets;
   const [query, setQuery] = useState('');
-  const [sort, setSort] = useState<TableSort | null>({ key: 'transNo', direction: 'desc' });
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const test = FILTERS.find((f) => f.value === filter)!.test;
-    const filtered = (entries ?? []).filter(
+    const filtered = presets.apply(entries ?? []).filter(
       (e) =>
-        test(e) &&
         (!q ||
           [jeNumber(e), e.origin, ORIGIN_LABEL[e.origin], e.originNo, e.remarks, e.ref1, e.ref2, e.ref3, e.transCode, ...e.lines.map((l) => `${l.account} ${l.remarks}`)]
             .join(' ')
@@ -64,7 +83,7 @@ export function JournalEntryList() {
       const y = value(b);
       return (x < y ? -1 : x > y ? 1 : 0) * dir;
     });
-  }, [entries, filter, query, sort]);
+  }, [entries, presets.filter, query, sort]);
 
   const open = (e: JournalEntry) => navigate(`${JE_LIST_PATH}/${e.id}`);
   const onPage = rows.slice((page - 1) * pageSize, page * pageSize);
@@ -101,23 +120,12 @@ export function JournalEntryList() {
     <Panel className="flex-1">
       <PanelHeader
         icon="menu_book"
-        title="Journal Entries"
+        title={presets.menu}
         subcopy="Every posting in the ledger: entries typed in by hand, and the ones documents make when they're added or cancelled."
         actions={
           <Button intent="primary" variant="solid" size="extra-large" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${JE_LIST_PATH}/new`)}>
             New journal entry
           </Button>
-        }
-        tabs={
-          <Tabs
-            variant="outline"
-            value={filter}
-            onValueChange={(v) => {
-              setFilter(v as Filter);
-              setPage(1);
-            }}
-            items={FILTERS.map((f) => ({ value: f.value, label: f.label, badge: String(entries?.filter(f.test).length ?? '') }))}
-          />
         }
       />
       <Panel.Body className="flex flex-col gap-2">
@@ -126,16 +134,18 @@ export function JournalEntryList() {
             {notice}
           </Alert>
         ) : null}
-        <TextField
-          aria-label="Search journal entries"
-          placeholder="Search by number, origin, remarks, reference or account"
-          leadingIcon={<Icon size={20}>search</Icon>}
-          value={query}
-          onChange={(e) => {
-            setQuery(e.currentTarget.value);
-            setPage(1);
-          }}
-        />
+        {presets.bar(
+          <TextField
+            aria-label="Search journal entries"
+            placeholder="Search by number, origin, remarks, reference or account"
+            leadingIcon={<Icon size={20}>search</Icon>}
+            value={query}
+            onChange={(e) => {
+              setQuery(e.currentTarget.value);
+              setPage(1);
+            }}
+          />,
+        )}
         <Card className={fillCardClass(onPage.length)}>
           {entries ? (
             <Table
@@ -164,6 +174,7 @@ export function JournalEntryList() {
           )}
         </Card>
       </Panel.Body>
+      {presets.panel}
     </Panel>
   );
 }

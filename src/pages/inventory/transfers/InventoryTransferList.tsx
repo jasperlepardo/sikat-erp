@@ -12,37 +12,54 @@ import {
   TableLink,
   TableStatus,
   TableSubcontent,
-  Tabs,
   TextField,
   type TableColumn,
-  type TableSort,
   Text,
 } from '@jasperlepardo/sikat-design-system';
-import { TRANSFER_STATUSES, type InventoryTransfer, type TransferStatus } from '../../../mocks/inventoryTransfers';
+import { TRANSFER_STATUSES, type InventoryTransfer } from '../../../mocks/inventoryTransfers';
 import { formatAmount } from '../../../services/format';
 import { formatDate } from '../../../services/dates';
 import { destinations, listTransfers, transferNumber, transferQty, transferValue } from '../../../services/inventoryTransfers';
 import { useAsync } from '../../../services/useAsync';
+import { dateField, linesField, masterField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
+import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
+import { salesEmployeeDef } from '../../settings/masterDefs';
 import { DEFAULT_PAGE_SIZE, PAGE_SIZES, fillCardClass } from '../../../components/form/DataTable';
 import { TRANSFER_LIST_PATH, TRANSFER_STATUS_INTENT } from './InventoryTransferDetail';
-
-type Filter = 'all' | TransferStatus;
 
 export function InventoryTransferList() {
   const navigate = useNavigate();
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const transfers = useAsync(listTransfers, []);
-  const [filter, setFilter] = useState<Filter>('all');
+  const fields = [
+    textField<InventoryTransfer>('no', 'No.', transferNumber),
+    textField<InventoryTransfer>('from', 'From warehouse', (d) => d.fromWarehouse),
+    textField<InventoryTransfer>('to', 'To warehouse', destinations),
+    dateField<InventoryTransfer>('postingDate', 'Posting date', (d) => d.postingDate),
+    numberField<InventoryTransfer>('qty', 'Quantity', transferQty),
+    numberField<InventoryTransfer>('value', 'Value', transferValue),
+    statusField<InventoryTransfer>(TRANSFER_STATUSES),
+    masterField<InventoryTransfer>('salesEmployee', 'Sales employee', salesEmployeeDef, (d) => d.salesEmployee),
+    textField<InventoryTransfer>('remarks', 'Remarks', (d) => d.remarks),
+    linesField<InventoryTransfer>(),
+  ];
+  const presets = useListPresets({
+    list: 'inventory-transfers',
+    fields,
+    builtIns: statusViews('stock movements', TRANSFER_STATUSES),
+    defaultSort: { key: 'postingDate', direction: 'desc' },
+    rows: transfers,
+    onChange: () => setPage(1),
+  });
+  const { sort, setSort } = presets;
   const [query, setQuery] = useState('');
-  const [sort, setSort] = useState<TableSort | null>({ key: 'postingDate', direction: 'desc' });
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const filtered = (transfers ?? []).filter(
+    const filtered = presets.apply(transfers ?? []).filter(
       (t) =>
-        (filter === 'all' || t.status === filter) &&
         (!q ||
           [transferNumber(t), t.fromWarehouse, ...destinations(t), t.remarks, ...t.lines.map((l) => `${l.itemNo} ${l.description}`)]
             .join(' ')
@@ -58,10 +75,9 @@ export function InventoryTransferList() {
       const y = value(b);
       return (x < y ? -1 : x > y ? 1 : 0) * dir;
     });
-  }, [transfers, filter, query, sort]);
+  }, [transfers, presets.filter, query, sort]);
 
   const open = (t: InventoryTransfer) => navigate(`${TRANSFER_LIST_PATH}/${t.id}`);
-  const count = (f: Filter) => String(transfers?.filter((t) => f === 'all' || t.status === f).length ?? '');
   const onPage = rows.slice((page - 1) * pageSize, page * pageSize);
 
   const columns: TableColumn<InventoryTransfer>[] = [
@@ -109,7 +125,7 @@ export function InventoryTransferList() {
     <Panel className="flex-1">
       <PanelHeader
         icon="move_down"
-        title="Stock Movements"
+        title={presets.menu}
         subcopy="Inventory transfers between warehouses. Company-wide stock doesn't change — only where it sits."
         actions={
           <Button
@@ -122,17 +138,6 @@ export function InventoryTransferList() {
             New transfer
           </Button>
         }
-        tabs={
-          <Tabs
-            variant="outline"
-            value={filter}
-            onValueChange={(v) => {
-              setFilter(v as Filter);
-              setPage(1);
-            }}
-            items={(['all', ...TRANSFER_STATUSES] as Filter[]).map((f) => ({ value: f, label: f === 'all' ? 'All' : f, badge: count(f) }))}
-          />
-        }
       />
       <Panel.Body className="flex flex-col gap-2">
         {notice ? (
@@ -140,16 +145,18 @@ export function InventoryTransferList() {
             {notice}
           </Alert>
         ) : null}
-        <TextField
-          aria-label="Search transfers"
-          placeholder="Search by transfer no., warehouse, item or remarks"
-          leadingIcon={<Icon size={20}>search</Icon>}
-          value={query}
-          onChange={(e) => {
-            setQuery(e.currentTarget.value);
-            setPage(1);
-          }}
-        />
+        {presets.bar(
+          <TextField
+            aria-label="Search transfers"
+            placeholder="Search by transfer no., warehouse, item or remarks"
+            leadingIcon={<Icon size={20}>search</Icon>}
+            value={query}
+            onChange={(e) => {
+              setQuery(e.currentTarget.value);
+              setPage(1);
+            }}
+          />,
+        )}
         <Card className={fillCardClass(onPage.length)}>
           {transfers ? (
             <Table
@@ -178,6 +185,7 @@ export function InventoryTransferList() {
           )}
         </Card>
       </Panel.Body>
+      {presets.panel}
     </Panel>
   );
 }

@@ -12,40 +12,58 @@ import {
   TableLink,
   TableStatus,
   TableSubcontent,
-  Tabs,
   TextField,
   type TableColumn,
-  type TableSort,
   Text,
 } from '@jasperlepardo/sikat-design-system';
-import { PO_STATUSES, type PoStatus, type PurchaseOrder } from '../../../mocks/purchaseOrders';
+import { PO_STATUSES, type PurchaseOrder } from '../../../mocks/purchaseOrders';
 import { formatAmount } from '../../../services/format';
 import { taxCodes } from '../../../services/masterData';
 import { listPurchaseOrders, openQty, poNumber, poTotal } from '../../../services/purchaseOrders';
 import { useAsync } from '../../../services/useAsync';
 import { PO_LIST_PATH, STATUS_INTENT } from './detail/PurchaseOrderDetail';
+import { dateField, linesField, masterField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
+import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
+import { currencyDef, salesEmployeeDef } from '../../settings/masterDefs';
 import { DEFAULT_PAGE_SIZE, PAGE_SIZES, fillCardClass } from '../../../components/form/DataTable';
-
-type Filter = 'all' | PoStatus;
 
 export function PurchaseOrderList() {
   const navigate = useNavigate();
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const data = useAsync(() => Promise.all([listPurchaseOrders(), taxCodes.list()]), []);
-  const [filter, setFilter] = useState<Filter>('all');
   const [query, setQuery] = useState('');
-  const [sort, setSort] = useState<TableSort | null>({ key: 'postingDate', direction: 'desc' });
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
 
   const [orders, codes] = data ?? [undefined, []];
   const totalOf = (po: PurchaseOrder) => poTotal(po, codes);
+  const fields = [
+    textField<PurchaseOrder>('no', 'No.', poNumber),
+    textField<PurchaseOrder>('vendor', 'Vendor', (d) => d.vendorName),
+    textField<PurchaseOrder>('vendorCode', 'Vendor code', (d) => d.vendorCode),
+    textField<PurchaseOrder>('vendorRef', 'Vendor ref.', (d) => d.vendorRef),
+    dateField<PurchaseOrder>('postingDate', 'Posting date', (d) => d.postingDate),
+    dateField<PurchaseOrder>('deliveryDate', 'Delivery date', (d) => d.deliveryDate),
+    numberField<PurchaseOrder>('total', 'Total', totalOf),
+    statusField<PurchaseOrder>(PO_STATUSES),
+    masterField<PurchaseOrder>('currency', 'Currency', currencyDef, (d) => d.currency),
+    masterField<PurchaseOrder>('buyer', 'Buyer', salesEmployeeDef, (d) => d.buyer),
+    linesField<PurchaseOrder>(),
+  ];
+  const presets = useListPresets({
+    list: 'purchase-orders',
+    fields,
+    builtIns: statusViews('purchase orders', PO_STATUSES),
+    defaultSort: { key: 'postingDate', direction: 'desc' },
+    rows: orders,
+    onChange: () => setPage(1),
+  });
+  const { sort, setSort } = presets;
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const filtered = (orders ?? []).filter(
+    const filtered = presets.apply(orders ?? []).filter(
       (po) =>
-        (filter === 'all' || po.status === filter) &&
         (!q ||
           [poNumber(po), po.vendorCode, po.vendorName, po.vendorRef, ...po.lines.map((l) => `${l.itemNo} ${l.description}`)]
             .join(' ')
@@ -62,10 +80,9 @@ export function PurchaseOrderList() {
       return (x < y ? -1 : x > y ? 1 : 0) * dir;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orders, filter, query, sort, codes]);
+  }, [orders, presets.filter, query, sort, codes]);
 
   const open = (po: PurchaseOrder) => navigate(`${PO_LIST_PATH}/${po.id}`);
-  const count = (f: Filter) => String(orders?.filter((po) => f === 'all' || po.status === f).length ?? '');
 
   const columns: TableColumn<PurchaseOrder>[] = [
     {
@@ -112,7 +129,7 @@ export function PurchaseOrderList() {
     <Panel className="flex-1">
       <PanelHeader
         icon="receipt_long"
-        title="Purchase Orders"
+        title={presets.menu}
         subcopy="Orders placed with vendors, from draft to fully received."
         actions={
           <Button
@@ -125,17 +142,6 @@ export function PurchaseOrderList() {
             New purchase order
           </Button>
         }
-        tabs={
-          <Tabs
-            variant="outline"
-            value={filter}
-            onValueChange={(v) => {
-              setFilter(v as Filter);
-              setPage(1);
-            }}
-            items={(['all', ...PO_STATUSES] as Filter[]).map((f) => ({ value: f, label: f === 'all' ? 'All' : f, badge: count(f) }))}
-          />
-        }
       />
       <Panel.Body className="flex flex-col gap-2">
         {notice ? (
@@ -143,16 +149,18 @@ export function PurchaseOrderList() {
             {notice}
           </Alert>
         ) : null}
-        <TextField
-          aria-label="Search purchase orders"
-          placeholder="Search by PO no., vendor, vendor ref. or item"
-          leadingIcon={<Icon size={20}>search</Icon>}
-          value={query}
-          onChange={(e) => {
-            setQuery(e.currentTarget.value);
-            setPage(1);
-          }}
-        />
+        {presets.bar(
+          <TextField
+            aria-label="Search purchase orders"
+            placeholder="Search by PO no., vendor, vendor ref. or item"
+            leadingIcon={<Icon size={20}>search</Icon>}
+            value={query}
+            onChange={(e) => {
+              setQuery(e.currentTarget.value);
+              setPage(1);
+            }}
+          />,
+        )}
         <Card className={fillCardClass(rows.slice((page - 1) * pageSize, page * pageSize).length)}>
           {orders ? (
             <Table
@@ -181,6 +189,7 @@ export function PurchaseOrderList() {
           )}
         </Card>
       </Panel.Body>
+      {presets.panel}
     </Panel>
   );
 }

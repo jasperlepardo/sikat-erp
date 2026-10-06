@@ -12,14 +12,15 @@ import {
   TableLink,
   TableStatus,
   TableSubcontent,
-  Tabs,
   Text,
   TextField,
   type TableColumn,
-  type TableSort,
 } from '@jasperlepardo/sikat-design-system';
+import { dateField, linesField, masterField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
+import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
+import { currencyDef, salesEmployeeDef } from '../../settings/masterDefs';
 import { DEFAULT_PAGE_SIZE, PAGE_SIZES, fillCardClass } from '../../../components/form/DataTable';
-import { DPR_STATUSES, type DownPaymentRequest, type DprStatus } from '../../../mocks/apDownPayments';
+import { DPR_STATUSES, type DownPaymentRequest } from '../../../mocks/apDownPayments';
 import { dprNumber, dprTotal, listDownPayments } from '../../../services/apDownPayments';
 import { listApInvoices } from '../../../services/apInvoices';
 import { formatDate } from '../../../services/dates';
@@ -29,35 +30,53 @@ import { useAsync } from '../../../services/useAsync';
 import { BillsTabs } from '../invoices/BillsTabs';
 import { DPR_LIST_PATH, DPR_STATUS_INTENT } from './DprDetail';
 
-type Filter = 'all' | DprStatus;
-
 /** Purchasing › Bills › Down payment requests: advances vendors asked for, paid and drawn. */
 export function DprList() {
   const navigate = useNavigate();
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const data = useAsync(() => Promise.all([listDownPayments(), taxCodes.list(), listApInvoices()]), []);
-  const [filter, setFilter] = useState<Filter>('all');
   const [query, setQuery] = useState('');
-  const [sort, setSort] = useState<TableSort | null>({ key: 'postingDate', direction: 'desc' });
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [requests, codes, invoices] = data ?? [undefined, [], undefined];
   const totalOf = (d: DownPaymentRequest) => dprTotal(d, codes);
+  const fields = [
+    textField<DownPaymentRequest>('no', 'No.', dprNumber),
+    textField<DownPaymentRequest>('vendor', 'Vendor', (d) => d.vendorName),
+    textField<DownPaymentRequest>('vendorCode', 'Vendor code', (d) => d.vendorCode),
+    textField<DownPaymentRequest>('vendorRef', 'Vendor ref.', (d) => d.vendorRef),
+    dateField<DownPaymentRequest>('postingDate', 'Posting date', (d) => d.postingDate),
+    dateField<DownPaymentRequest>('dueDate', 'Due date', (d) => d.dueDate),
+    textField<DownPaymentRequest>('order', 'Purchase order', (d) => d.orderNumber),
+    numberField<DownPaymentRequest>('total', 'Total', totalOf),
+    statusField<DownPaymentRequest>(DPR_STATUSES),
+    masterField<DownPaymentRequest>('currency', 'Currency', currencyDef, (d) => d.currency),
+    masterField<DownPaymentRequest>('buyer', 'Buyer', salesEmployeeDef, (d) => d.buyer),
+    linesField<DownPaymentRequest>(),
+  ];
+  const presets = useListPresets({
+    list: 'ap-down-payment-requests',
+    fields,
+    builtIns: statusViews('down payment requests', DPR_STATUSES),
+    defaultSort: { key: 'postingDate', direction: 'desc' },
+    rows: requests,
+    onChange: () => setPage(1),
+  });
+  const { sort, setSort } = presets;
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const filtered = (requests ?? []).filter(
-      (d) => (filter === 'all' || d.status === filter) && (!q || [dprNumber(d), d.vendorCode, d.vendorName, d.vendorRef, d.orderNumber, ...d.lines.map((l) => l.itemNo)].join(' ').toLowerCase().includes(q)),
+    const filtered = presets.apply(requests ?? []).filter(
+      (d) => (!q || [dprNumber(d), d.vendorCode, d.vendorName, d.vendorRef, d.orderNumber, ...d.lines.map((l) => l.itemNo)].join(' ').toLowerCase().includes(q)),
     );
     if (!sort) return filtered;
     const dir = sort.direction === 'asc' ? 1 : -1;
     const value = (d: DownPaymentRequest): string | number => (sort.key === 'total' ? totalOf(d) : sort.key === 'docNum' ? d.docNum : String(d[sort.key as keyof DownPaymentRequest] ?? ''));
     return [...filtered].sort((a, b) => (value(a) < value(b) ? -1 : value(a) > value(b) ? 1 : 0) * dir);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [requests, filter, query, sort, codes]);
+  }, [requests, presets.filter, query, sort, codes]);
 
   const open = (d: DownPaymentRequest) => navigate(`${DPR_LIST_PATH}/${d.id}`);
-  const count = (f: Filter) => String(requests?.filter((d) => f === 'all' || d.status === f).length ?? '');
 
   const columns: TableColumn<DownPaymentRequest>[] = [
     { key: 'docNum', header: 'No.', sortable: true, cell: (d) => <TableSubcontent subcopy={d.vendorRef || undefined}><TableLink onClick={() => open(d)}>{dprNumber(d)}</TableLink></TableSubcontent> },
@@ -83,7 +102,7 @@ export function DprList() {
     <Panel className="flex-1">
       <PanelHeader
         icon="request_quote"
-        title="Bills"
+        title={presets.menu}
         subcopy="Advances vendors ask for before they deliver. Paid from Payments Made, then drawn on the A/P invoice that bills the goods."
         actions={
           <Button intent="primary" variant="solid" size="extra-large" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${DPR_LIST_PATH}/new`)}>
@@ -93,26 +112,19 @@ export function DprList() {
         tabs={<BillsTabs value="requests" counts={requests && invoices ? { invoices: invoices.length, requests: requests.length } : undefined} />}
       />
       <Panel.Body className="flex flex-col gap-2">
-        <Tabs
-          variant="outline"
-          value={filter}
-          onValueChange={(v) => {
-            setFilter(v as Filter);
-            setPage(1);
-          }}
-          items={(['all', ...DPR_STATUSES] as Filter[]).map((f) => ({ value: f, label: f === 'all' ? 'All' : f, badge: count(f) }))}
-        />
         {notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : null}
-        <TextField
-          aria-label="Search down payment requests"
-          placeholder="Search by no., vendor, vendor ref., PO no. or item"
-          leadingIcon={<Icon size={20}>search</Icon>}
-          value={query}
-          onChange={(e) => {
-            setQuery(e.currentTarget.value);
-            setPage(1);
-          }}
-        />
+        {presets.bar(
+          <TextField
+            aria-label="Search down payment requests"
+            placeholder="Search by no., vendor, vendor ref., PO no. or item"
+            leadingIcon={<Icon size={20}>search</Icon>}
+            value={query}
+            onChange={(e) => {
+              setQuery(e.currentTarget.value);
+              setPage(1);
+            }}
+          />,
+        )}
         <Card className={fillCardClass(rows.slice((page - 1) * pageSize, page * pageSize).length)}>
           {!requests ? (
             <Text tone="muted" className="p-4">Loading down payment requests…</Text>
@@ -133,6 +145,7 @@ export function DprList() {
           )}
         </Card>
       </Panel.Body>
+      {presets.panel}
     </Panel>
   );
 }

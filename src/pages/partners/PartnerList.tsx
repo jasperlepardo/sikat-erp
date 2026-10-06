@@ -13,13 +13,11 @@ import {
   TableStatus,
   TableSubcontent,
   TableUser,
-  Tabs,
   TextField,
   type TableColumn,
-  type TableSort,
   Text,
 } from '@jasperlepardo/sikat-design-system';
-import { LEAD_STAGES, type Partner } from '../../mocks/partners';
+import type { Partner } from '../../mocks/partners';
 import {
   defaultBillTo,
   defaultContact,
@@ -31,7 +29,9 @@ import {
 import { useAsync } from '../../services/useAsync';
 import { formatAmount } from '../../services/format';
 import { DEFAULT_PAGE_SIZE, PAGE_SIZES, fillCardClass } from '../../components/form/DataTable';
+import { useListPresets } from '../../components/filter/useListPresets';
 import { ROLE_CONFIG, ROLE_ORDER, STAGE_INTENT, scopeConfig, type PartnerScope } from './roles';
+import { partnerFilterFields, partnerViews } from './filterFields';
 
 const initials = (name: string) =>
   name
@@ -57,44 +57,30 @@ export function PartnerList({ scope }: { scope: PartnerScope }) {
   const config = scopeConfig(scope);
   const navigate = useNavigate();
   const partners = useAsync(() => (scope === 'all' ? listPartners() : listPartnersByRole(scope)), [scope]);
-  const [filter, setFilter] = useState('all');
   const [query, setQuery] = useState('');
-  const [sort, setSort] = useState<TableSort | null>({ key: 'name', direction: 'asc' });
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
-
-  // Leads filter by pipeline stage; customers and vendors by active status.
-  const filters: Record<string, (p: Partner) => boolean> =
-    scope === 'all'
-      ? {
-          all: () => true,
-          ...Object.fromEntries(ROLE_ORDER.map((r) => [r, (p: Partner) => p.roles.includes(r)])),
-          inactive: (p) => !isActive(p),
-        }
-      : scope === 'lead'
-      ? Object.fromEntries([
-          ['all', () => true],
-          ...LEAD_STAGES.map((s) => [s, (p: Partner) => p.leadStage === s]),
-        ])
-      : {
-          all: () => true,
-          active: (p) => isActive(p),
-          inactive: (p) => !isActive(p),
-        };
+  const presets = useListPresets({
+    list: scope,
+    fields: partnerFilterFields(scope),
+    builtIns: partnerViews(scope),
+    defaultSort: { key: 'name', direction: 'asc' },
+    rows: partners,
+    onChange: () => setPage(1),
+  });
+  const { sort, setSort } = presets;
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const matches = (filters[filter] ?? filters.all) as (p: Partner) => boolean;
-    const filtered = (partners ?? []).filter(
-      (p) => matches(p) && (!q || `${p.code} ${p.name} ${p.aliasName} ${defaultContactName(p)} ${defaultBillTo(p)?.city ?? ''}`.toLowerCase().includes(q)),
+    const filtered = presets.apply(partners ?? []).filter(
+      (p) => !q || `${p.code} ${p.name} ${p.aliasName} ${defaultContactName(p)} ${defaultBillTo(p)?.city ?? ''}`.toLowerCase().includes(q),
     );
     if (!sort) return filtered;
     const dir = sort.direction === 'asc' ? 1 : -1;
     return [...filtered].sort((a, b) => sortValue(a, sort.key).localeCompare(sortValue(b, sort.key)) * dir);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [partners, filter, query, sort]);
+  }, [partners, presets.filter, query, sort]);
 
-  const count = (key: string) => String(partners?.filter(filters[key]).length ?? '');
   const open = (p: Partner) => navigate(`${config.basePath}/${p.id}`);
 
   const roleColumn: TableColumn<Partner> =
@@ -166,16 +152,24 @@ export function PartnerList({ scope }: { scope: PartnerScope }) {
     },
   ];
 
-  const tabLabels: Record<string, string> =
-    scope === 'all'
-      ? { all: 'All', ...Object.fromEntries(ROLE_ORDER.map((r) => [r, ROLE_CONFIG[r].title])), inactive: 'Inactive' }
-      : scope === 'lead' ? { all: 'All', ...Object.fromEntries(LEAD_STAGES.map((s) => [s, s])) } : { all: 'All', active: 'Active', inactive: 'Inactive' };
+  const search = (
+    <TextField
+      aria-label={`Search ${config.title.toLowerCase()}`}
+      placeholder="Search by name, code, contact, or city"
+      leadingIcon={<Icon size={20}>search</Icon>}
+      value={query}
+      onChange={(e) => {
+        setQuery(e.currentTarget.value);
+        setPage(1);
+      }}
+    />
+  );
 
   return (
     <Panel className="flex-1">
       <PanelHeader
         icon={config.icon}
-        title={config.title}
+        title={presets.menu}
         subcopy={config.subcopy}
         actions={
           <Button
@@ -188,29 +182,9 @@ export function PartnerList({ scope }: { scope: PartnerScope }) {
             New {config.singular.toLowerCase()}
           </Button>
         }
-        tabs={
-          <Tabs
-            variant="outline"
-            value={filter}
-            onValueChange={(v) => {
-              setFilter(v);
-              setPage(1);
-            }}
-            items={Object.entries(tabLabels).map(([value, label]) => ({ value, label, badge: count(value) }))}
-          />
-        }
       />
       <Panel.Body className="flex flex-col gap-2">
-        <TextField
-          aria-label={`Search ${config.title.toLowerCase()}`}
-          placeholder="Search by name, code, contact, or city"
-          leadingIcon={<Icon size={20}>search</Icon>}
-          value={query}
-          onChange={(e) => {
-            setQuery(e.currentTarget.value);
-            setPage(1);
-          }}
-        />
+        {presets.bar(search)}
         <Card className={fillCardClass(rows.slice((page - 1) * pageSize, page * pageSize).length)}>
           {partners ? (
             <Table
@@ -239,6 +213,7 @@ export function PartnerList({ scope }: { scope: PartnerScope }) {
           )}
         </Card>
       </Panel.Body>
+      {presets.panel}
     </Panel>
   );
 }

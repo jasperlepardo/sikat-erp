@@ -16,8 +16,10 @@ import {
   Text,
   TextField,
   type TableColumn,
-  type TableSort,
 } from '@jasperlepardo/sikat-design-system';
+import { dateField, masterField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
+import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
+import { currencyDef } from '../../settings/masterDefs';
 import { DEFAULT_PAGE_SIZE, PAGE_SIZES, fillCardClass } from '../../../components/form/DataTable';
 import { formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
@@ -57,9 +59,7 @@ export function ReturnsList({ kind }: { kind: Kind }) {
   const navigate = useNavigate();
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const data = useAsync(() => Promise.all([listGoodsReturns(), listCreditMemos(), taxCodes.list()]), []);
-  const [filter, setFilter] = useState<'all' | Status>('all');
   const [query, setQuery] = useState('');
-  const [sort, setSort] = useState<TableSort | null>({ key: 'postingDate', direction: 'desc' });
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const path = kind === 'returns' ? RETURN_LIST_PATH : MEMO_LIST_PATH;
@@ -84,17 +84,38 @@ export function ReturnsList({ kind }: { kind: Kind }) {
         }));
   }, [data, kind]);
 
+  const fields = [
+    textField<Row>('no', 'No.', (r) => r.number),
+    textField<Row>('vendor', 'Vendor', (r) => r.vendorName),
+    textField<Row>('vendorCode', 'Vendor code', (r) => r.vendorCode),
+    textField<Row>('ref', 'Vendor ref.', (r) => r.ref),
+    dateField<Row>('postingDate', 'Posting date', (r) => r.postingDate),
+    textField<Row>('base', 'Based on', (r) => r.base),
+    textField<Row>('reason', 'Reason', (r) => r.reasons),
+    numberField<Row>('total', 'Total credit', (r) => r.total),
+    statusField<Row>(STATUSES),
+    masterField<Row>('currency', 'Currency', currencyDef, (r) => r.currency),
+  ];
+  const presets = useListPresets({
+    list: kind === 'returns' ? 'goods-returns' : 'ap-credit-memos',
+    fields,
+    builtIns: statusViews(kind === 'returns' ? 'goods returns' : 'A/P credit memos', STATUSES),
+    defaultSort: { key: 'postingDate', direction: 'desc' },
+    rows: all,
+    onChange: () => setPage(1),
+  });
+  const { sort, setSort } = presets;
+
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const filtered = (all ?? []).filter((r) => (filter === 'all' || r.status === filter) && (!q || r.search.includes(q)));
+    const filtered = presets.apply(all ?? []).filter((r) => (!q || r.search.includes(q)));
     if (!sort) return filtered;
     const dir = sort.direction === 'asc' ? 1 : -1;
     const value = (r: Row): string | number => (sort.key === 'docNum' ? r.docNum : sort.key === 'total' ? r.total : String(r[sort.key as keyof Row] ?? ''));
     return [...filtered].sort((a, b) => (value(a) < value(b) ? -1 : value(a) > value(b) ? 1 : 0) * dir);
-  }, [all, filter, query, sort]);
+  }, [all, presets.filter, query, sort]);
 
   const open = (r: Row) => navigate(`${path}/${r.id}`);
-  const count = (f: 'all' | Status) => String(all?.filter((r) => f === 'all' || r.status === f).length ?? '');
   const intent = kind === 'returns' ? RETURN_STATUS_INTENT : MEMO_STATUS_INTENT;
 
   const columns: TableColumn<Row>[] = [
@@ -111,7 +132,7 @@ export function ReturnsList({ kind }: { kind: Kind }) {
     <Panel className="flex-1">
       <PanelHeader
         icon="assignment_return"
-        title="Returns & Debits"
+        title={presets.menu}
         subcopy="Goods sent back to vendors, and the vendors' credit notes for them or for price adjustments."
         actions={
           <Button intent="primary" variant="solid" size="extra-large" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${path}/new`)}>
@@ -124,8 +145,6 @@ export function ReturnsList({ kind }: { kind: Kind }) {
               variant="outline"
               value={kind}
               onValueChange={(v) => {
-                setFilter('all');
-                setPage(1);
                 navigate(v === 'returns' ? RETURN_LIST_PATH : MEMO_LIST_PATH);
               }}
               items={[
@@ -138,25 +157,18 @@ export function ReturnsList({ kind }: { kind: Kind }) {
       />
       <Panel.Body className="flex flex-col gap-2">
         {notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : null}
-        <Tabs
-          variant="outline"
-          value={filter}
-          onValueChange={(v) => {
-            setFilter(v as 'all' | Status);
-            setPage(1);
-          }}
-          items={(['all', ...STATUSES] as ('all' | Status)[]).map((f) => ({ value: f, label: f === 'all' ? 'All' : f, badge: count(f) }))}
-        />
-        <TextField
-          aria-label="Search"
-          placeholder="Search by no., vendor, vendor ref., item or base document"
-          leadingIcon={<Icon size={20}>search</Icon>}
-          value={query}
-          onChange={(e) => {
-            setQuery(e.currentTarget.value);
-            setPage(1);
-          }}
-        />
+        {presets.bar(
+          <TextField
+            aria-label="Search"
+            placeholder="Search by no., vendor, vendor ref., item or base document"
+            leadingIcon={<Icon size={20}>search</Icon>}
+            value={query}
+            onChange={(e) => {
+              setQuery(e.currentTarget.value);
+              setPage(1);
+            }}
+          />,
+        )}
         <Card className={fillCardClass(rows.slice((page - 1) * pageSize, page * pageSize).length)}>
           {!all ? (
             <Text tone="muted" className="p-4">Loading…</Text>
@@ -181,6 +193,7 @@ export function ReturnsList({ kind }: { kind: Kind }) {
           )}
         </Card>
       </Panel.Body>
+      {presets.panel}
     </Panel>
   );
 }
