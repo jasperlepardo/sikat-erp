@@ -41,7 +41,8 @@ function withCommitted(seed: Item[]): Item[] {
 // v23: uoms/purchasingUom/salesUom added to VARIANT_OWN_FIELDS — variants now carry their own unit data.
 // v24: parent items now carry full PIECE UoM group (pc/pack/box/carton) with family weight.
 // v25: uoms/purchasingUom/salesUom back to global — variants inherit from parent at read time.
-const items = createCollection<Item>('sikat-erp:items:v25', withCommitted(withOrdered(SEED_ITEMS)), 'itm');
+// v26: purchase/sales flags corrected per group — devices pc-only; accessories box also purchasable.
+const items = createCollection<Item>('sikat-erp:items:v26', withCommitted(withOrdered(SEED_ITEMS)), 'itm');
 
 /** All items, with variant items' global fields merged from their parent. */
 export async function listItems(): Promise<Item[]> {

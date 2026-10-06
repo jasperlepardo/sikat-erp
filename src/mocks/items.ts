@@ -496,12 +496,20 @@ const catalog = expandCatalog(prefixOf);
 /** One parent (template) item per multi-variant family. Not purchasable or saleable directly. */
 const APPLE_PARENT_ITEMS: Item[] = catalog.families.map((f) => {
   const base = blankItem(f.family.group);
+  const isAccessory = f.family.group === 'Accessories';
   // Build the same PIECE UoM group the variants use, with the family's weight.
   const baseUom = newItemUom('pc', { id: `${f.id}-u0`, ...seedWeight(f.family.weightKg) });
   const pieceGroup = SEED_UOM_GROUPS.find((g) => g.code === 'PIECE');
-  const uoms = pieceGroup
+  const rawUoms = pieceGroup
     ? [baseUom, ...unitsFromGroup({ inventoryUom: 'pc', uoms: [baseUom] }, pieceGroup).map((u, n) => ({ ...u, id: `${f.id}-u${n + 1}` }))]
     : [baseUom];
+  // Devices: only pc is purchasable/saleable — distributors count by piece, not by box.
+  // Accessories: box is also purchasable (bought in bulk); pack and carton are unused.
+  const uoms = rawUoms.map((u) => {
+    if (u.uom === 'pc') return u; // always on
+    if (u.uom === 'box') return { ...u, purchase: isAccessory, sales: false };
+    return { ...u, purchase: false, sales: false }; // pack, carton — off
+  });
   const purchasingUom = BOUGHT_BY_THE_BOX.test(f.itemNo) ? 'box' : 'pc';
   return {
     ...base,
