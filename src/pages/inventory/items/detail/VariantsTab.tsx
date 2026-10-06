@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import {
   Alert,
@@ -12,9 +12,11 @@ import {
   TableStatus,
   TableSubcontent,
   Text,
+  TextField,
   type TableColumn,
 } from '@jasperlepardo/sikat-design-system';
 import { Section } from '../../../../components/form/fields';
+import { RowMenu } from '../../../../components/form/RowMenu';
 import type { Item } from '../../../../mocks/items';
 import { ItemSaveError, listVariants, saveItem, stockTotals } from '../../../../services/items';
 import { useAsync } from '../../../../services/useAsync';
@@ -33,12 +35,17 @@ function axisCombos(axes: { name: string; options: string[] }[]): Record<string,
   );
 }
 
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
 export function VariantsTab({ draft, update }: TabProps) {
   const navigate = useNavigate();
   const [version, setVersion] = useState(0);
   const [generating, setGenerating] = useState(false);
   const [genError, setGenError] = useState<string | null>(null);
   const [editing, setEditing] = useState<Item | null>(null);
+  // Per-row inline price editing: variantId → current input string.
+  const [editingPrices, setEditingPrices] = useState<Map<string, string>>(new Map());
+  const [savingPrices, setSavingPrices] = useState<Set<string>>(new Set());
   const variants = useAsync(() => listVariants(draft.id ?? ''), [draft.id, version]);
 
   const axes = draft.variantAxes;
@@ -49,6 +56,26 @@ export function VariantsTab({ draft, update }: TabProps) {
     (variants ?? []).map((v) => axes.map((a) => v.variantAttributes[a.name] ?? '').join('|')),
   );
   const newCombos = combos.filter((attrs) => !existingKeys.has(axes.map((a) => attrs[a.name] ?? '').join('|')));
+
+  // Aggregate stock across all variants.
+  const totalStock = useMemo(() => {
+    if (!variants) return null;
+    return variants.reduce((acc, v) => {
+      const t = stockTotals(v);
+      return { inStock: acc.inStock + t.inStock, committed: acc.committed + t.committed, ordered: acc.ordered + t.ordered, available: acc.available + t.available };
+    }, { inStock: 0, committed: 0, ordered: 0, available: 0 });
+  }, [variants]);
+
+  // Variants whose attributes contain values not present in current axes options.
+  const staleVariants = useMemo(() => {
+    if (!variants) return [];
+    return variants.filter((v) =>
+      axes.some((a) => {
+        const val = v.variantAttributes[a.name];
+        return val && !a.options.includes(val);
+      }),
+    );
+  }, [variants, axes]);
 
   const generate = async () => {
     if (!draft.id || newCombos.length === 0) return;
@@ -63,6 +90,40 @@ export function VariantsTab({ draft, update }: TabProps) {
       setGenError(err instanceof ItemSaveError ? err.message : 'Failed to generate variants.');
     } finally {
       setGenerating(false);
+    }
+  };
+
+  /** Clear stale attributes — keeps the attribute key but clears the value so user can re-select. */
+  const syncAttributes = async () => {
+    for (const v of staleVariants) {
+      const synced: Record<string, string> = { ...v.variantAttributes };
+      for (const a of axes) {
+        if (synced[a.name] && !a.options.includes(synced[a.name])) synced[a.name] = '';
+      }
+      await saveItem({ ...v, variantAttributes: synced });
+    }
+    setVersion((n) => n + 1);
+  };
+
+  /** Detach a variant: make it a standalone item by clearing its parent link. */
+  const detach = async (v: Item) => {
+    await saveItem({ ...v, parentItemId: '', variantAxes: [], variantAttributes: {} });
+    setVersion((n) => n + 1);
+  };
+
+  const savePriceEdit = async (v: Item, raw: string) => {
+    const price = parseFloat(raw);
+    if (isNaN(price) || price < 0 || round2(price) === v.basePrice) {
+      setEditingPrices((m) => { const n = new Map(m); n.delete(v.id ?? ''); return n; });
+      return;
+    }
+    setSavingPrices((s) => new Set(s).add(v.id ?? ''));
+    try {
+      await saveItem({ ...v, basePrice: round2(price) });
+      setVersion((n) => n + 1);
+    } finally {
+      setSavingPrices((s) => { const n = new Set(s); n.delete(v.id ?? ''); return n; });
+      setEditingPrices((m) => { const n = new Map(m); n.delete(v.id ?? ''); return n; });
     }
   };
 
@@ -91,9 +152,38 @@ export function VariantsTab({ draft, update }: TabProps) {
     {
       key: 'basePrice',
       header: 'Base price',
-      cell: (v) => (
-        v.basePrice ? <TableAmount currency="PHP">{formatAmount(v.basePrice)}</TableAmount> : <span className="text-muted">—</span>
-      ),
+      cell: (v) => {
+        const id = v.id ?? '';
+        if (editingPrices.has(id)) {
+          return (
+            <TextField
+              aria-label="Base price"
+              type="number"
+              min={0}
+              className="w-32"
+              value={editingPrices.get(id) ?? ''}
+              disabled={savingPrices.has(id)}
+              autoFocus
+              onChange={(e) => setEditingPrices((m) => new Map(m).set(id, e.currentTarget.value))}
+              onBlur={(e) => savePriceEdit(v, e.currentTarget.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') { e.currentTarget.blur(); }
+                if (e.key === 'Escape') { setEditingPrices((m) => { const n = new Map(m); n.delete(id); return n; }); }
+              }}
+            />
+          );
+        }
+        return (
+          <button
+            type="button"
+            className="tabular-nums hover:underline cursor-text text-left"
+            title="Click to edit price"
+            onClick={() => setEditingPrices((m) => new Map(m).set(id, String(v.basePrice)))}
+          >
+            {v.basePrice ? <TableAmount currency="PHP">{formatAmount(v.basePrice)}</TableAmount> : <span className="text-muted">—</span>}
+          </button>
+        );
+      },
     },
     {
       key: 'inStock',
@@ -145,7 +235,38 @@ export function VariantsTab({ draft, update }: TabProps) {
         )}
       </Section>
 
+      {/* Stale attribute warning */}
+      {staleVariants.length > 0 && (
+        <Alert intent="warning" title={`${staleVariants.length} variant${staleVariants.length !== 1 ? 's have' : ' has'} attributes that no longer match the options`}>
+          <div className="flex items-center gap-2">
+            <span>Option values were renamed or removed. Sync to clear the stale values so variants can be re-assigned.</span>
+            <Button type="button" intent="warning" variant="outline" size="medium" onClick={syncAttributes}>
+              Sync attributes
+            </Button>
+          </div>
+        </Alert>
+      )}
+
       {genError && <Alert intent="danger" title="Generation failed">{genError}</Alert>}
+
+      {/* Aggregate stock summary */}
+      {totalStock && variants.some((v) => v.inventoryItem) && (
+        <div className="grid grid-cols-4 gap-2 text-center">
+          {[
+            { label: 'In stock', value: totalStock.inStock },
+            { label: 'Committed', value: totalStock.committed },
+            { label: 'Ordered', value: totalStock.ordered },
+            { label: 'Available', value: totalStock.available },
+          ].map(({ label, value }) => (
+            <div key={label} className="rounded-xl border border-border px-3 py-2">
+              <div className="text-xs opacity-60">{label}</div>
+              <div className={`text-sm font-semibold tabular-nums ${label === 'Available' && value < 0 ? 'text-danger' : ''}`}>
+                {value.toLocaleString('en-PH')}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="flex items-center justify-between gap-2">
         <Text variant="small" tone="muted">
@@ -171,7 +292,7 @@ export function VariantsTab({ draft, update }: TabProps) {
             variant="outline"
             size="large"
             leadingIcon={<Icon size={18}>add</Icon>}
-            onClick={() => navigate(`${LIST_PATH}/new`, { state: { variantOf: draft } })}
+            onClick={() => navigate(`${LIST_PATH}/new`, { state: { variantOf: draft, variantAttrs: newCombos[0] ?? {} } })}
           >
             New variant
           </Button>
@@ -198,7 +319,23 @@ export function VariantsTab({ draft, update }: TabProps) {
         ) : (
           <Table
             caption={`Variants of ${draft.name}`}
-            columns={columns}
+            columns={[
+              ...columns,
+              {
+                key: 'actions',
+                header: '',
+                cell: (v) => (
+                  <RowMenu
+                    label={`Actions for ${variantLabel(v)}`}
+                    items={[
+                      { label: 'Edit', icon: 'edit', onSelect: () => setEditing(v) },
+                      { label: 'Open full record', icon: 'open_in_new', onSelect: () => navigate(`${LIST_PATH}/${v.id}`) },
+                      { label: 'Remove from family', icon: 'link_off', onSelect: () => detach(v) },
+                    ]}
+                  />
+                ),
+              },
+            ]}
             rows={variants}
             getRowId={(v) => v.id ?? v.itemNo}
             layout="fill"

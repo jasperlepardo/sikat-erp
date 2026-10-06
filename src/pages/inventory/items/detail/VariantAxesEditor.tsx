@@ -31,6 +31,14 @@ function AxisRow({ axis, onUpdate, onRemove, disabled }: RowProps) {
   };
 
   const removeOption = (opt: string) => onUpdate({ options: axis.options.filter((o) => o !== opt) });
+  const moveOption = (opt: string, dir: -1 | 1) => {
+    const arr = [...axis.options];
+    const i = arr.indexOf(opt);
+    const j = i + dir;
+    if (j < 0 || j >= arr.length) return;
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+    onUpdate({ options: arr });
+  };
 
   return (
     <div className="flex flex-col gap-1.5 rounded-xl border border-border p-3">
@@ -60,18 +68,17 @@ function AxisRow({ axis, onUpdate, onRemove, disabled }: RowProps) {
       {/* Option values as tags */}
       {axis.options.length > 0 && (
         <div className="flex flex-wrap gap-1">
-          {axis.options.map((opt) => (
-            <span key={opt} className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs">
+          {axis.options.map((opt, idx) => (
+            <span key={opt} className="inline-flex items-center gap-0.5 rounded-full border border-border px-2 py-0.5 text-xs">
+              {!disabled && idx > 0 && (
+                <button type="button" aria-label={`Move ${opt} up`} className="opacity-40 hover:opacity-100 leading-none" onClick={() => moveOption(opt, -1)}>‹</button>
+              )}
               {opt}
+              {!disabled && idx < axis.options.length - 1 && (
+                <button type="button" aria-label={`Move ${opt} down`} className="opacity-40 hover:opacity-100 leading-none" onClick={() => moveOption(opt, 1)}>›</button>
+              )}
               {!disabled && (
-                <button
-                  type="button"
-                  aria-label={`Remove ${opt}`}
-                  className="hover:text-danger leading-none"
-                  onClick={() => removeOption(opt)}
-                >
-                  ×
-                </button>
+                <button type="button" aria-label={`Remove ${opt}`} className="ml-0.5 hover:text-danger leading-none" onClick={() => removeOption(opt)}>×</button>
               )}
             </span>
           ))}

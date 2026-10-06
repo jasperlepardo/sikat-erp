@@ -16,7 +16,7 @@ import {
   Text,
 } from '@jasperlepardo/sikat-design-system';
 import type { Item } from '../../../mocks/items';
-import { isLowStock, isValidToday, listItems, stockTotals } from '../../../services/items';
+import { isValidToday, listItems, stockTotals } from '../../../services/items';
 import { useAsync } from '../../../services/useAsync';
 import { formatAmount } from '../../../services/format';
 import { EMPTY_FILTER, oneRule } from '../../../components/filter/engine';
@@ -33,32 +33,65 @@ const ITEM_VIEWS: BuiltInView[] = [
   { id: 'inactive', name: 'Items not valid today', filter: oneRule('valid', 'isFalse') },
 ];
 
-const ITEM_FIELDS = [
-  textField<Item>('itemNo', 'Item no.', (i) => i.itemNo),
-  textField<Item>('description', 'Description', (i) => i.description),
-  textField<Item>('foreignName', 'Foreign name', (i) => i.foreignName),
-  textField<Item>('itemGroup', 'Item group', (i) => i.itemGroup),
-  textField<Item>('barcode', 'Barcode', (i) => [i.gtin, ...i.barcodes.map((b) => b.barcode)]),
-  boolField<Item>('inventoryItem', 'Inventory item', (i) => i.inventoryItem),
-  boolField<Item>('valid', 'Valid today', (i) => isValidToday(i)),
-  boolField<Item>('lowStock', 'Low stock', (i) => isValidToday(i) && isLowStock(i)),
-  numberField<Item>('inStock', 'In stock', (i) => stockTotals(i).inStock),
-  numberField<Item>('available', 'Available', (i) => stockTotals(i).available),
-  numberField<Item>('basePrice', 'Base price', (i) => i.basePrice),
-];
+type StockTotals = { inStock: number; committed: number; ordered: number; available: number };
 
-/** Sort key → comparable value. */
-function sortValue(i: Item, key: string): string | number {
-  if (key === 'inStock') return stockTotals(i).inStock;
-  if (key === 'available') return stockTotals(i).available;
-  const v = i[key as keyof Item];
-  return typeof v === 'number' ? v : String(v ?? '').toLowerCase();
+/** Aggregate stock totals across all variants for parent items, or direct totals for standalone/variant items. */
+function effectiveStock(item: Item, variantStockMap: Map<string, StockTotals>): StockTotals {
+  if (item.variantAxes.length > 0) return variantStockMap.get(item.id) ?? { inStock: 0, committed: 0, ordered: 0, available: 0 };
+  return stockTotals(item);
 }
 
 export function ItemList({ basePath = '/inventory/items' }: { basePath?: string }) {
   const navigate = useNavigate();
   const items = useAsync(listItems, []);
-  const fields = ITEM_FIELDS;
+
+  // Aggregate stock totals for parent items, summed across all their variants.
+  const variantStockMap = useMemo(() => {
+    const map = new Map<string, StockTotals>();
+    for (const i of items ?? []) {
+      if (!i.parentItemId) continue;
+      const t = stockTotals(i);
+      const cur = map.get(i.parentItemId) ?? { inStock: 0, committed: 0, ordered: 0, available: 0 };
+      map.set(i.parentItemId, {
+        inStock: cur.inStock + t.inStock,
+        committed: cur.committed + t.committed,
+        ordered: cur.ordered + t.ordered,
+        available: cur.available + t.available,
+      });
+    }
+    return map;
+  }, [items]);
+
+  // Variant descriptions indexed by parent id, for search matching.
+  const variantSearchMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const i of items ?? []) {
+      if (!i.parentItemId) continue;
+      const cur = map.get(i.parentItemId) ?? '';
+      map.set(i.parentItemId, `${cur} ${i.itemNo} ${i.description} ${i.gtin} ${i.barcodes.map((b) => b.barcode).join(' ')}`);
+    }
+    return map;
+  }, [items]);
+
+  // Filter fields — stock fields use aggregate for parent items.
+  const fields = useMemo(() => [
+    textField<Item>('itemNo', 'Item no.', (i) => i.itemNo),
+    textField<Item>('description', 'Description', (i) => i.description),
+    textField<Item>('foreignName', 'Foreign name', (i) => i.foreignName),
+    textField<Item>('itemGroup', 'Item group', (i) => i.itemGroup),
+    textField<Item>('barcode', 'Barcode', (i) => [i.gtin, ...i.barcodes.map((b) => b.barcode)]),
+    boolField<Item>('inventoryItem', 'Inventory item', (i) => i.variantAxes.length > 0 ? true : i.inventoryItem),
+    boolField<Item>('valid', 'Valid today', (i) => isValidToday(i)),
+    boolField<Item>('lowStock', 'Low stock', (i) => {
+      if (!isValidToday(i)) return false;
+      const stock = effectiveStock(i, variantStockMap);
+      return i.minStock > 0 && stock.inStock <= i.minStock;
+    }),
+    numberField<Item>('inStock', 'In stock', (i) => effectiveStock(i, variantStockMap).inStock),
+    numberField<Item>('available', 'Available', (i) => effectiveStock(i, variantStockMap).available),
+    numberField<Item>('basePrice', 'Base price', (i) => i.basePrice),
+  ], [variantStockMap]);
+
   const presets = useListPresets({
     list: 'items',
     fields,
@@ -72,33 +105,27 @@ export function ItemList({ basePath = '/inventory/items' }: { basePath?: string 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
 
-  const variantCounts = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const i of items ?? []) {
-      if (i.parentItemId) map.set(i.parentItemId, (map.get(i.parentItemId) ?? 0) + 1);
-    }
-    return map;
-  }, [items]);
-
   const rows = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const filtered = presets.apply(items ?? []).filter(
-      (i) =>
-        !i.parentItemId &&
-        (!q ||
-          [i.itemNo, i.description, i.foreignName, i.itemGroup, i.gtin, ...i.barcodes.map((b) => b.barcode)]
-            .join(' ')
-            .toLowerCase()
-            .includes(q)),
-    );
+    const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
+    const q = normalize(query);
+    const filtered = presets.apply(items ?? []).filter((i) => {
+      if (i.parentItemId) return false; // hide variants from list
+      if (!q) return true;
+      const own = normalize([i.itemNo, i.description, i.foreignName, i.itemGroup, i.gtin, ...i.barcodes.map((b) => b.barcode)].join(' '));
+      const variantText = normalize(variantSearchMap.get(i.id) ?? '');
+      return own.includes(q) || variantText.includes(q);
+    });
     if (!sort) return filtered;
     const dir = sort.direction === 'asc' ? 1 : -1;
     return [...filtered].sort((a, b) => {
-      const x = sortValue(a, sort.key);
-      const y = sortValue(b, sort.key);
+      let x: string | number;
+      let y: string | number;
+      if (sort.key === 'inStock') { x = effectiveStock(a, variantStockMap).inStock; y = effectiveStock(b, variantStockMap).inStock; }
+      else if (sort.key === 'available') { x = effectiveStock(a, variantStockMap).available; y = effectiveStock(b, variantStockMap).available; }
+      else { const v = a[sort.key as keyof Item]; const w = b[sort.key as keyof Item]; x = typeof v === 'number' ? v : String(v ?? '').toLowerCase(); y = typeof w === 'number' ? w : String(w ?? '').toLowerCase(); }
       return (x < y ? -1 : x > y ? 1 : 0) * dir;
     });
-  }, [items, presets.filter, query, sort]);
+  }, [items, presets.filter, query, sort, variantStockMap, variantSearchMap]);
 
   const open = (i: Item) => navigate(`${basePath}/${i.id}`);
 
@@ -123,16 +150,15 @@ export function ItemList({ basePath = '/inventory/items' }: { basePath?: string 
       key: 'inStock',
       header: 'In stock',
       sortable: true,
-      cell: (i) =>
-        i.variantAxes.length > 0 ? (
-          <span className="text-muted">{variantCounts.get(i.id) ?? 0} variants</span>
-        ) : i.inventoryItem ? (
-          <TableSubcontent subcopy={`Min ${i.minStock}`}>
-            {stockTotals(i).inStock.toLocaleString('en-PH')} {i.inventoryUom}
-          </TableSubcontent>
-        ) : (
-          <span className="text-muted">Not stocked</span>
-        ),
+      cell: (i) => {
+        if (i.variantAxes.length > 0) {
+          const vc = items?.filter((x) => x.parentItemId === i.id).length ?? 0;
+          return <span className="text-muted">{vc} variant{vc !== 1 ? 's' : ''}</span>;
+        }
+        if (!i.inventoryItem) return <span className="text-muted">Not stocked</span>;
+        const s = effectiveStock(i, variantStockMap);
+        return <TableSubcontent subcopy={`Min ${i.minStock}`}>{s.inStock.toLocaleString('en-PH')} {i.inventoryUom}</TableSubcontent>;
+      },
     },
     {
       key: 'available',
@@ -141,7 +167,7 @@ export function ItemList({ basePath = '/inventory/items' }: { basePath?: string 
       cell: (i) => {
         if (i.variantAxes.length > 0) return '—';
         if (!i.inventoryItem) return '—';
-        const a = stockTotals(i).available;
+        const a = effectiveStock(i, variantStockMap).available;
         return <span className={a < 0 ? 'text-danger' : undefined}>{a.toLocaleString('en-PH')}</span>;
       },
     },
@@ -161,20 +187,15 @@ export function ItemList({ basePath = '/inventory/items' }: { basePath?: string 
     {
       key: 'status',
       header: 'Status',
-      cell: (i) =>
-        i.variantAxes.length > 0 ? (
-          <TableStatus intent="primary">Parent item</TableStatus>
-        ) : !isValidToday(i) ? (
-          <TableStatus intent="default">Not valid</TableStatus>
-        ) : !i.inventoryItem ? (
-          <TableStatus intent="primary">{i.itemType === 'Items' ? 'Non-stock' : i.itemType}</TableStatus>
-        ) : stockTotals(i).inStock === 0 ? (
-          <TableStatus intent="danger">Out of stock</TableStatus>
-        ) : isLowStock(i) ? (
-          <TableStatus intent="warning">Low stock</TableStatus>
-        ) : (
-          <TableStatus intent="success">In stock</TableStatus>
-        ),
+      cell: (i) => {
+        if (i.variantAxes.length > 0) return <TableStatus intent="primary">Parent item</TableStatus>;
+        if (!isValidToday(i)) return <TableStatus intent="default">Not valid</TableStatus>;
+        if (!i.inventoryItem) return <TableStatus intent="primary">{i.itemType === 'Items' ? 'Non-stock' : i.itemType}</TableStatus>;
+        const s = effectiveStock(i, variantStockMap);
+        if (s.inStock === 0) return <TableStatus intent="danger">Out of stock</TableStatus>;
+        if (i.minStock > 0 && s.inStock <= i.minStock) return <TableStatus intent="warning">Low stock</TableStatus>;
+        return <TableStatus intent="success">In stock</TableStatus>;
+      },
     },
   ];
 
@@ -199,7 +220,7 @@ export function ItemList({ basePath = '/inventory/items' }: { basePath?: string 
         {presets.bar(
           <TextField
             aria-label="Search items"
-            placeholder="Search by item no., description, group or barcode"
+            placeholder="Search by item no., description, group, barcode, or variant"
             leadingIcon={<Icon size={20}>search</Icon>}
             value={query}
             onChange={(e) => {

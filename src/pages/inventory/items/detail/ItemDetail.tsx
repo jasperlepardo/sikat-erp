@@ -45,6 +45,7 @@ import {
 } from '../../../../services/inventoryMasters';
 import type { Partner } from '../../../../mocks/partners';
 import { ItemSaveError, getItem, isValidToday, listItems, saveItem } from '../../../../services/items';
+import { useAsync } from '../../../../services/useAsync';
 import { listPartnersByRole } from '../../../../services/partners';
 import { exciseCategories, taxCodes, taxGroups, withholdingGroups } from '../../../../services/masterData';
 import { AttachmentsTab } from './AttachmentsTab';
@@ -168,12 +169,12 @@ function ItemForm() {
   const { id } = useParams();
   const isNew = id === 'new';
   const navigate = useNavigate();
-  const locationState = useLocation().state as { copyFrom?: Draft; variantOf?: Draft } | null;
+  const locationState = useLocation().state as { copyFrom?: Draft; variantOf?: Draft; variantAttrs?: Record<string, string> } | null;
   const copyFrom = locationState?.copyFrom;
   const variantOf = locationState?.variantOf;
 
   const initialDraft = isNew
-    ? variantOf ? variantFromParent(variantOf, {}) : (copyFrom ?? blankItem())
+    ? variantOf ? variantFromParent(variantOf, locationState?.variantAttrs ?? {}) : (copyFrom ?? blankItem())
     : undefined;
   const [draft, setDraft] = useState<Draft | null | undefined>(initialDraft);
   const [vendors, setVendors] = useState<Partner[]>([]);
@@ -201,6 +202,8 @@ function ItemForm() {
   const [parentItem, setParentItem] = useState<Item | undefined>(
     variantOf ? (variantOf as unknown as Item) : undefined,
   );
+  // Family items (parent items) for the "assign to family" picker on standalone items.
+  const familyItemsList = useAsync(() => listItems().then((all) => all.filter((i) => i.variantAxes.length > 0)), []);
 
   useEffect(() => {
     listPartnersByRole('vendor').then(setVendors);
@@ -548,12 +551,44 @@ function ItemForm() {
                         disabled: locked || draft.itemType !== 'Items',
                         hint: locked ? LOCKED_HINT : 'Batches for lots/expiry; serial numbers for each unit.',
                       })}
-                      {parentItem && (
+                      {/* Variant — link to parent + detach */}
+                      {parentItem && draft.parentItemId && (
                         <FormField orientation="responsive" label="Part of">
                           {() => (
-                            <Link onClick={() => navigate(`${LIST_PATH}/${parentItem.id}`)}>
-                              {parentItem.name}
-                            </Link>
+                            <div className="flex items-center gap-2">
+                              <Link onClick={() => navigate(`${LIST_PATH}/${parentItem.id}`)}>
+                                {parentItem.name}
+                              </Link>
+                              <button
+                                type="button"
+                                title="Remove from family"
+                                className="text-xs opacity-40 hover:opacity-100 hover:text-danger"
+                                onClick={() => update({ parentItemId: '', variantAxes: [], variantAttributes: {}, purchaseItem: true, salesItem: true, inventoryItem: draft.itemType === 'Items' })}
+                              >
+                                ×
+                              </button>
+                            </div>
+                          )}
+                        </FormField>
+                      )}
+                      {/* Standalone — offer to assign to a parent family */}
+                      {!draft.parentItemId && !draft.variantAxes.length && !isNew && (
+                        <FormField orientation="responsive" label="Family" tooltip="Assign to a parent item to make this a variant of that family.">
+                          {(p) => (
+                            <Combobox
+                              {...p}
+                              placeholder="Assign to a family…"
+                              options={[
+                                { value: '', label: '— Standalone item —' },
+                                ...(familyItemsList ?? []).map((f) => ({ value: f.id, label: `${f.itemNo} · ${f.name}`, text: `${f.itemNo} ${f.name}` })),
+                              ]}
+                              value={null}
+                              onValueChange={(v) => {
+                                if (!v) return;
+                                update({ parentItemId: v, variantAxes: [], variantAttributes: {}, purchaseItem: true, salesItem: true, inventoryItem: draft.itemType === 'Items' });
+                                getItem(v).then((p) => { if (p) setParentItem(p); });
+                              }}
+                            />
                           )}
                         </FormField>
                       )}
