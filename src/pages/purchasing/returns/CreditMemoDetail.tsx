@@ -297,7 +297,7 @@ function CreditMemoForm() {
     ...(vendor ? [{ label: `Open vendor ${vendor.code}`, icon: 'local_shipping', onSelect: () => navigate(`/purchasing/vendors/${vendor.id}`) }] : []),
   ];
 
-  const title = isNew ? 'New A/P credit memo' : added ? `A/P credit memo ${memoNumber(draft)}` : 'Draft A/P credit memo';
+  const title = isNew ? 'New A/P credit memo' : added ? memoNumber(draft) : 'Draft A/P credit memo';
   const addressOptions = vendorAddressOptions(vendor);
   const withCurrent = (opts: { value: string; label: string }[], v: string) => (!v || opts.some((o) => o.value === v) ? opts : [{ value: v, label: v.split('\n')[0] }, ...opts]);
 
@@ -344,7 +344,7 @@ function CreditMemoForm() {
               )
             }
             tabs={<Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={PAGES.map((p) => ({ ...p, disabled: isNew && p.value !== 'details' }))} />}
-            status={isNew ? undefined : <Badge intent={MEMO_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
+            status={isNew ? undefined : <Badge size="small" intent={MEMO_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
             actions={
               <>
                 <Button type="button" intent="default" variant="solid" size="extra-large" onClick={() => navigate(MEMO_LIST_PATH)}>

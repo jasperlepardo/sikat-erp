@@ -9,6 +9,7 @@ import {
   type PaymentMeans,
   type PaymentRow,
 } from '../mocks/outgoingPayments';
+import { outgoingPaymentSeries, seriesLookup, formatDocNum } from './allSeries';
 import { todayISO } from './dates';
 import type { JournalLine } from './inventoryTransfers';
 import { applyPayments } from './apInvoices';
@@ -26,9 +27,9 @@ export type PaymentInput = Omit<OutgoingPayment, 'id'> & { id?: string };
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
-export const paymentSeriesOf = (id: string) => PAYMENT_SERIES.find((s) => s.id === id) ?? PAYMENT_SERIES[0];
+export const paymentSeriesOf = (id: string) => seriesLookup(outgoingPaymentSeries, id, PAYMENT_SERIES);
 /** "Primary 510004", or "Draft" before it's added. */
-export const paymentNumber = (p: Pick<OutgoingPayment, 'seriesId' | 'docNum'>) => (p.docNum ? `${paymentSeriesOf(p.seriesId).name} ${p.docNum}` : 'Draft');
+export const paymentNumber = (p: Pick<OutgoingPayment, 'seriesId' | 'docNum'>) => formatDocNum(paymentSeriesOf(p.seriesId), p.docNum);
 
 // ── Amounts ──────────────────────────────────────────────────────────────────
 

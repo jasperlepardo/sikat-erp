@@ -20,7 +20,7 @@
  * - Withholding by the customer (CWT, government VAT) is shown as a note: the customer deducts
  *   it when paying, it isn't part of the order total.
  */
-import type { Attachment } from './common';
+import type { Attachment, DocumentSeries } from './common';
 import { SEED_ITEMS, itemsPerUom } from './items';
 import { SEED_PARTNERS, formatAddress } from './partners';
 import type { PoReference } from './purchaseOrders';
@@ -133,14 +133,9 @@ export const SALES_SETTINGS = {
   creditLimitCheck: true,
 };
 
-export interface SoSeries {
-  id: string;
-  name: string;
-  firstNo: number;
-}
-export const SO_SERIES: SoSeries[] = [
-  { id: 'sos-primary', name: 'Primary', firstNo: 410001 },
-  { id: 'sos-gov', name: 'Government', firstNo: 470001 },
+export const SO_SERIES: DocumentSeries[] = [
+  { id: 'sos-primary', name: 'Primary', prefix: 'SO-', firstNo: 410001, manual: false, isDefault: true, active: true },
+  { id: 'sos-gov', name: 'Government', prefix: 'SO-', firstNo: 470001, manual: false, isDefault: false, active: true },
 ];
 
 export const NO_SALES_EMPLOYEE = '-No Sales Employee-';

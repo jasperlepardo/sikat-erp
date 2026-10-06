@@ -17,6 +17,7 @@
  * - Installments, distribution rules, commodity classification, serial numbers, the QR code,
  *   Central Bank Ind. and the client's custom print UDFs are left out.
  */
+import type { DocumentSeries } from './common';
 import { blankApInvoice, newApLine, type ApInvoice, type ApLine } from './apInvoices';
 
 export type DprStatus = 'Draft' | 'Open' | 'Closed' | 'Cancelled';
@@ -40,7 +41,9 @@ export interface DownPaymentRequest extends Omit<ApInvoice, 'lines' | 'status' |
   downPaymentAccount: string;
 }
 
-export const DPR_SERIES = [{ id: 'dps-primary', name: 'Primary', firstNo: 630001 }];
+export const DPR_SERIES: DocumentSeries[] = [
+  { id: 'dps-primary', name: 'Primary', prefix: 'DPR-', firstNo: 630001, manual: false, isDefault: true, active: true },
+];
 export const ADVANCES_TO_SUPPLIERS = '1150';
 
 export const newDprLine = (patch: Partial<DprLine> = {}): DprLine => {

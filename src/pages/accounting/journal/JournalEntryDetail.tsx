@@ -153,7 +153,7 @@ function JournalEntryForm() {
     ...(reverses ? [{ label: `Open reversed entry ${jeNumber(reverses)}`, icon: 'swap_horiz', onSelect: () => navigate(`${JE_LIST_PATH}/${reverses.id}`) }] : []),
   ];
 
-  const title = isNew ? 'New journal entry' : `Journal entry ${jeNumber(draft)}`;
+  const title = isNew ? 'New journal entry' : jeNumber(draft);
 
   return (
     <Form className="flex-1" onSubmit={submit} noValidate>
@@ -186,7 +186,7 @@ function JournalEntryForm() {
               ]}
             />
           }
-          status={posted ? <Badge intent={JE_STATUS_INTENT[draft.status]}>{draft.status}</Badge> : undefined}
+          status={posted ? <Badge size="small" intent={JE_STATUS_INTENT[draft.status]}>{draft.status}</Badge> : undefined}
           actions={
             <>
               <Button type="button" intent="default" variant="solid" size="extra-large" onClick={() => navigate(JE_LIST_PATH)}>

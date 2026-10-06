@@ -276,7 +276,7 @@ function TransferForm() {
     ...(posted && destinationsOf.length === 1 ? [{ label: 'Transfer back', icon: 'undo', onSelect: reverse }] : []),
   ];
 
-  const title = isNew ? 'New inventory transfer' : posted ? `Inventory transfer ${transferNumber(draft)}` : 'Draft inventory transfer';
+  const title = isNew ? 'New inventory transfer' : posted ? transferNumber(draft) : 'Draft inventory transfer';
   const route = draft.fromWarehouse && draft.toWarehouse ? `${draft.fromWarehouse} → ${draft.toWarehouse}` : '';
 
   return (
@@ -315,7 +315,7 @@ function TransferForm() {
               </>
             )
           }
-          status={isNew ? undefined : <Badge intent={TRANSFER_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
+          status={isNew ? undefined : <Badge size="small" intent={TRANSFER_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
           actions={
             <>
               <Button type="button" intent="default" variant="solid" size="extra-large" onClick={() => navigate(TRANSFER_LIST_PATH)}>

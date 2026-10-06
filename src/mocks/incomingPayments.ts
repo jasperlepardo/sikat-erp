@@ -20,7 +20,7 @@
  * - Created By Payment Wizard is always No (the wizard isn't built), payment order runs don't
  *   exist, and branches aren't enabled, so those fields show but don't change anything.
  */
-import type { Attachment } from './common';
+import type { Attachment, DocumentSeries } from './common';
 import { SEED_AR_INVOICES, seedNetDue, type ArInvoice } from './arInvoices';
 import { seedRateOn } from './salesOrders';
 import type { PoReference } from './purchaseOrders';
@@ -145,9 +145,9 @@ export interface IncomingPayment {
   cancelDate: string;
 }
 
-export const INCOMING_SERIES = [
-  { id: 'rcs-primary', name: 'Primary', firstNo: 440001, manual: false },
-  { id: 'rcs-manual', name: 'Manual', firstNo: 1, manual: true },
+export const INCOMING_SERIES: DocumentSeries[] = [
+  { id: 'rcs-primary', name: 'Primary', prefix: 'RCV-', firstNo: 440001, manual: false, isDefault: true, active: true },
+  { id: 'rcs-manual', name: 'Manual', prefix: 'RCV-', firstNo: 1, manual: true, isDefault: false, active: true },
 ];
 
 /** Bank accounts a transfer can land in (the cash-flagged bank accounts). */

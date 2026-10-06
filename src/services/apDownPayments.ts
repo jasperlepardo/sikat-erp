@@ -1,5 +1,6 @@
 import { DPR_SERIES, type DownPaymentRequest } from '../mocks/apDownPayments';
 import { rateAt, vatNotPaidToVendor, type TaxCode } from '../mocks/taxes';
+import { dprSeries, seriesLookup, formatDocNum } from './allSeries';
 import { todayISO } from './dates';
 import { poTotals } from './purchaseOrders';
 import { createCollection } from './store';
@@ -16,7 +17,7 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 
 /** "Primary 630004", or "Draft" before it's added. */
 export const dprNumber = (d: Pick<DownPaymentRequest, 'seriesId' | 'docNum'>) =>
-  d.docNum ? `${(DPR_SERIES.find((s) => s.id === d.seriesId) ?? DPR_SERIES[0]).name} ${d.docNum}` : 'Draft';
+  formatDocNum(seriesLookup(dprSeries, d.seriesId, DPR_SERIES), d.docNum);
 
 /**
  * Footer totals in the document currency. Total Payment Due = (Total Before Discount less the
@@ -63,7 +64,7 @@ export async function saveDprRemarks(d: DownPaymentRequest, patch: Pick<DownPaym
 /** Add the request: numbered and open. Nothing posts until it's paid. */
 export async function addDownPayment(input: DprInput, fx: number) {
   const all = await requests.list();
-  const series = DPR_SERIES.find((s) => s.id === input.seriesId) ?? DPR_SERIES[0];
+  const series = seriesLookup(dprSeries, input.seriesId, DPR_SERIES);
   const docNum = Math.max(series.firstNo - 1, ...all.filter((d) => d.seriesId === series.id).map((d) => d.docNum)) + 1;
   return requests.save({ ...input, docNum, status: 'Open', fxRate: fx });
 }

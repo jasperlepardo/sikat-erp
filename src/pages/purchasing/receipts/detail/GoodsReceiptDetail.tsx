@@ -315,7 +315,7 @@ function GoodsReceiptForm() {
   ];
 
   const allCurrencies = vendor?.currency === ALL_CURRENCIES;
-  const title = isNew ? 'New goods receipt' : added ? `Goods receipt ${grNumber(draft)}` : 'Draft goods receipt';
+  const title = isNew ? 'New goods receipt' : added ? grNumber(draft) : 'Draft goods receipt';
   const series = grSeriesOf(draft.seriesId);
 
   return (
@@ -339,7 +339,7 @@ function GoodsReceiptForm() {
             )
           }
           tabs={<Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={PAGES.map((p) => ({ ...p, disabled: isNew && p.value !== 'details' }))} />}
-          status={isNew ? undefined : <Badge intent={GR_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
+          status={isNew ? undefined : <Badge size="small" intent={GR_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
           actions={
             <>
               <Button type="button" intent="default" variant="solid" size="extra-large" onClick={() => navigate(GR_LIST_PATH)}>

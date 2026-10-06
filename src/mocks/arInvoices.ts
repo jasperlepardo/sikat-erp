@@ -24,7 +24,7 @@
  * - Left out: Return Reason and Summary Type (grid layout only), Central Bank Ind. and Deferred
  *   Tax (other localizations), Asset Value Date (no fixed assets yet), Payment Order Run (A/P).
  */
-import type { Attachment } from './common';
+import type { Attachment, DocumentSeries } from './common';
 import { SEED_DELIVERIES, type DnLine } from './deliveries';
 import { SEED_PARTNERS, formatAddress } from './partners';
 import type { PoReference } from './purchaseOrders';
@@ -123,7 +123,9 @@ export interface ArInvoice {
   fxRate: number;
 }
 
-export const AR_SERIES = [{ id: 'ars-primary', name: 'Primary', firstNo: 430001 }];
+export const AR_SERIES: DocumentSeries[] = [
+  { id: 'ars-primary', name: 'Primary', prefix: 'AR-', firstNo: 430001, manual: false, isDefault: true, active: true },
+];
 
 export const newArLine = (patch: Partial<ArLine> = {}): ArLine => ({
   itemId: '',

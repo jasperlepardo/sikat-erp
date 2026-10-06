@@ -276,7 +276,7 @@ function SalesOrderForm() {
     ...(customer ? [{ label: `Open customer ${customer.code}`, icon: 'person', onSelect: () => navigate(`/sales/customers/${customer.id}`) }] : []),
   ];
 
-  const title = isNew ? 'New sales order' : draft.status === 'Draft' ? 'Draft sales order' : `Sales order ${soNumber(draft)}`;
+  const title = isNew ? 'New sales order' : draft.status === 'Draft' ? 'Draft sales order' : soNumber(draft);
   const tabBadge = (t: TabId) => (problems.some((p) => p.tab === t) ? '!' : t === 'attachments' && draft.attachments.length ? String(draft.attachments.length) : undefined);
 
   return (
@@ -300,7 +300,7 @@ function SalesOrderForm() {
             )
           }
           tabs={<Tabs variant="outline" value={tab} onValueChange={(v) => setTab(v as TabId)} items={(Object.keys(TAB_LABEL) as TabId[]).map((t) => ({ value: t, label: TAB_LABEL[t], badge: tabBadge(t) }))} />}
-          status={isNew ? undefined : <Badge intent={SO_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
+          status={isNew ? undefined : <Badge size="small" intent={SO_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
           actions={
             <>
               <Button type="button" intent="default" variant="solid" size="extra-large" onClick={() => navigate(SO_LIST_PATH)}>

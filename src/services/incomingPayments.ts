@@ -12,6 +12,7 @@ import {
   type IncomingPayment,
   type IncomingRow,
 } from '../mocks/incomingPayments';
+import { incomingPaymentSeries, seriesLookup, formatDocNum } from './allSeries';
 import type { Item } from '../mocks/items';
 import type { Partner } from '../mocks/partners';
 import type { TaxCode } from '../mocks/taxes';
@@ -31,8 +32,8 @@ export type IncomingInput = Omit<IncomingPayment, 'id'> & { id?: string };
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
-export const incomingSeriesOf = (id: string) => INCOMING_SERIES.find((s) => s.id === id) ?? INCOMING_SERIES[0];
-export const incomingNumber = (p: Pick<IncomingPayment, 'seriesId' | 'docNum'>) => (p.docNum ? `${incomingSeriesOf(p.seriesId).name} ${p.docNum}` : 'Draft');
+export const incomingSeriesOf = (id: string) => seriesLookup(incomingPaymentSeries, id, INCOMING_SERIES);
+export const incomingNumber = (p: Pick<IncomingPayment, 'seriesId' | 'docNum'>) => formatDocNum(incomingSeriesOf(p.seriesId), p.docNum);
 
 // ── Open documents ───────────────────────────────────────────────────────────
 

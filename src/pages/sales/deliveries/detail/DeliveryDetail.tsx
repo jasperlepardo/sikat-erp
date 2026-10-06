@@ -217,7 +217,7 @@ function DeliveryForm() {
     ...(customer ? [{ label: `Open customer ${customer.code}`, icon: 'person', onSelect: () => navigate(`/sales/customers/${customer.id}`) }] : []),
   ];
 
-  const title = isNew ? 'New delivery' : draft.status === 'Draft' ? 'Draft delivery' : `Delivery ${dnNumber(draft)}`;
+  const title = isNew ? 'New delivery' : draft.status === 'Draft' ? 'Draft delivery' : dnNumber(draft);
 
   return (
     <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
@@ -240,7 +240,7 @@ function DeliveryForm() {
             )
           }
           tabs={<Tabs variant="outline" value={tab} onValueChange={(v) => setTab(v as TabId)} items={(Object.keys(TAB_LABEL) as TabId[]).map((t) => ({ value: t, label: TAB_LABEL[t], badge: problems.some((p) => p.tab === t) ? '!' : t === 'attachments' && draft.attachments.length ? String(draft.attachments.length) : undefined }))} />}
-          status={isNew ? undefined : <Badge intent={DN_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
+          status={isNew ? undefined : <Badge size="small" intent={DN_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
           actions={
             <>
               <Button type="button" intent="default" variant="solid" size="extra-large" onClick={() => navigate(DN_LIST_PATH)}>

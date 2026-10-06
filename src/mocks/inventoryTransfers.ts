@@ -12,6 +12,7 @@
  *   Reversing one is another transfer the other way.
  * - Copy from an Inventory Transfer Request isn't built yet (there are no requests).
  */
+import type { DocumentSeries } from './common';
 import { SEED_ITEMS } from './items';
 
 export type TransferStatus = 'Draft' | 'Posted';
@@ -56,13 +57,9 @@ export interface InventoryTransfer {
   lines: TransferLine[];
 }
 
-export interface TransferSeries {
-  id: string;
-  name: string;
-  firstNo: number;
-}
-
-export const TRANSFER_SERIES: TransferSeries[] = [{ id: 'its-primary', name: 'Primary', firstNo: 270001 }];
+export const TRANSFER_SERIES: DocumentSeries[] = [
+  { id: 'its-primary', name: 'Primary', prefix: 'IT-', firstNo: 270001, manual: false, isDefault: true, active: true },
+];
 
 export const DEFAULT_JOURNAL_REMARK = 'Inventory Transfers –';
 

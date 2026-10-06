@@ -1,5 +1,6 @@
 import { WITHHOLDING_PAYABLE } from '../mocks/apInvoices';
 import { MEMO_SERIES, type ApCreditMemo, type CreditApplication, type MemoLine } from '../mocks/apCreditMemos';
+import { memoSeries, seriesLookup, formatDocNum } from './allSeries';
 import { FREIGHT_IN_ACCOUNT, GRNI_ACCOUNT } from '../mocks/goodsReceipts';
 import type { ItemGroup } from '../mocks/itemMasters';
 import type { Item } from '../mocks/items';
@@ -25,7 +26,7 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 
 /** "Primary 620004", or "Draft" before it's added. */
 export const memoNumber = (m: Pick<ApCreditMemo, 'seriesId' | 'docNum'>) =>
-  m.docNum ? `${(MEMO_SERIES.find((s) => s.id === m.seriesId) ?? MEMO_SERIES[0]).name} ${m.docNum}` : 'Draft';
+  formatDocNum(seriesLookup(memoSeries, m.seriesId, MEMO_SERIES), m.docNum);
 
 export const memoTotals = (
   m: Pick<ApCreditMemo, 'lines' | 'discountPct' | 'freight' | 'freightTaxCode'>,
@@ -186,7 +187,7 @@ export async function addCreditMemo(input: MemoInput, fx: number, credit: number
   }
 
   const all = await memos.list();
-  const series = MEMO_SERIES.find((s) => s.id === input.seriesId) ?? MEMO_SERIES[0];
+  const series = seriesLookup(memoSeries, input.seriesId, MEMO_SERIES);
   const docNum = Math.max(series.firstNo - 1, ...all.filter((m) => m.seriesId === series.id).map((m) => m.docNum)) + 1;
   const appliedAmount = round2(credit - left);
   return memos.save({

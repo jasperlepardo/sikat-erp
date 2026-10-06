@@ -8,6 +8,7 @@ import {
   Panel,
   PanelHeader,
   panelHeaderIcons,
+  SidePanel,
   Table,
   TableLink,
   TableStatus,
@@ -29,6 +30,12 @@ export interface MasterListProps<T extends { id: string }> {
   columns: TableColumn<T>[];
   /** Text the search box matches against. */
   searchText: (row: T) => string;
+  /**
+   * When provided, the list renders as a collapsible tree. Return child rows for
+   * each row, or undefined / [] for leaves. Pagination is suppressed; the search
+   * box switches to a flat view so every match is reachable.
+   */
+  getSubRows?: (row: T) => T[] | undefined;
   /** Value a column sorts by (defaults to the row field named by the column key). */
   sortValue?: (row: T, key: string) => string | number;
   /** Initial sort. Defaults to the first column, ascending. */
@@ -48,11 +55,23 @@ export interface MasterListProps<T extends { id: string }> {
   actions?: ReactNode;
   /** Shown between the title and the search box (e.g. a calculator or reference card). */
   intro?: ReactNode;
+  /**
+   * Suppress the list header (icon, title, description, New button). Use this
+   * when the page already has a PanelHeader with its own New button. The
+   * activate / deactivate toolbar still appears inline when rows are selected.
+   */
+  hideHeader?: boolean;
+  /**
+   * Open records in a SidePanel overlay instead of navigating to a separate page.
+   * Pass `recordId` from the URL so the panel opens for the right row (or a new
+   * one when `recordId === 'new'`). The list stays visible behind the panel.
+   */
+  sidePanelEdit?: boolean;
+  /** Current record id from the URL — used by `sidePanelEdit` to know what to open. */
+  recordId?: string;
   noun: string;
   /** Route of the list, e.g. /settings/accounting-and-tax/tax-codes. Rows open at `${basePath}/${id}`. */
   basePath: string;
-  /** When set, render that record's page ('new' for a new record) instead of the list. */
-  recordId?: string;
 }
 
 export const statusColumn = <T extends { active: boolean }>() => ({
@@ -92,8 +111,7 @@ const defaultSortValue = <T,>(row: T, key: string): string | number => {
  * Rows are deactivated rather than deleted, since documents may reference them.
  */
 export function MasterList<T extends { id: string }>(props: MasterListProps<T>) {
-  // A record id in the route means the record's own page; otherwise the list.
-  if (props.recordId) return <RecordPage key={props.recordId} {...props} recordId={props.recordId} />;
+  if (props.recordId && !props.sidePanelEdit) return <RecordPage key={props.recordId} {...props} recordId={props.recordId} />;
   return <ListView {...props} />;
 }
 
@@ -111,15 +129,54 @@ function ListView<T extends { id: string }>({
   intro,
   noun,
   basePath,
+  getSubRows,
+  hideHeader,
+  sidePanelEdit,
+  recordId,
+  blank,
+  label,
+  editor,
+  validate,
+  onSave,
 }: MasterListProps<T>) {
   const navigate = useNavigate();
   const location = useLocation();
   const isSettings = location.pathname.startsWith('/settings');
+
+  // Side panel state (only used when sidePanelEdit=true)
+  const isPanelNew = sidePanelEdit && recordId === 'new';
+  const panelExisting = sidePanelEdit && recordId && recordId !== 'new'
+    ? (rows ?? []).find((r) => r.id === recordId)
+    : undefined;
+  const isPanelOpen = sidePanelEdit && !!recordId;
+  const panelLoaded = rows !== undefined;
+  const panelFresh = useMemo(
+    () => (isPanelNew && panelLoaded && blank ? blank() : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [isPanelNew, panelLoaded],
+  );
+  const [panelDraft, setPanelDraft] = useState<T | null>(null);
+  const [panelErrors, setPanelErrors] = useState<Errors>({});
+  const [panelSaving, setPanelSaving] = useState(false);
+  const panelRow = panelDraft ?? panelFresh ?? (panelExisting ? structuredClone(panelExisting) : null);
+  const panelUpdate = (patch: Partial<T>) => setPanelDraft((d) => ({ ...(d ?? panelRow!), ...patch }));
+  const closePanel = () => { setPanelDraft(null); setPanelErrors({}); navigate(basePath); };
+  const savePanel = async () => {
+    if (!panelRow || !validate || !onSave) return;
+    const errs = validate(panelRow, rows ?? []);
+    setPanelErrors(errs);
+    if (Object.keys(errs).length) return;
+    setPanelSaving(true);
+    try { await onSave(panelRow); closePanel(); } finally { setPanelSaving(false); }
+  };
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<TableSort | null>(defaultSort ?? { key: columns[0].key, direction: 'asc' });
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [selected, setSelected] = useState<string[]>([]);
+
+  const isSearching = query.trim().length > 0;
+  const useTree = !!getSubRows && !isSearching;
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -133,10 +190,19 @@ function ListView<T extends { id: string }>({
     });
   }, [rows, query, searchText, sort, sortValue]);
 
+  // In tree mode pass only root rows; sub-rows come from getSubRows.
+  const rootIds = useMemo(() => {
+    if (!useTree) return null;
+    const childIds = new Set((rows ?? []).flatMap((r) => (getSubRows(r) ?? []).map((c) => c.id)));
+    return childIds;
+  }, [useTree, rows, getSubRows]);
+
+  const displayRows = useTree ? filtered.filter((r) => !rootIds!.has(r.id)) : filtered;
+
   // Keep the page in range as rows are filtered or deactivated.
-  const pages = Math.max(1, Math.ceil(filtered.length / pageSize));
-  const current = Math.min(page, pages);
-  const visible = filtered.slice((current - 1) * pageSize, current * pageSize);
+  const pages = useTree ? 1 : Math.max(1, Math.ceil(filtered.length / pageSize));
+  const current = useTree ? 1 : Math.min(page, pages);
+  const visible = useTree ? displayRows : displayRows.slice((current - 1) * pageSize, current * pageSize);
 
   const open = (row: T) => navigate(`${basePath}/${encodeURIComponent(row.id)}`);
 
@@ -161,7 +227,7 @@ function ListView<T extends { id: string }>({
       : {}),
   }));
 
-  const showHeader = !isSettings || !!(onSetActive && selected.length) || !!actions;
+  const showHeader = !hideHeader && (!isSettings || !!(onSetActive && selected.length) || !!actions);
 
   return (
     <>
@@ -211,6 +277,13 @@ function ListView<T extends { id: string }>({
           </div>
         </div>
       )}
+      {hideHeader && onSetActive && selected.length ? (
+        <div className="flex flex-wrap items-center gap-1 px-2 pt-2">
+          <Text variant="small" tone="muted">{selected.length} selected</Text>
+          <Button type="button" size="small" variant="ghost" onClick={() => setActive(true)}>Activate</Button>
+          <Button type="button" size="small" variant="ghost" intent="danger" onClick={() => setActive(false)}>Deactivate</Button>
+        </div>
+      ) : null}
       {intro}
       <TextField
         aria-label={`Search ${title.toLowerCase()}`}
@@ -234,22 +307,53 @@ function ListView<T extends { id: string }>({
             layout="fill"
             onRowAction={(r) => open(r)}
             {...(onSetActive ? { selectable: true, selectedIds: selected, onSelectionChange: setSelected } : {})}
-            pagination={{
-              page: current,
-              pageSize,
-              total: filtered.length,
-              pageSizes: PAGE_SIZES,
-              onPageChange: setPage,
-              onPageSizeChange: (size) => {
-                setPageSize(size);
-                setPage(1);
+            {...(useTree ? { getSubRows } : {
+              pagination: {
+                page: current,
+                pageSize,
+                total: filtered.length,
+                pageSizes: PAGE_SIZES,
+                onPageChange: setPage,
+                onPageSizeChange: (size) => {
+                  setPageSize(size);
+                  setPage(1);
+                },
               },
-            }}
+            })}
           />
         ) : (
           <Text tone="muted" className="p-4">Loading…</Text>
         )}
       </Card>
+
+      {isPanelOpen && panelRow && editor && label && (
+        <SidePanel overlay onOverlayClick={closePanel}>
+          <PanelHeader
+            type="details"
+            icon={icon}
+            title={isPanelNew ? `New ${noun}` : label(panelRow)}
+            actions={
+              <>
+                <IconButton type="button" label="Close" intent="default" variant="link" onClick={closePanel}>
+                  <Icon size={20}>close</Icon>
+                </IconButton>
+                <Button type="button" intent="default" variant="solid" size="extra-large" onClick={closePanel}>
+                  Cancel
+                </Button>
+                <Button type="button" intent="primary" variant="solid" size="extra-large" disabled={panelSaving} onClick={savePanel}>
+                  {panelSaving ? 'Saving…' : isPanelNew ? 'Add' : 'Save'}
+                </Button>
+              </>
+            }
+          />
+          <Panel.Body className="flex flex-col gap-2">
+            {Object.keys(panelErrors).length ? (
+              <Text variant="small" tone="danger">Fix the highlighted fields to save.</Text>
+            ) : null}
+            {editor(panelRow, panelUpdate, panelErrors, !!isPanelNew)}
+          </Panel.Body>
+        </SidePanel>
+      )}
     </>
   );
 }

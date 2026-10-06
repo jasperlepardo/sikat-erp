@@ -17,7 +17,7 @@
  *   standard fields and are left out, as are distribution rules, serial numbers, the QR code
  *   and Central Bank Ind.
  */
-import type { Attachment } from './common';
+import type { Attachment, DocumentSeries } from './common';
 import { blankGoodsReceipt, newGrLine, type GoodsReceipt, type GrLine } from './goodsReceipts';
 
 export type ReturnStatus = 'Draft' | 'Open' | 'Closed' | 'Cancelled';
@@ -43,7 +43,9 @@ export interface GoodsReturn extends Omit<GoodsReceipt, 'lines' | 'status'> {
   attachments: Attachment[];
 }
 
-export const RETURN_SERIES = [{ id: 'rts-primary', name: 'Primary', firstNo: 610001 }];
+export const RETURN_SERIES: DocumentSeries[] = [
+  { id: 'rts-primary', name: 'Primary', prefix: 'RTN-', firstNo: 610001, manual: false, isDefault: true, active: true },
+];
 
 export const newReturnLine = (patch: Partial<ReturnLine> = {}): ReturnLine => {
   const { invoicedQty: _i, returnedQty: _r, ...base } = newGrLine();

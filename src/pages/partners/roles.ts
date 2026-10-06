@@ -37,7 +37,7 @@ export const MASTER_CONFIG = {
   title: 'Business Partners',
   singular: 'Business partner',
   icon: 'groups',
-  basePath: '/business-partners',
+  basePath: '/crm/business-partners',
   subcopy: 'Every lead, customer and vendor — one record per company or person.',
 };
 

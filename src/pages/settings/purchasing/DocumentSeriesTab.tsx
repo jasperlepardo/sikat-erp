@@ -1,14 +1,16 @@
 import { FieldStack, bind } from '../../../components/form/fields';
 import { MasterList, statusColumn, uniqueRequired, type ListRoute } from '../../../components/form/MasterList';
-import type { DocumentSeries } from '../../../mocks/purchaseOrders';
-import { poSeries } from '../../../services/purchaseOrders';
+import type { DocumentSeries } from '../../../mocks/common';
+import { poSeries } from '../../../services/allSeries';
 import { newId, useCollectionRows } from '../../../services/useCollectionRows';
 
 const blank = (): DocumentSeries => ({
   id: newId('ser'),
   name: '',
+  prefix: '',
   firstNo: 1,
   manual: false,
+  isDefault: false,
   active: true,
 });
 

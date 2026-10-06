@@ -225,7 +225,7 @@ function PostingForm() {
               ]}
             />
           }
-          status={added ? <Badge intent="success">Posted</Badge> : undefined}
+          status={added ? <Badge size="small" intent="success">Posted</Badge> : undefined}
           actions={
             <>
               <Button type="button" intent="default" variant="solid" size="extra-large" onClick={() => navigate(POSTING_LIST_PATH)}>

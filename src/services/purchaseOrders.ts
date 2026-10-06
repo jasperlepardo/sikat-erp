@@ -2,7 +2,6 @@ import {
   PO_SERIES,
   SEED_PURCHASE_ORDERS,
   SEED_PURCHASING_SETTINGS,
-  type DocumentSeries,
   type PoLine,
   type PurchaseOrder,
   type PurchasingSettings,
@@ -16,8 +15,10 @@ import { determineWithholding, type LineParty, type TaxMasterData } from './taxD
 import { todayISO } from './dates';
 import { applyOrderedChange } from './items';
 
+import { poSeries, seriesLookup, formatDocNum } from './allSeries';
+
 const orders = createCollection<PurchaseOrder>('sikat-erp:purchase-orders:v16', SEED_PURCHASE_ORDERS, 'po');
-export const poSeries = createCollection<DocumentSeries>('sikat-erp:po-series', PO_SERIES, 'ser');
+export { poSeries };
 export const purchasingSettings = createCollection<PurchasingSettings>('sikat-erp:purchasing-settings', SEED_PURCHASING_SETTINGS, 'ps');
 
 export const listPurchaseOrders = orders.list;
@@ -29,17 +30,14 @@ export type PoInput = Omit<PurchaseOrder, 'id'> & { id?: string };
 const round2 = (n: number) => Math.round(n * 100) / 100;
 const TODAY = () => todayISO();
 
-export const seriesOf = (id: string) => {
-  const all = poSeries.snapshot();
-  return all.find((s) => s.id === id) ?? all[0] ?? PO_SERIES[0];
-};
+export const seriesOf = (id: string) => seriesLookup(poSeries, id, PO_SERIES);
 
 /** The active purchasing settings; falls back to seed defaults if the collection is empty. */
 export const getPurchasingSettings = (): PurchasingSettings =>
   purchasingSettings.snapshot()[0] ?? SEED_PURCHASING_SETTINGS[0];
-/** "Primary 260012", or "Draft" before a number is assigned. */
+/** "PO-260012", or "Draft" before a number is assigned. */
 export const poNumber = (po: Pick<PurchaseOrder, 'seriesId' | 'docNum'>) =>
-  po.docNum ? `${seriesOf(po.seriesId).name} ${po.docNum}` : 'Draft';
+  formatDocNum(seriesOf(po.seriesId), po.docNum);
 
 // ── Line and document math ───────────────────────────────────────────────────
 

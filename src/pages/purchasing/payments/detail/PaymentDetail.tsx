@@ -275,7 +275,7 @@ function PaymentForm() {
     ...(vendor ? [{ label: `Open vendor ${vendor.code}`, icon: 'local_shipping', onSelect: () => navigate(`/purchasing/vendors/${vendor.id}`) }] : []),
   ];
 
-  const title = isNew ? 'New outgoing payment' : added ? `Outgoing payment ${paymentNumber(draft)}` : 'Draft outgoing payment';
+  const title = isNew ? 'New outgoing payment' : added ? paymentNumber(draft) : 'Draft outgoing payment';
   const sectionProps = { draft, update, errors, m, fx, readOnly: added };
   const payToOptions = (vendor?.addresses ?? []).map((a) => ({ value: formatAddress(a, vendor!.name), label: `${a.label || 'Address'} · ${a.city || a.country}` }));
 
@@ -300,7 +300,7 @@ function PaymentForm() {
             )
           }
           tabs={<Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={PAGES.map((p) => ({ ...p, disabled: isNew && p.value !== 'details' }))} />}
-          status={isNew ? undefined : <Badge intent={PAYMENT_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
+          status={isNew ? undefined : <Badge size="small" intent={PAYMENT_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
           actions={
             <>
               <Button type="button" intent="default" variant="solid" size="extra-large" onClick={() => navigate(PAYMENT_LIST_PATH)}>

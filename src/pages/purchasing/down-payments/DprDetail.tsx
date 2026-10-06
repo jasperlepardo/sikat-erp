@@ -237,7 +237,7 @@ function DprForm() {
     ...(vendor ? [{ label: `Open vendor ${vendor.code}`, icon: 'local_shipping', onSelect: () => navigate(`/purchasing/vendors/${vendor.id}`) }] : []),
   ];
 
-  const title = isNew ? 'New A/P down payment request' : added ? `Down payment request ${dprNumber(draft)}` : 'Draft down payment request';
+  const title = isNew ? 'New A/P down payment request' : added ? dprNumber(draft) : 'Draft down payment request';
 
   return (
     <>
@@ -260,8 +260,8 @@ function DprForm() {
             status={
               isNew ? undefined : (
                 <div className="flex gap-1">
-                  <Badge intent={DPR_STATUS_INTENT[draft.status]}>{draft.status}</Badge>
-                  {added && draft.appliedAmount ? <Badge intent={balance > 0 ? 'warning' : 'success'} variant="outline">{balance > 0 ? 'Partly paid' : 'Paid'}</Badge> : null}
+                  <Badge size="small" intent={DPR_STATUS_INTENT[draft.status]}>{draft.status}</Badge>
+                  {added && draft.appliedAmount ? <Badge size="small" intent={balance > 0 ? 'warning' : 'success'} variant="outline">{balance > 0 ? 'Partly paid' : 'Paid'}</Badge> : null}
                 </div>
               )
             }

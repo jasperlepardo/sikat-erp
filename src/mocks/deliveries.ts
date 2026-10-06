@@ -20,7 +20,7 @@
  * - A/R invoices aren't built yet, so Invoiced Qty stays 0 except on seeded history.
  * - Negative stock isn't allowed: a line can't ship more than the warehouse holds.
  */
-import type { Attachment } from './common';
+import type { Attachment, DocumentSeries } from './common';
 import { SEED_SALES_ORDERS, seedRateOn, type SalesOrder } from './salesOrders';
 import type { PoReference } from './purchaseOrders';
 import { SEED_ITEMS } from './items';
@@ -127,7 +127,9 @@ export interface Delivery {
   fxRate: number;
 }
 
-export const DN_SERIES = [{ id: 'dns-primary', name: 'Primary', firstNo: 420001 }];
+export const DN_SERIES: DocumentSeries[] = [
+  { id: 'dns-primary', name: 'Primary', prefix: 'DN-', firstNo: 420001, manual: false, isDefault: true, active: true },
+];
 
 export const newDnLine = (patch: Partial<DnLine> = {}): DnLine => ({
   itemId: '',

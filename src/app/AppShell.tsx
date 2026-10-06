@@ -31,7 +31,7 @@ export function AppShell() {
     if (activeModule) setMainOpenId(activeModule);
   }, [activeModule]);
 
-  // Current app: follows the route; Home, Inbox, Business Partners and Settings keep the last one.
+  // Current app: follows the route; Settings keeps the last one.
   const routeApp = APPS.some((a) => a.id === activeModule) ? activeModule : null;
   const [appId, setAppId] = useState(() => routeApp ?? APPS[0].id);
   useEffect(() => {

@@ -12,6 +12,7 @@ import {
   type OriginType,
 } from '../mocks/journalEntries';
 import type { Partner } from '../mocks/partners';
+import { jeSeries, seriesLookup, formatDocNum } from './allSeries';
 import { rateAt, type TaxCode } from '../mocks/taxes';
 import { formatDate, todayISO } from './dates';
 import { createCollection } from './store';
@@ -32,8 +33,11 @@ export type JeInput = Omit<JournalEntry, 'id'> & { id?: string };
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
-export const seriesOf = (id: string) => JE_SERIES.find((s) => s.id === id) ?? JE_SERIES[0];
-export const jeNumber = (je: Pick<JournalEntry, 'number'>) => (je.number ? String(je.number) : 'New');
+export const seriesOf = (id: string) => seriesLookup(jeSeries, id, JE_SERIES);
+export const jeNumber = (je: Pick<JournalEntry, 'number'> & { seriesId?: string }) =>
+  je.seriesId
+    ? formatDocNum(seriesOf(je.seriesId), je.number, 'New')
+    : je.number ? String(je.number) : 'New';
 
 export function jeTotals(lines: JeLine[]) {
   const debit = round2(lines.reduce((n, l) => n + (l.debit || 0), 0));

@@ -169,7 +169,7 @@ function VoucherEntryForm() {
               ]}
             />
           }
-          status={<Badge intent={posted ? 'default' : 'success'}>{posted ? 'Posted' : 'Open'}</Badge>}
+          status={<Badge size="small" intent={posted ? 'default' : 'success'}>{posted ? 'Posted' : 'Open'}</Badge>}
           actions={
             <>
               <Button type="button" intent="default" variant="solid" size="extra-large" onClick={back}>

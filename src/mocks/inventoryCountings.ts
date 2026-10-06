@@ -16,7 +16,7 @@
  * - Serial and batch numbers aren't captured, only quantities.
  * - The end-of-fiscal-year date is recorded; the year-end close that would use it isn't built.
  */
-import type { Attachment } from './common';
+import type { Attachment, DocumentSeries } from './common';
 import { SEED_ITEMS } from './items';
 
 export type CountingType = 'single' | 'multiple';
@@ -128,14 +128,12 @@ export interface InventoryPosting {
   lines: PostingLine[];
 }
 
-export interface DocSeries {
-  id: string;
-  name: string;
-  firstNo: number;
-}
-
-export const COUNT_SERIES: DocSeries[] = [{ id: 'ic-primary', name: 'Primary', firstNo: 310001 }];
-export const POSTING_SERIES: DocSeries[] = [{ id: 'ip-primary', name: 'Primary', firstNo: 320001 }];
+export const COUNT_SERIES: DocumentSeries[] = [
+  { id: 'ic-primary', name: 'Primary', prefix: 'IC-', firstNo: 310001, manual: false, isDefault: true, active: true },
+];
+export const POSTING_SERIES: DocumentSeries[] = [
+  { id: 'ip-primary', name: 'Primary', prefix: 'IP-', firstNo: 320001, manual: false, isDefault: true, active: true },
+];
 
 export const DEFAULT_POSTING_JOURNAL_REMARK = 'Inventory Posting';
 

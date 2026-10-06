@@ -20,6 +20,7 @@
  * - Down payments, deferred tax, distribution rules, commodity classification, serial numbers,
  *   the QR code, Central Bank Ind. and the client's custom print UDFs are left out.
  */
+import type { DocumentSeries } from './common';
 import { blankApInvoice, newApLine, type ApInvoice, type ApLine } from './apInvoices';
 
 export type MemoStatus = 'Draft' | 'Open' | 'Closed' | 'Cancelled';
@@ -50,7 +51,9 @@ export interface ApCreditMemo extends Omit<ApInvoice, 'lines' | 'status'> {
   applications: CreditApplication[];
 }
 
-export const MEMO_SERIES = [{ id: 'cms-primary', name: 'Primary', firstNo: 620001 }];
+export const MEMO_SERIES: DocumentSeries[] = [
+  { id: 'cms-primary', name: 'Primary', prefix: 'CM-', firstNo: 620001, manual: false, isDefault: true, active: true },
+];
 
 export const newMemoLine = (patch: Partial<MemoLine> = {}): MemoLine => {
   const { returnedQty: _r, baseType: _b, ...base } = newApLine();

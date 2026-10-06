@@ -23,7 +23,7 @@
  *   and the foreign-currency chains (USD sale to Harbourline, USD import from Apple), so realized
  *   exchange differences show in the ledger. Other balances start from what's posted in the app.
  */
-import type { Attachment } from './common';
+import type { Attachment, DocumentSeries } from './common';
 import { SEED_AR_INVOICES } from './arInvoices';
 import { SEED_DELIVERIES } from './deliveries';
 import { SEED_INCOMING_PAYMENTS } from './incomingPayments';
@@ -127,7 +127,9 @@ export interface JournalEntry {
   lines: JeLine[];
 }
 
-export const JE_SERIES = [{ id: 'je-primary', name: 'Primary', firstNo: 1 }];
+export const JE_SERIES: DocumentSeries[] = [
+  { id: 'je-primary', name: 'Primary', prefix: 'JE-', firstNo: 1, manual: false, isDefault: true, active: true },
+];
 
 export const newJeLine = (patch: Partial<JeLine> = {}): JeLine => ({
   account: '',

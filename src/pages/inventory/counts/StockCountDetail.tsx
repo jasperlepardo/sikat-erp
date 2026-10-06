@@ -205,7 +205,7 @@ function CountForm() {
               ]}
             />
           }
-          status={isNew ? undefined : <Badge intent={COUNT_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
+          status={isNew ? undefined : <Badge size="small" intent={COUNT_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
           actions={
             <>
               <Button type="button" intent="default" variant="solid" size="extra-large" onClick={() => navigate(COUNT_LIST_PATH)}>

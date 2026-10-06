@@ -15,6 +15,7 @@
  *   change it.
  * - Return Reason is left out — it belongs to returns, not purchase orders.
  */
+import type { DocumentSeries } from './common';
 import { SEED_COMPANIES } from './companies';
 import { SEED_WAREHOUSES } from './itemMasters';
 import { SEED_ITEMS, itemsPerUom } from './items';
@@ -150,20 +151,12 @@ export const SEED_PURCHASING_SETTINGS: PurchasingSettings[] = [{
   useBpCatalogNumbers: true,
 }];
 
-export interface DocumentSeries {
-  id: string;
-  name: string;
-  /** First number of the series; the next number is one past the highest used. */
-  firstNo: number;
-  /** Manual series: the user types the number. */
-  manual: boolean;
-  active: boolean;
-}
+export type { DocumentSeries };
 
 export const PO_SERIES: DocumentSeries[] = [
-  { id: 'ser-primary', name: 'Primary', firstNo: 260001, manual: false, active: true },
-  { id: 'ser-import', name: 'Import', firstNo: 860001, manual: false, active: true },
-  { id: 'ser-manual', name: 'Manual', firstNo: 1, manual: true, active: true },
+  { id: 'ser-primary', name: 'Primary', prefix: 'PO-', firstNo: 260001, manual: false, isDefault: true, active: true },
+  { id: 'ser-import', name: 'Import', prefix: 'IMP-', firstNo: 860001, manual: false, isDefault: false, active: true },
+  { id: 'ser-manual', name: 'Manual', prefix: 'PO-', firstNo: 1, manual: true, isDefault: false, active: true },
 ];
 
 export const LANGUAGES = ['English', 'Filipino'];

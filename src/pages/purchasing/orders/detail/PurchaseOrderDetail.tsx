@@ -343,7 +343,7 @@ function PurchaseOrderForm() {
   ];
 
   const currencyEditable = !ctx.readOnly && !received;
-  const title = isNew ? 'New purchase order' : draft.status === 'Draft' ? `Draft purchase order` : `Purchase order ${poNumber(draft)}`;
+  const title = isNew ? 'New purchase order' : draft.status === 'Draft' ? 'Draft purchase order' : poNumber(draft);
   const postingMoved = draft.postingDate && draft.postingDate !== TODAY() && !ctx.added;
 
   return (
@@ -396,8 +396,8 @@ function PurchaseOrderForm() {
           status={
             isNew ? undefined : (
               <div className="flex gap-1">
-                <Badge intent={STATUS_INTENT[draft.status]}>{draft.status}</Badge>
-                {draft.splitFrom ? <Badge variant="outline">Split</Badge> : null}
+                <Badge size="small" intent={STATUS_INTENT[draft.status]}>{draft.status}</Badge>
+                {draft.splitFrom ? <Badge size="small" variant="outline">Split</Badge> : null}
               </div>
             )
           }

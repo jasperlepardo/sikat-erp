@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { useParams } from 'react-router';
-import { Alert, Badge, Checkbox, FormField, Panel, PanelHeader, TableStatus, Tabs, Text } from '@jasperlepardo/sikat-design-system';
-import { Fields, Flags, ReadOnly, Section, bind } from '../../components/form/fields';
+import { useNavigate, useParams } from 'react-router';
+import { Alert, Badge, Button, Checkbox, FormField, Icon, Panel, PanelHeader, TableStatus, Text } from '@jasperlepardo/sikat-design-system';
+import { FieldStack, Flags, ReadOnly, Section, bind } from '../../components/form/fields';
 import { MasterList } from '../../components/form/MasterList';
 import {
   ACCOUNT_TYPES,
@@ -23,16 +23,6 @@ import { newId, useCollectionRows } from '../../services/useCollectionRows';
 const BASE = '/accounting/chart-of-accounts';
 const CURRENCIES = ['PHP', 'USD', 'All currencies'];
 
-/** Levels below the drawer's top title (0 = drawer). */
-const depthOf = (a: Account, all: Account[]) => {
-  let depth = 0;
-  let parent = all.find((x) => x.code === a.parentCode);
-  while (parent && depth < 10) {
-    depth++;
-    parent = all.find((x) => x.code === parent!.parentCode);
-  }
-  return depth;
-};
 
 const blank = (): Account => ({
   id: newId('acct'),
@@ -66,8 +56,8 @@ const balanceSheet = (d: Drawer) => d === 'Assets' || d === 'Liabilities';
 /** Accounting › Chart of Accounts: drawers, title accounts and the active accounts documents post to. */
 export function ChartOfAccountsPage() {
   const { recordId } = useParams();
+  const navigate = useNavigate();
   const { rows, save, setActive } = useCollectionRows(accounts);
-  const [drawer, setDrawer] = useState<'all' | Drawer>('all');
   const [notice, setNotice] = useState<string>();
   // Which records use each account; reloads whenever the chart changes.
   const usage = useAsync(loadAccountUsage, [rows]);
@@ -85,7 +75,6 @@ export function ChartOfAccountsPage() {
     );
   };
   const all = rows ?? [];
-  const shown = rows && (drawer === 'all' ? rows : rows.filter((a) => a.drawer === drawer));
 
   const list = (
     <MasterList<Account>
@@ -95,14 +84,20 @@ export function ChartOfAccountsPage() {
       title="Accounts"
       noun="account"
       description="Title accounts group the accounts below them; documents post only to active accounts. Control accounts take postings through business partners only."
-      rows={shown}
+      rows={rows}
+      hideHeader
+      sidePanelEdit
+      getSubRows={(a) => {
+        const children = all.filter((x) => x.parentCode === a.code);
+        return children.length ? children : undefined;
+      }}
       onSetActive={setActiveChecked}
       columns={[
         {
           key: 'code',
           header: 'Account',
           cell: (a) => (
-            <span style={{ paddingLeft: `${depthOf(a, all) * 20}px` }} className={a.title ? 'font-semibold' : undefined}>
+            <span className={a.title ? 'font-semibold' : undefined}>
               {a.code} {a.name}
             </span>
           ),
@@ -233,56 +228,56 @@ export function ChartOfAccountsPage() {
         const isDrawerTop = !isNew && !a.parentCode;
         return (
           <>
-            <Fields cols={3}>
-              {f.text('code', 'Code', {
-                required: true,
-                error: errors.code,
-                disabled: !isNew,
-                hint: isNew ? 'Number it inside its title\'s range, e.g. 6330 under 6195.' : "Can't change once saved — documents refer to it.",
-              })}
-              {f.text('name', 'Name', { required: true, error: errors.name, className: 'md:col-span-2' })}
-              {isDrawerTop ? (
-                <ReadOnly label="Drawer" value={a.drawer} hint="Top of the drawer." />
-              ) : (
-                f.pick('drawer', 'Drawer', DRAWERS, {
+            <Section icon="account_tree" title="Account">
+              <FieldStack>
+                {f.text('code', 'Code', {
+                  required: true,
+                  error: errors.code,
                   disabled: !isNew,
-                  hint: !isNew ? "Can't change once saved — affects financial statement mapping." : `${statementOf(a.drawer)}.`,
-                })
-              )}
-              {isDrawerTop
-                ? null
-                : f.lookup(
-                    'parentCode',
-                    'Under title account',
-                    titles.map((t) => ({ value: t.code, label: `${t.code} ${t.name}` })),
-                    { error: errors.parentCode, hint: drawerTop ? `Within ${drawerTop.code} ${drawerTop.name}.` : undefined },
-                  )}
-              {f.pick('currency', 'Currency', CURRENCIES, { hint: 'All currencies lets documents in any currency post here.' })}
-              <ReadOnly label="Normal balance" value={a.title ? '—' : normalBalance(a)} hint={a.contra ? 'Contra account: opposite of its drawer.' : undefined} />
-            </Fields>
-            <Flags>
-              {f.check('title', 'Title account (groups others; no postings)', { disabled: isDrawerTop })}
-              {f.check('contra', 'Contra account')}
-              {f.check('control', 'Control account (AR/AP)')}
-              {f.check('cash', 'Cash account')}
-              {f.check('active', 'Active')}
-            </Flags>
-            {errors.title || errors.control || errors.active ? (
-              <Text variant="small" tone="danger">{errors.title ?? errors.control ?? errors.active}</Text>
-            ) : null}
-            <Fields cols={1}>
-              <ReadOnly
-                label="Used in"
-                value={isNew ? '—' : describeUsage(usedBy(a.code)) || 'Not used yet.'}
-                hint="Item groups, items, business partners and tax codes that post to this account. Names shown here update everywhere when the account is renamed."
-              />
-            </Fields>
-            <Fields cols={1}>{f.area('remarks', 'Remarks', { rows: 2 })}</Fields>
+                  hint: isNew ? "Number it inside its title's range, e.g. 6330 under 6195." : "Can't change once saved — documents refer to it.",
+                })}
+                {f.text('name', 'Name', { required: true, error: errors.name })}
+                {isDrawerTop ? (
+                  <ReadOnly label="Drawer" value={a.drawer} hint="Top of the drawer." />
+                ) : (
+                  f.pick('drawer', 'Drawer', DRAWERS, {
+                    disabled: !isNew,
+                    hint: !isNew ? "Can't change once saved — affects financial statement mapping." : `${statementOf(a.drawer)}.`,
+                  })
+                )}
+                {isDrawerTop
+                  ? null
+                  : f.lookup(
+                      'parentCode',
+                      'Under title account',
+                      titles.map((t) => ({ value: t.code, label: `${t.code} ${t.name}` })),
+                      { error: errors.parentCode, hint: drawerTop ? `Within ${drawerTop.code} ${drawerTop.name}.` : undefined },
+                    )}
+                {f.pick('currency', 'Currency', CURRENCIES, { hint: 'All currencies lets documents in any currency post here.' })}
+                <ReadOnly label="Normal balance" value={a.title ? '—' : normalBalance(a)} hint={a.contra ? 'Contra account: opposite of its drawer.' : undefined} />
+                <ReadOnly
+                  label="Used in"
+                  value={isNew ? '—' : describeUsage(usedBy(a.code)) || 'Not used yet.'}
+                  hint="Item groups, items, business partners and tax codes that post to this account."
+                />
+              </FieldStack>
+              <Flags>
+                {f.check('title', 'Title account (groups others; no postings)', { disabled: isDrawerTop })}
+                {f.check('contra', 'Contra account')}
+                {f.check('control', 'Control account (AR/AP)')}
+                {f.check('cash', 'Cash account')}
+                {f.check('active', 'Active')}
+              </Flags>
+              {errors.title || errors.control || errors.active ? (
+                <Text variant="small" tone="danger">{errors.title ?? errors.control ?? errors.active}</Text>
+              ) : null}
+              {f.area('remarks', 'Remarks', { rows: 2 })}
+            </Section>
 
             {a.title ? null : (
               <>
                 <Section icon="summarize" title="Reporting">
-                  <Fields cols={3}>
+                  <FieldStack>
                     {f.pick('accountType', 'Account type', ACCOUNT_TYPES, { hint: 'Sales, Expenditure or Other — used by sales and expense reports.' })}
                     {balanceSheet(a.drawer)
                       ? f.choose(
@@ -304,14 +299,13 @@ export function ChartOfAccountsPage() {
                     {f.pick('statementLine', 'Statement line', [...new Set([...STATEMENT_LINES[a.drawer], a.statementLine].filter(Boolean))], {
                       required: true,
                       error: errors.statementLine,
-                      className: 'md:col-span-2',
                       hint: `${statementOf(a.drawer)} line it rolls up to.`,
                     })}
-                  </Fields>
+                  </FieldStack>
                 </Section>
 
                 <Section icon="rule" title="Posting controls">
-                  <Fields cols={3}>
+                  <FieldStack>
                     {f.date('validFrom', 'Valid from', { hint: 'Postings dated earlier are refused.' })}
                     {f.date('validTo', 'Valid to', { error: errors.validTo, hint: 'Freeze the account after this date.' })}
                     <FormField label="Required dimensions" tooltip="Postings must fill these in, e.g. the store for revenue and expenses.">
@@ -325,7 +319,7 @@ export function ChartOfAccountsPage() {
                         </div>
                       )}
                     </FormField>
-                  </Fields>
+                  </FieldStack>
                   <Flags>
                     {f.check('blockManualPosting', 'Block manual journal entries (documents post here only)')}
                     {f.check('confidential', 'Confidential')}
@@ -333,11 +327,11 @@ export function ChartOfAccountsPage() {
                 </Section>
 
                 <Section icon="event_repeat" title="Period-end and tax">
-                  <Fields cols={3}>
+                  <FieldStack>
                     {f.lookup('defaultTaxCode', 'Default tax code', taxOptions, {
                       hint: 'Proposed on manual postings to this account. None = not VAT-relevant.',
                     })}
-                  </Fields>
+                  </FieldStack>
                   <Flags>
                     {f.check('revalue', 'Revalue at period-end (foreign currency)', { disabled: a.currency === 'PHP' || a.currency === 'All currencies' })}
                     {f.check('reconcile', 'Reconcile against bank statements', { disabled: !a.cash })}
@@ -352,23 +346,15 @@ export function ChartOfAccountsPage() {
     />
   );
 
-  if (recordId) return list;
   return (
     <Panel className="flex-1">
       <PanelHeader
         icon="account_tree"
         title="Chart of Accounts"
-        subcopy="Balance sheet and income statement accounts for a VAT-registered Philippine retailer."
-        tabs={
-          <Tabs
-            variant="outline"
-            value={drawer}
-            onValueChange={(v) => setDrawer(v as 'all' | Drawer)}
-            items={[
-              { value: 'all', label: 'All', badge: rows ? String(rows.length) : undefined },
-              ...DRAWERS.map((d) => ({ value: d, label: d, badge: rows ? String(rows.filter((a) => a.drawer === d).length) : undefined })),
-            ]}
-          />
+        actions={
+          <Button intent="primary" variant="solid" size="extra-large" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${BASE}/new`)}>
+            New account
+          </Button>
         }
       />
       <Panel.Body className="flex flex-col gap-2">

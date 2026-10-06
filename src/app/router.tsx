@@ -1,6 +1,7 @@
 import { createHashRouter, Navigate } from 'react-router';
 import { AppShell } from './AppShell';
 import { Home } from '../pages/Home';
+import { InventoryDashboard } from '../pages/inventory/InventoryDashboard';
 import { ItemList } from '../pages/inventory/items/ItemList';
 import { ItemDetail } from '../pages/inventory/items/detail/ItemDetail';
 import { Placeholder } from '../pages/Placeholder';
@@ -8,6 +9,7 @@ import { AccountingTaxPage } from '../pages/settings/accounting-tax/AccountingTa
 import { InventorySettingsPage } from '../pages/settings/inventory/InventorySettingsPage';
 import { BankingSettingsPage, CompanySettingsPage, SalesCrmSettingsPage } from '../pages/settings/MasterSettingsPages';
 import { PurchasingSettingsPage } from '../pages/settings/purchasing/PurchasingSettingsPage';
+import { DocumentNumberingPage } from '../pages/settings/document-numbering/DocumentNumberingPage';
 import { WarehousesPage } from '../pages/inventory/WarehousesPage';
 import { StockOnHandPage } from '../pages/inventory/StockOnHandPage';
 import { InventoryTransferList } from '../pages/inventory/transfers/InventoryTransferList';
@@ -16,6 +18,7 @@ import { PriceListsPage } from '../pages/inventory/pricing/PriceListsPage';
 import { InventoryPostingList, StockCountList } from '../pages/inventory/counts/StockCountList';
 import { InventoryPostingDetail } from '../pages/inventory/counts/InventoryPostingDetail';
 import { StockCountDetail } from '../pages/inventory/counts/StockCountDetail';
+import { PurchaseDashboard } from '../pages/purchasing/PurchaseDashboard';
 import { PurchaseOrderList } from '../pages/purchasing/orders/PurchaseOrderList';
 import { SalesOrderList } from '../pages/sales/orders/SalesOrderList';
 import { SalesOrderDetail } from '../pages/sales/orders/detail/SalesOrderDetail';
@@ -37,6 +40,7 @@ import { PaymentDetail } from '../pages/purchasing/payments/detail/PaymentDetail
 import { ReturnsList } from '../pages/purchasing/returns/ReturnsList';
 import { GoodsReturnDetail } from '../pages/purchasing/returns/GoodsReturnDetail';
 import { CreditMemoDetail } from '../pages/purchasing/returns/CreditMemoDetail';
+import { AccountingDashboard } from '../pages/accounting/AccountingDashboard';
 import { ChartOfAccountsPage } from '../pages/accounting/ChartOfAccountsPage';
 import { JournalEntryList } from '../pages/accounting/journal/JournalEntryList';
 import { JournalEntryDetail } from '../pages/accounting/journal/JournalEntryDetail';
@@ -44,6 +48,7 @@ import { ExchangeRateDifferencesPage } from '../pages/accounting/fx/ExchangeRate
 import { JournalVoucherList } from '../pages/accounting/vouchers/JournalVoucherList';
 import { JournalVoucherDetail } from '../pages/accounting/vouchers/JournalVoucherDetail';
 import { VoucherEntryDetail } from '../pages/accounting/vouchers/VoucherEntryDetail';
+import { SalesDashboard } from '../pages/sales/SalesDashboard';
 import { PartnerList } from '../pages/partners/PartnerList';
 import { PartnerDetail } from '../pages/partners/detail/PartnerDetail';
 import { ROLE_CONFIG, scopeConfig, type PartnerScope } from '../pages/partners/roles';
@@ -66,6 +71,7 @@ export const router = createHashRouter([
     element: <AppShell />,
     children: [
       { index: true, element: <Home /> },
+      { path: 'inventory/dashboard', element: <InventoryDashboard /> },
       { path: 'inventory/items', element: <ItemList /> },
       { path: 'inventory/items/:id', element: <ItemDetail /> },
       { path: 'inventory/stock-on-hand', element: <StockOnHandPage /> },
@@ -76,6 +82,7 @@ export const router = createHashRouter([
       { path: 'inventory/stock-counts/postings/:id', element: <InventoryPostingDetail /> },
       { path: 'inventory/stock-counts/:id', element: <StockCountDetail /> },
       ...partnerRoutes,
+      { path: 'sales/dashboard', element: <SalesDashboard /> },
       { path: 'sales/sales-orders', element: <SalesOrderList /> },
       { path: 'sales/sales-orders/:id', element: <SalesOrderDetail /> },
       { path: 'sales/deliveries', element: <DeliveryList /> },
@@ -84,6 +91,7 @@ export const router = createHashRouter([
       { path: 'sales/invoices/:id', element: <ArInvoiceDetail /> },
       { path: 'sales/payments-received', element: <IncomingPaymentList /> },
       { path: 'sales/payments-received/:id', element: <IncomingPaymentDetail /> },
+      { path: 'purchasing/dashboard', element: <PurchaseDashboard /> },
       { path: 'purchasing/purchase-orders', element: <PurchaseOrderList /> },
       { path: 'purchasing/purchase-orders/:id', element: <PurchaseOrderDetail /> },
       { path: 'purchasing/goods-receipts', element: <GoodsReceiptList /> },
@@ -104,12 +112,14 @@ export const router = createHashRouter([
       // Settings pages keep the tab and an opened record in the URL.
       { path: 'settings/accounting-and-tax/:tab?/:recordId?', element: <AccountingTaxPage /> },
       { path: 'settings/inventory/:tab?/:recordId?', element: <InventorySettingsPage /> },
+      { path: 'settings/document-numbering/:tab?/:recordId?', element: <DocumentNumberingPage /> },
       { path: 'settings/purchasing/:tab?/:recordId?', element: <PurchasingSettingsPage /> },
       { path: 'settings/sales-and-crm/:tab?/:recordId?', element: <SalesCrmSettingsPage /> },
       { path: 'settings/banking/:tab?/:recordId?', element: <BankingSettingsPage /> },
       { path: 'settings/company/:tab?/:recordId?', element: <CompanySettingsPage /> },
       { path: 'inventory/warehouses-and-bins/:tab?/:recordId?', element: <WarehousesPage /> },
       { path: 'inventory/price-lists/:tab?/:recordId?', element: <PriceListsPage /> },
+      { path: 'accounting/dashboard', element: <AccountingDashboard /> },
       { path: 'accounting/chart-of-accounts/:recordId?', element: <ChartOfAccountsPage /> },
       { path: 'accounting/journal-entries', element: <JournalEntryList /> },
       { path: 'accounting/journal-entries/:id', element: <JournalEntryDetail /> },

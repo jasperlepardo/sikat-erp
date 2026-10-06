@@ -312,7 +312,7 @@ function GoodsReturnForm() {
     ...(vendor ? [{ label: `Open vendor ${vendor.code}`, icon: 'local_shipping', onSelect: () => navigate(`/purchasing/vendors/${vendor.id}`) }] : []),
   ];
 
-  const title = isNew ? 'New goods return' : added ? `Goods return ${returnNumber(draft)}` : 'Draft goods return';
+  const title = isNew ? 'New goods return' : added ? returnNumber(draft) : 'Draft goods return';
   const addressOptions = vendorAddressOptions(vendor);
   const withCurrent = (opts: { value: string; label: string }[], v: string) => (!v || opts.some((o) => o.value === v) ? opts : [{ value: v, label: v.split('\n')[0] }, ...opts]);
 
@@ -338,7 +338,7 @@ function GoodsReturnForm() {
               )
             }
             tabs={<Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={PAGES.map((p) => ({ ...p, disabled: isNew && p.value !== 'details' }))} />}
-            status={isNew ? undefined : <Badge intent={RETURN_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
+            status={isNew ? undefined : <Badge size="small" intent={RETURN_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
             actions={
               <>
                 <Button type="button" intent="default" variant="solid" size="extra-large" onClick={() => navigate(RETURN_LIST_PATH)}>

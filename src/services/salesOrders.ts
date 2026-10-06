@@ -1,4 +1,5 @@
 import { SALES_SETTINGS, SEED_SALES_ORDERS, SO_SERIES, openCommitted, type SalesOrder, type SoLine } from '../mocks/salesOrders';
+import { soSeries, seriesLookup, formatDocNum } from './allSeries';
 import type { RoundingRule } from '../mocks/currencies';
 import type { Item } from '../mocks/items';
 import { rateAt, type TaxCode } from '../mocks/taxes';
@@ -15,9 +16,9 @@ export type SoInput = Omit<SalesOrder, 'id'> & { id?: string };
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
-export const seriesOf = (id: string) => SO_SERIES.find((s) => s.id === id) ?? SO_SERIES[0];
-/** "Primary 410004", or "Draft" before a number is assigned. */
-export const soNumber = (so: Pick<SalesOrder, 'seriesId' | 'docNum'>) => (so.docNum ? `${seriesOf(so.seriesId).name} ${so.docNum}` : 'Draft');
+export const seriesOf = (id: string) => seriesLookup(soSeries, id, SO_SERIES);
+/** "SO-410004", or "Draft" before a number is assigned. */
+export const soNumber = (so: Pick<SalesOrder, 'seriesId' | 'docNum'>) => formatDocNum(seriesOf(so.seriesId), so.docNum);
 
 // ── Line and document math ───────────────────────────────────────────────────
 

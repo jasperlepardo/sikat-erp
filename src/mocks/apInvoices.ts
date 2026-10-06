@@ -19,6 +19,7 @@
  *   Central Bank Ind., Stamp No., Net procedure and the QR code. Distribution rules, commodity
  *   classification and serial numbers wait for their masters.
  */
+import type { DocumentSeries } from './common';
 import { SEED_GOODS_RECEIPTS, newGrLine, type GoodsReceipt, type GrLine } from './goodsReceipts';
 import { SEED_ITEMS } from './items';
 import { SEED_PARTNERS } from './partners';
@@ -79,13 +80,9 @@ export interface ApInvoice extends Omit<GoodsReceipt, 'lines' | 'status'> {
   appliedAmount: number;
 }
 
-export interface ApSeries {
-  id: string;
-  name: string;
-  firstNo: number;
-}
-
-export const AP_SERIES: ApSeries[] = [{ id: 'aps-primary', name: 'Primary', firstNo: 290001 }];
+export const AP_SERIES: DocumentSeries[] = [
+  { id: 'aps-primary', name: 'Primary', prefix: 'BILL-', firstNo: 290001, manual: false, isDefault: true, active: true },
+];
 
 /** Payable accounts withholding tax is credited to, by kind. */
 export const WITHHOLDING_PAYABLE: Record<string, string> = {

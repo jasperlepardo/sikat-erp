@@ -18,7 +18,7 @@
  *   printing and voiding checks wait for Checks for Payment.
  * - Journal entries aren't a module yet, so there's no Transaction No.: the form shows the entry.
  */
-import type { Attachment } from './common';
+import type { Attachment, DocumentSeries } from './common';
 import type { PoReference } from './purchaseOrders';
 
 export type PaymentType = 'Vendor' | 'Account';
@@ -139,12 +139,9 @@ export interface OutgoingPayment {
   cancelDate: string;
 }
 
-export interface PaymentSeries {
-  id: string;
-  name: string;
-  firstNo: number;
-}
-export const PAYMENT_SERIES: PaymentSeries[] = [{ id: 'ops-primary', name: 'Primary', firstNo: 510001 }];
+export const PAYMENT_SERIES: DocumentSeries[] = [
+  { id: 'ops-primary', name: 'Primary', prefix: 'PAY-', firstNo: 510001, manual: false, isDefault: true, active: true },
+];
 
 /** House bank details for the cash-flagged bank accounts, until Banking › Accounts is built. */
 export const HOUSE_BANKS: Record<string, { bank: string; branch: string; accountNo: string; firstCheckNo: number }> = {

@@ -10,7 +10,6 @@ export const SETTINGS_NAV: SideNavSection[] = [
   },
   {
     id: 'settings-modules',
-    title: 'Settings',
     items: [
       {
         id: 'settings/company',
@@ -57,6 +56,28 @@ export const SETTINGS_NAV: SideNavSection[] = [
         ],
       },
       {
+        id: 'settings/document-numbering',
+        label: 'Document Numbering',
+        icon: icon('tag'),
+        items: [
+          { id: 'settings/document-numbering/purchase-orders', label: 'Purchase Orders' },
+          { id: 'settings/document-numbering/goods-receipts', label: 'Goods Receipts' },
+          { id: 'settings/document-numbering/ap-invoices', label: 'AP Invoices' },
+          { id: 'settings/document-numbering/ap-credit-memos', label: 'AP Credit Memos' },
+          { id: 'settings/document-numbering/down-payment-requests', label: 'Down Payment Requests' },
+          { id: 'settings/document-numbering/outgoing-payments', label: 'Outgoing Payments' },
+          { id: 'settings/document-numbering/goods-returns', label: 'Goods Returns' },
+          { id: 'settings/document-numbering/sales-orders', label: 'Sales Orders' },
+          { id: 'settings/document-numbering/deliveries', label: 'Deliveries' },
+          { id: 'settings/document-numbering/ar-invoices', label: 'AR Invoices' },
+          { id: 'settings/document-numbering/incoming-payments', label: 'Incoming Payments' },
+          { id: 'settings/document-numbering/inventory-transfers', label: 'Inventory Transfers' },
+          { id: 'settings/document-numbering/stock-counts', label: 'Stock Counts' },
+          { id: 'settings/document-numbering/inventory-postings', label: 'Inventory Postings' },
+          { id: 'settings/document-numbering/journal-entries', label: 'Journal Entries' },
+        ],
+      },
+      {
         id: 'settings/purchasing',
         label: 'Purchasing',
         icon: icon('shopping_cart'),
@@ -100,7 +121,6 @@ export const SETTINGS_NAV: SideNavSection[] = [
   },
   {
     id: 'settings-admin',
-    title: 'Administration',
     items: [
       { id: 'settings/setup-guide', label: 'Setup guide', icon: icon('checklist') },
       { id: 'settings/users-and-access', label: 'Users & access', icon: icon('manage_accounts') },

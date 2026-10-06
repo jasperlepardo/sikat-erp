@@ -16,6 +16,7 @@
  * - Return Reason belongs to returns, and Central Bank Ind. to other countries' localizations.
  *   Both are left out.
  */
+import type { DocumentSeries } from './common';
 import { SEED_ITEMS } from './items';
 import { SEED_RATES } from './currencies';
 import { PO_SERIES, SEED_PURCHASE_ORDERS, type PoReference } from './purchaseOrders';
@@ -118,13 +119,9 @@ export interface GoodsReceipt {
   fxRate: number;
 }
 
-export interface GrSeries {
-  id: string;
-  name: string;
-  firstNo: number;
-}
-
-export const GR_SERIES: GrSeries[] = [{ id: 'grs-primary', name: 'Primary', firstNo: 280001 }];
+export const GR_SERIES: DocumentSeries[] = [
+  { id: 'grs-primary', name: 'Primary', prefix: 'GR-', firstNo: 280001, manual: false, isDefault: true, active: true },
+];
 
 /**
  * Allocation account: Goods Received Not Invoiced. A receipt credits it; the A/P invoice

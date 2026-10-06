@@ -388,7 +388,7 @@ function ApInvoiceForm() {
   ];
 
   const allCurrencies = vendor?.currency === ALL_CURRENCIES;
-  const title = isNew ? 'New A/P invoice' : added ? `A/P invoice ${apNumber(draft)}` : 'Draft A/P invoice';
+  const title = isNew ? 'New A/P invoice' : added ? apNumber(draft) : 'Draft A/P invoice';
   const series = apSeriesOf(draft.seriesId);
   const code = draft.currency;
   // Paid down payment requests of this vendor not yet drawn, in this currency.
@@ -421,8 +421,8 @@ function ApInvoiceForm() {
           status={
             isNew ? undefined : (
               <div className="flex gap-1">
-                <Badge intent={AP_STATUS_INTENT[draft.status]}>{draft.status}</Badge>
-                {draft.paymentBlock ? <Badge intent="warning" variant="outline">Payment block</Badge> : null}
+                <Badge size="small" intent={AP_STATUS_INTENT[draft.status]}>{draft.status}</Badge>
+                {draft.paymentBlock ? <Badge size="small" intent="warning" variant="outline">Payment block</Badge> : null}
               </div>
             )
           }
