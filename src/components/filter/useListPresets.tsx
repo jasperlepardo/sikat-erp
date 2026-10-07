@@ -1,5 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { Button, type TableSort } from '@jasperlepardo/sikat-design-system';
+import { InvalidFilterError, filterRows } from '../../services/listQuery';
+import { formatFilter } from './aip160';
 import { EMPTY_FILTER, applyFilter, oneRule, type FilterField, type FilterGroup } from './engine';
 import { FilterBar } from './FilterBar';
 import { PresetPanel } from './PresetPanel';
@@ -26,7 +28,8 @@ export function statusViews(noun: string, statuses: readonly string[], field = '
  * - `menu` — the `PanelHeader` title (preset picker),
  * - `bar(search)` — the search field with the Filter button and builder,
  * - `panel` — the new/edit preset side panel (render anywhere in the page),
- * - `apply(rows)`, `sort`, `setSort` — to filter and sort the table.
+ * - `apply(rows)`, `sort`, `setSort` — to filter and sort the table,
+ * - `query` — the filter as AIP-160 text, as a list API would take it (`listX({ filter: query })`).
  */
 export function useListPresets<T>({
   list,
@@ -46,7 +49,7 @@ export function useListPresets<T>({
   /** Called when the filter or view changes — reset the table to page 1. */
   onChange?: () => void;
 }) {
-  const views = useListViews({ list, builtIns, defaultSort });
+  const views = useListViews({ list, fields, builtIns, defaultSort });
   const [panel, setPanel] = useState<'new' | 'edit' | null>(null);
 
   const setFilter = (next: FilterGroup) => {
@@ -89,6 +92,8 @@ export function useListPresets<T>({
     </FilterBar>
   );
 
+  const query = formatFilter(views.filter, fields);
+
   const editing = panel === 'edit';
   const panelEl = panel ? (
     <PresetPanel
@@ -113,6 +118,16 @@ export function useListPresets<T>({
     filter: views.filter,
     sort: views.sort,
     setSort: views.setSort,
-    apply: (all: T[]) => applyFilter(all, views.filter, fields),
+    query,
+    apply: (all: T[]) => {
+      // Through the AIP-160 text, the same path a list API call takes.
+      try {
+        return filterRows(all, query, fields);
+      } catch (e) {
+        if (!(e instanceof InvalidFilterError)) throw e;
+        console.warn(`Filter text didn't read back (${e.message}): ${e.filter}`);
+        return applyFilter(all, views.filter, fields);
+      }
+    },
   };
 }

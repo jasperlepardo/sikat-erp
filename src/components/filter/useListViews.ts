@@ -3,7 +3,8 @@ import { useSearchParams } from 'react-router';
 import type { TableSort } from '@jasperlepardo/sikat-design-system';
 import { filterPresets, type FilterPreset } from '../../services/filterPresets';
 import { useCollection } from '../form/MasterLookup';
-import { decodeFilter, encodeFilter, type FilterGroup } from './engine';
+import { formatFilter, parseFilter } from './aip160';
+import { decodeFilter, encodeFilter, type FilterField, type FilterGroup } from './engine';
 
 /** A list view: a built-in preset (declared in code) or a saved one. */
 export interface ListView {
@@ -23,15 +24,18 @@ const sameSort = (a: TableSort | null, b: TableSort | null) =>
  * Filter presets for one list. The header picks a view; the filter and sort start from it
  * and can be changed on top (`edited`), then saved back or as a new preset.
  *
- * URL: `?view=<id>` is the picked view; `?f=…` holds the filter only while it differs from
- * the view's — so a filtered list can be bookmarked and survives a refresh.
+ * URL: `?view=<id>` is the picked view; `?filter=…` holds the filter as AIP-160 text
+ * (`status = "Open" AND total > 1000`) only while it differs from the view's — so a filtered
+ * list can be bookmarked, survives a refresh, and can be edited by hand in the address bar.
  */
-export function useListViews({
+export function useListViews<T>({
   list,
+  fields,
   builtIns,
   defaultSort,
 }: {
   list: string;
+  fields: FilterField<T>[];
   builtIns: BuiltInView[];
   defaultSort: TableSort | null;
 }) {
@@ -52,8 +56,12 @@ export function useListViews({
   const current = views.find((v) => v.id === viewId);
 
   const [filter, setFilter] = useState<FilterGroup>(() => {
-    const fromUrl = params.get('f');
-    if (fromUrl) return decodeFilter(fromUrl);
+    const fromUrl = params.get('filter');
+    const parsed = fromUrl ? parseFilter(fromUrl, fields) : undefined;
+    if (parsed?.ok) return parsed.filter;
+    // Links from before AIP-160 text carry the old compact JSON in `?f=`.
+    const legacy = params.get('f');
+    if (legacy) return decodeFilter(legacy);
     return builtIns.find((v) => v.id === viewId)?.filter ?? builtIns[0].filter;
   });
   const [sort, setSort] = useState<TableSort | null>(defaultSort);
@@ -67,7 +75,7 @@ export function useListViews({
       setViewId(builtIns[0].id); // deleted or someone else's link
       return;
     }
-    if (!params.get('f')) setFilter(current.filter);
+    if (!params.get('filter') && !params.get('f')) setFilter(current.filter);
     setSort(current.sort);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [saved, adopted]);
@@ -77,7 +85,7 @@ export function useListViews({
   const edited = !!current && (encoded !== viewFilter || !sameSort(sort, current.sort));
 
   // Mirror the view and any unsaved filter to the URL.
-  const fParam = encoded !== viewFilter ? encoded : '';
+  const filterParam = encoded !== viewFilter ? formatFilter(filter, fields) : '';
   const viewParam = viewId === builtIns[0].id ? '' : viewId;
   useEffect(() => {
     setParams(
@@ -85,12 +93,13 @@ export function useListViews({
         const next = new URLSearchParams(prev);
         const put = (key: string, value: string) => (value ? next.set(key, value) : next.delete(key));
         put('view', viewParam);
-        put('f', fParam);
+        put('filter', filterParam);
+        next.delete('f');
         return next.toString() === prev.toString() ? prev : next;
       },
       { replace: true },
     );
-  }, [viewParam, fParam, setParams]);
+  }, [viewParam, filterParam, setParams]);
 
   const select = useCallback(
     (id: string) => {

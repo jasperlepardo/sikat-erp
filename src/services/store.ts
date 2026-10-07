@@ -1,3 +1,5 @@
+import { filterRows, type ListQuery } from './listQuery';
+
 /**
  * A tiny fake "API" over seed data. Every call is async with a small delay so
  * screens handle loading states like they would against a real backend, and
@@ -32,9 +34,10 @@ export function createCollection<T extends { id: string }>(storageKey: string, s
   }
 
   return {
-    async list(): Promise<T[]> {
+    /** All records, or those matching `query.filter` (AIP-160 text). Throws `InvalidFilterError` on bad text. */
+    async list(query?: ListQuery<T>): Promise<T[]> {
       await wait();
-      return structuredClone(records);
+      return structuredClone(filterRows(records, query?.filter, query?.fields));
     },
 
     async get(id: string): Promise<T | undefined> {

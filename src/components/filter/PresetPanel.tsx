@@ -1,7 +1,8 @@
 import { useEffect, useState, type CSSProperties, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
-import { Button, Icon, IconButton, Panel, PanelHeader, SidePanel, Text } from '@jasperlepardo/sikat-design-system';
+import { Button, FormField, Icon, IconButton, Panel, PanelHeader, SidePanel, Text, Textarea } from '@jasperlepardo/sikat-design-system';
 import { FieldStack, Section, bind, type Errors } from '../form/fields';
+import { formatFilter, parseFilter } from './aip160';
 import { FilterRules } from './FilterBar';
 import { newRule, type FilterField, type FilterGroup } from './engine';
 
@@ -30,6 +31,18 @@ export function PresetPanel<T>({
     initial.filter.rules.length ? initial : { ...initial, filter: { ...initial.filter, rules: [newRule(fields[0])] } },
   );
   const [errors, setErrors] = useState<Errors>({});
+  // The rules as AIP-160 text. Typing here rebuilds the rules; while the text doesn't parse,
+  // the rules keep their last good state and the field shows why.
+  const [expression, setExpression] = useState<{ text: string; error?: string } | null>(null);
+  const setFilter = (filter: FilterGroup) => {
+    setExpression(null);
+    setDraft((d) => ({ ...d, filter }));
+  };
+  const editExpression = (text: string) => {
+    const parsed = parseFilter(text, fields);
+    setExpression({ text, error: parsed.ok ? undefined : parsed.error });
+    if (parsed.ok) setDraft((d) => ({ ...d, filter: parsed.filter }));
+  };
   const [saving, setSaving] = useState(false);
 
   // Escape closes this panel only, not the page behind it.
@@ -48,6 +61,7 @@ export function PresetPanel<T>({
     e.stopPropagation();
     const name = draft.name.trim();
     const found: Errors = {};
+    if (expression?.error) found.expression = 'Fix the filter expression, or clear it.';
     if (!name) found.name = 'Name the preset.';
     else if (takenNames.some((n) => n.toLocaleLowerCase() === name.toLocaleLowerCase()))
       found.name = 'Another preset already has this name.';
@@ -95,7 +109,29 @@ export function PresetPanel<T>({
             <FieldStack>{f.text('name', 'Name', { required: true, error: errors.name, placeholder: 'e.g. High credit customers' })}</FieldStack>
           </Section>
           <Section icon="filter_list" title="Filters">
-            <FilterRules fields={fields} value={draft.filter} onChange={(filter) => setDraft((d) => ({ ...d, filter }))} />
+            <FilterRules fields={fields} value={draft.filter} onChange={setFilter} />
+          </Section>
+          <Section icon="code" title="Filter expression">
+            <FormField
+              label="AIP-160 filter"
+              error={expression?.error}
+              hint={
+                expression?.error
+                  ? undefined
+                  : 'Same filters as text — edit either one. e.g. status = "Open" AND total >= 1000'
+              }
+            >
+              {(p) => (
+                <Textarea
+                  {...p}
+                  rows={3}
+                  spellCheck={false}
+                  className="font-mono"
+                  value={expression?.text ?? formatFilter(draft.filter, fields)}
+                  onChange={(e) => editExpression(e.currentTarget.value)}
+                />
+              )}
+            </FormField>
           </Section>
         </Panel.Body>
       </form>
