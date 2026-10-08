@@ -228,8 +228,8 @@ function GoodsReturnForm() {
 
   const update = (patch: Partial<Draft>) => {
     const next = { ...draft, ...patch };
-    if ((patch.paymentTerms !== undefined || patch.postingDate !== undefined) && patch.dueDate === undefined && (!draft.dueDate || draft.dueDate === dueDateFor(draft.postingDate, draft.paymentTerms))) {
-      next.dueDate = dueDateFor(next.postingDate, next.paymentTerms);
+    if ((patch.paymentTermId !== undefined || patch.postingDate !== undefined) && patch.dueDate === undefined && (!draft.dueDate || draft.dueDate === dueDateFor(draft.postingDate, draft.paymentTermId))) {
+      next.dueDate = dueDateFor(next.postingDate, next.paymentTermId);
     }
     setDraft(next);
   };
@@ -458,7 +458,7 @@ function GoodsReturnForm() {
                   <Section icon="account_balance" title="Accounting">
                     <Fields>
                       {h.text('journalRemark', 'Journal remark', { hint: 'Defaults to “Goods Returns – vendor code”.' })}
-                      {h.master('paymentTerms', 'Payment terms', paymentTermDef, { hint: 'Defaults from the vendor or the base document.' })}
+                      {h.master('paymentTermId', 'Payment terms', paymentTermDef, { hint: 'Defaults from the vendor or the base document.' })}
                       {h.lookup('paymentMethod', 'Payment method', PAYMENT_METHODS.map((p) => ({ value: p.code, label: `${p.code} · ${p.description}` })))}
                       {h.num('cashDiscountDays', 'Cash discount date offset', { suffix: 'days' })}
                       {h.master('project', 'BP project', projectDef, { clearable: true })}
@@ -574,9 +574,9 @@ function vendorDefaults(v: Partner | undefined, d: Draft): Partial<Draft> {
     vendorName: v.name,
     contactId: v.defaultContactId,
     currency: v.currency === ALL_CURRENCIES ? 'PHP' : v.currency,
-    paymentTerms: v.vendorPaymentTerms,
+    paymentTermId: v.vendorPaymentTermId,
     paymentMethod: v.defaultPaymentMethod,
-    dueDate: dueDateFor(d.postingDate, v.vendorPaymentTerms),
+    dueDate: dueDateFor(d.postingDate, v.vendorPaymentTermId),
     project: v.project,
     shippingType: v.shippingType,
     journalRemark: `Goods Returns – ${v.code}`,
@@ -595,9 +595,9 @@ function withBase(d: Draft, base: GoodsReceipt | ApInvoice, lines: ReturnLine[])
       ? {
           currency: base.currency,
           contactId: base.contactId || d.contactId,
-          paymentTerms: base.paymentTerms || d.paymentTerms,
+          paymentTermId: base.paymentTermId || d.paymentTermId,
           paymentMethod: base.paymentMethod || d.paymentMethod,
-          dueDate: dueDateFor(d.postingDate, base.paymentTerms || d.paymentTerms),
+          dueDate: dueDateFor(d.postingDate, base.paymentTermId || d.paymentTermId),
           project: base.project || d.project,
           discountPct: base.discountPct,
           buyer: base.buyer || d.buyer,

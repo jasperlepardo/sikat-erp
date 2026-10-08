@@ -11,14 +11,14 @@ const asOptions = (values: readonly string[]) => values.map((v) => ({ value: v, 
 
 export function AccountingTab({ draft, update, errors, m, ctx }: PoTabProps) {
   const f = bind(draft, update);
-  const computedDue = dueDateFor(draft.postingDate, draft.paymentTerms);
+  const computedDue = dueDateFor(draft.postingDate, draft.paymentTermId);
   return (
     <div className="flex flex-col gap-2">
       <Section icon="account_balance" title="Journal & payment">
         <Fields>
           {f.text('journalRemark', 'Journal remark', { hint: 'Defaults to “Purchase Orders – vendor code”. With perpetual inventory, it’s the journal entry’s remark.' })}
           {f.master('project', 'BP project', projectDef, { clearable: true, hint: 'Defaults from the vendor.' })}
-          {f.master('paymentTerms', 'Payment terms', paymentTermDef, { hint: 'Defaults from the vendor; sets the due date.' })}
+          {f.master('paymentTermId', 'Payment terms', paymentTermDef, { hint: 'Defaults from the vendor; sets the due date.' })}
           {f.lookup(
             'paymentMethod',
             'Payment method',
@@ -29,7 +29,7 @@ export function AccountingTab({ draft, update, errors, m, ctx }: PoTabProps) {
             error: errors.dueDate,
             hint: (
               <>
-                Posting date + {termDays(draft.paymentTerms)} days = {computedDue || '—'}.{' '}
+                Posting date + {termDays(draft.paymentTermId)} days = {computedDue || '—'}.{' '}
                 {draft.dueDate !== computedDue ? (
                   <Button type="button" size="small" variant="ghost" onClick={() => update({ dueDate: computedDue })}>
                     Recalculate due date

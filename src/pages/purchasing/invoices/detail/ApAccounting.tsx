@@ -27,7 +27,7 @@ export function ApAccounting({ draft, update, errors, m, ctx }: ApSectionProps) 
             disabled={ctx.readOnly}
             hint="The vendor's payable account. Change it to post this invoice to another one, e.g. A/P – Import."
           />
-          {f.master('paymentTerms', 'Payment terms', paymentTermDef, { hint: 'Defaults from the vendor or the base document; sets the due date.' })}
+          {f.master('paymentTermId', 'Payment terms', paymentTermDef, { hint: 'Defaults from the vendor or the base document; sets the due date.' })}
           {f.lookup('paymentMethod', 'Payment method', PAYMENT_METHODS.map((p) => ({ value: p.code, label: `${p.code} · ${p.description}` })), { hint: 'Defaults from the vendor.' })}
           <ReadOnly label="Installments" value={String(draft.installments)} hint="Split into installments once payments are built." />
           {f.num('cashDiscountDays', 'Cash discount date offset', { suffix: 'days', hint: 'Days added to the posting date before the early-payment discount window starts.' })}

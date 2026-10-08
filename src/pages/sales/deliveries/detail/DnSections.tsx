@@ -84,10 +84,10 @@ export function DnLogistics({ draft, update, m, ctx }: DnSectionProps) {
 
 export function DnAccounting({ draft, update, errors, m }: DnSectionProps) {
   const f = bind(draft, update);
-  const computedDue = soDueDate(draft.postingDate, termDays(draft.paymentTerms), draft.dueMonths, draft.dueDays);
+  const computedDue = soDueDate(draft.postingDate, termDays(draft.paymentTermId), draft.dueMonths, draft.dueDays);
   const setRecalc = (patch: Partial<Pick<typeof draft, 'dueMonths' | 'dueDays'>>) => {
     const next = { ...draft, ...patch };
-    update({ ...patch, dueDate: soDueDate(draft.postingDate, termDays(draft.paymentTerms), next.dueMonths, next.dueDays) });
+    update({ ...patch, dueDate: soDueDate(draft.postingDate, termDays(draft.paymentTermId), next.dueMonths, next.dueDays) });
   };
   const shipped = m.accounts.find((a) => a.code === SHIPPED_GOODS_ACCOUNT);
 
@@ -97,7 +97,7 @@ export function DnAccounting({ draft, update, errors, m }: DnSectionProps) {
         <Fields>
           {f.text('journalRemark', 'Journal remark', { hint: 'Defaults to “Deliveries – customer code”; the journal entry’s remark.' })}
           {f.master('project', 'BP project', projectDef, { clearable: true })}
-          {f.master('paymentTerms', 'Payment terms', paymentTermDef, { hint: 'From the order or customer; carries to the invoice.' })}
+          {f.master('paymentTermId', 'Payment terms', paymentTermDef, { hint: 'From the order or customer; carries to the invoice.' })}
           {f.lookup('paymentMethod', 'Payment method', PAYMENT_METHODS.map((p) => ({ value: p.code, label: `${p.code} · ${p.description}` })))}
           {f.date('dueDate', 'Due date', {
             error: errors.dueDate,

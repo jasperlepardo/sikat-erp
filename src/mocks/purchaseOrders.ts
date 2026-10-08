@@ -16,6 +16,7 @@
  * - Return Reason is left out — it belongs to returns, not purchase orders.
  */
 import type { DocumentSeries } from './common';
+import { termId } from './masters';
 import { SEED_COMPANIES } from './companies';
 import { SEED_WAREHOUSES } from './itemMasters';
 import { SEED_ITEMS, itemsPerUom } from './items';
@@ -108,7 +109,7 @@ export interface PurchaseOrder {
 
   // Accounting
   journalRemark: string;
-  paymentTerms: string;
+  paymentTermId: string;
   paymentMethod: string;
   dueDate: string;
   cashDiscountDays: number;
@@ -251,7 +252,7 @@ export function blankPurchaseOrder(buyer: string): Omit<PurchaseOrder, 'id'> {
     splitByWarehouse: false,
     approved: true,
     journalRemark: '',
-    paymentTerms: 'Net 30',
+    paymentTermId: termId('Net 30'),
     paymentMethod: 'BANK',
     dueDate: '',
     cashDiscountDays: 0,
@@ -334,7 +335,7 @@ const vendorPo = (id: string, docNum: number, vendorId: string, patch: Partial<P
   const v = SEED_PARTNERS.find((p) => p.id === vendorId)!;
   return po(id, docNum, {
     vendorId, vendorCode: v.code, vendorName: v.name, contactId: v.defaultContactId, currency: v.currency,
-    paymentTerms: v.vendorPaymentTerms, journalRemark: `Purchase Orders – ${v.code}`,
+    paymentTermId: v.vendorPaymentTermId, journalRemark: `Purchase Orders – ${v.code}`,
     ...patch,
   });
 };
@@ -399,7 +400,7 @@ export const SEED_PURCHASE_ORDERS: PurchaseOrder[] = [
   po('po-005', 260004, {
     status: 'Open',
     vendorId: 'bp-015', vendorCode: 'BP-0015', vendorName: 'Amazon Web Services, Inc.', contactId: 'bp-015-c1',
-    currency: 'USD', currencyView: 'BP', paymentTerms: 'Net 7', shipTo: COMPANY_ADDRESS,
+    currency: 'USD', currencyView: 'BP', paymentTermId: termId('Net 7'), shipTo: COMPANY_ADDRESS,
     shippingType: '', journalRemark: 'Purchase Orders – BP-0015',
     postingDate: '2026-09-26', documentDate: '2026-09-26', deliveryDate: '2026-10-01', dueDate: '2026-10-03',
     lines: [

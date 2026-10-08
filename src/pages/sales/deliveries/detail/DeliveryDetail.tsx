@@ -130,7 +130,7 @@ function DeliveryForm() {
   function copyLines(d: DnDraft, so: SalesOrder, picks: { lineId: string; qty: number }[]): DnDraft {
     const added = picks.map((p) => dnLineFromOrder(so, so.lines.find((l) => l.id === p.lineId)!, p.qty));
     const first = !d.lines.some((l) => l.baseId);
-    const header = first ? { ...deliveryHeaderFrom(so), dueDate: soDueDate(d.postingDate, termDays(so.paymentTerms), so.dueMonths, so.dueDays) } : {};
+    const header = first ? { ...deliveryHeaderFrom(so), dueDate: soDueDate(d.postingDate, termDays(so.paymentTermId), so.dueMonths, so.dueDays) } : {};
     const numbers = [...new Set([...d.orderNumber.split(', ').filter(Boolean), String(so.docNum)])].join(', ');
     return { ...d, ...header, orderNumber: numbers, lines: [...d.lines.filter((l) => l.itemId), ...added] };
   }
@@ -146,9 +146,9 @@ function DeliveryForm() {
       customerName: c.name,
       contactId: c.defaultContactId,
       currency: c.currency === ALL_CURRENCIES ? 'PHP' : c.currency,
-      paymentTerms: c.customerPaymentTerms,
+      paymentTermId: c.customerPaymentTermId,
       paymentMethod: c.defaultPaymentMethod || draft.paymentMethod,
-      dueDate: soDueDate(draft.postingDate, termDays(c.customerPaymentTerms)),
+      dueDate: soDueDate(draft.postingDate, termDays(c.customerPaymentTermId)),
       project: c.project || '— None —',
       shippingType: c.shippingType,
       federalTaxId: c.tin,

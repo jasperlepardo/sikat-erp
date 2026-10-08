@@ -86,12 +86,12 @@ function validate(d: Draft, codeMode: 'auto' | 'manual', chart: Account[] | unde
     need(a.country, 'addresses', `address:${a.id}:country`, 'Every address needs a country.');
   }
   if (d.roles.includes('customer')) {
-    need(d.customerPaymentTerms, 'settings', 'customerPaymentTerms', 'Customer payment terms are required.');
+    need(d.customerPaymentTermId, 'settings', 'customerPaymentTermId', 'Customer payment terms are required.');
     const ar = chart ? accountProblem(d.receivableAccount, 'receivable', chart, true) : d.receivableAccount ? undefined : 'Pick an account.';
     need(!ar, 'settings', 'receivableAccount', ar === 'Pick an account.' ? 'Customers need an accounts receivable account.' : `Accounts receivable: ${ar}`);
   }
   if (d.roles.includes('vendor')) {
-    need(d.vendorPaymentTerms, 'settings', 'vendorPaymentTerms', 'Vendor payment terms are required.');
+    need(d.vendorPaymentTermId, 'settings', 'vendorPaymentTermId', 'Vendor payment terms are required.');
     const ap = chart ? accountProblem(d.payableAccount, 'payable', chart, true) : d.payableAccount ? undefined : 'Pick an account.';
     need(!ap, 'settings', 'payableAccount', ap === 'Pick an account.' ? 'Vendors need an accounts payable account.' : `Accounts payable: ${ap}`);
   }

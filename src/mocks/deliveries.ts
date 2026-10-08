@@ -21,6 +21,7 @@
  * - Negative stock isn't allowed: a line can't ship more than the warehouse holds.
  */
 import type { Attachment, DocumentSeries } from './common';
+import { termId } from './masters';
 import { SEED_SALES_ORDERS, seedRateOn, type SalesOrder } from './salesOrders';
 import type { PoReference } from './purchaseOrders';
 import { SEED_ITEMS } from './items';
@@ -101,7 +102,7 @@ export interface Delivery {
   // Accounting
   journalRemark: string;
   project: string;
-  paymentTerms: string;
+  paymentTermId: string;
   paymentMethod: string;
   indicator: string;
   federalTaxId: string;
@@ -186,7 +187,7 @@ export function blankDelivery(today: string, owner: string): Omit<Delivery, 'id'
     bpChannelContact: '',
     journalRemark: '',
     project: '— None —',
-    paymentTerms: 'Net 30',
+    paymentTermId: termId('Net 30'),
     paymentMethod: 'BANK',
     indicator: '— None —',
     federalTaxId: '',
@@ -209,7 +210,7 @@ export function blankDelivery(today: string, owner: string): Omit<Delivery, 'id'
 }
 
 /** A delivery's header, taken from the sales order it's copied from. */
-export function deliveryHeaderFrom(so: Pick<SalesOrder, 'customerId' | 'customerCode' | 'customerName' | 'contactId' | 'customerRef' | 'currency' | 'shipTo' | 'billTo' | 'shippingType' | 'language' | 'pickPackRemarks' | 'bpChannelName' | 'bpChannelContact' | 'project' | 'paymentTerms' | 'paymentMethod' | 'indicator' | 'federalTaxId' | 'salesEmployee' | 'discountPct' | 'freightTaxCode' | 'rounding' | 'dueMonths' | 'dueDays' | 'cashDiscountDays'>): Partial<Delivery> {
+export function deliveryHeaderFrom(so: Pick<SalesOrder, 'customerId' | 'customerCode' | 'customerName' | 'contactId' | 'customerRef' | 'currency' | 'shipTo' | 'billTo' | 'shippingType' | 'language' | 'pickPackRemarks' | 'bpChannelName' | 'bpChannelContact' | 'project' | 'paymentTermId' | 'paymentMethod' | 'indicator' | 'federalTaxId' | 'salesEmployee' | 'discountPct' | 'freightTaxCode' | 'rounding' | 'dueMonths' | 'dueDays' | 'cashDiscountDays'>): Partial<Delivery> {
   return {
     customerId: so.customerId,
     customerCode: so.customerCode,
@@ -225,7 +226,7 @@ export function deliveryHeaderFrom(so: Pick<SalesOrder, 'customerId' | 'customer
     bpChannelName: so.bpChannelName,
     bpChannelContact: so.bpChannelContact,
     project: so.project,
-    paymentTerms: so.paymentTerms,
+    paymentTermId: so.paymentTermId,
     paymentMethod: so.paymentMethod,
     indicator: so.indicator,
     federalTaxId: so.federalTaxId,

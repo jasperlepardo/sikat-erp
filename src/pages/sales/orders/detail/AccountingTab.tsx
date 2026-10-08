@@ -13,7 +13,7 @@ const DOC_TYPES = ['Sales quotation', ...REFERENCE_DOC_TYPES.filter((t) => t !==
 
 export function AccountingTab({ draft, update, errors, ctx }: SoTabProps) {
   const f = bind(draft, update);
-  const computedDue = soDueDate(draft.postingDate, termDays(draft.paymentTerms), draft.dueMonths, draft.dueDays);
+  const computedDue = soDueDate(draft.postingDate, termDays(draft.paymentTermId), draft.dueMonths, draft.dueDays);
   const manual = Boolean(draft.dueMonths || draft.dueDays);
   const refs = draft.references;
   const patchRef = (id: string, p: Partial<PoReference>) => update({ references: refs.map((r) => (r.id === id ? { ...r, ...p } : r)) });
@@ -21,7 +21,7 @@ export function AccountingTab({ draft, update, errors, ctx }: SoTabProps) {
   // Months/days move the due date with them.
   const setRecalc = (patch: Partial<Pick<typeof draft, 'dueMonths' | 'dueDays'>>) => {
     const next = { ...draft, ...patch };
-    update({ ...patch, dueDate: soDueDate(draft.postingDate, termDays(draft.paymentTerms), next.dueMonths, next.dueDays) });
+    update({ ...patch, dueDate: soDueDate(draft.postingDate, termDays(draft.paymentTermId), next.dueMonths, next.dueDays) });
   };
 
   const refColumns: TableColumn<PoReference>[] = [
@@ -37,13 +37,13 @@ export function AccountingTab({ draft, update, errors, ctx }: SoTabProps) {
         <Fields>
           {f.text('journalRemark', 'Journal remark', { hint: 'Defaults to “Sales Orders – customer code”.' })}
           {f.master('project', 'BP project', projectDef, { clearable: true, hint: 'Defaults from the customer.' })}
-          {f.master('paymentTerms', 'Payment terms', paymentTermDef, { hint: 'Defaults from the customer; sets the due date.' })}
+          {f.master('paymentTermId', 'Payment terms', paymentTermDef, { hint: 'Defaults from the customer; sets the due date.' })}
           {f.lookup('paymentMethod', 'Payment method', PAYMENT_METHODS.map((p) => ({ value: p.code, label: `${p.code} · ${p.description}` })))}
           {f.date('dueDate', 'Due date', {
             error: errors.dueDate,
             hint: (
               <>
-                {manual ? `Posting date + ${draft.dueMonths} months ${draft.dueDays} days` : `Posting date + ${termDays(draft.paymentTerms)} days`} = {computedDue || '—'}.{' '}
+                {manual ? `Posting date + ${draft.dueMonths} months ${draft.dueDays} days` : `Posting date + ${termDays(draft.paymentTermId)} days`} = {computedDue || '—'}.{' '}
                 {draft.dueDate !== computedDue ? (
                   <Button type="button" size="small" variant="ghost" onClick={() => update({ dueDate: computedDue })}>
                     Recalculate due date

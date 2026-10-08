@@ -177,8 +177,8 @@ function DprForm() {
 
   const update = (patch: Partial<Draft>) => {
     const next = { ...draft, ...patch };
-    if ((patch.paymentTerms !== undefined || patch.postingDate !== undefined) && patch.dueDate === undefined && (!draft.dueDate || draft.dueDate === dueDateFor(draft.postingDate, draft.paymentTerms))) {
-      next.dueDate = dueDateFor(next.postingDate, next.paymentTerms);
+    if ((patch.paymentTermId !== undefined || patch.postingDate !== undefined) && patch.dueDate === undefined && (!draft.dueDate || draft.dueDate === dueDateFor(draft.postingDate, draft.paymentTermId))) {
+      next.dueDate = dueDateFor(next.postingDate, next.paymentTermId);
     }
     if (patch.lines) next.orderNumber = [...new Set(next.lines.filter((l) => l.baseType).map((l) => l.baseDocNo))].join(', ');
     setDraft(next);
@@ -341,7 +341,7 @@ function DprForm() {
                     <Fields>
                       {h.text('journalRemark', 'Journal remark', { hint: 'Used on the payment that pays it.' })}
                       <AccountField label="Down payment account" role="downPaymentClearing" value={draft.downPaymentAccount} onChange={(downPaymentAccount) => update({ downPaymentAccount })} accounts={m.accounts} required error={errors.downPaymentAccount} disabled={added} hint="Where the advance sits once paid: the vendor's down payment account, else Advances to Suppliers." />
-                      {h.master('paymentTerms', 'Payment terms', paymentTermDef, { hint: 'Sets the due date.' })}
+                      {h.master('paymentTermId', 'Payment terms', paymentTermDef, { hint: 'Sets the due date.' })}
                       {h.lookup('paymentMethod', 'Payment method', PAYMENT_METHODS.map((p) => ({ value: p.code, label: `${p.code} · ${p.description}` })))}
                       <ReadOnly label="Installments" value={String(draft.installments)} />
                       {h.num('cashDiscountDays', 'Cash discount date offset', { suffix: 'days' })}
@@ -442,9 +442,9 @@ function vendorDefaults(v: Partner | undefined, d: Draft, m: Masters): Partial<D
     vendorName: v.name,
     contactId: v.defaultContactId,
     currency: v.currency === ALL_CURRENCIES ? 'PHP' : v.currency,
-    paymentTerms: v.vendorPaymentTerms,
+    paymentTermId: v.vendorPaymentTermId,
     paymentMethod: v.defaultPaymentMethod,
-    dueDate: dueDateFor(d.postingDate, v.vendorPaymentTerms),
+    dueDate: dueDateFor(d.postingDate, v.vendorPaymentTermId),
     project: v.project,
     shippingType: v.shippingType,
     journalRemark: `A/P Down Payment – ${v.code}`,
@@ -462,7 +462,7 @@ function withPo(d: Draft, po: PurchaseOrder, lines: DprLine[]): Draft {
   return {
     ...d,
     ...(first
-      ? { currency: po.currency, contactId: po.contactId || d.contactId, paymentTerms: po.paymentTerms || d.paymentTerms, project: po.project || d.project, discountPct: po.discountPct, buyer: po.buyer || d.buyer, shipTo: po.shipTo || d.shipTo }
+      ? { currency: po.currency, contactId: po.contactId || d.contactId, paymentTermId: po.paymentTermId || d.paymentTermId, project: po.project || d.project, discountPct: po.discountPct, buyer: po.buyer || d.buyer, shipTo: po.shipTo || d.shipTo }
       : {}),
     orderNumber: [...new Set(all.filter((l) => l.baseType).map((l) => l.baseDocNo))].join(', '),
     lines: all,

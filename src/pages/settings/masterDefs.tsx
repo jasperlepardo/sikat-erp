@@ -275,7 +275,7 @@ export const paymentTermDef: MasterDef<PaymentTerm> = {
   home: BANKING,
   description: 'Terms partners default to. The days set the due date on documents.',
   blank: (name) => ({ id: newId('pt'), name, days: Number(/(\d+)/.exec(name)?.[1] ?? 0), active: true }),
-  value: (t) => t.name,
+  value: (t) => t.id,
   label: (t) => t.name,
   columns: [
     { key: 'name', header: 'Name', cell: (t) => t.name },

@@ -71,7 +71,7 @@ export function openRows(customerId: string, currency: string, invoices: readonl
       continue;
     }
     let applied = inv.appliedAmount;
-    for (const part of installmentSchedule(inv.dueDate, inv.installments, amt.due, termDays(inv.paymentTerms))) {
+    for (const part of installmentSchedule(inv.dueDate, inv.installments, amt.due, termDays(inv.paymentTermId))) {
       const paid = Math.min(applied, part.amount);
       applied = round2(applied - paid);
       const balance = round2(part.amount - paid);

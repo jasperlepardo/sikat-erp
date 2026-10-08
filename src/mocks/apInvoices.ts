@@ -22,6 +22,7 @@
 import type { DocumentSeries } from './common';
 import { SEED_GOODS_RECEIPTS, newGrLine, type GoodsReceipt, type GrLine } from './goodsReceipts';
 import { SEED_ITEMS } from './items';
+import { SEED_PAYMENT_TERMS } from './partnerMasters';
 import { SEED_PARTNERS } from './partners';
 
 export type ApStatus = 'Draft' | 'Open' | 'Closed' | 'Cancelled';
@@ -118,7 +119,7 @@ export function blankApInvoice(today: string, buyer: string): Omit<ApInvoice, 'i
     shippingType: '',
     language: 'English',
     journalRemark: '',
-    paymentTerms: '',
+    paymentTermId: '',
     paymentMethod: '',
     cashDiscountDays: 0,
     project: '',
@@ -152,7 +153,7 @@ const plusDays = (date: string, days: number) => {
   d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().slice(0, 10);
 };
-const termDays = (terms: string) => Number(/Net (\d+)/.exec(terms)?.[1] ?? 0);
+const termDays = (termId: string) => SEED_PAYMENT_TERMS.find((t) => t.id === termId)?.days ?? 0;
 
 export const SEED_AP_INVOICES: ApInvoice[] = SEED_GOODS_RECEIPTS.filter((gr) => gr.status === 'Closed').map((gr, n): ApInvoice => {
   // Billed when the receipt was closed, but never before the goods arrived.
@@ -169,12 +170,12 @@ export const SEED_AP_INVOICES: ApInvoice[] = SEED_GOODS_RECEIPTS.filter((gr) => 
     currency: gr.currency,
     docNum: AP_SERIES[0].firstNo + n,
     status: 'Open',
-    dueDate: plusDays(posting, termDays(gr.paymentTerms)),
+    dueDate: plusDays(posting, termDays(gr.paymentTermId)),
     shipTo: gr.shipTo,
     payTo: gr.payTo,
     shippingType: gr.shippingType,
     journalRemark: `A/P Invoices – ${gr.vendorCode}`,
-    paymentTerms: gr.paymentTerms,
+    paymentTermId: gr.paymentTermId,
     paymentMethod: gr.paymentMethod,
     project: gr.project,
     orderNumber: gr.orderNumber,

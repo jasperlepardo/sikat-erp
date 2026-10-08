@@ -203,8 +203,8 @@ function CreditMemoForm() {
 
   const update = (patch: Partial<Draft>) => {
     const next = { ...draft, ...patch };
-    if ((patch.paymentTerms !== undefined || patch.postingDate !== undefined) && patch.dueDate === undefined && (!draft.dueDate || draft.dueDate === dueDateFor(draft.postingDate, draft.paymentTerms))) {
-      next.dueDate = dueDateFor(next.postingDate, next.paymentTerms);
+    if ((patch.paymentTermId !== undefined || patch.postingDate !== undefined) && patch.dueDate === undefined && (!draft.dueDate || draft.dueDate === dueDateFor(draft.postingDate, draft.paymentTermId))) {
+      next.dueDate = dueDateFor(next.postingDate, next.paymentTermId);
     }
     setDraft(next);
   };
@@ -466,7 +466,7 @@ function CreditMemoForm() {
                     <Fields>
                       {h.text('journalRemark', 'Journal remark', { hint: 'Defaults to “A/P Credit Memo – vendor code”.' })}
                       <AccountField label="Control account" role="payable" value={draft.controlAccount} onChange={(controlAccount) => update({ controlAccount })} accounts={m.accounts} required error={errors.controlAccount} disabled={added} hint="The vendor's payable account by default." />
-                      {h.master('paymentTerms', 'Payment terms', paymentTermDef)}
+                      {h.master('paymentTermId', 'Payment terms', paymentTermDef)}
                       {h.lookup('paymentMethod', 'Payment method', PAYMENT_METHODS.map((p) => ({ value: p.code, label: `${p.code} · ${p.description}` })))}
                       <ReadOnly label="Installments" value={String(draft.installments)} />
                       {h.num('cashDiscountDays', 'Cash discount date offset', { suffix: 'days' })}
@@ -664,9 +664,9 @@ function vendorDefaults(v: Partner | undefined, d: Draft): Partial<Draft> {
     vendorName: v.name,
     contactId: v.defaultContactId,
     currency: v.currency === ALL_CURRENCIES ? 'PHP' : v.currency,
-    paymentTerms: v.vendorPaymentTerms,
+    paymentTermId: v.vendorPaymentTermId,
     paymentMethod: v.defaultPaymentMethod,
-    dueDate: dueDateFor(d.postingDate, v.vendorPaymentTerms),
+    dueDate: dueDateFor(d.postingDate, v.vendorPaymentTermId),
     project: v.project,
     shippingType: v.shippingType,
     journalRemark: `A/P Credit Memo – ${v.code}`,
@@ -686,9 +686,9 @@ function withBase(d: Draft, base: ApInvoice | GoodsReturn, lines: MemoLine[]): D
       ? {
           currency: base.currency,
           contactId: base.contactId || d.contactId,
-          paymentTerms: base.paymentTerms || d.paymentTerms,
+          paymentTermId: base.paymentTermId || d.paymentTermId,
           paymentMethod: base.paymentMethod || d.paymentMethod,
-          dueDate: dueDateFor(d.postingDate, base.paymentTerms || d.paymentTerms),
+          dueDate: dueDateFor(d.postingDate, base.paymentTermId || d.paymentTermId),
           project: base.project || d.project,
           discountPct: base.discountPct,
           buyer: base.buyer || d.buyer,

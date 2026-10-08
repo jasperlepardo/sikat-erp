@@ -11,16 +11,16 @@ export function PaymentTermsSection({ draft, update, errors }: TabProps) {
     <Section icon="request_quote" title="Terms & pricing">
       <Fields>
         {isCustomer
-          ? f.master('customerPaymentTerms', isVendor ? 'Payment terms (as customer)' : 'Payment terms', paymentTermDef, {
+          ? f.master('customerPaymentTermId', isVendor ? 'Payment terms (as customer)' : 'Payment terms', paymentTermDef, {
               required: true,
-              error: errors.customerPaymentTerms,
+              error: errors.customerPaymentTermId,
               hint: 'Terms you give them. Drives due dates on invoices.',
             })
           : null}
         {isVendor
-          ? f.master('vendorPaymentTerms', isCustomer ? 'Payment terms (as vendor)' : 'Payment terms', paymentTermDef, {
+          ? f.master('vendorPaymentTermId', isCustomer ? 'Payment terms (as vendor)' : 'Payment terms', paymentTermDef, {
               required: true,
-              error: errors.vendorPaymentTerms,
+              error: errors.vendorPaymentTermId,
               hint: 'Terms they give you. Drives due dates on bills.',
             })
           : null}

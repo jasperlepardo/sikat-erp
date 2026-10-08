@@ -102,7 +102,7 @@ export function GrAccounting({ draft, update, ctx }: GrSectionProps) {
         <Fields>
           {f.text('journalRemark', 'Journal remark', { hint: 'Defaults to “Goods Receipt PO – vendor code”. It’s the remark on the journal entry.' })}
           {f.master('project', 'BP project', projectDef, { clearable: true, hint: 'Defaults from the vendor or the PO.' })}
-          {f.master('paymentTerms', 'Payment terms', paymentTermDef, { hint: 'Defaults from the vendor or the PO; sets the due date.' })}
+          {f.master('paymentTermId', 'Payment terms', paymentTermDef, { hint: 'Defaults from the vendor or the PO; sets the due date.' })}
           {f.lookup(
             'paymentMethod',
             'Payment method',

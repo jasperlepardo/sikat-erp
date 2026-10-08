@@ -21,6 +21,7 @@
  *   it when paying, it isn't part of the order total.
  */
 import type { Attachment, DocumentSeries } from './common';
+import { termId } from './masters';
 import { SEED_ITEMS, itemsPerUom } from './items';
 import { SEED_PARTNERS, formatAddress } from './partners';
 import type { PoReference } from './purchaseOrders';
@@ -100,7 +101,7 @@ export interface SalesOrder {
   project: string;
   cancellationDate: string;
   requiredDate: string;
-  paymentTerms: string;
+  paymentTermId: string;
   paymentMethod: string;
   indicator: string;
   /** The customer's TIN, as printed on the order. */
@@ -208,7 +209,7 @@ export function blankSalesOrder(owner: string): Omit<SalesOrder, 'id'> {
     project: '— None —',
     cancellationDate: '',
     requiredDate: '',
-    paymentTerms: 'Net 30',
+    paymentTermId: termId('Net 30'),
     paymentMethod: 'BANK',
     indicator: '— None —',
     federalTaxId: '',
@@ -276,7 +277,7 @@ const header = (id: string, docNum: number, customerId: string, patch: Partial<S
     customerName: c.name,
     contactId: c.defaultContactId,
     currency: c.currency === 'All currencies' ? 'PHP' : c.currency,
-    paymentTerms: c.customerPaymentTerms,
+    paymentTermId: c.customerPaymentTermId,
     federalTaxId: c.tin,
     shippingType: c.shippingType,
     salesEmployee: c.salesEmployee || NO_SALES_EMPLOYEE,

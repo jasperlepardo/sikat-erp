@@ -27,6 +27,7 @@ import {
 } from '../../services/partners';
 import { useAsync } from '../../services/useAsync';
 import { formatAmount } from '../../services/format';
+import { paymentTermName } from '../../services/purchaseOrders';
 import { DEFAULT_PAGE_SIZE, PAGE_SIZES, fillCardClass } from '../../components/form/DataTable';
 import { useListPresets } from '../../components/filter/useListPresets';
 import { ROLE_CONFIG, ROLE_ORDER, STAGE_INTENT, scopeConfig, type PartnerScope } from './roles';
@@ -92,12 +93,12 @@ export function PartnerList({ scope }: { scope: PartnerScope }) {
             key: 'creditLimit',
             header: 'Credit limit',
             cell: (p) => (
-              <TableSubcontent subcopy={p.customerPaymentTerms}>
+              <TableSubcontent subcopy={paymentTermName(p.customerPaymentTermId)}>
                 <TableAmount currency="PHP">{formatAmount(p.creditLimit ?? 0)}</TableAmount>
               </TableSubcontent>
             ),
           }
-        : { key: 'vendorPaymentTerms', header: 'Payment terms', sortable: true, cell: (p) => p.vendorPaymentTerms || '—' };
+        : { key: 'vendorPaymentTermId', header: 'Payment terms', sortable: true, cell: (p) => (p.vendorPaymentTermId ? paymentTermName(p.vendorPaymentTermId) : '—') };
 
   const columns: TableColumn<Partner>[] = [
     {

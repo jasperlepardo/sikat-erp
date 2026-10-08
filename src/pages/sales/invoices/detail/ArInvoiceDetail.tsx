@@ -36,7 +36,7 @@ import { isValidToday, listItems } from '../../../../services/items';
 import { controlAccountOf } from '../../../../services/journalEntries';
 import { accounts, companyTax, currencies, exchangeRates, taxCodes, taxGroups, withholdingGroups, withholdingTaxes } from '../../../../services/masterData';
 import { listPartnersByRole } from '../../../../services/partners';
-import { termDays } from '../../../../services/purchaseOrders';
+import { paymentTermName, termDays } from '../../../../services/purchaseOrders';
 import { listSalesOrders, openQty, soDueDate } from '../../../../services/salesOrders';
 import { salesEmployeeDef } from '../../../settings/masterDefs';
 import { DN_LIST_PATH } from '../../deliveries/detail/types';
@@ -181,7 +181,7 @@ function ArInvoiceForm() {
           bpChannelName: s.bpChannelName,
           bpChannelContact: s.bpChannelContact,
           project: s.project,
-          paymentTerms: s.paymentTerms,
+          paymentTermId: s.paymentTermId,
           paymentMethod: s.paymentMethod,
           indicator: s.indicator,
           federalTaxId: s.federalTaxId,
@@ -192,7 +192,7 @@ function ArInvoiceForm() {
           dueMonths: s.dueMonths,
           dueDays: s.dueDays,
           cashDiscountDays: s.cashDiscountDays,
-          dueDate: soDueDate(d.postingDate, termDays(s.paymentTerms), s.dueMonths, s.dueDays),
+          dueDate: soDueDate(d.postingDate, termDays(s.paymentTermId), s.dueMonths, s.dueDays),
           controlAccount: c ? controlAccountOf(c) : '1120',
           journalRemark: `A/R Invoices – ${s.customerCode}`,
           docType: src.kind === 'SO' ? src.doc.docType : 'Item',
@@ -216,9 +216,9 @@ function ArInvoiceForm() {
       customerName: c.name,
       contactId: c.defaultContactId,
       currency: c.currency === ALL_CURRENCIES ? 'PHP' : c.currency,
-      paymentTerms: c.customerPaymentTerms,
+      paymentTermId: c.customerPaymentTermId,
       paymentMethod: c.defaultPaymentMethod || draft.paymentMethod,
-      dueDate: soDueDate(draft.postingDate, termDays(c.customerPaymentTerms)),
+      dueDate: soDueDate(draft.postingDate, termDays(c.customerPaymentTermId)),
       project: c.project || '— None —',
       shippingType: c.shippingType,
       federalTaxId: c.tin,
@@ -373,7 +373,7 @@ function ArInvoiceForm() {
                   </FormField>
                   <ReadOnly label="Status" value={<Badge intent={AR_STATUS_INTENT[draft.status]}>{isNew ? 'New' : draft.status}</Badge>} error={errors.status} />
                   {h.date('postingDate', 'Posting date', { required: true, error: errors.postingDate, hint: 'When revenue, VAT and any stock it ships are posted.' })}
-                  {h.date('dueDate', 'Due date', { required: true, error: errors.dueDate, hint: `From the payment terms (${draft.paymentTerms}).` })}
+                  {h.date('dueDate', 'Due date', { required: true, error: errors.dueDate, hint: `From the payment terms (${paymentTermName(draft.paymentTermId)}).` })}
                   {h.date('documentDate', 'Document date', { required: true, error: errors.documentDate })}
                   <ReadOnly label="Close date" value={draft.closeDate ? formatDate(draft.closeDate) : '—'} />
                 </Fields>

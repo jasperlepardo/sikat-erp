@@ -49,7 +49,7 @@ export function ArLogistics({ draft, update, m, ctx }: ArSectionProps) {
 
 export function ArAccounting({ draft, update, errors, m, ctx, balance }: ArSectionProps & { balance: number }) {
   const f = bind(draft, update);
-  const days = termDays(draft.paymentTerms);
+  const days = termDays(draft.paymentTermId);
   const computedDue = soDueDate(draft.postingDate, days, draft.dueMonths, draft.dueDays);
   const setRecalc = (patch: Partial<Pick<typeof draft, 'dueMonths' | 'dueDays'>>) => {
     const next = { ...draft, ...patch };
@@ -102,7 +102,7 @@ export function ArAccounting({ draft, update, errors, m, ctx, balance }: ArSecti
 
       <Section icon="payments" title="Payment">
         <Fields>
-          {f.master('paymentTerms', 'Payment terms', paymentTermDef, { hint: 'Drives the due date.' })}
+          {f.master('paymentTermId', 'Payment terms', paymentTermDef, { hint: 'Drives the due date.' })}
           {f.lookup('paymentMethod', 'Payment method', PAYMENT_METHODS.map((p) => ({ value: p.code, label: `${p.code} · ${p.description}` })))}
           {f.date('dueDate', 'Due date', {
             required: true,

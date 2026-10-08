@@ -99,7 +99,7 @@ export interface GoodsReceipt {
 
   // Accounting
   journalRemark: string;
-  paymentTerms: string;
+  paymentTermId: string;
   paymentMethod: string;
   cashDiscountDays: number;
   project: string;
@@ -181,7 +181,7 @@ export function blankGoodsReceipt(today: string, buyer: string): Omit<GoodsRecei
     shippingType: '',
     language: 'English',
     journalRemark: '',
-    paymentTerms: '',
+    paymentTermId: '',
     paymentMethod: '',
     cashDiscountDays: 0,
     project: '',
@@ -241,7 +241,7 @@ export const SEED_GOODS_RECEIPTS: GoodsReceipt[] = received
       shipTo: po.shipTo,
       shippingType: po.shippingType,
       journalRemark: `Goods Receipt PO – ${po.vendorCode}`,
-      paymentTerms: po.paymentTerms,
+      paymentTermId: po.paymentTermId,
       paymentMethod: po.paymentMethod,
       project: po.project,
       orderNumber: poNo,

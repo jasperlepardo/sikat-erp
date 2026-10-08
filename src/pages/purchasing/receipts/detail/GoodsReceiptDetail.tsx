@@ -48,7 +48,7 @@ import { loadInventoryMasters } from '../../../../services/inventoryMasters';
 import { isValidToday, listItems } from '../../../../services/items';
 import { companyTax, currencies, exchangeRates, taxCodes, taxGroups, withholdingGroups, withholdingTaxes } from '../../../../services/masterData';
 import { listPartnersByRole } from '../../../../services/partners';
-import { dueDateFor, getPurchasingSettings, listPurchaseOrders, openQty, poNumber } from '../../../../services/purchaseOrders';
+import { dueDateFor, getPurchasingSettings, listPurchaseOrders, openQty, paymentTermName, poNumber } from '../../../../services/purchaseOrders';
 import { transferBlock } from '../../../../services/binLocations';
 import { salesEmployeeDef } from '../../../settings/masterDefs';
 import { TotalNote, TotalRow } from '../../orders/detail/PurchaseOrderDetail';
@@ -210,8 +210,8 @@ function GoodsReceiptForm() {
   const update = (patch: Partial<GrDraft>) => {
     const next = { ...draft, ...patch };
     if (patch.lines && patch.shipTo === undefined && draft.shipTo === defaultShipTo(draft.lines, m)) next.shipTo = defaultShipTo(patch.lines, m);
-    if ((patch.paymentTerms !== undefined || patch.postingDate !== undefined) && patch.dueDate === undefined && (!draft.dueDate || draft.dueDate === dueDateFor(draft.postingDate, draft.paymentTerms))) {
-      next.dueDate = dueDateFor(next.postingDate, next.paymentTerms);
+    if ((patch.paymentTermId !== undefined || patch.postingDate !== undefined) && patch.dueDate === undefined && (!draft.dueDate || draft.dueDate === dueDateFor(draft.postingDate, draft.paymentTermId))) {
+      next.dueDate = dueDateFor(next.postingDate, next.paymentTermId);
     }
     setDraft(next);
   };
@@ -286,7 +286,7 @@ function GoodsReceiptForm() {
       vendorRef: '',
       postingDate: today,
       documentDate: today,
-      dueDate: dueDateFor(today, draft.paymentTerms),
+      dueDate: dueDateFor(today, draft.paymentTermId),
       closeDate: '',
       orderNumber: '',
       fxRate: 1,
@@ -462,7 +462,7 @@ function GoodsReceiptForm() {
                     })}
                     {h.date('dueDate', 'Due date', {
                       error: errors.dueDate,
-                      hint: `Posting date + the payment terms${draft.paymentTerms ? ` (${draft.paymentTerms})` : ''}. The A/P invoice takes it.`,
+                      hint: `Posting date + the payment terms${draft.paymentTermId ? ` (${paymentTermName(draft.paymentTermId)})` : ''}. The A/P invoice takes it.`,
                     })}
                     {h.date('documentDate', 'Document date', { required: true, error: errors.documentDate, hint: 'The date on the vendor’s delivery receipt. Defaults to today.' })}
                     <ReadOnly label="Close date" value={draft.closeDate ? formatDate(draft.closeDate) : '—'} hint="Set when the receipt is closed or cancelled." />
@@ -589,9 +589,9 @@ function vendorDefaults(v: Partner | undefined, d: GrDraft): Partial<GrDraft> {
     vendorName: v.name,
     contactId: v.defaultContactId,
     currency: v.currency === ALL_CURRENCIES ? 'PHP' : v.currency,
-    paymentTerms: v.vendorPaymentTerms,
+    paymentTermId: v.vendorPaymentTermId,
     paymentMethod: v.defaultPaymentMethod,
-    dueDate: dueDateFor(d.postingDate, v.vendorPaymentTerms),
+    dueDate: dueDateFor(d.postingDate, v.vendorPaymentTermId),
     project: v.project,
     shippingType: v.shippingType,
     journalRemark: journalRemarkFor(v.code),
@@ -614,9 +614,9 @@ function withPo(d: GrDraft, po: PurchaseOrder, lines: GrLine[], m: GrMasters): G
       ? {
           currency: po.currency,
           contactId: po.contactId || d.contactId,
-          paymentTerms: po.paymentTerms || d.paymentTerms,
+          paymentTermId: po.paymentTermId || d.paymentTermId,
           paymentMethod: po.paymentMethod || d.paymentMethod,
-          dueDate: dueDateFor(d.postingDate, po.paymentTerms || d.paymentTerms),
+          dueDate: dueDateFor(d.postingDate, po.paymentTermId || d.paymentTermId),
           project: po.project || d.project,
           shippingType: po.shippingType || d.shippingType,
           discountPct: po.discountPct,

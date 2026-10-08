@@ -39,7 +39,9 @@ export const CHANNELS = ['Direct', 'Distributor', 'E-commerce', 'Walk-in'];
 export const PROJECTS = ['PRJ-001 Northgate store renovation', 'PRJ-002 DepEd Pasig iPad rollout', 'PRJ-003 Cebu store opening'];
 export const EMAIL_GROUPS = ['Newsletter', 'Promotions', 'Billing notices'];
 
-export const PAYMENT_TERMS = ['COD', 'Net 7', 'Net 15', 'Net 30', 'Net 45', 'Net 60', '50% DP, balance on delivery'];
+export const PAYMENT_TERMS = ['COD', 'Net 7', 'Net 15', 'Net 30', 'Net 45', 'Net 60', '50% DP, balance on delivery'] as const;
+/** Seed id of a payment term — `pt-` + its position above, as `named()` numbers them. Append new terms; never reorder. */
+export const termId = (name: (typeof PAYMENT_TERMS)[number]) => `pt-${String(PAYMENT_TERMS.indexOf(name) + 1).padStart(3, '0')}`;
 export const PRICE_LISTS = ['Base price', 'Wholesale', 'Retail', 'Government', 'Last purchase price'];
 export const DUNNING_TERMS = ['Standard (7 / 15 / 30 days)', 'Strict (3 / 7 / 14 days)'];
 export const EFFECTIVE_DISCOUNT_GROUPS = ['Lowest discount', 'Highest discount', 'Average', 'Total', 'Discount multiples'];

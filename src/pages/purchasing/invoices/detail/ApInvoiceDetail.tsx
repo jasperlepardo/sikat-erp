@@ -56,7 +56,7 @@ import { loadInventoryMasters } from '../../../../services/inventoryMasters';
 import { isValidToday, listItems } from '../../../../services/items';
 import { companyTax, currencies, exchangeRates, taxCodes, taxGroups, withholdingGroups, withholdingTaxes } from '../../../../services/masterData';
 import { listPartnersByRole } from '../../../../services/partners';
-import { dueDateFor, getPurchasingSettings, listPurchaseOrders, openQty, poWithholding } from '../../../../services/purchaseOrders';
+import { dueDateFor, getPurchasingSettings, listPurchaseOrders, openQty, paymentTermName, poWithholding } from '../../../../services/purchaseOrders';
 import { salesEmployeeDef } from '../../../settings/masterDefs';
 import { TotalNote, TotalRow } from '../../orders/detail/PurchaseOrderDetail';
 import { proposedTaxCode } from '../../orders/detail/types';
@@ -252,8 +252,8 @@ function ApInvoiceForm() {
   const update = (patch: Partial<ApDraft>) => {
     const next = { ...draft, ...patch };
     if (patch.lines && patch.shipTo === undefined && draft.shipTo === defaultShipTo(draft.lines, m)) next.shipTo = defaultShipTo(patch.lines, m);
-    if ((patch.paymentTerms !== undefined || patch.postingDate !== undefined) && patch.dueDate === undefined && (!draft.dueDate || draft.dueDate === dueDateFor(draft.postingDate, draft.paymentTerms))) {
-      next.dueDate = dueDateFor(next.postingDate, next.paymentTerms);
+    if ((patch.paymentTermId !== undefined || patch.postingDate !== undefined) && patch.dueDate === undefined && (!draft.dueDate || draft.dueDate === dueDateFor(draft.postingDate, draft.paymentTermId))) {
+      next.dueDate = dueDateFor(next.postingDate, next.paymentTermId);
     }
     if (patch.lines) next.orderNumber = orderNumbersOf(next.lines, m);
     setDraft(next);
@@ -348,7 +348,7 @@ function ApInvoiceForm() {
       vendorRef: '',
       postingDate: today,
       documentDate: today,
-      dueDate: dueDateFor(today, draft.paymentTerms),
+      dueDate: dueDateFor(today, draft.paymentTermId),
       closeDate: '',
       orderNumber: '',
       fxRate: 1,
@@ -527,7 +527,7 @@ function ApInvoiceForm() {
                       error={errors.status}
                     />
                     {h.date('postingDate', 'Posting date', { required: true, error: errors.postingDate, hint: 'Sets the period, tax rates and the exchange rate the bill is booked at.' })}
-                    {h.date('dueDate', 'Due date', { required: true, error: errors.dueDate, hint: `Posting date + the payment terms${draft.paymentTerms ? ` (${draft.paymentTerms})` : ''}. Change it to override.` })}
+                    {h.date('dueDate', 'Due date', { required: true, error: errors.dueDate, hint: `Posting date + the payment terms${draft.paymentTermId ? ` (${paymentTermName(draft.paymentTermId)})` : ''}. Change it to override.` })}
                     {h.date('documentDate', 'Document date', { required: true, error: errors.documentDate, hint: 'The date on the vendor’s invoice — the date BIR uses for input VAT.' })}
                     <ReadOnly label="Close date" value={draft.closeDate ? formatDate(draft.closeDate) : '—'} hint="Set when the invoice is paid in full or cancelled." />
                   </Fields>
@@ -687,9 +687,9 @@ function vendorDefaults(v: Partner | undefined, d: ApDraft): Partial<ApDraft> {
     vendorName: v.name,
     contactId: v.defaultContactId,
     currency: v.currency === ALL_CURRENCIES ? 'PHP' : v.currency,
-    paymentTerms: v.vendorPaymentTerms,
+    paymentTermId: v.vendorPaymentTermId,
     paymentMethod: v.defaultPaymentMethod,
-    dueDate: dueDateFor(d.postingDate, v.vendorPaymentTerms),
+    dueDate: dueDateFor(d.postingDate, v.vendorPaymentTermId),
     project: v.project,
     shippingType: v.shippingType,
     journalRemark: `A/P Invoices – ${v.code}`,
@@ -712,9 +712,9 @@ function withBase(d: ApDraft, base: GoodsReceipt | PurchaseOrder, lines: ApLine[
       ? {
           currency: base.currency,
           contactId: base.contactId || d.contactId,
-          paymentTerms: base.paymentTerms || d.paymentTerms,
+          paymentTermId: base.paymentTermId || d.paymentTermId,
           paymentMethod: base.paymentMethod || d.paymentMethod,
-          dueDate: dueDateFor(d.postingDate, base.paymentTerms || d.paymentTerms),
+          dueDate: dueDateFor(d.postingDate, base.paymentTermId || d.paymentTermId),
           project: base.project || d.project,
           shippingType: base.shippingType || d.shippingType,
           discountPct: base.discountPct,

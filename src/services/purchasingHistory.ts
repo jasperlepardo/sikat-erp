@@ -137,7 +137,7 @@ function build(): PurchasingHistory {
     return {
       id, vendorId: v.id, vendorCode: v.code, vendorName: v.name, contactId: p.contactId, vendorRef, currency: p.currency, seriesId: DPR_SERIES[0].id, docNum,
       status: 'Open', postingDate: date, dueDate: date, documentDate: date, closeDate: '', lines: dprLines(p), shipTo: p.shipTo, payTo: '', shippingType: p.shippingType,
-      language: 'English', journalRemark: `A/P Down Payment – ${v.code}`, paymentTerms: p.paymentTerms, paymentMethod: v.defaultPaymentMethod, cashDiscountDays: 0,
+      language: 'English', journalRemark: `A/P Down Payment – ${v.code}`, paymentTermId: p.paymentTermId, paymentMethod: v.defaultPaymentMethod, cashDiscountDays: 0,
       project: p.project, indicator: '— None —', orderNumber: `${p.seriesId === 'ser-import' ? 'Import' : 'Primary'} ${p.docNum}`, references: [], buyer: p.buyer, owner: p.owner,
       remarks: '', discountPct: p.discountPct, freight: 0, freightTaxCode: '', fxRate: fxOn(p.currency, date), controlAccount: v.payableAccount || '2010',
       paymentBlock: false, maxCashDiscount: false, installments: 1, consolidatingBpId: '', paymentOrderRun: true, appliedAmount: 0,

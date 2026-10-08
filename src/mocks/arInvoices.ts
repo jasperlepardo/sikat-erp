@@ -25,6 +25,7 @@
  *   Tax (other localizations), Asset Value Date (no fixed assets yet), Payment Order Run (A/P).
  */
 import type { Attachment, DocumentSeries } from './common';
+import { termId } from './masters';
 import { SEED_DELIVERIES, type DnLine } from './deliveries';
 import { SEED_PARTNERS, formatAddress } from './partners';
 import { RETAIL_SALES } from './retailHistory';
@@ -90,7 +91,7 @@ export interface ArInvoice {
   // Accounting
   journalRemark: string;
   project: string;
-  paymentTerms: string;
+  paymentTermId: string;
   paymentMethod: string;
   indicator: string;
   federalTaxId: string;
@@ -184,7 +185,7 @@ export function blankArInvoice(today: string, owner: string): Omit<ArInvoice, 'i
     bpChannelContact: '',
     journalRemark: '',
     project: '— None —',
-    paymentTerms: 'Net 30',
+    paymentTermId: termId('Net 30'),
     paymentMethod: 'BANK',
     indicator: '— None —',
     federalTaxId: '',
@@ -308,7 +309,7 @@ const invoices: ArInvoice[] = [
     ...subic(),
     customerRef: 'SBML-WO-2026-114',
     dueDate: '2026-10-30',
-    paymentTerms: 'Net 30',
+    paymentTermId: termId('Net 30'),
     controlAccount: '1120',
     journalRemark: 'A/R Invoices – BP-0040',
     remarks: 'Fleet device setup and MDM enrolment, 60 iPads at the Subic yard. Not yet paid.',

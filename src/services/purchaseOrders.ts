@@ -164,18 +164,17 @@ const ROUNDING_STEP: Record<RoundingRule, number> = {
   'Round to 10': 10,
 };
 
-/**
- * Days until payment for a payment term, from Settings › Banking › Payment terms. A term not in
- * the list falls back to its name ("Net 30" → 30; COD and down-payment terms → 0).
- */
-export const termDays = (terms: string) =>
-  paymentTerms.snapshot().find((t) => t.name === terms)?.days ?? Number(/Net (\d+)/.exec(terms)?.[1] ?? 0);
+/** Days until payment for a payment term (by id), from Settings › Banking › Payment terms; 0 when unset. */
+export const termDays = (termId: string) => paymentTerms.snapshot().find((t) => t.id === termId)?.days ?? 0;
+
+/** A payment term's name for display — the id itself if the term is gone. */
+export const paymentTermName = (termId: string) => paymentTerms.snapshot().find((t) => t.id === termId)?.name ?? termId;
 
 /** Due date = posting date + the payment term's days. */
-export function dueDateFor(postingDate: string, terms: string) {
+export function dueDateFor(postingDate: string, termId: string) {
   if (!postingDate) return '';
   const d = new Date(`${postingDate}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + termDays(terms));
+  d.setUTCDate(d.getUTCDate() + termDays(termId));
   return d.toISOString().slice(0, 10);
 }
 
