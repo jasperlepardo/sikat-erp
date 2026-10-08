@@ -8,7 +8,7 @@ import { itemGroups } from '../../../services/inventoryMasters';
 import { listItems } from '../../../services/items';
 import { bpGroups, priceLists } from '../../../services/partnerMasters';
 import { listPartners } from '../../../services/partners';
-import { periodVolumeDiscounts, tierLabel } from '../../../services/priceLists';
+import { periodVolumeDiscounts, priceListName, tierLabel } from '../../../services/priceLists';
 import { useAsync } from '../../../services/useAsync';
 import { newId } from '../../../services/useCollectionRows';
 
@@ -20,7 +20,7 @@ const blank = (): PeriodVolumeDiscount => ({
   itemScope: 'group',
   itemId: '',
   itemGroup: '',
-  priceList: '',
+  priceListId: '',
   kind: 'period',
   validFrom: '',
   validTo: '',
@@ -40,7 +40,7 @@ function validate(r: PeriodVolumeDiscount): Errors {
   const e: Errors = {};
   if (r.partnerScope === 'partner' ? !r.partnerId : !r.bpGroup) e[r.partnerScope === 'partner' ? 'partnerId' : 'bpGroup'] = 'Pick who the discount is for.';
   if (r.itemScope === 'item' ? !r.itemId : !r.itemGroup) e[r.itemScope === 'item' ? 'itemId' : 'itemGroup'] = 'Pick what the discount is on.';
-  if (!r.priceList) e.priceList = 'Price list is required.';
+  if (!r.priceListId) e.priceListId = 'Price list is required.';
   if (r.kind === 'period') {
     if (!r.validFrom) e.validFrom = 'Valid from is required for a period discount.';
     if (!pctOk(r.discountPct)) e.discountPct = 'Discount must be 0–100%.';
@@ -87,7 +87,7 @@ export function PeriodVolumeDiscountsTab(route: ListRoute) {
       columns={[
         { key: 'forWhom', header: 'For', cell: forWhom },
         { key: 'onWhat', header: 'On', cell: onWhat },
-        { key: 'priceList', header: 'Price list', cell: (r) => r.priceList },
+        { key: 'priceListId', header: 'Price list', cell: (r) => priceListName(r.priceListId) },
         { key: 'kind', header: 'Type', cell: (r) => (r.kind === 'period' ? 'Period' : 'Volume') },
         { key: 'discount', header: 'Discount', cell: discount, sortable: false },
         { key: 'validFrom', header: 'Valid', cell: validity },
@@ -96,7 +96,7 @@ export function PeriodVolumeDiscountsTab(route: ListRoute) {
       sortValue={(r, key) =>
         key === 'forWhom' ? forWhom(r).toLowerCase() : key === 'onWhat' ? onWhat(r).toLowerCase() : key === 'active' ? Number(r.active) : String(r[key as keyof PeriodVolumeDiscount] ?? '').toLowerCase()
       }
-      searchText={(r) => `${forWhom(r)} ${onWhat(r)} ${r.priceList} ${r.remarks}`}
+      searchText={(r) => `${forWhom(r)} ${onWhat(r)} ${priceListName(r.priceListId)} ${r.remarks}`}
       blank={blank}
       label={(r) => `${forWhom(r)} · ${onWhat(r)}`}
       validate={validate}
@@ -138,9 +138,9 @@ export function PeriodVolumeDiscountsTab(route: ListRoute) {
               {r.itemScope === 'item'
                 ? f.lookup('itemId', 'Item', items.map((i) => ({ value: i.id, label: `${i.itemNo} · ${i.name}` })), { required: true, error: errors.itemId })
                 : f.choose('itemGroup', 'Item group', igroups.map((g) => ({ value: g.name, label: g.name })), { required: true, error: errors.itemGroup })}
-              {f.choose('priceList', 'Price list', lists.filter(keep(r.priceList)).map((l) => ({ value: l.name, label: l.name })), {
+              {f.choose('priceListId', 'Price list', lists.filter((l) => l.active || l.id === r.priceListId).map((l) => ({ value: l.id, label: l.name })), {
                 required: true,
-                error: errors.priceList,
+                error: errors.priceListId,
                 hint: 'The discount comes off this list’s price, and only applies on lines using it.',
               })}
               {f.choose('kind', 'Discount type', [

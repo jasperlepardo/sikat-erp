@@ -62,7 +62,7 @@ const FIELDS: Record<PartnerScope, FilterField<Partner>[]> = {
   customer: [
     ...common(),
     { key: 'paymentTermId', label: 'Payment terms', type: 'master', def: paymentTermDef, get: (p) => p.customerPaymentTermId },
-    { key: 'priceList', label: 'Price list', type: 'master', def: priceListDef, get: (p) => p.priceList },
+    { key: 'priceListId', label: 'Price list', type: 'master', def: priceListDef, get: (p) => p.priceListId },
     { key: 'creditLimit', label: 'Credit limit', type: 'number', get: (p) => p.creditLimit },
     { key: 'alsoVendor', label: 'Also a vendor', type: 'boolean', get: (p) => p.roles.includes('vendor') },
   ],

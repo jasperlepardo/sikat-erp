@@ -9,7 +9,7 @@ import { SYSTEM_TAX_CODES, rateAt } from '../../../../mocks/taxes';
 import { todayISO } from '../../../../services/dates';
 import type { InventoryMasters } from '../../../../services/inventoryMasters';
 import { rateOn } from '../../../../services/masterData';
-import { determinePrice, isGrossList } from '../../../../services/priceLists';
+import { BASE_PRICE_LIST_ID, determinePrice, isGrossList } from '../../../../services/priceLists';
 import type { SoInput } from '../../../../services/salesOrders';
 import { determineTax, type TaxMasterData } from '../../../../services/taxDetermination';
 
@@ -81,10 +81,10 @@ export const proposedTaxCode = (item: Item, customer: Partner | undefined, m: So
  * Lists). A VAT-inclusive list price (like the SRP) has the standard 12% VAT taken out — not the
  * line's rate, so a zero-rated or exempt customer pays the VAT-exclusive price, not the SRP.
  */
-export function linePricing(item: Item, l: Pick<SoLine, 'priceList' | 'uomCode' | 'quantity' | 'taxCode'>, draft: SoDraft, ctx: SoContext) {
-  const p = determinePrice({ item, partner: ctx.customer, priceList: l.priceList, uom: l.uomCode, quantity: l.quantity, date: draft.postingDate });
+export function linePricing(item: Item, l: Pick<SoLine, 'priceListId' | 'uomCode' | 'quantity' | 'taxCode'>, draft: SoDraft, ctx: SoContext) {
+  const p = determinePrice({ item, partner: ctx.customer, priceListId: l.priceListId, uom: l.uomCode, quantity: l.quantity, date: draft.postingDate });
   const vat = ctx.vatRegistered ? ctx.rateOf(SYSTEM_TAX_CODES.VATABLE) : 0;
-  const net = isGrossList(p.basisList) ? p.price / (1 + vat / 100) : p.price;
+  const net = isGrossList(p.basisListId) ? p.price / (1 + vat / 100) : p.price;
   return {
     unitPrice: ctx.fx ? Math.round((net / ctx.fx) * 100) / 100 : 0,
     discountPct: p.discountPct,
@@ -107,7 +107,7 @@ export function lineFromItem(item: Item, draft: SoDraft, ctx: SoContext, m: SoMa
     uomName: uom?.name ?? item.salesUom,
     itemsPerUnit: itemsPerUom(item, item.salesUom) ?? 1,
     warehouse: item.inventoryItem ? defaultWarehouse(item) : '',
-    priceList: ctx.customer?.priceList || 'Base price',
+    priceListId: ctx.customer?.priceListId || BASE_PRICE_LIST_ID,
     taxCode: proposedTaxCode(item, ctx.customer, m, draft.postingDate),
   });
   return { ...line, ...linePricing(item, line, draft, ctx) };

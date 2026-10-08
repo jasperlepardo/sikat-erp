@@ -1,6 +1,6 @@
 import type { Errors } from '../../../../components/form/fields';
 import type { Currency, ExchangeRate } from '../../../../mocks/currencies';
-import { determinePrice } from '../../../../services/priceLists';
+import { BASE_PRICE_LIST_ID, LAST_PURCHASE_PRICE_LIST_ID, determinePrice } from '../../../../services/priceLists';
 import { vendorDeliveryLocation } from '../../../../mocks/itemMasters';
 import { itemsPerUom, type Item } from '../../../../mocks/items';
 import type { Partner } from '../../../../mocks/partners';
@@ -95,8 +95,8 @@ export function defaultShipTo(lines: PoLine[], m: PoMasters) {
  * A line's unit price (document currency) and discount: the price list's price, then the first
  * period/volume discount or discount group that matches (Inventory › Price Lists).
  */
-export function linePricing(item: Item, l: Pick<PoLine, 'priceList' | 'uomCode' | 'quantity'>, draft: PoDraft, ctx: PoContext) {
-  const p = determinePrice({ item, partner: ctx.vendor, priceList: l.priceList, uom: l.uomCode, quantity: l.quantity, date: draft.postingDate });
+export function linePricing(item: Item, l: Pick<PoLine, 'priceListId' | 'uomCode' | 'quantity'>, draft: PoDraft, ctx: PoContext) {
+  const p = determinePrice({ item, partner: ctx.vendor, priceListId: l.priceListId, uom: l.uomCode, quantity: l.quantity, date: draft.postingDate });
   return { unitPrice: ctx.fx ? Math.round((p.price / ctx.fx) * 100) / 100 : 0, discountPct: p.discountPct, source: p.source };
 }
 
@@ -106,7 +106,7 @@ export const proposedTaxCode = (item: Item, vendor: Partner | undefined, m: PoMa
 
 /** A line with every default taken from the item, vendor and header. */
 export function lineFromItem(item: Item, draft: PoDraft, ctx: PoContext, m: PoMasters, base: Partial<PoLine> = {}): PoLine {
-  const priceList = ctx.vendor?.priceList && ctx.vendor.priceList !== 'Base price' ? ctx.vendor.priceList : 'Last purchase price';
+  const priceListId = ctx.vendor?.priceListId && ctx.vendor.priceListId !== BASE_PRICE_LIST_ID ? ctx.vendor.priceListId : LAST_PURCHASE_PRICE_LIST_ID;
   const uom = m.inv.uoms.find((u) => u.code === item.purchasingUom);
   const line = newPoLine({
     ...base,
@@ -120,7 +120,7 @@ export function lineFromItem(item: Item, draft: PoDraft, ctx: PoContext, m: PoMa
     uomName: uom?.name ?? item.purchasingUom,
     itemsPerUnit: itemsPerUom(item, item.purchasingUom) ?? 1,
     warehouse: item.inventoryItem ? vendorDeliveryLocation(item.warehouses.map((w) => w.code), m.inv.warehouses) : '',
-    priceList,
+    priceListId,
     taxCode: proposedTaxCode(item, ctx.vendor, m, draft.postingDate),
     mfrNo: item.manufacturers.find((x) => x.code === item.manufacturer)?.catalogNo ?? '',
     deliveryDate: draft.deliveryDate,

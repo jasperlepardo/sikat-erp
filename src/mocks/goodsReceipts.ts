@@ -17,6 +17,7 @@
  *   Both are left out.
  */
 import type { DocumentSeries } from './common';
+import { plId } from './masters';
 import { SEED_ITEMS } from './items';
 import { SEED_RATES } from './currencies';
 import { PO_SERIES, SEED_PURCHASE_ORDERS, type PoReference } from './purchaseOrders';
@@ -43,7 +44,7 @@ export interface GrLine {
   warehouse: string;
   /** Where the stock is put away, when the warehouse uses bins. */
   bin: string;
-  priceList: string;
+  priceListId: string;
   /** Net unit price per line unit, in the document currency. */
   unitPrice: number;
   discountPct: number;
@@ -143,7 +144,7 @@ export const newGrLine = (patch: Partial<GrLine> = {}): GrLine => ({
   itemsPerUnit: 1,
   warehouse: '',
   bin: '',
-  priceList: 'Last purchase price',
+  priceListId: plId('Last purchase price'),
   unitPrice: 0,
   discountPct: 0,
   taxCode: '',
@@ -264,7 +265,7 @@ export const SEED_GOODS_RECEIPTS: GoodsReceipt[] = received
             itemsPerUnit: l.itemsPerUnit,
             warehouse: l.warehouse,
             bin: item?.warehouses.find((w) => w.code === l.warehouse)?.defaultBin ?? '',
-            priceList: l.priceList,
+            priceListId: l.priceListId,
             unitPrice: l.unitPrice,
             discountPct: l.discountPct,
             taxCode: l.taxCode,

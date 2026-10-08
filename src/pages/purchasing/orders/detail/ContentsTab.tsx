@@ -107,10 +107,10 @@ export function ContentsTab({ draft, update, errors, m, ctx }: PoTabProps) {
     const item = m.items.find((i) => i.id === itemId);
     patch(l.id, item ? lineFromItem(item, draft, ctx, m, { id: l.id, quantity: l.quantity, deliveryDate: l.deliveryDate || draft.deliveryDate }) : { itemId: '' });
   };
-  const changePriceList = (l: PoLine, priceList: string) => {
+  const changePriceList = (l: PoLine, priceListId: string) => {
     const item = itemOf(l);
-    const priced = item && ctx.fx ? linePricing(item, { ...l, priceList }, draft, ctx) : undefined;
-    patch(l.id, { priceList, ...(priced ? { unitPrice: priced.unitPrice, discountPct: priced.discountPct } : {}) });
+    const priced = item && ctx.fx ? linePricing(item, { ...l, priceListId }, draft, ctx) : undefined;
+    patch(l.id, { priceListId, ...(priced ? { unitPrice: priced.unitPrice, discountPct: priced.discountPct } : {}) });
   };
   /**
    * A new quantity can reach another volume tier or special price break. The unit price stays as
@@ -264,8 +264,8 @@ export function ContentsTab({ draft, update, errors, m, ctx }: PoTabProps) {
         />
       );
     }),
-    col('priceList', 'Price list', (l) => l.itemId ? (
-      <MasterLookup def={priceListDef} fieldProps={{ 'aria-label': 'Price list', className: 'w-44' }} where={(r) => isPriceListValid(r, draft.postingDate)} value={l.priceList} onChange={(v) => changePriceList(l, v)} />
+    col('priceListId', 'Price list', (l) => l.itemId ? (
+      <MasterLookup def={priceListDef} fieldProps={{ 'aria-label': 'Price list', className: 'w-44' }} where={(r) => isPriceListValid(r, draft.postingDate)} value={l.priceListId} onChange={(v) => changePriceList(l, v)} />
     ) : null, 'pricing'),
     col('pricing', 'Unit price / Tax / Discount', (l) => {
       if (!l.itemId) return null;

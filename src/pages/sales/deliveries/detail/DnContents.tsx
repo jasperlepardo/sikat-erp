@@ -9,7 +9,7 @@ import type { SalesOrder } from '../../../../mocks/salesOrders';
 import { dnInventoryQty, dnOpenQty } from '../../../../services/deliveries';
 import { formatAmount } from '../../../../services/format';
 import { isValidToday } from '../../../../services/items';
-import { isPriceListValid } from '../../../../services/priceLists';
+import { isPriceListValid, priceListName } from '../../../../services/priceLists';
 import { lineNet, lineTax, openQty, soNumber } from '../../../../services/salesOrders';
 import { priceListDef } from '../../../settings/masterDefs';
 import { warehouseOptions } from '../../../inventory/transfers/TransferLines';
@@ -127,14 +127,14 @@ export function DnContents({ draft, update, errors, m, ctx, onCopy }: DnSectionP
       },
     },
     {
-      key: 'priceList',
+      key: 'priceListId',
       header: 'Price list',
       cell: (l) =>
         itemOf(l) ? (
           l.baseId || ro ? (
-            <Text variant="small">{l.priceList}</Text>
+            <Text variant="small">{priceListName(l.priceListId)}</Text>
           ) : (
-            <MasterLookup def={priceListDef} fieldProps={{ 'aria-label': 'Price list', className: 'w-40' }} where={(r) => isPriceListValid(r, draft.postingDate)} value={l.priceList} onChange={(v) => reprice({ ...l, priceSource: '' }, { priceList: v })} />
+            <MasterLookup def={priceListDef} fieldProps={{ 'aria-label': 'Price list', className: 'w-40' }} where={(r) => isPriceListValid(r, draft.postingDate)} value={l.priceListId} onChange={(v) => reprice({ ...l, priceSource: '' }, { priceListId: v })} />
           )
         ) : null,
     },

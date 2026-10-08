@@ -9,6 +9,7 @@
  * and volume discounts, then discount groups. A fixed special price becomes the unit price; any
  * % rule keeps the list price as the unit price and goes in Discount %, so the document shows both.
  */
+import { plId } from '../mocks/masters';
 import { PRICE_ROUNDING, type PriceList, type PriceRounding } from '../mocks/partnerMasters';
 import {
   SEED_DISCOUNT_GROUPS,
@@ -41,7 +42,14 @@ export const roundPrice = (amount: number, rounding: PriceRounding) => round2(Ma
 
 export const roundingLabel = (rounding: PriceRounding) => PRICE_ROUNDING.find((r) => r.value === rounding)?.label ?? rounding;
 
-const byName = (all: readonly PriceList[], name: string) => all.find((l) => l.name.toLowerCase() === name.trim().toLowerCase());
+const byId = (all: readonly PriceList[], id: string) => all.find((l) => l.id === id);
+
+/** The lists documents default to: sales from the item's SRP, purchasing from its cost. */
+export const BASE_PRICE_LIST_ID = plId('Base price');
+export const LAST_PURCHASE_PRICE_LIST_ID = plId('Last purchase price');
+
+/** A price list's name for display — the id itself if the list is gone. */
+export const priceListName = (id: string, all: readonly PriceList[] = priceLists.snapshot()) => byId(all, id)?.name ?? id;
 
 /**
  * The lists a price passes through, from the independent root to `list`. `undefined` when
@@ -52,8 +60,8 @@ export function priceChain(list: PriceList, all: readonly PriceList[]): PriceLis
   const pool = [...all.filter((l) => l.id !== list.id), list];
   const chain = [list];
   let current = list;
-  while (current.basePriceList) {
-    const base = byName(pool, current.basePriceList);
+  while (current.basePriceListId) {
+    const base = byId(pool, current.basePriceListId);
     if (!base || chain.some((l) => l.id === base.id) || chain.length > MAX_DEPTH) return undefined;
     chain.unshift(base);
     current = base;
@@ -108,8 +116,8 @@ export const isPriceListValid = (list: PriceList, date: string) => list.active &
  * Price in PHP of one `uom` of the item from a price list. An unknown or broken list falls back
  * to the item's selling price, so a document never goes blank because of a list setup problem.
  */
-export function listPrice(item: Item, priceListName: string, uom: string, all: readonly PriceList[] = priceLists.snapshot()) {
-  const list = byName(all, priceListName);
+export function listPrice(item: Item, priceListId: string, uom: string, all: readonly PriceList[] = priceLists.snapshot()) {
+  const list = byId(all, priceListId);
   const chain = list && priceChain(list, all);
   return chain ? chainPrice(chain, item, uom) : unitPrice(item, uom);
 }
@@ -135,7 +143,7 @@ export interface LinePrice {
   /** PHP per `uom`, before discount. */
   price: number;
   /** The list `price` comes from — for whether it includes VAT. */
-  basisList: string;
+  basisListId: string;
   discountPct: number;
   source: PriceSource;
 }
@@ -147,7 +155,7 @@ export interface LinePrice {
 export function determinePrice(o: {
   item: Item;
   partner?: Pick<Partner, 'id' | 'group' | 'noDiscountGroups'>;
-  priceList: string;
+  priceListId: string;
   uom: string;
   quantity: number;
   date: string;
@@ -164,16 +172,16 @@ export function determinePrice(o: {
   if (set && special) {
     const t = specialTerms(special, qty);
     const at = t.tier ? ` (${t.tier.qtyFrom}+)` : '';
-    if (t.unitPrice !== null) return { price: round2(t.unitPrice * perUnit), basisList: set.priceList, discountPct: 0, source: { kind: 'special', label: `Special price${at}` } };
+    if (t.unitPrice !== null) return { price: round2(t.unitPrice * perUnit), basisListId: set.priceListId, discountPct: 0, source: { kind: 'special', label: `Special price${at}` } };
     return {
-      price: listPrice(item, set.priceList, o.uom),
-      basisList: set.priceList,
+      price: listPrice(item, set.priceListId, o.uom),
+      basisListId: set.priceListId,
       discountPct: t.discountPct,
-      source: { kind: 'special', label: `Special price${at}: ${t.discountPct}% off ${set.priceList}` },
+      source: { kind: 'special', label: `Special price${at}: ${t.discountPct}% off ${priceListName(set.priceListId)}` },
     };
   }
 
-  const price = listPrice(item, o.priceList, o.uom);
+  const price = listPrice(item, o.priceListId, o.uom);
   const rules = o.rules ?? periodVolumeDiscounts.snapshot();
   const groups = o.groups ?? discountGroups.snapshot();
 
@@ -182,29 +190,29 @@ export function determinePrice(o: {
     .filter(
       (r) =>
         r.active &&
-        r.priceList === o.priceList &&
+        r.priceListId === o.priceListId &&
         inDates(r, date) &&
         (r.partnerScope === 'partner' ? r.partnerId === partner?.id : !!partner && r.bpGroup === partner.group) &&
         (r.itemScope === 'item' ? r.itemId === item.id : r.itemGroup === item.itemGroup),
     )
     .sort((a, b) => specificity(b) - specificity(a));
   for (const r of matching) {
-    if (r.kind === 'period') return { price, basisList: o.priceList, discountPct: r.discountPct, source: { kind: 'period', label: `Period discount ${r.discountPct}%` } };
+    if (r.kind === 'period') return { price, basisListId: o.priceListId, discountPct: r.discountPct, source: { kind: 'period', label: `Period discount ${r.discountPct}%` } };
     // A quantity in a gap between tiers isn't covered: fall through to the next rule.
     const t = tierFor(r.tiers, qty);
-    if (t) return { price, basisList: o.priceList, discountPct: t.discountPct, source: { kind: 'volume', label: `Volume discount ${tierLabel(t)}: ${t.discountPct}%` } };
+    if (t) return { price, basisListId: o.priceListId, discountPct: t.discountPct, source: { kind: 'volume', label: `Volume discount ${tierLabel(t)}: ${t.discountPct}%` } };
   }
 
   if (partner && !partner.noDiscountGroups) {
     const row = groups.find((g) => g.active && g.bpGroup === partner.group);
     const pct = row?.discounts[item.itemGroup];
-    if (pct) return { price, basisList: o.priceList, discountPct: pct, source: { kind: 'group', label: `Discount group ${partner.group} × ${item.itemGroup}: ${pct}%` } };
+    if (pct) return { price, basisListId: o.priceListId, discountPct: pct, source: { kind: 'group', label: `Discount group ${partner.group} × ${item.itemGroup}: ${pct}%` } };
   }
 
-  return { price, basisList: o.priceList, discountPct: 0, source: { kind: 'list', label: o.priceList } };
+  return { price, basisListId: o.priceListId, discountPct: 0, source: { kind: 'list', label: priceListName(o.priceListId) } };
 }
 
 /** Whether a list's prices include VAT (an unknown list counts as net). */
-export const isGrossList = (name: string, all: readonly PriceList[] = priceLists.snapshot()) => byName(all, name)?.gross ?? false;
+export const isGrossList = (id: string, all: readonly PriceList[] = priceLists.snapshot()) => byId(all, id)?.gross ?? false;
 
 export const tierLabel = (t: VolumeTier) => (t.qtyTo === null ? `${t.qtyFrom}+` : `${t.qtyFrom}–${t.qtyTo}`);

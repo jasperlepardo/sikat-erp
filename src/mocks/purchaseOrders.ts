@@ -16,7 +16,7 @@
  * - Return Reason is left out — it belongs to returns, not purchase orders.
  */
 import type { DocumentSeries } from './common';
-import { termId } from './masters';
+import { plId, termId } from './masters';
 import { SEED_COMPANIES } from './companies';
 import { SEED_WAREHOUSES } from './itemMasters';
 import { SEED_ITEMS, itemsPerUom } from './items';
@@ -51,7 +51,7 @@ export interface PoLine {
   /** Inventory units in one purchasing unit. */
   itemsPerUnit: number;
   warehouse: string;
-  priceList: string;
+  priceListId: string;
   /** Net unit price per purchasing unit, in the document currency. */
   unitPrice: number;
   taxCode: string;
@@ -213,7 +213,7 @@ export const newPoLine = (patch: Partial<PoLine> = {}): PoLine => ({
   uomName: 'Piece',
   itemsPerUnit: 1,
   warehouse: 'WH-MNL',
-  priceList: 'Last purchase price',
+  priceListId: plId('Last purchase price'),
   unitPrice: 0,
   taxCode: '',
   discountPct: 0,

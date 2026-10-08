@@ -47,7 +47,7 @@ export function ItemPricesTable({ list, update }: { list: PriceList; update: (pa
     <DataTable<Row>
       icon="price_change"
       title="Item prices"
-      description={`PHP per inventory unit, ${list.gross ? 'VAT inclusive' : 'net of VAT'}. Tick Manual to set an item's price by hand; the rest follow the list's ${list.basePriceList ? 'base and factor' : 'item ' + (list.source === 'cost' ? 'cost' : 'SRP')}.`}
+      description={`PHP per inventory unit, ${list.gross ? 'VAT inclusive' : 'net of VAT'}. Tick Manual to set an item's price by hand; the rest follow the list's ${list.basePriceListId ? 'base and factor' : 'item ' + (list.source === 'cost' ? 'cost' : 'SRP')}.`}
       rows={rows}
       getRowId={(r) => r.item.id}
       sortValue={(r, key) =>

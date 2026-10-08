@@ -125,8 +125,8 @@ export const lineTotal = (l: PostingLine) => round2(postingVariance(l) * l.price
 export const postingTotal = (p: Pick<InventoryPosting, 'lines'>) => round2(p.lines.reduce((n, l) => n + lineTotal(l), 0));
 
 /** The price source's price for an item, PHP per inventory unit. */
-export const sourcePrice = (item: Item, p: Pick<InventoryPosting, 'priceSource' | 'priceList'>) =>
-  p.priceSource === 'price-list' && p.priceList ? listPrice(item, p.priceList, item.inventoryUom) : item.itemCost;
+export const sourcePrice = (item: Item, p: Pick<InventoryPosting, 'priceSource' | 'priceListId'>) =>
+  p.priceSource === 'price-list' && p.priceListId ? listPrice(item, p.priceListId, item.inventoryUom) : item.itemCost;
 
 /** Copy from Inventory Counting: its counted lines, priced from the posting's price source. */
 export function postingFromCount(c: InventoryCounting, base: PostingInput, items: readonly Item[]): PostingInput {

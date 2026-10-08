@@ -152,17 +152,17 @@ export function ContentsTab({ draft, update, errors, m, ctx }: SoTabProps) {
         </div>
       );
     }),
-    col('priceList', 'Price list', (l) =>
+    col('priceListId', 'Price list', (l) =>
       itemOf(l) ? (
         <MasterLookup
           def={priceListDef}
           fieldProps={{ 'aria-label': 'Price list', className: 'w-40' }}
           where={(r) => isPriceListValid(r, draft.postingDate)}
-          value={l.priceList}
+          value={l.priceListId}
           onChange={(v) => {
             const item = itemOf(l)!;
-            const next = { ...l, priceList: v };
-            patch(l.id, { priceList: v, ...(ctx.fx ? linePricing(item, next, draft, ctx) : {}) });
+            const next = { ...l, priceListId: v };
+            patch(l.id, { priceListId: v, ...(ctx.fx ? linePricing(item, next, draft, ctx) : {}) });
           }}
         />
       ) : null,

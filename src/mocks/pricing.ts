@@ -6,6 +6,7 @@
  *   3. Discount groups — BP group × item group matrix, no dates
  *   4. The price list price, undiscounted
  */
+import { plId } from './masters';
 
 /** A quantity break inside a special price: from `qtyFrom` up to the next tier. */
 export interface SpecialPriceTier {
@@ -34,7 +35,7 @@ export interface SpecialPriceSet {
   id: string;
   partnerId: string;
   /** Base for % specials; reference for fixed ones. */
-  priceList: string;
+  priceListId: string;
   rows: SpecialPriceRow[];
   remarks: string;
   active: boolean;
@@ -61,8 +62,8 @@ export interface PeriodVolumeDiscount {
   itemScope: 'item' | 'group';
   itemId: string;
   itemGroup: string;
-  /** Name of the price list whose price is discounted. One rule per list — there's no "all lists". */
-  priceList: string;
+  /** Id of the price list whose price is discounted. One rule per list — there's no "all lists". */
+  priceListId: string;
   kind: DiscountKind;
   /** ISO dates, checked against the document's posting date. Required for period discounts; '' = open. */
   validFrom: string;
@@ -85,7 +86,7 @@ export interface DiscountGroupRow {
 
 const tier = (id: string, qtyFrom: number, qtyTo: number | null, discountPct: number): VolumeTier => ({ id, qtyFrom, qtyTo, discountPct });
 
-const rule = (r: Partial<PeriodVolumeDiscount> & Pick<PeriodVolumeDiscount, 'id' | 'priceList' | 'kind'>): PeriodVolumeDiscount => ({
+const rule = (r: Partial<PeriodVolumeDiscount> & Pick<PeriodVolumeDiscount, 'id' | 'priceListId' | 'kind'>): PeriodVolumeDiscount => ({
   partnerScope: 'group',
   partnerId: '',
   bpGroup: '',
@@ -103,20 +104,20 @@ const rule = (r: Partial<PeriodVolumeDiscount> & Pick<PeriodVolumeDiscount, 'id'
 
 export const SEED_PERIOD_VOLUME_DISCOUNTS: PeriodVolumeDiscount[] = [
   rule({
-    id: 'pvd-001', kind: 'period', bpGroup: 'Customers – Retail', itemGroup: 'AirPods', priceList: 'Base price',
+    id: 'pvd-001', kind: 'period', bpGroup: 'Customers – Retail', itemGroup: 'AirPods', priceListId: plId('Base price'),
     validFrom: '2026-10-01', validTo: '2026-10-31', discountPct: 10, remarks: '10.10 sale: 10% off AirPods for walk-in and online customers.',
   }),
   rule({
-    id: 'pvd-002', kind: 'period', bpGroup: 'Customers – Trade', itemGroup: 'Mac', priceList: 'Wholesale',
+    id: 'pvd-002', kind: 'period', bpGroup: 'Customers – Trade', itemGroup: 'Mac', priceListId: plId('Wholesale'),
     validFrom: '2026-06-01', validTo: '2026-08-31', discountPct: 4, remarks: 'Back-to-school corporate Mac promo.',
   }),
   rule({
-    id: 'pvd-003', kind: 'volume', bpGroup: 'Customers – Government', itemGroup: 'iPad', priceList: 'Government',
+    id: 'pvd-003', kind: 'volume', bpGroup: 'Customers – Government', itemGroup: 'iPad', priceListId: plId('Government'),
     tiers: [tier('t1', 1, 9, 0), tier('t2', 10, 49, 3), tier('t3', 50, null, 5)],
     remarks: 'Classroom rollouts: deeper discount for bigger lots.',
   }),
   rule({
-    id: 'pvd-004', kind: 'volume', partnerScope: 'partner', partnerId: 'bp-013', itemGroup: 'Accessories', priceList: 'Last purchase price',
+    id: 'pvd-004', kind: 'volume', partnerScope: 'partner', partnerId: 'bp-013', itemGroup: 'Accessories', priceListId: plId('Last purchase price'),
     tiers: [tier('t1', 1, 49, 0), tier('t2', 50, 199, 2), tier('t3', 200, null, 4)],
     remarks: 'Techzone accessories supply agreement: volume rebate on the invoice price.',
   }),
@@ -137,7 +138,7 @@ const special = (id: string, itemId: string, r: Partial<SpecialPriceRow>): Speci
 
 export const SEED_SPECIAL_PRICES: SpecialPriceSet[] = [
   {
-    id: 'spp-001', partnerId: 'bp-009', priceList: 'Government', active: true,
+    id: 'spp-001', partnerId: 'bp-009', priceListId: plId('Government'), active: true,
     remarks: 'DepEd Pasig iPad rollout contract (PRJ-002), awarded price for the 2026 school year.',
     rows: [
       special('r1', 'apl-0079', {
@@ -147,7 +148,7 @@ export const SEED_SPECIAL_PRICES: SpecialPriceSet[] = [
     ],
   },
   {
-    id: 'spp-002', partnerId: 'bp-003', priceList: 'Wholesale', active: true,
+    id: 'spp-002', partnerId: 'bp-003', priceListId: plId('Wholesale'), active: true,
     remarks: 'Bayanihan Savings Bank laptop refresh: 6% off Wholesale through 2026.',
     rows: [
       special('r1', 'apl-0239', { discountPct: 6, validFrom: '2026-01-01', validTo: '2026-12-31' }),
@@ -155,7 +156,7 @@ export const SEED_SPECIAL_PRICES: SpecialPriceSet[] = [
     ],
   },
   {
-    id: 'spp-003', partnerId: 'bp-013', priceList: 'Last purchase price', active: true,
+    id: 'spp-003', partnerId: 'bp-013', priceListId: plId('Last purchase price'), active: true,
     remarks: 'Techzone contract buy price for the 20W adapter.',
     rows: [special('r1', 'apl-0361', { unitPrice: 1480, tiers: [{ id: 't1', qtyFrom: 500, unitPrice: 1420, discountPct: null }] })],
   },

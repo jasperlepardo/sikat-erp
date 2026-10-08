@@ -11,11 +11,11 @@ import { formatAmount } from '../../../services/format';
 import { listItems } from '../../../services/items';
 import { priceLists } from '../../../services/partnerMasters';
 import { listPartners } from '../../../services/partners';
-import { listPrice, specialPrices } from '../../../services/priceLists';
+import { listPrice, priceListName, specialPrices } from '../../../services/priceLists';
 import { useAsync } from '../../../services/useAsync';
 import { newId } from '../../../services/useCollectionRows';
 
-const blank = (): SpecialPriceSet => ({ id: newId('spp'), partnerId: '', priceList: '', rows: [], remarks: '', active: true });
+const blank = (): SpecialPriceSet => ({ id: newId('spp'), partnerId: '', priceListId: '', rows: [], remarks: '', active: true });
 
 const blankRow = (): SpecialPriceRow => ({ id: newId('spr'), itemId: '', unitPrice: null, discountPct: null, validFrom: '', validTo: '', tiers: [] });
 
@@ -43,7 +43,7 @@ function validate(s: SpecialPriceSet, all: SpecialPriceSet[], items: Item[]): Er
   const itemNo = (id: string) => items.find((i) => i.id === id)?.itemNo ?? 'An item';
   if (!s.partnerId) e.partnerId = 'Business partner is required.';
   else if (all.some((x) => x.id !== s.id && x.partnerId === s.partnerId)) e.partnerId = 'This partner already has special prices — open that record instead.';
-  if (!s.priceList) e.priceList = 'Price list is required.';
+  if (!s.priceListId) e.priceListId = 'Price list is required.';
   const problems: string[] = [];
   s.rows.forEach((r, i) => {
     if (!r.itemId) return problems.push(`Row ${i + 1} needs an item.`);
@@ -84,15 +84,15 @@ export function SpecialPricesTab(route: ListRoute) {
       rows={rows}
       columns={[
         { key: 'partner', header: 'Business partner', cell: (s) => <span>{partnerOf(s.partnerId)?.code ?? ''} · {name(s)}</span> },
-        { key: 'priceList', header: 'Price list', cell: (s) => s.priceList },
+        { key: 'priceListId', header: 'Price list', cell: (s) => priceListName(s.priceListId) },
         { key: 'items', header: 'Items', cell: (s) => `${s.rows.length} item${s.rows.length === 1 ? '' : 's'}` },
         { key: 'current', header: 'In force today', cell: (s) => `${current(s)} of ${s.rows.length}` },
         statusColumn<SpecialPriceSet>(),
       ]}
       sortValue={(s, key) =>
-        key === 'partner' ? name(s).toLowerCase() : key === 'items' ? s.rows.length : key === 'current' ? current(s) : key === 'active' ? Number(s.active) : s.priceList.toLowerCase()
+        key === 'partner' ? name(s).toLowerCase() : key === 'items' ? s.rows.length : key === 'current' ? current(s) : key === 'active' ? Number(s.active) : priceListName(s.priceListId).toLowerCase()
       }
-      searchText={(s) => `${partnerOf(s.partnerId)?.code ?? ''} ${name(s)} ${s.priceList} ${s.remarks} ${s.rows.map((r) => items.find((i) => i.id === r.itemId)?.itemNo ?? '').join(' ')}`}
+      searchText={(s) => `${partnerOf(s.partnerId)?.code ?? ''} ${name(s)} ${priceListName(s.priceListId)} ${s.remarks} ${s.rows.map((r) => items.find((i) => i.id === r.itemId)?.itemNo ?? '').join(' ')}`}
       blank={blank}
       label={(s) => name(s) || 'New special prices'}
       validate={(s, all) => validate(s, all, items)}
@@ -123,17 +123,17 @@ export function SpecialPricesTab(route: ListRoute) {
                   hint: isNew ? 'Special prices are one partner at a time. For a whole group, use discount groups or period discounts.' : 'Fixed once saved.',
                 },
               )}
-              <ReadOnly label="BP name" value={partner?.name ?? '—'} hint={partner ? `Assigned price list: ${partner.priceList || '—'}` : undefined} />
+              <ReadOnly label="BP name" value={partner?.name ?? '—'} hint={partner ? `Assigned price list: ${partner.priceListId ? priceListName(partner.priceListId) : '—'}` : undefined} />
               {f.choose(
-                'priceList',
+                'priceListId',
                 'Price list',
-                lists.filter((l) => l.active || l.name === s.priceList).map((l) => ({ value: l.name, label: l.name })),
+                lists.filter((l) => l.active || l.id === s.priceListId).map((l) => ({ value: l.id, label: l.name })),
                 {
                   required: true,
-                  error: errors.priceList,
+                  error: errors.priceListId,
                   hint:
-                    partner && s.priceList && partner.priceList && partner.priceList !== s.priceList
-                      ? `The partner is on ${partner.priceList} — % specials here come off ${s.priceList}.`
+                    partner && s.priceListId && partner.priceListId && partner.priceListId !== s.priceListId
+                      ? `The partner is on ${priceListName(partner.priceListId)} — % specials here come off ${priceListName(s.priceListId)}.`
                       : 'Discount % specials come off this list; fixed prices ignore it.',
                 },
               )}
@@ -167,7 +167,7 @@ function SpecialRowsEditor({
   const itemOf = (id: string) => items.find((i) => i.id === id);
   const base = (r: SpecialPriceRow) => {
     const item = itemOf(r.itemId);
-    return item && set.priceList ? listPrice(item, set.priceList, item.inventoryUom) : undefined;
+    return item && set.priceListId ? listPrice(item, set.priceListId, item.inventoryUom) : undefined;
   };
   const effective = (r: SpecialPriceRow) => {
     const b = base(r);
@@ -186,7 +186,7 @@ function SpecialRowsEditor({
       <DataTable<SpecialPriceRow>
         icon="sell"
         title="Special prices"
-        description={`PHP per inventory unit. Enter a unit price or a discount % off ${set.priceList || 'the price list'} — not both. Items not listed keep normal pricing for ${partner?.name ?? 'this partner'}.`}
+        description={`PHP per inventory unit. Enter a unit price or a discount % off ${set.priceListId ? priceListName(set.priceListId) : 'the price list'} — not both. Items not listed keep normal pricing for ${partner?.name ?? 'this partner'}.`}
         rows={rows}
         getRowId={(r) => r.id}
         unsortable={['itemId', 'description', 'base', 'unitPrice', 'discountPct', 'effective', 'validFrom', 'validTo', 'tiers']}
@@ -199,7 +199,7 @@ function SpecialRowsEditor({
             ),
           },
           { key: 'description', header: 'Description', cell: (r) => itemOf(r.itemId)?.name ?? '' },
-          { key: 'base', header: set.priceList || 'List price', cell: (r) => (base(r) === undefined ? '—' : formatAmount(base(r)!)) },
+          { key: 'base', header: set.priceListId ? priceListName(set.priceListId) : 'List price', cell: (r) => (base(r) === undefined ? '—' : formatAmount(base(r)!)) },
           {
             key: 'unitPrice',
             header: 'Unit price',

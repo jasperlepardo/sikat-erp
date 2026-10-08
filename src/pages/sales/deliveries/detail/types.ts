@@ -57,7 +57,7 @@ export const dnLineFromOrder = (so: SalesOrder, l: SoLine, quantity: number): Dn
     uomName: l.uomName,
     itemsPerUnit: l.itemsPerUnit,
     warehouse: l.warehouse,
-    priceList: l.priceList,
+    priceListId: l.priceListId,
     unitPrice: l.unitPrice,
     discountPct: l.discountPct,
     priceSource: l.priceSource,

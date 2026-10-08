@@ -16,6 +16,7 @@ import { loadInventoryMasters } from '../../../../services/inventoryMasters';
 import { isValidToday, listItems } from '../../../../services/items';
 import { accounts, companyTax, currencies, exchangeRates, taxCodes, taxGroups, withholdingGroups, withholdingTaxes } from '../../../../services/masterData';
 import { listPartnersByRole } from '../../../../services/partners';
+import { BASE_PRICE_LIST_ID, priceListName } from '../../../../services/priceLists';
 import { termDays } from '../../../../services/purchaseOrders';
 import { cancelSalesOrder, closeSalesOrder, openQty, findDuplicateCustomerRef, getSalesOrder, listSalesOrders, openOrdersTotal, saveSalesOrder, seriesOf, soDueDate, soNumber, soTotals } from '../../../../services/salesOrders';
 import { determineTax } from '../../../../services/taxDetermination';
@@ -200,7 +201,7 @@ function SalesOrderForm() {
         const item = m.items.find((i) => i.id === l.itemId);
         if (!item) return l;
         const taxCode = proposedTaxCode(item, c, m, next.postingDate);
-        const priced = { ...l, taxCode, priceList: c.priceList || 'Base price' };
+        const priced = { ...l, taxCode, priceListId: c.priceListId || BASE_PRICE_LIST_ID };
         return { ...priced, ...(nextCtx.fx ? linePricing(item, priced, next, nextCtx) : {}) };
       }),
     });
@@ -341,7 +342,7 @@ function SalesOrderForm() {
                             placeholder="Search customers"
                             options={m.customers
                               .filter((c) => c.status !== 'Inactive' || c.id === draft.customerId)
-                              .map((c: Partner) => ({ value: c.id, label: c.name, subLabel: c.code, subLabelPlacement: 'top' as const, description: c.priceList, text: `${c.code} ${c.name}` }))}
+                              .map((c: Partner) => ({ value: c.id, label: c.name, subLabel: c.code, subLabelPlacement: 'top' as const, description: priceListName(c.priceListId), text: `${c.code} ${c.name}` }))}
                             value={draft.customerId || null}
                             onValueChange={pickCustomer}
                           />

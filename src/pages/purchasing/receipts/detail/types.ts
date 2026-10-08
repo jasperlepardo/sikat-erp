@@ -9,7 +9,7 @@ import { rateAt, vatNotPaidToVendor } from '../../../../mocks/taxes';
 import { todayISO } from '../../../../services/dates';
 import type { GrInput } from '../../../../services/goodsReceipts';
 import { rateOn } from '../../../../services/masterData';
-import { determinePrice } from '../../../../services/priceLists';
+import { BASE_PRICE_LIST_ID, LAST_PURCHASE_PRICE_LIST_ID, determinePrice } from '../../../../services/priceLists';
 import { openQty, poNumber } from '../../../../services/purchaseOrders';
 import { binFor } from '../../../inventory/transfers/TransferLines';
 import { proposedTaxCode, type PoMasters } from '../../orders/detail/types';
@@ -85,14 +85,14 @@ export const defaultBin = (item: Item, warehouse: string, m: PoMasters) =>
   binFor(item, m.inv.warehouses.find((w) => w.code === warehouse), m.inv.bins, '', true);
 
 /** A line's unit price (document currency) and discount from the price list and discount rules. */
-export function linePricing(item: Item, l: Pick<GrLine, 'priceList' | 'uomCode' | 'quantity'>, draft: Pick<GrDraft, 'postingDate'>, ctx: Pick<GrContext, 'vendor' | 'fx'>) {
-  const p = determinePrice({ item, partner: ctx.vendor, priceList: l.priceList, uom: l.uomCode, quantity: l.quantity, date: draft.postingDate });
+export function linePricing(item: Item, l: Pick<GrLine, 'priceListId' | 'uomCode' | 'quantity'>, draft: Pick<GrDraft, 'postingDate'>, ctx: Pick<GrContext, 'vendor' | 'fx'>) {
+  const p = determinePrice({ item, partner: ctx.vendor, priceListId: l.priceListId, uom: l.uomCode, quantity: l.quantity, date: draft.postingDate });
   return { unitPrice: ctx.fx ? Math.round((p.price / ctx.fx) * 100) / 100 : 0, discountPct: p.discountPct };
 }
 
 /** A hand-entered line with every default taken from the item, vendor and header. */
 export function lineFromItem(item: Item, draft: Pick<GrDraft, 'postingDate'>, ctx: Pick<GrContext, 'vendor' | 'fx'>, m: PoMasters, base: Partial<GrLine> = {}): GrLine {
-  const priceList = ctx.vendor?.priceList && ctx.vendor.priceList !== 'Base price' ? ctx.vendor.priceList : 'Last purchase price';
+  const priceListId = ctx.vendor?.priceListId && ctx.vendor.priceListId !== BASE_PRICE_LIST_ID ? ctx.vendor.priceListId : LAST_PURCHASE_PRICE_LIST_ID;
   const warehouse = item.inventoryItem ? vendorDeliveryLocation(item.warehouses.map((w) => w.code), m.inv.warehouses) : '';
   const line = newGrLine({
     ...base,
@@ -105,7 +105,7 @@ export function lineFromItem(item: Item, draft: Pick<GrDraft, 'postingDate'>, ct
     itemsPerUnit: itemsPerUom(item, item.purchasingUom) ?? 1,
     warehouse,
     bin: warehouse ? defaultBin(item, warehouse, m) : '',
-    priceList,
+    priceListId,
     taxCode: proposedTaxCode(item, ctx.vendor, m, draft.postingDate),
   });
   return { ...line, ...linePricing(item, line, draft, ctx) };
@@ -129,7 +129,7 @@ export function linesFromPo(po: PurchaseOrder, picks: { lineId: string; qty: num
         itemsPerUnit: pl.itemsPerUnit,
         warehouse: pl.warehouse,
         bin: pl.warehouse ? defaultBin(item, pl.warehouse, m) : '',
-        priceList: pl.priceList,
+        priceListId: pl.priceListId,
         unitPrice: pl.unitPrice,
         discountPct: pl.discountPct,
         taxCode: pl.taxCode,

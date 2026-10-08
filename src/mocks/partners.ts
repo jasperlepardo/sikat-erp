@@ -105,7 +105,7 @@ export const newContactChannel = (type: ContactChannelType = 'Phone'): PartnerCo
 });
 
 import { blankPostalAddress, formatAddress, type PostalAddress } from './address';
-import { termId } from './masters';
+import { plId, termId } from './masters';
 import type { Attachment } from './common';
 import type { VatExemptionEntry } from './taxes';
 export type { VatExemptionEntry };
@@ -185,7 +185,7 @@ export interface Partner {
   customerPaymentTermId: string;
   vendorPaymentTermId: string;
   interestOnArrears: number;
-  priceList: string;
+  priceListId: string;
   totalDiscount: number;
   creditLimit: number;
   commitmentLimit: number;
@@ -389,7 +389,7 @@ export function blankPartner(role: PartnerRole): Omit<Partner, 'id'> {
     customerPaymentTermId: termId('Net 30'),
     vendorPaymentTermId: termId('Net 30'),
     interestOnArrears: 0,
-    priceList: 'Base price',
+    priceListId: plId('Base price'),
     totalDiscount: 0,
     creditLimit: 0,
     commitmentLimit: 0,
@@ -588,7 +588,7 @@ export const SEED_PARTNERS: Partner[] = [
   seed(
     'bp-009', 'customer',
     { name: 'Department of Education – Schools Division Office of Pasig City', businessType: 'Government', group: 'Customers – Government', industry: 'Government',
-      contactChannels: [email('bp-009-ch1', 'supply.office@depedpasig.example.gov.ph')], customerPaymentTermId: termId('Net 60'), priceList: 'Government',
+      contactChannels: [email('bp-009-ch1', 'supply.office@depedpasig.example.gov.ph')], customerPaymentTermId: termId('Net 60'), priceListId: plId('Government'),
       remarks: 'iPads for teachers under a public bidding award (PhilGEPS).\n'
         + 'Tax scenario (sales): 31 VATable. The agency withholds 5% creditable VAT and 1% EWT and issues BIR Form 2307 — claim the VAT on 2550Q item 16.' },
     { firstName: 'Ramil', lastName: 'Ocampo', position: 'Supply Officer', email: 'supply.office@depedpasig.example.gov.ph' },

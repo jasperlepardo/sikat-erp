@@ -127,7 +127,7 @@ function build(): PurchasingHistory {
     p.lines.map((l, i) =>
       newDprLine({
         id: `dl-seed-${p.id}-${i + 1}`, itemId: l.itemId, itemNo: l.itemNo, name: l.name, description: l.description, quantity: l.quantity,
-        uomCode: l.uomCode, uomName: l.uomName, itemsPerUnit: l.itemsPerUnit, priceList: l.priceList, unitPrice: l.unitPrice, discountPct: l.discountPct,
+        uomCode: l.uomCode, uomName: l.uomName, itemsPerUnit: l.itemsPerUnit, priceListId: l.priceListId, unitPrice: l.unitPrice, discountPct: l.discountPct,
         taxCode: l.taxCode, blanketAgreement: l.blanketAgreement, baseType: 'PO', baseId: p.id, baseLineId: l.id, baseDocNo: `${p.seriesId === 'ser-import' ? 'Import' : 'Primary'} ${p.docNum}`,
         bpCatalogNo: l.bpCatalogNo, countryOfOrigin: SEED_ITEMS.find((x) => x.id === l.itemId)?.countryOfOrigin ?? '', warehouse: '', bin: '',
       }),

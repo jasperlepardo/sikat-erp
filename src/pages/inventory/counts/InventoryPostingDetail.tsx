@@ -29,6 +29,7 @@ import {
   stockAfter,
 } from '../../../services/inventoryCountings';
 import { priceLists } from '../../../services/partnerMasters';
+import { priceListName } from '../../../services/priceLists';
 import { PostingLines, type PostingDraft } from './PostingLines';
 import { COUNT_LIST_PATH, POSTING_LIST_PATH, nowHHMM, type CountMasters } from './shared';
 
@@ -46,7 +47,7 @@ function validate(d: PostingDraft, m: Masters): Problem<TabId>[] {
   need(d.countDate, 'header', 'countDate', 'Count date is required.');
   need(!d.countDate || !d.postingDate || d.countDate <= d.postingDate, 'header', 'countDate', 'The count date can’t be after the posting date.');
   need(TIME.test(d.countTime), 'header', 'countTime', 'Time is required, as HH:MM (24-hour).');
-  need(d.priceSource !== 'price-list' || d.priceList, 'header', 'priceList', 'Pick the price list to value the variance at.');
+  need(d.priceSource !== 'price-list' || d.priceListId, 'header', 'priceListId', 'Pick the price list to value the variance at.');
   need(d.lines.length, 'contents', 'lines', 'Copy from an inventory counting or add the items to adjust.');
   const seen = new Set<string>();
   for (const [i, l] of d.lines.entries()) {
@@ -139,11 +140,11 @@ function PostingForm() {
   const update = (patch: Partial<PostingDraft>) => setDraft({ ...draft, ...patch });
 
   /** A new price source reprices every line. */
-  const setPriceSource = (priceSource: PriceSource, priceList = draft.priceList) => {
-    const next = { ...draft, priceSource, priceList };
+  const setPriceSource = (priceSource: PriceSource, priceListId = draft.priceListId) => {
+    const next = { ...draft, priceSource, priceListId };
     update({
       priceSource,
-      priceList,
+      priceListId,
       lines: draft.lines.map((l) => {
         const item = m.items.find((i) => i.id === l.itemId);
         return item ? { ...l, price: sourcePrice(item, next) } : l;
@@ -182,7 +183,7 @@ function PostingForm() {
       const p = await addPosting(doc);
       navigate(POSTING_LIST_PATH, {
         state: {
-          notice: `Inventory posting ${postingNumber(p)} added — stock adjusted by PHP ${formatAmount(postingTotal(p))} at ${p.priceSource === 'item-cost' ? 'item cost' : p.priceList}.${count ? ` Count ${countNumber(count)} is now closed.` : ''}`,
+          notice: `Inventory posting ${postingNumber(p)} added — stock adjusted by PHP ${formatAmount(postingTotal(p))} at ${p.priceSource === 'item-cost' ? 'item cost' : priceListName(p.priceListId)}.${count ? ` Count ${countNumber(count)} is now closed.` : ''}`,
         },
       });
     } catch (err) {
@@ -307,12 +308,12 @@ function PostingForm() {
                     { hint: 'Values the variance. Each line’s price can still be changed.' },
                   )}
                   {draft.priceSource === 'price-list' ? (
-                    <FormField label="Price list" required error={errors.priceList}>
+                    <FormField label="Price list" required error={errors.priceListId}>
                       {(p) => (
                         <Combobox
                           {...p}
-                          options={lists.filter((l) => l.active || l.name === draft.priceList).map((l) => ({ value: l.name, label: l.name }))}
-                          value={draft.priceList || null}
+                          options={lists.filter((l) => l.active || l.id === draft.priceListId).map((l) => ({ value: l.id, label: l.name }))}
+                          value={draft.priceListId || null}
                           onValueChange={(v) => setPriceSource('price-list', v ?? '')}
                         />
                       )}

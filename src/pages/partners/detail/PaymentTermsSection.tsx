@@ -24,7 +24,7 @@ export function PaymentTermsSection({ draft, update, errors }: TabProps) {
               hint: 'Terms they give you. Drives due dates on bills.',
             })
           : null}
-        {f.master('priceList', 'Price list', priceListDef)}
+        {f.master('priceListId', 'Price list', priceListDef)}
         {f.num('totalDiscount', 'Total discount', { suffix: '%' })}
         {f.num('interestOnArrears', 'Interest on arrears', { suffix: '%' })}
         {f.pick('effectiveDiscountGroups', 'Effective discount groups', EFFECTIVE_DISCOUNT_GROUPS, {

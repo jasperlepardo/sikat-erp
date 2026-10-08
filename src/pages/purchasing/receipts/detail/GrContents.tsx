@@ -95,9 +95,9 @@ export function GrContents({ draft, update, errors, m, ctx, onCopy }: GrSectionP
     const item = itemOf(l);
     patch(l.id, { warehouse, bin: item && warehouse ? defaultBin(item, warehouse, m) : '' });
   };
-  const changePriceList = (l: GrLine, priceList: string) => {
+  const changePriceList = (l: GrLine, priceListId: string) => {
     const item = itemOf(l);
-    patch(l.id, { priceList, ...(item && ctx.fx ? linePricing(item, { ...l, priceList }, draft, ctx) : {}) });
+    patch(l.id, { priceListId, ...(item && ctx.fx ? linePricing(item, { ...l, priceListId }, draft, ctx) : {}) });
   };
 
   const col = (key: string, header: string, cell: (l: GrLine) => ReactNode, group?: Group): TableColumn<GrLine> & { group?: Group } => ({ key, header, cell, group });
@@ -199,8 +199,8 @@ export function GrContents({ draft, update, errors, m, ctx, onCopy }: GrSectionP
       <TextField aria-label="No. of packages" type="number" min={0} className="w-24" value={String(l.packages)} onChange={(e) => patch(l.id, { packages: num(e.currentTarget.value) })} />
     ) : null), 'quantities'),
     col('openQty', 'Open qty', (l) => (l.itemId ? grOpenQty(l, draft).toLocaleString('en-PH') : null), 'quantities'),
-    col('priceList', 'Price list', (l) => (l.itemId ? (
-      <MasterLookup def={priceListDef} fieldProps={{ 'aria-label': 'Price list', className: 'w-44' }} where={(r) => isPriceListValid(r, draft.postingDate)} value={l.priceList} onChange={(v) => changePriceList(l, v)} />
+    col('priceListId', 'Price list', (l) => (l.itemId ? (
+      <MasterLookup def={priceListDef} fieldProps={{ 'aria-label': 'Price list', className: 'w-44' }} where={(r) => isPriceListValid(r, draft.postingDate)} value={l.priceListId} onChange={(v) => changePriceList(l, v)} />
     ) : null), 'pricing'),
     col('pricing', 'Unit price / Tax / Discount', (l) => {
       if (!l.itemId) return null;

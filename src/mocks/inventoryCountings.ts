@@ -117,7 +117,7 @@ export interface InventoryPosting {
   countTime: string;
   priceSource: PriceSource;
   /** When the price source is a price list. */
-  priceList: string;
+  priceListId: string;
   reference: string;
   endOfFiscalYear: string;
   /** The Inventory Counting it was copied from ('' when items were added directly). */
@@ -203,7 +203,7 @@ export function blankPosting(today: string, now: string): Omit<InventoryPosting,
     countDate: today,
     countTime: now,
     priceSource: 'item-cost',
-    priceList: '',
+    priceListId: '',
     reference: '',
     endOfFiscalYear: '',
     countingId: '',

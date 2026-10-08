@@ -15,6 +15,7 @@ import {
   HOLIDAY_CALENDARS,
   INDUSTRIES,
   PAYMENT_TERMS,
+  plId,
   PLANNING_GROUPS,
   PRICE_LISTS,
   PROJECTS,
@@ -65,8 +66,8 @@ export type PriceSource = 'cost' | 'srp';
  * every list down the chain. Prices are calculated when read, never stored per list.
  */
 export interface PriceList extends NamedEntry {
-  /** Name of the list prices are derived from; '' for an independent list. */
-  basePriceList: string;
+  /** Id of the list prices are derived from; '' for an independent list. */
+  basePriceListId: string;
   /** Multiplier on the base list's price (1.3 = 30% markup, 0.92 = 8% off). */
   factor: number;
   /** Independent lists only. */
@@ -118,14 +119,14 @@ export const SEED_LEAD_SOURCES = named('lds', LEAD_SOURCES);
 const PRICE_LIST_SETUP: Record<string, Partial<PriceList>> = {
   'Base price': { source: 'srp', gross: true, remarks: 'Apple SRP, VAT inclusive — the price on the item.' },
   'Last purchase price': { source: 'cost', gross: false, remarks: 'Item cost, for purchasing.' },
-  Wholesale: { basePriceList: 'Base price', factor: 0.92, rounding: 'tens', gross: true, remarks: 'Resellers and corporate accounts: 8% off SRP.' },
-  Retail: { basePriceList: 'Base price', factor: 1, rounding: 'none', gross: true, remarks: 'Walk-in and online store.' },
-  Government: { basePriceList: 'Base price', factor: 0.95, rounding: 'peso', gross: true, validFrom: '2026-01-01', validTo: '2026-12-31', remarks: 'Public bidding (RA 9184) quotes: 5% off SRP for the year.' },
+  Wholesale: { basePriceListId: plId('Base price'), factor: 0.92, rounding: 'tens', gross: true, remarks: 'Resellers and corporate accounts: 8% off SRP.' },
+  Retail: { basePriceListId: plId('Base price'), factor: 1, rounding: 'none', gross: true, remarks: 'Walk-in and online store.' },
+  Government: { basePriceListId: plId('Base price'), factor: 0.95, rounding: 'peso', gross: true, validFrom: '2026-01-01', validTo: '2026-12-31', remarks: 'Public bidding (RA 9184) quotes: 5% off SRP for the year.' },
 };
 
 export const SEED_PRICE_LISTS: PriceList[] = named('prl', PRICE_LISTS).map((l) => ({
   ...l,
-  basePriceList: '',
+  basePriceListId: '',
   factor: 1,
   source: 'srp',
   rounding: 'none',

@@ -8,7 +8,7 @@ import { statusColumn, uniqueRequired } from '../../components/form/MasterList';
 import type { MasterDef } from '../../components/form/MasterLookup';
 import { MAX_PARTNER_PROPERTIES, projectValue, type Bank, type BpGroup, type NamedEntry, PRICE_ROUNDING, type PaymentTerm, type PriceList, type Project } from '../../mocks/partnerMasters';
 import { ItemPricesTable } from '../inventory/pricing/ItemPricesTable';
-import { describeChain, priceChain, roundingLabel, samplePrice } from '../../services/priceLists';
+import { BASE_PRICE_LIST_ID, describeChain, priceChain, priceListName, roundingLabel, samplePrice } from '../../services/priceLists';
 import type { Collection } from '../../services/store';
 import { newId } from '../../services/useCollectionRows';
 import * as lists from '../../services/partnerMasters';
@@ -143,8 +143,8 @@ export const leadSourceDef = namedDef({
 // ── Inventory › Price Lists ──────────────────────────────────────────────────
 
 const based = (l: PriceList) => {
-  if (!l.basePriceList) return `Independent · item ${l.source === 'cost' ? 'cost' : 'SRP'}`;
-  return `${l.basePriceList} × ${l.factor}`;
+  if (!l.basePriceListId) return `Independent · item ${l.source === 'cost' ? 'cost' : 'SRP'}`;
+  return `${priceListName(l.basePriceListId)} × ${l.factor}`;
 };
 
 const validity = (l: PriceList) =>
@@ -161,7 +161,7 @@ export const priceListDef: MasterDef<PriceList> = {
   blank: (name) => ({
     id: newId('prl'),
     name,
-    basePriceList: 'Base price',
+    basePriceListId: BASE_PRICE_LIST_ID,
     factor: 1,
     source: 'srp',
     rounding: 'none',
@@ -172,31 +172,31 @@ export const priceListDef: MasterDef<PriceList> = {
     itemPrices: [],
     active: true,
   }),
-  value: (l) => l.name,
+  value: (l) => l.id,
   label: (l) => l.name,
   columns: [
     { key: 'name', header: 'Name', cell: (l) => l.name },
-    { key: 'basePriceList', header: 'Based on', cell: based },
-    { key: 'rounding', header: 'Rounding', cell: (l) => (l.basePriceList ? roundingLabel(l.rounding) : '—') },
+    { key: 'basePriceListId', header: 'Based on', cell: based },
+    { key: 'rounding', header: 'Rounding', cell: (l) => (l.basePriceListId ? roundingLabel(l.rounding) : '—') },
     { key: 'gross', header: 'Prices', cell: (l) => (l.gross ? 'Gross (VAT incl.)' : 'Net of VAT') },
     { key: 'validTo', header: 'Valid', cell: validity },
     statusColumn<PriceList>(),
   ],
-  searchText: (l) => `${l.name} ${l.basePriceList} ${l.remarks}`,
+  searchText: (l) => `${l.name} ${priceListName(l.basePriceListId)} ${l.remarks}`,
   normalize: (l) => ({
     ...l,
     name: l.name.trim(),
     // Independent lists have no factor or rounding of their own.
-    ...(l.basePriceList ? {} : { factor: 1, rounding: 'none' as const }),
+    ...(l.basePriceListId ? {} : { factor: 1, rounding: 'none' as const }),
   }),
   validate: (l, all) => {
     const e: Errors = {};
     uniqueRequired(e, l, all, 'name', 'Name');
-    if (l.basePriceList) {
+    if (l.basePriceListId) {
       if (!(l.factor > 0)) e.factor = 'Factor must be more than 0.';
-      if (l.basePriceList.trim().toLowerCase() === l.name.trim().toLowerCase()) e.basePriceList = "A list can't be based on itself.";
-      else if (!all.some((x) => x.name === l.basePriceList)) e.basePriceList = `${l.basePriceList} doesn't exist.`;
-      else if (!priceChain(l, all)) e.basePriceList = `${l.basePriceList} is based on this list (directly or further up), which would loop.`;
+      if (l.basePriceListId === l.id) e.basePriceListId = "A list can't be based on itself.";
+      else if (!all.some((x) => x.id === l.basePriceListId)) e.basePriceListId = "The base list doesn't exist.";
+      else if (!priceChain(l, all)) e.basePriceListId = `${priceListName(l.basePriceListId, all)} is based on this list (directly or further up), which would loop.`;
     }
     if (l.validFrom && l.validTo && l.validTo < l.validFrom) e.validTo = 'Valid to is before valid from.';
     if (l.itemPrices.some((p) => !(p.price >= 0))) e.itemPrices = "Manual prices can't be negative.";
@@ -205,19 +205,19 @@ export const priceListDef: MasterDef<PriceList> = {
   editor: (l, update, errors, isNew) => {
     const f = bind(l, update);
     const all = lists.priceLists.snapshot();
-    const bases = all.filter((x) => x.id !== l.id && (x.active || x.name === l.basePriceList));
+    const bases = all.filter((x) => x.id !== l.id && (x.active || x.id === l.basePriceListId));
     const chain = priceChain(l, all);
     const sample = samplePrice(l, all);
     return (
       <FieldStack>
-        {f.text('name', 'Name', { required: true, error: errors.name, placeholder: 'e.g. Corporate', disabled: !isNew, hint: !isNew ? NAME_LOCK : undefined })}
+        {f.text('name', 'Name', { required: true, error: errors.name, placeholder: 'e.g. Corporate' })}
         {f.choose(
-          'basePriceList',
+          'basePriceListId',
           'Base price list',
-          [{ value: '', label: 'None — independent list' }, ...bases.map((x) => ({ value: x.name, label: x.name }))],
-          { error: errors.basePriceList, hint: 'Leave empty for a list with its own prices.' },
+          [{ value: '', label: 'None — independent list' }, ...bases.map((x) => ({ value: x.id, label: x.name }))],
+          { error: errors.basePriceListId, hint: 'Leave empty for a list with its own prices.' },
         )}
-        {l.basePriceList ? (
+        {l.basePriceListId ? (
           <>
             {f.num('factor', 'Factor', { required: true, error: errors.factor, hint: '1.30 = 30% markup, 0.92 = 8% off the base.' })}
             {f.choose('rounding', 'Rounding', PRICE_ROUNDING)}
@@ -290,11 +290,11 @@ export const paymentTermDef: MasterDef<PaymentTerm> = {
     if (t.days < 0) e.days = "Days can't be negative.";
     return e;
   },
-  editor: (t, update, errors, isNew) => {
+  editor: (t, update, errors) => {
     const f = bind(t, update);
     return (
       <FieldStack>
-        {f.text('name', 'Name', { required: true, error: errors.name, placeholder: 'e.g. Net 90', disabled: !isNew, hint: !isNew ? NAME_LOCK : undefined })}
+        {f.text('name', 'Name', { required: true, error: errors.name, placeholder: 'e.g. Net 90' })}
         {f.num('days', 'Due after', { suffix: 'days', error: errors.days, hint: 'Posting date + these days = due date. 0 for COD.' })}
         {f.status('active', 'Status')}
       </FieldStack>

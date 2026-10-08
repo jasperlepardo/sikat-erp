@@ -25,7 +25,7 @@
  *   Tax (other localizations), Asset Value Date (no fixed assets yet), Payment Order Run (A/P).
  */
 import type { Attachment, DocumentSeries } from './common';
-import { termId } from './masters';
+import { plId, termId } from './masters';
 import { SEED_DELIVERIES, type DnLine } from './deliveries';
 import { SEED_PARTNERS, formatAddress } from './partners';
 import { RETAIL_SALES } from './retailHistory';
@@ -138,7 +138,7 @@ export const newArLine = (patch: Partial<ArLine> = {}): ArLine => ({
   uomName: 'Piece',
   itemsPerUnit: 1,
   warehouse: '',
-  priceList: 'Base price',
+  priceListId: plId('Base price'),
   unitPrice: 0,
   discountPct: 0,
   priceSource: '',

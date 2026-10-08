@@ -21,7 +21,7 @@
  * - Negative stock isn't allowed: a line can't ship more than the warehouse holds.
  */
 import type { Attachment, DocumentSeries } from './common';
-import { termId } from './masters';
+import { plId, termId } from './masters';
 import { SEED_SALES_ORDERS, seedRateOn, type SalesOrder } from './salesOrders';
 import type { PoReference } from './purchaseOrders';
 import { SEED_ITEMS } from './items';
@@ -46,7 +46,7 @@ export interface DnLine {
   /** Inventory units in one line unit. */
   itemsPerUnit: number;
   warehouse: string;
-  priceList: string;
+  priceListId: string;
   /** Net of VAT, per line unit, in the document currency. */
   unitPrice: number;
   discountPct: number;
@@ -142,7 +142,7 @@ export const newDnLine = (patch: Partial<DnLine> = {}): DnLine => ({
   uomName: 'Piece',
   itemsPerUnit: 1,
   warehouse: '',
-  priceList: 'Base price',
+  priceListId: plId('Base price'),
   unitPrice: 0,
   discountPct: 0,
   priceSource: '',
@@ -268,7 +268,7 @@ function fromOrder(id: string, docNum: number, orderId: string, lineIds: string[
         uomName: l.uomName,
         itemsPerUnit: l.itemsPerUnit,
         warehouse: l.warehouse,
-        priceList: l.priceList,
+        priceListId: l.priceListId,
         unitPrice: l.unitPrice,
         discountPct: l.discountPct,
         priceSource: l.priceSource,
