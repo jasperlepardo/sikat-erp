@@ -422,7 +422,7 @@ export const SEED_PURCHASE_ORDERS: PurchaseOrder[] = [
       importLine('po-006-3', 'IPH-18PM-512-GLC', 10),
     ].map((l) => ({ ...l, blanketAgreement: 'BA-2026-004' })).concat(
       // Printed materials are VAT-exempt on importation.
-      svc('po-006-4', 'IMP-MANUALS', 200, 3.5, '49', { deliveryDate: '2026-10-06' }),
+      svc('po-006-4', 'SVC-MANUALS', 200, 3.5, '49', { deliveryDate: '2026-10-06' }),
     ),
     remarks: 'Direct import from Apple. Import VAT (46) is paid to the Bureau of Customs on the import entry, not to Apple; the printed manuals are exempt (49). Pier Four Customs Brokerage files the entry; Nordlys Freight flies it in.',
   }),
@@ -473,11 +473,11 @@ export const SEED_PURCHASE_ORDERS: PurchaseOrder[] = [
   svcPo('po-011', 260008, 'bp-002', {
     status: 'Open', postingDate: '2026-09-25', documentDate: '2026-09-25', deliveryDate: '2026-10-01', dueDate: '2026-10-10',
     vendorRef: 'NPM-SOA-2026-10-118',
-    lines: [svc('po-011-1', 'SVC-RNT-MALL', 1, 385000, '44', { freeText: 'Unit 2-118, October 2026', deliveryDate: '2026-10-01', department: 'Store operations' })],
+    lines: [svc('po-011-1', 'RNT-MALL', 1, 385000, '44', { freeText: 'Unit 2-118, October 2026', deliveryDate: '2026-10-01', department: 'Store operations' })],
   }),
   svcPo('po-012', 260009, 'bp-036', {
     status: 'Open', postingDate: '2026-09-25', documentDate: '2026-09-25', deliveryDate: '2026-10-01', dueDate: '2026-10-05',
-    lines: [svc('po-012-1', 'SVC-RNT-CEB', 1, 95000, '48', { freeText: 'Cebu store, October 2026', deliveryDate: '2026-10-01', department: 'Store operations' })],
+    lines: [svc('po-012-1', 'RNT-CEB', 1, 95000, '48', { freeText: 'Cebu store, October 2026', deliveryDate: '2026-10-01', department: 'Store operations' })],
   }),
   svcPo('po-013', 260010, 'bp-014', {
     status: 'Closed', postingDate: '2026-09-01', documentDate: '2026-09-01', deliveryDate: '2026-09-30', closeDate: '2026-09-28', dueDate: '2026-10-15',
@@ -589,7 +589,7 @@ export const SEED_PURCHASE_ORDERS: PurchaseOrder[] = [
   }),
   svcPo('po-037', 260033, 'bp-032', {
     status: 'Open', currencyView: 'BP', postingDate: '2026-09-28', documentDate: '2026-09-28', deliveryDate: '2026-09-30', dueDate: '2026-10-05',
-    lines: [svc('po-037-1', 'FIN-LOAN-INT', 1, 18750, '48', { freeText: 'Interest, Q3 2026 — USD 1.5M facility', deliveryDate: '2026-09-30', department: 'Finance' })],
+    lines: [svc('po-037-1', 'SVC-LOAN-INT', 1, 18750, '48', { freeText: 'Interest, Q3 2026 — USD 1.5M facility', deliveryDate: '2026-09-30', department: 'Finance' })],
   }),
 
   // ── Backorders for open sales orders ───────────────────────────────────────

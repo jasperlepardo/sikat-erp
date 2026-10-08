@@ -701,12 +701,12 @@ const PURCHASED_SERVICES: PurchasedService[] = [
   ['itm-028', 'SVC-IT-CONSULT', 'IT consulting and systems integration', 'hour', 'WH-PROF', 'bp-024'],
   ['itm-029', 'SVC-SALES-COMM', 'Sales agent commission', 'month', 'WH-SCOMM', 'bp-026'],
   ['itm-030', 'SVC-POS-LICENSE', 'POS software licence (annual)', 'year', 'WH-ROY', 'bp-030'],
-  ['itm-031', 'FIN-LOAN-INT', 'Interest on inventory financing', 'month', 'WH-INT', 'bp-032', 'P-VATX'],
+  ['itm-031', 'SVC-LOAN-INT', 'Interest on inventory financing', 'month', 'WH-INT', 'bp-032', 'P-VATX'],
   ['itm-032', 'SVC-POSTAGE', 'Registered mail and postage', 'pc', 'WH-SVC', 'bp-028'],
   ['itm-033', 'SVC-LEGAL', 'Legal retainer and case fees', 'month', 'WH-PROF', 'bp-033'],
   ['itm-034', 'SVC-AIRCON', 'Aircon preventive maintenance (monthly)', 'month', 'WH-SVC', 'bp-034'],
   ['itm-035', 'SVC-DESIGN', 'Signage and campaign design', 'job', 'WH-PROF', 'bp-035'],
-  ['itm-036', 'SVC-RNT-CEB', 'Cebu store space rent (monthly)', 'month', 'WH-RENT', 'bp-036'],
+  ['itm-036', 'RNT-CEB', 'Cebu store space rent (monthly)', 'month', 'WH-RENT', 'bp-036'],
   ['itm-037', 'SVC-VIDEO-EDIT', 'Video editing', 'job', 'WH-PROF', 'bp-037'],
   ['itm-038', 'SVC-POS-LEASE', 'POS terminal and card reader lease (monthly)', 'month', 'WH-EQUIP', 'bp-038'],
   ['itm-039', 'SVC-SIGNAGE-LIC', 'Video wall content software licence (annual)', 'year', 'WH-ROY', 'bp-039'],
@@ -719,13 +719,13 @@ const PURCHASED_SERVICES: PurchasedService[] = [
 /** Purchases whose tax treatment is fixed on the item rather than decided by the vendor. */
 const ITEM_TAX_CASES: Item[] = [
   seed('itm-043', 'Services', {
-    itemNo: 'IMP-VAT-DISB', name: 'Import VAT disbursement', description: 'Import VAT advanced by customs broker', itemType: 'Items', inventoryUom: 'pc', purchasingUom: 'pc',
+    itemNo: 'SVC-VAT-DISB', name: 'Import VAT disbursement', description: 'Import VAT advanced by customs broker', itemType: 'Items', inventoryUom: 'pc', purchasingUom: 'pc',
     salesItem: false, inventoryItem: false, purchaseTaxGroup: 'P-VAT12', purchaseTaxCode: '46', withholdingGroup: 'WH-NONE',
     defaultVendorId: 'bp-022', warehouses: [], cycleCountDays: 0, hasTransactions: false,
     generalRemarks: 'The broker pays the import VAT to the Bureau of Customs for us and bills it back at cost: fixed code 46, and no withholding on a reimbursement.',
   }),
   seed('itm-044', 'Services', {
-    itemNo: 'IMP-MANUALS', name: 'Printed Apple training manuals', description: 'Printed Apple training manuals (imported)', itemType: 'Items', inventoryUom: 'pc', purchasingUom: 'pc',
+    itemNo: 'SVC-MANUALS', name: 'Printed Apple training manuals', description: 'Printed Apple training manuals (imported)', itemType: 'Items', inventoryUom: 'pc', purchasingUom: 'pc',
     salesItem: false, inventoryItem: false, purchaseTaxGroup: 'P-VATX', withholdingGroup: 'WH-GDS',
     defaultVendorId: 'bp-017', warehouses: [], cycleCountDays: 0, hasTransactions: false,
     generalRemarks: 'Books and printed materials are VAT-exempt on importation (NIRC Sec. 109): imported from Apple they get code 49.',
@@ -749,7 +749,7 @@ export const SEED_ITEMS: Item[] = [
     purchaseTaxGroup: 'P-VAT12S', withholdingGroup: 'WH-SVC',
   }),
   seed('itm-018', 'Rent & Leases', {
-    itemNo: 'SVC-RNT-MALL', name: 'Mall store space rent', description: 'Mall store space rent (monthly)', itemType: 'Items', inventoryUom: 'month', purchasingUom: 'month',
+    itemNo: 'RNT-MALL', name: 'Mall store space rent', description: 'Mall store space rent (monthly)', itemType: 'Items', inventoryUom: 'month', purchasingUom: 'month',
     salesItem: false, inventoryItem: false, purchaseTaxGroup: 'P-VAT12S', withholdingGroup: 'WH-RENT', warehouses: [],
     defaultVendorId: 'bp-002', cycleCountDays: 0, hasTransactions: false,
   }),
