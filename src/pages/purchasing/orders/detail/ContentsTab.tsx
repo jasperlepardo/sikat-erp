@@ -30,6 +30,7 @@ import { getPurchasingSettings } from '../../../../services/purchaseOrders';
 import { itemUnits, itemsPerUom } from '../../../../mocks/items';
 import { formatAmount } from '../../../../services/format';
 import { activeOptions } from '../../../../services/inventoryMasters';
+import { receivesFromVendors } from '../../../../mocks/itemMasters';
 import { isValidToday, stockTotals } from '../../../../services/items';
 import { grossPrice, inventoryQty, lineNet, openQty, priceAfterDiscount } from '../../../../services/purchaseOrders';
 import { linePricing, lineFromItem, type PoTabProps } from './types';
@@ -257,7 +258,7 @@ export function ContentsTab({ draft, update, errors, m, ctx }: PoTabProps) {
           aria-label="Warehouse"
           className="w-32"
           invalid={Boolean(err(l, 'warehouse'))}
-          options={activeOptions(m.inv.warehouses, (w) => w.code, (w) => w.code, l.warehouse)}
+          options={activeOptions(m.inv.warehouses.filter((w) => receivesFromVendors(w) || w.code === l.warehouse), (w) => w.code, (w) => w.code, l.warehouse)}
           value={l.warehouse}
           onValueChange={(warehouse) => patch(l.id, { warehouse: warehouse ?? '' })}
         />

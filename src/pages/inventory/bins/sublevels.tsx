@@ -1,5 +1,5 @@
 import { Text } from '@jasperlepardo/sikat-design-system';
-import { Fields, Flags, ReadOnly, bind, type Errors } from '../../../components/form/fields';
+import { Fields, ReadOnly, bind, type Errors } from '../../../components/form/fields';
 import { statusColumn } from '../../../components/form/MasterList';
 import { MasterDefList, type MasterDef } from '../../../components/form/MasterLookup';
 import type { ListRoute } from '../../../components/form/MasterList';
@@ -75,12 +75,12 @@ export const sublevelDef: MasterDef<BinSublevel> = {
             error: errors.code,
             placeholder: 'e.g. A, 01, L1',
             disabled: !isNew,
-            hint: isNew ? undefined : 'Bins are coded with it. Rename it with Modify bin codes on Bin locations.',
+            hint: isNew ? undefined : 'Bins are coded with it. Rename it with Modify bin codes on Locations.',
           })}
           {f.text('description', 'Description', { placeholder: 'e.g. Aisle A · iPhone & iPad' })}
           {!isNew ? <ReadOnly label="Bin locations" value={String(used)} /> : null}
         </Fields>
-        <Flags>{f.check('active', 'Active')}</Flags>
+        <Fields>{f.status('active', 'Status')}</Fields>
         {!s.active && used ? (
           <Text variant="small" tone="muted">
             Inactive codes aren’t offered for new bins; the {used} bin{used === 1 ? '' : 's'} using it keep it.

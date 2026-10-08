@@ -159,8 +159,8 @@ function Selection({
 // ── Generate bins (Bin Location Management) ─────────────────────────────────
 
 /** Creates a bin for every Aisle × Shelf × Level in the ranges, with shared properties. */
-export function GenerateBinsPanel({ onCancel, onDone }: { onCancel: () => void; onDone: () => void }) {
-  const [warehouse, setWarehouse] = useState(binWarehouseOptions()[0]?.value ?? '');
+export function GenerateBinsPanel({ warehouse: initial, onCancel, onDone }: { warehouse?: string; onCancel: () => void; onDone: () => void }) {
+  const [warehouse, setWarehouse] = useState(initial ?? binWarehouseOptions()[0]?.value ?? '');
   const [ranges, setRanges] = useState<Ranges>(OPEN);
   const [d, setD] = useState<BinLocation>(() => blankBin({ reason: '' }));
   const [patterns, setPatterns] = useState({
@@ -221,8 +221,8 @@ export function GenerateBinsPanel({ onCancel, onDone }: { onCancel: () => void; 
       </Section>
 
       <Section icon="tune" title="Properties for every new bin">
+        <Fields>{f.status('active', 'Status')}</Fields>
         <Flags>
-          {f.check('active', 'Active')}
           {f.check('excludeAutoAlloc', 'Exclude from automatic allocation on issue')}
         </Flags>
         <Fields cols={3}>
@@ -280,9 +280,9 @@ export function GenerateBinsPanel({ onCancel, onDone }: { onCancel: () => void; 
 type Change = { on: boolean; value: string };
 
 /** Renames a range of bins by replacing their aisle, shelf or level. Bins keep their history and stock. */
-export function ModifyBinCodesPanel({ onCancel, onDone }: { onCancel: () => void; onDone: () => void }) {
+export function ModifyBinCodesPanel({ warehouse: initial, onCancel, onDone }: { warehouse?: string; onCancel: () => void; onDone: () => void }) {
   const navigate = useNavigate();
-  const [warehouse, setWarehouse] = useState(binWarehouseOptions()[0]?.value ?? '');
+  const [warehouse, setWarehouse] = useState(initial ?? binWarehouseOptions()[0]?.value ?? '');
   const [ranges, setRanges] = useState<Ranges>(OPEN);
   const [changes, setChanges] = useState<Record<SublevelTier, Change>>({
     aisle: { on: false, value: '' },

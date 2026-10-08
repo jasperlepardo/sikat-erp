@@ -17,14 +17,14 @@ import type { ItemGroup } from '../mocks/itemMasters';
 import { newItemWarehouse, type Item } from '../mocks/items';
 import { inStockAt, inventoryAccountFor, type JournalLine } from './inventoryTransfers';
 import { listItems, saveItem } from './items';
-import { addLayer, consumeLayers, updateFifoCosts } from './costLayers';
+import { addLayer, consumeLayers, logConsumption, updateFifoCosts, type Taken } from './costLayers';
 import { itemGroups } from './inventoryMasters';
 import { postDocumentEntry } from './journalEntries';
 import { listPrice } from './priceLists';
 import { createCollection } from './store';
 
 const countings = createCollection<InventoryCounting>('sikat-erp:inventory-countings:v2', SEED_COUNTINGS, 'ic');
-const postings = createCollection<InventoryPosting>('sikat-erp:inventory-postings', SEED_POSTINGS, 'ip');
+const postings = createCollection<InventoryPosting>('sikat-erp:inventory-postings:v2', SEED_POSTINGS, 'ip');
 
 export const listCountings = countings.list;
 export const getCounting = countings.get;
@@ -224,9 +224,11 @@ export async function addPosting(input: PostingInput): Promise<InventoryPosting>
     if (item?.valuationMethod !== 'FIFO' || !item.inventoryItem) continue;
     fifoItemIds.add(l.itemId);
     if (v > 0) {
-      await addLayer({ itemId: l.itemId, warehouse: l.warehouse, receivedOn: posted.postingDate, qty: v, unitCost: item.itemCost, sourceId: `iq-${posted.id}` });
+      await addLayer({ itemId: l.itemId, warehouse: l.warehouse, receivedOn: posted.postingDate, qty: v, receivedQty: v, unitCost: item.itemCost, sourceId: `iq-${posted.id}`, receiptId: posted.id });
     } else {
-      await consumeLayers(l.itemId, l.warehouse, -v);
+      const taken: Taken[] = [];
+      await consumeLayers(l.itemId, l.warehouse, -v, taken);
+      await logConsumption(posted.id, posted.postingDate, taken);
     }
   }
   await updateFifoCosts([...fifoItemIds]);

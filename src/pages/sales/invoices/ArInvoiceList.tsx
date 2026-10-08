@@ -13,7 +13,6 @@ import {
   TableStatus,
   TableSubcontent,
   Text,
-  TextField,
   type TableColumn,
 } from '@jasperlepardo/sikat-design-system';
 import { dateField, linesField, masterField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
@@ -104,6 +103,14 @@ export function ArInvoiceList() {
   return (
     <Panel className="flex-1">
       <PanelHeader
+        showSearch
+        searchLabel="Search invoices"
+        searchPlaceholder="Search by invoice no., customer, order or item"
+        searchValue={query}
+        onSearchChange={(value) => {
+          setQuery(value);
+          setPage(1);
+        }}
         icon="receipt"
         title={presets.menu}
         actions={
@@ -118,18 +125,7 @@ export function ArInvoiceList() {
             {notice}
           </Alert>
         ) : null}
-        {presets.bar(
-          <TextField
-            aria-label="Search invoices"
-            placeholder="Search by invoice no., customer, order or item"
-            leadingIcon={<Icon size={20}>search</Icon>}
-            value={query}
-            onChange={(e) => {
-              setQuery(e.currentTarget.value);
-              setPage(1);
-            }}
-          />,
-        )}
+        {presets.bar(null)}
         <Card className={fillCardClass(onPage.length)}>
           {orders ? (
             <Table

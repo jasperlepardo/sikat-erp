@@ -154,7 +154,7 @@ export function WithholdingGroupsTab(route: ListRoute) {
               </FieldStack>
             </Section>
 
-            {f.check('active', 'Active')}
+            <FieldStack>{f.status('active', 'Status')}</FieldStack>
           </>
         );
       }}

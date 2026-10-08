@@ -1,12 +1,12 @@
 import { Alert, Link, Text } from '@jasperlepardo/sikat-design-system';
 import { Fields, Flags, ReadOnly, Section, bind } from '../../../../components/form/fields';
-import { ISSUE_METHODS } from '../../../../mocks/itemMasters';
+import { ISSUE_METHODS, holdsStock } from '../../../../mocks/itemMasters';
 import { activeOptions } from '../../../../services/inventoryMasters';
 import type { TabProps } from './types';
 
 export function ProductionTab({ draft, update, inv }: TabProps) {
   const warehouseOptions = (current: string) =>
-    activeOptions(inv.warehouses, (w) => w.code, (w) => `${w.code} · ${w.name}`, current, '— None —');
+    activeOptions(inv.warehouses.filter((w) => holdsStock(w) || w.code === current), (w) => w.code, (w) => `${w.code} · ${w.name}`, current, '— None —');
   const f = bind(draft, update);
   const makeWithoutBom = draft.procurementMethod === 'Make' && draft.planningMethod !== 'None' && !draft.bomCode;
 

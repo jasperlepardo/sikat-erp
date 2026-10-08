@@ -1,6 +1,6 @@
 import { Button, Icon, Text, TextField } from '@jasperlepardo/sikat-design-system';
 import { DataTable } from '../../../components/form/DataTable';
-import { Fields, Flags, bind, type Errors } from '../../../components/form/fields';
+import { Fields, bind, type Errors } from '../../../components/form/fields';
 import { MasterList, statusColumn, type ListRoute } from '../../../components/form/MasterList';
 import { useCollection } from '../../../components/form/MasterLookup';
 import type { PeriodVolumeDiscount, VolumeTier } from '../../../mocks/pricing';
@@ -162,7 +162,7 @@ export function PeriodVolumeDiscountsTab(route: ListRoute) {
             </Fields>
             {r.kind === 'volume' ? <TiersEditor tiers={r.tiers} error={errors.tiers} onChange={(tiers) => update({ tiers })} /> : null}
             <Fields>{f.area('remarks', 'Remarks')}</Fields>
-            <Flags>{f.check('active', 'Active')}</Flags>
+            <Fields>{f.status('active', 'Status')}</Fields>
           </>
         );
       }}

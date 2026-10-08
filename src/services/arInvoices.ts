@@ -11,12 +11,12 @@ import { frozenStock } from './inventoryCountings';
 import { itemGroups } from './inventoryMasters';
 import { inventoryAccountFor, type JournalLine } from './inventoryTransfers';
 import { listItems, saveItem } from './items';
-import { consumeLayers, restoreLayer, updateFifoCosts } from './costLayers';
+import { consumeLayers, logConsumption, restoreLayer, updateFifoCosts, type Taken } from './costLayers';
 import { postDocumentEntry, reverseDocumentEntry } from './journalEntries';
 import { applyDelivered, lineNet, soTotals } from './salesOrders';
 import { createCollection } from './store';
 
-const invoices = createCollection<ArInvoice>('sikat-erp:ar-invoices:v3', SEED_AR_INVOICES, 'ar');
+const invoices = createCollection<ArInvoice>('sikat-erp:ar-invoices:v6', SEED_AR_INVOICES, 'ar');
 
 export const listArInvoices = invoices.list;
 export const getArInvoice = invoices.get;
@@ -208,12 +208,13 @@ export async function addArInvoice(input: ArInput, fx: number, ctx: { codes: rea
 
   // Lines from a delivery keep its cost; the rest go out at today's item cost (FIFO: consume layers).
   const fifoItemIds = new Set<string>();
+  const taken: Taken[] = [];
   const lines = await Promise.all(input.lines.map(async (l) => {
     if (l.baseType === 'DN') return l;
     const item = items.find((i) => i.id === l.itemId);
     if (item?.valuationMethod === 'FIFO' && item.inventoryItem && l.warehouse) {
       fifoItemIds.add(l.itemId);
-      return { ...l, unitCostLc: await consumeLayers(l.itemId, l.warehouse, dnInventoryQty(l)) };
+      return { ...l, unitCostLc: await consumeLayers(l.itemId, l.warehouse, dnInventoryQty(l), taken) };
     }
     return { ...l, unitCostLc: item?.itemCost ?? 0 };
   }));
@@ -226,6 +227,7 @@ export async function addArInvoice(input: ArInput, fx: number, ctx: { codes: rea
   const docNum = Math.max(series.firstNo - 1, ...all.filter((a) => a.seriesId === series.id).map((a) => a.docNum)) + 1;
   await updateFifoCosts([...fifoItemIds]);
   const saved = await invoices.save({ ...input, lines, docNum, status: 'Open', fxRate: fx });
+  await logConsumption(saved.id, saved.postingDate, taken);
   await postDocumentEntry({
     origin: 'IN',
     originNo: docNum,

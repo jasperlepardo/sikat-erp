@@ -12,6 +12,7 @@ import { formatDate } from '../../../../services/dates';
 import { movesStock } from '../../../../services/apInvoices';
 import { grInventoryQty, grNumber, grOpenQty, invoiceableReceipts, receivablePos } from '../../../../services/goodsReceipts';
 import { activeOptions } from '../../../../services/inventoryMasters';
+import { receivesFromVendors } from '../../../../mocks/itemMasters';
 import { isValidToday } from '../../../../services/items';
 import { lineNet, openQty, poNumber } from '../../../../services/purchaseOrders';
 import { binOptions } from '../../../inventory/transfers/TransferLines';
@@ -124,7 +125,7 @@ export function ApContents({ draft, update, errors, m, ctx, onCopy }: ApSectionP
           <Combobox
             aria-label="Warehouse"
             invalid={Boolean(err(l, 'warehouse'))}
-            options={activeOptions(m.inv.warehouses, (w) => w.code, (w) => w.code, l.warehouse)}
+            options={activeOptions(m.inv.warehouses.filter((w) => receivesFromVendors(w) || w.code === l.warehouse), (w) => w.code, (w) => w.code, l.warehouse)}
             value={l.warehouse}
             onValueChange={(warehouse) => patch(l.id, { warehouse: warehouse ?? '', bin: warehouse ? defaultBin(item, warehouse, m) : '' })}
           />

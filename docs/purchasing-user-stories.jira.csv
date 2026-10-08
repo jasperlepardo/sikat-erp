@@ -1,0 +1,281 @@
+"Issue Type","Summary","Description","Labels"
+"Story","Configure document series for each purchasing document type","h3. User story
+As an administrator, I want to configure document series for each purchasing document type so that document numbers follow the company's numbering conventions and multiple series can run in parallel (e.g., one per branch or department).
+
+h3. Acceptance criteria
+☐ I can create a document series with a name, first number, and numbering mode (automatic or manual).
+☐ Automatic series increment from the first number and track the highest number used; the next number is always one past the highest.
+☐ Manual series let the user type any number on each document instead of auto-generating one.
+☐ Series names must be unique.
+☐ I can deactivate a series to remove it from the series picker on new documents without deleting its history.
+☐ Separate series pools are maintained for each document type: purchase orders, goods receipts, AP invoices, goods returns, and outgoing payments. Each type picks only from its own pool.","purchasing"
+"Story","Configure purchasing behaviour settings","h3. User story
+As an administrator, I want to configure purchasing behaviour settings so that documents follow company policy without relying on staff to remember rules manually.
+
+h3. Acceptance criteria
+☐ I can set how duplicate vendor reference numbers are handled: Allow (no check), Warn (alert but proceed), or Block (prevent saving).
+☐ I can set the rounding method: By Currency (a rounding row appears in the document footer using the currency's rounding rule) or No Rounding.
+☐ I can enable separate Net / Gross price mode so both the net and gross unit price columns are visible simultaneously on document lines.
+☐ I can enable freight management on documents so a freight amount and tax code appear in the document footer.
+☐ I can enable multi-language support so each document can be printed in the vendor's language.
+☐ I can enable vendor catalog numbers on lines so the vendor's own part number appears as a column on purchase document lines.","purchasing"
+"Story","Create a purchase order addressed to a specific vendor","h3. User story
+As a purchasing officer, I want to create a purchase order addressed to a specific vendor so that the company's commitment to buy is formally recorded and the vendor can be notified.
+
+h3. Acceptance criteria
+☐ I can select a vendor (or quick-create a new one inline without leaving the PO form).
+☐ I can select a contact person from the vendor's contact list.
+☐ I can enter a vendor reference number; if duplicate-vendor-ref is set to Warn or Block, the system checks for another open PO from the same vendor with the same reference and alerts me accordingly.
+☐ I can select the document currency; when the vendor's currency is set, it defaults automatically.
+☐ I can choose the currency view (Local / System / BP) to show amounts in PHP, the system currency, or the vendor's currency.
+☐ I can select a document series; the document number is assigned automatically (or entered manually for manual series).
+☐ I can set the posting date, delivery date, and document date independently.","purchasing"
+"Story","Add item lines to a purchase order","h3. User story
+As a purchasing officer, I want to add item lines to a purchase order so that the vendor knows exactly what to deliver, in what quantity, and at what price.
+
+h3. Acceptance criteria
+☐ Each line holds: item, name, description, vendor catalog no. (when enabled), quantity, UoM (from the item's purchasing units), warehouse, price list, unit price, discount %, tax code, per-line delivery date, blanket agreement reference, manufacturer no., free text, requisition slip no., and department.
+☐ I can toggle which column groups are visible: Quantities & UoM, Pricing, Delivery & Status, and References.
+☐ I can set the price mode: Net only, Gross only, or Net and Gross simultaneously.
+☐ When I change a line's UoM, the unit price and items-per-unit conversion update automatically from the item's conversion factors.
+☐ A line can be added without an item (free-text line) with a manually typed UoM name and items-per-unit.
+☐ The item name and description on a line are snapshots; I can edit them inline without affecting the item master.
+☐ The footer shows: overall discount %, freight amount and tax code (when freight is enabled), rounding row (when rounding is by currency), and running totals (before discount, discount, freight, tax breakdown, and total).","purchasing"
+"Story","Set delivery addresses and logistics details on a purchase order","h3. User story
+As a purchasing officer, I want to set delivery addresses and logistics details on a purchase order so that the vendor knows where to ship and how.
+
+h3. Acceptance criteria
+☐ I can set a Ship-to address by choosing from the company's registered address, any active warehouse address, or any of the vendor's saved addresses.
+☐ I can add a new ship-to address inline; it is saved to the vendor's address book so future documents can pick it too.
+☐ I can edit any selected address for this PO only; the edit does not affect the vendor's or warehouse's address book.
+☐ The Bill-to address is always the company's registered address (required for BIR invoices) and is not editable.
+☐ I can set a shipping type and print language (when multi-language is enabled).
+☐ I can enable Split Purchase Order; when added, it creates one separate PO per warehouse for lines going to different warehouses.
+☐ I can mark a PO as Approved; unapproved POs are saved with status Not Confirmed and cannot be received until approved.","purchasing"
+"Story","Set accounting and payment details on a purchase order","h3. User story
+As a purchasing officer, I want to set accounting and payment details on a purchase order so that the AP team knows when payment is due and how to allocate the cost.
+
+h3. Acceptance criteria
+☐ I can set a journal remark (defaults to ""Purchase Orders – vendor code""), BP project, payment terms, and payment method.
+☐ The due date is calculated automatically from the posting date + payment terms days; a Recalculate button re-syncs it after either field changes.
+☐ I can set cash discount days, a required date (when goods must leave the vendor), a cancellation date (after which the PO lapses), an indicator, and an order number (for chain-store distribution).
+☐ I can add referenced document rows linking this PO to other documents (purchase request, contract, import permit, etc.) by document type, number, date, and remarks.","purchasing"
+"Story","See the full document chain for a purchase order","h3. User story
+As a purchasing officer, I want to see the full document chain for a purchase order so that I can trace which goods receipts and invoices have been raised against it.
+
+h3. Acceptance criteria
+☐ A Transactions view lists every document linked to this PO by copy-from / copy-to in chain order: base documents, this PO, then all target documents.
+☐ Each row shows: document type, document number, date, status, partner, and the quantities and items covered by that link.
+☐ Clicking a linked document navigates to its detail page.","purchasing"
+"Story","Approve, close, or cancel a purchase order","h3. User story
+As a purchasing manager, I want to manage the lifecycle of a purchase order — approving, closing, and cancelling — so that commitments stay accurate and the vendor knows the current standing.
+
+h3. Acceptance criteria
+☐ A Draft PO can be saved without an approved flag; it is listed as Not Confirmed and blocked from goods receipts.
+☐ Adding (posting) a PO with the Approved flag sets it to Open.
+☐ I can close an Open PO manually, marking remaining open lines as closed even if not fully received.
+☐ I can cancel a Draft or Open PO; a cancelled PO cannot be reopened.
+☐ A PO closes automatically when all its lines are fully received.","purchasing"
+"Story","Create a goods receipt from a purchase order","h3. User story
+As a warehouse supervisor, I want to create a goods receipt from a purchase order so that received stock is immediately added to inventory and the PO's open quantity is reduced.
+
+h3. Acceptance criteria
+☐ I can create a goods receipt by copying from one or more open POs; lines default to the PO's open quantity but can be reduced (partial receipt).
+☐ I can create a standalone goods receipt (without a base PO) for unplanned receipts.
+☐ Each line carries: item, qty, UoM, warehouse, unit price, tax code, and optionally a bin (when the warehouse has bins enabled).
+☐ The header carries: vendor, posting date, delivery date, document date, series, and vendor invoice reference.
+☐ Adding the goods receipt posts a journal entry (Dr Inventory / Cr Goods Received Not Invoiced) and updates in-stock quantities. The GRNI clearing account is relieved when the AP invoice is later posted against this receipt.","purchasing"
+"Story","See the accounting impact of a goods receipt before and after posting","h3. User story
+As a warehouse supervisor, I want to see the accounting impact of a goods receipt before and after posting so that I can verify the journal entry is correct.
+
+h3. Acceptance criteria
+☐ Before posting, the Accounting tab shows a preview of the journal entry lines (account, debit, credit, amount) that will be created.
+☐ After posting, the journal entry is locked and shown as read-only with its entry number.
+☐ I can reverse a posted goods receipt by cancelling it; cancellation creates a reversing journal entry and restores the PO's open quantity.","purchasing"
+"Story","Inherit logistics and accounting settings from the source PO on a goods receipt","h3. User story
+As a warehouse supervisor, I want the goods receipt to inherit the logistics and accounting settings from the source PO so that I don't have to re-enter payment terms, addresses, and project codes.
+
+h3. Acceptance criteria
+☐ Ship-to and bill-to addresses, payment terms, payment method, due date, BP project, and referenced documents all default from the base PO.
+☐ I can override any of these on the goods receipt without affecting the PO.","purchasing"
+"Story","Create a vendor bill from a goods receipt or purchase order","h3. User story
+As an AP clerk, I want to create a vendor bill from a goods receipt or purchase order so that the payable is recorded and the document chain is maintained.
+
+h3. Acceptance criteria
+☐ I can create a bill by copying from one or more goods receipts or directly from a PO; lines default to the source's open (uninvoiced) quantity.
+☐ When copying from a goods receipt, the bill clears the Goods Received Not Invoiced account at the receipt's cost; if the invoice price or exchange rate differs, the difference is posted to inventory (re-averaging the item cost while stock is on hand) or to cost of sales.
+☐ When copying directly from a PO (bypassing a goods receipt), the bill also receives the stock on the same document, posting both the inventory receipt and the payable in one step.
+☐ I can create a standalone bill (without a base document) for service purchases or unplanned invoices.
+☐ Each line carries: item, qty, UoM, unit price, tax code, discount %, country of origin, and warehouse; the line net amount and tax are calculated automatically.
+☐ The footer shows: subtotal, VAT breakdown (by tax code), EWT (withholding) amounts, drawn down payments, and the net amount due.
+☐ Adding the bill posts a journal entry and creates an open payable; withholding tax is deducted from the vendor's balance at posting time as required by BIR withholding agent rules.","purchasing"
+"Story","Detect duplicate vendor invoices","h3. User story
+As an AP clerk, I want the system to detect duplicate vendor invoices so that the same bill is never paid twice.
+
+h3. Acceptance criteria
+☐ When I enter a vendor invoice reference number, the system checks for another posted bill from the same vendor with the same reference number.
+☐ If a duplicate is found, a warning is shown before posting; the administrator can configure this to block posting entirely.","purchasing"
+"Story","Draw down a previously posted down payment against a vendor bill","h3. User story
+As an AP clerk, I want to draw down a previously posted down payment against a vendor bill so that the advance is offset from the amount payable.
+
+h3. Acceptance criteria
+☐ On the bill's Accounting tab, I can open a panel showing all posted down payment requests for the same vendor with a drawable balance remaining.
+☐ I can select one or more down payments to draw; the drawn amount reduces the net amount due on the bill.
+☐ The drawable amount per down payment is the original down payment amount minus amounts already drawn on previous bills.
+☐ The journal entry for the bill includes a debit to the Advances to Suppliers account for each drawn down payment.","purchasing"
+"Story","Override the payable control account on a vendor bill","h3. User story
+As an AP manager, I want to override the payable control account on a vendor bill so that invoices from specific vendors or transaction types post to the correct subsidiary ledger account.
+
+h3. Acceptance criteria
+☐ The control account on a bill defaults to the vendor's assigned payable account (e.g., Accounts Payable – Trade).
+☐ I can change it to another payable-type account before posting (e.g., Accounts Payable – Import, Accounts Payable – Related Parties).
+☐ The journal entry uses the chosen control account; the vendor's balance in the AP subledger is tracked under that account.","purchasing"
+"Story","Place a payment block on a vendor bill","h3. User story
+As an AP manager, I want to place a payment block on a vendor bill so that it cannot be paid until the block is deliberately released, protecting against premature or disputed payments.
+
+h3. Acceptance criteria
+☐ I can flag a posted bill with a payment block.
+☐ Blocked bills appear in the outgoing payment's open-documents list but their checkbox is disabled; they cannot be selected for payment.
+☐ I can remove the payment block on the bill to make it payable again.","purchasing"
+"Story","Route a vendor bill's payment to a consolidating business partner","h3. User story
+As an AP clerk, I want to route a vendor bill's payment to a consolidating business partner so that I can pay a vendor's parent company or factor instead of the vendor directly.
+
+h3. Acceptance criteria
+☐ On the bill's Accounting tab, I can select a Consolidating BP (any active vendor other than the invoice vendor).
+☐ When a consolidating BP is set, outgoing payments for this bill are made to the consolidating BP's account, not the original vendor's.","purchasing"
+"Story","Flag a bill to take the maximum cash discount","h3. User story
+As an AP clerk, I want to flag a bill to take the maximum cash discount so that early-payment discounts from payment terms are applied automatically without calculating them manually.
+
+h3. Acceptance criteria
+☐ I can tick ""Max. cash discount"" on a bill's Accounting tab.
+☐ When the bill is paid within the discount window defined by its payment terms, the largest allowable discount is applied and posted to Purchase Discounts.","purchasing"
+"Story","Create a down payment request to record an advance to a vendor","h3. User story
+As a purchasing officer, I want to create a down payment request to record an advance to a vendor so that the prepayment is tracked and can later be offset against the final bill.
+
+h3. Acceptance criteria
+☐ I can create a down payment request with: vendor, posting date, payment terms, and one or more lines specifying the advance amount, tax code, and target G/L account (Advances to Suppliers).
+☐ I can copy from a PO to pre-fill the vendor, contact, currency, and logistics details.
+☐ Adding the request posts a journal entry (Dr Advances to Suppliers / Cr Accounts Payable) and creates an open payable for the advance.
+☐ The request shows its drawable balance: the original amount minus amounts already drawn on AP invoices.","purchasing"
+"Story","See the status and drawable balance of all down payment requests for a vendor","h3. User story
+As an AP clerk, I want to see the status and drawable balance of all down payment requests for a vendor so that I know how much advance credit is available before processing their bill.
+
+h3. Acceptance criteria
+☐ The down payment request list shows: request no., vendor, posting date, original amount, drawn amount, remaining drawable balance, and status (Draft, Open, Closed, Cancelled).
+☐ A Closed request has been fully drawn; no further drawing is possible.
+☐ I can cancel an Open request; cancellation creates a reversing journal entry and removes the open payable.","purchasing"
+"Story","Create a goods return from a posted goods receipt or AP invoice","h3. User story
+As a warehouse supervisor, I want to create a goods return from a posted goods receipt or AP invoice so that returned stock is removed from inventory regardless of whether the goods have already been billed.
+
+h3. Acceptance criteria
+☐ I can create a goods return by copying from a posted goods receipt; lines default to the receipt's returnable quantity (received minus already returned). Lines from a receipt-based return close immediately — there is no outstanding credit, so no credit memo is needed.
+☐ I can create a goods return by copying from a posted AP invoice for goods that have already been billed; lines default to the invoice's returnable (uncredited) quantity. These lines stay Open until a credit memo is raised against them.
+☐ I can create a standalone goods return (without a base document) for unplanned returns; these lines also stay Open until credited.
+☐ Each line carries: item, return quantity, UoM, warehouse, unit price, tax code, return reason, and bin (when applicable).
+☐ Adding the return posts a reversing journal entry (Dr Goods Received Not Invoiced / Cr Inventory) and reduces in-stock quantities.","purchasing"
+"Story","Record a reason on each return line","h3. User story
+As a warehouse supervisor, I want to record a reason on each return line so that vendor disputes, quality reports, and return-to-vendor authorisations have a documented cause.
+
+h3. Acceptance criteria
+☐ Each return line has a return reason field with a fixed list of options: Defective, Damaged in transit, Wrong item, Excess quantity, Expired / near expiry, Not as ordered, Other.
+☐ The return reason is optional but strongly encouraged; it appears on the printed return document sent to the vendor.","purchasing"
+"Story","Create an AP credit memo from a posted vendor bill","h3. User story
+As an AP clerk, I want to create an AP credit memo from a posted vendor bill so that overbilled amounts are reversed and the vendor's balance is corrected.
+
+h3. Acceptance criteria
+☐ I can create an AP credit memo by copying from a posted AP invoice; lines default to the invoice's returnable (uncredited) quantity.
+☐ Adding the credit memo posts a reversal journal entry (Dr Accounts Payable / Cr Expense or Inventory) and reduces the vendor's open balance.
+☐ The credit memo can be applied against future payments to the same vendor.","purchasing"
+"Story","View all goods returns and credit memos in a unified list","h3. User story
+As an AP clerk, I want to view all goods returns and credit memos in a unified list so that I can quickly find return documents regardless of type.
+
+h3. Acceptance criteria
+☐ A Returns & Debits list shows both goods returns and AP credit memos in a tabbed view.
+☐ Each tab supports free-text search across document no., vendor, item, and status.
+☐ Clicking a row opens the document detail.","purchasing"
+"Story","Create an outgoing payment to settle one or more open vendor bills","h3. User story
+As an AP clerk, I want to create an outgoing payment to settle one or more open vendor bills so that the payable is cleared and the bank or cash account is reduced.
+
+h3. Acceptance criteria
+☐ I can select a vendor and view all their open AP invoices and down payment requests in the payment currency, sorted oldest-due first.
+☐ Each row shows: document no., vendor reference, date, overdue days, total, withholding amount, balance due, cash discount %, and total payment amount.
+☐ Blocked invoices appear in the list but their checkbox is disabled; they cannot be selected for payment.
+☐ I can tick each row to include it; the payment amount defaults to the full balance due but can be lowered for a partial payment.
+☐ I can apply a cash discount % per row; the discount reduces the payment amount and the difference posts to Purchase Discounts.
+☐ The overall payment amount is the sum of selected row amounts; a weighted due date is calculated across selected invoices.
+☐ I can set a payment date, document series, currency, BP project, and remarks.","purchasing"
+"Story","Specify payment means on an outgoing payment","h3. User story
+As an AP clerk, I want to specify how the payment goes out — by bank transfer, cash, check, or credit card — so that the correct bank or cash account is debited and the payment means are on record.
+
+h3. Acceptance criteria
+☐ **Bank transfer:** I select a house bank account (G/L cash account flagged as bank); the transfer amount is entered and the G/L account is pre-filled.
+☐ **Cash:** I select a cash G/L account; the cash amount is entered.
+☐ **Check:** I select a house bank account, enter a due date, and assign a check number (auto-incremented from the bank's next check number, or entered manually). Multiple checks can be added.
+☐ **Credit card:** I select a card brand, enter a card number, voucher number, expiry, and amount. Multiple card rows can be added.
+☐ The means amounts must collectively equal the overall payment amount; an unallocated balance is shown and a ""Pay the balance"" shortcut fills the remaining amount into the focused means field.","purchasing"
+"Story","Calculate foreign-exchange differences on outgoing payments","h3. User story
+As a finance controller, I want the system to calculate foreign-exchange differences on outgoing payments so that gains and losses from rate movements between invoice date and payment date are posted automatically.
+
+h3. Acceptance criteria
+☐ For each invoice row paid in a currency other than PHP, the system calculates the FX difference: (payment-date rate − invoice-date rate) × amount.
+☐ FX gains post to the FX Gain account; FX losses post to the FX Loss account.
+☐ The FX difference amounts are shown per invoice row in the payment detail and included in the journal entry.","purchasing"
+"Story","Make a payment on account to a vendor","h3. User story
+As an AP clerk, I want to make a payment on account to a vendor so that an advance disbursement is recorded even when no invoice exists yet to match it against.
+
+h3. Acceptance criteria
+☐ On the payment's Contents tab, I can enter an amount on account and select the control account (payable account) it posts to.
+☐ I can flag the on-account payment as pro forma (a down payment advance); this is noted in the journal entry remark.
+☐ The amount on account sits on the vendor's balance as an unapplied credit until a future AP invoice is manually reconciled against it.
+☐ A payment can combine both matched invoice rows and an on-account amount in the same document.","purchasing"
+"Story","Create a direct G/L account payment","h3. User story
+As a finance controller, I want to create a direct G/L account payment so that disbursements not tied to a vendor invoice (e.g., tax remittances, utility advances) are recorded against the correct accounts.
+
+h3. Acceptance criteria
+☐ I can set the payment type to Account instead of Vendor.
+☐ An account payment has one or more G/L account rows, each with an account, amount, project, and remarks.
+☐ Payment means (transfer, cash, check, card) work the same as vendor payments; the means total must equal the sum of account rows.
+☐ Adding the payment posts a journal entry debiting each account row and crediting the payment means accounts.","purchasing"
+"Story","Cancel a posted outgoing payment","h3. User story
+As a finance controller, I want to cancel a posted outgoing payment so that an erroneous disbursement can be reversed and the vendor's payables restored to open.
+
+h3. Acceptance criteria
+☐ I can cancel a Posted payment; cancellation creates a reversing journal entry.
+☐ The cancelled payment's invoice rows are restored to open, making them available for a new payment.
+☐ A cancelled payment cannot be re-posted; a new payment must be created.","purchasing"
+"Story","Raise a purchase request for items I need","h3. User story
+As a purchasing officer, I want to raise a purchase request for items I need so that my request goes through an approval workflow before a PO is raised, ensuring proper budget control.
+
+h3. Acceptance criteria
+☐ A purchase request has a requestor, department, required date, and lines with item, quantity, and estimated cost.
+☐ Approved requests can be copied to a PO; the PO references the request for audit traceability.
+☐ Rejected requests are returned to the requestor with a reason.","purchasing"
+"Story","Send requests for quotation to multiple vendors","h3. User story
+As a purchasing officer, I want to send requests for quotation (RFQ) to multiple vendors so that I can compare prices and lead times before committing to a purchase order.
+
+h3. Acceptance criteria
+☐ An RFQ is addressed to a vendor and lists items with requested quantities and a closing date.
+☐ The same requirement can be sent to multiple vendors as separate RFQs.
+☐ Vendor responses are recorded on each RFQ; I can compare responses side by side.
+☐ The winning RFQ can be copied to a PO.","purchasing"
+"Story","Allocate landed costs to received goods","h3. User story
+As a finance controller, I want to allocate landed costs (freight, insurance, customs duty) to received goods so that the true cost of imported inventory is reflected in item valuations.
+
+h3. Acceptance criteria
+☐ A landed cost document references one or more goods receipts and lists additional cost items (freight, insurance, duty) with amounts and the vendor who charged them.
+☐ I can choose an allocation method per cost item: by quantity, by value, by weight, or by volume.
+☐ Posting the landed cost adds the allocated amounts to each item's moving-average or standard cost and posts the journal entries.","purchasing"
+"Story","Create blanket purchase agreements with vendors","h3. User story
+As a purchasing manager, I want to create blanket purchase agreements with vendors so that recurring orders reference committed quantities and prices without re-negotiating each time.
+
+h3. Acceptance criteria
+☐ A blanket agreement specifies: vendor, validity dates, items, committed quantities or values, and agreed prices.
+☐ Purchase order lines can reference a blanket agreement; the agreed price defaults and the open commitment is reduced.
+☐ The agreement shows the committed vs. consumed quantity or value for each line.","purchasing"
+"Story","Purchasing Insights dashboard","h3. User story
+As a purchasing manager, I want a Purchasing Insights dashboard so that I can see key metrics (spend by vendor, open POs, overdue payables, vendor performance) at a glance.
+
+h3. Acceptance criteria
+☐ Dashboard cards show: total open PO value, total overdue payables, top vendors by spend (current period), and purchase orders past their delivery date.
+☐ I can filter by date range, vendor, and item group.
+☐ Each card drills down to the underlying document list.","purchasing"

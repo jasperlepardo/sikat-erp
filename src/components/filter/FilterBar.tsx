@@ -12,9 +12,9 @@ import {
   TextField,
 } from '@jasperlepardo/sikat-design-system';
 import { useCollection, type MasterDef } from '../form/MasterLookup';
+import { opLabel } from './aip160';
 import {
   OPERATORS_BY_TYPE,
-  OP_LABEL,
   activeRules,
   changeField,
   changeOp,
@@ -53,6 +53,8 @@ export function FilterBar<T>({
 }) {
   const active = activeRules(value, fields);
   const removeRule = (id: string) => onChange({ ...value, rules: value.rules.filter((r) => r.id !== id) });
+  // The search usually lives in the PanelHeader now — nothing to show without chips.
+  if (children == null && !(showChips && active.length > 0)) return null;
 
   return (
     <div className="flex flex-col gap-2">
@@ -188,12 +190,12 @@ function RuleRow<T>({
           options={fields.map((f) => ({ value: f.key, label: f.label }))}
         />
       </div>
-      <div className="w-44 shrink-0">
+      <div className="w-56 shrink-0">
         <Select
           aria-label="Operator"
           value={rule.op}
           onValueChange={(op) => onChange(changeOp(rule, op as Rule['op']))}
-          options={OPERATORS_BY_TYPE[field.type].map((op) => ({ value: op, label: OP_LABEL[op] }))}
+          options={OPERATORS_BY_TYPE[field.type].map((op) => ({ value: op, label: opLabel(op) }))}
         />
       </div>
       <div className="flex min-w-48 flex-1 items-center gap-2">

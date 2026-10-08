@@ -23,7 +23,7 @@ import { postDocumentEntry, reverseDocumentEntry } from './journalEntries';
 import { termDays } from './purchaseOrders';
 import { createCollection } from './store';
 
-const payments = createCollection<IncomingPayment>('sikat-erp:incoming-payments:v3', SEED_INCOMING_PAYMENTS, 'rc');
+const payments = createCollection<IncomingPayment>('sikat-erp:incoming-payments:v7', SEED_INCOMING_PAYMENTS, 'rc');
 
 export const listIncomingPayments = payments.list;
 export const getIncomingPayment = payments.get;

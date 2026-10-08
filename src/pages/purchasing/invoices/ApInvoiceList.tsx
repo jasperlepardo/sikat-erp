@@ -12,7 +12,6 @@ import {
   TableLink,
   TableStatus,
   TableSubcontent,
-  TextField,
   type TableColumn,
   Text,
 } from '@jasperlepardo/sikat-design-system';
@@ -126,6 +125,14 @@ export function ApInvoiceList() {
   return (
     <Panel className="flex-1">
       <PanelHeader
+        showSearch
+        searchLabel="Search bills"
+        searchPlaceholder="Search by invoice no., vendor, vendor invoice no., PO or receipt no., or item"
+        searchValue={query}
+        onSearchChange={(value) => {
+          setQuery(value);
+          setPage(1);
+        }}
         icon="request_quote"
         title={presets.menu}
         actions={
@@ -141,18 +148,7 @@ export function ApInvoiceList() {
             {notice}
           </Alert>
         ) : null}
-        {presets.bar(
-          <TextField
-            aria-label="Search bills"
-            placeholder="Search by invoice no., vendor, vendor invoice no., PO or receipt no., or item"
-            leadingIcon={<Icon size={20}>search</Icon>}
-            value={query}
-            onChange={(e) => {
-              setQuery(e.currentTarget.value);
-              setPage(1);
-            }}
-          />,
-        )}
+        {presets.bar(null)}
         <Card className={fillCardClass(rows.slice((page - 1) * pageSize, page * pageSize).length)}>
           {invoices ? (
             <Table

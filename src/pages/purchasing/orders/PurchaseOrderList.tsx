@@ -12,7 +12,6 @@ import {
   TableLink,
   TableStatus,
   TableSubcontent,
-  TextField,
   type TableColumn,
   Text,
 } from '@jasperlepardo/sikat-design-system';
@@ -128,6 +127,14 @@ export function PurchaseOrderList() {
   return (
     <Panel className="flex-1">
       <PanelHeader
+        showSearch
+        searchLabel="Search purchase orders"
+        searchPlaceholder="Search by PO no., vendor, vendor ref. or item"
+        searchValue={query}
+        onSearchChange={(value) => {
+          setQuery(value);
+          setPage(1);
+        }}
         icon="receipt_long"
         title={presets.menu}
         actions={
@@ -148,18 +155,7 @@ export function PurchaseOrderList() {
             {notice}
           </Alert>
         ) : null}
-        {presets.bar(
-          <TextField
-            aria-label="Search purchase orders"
-            placeholder="Search by PO no., vendor, vendor ref. or item"
-            leadingIcon={<Icon size={20}>search</Icon>}
-            value={query}
-            onChange={(e) => {
-              setQuery(e.currentTarget.value);
-              setPage(1);
-            }}
-          />,
-        )}
+        {presets.bar(null)}
         <Card className={fillCardClass(rows.slice((page - 1) * pageSize, page * pageSize).length)}>
           {orders ? (
             <Table

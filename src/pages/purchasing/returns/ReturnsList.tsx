@@ -14,7 +14,6 @@ import {
   TableSubcontent,
   Tabs,
   Text,
-  TextField,
   type TableColumn,
 } from '@jasperlepardo/sikat-design-system';
 import { dateField, masterField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
@@ -131,6 +130,14 @@ export function ReturnsList({ kind }: { kind: Kind }) {
   return (
     <Panel className="flex-1">
       <PanelHeader
+        showSearch
+        searchLabel="Search"
+        searchPlaceholder="Search by no., vendor, vendor ref., item or base document"
+        searchValue={query}
+        onSearchChange={(value) => {
+          setQuery(value);
+          setPage(1);
+        }}
         icon="assignment_return"
         title={presets.menu}
         actions={
@@ -156,18 +163,7 @@ export function ReturnsList({ kind }: { kind: Kind }) {
       />
       <Panel.Body className="flex flex-col gap-2">
         {notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : null}
-        {presets.bar(
-          <TextField
-            aria-label="Search"
-            placeholder="Search by no., vendor, vendor ref., item or base document"
-            leadingIcon={<Icon size={20}>search</Icon>}
-            value={query}
-            onChange={(e) => {
-              setQuery(e.currentTarget.value);
-              setPage(1);
-            }}
-          />,
-        )}
+        {presets.bar(null)}
         <Card className={fillCardClass(rows.slice((page - 1) * pageSize, page * pageSize).length)}>
           {!all ? (
             <Text tone="muted" className="p-4">Loading…</Text>

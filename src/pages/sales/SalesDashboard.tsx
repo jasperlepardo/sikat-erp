@@ -3,7 +3,6 @@ import {
   Card,
   Icon,
   Panel,
-  PanelHeader,
   Table,
   TableAmount,
   TableLink,
@@ -74,7 +73,6 @@ export function SalesDashboard() {
 
   return (
     <Panel className="flex-1">
-      <PanelHeader icon="sell" title="Dashboard" subcopy="Sales pipeline at a glance." />
       <Panel.Body>
         <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
           <Stat

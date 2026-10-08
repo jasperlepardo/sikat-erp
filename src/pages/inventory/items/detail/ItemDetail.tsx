@@ -60,10 +60,11 @@ import { PropertiesTab } from './PropertiesTab';
 import { PurchasingTab } from './PurchasingTab';
 import { RemarksTab } from './RemarksTab';
 import { SalesTab } from './SalesTab';
+import { StockTab } from './StockTab';
 import { TransactionsTab } from './TransactionsTab';
 import { UomGroupPanel, UomsTab, uomErrorKey } from './UomsTab';
 import { VendorPanel, VendorsCards } from './VendorsSection';
-import { WarehousePanel, WarehousesCards, binErrorKey } from './WarehousesSection';
+import { WarehousePanel, binErrorKey } from './WarehousesSection';
 import { uomDef } from '../../../settings/masterDefs';
 import { LOCKED_HINT, asOptions, variantFromParent, type Draft, type TaxMasters } from './types';
 
@@ -88,6 +89,7 @@ type TabId = (typeof TABS)[number]['value'];
 /** Top-level views in the panel header. Activity is a placeholder for now. */
 const PAGES = [
   { value: 'details', label: 'Details' },
+  { value: 'inventory', label: 'Inventory' },
   { value: 'transactions', label: 'Transactions' },
   { value: 'activity', label: 'Activity' },
 ] as const;
@@ -438,8 +440,15 @@ function ItemForm() {
             }
           />
           {page !== 'details' ? (
-            <Panel.Body>
-              {page === 'transactions' ? (
+            <Panel.Body className={page === 'inventory' ? 'flex flex-col' : undefined}>
+              {page === 'inventory' ? (
+                <StockTab
+                  draft={draft}
+                  update={update}
+                  inv={inv}
+                  onOpen={(value, added) => setEditingWarehouse({ value, isNew: added })}
+                />
+              ) : page === 'transactions' ? (
                 <TransactionsTab draft={draft} />
               ) : (
                 <Text variant="small" tone="muted" className="p-4">Activity will show here.</Text>
@@ -619,14 +628,6 @@ function ItemForm() {
                       </FieldStack>
                     </Section>
                   )}
-                  <WarehousesCards
-                    draft={draft}
-                    update={update}
-                    inv={inv}
-                    vendors={vendors}
-                    errors={errors}
-                    onOpen={(value, added) => setEditingWarehouse({ value, isNew: added })}
-                  />
                   <VendorsCards
                     draft={draft}
                     update={update}

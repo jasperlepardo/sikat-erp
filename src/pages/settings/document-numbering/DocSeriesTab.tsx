@@ -102,7 +102,7 @@ export function DocSeriesTab({ collection, ...route }: { collection: Collection 
             ) : null}
             {f.check('manual', 'Manual numbering')}
             {f.check('isDefault', 'Default for new documents')}
-            {f.check('active', 'Active')}
+            {f.status('active', 'Status')}
           </FieldStack>
         );
       }}

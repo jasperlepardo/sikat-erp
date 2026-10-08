@@ -3,7 +3,6 @@ import {
   Card,
   Icon,
   Panel,
-  PanelHeader,
   Table,
   TableAmount,
   TableLink,
@@ -81,7 +80,6 @@ export function InventoryDashboard() {
 
   return (
     <Panel className="flex-1">
-      <PanelHeader icon="inventory_2" title="Dashboard" subcopy="Inventory at a glance." />
       <Panel.Body>
         <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
           <Stat

@@ -1,4 +1,4 @@
-import { Card, Icon, Panel, PanelHeader, Text } from '@jasperlepardo/sikat-design-system';
+import { Card, Icon, Panel, Text } from '@jasperlepardo/sikat-design-system';
 import { isLowStock, isValidToday, listItems, stockTotals } from '../services/items';
 import { useAsync } from '../services/useAsync';
 import { formatAmount } from '../services/format';
@@ -18,7 +18,6 @@ export function Home() {
 
   return (
     <Panel className="flex-1">
-      <PanelHeader icon="home" title="Home" subcopy="Welcome back. Here's what's happening today." />
       <Panel.Body>
         <div className="grid gap-2 md:grid-cols-3">
           {stats.map((s) => (

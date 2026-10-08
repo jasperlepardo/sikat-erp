@@ -123,9 +123,9 @@ export function ContactPanel({
           {f.text('address', 'Address', { placeholder: 'Street, barangay, city', className: 'md:col-span-2' })}
           {f.text('remarks1', 'Remarks 1', { placeholder: 'Add a note' })}
           {f.text('remarks2', 'Remarks 2', { placeholder: 'Add a note' })}
+          {f.status('active', 'Status')}
         </Fields>
         <Flags>
-          {f.check('active', 'Active')}
           {f.check('eDocRecipient', 'E-document recipient')}
           {f.check('blockMarketing', 'Block sending marketing content')}
         </Flags>

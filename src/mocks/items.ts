@@ -6,6 +6,7 @@
 import type { Attachment } from './common';
 import { SEED_ITEM_GROUPS, SEED_UOM_GROUPS, groupUoms, propertyId, uomFactor, type ItemGroup, type UomGroup, type ValuationMethod } from './itemMasters';
 import { expandCatalog } from './appleCatalog';
+import { SEED_STORE_WAREHOUSES } from './storeWarehouses';
 
 export type ItemType = 'Items' | 'Labor' | 'Travel';
 export type ManageBy = 'None' | 'Batches' | 'Serial Numbers';
@@ -598,6 +599,61 @@ const APPLE_ITEMS: Item[] = catalog.entries.map((e, n) => {
   // Strip global fields — only own fields are stored; parent provides the rest at read time.
   return e.familyId ? toVariantRecord(full) : full;
 });
+
+// ── Store stock ──────────────────────────────────────────────────────────────
+// Stocking every item at all 125 stores would overrun localStorage, so the flagship stores carry
+// the range and the rest a core set of best-sellers, a few units each. Only rows with stock are
+// added. Pre-order items (nothing at WH-MNL yet) aren't in the stores either.
+
+/** Big malls that carry the full range (display-level quantities). */
+const FLAGSHIP_STORES = [
+  'ST-001', 'ST-002', 'ST-003', 'ST-005', 'ST-007', 'ST-024', 'ST-026', 'ST-029', 'ST-031', 'ST-041', // Metro Manila
+  'ST-063', 'ST-067', 'ST-095', 'ST-110', 'ST-112', // Pampanga, Laguna, Cebu, Davao, Cagayan de Oro
+];
+
+/** Families whose first in-stock configuration every store carries. */
+const CORE_FAMILIES = [
+  'iPhone 18 Pro', 'iPhone Air', 'iPhone 17', 'iPhone 17e', 'iPhone 16',
+  'AirPods 4', 'AirPods Pro 3', 'AirPods 5',
+  'iPad (A16)', 'MacBook Air 13-inch (M5)', 'Apple Watch SE 3', 'Apple Watch Series 12 Aluminum',
+  '20W USB-C Power Adapter', 'USB-C Charge Cable (1 m)', 'MagSafe Charger (1 m)', 'USB-C to Lightning Adapter',
+  'AirTag', 'Apple Pencil (USB-C)', 'Clear Case with MagSafe', 'Sport Band',
+];
+
+const familyName = (i: Item) => APPLE_PARENT_ITEMS.find((p) => p.id === i.parentItemId)?.name ?? i.name;
+const mnlStock = (i: Item) => i.warehouses.find((w) => w.code === 'WH-MNL')?.inStock ?? 0;
+const isAccessory = (i: Item) => (APPLE_PARENT_ITEMS.find((p) => p.id === i.parentItemId)?.itemGroup ?? i.itemGroup) === 'Accessories';
+
+const CORE_ITEMS = new Set(
+  CORE_FAMILIES.map((f) => APPLE_ITEMS.find((i) => familyName(i) === f && mnlStock(i) > 0)?.id).filter(Boolean),
+);
+
+/**
+ * What the posted seed transfers moved into stores (mocks/inventoryTransfers.ts picks the nth item
+ * with 2+ units at WH-MNL), so the stores hold at least that much.
+ */
+const TRANSFERRED: [n: number, store: string, qty: number][] = [
+  [2, 'ST-001', 2],
+  [4, 'ST-001', 2],
+  [6, 'ST-005', 1],
+];
+const transferable = APPLE_ITEMS.filter((i) => i.inventoryItem && mnlStock(i) >= 2);
+
+const STORE_CODES = SEED_STORE_WAREHOUSES.map((w) => w.code);
+
+for (const item of APPLE_ITEMS) {
+  if (!item.inventoryItem || mnlStock(item) === 0) continue;
+  const scale = isAccessory(item) ? 4 : 1;
+  const core = CORE_ITEMS.has(item.id);
+  for (const store of STORE_CODES) {
+    const h = hash(`${item.itemNo}@${store}`);
+    const flagship = FLAGSHIP_STORES.includes(store);
+    const qty = flagship ? (h % 3) * scale : core ? (1 + (h % 3)) * (isAccessory(item) ? 3 : 1) : 0;
+    const moved = TRANSFERRED.filter(([n, st]) => st === store && transferable[n]?.id === item.id).reduce((sum, [, , q]) => sum + q, 0);
+    const inStock = Math.max(qty, moved);
+    if (inStock > 0) item.warehouses.push(newItemWarehouse(store, { inStock }));
+  }
+}
 
 /** Non-stock sales items: AppleCare plans and store gift certificates. */
 const service = (id: string, group: string, patch: Partial<Item>): Item =>

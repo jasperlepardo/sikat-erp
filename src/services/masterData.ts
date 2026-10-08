@@ -33,7 +33,7 @@ export const taxCodes = createCollection<TaxCode>('sikat-erp:tax-codes:v5', SEED
 export const taxGroups = createCollection<TaxGroup>('sikat-erp:tax-groups:v5', SEED_TAX_GROUPS, 'tg');
 export const companyTax = createCollection<CompanyTaxProfile>('sikat-erp:company-tax:v2', SEED_COMPANY_TAX, 'company');
 /** Accounting › Chart of Accounts. */
-export const accounts = createCollection<Account>('sikat-erp:accounts:v5', SEED_ACCOUNTS, 'acct');
+export const accounts = createCollection<Account>('sikat-erp:accounts:v6', SEED_ACCOUNTS, 'acct');
 export const compensationTax = createCollection<CompensationTable>('sikat-erp:compensation-tax:v2', SEED_COMPENSATION_TAX, 'ct');
 export const compensationExclusions = createCollection<CompensationExclusion>('sikat-erp:compensation-exclusions', SEED_EXCLUSIONS, 'cx');
 export const deMinimisBenefits = createCollection<DeMinimisBenefit>('sikat-erp:de-minimis', SEED_DE_MINIMIS, 'dm');

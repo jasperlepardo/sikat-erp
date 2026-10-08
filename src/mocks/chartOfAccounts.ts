@@ -166,6 +166,7 @@ const CHART: Account[] = [
     ['1010', 'Cash and Cash Equivalents', [
       ['1011', 'Cash on Hand – Petty Cash', ['cash']],
       ['1012', 'Cash on Hand – Store Collections', ['cash']],
+      ['1013', 'Cash in E-wallet – GCash', ['cash']],
       ['1015', 'Cash in Bank – BDO Unibank', ['cash']],
       ['1016', 'Cash in Bank – BPI', ['cash']],
       ['1017', 'Cash in Bank – UnionBank', ['cash']],

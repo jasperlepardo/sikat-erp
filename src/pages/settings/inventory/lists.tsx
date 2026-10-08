@@ -166,7 +166,7 @@ export function ItemGroupsTab(route: ListRoute) {
                   hint: 'Leave empty unless every item in the group is excisable (tobacco, alcohol, fuel…).',
                 },
               )}
-              {f.check('active', 'Active')}
+              {f.status('active', 'Status')}
             </FieldStack>
             <Text variant="small" tone="muted">
               Tax defaults are copied onto an item when it's created in or moved to this group. Each item can still change them.
@@ -310,7 +310,7 @@ export function UomGroupsTab(route: ListRoute) {
                 </Text>
               }
             />
-            <FieldStack>{f.check('active', 'Active')}</FieldStack>
+            <FieldStack>{f.status('active', 'Status')}</FieldStack>
           </>
         );
       }}
@@ -356,7 +356,7 @@ export function CustomsGroupsTab(route: ListRoute) {
             {f.text('name', 'Name', { required: true, error: errors.name })}
             {f.text('hsCode', 'HS heading', { placeholder: 'e.g. 7318', hint: 'AHTN / Harmonized System heading.' })}
             {f.num('duty', 'Duty', { suffix: '%', error: errors.duty, hint: 'Confirm against the current Customs tariff.' })}
-            {f.check('active', 'Active')}
+            {f.status('active', 'Status')}
           </FieldStack>
         );
       }}
@@ -396,7 +396,7 @@ export function CommissionGroupsTab(route: ListRoute) {
           <FieldStack>
             {f.text('name', 'Name', { required: true, error: errors.name })}
             {f.num('pct', 'Commission', { suffix: '%', error: errors.pct })}
-            {f.check('active', 'Active')}
+            {f.status('active', 'Status')}
           </FieldStack>
         );
       }}
@@ -454,7 +454,7 @@ export function ItemPropertiesTab(route: ListRoute) {
               placeholder: groups.join(', ') || 'e.g. Compliance',
               hint: 'Type an existing group or a new one.',
             })}
-            {f.check('active', 'Active')}
+            {f.status('active', 'Status')}
           </FieldStack>
         );
       }}

@@ -7,6 +7,7 @@ import { itemUnits, itemsPerUom } from '../../../mocks/items';
 import { BLANKET_AGREEMENTS } from '../../../mocks/purchaseOrders';
 import { formatAmount } from '../../../services/format';
 import { grInventoryQty } from '../../../services/goodsReceipts';
+import { holdsStock } from '../../../mocks/itemMasters';
 import { activeOptions } from '../../../services/inventoryMasters';
 import { isValidToday } from '../../../services/items';
 import { lineNet } from '../../../services/purchaseOrders';
@@ -137,7 +138,7 @@ export function ReturnLines<L extends AnyReturnLine>({
       if (l.baseType) return <Text variant="small">{l.warehouse}{l.bin ? ` · ${l.bin}` : ''}</Text>;
       return (
         <div className="flex w-44 shrink-0 flex-col gap-1 whitespace-normal">
-          <Combobox aria-label="Warehouse" invalid={Boolean(err(l, 'warehouse'))} options={activeOptions(m.inv.warehouses, (w) => w.code, (w) => w.code, l.warehouse)} value={l.warehouse} onValueChange={(warehouse) => patch(l.id, { warehouse: warehouse ?? '', bin: warehouse ? defaultBin(item, warehouse, m) : '' })} />
+          <Combobox aria-label="Warehouse" invalid={Boolean(err(l, 'warehouse'))} options={activeOptions(m.inv.warehouses.filter((w) => holdsStock(w) || w.code === l.warehouse), (w) => w.code, (w) => w.code, l.warehouse)} value={l.warehouse} onValueChange={(warehouse) => patch(l.id, { warehouse: warehouse ?? '', bin: warehouse ? defaultBin(item, warehouse, m) : '' })} />
           {wh?.binEnabled ? <Combobox aria-label="Bin location" invalid={Boolean(err(l, 'bin'))} options={binOptions(m.inv.bins, wh, l.bin)} value={l.bin} onValueChange={(bin) => patch(l.id, { bin: bin ?? '' })} /> : null}
         </div>
       );

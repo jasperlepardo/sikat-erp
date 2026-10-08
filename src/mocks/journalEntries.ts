@@ -245,7 +245,8 @@ function usdSalesChain(): JournalEntry[] {
 }
 
 /**
- * The USD purchase chain (receipt 280001 → bill 290001 → payment 510004), as the purchasing
+ * The USD purchase chain (receipt → bill → payment for po-007; services/journalEntries points the
+ * origins at those documents, which are numbered in date order), as the purchasing
  * module's grJournal / apJournal / paymentJournal give it (lines from sikat-erp purchasing).
  */
 const usdPurchaseChain = (): JournalEntry[] => [

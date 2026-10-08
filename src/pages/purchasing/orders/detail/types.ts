@@ -1,6 +1,7 @@
 import type { Errors } from '../../../../components/form/fields';
 import type { Currency, ExchangeRate } from '../../../../mocks/currencies';
 import { determinePrice } from '../../../../services/priceLists';
+import { vendorDeliveryLocation } from '../../../../mocks/itemMasters';
 import { itemsPerUom, type Item } from '../../../../mocks/items';
 import type { Partner } from '../../../../mocks/partners';
 import type { Company } from '../../../../mocks/companies';
@@ -118,7 +119,7 @@ export function lineFromItem(item: Item, draft: PoDraft, ctx: PoContext, m: PoMa
     uomCode: item.purchasingUom,
     uomName: uom?.name ?? item.purchasingUom,
     itemsPerUnit: itemsPerUom(item, item.purchasingUom) ?? 1,
-    warehouse: item.inventoryItem ? (item.warehouses[0]?.code ?? 'WH-MNL') : '',
+    warehouse: item.inventoryItem ? vendorDeliveryLocation(item.warehouses.map((w) => w.code), m.inv.warehouses) : '',
     priceList,
     taxCode: proposedTaxCode(item, ctx.vendor, m, draft.postingDate),
     mfrNo: item.manufacturers.find((x) => x.code === item.manufacturer)?.catalogNo ?? '',

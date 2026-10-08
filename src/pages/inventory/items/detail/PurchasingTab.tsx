@@ -1,4 +1,5 @@
 import { Fields, Section, bind } from '../../../../components/form/fields';
+import { PurchaseHistory } from './PurchaseHistory';
 import { groupTaxNote, taxCodeOptions, taxGroupOptions, taxResolution, unitOptions, withholdingGroupOptions, type TabProps } from './types';
 
 export function PurchasingTab({ draft, update, errors, tax, inv }: TabProps) {
@@ -38,6 +39,7 @@ export function PurchasingTab({ draft, update, errors, tax, inv }: TabProps) {
         </Fields>
       </Section>
 
+      <PurchaseHistory draft={draft} />
     </>
   );
 }

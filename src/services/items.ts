@@ -42,7 +42,13 @@ function withCommitted(seed: Item[]): Item[] {
 // v24: parent items now carry full PIECE UoM group (pc/pack/box/carton) with family weight.
 // v25: uoms/purchasingUom/salesUom back to global — variants inherit from parent at read time.
 // v26: purchase/sales flags corrected per group — devices pc-only; accessories box also purchasable.
-const items = createCollection<Item>('sikat-erp:items:v26', withCommitted(withOrdered(SEED_ITEMS)), 'itm');
+// v28: seeded open SO/PO lines for the 20W adapter (apl-0361), so Committed and Ordered show.
+// v29: DepEd iPad order (so-012) commits 16 more; seeded outflows reconcile In stock.
+// v30: the Cebu and Davao PO lines (po-003, po-004) order into Pasig, so Ordered moves there.
+// v31: store replenishment POs (po-041–045); po-045's backorder shows as Ordered in Pasig.
+// v32: Accessories are FIFO-valued (cost layers in services/fifoHistory.ts).
+// v33: July–October history, corporate orders (so-c05/c06 commit; po-059/po-060 on order).
+const items = createCollection<Item>('sikat-erp:items:v33', withCommitted(withOrdered(SEED_ITEMS)), 'itm');
 
 /** All items, with variant items' global fields merged from their parent. */
 export async function listItems(): Promise<Item[]> {

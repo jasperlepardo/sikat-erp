@@ -13,7 +13,6 @@ import {
   TableStatus,
   TableSubcontent,
   Text,
-  TextField,
   type TableColumn,
 } from '@jasperlepardo/sikat-design-system';
 import { boolField, choiceField, dateField, numberField, textField } from '../../../components/filter/fieldKit';
@@ -122,6 +121,14 @@ export function JournalVoucherList() {
   return (
     <Panel className="flex-1">
       <PanelHeader
+        showSearch
+        searchLabel="Search journal vouchers"
+        searchPlaceholder="Search by voucher number, remarks, reference, account or who created it"
+        searchValue={query}
+        onSearchChange={(value) => {
+          setQuery(value);
+          setPage(1);
+        }}
         icon="folder_open"
         title={presets.menu}
         actions={
@@ -136,18 +143,7 @@ export function JournalVoucherList() {
             {notice}
           </Alert>
         ) : null}
-        {presets.bar(
-          <TextField
-            aria-label="Search journal vouchers"
-            placeholder="Search by voucher number, remarks, reference, account or who created it"
-            leadingIcon={<Icon size={20}>search</Icon>}
-            value={query}
-            onChange={(e) => {
-              setQuery(e.currentTarget.value);
-              setPage(1);
-            }}
-          />,
-        )}
+        {presets.bar(null)}
         <Card className={fillCardClass(onPage.length)}>
           {vouchers ? (
             <Table

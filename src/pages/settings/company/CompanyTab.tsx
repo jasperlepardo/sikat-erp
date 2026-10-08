@@ -12,9 +12,12 @@ import { Section, type Errors } from '../../../components/form/fields';
 import { MasterDefList } from '../../../components/form/MasterLookup';
 import type { ListRoute } from '../../../components/form/MasterList';
 import type { Company } from '../../../mocks/companies';
-import { CompanyTaxTab } from '../accounting-tax/CompanyTaxTab';
+import type { CompanyTaxProfile } from '../../../mocks/taxes';
+import { CompanyTaxFields, loadTaxProfile, validateTaxProfile } from '../accounting-tax/CompanyTaxFields';
+import { OfficesCard } from './OfficesCard';
 import { companyDef } from '../masterDefs';
 import { companies } from '../../../services/companies';
+import { companyTax } from '../../../services/masterData';
 import { useAsync } from '../../../services/useAsync';
 
 /** Companies list; when a record is open, a two-card company detail page. */
@@ -27,11 +30,15 @@ function CompanyDetail({ basePath, recordId }: { basePath: string; recordId: str
   const navigate = useNavigate();
   const rows = useAsync(() => companies.list(), []);
   const [draft, setDraft] = useState<Company | null>(null);
+  // The BIR registration is saved with the company, by the same Save.
+  const savedTax = useAsync(loadTaxProfile, []);
+  const [taxDraft, setTaxDraft] = useState<CompanyTaxProfile | null>(null);
+  const tax = taxDraft ?? savedTax;
   const [errors, setErrors] = useState<Errors>({});
   const [saving, setSaving] = useState(false);
 
   const isNew = recordId === 'new';
-  const loaded = rows !== undefined;
+  const loaded = rows !== undefined && savedTax !== undefined;
   const fresh = useMemo(() => (isNew && loaded ? companyDef.blank('') : null), [isNew, loaded]);
   const existing = isNew ? undefined : rows?.find((r) => r.id === recordId);
   const row = draft ?? fresh ?? (existing ? structuredClone(existing) : null);
@@ -57,12 +64,15 @@ function CompanyDetail({ basePath, recordId }: { basePath: string; recordId: str
   const nextId = at < siblings.length - 1 ? siblings[at + 1] : undefined;
 
   const save = async () => {
-    const found = companyDef.validate(row, rows ?? []);
+    const found = { ...companyDef.validate(row, rows ?? []), ...(tax && !isNew ? validateTaxProfile(tax) : {}) };
+    if (!isNew && !row.registeredOffice) found.registeredOffice = 'Mark an office under Office addresses as the registered address.';
     setErrors(found);
     if (Object.keys(found).length) return;
     setSaving(true);
     try {
-      await companies.save(companyDef.normalize ? companyDef.normalize(row) : row);
+      const company = await companies.save(companyDef.normalize ? companyDef.normalize(row) : row);
+      // The tax profile's registered name is the company's.
+      if (tax && !isNew) await companyTax.save({ ...tax, registeredName: company.name });
       back();
     } finally {
       setSaving(false);
@@ -130,8 +140,17 @@ function CompanyDetail({ basePath, recordId }: { basePath: string; recordId: str
           ) : null}
           <Section icon={isNew ? 'add_circle' : 'edit'} title="Details">
             {companyDef.editor(row, (patch) => setDraft({ ...row, ...patch }), errors, isNew)}
+            {tax && !isNew ? (
+              <CompanyTaxFields profile={tax} onChange={(patch) => setTaxDraft({ ...tax, ...patch })} errors={errors} />
+            ) : null}
           </Section>
-          <CompanyTaxTab />
+          {isNew ? null : (
+            <OfficesCard
+              registered={row.registeredOffice}
+              onRegister={(code) => setDraft({ ...row, registeredOffice: code })}
+              error={errors.registeredOffice}
+            />
+          )}
         </div>
         </div>
       </Panel.Body>

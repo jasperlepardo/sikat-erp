@@ -10,6 +10,26 @@ const LATENCY_MS = 250;
 
 const wait = () => new Promise((r) => setTimeout(r, LATENCY_MS));
 
+/**
+ * Bump whenever a file in `src/mocks` changes. Saved collections otherwise
+ * shadow the seed forever, so a browser holding an older version drops every
+ * `sikat-erp:` key on load and starts again from the current seed.
+ */
+const SEED_VERSION = 1;
+const VERSION_KEY = 'sikat-erp:seed-version';
+
+// Runs once at module load — before any collection below reads storage.
+try {
+  if (localStorage.getItem(VERSION_KEY) !== String(SEED_VERSION)) {
+    Object.keys(localStorage)
+      .filter((key) => key.startsWith('sikat-erp:'))
+      .forEach((key) => localStorage.removeItem(key));
+    localStorage.setItem(VERSION_KEY, String(SEED_VERSION));
+  }
+} catch {
+  /* storage unavailable — collections fall back to seed anyway */
+}
+
 export function createCollection<T extends { id: string }>(storageKey: string, seed: T[], idPrefix: string) {
   let records: T[] = load();
   const listeners = new Set<() => void>();

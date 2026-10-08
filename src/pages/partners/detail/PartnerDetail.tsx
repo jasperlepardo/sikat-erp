@@ -32,6 +32,7 @@ import { PaymentRunTab } from './PaymentRunTab';
 import { SettingsTab } from './SettingsTab';
 import { TransactionsTab } from './TransactionsTab';
 import { TaxTab } from './TaxTab';
+import { VendorItemsTab } from './VendorItemsTab';
 import { FieldStack, Section, bind, type DefaultKey, type DefaultPicks, type DefaultRole, type Draft, type Errors } from './fields';
 import { MoreMenu } from '../../../components/form/MoreMenu';
 import { ProblemsAlert, problemCollector, type Problem as ProblemBase } from '../../../components/form/ProblemsAlert';
@@ -43,9 +44,10 @@ const TABS = [
 ] as const;
 type TabId = (typeof TABS)[number]['value'];
 
-/** Top-level views in the panel header. Transactions and Activity are placeholders for now. */
+/** Top-level views in the panel header. Items shows for vendors only; Activity is a placeholder for now. */
 const PAGES = [
   { value: 'details', label: 'Details' },
+  { value: 'items', label: 'Items' },
   { value: 'transactions', label: 'Transactions' },
   { value: 'activity', label: 'Activity' },
 ] as const;
@@ -332,8 +334,11 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
                 variant="outline"
                 value={page}
                 onValueChange={(v) => setPage(v as PageId)}
-                // A partner has no transactions or activity until it's added.
-                items={PAGES.map((p) => ({ ...p, disabled: isNew && p.value !== 'details' }))}
+                // A partner has no items, transactions or activity until it's added; Items is for vendors.
+                items={PAGES.filter((p) => p.value !== 'items' || draft.roles.includes('vendor')).map((p) => ({
+                  ...p,
+                  disabled: isNew && p.value !== 'details',
+                }))}
               />
             }
             status={
@@ -361,8 +366,10 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
             }
           />
           {page !== 'details' ? (
-            <Panel.Body>
-              {page === 'transactions' ? (
+            <Panel.Body className={page === 'items' ? 'flex flex-col' : undefined}>
+              {page === 'items' ? (
+                <VendorItemsTab draft={draft} />
+              ) : page === 'transactions' ? (
                 <TransactionsTab draft={draft} />
               ) : (
                 <Text variant="small" tone="muted" className="p-4">Activity will show here.</Text>

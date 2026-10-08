@@ -305,6 +305,12 @@ const importLine = (n: string, itemNo: string, quantity: number): PoLine => {
   return { ...l, unitPrice: Math.round((l.unitPrice / USD_PHP) * 100) / 100, taxCode: '46', deliveryDate: '2026-10-06' };
 };
 
+const plusDays = (iso: string, days: number) => {
+  const d = new Date(`${iso}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+};
+
 const mnl = SEED_WAREHOUSES.find((w) => w.code === 'WH-MNL')!;
 const MNL_SHIP_TO = formatAddress(mnl.address, mnl.name);
 
@@ -377,7 +383,7 @@ export const SEED_PURCHASE_ORDERS: PurchaseOrder[] = [
     lines: [
       line('po-003-1', 'IPH-DUO-256-STW', 4, { deliveryDate: '2026-10-23', warehouse: 'WH-MNL' }),
       line('po-003-2', 'IPH-DUO-256-NSK', 4, { deliveryDate: '2026-10-23', warehouse: 'WH-MNL' }),
-      line('po-003-3', 'IPH-DUO-512-NSK', 2, { deliveryDate: '2026-10-23', warehouse: 'WH-CEB' }),
+      line('po-003-3', 'IPH-DUO-512-NSK', 2, { deliveryDate: '2026-10-23', warehouse: 'WH-MNL' }),
     ],
     remarks: 'iPhone Duo launch stock — waiting for the store manager’s approval.',
   }),
@@ -385,10 +391,10 @@ export const SEED_PURCHASE_ORDERS: PurchaseOrder[] = [
     status: 'Draft',
     postingDate: TODAY, documentDate: TODAY,
     lines: [
-      line('po-004-1', 'MAC-MBA13-M5-8G-16-512-MDN', 3, { warehouse: 'WH-DVO' }),
-      line('po-004-2', 'MAC-MBA13-M5-8G-16-512-SKB', 3, { warehouse: 'WH-DVO' }),
+      line('po-004-1', 'MAC-MBA13-M5-8G-16-512-MDN', 3),
+      line('po-004-2', 'MAC-MBA13-M5-8G-16-512-SKB', 3),
     ],
-    remarks: 'Davao back-to-school restock — draft.',
+    remarks: 'Davao back-to-school restock — draft. Received in Pasig, then transferred to the Davao store.',
   }),
   po('po-005', 260004, {
     status: 'Open',
@@ -437,11 +443,11 @@ export const SEED_PURCHASE_ORDERS: PurchaseOrder[] = [
     postingDate: '2026-09-02', documentDate: '2026-09-02', deliveryDate: '2026-09-05', closeDate: '2026-09-06', dueDate: '2026-10-02',
     vendorRef: 'TZ-SO-44102', cashDiscountDays: 10,
     lines: [
-      line('po-008-1', 'ACC-CBL1M', 50, { receivedQty: 50, status: 'Closed', deliveryDate: '2026-09-05', unitPrice: 690 }),
-      line('po-008-2', 'ACC-MAGSF1', 30, { receivedQty: 30, status: 'Closed', deliveryDate: '2026-09-05', unitPrice: 1180 }),
-      line('po-008-3', 'ACC-PWR20', 60, { receivedQty: 60, status: 'Closed', deliveryDate: '2026-09-05', unitPrice: 720, discountPct: 8 }),
+      line('po-008-1', 'ACC-CBL1M', 50, { receivedQty: 50, status: 'Closed', deliveryDate: '2026-09-05', unitPrice: 1450 }),
+      line('po-008-2', 'ACC-MAGSF1', 30, { receivedQty: 30, status: 'Closed', deliveryDate: '2026-09-05', unitPrice: 24 * 2280 }),
+      line('po-008-3', 'ACC-PWR20', 60, { receivedQty: 60, status: 'Closed', deliveryDate: '2026-09-05', unitPrice: 1600, discountPct: 8 }),
     ],
-    remarks: 'Third-party accessories restock. 2% cash discount if paid within 10 days.',
+    remarks: 'Accessories restock. 2% cash discount if paid within 10 days.',
   }),
   po('po-009', 260006, {
     status: 'Open', project: 'PRJ-002 DepEd Pasig iPad rollout', discountPct: 2, freight: 3500,
@@ -601,6 +607,138 @@ export const SEED_PURCHASE_ORDERS: PurchaseOrder[] = [
     lines: [{ ...importLine('po-039-1', 'IPD-PRO-11-256-SG-WF-SBK', 120), deliveryDate: '2026-10-14' }],
     references: [{ id: 'po-039-r1', docType: 'Sales order', docNo: 'Government 470001', docDate: '2026-09-30', remarks: 'DepEd Pasig — 120 iPad Pro, 4 on hand' }],
     remarks: 'Direct import for the DepEd Pasig award (SO 470001). Ships with the next Apple allocation; 4 already on hand stay as buffer.',
+  }),
+  // Ordered for the 20W adapter (apl-0361): 40 bought, 10 received, 30 still to come.
+  po('po-040', 260035, {
+    status: 'Open', postingDate: '2026-10-06', documentDate: '2026-10-06', deliveryDate: '2026-10-13', dueDate: '2026-11-05',
+    vendorRef: 'LID-SO-562377',
+    lines: [line('po-040-1', 'ACC-PWR20', 40, { receivedQty: 10, deliveryDate: '2026-10-13', unitPrice: 1590 })],
+    references: [{ id: 'po-040-r1', docType: 'Sales order', docNo: 'Primary 410008', docDate: '2026-10-06', remarks: 'Bayanihan Savings Bank — 36 chargers, 28 on hand' }],
+    remarks: 'Backorder for Bayanihan Savings Bank’s chargers (SO 410008), plus store restock. First 10 received.',
+  }),
+
+  // ── Store replenishment buys ──────────────────────────────────────────────
+  // Received into Pasig, restocked to the stores the next day and sold there (mocks/retailHistory.ts).
+  po('po-041', 260036, {
+    status: 'Closed', postingDate: '2026-09-08', documentDate: '2026-09-08', deliveryDate: '2026-09-11', closeDate: '2026-09-12', dueDate: '2026-10-12',
+    vendorRef: 'LID-SO-561020',
+    lines: [
+      line('po-041-1', 'IPH-17-256-LAV', 24, { receivedQty: 24, status: 'Closed', deliveryDate: '2026-09-11', blanketAgreement: 'BA-2026-001' }),
+      line('po-041-2', 'IPH-17E-256-SPK', 24, { receivedQty: 24, status: 'Closed', deliveryDate: '2026-09-11', blanketAgreement: 'BA-2026-001' }),
+      line('po-041-3', 'IPH-18P-256-BLK', 12, { receivedQty: 12, status: 'Closed', deliveryDate: '2026-09-11' }),
+    ],
+    remarks: 'Store replenishment, iPhone. Received complete 11 Sep; out to the stores 12 Sep.',
+  }),
+  vendorPo('po-042', 260037, 'bp-013', {
+    status: 'Closed', shipTo: MNL_SHIP_TO, shippingType: 'sh-own',
+    postingDate: '2026-09-14', documentDate: '2026-09-14', deliveryDate: '2026-09-16', closeDate: '2026-09-17', dueDate: '2026-10-17',
+    vendorRef: 'TZ-SO-44188',
+    lines: [
+      line('po-042-1', 'ACC-PWR20', 120, { receivedQty: 120, status: 'Closed', deliveryDate: '2026-09-16', unitPrice: 1620, discountPct: 8 }),
+      line('po-042-2', 'ACC-CBL1M', 120, { receivedQty: 120, status: 'Closed', deliveryDate: '2026-09-16', unitPrice: 1520 }),
+    ],
+    remarks: 'Store replenishment, chargers and cables. Received complete 16 Sep.',
+  }),
+  vendorPo('po-043', 860004, 'bp-017', {
+    status: 'Closed', seriesId: 'ser-import', currencyView: 'BP', shipTo: MNL_SHIP_TO, shippingType: 'sh-own',
+    postingDate: '2026-09-09', documentDate: '2026-09-09', deliveryDate: '2026-09-22', closeDate: '2026-09-23', dueDate: '2026-10-23',
+    vendorRef: 'ASA-PO-7739402',
+    lines: [importLine('po-043-1', 'IPD-AIR-11-128-WF-BLU', 12), importLine('po-043-2', 'IPD-AIR-11-256-WF-STL', 16)].map((l) => ({
+      ...l, receivedQty: l.quantity, status: 'Closed' as const, deliveryDate: '2026-09-22', blanketAgreement: 'BA-2026-004',
+    })),
+    remarks: 'iPad Air import for the stores. Cleared 22 Sep, received complete.',
+  }),
+  po('po-044', 260038, {
+    status: 'Closed', postingDate: '2026-09-24', documentDate: '2026-09-24', deliveryDate: '2026-09-29', closeDate: '2026-09-30', dueDate: '2026-10-30',
+    vendorRef: 'LID-SO-562201',
+    lines: [
+      line('po-044-1', 'IPH-17-256-LAV', 16, { receivedQty: 16, status: 'Closed', deliveryDate: '2026-09-29', blanketAgreement: 'BA-2026-001' }),
+      line('po-044-2', 'IPH-17E-256-SPK', 16, { receivedQty: 16, status: 'Closed', deliveryDate: '2026-09-29', blanketAgreement: 'BA-2026-001' }),
+    ],
+    remarks: 'Second iPhone replenishment of the month. Billed; not yet due.',
+  }),
+  vendorPo('po-045', 260039, 'bp-013', {
+    status: 'Open', shipTo: MNL_SHIP_TO, shippingType: 'sh-own',
+    postingDate: '2026-10-01', documentDate: '2026-10-01', deliveryDate: '2026-10-03', dueDate: '2026-11-02',
+    vendorRef: 'TZ-SO-44260',
+    lines: [
+      line('po-045-1', 'ACC-PWR20', 100, { receivedQty: 60, deliveryDate: '2026-10-03', unitPrice: 1680, discountPct: 8 }),
+      line('po-045-2', 'ACC-MAGSF1', 2, { receivedQty: 1, deliveryDate: '2026-10-03', unitPrice: 24 * 2410 }),
+    ],
+    remarks: 'October accessories. Techzone shipped 60 chargers and 1 of 2 boxes of MagSafe; the rest is backordered.',
+  }),
+
+  // ── Earlier replenishment, July–October ────────────────────────────────────
+  // Same flow as above (mocks/retailHistory.ts). Prices drift batch to batch, which FIFO costing shows.
+  ...[
+    { id: 'po-046', no: 260040, vendor: 'bp-016', on: '2026-07-06', in: '2026-07-09', lines: [['IPH-17-256-LAV', 20, 55778], ['IPH-17E-256-SPK', 20, 43206]] },
+    { id: 'po-047', no: 260041, vendor: 'bp-013', on: '2026-07-13', in: '2026-07-15', lines: [['ACC-PWR20', 80, 1455], ['ACC-CBL1M', 80, 1430], ['ACC-USBCL', 2, 24 * 1500]] },
+    { id: 'po-048', no: 260042, vendor: 'bp-013', on: '2026-07-27', in: '2026-07-29', lines: [['ACC-PWR35D', 16, 3850], ['ACC-PWR96', 12, 4620], ['ACC-CBL240', 16, 1480]] },
+    { id: 'po-050', no: 260043, vendor: 'bp-016', on: '2026-08-03', in: '2026-08-06', lines: [['IPH-17-256-LAV', 16, 55778], ['IPH-17E-256-SPK', 16, 43206], ['ACC-MAGSF1', 1, 24 * 2250]] },
+    { id: 'po-051', no: 260044, vendor: 'bp-013', on: '2026-08-17', in: '2026-08-19', lines: [['ACC-PWR20', 100, 1468], ['ACC-CBL1M', 60, 1445], ['ACC-USBCL', 2, 24 * 1525]] },
+    { id: 'po-052', no: 260045, vendor: 'bp-016', on: '2026-08-24', in: '2026-08-26', lines: [['ACC-PWR35D', 12, 3960], ['ACC-PWR96', 10, 4760], ['ACC-MAGSF2', 1, 24 * 3180]] },
+    { id: 'po-053', no: 260046, vendor: 'bp-013', on: '2026-09-21', in: '2026-09-23', lines: [['ACC-CBL240', 12, 1545], ['ACC-PENUSBC', 24, 4650], ['ACC-USBCL', 1, 24 * 1560]] },
+    { id: 'po-054', no: 260047, vendor: 'bp-016', on: '2026-10-02', in: '2026-10-04', lines: [['ACC-PWR35D', 10, 3990], ['ACC-PWR96', 8, 4690], ['ACC-MAGSF2', 1, 24 * 3220]] },
+  ].map((o) =>
+    vendorPo(o.id, o.no, o.vendor, {
+      status: 'Closed', shipTo: MNL_SHIP_TO, shippingType: 'sh-own',
+      postingDate: o.on, documentDate: o.on, deliveryDate: o.in, closeDate: o.in, dueDate: plusDays(o.in, 30),
+      vendorRef: `${o.vendor === 'bp-013' ? 'TZ' : 'LID'}-SO-${o.no - 200000}`,
+      lines: (o.lines as [string, number, number][]).map(([itemNo, qty, price], i) =>
+        line(`${o.id}-${i + 1}`, itemNo, qty, { receivedQty: qty, status: 'Closed', deliveryDate: o.in, unitPrice: price }),
+      ),
+      remarks: 'Store replenishment. Received complete; out to the stores the next day.',
+    }),
+  ),
+  vendorPo('po-049', 860005, 'bp-017', {
+    status: 'Closed', seriesId: 'ser-import', currencyView: 'BP', shipTo: MNL_SHIP_TO, shippingType: 'sh-own',
+    postingDate: '2026-07-20', documentDate: '2026-07-20', deliveryDate: '2026-08-01', closeDate: '2026-08-01', dueDate: '2026-08-31',
+    vendorRef: 'ASA-PO-7731266',
+    lines: [importLine('po-049-1', 'ACC-PENUSBC', 40), importLine('po-049-2', 'ACC-MAGSF2', 1)].map((l) => ({
+      ...l, receivedQty: l.quantity, status: 'Closed' as const, deliveryDate: '2026-08-01', unitPrice: Math.round(l.unitPrice * 0.97 * 100) / 100,
+    })),
+    remarks: 'Pencil and MagSafe import at Apple’s Q3 price. Cleared 1 Aug.',
+  }),
+
+  // ── Corporate order supply ─────────────────────────────────────────────────
+  // Bought for specific B2B sales orders (see mocks/salesOrders.ts) and delivered from Pasig.
+  po('po-055', 260048, {
+    status: 'Closed', postingDate: '2026-08-06', documentDate: '2026-08-06', deliveryDate: '2026-08-12', closeDate: '2026-08-12', dueDate: '2026-09-11',
+    vendorRef: 'LID-SO-550310',
+    lines: [line('po-055-1', 'MAC-MBA13-M5-8G-16-512-MDN', 10, { receivedQty: 10, status: 'Closed', deliveryDate: '2026-08-12' })],
+    remarks: 'For Clarkfield’s order. Received complete 12 Aug.',
+  }),
+  vendorPo('po-056', 860006, 'bp-017', {
+    status: 'Closed', seriesId: 'ser-import', currencyView: 'BP', shipTo: MNL_SHIP_TO, shippingType: 'sh-own',
+    postingDate: '2026-08-18', documentDate: '2026-08-18', deliveryDate: '2026-08-28', closeDate: '2026-08-28', dueDate: '2026-09-27',
+    vendorRef: 'ASA-PO-7733015',
+    lines: [importLine('po-056-1', 'IPD-PRO-11-256-SG-WF-SBK', 4), importLine('po-056-2', 'ACC-PENPRO', 4)].map((l) => ({ ...l, receivedQty: l.quantity, status: 'Closed' as const, deliveryDate: '2026-08-28' })),
+    remarks: 'For Mactan Pixel’s animation workstations. Cleared 28 Aug.',
+  }),
+  po('po-057', 260049, {
+    status: 'Closed', postingDate: '2026-08-25', documentDate: '2026-08-25', deliveryDate: '2026-08-29', closeDate: '2026-08-29', dueDate: '2026-09-28',
+    vendorRef: 'LID-SO-551188',
+    lines: [line('po-057-1', 'MAC-MBA13-M5-8G-16-512-SKB', 6, { receivedQty: 6, status: 'Closed', deliveryDate: '2026-08-29' })],
+    remarks: 'For Kessler & Voss. Received complete 29 Aug.',
+  }),
+  po('po-058', 260050, {
+    status: 'Closed', postingDate: '2026-09-08', documentDate: '2026-09-08', deliveryDate: '2026-09-10', closeDate: '2026-09-10', dueDate: '2026-10-10',
+    vendorRef: 'LID-SO-556420',
+    lines: [line('po-058-1', 'ACC-PENUSBC', 12, { receivedQty: 12, status: 'Closed', deliveryDate: '2026-09-10', unitPrice: 4620 })],
+    remarks: 'For the Guro ng Bayan cooperative’s teachers. Received 10 Sep.',
+  }),
+  po('po-059', 260051, {
+    status: 'Open', postingDate: '2026-09-25', documentDate: '2026-09-25', deliveryDate: '2026-10-01', dueDate: '2026-10-25',
+    vendorRef: 'LID-SO-561944',
+    lines: [line('po-059-1', 'IPH-17-256-LAV', 20, { receivedQty: 12, deliveryDate: '2026-10-01' })],
+    remarks: 'For ASEAN Health. Luzon shipped 12 of 20 on 1 Oct; 8 to follow.',
+  }),
+  vendorPo('po-060', 860007, 'bp-017', {
+    status: 'Open', seriesId: 'ser-import', currencyView: 'BP', shipTo: MNL_SHIP_TO, shippingType: 'sh-own',
+    postingDate: '2026-10-06', documentDate: '2026-10-06', deliveryDate: '2026-10-16', dueDate: '2026-11-15',
+    vendorRef: 'ASA-PO-7741102',
+    lines: [{ ...importLine('po-060-1', 'IPD-AIR-11-128-WF-BLU', 30), deliveryDate: '2026-10-16' }],
+    remarks: 'Backorder for Subic Bay Marine’s 30 iPad Airs (SO for Subic Bay, 5 Oct). Ships with the mid-October allocation.',
   }),
 ];
 

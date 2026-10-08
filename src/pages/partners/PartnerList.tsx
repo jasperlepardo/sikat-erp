@@ -13,7 +13,6 @@ import {
   TableStatus,
   TableSubcontent,
   TableUser,
-  TextField,
   type TableColumn,
   Text,
 } from '@jasperlepardo/sikat-design-system';
@@ -152,24 +151,19 @@ export function PartnerList({ scope }: { scope: PartnerScope }) {
     },
   ];
 
-  const search = (
-    <TextField
-      aria-label={`Search ${config.title.toLowerCase()}`}
-      placeholder="Search by name, code, contact, or city"
-      leadingIcon={<Icon size={20}>search</Icon>}
-      value={query}
-      onChange={(e) => {
-        setQuery(e.currentTarget.value);
-        setPage(1);
-      }}
-    />
-  );
-
   return (
     <Panel className="flex-1">
       <PanelHeader
         icon={config.icon}
         title={presets.menu}
+        showSearch
+        searchLabel={`Search ${config.title.toLowerCase()}`}
+        searchPlaceholder="Search by name, code, contact, or city"
+        searchValue={query}
+        onSearchChange={(value) => {
+          setQuery(value);
+          setPage(1);
+        }}
         actions={
           <Button
             intent="primary"
@@ -183,7 +177,7 @@ export function PartnerList({ scope }: { scope: PartnerScope }) {
         }
       />
       <Panel.Body className="flex flex-col gap-2">
-        {presets.bar(search)}
+        {presets.bar(null)}
         <Card className={fillCardClass(rows.slice((page - 1) * pageSize, page * pageSize).length)}>
           {partners ? (
             <Table

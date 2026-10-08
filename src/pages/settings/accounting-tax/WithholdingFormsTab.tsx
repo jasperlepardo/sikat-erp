@@ -67,8 +67,8 @@ export function WithholdingFormsTab(route: ListRoute) {
               {f.text('description', 'Description', { required: true, error: errors.description,  })}
               {f.area('dueEfps', 'Due date · eFPS', { rows: 2 })}
               {f.area('dueManual', 'Due date · Manual/eBIRForms', { rows: 2 })}
+              {f.status('active', 'Status')}
             </FieldStack>
-            {f.check('active', 'Active')}
           </>
         );
       }}

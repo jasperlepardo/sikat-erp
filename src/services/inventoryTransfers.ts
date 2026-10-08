@@ -11,7 +11,7 @@ import { listItems, saveItem } from './items';
 import { transferLayers, updateFifoCosts } from './costLayers';
 import { createCollection } from './store';
 
-const transfers = createCollection<InventoryTransfer>('sikat-erp:inventory-transfers:v2', SEED_TRANSFERS, 'it');
+const transfers = createCollection<InventoryTransfer>('sikat-erp:inventory-transfers:v5', SEED_TRANSFERS, 'it');
 
 export const listTransfers = transfers.list;
 export const getTransfer = transfers.get;

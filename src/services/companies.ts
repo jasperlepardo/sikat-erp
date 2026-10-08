@@ -1,9 +1,21 @@
 /** Our companies (Settings › Company › Companies) and the one picked in the navbar switcher. */
 import { useEffect, useState } from 'react';
 import { SEED_COMPANIES, type Company } from '../mocks/companies';
+import type { Warehouse } from '../mocks/itemMasters';
+import { warehouses } from './inventoryMasters';
 import { createCollection } from './store';
 
-export const companies = createCollection<Company>('sikat-erp:companies:v5', SEED_COMPANIES, 'co');
+export const companies = createCollection<Company>('sikat-erp:companies:v6', SEED_COMPANIES, 'co');
+
+/** The company's registered office, if it's set and still exists. */
+export const registeredOfficeOf = (c: Pick<Company, 'registeredOffice'>, locations: readonly Warehouse[]) =>
+  c.registeredOffice ? locations.find((w) => w.code === c.registeredOffice) : undefined;
+
+/** The company with its address read from its registered office. */
+export const withRegisteredAddress = (c: Company, locations: readonly Warehouse[]): Company => {
+  const office = registeredOfficeOf(c, locations);
+  return office ? { ...c, address: office.address } : c;
+};
 
 const CURRENT_KEY = 'sikat-erp:current-company';
 const listeners = new Set<() => void>();
@@ -27,9 +39,9 @@ export function setCurrentCompanyId(id: string) {
 
 /** The company documents are created in; falls back to the first active one. */
 export async function loadCurrentCompany(): Promise<Company> {
-  const all = await companies.list();
+  const [all, locations] = await Promise.all([companies.list(), warehouses.list()]);
   const id = currentCompanyId();
-  return all.find((c) => c.id === id) ?? all.find((c) => c.active) ?? SEED_COMPANIES[0];
+  return withRegisteredAddress(all.find((c) => c.id === id) ?? all.find((c) => c.active) ?? SEED_COMPANIES[0], locations);
 }
 
 /** The current company, kept up to date when it's switched or edited. `undefined` while loading. */
@@ -41,10 +53,13 @@ export function useCurrentCompany() {
     load();
     listeners.add(load);
     const off = companies.subscribe(load);
+    // The address lives on the registered office.
+    const offLocations = warehouses.subscribe(load);
     return () => {
       live = false;
       listeners.delete(load);
       off();
+      offLocations();
     };
   }, []);
   return company;

@@ -1,4 +1,4 @@
-import { OPERATORS_BY_TYPE, isComplete, type FilterField, type FilterGroup, type Op, type Rule } from './engine';
+import { OPERATORS_BY_TYPE, OP_LABEL, isComplete, type FilterField, type FilterGroup, type Op, type Rule } from './engine';
 
 /**
  * Filters as AIP-160 text (https://google.aip.dev/160) — what a real list API would take as
@@ -17,6 +17,32 @@ import { OPERATORS_BY_TYPE, isComplete, type FilterField, type FilterGroup, type
  */
 
 // ---------- printing ----------
+
+/** Each operator's AIP-160 form, for the operator menu: "contains  :", "is not  !=". */
+export const AIP_OP: Record<Op, string> = {
+  is: '=',
+  isNot: '!=',
+  contains: ':',
+  notContains: 'NOT :',
+  startsWith: '= "…*"',
+  gt: '>',
+  gte: '>=',
+  lt: '<',
+  lte: '<=',
+  between: '>= AND <=',
+  before: '<',
+  after: '>',
+  inLastDays: '> daysAgo()',
+  in: 'OR',
+  notIn: 'NOT (OR)',
+  isTrue: '= true',
+  isFalse: '= false',
+  empty: 'NOT :*',
+  notEmpty: ':*',
+};
+
+/** Menu label: the operator's words with its AIP-160 form; symbols alone (≥ → >=). */
+export const opLabel = (op: Op) => (/^[<>≤≥]$/.test(OP_LABEL[op]) ? AIP_OP[op] : `${OP_LABEL[op]}  ${AIP_OP[op]}`);
 
 const str = (v: unknown) => JSON.stringify(String(v ?? ''));
 

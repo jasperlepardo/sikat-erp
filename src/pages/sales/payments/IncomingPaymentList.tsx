@@ -13,7 +13,6 @@ import {
   TableStatus,
   TableSubcontent,
   Text,
-  TextField,
   type TableColumn,
 } from '@jasperlepardo/sikat-design-system';
 import { choiceField, dateField, masterField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
@@ -108,6 +107,14 @@ export function IncomingPaymentList() {
   return (
     <Panel className="flex-1">
       <PanelHeader
+        showSearch
+        searchLabel="Search payments"
+        searchPlaceholder="Search by payment no., customer, reference or invoice"
+        searchValue={query}
+        onSearchChange={(value) => {
+          setQuery(value);
+          setPage(1);
+        }}
         icon="savings"
         title={presets.menu}
         actions={
@@ -122,18 +129,7 @@ export function IncomingPaymentList() {
             {notice}
           </Alert>
         ) : null}
-        {presets.bar(
-          <TextField
-            aria-label="Search payments"
-            placeholder="Search by payment no., customer, reference or invoice"
-            leadingIcon={<Icon size={20}>search</Icon>}
-            value={query}
-            onChange={(e) => {
-              setQuery(e.currentTarget.value);
-              setPage(1);
-            }}
-          />,
-        )}
+        {presets.bar(null)}
         <Card className={fillCardClass(onPage.length)}>
           {orders ? (
             <Table

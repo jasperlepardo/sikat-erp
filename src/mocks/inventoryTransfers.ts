@@ -13,7 +13,9 @@
  * - Copy from an Inventory Transfer Request isn't built yet (there are no requests).
  */
 import type { DocumentSeries } from './common';
+import { SEED_WAREHOUSES } from './itemMasters';
 import { SEED_ITEMS } from './items';
+import { RETAIL_RESTOCKS } from './retailHistory';
 
 export type TransferStatus = 'Draft' | 'Posted';
 export const TRANSFER_STATUSES: TransferStatus[] = ['Draft', 'Posted'];
@@ -126,7 +128,7 @@ const transfer = (id: string, docNum: number, patch: Partial<InventoryTransfer>)
   ...patch,
 });
 
-export const SEED_TRANSFERS: InventoryTransfer[] = [
+const REPLENISHMENTS: InventoryTransfer[] = [
   transfer('it-001', 270001, {
     postingDate: '2026-09-03',
     documentDate: '2026-09-03',
@@ -159,4 +161,97 @@ export const SEED_TRANSFERS: InventoryTransfer[] = [
     remarks: 'Demo units for Mobile Care — waiting on the store manager to confirm.',
     lines: [line(8, 1, 'WH-PRD')],
   }),
+];
+
+// Store restocks of stock received into Pasig that's no longer there, so each warehouse's
+// receipts, transfers and deliveries add up to its In stock. A restock goes to the stores
+// holding the item, largest first, never more than a store holds now (its stock came from here).
+const STORES = new Set(SEED_WAREHOUSES.filter((w) => w.type === 'store').map((w) => w.code));
+/** Restocked so far per item@store, so a second restock of an item draws on what's left. */
+const restocked = new Map<string, number>();
+
+function restock(itemNo: string, quantity: number): TransferLine[] {
+  const item = SEED_ITEMS.find((i) => i.itemNo === itemNo)!;
+  // Stores that already have a seeded transfer of the item keep their own history.
+  const moved = new Set(REPLENISHMENTS.flatMap((t) => t.lines.filter((l) => l.itemId === item.id).map((l) => l.toWarehouse)));
+  const room = (code: string, inStock: number) => inStock - (restocked.get(`${item.id}@${code}`) ?? 0);
+  const stores = item.warehouses
+    .filter((w) => STORES.has(w.code) && !moved.has(w.code) && room(w.code, w.inStock) > 0)
+    .sort((a, b) => room(b.code, b.inStock) - room(a.code, a.inStock) || a.code.localeCompare(b.code));
+  const lines: TransferLine[] = [];
+  let left = quantity;
+  for (const w of stores) {
+    if (!left) break;
+    const key = `${item.id}@${w.code}`;
+    const before = restocked.get(key) ?? 0;
+    const qty = Math.min(room(w.code, w.inStock), left);
+    left -= qty;
+    restocked.set(key, before + qty);
+    lines.push(
+      newTransferLine({
+        // Unique per restock: a store restocked twice has had `before` units already.
+        id: `tl-rs-${item.id}-${w.code}-${before}`,
+        itemId: item.id,
+        itemNo: item.itemNo,
+        name: item.name,
+        description: item.description,
+        quantity: qty,
+        uom: item.inventoryUom,
+        fromBin: item.warehouses.find((x) => x.code === 'WH-MNL')?.defaultBin || 'WH-MNL-A-01-01',
+        toWarehouse: w.code,
+        unitCost: item.itemCost,
+      }),
+    );
+  }
+  if (left) throw new Error(`Seed restock of ${itemNo}: ${left} more than the stores hold.`);
+  return lines;
+}
+
+const storeRestock = (id: string, docNum: number, date: string, remarks: string, lines: TransferLine[]) =>
+  transfer(id, docNum, {
+    postingDate: date,
+    documentDate: date,
+    toWarehouse: lines[0].toWarehouse,
+    journalRemark: 'Inventory Transfers – WH-MNL to stores',
+    remarks,
+    lines,
+  });
+
+export const SEED_TRANSFERS: InventoryTransfer[] = [
+  ...REPLENISHMENTS,
+  storeRestock('it-005', 270004, '2026-09-08', 'Accessory restock of the stores from the 5 Sep Techzone receipt.', [
+    ...restock('ACC-CBL1M', 22),
+    ...restock('ACC-MAGSF1', 692),
+    ...restock('ACC-PWR20', 50),
+  ]),
+  storeRestock('it-006', 270005, '2026-09-19', 'iPhone 17 and charger restock of the stores from the 17 Sep Luzon iDistribution receipt.', [
+    ...restock('ACC-PWR20', 32),
+    ...restock('IPH-17-256-BLK', 3),
+    ...restock('IPH-17-256-WHT', 7),
+  ]),
+  storeRestock('it-007', 270006, '2026-10-01', 'iPhone 18 Pro restock of the stores from the 30 Sep receipt.', [...restock('IPH-18P-256-BLK', 2)]),
+  // Replenishment POs out to the stores the day after they're received (mocks/retailHistory.ts).
+  ...RETAIL_RESTOCKS.map((r) =>
+    storeRestock(
+      r.id,
+      r.docNum,
+      r.date,
+      `Store restock from PO ${r.poNo}, received yesterday.`,
+      r.lines.map((l) => {
+        const item = SEED_ITEMS.find((i) => i.id === l.itemId)!;
+        return newTransferLine({
+          id: `tl-${r.id}-${item.id}-${l.toWarehouse}`,
+          itemId: item.id,
+          itemNo: item.itemNo,
+          name: item.name,
+          description: item.description,
+          quantity: l.quantity,
+          uom: item.inventoryUom,
+          fromBin: item.warehouses.find((x) => x.code === 'WH-MNL')?.defaultBin || 'WH-MNL-A-01-01',
+          toWarehouse: l.toWarehouse,
+          unitCost: item.itemCost,
+        });
+      }),
+    ),
+  ),
 ];

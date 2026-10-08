@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Alert, Button, Combobox, DatePicker, Icon, Text, TextField } from '@jasperlepardo/sikat-design-system';
 import { DataTable } from '../../../components/form/DataTable';
-import { Fields, Flags, ReadOnly, bind, type Errors } from '../../../components/form/fields';
+import { Fields, ReadOnly, bind, type Errors } from '../../../components/form/fields';
 import { MasterList, statusColumn, type ListRoute } from '../../../components/form/MasterList';
 import { useCollection } from '../../../components/form/MasterLookup';
 import type { Item } from '../../../mocks/items';
@@ -140,7 +140,7 @@ export function SpecialPricesTab(route: ListRoute) {
             </Fields>
             <SpecialRowsEditor set={s} items={items} partner={partner} error={errors.rows} onChange={(rows) => update({ rows })} />
             <Fields>{f.area('remarks', 'Remarks', { placeholder: 'Contract reference, who approved it' })}</Fields>
-            <Flags>{f.check('active', 'Active')}</Flags>
+            <Fields>{f.status('active', 'Status')}</Fields>
           </>
         );
       }}

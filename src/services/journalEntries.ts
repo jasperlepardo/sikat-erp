@@ -16,8 +16,25 @@ import { jeSeries, seriesLookup, formatDocNum } from './allSeries';
 import { rateAt, type TaxCode } from '../mocks/taxes';
 import { formatDate, todayISO } from './dates';
 import { createCollection } from './store';
+import { PURCHASING_HISTORY } from './purchasingHistory';
 
-const entries = createCollection<JournalEntry>('sikat-erp:journal-entries:v2', SEED_JOURNAL_ENTRIES, 'je');
+/**
+ * The seeded USD purchase chain points at its receipt, bill and payment by PO. They're numbered
+ * in date order, so their numbers and ids depend on the rest of the purchasing history.
+ */
+const CHAIN: Record<string, () => { id: string; docNum: number } | undefined> = {
+  'je-009': () => PURCHASING_HISTORY.receipts.find((r) => r.lines.some((l) => l.baseId === 'po-007')),
+  'je-010': () => {
+    const gr = PURCHASING_HISTORY.receipts.find((r) => r.lines.some((l) => l.baseId === 'po-007'));
+    return PURCHASING_HISTORY.invoices.find((i) => i.lines.some((l) => l.baseId === gr?.id));
+  },
+  'je-011': () => PURCHASING_HISTORY.payments.find((p) => p.id === 'op-004'),
+};
+const SEEDED = SEED_JOURNAL_ENTRIES.map((e) => {
+  const doc = CHAIN[e.id]?.();
+  return doc ? { ...e, originId: doc.id, originNo: String(doc.docNum) } : e;
+});
+const entries = createCollection<JournalEntry>('sikat-erp:journal-entries:v3', SEEDED, 'je');
 
 /** Reversals made before line ids were guaranteed saved rows without one; give them a stable id on read. */
 const withLineIds = (je: JournalEntry): JournalEntry =>

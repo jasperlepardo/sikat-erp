@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import {
   Button,
@@ -18,6 +18,7 @@ import {
   type TableSort,
 } from '@jasperlepardo/sikat-design-system';
 import { Section, type Errors } from './fields';
+import { useHeaderSearch } from './HeaderSearch';
 import { DEFAULT_PAGE_SIZE, PAGE_SIZES, fillCardClass } from './DataTable';
 
 export interface MasterListProps<T extends { id: string }> {
@@ -72,6 +73,15 @@ export interface MasterListProps<T extends { id: string }> {
   noun: string;
   /** Route of the list, e.g. /settings/accounting-and-tax/tax-codes. Rows open at `${basePath}/${id}`. */
   basePath: string;
+  /** Where a record page returns to, when not `basePath`. */
+  listPath?: string;
+  /** Centre the record page's card in the middle 6 of 12 columns (settings pages always are). */
+  centered?: boolean;
+  /**
+   * The record's nested data (e.g. a warehouse's bins). When given, the record page is laid out
+   * like a detail page: Details in a 3-column side column, this in the 9-column main one.
+   */
+  related?: (row: T, isNew: boolean) => ReactNode;
 }
 
 export const statusColumn = <T extends { active: boolean }>() => ({
@@ -97,6 +107,8 @@ export function uniqueRequired<T extends { id: string }>(
 export interface ListRoute {
   basePath: string;
   recordId?: string;
+  /** Where a record page returns to when the list lives on another tab. Defaults to `basePath`. */
+  listPath?: string;
 }
 
 const defaultSortValue = <T,>(row: T, key: string): string | number => {
@@ -169,11 +181,17 @@ function ListView<T extends { id: string }>({
     setPanelSaving(true);
     try { await onSave(panelRow); closePanel(); } finally { setPanelSaving(false); }
   };
-  const [query, setQuery] = useState('');
+  // In the page header when the page hosts one, else a box above the table.
+  const headerSearch = useHeaderSearch(`Search ${title.toLowerCase()}`);
+  const [localQuery, setLocalQuery] = useState('');
+  const query = headerSearch?.query ?? localQuery;
+  const setQuery = headerSearch?.setQuery ?? setLocalQuery;
   const [sort, setSort] = useState<TableSort | null>(defaultSort ?? { key: columns[0].key, direction: 'asc' });
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [selected, setSelected] = useState<string[]>([]);
+  // A new search starts from the first page.
+  useEffect(() => setPage(1), [query]);
 
   const isSearching = query.trim().length > 0;
   const useTree = !!getSubRows && !isSearching;
@@ -205,6 +223,8 @@ function ListView<T extends { id: string }>({
   const visible = useTree ? displayRows : displayRows.slice((current - 1) * pageSize, current * pageSize);
 
   const open = (row: T) => navigate(`${basePath}/${encodeURIComponent(row.id)}`);
+  // A tree's parent rows count once, as rows.
+  const selectedCount = (rows ?? []).filter((r) => selected.includes(r.id)).length;
 
   const setActive = async (active: boolean) => {
     if (!onSetActive) return;
@@ -227,7 +247,7 @@ function ListView<T extends { id: string }>({
       : {}),
   }));
 
-  const showHeader = !hideHeader && (!isSettings || !!(onSetActive && selected.length) || !!actions);
+  const showHeader = !hideHeader && (!isSettings || !!(onSetActive && selectedCount) || !!actions);
 
   return (
     <>
@@ -247,10 +267,10 @@ function ListView<T extends { id: string }>({
             </div>
           )}
           <div className={`flex flex-wrap items-center gap-1${isSettings ? ' ml-auto' : ''}`}>
-            {onSetActive && selected.length ? (
+            {onSetActive && selectedCount ? (
               <>
                 <Text variant="small" tone="muted">
-                  {selected.length} selected
+                  {selectedCount} selected
                 </Text>
                 <Button type="button" size="small" variant="ghost" onClick={() => setActive(true)}>
                   Activate
@@ -277,24 +297,23 @@ function ListView<T extends { id: string }>({
           </div>
         </div>
       )}
-      {hideHeader && onSetActive && selected.length ? (
+      {hideHeader && onSetActive && selectedCount ? (
         <div className="flex flex-wrap items-center gap-1 px-2 pt-2">
-          <Text variant="small" tone="muted">{selected.length} selected</Text>
+          <Text variant="small" tone="muted">{selectedCount} selected</Text>
           <Button type="button" size="small" variant="ghost" onClick={() => setActive(true)}>Activate</Button>
           <Button type="button" size="small" variant="ghost" intent="danger" onClick={() => setActive(false)}>Deactivate</Button>
         </div>
       ) : null}
       {intro}
-      <TextField
-        aria-label={`Search ${title.toLowerCase()}`}
-        placeholder={`Search ${title.toLowerCase()}`}
-        leadingIcon={<Icon size={20}>search</Icon>}
-        value={query}
-        onChange={(e) => {
-          setQuery(e.currentTarget.value);
-          setPage(1);
-        }}
-      />
+      {headerSearch ? null : (
+        <TextField
+          aria-label={`Search ${title.toLowerCase()}`}
+          placeholder={`Search ${title.toLowerCase()}`}
+          leadingIcon={<Icon size={20}>search</Icon>}
+          value={query}
+          onChange={(e) => setQuery(e.currentTarget.value)}
+        />
+      )}
       <Card className={fillCardClass(visible.length)}>
         {rows ? (
           <Table
@@ -373,6 +392,9 @@ function RecordPage<T extends { id: string }>({
   onSave,
   noun,
   basePath,
+  listPath = basePath,
+  centered,
+  related,
   recordId,
 }: MasterListProps<T> & { recordId: string }) {
   const navigate = useNavigate();
@@ -391,7 +413,7 @@ function RecordPage<T extends { id: string }>({
   // An existing record arrives once the list has loaded.
   const existing = isNew ? undefined : rows?.find((r) => r.id === recordId);
   const row = draft ?? fresh ?? (existing ? structuredClone(existing) : null);
-  const back = () => navigate(basePath);
+  const back = () => navigate(listPath);
 
   if (!loaded) return <Text tone="muted" className="p-4">Loading…</Text>;
   if (!row) {
@@ -470,20 +492,39 @@ function RecordPage<T extends { id: string }>({
           </>
         }
       />
-      <Panel.Body className="flex flex-col gap-2">
-        <div className={isSettings ? 'grid grid-cols-12 gap-2' : 'contents'}>
-          <div className={isSettings ? 'col-span-6 col-start-4 flex flex-col gap-2' : 'contents'}>
-            {Object.keys(errors).length ? (
-              <Text variant="small" tone="danger">
-                Fix the highlighted fields to save.
-              </Text>
-            ) : null}
-            <Section icon={isNew ? 'add_circle' : 'edit'} title="Details">
-              {editor(row, (patch) => setDraft({ ...row, ...patch }), errors, isNew)}
-            </Section>
+      {related ? (
+        /* Side by side (lg), each column scrolls on its own; stacked, the body scrolls as one. */
+        <Panel.Body className="flex flex-col gap-2 lg:overflow-hidden!">
+          {Object.keys(errors).length ? (
+            <Text variant="small" tone="danger">
+              Fix the highlighted fields to save.
+            </Text>
+          ) : null}
+          <div className="grid gap-4 lg:min-h-0 lg:flex-1 lg:grid-cols-12 lg:grid-rows-1">
+            <aside className="flex flex-col gap-2 lg:col-span-3 lg:min-h-0 lg:overflow-y-auto">
+              <Section icon={isNew ? 'add_circle' : 'edit'} title="Details">
+                {editor(row, (patch) => setDraft({ ...row, ...patch }), errors, isNew)}
+              </Section>
+            </aside>
+            <div className="flex min-w-0 flex-col gap-2 lg:col-span-9 lg:min-h-0 lg:overflow-y-auto">{related(row, isNew)}</div>
           </div>
-        </div>
-      </Panel.Body>
+        </Panel.Body>
+      ) : (
+        <Panel.Body className="flex flex-col gap-2">
+          <div className={isSettings || centered ? 'grid grid-cols-12 gap-2' : 'contents'}>
+            <div className={isSettings || centered ? 'col-span-12 flex flex-col gap-2 lg:col-span-6 lg:col-start-4' : 'contents'}>
+              {Object.keys(errors).length ? (
+                <Text variant="small" tone="danger">
+                  Fix the highlighted fields to save.
+                </Text>
+              ) : null}
+              <Section icon={isNew ? 'add_circle' : 'edit'} title="Details">
+                {editor(row, (patch) => setDraft({ ...row, ...patch }), errors, isNew)}
+              </Section>
+            </div>
+          </div>
+        </Panel.Body>
+      )}
     </Panel>
   );
 }

@@ -5,7 +5,7 @@ import { PAYMENT_METHODS } from '../../../mocks/masters';
 import type { PaymentAccount, PaymentMethodSetting } from '../../../mocks/partners';
 import { accountKind } from './PaymentAccounts';
 import { EditPanel } from './EditPanel';
-import { DefaultFlags, Fields, Flags, Section, bind, type DefaultPicks, type DefaultRole, type Draft, type Errors } from './fields';
+import { DefaultFlags, Fields, Section, bind, type DefaultPicks, type DefaultRole, type Draft, type Errors } from './fields';
 
 const METHOD_ICON: Record<string, string> = {
   CASH: 'payments',
@@ -276,7 +276,7 @@ export function PaymentEntryPanel({
       {kind && account && accountFields ? (
         <Section icon={kind.icon} title={capitalize(kind.noun)}>
           {kind.fields(accountFields, account, errors)}
-          <Flags>{accountFields.check('active', 'Active')}</Flags>
+          <Fields>{accountFields.status('active', 'Status')}</Fields>
         </Section>
       ) : null}
       <Section icon="star" title="Defaults">

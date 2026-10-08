@@ -11,7 +11,6 @@ import {
   TableLink,
   TableStatus,
   TableSubcontent,
-  TextField,
   type TableColumn,
   Text,
 } from '@jasperlepardo/sikat-design-system';
@@ -202,6 +201,14 @@ export function ItemList({ basePath = '/inventory/items' }: { basePath?: string 
   return (
     <Panel className="flex-1">
       <PanelHeader
+        showSearch
+        searchLabel="Search items"
+        searchPlaceholder="Search by item no., description, group, barcode, or variant"
+        searchValue={query}
+        onSearchChange={(value) => {
+          setQuery(value);
+          setPage(1);
+        }}
         icon="inventory_2"
         title={presets.menu}
         actions={
@@ -217,18 +224,7 @@ export function ItemList({ basePath = '/inventory/items' }: { basePath?: string 
         }
       />
       <Panel.Body className="flex flex-col gap-2">
-        {presets.bar(
-          <TextField
-            aria-label="Search items"
-            placeholder="Search by item no., description, group, barcode, or variant"
-            leadingIcon={<Icon size={20}>search</Icon>}
-            value={query}
-            onChange={(e) => {
-              setQuery(e.currentTarget.value);
-              setPage(1);
-            }}
-          />,
-        )}
+        {presets.bar(null)}
         <Card className={fillCardClass(rows.slice((page - 1) * pageSize, page * pageSize).length)}>
           {items ? (
             <Table

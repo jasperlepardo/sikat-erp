@@ -21,6 +21,7 @@ import { formatAmount } from '../../../../services/format';
 import { formatDate } from '../../../../services/dates';
 import { grInventoryQty, grOpenQty, receivablePos } from '../../../../services/goodsReceipts';
 import { activeOptions } from '../../../../services/inventoryMasters';
+import { receivesFromVendors } from '../../../../mocks/itemMasters';
 import { isValidToday } from '../../../../services/items';
 import { isPriceListValid } from '../../../../services/priceLists';
 import { lineNet, openQty, poNumber, priceAfterDiscount } from '../../../../services/purchaseOrders';
@@ -174,7 +175,7 @@ export function GrContents({ draft, update, errors, m, ctx, onCopy }: GrSectionP
           <Combobox
             aria-label="Warehouse"
             invalid={Boolean(err(l, 'warehouse'))}
-            options={activeOptions(m.inv.warehouses, (w) => w.code, (w) => w.code, l.warehouse)}
+            options={activeOptions(m.inv.warehouses.filter((w) => receivesFromVendors(w) || w.code === l.warehouse), (w) => w.code, (w) => w.code, l.warehouse)}
             value={l.warehouse}
             onValueChange={(warehouse) => changeWarehouse(l, warehouse ?? '')}
           />

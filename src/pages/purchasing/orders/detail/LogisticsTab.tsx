@@ -6,6 +6,7 @@ import { blankPostalAddress, type PostalAddress } from '../../../../mocks/addres
 import { newAddress, type PartnerAddress } from '../../../../mocks/partners';
 import { LANGUAGES } from '../../../../mocks/purchaseOrders';
 import { getPurchasingSettings } from '../../../../services/purchaseOrders';
+import { receivesFromVendors } from '../../../../mocks/itemMasters';
 import { activeOptions } from '../../../../services/inventoryMasters';
 import { savePartner } from '../../../../services/partners';
 import { AddressFields } from '../../../../components/form/AddressFields';
@@ -60,8 +61,9 @@ export function LogisticsTab({ draft, update, m, ctx, onVendorSaved }: PoTabProp
       icon: locationIcon,
       fields: addressFields(m.company.address),
     },
+    // Vendors ship to warehouses; stores restock by transfer.
     ...m.inv.warehouses
-      .filter((w) => w.active || whText(w.code) === current)
+      .filter((w) => (w.active && receivesFromVendors(w)) || whText(w.code) === current)
       .map((w) => ({
         value: `${WH_PREFIX}${w.code}`,
         label: `${w.name}${ours === formatAddress(w.address, w.name) ? ' (default)' : ''}`,
@@ -82,9 +84,12 @@ export function LogisticsTab({ draft, update, m, ctx, onVendorSaved }: PoTabProp
     ...ourOptions(draft.shipTo),
     ...vendorCardOptions(vendor?.defaultShipToId, "vendor's ship-to"),
   ];
-  // Bill to is always the company: its registered address is the one BIR invoices must carry.
+  // Bill to is ours: the registered address (the default, as BIR invoices carry it) or an office.
   const baseBillOptions: CardFieldOption[] = [
-    { value: OURS, label: m.company.name, icon: locationIcon, fields: addressFields(m.company.address) },
+    { value: OURS, label: `${m.company.name} (default)`, icon: locationIcon, fields: addressFields(m.company.address) },
+    ...m.inv.warehouses
+      .filter((w) => w.type === 'office' && (w.active || whText(w.code) === draft.billTo))
+      .map((w) => ({ value: `${WH_PREFIX}${w.code}`, label: w.name, icon: locationIcon, fields: addressFields(w.address) })),
   ];
 
   const findPicked = (current: string, options: CardFieldOption[]) =>

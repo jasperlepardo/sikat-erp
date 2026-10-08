@@ -17,7 +17,7 @@ import { applyDownPaymentPayments } from './apDownPayments';
 import { createCollection } from './store';
 import { PURCHASING_HISTORY } from './purchasingHistory';
 
-const payments = createCollection<OutgoingPayment>('sikat-erp:outgoing-payments:v2', PURCHASING_HISTORY.payments, 'op');
+const payments = createCollection<OutgoingPayment>('sikat-erp:outgoing-payments:v5', PURCHASING_HISTORY.payments, 'op');
 
 export const listPayments = payments.list;
 export const getPayment = payments.get;

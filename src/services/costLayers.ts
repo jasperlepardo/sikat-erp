@@ -7,6 +7,7 @@
  */
 import { createCollection } from './store';
 import { listItems, saveItem } from './items';
+import { FIFO_HISTORY } from './fifoHistory';
 
 export interface CostLayer {
   id: string;
@@ -22,9 +23,41 @@ export interface CostLayer {
   unitCost: number;
   /** GR (or adjustment) document id that created this layer. */
   sourceId: string;
+  /** Units the layer started with at this warehouse (seeded and newer layers). */
+  receivedQty?: number;
+  /** The receipt the batch came in on, carried through transfers; 'opening' for opening stock. */
+  receiptId?: string;
 }
 
-const layers = createCollection<CostLayer>('sikat-erp:cost-layers:v1', [], 'cl');
+/** Which batch a posted document's units came out of, at what cost: a FIFO sale's cost breakdown. */
+export interface CostConsumption {
+  id: string;
+  /** The delivery, A/R invoice, goods return or count posting that took the units. */
+  docId: string;
+  itemId: string;
+  warehouse: string;
+  date: string;
+  qty: number;
+  unitCost: number;
+  /** The batch: its receipt ('opening' for opening stock, '' beyond the layers) and receipt date. */
+  receiptId: string;
+  receivedOn: string;
+}
+/** What `consumeLayers` took, before the document has an id to log it under. */
+export type Taken = Omit<CostConsumption, 'id' | 'docId' | 'date'>;
+
+// Seeded with the layers and consumptions the seeded history leaves (services/fifoHistory.ts).
+const layers = createCollection<CostLayer>('sikat-erp:cost-layers:v4', FIFO_HISTORY.layers, 'cl');
+const consumptions = createCollection<CostConsumption>('sikat-erp:cost-consumptions:v2', FIFO_HISTORY.consumptions, 'cc');
+
+/** A document's cost breakdown: the batches each of its items came out of. */
+export const consumptionsAt = async (itemId: string, warehouse: string) =>
+  (await consumptions.list()).filter((c) => c.itemId === itemId && c.warehouse === warehouse);
+
+/** Log what a document took, once it's saved and has an id. */
+export async function logConsumption(docId: string, date: string, taken: Taken[]) {
+  for (const t of taken) await consumptions.save({ ...t, docId, date });
+}
 
 export const listCostLayers = layers.list;
 
@@ -38,6 +71,13 @@ export async function layersFor(itemId: string): Promise<CostLayer[]> {
     .sort((a, b) => a.receivedOn.localeCompare(b.receivedOn) || a.id.localeCompare(b.id));
 }
 
+/** Every layer an item has had in one warehouse, used up or not, oldest first: its batch history. */
+export async function layerHistory(itemId: string, warehouse: string): Promise<CostLayer[]> {
+  return (await layers.list())
+    .filter((l) => l.itemId === itemId && l.warehouse === warehouse)
+    .sort((a, b) => a.receivedOn.localeCompare(b.receivedOn) || a.id.localeCompare(b.id, undefined, { numeric: true }));
+}
+
 /** Create a new layer when a FIFO item is received. */
 export async function addLayer(params: Omit<CostLayer, 'id'>): Promise<CostLayer> {
   return layers.save(params);
@@ -49,7 +89,7 @@ export async function addLayer(params: Omit<CostLayer, 'id'>): Promise<CostLayer
  * delivery line. If no layers exist (opening stock without layers), falls back to the item's
  * current `itemCost` so the journal still posts.
  */
-export async function consumeLayers(itemId: string, warehouse: string, qty: number): Promise<number> {
+export async function consumeLayers(itemId: string, warehouse: string, qty: number, log?: Taken[]): Promise<number> {
   if (qty <= 0) return 0;
   const all = (await layers.list())
     .filter((l) => l.itemId === itemId && l.warehouse === warehouse && l.qty > 0)
@@ -58,6 +98,7 @@ export async function consumeLayers(itemId: string, warehouse: string, qty: numb
   // No layers — fall back to item's stored average cost (opening balance scenario).
   if (all.length === 0) {
     const item = (await listItems()).find((i) => i.id === itemId);
+    log?.push({ itemId, warehouse, qty, unitCost: item?.itemCost ?? 0, receiptId: '', receivedOn: '' });
     return item?.itemCost ?? 0;
   }
 
@@ -70,6 +111,7 @@ export async function consumeLayers(itemId: string, warehouse: string, qty: numb
     totalCost += take * layer.unitCost;
     remaining -= take;
     await layers.save({ ...layer, qty: round4(layer.qty - take) });
+    log?.push({ itemId, warehouse, qty: take, unitCost: layer.unitCost, receiptId: layer.receiptId ?? layer.sourceId, receivedOn: layer.receivedOn });
   }
 
   // Stock exceeds known layers (e.g., opening balance topped up with FIFO later).
@@ -77,6 +119,7 @@ export async function consumeLayers(itemId: string, warehouse: string, qty: numb
   if (remaining > 0) {
     const last = all[all.length - 1];
     totalCost += remaining * last.unitCost;
+    log?.push({ itemId, warehouse, qty: remaining, unitCost: last.unitCost, receiptId: '', receivedOn: '' });
   }
 
   return round2(totalCost / qty);
@@ -122,7 +165,7 @@ export async function transferLayers(
     const take = Math.min(remaining, layer.qty);
     remaining -= take;
     await layers.save({ ...layer, qty: round4(layer.qty - take) });
-    await addLayer({ itemId, warehouse: toWarehouse, receivedOn: layer.receivedOn, qty: take, unitCost: layer.unitCost, sourceId });
+    await addLayer({ itemId, warehouse: toWarehouse, receivedOn: layer.receivedOn, qty: take, receivedQty: take, unitCost: layer.unitCost, sourceId, receiptId: layer.receiptId ?? layer.sourceId });
   }
   if (remaining > 0) {
     const item = (await listItems()).find((i) => i.id === itemId);

@@ -3,11 +3,17 @@ import { useEffect } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import { Button, Icon, Panel, PanelHeader, Tabs } from '@jasperlepardo/sikat-design-system';
 import type { ListRoute } from './MasterList';
+import { useHeaderSearchHost } from './HeaderSearch';
 
 export interface PageTab {
   value: string;
   label: string;
   description?: string;
+  /**
+   * Set on a tab that only hosts record pages for a list on another tab: it
+   * stays out of the tab bar, and its records return to the parent tab.
+   */
+  parent?: string;
   /** List tabs get their route; other tabs (profiles, testers) can ignore it. */
   Component: ComponentType<ListRoute>;
 }
@@ -37,24 +43,41 @@ export function TabbedPage({
   const navigate = useNavigate();
   const params = useParams();
   const active = tabs.find((t) => t.value === params.tab) ?? tabs[0];
-  const route: ListRoute = { basePath: `${base}/${active.value}`, recordId: params.recordId };
+  const route: ListRoute = {
+    basePath: `${base}/${active.value}`,
+    recordId: params.recordId,
+    listPath: active.parent ? `${base}/${active.parent}` : undefined,
+  };
+  const shown = active.parent ? (tabs.find((t) => t.value === active.parent) ?? active) : active;
+  const search = useHeaderSearchHost();
+  const { reset: resetSearch } = search;
+
+  // Each tab starts with an empty search.
+  useEffect(() => resetSearch(), [active.value]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Keep the URL canonical so the sidebar nav item stays highlighted.
   useEffect(() => {
     if (!params.tab) navigate(`${base}/${tabs[0].value}`, { replace: true });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // A records-only tab has no list of its own.
+  useEffect(() => {
+    if (active.parent && !params.recordId) navigate(`${base}/${active.parent}`, { replace: true });
+  }, [active.parent, params.recordId]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // A record page replaces the whole panel.
   if (params.recordId) return <active.Component {...route} />;
+  if (active.parent) return null;
 
   const isSettings = location.pathname.startsWith('/settings');
 
   return (
     <Panel className="flex-1">
       <PanelHeader
+        {...search.headerProps}
         icon={icon}
-        title={isSettings ? active.label : title}
-        subcopy={isSettings ? active.description : subcopy}
+        title={isSettings ? shown.label : title}
+        subcopy={isSettings ? shown.description : subcopy}
         actions={
           isSettings ? (
             <Button
@@ -73,15 +96,15 @@ export function TabbedPage({
           isSettings ? undefined : (
             <Tabs
               variant="outline"
-              value={active.value}
+              value={shown.value}
               onValueChange={(v) => navigate(`${base}/${v}`)}
-              items={tabs.map((t) => ({ value: t.value, label: t.label }))}
+              items={tabs.filter((t) => !t.parent).map((t) => ({ value: t.value, label: t.label }))}
             />
           )
         }
       />
       <Panel.Body className="flex flex-col gap-2">
-        <active.Component {...route} />
+        {search.provide(<active.Component {...route} />)}
       </Panel.Body>
     </Panel>
   );

@@ -291,6 +291,38 @@ export const SEED_COUNTINGS: InventoryCounting[] = [
   },
 ];
 
+
+/** A count posted without a count sheet: [itemNo, warehouse, variance in inventory units]. */
+function directPosting(id: string, docNum: number, date: string, reference: string, remarks: string, rows: [string, string, number][]): InventoryPosting {
+  return {
+    ...blankPosting(date, '18:00'),
+    id,
+    docNum,
+    countDate: date,
+    countTime: '17:30',
+    reference,
+    journalRemark: `Inventory Posting – ${reference}`,
+    remarks,
+    lines: rows.map(([itemNo, warehouse, variance], i) => {
+      const item = SEED_ITEMS.find((x) => x.itemNo === itemNo)!;
+      const row = item.warehouses.find((w) => w.code === warehouse)!;
+      return newPostingLine({
+        id: `pl-${id}-${i + 1}`,
+        itemId: item.id,
+        itemNo,
+        description: item.name,
+        warehouse,
+        bin: row.defaultBin,
+        inWhseQty: row.inStock - variance,
+        uomCode: item.inventoryUom,
+        itemsPerUnit: 1,
+        uomCountedQty: row.inStock,
+        price: item.itemCost,
+      });
+    }),
+  };
+}
+
 export const SEED_POSTINGS: InventoryPosting[] = [
   {
     ...blankPosting('2026-09-30', '18:30'),
@@ -319,4 +351,14 @@ export const SEED_POSTINGS: InventoryPosting[] = [
       }),
     ),
   },
+  // Counts posted straight to stock (no count sheet), where the item had no other movement after
+  // the count: what the system held then is today's In stock less the variance (counted = In stock).
+  directPosting('ip-002', 320002, '2026-08-31', 'CS-STORES-2026-08', 'August spot checks at two stores. Approved by the area manager.', [
+    ['ACC-PWR20', 'ST-050', -1],
+    ['ACC-CBL1M', 'ST-012', 1],
+  ]),
+  directPosting('ip-003', 320003, '2026-10-07', 'CS-MNL-2026-10-07', 'MagSafe chargers crushed on the shelf in Pasig, written off; one Lightning adapter missing at ST-008.', [
+    ['ACC-MAGSF1', 'WH-MNL', -2],
+    ['ACC-USBCL', 'ST-008', -1],
+  ]),
 ];

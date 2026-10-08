@@ -19,6 +19,7 @@ import { describeUsage, loadAccountUsage, usageCount } from '../../services/acco
 import { accounts, taxCodes } from '../../services/masterData';
 import { useAsync } from '../../services/useAsync';
 import { newId, useCollectionRows } from '../../services/useCollectionRows';
+import { useHeaderSearchHost } from '../../components/form/HeaderSearch';
 
 const BASE = '/accounting/chart-of-accounts';
 const CURRENCIES = ['PHP', 'USD', 'All currencies'];
@@ -75,6 +76,8 @@ export function ChartOfAccountsPage() {
     );
   };
   const all = rows ?? [];
+
+  const search = useHeaderSearchHost();
 
   const list = (
     <MasterList<Account>
@@ -260,13 +263,13 @@ export function ChartOfAccountsPage() {
                   value={isNew ? '—' : describeUsage(usedBy(a.code)) || 'Not used yet.'}
                   hint="Item groups, items, business partners and tax codes that post to this account."
                 />
+                {f.status('active', 'Status')}
               </FieldStack>
               <Flags>
                 {f.check('title', 'Title account (groups others; no postings)', { disabled: isDrawerTop })}
                 {f.check('contra', 'Contra account')}
                 {f.check('control', 'Control account (AR/AP)')}
                 {f.check('cash', 'Cash account')}
-                {f.check('active', 'Active')}
               </Flags>
               {errors.title || errors.control || errors.active ? (
                 <Text variant="small" tone="danger">{errors.title ?? errors.control ?? errors.active}</Text>
@@ -349,6 +352,7 @@ export function ChartOfAccountsPage() {
   return (
     <Panel className="flex-1">
       <PanelHeader
+        {...search.headerProps}
         icon="account_tree"
         title="Chart of Accounts"
         actions={
@@ -363,7 +367,7 @@ export function ChartOfAccountsPage() {
             {notice}
           </Alert>
         ) : null}
-        {list}
+        {search.provide(list)}
       </Panel.Body>
     </Panel>
   );

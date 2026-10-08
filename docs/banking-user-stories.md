@@ -1,5 +1,125 @@
 # Banking — User Stories
 
+## Definition of Terms
+
+### Accounts and postings
+
+| Term | Definition |
+|---|---|
+| **House bank account** | A bank, cash-fund, or e-wallet account that the company itself owns (e.g. a BDO current account, a GCash merchant wallet). Each one is linked to a G/L cash account. Not the same as a **partner bank account**, which belongs to a customer or vendor. |
+| **G/L account** | A general ledger account in the chart of accounts. See the Chart of Accounts user stories for the full glossary. |
+| **Journal entry (JE)** | A balanced record of debits (Dr) and credits (Cr) posted to G/L accounts. |
+| **Clearing account** | A temporary G/L account that holds amounts in transit until they are settled, e.g. *Cash on Hand – Store Collections* (cash and checks not yet deposited), *Checks Received*, or *Card and E-wallet Settlements Receivable* (card sales not yet remitted by the processor). It should return to zero once everything is settled. |
+| **Incoming Payment** | A receipt of money from a customer (cash, check, card, or transfer). |
+| **Outgoing Payment** | A disbursement of money to a vendor or another payee. |
+| **Payment means** | How a payment is made or received: cash, check, bank transfer, or card. |
+| **Running balance** | The account balance after each transaction, in date order. |
+
+### Deposits and checks
+
+| Term | Definition |
+|---|---|
+| **Deposit slip** | A bank form, and the matching document in the system, that lists the cash and checks being deposited to a bank account in one transaction. |
+| **Undeposited / pending deposit** | Cash or checks that have been received and posted but not yet deposited to the bank. |
+| **Check register** | The list of all checks the company has issued, with their status. |
+| **Check voucher** | A printed form attached to an issued check that shows the payee, amount, the invoices being paid, and approval and signature lines. In the Philippines a voucher check combines the voucher (upper portion) and the check stub (lower portion). |
+| **Void** | Cancelling an issued check (e.g. lost, damaged, stop payment). Voiding reverses the payment and re-opens the invoices it paid. |
+| **Stale-dated check** | A check presented more than 6 months (180 days) after its date. Philippine banks will not honor it. |
+| **Post-dated check (PDC)** | A check dated in the future. It cannot be deposited until that date. Common in the Philippines for installment and credit sales. |
+| **Holding / For Deposit / Deposited** | PDC statuses: not yet due; due and ready to deposit; deposited. |
+| **Bounced (dishonored) check** | A check the bank refused to pay. The customer's balance is restored and the bank's dishonor fee is charged. |
+| **DAIF / DAUD** | Common bank return reasons: *Drawn Against Insufficient Funds* and *Drawn Against Uncollected Deposits*. |
+| **Endorsed check** | A customer's check that the company signs over to a vendor as payment instead of depositing it. |
+
+### Cards and e-wallets
+
+| Term | Definition |
+|---|---|
+| **Card brand** | The card network or e-wallet used for a payment: Visa, Mastercard, Amex, GCash, Maya, etc. |
+| **Card processor / acquirer** | The bank or company that processes card payments for the store and remits the proceeds (e.g. BDO Merchant Services). |
+| **Card settlement** | Recording the processor's remittance of a batch of card sales: the gross sales, less the merchant discount fee, equals the net amount credited to the bank. |
+| **Merchant discount fee (MDR)** | The percentage the processor deducts from each card sale as its fee. Booked as an expense. |
+| **Voucher number** | The approval or reference number printed on a card terminal slip. |
+
+### Payments and settings
+
+| Term | Definition |
+|---|---|
+| **Payment wizard / payment run** | A batch process that selects open vendor invoices by due date and creates the outgoing payments in one go. |
+| **Payment order** | A scheduled or recurring instruction to pay a payee (e.g. the monthly SSS remittance). |
+| **SSS / PhilHealth / Pag-IBIG** | Philippine government agencies for social security, health insurance, and housing fund contributions. Employers must remit contributions to each by fixed monthly deadlines. |
+| **Payment terms** | The rule for when an invoice is due, e.g. *Net 30* (due 30 days after the invoice date) or *2/10 n/30* (2% discount if paid within 10 days, otherwise the full amount is due in 30 days). |
+| **Installments** | An invoice balance split into several partial payments with separate due dates. |
+| **Holiday calendar** | The list of non-working days used to move due dates to the next working day. **Regular holidays** and **special non-working days** are set by Philippine law. **RA 9492** is the law that sets the fixed national holidays. **Local holidays** apply to one city or province. |
+| **Dunning** | A process of escalating reminders to customers with overdue invoices. Each **dunning level** sets the days overdue, the letter text, and any fee. |
+| **SWIFT code** | An international code that identifies a bank for cross-border wire transfers. |
+
+### Reconciliation
+
+| Term | Definition |
+|---|---|
+| **Bank reconciliation** | Matching the bank statement against the company's books to explain every difference between the two balances. |
+| **Bank statement line** | One transaction on the bank's statement: date, description, debit, credit, balance. |
+| **Auto-match / tolerance** | The system pairs statement lines with book entries by amount and date. The tolerance is how far apart the dates (or amounts) may be and still match. |
+| **Outstanding check** | A check recorded in the books that the bank has not yet paid. |
+| **Deposit in transit** | A deposit recorded in the books that does not yet appear on the bank statement. |
+| **Reconciling item** | A bank-side entry not yet in the books, such as a bank charge or interest earned. It is recorded with a journal entry. |
+| **Adjusted balance** | The bank balance and the book balance after the items above are applied. The two must be equal for the reconciliation to balance. |
+| **Lock (reconciliation)** | Freezes a completed reconciliation so that matched entries cannot be changed. |
+
+### Petty cash
+
+| Term | Definition |
+|---|---|
+| **Petty cash fund** | A small amount of cash kept on hand for minor expenses. |
+| **Imprest / fixed float** | The fixed amount the petty cash fund is restored to after each replenishment. |
+| **Custodian** | The person responsible for the petty cash fund. |
+| **Petty cash voucher** | A record of one petty cash expense: payee, purpose, amount, expense account, and receipt. |
+| **Replenishment** | Reimbursing the fund for the vouchers paid out, which brings it back to its fixed float and books the expenses. |
+
+### BIR withholding tax
+
+| Term | Definition |
+|---|---|
+| **BIR** | Bureau of Internal Revenue, the Philippine tax authority. |
+| **EWT** | Expanded Withholding Tax: a percentage of a supplier payment that the payer withholds and remits to the BIR as an advance on the supplier's income tax. |
+| **FWT** | Final Withholding Tax: withholding that fully settles the payee's tax on that income (e.g. payments to non-residents). |
+| **CWT** | Creditable Withholding Tax: tax withheld from the company by its customers. The company can credit it against its own income tax. |
+| **Withholding agent / Top withholding agent (TWA)** | A taxpayer required to withhold tax on its payments. **Top withholding agents** are large taxpayers the BIR designates to withhold on purchases of goods and services from all regular suppliers. |
+| **ATC** | Alphanumeric Tax Code: the BIR code that identifies the type of income payment and its withholding rate (e.g. WC158). |
+| **BIR Form 2307** | Certificate of Creditable Tax Withheld at Source. The payer issues it to the payee as proof of the tax withheld. |
+| **0619-E / 0619-F** | Monthly remittance forms for EWT and FWT (filed for the first two months of each quarter). |
+| **1601-EQ / 1601-FQ** | Quarterly remittance returns for EWT and FWT. |
+| **eFPS** | Electronic Filing and Payment System, the BIR's online portal for filing returns and paying taxes. |
+| **RR 11-2018** | BIR Revenue Regulations No. 11-2018, which sets the current withholding tax rules and rates. |
+| **TIN** | Taxpayer Identification Number. |
+| **ITR** | Annual Income Tax Return. |
+
+### Financing and transfers
+
+| Term | Definition |
+|---|---|
+| **Factoring** | Selling receivables (open AR invoices) to a financing company for cash now, at a discount. |
+| **Face value** | The total amount of the invoices sold. |
+| **Advance rate** | The percentage of face value the factor pays upfront (e.g. 80%). |
+| **Factoring fee** | The factor's charge, booked as an expense. |
+| **Reserve** | The part of the face value held back by the factor (face value − advance). It is remitted to the company, less fees, once the customers pay. |
+| **Interbank transfer** | Moving money between two of the company's own bank accounts. |
+| **FX gain/loss** | The gain or loss from exchange-rate differences when converting between currencies. |
+
+### Electronic payments
+
+| Term | Definition |
+|---|---|
+| **EFT** | Electronic Funds Transfer. |
+| **InstaPay** | A Philippine real-time electronic transfer service for smaller amounts, processed one transaction at a time. |
+| **PESONet** | A Philippine batch electronic transfer service for larger amounts, credited the same or next banking day. |
+| **Batch payment file** | A file in the bank's required format that lists many transfers, uploaded to the bank's online portal in a single step. |
+| **Cash position** | The total funds available across all house bank accounts at a point in time. |
+| **Cash flow forecast** | The expected inflows (receivables, maturing PDCs) minus outflows (payables, scheduled payments, tax remittances) over a future period. |
+
+---
+
 ## 1. House Bank Accounts
 
 **US-BNK-001**

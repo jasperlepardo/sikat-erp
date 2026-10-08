@@ -9,12 +9,12 @@ import { todayISO } from './dates';
 import { applyReturnedQty, applyStock, expenseAccountFor, frozenLines, grInventoryQty, grOpenQty, listGoodsReceipts } from './goodsReceipts';
 import { inventoryAccountFor, type JournalLine } from './inventoryTransfers';
 import { listItems, saveItem } from './items';
-import { consumeLayers, restoreLayer, updateFifoCosts } from './costLayers';
+import { consumeLayers, logConsumption, restoreLayer, updateFifoCosts, type Taken } from './costLayers';
 import { poTotals } from './purchaseOrders';
 import { createCollection } from './store';
 import { PURCHASING_HISTORY } from './purchasingHistory';
 
-const returns = createCollection<GoodsReturn>('sikat-erp:goods-returns:v2', PURCHASING_HISTORY.returns, 'rt');
+const returns = createCollection<GoodsReturn>('sikat-erp:goods-returns:v4', PURCHASING_HISTORY.returns, 'rt');
 
 export const listGoodsReturns = returns.list;
 export const getGoodsReturn = returns.get;
@@ -142,12 +142,13 @@ export async function addGoodsReturn(input: ReturnInput): Promise<GoodsReturn> {
 
   // Lines entered by hand go out at the item's cost; FIFO items consume from the oldest layer.
   const fifoItemIds = new Set<string>();
+  const taken: Taken[] = [];
   const lines = await Promise.all(input.lines.map(async (l) => {
     if (l.unitCostLc) return l;
     const item = items.find((i) => i.id === l.itemId);
     if (item?.valuationMethod === 'FIFO' && item.inventoryItem) {
       fifoItemIds.add(l.itemId);
-      return { ...l, unitCostLc: await consumeLayers(l.itemId, l.warehouse, grInventoryQty(l)) };
+      return { ...l, unitCostLc: await consumeLayers(l.itemId, l.warehouse, grInventoryQty(l), taken) };
     }
     return { ...l, unitCostLc: item?.itemCost ?? 0 };
   }));
@@ -161,7 +162,9 @@ export async function addGoodsReturn(input: ReturnInput): Promise<GoodsReturn> {
   const series = seriesLookup(returnSeries, input.seriesId, RETURN_SERIES);
   const docNum = Math.max(series.firstNo - 1, ...all.filter((r) => r.seriesId === series.id).map((r) => r.docNum)) + 1;
   const status = lines.some(needsCredit) ? 'Open' : 'Closed';
-  return returns.save({ ...input, lines, docNum, status, closeDate: status === 'Closed' ? todayISO() : '' });
+  const saved = await returns.save({ ...input, lines, docNum, status, closeDate: status === 'Closed' ? todayISO() : '' });
+  await logConsumption(saved.id, saved.postingDate, taken);
+  return saved;
 }
 
 /** Cancel: the stock comes back in at the cost it went out at, and the base lines are open again. */

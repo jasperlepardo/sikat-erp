@@ -121,16 +121,39 @@ export const blankUom = (code = ''): UnitOfMeasure => ({
   id: `uom-${code}`, code, name: '', length: 0, width: 0, height: 0, volume: 0, lengthUnit: 'cm', weight: 0, weightUnit: 'kg', active: true,
 });
 
+/**
+ * What a location is for. Offices bill: purchase orders can use them as Bill To and they
+ * hold no stock. Warehouses receive vendor shipments (Ship To) and keep stock in bins.
+ * Stores hold stock without bins and get it by inventory transfer.
+ */
+export type LocationType = 'office' | 'warehouse' | 'store';
+
+export const LOCATION_TYPES: { value: LocationType; label: string; hint: string }[] = [
+  { value: 'office', label: 'Office', hint: 'For billing: a Bill To on purchase orders. Holds no stock.' },
+  { value: 'warehouse', label: 'Warehouse', hint: 'Receives vendor shipments (Ship To) and keeps stock in bin locations.' },
+  { value: 'store', label: 'Store', hint: 'Holds and sells stock without bins; restocked by inventory transfer.' },
+];
+
+/** A location: an office, warehouse or store. Documents refer to it by `code`. */
 export interface Warehouse {
   id: string;
   code: string;
   name: string;
-  /** Where goods are delivered: the Ship To of purchase orders for this warehouse. */
+  type: LocationType;
+  /** The location's address: Ship To for a warehouse, Bill To for an office. */
   address: PostalAddress;
-  /** Stock is kept in bin locations (Inventory › Warehouses & Bins › Bin locations). */
+  /** Stock is kept in bin locations. Follows the type: only warehouses use bins. */
   binEnabled: boolean;
   active: boolean;
 }
+
+/** Whether items can be stocked here (warehouses and stores). */
+export const holdsStock = (w: Pick<Warehouse, 'type'>) => w.type !== 'office';
+/** Whether vendors deliver here: purchase and goods receipt lines, and Ship To. */
+export const receivesFromVendors = (w: Pick<Warehouse, 'type'>) => w.type === 'warehouse';
+/** Where vendors deliver an item by default: the first of its locations that receives shipments. */
+export const vendorDeliveryLocation = (codes: string[], all: readonly Warehouse[], fallback = 'WH-MNL') =>
+  codes.find((c) => all.some((w) => w.code === c && receivesFromVendors(w))) ?? fallback;
 
 export interface Manufacturer {
   id: string;
@@ -216,7 +239,8 @@ export const SEED_ITEM_GROUPS: ItemGroup[] = [
   group('Apple Watch', 'AW', 'Serial/Batch', ...MERCH),
   group('AirPods', 'APD', 'Serial/Batch', ...MERCH),
   group('Home & TV', 'HOM', 'Serial/Batch', ...MERCH),
-  group('Accessories', 'ACC', 'Moving Average', ...MERCH),
+  // FIFO: accessories come from several distributors at prices that move batch to batch.
+  group('Accessories', 'ACC', 'FIFO', ...MERCH),
   group('AppleCare', 'ACP', 'Moving Average', ...NON_STOCK, SERVICE_TAX),
   group('Gift Certificates', 'GC', 'Moving Average', '', '5030', '2160', SERVICE_TAX),
   group('Services', 'SVC', 'Moving Average', ...NON_STOCK, SERVICE_TAX),
@@ -241,16 +265,17 @@ const ph = (
     province: PH_PROVINCE[provinceCode], provinceCode, cityCode, barangayCode,
   });
 
-// Store addresses per powermaccenter.com/pages/store-list (Oct 2026). WH-MNL: the warehouse address the
+// HQ: the company's registered address (mocks/companies.ts). Store addresses per powermaccenter.com/pages/store-list (Oct 2026). WH-MNL: the warehouse address the
 // user supplied; its barangay isn't confirmed, so it's left blank (1600 is Pasig's general ZIP).
 const CORE_WAREHOUSES: Warehouse[] = [
-  { id: 'wh-MNL', code: 'WH-MNL', name: 'Pasig warehouse', address: ph('Pasig', '', '155 Dr. Sixto Antonio Ave.', '1600', '1300', '137403', ''), binEnabled: true, active: true },
-  { id: 'wh-CEB', code: 'WH-CEB', name: 'Cebu store (Robinsons Galleria)', address: ph('Cebu', 'Tejero', '1/L Robinsons Galleria Cebu, Maxilom-Osmeña Blvd., 13th Ave. cor. Benedict St.', '6000', '0722', '072217', '072217083'), binEnabled: false, active: true },
-  { id: 'wh-DVO', code: 'WH-DVO', name: 'Davao store (Abreeza)', address: ph('Davao', 'Barangay 20-B', '2nd Flr., Abreeza Mall, J.P. Laurel Ave., Bajada', '8000', '1124', '112402', '112402153'), binEnabled: false, active: true },
-  { id: 'wh-PRD', code: 'WH-PRD', name: 'Mobile Care (Greenbelt 3)', address: ph('Makati', 'San Lorenzo', '2/F Greenbelt 3, Greenbelt Complex, Ayala Center', '1223', '1300', '137602', '137602025'), binEnabled: false, active: true },
+  { id: 'loc-HQ', code: 'HQ', name: 'Head office (Kapitolyo)', type: 'office', address: ph('Pasig', 'Kapitolyo', 'Kapitolyo Bldg., 7A 2nd St.', '1600', '1300', '137403', '137403009'), binEnabled: false, active: true },
+  { id: 'wh-MNL', code: 'WH-MNL', name: 'Pasig warehouse', type: 'warehouse', address: ph('Pasig', '', '155 Dr. Sixto Antonio Ave.', '1600', '1300', '137403', ''), binEnabled: true, active: true },
+  { id: 'wh-CEB', code: 'WH-CEB', name: 'Cebu store (Robinsons Galleria)', type: 'store', address: ph('Cebu', 'Tejero', '1/L Robinsons Galleria Cebu, Maxilom-Osmeña Blvd., 13th Ave. cor. Benedict St.', '6000', '0722', '072217', '072217083'), binEnabled: false, active: true },
+  { id: 'wh-DVO', code: 'WH-DVO', name: 'Davao store (Abreeza)', type: 'store', address: ph('Davao', 'Barangay 20-B', '2nd Flr., Abreeza Mall, J.P. Laurel Ave., Bajada', '8000', '1124', '112402', '112402153'), binEnabled: false, active: true },
+  { id: 'wh-PRD', code: 'WH-PRD', name: 'Mobile Care (Greenbelt 3)', type: 'store', address: ph('Makati', 'San Lorenzo', '2/F Greenbelt 3, Greenbelt Complex, Ayala Center', '1223', '1300', '137602', '137602025'), binEnabled: false, active: true },
 ];
 
-/** The core warehouses, then every store (mocks/storeWarehouses.ts). */
+/** The head office and core locations, then every store (mocks/storeWarehouses.ts). */
 export const SEED_WAREHOUSES: Warehouse[] = [...CORE_WAREHOUSES, ...SEED_STORE_WAREHOUSES];
 
 const mfr = (code: string, name: string, country: string, contactPerson = '', email = '', phone = ''): Manufacturer => ({

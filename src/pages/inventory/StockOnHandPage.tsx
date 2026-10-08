@@ -3,14 +3,12 @@ import { useNavigate } from 'react-router';
 import {
   Card,
   Combobox,
-  Icon,
   Panel,
   PanelHeader,
   Select,
   Table,
   TableStatus,
   Text,
-  TextField,
   type TableColumn,
 } from '@jasperlepardo/sikat-design-system';
 import type { Item } from '../../mocks/items';
@@ -236,18 +234,16 @@ export function StockOnHandPage() {
       <PanelHeader
         icon="inventory"
         title={presets.menu}
+        showSearch
+        searchLabel="Search stock"
+        searchPlaceholder="Search by item no., name, warehouse or bin"
+        searchValue={query}
+        onSearchChange={resetPage(setQuery)}
       />
       <Panel.Body className="flex flex-col gap-2">
         {presets.bar(
-          <div className="grid grid-cols-1 gap-2 md:grid-cols-[1fr_auto_auto]">
-            <TextField
-              aria-label="Search stock"
-              placeholder="Search by item no., name, warehouse or bin"
-              leadingIcon={<Icon size={20}>search</Icon>}
-              value={query}
-              onChange={(e) => resetPage(setQuery)(e.currentTarget.value)}
-            />
-            <div className="md:w-64">
+          <div className="flex gap-2">
+            <div className="w-64">
               <Combobox
                 aria-label="Warehouse"
                 placeholder="All warehouses"
@@ -259,7 +255,7 @@ export function StockOnHandPage() {
             </div>
             <Select
               aria-label="Item group"
-              className="md:w-44"
+              className="w-44"
               options={[{ value: ALL_GROUPS, label: 'All item groups' }, ...(inv?.groups ?? []).map((g) => ({ value: g.name, label: g.name }))]}
               value={group}
               onValueChange={resetPage(setGroup)}

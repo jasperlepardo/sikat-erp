@@ -130,7 +130,7 @@ export function CurrenciesTab(route: ListRoute) {
                 : f.pick('rateSource', 'Rate source', ['BSP RERB', 'Manual'], {
                     hint: 'BSP RERB rates are imported from the daily bulletin.',
                   })}
-              {f.check('active', 'Active', { disabled: c.isLocal })}
+              {f.status('active', 'Status', { disabled: c.isLocal })}
               {f.check('isSystem', 'System currency (second reporting currency)', { disabled: c.isLocal })}
             </FieldStack>
             {errors.active ? (

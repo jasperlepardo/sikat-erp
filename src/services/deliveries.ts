@@ -9,12 +9,15 @@ import { frozenStock } from './inventoryCountings';
 import { itemGroups } from './inventoryMasters';
 import { inventoryAccountFor, type JournalLine } from './inventoryTransfers';
 import { listItems, saveItem } from './items';
-import { consumeLayers, restoreLayer, updateFifoCosts } from './costLayers';
+import { consumeLayers, logConsumption, restoreLayer, updateFifoCosts, type Taken } from './costLayers';
 import { postDocumentEntry, reverseDocumentEntry } from './journalEntries';
 import { applyDelivered, listSalesOrders, openQty as soOpenQty, soNumber, soTotals } from './salesOrders';
 import { createCollection } from './store';
+import { FIFO_HISTORY } from './fifoHistory';
 
-const deliveries = createCollection<Delivery>('sikat-erp:deliveries:v3', SEED_DELIVERIES, 'dn');
+// Seeded deliveries carry the FIFO cost their lines consumed (services/fifoHistory.ts).
+const SEEDED = SEED_DELIVERIES.map((d) => ({ ...d, lines: d.lines.map((l) => (FIFO_HISTORY.costs.has(l.id) ? { ...l, unitCostLc: FIFO_HISTORY.costs.get(l.id)! } : l)) }));
+const deliveries = createCollection<Delivery>('sikat-erp:deliveries:v8', SEEDED, 'dn');
 
 export const listDeliveries = deliveries.list;
 export const getDelivery = deliveries.get;
@@ -143,11 +146,12 @@ export async function addDelivery(input: DnInput, fx: number): Promise<Delivery>
 
   // FIFO: consume layers per item+warehouse to get the true FIFO cost for each line.
   const fifoCosts = new Map<string, number>();
+  const taken: Taken[] = [];
   for (const [key, { qty }] of qtyByStock(input.lines)) {
     const [itemId, warehouse] = key.split('@');
     const item = items.find((i) => i.id === itemId);
     if (item?.valuationMethod === 'FIFO' && item.inventoryItem) {
-      fifoCosts.set(key, await consumeLayers(itemId, warehouse, qty));
+      fifoCosts.set(key, await consumeLayers(itemId, warehouse, qty, taken));
     }
   }
   const lines = input.lines.map((l) => ({
@@ -172,6 +176,7 @@ export async function addDelivery(input: DnInput, fx: number): Promise<Delivery>
   const all = await deliveries.list();
   const docNum = Math.max(series.firstNo - 1, ...all.filter((d) => d.seriesId === series.id).map((d) => d.docNum)) + 1;
   const saved = await deliveries.save({ ...input, lines, docNum, status: 'Open', fxRate: fx });
+  await logConsumption(saved.id, saved.postingDate, taken);
   await postDocumentEntry({
     origin: 'DN',
     originNo: docNum,

@@ -12,7 +12,6 @@ import {
   TableLink,
   TableStatus,
   TableSubcontent,
-  TextField,
   type TableColumn,
   Text,
 } from '@jasperlepardo/sikat-design-system';
@@ -118,6 +117,14 @@ export function PaymentList() {
   return (
     <Panel className="flex-1">
       <PanelHeader
+        showSearch
+        searchLabel="Search payments"
+        searchPlaceholder="Search by payment no., payee, reference or invoice no."
+        searchValue={query}
+        onSearchChange={(value) => {
+          setQuery(value);
+          setPage(1);
+        }}
         icon="payments"
         title={presets.menu}
         actions={
@@ -132,18 +139,7 @@ export function PaymentList() {
             {notice}
           </Alert>
         ) : null}
-        {presets.bar(
-          <TextField
-            aria-label="Search payments"
-            placeholder="Search by payment no., payee, reference or invoice no."
-            leadingIcon={<Icon size={20}>search</Icon>}
-            value={query}
-            onChange={(e) => {
-              setQuery(e.currentTarget.value);
-              setPage(1);
-            }}
-          />,
-        )}
+        {presets.bar(null)}
         <Card className={fillCardClass(rows.slice((page - 1) * pageSize, page * pageSize).length)}>
           {payments ? (
             rows.length || payments.length ? (

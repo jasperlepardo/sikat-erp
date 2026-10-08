@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Button, Dropdown, DropdownItem, Icon } from '@jasperlepardo/sikat-design-system';
+import { Button, Dropdown, DropdownItem, Icon, type ButtonProps } from '@jasperlepardo/sikat-design-system';
 
 export interface MoreMenuItem {
   label: string;
@@ -7,8 +7,16 @@ export interface MoreMenuItem {
   onSelect: () => void;
 }
 
-/** "You can also" — related actions for the record, in the page header. */
-export function MoreMenu({ items }: { items: MoreMenuItem[] }) {
+/** "You can also" — related actions for the record, in the page header. Other menus pass their own `label` and button look. */
+export function MoreMenu({
+  items,
+  label = 'You can also',
+  button,
+}: {
+  items: MoreMenuItem[];
+  label?: string;
+  button?: Partial<ButtonProps>;
+}) {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -33,9 +41,10 @@ export function MoreMenu({ items }: { items: MoreMenuItem[] }) {
         aria-haspopup="menu"
         aria-expanded={open}
         trailingIcon={<Icon size={20}>keyboard_arrow_down</Icon>}
+        {...button}
         onClick={() => setOpen(!open)}
       >
-        You can also
+        {label}
       </Button>
       {open ? (
         <Dropdown role="menu" style={{ left: 'auto', right: 0, width: 240 }}>

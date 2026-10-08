@@ -12,7 +12,6 @@ import {
   TableLink,
   TableStatus,
   TableSubcontent,
-  TextField,
   type TableColumn,
   Text,
 } from '@jasperlepardo/sikat-design-system';
@@ -124,6 +123,14 @@ export function InventoryTransferList() {
   return (
     <Panel className="flex-1">
       <PanelHeader
+        showSearch
+        searchLabel="Search transfers"
+        searchPlaceholder="Search by transfer no., warehouse, item or remarks"
+        searchValue={query}
+        onSearchChange={(value) => {
+          setQuery(value);
+          setPage(1);
+        }}
         icon="move_down"
         title={presets.menu}
         actions={
@@ -144,18 +151,7 @@ export function InventoryTransferList() {
             {notice}
           </Alert>
         ) : null}
-        {presets.bar(
-          <TextField
-            aria-label="Search transfers"
-            placeholder="Search by transfer no., warehouse, item or remarks"
-            leadingIcon={<Icon size={20}>search</Icon>}
-            value={query}
-            onChange={(e) => {
-              setQuery(e.currentTarget.value);
-              setPage(1);
-            }}
-          />,
-        )}
+        {presets.bar(null)}
         <Card className={fillCardClass(onPage.length)}>
           {transfers ? (
             <Table

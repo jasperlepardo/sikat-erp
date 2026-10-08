@@ -70,7 +70,7 @@ export function DocumentSeriesTab(route: ListRoute) {
                 })
               : null}
             {f.check('manual', 'Manual numbering')}
-            {f.check('active', 'Active')}
+            {f.status('active', 'Status')}
           </FieldStack>
         );
       }}

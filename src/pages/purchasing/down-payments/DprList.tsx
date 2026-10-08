@@ -13,7 +13,6 @@ import {
   TableStatus,
   TableSubcontent,
   Text,
-  TextField,
   type TableColumn,
 } from '@jasperlepardo/sikat-design-system';
 import { dateField, linesField, masterField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
@@ -101,6 +100,14 @@ export function DprList() {
   return (
     <Panel className="flex-1">
       <PanelHeader
+        showSearch
+        searchLabel="Search down payment requests"
+        searchPlaceholder="Search by no., vendor, vendor ref., PO no. or item"
+        searchValue={query}
+        onSearchChange={(value) => {
+          setQuery(value);
+          setPage(1);
+        }}
         icon="request_quote"
         title={presets.menu}
         actions={
@@ -112,18 +119,7 @@ export function DprList() {
       />
       <Panel.Body className="flex flex-col gap-2">
         {notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : null}
-        {presets.bar(
-          <TextField
-            aria-label="Search down payment requests"
-            placeholder="Search by no., vendor, vendor ref., PO no. or item"
-            leadingIcon={<Icon size={20}>search</Icon>}
-            value={query}
-            onChange={(e) => {
-              setQuery(e.currentTarget.value);
-              setPage(1);
-            }}
-          />,
-        )}
+        {presets.bar(null)}
         <Card className={fillCardClass(rows.slice((page - 1) * pageSize, page * pageSize).length)}>
           {!requests ? (
             <Text tone="muted" className="p-4">Loading down payment requests…</Text>

@@ -19,7 +19,7 @@ import { lineNet, listPurchaseOrders, openQty, poTotals, priceAfterDiscount, sav
 import { createCollection } from './store';
 import { PURCHASING_HISTORY } from './purchasingHistory';
 
-const receipts = createCollection<GoodsReceipt>('sikat-erp:goods-receipts:v4', PURCHASING_HISTORY.receipts, 'gr');
+const receipts = createCollection<GoodsReceipt>('sikat-erp:goods-receipts:v7', PURCHASING_HISTORY.receipts, 'gr');
 
 export const listGoodsReceipts = receipts.list;
 export const getGoodsReceipt = receipts.get;
@@ -243,7 +243,7 @@ export async function addGoodsReceipt(input: GrInput, fx: number): Promise<Goods
   for (const l of lines) {
     const item = items.find((i) => i.id === l.itemId);
     if (item?.valuationMethod === 'FIFO' && item.inventoryItem && grInventoryQty(l) > 0) {
-      await addLayer({ itemId: l.itemId, warehouse: l.warehouse, receivedOn: saved.postingDate, qty: grInventoryQty(l), unitCost: l.unitCostLc, sourceId: saved.id });
+      await addLayer({ itemId: l.itemId, warehouse: l.warehouse, receivedOn: saved.postingDate, qty: grInventoryQty(l), receivedQty: grInventoryQty(l), unitCost: l.unitCostLc, sourceId: saved.id, receiptId: saved.id });
       fifoItemIds.add(l.itemId);
     }
   }

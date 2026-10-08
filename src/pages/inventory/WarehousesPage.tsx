@@ -1,118 +1,128 @@
-import { useNavigate } from 'react-router';
-import { Link, Text } from '@jasperlepardo/sikat-design-system';
-import { Fields, Flags, bind } from '../../components/form/fields';
+import { useSearchParams } from 'react-router';
+import { Text } from '@jasperlepardo/sikat-design-system';
+import { FieldStack, bind } from '../../components/form/fields';
 import { MasterList, type ListRoute } from '../../components/form/MasterList';
-import { useCollection } from '../../components/form/MasterLookup';
 import { TabbedPage, type PageTab } from '../../components/form/TabbedPage';
 import { AddressFields } from '../../components/form/AddressFields';
 import { addressSummary, blankPostalAddress } from '../../mocks/address';
-import type { Warehouse } from '../../mocks/itemMasters';
-import { binLocations, warehouses } from '../../services/inventoryMasters';
+import { LOCATION_TYPES, type LocationType, type Warehouse } from '../../mocks/itemMasters';
+import { warehouses } from '../../services/inventoryMasters';
+import { listItems } from '../../services/items';
+import { useAsync } from '../../services/useAsync';
 import { newId, useCollectionRows } from '../../services/useCollectionRows';
 import { statusColumn, uniqueRequired } from '../settings/inventory/lists';
 import { BinLocationsTab } from './bins/BinLocationsTab';
+import { LocationsTab } from './bins/LocationsTab';
+import { WarehouseContents } from './bins/WarehouseContents';
 import { SublevelCodesTab } from './bins/sublevels';
 
 const BASE = '/inventory/warehouses-and-bins';
 
 const TABS: PageTab[] = [
-  { value: 'warehouses', label: 'Warehouses', Component: WarehousesTab },
-  { value: 'bin-locations', label: 'Bin locations', Component: BinLocationsTab },
+  { value: 'locations', label: 'Locations', Component: LocationsTab },
+  // Locations and bins are listed on Locations; these tabs hold their record pages.
+  { value: 'warehouses', label: 'Locations', parent: 'locations', Component: WarehousesTab },
+  { value: 'bin-locations', label: 'Bin locations', parent: 'locations', Component: BinLocationsTab },
   { value: 'sublevel-codes', label: 'Sublevel codes', Component: SublevelCodesTab },
 ];
 
-/** Inventory › Warehouses & Bins: warehouses, their bin locations and the codes bins are addressed by. */
+/** Inventory › Warehouses & Bins: offices, warehouses (with their bin locations) and stores, and the codes bins are addressed by. */
 export function WarehousesPage() {
   return (
     <TabbedPage
       base={BASE}
       icon="warehouse"
       title="Warehouses & Bins"
-      subcopy="Where stock is kept. Bin-enabled warehouses hold stock in bin locations, and items stocked there need a default bin."
+      subcopy="Offices bill, warehouses receive vendor shipments into bin locations, and stores sell stock restocked by transfer."
       tabs={TABS}
     />
   );
 }
 
+/** A location's record page (office, warehouse or store); the Locations tab lists them. */
 function WarehousesTab(route: ListRoute) {
-  const navigate = useNavigate();
+  // "New ▾" on Locations passes the type to start with.
+  const [params] = useSearchParams();
+  const newType = (LOCATION_TYPES.find((t) => t.value === params.get('type'))?.value ?? 'warehouse') as LocationType;
   const { rows, save, setActive } = useCollectionRows(warehouses);
-  const bins = useCollection(binLocations) ?? [];
-  const binCount = (w: Warehouse) => bins.filter((b) => b.warehouse === w.code).length;
+  const items = useAsync(listItems, []) ?? [];
+  const stockedItems = (w: Warehouse) => items.filter((i) => i.warehouses.some((x) => x.code === w.code)).length;
+  const typeLabel = (t: LocationType) => LOCATION_TYPES.find((x) => x.value === t)?.label ?? t;
   return (
     <MasterList<Warehouse>
       {...route}
-      icon="warehouse"
-      title="Warehouses"
-      noun="warehouse"
+      icon="location_on"
+      title="Locations"
+      noun="location"
+      related={(w, isNew) => <WarehouseContents warehouse={w} isNew={isNew} base={BASE} />}
       rows={rows}
       onSetActive={setActive}
       columns={[
         { key: 'code', header: 'Code', cell: (w) => w.code },
         { key: 'name', header: 'Name', cell: (w) => w.name },
+        { key: 'type', header: 'Type', cell: (w) => typeLabel(w.type) },
         { key: 'address', header: 'Address', cell: (w) => addressSummary(w.address) || '—' },
-        {
-          key: 'bins',
-          header: 'Bins',
-          cell: (w) => (w.binEnabled ? `${binCount(w)} bin${binCount(w) === 1 ? '' : 's'}` : 'No bin management'),
-        },
         statusColumn<Warehouse>(),
       ]}
       sortValue={(w, key) =>
-        key === 'bins'
-          ? w.binEnabled
-            ? binCount(w)
-            : -1
-          : key === 'active'
-            ? Number(w.active)
-            : key === 'address'
-              ? addressSummary(w.address).toLowerCase()
-              : String(w[key as keyof Warehouse] ?? '').toLowerCase()
+        key === 'active'
+          ? Number(w.active)
+          : key === 'address'
+            ? addressSummary(w.address).toLowerCase()
+            : String(w[key as keyof Warehouse] ?? '').toLowerCase()
       }
-      searchText={(w) => `${w.code} ${w.name} ${addressSummary(w.address)}`}
-      blank={() => ({ id: newId('wh'), code: '', name: '', address: blankPostalAddress(), binEnabled: false, active: true })}
+      searchText={(w) => `${w.code} ${w.name} ${typeLabel(w.type)} ${addressSummary(w.address)}`}
+      blank={() => ({
+        id: newId('wh'),
+        code: '',
+        name: '',
+        type: newType,
+        address: blankPostalAddress(),
+        binEnabled: newType === 'warehouse',
+        active: true,
+      })}
       label={(w) => `${w.code} · ${w.name}`}
       validate={(w, all) => {
         const e: Record<string, string> = {};
         uniqueRequired(e, w, all, 'code', 'Code');
         if (!w.name.trim()) e.name = 'Name is required.';
+        const stocked = stockedItems(w);
+        if (w.type === 'office' && stocked)
+          e.type = `${stocked} item${stocked === 1 ? ' is' : 's are'} stocked here — offices hold no stock. Remove ${w.code} from them first.`;
         return e;
       }}
-      onSave={(w) => save({ ...w, code: w.code.trim().toUpperCase() })}
+      onSave={(w) => save({ ...w, code: w.code.trim().toUpperCase(), binEnabled: w.type === 'warehouse' })}
       editor={(w, update, errors, isNew) => {
         const f = bind(w, update);
-        const count = binCount(w);
         return (
           <>
-            <Fields cols={3}>
+            <FieldStack>
               {f.text('code', 'Code', {
                 required: true,
                 error: errors.code,
                 placeholder: 'e.g. WH-CDO',
                 disabled: !isNew,
-                hint: !isNew ? "Can't change once saved — items refer to it. Deactivate instead." : undefined,
+                hint: !isNew ? "Can't change once saved — documents refer to it. Deactivate instead." : undefined,
               })}
               {f.text('name', 'Name', { required: true, error: errors.name })}
-            </Fields>
+              {f.choose('type', 'Type', LOCATION_TYPES.map(({ value, label }) => ({ value, label })), {
+                required: true,
+                error: errors.type,
+                hint: LOCATION_TYPES.find((t) => t.value === w.type)?.hint,
+              })}
+              <AddressFields value={w.address} onChange={(p) => update({ address: { ...w.address, ...p } })} unwrapped />
+              {f.status('active', 'Status')}
+            </FieldStack>
             <Text variant="small" tone="muted">
-              Address: where goods are delivered. Purchase orders for this warehouse print it as Ship To.
+              {w.type === 'office'
+                ? 'Address: purchase orders can print it as Bill To.'
+                : w.type === 'warehouse'
+                  ? 'Address: where vendors deliver. Purchase orders for this warehouse print it as Ship To.'
+                  : 'Address: where the store is. Stock arrives by inventory transfer.'}
             </Text>
-            <Fields cols={3}>
-              <AddressFields value={w.address} onChange={(p) => update({ address: { ...w.address, ...p } })} />
-            </Fields>
-            <Flags>
-              {f.check('binEnabled', 'Bin management (items need a default bin here)')}
-              {f.check('active', 'Active')}
-            </Flags>
-            {w.binEnabled ? (
+            {w.type === 'warehouse' ? (
               <Text variant="small" tone="muted">
-                {isNew ? 'Save the warehouse, then add its bins' : count ? `${count} bin location${count === 1 ? '' : 's'} — manage them` : 'No bins yet — add them'}{' '}
-                on the{' '}
-                <Link onClick={() => navigate(`${BASE}/bin-locations`)}>Bin locations</Link> tab (Generate bins creates a whole rack at once).
-              </Text>
-            ) : count ? (
-              <Text variant="small" tone="muted">
-                Its {count} bin{count === 1 ? '' : 's'} are kept but not offered while bin management is off.
+                Warehouses keep stock in bin locations, so items stocked here need a default bin.
               </Text>
             ) : null}
           </>

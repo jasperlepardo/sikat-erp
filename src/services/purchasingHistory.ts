@@ -16,6 +16,7 @@ import { SEED_ITEMS } from '../mocks/items';
 import { blankMeans, blankPayment, newAccountRow, newCheckRow, type OutgoingPayment, type PaymentRow } from '../mocks/outgoingPayments';
 import { SEED_PARTNERS } from '../mocks/partners';
 import { SEED_PURCHASE_ORDERS, type PurchaseOrder } from '../mocks/purchaseOrders';
+import { RETAIL_RETURNS } from '../mocks/retailHistory';
 import { SEED_COMPANY_TAX, SEED_TAX_CODES, SEED_TAX_GROUPS, SEED_WITHHOLDING, SEED_WITHHOLDING_GROUPS, rateAt, vatNotPaidToVendor } from '../mocks/taxes';
 import { SEED_RATES } from '../mocks/currencies';
 import { rateOn } from './masterData';
@@ -55,8 +56,9 @@ export interface PurchasingHistory {
 function build(): PurchasingHistory {
   const receipts = structuredClone(SEED_GOODS_RECEIPTS);
   const invoices = structuredClone(SEED_AP_INVOICES);
-  const inv = (docNum: number) => invoices.find((i) => i.docNum === docNum)!;
-  const gr = (docNum: number) => receipts.find((r) => r.docNum === docNum)!;
+  // Receipts and bills are numbered in date order, so they're found by the PO they came from.
+  const gr = (poId: string) => receipts.find((r) => r.lines.some((l) => l.baseId === poId))!;
+  const inv = (poId: string) => invoices.find((i) => i.lines.some((l) => l.baseId === gr(poId).id))!;
   const po = (docNum: number) => SEED_PURCHASE_ORDERS.find((p) => p.docNum === docNum)!;
 
   /** Apply `amount` of payment or credit to a bill; it closes once nothing is left. */
@@ -97,16 +99,16 @@ function build(): PurchasingHistory {
   const transfer = (account: string, date: string, reference: string) => (amount: number) => ({ transfer: { account, date, reference, amount } });
 
   // Techzone, paid by InstaPay the week it fell due.
-  const techzone = inv(290002);
+  const techzone = inv('po-008');
   pay('op-001', '2026-09-20', techzone.vendorId, [billRow(techzone)], transfer('1015', '2026-09-20', 'InstaPay 0920-5512'));
   // PHLPost: registered mail paid from petty cash the next day.
-  const postal = inv(290004);
+  const postal = inv('po-019');
   pay('op-002', '2026-09-12', postal.vendorId, [billRow(postal)], (amount) => ({ cash: { account: '1011', amount } }));
   // The launch photographer, by BPI check.
-  const photo = inv(290005);
+  const photo = inv('po-022');
   pay('op-003', '2026-09-21', photo.vendorId, [billRow(photo)], (amount) => ({ checks: [newCheckRow({ id: 'chk-seed-1', account: '1016', dueDate: '2026-09-21', checkNo: 200001, amount })] }), { reference: 'OR 1187' });
   // Apple, from the USD account at the 1 Oct rate — booked at the 2 Sep rate, so a realized exchange difference.
-  const apple = inv(290001);
+  const apple = inv('po-007');
   pay('op-004', '2026-10-01', apple.vendorId, [billRow(apple)], transfer('1018', '2026-10-01', 'TT 26-1001-APL'));
   // Meralco, straight to G/L: September electricity for two stores.
   payments.push({
@@ -159,11 +161,20 @@ function build(): PurchasingHistory {
   Object.assign(macs, { appliedAmount: macsDue, paidLc: round2(macsDue * macsPay.fxRate) });
   for (const d of [ipads]) d.fxRate = fxOn(d.currency, d.postingDate);
 
+  // The store replenishment bills: Luzon's iPhones by InstaPay, Techzone's accessories by BPI check, and
+  // Apple's iPad Air import from the USD account. Luzon's second September bill (po-044) isn't due yet.
+  const iphones = inv('po-041');
+  pay('op-007', '2026-10-05', iphones.vendorId, [billRow(iphones)], transfer('1015', '2026-10-05', 'InstaPay 1005-6120'));
+  const accessories = inv('po-042');
+  pay('op-008', '2026-10-07', accessories.vendorId, [billRow(accessories)], (amount) => ({ checks: [newCheckRow({ id: 'chk-seed-2', account: '1016', dueDate: '2026-10-07', checkNo: 200002, amount })] }), { reference: 'OR 2291' });
+  const ipadAir = inv('po-043');
+  pay('op-009', '2026-10-06', ipadAir.vendorId, [billRow(ipadAir)], transfer('1018', '2026-10-06', 'TT 26-1006-APL'));
+
   // ── Goods returns ───────────────────────────────────────────────────────────
   const returns: GoodsReturn[] = [];
   const retLine = (patch: Partial<ReturnLine>) => newReturnLine(patch);
   // 1 iPhone 18 Pro from the Luzon receipt, dead on arrival — not billed yet, so nothing to credit.
-  const g7 = gr(280007);
+  const g7 = gr('po-002');
   const g7l = g7.lines[0];
   g7l.returnedQty = 1;
   const { invoicedQty: _i, returnedQty: _r, id: _id, ...g7base } = g7l;
@@ -173,7 +184,7 @@ function build(): PurchasingHistory {
     lines: [retLine({ ...g7base, id: 'rl-seed-1', quantity: 1, baseType: 'GRPO', baseId: g7.id, baseLineId: g7l.id, baseDocNo: grNo(g7), returnReason: 'Defective', countryOfOrigin: '' })],
   });
   // 2 iPhone 17 from the billed Luzon delivery, boxes crushed in transit — credited on memo 620001.
-  const b6 = inv(290006);
+  const b6 = inv('po-001');
   const b6l = b6.lines.find((l) => l.itemNo === 'IPH-17-256-BLK')!;
   b6l.returnedQty = 2;
   const { returnedQty: _q, receiptCostLc: _rc, bpCatalogNo: _bp, baseType: _bt, id: _bid, ...b6base } = b6l;
@@ -190,7 +201,7 @@ function build(): PurchasingHistory {
     ...structuredClone(bill), id, seriesId: MEMO_SERIES[0].id, docNum, status: 'Open', postingDate: date, documentDate: date, dueDate: date, closeDate: '',
     vendorRef, journalRemark: `A/P Credit Memo – ${bill.vendorCode}`, remarks, lines, applications: [], appliedAmount: 0, downPayment: 0, paymentOrderRun: false,
   });
-  // Luzon's credit note for the two crushed iPhones, copied from return 610002 and applied to bill 290006.
+  // Luzon's credit note for the two crushed iPhones, copied from return 610002 and applied to the po-001 bill.
   const m1Line = newMemoLine({ ...b6base, id: 'ml-seed-1', quantity: 2, baseType: 'GRET', baseId: 'rt-002', baseLineId: crushed.id, baseDocNo: 'Primary 610002', returnGoods: false, invoiceId: b6.id, returnReason: 'Damaged in transit' });
   const m1 = memoOf('cm-001', 620001, b6, '2026-09-27', [m1Line], 'CN-LID-2609-031', 'Credit for return 610002.');
   const m1Credit = amounts(m1).net;
@@ -202,6 +213,48 @@ function build(): PurchasingHistory {
   const { returnedQty: _q2, baseType: _bt2, id: _cid, ...cableBase } = cables;
   const m2 = memoOf('cm-002', 620002, techzone, '2026-10-03', [newMemoLine({ ...cableBase, id: 'ml-seed-2', unitPrice: round2(cables.unitPrice * 0.05), baseType: 'APINV', baseId: techzone.id, baseLineId: cables.id, baseDocNo: apNo(techzone), returnGoods: false, invoiceId: techzone.id, returnReason: 'Other', freeText: '5% volume rebate, September' })], 'CN-TZ-2610-004', 'Volume rebate on USB-C cables.');
   memos.push(m2);
+
+  // ── Store replenishment returns (mocks/retailHistory.ts) ────────────────────
+  // Sent back after the bill and credited in full; the credit goes on the bill before it's paid.
+  for (const r of RETAIL_RETURNS) {
+    const bill = inv(r.poId);
+    const bl = bill.lines.find((l) => l.itemNo === r.itemNo)!;
+    bl.returnedQty = (bl.returnedQty ?? 0) + r.quantity;
+    const { returnedQty: _rq, receiptCostLc: _rcl, bpCatalogNo: _bpc, baseType: _bty, id: _lid, ...base } = bl;
+    const rl = retLine({ ...base, id: `rl-${r.id}`, quantity: r.quantity, baseType: 'APINV', baseId: bill.id, baseLineId: bl.id, baseDocNo: apNo(bill), returnReason: r.reason, creditedQty: r.quantity });
+    returns.push({
+      ...structuredClone(receipts.find((x) => x.id === bl.baseId)!), id: r.id, seriesId: RETURN_SERIES[0].id, docNum: r.docNum, status: 'Closed', postingDate: r.date, documentDate: r.date, dueDate: r.date, closeDate: r.date,
+      vendorRef: r.vendorRef, journalRemark: `Goods Returns – ${bill.vendorCode}`, consolidatingBpId: '', attachments: [], remarks: r.remarks, orderNumber: bill.orderNumber, lines: [rl],
+    });
+    const ml = newMemoLine({ ...base, id: `ml-${r.id}`, quantity: r.quantity, baseType: 'GRET', baseId: r.id, baseLineId: rl.id, baseDocNo: `Primary ${r.docNum}`, returnGoods: false, invoiceId: bill.id, returnReason: r.reason });
+    const memo = memoOf(`cm-${r.id}`, r.memoNo, bill, r.date, [ml], r.memoRef, `Credit for return ${r.docNum}.`);
+    const credit = amounts(memo).net;
+    settle(bill, credit, memo.postingDate);
+    Object.assign(memo, { appliedAmount: credit, applications: [{ invoiceId: bill.id, docNo: apNo(bill), amount: credit, date: memo.postingDate }], status: 'Closed', closeDate: memo.postingDate });
+    memos.push(memo);
+  }
+
+  // ── July–October bills ──────────────────────────────────────────────────────
+  // Paid around the due date; Luzon's 4 Oct bill (po-054) isn't due yet.
+  const payBill = (id: string, poId: string, date: string, means: (amount: number) => Partial<OutgoingPayment['means']>) => {
+    const bill = inv(poId);
+    pay(id, date, bill.vendorId, [billRow(bill)], means);
+  };
+  payBill('op-010', 'po-046', '2026-08-07', transfer('1015', '2026-08-07', 'InstaPay 0807-4410'));
+  payBill('op-011', 'po-047', '2026-08-13', transfer('1015', '2026-08-13', 'InstaPay 0813-2087'));
+  payBill('op-012', 'po-049', '2026-08-29', transfer('1018', '2026-08-29', 'TT 26-0829-APL'));
+  payBill('op-013', 'po-048', '2026-08-27', transfer('1016', '2026-08-27', 'BPI InstaPay 0827-1190'));
+  payBill('op-014', 'po-050', '2026-09-04', transfer('1015', '2026-09-04', 'InstaPay 0904-3356'));
+  payBill('op-015', 'po-055', '2026-09-10', transfer('1015', '2026-09-10', 'InstaPay 0910-6602'));
+  payBill('op-016', 'po-051', '2026-09-17', (amount) => ({ checks: [newCheckRow({ id: 'chk-seed-3', account: '1016', dueDate: '2026-09-17', checkNo: 200003, amount })] }));
+  payBill('op-017', 'po-052', '2026-09-24', transfer('1015', '2026-09-24', 'InstaPay 0924-7781'));
+  payBill('op-018', 'po-056', '2026-09-25', transfer('1018', '2026-09-25', 'TT 26-0925-APL'));
+  payBill('op-019', 'po-057', '2026-09-28', transfer('1015', '2026-09-28', 'InstaPay 0928-1145'));
+  payBill('op-020', 'po-058', '2026-10-07', transfer('1017', '2026-10-07', 'UnionBank PESONet 1007-0042'));
+  payBill('op-021', 'po-053', '2026-10-06', transfer('1016', '2026-10-06', 'BPI InstaPay 1006-9024'));
+
+  // Numbered in date order, like payments added one after another.
+  payments.sort((a, b) => a.postingDate.localeCompare(b.postingDate) || a.id.localeCompare(b.id)).forEach((p, n) => (p.docNum = 510001 + n));
 
   return { receipts, invoices, payments, returns, memos, downPayments: [ipads, macs] };
 }

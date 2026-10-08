@@ -15,7 +15,7 @@ import { lineNet, poTotals, type WithholdingLine } from './purchaseOrders';
 import { createCollection } from './store';
 import { PURCHASING_HISTORY } from './purchasingHistory';
 
-const memos = createCollection<ApCreditMemo>('sikat-erp:ap-credit-memos:v2', PURCHASING_HISTORY.memos, 'cm');
+const memos = createCollection<ApCreditMemo>('sikat-erp:ap-credit-memos:v5', PURCHASING_HISTORY.memos, 'cm');
 
 export const listCreditMemos = memos.list;
 export const getCreditMemo = memos.get;

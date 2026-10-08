@@ -4,6 +4,7 @@ import { formatAddress, type PostalAddress } from '../../../../mocks/address';
 import { PAYMENT_METHODS } from '../../../../mocks/masters';
 import { INDICATORS, LANGUAGES } from '../../../../mocks/purchaseOrders';
 import { activeOptions } from '../../../../services/inventoryMasters';
+import { receivesFromVendors } from '../../../../mocks/itemMasters';
 import { getPurchasingSettings } from '../../../../services/purchaseOrders';
 import { paymentTermDef, projectDef } from '../../../settings/masterDefs';
 import { ReferencesTable } from '../../orders/detail/AccountingTab';
@@ -48,10 +49,10 @@ export function GrLogistics({
 }) {
   const f = bind(draft, update);
   const vendor = ctx.vendor;
-  // Ship To is ours: the company, or the warehouse the goods went into.
+  // Ship To is ours: the company, or the warehouse the goods went into (stores restock by transfer).
   const shipOptions = [
     option(m.company.name, m.company.address),
-    ...m.inv.warehouses.filter((w) => w.active || formatAddress(w.address, w.name) === draft.shipTo).map((w) => option(w.name, w.address)),
+    ...m.inv.warehouses.filter((w) => (w.active && receivesFromVendors(w)) || formatAddress(w.address, w.name) === draft.shipTo).map((w) => option(w.name, w.address)),
   ];
   // Pay To is the vendor's: where its invoice comes from and payment goes.
   const payOptions = (vendor?.addresses ?? []).map((a) =>

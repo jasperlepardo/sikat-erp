@@ -51,8 +51,8 @@ export function ExclusionsTab(route: ListRoute) {
               {f.pick('kind', 'Kind', EXCLUSION_KINDS, { hint: 'Minimum wage earner items are exempt only for MWEs.' })}
               {f.pick('line', 'Year-end line', EXCLUSION_LINES)}
               {f.num('annualCap', 'Annual limit', { prefix: 'PHP', error: errors.annualCap, hint: '0 = no limit.' })}
+              {f.status('active', 'Status')}
             </FieldStack>
-            {f.check('active', 'Active')}
           </>
         );
       }}

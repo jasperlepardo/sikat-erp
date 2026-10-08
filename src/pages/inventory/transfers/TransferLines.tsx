@@ -4,7 +4,7 @@ import { DataTable } from '../../../components/form/DataTable';
 import type { Errors } from '../../../components/form/fields';
 import { newTransferLine, type InventoryTransfer, type TransferLine } from '../../../mocks/inventoryTransfers';
 import type { Item } from '../../../mocks/items';
-import type { Warehouse } from '../../../mocks/itemMasters';
+import { holdsStock, type Warehouse } from '../../../mocks/itemMasters';
 import type { BinLocation } from '../../../mocks/binLocations';
 import { binsOf, receivingBin } from '../../../services/binLocations';
 import { formatAmount } from '../../../services/format';
@@ -19,10 +19,10 @@ export interface TransferMasters {
   bins: BinLocation[];
 }
 
-/** Warehouse picker options: active ones (plus the current value), name over code. */
+/** Stock location picker options: active warehouses and stores (plus the current value), name over code. */
 export const warehouseOptions = (whs: Warehouse[], current: string, exclude = '') =>
   whs
-    .filter((w) => (w.active || w.code === current) && (w.code !== exclude || w.code === current))
+    .filter((w) => ((w.active && holdsStock(w)) || w.code === current) && (w.code !== exclude || w.code === current))
     .map((w) => ({ value: w.code, label: w.name, subLabel: w.code, subLabelPlacement: 'top' as const, text: `${w.code} ${w.name}` }));
 
 /**

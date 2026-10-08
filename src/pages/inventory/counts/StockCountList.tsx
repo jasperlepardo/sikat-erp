@@ -14,7 +14,7 @@ import {
   TableSubcontent,
   Tabs,
   Text,
-  TextField,
+  type PanelHeaderProps,
   type TableColumn,
   type TableSort,
 } from '@jasperlepardo/sikat-design-system';
@@ -31,6 +31,7 @@ import { COUNT_STATUS_INTENT } from './StockCountDetail';
 import { COUNT_LIST_PATH, POSTING_LIST_PATH } from './shared';
 
 type View = 'counts' | 'postings';
+type SearchProps = Pick<PanelHeaderProps, 'showSearch' | 'searchPlaceholder' | 'searchValue' | 'onSearchChange'>;
 
 /** Stock Counts: the counting documents, and the postings made from them — a tab each, with their own presets. */
 function CountsShell({
@@ -38,6 +39,7 @@ function CountsShell({
   title,
   counts,
   search,
+  filters,
   panel,
   children,
 }: {
@@ -45,7 +47,10 @@ function CountsShell({
   /** The preset menu. */
   title: ReactNode;
   counts: Partial<Record<View, number>>;
-  search: ReactNode;
+  /** The header search (from `list.search`). */
+  search: SearchProps;
+  /** The filter chips (`presets.bar`). */
+  filters: ReactNode;
   /** The preset side panel. */
   panel: ReactNode;
   children: ReactNode;
@@ -58,6 +63,7 @@ function CountsShell({
       <PanelHeader
         icon="inventory"
         title={title}
+        {...search}
         actions={
           <Button
             intent="primary"
@@ -88,7 +94,7 @@ function CountsShell({
             {notice}
           </Alert>
         ) : null}
-        {search}
+        {filters}
         {children}
       </Panel.Body>
       {panel}
@@ -142,18 +148,15 @@ function useListState<T>({ sort, setSort }: { sort: TableSort | null; setSort: (
       </Card>
     );
   };
-  const search = (placeholder: string) => (
-    <TextField
-      aria-label="Search"
-      placeholder={placeholder}
-      leadingIcon={<Icon size={20}>search</Icon>}
-      value={query}
-      onChange={(e) => {
-        setQuery(e.currentTarget.value);
-        setPage(1);
-      }}
-    />
-  );
+  const search = (placeholder: string): SearchProps => ({
+    showSearch: true,
+    searchPlaceholder: placeholder,
+    searchValue: query,
+    onSearchChange: (value) => {
+      setQuery(value);
+      setPage(1);
+    },
+  });
   return { query: query.trim().toLowerCase(), sortRows, table, search, resetPage: () => setPage(1) };
 }
 
@@ -232,7 +235,8 @@ export function StockCountList() {
       view="counts"
       title={presets.menu}
       counts={{ counts: counts?.length, postings: data?.[1].length }}
-      search={presets.bar(list.search('Search by count no., warehouse, counter, item or remarks'))}
+      search={list.search('Search by count no., warehouse, counter, item or remarks')}
+      filters={presets.bar(null)}
       panel={presets.panel}
     >
       {list.table('Inventory countings', columns, rows, (c) => c.id, open)}
@@ -298,7 +302,8 @@ export function InventoryPostingList() {
       view="postings"
       title={presets.menu}
       counts={{ counts: counts?.length, postings: postings?.length }}
-      search={presets.bar(list.search('Search by posting no., warehouse, item or remarks'))}
+      search={list.search('Search by posting no., warehouse, item or remarks')}
+      filters={presets.bar(null)}
       panel={presets.panel}
     >
       {list.table('Inventory postings', columns, rows, (p) => p.id, open)}

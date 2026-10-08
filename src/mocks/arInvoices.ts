@@ -27,6 +27,7 @@
 import type { Attachment, DocumentSeries } from './common';
 import { SEED_DELIVERIES, type DnLine } from './deliveries';
 import { SEED_PARTNERS, formatAddress } from './partners';
+import { RETAIL_SALES } from './retailHistory';
 import type { PoReference } from './purchaseOrders';
 import type { SoDocType } from './salesOrders';
 
@@ -282,6 +283,22 @@ const invoices: ArInvoice[] = [
     postingDate: '2026-09-10', documentDate: '2026-09-10', dueDate: '2026-09-10',
     remarks: 'USD invoice at the 10 Sep BSP rate. Half paid 22 Sep at that day’s rate (realized difference on the payment); the open half is revalued at month-end.',
   }),
+  fromDelivery('ar-006', 430006, 'dn-006', {
+    postingDate: '2026-10-06', documentDate: '2026-10-06', dueDate: '2026-11-05',
+    remarks: 'First 24 of 40 iPads for DepEd Pasig. Not yet paid.',
+  }),
+  fromDelivery('ar-007', 430007, 'dn-007', {
+    postingDate: '2026-09-04', documentDate: '2026-09-04', dueDate: '2026-10-04', wtaxLiable: true,
+    remarks: 'Northgate withholds 1% (top withholding agent). Past due; follow up with their accounts payable.',
+  }),
+  fromDelivery('ar-008', 430008, 'dn-008', {
+    postingDate: '2026-09-06', documentDate: '2026-09-06', dueDate: '2026-09-06', status: 'Closed', closeDate: '2026-09-06',
+    remarks: 'Cebu store walk-in, paid by GCash at pick-up.',
+  }),
+  fromDelivery('ar-009', 430009, 'dn-009', {
+    postingDate: '2026-09-13', documentDate: '2026-09-13', dueDate: '2026-09-13', status: 'Closed', closeDate: '2026-09-13',
+    remarks: 'Davao store walk-in, paid by GCash at pick-up.',
+  }),
   {
     ...blankArInvoice('2026-09-30', 'Jasper L.'),
     id: 'ar-004',
@@ -300,10 +317,32 @@ const invoices: ArInvoice[] = [
       newArLine({ id: 'ar-004-2', description: 'Staff training, half day', glAccount: '4030', quantity: 1, unitPrice: 12000, taxCode: '31', priceSource: 'Manual' }),
     ],
   },
+  // Store walk-in sales (mocks/retailHistory.ts): invoiced on pick-up and paid on the spot.
+  ...RETAIL_SALES.map((r) =>
+    fromDelivery(`ar-${r.id}`, 430010 + r.n, `dn-${r.id}`, {
+      postingDate: r.date, documentDate: r.date, dueDate: r.date, status: 'Closed', closeDate: r.date,
+      remarks: `Walk-in sale at ${r.store}, paid by ${r.means === 'gcash' ? 'GCash' : r.means} at pick-up.`,
+    }),
+  ),
+  // Corporate orders: paid, past due, half paid and not yet due.
+  ...([
+    // [id, delivery, posted, due, closed (paid in full) on, remarks]
+    ['ar-c01', 'dn-c01', '2026-08-14', '2026-09-13', '2026-09-10', 'Paid by bank transfer 10 Sep 2026.'],
+    ['ar-c02', 'dn-c02', '2026-08-29', '2026-09-13', '2026-09-12', 'Paid by BPI transfer 12 Sep 2026.'],
+    ['ar-c03', 'dn-c03', '2026-09-01', '2026-09-16', '', 'Past due; second reminder sent 1 Oct.'],
+    ['ar-c04', 'dn-c04', '2026-09-11', '2026-09-26', '', 'Half paid 25 Sep; the cooperative pays the balance after its October dividend.'],
+    ['ar-c05', 'dn-c05', '2026-10-02', '2026-11-01', '', 'First 12 iPhones. Not yet due.'],
+  ] as const).map(([id, dn, date, due, paid, remarks], k) =>
+    fromDelivery(id, 430010 + RETAIL_SALES.length + k, dn, { postingDate: date, documentDate: date, dueDate: due, remarks, ...(paid ? { status: 'Closed' as const, closeDate: paid } : {}) }),
+  ),
 ];
 
 /** Paid so far by the seeded incoming payments (document currency). */
-const APPLIED: Record<string, number | 'full' | 'half'> = { 'ar-001': 'full', 'ar-002': 'full', 'ar-003': 'half', 'ar-005': 'half' };
+const APPLIED: Record<string, number | 'full' | 'half'> = {
+  'ar-001': 'full', 'ar-002': 'full', 'ar-003': 'half', 'ar-005': 'half', 'ar-008': 'full', 'ar-009': 'full',
+  ...Object.fromEntries(RETAIL_SALES.map((r) => [`ar-${r.id}`, 'full' as const])),
+  'ar-c01': 'full', 'ar-c02': 'full', 'ar-c04': 'half',
+};
 
 export const SEED_AR_INVOICES: ArInvoice[] = invoices.map((a) => {
   const rule = APPLIED[a.id];

@@ -77,11 +77,9 @@ export function TaxGroupsTab(route: ListRoute) {
                   .map((c) => ({ value: c.code, label: `${c.code} · ${c.name} (${currentRate(c) ?? '—'}%)` })),
                 { required: true, error: errors.taxCode, placeholder: 'Pick a tax code',  },
               )}
+              {f.status('active', 'Status')}
             </FieldStack>
-            
-              {f.check('zeroRated', 'Zero-rated — suppliers may zero-rate it only for a registered export enterprise')}
-              {f.check('active', 'Active')}
-            
+            {f.check('zeroRated', 'Zero-rated — suppliers may zero-rate it only for a registered export enterprise')}
           </>
         );
       }}

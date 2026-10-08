@@ -7,6 +7,11 @@ import { blankPostalAddress, type PostalAddress } from './address';
 export interface Company {
   id: string;
   name: string;
+  /**
+   * Code of the office location (Inventory › Warehouses & Bins) whose address is the registered
+   * one. Documents read the address from it; `address` keeps a copy as of the last save.
+   */
+  registeredOffice: string;
   address: PostalAddress;
   active: boolean;
 }
@@ -15,6 +20,7 @@ export const SEED_COMPANIES: Company[] = [
   {
     id: 'sikat',
     name: 'Power Mac Center, Inc.',
+    registeredOffice: 'HQ',
     // Head office per a maps listing ("Power Mac Center - Head Office"). Not confirmed against the
     // SEC/BIR registration — the demo uses it as the registered address.
     address: blankPostalAddress({

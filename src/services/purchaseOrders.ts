@@ -17,7 +17,7 @@ import { applyOrderedChange } from './items';
 
 import { poSeries, seriesLookup, formatDocNum } from './allSeries';
 
-const orders = createCollection<PurchaseOrder>('sikat-erp:purchase-orders:v16', SEED_PURCHASE_ORDERS, 'po');
+const orders = createCollection<PurchaseOrder>('sikat-erp:purchase-orders:v21', SEED_PURCHASE_ORDERS, 'po');
 export { poSeries };
 export const purchasingSettings = createCollection<PurchasingSettings>('sikat-erp:purchasing-settings', SEED_PURCHASING_SETTINGS, 'ps');
 

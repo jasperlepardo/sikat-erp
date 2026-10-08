@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import {
   Card,
+  Select,
   Icon,
   ReadOnlyField,
   bind as dsBind,
@@ -58,7 +59,43 @@ export function bind<T>(obj: T, update: (patch: Partial<T>) => void) {
         />
       ));
     },
+
+    /** A yes/no flag as a dropdown with both answers named (`yes` / `no`, default Active / Inactive). */
+    status: (key: KeysOf<T, boolean>, label: ReactNode, o: FieldOptions & { yes?: string; no?: string } = {}) =>
+      f.field(key, label, o, (p) => (
+        <Select
+          {...p}
+          options={[
+            { value: 'yes', text: o.yes ?? 'Active', label: <StatusLabel on>{o.yes ?? 'Active'}</StatusLabel> },
+            { value: 'no', text: o.no ?? 'Inactive', label: <StatusLabel on={false}>{o.no ?? 'Inactive'}</StatusLabel> },
+          ]}
+          value={obj[key] ? 'yes' : 'no'}
+          onValueChange={(v) => v && patch(key, v === 'yes')}
+          disabled={o.disabled}
+        />
+      )),
   };
+}
+
+/**
+ * The Badge's status dot: success-tinted when on, neutral when off (as `TableStatus` colors
+ * Active / Inactive).
+ */
+export function StatusDot({ on }: { on: boolean }) {
+  return (
+    <span className="sikat-badge__dot-wrap" aria-hidden="true">
+      <span className="sikat-badge__dot" style={{ backgroundColor: on ? 'var(--color-fg-success)' : 'var(--color-fg-default-solid)' }} />
+    </span>
+  );
+}
+
+function StatusLabel({ on, children }: { on: boolean; children: ReactNode }) {
+  return (
+    <span className="inline-flex items-center gap-1">
+      <StatusDot on={on} />
+      {children}
+    </span>
+  );
 }
 
 /** A titled card, the unit every tab is built from. */

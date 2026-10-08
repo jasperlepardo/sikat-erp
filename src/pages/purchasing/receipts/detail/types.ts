@@ -1,6 +1,7 @@
 import type { Errors } from '../../../../components/form/fields';
 import { formatAddress } from '../../../../mocks/address';
 import { newGrLine, type GrLine } from '../../../../mocks/goodsReceipts';
+import { vendorDeliveryLocation } from '../../../../mocks/itemMasters';
 import { itemsPerUom, type Item } from '../../../../mocks/items';
 import type { Partner } from '../../../../mocks/partners';
 import type { PurchaseOrder } from '../../../../mocks/purchaseOrders';
@@ -92,7 +93,7 @@ export function linePricing(item: Item, l: Pick<GrLine, 'priceList' | 'uomCode' 
 /** A hand-entered line with every default taken from the item, vendor and header. */
 export function lineFromItem(item: Item, draft: Pick<GrDraft, 'postingDate'>, ctx: Pick<GrContext, 'vendor' | 'fx'>, m: PoMasters, base: Partial<GrLine> = {}): GrLine {
   const priceList = ctx.vendor?.priceList && ctx.vendor.priceList !== 'Base price' ? ctx.vendor.priceList : 'Last purchase price';
-  const warehouse = item.inventoryItem ? (item.warehouses[0]?.code ?? 'WH-MNL') : '';
+  const warehouse = item.inventoryItem ? vendorDeliveryLocation(item.warehouses.map((w) => w.code), m.inv.warehouses) : '';
   const line = newGrLine({
     ...base,
     itemId: item.id,

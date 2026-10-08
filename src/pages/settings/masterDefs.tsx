@@ -3,7 +3,7 @@
  * Settings tab and the "+ Add" panel of every field that uses it (components/form/MasterLookup).
  */
 import { Button, Text } from '@jasperlepardo/sikat-design-system';
-import { FieldStack, bind, type Errors } from '../../components/form/fields';
+import { FieldStack, ReadOnly, bind, type Errors } from '../../components/form/fields';
 import { statusColumn, uniqueRequired } from '../../components/form/MasterList';
 import type { MasterDef } from '../../components/form/MasterLookup';
 import { MAX_PARTNER_PROPERTIES, projectValue, type Bank, type BpGroup, type NamedEntry, PRICE_ROUNDING, type PaymentTerm, type PriceList, type Project } from '../../mocks/partnerMasters';
@@ -25,12 +25,11 @@ import {
   type WarrantyTemplate,
 } from '../../mocks/itemMasters';
 import { currencies } from '../../services/masterData';
-import { manufacturers, shippingTypes, unitsOfMeasure, warrantyTemplates } from '../../services/inventoryMasters';
+import { manufacturers, shippingTypes, unitsOfMeasure, warehouses, warrantyTemplates } from '../../services/inventoryMasters';
 import { blankCurrency, validateCurrency } from './accounting-tax/CurrenciesTab';
 import type { Company } from '../../mocks/companies';
 import { addressSummary, blankPostalAddress } from '../../mocks/address';
-import { companies } from '../../services/companies';
-import { AddressFields } from '../../components/form/AddressFields';
+import { companies, registeredOfficeOf, withRegisteredAddress } from '../../services/companies';
 
 const SALES = 'Settings › Sales & CRM';
 const BANKING = 'Settings › Banking';
@@ -75,7 +74,7 @@ function namedDef(o: {
       return (
         <FieldStack>
           {f.text('name', 'Name', { required: true, error: errors.name, placeholder: o.placeholder, disabled: !isNew, hint: !isNew ? NAME_LOCK : undefined })}
-          {f.check('active', 'Active')}
+          {f.status('active', 'Status')}
         </FieldStack>
       );
     },
@@ -115,7 +114,7 @@ export const bpGroupDef: MasterDef<BpGroup> = {
           disabled: !isNew,
           hint: 'Which partners can be put in this group.',
         })}
-        {f.check('active', 'Active')}
+        {f.status('active', 'Status')}
       </FieldStack>
     );
   },
@@ -233,7 +232,7 @@ export const priceListDef: MasterDef<PriceList> = {
         {f.date('validTo', 'Valid to', { error: errors.validTo, hint: "Documents can't pick the list outside these dates." })}
         {f.area('remarks', 'Remarks')}
         {f.check('gross', 'Gross price (VAT inclusive)')}
-        {f.check('active', 'Active')}
+        {f.status('active', 'Status')}
         {chain && chain.length > 1 ? (
           <Text variant="small" tone="muted">
             {describeChain(chain)}
@@ -297,7 +296,7 @@ export const paymentTermDef: MasterDef<PaymentTerm> = {
       <FieldStack>
         {f.text('name', 'Name', { required: true, error: errors.name, placeholder: 'e.g. Net 90', disabled: !isNew, hint: !isNew ? NAME_LOCK : undefined })}
         {f.num('days', 'Due after', { suffix: 'days', error: errors.days, hint: 'Posting date + these days = due date. 0 for COD.' })}
-        {f.check('active', 'Active')}
+        {f.status('active', 'Status')}
       </FieldStack>
     );
   },
@@ -341,7 +340,7 @@ export const bankDef: MasterDef<Bank> = {
       <FieldStack>
         {f.text('name', 'Name', { required: true, error: errors.name, disabled: !isNew, hint: !isNew ? NAME_LOCK : undefined })}
         {f.text('swift', 'BIC / SWIFT', { error: errors.swift, placeholder: 'e.g. BNORPHMM' })}
-        {f.check('active', 'Active')}
+        {f.status('active', 'Status')}
       </FieldStack>
     );
   },
@@ -395,7 +394,7 @@ export const projectDef: MasterDef<Project> = {
       <FieldStack>
         {f.text('code', 'Code', { required: true, error: errors.code, disabled: !isNew, hint: !isNew ? NAME_LOCK : undefined })}
         {f.text('name', 'Name', { required: true, error: errors.name, disabled: !isNew, hint: !isNew ? NAME_LOCK : undefined, placeholder: 'e.g. Davao store opening' })}
-        {f.check('active', 'Active')}
+        {f.status('active', 'Status')}
       </FieldStack>
     );
   },
@@ -416,30 +415,42 @@ export const companyDef: MasterDef<Company> = {
   noun: 'company',
   home: COMPANY,
   description: "Our own companies, switched in the top bar. Documents use the current company's address as ours, e.g. a service-only purchase order's Ship To.",
-  blank: (name) => ({ id: newId('co'), name, address: blankPostalAddress(), active: true }),
+  blank: (name) => ({ id: newId('co'), name, registeredOffice: '', address: blankPostalAddress(), active: true }),
   value: (c) => c.id,
   label: (c) => c.name,
   columns: [
     { key: 'name', header: 'Name', cell: (c) => c.name },
-    { key: 'address', header: 'Address', cell: (c) => addressSummary(c.address) || '—' },
+    {
+      key: 'address',
+      header: 'Registered address',
+      cell: (c) => addressSummary(withRegisteredAddress(c, warehouses.snapshot()).address) || '—',
+    },
     statusColumn<Company>(),
   ],
-  searchText: (c) => `${c.name} ${addressSummary(c.address)}`,
-  normalize: (c) => ({ ...c, name: c.name.trim() }),
+  searchText: (c) => `${c.name} ${addressSummary(withRegisteredAddress(c, warehouses.snapshot()).address)}`,
+  // Keep a copy of the registered office's address on the company.
+  normalize: (c) => ({ ...withRegisteredAddress(c, warehouses.snapshot()), name: c.name.trim() }),
   validate: (c, all) => {
     const e: Errors = {};
     uniqueRequired(e, c, all, 'name', 'Name');
-    if (!c.address.country) e.country = 'Pick a country.';
     return e;
   },
-  editor: (c, update, errors) => {
+  editor: (c, update, errors, isNew) => {
     const f = bind(c, update);
     return (
       <>
         <FieldStack>
           {f.text('name', 'Registered name', { required: true, error: errors.name })}
-          <AddressFields value={c.address} onChange={(p) => update({ address: { ...c.address, ...p } })} countryError={errors.country} unwrapped />
-          {f.check('active', 'Active')}
+          <ReadOnly
+            label="Registered address"
+            value={(() => {
+              const office = registeredOfficeOf(c, warehouses.snapshot());
+              return office ? `${office.code} · ${addressSummary(office.address)}` : '—';
+            })()}
+            error={errors.registeredOffice}
+            hint={isNew ? 'Save the company, then pick the office under Office addresses.' : 'The office marked Registered under Office addresses.'}
+          />
+          {f.status('active', 'Status')}
         </FieldStack>
       </>
     );
@@ -542,7 +553,7 @@ export const uomDef: MasterDef<UnitOfMeasure> = {
           hint: computed && computed !== u.volume ? `L × W × H = ${computed} ${volumeUnit(u.lengthUnit)}.` : 'Optional. Enter it, or calculate it from the dimensions.',
         })}
         {f.num('weight', 'Weight', { suffix: u.weightUnit, hint: 'Gross weight of one unit, with packaging.' })}
-        {f.check('active', 'Active')}
+        {f.status('active', 'Status')}
       </FieldStack>
     );
   },
@@ -584,7 +595,7 @@ export const manufacturerDef: MasterDef<Manufacturer> = {
         {f.text('contactPerson', 'Contact person')}
         {f.text('email', 'Email', { type: 'email', error: errors.email })}
         {f.text('phone', 'Phone', { type: 'tel' })}
-        {f.check('active', 'Active')}
+        {f.status('active', 'Status')}
       </FieldStack>
     );
   },
@@ -621,7 +632,7 @@ export const warrantyTemplateDef: MasterDef<WarrantyTemplate> = {
         {f.text('name', 'Name', { required: true, error: errors.name })}
         {f.num('months', 'Period', { suffix: 'months', error: errors.months })}
         {f.pick('coverage', 'Coverage', ['Parts', 'Parts & labor', 'Manufacturer'])}
-        {f.check('active', 'Active')}
+        {f.status('active', 'Status')}
       </FieldStack>
     );
   },
@@ -656,7 +667,7 @@ export const shippingTypeDef: MasterDef<ShippingType> = {
       <FieldStack>
         {f.text('name', 'Name', { required: true, error: errors.name })}
         {f.text('trackingUrl', 'Tracking page', { type: 'url', error: errors.trackingUrl, placeholder: 'https://' })}
-        {f.check('active', 'Active')}
+        {f.status('active', 'Status')}
       </FieldStack>
     );
   },

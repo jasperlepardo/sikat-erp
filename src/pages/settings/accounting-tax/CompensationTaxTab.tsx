@@ -98,7 +98,7 @@ export function CompensationTaxTab(route: ListRoute) {
               error={errors.brackets}
               onChange={(brackets) => update({ brackets })}
             />
-            {f.check('active', 'Active')}
+            <FieldStack>{f.status('active', 'Status')}</FieldStack>
           </>
         );
       }}

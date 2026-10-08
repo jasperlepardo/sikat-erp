@@ -34,8 +34,10 @@ export function DeMinimisTab(route: ListRoute) {
         const f = bind(d, update);
         return (
           <>
-            <FieldStack>{f.area('description', 'Benefit', { required: true, error: errors.description, rows: 4 })}</FieldStack>
-            {f.check('active', 'Active')}
+            <FieldStack>
+              {f.area('description', 'Benefit', { required: true, error: errors.description, rows: 4 })}
+              {f.status('active', 'Status')}
+            </FieldStack>
           </>
         );
       }}

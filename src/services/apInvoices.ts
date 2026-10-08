@@ -26,7 +26,7 @@ import { PURCHASING_HISTORY } from './purchasingHistory';
 import { taxCodes } from './masterData';
 import { drawDownPayments, drawableAmount, dprTotal, listDownPayments } from './apDownPayments';
 
-const invoices = createCollection<ApInvoice>('sikat-erp:ap-invoices:v3', PURCHASING_HISTORY.invoices, 'ap');
+const invoices = createCollection<ApInvoice>('sikat-erp:ap-invoices:v6', PURCHASING_HISTORY.invoices, 'ap');
 
 export const listApInvoices = invoices.list;
 export const getApInvoice = invoices.get;
@@ -247,7 +247,7 @@ export async function addApInvoice(input: ApInput, fx: number, due?: number): Pr
   // FIFO: create layers for lines that bring stock in directly (not via a GR).
   const fifoStockLines = lines.filter((l) => movesStock(l, items) && items.find((i) => i.id === l.itemId)?.valuationMethod === 'FIFO');
   for (const l of fifoStockLines) {
-    if (grInventoryQty(l) > 0) await addLayer({ itemId: l.itemId, warehouse: l.warehouse, receivedOn: saved.postingDate, qty: grInventoryQty(l), unitCost: l.unitCostLc, sourceId: saved.id });
+    if (grInventoryQty(l) > 0) await addLayer({ itemId: l.itemId, warehouse: l.warehouse, receivedOn: saved.postingDate, qty: grInventoryQty(l), receivedQty: grInventoryQty(l), unitCost: l.unitCostLc, sourceId: saved.id, receiptId: saved.id });
   }
   await updateFifoCosts([...new Set(fifoStockLines.map((l) => l.itemId))]);
 

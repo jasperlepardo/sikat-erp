@@ -28,10 +28,10 @@ import { accounts } from './masterData';
 import { createCollection } from './store';
 
 /** Settings › Inventory and Inventory › Warehouses & Bins master data. */
-export const itemGroups = createCollection<ItemGroup>('sikat-erp:item-groups:v5', SEED_ITEM_GROUPS, 'ig');
+export const itemGroups = createCollection<ItemGroup>('sikat-erp:item-groups:v6', SEED_ITEM_GROUPS, 'ig');
 export const unitsOfMeasure = createCollection<UnitOfMeasure>('sikat-erp:uoms:v5', SEED_UOMS, 'uom');
 export const uomGroups = createCollection<UomGroup>('sikat-erp:uom-groups:v2', SEED_UOM_GROUPS, 'ug');
-export const warehouses = createCollection<Warehouse>('sikat-erp:warehouses:v7', SEED_WAREHOUSES, 'wh');
+export const warehouses = createCollection<Warehouse>('sikat-erp:warehouses:v10', SEED_WAREHOUSES, 'wh');
 /** Bin locations and the aisle / shelf / level codes they're addressed by (services/binLocations.ts). */
 export const binLocations = createCollection<BinLocation>('sikat-erp:bin-locations:v1', SEED_BINS, 'bin');
 export const binSublevels = createCollection<BinSublevel>('sikat-erp:bin-sublevels:v1', SEED_BIN_SUBLEVELS, 'bsl');

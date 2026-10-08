@@ -133,7 +133,7 @@ export function ExciseTab(route: ListRoute) {
               error={errors.rates}
               onChange={(rates) => update({ rates })}
             />
-            {f.check('active', 'Active')}
+            <FieldStack>{f.status('active', 'Status')}</FieldStack>
           </>
         );
       }}

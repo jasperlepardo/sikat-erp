@@ -13,7 +13,6 @@ import {
   TableStatus,
   TableSubcontent,
   Text,
-  TextField,
   type TableColumn,
 } from '@jasperlepardo/sikat-design-system';
 import { EMPTY_FILTER, oneRule } from '../../../components/filter/engine';
@@ -119,6 +118,14 @@ export function JournalEntryList() {
   return (
     <Panel className="flex-1">
       <PanelHeader
+        showSearch
+        searchLabel="Search journal entries"
+        searchPlaceholder="Search by number, origin, remarks, reference or account"
+        searchValue={query}
+        onSearchChange={(value) => {
+          setQuery(value);
+          setPage(1);
+        }}
         icon="menu_book"
         title={presets.menu}
         actions={
@@ -133,18 +140,7 @@ export function JournalEntryList() {
             {notice}
           </Alert>
         ) : null}
-        {presets.bar(
-          <TextField
-            aria-label="Search journal entries"
-            placeholder="Search by number, origin, remarks, reference or account"
-            leadingIcon={<Icon size={20}>search</Icon>}
-            value={query}
-            onChange={(e) => {
-              setQuery(e.currentTarget.value);
-              setPage(1);
-            }}
-          />,
-        )}
+        {presets.bar(null)}
         <Card className={fillCardClass(onPage.length)}>
           {entries ? (
             <Table

@@ -135,7 +135,7 @@ export function TaxCodesTab(route: ListRoute) {
             {f.text('legalBasis', 'Legal basis', { placeholder: 'e.g. NIRC Sec. 106' })}
             {f.area('notes', 'Notes', { rows: 2 })}
             <RateHistory rates={t.rates} error={errors.rates} onChange={(rates) => update({ rates })} />
-            {f.check('active', 'Active')}
+            {f.status('active', 'Status')}
           </FieldStack>
         );
       }}

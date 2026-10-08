@@ -5,6 +5,8 @@ import { APPS, appNav, firstPageOf, leafForPath, moduleOf, pathOf } from './nav'
 import { SETTINGS_NAV, settingsLeafForPath, settingsModuleOf } from './settingsNav';
 import { useCollection } from '../components/form/MasterLookup';
 import { companies, setCurrentCompanyId, useCurrentCompany } from '../services/companies';
+import { useInstallApp } from '../services/installApp';
+import { InstallHelpPanel } from './InstallHelpPanel';
 
 
 /** Navbar on top, SideNav on the left, the routed screen on the right. */
@@ -13,6 +15,8 @@ export function AppShell() {
   const navigate = useNavigate();
   const [, setTheme, resolved] = useTheme();
   const company = useCurrentCompany();
+  const installApp = useInstallApp();
+  const [installHelp, setInstallHelp] = useState(false);
   const orgs: NavbarMenuItem[] = (useCollection(companies) ?? [])
     .filter((c) => c.active || c.id === company?.id)
     .map((c) => ({ id: c.id, label: c.name }));
@@ -53,6 +57,9 @@ export function AppShell() {
       onSelect: () => setTheme(resolved === 'dark' ? 'light' : 'dark'),
     },
     { id: 'system', label: 'Use system theme', onSelect: () => setTheme('system') },
+    ...(installApp.installed
+      ? []
+      : [{ id: 'install', label: 'Install app', onSelect: () => (installApp.prompt ? installApp.prompt() : setInstallHelp(true)) }]),
     { id: 'sign-out', label: 'Sign out', onSelect: () => navigate('/') },
   ];
 
@@ -66,7 +73,7 @@ export function AppShell() {
       '--sidenav-width': '280px',
       position: 'sticky',
       top: 64,
-      height: 'calc(100vh - 64px)',
+      height: 'calc(100vh - 64px - var(--titlebar-height, 0px))',
       flex: 'none',
       overflowY: 'auto',
     } as React.CSSProperties,
@@ -117,10 +124,11 @@ export function AppShell() {
           />
         )}
         {/* Bounded to the viewport so a Panel fills it and scrolls its own body; list tables then scroll their rows. */}
-        <main className="flex h-[calc(100dvh-64px)] min-w-0 flex-1 flex-col gap-2 overflow-y-auto p-2 *:min-h-0">
+        <main className="flex h-[calc(100dvh-64px-var(--titlebar-height,0px))] min-w-0 flex-1 flex-col gap-2 overflow-y-auto p-2 *:min-h-0">
           <Outlet />
         </main>
       </div>
+      {installHelp && <InstallHelpPanel onClose={() => setInstallHelp(false)} />}
     </Page>
   );
 }

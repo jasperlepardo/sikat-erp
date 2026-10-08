@@ -14,6 +14,7 @@ import {
 } from '@jasperlepardo/sikat-design-system';
 import { FieldStack, Section, bind } from '../../../components/form/fields';
 import { MasterList, type ListRoute } from '../../../components/form/MasterList';
+import { useHeaderSearch } from '../../../components/form/HeaderSearch';
 import {
   currentWithholdingRate,
   WITHHOLDING_AGENTS,
@@ -169,7 +170,7 @@ export function WithholdingTab(route: ListRoute) {
                 error={errors.rates}
                 onChange={(rates) => update({ rates })}
               />
-              {f.check('active', 'Active')}
+              <FieldStack>{f.status('active', 'Status')}</FieldStack>
             </>
           );
         }}
@@ -188,7 +189,9 @@ function WithholdingListView({
   basePath: string;
 }) {
   const navigate = useNavigate();
-  const [query, setQuery] = useState('');
+  const headerSearch = useHeaderSearch('Search withholding tax');
+  const [localQuery, setLocalQuery] = useState('');
+  const query = headerSearch?.query ?? localQuery;
 
   const groups = useMemo(() => {
     const all = rows ?? [];
@@ -216,13 +219,15 @@ function WithholdingListView({
         </Button>
       </div>
 
-      <TextField
-        aria-label="Search withholding tax"
-        placeholder="Search withholding tax"
-        leadingIcon={<Icon size={20}>search</Icon>}
-        value={query}
-        onChange={(e) => setQuery(e.currentTarget.value)}
-      />
+      {headerSearch ? null : (
+        <TextField
+          aria-label="Search withholding tax"
+          placeholder="Search withholding tax"
+          leadingIcon={<Icon size={20}>search</Icon>}
+          value={query}
+          onChange={(e) => setLocalQuery(e.currentTarget.value)}
+        />
+      )}
 
       <Text variant="small" tone="muted" className="px-1">
         {WITHHOLDING_KINDS.map((k) => `${WITHHOLDING_KIND_INFO[k].type} = ${WITHHOLDING_KIND_INFO[k].name}`).join(' · ')}

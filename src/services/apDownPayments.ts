@@ -6,7 +6,7 @@ import { poTotals } from './purchaseOrders';
 import { createCollection } from './store';
 import { PURCHASING_HISTORY } from './purchasingHistory';
 
-const requests = createCollection<DownPaymentRequest>('sikat-erp:ap-down-payments:v2', PURCHASING_HISTORY.downPayments, 'dp');
+const requests = createCollection<DownPaymentRequest>('sikat-erp:ap-down-payments:v4', PURCHASING_HISTORY.downPayments, 'dp');
 
 export const listDownPayments = requests.list;
 export const getDownPayment = requests.get;
