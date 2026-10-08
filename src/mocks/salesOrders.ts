@@ -21,7 +21,7 @@
  *   it when paying, it isn't part of the order total.
  */
 import { CURRENT_USER_ID, type Attachment, type DocumentSeries } from './common';
-import { employeeId, plId, termId } from './masters';
+import { plId, termId } from './masters';
 import { SEED_ITEMS, itemsPerUom } from './items';
 import { SEED_PARTNERS, formatAddress } from './partners';
 import type { PoReference } from './purchaseOrders';
@@ -140,8 +140,8 @@ export const SO_SERIES: DocumentSeries[] = [
   { id: 'sos-gov', name: 'Government', prefix: 'SO-', firstNo: 470001, manual: false, isDefault: false, active: true },
 ];
 
-/** SAP B1's "-No Sales Employee-" entry: documents always name one. */
-export const NO_SALES_EMPLOYEE_ID = employeeId('-No Sales Employee-');
+/** Placeholder shown when a document has no sales employee (stored as ''), as SAP B1 labels it. */
+export const NO_SALES_EMPLOYEE = '-No Sales Employee-';
 
 /** What an open item order commits, in inventory units per "itemId@warehouse" (none while draft, closed or cancelled). */
 export function openCommitted(so: Pick<SalesOrder, 'status' | 'docType' | 'lines'>) {
@@ -221,7 +221,7 @@ export function blankSalesOrder(ownerId: string): Omit<SalesOrder, 'id'> {
     cashDiscountDays: 0,
     references: [],
     attachments: [],
-    salesEmployeeId: NO_SALES_EMPLOYEE_ID,
+    salesEmployeeId: '',
     ownerId: ownerId,
     discountPct: 0,
     freight: 0,
@@ -281,7 +281,7 @@ const header = (id: string, docNum: number, customerId: string, patch: Partial<S
     paymentTermId: c.customerPaymentTermId,
     federalTaxId: c.tin,
     shippingType: c.shippingType,
-    salesEmployeeId: c.salesEmployeeId || NO_SALES_EMPLOYEE_ID,
+    salesEmployeeId: c.salesEmployeeId,
     allowPartialDelivery: c.allowPartialDelivery,
     billTo: bill ? formatAddress(bill, c.name) : '',
     shipTo: ship ? formatAddress(ship, c.name) : '',

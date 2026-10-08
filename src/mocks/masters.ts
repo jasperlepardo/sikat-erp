@@ -43,8 +43,8 @@ export const BUSINESS_TYPES = [
   'Individual',
   'Government',
 ];
-/** Sales employees and buyers. "-No Sales Employee-" is a real entry, as in SAP B1; Jasper L. is the signed-in user (document owner). */
-export const EMPLOYEES = ['Andrea Ramos', 'Ben Salazar', 'Carla Uy', 'Dino Pascual', '-No Sales Employee-', 'Jasper L.'] as const;
+/** Sales employees and buyers. Jasper L. is the signed-in user (document owner). */
+export const EMPLOYEES = ['Andrea Ramos', 'Ben Salazar', 'Carla Uy', 'Dino Pascual', 'Jasper L.'] as const;
 export const employeeId = idIn('emp', EMPLOYEES);
 export const TECHNICIANS = ['Edgar Bautista', 'Fe Lopez'] as const;
 export const technicianId = idIn('tec', TECHNICIANS);

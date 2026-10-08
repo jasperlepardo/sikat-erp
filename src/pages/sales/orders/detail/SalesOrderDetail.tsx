@@ -8,7 +8,7 @@ import { ProblemsAlert, problemCollector, type Problem } from '../../../../compo
 import { CURRENT_USER_ID } from '../../../../mocks/common';
 import { formatAddress } from '../../../../mocks/address';
 import { contactName, type Partner } from '../../../../mocks/partners';
-import { NO_SALES_EMPLOYEE_ID, SALES_SETTINGS, SO_SERIES, blankSalesOrder, newSoLine, type SalesOrder, type SoStatus } from '../../../../mocks/salesOrders';
+import { NO_SALES_EMPLOYEE, SALES_SETTINGS, SO_SERIES, blankSalesOrder, newSoLine, type SalesOrder, type SoStatus } from '../../../../mocks/salesOrders';
 import { loadCurrentCompany } from '../../../../services/companies';
 import { formatDate, todayISO } from '../../../../services/dates';
 import { formatAmount } from '../../../../services/format';
@@ -186,7 +186,7 @@ function SalesOrderForm() {
       project: c.project || '— None —',
       shippingType: c.shippingType,
       federalTaxId: c.tin,
-      salesEmployeeId: c.salesEmployeeId || NO_SALES_EMPLOYEE_ID,
+      salesEmployeeId: c.salesEmployeeId,
       allowPartialDelivery: c.allowPartialDelivery,
       discountPct: c.totalDiscount || 0,
       billTo: bill ? formatAddress(bill, c.name) : '',
@@ -416,7 +416,7 @@ function SalesOrderForm() {
               <Fields cols={1}>
                 <fieldset disabled={ctx.readOnly} className="contents">
                   <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                    {h.master('salesEmployeeId', 'Sales employee', salesEmployeeDef, { hint: 'Defaults from the customer.' })}
+                    {h.master('salesEmployeeId', 'Sales employee', salesEmployeeDef, { clearable: true, placeholder: NO_SALES_EMPLOYEE, hint: 'Defaults from the customer.' })}
                     {h.master('ownerId', 'Owner', salesEmployeeDef, { hint: 'Owns the document.' })}
                   </div>
                 </fieldset>

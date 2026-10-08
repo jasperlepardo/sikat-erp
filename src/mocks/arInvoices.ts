@@ -25,7 +25,7 @@
  *   Tax (other localizations), Asset Value Date (no fixed assets yet), Payment Order Run (A/P).
  */
 import { CURRENT_USER_ID, type Attachment, type DocumentSeries } from './common';
-import { employeeId, plId, termId } from './masters';
+import { plId, termId } from './masters';
 import { SEED_DELIVERIES, type DnLine } from './deliveries';
 import { SEED_PARTNERS, formatAddress } from './partners';
 import { RETAIL_SALES } from './retailHistory';
@@ -200,7 +200,7 @@ export function blankArInvoice(today: string, ownerId: string): Omit<ArInvoice, 
     installments: 1,
     useShippedGoodsAccount: false,
     attachments: [],
-    salesEmployeeId: employeeId('-No Sales Employee-'),
+    salesEmployeeId: '',
     ownerId: ownerId,
     discountPct: 0,
     freight: 0,

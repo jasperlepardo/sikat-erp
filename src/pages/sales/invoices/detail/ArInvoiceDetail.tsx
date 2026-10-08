@@ -10,7 +10,7 @@ import { AR_SERIES, blankArInvoice, type ArInvoice, type ArStatus } from '../../
 import { accountText } from '../../../../mocks/chartOfAccounts';
 import { CURRENT_USER_ID } from '../../../../mocks/common';
 import { contactName } from '../../../../mocks/partners';
-import { NO_SALES_EMPLOYEE_ID, SALES_SETTINGS } from '../../../../mocks/salesOrders';
+import { NO_SALES_EMPLOYEE, SALES_SETTINGS } from '../../../../mocks/salesOrders';
 import {
   ArPostError,
   addArInvoice,
@@ -222,7 +222,7 @@ function ArInvoiceForm() {
       project: c.project || '— None —',
       shippingType: c.shippingType,
       federalTaxId: c.tin,
-      salesEmployeeId: c.salesEmployeeId || NO_SALES_EMPLOYEE_ID,
+      salesEmployeeId: c.salesEmployeeId,
       discountPct: c.totalDiscount || 0,
       controlAccount: controlAccountOf(c),
       billTo: bill ? formatAddress(bill, c.name) : '',
@@ -390,7 +390,7 @@ function ArInvoiceForm() {
             <Section icon="functions" title="Totals">
               <fieldset disabled={ro} className="contents">
                 <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                  {h.master('salesEmployeeId', 'Sales employee', salesEmployeeDef)}
+                  {h.master('salesEmployeeId', 'Sales employee', salesEmployeeDef, { clearable: true, placeholder: NO_SALES_EMPLOYEE })}
                   {h.master('ownerId', 'Owner', salesEmployeeDef)}
                 </div>
                 <List.Group divider>

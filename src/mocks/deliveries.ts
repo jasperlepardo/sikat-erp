@@ -21,7 +21,7 @@
  * - Negative stock isn't allowed: a line can't ship more than the warehouse holds.
  */
 import { CURRENT_USER_ID, type Attachment, type DocumentSeries } from './common';
-import { employeeId, plId, termId } from './masters';
+import { plId, termId } from './masters';
 import { SEED_SALES_ORDERS, seedRateOn, type SalesOrder } from './salesOrders';
 import type { PoReference } from './purchaseOrders';
 import { SEED_ITEMS } from './items';
@@ -198,7 +198,7 @@ export function blankDelivery(today: string, ownerId: string): Omit<Delivery, 'i
     references: [],
     useShippedGoodsAccount: false,
     attachments: [],
-    salesEmployeeId: employeeId('-No Sales Employee-'),
+    salesEmployeeId: '',
     ownerId: ownerId,
     discountPct: 0,
     freight: 0,
