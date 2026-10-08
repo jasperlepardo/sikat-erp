@@ -5,7 +5,7 @@
  */
 import type { PartnerRole } from './partners';
 
-export const BP_GROUPS: { value: string; role: PartnerRole }[] = [
+export const BP_GROUPS = [
   { value: 'Customers – Trade', role: 'customer' },
   { value: 'Customers – Retail', role: 'customer' },
   { value: 'Customers – Government', role: 'customer' },
@@ -13,7 +13,9 @@ export const BP_GROUPS: { value: string; role: PartnerRole }[] = [
   { value: 'Vendors – Import', role: 'vendor' },
   { value: 'Vendors – Services', role: 'vendor' },
   { value: 'Leads', role: 'lead' },
-];
+] as const satisfies readonly { value: string; role: PartnerRole }[];
+/** Seed id of a BP group — `bpg-` + its position above, as `named()` numbers them. Append new groups; never reorder. */
+export const bpgId = (name: (typeof BP_GROUPS)[number]['value']) => `bpg-${String(BP_GROUPS.findIndex((g) => g.value === name) + 1).padStart(3, '0')}`;
 
 export const INDUSTRIES = [
   'Retail', 'Wholesale', 'Technology', 'BPO / IT-BPM', 'Financial services', 'Education', 'Government', 'Cooperative',

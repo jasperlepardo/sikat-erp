@@ -71,7 +71,7 @@ function validate(d: Draft, codeMode: 'auto' | 'manual', chart: Account[] | unde
 
   need(codeMode === 'auto' || d.code.trim(), 'header', 'code', 'Enter a code, or switch numbering to Auto.');
   need(d.name.trim(), 'header', 'name', 'Name is required.');
-  need(d.group, 'header', 'group', 'Group is required.');
+  need(d.bpGroupId, 'header', 'bpGroupId', 'Group is required.');
   need(d.currency, 'header', 'currency', 'Currency is required.');
   if (d.status === 'Advanced') {
     need(d.statusFrom, 'header', 'statusFrom', 'Pick a start date.');
@@ -430,10 +430,10 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
                       </FormField>
                       {h.text('name', 'Name', { ...beside, placeholder: 'e.g. Acme Trading Corp.', required: true, error: errors.name })}
                       {h.text('foreignName', 'Foreign name', { ...beside, placeholder: 'Name in another language', hint: 'For bilingual printouts.' })}
-                      {h.master('group', 'Group', bpGroupDef, {
+                      {h.master('bpGroupId', 'Group', bpGroupDef, {
                         ...beside,
                         required: true,
-                        error: errors.group,
+                        error: errors.bpGroupId,
                         where: (g) => draft.roles.includes(g.role),
                         seed: { role: draft.roles.find((r) => r !== 'lead') ?? draft.roles[0] },
                       })}

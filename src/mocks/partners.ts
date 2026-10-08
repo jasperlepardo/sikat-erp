@@ -105,7 +105,7 @@ export const newContactChannel = (type: ContactChannelType = 'Phone'): PartnerCo
 });
 
 import { blankPostalAddress, formatAddress, type PostalAddress } from './address';
-import { plId, termId } from './masters';
+import { bpgId, plId, termId } from './masters';
 import type { Attachment } from './common';
 import type { VatExemptionEntry } from './taxes';
 export type { VatExemptionEntry };
@@ -137,7 +137,7 @@ export interface Partner {
   roles: PartnerRole[];
   name: string;
   foreignName: string;
-  group: string;
+  bpGroupId: string;
   currency: string;
   /** Federal Tax ID → BIR TIN. */
   tin: string;
@@ -355,7 +355,7 @@ export function blankPartner(role: PartnerRole): Omit<Partner, 'id'> {
     roles: [role],
     name: '',
     foreignName: '',
-    group: role === 'lead' ? 'Leads' : role === 'customer' ? 'Customers – Trade' : 'Vendors – Local',
+    bpGroupId: role === 'lead' ? bpgId('Leads') : role === 'customer' ? bpgId('Customers – Trade') : bpgId('Vendors – Local'),
     currency: 'PHP',
     tin: '',
     contactChannels: [],
@@ -502,7 +502,7 @@ export const SEED_PARTNERS: Partner[] = [
   // ── Customers ──────────────────────────────────────────────────────────────
   seed(
     'bp-001', 'customer',
-    { name: 'Walk-in customer', businessType: 'Individual', group: 'Customers – Retail', industry: 'Retail', channel: 'Walk-in',
+    { name: 'Walk-in customer', businessType: 'Individual', bpGroupId: bpgId('Customers – Retail'), industry: 'Retail', channel: 'Walk-in',
       customerPaymentTermId: termId('COD'), vatRegistered: false,
       remarks: 'Tax scenario (sales): regular consumer → 31 VATable sales, 12% output VAT.' },
     { firstName: 'Walk-in', lastName: 'Customer', position: 'Consumer' },
@@ -510,7 +510,7 @@ export const SEED_PARTNERS: Partner[] = [
   ),
   seed(
     'bp-002', 'vendor',
-    { roles: ['vendor', 'customer'], name: 'Northgate Prime Malls Inc.', tin: '201-334-517-000', businessType: 'Company', group: 'Vendors – Services',
+    { roles: ['vendor', 'customer'], name: 'Northgate Prime Malls Inc.', tin: '201-334-517-000', businessType: 'Company', bpGroupId: bpgId('Vendors – Services'),
       industry: 'Real estate', contactChannels: [phone('bp-002-ch1', '+63 2 8631 4400'), email('bp-002-ch2', 'leasing@northgateprime.example.ph')],
       vendorPaymentTermId: termId('Net 15'), customerPaymentTermId: termId('Net 30'), creditLimit: 300000, topWithholdingAgent: true, ...sworn('bp-002', 'SD-NPM-2026', '2026-01-12'),
       remarks: 'Our landlord at Northgate Mall, and a customer (buys iPads for its mall admin office).\n'
@@ -521,7 +521,7 @@ export const SEED_PARTNERS: Partner[] = [
   ),
   seed(
     'bp-003', 'customer',
-    { name: 'Bayanihan Savings Bank Corp.', tin: '004-112-908-000', businessType: 'Company', group: 'Customers – Trade', industry: 'Financial services',
+    { name: 'Bayanihan Savings Bank Corp.', tin: '004-112-908-000', businessType: 'Company', bpGroupId: bpgId('Customers – Trade'), industry: 'Financial services',
       contactChannels: [email('bp-003-ch1', 'procurement@bayanihanbank.example.ph')], customerPaymentTermId: termId('Net 30'), creditLimit: 2500000,
       salesEmployee: 'Carla Uy', territory: 'NCR', properties: ['Key account', 'Requires PO'], topWithholdingAgent: true,
       remarks: 'Corporate fleet of MacBooks and iPhones for branch staff.\n'
@@ -531,7 +531,7 @@ export const SEED_PARTNERS: Partner[] = [
   ),
   seed(
     'bp-004', 'customer',
-    { name: 'Clarkfield Global Services Inc.', tin: '009-876-120-000', businessType: 'Company', group: 'Customers – Trade', industry: 'BPO / IT-BPM',
+    { name: 'Clarkfield Global Services Inc.', tin: '009-876-120-000', businessType: 'Company', bpGroupId: bpgId('Customers – Trade'), industry: 'BPO / IT-BPM',
       contactChannels: [email('bp-004-ch1', 'it.procurement@clarkfieldgs.example.ph')], customerPaymentTermId: termId('Net 30'), creditLimit: 1500000, territory: 'North Luzon',
       vatExemptions: [{ id: 've-bp-004', type: 'Zero-rated', certificateRef: 'PEZA-EO-2023-0417', basis: '', validUntil: '2028-06-30',
         attachments: [doc('att-bp-004-peza', 'PEZA_Certificate_of_Registration.pdf', '2023-07-02', 'PEZA IT enterprise registration')] }],
@@ -542,7 +542,7 @@ export const SEED_PARTNERS: Partner[] = [
   ),
   seed(
     'bp-005', 'customer',
-    { name: 'Mactan Pixel Animation Studio Inc.', tin: '011-445-760-000', businessType: 'Company', group: 'Customers – Trade', industry: 'BPO / IT-BPM',
+    { name: 'Mactan Pixel Animation Studio Inc.', tin: '011-445-760-000', businessType: 'Company', bpGroupId: bpgId('Customers – Trade'), industry: 'BPO / IT-BPM',
       contactChannels: [email('bp-005-ch1', 'admin@mactanpixel.example.ph')], customerPaymentTermId: termId('Net 15'), territory: 'Visayas',
       vatExemptions: [{ id: 've-bp-005', type: 'Zero-rated', certificateRef: 'PEZA-EO-2021-0932', basis: '', validUntil: '2026-06-30',
         attachments: [doc('att-bp-005-peza', 'PEZA_Certificate_2021.pdf', '2021-07-15', 'PEZA registration (expired)')] }],
@@ -553,7 +553,7 @@ export const SEED_PARTNERS: Partner[] = [
   ),
   seed(
     'bp-006', 'customer',
-    { name: 'Lourdes M. Villanueva', businessType: 'Individual', group: 'Customers – Retail', industry: 'Retail', channel: 'Walk-in',
+    { name: 'Lourdes M. Villanueva', businessType: 'Individual', bpGroupId: bpgId('Customers – Retail'), industry: 'Retail', channel: 'Walk-in',
       customerPaymentTermId: termId('COD'), vatRegistered: false, contactChannels: [mobile('bp-006-ch1', '+63 917 402 1188')],
       vatExemptions: [{ id: 've-bp-006', type: 'Exempt entity', certificateRef: 'OSCA-PSG-2019-44871', basis: 'RA 9994 / RA 10754 — Senior citizen / PWD', validUntil: '',
         attachments: [doc('att-bp-006-osca', 'OSCA_Senior_Citizen_ID.jpg', '2026-08-03', 'OSCA senior citizen ID')] }],
@@ -564,7 +564,7 @@ export const SEED_PARTNERS: Partner[] = [
   ),
   seed(
     'bp-007', 'customer',
-    { name: 'Guro ng Bayan Multi-Purpose Cooperative', tin: '412-778-903-000', businessType: 'Cooperative', group: 'Customers – Trade', industry: 'Cooperative',
+    { name: 'Guro ng Bayan Multi-Purpose Cooperative', tin: '412-778-903-000', businessType: 'Cooperative', bpGroupId: bpgId('Customers – Trade'), industry: 'Cooperative',
       contactChannels: [email('bp-007-ch1', 'office@gurongbayancoop.example.ph')], customerPaymentTermId: termId('Net 15'), vatRegistered: false,
       vatExemptions: [{ id: 've-bp-007', type: 'Exempt entity', certificateRef: 'CDA-9520-00418823', basis: 'RA 9520 — Cooperative Code', validUntil: '2027-12-31',
         attachments: [doc('att-bp-007-cda', 'CDA_Certificate_of_Registration.pdf', '2025-01-20', 'CDA registration + BIR certificate of tax exemption')] }],
@@ -575,7 +575,7 @@ export const SEED_PARTNERS: Partner[] = [
   ),
   seed(
     'bp-008', 'vendor',
-    { roles: ['vendor', 'customer'], name: 'Kapitbahayan Transport Service Cooperative', tin: '415-202-661-000', businessType: 'Cooperative', group: 'Vendors – Services',
+    { roles: ['vendor', 'customer'], name: 'Kapitbahayan Transport Service Cooperative', tin: '415-202-661-000', businessType: 'Cooperative', bpGroupId: bpgId('Vendors – Services'),
       industry: 'Logistics', contactChannels: [mobile('bp-008-ch1', '+63 918 330 7711', 'Dispatch')],
       vendorPaymentTermId: termId('Net 7'), customerPaymentTermId: termId('COD'), vatRegistered: false,
       vatExemptions: [{ id: 've-bp-008', type: 'Exempt entity', certificateRef: 'CDA-9520-00520190', basis: 'RA 9520 — Cooperative Code', validUntil: '', attachments: [] }],
@@ -587,7 +587,7 @@ export const SEED_PARTNERS: Partner[] = [
   ),
   seed(
     'bp-009', 'customer',
-    { name: 'Department of Education – Schools Division Office of Pasig City', businessType: 'Government', group: 'Customers – Government', industry: 'Government',
+    { name: 'Department of Education – Schools Division Office of Pasig City', businessType: 'Government', bpGroupId: bpgId('Customers – Government'), industry: 'Government',
       contactChannels: [email('bp-009-ch1', 'supply.office@depedpasig.example.gov.ph')], customerPaymentTermId: termId('Net 60'), priceListId: plId('Government'),
       remarks: 'iPads for teachers under a public bidding award (PhilGEPS).\n'
         + 'Tax scenario (sales): 31 VATable. The agency withholds 5% creditable VAT and 1% EWT and issues BIR Form 2307 — claim the VAT on 2550Q item 16.' },
@@ -596,7 +596,7 @@ export const SEED_PARTNERS: Partner[] = [
   ),
   seed(
     'bp-010', 'customer',
-    { name: 'Harbourline Travel Pte. Ltd.', businessType: 'Non-resident foreign company', group: 'Customers – Trade', industry: 'Services',
+    { name: 'Harbourline Travel Pte. Ltd.', businessType: 'Non-resident foreign company', bpGroupId: bpgId('Customers – Trade'), industry: 'Services',
       contactChannels: [email('bp-010-ch1', 'finance@harbourline.example.sg')], currency: 'USD', customerPaymentTermId: termId('50% DP, balance on delivery'),
       vatRegistered: false, nonResident: true,
       remarks: 'Singapore travel company buying iPhones for its Manila-based staff, delivered here.\n'
@@ -626,7 +626,7 @@ export const SEED_PARTNERS: Partner[] = [
   // ── Vendors: local suppliers ───────────────────────────────────────────────
   seed(
     'bp-013', 'vendor',
-    { name: 'Techzone Accessories Distribution Inc.', tin: '203-118-456-000', businessType: 'Company', group: 'Vendors – Local', industry: 'Wholesale',
+    { name: 'Techzone Accessories Distribution Inc.', tin: '203-118-456-000', businessType: 'Company', bpGroupId: bpgId('Vendors – Local'), industry: 'Wholesale',
       contactChannels: [phone('bp-013-ch1', '+63 2 8570 2210'), email('bp-013-ch2', 'orders@techzone.example.ph')], vendorPaymentTermId: termId('Net 30'),
       remarks: 'Third-party accessories (cases, screen protectors, chargers).\n'
         + 'Tax scenario (purchase, goods): 44 input VAT · WC158 1% EWT (we are a top withholding agent). The 1% is flat, so no sworn declaration is needed.' },
@@ -635,7 +635,7 @@ export const SEED_PARTNERS: Partner[] = [
   ),
   seed(
     'bp-014', 'vendor',
-    { name: 'Sentinel Guard & Security Agency Inc.', tin: '206-554-120-000', businessType: 'Company', group: 'Vendors – Services', industry: 'Security services',
+    { name: 'Sentinel Guard & Security Agency Inc.', tin: '206-554-120-000', businessType: 'Company', bpGroupId: bpgId('Vendors – Services'), industry: 'Security services',
       contactChannels: [email('bp-014-ch1', 'billing@sentinelguard.example.ph')], vendorPaymentTermId: termId('Net 15'),
       remarks: 'Security guards for the Pasig and Muntinlupa stores.\n'
         + 'Tax scenario (purchase, contractor): 44 input VAT · WC120 2% EWT.' },
@@ -644,7 +644,7 @@ export const SEED_PARTNERS: Partner[] = [
   ),
   seed(
     'bp-015', 'vendor',
-    { name: 'Amazon Web Services, Inc.', businessType: 'Non-resident foreign company', group: 'Vendors – Services', industry: 'Technology',
+    { name: 'Amazon Web Services, Inc.', businessType: 'Non-resident foreign company', bpGroupId: bpgId('Vendors – Services'), industry: 'Technology',
       contactChannels: [web('bp-015-ch1', 'aws.amazon.com')], currency: 'USD', vendorPaymentTermId: termId('Net 7'),
       vatRegistered: false, nonResident: true, nonResidentDigitalServices: true,
       remarks: 'Cloud hosting for our online store and POS back office, billed monthly in USD.\n'
@@ -654,7 +654,7 @@ export const SEED_PARTNERS: Partner[] = [
   ),
   seed(
     'bp-016', 'vendor',
-    { roles: ['vendor', 'customer'], name: 'Luzon iDistribution Corp.', tin: '789-012-345-000', businessType: 'Company', group: 'Vendors – Local', industry: 'Wholesale',
+    { roles: ['vendor', 'customer'], name: 'Luzon iDistribution Corp.', tin: '789-012-345-000', businessType: 'Company', bpGroupId: bpgId('Vendors – Local'), industry: 'Wholesale',
       contactChannels: [phone('bp-016-ch1', '+63 2 8845 6000'), email('bp-016-ch2', 'reseller.orders@luzonidist.example.ph')],
       customerPaymentTermId: termId('Net 30'), vendorPaymentTermId: termId('Net 30'), properties: ['Preferred supplier', 'Accepts e-invoice'], ...sworn('bp-016', 'SD-LID-2026', '2026-01-03'),
       paymentMethods: withAccounts('BANK', [
@@ -670,7 +670,7 @@ export const SEED_PARTNERS: Partner[] = [
   // ── Vendors: non-resident ──────────────────────────────────────────────────
   seed(
     'bp-017', 'vendor',
-    { name: 'Apple South Asia Pte. Ltd.', businessType: 'Non-resident foreign company', group: 'Vendors – Import', industry: 'Technology',
+    { name: 'Apple South Asia Pte. Ltd.', businessType: 'Non-resident foreign company', bpGroupId: bpgId('Vendors – Import'), industry: 'Technology',
       contactChannels: [web('bp-017-ch1', 'apple.com')], currency: 'USD', vendorPaymentTermId: termId('Net 30'), vatRegistered: false, nonResident: true,
       remarks: 'Direct imports of Apple products, shipped from Singapore and cleared through our customs broker.\n'
         + 'Tax scenario (purchase, imported goods): 46 importations — the 12% import VAT is paid to the Bureau of Customs on the import entry, not to Apple · no withholding (foreign-source income).' },
@@ -679,7 +679,7 @@ export const SEED_PARTNERS: Partner[] = [
   ),
   seed(
     'bp-018', 'vendor',
-    { name: 'OpenAI, LLC', businessType: 'Non-resident foreign company', group: 'Vendors – Services', industry: 'Technology',
+    { name: 'OpenAI, LLC', businessType: 'Non-resident foreign company', bpGroupId: bpgId('Vendors – Services'), industry: 'Technology',
       contactChannels: [web('bp-018-ch1', 'openai.com')], currency: 'USD', vendorPaymentTermId: termId('COD'),
       vatRegistered: false, nonResident: true, nonResidentDigitalServices: true,
       remarks: 'ChatGPT Team seats for the store and marketing teams, charged to the company card monthly.\n'
@@ -689,7 +689,7 @@ export const SEED_PARTNERS: Partner[] = [
   ),
   seed(
     'bp-019', 'vendor',
-    { name: 'Google Asia Pacific Pte. Ltd.', businessType: 'Non-resident foreign company', group: 'Vendors – Services', industry: 'Technology',
+    { name: 'Google Asia Pacific Pte. Ltd.', businessType: 'Non-resident foreign company', bpGroupId: bpgId('Vendors – Services'), industry: 'Technology',
       contactChannels: [web('bp-019-ch1', 'ads.google.com')], vendorPaymentTermId: termId('Net 30'),
       vatRegistered: true, nonResident: true, nonResidentDigitalServices: true,
       remarks: 'Google Ads (search and YouTube) and Google Workspace.\n'
@@ -699,7 +699,7 @@ export const SEED_PARTNERS: Partner[] = [
   ),
   seed(
     'bp-020', 'vendor',
-    { name: 'Meta Platforms Ireland Limited', businessType: 'Non-resident foreign company', group: 'Vendors – Services', industry: 'Technology',
+    { name: 'Meta Platforms Ireland Limited', businessType: 'Non-resident foreign company', bpGroupId: bpgId('Vendors – Services'), industry: 'Technology',
       contactChannels: [web('bp-020-ch1', 'facebook.com/business')], vendorPaymentTermId: termId('COD'),
       vatRegistered: true, nonResident: true, nonResidentDigitalServices: true,
       remarks: 'Facebook and Instagram ads for launches and promos.\n'
@@ -711,7 +711,7 @@ export const SEED_PARTNERS: Partner[] = [
   // ── Vendors: professionals and service providers ───────────────────────────
   seed(
     'bp-021', 'vendor',
-    { name: 'Reyes Tan Aquino & Co., CPAs', tin: '212-667-890-000', businessType: 'General professional partnership', group: 'Vendors – Services', industry: 'Professional services',
+    { name: 'Reyes Tan Aquino & Co., CPAs', tin: '212-667-890-000', businessType: 'General professional partnership', bpGroupId: bpgId('Vendors – Services'), industry: 'Professional services',
       contactChannels: [email('bp-021-ch1', 'audit@rtaco.example.ph')], vendorPaymentTermId: termId('Net 30'),
       remarks: 'External auditor (annual audit and BIR filings). No sworn declaration on file.\n'
         + 'Tax scenario (purchase, professional fees): 44 input VAT · WC011 15% EWT (juridical payee, no declaration → higher rate).' },
@@ -720,7 +720,7 @@ export const SEED_PARTNERS: Partner[] = [
   ),
   seed(
     'bp-022', 'vendor',
-    { name: 'Pier Four Customs Brokerage Inc.', tin: '218-331-045-000', businessType: 'Company', group: 'Vendors – Services', industry: 'Logistics',
+    { name: 'Pier Four Customs Brokerage Inc.', tin: '218-331-045-000', businessType: 'Company', bpGroupId: bpgId('Vendors – Services'), industry: 'Logistics',
       contactChannels: [email('bp-022-ch1', 'entries@pierfour.example.ph')], vendorPaymentTermId: termId('Net 7'), ...sworn('bp-022', 'SD-PFC-2026', '2026-01-09'),
       remarks: 'Clears our Apple imports at NAIA and the Port of Manila. Small firm: declared gross income ≤ ₱720,000.\n'
         + 'Tax scenario (purchase, broker commission): 44 input VAT · WC139 10% EWT (sworn declaration on file → lower rate).' },
@@ -729,7 +729,7 @@ export const SEED_PARTNERS: Partner[] = [
   ),
   seed(
     'bp-023', 'vendor',
-    { name: 'Bea Salonga Photography', tin: '301-778-221-000', businessType: 'Individual', group: 'Vendors – Services', industry: 'Media & advertising',
+    { name: 'Bea Salonga Photography', tin: '301-778-221-000', businessType: 'Individual', bpGroupId: bpgId('Vendors – Services'), industry: 'Media & advertising',
       contactChannels: [email('bp-023-ch1', 'bea@beasalonga.example.ph')], vendorPaymentTermId: termId('Net 7'), vatRegistered: false, ...sworn('bp-023', 'SD-BSP-2026', '2026-02-02'),
       remarks: 'Freelance product photographer for launch visuals. Non-VAT; declared gross income ≤ ₱3M.\n'
         + 'Tax scenario (purchase, professional fees): 48 no input tax · WI010 5% EWT.' },
@@ -738,7 +738,7 @@ export const SEED_PARTNERS: Partner[] = [
   ),
   seed(
     'bp-024', 'vendor',
-    { name: 'Engr. Marco D. Lim', tin: '305-990-114-000', businessType: 'Individual', group: 'Vendors – Services', industry: 'Technology',
+    { name: 'Engr. Marco D. Lim', tin: '305-990-114-000', businessType: 'Individual', bpGroupId: bpgId('Vendors – Services'), industry: 'Technology',
       contactChannels: [email('bp-024-ch1', 'marco.lim@example.ph')], vendorPaymentTermId: termId('Net 15'), vatRegistrationDate: '2022-04-01',
       remarks: 'Independent IT consultant: network and MDM setup for corporate deployments. VAT-registered.\n'
         + 'Tax scenario (purchase, professional fees): 44 input VAT · WI011 10% EWT (VAT-registered individual → higher rate; no declaration needed).' },
@@ -747,7 +747,7 @@ export const SEED_PARTNERS: Partner[] = [
   ),
   seed(
     'bp-025', 'vendor',
-    { name: 'RJ Dizon Interiors & Construction', tin: '308-445-672-000', businessType: 'Sole proprietorship', group: 'Vendors – Services', industry: 'Construction',
+    { name: 'RJ Dizon Interiors & Construction', tin: '308-445-672-000', businessType: 'Sole proprietorship', bpGroupId: bpgId('Vendors – Services'), industry: 'Construction',
       contactChannels: [mobile('bp-025-ch1', '+63 917 889 2040')], vendorPaymentTermId: termId('50% DP, balance on delivery'), vatRegistered: false,
       remarks: 'Store fit-out and repairs. Non-VAT sole proprietor.\n'
         + 'Tax scenario (purchase, contractor): 48 no input tax · WI120 2% EWT.' },
@@ -756,7 +756,7 @@ export const SEED_PARTNERS: Partner[] = [
   ),
   seed(
     'bp-026', 'vendor',
-    { name: 'Jolina P. Cruz', tin: '310-552-008-000', businessType: 'Individual', group: 'Vendors – Services', industry: 'Retail',
+    { name: 'Jolina P. Cruz', tin: '310-552-008-000', businessType: 'Individual', bpGroupId: bpgId('Vendors – Services'), industry: 'Retail',
       contactChannels: [mobile('bp-026-ch1', '+63 928 115 6630')], vendorPaymentTermId: termId('Net 15'), vatRegistered: false,
       swornDeclarationRef: 'SD-JPC-2025', swornDeclarationDate: '2025-01-15',
       swornDeclarationAttachments: [doc('att-bp-026-sd', 'Sworn_Declaration_SD-JPC-2025.pdf', '2025-01-15')],
@@ -767,7 +767,7 @@ export const SEED_PARTNERS: Partner[] = [
   ),
   seed(
     'bp-027', 'vendor',
-    { name: 'SwiftCargo Express Corp.', tin: '221-908-334-000', businessType: 'Company', group: 'Vendors – Services', industry: 'Logistics',
+    { name: 'SwiftCargo Express Corp.', tin: '221-908-334-000', businessType: 'Company', bpGroupId: bpgId('Vendors – Services'), industry: 'Logistics',
       contactChannels: [email('bp-027-ch1', 'corporate@swiftcargo.example.ph')], vendorPaymentTermId: termId('Net 15'),
       remarks: 'Nationwide courier for provincial deliveries and store-to-store transfers.\n'
         + 'Tax scenario (purchase, services): 44 input VAT · WC160 2% EWT.' },
@@ -776,7 +776,7 @@ export const SEED_PARTNERS: Partner[] = [
   ),
   seed(
     'bp-028', 'vendor',
-    { name: 'Philippine Postal Corporation', businessType: 'Government', group: 'Vendors – Services', industry: 'Government',
+    { name: 'Philippine Postal Corporation', businessType: 'Government', bpGroupId: bpgId('Vendors – Services'), industry: 'Government',
       contactChannels: [web('bp-028-ch1', 'phlpost.gov.ph')], vendorPaymentTermId: termId('COD'),
       remarks: 'Registered mail for warranty documents and BIR correspondence.\n'
         + 'Tax scenario (purchase, services): government payee → 44 input VAT · no withholding.' },
@@ -785,7 +785,7 @@ export const SEED_PARTNERS: Partner[] = [
   ),
   seed(
     'bp-029', 'vendor',
-    { name: 'Kestrel Retail Systems Pte. Ltd.', businessType: 'Non-resident foreign company', group: 'Vendors – Services', industry: 'Technology',
+    { name: 'Kestrel Retail Systems Pte. Ltd.', businessType: 'Non-resident foreign company', bpGroupId: bpgId('Vendors – Services'), industry: 'Technology',
       contactChannels: [email('bp-029-ch1', 'projects@kestrelretail.example.sg')], currency: 'USD', vendorPaymentTermId: termId('Net 30'), vatRegistered: false, nonResident: true,
       taxTreatyCountry: 'Singapore', taxTreatyCertificate: 'IRAS-COR-2026-118830', taxTreatyCertificateExpiry: '2026-12-31',
       remarks: 'Singapore firm integrating our POS with the ERP; its consultants work remotely and on site.\n'
@@ -795,7 +795,7 @@ export const SEED_PARTNERS: Partner[] = [
   ),
   seed(
     'bp-030', 'vendor',
-    { name: 'Nakamura Retail Software K.K.', businessType: 'Non-resident foreign company', group: 'Vendors – Services', industry: 'Technology',
+    { name: 'Nakamura Retail Software K.K.', businessType: 'Non-resident foreign company', bpGroupId: bpgId('Vendors – Services'), industry: 'Technology',
       contactChannels: [email('bp-030-ch1', 'licensing@nakamura-rs.example.jp')], currency: 'JPY', vendorPaymentTermId: termId('Net 30'), vatRegistered: false, nonResident: true,
       taxTreatyCountry: 'Japan', taxTreatyCertificate: 'NTA-COR-2026-55102', taxTreatyCertificateExpiry: '2027-03-31',
       taxTreatyIncomes: [{ id: 'ti-bp-030', incomeType: 'Royalties', approvedRate: 10, ttraApprovalDate: '2026-03-18',
@@ -807,7 +807,7 @@ export const SEED_PARTNERS: Partner[] = [
   ),
   seed(
     'bp-031', 'vendor',
-    { name: 'Ayu Pratama', businessType: 'Individual', group: 'Vendors – Services', industry: 'Media & advertising',
+    { name: 'Ayu Pratama', businessType: 'Individual', bpGroupId: bpgId('Vendors – Services'), industry: 'Media & advertising',
       contactChannels: [email('bp-031-ch1', 'ayu.pratama@example.id')], currency: 'USD', vendorPaymentTermId: termId('Net 7'), vatRegistered: false, nonResident: true,
       remarks: 'Freelance motion designer in Jakarta; makes our launch videos remotely.\n'
         + 'Tax scenario (purchase, services from a non-resident individual): 45 · WV070 12% · WI330 25% final tax.' },
@@ -816,7 +816,7 @@ export const SEED_PARTNERS: Partner[] = [
   ),
   seed(
     'bp-032', 'vendor',
-    { name: 'Harbour Capital Asia Ltd.', businessType: 'Non-resident foreign company', group: 'Vendors – Services', industry: 'Financial services',
+    { name: 'Harbour Capital Asia Ltd.', businessType: 'Non-resident foreign company', bpGroupId: bpgId('Vendors – Services'), industry: 'Financial services',
       contactChannels: [email('bp-032-ch1', 'loans@harbourcapital.example.hk')], currency: 'USD', vendorPaymentTermId: termId('Net 30'), vatRegistered: false, nonResident: true,
       remarks: 'Hong Kong lender: USD inventory financing for the iPhone launch season.\n'
         + 'Tax scenario (purchase, interest): 48 no input tax (interest is not VATable) · WC180 20% final tax on interest on foreign loans.' },
@@ -827,7 +827,7 @@ export const SEED_PARTNERS: Partner[] = [
   // ── Edge cases: overrides, incomplete paperwork, other business types ──────
   seed(
     'bp-033', 'vendor',
-    { name: 'Santos Villareal & Partners Law Offices', tin: '214-003-778-000', businessType: 'General professional partnership', group: 'Vendors – Services',
+    { name: 'Santos Villareal & Partners Law Offices', tin: '214-003-778-000', businessType: 'General professional partnership', bpGroupId: bpgId('Vendors – Services'),
       industry: 'Professional services', contactChannels: [email('bp-033-ch1', 'billing@svplaw.example.ph')], vendorPaymentTermId: termId('Net 30'),
       withholdingOverrideId: 'wt-WC010',
       remarks: 'Corporate counsel on retainer (contracts, labor cases, BIR assessments).\n'
@@ -837,7 +837,7 @@ export const SEED_PARTNERS: Partner[] = [
   ),
   seed(
     'bp-034', 'vendor',
-    { name: 'Metro Aircon Services Inc.', tin: '223-417-906-000', businessType: 'Company', group: 'Vendors – Services', industry: 'Services',
+    { name: 'Metro Aircon Services Inc.', tin: '223-417-906-000', businessType: 'Company', bpGroupId: bpgId('Vendors – Services'), industry: 'Services',
       contactChannels: [phone('bp-034-ch1', '+63 2 8911 2045')], vendorPaymentTermId: termId('Net 15'), withholdingOverrideId: 'wt-WC120',
       remarks: 'Aircon maintenance for all stores under a service contract.\n'
         + 'Tax scenario (purchase, vendor override): the contract is treated as a contractor’s service, so the vendor carries WC120 2% instead of the item’s services ATC (WC160) · 44 input VAT.' },
@@ -846,7 +846,7 @@ export const SEED_PARTNERS: Partner[] = [
   ),
   seed(
     'bp-035', 'vendor',
-    { name: 'Pixelhaus Design Studio Inc.', tin: '226-880-312-000', businessType: 'Company', group: 'Vendors – Services', industry: 'Media & advertising',
+    { name: 'Pixelhaus Design Studio Inc.', tin: '226-880-312-000', businessType: 'Company', bpGroupId: bpgId('Vendors – Services'), industry: 'Media & advertising',
       contactChannels: [email('bp-035-ch1', 'accounts@pixelhaus.example.ph')], vendorPaymentTermId: termId('Net 15'),
       swornDeclarationRef: 'SD-PXH-2026', swornDeclarationDate: '2026-02-20', swornDeclarationAttachments: [],
       remarks: 'In-store signage and campaign design. Sent the sworn declaration reference by email but not the signed copy.\n'
@@ -856,7 +856,7 @@ export const SEED_PARTNERS: Partner[] = [
   ),
   seed(
     'bp-036', 'vendor',
-    { name: 'Rosario T. Uy', tin: '118-440-925-000', businessType: 'Individual', group: 'Vendors – Services', industry: 'Real estate',
+    { name: 'Rosario T. Uy', tin: '118-440-925-000', businessType: 'Individual', bpGroupId: bpgId('Vendors – Services'), industry: 'Real estate',
       contactChannels: [mobile('bp-036-ch1', '+63 917 620 4410')], vendorPaymentTermId: termId('Net 7'), vatRegistered: false,
       remarks: 'Owns the building on Osmeña Blvd. where our Cebu store is. Non-VAT individual lessor.\n'
         + 'Tax scenario (purchase, rent from an individual): 48 no input tax · WI100 5% EWT.' },
@@ -865,7 +865,7 @@ export const SEED_PARTNERS: Partner[] = [
   ),
   seed(
     'bp-037', 'vendor',
-    { name: 'Kyle Andrada', tin: '331-207-554-000', businessType: 'Individual', group: 'Vendors – Services', industry: 'Media & advertising',
+    { name: 'Kyle Andrada', tin: '331-207-554-000', businessType: 'Individual', bpGroupId: bpgId('Vendors – Services'), industry: 'Media & advertising',
       contactChannels: [email('bp-037-ch1', 'kyle.andrada@example.ph')], vendorPaymentTermId: termId('Net 7'), vatRegistered: false,
       remarks: 'Freelance video editor for unboxing and launch content. New vendor, non-VAT, no sworn declaration yet.\n'
         + 'Tax scenario (purchase, professional fees): 48 no input tax · WI011 10% EWT until he submits a declaration (then WI010 5%).' },
@@ -874,7 +874,7 @@ export const SEED_PARTNERS: Partner[] = [
   ),
   seed(
     'bp-038', 'vendor',
-    { name: 'Pacific Rim Equipment Leasing Ltd.', businessType: 'Non-resident foreign company', group: 'Vendors – Services', industry: 'Financial services',
+    { name: 'Pacific Rim Equipment Leasing Ltd.', businessType: 'Non-resident foreign company', bpGroupId: bpgId('Vendors – Services'), industry: 'Financial services',
       contactChannels: [email('bp-038-ch1', 'leases@pacificrimleasing.example.hk')], currency: 'USD', vendorPaymentTermId: termId('Net 30'), vatRegistered: false, nonResident: true,
       remarks: 'Hong Kong lessor of our POS terminals and card readers (36-month operating lease).\n'
         + 'Tax scenario (purchase, equipment lease from a non-resident): 45 · WV050 12% withholding VAT on use of property · WC300 7.5% final tax on equipment rentals.' },
@@ -883,7 +883,7 @@ export const SEED_PARTNERS: Partner[] = [
   ),
   seed(
     'bp-039', 'vendor',
-    { name: 'Hanil Digital Signage Co., Ltd.', businessType: 'Non-resident foreign company', group: 'Vendors – Services', industry: 'Technology',
+    { name: 'Hanil Digital Signage Co., Ltd.', businessType: 'Non-resident foreign company', bpGroupId: bpgId('Vendors – Services'), industry: 'Technology',
       contactChannels: [email('bp-039-ch1', 'global@hanilsignage.example.kr')], currency: 'USD', vendorPaymentTermId: termId('Net 30'), vatRegistered: false, nonResident: true,
       taxTreatyCountry: 'South Korea', taxTreatyCertificate: 'NTS-COR-2025-30418', taxTreatyCertificateExpiry: '2026-06-30',
       taxTreatyIncomes: [{ id: 'ti-bp-039', incomeType: 'Royalties', approvedRate: 10, ttraApprovalDate: '2025-08-12',
@@ -895,7 +895,7 @@ export const SEED_PARTNERS: Partner[] = [
   ),
   seed(
     'bp-040', 'customer',
-    { name: 'Subic Bay Marine Logistics Inc.', tin: '015-330-871-000', businessType: 'Company', group: 'Customers – Trade', industry: 'Logistics',
+    { name: 'Subic Bay Marine Logistics Inc.', tin: '015-330-871-000', businessType: 'Company', bpGroupId: bpgId('Customers – Trade'), industry: 'Logistics',
       contactChannels: [email('bp-040-ch1', 'purchasing@sbml.example.ph')], customerPaymentTermId: termId('Net 30'), territory: 'North Luzon',
       vatExemptions: [{ id: 've-bp-040', type: 'Zero-rated', certificateRef: 'SBMA-CRT-2026-0215', basis: '', validUntil: '2029-03-31', attachments: [] }],
       remarks: 'New SBMA-registered export enterprise ordering iPads for its terminal crew. Gave the certificate number; the copy is still to follow.\n'
@@ -905,7 +905,7 @@ export const SEED_PARTNERS: Partner[] = [
   ),
   seed(
     'bp-041', 'customer',
-    { name: 'ASEAN Regional Health Institute', tin: '016-902-448-000', businessType: 'Company', group: 'Customers – Trade', industry: 'Services',
+    { name: 'ASEAN Regional Health Institute', tin: '016-902-448-000', businessType: 'Company', bpGroupId: bpgId('Customers – Trade'), industry: 'Services',
       contactChannels: [email('bp-041-ch1', 'procurement@arhi.example.org')], customerPaymentTermId: termId('Net 30'),
       vatExemptions: [{ id: 've-bp-041', type: 'Exempt entity', certificateRef: 'BIR-ITAD-2023-117', basis: 'Sec. 109 NIRC — BIR tax exemption ruling', validUntil: '2026-03-31',
         attachments: [doc('att-bp-041-ruling', 'BIR_Exemption_Ruling_2023.pdf', '2023-04-05', 'BIR tax exemption ruling (expired)')] }],
@@ -916,7 +916,7 @@ export const SEED_PARTNERS: Partner[] = [
   ),
   seed(
     'bp-042', 'vendor',
-    { name: 'Nordlys Freight AS – Philippine Branch', tin: '227-661-093-000', businessType: 'Resident foreign company', group: 'Vendors – Services', industry: 'Logistics',
+    { name: 'Nordlys Freight AS – Philippine Branch', tin: '227-661-093-000', businessType: 'Resident foreign company', bpGroupId: bpgId('Vendors – Services'), industry: 'Logistics',
       contactChannels: [email('bp-042-ch1', 'manila@nordlysfreight.example.com')], vendorPaymentTermId: termId('Net 30'),
       remarks: 'Philippine branch of a Norwegian freight forwarder: air freight for our Apple imports from Singapore.\n'
         + 'Tax scenario (purchase, services): a resident foreign corporation is taxed like a domestic one → 44 input VAT · WC160 2% EWT.' },
@@ -925,7 +925,7 @@ export const SEED_PARTNERS: Partner[] = [
   ),
   seed(
     'bp-043', 'vendor',
-    { name: 'Brightline Retail Advisory LLP', businessType: 'Non-resident foreign partnership', group: 'Vendors – Services', industry: 'Professional services',
+    { name: 'Brightline Retail Advisory LLP', businessType: 'Non-resident foreign partnership', bpGroupId: bpgId('Vendors – Services'), industry: 'Professional services',
       contactChannels: [email('bp-043-ch1', 'engagements@brightline.example.co.uk')], currency: 'USD', vendorPaymentTermId: termId('Net 30'), vatRegistered: false, nonResident: true,
       remarks: 'UK retail consultancy that reviewed our store layouts and staffing, working remotely.\n'
         + 'Tax scenario (purchase, services from a non-resident partnership): 45 · WV070 12% · WC230 25% final tax.' },
@@ -934,7 +934,7 @@ export const SEED_PARTNERS: Partner[] = [
   ),
   seed(
     'bp-044', 'customer',
-    { name: 'Kessler & Voss Architects – Manila Branch', tin: '228-104-560-000', businessType: 'Resident foreign partnership', group: 'Customers – Trade', industry: 'Professional services',
+    { name: 'Kessler & Voss Architects – Manila Branch', tin: '228-104-560-000', businessType: 'Resident foreign partnership', bpGroupId: bpgId('Customers – Trade'), industry: 'Professional services',
       contactChannels: [email('bp-044-ch1', 'office.manila@kesslervoss.example.de')], customerPaymentTermId: termId('Net 15'),
       remarks: 'Manila office of a German architecture firm; buys MacBook Pros and Studio Displays for its designers.\n'
         + 'Tax scenario (sales): 31 VATable.' },

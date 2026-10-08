@@ -91,7 +91,7 @@ export const bpGroupDef: MasterDef<BpGroup> = {
   home: SALES,
   description: 'Classify partners for reporting and filtering. Each group is for customers, vendors or leads.',
   blank: (name) => ({ id: newId('bpg'), name, role: 'customer', active: true }),
-  value: (g) => g.name,
+  value: (g) => g.id,
   label: (g) => g.name,
   columns: [
     { key: 'name', header: 'Group', cell: (g) => g.name },
@@ -109,7 +109,7 @@ export const bpGroupDef: MasterDef<BpGroup> = {
     const f = bind(g, update);
     return (
       <FieldStack>
-        {f.text('name', 'Name', { required: true, error: errors.name, placeholder: 'e.g. Customers – Export', disabled: !isNew, hint: !isNew ? NAME_LOCK : undefined })}
+        {f.text('name', 'Name', { required: true, error: errors.name, placeholder: 'e.g. Customers – Export' })}
         {f.choose('role', 'For', ROLE_ORDER.map((r) => ({ value: r, label: ROLE_CONFIG[r].title })), {
           disabled: !isNew,
           hint: 'Which partners can be put in this group.',

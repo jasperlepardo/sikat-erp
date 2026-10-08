@@ -1,4 +1,5 @@
 import { SEED_PARTNERS, contactName, type Partner, type PartnerRole } from '../mocks/partners';
+import { DEFAULT_CUSTOMER_GROUP_ID, LEADS_GROUP_ID } from './partnerMasters';
 import { createCollection } from './store';
 import { todayISO } from './dates';
 
@@ -33,7 +34,7 @@ export async function convertLeadToCustomer(id: string): Promise<Partner | undef
   const partner = await partners.get(id);
   if (!partner) return undefined;
   const roles: PartnerRole[] = [...new Set([...partner.roles.filter((r) => r !== 'lead'), 'customer' as const])];
-  return partners.save({ ...partner, roles, group: partner.group === 'Leads' ? 'Customers – Trade' : partner.group });
+  return partners.save({ ...partner, roles, bpGroupId: partner.bpGroupId === LEADS_GROUP_ID ? DEFAULT_CUSTOMER_GROUP_ID : partner.bpGroupId });
 }
 
 /** Active now: Active, or Advanced with today inside From/To. */

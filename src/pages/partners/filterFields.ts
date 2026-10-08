@@ -39,7 +39,7 @@ const common = (): FilterField<Partner>[] => [
   { key: 'name', label: 'Name', type: 'text', get: (p) => p.name },
   { key: 'code', label: 'Code', type: 'text', get: (p) => p.code },
   status,
-  { key: 'group', label: 'Group', type: 'master', def: bpGroupDef, get: (p) => p.group },
+  { key: 'bpGroupId', label: 'Group', type: 'master', def: bpGroupDef, get: (p) => p.bpGroupId },
   { key: 'contact', label: 'Contact person', type: 'text', get: (p) => defaultContactName(p) },
   { key: 'city', label: 'City', type: 'text', get: (p) => defaultBillTo(p)?.city },
   { key: 'province', label: 'Province', type: 'text', get: (p) => defaultBillTo(p)?.province },

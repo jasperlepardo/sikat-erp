@@ -31,22 +31,27 @@ export function DiscountGroupsTab() {
   }, [saved]);
 
   const rows = (draft ?? []).filter((r) => r.active);
-  const roleOf = (name: string) => groups.find((g) => g.name === name)?.role;
-  const addable = groups.filter((g) => g.active && g.role !== 'lead' && !rows.some((r) => r.bpGroup === g.name));
-  const invalid = rows.some((r) => Object.values(r.discounts).some((v) => !(v >= 0 && v <= 100)));
+  const groupOf = (id: string) => groups.find((g) => g.id === id);
+  const addable = groups.filter((g) => g.active && g.role !== 'lead' && !rows.some((r) => r.bpGroupId === g.id));
+  const invalid = rows.some((r) => r.discounts.some((d) => !(d.discountPct >= 0 && d.discountPct <= 100)));
 
   const setRow = (id: string, patch: Partial<DiscountGroupRow>) => setDraft((d) => d?.map((r) => (r.id === id ? { ...r, ...patch } : r)));
   const setCell = (row: DiscountGroupRow, itemGroup: string, value: string) => {
-    const discounts = { ...row.discounts };
-    if (value === '') delete discounts[itemGroup];
-    else discounts[itemGroup] = Number(value);
+    const cell = { itemGroup, discountPct: Number(value) };
+    const has = row.discounts.some((d) => d.itemGroup === itemGroup);
+    const discounts =
+      value === ''
+        ? row.discounts.filter((d) => d.itemGroup !== itemGroup)
+        : has
+          ? row.discounts.map((d) => (d.itemGroup === itemGroup ? cell : d))
+          : [...row.discounts, cell];
     setRow(row.id, { discounts });
   };
   const addRow = () => {
     if (!adding) return;
-    const existing = draft?.find((r) => r.bpGroup === adding);
+    const existing = draft?.find((r) => r.bpGroupId === adding);
     if (existing) setRow(existing.id, { active: true });
-    else setDraft((d) => [...(d ?? []), { id: newId('dgr'), bpGroup: adding, discounts: {}, active: true }]);
+    else setDraft((d) => [...(d ?? []), { id: newId('dgr'), bpGroupId: adding, discounts: [], active: true }]);
     setAdding(null);
   };
   const save = async () => {
@@ -78,17 +83,18 @@ export function DiscountGroupsTab() {
         unsortable={columns.map((c) => c.name)}
         columns={[
           {
-            key: 'bpGroup',
+            key: 'bpGroupId',
             header: 'BP group',
             cell: (r) => {
-              const role = roleOf(r.bpGroup);
+              const group = groupOf(r.bpGroupId);
+              const role = group?.role;
               return (
                 <div className="flex items-center gap-1 whitespace-nowrap">
-                  <IconButton label={`Remove ${r.bpGroup}`} size="small" variant="ghost" onClick={() => setRow(r.id, { active: false })}>
+                  <IconButton label={`Remove ${group?.name ?? r.bpGroupId}`} size="small" variant="ghost" onClick={() => setRow(r.id, { active: false })}>
                     <Icon size={16}>close</Icon>
                   </IconButton>
                   <div className="flex flex-col">
-                    <span>{r.bpGroup}</span>
+                    <span>{group?.name ?? r.bpGroupId}</span>
                     {role ? (
                       <Text variant="small" tone="muted">
                         {ROLE_CONFIG[role].title}
@@ -103,12 +109,12 @@ export function DiscountGroupsTab() {
             key: c.name,
             header: c.name,
             cell: (r: DiscountGroupRow) => {
-              const v = r.discounts[c.name];
+              const v = r.discounts.find((d) => d.itemGroup === c.name)?.discountPct;
               // Fixed width: short headers (iPad, Mac) would otherwise squeeze the input to nothing.
               return (
                 <div className="w-24 min-w-24">
                 <TextField
-                  aria-label={`${r.bpGroup} × ${c.name} discount`}
+                  aria-label={`${groupOf(r.bpGroupId)?.name ?? r.bpGroupId} × ${c.name} discount`}
                   type="number"
                   min={0}
                   max={100}
@@ -129,7 +135,7 @@ export function DiscountGroupsTab() {
               aria-label="BP group to add"
               className="w-56"
               placeholder="Add a BP group…"
-              options={addable.map((g) => ({ value: g.name, label: `${g.name} (${ROLE_CONFIG[g.role].title})` }))}
+              options={addable.map((g) => ({ value: g.id, label: `${g.name} (${ROLE_CONFIG[g.role].title})` }))}
               value={adding}
               onValueChange={(v) => setAdding(v ?? null)}
             />

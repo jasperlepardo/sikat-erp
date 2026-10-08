@@ -36,7 +36,7 @@ export function VendorQuickCreate({ initialName = '', onClose, onCreated }: Prop
     e.preventDefault();
     const found: Record<string, string> = {};
     if (!draft.name.trim()) found.name = 'Name is required.';
-    if (!draft.group) found.group = 'Group is required.';
+    if (!draft.bpGroupId) found.bpGroupId = 'Group is required.';
     if (!draft.currency) found.currency = 'Currency is required.';
     if (Object.keys(found).length) {
       setErrors(found);
@@ -145,7 +145,7 @@ export function VendorQuickCreate({ initialName = '', onClose, onCreated }: Prop
                       />
                     )}
                   </FormField>
-                  <FormField label="Group" required error={errors.group} tooltip="Vendor groups from Settings › Sales & CRM.">
+                  <FormField label="Group" required error={errors.bpGroupId} tooltip="Vendor groups from Settings › Sales & CRM.">
                     {(p) => (
                       <MasterLookup
                         def={bpGroupDef}
@@ -153,8 +153,8 @@ export function VendorQuickCreate({ initialName = '', onClose, onCreated }: Prop
                         where={(g) => g.role === 'vendor'}
                         seed={{ role: 'vendor' }}
                         placeholder="Search…"
-                        value={draft.group}
-                        onChange={(v) => { setErrors((prev) => ({ ...prev, group: '' })); update({ group: v }); }}
+                        value={draft.bpGroupId}
+                        onChange={(v) => { setErrors((prev) => ({ ...prev, bpGroupId: '' })); update({ bpGroupId: v }); }}
                       />
                     )}
                   </FormField>

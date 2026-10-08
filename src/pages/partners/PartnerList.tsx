@@ -27,6 +27,7 @@ import {
 } from '../../services/partners';
 import { useAsync } from '../../services/useAsync';
 import { formatAmount } from '../../services/format';
+import { bpGroupName } from '../../services/partnerMasters';
 import { paymentTermName } from '../../services/purchaseOrders';
 import { DEFAULT_PAGE_SIZE, PAGE_SIZES, fillCardClass } from '../../components/form/DataTable';
 import { useListPresets } from '../../components/filter/useListPresets';
@@ -85,7 +86,7 @@ export function PartnerList({ scope }: { scope: PartnerScope }) {
 
   const roleColumn: TableColumn<Partner> =
     scope === 'all'
-      ? { key: 'group', header: 'Group', sortable: true, cell: (p) => p.group }
+      ? { key: 'bpGroupId', header: 'Group', sortable: true, cell: (p) => bpGroupName(p.bpGroupId) }
       : scope === 'lead'
       ? { key: 'leadSource', header: 'Source', sortable: true, cell: (p) => p.leadSource ?? '—' }
       : scope === 'customer'

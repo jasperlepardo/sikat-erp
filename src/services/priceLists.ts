@@ -24,7 +24,7 @@ import {
 import { itemsPerUom, unitCost, unitPrice, type Item } from '../mocks/items';
 import type { Partner } from '../mocks/partners';
 import { formatAmount } from './format';
-import { priceLists } from './partnerMasters';
+import { bpGroupName, priceLists } from './partnerMasters';
 import { createCollection } from './store';
 
 export const specialPrices = createCollection<SpecialPriceSet>('sikat-erp:special-prices', SEED_SPECIAL_PRICES, 'spp');
@@ -154,7 +154,7 @@ export interface LinePrice {
  */
 export function determinePrice(o: {
   item: Item;
-  partner?: Pick<Partner, 'id' | 'group' | 'noDiscountGroups'>;
+  partner?: Pick<Partner, 'id' | 'bpGroupId' | 'noDiscountGroups'>;
   priceListId: string;
   uom: string;
   quantity: number;
@@ -192,7 +192,7 @@ export function determinePrice(o: {
         r.active &&
         r.priceListId === o.priceListId &&
         inDates(r, date) &&
-        (r.partnerScope === 'partner' ? r.partnerId === partner?.id : !!partner && r.bpGroup === partner.group) &&
+        (r.partnerScope === 'partner' ? r.partnerId === partner?.id : !!partner && r.bpGroupId === partner.bpGroupId) &&
         (r.itemScope === 'item' ? r.itemId === item.id : r.itemGroup === item.itemGroup),
     )
     .sort((a, b) => specificity(b) - specificity(a));
@@ -204,9 +204,9 @@ export function determinePrice(o: {
   }
 
   if (partner && !partner.noDiscountGroups) {
-    const row = groups.find((g) => g.active && g.bpGroup === partner.group);
-    const pct = row?.discounts[item.itemGroup];
-    if (pct) return { price, basisListId: o.priceListId, discountPct: pct, source: { kind: 'group', label: `Discount group ${partner.group} × ${item.itemGroup}: ${pct}%` } };
+    const row = groups.find((g) => g.active && g.bpGroupId === partner.bpGroupId);
+    const pct = row?.discounts.find((d) => d.itemGroup === item.itemGroup)?.discountPct;
+    if (pct) return { price, basisListId: o.priceListId, discountPct: pct, source: { kind: 'group', label: `Discount group ${bpGroupName(partner.bpGroupId)} × ${item.itemGroup}: ${pct}%` } };
   }
 
   return { price, basisListId: o.priceListId, discountPct: 0, source: { kind: 'list', label: priceListName(o.priceListId) } };

@@ -6,7 +6,7 @@
  *   3. Discount groups — BP group × item group matrix, no dates
  *   4. The price list price, undiscounted
  */
-import { plId } from './masters';
+import { bpgId, plId } from './masters';
 
 /** A quantity break inside a special price: from `qtyFrom` up to the next tier. */
 export interface SpecialPriceTier {
@@ -54,10 +54,10 @@ export type DiscountKind = 'period' | 'volume';
 
 export interface PeriodVolumeDiscount {
   id: string;
-  /** Whether `partnerId` (one partner) or `bpGroup` (every partner in the group) is used. */
+  /** Whether `partnerId` (one partner) or `bpGroupId` (every partner in the group) is used. */
   partnerScope: 'partner' | 'group';
   partnerId: string;
-  bpGroup: string;
+  bpGroupId: string;
   /** Whether `itemId` (one item) or `itemGroup` (every item in the group) is used. */
   itemScope: 'item' | 'group';
   itemId: string;
@@ -79,9 +79,15 @@ export interface PeriodVolumeDiscount {
 /** One row of the discount group matrix: a BP group's discount % per item group (missing = 0%). */
 export interface DiscountGroupRow {
   id: string;
-  bpGroup: string;
-  discounts: Record<string, number>;
+  bpGroupId: string;
+  /** One cell per item group with a discount — a child table keyed by (row, item group). */
+  discounts: DiscountGroupCell[];
   active: boolean;
+}
+
+export interface DiscountGroupCell {
+  itemGroup: string;
+  discountPct: number;
 }
 
 const tier = (id: string, qtyFrom: number, qtyTo: number | null, discountPct: number): VolumeTier => ({ id, qtyFrom, qtyTo, discountPct });
@@ -89,7 +95,7 @@ const tier = (id: string, qtyFrom: number, qtyTo: number | null, discountPct: nu
 const rule = (r: Partial<PeriodVolumeDiscount> & Pick<PeriodVolumeDiscount, 'id' | 'priceListId' | 'kind'>): PeriodVolumeDiscount => ({
   partnerScope: 'group',
   partnerId: '',
-  bpGroup: '',
+  bpGroupId: '',
   itemScope: 'group',
   itemId: '',
   itemGroup: '',
@@ -104,15 +110,15 @@ const rule = (r: Partial<PeriodVolumeDiscount> & Pick<PeriodVolumeDiscount, 'id'
 
 export const SEED_PERIOD_VOLUME_DISCOUNTS: PeriodVolumeDiscount[] = [
   rule({
-    id: 'pvd-001', kind: 'period', bpGroup: 'Customers – Retail', itemGroup: 'AirPods', priceListId: plId('Base price'),
+    id: 'pvd-001', kind: 'period', bpGroupId: bpgId('Customers – Retail'), itemGroup: 'AirPods', priceListId: plId('Base price'),
     validFrom: '2026-10-01', validTo: '2026-10-31', discountPct: 10, remarks: '10.10 sale: 10% off AirPods for walk-in and online customers.',
   }),
   rule({
-    id: 'pvd-002', kind: 'period', bpGroup: 'Customers – Trade', itemGroup: 'Mac', priceListId: plId('Wholesale'),
+    id: 'pvd-002', kind: 'period', bpGroupId: bpgId('Customers – Trade'), itemGroup: 'Mac', priceListId: plId('Wholesale'),
     validFrom: '2026-06-01', validTo: '2026-08-31', discountPct: 4, remarks: 'Back-to-school corporate Mac promo.',
   }),
   rule({
-    id: 'pvd-003', kind: 'volume', bpGroup: 'Customers – Government', itemGroup: 'iPad', priceListId: plId('Government'),
+    id: 'pvd-003', kind: 'volume', bpGroupId: bpgId('Customers – Government'), itemGroup: 'iPad', priceListId: plId('Government'),
     tiers: [tier('t1', 1, 9, 0), tier('t2', 10, 49, 3), tier('t3', 50, null, 5)],
     remarks: 'Classroom rollouts: deeper discount for bigger lots.',
   }),
@@ -123,13 +129,15 @@ export const SEED_PERIOD_VOLUME_DISCOUNTS: PeriodVolumeDiscount[] = [
   }),
 ];
 
+const cells = (pcts: Record<string, number>): DiscountGroupCell[] => Object.entries(pcts).map(([itemGroup, discountPct]) => ({ itemGroup, discountPct }));
+
 export const SEED_DISCOUNT_GROUPS: DiscountGroupRow[] = [
-  { id: 'dgr-001', bpGroup: 'Customers – Trade', discounts: { iPhone: 2, iPad: 3, Mac: 3, Accessories: 5 }, active: true },
+  { id: 'dgr-001', bpGroupId: bpgId('Customers – Trade'), discounts: cells({ iPhone: 2, iPad: 3, Mac: 3, Accessories: 5 }), active: true },
   {
-    id: 'dgr-002', bpGroup: 'Customers – Government',
-    discounts: { iPhone: 3, iPad: 3, Mac: 3, 'Apple Watch': 3, AirPods: 3, Accessories: 3 }, active: true,
+    id: 'dgr-002', bpGroupId: bpgId('Customers – Government'),
+    discounts: cells({ iPhone: 3, iPad: 3, Mac: 3, 'Apple Watch': 3, AirPods: 3, Accessories: 3 }), active: true,
   },
-  { id: 'dgr-003', bpGroup: 'Vendors – Local', discounts: { Accessories: 1.5 }, active: true },
+  { id: 'dgr-003', bpGroupId: bpgId('Vendors – Local'), discounts: cells({ Accessories: 1.5 }), active: true },
 ];
 
 const special = (id: string, itemId: string, r: Partial<SpecialPriceRow>): SpecialPriceRow => ({

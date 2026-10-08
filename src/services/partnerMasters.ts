@@ -26,10 +26,16 @@ import {
   type PriceList,
   type Project,
 } from '../mocks/partnerMasters';
+import { bpgId } from '../mocks/masters';
 import { createCollection } from './store';
 
 // Sales & CRM
 export const bpGroups = createCollection<BpGroup>('sikat-erp:bp-groups', SEED_BP_GROUPS, 'bpg');
+/** The group a lead sits in, and the one it moves to when converted to a customer. */
+export const LEADS_GROUP_ID = bpgId('Leads');
+export const DEFAULT_CUSTOMER_GROUP_ID = bpgId('Customers – Trade');
+/** A BP group's name for display — the id itself if the group is gone. */
+export const bpGroupName = (id: string) => bpGroups.snapshot().find((g) => g.id === id)?.name ?? id;
 export const industries = createCollection<NamedEntry>('sikat-erp:industries', SEED_INDUSTRIES, 'ind');
 export const salesEmployees = createCollection<NamedEntry>('sikat-erp:sales-employees', SEED_SALES_EMPLOYEES, 'emp');
 export const territories = createCollection<NamedEntry>('sikat-erp:territories', SEED_TERRITORIES, 'ter');
