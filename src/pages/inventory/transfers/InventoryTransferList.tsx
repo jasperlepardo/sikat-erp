@@ -38,7 +38,7 @@ export function InventoryTransferList() {
     numberField<InventoryTransfer>('qty', 'Quantity', transferQty),
     numberField<InventoryTransfer>('value', 'Value', transferValue),
     statusField<InventoryTransfer>(TRANSFER_STATUSES),
-    masterField<InventoryTransfer>('salesEmployee', 'Sales employee', salesEmployeeDef, (d) => d.salesEmployee),
+    masterField<InventoryTransfer>('salesEmployee', 'Sales employee', salesEmployeeDef, (d) => d.salesEmployeeId),
     textField<InventoryTransfer>('remarks', 'Remarks', (d) => d.remarks),
     linesField<InventoryTransfer>(),
   ];

@@ -1,4 +1,5 @@
 /** Shapes shared by master data records. */
+import { employeeId } from './masters';
 
 /** A document numbering series — shared by all 15 document types. */
 export interface DocumentSeries {
@@ -27,3 +28,5 @@ export interface Attachment {
 
 /** The signed-in user, for "created by" stamps. */
 export const CURRENT_USER = 'Jasper L.';
+/** The signed-in user as an employee record — the default buyer, owner and sales employee on new documents. */
+export const CURRENT_USER_ID = employeeId('Jasper L.');

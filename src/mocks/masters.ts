@@ -5,6 +5,15 @@
  */
 import type { PartnerRole } from './partners';
 
+/**
+ * Seed id of a list entry: `prefix-` + its 1-based position in `list`, as `named()` numbers them.
+ * Typed against the list, so a misspelt name fails the typecheck. Append to these lists; never reorder.
+ */
+export const idIn =
+  <L extends readonly string[]>(prefix: string, list: L) =>
+  (name: L[number]) =>
+    `${prefix}-${String(list.indexOf(name) + 1).padStart(3, '0')}`;
+
 export const BP_GROUPS = [
   { value: 'Customers – Trade', role: 'customer' },
   { value: 'Customers – Retail', role: 'customer' },
@@ -14,13 +23,13 @@ export const BP_GROUPS = [
   { value: 'Vendors – Services', role: 'vendor' },
   { value: 'Leads', role: 'lead' },
 ] as const satisfies readonly { value: string; role: PartnerRole }[];
-/** Seed id of a BP group — `bpg-` + its position above, as `named()` numbers them. Append new groups; never reorder. */
-export const bpgId = (name: (typeof BP_GROUPS)[number]['value']) => `bpg-${String(BP_GROUPS.findIndex((g) => g.value === name) + 1).padStart(3, '0')}`;
+export const bpgId = idIn('bpg', BP_GROUPS.map((g) => g.value) as (typeof BP_GROUPS)[number]['value'][]);
 
 export const INDUSTRIES = [
   'Retail', 'Wholesale', 'Technology', 'BPO / IT-BPM', 'Financial services', 'Education', 'Government', 'Cooperative',
   'Real estate', 'Logistics', 'Professional services', 'Media & advertising', 'Security services', 'Construction', 'Manufacturing', 'Services',
-];
+] as const;
+export const industryId = idIn('ind', INDUSTRIES);
 export const BUSINESS_TYPES = [
   'Company',
   'Resident foreign company',
@@ -34,24 +43,30 @@ export const BUSINESS_TYPES = [
   'Individual',
   'Government',
 ];
-export const EMPLOYEES = ['Andrea Ramos', 'Ben Salazar', 'Carla Uy', 'Dino Pascual'];
-export const TECHNICIANS = ['Edgar Bautista', 'Fe Lopez'];
-export const TERRITORIES = ['NCR', 'North Luzon', 'South Luzon', 'Visayas', 'Mindanao'];
-export const CHANNELS = ['Direct', 'Distributor', 'E-commerce', 'Walk-in'];
+/** Sales employees and buyers. "-No Sales Employee-" is a real entry, as in SAP B1; Jasper L. is the signed-in user (document owner). */
+export const EMPLOYEES = ['Andrea Ramos', 'Ben Salazar', 'Carla Uy', 'Dino Pascual', '-No Sales Employee-', 'Jasper L.'] as const;
+export const employeeId = idIn('emp', EMPLOYEES);
+export const TECHNICIANS = ['Edgar Bautista', 'Fe Lopez'] as const;
+export const technicianId = idIn('tec', TECHNICIANS);
+export const TERRITORIES = ['NCR', 'North Luzon', 'South Luzon', 'Visayas', 'Mindanao'] as const;
+export const territoryId = idIn('ter', TERRITORIES);
+export const CHANNELS = ['Direct', 'Distributor', 'E-commerce', 'Walk-in'] as const;
+export const channelId = idIn('chn', CHANNELS);
 export const PROJECTS = ['PRJ-001 Northgate store renovation', 'PRJ-002 DepEd Pasig iPad rollout', 'PRJ-003 Cebu store opening'];
-export const EMAIL_GROUPS = ['Newsletter', 'Promotions', 'Billing notices'];
+export const EMAIL_GROUPS = ['Newsletter', 'Promotions', 'Billing notices'] as const;
+export const emailGroupId = idIn('emg', EMAIL_GROUPS);
 
 export const PAYMENT_TERMS = ['COD', 'Net 7', 'Net 15', 'Net 30', 'Net 45', 'Net 60', '50% DP, balance on delivery'] as const;
-/** Seed id of a payment term — `pt-` + its position above, as `named()` numbers them. Append new terms; never reorder. */
-export const termId = (name: (typeof PAYMENT_TERMS)[number]) => `pt-${String(PAYMENT_TERMS.indexOf(name) + 1).padStart(3, '0')}`;
+export const termId = idIn('pt', PAYMENT_TERMS);
 export const PRICE_LISTS = ['Base price', 'Wholesale', 'Retail', 'Government', 'Last purchase price'] as const;
-/** Seed id of a price list — `prl-` + its position above, as `named()` numbers them. Append new lists; never reorder. */
-export const plId = (name: (typeof PRICE_LISTS)[number]) => `prl-${String(PRICE_LISTS.indexOf(name) + 1).padStart(3, '0')}`;
-export const DUNNING_TERMS = ['Standard (7 / 15 / 30 days)', 'Strict (3 / 7 / 14 days)'];
+export const plId = idIn('prl', PRICE_LISTS);
+export const DUNNING_TERMS = ['Standard (7 / 15 / 30 days)', 'Strict (3 / 7 / 14 days)'] as const;
+export const dunningTermId = idIn('dun', DUNNING_TERMS);
 export const EFFECTIVE_DISCOUNT_GROUPS = ['Lowest discount', 'Highest discount', 'Average', 'Total', 'Discount multiples'];
 export const EFFECTIVE_PRICE = ['Default priority', 'Lowest price', 'Highest price'];
 export const PRIORITIES = ['High', 'Medium', 'Low'];
-export const HOLIDAY_CALENDARS = ['Philippines (national)', 'Philippines (national + NCR)'];
+export const HOLIDAY_CALENDARS = ['Philippines (national)', 'Philippines (national + NCR)'] as const;
+export const holidayCalendarId = idIn('hol', HOLIDAY_CALENDARS);
 
 /** Countries used on addresses, banks and items' country of origin. */
 export const COUNTRIES = [
@@ -99,13 +114,18 @@ export const TREATY_COUNTRIES = [
   'Spain', 'Sri Lanka', 'Sweden', 'Switzerland', 'Thailand', 'Turkey', 'United Arab Emirates',
   'United Kingdom', 'United States', 'Vietnam', 'Zimbabwe',
 ] as const;
-export const BANKS = ['BDO Unibank', 'BPI', 'Metrobank', 'Land Bank of the Philippines', 'Security Bank', 'UnionBank', 'China Bank', 'RCBC'];
+export const BANKS = ['BDO Unibank', 'BPI', 'Metrobank', 'Land Bank of the Philippines', 'Security Bank', 'UnionBank', 'China Bank', 'RCBC'] as const;
+export const bankId = idIn('bnk', BANKS);
 export const HOUSE_BANKS: { bank: string; account: string; branch: string; swift: string }[] = [
   { bank: 'BDO Unibank', account: '0012-3456-7890', branch: 'Ortigas Center', swift: 'BNORPHMM' },
   { bank: 'BPI', account: '3141-5926-53', branch: 'Makati Ayala', swift: 'BOPIPHMM' },
   { bank: 'UnionBank', account: '1098-7654-3210', branch: 'Pasig Capitol Commons', swift: 'UBPHPHMM' },
 ];
-export const BANK_CHARGE_CODES = ['Shared (SHA)', 'We pay (OUR)', 'They pay (BEN)'];
+export const BANK_CHARGE_CODES = ['Shared (SHA)', 'We pay (OUR)', 'They pay (BEN)'] as const;
+export const bankChargeCodeId = idIn('bcc', BANK_CHARGE_CODES);
+export const CARD_BRANDS = ['Visa', 'Mastercard', 'American Express', 'JCB', 'UnionPay'] as const;
+export const cardBrandId = idIn('crd', CARD_BRANDS);
+export const FACTORING_COMPANIES = ['First Metro Factors Inc.', 'BDO Factoring', 'Asia Trade Receivables Corp.'] as const;
 
 export const PAYMENT_METHODS = [
   { code: 'CASH', description: 'Cash' },
@@ -117,11 +137,13 @@ export const PAYMENT_METHODS = [
   { code: 'CARD', description: 'Corporate credit card' },
 ];
 
-export const PLANNING_GROUPS = ['Fast movers', 'Project-based', 'Seasonal'];
+export const PLANNING_GROUPS = ['Fast movers', 'Project-based', 'Seasonal'] as const;
+export const planningGroupId = idIn('plg', PLANNING_GROUPS);
 
 /**
  * Labels for the Properties tab (the real product lets admins rename up to 64). Only facts with no
  * field of their own: VAT exemption, government, export (zero-rating), top withholding agent, group
  * and price list are real partner fields, so they aren't tags that could contradict them.
  */
-export const PROPERTY_LABELS = ['Key account', 'Requires PO', 'Accepts e-invoice', 'Credit hold watch', 'Preferred supplier'];
+export const PROPERTY_LABELS = ['Key account', 'Requires PO', 'Accepts e-invoice', 'Credit hold watch', 'Preferred supplier'] as const;
+export const partnerPropertyId = idIn('bpp', PROPERTY_LABELS);

@@ -20,8 +20,8 @@
  * - A/R invoices aren't built yet, so Invoiced Qty stays 0 except on seeded history.
  * - Negative stock isn't allowed: a line can't ship more than the warehouse holds.
  */
-import type { Attachment, DocumentSeries } from './common';
-import { plId, termId } from './masters';
+import { CURRENT_USER_ID, type Attachment, type DocumentSeries } from './common';
+import { employeeId, plId, termId } from './masters';
 import { SEED_SALES_ORDERS, seedRateOn, type SalesOrder } from './salesOrders';
 import type { PoReference } from './purchaseOrders';
 import { SEED_ITEMS } from './items';
@@ -118,8 +118,8 @@ export interface Delivery {
   attachments: Attachment[];
 
   // Footer
-  salesEmployee: string;
-  owner: string;
+  salesEmployeeId: string;
+  ownerId: string;
   discountPct: number;
   freight: number;
   freightTaxCode: string;
@@ -159,7 +159,7 @@ export const newDnLine = (patch: Partial<DnLine> = {}): DnLine => ({
   id: patch.id ?? `dl-${crypto.randomUUID().slice(0, 8)}`,
 });
 
-export function blankDelivery(today: string, owner: string): Omit<Delivery, 'id'> {
+export function blankDelivery(today: string, ownerId: string): Omit<Delivery, 'id'> {
   return {
     customerId: '',
     customerCode: '',
@@ -198,8 +198,8 @@ export function blankDelivery(today: string, owner: string): Omit<Delivery, 'id'
     references: [],
     useShippedGoodsAccount: false,
     attachments: [],
-    salesEmployee: '-No Sales Employee-',
-    owner,
+    salesEmployeeId: employeeId('-No Sales Employee-'),
+    ownerId: ownerId,
     discountPct: 0,
     freight: 0,
     freightTaxCode: '31',
@@ -210,7 +210,7 @@ export function blankDelivery(today: string, owner: string): Omit<Delivery, 'id'
 }
 
 /** A delivery's header, taken from the sales order it's copied from. */
-export function deliveryHeaderFrom(so: Pick<SalesOrder, 'customerId' | 'customerCode' | 'customerName' | 'contactId' | 'customerRef' | 'currency' | 'shipTo' | 'billTo' | 'shippingType' | 'language' | 'pickPackRemarks' | 'bpChannelName' | 'bpChannelContact' | 'project' | 'paymentTermId' | 'paymentMethod' | 'indicator' | 'federalTaxId' | 'salesEmployee' | 'discountPct' | 'freightTaxCode' | 'rounding' | 'dueMonths' | 'dueDays' | 'cashDiscountDays'>): Partial<Delivery> {
+export function deliveryHeaderFrom(so: Pick<SalesOrder, 'customerId' | 'customerCode' | 'customerName' | 'contactId' | 'customerRef' | 'currency' | 'shipTo' | 'billTo' | 'shippingType' | 'language' | 'pickPackRemarks' | 'bpChannelName' | 'bpChannelContact' | 'project' | 'paymentTermId' | 'paymentMethod' | 'indicator' | 'federalTaxId' | 'salesEmployeeId' | 'discountPct' | 'freightTaxCode' | 'rounding' | 'dueMonths' | 'dueDays' | 'cashDiscountDays'>): Partial<Delivery> {
   return {
     customerId: so.customerId,
     customerCode: so.customerCode,
@@ -230,7 +230,7 @@ export function deliveryHeaderFrom(so: Pick<SalesOrder, 'customerId' | 'customer
     paymentMethod: so.paymentMethod,
     indicator: so.indicator,
     federalTaxId: so.federalTaxId,
-    salesEmployee: so.salesEmployee,
+    salesEmployeeId: so.salesEmployeeId,
     discountPct: so.discountPct,
     freightTaxCode: so.freightTaxCode,
     rounding: so.rounding,
@@ -250,7 +250,7 @@ const so = (id: string) => SEED_SALES_ORDERS.find((o) => o.id === id)!;
 function fromOrder(id: string, docNum: number, orderId: string, lineIds: string[], patch: Partial<Delivery>): Delivery {
   const order = so(orderId);
   return {
-    ...blankDelivery(patch.postingDate ?? order.postingDate, 'Jasper L.'),
+    ...blankDelivery(patch.postingDate ?? order.postingDate, CURRENT_USER_ID),
     ...deliveryHeaderFrom(order),
     id,
     docNum,

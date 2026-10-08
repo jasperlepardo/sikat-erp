@@ -180,7 +180,7 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
     const hadLead = draft.roles.includes('lead');
     update({
       roles: next,
-      ...(!hadLead && next.includes('lead') && !draft.leadStage ? { leadStage: 'New' as const, leadSource: LEAD_SOURCES[0] } : {}),
+      ...(!hadLead && next.includes('lead') && !draft.leadStage ? { leadStage: 'New' as const, leadSourceId: LEAD_SOURCES[0] } : {}),
     });
   };
 

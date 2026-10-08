@@ -98,7 +98,7 @@ export const newApLine = (patch: Partial<ApLine> = {}): ApLine => {
   return { ...base, baseType: '', bpCatalogNo: '', countryOfOrigin: '', receiptCostLc: 0, ...patch };
 };
 
-export function blankApInvoice(today: string, buyer: string): Omit<ApInvoice, 'id'> {
+export function blankApInvoice(today: string, buyerId: string): Omit<ApInvoice, 'id'> {
   return {
     vendorId: '',
     vendorCode: '',
@@ -126,8 +126,8 @@ export function blankApInvoice(today: string, buyer: string): Omit<ApInvoice, 'i
     indicator: '— None —',
     orderNumber: '',
     references: [],
-    buyer,
-    owner: buyer,
+    buyerId: buyerId,
+    ownerId: buyerId,
     remarks: '',
     discountPct: 0,
     freight: 0,
@@ -160,7 +160,7 @@ export const SEED_AP_INVOICES: ApInvoice[] = SEED_GOODS_RECEIPTS.filter((gr) => 
   const posting = gr.closeDate && gr.closeDate > gr.postingDate ? gr.closeDate : gr.postingDate;
   const vendor = SEED_PARTNERS.find((p) => p.id === gr.vendorId);
   return {
-    ...blankApInvoice(posting, gr.buyer),
+    ...blankApInvoice(posting, gr.buyerId),
     id: `ap-${String(n + 1).padStart(3, '0')}`,
     vendorId: gr.vendorId,
     vendorCode: gr.vendorCode,
@@ -179,7 +179,7 @@ export const SEED_AP_INVOICES: ApInvoice[] = SEED_GOODS_RECEIPTS.filter((gr) => 
     paymentMethod: gr.paymentMethod,
     project: gr.project,
     orderNumber: gr.orderNumber,
-    owner: gr.owner,
+    ownerId: gr.ownerId,
     discountPct: gr.discountPct,
     fxRate: gr.fxRate,
     controlAccount: vendor?.payableAccount ?? '2010',

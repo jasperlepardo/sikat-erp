@@ -49,7 +49,7 @@ export function DeliveryList() {
     numberField<Delivery>('total', 'Total', totalOf),
     statusField<Delivery>(DN_STATUSES),
     masterField<Delivery>('currency', 'Currency', currencyDef, (d) => d.currency),
-    masterField<Delivery>('salesEmployee', 'Sales employee', salesEmployeeDef, (d) => d.salesEmployee),
+    masterField<Delivery>('salesEmployee', 'Sales employee', salesEmployeeDef, (d) => d.salesEmployeeId),
     linesField<Delivery>(),
   ];
   const presets = useListPresets({

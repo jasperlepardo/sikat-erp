@@ -73,7 +73,7 @@ export function PaymentMeansSection({ draft, update, m, readOnly }: PaySectionPr
   ];
 
   const cardColumns: TableColumn<CardRow>[] = [
-    { key: 'card', header: 'Credit card', cell: (c) => <MasterLookup def={cardBrandDef} fieldProps={{ 'aria-label': 'Credit card', className: 'w-40' }} value={c.card} onChange={(card) => patchCard(c.id, { card })} /> },
+    { key: 'card', header: 'Credit card', cell: (c) => <MasterLookup def={cardBrandDef} fieldProps={{ 'aria-label': 'Credit card', className: 'w-40' }} value={c.cardBrandId} onChange={(card) => patchCard(c.id, { cardBrandId: card })} /> },
     { key: 'account', header: 'G/L account', cell: (c) => <div className="w-64"><AccountField label="" role="general" value={c.account} onChange={(account) => patchCard(c.id, { account })} accounts={m.accounts} disabled={readOnly} /></div> },
     { key: 'voucherNo', header: 'Voucher no.', cell: (c) => <TextField aria-label="Voucher no." className="w-32" value={c.voucherNo} onChange={(e) => patchCard(c.id, { voucherNo: e.currentTarget.value })} /> },
     { key: 'payments', header: 'No. of payments', cell: (c) => <TextField aria-label="No. of payments" type="number" min={1} className="w-20" value={String(c.payments)} onChange={(e) => patchCard(c.id, { payments: Math.max(1, num(e.currentTarget.value)) })} /> },

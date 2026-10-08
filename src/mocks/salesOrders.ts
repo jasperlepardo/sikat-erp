@@ -20,8 +20,8 @@
  * - Withholding by the customer (CWT, government VAT) is shown as a note: the customer deducts
  *   it when paying, it isn't part of the order total.
  */
-import type { Attachment, DocumentSeries } from './common';
-import { plId, termId } from './masters';
+import { CURRENT_USER_ID, type Attachment, type DocumentSeries } from './common';
+import { employeeId, plId, termId } from './masters';
 import { SEED_ITEMS, itemsPerUom } from './items';
 import { SEED_PARTNERS, formatAddress } from './partners';
 import type { PoReference } from './purchaseOrders';
@@ -118,8 +118,8 @@ export interface SalesOrder {
   attachments: Attachment[];
 
   // Footer
-  salesEmployee: string;
-  owner: string;
+  salesEmployeeId: string;
+  ownerId: string;
   discountPct: number;
   freight: number;
   freightTaxCode: string;
@@ -140,7 +140,8 @@ export const SO_SERIES: DocumentSeries[] = [
   { id: 'sos-gov', name: 'Government', prefix: 'SO-', firstNo: 470001, manual: false, isDefault: false, active: true },
 ];
 
-export const NO_SALES_EMPLOYEE = '-No Sales Employee-';
+/** SAP B1's "-No Sales Employee-" entry: documents always name one. */
+export const NO_SALES_EMPLOYEE_ID = employeeId('-No Sales Employee-');
 
 /** What an open item order commits, in inventory units per "itemId@warehouse" (none while draft, closed or cancelled). */
 export function openCommitted(so: Pick<SalesOrder, 'status' | 'docType' | 'lines'>) {
@@ -178,7 +179,7 @@ export const newSoLine = (patch: Partial<SoLine> = {}): SoLine => ({
   id: patch.id ?? `sl-${crypto.randomUUID().slice(0, 8)}`,
 });
 
-export function blankSalesOrder(owner: string): Omit<SalesOrder, 'id'> {
+export function blankSalesOrder(ownerId: string): Omit<SalesOrder, 'id'> {
   return {
     customerId: '',
     customerCode: '',
@@ -220,8 +221,8 @@ export function blankSalesOrder(owner: string): Omit<SalesOrder, 'id'> {
     cashDiscountDays: 0,
     references: [],
     attachments: [],
-    salesEmployee: NO_SALES_EMPLOYEE,
-    owner,
+    salesEmployeeId: NO_SALES_EMPLOYEE_ID,
+    ownerId: ownerId,
     discountPct: 0,
     freight: 0,
     freightTaxCode: '31',
@@ -268,7 +269,7 @@ const header = (id: string, docNum: number, customerId: string, patch: Partial<S
   const bill = c.addresses.find((a) => a.id === c.defaultBillToId) ?? c.addresses[0];
   const ship = c.addresses.find((a) => a.id === c.defaultShipToId) ?? bill;
   return {
-    ...blankSalesOrder('Jasper L.'),
+    ...blankSalesOrder(CURRENT_USER_ID),
     id,
     docNum,
     status: 'Open',
@@ -280,7 +281,7 @@ const header = (id: string, docNum: number, customerId: string, patch: Partial<S
     paymentTermId: c.customerPaymentTermId,
     federalTaxId: c.tin,
     shippingType: c.shippingType,
-    salesEmployee: c.salesEmployee || NO_SALES_EMPLOYEE,
+    salesEmployeeId: c.salesEmployeeId || NO_SALES_EMPLOYEE_ID,
     allowPartialDelivery: c.allowPartialDelivery,
     billTo: bill ? formatAddress(bill, c.name) : '',
     shipTo: ship ? formatAddress(ship, c.name) : '',

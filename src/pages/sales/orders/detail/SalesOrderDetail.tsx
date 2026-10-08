@@ -5,10 +5,10 @@ import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { Fields, ReadOnly, Section, bind, type Errors } from '../../../../components/form/fields';
 import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
-import { CURRENT_USER } from '../../../../mocks/common';
+import { CURRENT_USER_ID } from '../../../../mocks/common';
 import { formatAddress } from '../../../../mocks/address';
 import { contactName, type Partner } from '../../../../mocks/partners';
-import { NO_SALES_EMPLOYEE, SALES_SETTINGS, SO_SERIES, blankSalesOrder, newSoLine, type SalesOrder, type SoStatus } from '../../../../mocks/salesOrders';
+import { NO_SALES_EMPLOYEE_ID, SALES_SETTINGS, SO_SERIES, blankSalesOrder, newSoLine, type SalesOrder, type SoStatus } from '../../../../mocks/salesOrders';
 import { loadCurrentCompany } from '../../../../services/companies';
 import { formatDate, todayISO } from '../../../../services/dates';
 import { formatAmount } from '../../../../services/format';
@@ -85,7 +85,7 @@ function SalesOrderForm() {
   const navigate = useNavigate();
   const copyFrom = (useLocation().state as { copyFrom?: SoDraft } | null)?.copyFrom;
 
-  const [draft, setDraft] = useState<SoDraft | null | undefined>(isNew ? (copyFrom ?? { ...blankSalesOrder(CURRENT_USER), lines: [newSoLine({ warehouse: '' })] }) : undefined);
+  const [draft, setDraft] = useState<SoDraft | null | undefined>(isNew ? (copyFrom ?? { ...blankSalesOrder(CURRENT_USER_ID), lines: [newSoLine({ warehouse: '' })] }) : undefined);
   const [m, setM] = useState<SoMasters>();
   const [tab, setTab] = useState<TabId>('contents');
   const [siblings, setSiblings] = useState<string[]>([]);
@@ -186,7 +186,7 @@ function SalesOrderForm() {
       project: c.project || '— None —',
       shippingType: c.shippingType,
       federalTaxId: c.tin,
-      salesEmployee: c.salesEmployee || NO_SALES_EMPLOYEE,
+      salesEmployeeId: c.salesEmployeeId || NO_SALES_EMPLOYEE_ID,
       allowPartialDelivery: c.allowPartialDelivery,
       discountPct: c.totalDiscount || 0,
       billTo: bill ? formatAddress(bill, c.name) : '',
@@ -416,8 +416,8 @@ function SalesOrderForm() {
               <Fields cols={1}>
                 <fieldset disabled={ctx.readOnly} className="contents">
                   <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                    {h.master('salesEmployee', 'Sales employee', salesEmployeeDef, { extra: [NO_SALES_EMPLOYEE, CURRENT_USER], hint: 'Defaults from the customer.' })}
-                    {h.master('owner', 'Owner', salesEmployeeDef, { extra: [CURRENT_USER], hint: 'Owns the document.' })}
+                    {h.master('salesEmployeeId', 'Sales employee', salesEmployeeDef, { hint: 'Defaults from the customer.' })}
+                    {h.master('ownerId', 'Owner', salesEmployeeDef, { hint: 'Owns the document.' })}
                   </div>
                 </fieldset>
                 {h.area('remarks', 'Remarks', { rows: 3, hint: 'Can be changed after the order is closed.' })}

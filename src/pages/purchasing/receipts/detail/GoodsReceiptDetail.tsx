@@ -22,7 +22,7 @@ import { Fields, ReadOnly, Section, bind, type Errors } from '../../../../compon
 import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { accountText } from '../../../../mocks/chartOfAccounts';
-import { CURRENT_USER } from '../../../../mocks/common';
+import { CURRENT_USER_ID } from '../../../../mocks/common';
 import { GR_SERIES, blankGoodsReceipt, newGrLine, type GoodsReceipt, type GrLine, type GrStatus } from '../../../../mocks/goodsReceipts';
 import { contactName, type Partner } from '../../../../mocks/partners';
 import { type PurchaseOrder } from '../../../../mocks/purchaseOrders';
@@ -138,7 +138,7 @@ function GoodsReceiptForm() {
   const state = useLocation().state as { copyFrom?: GrDraft; fromPo?: string } | null;
 
   const [draft, setDraft] = useState<GrDraft | null | undefined>(
-    isNew ? (state?.copyFrom ?? { ...blankGoodsReceipt(todayISO(), CURRENT_USER), lines: [] }) : undefined,
+    isNew ? (state?.copyFrom ?? { ...blankGoodsReceipt(todayISO(), CURRENT_USER_ID), lines: [] }) : undefined,
   );
   const [m, setM] = useState<GrMasters>();
   const [page, setPage] = useState<PageId>('details');
@@ -483,8 +483,8 @@ function GoodsReceiptForm() {
                 <Fields cols={1}>
                   <fieldset disabled={added} className="contents">
                     <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                      {h.master('buyer', 'Buyer', salesEmployeeDef, { extra: [CURRENT_USER], hint: 'Who bought the goods.' })}
-                      {h.master('owner', 'Owner', salesEmployeeDef, { extra: [CURRENT_USER], hint: 'Owns the document (data access).' })}
+                      {h.master('buyerId', 'Buyer', salesEmployeeDef, { hint: 'Who bought the goods.' })}
+                      {h.master('ownerId', 'Owner', salesEmployeeDef, { hint: 'Owns the document (data access).' })}
                     </div>
                   </fieldset>
                   <fieldset disabled={added} className="contents">
@@ -620,7 +620,7 @@ function withPo(d: GrDraft, po: PurchaseOrder, lines: GrLine[], m: GrMasters): G
           project: po.project || d.project,
           shippingType: po.shippingType || d.shippingType,
           discountPct: po.discountPct,
-          buyer: po.buyer || d.buyer,
+          buyerId: po.buyerId || d.buyerId,
         }
       : {}),
     shipTo: !d.shipTo || d.shipTo === defaultShipTo(d.lines, m) ? defaultShipTo(allLines, m) : d.shipTo,

@@ -51,7 +51,7 @@ export function ApInvoiceList() {
     numberField<ApInvoice>('total', 'Total', totalOf),
     statusField<ApInvoice>(AP_STATUSES),
     masterField<ApInvoice>('currency', 'Currency', currencyDef, (d) => d.currency),
-    masterField<ApInvoice>('buyer', 'Buyer', salesEmployeeDef, (d) => d.buyer),
+    masterField<ApInvoice>('buyer', 'Buyer', salesEmployeeDef, (d) => d.buyerId),
     linesField<ApInvoice>(),
   ];
   const presets = useListPresets({

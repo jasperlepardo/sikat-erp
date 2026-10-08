@@ -43,10 +43,10 @@ const common = (): FilterField<Partner>[] => [
   { key: 'contact', label: 'Contact person', type: 'text', get: (p) => defaultContactName(p) },
   { key: 'city', label: 'City', type: 'text', get: (p) => defaultBillTo(p)?.city },
   { key: 'province', label: 'Province', type: 'text', get: (p) => defaultBillTo(p)?.province },
-  { key: 'territory', label: 'Territory', type: 'master', def: territoryDef, get: (p) => p.territory },
-  { key: 'salesEmployee', label: 'Sales employee', type: 'master', def: salesEmployeeDef, get: (p) => p.salesEmployee },
-  { key: 'channel', label: 'Channel', type: 'master', def: channelDef, get: (p) => p.channel },
-  { key: 'industry', label: 'Industry', type: 'master', def: industryDef, get: (p) => p.industry },
+  { key: 'territory', label: 'Territory', type: 'master', def: territoryDef, get: (p) => p.territoryId },
+  { key: 'salesEmployee', label: 'Sales employee', type: 'master', def: salesEmployeeDef, get: (p) => p.salesEmployeeId },
+  { key: 'channel', label: 'Channel', type: 'master', def: channelDef, get: (p) => p.channelId },
+  { key: 'industry', label: 'Industry', type: 'master', def: industryDef, get: (p) => p.industryId },
   { key: 'currency', label: 'Currency', type: 'master', def: currencyDef, get: (p) => p.currency },
   { key: 'tin', label: 'TIN', type: 'text', get: (p) => p.tin },
   { key: 'vatRegistered', label: 'VAT registered', type: 'boolean', get: (p) => p.vatRegistered },
@@ -57,7 +57,7 @@ const FIELDS: Record<PartnerScope, FilterField<Partner>[]> = {
   lead: [
     ...common(),
     { key: 'stage', label: 'Stage', type: 'choice', options: LEAD_STAGES.map((s) => ({ value: s, label: s })), get: (p) => p.leadStage ?? 'New' },
-    { key: 'leadSource', label: 'Source', type: 'master', def: leadSourceDef, get: (p) => p.leadSource },
+    { key: 'leadSource', label: 'Source', type: 'master', def: leadSourceDef, get: (p) => p.leadSourceId },
   ],
   customer: [
     ...common(),

@@ -25,7 +25,7 @@ import { ProblemsAlert, problemCollector, type Problem } from '../../../componen
 import { formatAddress } from '../../../mocks/address';
 import type { ApInvoice } from '../../../mocks/apInvoices';
 import { accountText } from '../../../mocks/chartOfAccounts';
-import { CURRENT_USER } from '../../../mocks/common';
+import { CURRENT_USER_ID } from '../../../mocks/common';
 import type { GoodsReceipt } from '../../../mocks/goodsReceipts';
 import { RETURN_SERIES, blankGoodsReturn, needsCredit, newReturnLine, type GoodsReturn, type ReturnLine, type ReturnStatus } from '../../../mocks/goodsReturns';
 import { PAYMENT_METHODS } from '../../../mocks/masters';
@@ -169,7 +169,7 @@ function GoodsReturnForm() {
   const navigate = useNavigate();
   const state = useLocation().state as { fromReceipt?: string; fromInvoice?: string } | null;
 
-  const [draft, setDraft] = useState<Draft | null | undefined>(isNew ? blankGoodsReturn(todayISO(), CURRENT_USER) : undefined);
+  const [draft, setDraft] = useState<Draft | null | undefined>(isNew ? blankGoodsReturn(todayISO(), CURRENT_USER_ID) : undefined);
   const [m, setM] = useState<RetMasters>();
   const [page, setPage] = useState<PageId>('details');
   const [siblings, setSiblings] = useState<string[]>([]);
@@ -481,8 +481,8 @@ function GoodsReturnForm() {
                   <Fields cols={1}>
                     <fieldset disabled={added} className="contents">
                       <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                        {h.master('buyer', 'Buyer', salesEmployeeDef, { extra: [CURRENT_USER] })}
-                        {h.master('owner', 'Owner', salesEmployeeDef, { extra: [CURRENT_USER] })}
+                        {h.master('buyerId', 'Buyer', salesEmployeeDef)}
+                        {h.master('ownerId', 'Owner', salesEmployeeDef)}
                       </div>
                       <List.Group divider>
                         <TotalRow label="Total before discount" value={totals.beforeDiscount} code={code} />
@@ -600,7 +600,7 @@ function withBase(d: Draft, base: GoodsReceipt | ApInvoice, lines: ReturnLine[])
           dueDate: dueDateFor(d.postingDate, base.paymentTermId || d.paymentTermId),
           project: base.project || d.project,
           discountPct: base.discountPct,
-          buyer: base.buyer || d.buyer,
+          buyerId: base.buyerId || d.buyerId,
         }
       : {}),
     orderNumber: [...new Set([...d.orderNumber.split(', ').filter(Boolean), base.orderNumber].filter(Boolean))].join(', '),

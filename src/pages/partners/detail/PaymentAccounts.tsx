@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { newPaymentAccount, type PaymentAccount } from '../../../mocks/partners';
+import { banks, cardBrands, nameIn } from '../../../services/partnerMasters';
 import { bankDef, cardBrandDef, countryDef, currencyDef } from '../../settings/masterDefs';
 import { Fields, bind, type Errors } from './fields';
 
@@ -40,7 +41,7 @@ const ACCOUNT_KINDS: Record<string, AccountKind> = {
   BANK: {
     noun: 'bank account',
     icon: 'account_balance',
-    title: (a) => [a.bank, a.accountNo].filter(Boolean).join(' · ') || 'New bank account',
+    title: (a) => [a.bankId && nameIn(banks, a.bankId), a.accountNo].filter(Boolean).join(' · ') || 'New bank account',
     details: (a) => [
       { label: 'Account name', value: a.accountName },
       { label: 'Branch', value: a.branch },
@@ -48,13 +49,13 @@ const ACCOUNT_KINDS: Record<string, AccountKind> = {
       { label: 'BIC/SWIFT', value: a.swift },
     ],
     check: (a) => ({
-      ...(a.bank ? {} : { bank: 'Pick the bank.' }),
+      ...(a.bankId ? {} : { bankId: 'Pick the bank.' }),
       ...(a.accountNo?.trim() ? {} : { accountNo: 'Enter the account number.' }),
     }),
     fields: (f, _a, errors) => (
       <Fields>
         {f.master('country', 'Bank country/region', countryDef)}
-        {f.master('bank', 'Bank name', bankDef, { required: true, error: errors.bank, placeholder: 'Search banks' })}
+        {f.master('bankId', 'Bank name', bankDef, { required: true, error: errors.bankId, placeholder: 'Search banks' })}
         {f.text('branch', 'Branch', { placeholder: 'e.g. Ayala Avenue' })}
         {f.text('accountNo', 'Account no.', { placeholder: 'e.g. 0012-3456-7890', required: true, error: errors.accountNo })}
         {f.text('accountName', 'Account name', { placeholder: 'e.g. Acme Trading Corp.', hint: 'As registered with the bank.' })}
@@ -69,18 +70,18 @@ const ACCOUNT_KINDS: Record<string, AccountKind> = {
   CARD: {
     noun: 'card',
     icon: 'credit_card',
-    title: (a) => (a.last4 ? `${a.cardBrand ?? 'Card'} •••• ${a.last4}` : 'New card'),
+    title: (a) => (a.last4 ? `${a.cardBrandId ? nameIn(cardBrands, a.cardBrandId) : 'Card'} •••• ${a.last4}` : 'New card'),
     details: (a) => [
       { label: 'Cardholder', value: a.accountName },
       { label: 'Expires', value: a.expiry },
     ],
     check: (a) => ({
-      ...(a.cardBrand ? {} : { cardBrand: 'Pick the card brand.' }),
+      ...(a.cardBrandId ? {} : { cardBrandId: 'Pick the card brand.' }),
       ...(/^\d{4}$/.test(a.last4 ?? '') ? {} : { last4: 'Enter the last 4 digits.' }),
     }),
     fields: (f, _a, errors) => (
       <Fields>
-        {f.master('cardBrand', 'Brand', cardBrandDef, { required: true, error: errors.cardBrand })}
+        {f.master('cardBrandId', 'Brand', cardBrandDef, { required: true, error: errors.cardBrandId })}
         {f.text('last4', 'Last 4 digits', {
           placeholder: 'e.g. 4242',
           required: true,

@@ -23,7 +23,7 @@ import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMen
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { AP_SERIES, blankApInvoice, newApLine, type ApInvoice, type ApLine, type ApStatus } from '../../../../mocks/apInvoices';
 import { accountText } from '../../../../mocks/chartOfAccounts';
-import { CURRENT_USER } from '../../../../mocks/common';
+import { CURRENT_USER_ID } from '../../../../mocks/common';
 import type { GoodsReceipt } from '../../../../mocks/goodsReceipts';
 import type { Item } from '../../../../mocks/items';
 import { contactName, type Partner } from '../../../../mocks/partners';
@@ -165,7 +165,7 @@ function ApInvoiceForm() {
   const navigate = useNavigate();
   const state = useLocation().state as { copyFrom?: ApDraft; fromReceipt?: string; fromPo?: string } | null;
 
-  const [draft, setDraft] = useState<ApDraft | null | undefined>(isNew ? (state?.copyFrom ?? { ...blankApInvoice(todayISO(), CURRENT_USER), lines: [] }) : undefined);
+  const [draft, setDraft] = useState<ApDraft | null | undefined>(isNew ? (state?.copyFrom ?? { ...blankApInvoice(todayISO(), CURRENT_USER_ID), lines: [] }) : undefined);
   const [m, setM] = useState<ApMasters>();
   const [page, setPage] = useState<PageId>('details');
   const [siblings, setSiblings] = useState<string[]>([]);
@@ -547,8 +547,8 @@ function ApInvoiceForm() {
                 <Fields cols={1}>
                   <fieldset disabled={added} className="contents">
                     <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                      {h.master('buyer', 'Buyer', salesEmployeeDef, { extra: [CURRENT_USER], hint: 'Who bought the goods.' })}
-                      {h.master('owner', 'Owner', salesEmployeeDef, { extra: [CURRENT_USER], hint: 'Owns the document (data access).' })}
+                      {h.master('buyerId', 'Buyer', salesEmployeeDef, { hint: 'Who bought the goods.' })}
+                      {h.master('ownerId', 'Owner', salesEmployeeDef, { hint: 'Owns the document (data access).' })}
                     </div>
                   </fieldset>
                   <fieldset disabled={added} className="contents">
@@ -718,7 +718,7 @@ function withBase(d: ApDraft, base: GoodsReceipt | PurchaseOrder, lines: ApLine[
           project: base.project || d.project,
           shippingType: base.shippingType || d.shippingType,
           discountPct: base.discountPct,
-          buyer: base.buyer || d.buyer,
+          buyerId: base.buyerId || d.buyerId,
           freightTaxCode: base.freightTaxCode || d.freightTaxCode,
         }
       : {}),

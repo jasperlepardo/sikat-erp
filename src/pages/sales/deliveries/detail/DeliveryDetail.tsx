@@ -6,11 +6,11 @@ import { Fields, ReadOnly, Section, bind, type Errors } from '../../../../compon
 import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { accountText } from '../../../../mocks/chartOfAccounts';
-import { CURRENT_USER } from '../../../../mocks/common';
+import { CURRENT_USER_ID } from '../../../../mocks/common';
 import { formatAddress } from '../../../../mocks/address';
 import { DN_SERIES, blankDelivery, deliveryHeaderFrom, type Delivery, type DnStatus } from '../../../../mocks/deliveries';
 import { contactName } from '../../../../mocks/partners';
-import { NO_SALES_EMPLOYEE, SALES_SETTINGS, type SalesOrder } from '../../../../mocks/salesOrders';
+import { NO_SALES_EMPLOYEE_ID, SALES_SETTINGS, type SalesOrder } from '../../../../mocks/salesOrders';
 import { loadCurrentCompany } from '../../../../services/companies';
 import { formatDate, todayISO } from '../../../../services/dates';
 import { DnPostError, addDelivery, cancelDelivery, closeDelivery, dnJournal, dnNumber, dnTotals, getDelivery, listDeliveries, saveDeliveryDraft, saveDeliveryNotes } from '../../../../services/deliveries';
@@ -69,7 +69,7 @@ function DeliveryForm() {
   const navigate = useNavigate();
   const fromOrder = (useLocation().state as { fromOrder?: string } | null)?.fromOrder;
 
-  const [draft, setDraft] = useState<DnDraft | null | undefined>(isNew ? blankDelivery(todayISO(), CURRENT_USER) : undefined);
+  const [draft, setDraft] = useState<DnDraft | null | undefined>(isNew ? blankDelivery(todayISO(), CURRENT_USER_ID) : undefined);
   const [m, setM] = useState<DnMasters>();
   const [tab, setTab] = useState<TabId>('contents');
   const [siblings, setSiblings] = useState<string[]>([]);
@@ -152,7 +152,7 @@ function DeliveryForm() {
       project: c.project || '— None —',
       shippingType: c.shippingType,
       federalTaxId: c.tin,
-      salesEmployee: c.salesEmployee || NO_SALES_EMPLOYEE,
+      salesEmployeeId: c.salesEmployeeId || NO_SALES_EMPLOYEE_ID,
       useShippedGoodsAccount: c.useShippedGoodsAccount,
       discountPct: c.totalDiscount || 0,
       billTo: bill ? formatAddress(bill, c.name) : '',
@@ -329,8 +329,8 @@ function DeliveryForm() {
             <Section icon="functions" title="Totals">
               <fieldset disabled={ro} className="contents">
                 <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                  {h.master('salesEmployee', 'Sales employee', salesEmployeeDef, { extra: [NO_SALES_EMPLOYEE, CURRENT_USER] })}
-                  {h.master('owner', 'Owner', salesEmployeeDef, { extra: [CURRENT_USER] })}
+                  {h.master('salesEmployeeId', 'Sales employee', salesEmployeeDef)}
+                  {h.master('ownerId', 'Owner', salesEmployeeDef)}
                 </div>
                 <List.Group divider>
                   <TotalRow label="Total before discount" value={totals.beforeDiscount} code={draft.currency} />

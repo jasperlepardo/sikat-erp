@@ -24,8 +24,8 @@
  * - Left out: Return Reason and Summary Type (grid layout only), Central Bank Ind. and Deferred
  *   Tax (other localizations), Asset Value Date (no fixed assets yet), Payment Order Run (A/P).
  */
-import type { Attachment, DocumentSeries } from './common';
-import { plId, termId } from './masters';
+import { CURRENT_USER_ID, type Attachment, type DocumentSeries } from './common';
+import { employeeId, plId, termId } from './masters';
 import { SEED_DELIVERIES, type DnLine } from './deliveries';
 import { SEED_PARTNERS, formatAddress } from './partners';
 import { RETAIL_SALES } from './retailHistory';
@@ -113,8 +113,8 @@ export interface ArInvoice {
   attachments: Attachment[];
 
   // Footer
-  salesEmployee: string;
-  owner: string;
+  salesEmployeeId: string;
+  ownerId: string;
   discountPct: number;
   freight: number;
   freightTaxCode: string;
@@ -158,7 +158,7 @@ export const newArLine = (patch: Partial<ArLine> = {}): ArLine => ({
   id: patch.id ?? `al-${crypto.randomUUID().slice(0, 8)}`,
 });
 
-export function blankArInvoice(today: string, owner: string): Omit<ArInvoice, 'id'> {
+export function blankArInvoice(today: string, ownerId: string): Omit<ArInvoice, 'id'> {
   return {
     customerId: '',
     customerCode: '',
@@ -200,8 +200,8 @@ export function blankArInvoice(today: string, owner: string): Omit<ArInvoice, 'i
     installments: 1,
     useShippedGoodsAccount: false,
     attachments: [],
-    salesEmployee: '-No Sales Employee-',
-    owner,
+    salesEmployeeId: employeeId('-No Sales Employee-'),
+    ownerId: ownerId,
     discountPct: 0,
     freight: 0,
     freightTaxCode: '31',
@@ -240,7 +240,7 @@ const fromDelivery = (id: string, docNum: number, dnId: string, patch: Partial<A
   const dn = SEED_DELIVERIES.find((d) => d.id === dnId)!;
   const { wtaxLiable = false, ...rest } = patch;
   return {
-    ...blankArInvoice(dn.postingDate, 'Jasper L.'),
+    ...blankArInvoice(dn.postingDate, CURRENT_USER_ID),
     ...dn,
     id,
     seriesId: AR_SERIES[0].id,
@@ -301,7 +301,7 @@ const invoices: ArInvoice[] = [
     remarks: 'Davao store walk-in, paid by GCash at pick-up.',
   }),
   {
-    ...blankArInvoice('2026-09-30', 'Jasper L.'),
+    ...blankArInvoice('2026-09-30', CURRENT_USER_ID),
     id: 'ar-004',
     docNum: 430004,
     status: 'Open',

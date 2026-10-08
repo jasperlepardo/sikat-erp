@@ -112,7 +112,7 @@ export function ContactPanel({
           {f.text('title', 'Title', { placeholder: 'Engr., Atty., Ms.' })}
           {f.text('position', 'Position', { placeholder: 'e.g. Purchasing manager' })}
           {f.text('email', 'Email', { placeholder: 'name@company.com', type: 'email', hint: 'Used when this contact is picked on a document.' })}
-          {f.master('emailGroup', 'Email group', emailGroupDef, { clearable: true })}
+          {f.master('emailGroupId', 'Email group', emailGroupDef, { clearable: true })}
           {f.text('tel1', 'Telephone 1', { placeholder: 'e.g. (02) 8123 4567', type: 'tel' })}
           {f.text('tel2', 'Telephone 2', { placeholder: 'e.g. (02) 8123 4567', type: 'tel' })}
           {f.text('mobile', 'Mobile phone', { placeholder: 'e.g. 0917 123 4567', type: 'tel' })}

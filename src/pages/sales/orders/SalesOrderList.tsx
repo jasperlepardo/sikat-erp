@@ -47,7 +47,7 @@ export function SalesOrderList() {
     numberField<SalesOrder>('total', 'Total', totalOf),
     statusField<SalesOrder>(SO_STATUSES),
     masterField<SalesOrder>('currency', 'Currency', currencyDef, (d) => d.currency),
-    masterField<SalesOrder>('salesEmployee', 'Sales employee', salesEmployeeDef, (d) => d.salesEmployee),
+    masterField<SalesOrder>('salesEmployee', 'Sales employee', salesEmployeeDef, (d) => d.salesEmployeeId),
     linesField<SalesOrder>(),
   ];
   const presets = useListPresets({

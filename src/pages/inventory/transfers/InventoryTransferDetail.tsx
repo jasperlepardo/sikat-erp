@@ -18,7 +18,7 @@ import {
 import { Fields, ReadOnly, Section, bind, type Errors } from '../../../components/form/fields';
 import { MoreMenu, type MoreMenuItem } from '../../../components/form/MoreMenu';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../components/form/ProblemsAlert';
-import { CURRENT_USER } from '../../../mocks/common';
+import { CURRENT_USER_ID } from '../../../mocks/common';
 import { accountText, type Account } from '../../../mocks/chartOfAccounts';
 import type { ItemGroup } from '../../../mocks/itemMasters';
 import {
@@ -122,7 +122,7 @@ function TransferForm() {
   const copyFrom = (useLocation().state as { copyFrom?: TransferDraft } | null)?.copyFrom;
 
   const [draft, setDraft] = useState<TransferDraft | null | undefined>(
-    isNew ? (copyFrom ?? { ...blankTransfer(todayISO(), CURRENT_USER), lines: [newTransferLine()] }) : undefined,
+    isNew ? (copyFrom ?? { ...blankTransfer(todayISO(), CURRENT_USER_ID), lines: [newTransferLine()] }) : undefined,
   );
   const [m, setM] = useState<Masters>();
   const [siblings, setSiblings] = useState<string[]>([]);
@@ -260,7 +260,7 @@ function TransferForm() {
     const today = todayISO();
     const back = destinationsOf[0];
     const copy: TransferDraft = {
-      ...blankTransfer(today, CURRENT_USER),
+      ...blankTransfer(today, CURRENT_USER_ID),
       fromWarehouse: back,
       toWarehouse: draft.fromWarehouse,
       journalRemark: autoRemark(back, draft.fromWarehouse),
@@ -420,7 +420,7 @@ function TransferForm() {
             <Section icon="notes" title="Remarks">
               <Fields cols={1}>
                 <fieldset disabled={posted} className="contents">
-                  {h.master('salesEmployee', 'Sales employee', salesEmployeeDef, { extra: [CURRENT_USER] })}
+                  {h.master('salesEmployeeId', 'Sales employee', salesEmployeeDef)}
                 </fieldset>
                 {h.text('journalRemark', 'Journal remarks', { hint: 'Shown on the journal entry, if one is made.' })}
                 {h.area('remarks', 'Remarks', {

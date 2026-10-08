@@ -16,7 +16,7 @@
  * - Return Reason is left out — it belongs to returns, not purchase orders.
  */
 import type { DocumentSeries } from './common';
-import { plId, termId } from './masters';
+import { employeeId, plId, termId } from './masters';
 import { SEED_COMPANIES } from './companies';
 import { SEED_WAREHOUSES } from './itemMasters';
 import { SEED_ITEMS, itemsPerUom } from './items';
@@ -121,8 +121,8 @@ export interface PurchaseOrder {
   references: PoReference[];
 
   // Footer
-  buyer: string;
-  owner: string;
+  buyerId: string;
+  ownerId: string;
   remarks: string;
   discountPct: number;
   /** Freight, net, in the document currency (when freight is managed on documents). */
@@ -227,7 +227,7 @@ export const newPoLine = (patch: Partial<PoLine> = {}): PoLine => ({
   ...patch,
 });
 
-export function blankPurchaseOrder(buyer: string): Omit<PurchaseOrder, 'id'> {
+export function blankPurchaseOrder(buyerId: string): Omit<PurchaseOrder, 'id'> {
   return {
     vendorId: '',
     vendorCode: '',
@@ -262,8 +262,8 @@ export function blankPurchaseOrder(buyer: string): Omit<PurchaseOrder, 'id'> {
     indicator: '— None —',
     orderNumber: '',
     references: [],
-    buyer,
-    owner: buyer,
+    buyerId: buyerId,
+    ownerId: buyerId,
     remarks: '',
     discountPct: 0,
     freight: 0,
@@ -316,7 +316,7 @@ const mnl = SEED_WAREHOUSES.find((w) => w.code === 'WH-MNL')!;
 const MNL_SHIP_TO = formatAddress(mnl.address, mnl.name);
 
 const po = (id: string, docNum: number, patch: Partial<PurchaseOrder>): PurchaseOrder => ({
-  ...blankPurchaseOrder('Andrea Ramos'),
+  ...blankPurchaseOrder(employeeId('Andrea Ramos')),
   id,
   docNum,
   vendorId: 'bp-016',

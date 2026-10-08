@@ -41,7 +41,7 @@ export function SettingsTab(props: TabProps) {
 
       <Section icon="category" title="Classification">
         <Fields>
-          {f.master('industry', 'Industry', industryDef)}
+          {f.master('industryId', 'Industry', industryDef)}
           {f.text('aliasName', 'Alias name', { placeholder: 'e.g. Acme', hint: 'Short name used in search and lookups.' })}
           {f.master('shippingType', 'Shipping type', shippingTypeDef, {
             clearable: true,
@@ -56,10 +56,10 @@ export function SettingsTab(props: TabProps) {
 
       <Section icon="assignment_ind" title="Assignment">
         <Fields>
-          {f.master('salesEmployee', has('vendor') && !has('customer') ? 'Buyer' : 'Sales employee', salesEmployeeDef, { clearable: true })}
-          {f.master('territory', 'Territory', territoryDef, { clearable: true })}
-          {f.master('channel', 'Channel', channelDef, { clearable: true })}
-          {f.master('technician', 'Technician', technicianDef, { clearable: true })}
+          {f.master('salesEmployeeId', has('vendor') && !has('customer') ? 'Buyer' : 'Sales employee', salesEmployeeDef, { clearable: true })}
+          {f.master('territoryId', 'Territory', territoryDef, { clearable: true })}
+          {f.master('channelId', 'Channel', channelDef, { clearable: true })}
+          {f.master('technicianId', 'Technician', technicianDef, { clearable: true })}
           {f.master('project', 'Project', projectDef, { clearable: true, hint: 'Default project on documents. Projects live in Settings › Company.' })}
         </Fields>
       </Section>
@@ -67,7 +67,7 @@ export function SettingsTab(props: TabProps) {
       {has('lead') ? (
         <Section icon={ROLE_CONFIG.lead.icon} title="Lead">
           <Fields>
-            {f.master('leadSource', 'Source', leadSourceDef)}
+            {f.master('leadSourceId', 'Source', leadSourceDef)}
             {f.pick('leadStage', 'Stage', LEAD_STAGES)}
           </Fields>
         </Section>
@@ -77,9 +77,9 @@ export function SettingsTab(props: TabProps) {
         <Fields>
           {f.num('creditLimit', 'Credit limit', { prefix: 'PHP', hint: 'Warns or blocks when the open balance exceeds it.' })}
           {f.num('commitmentLimit', 'Commitment limit', { prefix: 'PHP', hint: 'Like credit limit, but includes open orders.' })}
-          {f.master('dunningTerm', 'Dunning term', dunningTermDef, { clearable: true })}
+          {f.master('dunningTermId', 'Dunning term', dunningTermDef, { clearable: true })}
           {f.pick('priority', 'Priority', PRIORITIES, { clearable: true, hint: 'Order in payment runs.' })}
-          {f.master('holidays', 'Holidays', holidayCalendarDef, { clearable: true, hint: 'Due dates skip these non-business days.' })}
+          {f.master('holidayCalendarId', 'Holidays', holidayCalendarDef, { clearable: true, hint: 'Due dates skip these non-business days.' })}
           <PaymentDatesField value={draft.paymentDates} onChange={(paymentDates) => update({ paymentDates })} />
           <ReadOnly
             label="Average delay"
@@ -92,11 +92,11 @@ export function SettingsTab(props: TabProps) {
       {has('customer') ? (
         <Section icon="handshake" title="Factoring">
           <Fields>
-            {f.master('factoringCompany', 'Factoring company', factoringCompanyDef, {
+            {f.master('factoringCompanyId', 'Factoring company', factoringCompanyDef, {
               clearable: true,
               hint: 'Set when this partner’s receivables are sold to a third party.',
             })}
-            {f.text('factoringRef', 'Factoring reference', { disabled: !draft.factoringCompany, hint: !draft.factoringCompany ? 'Set a factoring company first.' : undefined, placeholder: 'e.g. FA-2026-0142' })}
+            {f.text('factoringRef', 'Factoring reference', { disabled: !draft.factoringCompanyId, hint: !draft.factoringCompanyId ? 'Set a factoring company first.' : undefined, placeholder: 'e.g. FA-2026-0142' })}
           </Fields>
         </Section>
       ) : null}
@@ -167,7 +167,7 @@ export function SettingsTab(props: TabProps) {
 
       <Section icon="tune" title="Other">
         <Fields>
-          {f.master('planningGroup', 'Planning group', planningGroupDef, { clearable: true })}
+          {f.master('planningGroupId', 'Planning group', planningGroupDef, { clearable: true })}
           {f.text('portalPassword', 'Portal password', {
             type: 'password',
             placeholder: 'Not set',

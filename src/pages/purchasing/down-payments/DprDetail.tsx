@@ -27,7 +27,7 @@ import { formatAddress } from '../../../mocks/address';
 import { ADVANCES_TO_SUPPLIERS, DPR_SERIES, blankDownPaymentRequest, newDprLine, type DownPaymentRequest, type DprLine, type DprStatus } from '../../../mocks/apDownPayments';
 import type { Account } from '../../../mocks/chartOfAccounts';
 import type { Attachment } from '../../../mocks/common';
-import { CURRENT_USER } from '../../../mocks/common';
+import { CURRENT_USER_ID } from '../../../mocks/common';
 import { PAYMENT_METHODS } from '../../../mocks/masters';
 import { contactName, type Partner } from '../../../mocks/partners';
 import { INDICATORS, type PurchaseOrder } from '../../../mocks/purchaseOrders';
@@ -119,7 +119,7 @@ function DprForm() {
   const navigate = useNavigate();
   const state = useLocation().state as { fromPo?: string } | null;
 
-  const [draft, setDraft] = useState<Draft | null | undefined>(isNew ? blankDownPaymentRequest(todayISO(), CURRENT_USER) : undefined);
+  const [draft, setDraft] = useState<Draft | null | undefined>(isNew ? blankDownPaymentRequest(todayISO(), CURRENT_USER_ID) : undefined);
   const [m, setM] = useState<Masters>();
   const [page, setPage] = useState<PageId>('details');
   const [siblings, setSiblings] = useState<string[]>([]);
@@ -361,8 +361,8 @@ function DprForm() {
                   <Fields cols={1}>
                     <fieldset disabled={added} className="contents">
                       <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                        {h.master('buyer', 'Buyer', salesEmployeeDef, { extra: [CURRENT_USER] })}
-                        {h.master('owner', 'Owner', salesEmployeeDef, { extra: [CURRENT_USER] })}
+                        {h.master('buyerId', 'Buyer', salesEmployeeDef)}
+                        {h.master('ownerId', 'Owner', salesEmployeeDef)}
                         {h.num('dpmPct', 'DPM %', { required: true, suffix: '%', error: errors.dpmPct, hint: 'The share of the order requested up front.' })}
                       </div>
                     </fieldset>
@@ -462,7 +462,7 @@ function withPo(d: Draft, po: PurchaseOrder, lines: DprLine[]): Draft {
   return {
     ...d,
     ...(first
-      ? { currency: po.currency, contactId: po.contactId || d.contactId, paymentTermId: po.paymentTermId || d.paymentTermId, project: po.project || d.project, discountPct: po.discountPct, buyer: po.buyer || d.buyer, shipTo: po.shipTo || d.shipTo }
+      ? { currency: po.currency, contactId: po.contactId || d.contactId, paymentTermId: po.paymentTermId || d.paymentTermId, project: po.project || d.project, discountPct: po.discountPct, buyerId: po.buyerId || d.buyerId, shipTo: po.shipTo || d.shipTo }
       : {}),
     orderNumber: [...new Set(all.filter((l) => l.baseType).map((l) => l.baseDocNo))].join(', '),
     lines: all,

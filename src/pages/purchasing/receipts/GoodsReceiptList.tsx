@@ -47,7 +47,7 @@ export function GoodsReceiptList() {
     numberField<GoodsReceipt>('total', 'Total', totalOf),
     statusField<GoodsReceipt>(GR_STATUSES),
     masterField<GoodsReceipt>('currency', 'Currency', currencyDef, (d) => d.currency),
-    masterField<GoodsReceipt>('buyer', 'Buyer', salesEmployeeDef, (d) => d.buyer),
+    masterField<GoodsReceipt>('buyer', 'Buyer', salesEmployeeDef, (d) => d.buyerId),
     linesField<GoodsReceipt>(),
   ];
   const presets = useListPresets({

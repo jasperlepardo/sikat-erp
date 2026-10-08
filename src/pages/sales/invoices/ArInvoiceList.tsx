@@ -48,7 +48,7 @@ export function ArInvoiceList() {
     numberField<ArInvoice>('total', 'Total', totalOf),
     statusField<ArInvoice>(AR_STATUSES),
     masterField<ArInvoice>('currency', 'Currency', currencyDef, (d) => d.currency),
-    masterField<ArInvoice>('salesEmployee', 'Sales employee', salesEmployeeDef, (d) => d.salesEmployee),
+    masterField<ArInvoice>('salesEmployee', 'Sales employee', salesEmployeeDef, (d) => d.salesEmployeeId),
     linesField<ArInvoice>(),
   ];
   const presets = useListPresets({

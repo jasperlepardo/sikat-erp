@@ -27,7 +27,10 @@ import {
   type Project,
 } from '../mocks/partnerMasters';
 import { bpgId } from '../mocks/masters';
-import { createCollection } from './store';
+import { createCollection, type Collection } from './store';
+
+/** A list entry's name for display — the id itself if the entry is gone. */
+export const nameIn = (list: Collection<NamedEntry>, id: string) => list.snapshot().find((r) => r.id === id)?.name ?? id;
 
 // Sales & CRM
 export const bpGroups = createCollection<BpGroup>('sikat-erp:bp-groups', SEED_BP_GROUPS, 'bpg');

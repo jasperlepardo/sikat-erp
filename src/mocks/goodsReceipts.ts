@@ -110,8 +110,8 @@ export interface GoodsReceipt {
   references: PoReference[];
 
   // Footer
-  buyer: string;
-  owner: string;
+  buyerId: string;
+  ownerId: string;
   remarks: string;
   discountPct: number;
   freight: number;
@@ -161,7 +161,7 @@ export const newGrLine = (patch: Partial<GrLine> = {}): GrLine => ({
   ...patch,
 });
 
-export function blankGoodsReceipt(today: string, buyer: string): Omit<GoodsReceipt, 'id'> {
+export function blankGoodsReceipt(today: string, buyerId: string): Omit<GoodsReceipt, 'id'> {
   return {
     vendorId: '',
     vendorCode: '',
@@ -189,8 +189,8 @@ export function blankGoodsReceipt(today: string, buyer: string): Omit<GoodsRecei
     indicator: '— None —',
     orderNumber: '',
     references: [],
-    buyer,
-    owner: buyer,
+    buyerId: buyerId,
+    ownerId: buyerId,
     remarks: '',
     discountPct: 0,
     freight: 0,
@@ -226,7 +226,7 @@ export const SEED_GOODS_RECEIPTS: GoodsReceipt[] = received
     const fxRate = seedFx(po.currency, date);
     const poNo = `${PO_SERIES.find((s) => s.id === po.seriesId)?.name ?? 'Primary'} ${po.docNum}`;
     return {
-      ...blankGoodsReceipt(date, po.buyer),
+      ...blankGoodsReceipt(date, po.buyerId),
       id: `gr-${String(n + 1).padStart(3, '0')}`,
       vendorId: po.vendorId,
       vendorCode: po.vendorCode,
@@ -246,7 +246,7 @@ export const SEED_GOODS_RECEIPTS: GoodsReceipt[] = received
       paymentMethod: po.paymentMethod,
       project: po.project,
       orderNumber: poNo,
-      owner: po.owner,
+      ownerId: po.ownerId,
       discountPct: po.discountPct,
       fxRate,
       lines: po.lines

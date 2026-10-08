@@ -60,8 +60,8 @@ export const newMemoLine = (patch: Partial<MemoLine> = {}): MemoLine => {
   return { ...base, id: `ml-${crypto.randomUUID().slice(0, 8)}`, baseType: '', returnReason: '', returnGoods: true, invoiceId: '', ...patch };
 };
 
-export function blankCreditMemo(today: string, buyer: string): Omit<ApCreditMemo, 'id'> {
-  return { ...blankApInvoice(today, buyer), seriesId: MEMO_SERIES[0].id, status: 'Draft', lines: [], applications: [], paymentOrderRun: false };
+export function blankCreditMemo(today: string, buyerId: string): Omit<ApCreditMemo, 'id'> {
+  return { ...blankApInvoice(today, buyerId), seriesId: MEMO_SERIES[0].id, status: 'Draft', lines: [], applications: [], paymentOrderRun: false };
 }
 
 export const SEED_CREDIT_MEMOS: ApCreditMemo[] = [];

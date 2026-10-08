@@ -81,7 +81,7 @@ export interface CheckRow {
 export interface CardRow {
   id: string;
   /** Card brand (Settings › Banking › Card brands). */
-  card: string;
+  cardBrandId: string;
   account: string;
   voucherNo: string;
   payments: number;
@@ -163,7 +163,7 @@ export const newCheckRow = (patch: Partial<CheckRow> = {}): CheckRow => ({
   id: rowId('chk'), account: '1015', dueDate: '', manual: false, checkNo: 0, endorsable: false, amount: 0, ...patch,
 });
 export const newCardRow = (patch: Partial<CardRow> = {}): CardRow => ({
-  id: rowId('crd'), card: '', account: CARD_PAYABLE_ACCOUNT, voucherNo: '', payments: 1, amount: 0, ...patch,
+  id: rowId('crd'), cardBrandId: '', account: CARD_PAYABLE_ACCOUNT, voucherNo: '', payments: 1, amount: 0, ...patch,
 });
 export const newAccountRow = (patch: Partial<AccountRow> = {}): AccountRow => ({ id: rowId('acr'), account: '', remarks: '', amount: 0, project: '', ...patch });
 

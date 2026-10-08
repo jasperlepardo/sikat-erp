@@ -52,8 +52,8 @@ export const newReturnLine = (patch: Partial<ReturnLine> = {}): ReturnLine => {
   return { ...base, id: `rl-${crypto.randomUUID().slice(0, 8)}`, baseType: '', returnReason: '', countryOfOrigin: '', creditedQty: 0, ...patch };
 };
 
-export function blankGoodsReturn(today: string, buyer: string): Omit<GoodsReturn, 'id'> {
-  return { ...blankGoodsReceipt(today, buyer), seriesId: RETURN_SERIES[0].id, status: 'Draft', lines: [], consolidatingBpId: '', attachments: [] };
+export function blankGoodsReturn(today: string, buyerId: string): Omit<GoodsReturn, 'id'> {
+  return { ...blankGoodsReceipt(today, buyerId), seriesId: RETURN_SERIES[0].id, status: 'Draft', lines: [], consolidatingBpId: '', attachments: [] };
 }
 
 /** A return line only needs crediting when the goods were billed (or it was entered by hand). */

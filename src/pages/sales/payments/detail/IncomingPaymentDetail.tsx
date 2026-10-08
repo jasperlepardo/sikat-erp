@@ -82,7 +82,7 @@ function validate(d: IncomingInput, fx: number, asDraft: boolean): Problem<TabId
   const { diff, withinAllowance } = paymentDifference(d, fx);
   need(!diff || withinAllowance, 'means', 'means', `Open balance of ${d.currency} ${formatAmount(Math.abs(diff))}: the payment means ${diff > 0 ? 'exceed' : 'don’t cover'} the amount due.`);
   for (const c of d.means.checks) need(c.amount > 0 && c.dueDate && c.bank && c.checkNo, 'means', 'means', 'Every check needs a due date, amount, bank and check no.');
-  for (const c of d.means.cards) need(c.amount > 0 && c.card, 'means', 'means', 'Every card payment needs a card brand and amount.');
+  for (const c of d.means.cards) need(c.amount > 0 && c.cardBrandId, 'means', 'means', 'Every card payment needs a card brand and amount.');
   return problems;
 }
 

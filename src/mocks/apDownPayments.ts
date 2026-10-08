@@ -51,8 +51,8 @@ export const newDprLine = (patch: Partial<DprLine> = {}): DprLine => {
   return { ...base, id: `dl-${crypto.randomUUID().slice(0, 8)}`, baseType: '', ...patch };
 };
 
-export function blankDownPaymentRequest(today: string, buyer: string): Omit<DownPaymentRequest, 'id'> {
-  const { downPayment: _d, lines: _l, status: _s, ...base } = blankApInvoice(today, buyer);
+export function blankDownPaymentRequest(today: string, buyerId: string): Omit<DownPaymentRequest, 'id'> {
+  const { downPayment: _d, lines: _l, status: _s, ...base } = blankApInvoice(today, buyerId);
   return { ...base, seriesId: DPR_SERIES[0].id, status: 'Draft', lines: [], dpmPct: 100, paidLc: 0, drawnAmount: 0, downPaymentAccount: ADVANCES_TO_SUPPLIERS };
 }
 

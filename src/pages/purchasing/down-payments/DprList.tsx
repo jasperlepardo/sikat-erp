@@ -50,7 +50,7 @@ export function DprList() {
     numberField<DownPaymentRequest>('total', 'Total', totalOf),
     statusField<DownPaymentRequest>(DPR_STATUSES),
     masterField<DownPaymentRequest>('currency', 'Currency', currencyDef, (d) => d.currency),
-    masterField<DownPaymentRequest>('buyer', 'Buyer', salesEmployeeDef, (d) => d.buyer),
+    masterField<DownPaymentRequest>('buyer', 'Buyer', salesEmployeeDef, (d) => d.buyerId),
     linesField<DownPaymentRequest>(),
   ];
   const presets = useListPresets({

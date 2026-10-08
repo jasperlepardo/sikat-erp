@@ -49,6 +49,8 @@ function namedDef(o: {
   placeholder?: string;
   /** Validation beyond "required and unique" (e.g. a size cap). */
   check?: (row: NamedEntry, all: NamedEntry[], e: Errors) => void;
+  /** Records store the entry's name rather than its id (countries, until they move to ISO codes), so renames are locked. */
+  storeNames?: boolean;
 }): MasterDef<NamedEntry> {
   return {
     collection: o.collection,
@@ -58,7 +60,7 @@ function namedDef(o: {
     home: o.home,
     description: o.description,
     blank: (name) => ({ id: newId(o.idPrefix), name, active: true }),
-    value: (r) => r.name,
+    value: (r) => (o.storeNames ? r.name : r.id),
     label: (r) => r.name,
     columns: [{ key: 'name', header: 'Name', cell: (r) => r.name }, statusColumn<NamedEntry>()],
     searchText: (r) => r.name,
@@ -73,7 +75,7 @@ function namedDef(o: {
       const f = bind(r, update);
       return (
         <FieldStack>
-          {f.text('name', 'Name', { required: true, error: errors.name, placeholder: o.placeholder, disabled: !isNew, hint: !isNew ? NAME_LOCK : undefined })}
+          {f.text('name', 'Name', { required: true, error: errors.name, placeholder: o.placeholder, disabled: o.storeNames && !isNew, hint: o.storeNames && !isNew ? NAME_LOCK : undefined })}
           {f.status('active', 'Status')}
         </FieldStack>
       );
@@ -319,7 +321,7 @@ export const bankDef: MasterDef<Bank> = {
   home: BANKING,
   description: 'Banks partners hold accounts with.',
   blank: (name) => ({ id: newId('bnk'), name, swift: '', active: true }),
-  value: (b) => b.name,
+  value: (b) => b.id,
   label: (b) => b.name,
   columns: [
     { key: 'name', header: 'Bank', cell: (b) => b.name },
@@ -334,11 +336,11 @@ export const bankDef: MasterDef<Bank> = {
     if (b.swift && !/^[A-Za-z0-9]{8}([A-Za-z0-9]{3})?$/.test(b.swift.trim())) e.swift = 'Use 8 or 11 letters or digits.';
     return e;
   },
-  editor: (b, update, errors, isNew) => {
+  editor: (b, update, errors) => {
     const f = bind(b, update);
     return (
       <FieldStack>
-        {f.text('name', 'Name', { required: true, error: errors.name, disabled: !isNew, hint: !isNew ? NAME_LOCK : undefined })}
+        {f.text('name', 'Name', { required: true, error: errors.name })}
         {f.text('swift', 'BIC / SWIFT', { error: errors.swift, placeholder: 'e.g. BNORPHMM' })}
         {f.status('active', 'Status')}
       </FieldStack>
@@ -458,7 +460,7 @@ export const companyDef: MasterDef<Company> = {
 };
 
 export const countryDef = namedDef({
-  collection: lists.countries, idPrefix: 'cty', icon: 'public', title: 'Countries', noun: 'country', home: COMPANY,
+  collection: lists.countries, idPrefix: 'cty', storeNames: true, icon: 'public', title: 'Countries', noun: 'country', home: COMPANY,
   description: "Countries on addresses, banks and items' country of origin.",
 });
 

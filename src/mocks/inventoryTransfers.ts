@@ -13,6 +13,7 @@
  * - Copy from an Inventory Transfer Request isn't built yet (there are no requests).
  */
 import type { DocumentSeries } from './common';
+import { employeeId } from './masters';
 import { SEED_WAREHOUSES } from './itemMasters';
 import { SEED_ITEMS } from './items';
 import { RETAIL_RESTOCKS } from './retailHistory';
@@ -53,7 +54,7 @@ export interface InventoryTransfer {
   toWarehouse: string;
   /** Default destination bin for new lines, when the To warehouse uses bins. */
   toBin: string;
-  salesEmployee: string;
+  salesEmployeeId: string;
   journalRemark: string;
   remarks: string;
   lines: TransferLine[];
@@ -80,7 +81,7 @@ export const newTransferLine = (patch: Partial<TransferLine> = {}): TransferLine
   ...patch,
 });
 
-export function blankTransfer(today: string, owner: string): Omit<InventoryTransfer, 'id'> {
+export function blankTransfer(today: string, ownerId: string): Omit<InventoryTransfer, 'id'> {
   return {
     seriesId: TRANSFER_SERIES[0].id,
     docNum: 0,
@@ -90,7 +91,7 @@ export function blankTransfer(today: string, owner: string): Omit<InventoryTrans
     fromWarehouse: 'WH-MNL',
     toWarehouse: '',
     toBin: '',
-    salesEmployee: owner,
+    salesEmployeeId: ownerId,
     journalRemark: DEFAULT_JOURNAL_REMARK,
     remarks: '',
     lines: [],
@@ -121,7 +122,7 @@ const line = (n: number, quantity: number, toWarehouse: string, patch: Partial<T
 };
 
 const transfer = (id: string, docNum: number, patch: Partial<InventoryTransfer>): InventoryTransfer => ({
-  ...blankTransfer('2026-09-01', 'Andrea Ramos'),
+  ...blankTransfer('2026-09-01', employeeId('Andrea Ramos')),
   id,
   docNum,
   status: 'Posted',

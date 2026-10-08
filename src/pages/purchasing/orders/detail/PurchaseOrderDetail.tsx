@@ -20,7 +20,7 @@ import {
 import { Fields, ReadOnly, Section, bind, type Errors } from '../../../../components/form/fields';
 import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
-import { CURRENT_USER } from '../../../../mocks/common';
+import { CURRENT_USER_ID } from '../../../../mocks/common';
 import { contactName, type Partner } from '../../../../mocks/partners';
 import {
   blankPurchaseOrder,
@@ -146,7 +146,7 @@ function PurchaseOrderForm() {
   const navigate = useNavigate();
   const copyFrom = (useLocation().state as { copyFrom?: PoDraft } | null)?.copyFrom;
 
-  const blank = blankPurchaseOrder(CURRENT_USER);
+  const blank = blankPurchaseOrder(CURRENT_USER_ID);
   const [draft, setDraft] = useState<PoDraft | null | undefined>(isNew ? (copyFrom ?? { ...blank, lines: [newPoLine()] }) : undefined);
   const [m, setM] = useState<PoMasters>();
   const [page, setPage] = useState<PageId>('details');
@@ -591,8 +591,8 @@ function PurchaseOrderForm() {
                 <Fields cols={1}>
                   <fieldset disabled={ctx.readOnly} className="contents">
                     <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                      {h.master('buyer', 'Buyer', salesEmployeeDef, { extra: [CURRENT_USER], hint: 'Who placed the order.' })}
-                      {h.master('owner', 'Owner', salesEmployeeDef, { extra: [CURRENT_USER], hint: 'Owns the document (data access).' })}
+                      {h.master('buyerId', 'Buyer', salesEmployeeDef, { hint: 'Who placed the order.' })}
+                      {h.master('ownerId', 'Owner', salesEmployeeDef, { hint: 'Owns the document (data access).' })}
                     </div>
                   </fieldset>
                   {h.area('remarks', 'Remarks', { rows: 3, hint: 'Can be changed after the PO is added.' })}

@@ -104,7 +104,7 @@ function validate(d: PaymentDraft, m: PayMasters, fx: number, asDraft: boolean):
   const balance = meansBalance(d);
   need(!balance, 'means', 'means', balance > 0 ? `The payment means are ${d.currency} ${formatAmount(balance)} short of the amount due.` : `The payment means are ${d.currency} ${formatAmount(-balance)} more than the amount due.`);
   for (const c of d.means.checks) need(c.account && c.amount > 0 && (!c.manual || c.checkNo > 0), 'means', `check:${c.id}`, 'Every check needs a bank account, an amount, and — for a manual check — its number.');
-  for (const c of d.means.cards) need(c.card && c.account && c.amount > 0, 'means', `card:${c.id}`, 'Every card line needs the card, its account and an amount.');
+  for (const c of d.means.cards) need(c.cardBrandId && c.account && c.amount > 0, 'means', `card:${c.id}`, 'Every card line needs the card, its account and an amount.');
   return problems;
 }
 

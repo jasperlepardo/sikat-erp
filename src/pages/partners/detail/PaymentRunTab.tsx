@@ -6,7 +6,7 @@ export function PaymentRunTab({ draft, update }: TabProps) {
   return (
     <Section icon="published_with_changes" title="Payment run options">
       <Fields>
-        {f.master('bankChargesCode', 'Bank charges allocation', bankChargeCodeDef, { clearable: true })}
+        {f.master('bankChargeCodeId', 'Bank charges allocation', bankChargeCodeDef, { clearable: true })}
         {f.text('paymentReference', 'Reference details', { placeholder: 'e.g. Invoice no. or account ref', hint: 'Printed on the payment run file.' })}
         <ReadOnly label="Control no." value={draft.controlNo || '—'} hint="Assigned by the bank or the payment run." />
       </Fields>

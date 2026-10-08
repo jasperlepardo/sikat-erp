@@ -8,9 +8,9 @@ import { ProblemsAlert, problemCollector, type Problem } from '../../../../compo
 import { formatAddress } from '../../../../mocks/address';
 import { AR_SERIES, blankArInvoice, type ArInvoice, type ArStatus } from '../../../../mocks/arInvoices';
 import { accountText } from '../../../../mocks/chartOfAccounts';
-import { CURRENT_USER } from '../../../../mocks/common';
+import { CURRENT_USER_ID } from '../../../../mocks/common';
 import { contactName } from '../../../../mocks/partners';
-import { NO_SALES_EMPLOYEE, SALES_SETTINGS } from '../../../../mocks/salesOrders';
+import { NO_SALES_EMPLOYEE_ID, SALES_SETTINGS } from '../../../../mocks/salesOrders';
 import {
   ArPostError,
   addArInvoice,
@@ -94,7 +94,7 @@ function ArInvoiceForm() {
   const navigate = useNavigate();
   const from = useLocation().state as { fromDelivery?: string; fromOrder?: string } | null;
 
-  const [draft, setDraft] = useState<ArDraft | null | undefined>(isNew ? blankArInvoice(todayISO(), CURRENT_USER) : undefined);
+  const [draft, setDraft] = useState<ArDraft | null | undefined>(isNew ? blankArInvoice(todayISO(), CURRENT_USER_ID) : undefined);
   const [m, setM] = useState<ArMasters>();
   const [tab, setTab] = useState<TabId>('contents');
   const [siblings, setSiblings] = useState<string[]>([]);
@@ -185,7 +185,7 @@ function ArInvoiceForm() {
           paymentMethod: s.paymentMethod,
           indicator: s.indicator,
           federalTaxId: s.federalTaxId,
-          salesEmployee: s.salesEmployee,
+          salesEmployeeId: s.salesEmployeeId,
           discountPct: s.discountPct,
           freightTaxCode: s.freightTaxCode,
           rounding: s.rounding,
@@ -222,7 +222,7 @@ function ArInvoiceForm() {
       project: c.project || '— None —',
       shippingType: c.shippingType,
       federalTaxId: c.tin,
-      salesEmployee: c.salesEmployee || NO_SALES_EMPLOYEE,
+      salesEmployeeId: c.salesEmployeeId || NO_SALES_EMPLOYEE_ID,
       discountPct: c.totalDiscount || 0,
       controlAccount: controlAccountOf(c),
       billTo: bill ? formatAddress(bill, c.name) : '',
@@ -390,8 +390,8 @@ function ArInvoiceForm() {
             <Section icon="functions" title="Totals">
               <fieldset disabled={ro} className="contents">
                 <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                  {h.master('salesEmployee', 'Sales employee', salesEmployeeDef, { extra: [NO_SALES_EMPLOYEE, CURRENT_USER] })}
-                  {h.master('owner', 'Owner', salesEmployeeDef, { extra: [CURRENT_USER] })}
+                  {h.master('salesEmployeeId', 'Sales employee', salesEmployeeDef)}
+                  {h.master('ownerId', 'Owner', salesEmployeeDef)}
                 </div>
                 <List.Group divider>
                   <TotalRow label="Total before discount" value={totals.beforeDiscount} code={draft.currency} />

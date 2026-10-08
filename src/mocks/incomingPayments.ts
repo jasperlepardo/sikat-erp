@@ -21,6 +21,7 @@
  *   exist, and branches aren't enabled, so those fields show but don't change anything.
  */
 import type { Attachment, DocumentSeries } from './common';
+import { cardBrandId } from './masters';
 import { SEED_AR_INVOICES, seedNetDue, type ArInvoice } from './arInvoices';
 import { seedRateOn } from './salesOrders';
 import { RETAIL_SALES } from './retailHistory';
@@ -83,7 +84,7 @@ export interface ReceivedCheck {
 export interface ReceivedCard {
   id: string;
   /** Card brand (Settings › Banking › Card brands). */
-  card: string;
+  cardBrandId: string;
   /** Last four digits only. */
   last4: string;
   voucherNo: string;
@@ -169,7 +170,7 @@ const rid = (p: string) => `${p}-${crypto.randomUUID().slice(0, 8)}`;
 export const newReceivedCheck = (patch: Partial<ReceivedCheck> = {}): ReceivedCheck => ({
   dueDate: '', amount: 0, bank: '', branch: '', accountNo: '', checkNo: '', endorsed: false, ...patch, id: patch.id ?? rid('rck'),
 });
-export const newReceivedCard = (patch: Partial<ReceivedCard> = {}): ReceivedCard => ({ card: '', last4: '', voucherNo: '', amount: 0, ...patch, id: patch.id ?? rid('rcd') });
+export const newReceivedCard = (patch: Partial<ReceivedCard> = {}): ReceivedCard => ({ cardBrandId: '', last4: '', voucherNo: '', amount: 0, ...patch, id: patch.id ?? rid('rcd') });
 export const newIncomingAccountRow = (patch: Partial<IncomingAccountRow> = {}): IncomingAccountRow => ({ account: '', remarks: '', amount: 0, ...patch, id: patch.id ?? rid('iar') });
 
 export const blankIncomingMeans = (today: string): IncomingMeans => ({
@@ -273,7 +274,7 @@ function customerPayment(id: string, docNum: number, invoiceId: string, patch: P
 }
 
 const total = (id: string) => SEED_AR_INVOICES.find((a) => a.id === id)!.appliedAmount;
-const CARD_BRANDS = ['Visa', 'Mastercard', 'Visa', 'JCB'];
+const CARD_MIX = [cardBrandId('Visa'), cardBrandId('Mastercard'), cardBrandId('Visa'), cardBrandId('JCB')];
 
 export const SEED_INCOMING_PAYMENTS: IncomingPayment[] = [
   customerPayment('rc-001', 440001, 'ar-001', { postingDate: '2026-09-18', documentDate: '2026-09-18', dueDate: '2026-09-18', reference: 'CGS-RTGS-0918', remarks: 'Clarkfield, bank transfer to BDO.' }, {
@@ -315,7 +316,7 @@ export const SEED_INCOMING_PAYMENTS: IncomingPayment[] = [
         ? { cash: { account: '1013', amount } }
         : r.means === 'cash'
           ? { cash: { account: CASH_CLEARING_ACCOUNT, amount } }
-          : { cards: [newReceivedCard({ id: `rcd-${r.id}`, card: CARD_BRANDS[r.n % CARD_BRANDS.length], last4: String(1000 + ((r.n * 7919) % 9000)), voucherNo: `POS-${r.store}-${String(r.n + 1).padStart(4, '0')}`, amount })] };
+          : { cards: [newReceivedCard({ id: `rcd-${r.id}`, cardBrandId: CARD_MIX[r.n % CARD_MIX.length], last4: String(1000 + ((r.n * 7919) % 9000)), voucherNo: `POS-${r.store}-${String(r.n + 1).padStart(4, '0')}`, amount })] };
     return customerPayment(`rc-${r.id}`, 440008 + r.n, id, { postingDate: r.date, documentDate: r.date, dueDate: r.date, reference: `${r.store}-${r.date.replaceAll('-', '')}`, remarks: `Walk-in sale at ${r.store}.` }, means);
   }),
   // Corporate collections (after the walk-in takings in numbering).

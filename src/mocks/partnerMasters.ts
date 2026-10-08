@@ -7,11 +7,13 @@ import {
   BANKS,
   BANK_CHARGE_CODES,
   BP_GROUPS,
+  CARD_BRANDS,
   CHANNELS,
   COUNTRIES,
   DUNNING_TERMS,
   EMAIL_GROUPS,
   EMPLOYEES,
+  FACTORING_COMPANIES,
   HOLIDAY_CALENDARS,
   INDUSTRIES,
   PAYMENT_TERMS,
@@ -145,8 +147,8 @@ export const SEED_DUNNING_TERMS = named('dun', DUNNING_TERMS);
 export const SEED_HOLIDAY_CALENDARS = named('hol', HOLIDAY_CALENDARS);
 export const SEED_BANKS: Bank[] = named('bnk', BANKS).map((b) => ({ ...b, swift: SWIFT[b.name] ?? '' }));
 export const SEED_BANK_CHARGE_CODES = named('bcc', BANK_CHARGE_CODES);
-export const SEED_CARD_BRANDS = named('crd', ['Visa', 'Mastercard', 'American Express', 'JCB', 'UnionPay']);
-export const SEED_FACTORING_COMPANIES = named('fac', ['First Metro Factors Inc.', 'BDO Factoring', 'Asia Trade Receivables Corp.']);
+export const SEED_CARD_BRANDS = named('crd', CARD_BRANDS);
+export const SEED_FACTORING_COMPANIES = named('fac', FACTORING_COMPANIES);
 
 /** "PRJ-001 Northgate store renovation" → code PRJ-001, name "Northgate store renovation". */
 export const SEED_PROJECTS: Project[] = PROJECTS.map((p, i) => {

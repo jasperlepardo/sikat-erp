@@ -46,7 +46,7 @@ export function PurchaseOrderList() {
     numberField<PurchaseOrder>('total', 'Total', totalOf),
     statusField<PurchaseOrder>(PO_STATUSES),
     masterField<PurchaseOrder>('currency', 'Currency', currencyDef, (d) => d.currency),
-    masterField<PurchaseOrder>('buyer', 'Buyer', salesEmployeeDef, (d) => d.buyer),
+    masterField<PurchaseOrder>('buyer', 'Buyer', salesEmployeeDef, (d) => d.buyerId),
     linesField<PurchaseOrder>(),
   ];
   const presets = useListPresets({

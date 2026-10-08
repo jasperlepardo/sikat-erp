@@ -54,7 +54,7 @@ export function IncomingMeansSection({ draft, update, accounts, fx, readOnly }: 
     { key: 'endorsed', header: 'Endorsed', cell: (c) => <Checkbox aria-label="Endorsed" disabled={readOnly} checked={c.endorsed} onChange={(e) => patchCheck(c.id, { endorsed: e.currentTarget.checked })} /> },
   ];
   const cardColumns: TableColumn<ReceivedCard>[] = [
-    { key: 'card', header: 'Card', cell: (c) => <MasterLookup def={cardBrandDef} fieldProps={{ 'aria-label': 'Card brand', className: 'w-40' }} value={c.card} onChange={(card) => patchCard(c.id, { card })} disabled={readOnly} /> },
+    { key: 'card', header: 'Card', cell: (c) => <MasterLookup def={cardBrandDef} fieldProps={{ 'aria-label': 'Card brand', className: 'w-40' }} value={c.cardBrandId} onChange={(card) => patchCard(c.id, { cardBrandId: card })} disabled={readOnly} /> },
     { key: 'last4', header: 'Card no. (last 4)', cell: (c) => <TextField aria-label="Last four digits" className="w-28" maxLength={4} readOnly={readOnly} value={c.last4} onChange={(e) => patchCard(c.id, { last4: e.currentTarget.value.replace(/\D/g, '').slice(0, 4) })} /> },
     { key: 'voucherNo', header: 'Voucher no.', cell: (c) => <TextField aria-label="Voucher no." className="w-36" readOnly={readOnly} value={c.voucherNo} onChange={(e) => patchCard(c.id, { voucherNo: e.currentTarget.value })} /> },
     { key: 'amount', header: 'Amount', cell: (c) => <TextField aria-label="Card amount" type="number" min={0} className="w-36" prefix={code} readOnly={readOnly} value={String(c.amount)} onChange={(e) => patchCard(c.id, { amount: num(e.currentTarget.value) })} /> },
