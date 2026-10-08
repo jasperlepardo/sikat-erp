@@ -4,7 +4,7 @@ import { Fields, bind, type Errors } from '../../../components/form/fields';
 import { MasterList, statusColumn, type ListRoute } from '../../../components/form/MasterList';
 import { useCollection } from '../../../components/form/MasterLookup';
 import type { PeriodVolumeDiscount, VolumeTier } from '../../../mocks/pricing';
-import { itemGroups } from '../../../services/inventoryMasters';
+import { itemGroupName, itemGroups } from '../../../services/inventoryMasters';
 import { listItems } from '../../../services/items';
 import { bpGroupName, bpGroups, priceLists } from '../../../services/partnerMasters';
 import { listPartners } from '../../../services/partners';
@@ -19,7 +19,7 @@ const blank = (): PeriodVolumeDiscount => ({
   bpGroupId: '',
   itemScope: 'group',
   itemId: '',
-  itemGroup: '',
+  itemGroupId: '',
   priceListId: '',
   kind: 'period',
   validFrom: '',
@@ -39,7 +39,7 @@ const sortedTiers = (tiers: VolumeTier[]) => [...tiers].sort((a, b) => a.qtyFrom
 function validate(r: PeriodVolumeDiscount): Errors {
   const e: Errors = {};
   if (r.partnerScope === 'partner' ? !r.partnerId : !r.bpGroupId) e[r.partnerScope === 'partner' ? 'partnerId' : 'bpGroupId'] = 'Pick who the discount is for.';
-  if (r.itemScope === 'item' ? !r.itemId : !r.itemGroup) e[r.itemScope === 'item' ? 'itemId' : 'itemGroup'] = 'Pick what the discount is on.';
+  if (r.itemScope === 'item' ? !r.itemId : !r.itemGroupId) e[r.itemScope === 'item' ? 'itemId' : 'itemGroupId'] = 'Pick what the discount is on.';
   if (!r.priceListId) e.priceListId = 'Price list is required.';
   if (r.kind === 'period') {
     if (!r.validFrom) e.validFrom = 'Valid from is required for a period discount.';
@@ -70,7 +70,7 @@ export function PeriodVolumeDiscountsTab(route: ListRoute) {
   const partnerName = (id: string) => partners.find((p) => p.id === id)?.name ?? id;
   const itemNo = (id: string) => items.find((i) => i.id === id)?.itemNo ?? id;
   const forWhom = (r: PeriodVolumeDiscount) => (r.partnerScope === 'partner' ? partnerName(r.partnerId) : `${bpGroupName(r.bpGroupId)} (group)`);
-  const onWhat = (r: PeriodVolumeDiscount) => (r.itemScope === 'item' ? itemNo(r.itemId) : `${r.itemGroup} (group)`);
+  const onWhat = (r: PeriodVolumeDiscount) => (r.itemScope === 'item' ? itemNo(r.itemId) : `${itemGroupName(r.itemGroupId)} (group)`);
   const discount = (r: PeriodVolumeDiscount) =>
     r.kind === 'period' ? `${r.discountPct}% for the period` : sortedTiers(r.tiers).map((t) => `${tierLabel(t)}: ${t.discountPct}%`).join(' · ');
 
@@ -106,7 +106,7 @@ export function PeriodVolumeDiscountsTab(route: ListRoute) {
           partnerId: r.partnerScope === 'partner' ? r.partnerId : '',
           bpGroupId: r.partnerScope === 'group' ? r.bpGroupId : '',
           itemId: r.itemScope === 'item' ? r.itemId : '',
-          itemGroup: r.itemScope === 'group' ? r.itemGroup : '',
+          itemGroupId: r.itemScope === 'group' ? r.itemGroupId : '',
           discountPct: r.kind === 'period' ? r.discountPct : 0,
           tiers: r.kind === 'volume' ? sortedTiers(r.tiers) : [],
         });
@@ -136,7 +136,7 @@ export function PeriodVolumeDiscountsTab(route: ListRoute) {
               ])}
               {r.itemScope === 'item'
                 ? f.lookup('itemId', 'Item', items.map((i) => ({ value: i.id, label: `${i.itemNo} · ${i.name}` })), { required: true, error: errors.itemId })
-                : f.choose('itemGroup', 'Item group', igroups.map((g) => ({ value: g.name, label: g.name })), { required: true, error: errors.itemGroup })}
+                : f.choose('itemGroupId', 'Item group', igroups.map((g) => ({ value: g.id, label: g.name })), { required: true, error: errors.itemGroupId })}
               {f.choose('priceListId', 'Price list', lists.filter((l) => l.active || l.id === r.priceListId).map((l) => ({ value: l.id, label: l.name })), {
                 required: true,
                 error: errors.priceListId,

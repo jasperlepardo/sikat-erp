@@ -10,7 +10,7 @@ import {
 import type { Item } from '../mocks/items';
 import { listTransfers } from './inventoryTransfers';
 import { listItems, saveItem } from './items';
-import { binLocations, binSublevels } from './inventoryMasters';
+import { binLocations, binSublevels, itemGroupName } from './inventoryMasters';
 import { newId } from './useCollectionRows';
 
 export { binLocations, binSublevels };
@@ -62,8 +62,8 @@ export function transferBlock(bin: BinLocation | undefined, item: Item, uom: str
   if (t === 'outbound' && direction === 'in') return `${bin.code} takes outbound transactions only.`;
   if (direction === 'out') return null;
   if (bin.itemRestriction === 'item' && bin.restrictedItem !== item.itemNo) return `${bin.code} only holds ${bin.restrictedItem}.`;
-  if (bin.itemRestriction === 'itemGroup' && bin.restrictedItemGroup !== item.itemGroup)
-    return `${bin.code} only holds ${bin.restrictedItemGroup} items.`;
+  if (bin.itemRestriction === 'itemGroup' && bin.restrictedItemGroupId !== item.itemGroupId)
+    return `${bin.code} only holds ${itemGroupName(bin.restrictedItemGroupId)} items.`;
   if (bin.uomRestriction === 'uom' && bin.restrictedUom !== uom) return `${bin.code} only takes ${bin.restrictedUom}.`;
   return null;
 }

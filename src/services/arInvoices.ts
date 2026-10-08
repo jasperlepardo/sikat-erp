@@ -81,7 +81,7 @@ export function arWithholding(a: Pick<ArInvoice, 'lines' | 'discountPct' | 'docT
 /** What the customer still owes: total − withholding − payments applied. */
 export const balanceDue = (total: number, withheld: number, applied: number) => round2(total - withheld - applied);
 
-const groupOf = (item: Item, groups: readonly ItemGroup[]) => groups.find((g) => g.name === item.itemGroup);
+const groupOf = (item: Item, groups: readonly ItemGroup[]) => groups.find((g) => g.id === item.itemGroupId);
 const revenueAccountFor = (item: Item, groups: readonly ItemGroup[]) => (item.glBy === 'Item Level' ? item.revenueAccount : groupOf(item, groups)?.revenueAccount || item.revenueAccount) || '4010';
 const cogsAccountFor = (item: Item, groups: readonly ItemGroup[]) => (item.glBy === 'Item Level' ? item.cogsAccount : groupOf(item, groups)?.cogsAccount || item.cogsAccount) || '5010';
 

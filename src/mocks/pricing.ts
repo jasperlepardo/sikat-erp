@@ -58,10 +58,10 @@ export interface PeriodVolumeDiscount {
   partnerScope: 'partner' | 'group';
   partnerId: string;
   bpGroupId: string;
-  /** Whether `itemId` (one item) or `itemGroup` (every item in the group) is used. */
+  /** Whether `itemId` (one item) or `itemGroupId` (every item in the group) is used. */
   itemScope: 'item' | 'group';
   itemId: string;
-  itemGroup: string;
+  itemGroupId: string;
   /** Id of the price list whose price is discounted. One rule per list — there's no "all lists". */
   priceListId: string;
   kind: DiscountKind;
@@ -86,7 +86,7 @@ export interface DiscountGroupRow {
 }
 
 export interface DiscountGroupCell {
-  itemGroup: string;
+  itemGroupId: string;
   discountPct: number;
 }
 
@@ -98,7 +98,7 @@ const rule = (r: Partial<PeriodVolumeDiscount> & Pick<PeriodVolumeDiscount, 'id'
   bpGroupId: '',
   itemScope: 'group',
   itemId: '',
-  itemGroup: '',
+  itemGroupId: '',
   validFrom: '',
   validTo: '',
   discountPct: 0,
@@ -110,34 +110,34 @@ const rule = (r: Partial<PeriodVolumeDiscount> & Pick<PeriodVolumeDiscount, 'id'
 
 export const SEED_PERIOD_VOLUME_DISCOUNTS: PeriodVolumeDiscount[] = [
   rule({
-    id: 'pvd-001', kind: 'period', bpGroupId: bpgId('Customers – Retail'), itemGroup: 'AirPods', priceListId: plId('Base price'),
+    id: 'pvd-001', kind: 'period', bpGroupId: bpgId('Customers – Retail'), itemGroupId: 'ig-APD', priceListId: plId('Base price'),
     validFrom: '2026-10-01', validTo: '2026-10-31', discountPct: 10, remarks: '10.10 sale: 10% off AirPods for walk-in and online customers.',
   }),
   rule({
-    id: 'pvd-002', kind: 'period', bpGroupId: bpgId('Customers – Trade'), itemGroup: 'Mac', priceListId: plId('Wholesale'),
+    id: 'pvd-002', kind: 'period', bpGroupId: bpgId('Customers – Trade'), itemGroupId: 'ig-MAC', priceListId: plId('Wholesale'),
     validFrom: '2026-06-01', validTo: '2026-08-31', discountPct: 4, remarks: 'Back-to-school corporate Mac promo.',
   }),
   rule({
-    id: 'pvd-003', kind: 'volume', bpGroupId: bpgId('Customers – Government'), itemGroup: 'iPad', priceListId: plId('Government'),
+    id: 'pvd-003', kind: 'volume', bpGroupId: bpgId('Customers – Government'), itemGroupId: 'ig-IPD', priceListId: plId('Government'),
     tiers: [tier('t1', 1, 9, 0), tier('t2', 10, 49, 3), tier('t3', 50, null, 5)],
     remarks: 'Classroom rollouts: deeper discount for bigger lots.',
   }),
   rule({
-    id: 'pvd-004', kind: 'volume', partnerScope: 'partner', partnerId: 'bp-013', itemGroup: 'Accessories', priceListId: plId('Last purchase price'),
+    id: 'pvd-004', kind: 'volume', partnerScope: 'partner', partnerId: 'bp-013', itemGroupId: 'ig-ACC', priceListId: plId('Last purchase price'),
     tiers: [tier('t1', 1, 49, 0), tier('t2', 50, 199, 2), tier('t3', 200, null, 4)],
     remarks: 'Techzone accessories supply agreement: volume rebate on the invoice price.',
   }),
 ];
 
-const cells = (pcts: Record<string, number>): DiscountGroupCell[] => Object.entries(pcts).map(([itemGroup, discountPct]) => ({ itemGroup, discountPct }));
+const cells = (pcts: Record<string, number>): DiscountGroupCell[] => Object.entries(pcts).map(([itemGroupId, discountPct]) => ({ itemGroupId, discountPct }));
 
 export const SEED_DISCOUNT_GROUPS: DiscountGroupRow[] = [
-  { id: 'dgr-001', bpGroupId: bpgId('Customers – Trade'), discounts: cells({ iPhone: 2, iPad: 3, Mac: 3, Accessories: 5 }), active: true },
+  { id: 'dgr-001', bpGroupId: bpgId('Customers – Trade'), discounts: cells({ 'ig-IPH': 2, 'ig-IPD': 3, 'ig-MAC': 3, 'ig-ACC': 5 }), active: true },
   {
     id: 'dgr-002', bpGroupId: bpgId('Customers – Government'),
-    discounts: cells({ iPhone: 3, iPad: 3, Mac: 3, 'Apple Watch': 3, AirPods: 3, Accessories: 3 }), active: true,
+    discounts: cells({ 'ig-IPH': 3, 'ig-IPD': 3, 'ig-MAC': 3, 'ig-AW': 3, 'ig-APD': 3, 'ig-ACC': 3 }), active: true,
   },
-  { id: 'dgr-003', bpGroupId: bpgId('Vendors – Local'), discounts: cells({ Accessories: 1.5 }), active: true },
+  { id: 'dgr-003', bpGroupId: bpgId('Vendors – Local'), discounts: cells({ 'ig-ACC': 1.5 }), active: true },
 ];
 
 const special = (id: string, itemId: string, r: Partial<SpecialPriceRow>): SpecialPriceRow => ({

@@ -104,7 +104,7 @@ function validate(d: Draft, codeMode: 'auto' | 'manual', inv: InventoryMasters):
   need(codeMode === 'auto' || d.itemNo.trim(), 'header', 'itemNo', 'Enter an Item No., or switch numbering to Auto.');
   need(d.name.trim(), 'header', 'name', 'Name is required.');
   need(d.description.trim(), 'header', 'description', 'Description is required.');
-  need(d.itemGroup, 'header', 'itemGroup', 'Item group is required.');
+  need(d.itemGroupId, 'header', 'itemGroupId', 'Item group is required.');
   need(d.inventoryUom, 'header', 'inventoryUom', 'Inventory UoM is required.');
   const seenUoms = new Set<string>();
   for (const u of d.uoms) {
@@ -256,13 +256,13 @@ function ItemForm() {
   // Side-column fields: label beside the control.
   const beside = { orientation: 'responsive' as const };
   const locked = draft.hasTransactions;
-  const group = inv.groups.find((g) => g.name === draft.itemGroup);
+  const group = inv.groups.find((g) => g.id === draft.itemGroupId);
 
   // Group change: re-default valuation (unless locked), the group's G/L accounts and the tax defaults it sets.
-  const changeGroup = (name: string) => {
-    const g = inv.groups.find((x) => x.name === name)!;
+  const changeGroup = (id: string) => {
+    const g = inv.groups.find((x) => x.id === id)!;
     update({
-      itemGroup: name,
+      itemGroupId: id,
       ...(locked && draft.inventoryItem ? {} : { valuationMethod: g.valuationMethod }),
       ...(draft.glBy === 'Item Level'
         ? {}
@@ -535,14 +535,14 @@ function ItemForm() {
                         orientation="responsive"
                         label="Item group"
                         required
-                        error={errors.itemGroup}
+                        error={errors.itemGroupId}
                         tooltip={locked ? 'Changing it after postings can misalign G/L — check with Finance.' : 'Sets valuation and G/L defaults.'}
                       >
                         {(p) => (
                           <Combobox
                             {...p}
-                            options={activeOptions(inv.groups, (g) => g.name, (g) => `${g.name} (${g.prefix})`, draft.itemGroup)}
-                            value={draft.itemGroup}
+                            options={activeOptions(inv.groups, (g) => g.id, (g) => `${g.name} (${g.prefix})`, draft.itemGroupId)}
+                            value={draft.itemGroupId}
                             onValueChange={(v) => changeGroup(v ?? '')}
                           />
                         )}

@@ -66,7 +66,7 @@ export function AddItemsBar({
         .filter(
           (i) =>
             i.inventoryItem &&
-            (!group || i.itemGroup === group) &&
+            (!group || i.itemGroupId === group) &&
             i.warehouses.some((w) => w.code === wh && w.inStock > 0) &&
             !listed.has(`${i.id}@${wh}`),
         )
@@ -80,7 +80,7 @@ export function AddItemsBar({
       <Select
         aria-label="Item group for Add Items"
         className="w-48"
-        options={[{ value: '', label: 'All item groups' }, ...m.groups.map((g) => ({ value: g.name, label: g.name }))]}
+        options={[{ value: '', label: 'All item groups' }, ...m.groups.map((g) => ({ value: g.id, label: g.name }))]}
         value={group}
         onValueChange={setGroup}
       />

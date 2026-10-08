@@ -13,7 +13,7 @@ import {
 } from '@jasperlepardo/sikat-design-system';
 import type { Item } from '../../mocks/items';
 import { formatAmount } from '../../services/format';
-import { loadInventoryMasters } from '../../services/inventoryMasters';
+import { itemGroupName, loadInventoryMasters } from '../../services/inventoryMasters';
 import { isLowStock, listItems, stockTotals } from '../../services/items';
 import { useAsync } from '../../services/useAsync';
 import { DEFAULT_PAGE_SIZE, PAGE_SIZES, fillCardClass } from '../../components/form/DataTable';
@@ -73,7 +73,7 @@ const statusOf = (r: Row) =>
 const STOCK_FIELDS = [
   textField<Row>('itemNo', 'Item no.', (r) => r.item.itemNo),
   textField<Row>('name', 'Item name', (r) => [r.item.name, r.item.description]),
-  textField<Row>('itemGroup', 'Item group', (r) => r.item.itemGroup),
+  textField<Row>('itemGroup', 'Item group', (r) => itemGroupName(r.item.itemGroupId)),
   textField<Row>('warehouse', 'Warehouse', (r) => r.children?.map((c) => c.warehouse) ?? r.warehouse),
   choiceField<Row>('stockStatus', 'Stock status', ['In stock', 'Below minimum', 'Out of stock'], (r) => statusOf(r).label),
   numberField<Row>('inStock', 'In stock', (r) => r.inStock),
@@ -108,7 +108,7 @@ export function StockOnHandPage() {
 
   /** One row per item (totals over the shown warehouses), before the tab and search filters. */
   const base = useMemo<Row[]>(() => {
-    const stocked = (items ?? []).filter((i) => i.inventoryItem && (!group || i.itemGroup === group));
+    const stocked = (items ?? []).filter((i) => i.inventoryItem && (!group || i.itemGroupId === group));
     return stocked.flatMap((item) => {
       const shown = item.warehouses.filter((w) => !warehouse || w.code === warehouse);
       if (warehouse && !shown.length) return [];
@@ -256,7 +256,7 @@ export function StockOnHandPage() {
             <Select
               aria-label="Item group"
               className="w-44"
-              options={[{ value: ALL_GROUPS, label: 'All item groups' }, ...(inv?.groups ?? []).map((g) => ({ value: g.name, label: g.name }))]}
+              options={[{ value: ALL_GROUPS, label: 'All item groups' }, ...(inv?.groups ?? []).map((g) => ({ value: g.id, label: g.name }))]}
               value={group}
               onValueChange={resetPage(setGroup)}
             />

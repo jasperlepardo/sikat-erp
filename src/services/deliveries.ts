@@ -47,7 +47,7 @@ export const dnTotal = (d: Delivery, codes: TaxCode[]) =>
 
 /** The COGS account an item posts to, per its "Set G/L accounts by". */
 const cogsAccountFor = (item: Item, groups: readonly ItemGroup[]) =>
-  item.glBy === 'Item Level' ? item.cogsAccount : groups.find((g) => g.name === item.itemGroup)?.cogsAccount || item.cogsAccount;
+  item.glBy === 'Item Level' ? item.cogsAccount : groups.find((g) => g.id === item.itemGroupId)?.cogsAccount || item.cogsAccount;
 
 /**
  * The entry adding the delivery makes, at item cost (PHP): Dr COGS — or Dr Shipped Goods with

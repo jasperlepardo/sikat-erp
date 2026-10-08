@@ -36,14 +36,14 @@ export function DiscountGroupsTab() {
   const invalid = rows.some((r) => r.discounts.some((d) => !(d.discountPct >= 0 && d.discountPct <= 100)));
 
   const setRow = (id: string, patch: Partial<DiscountGroupRow>) => setDraft((d) => d?.map((r) => (r.id === id ? { ...r, ...patch } : r)));
-  const setCell = (row: DiscountGroupRow, itemGroup: string, value: string) => {
-    const cell = { itemGroup, discountPct: Number(value) };
-    const has = row.discounts.some((d) => d.itemGroup === itemGroup);
+  const setCell = (row: DiscountGroupRow, itemGroupId: string, value: string) => {
+    const cell = { itemGroupId, discountPct: Number(value) };
+    const has = row.discounts.some((d) => d.itemGroupId === itemGroupId);
     const discounts =
       value === ''
-        ? row.discounts.filter((d) => d.itemGroup !== itemGroup)
+        ? row.discounts.filter((d) => d.itemGroupId !== itemGroupId)
         : has
-          ? row.discounts.map((d) => (d.itemGroup === itemGroup ? cell : d))
+          ? row.discounts.map((d) => (d.itemGroupId === itemGroupId ? cell : d))
           : [...row.discounts, cell];
     setRow(row.id, { discounts });
   };
@@ -80,7 +80,7 @@ export function DiscountGroupsTab() {
         rows={rows}
         getRowId={(r) => r.id}
         noPagination
-        unsortable={columns.map((c) => c.name)}
+        unsortable={columns.map((c) => c.id)}
         columns={[
           {
             key: 'bpGroupId',
@@ -106,10 +106,10 @@ export function DiscountGroupsTab() {
             },
           },
           ...columns.map((c) => ({
-            key: c.name,
+            key: c.id,
             header: c.name,
             cell: (r: DiscountGroupRow) => {
-              const v = r.discounts.find((d) => d.itemGroup === c.name)?.discountPct;
+              const v = r.discounts.find((d) => d.itemGroupId === c.id)?.discountPct;
               // Fixed width: short headers (iPad, Mac) would otherwise squeeze the input to nothing.
               return (
                 <div className="w-24 min-w-24">
@@ -122,7 +122,7 @@ export function DiscountGroupsTab() {
                   placeholder="0"
                   invalid={v !== undefined && !(v >= 0 && v <= 100)}
                   value={v === undefined ? '' : String(v)}
-                  onChange={(e) => setCell(r, c.name, e.currentTarget.value)}
+                  onChange={(e) => setCell(r, c.id, e.currentTarget.value)}
                 />
                 </div>
               );

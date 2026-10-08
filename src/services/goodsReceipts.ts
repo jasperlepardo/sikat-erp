@@ -90,7 +90,7 @@ function qtyByBaseLine(lines: GrLine[]) {
 
 /** Where a non-stock item's cost goes: its own cost account, or its group's. */
 export const expenseAccountFor = (item: Item, groups: ItemGroup[]) =>
-  item.glBy === 'Item Level' ? item.cogsAccount : groups.find((g) => g.name === item.itemGroup)?.cogsAccount || item.cogsAccount;
+  item.glBy === 'Item Level' ? item.cogsAccount : groups.find((g) => g.id === item.itemGroupId)?.cogsAccount || item.cogsAccount;
 
 /**
  * The entry adding the receipt makes, in PHP: Dr Inventory for stocked lines (at their cost),

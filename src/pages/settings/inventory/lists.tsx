@@ -105,12 +105,12 @@ export function ItemGroupsTab(route: ListRoute) {
         return e;
       }}
       onSave={(g) => save({ ...g, prefix: g.prefix.trim().toUpperCase() })}
-      editor={(g, update, errors, isNew) => {
+      editor={(g, update, errors) => {
         const f = bind(g, update);
         return (
           <>
             <FieldStack>
-              {f.text('name', 'Name', { required: true, error: errors.name, disabled: !isNew, hint: !isNew ? "Can't change once saved — items refer to it. Deactivate instead." : undefined })}
+              {f.text('name', 'Name', { required: true, error: errors.name })}
               {f.text('prefix', 'Item No. prefix', { required: true, error: errors.prefix, hint: 'Auto-numbered items become PREFIX-00001.' })}
               {f.pick('valuationMethod', 'Default valuation method', VALUATION_METHODS)}
               <AccountField

@@ -239,9 +239,9 @@ export function GenerateBinsPanel({ warehouse: initial, onCancel, onDone }: { wa
           ])}
           {d.itemRestriction === 'itemGroup'
             ? f.choose(
-                'restrictedItemGroup',
+                'restrictedItemGroupId',
                 'Item group',
-                itemGroups.snapshot().filter((g) => g.active).map((g) => ({ value: g.name, label: g.name })),
+                itemGroups.snapshot().filter((g) => g.active).map((g) => ({ value: g.id, label: g.name })),
                 { required: true },
               )
             : null}

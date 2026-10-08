@@ -68,7 +68,7 @@ export function shortages(t: Pick<InventoryTransfer, 'lines' | 'fromWarehouse'>,
  */
 export function inventoryAccountFor(item: Item, _warehouse: string, groups: ItemGroup[]) {
   if (item.glBy === 'Item Level') return item.inventoryAccount;
-  return groups.find((g) => g.name === item.itemGroup)?.inventoryAccount || item.inventoryAccount;
+  return groups.find((g) => g.id === item.itemGroupId)?.inventoryAccount || item.inventoryAccount;
 }
 
 export interface JournalLine {

@@ -13,6 +13,7 @@ import {
 } from '@jasperlepardo/sikat-design-system';
 import { DEFAULT_PAGE_SIZE, PAGE_SIZES } from '../../../components/form/DataTable';
 import { Stat } from '../../../components/Stat';
+import { itemGroupName } from '../../../services/inventoryMasters';
 import { isValidToday, listItems } from '../../../services/items';
 import { useAsync } from '../../../services/useAsync';
 import type { Draft } from './fields';
@@ -53,7 +54,7 @@ export function VendorItemsTab({ draft }: { draft: Draft }) {
       id: i.id,
       itemNo: i.itemNo,
       name: i.name || i.description,
-      itemGroup: i.itemGroup,
+      itemGroup: itemGroupName(i.itemGroupId),
       catalogNo: i.vendors.find((v) => v.vendorId === draft.id)?.vendorItemNo ?? '',
       isDefault: i.defaultVendorId === draft.id,
       preferredAt: i.warehouses.filter((w) => w.preferredVendorId === draft.id).map((w) => w.code),

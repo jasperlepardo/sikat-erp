@@ -59,7 +59,7 @@ export function groupTaxNote(
   draft: TabProps['draft'],
   key: 'purchaseTaxGroup' | 'salesTaxGroup' | 'withholdingGroup' | 'exciseCategory',
 ) {
-  const g = inv.groups.find((x) => x.name === draft.itemGroup);
+  const g = inv.groups.find((x) => x.id === draft.itemGroupId);
   const value = g?.[key];
   return value && value !== draft[key] ? ` The ${g.name} group default is ${value}.` : '';
 }

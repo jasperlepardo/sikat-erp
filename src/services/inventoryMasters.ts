@@ -29,6 +29,8 @@ import { createCollection } from './store';
 
 /** Settings › Inventory and Inventory › Warehouses & Bins master data. */
 export const itemGroups = createCollection<ItemGroup>('sikat-erp:item-groups:v6', SEED_ITEM_GROUPS, 'ig');
+/** An item group's name for display — the id itself if the group is gone. */
+export const itemGroupName = (id: string) => itemGroups.snapshot().find((g) => g.id === id)?.name ?? id;
 export const unitsOfMeasure = createCollection<UnitOfMeasure>('sikat-erp:uoms:v5', SEED_UOMS, 'uom');
 export const uomGroups = createCollection<UomGroup>('sikat-erp:uom-groups:v2', SEED_UOM_GROUPS, 'ug');
 export const warehouses = createCollection<Warehouse>('sikat-erp:warehouses:v10', SEED_WAREHOUSES, 'wh');

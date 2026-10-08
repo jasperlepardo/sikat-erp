@@ -18,6 +18,7 @@ import type { Item } from '../../../mocks/items';
 import { isValidToday, listItems, stockTotals } from '../../../services/items';
 import { useAsync } from '../../../services/useAsync';
 import { formatAmount } from '../../../services/format';
+import { itemGroupName } from '../../../services/inventoryMasters';
 import { EMPTY_FILTER, oneRule } from '../../../components/filter/engine';
 import { boolField, numberField, textField } from '../../../components/filter/fieldKit';
 import { useListPresets } from '../../../components/filter/useListPresets';
@@ -77,7 +78,7 @@ export function ItemList({ basePath = '/inventory/items' }: { basePath?: string 
     textField<Item>('itemNo', 'Item no.', (i) => i.itemNo),
     textField<Item>('description', 'Description', (i) => i.description),
     textField<Item>('foreignName', 'Foreign name', (i) => i.foreignName),
-    textField<Item>('itemGroup', 'Item group', (i) => i.itemGroup),
+    textField<Item>('itemGroup', 'Item group', (i) => itemGroupName(i.itemGroupId)),
     textField<Item>('barcode', 'Barcode', (i) => [i.gtin, ...i.barcodes.map((b) => b.barcode)]),
     boolField<Item>('inventoryItem', 'Inventory item', (i) => i.variantAxes.length > 0 ? true : i.inventoryItem),
     boolField<Item>('valid', 'Valid today', (i) => isValidToday(i)),
@@ -110,7 +111,7 @@ export function ItemList({ basePath = '/inventory/items' }: { basePath?: string 
     const filtered = presets.apply(items ?? []).filter((i) => {
       if (i.parentItemId) return false; // hide variants from list
       if (!q) return true;
-      const own = normalize([i.itemNo, i.description, i.foreignName, i.itemGroup, i.gtin, ...i.barcodes.map((b) => b.barcode)].join(' '));
+      const own = normalize([i.itemNo, i.description, i.foreignName, itemGroupName(i.itemGroupId), i.gtin, ...i.barcodes.map((b) => b.barcode)].join(' '));
       const variantText = normalize(variantSearchMap.get(i.id) ?? '');
       return own.includes(q) || variantText.includes(q);
     });
@@ -140,10 +141,10 @@ export function ItemList({ basePath = '/inventory/items' }: { basePath?: string 
       ),
     },
     {
-      key: 'itemGroup',
+      key: 'itemGroupId',
       header: 'Group',
       sortable: true,
-      cell: (i) => <TableSubcontent subcopy={i.itemType === 'Items' ? undefined : i.itemType}>{i.itemGroup}</TableSubcontent>,
+      cell: (i) => <TableSubcontent subcopy={i.itemType === 'Items' ? undefined : i.itemType}>{itemGroupName(i.itemGroupId)}</TableSubcontent>,
     },
     {
       key: 'inStock',

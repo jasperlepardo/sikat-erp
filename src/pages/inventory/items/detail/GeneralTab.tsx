@@ -11,7 +11,7 @@ import { LOCKED_HINT, groupTaxNote, type TabProps } from './types';
 export function GeneralTab({ draft, update, errors, tax, inv }: TabProps) {
   const f = bind(draft, update);
   const service = draft.itemType !== 'Items';
-  const group = inv.groups.find((g) => g.name === draft.itemGroup);
+  const group = inv.groups.find((g) => g.id === draft.itemGroupId);
   const valuationLocked = draft.hasTransactions && draft.inventoryItem;
 
   return (
@@ -46,7 +46,7 @@ export function GeneralTab({ draft, update, errors, tax, inv }: TabProps) {
           {f.pick('valuationMethod', 'Valuation method', VALUATION_METHODS, {
             required: true,
             disabled: valuationLocked,
-            hint: valuationLocked ? LOCKED_HINT : `Defaults from the ${draft.itemGroup} group.`,
+            hint: valuationLocked ? LOCKED_HINT : `Defaults from the ${group?.name ?? draft.itemGroupId} group.`,
           })}
           {f.pick('glBy', 'Set G/L accounts by', GL_BY, {
             required: true,

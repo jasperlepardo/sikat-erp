@@ -101,10 +101,10 @@ export async function saveItem(input: Omit<Item, 'id'> & { id?: string }): Promi
   }
 
   // Auto-number: for variants, look up the parent's item group for the prefix.
-  const groupName = input.parentItemId
-    ? (await items.get(input.parentItemId))?.itemGroup ?? ''
-    : input.itemGroup;
-  const prefix = (await itemGroups.list()).find((g) => g.name === groupName)?.prefix ?? 'ITM';
+  const groupId = input.parentItemId
+    ? (await items.get(input.parentItemId))?.itemGroupId ?? ''
+    : input.itemGroupId;
+  const prefix = (await itemGroups.list()).find((g) => g.id === groupId)?.prefix ?? 'ITM';
   const next =
     Math.max(
       0,

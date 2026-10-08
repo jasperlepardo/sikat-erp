@@ -4,6 +4,7 @@ import { DataTable } from '../../../components/form/DataTable';
 import type { Item } from '../../../mocks/items';
 import type { PriceList } from '../../../mocks/partnerMasters';
 import { formatAmount } from '../../../services/format';
+import { itemGroupName } from '../../../services/inventoryMasters';
 import { listItems } from '../../../services/items';
 import { priceLists } from '../../../services/partnerMasters';
 import { calculatedItemPrice } from '../../../services/priceLists';
@@ -36,7 +37,7 @@ export function ItemPricesTable({ list, update }: { list: PriceList; update: (pa
 
   const q = query.trim().toLowerCase();
   const rows: Row[] = (items ?? [])
-    .filter((i) => !q || `${i.itemNo} ${i.name} ${i.itemGroup}`.toLowerCase().includes(q))
+    .filter((i) => !q || `${i.itemNo} ${i.name} ${itemGroupName(i.itemGroupId)}`.toLowerCase().includes(q))
     .map((item) => ({
       item,
       calculated: calculatedItemPrice(list, item, all),
@@ -51,7 +52,7 @@ export function ItemPricesTable({ list, update }: { list: PriceList; update: (pa
       rows={rows}
       getRowId={(r) => r.item.id}
       sortValue={(r, key) =>
-        key === 'price' ? (r.manual ?? r.calculated ?? 0) : key === 'manual' ? Number(r.manual !== undefined) : key === 'itemGroup' ? r.item.itemGroup : r.item.itemNo
+        key === 'price' ? (r.manual ?? r.calculated ?? 0) : key === 'manual' ? Number(r.manual !== undefined) : key === 'itemGroupId' ? itemGroupName(r.item.itemGroupId) : r.item.itemNo
       }
       actions={<TextField aria-label="Find item" placeholder="Find item or group" value={query} onChange={(e) => setQuery(e.currentTarget.value)} />}
       columns={[
@@ -65,7 +66,7 @@ export function ItemPricesTable({ list, update }: { list: PriceList; update: (pa
             </div>
           ),
         },
-        { key: 'itemGroup', header: 'Item group', cell: (r) => r.item.itemGroup },
+        { key: 'itemGroupId', header: 'Item group', cell: (r) => itemGroupName(r.item.itemGroupId) },
         { key: 'uom', header: 'Unit', cell: (r) => r.item.inventoryUom, sortable: false },
         {
           key: 'calculated',

@@ -17,7 +17,7 @@ import {
 } from '../../../mocks/binLocations';
 import type { Item } from '../../../mocks/items';
 import { binStock } from '../../../services/binLocations';
-import { itemGroups, uomGroups, binLocations } from '../../../services/inventoryMasters';
+import { binLocations, itemGroupName, itemGroups, uomGroups } from '../../../services/inventoryMasters';
 import { listItems } from '../../../services/items';
 import { useAsync } from '../../../services/useAsync';
 import { newId, useCollectionRows } from '../../../services/useCollectionRows';
@@ -34,7 +34,7 @@ const UPDATED = new Intl.DateTimeFormat('en-PH', { timeZone: 'Asia/Manila', date
 export function restrictionSummary(b: BinLocation) {
   const parts: string[] = [];
   if (b.itemRestriction === 'item') parts.push(`Item ${b.restrictedItem}`);
-  else if (b.itemRestriction === 'itemGroup') parts.push(b.restrictedItemGroup);
+  else if (b.itemRestriction === 'itemGroup') parts.push(itemGroupName(b.restrictedItemGroupId));
   else if (b.itemRestriction !== 'none') parts.push(label(ITEM_RESTRICTIONS, b.itemRestriction));
   if (b.uomRestriction === 'uom') parts.push(`UoM ${b.restrictedUom}`);
   else if (b.uomRestriction === 'uomGroup') parts.push(`UoM group ${b.restrictedUomGroup}`);
@@ -54,7 +54,7 @@ function validateBin(b: BinLocation, all: BinLocation[], items: Item[]): Errors 
   for (const k of ['minQty', 'maxQty', 'maxWeight'] as const) if (b[k] < 0) e[k] = 'Can’t be negative.';
   if (b.maxQty && b.minQty > b.maxQty) e.minQty = 'Minimum is more than the maximum.';
   if (b.itemRestriction === 'item' && !b.restrictedItem) e.restrictedItem = 'Pick the item.';
-  if (b.itemRestriction === 'itemGroup' && !b.restrictedItemGroup) e.restrictedItemGroup = 'Pick the item group.';
+  if (b.itemRestriction === 'itemGroup' && !b.restrictedItemGroupId) e.restrictedItemGroupId = 'Pick the item group.';
   if (b.uomRestriction === 'uom' && !b.restrictedUom) e.restrictedUom = 'Pick the unit.';
   if (b.uomRestriction === 'uomGroup' && !b.restrictedUomGroup) e.restrictedUomGroup = 'Pick the UoM group.';
   const otherReceiving = all.find((x) => x.id !== b.id && x.warehouse === b.warehouse && x.active && x.receiving);
@@ -283,10 +283,10 @@ function BinEditor({
             )
           : b.itemRestriction === 'itemGroup'
             ? f.choose(
-                'restrictedItemGroup',
+                'restrictedItemGroupId',
                 'Item group',
-                itemGroups.snapshot().filter((g) => g.active || g.name === b.restrictedItemGroup).map((g) => ({ value: g.name, label: g.name })),
-                { required: true, error: errors.restrictedItemGroup },
+                itemGroups.snapshot().filter((g) => g.active || g.name === b.restrictedItemGroupId).map((g) => ({ value: g.id, label: g.name })),
+                { required: true, error: errors.restrictedItemGroupId },
               )
             : null}
         {f.choose('uomRestriction', 'UoM restriction', UOM_RESTRICTIONS)}

@@ -81,7 +81,7 @@ export interface BinLocation {
   /** Item No., for "Specific item". */
   restrictedItem: string;
   /** Item group name, for "Specific item group". */
-  restrictedItemGroup: string;
+  restrictedItemGroupId: string;
   uomRestriction: UomRestriction;
   /** UoM code, for "Specific UoM". */
   restrictedUom: string;
@@ -117,7 +117,7 @@ export const blankBin = (patch: Partial<BinLocation> = {}): BinLocation => {
     maxWeight: 0,
     itemRestriction: 'none',
     restrictedItem: '',
-    restrictedItemGroup: '',
+    restrictedItemGroupId: '',
     uomRestriction: 'none',
     restrictedUom: '',
     restrictedUomGroup: '',
@@ -173,7 +173,7 @@ const bin = (aisle: string, shelf: string, level: string, patch: Partial<BinLoca
     ...patch,
   });
 
-const AISLE_GROUP: Record<string, string> = { B: 'Mac', C: 'Accessories' };
+const AISLE_GROUP: Record<string, string> = { B: 'ig-MAC', C: 'ig-ACC' };
 
 export const SEED_BINS: BinLocation[] = [
   bin('R', '00', '00', { receiving: true, description: 'Receiving dock — put away within the day', excludeAutoAlloc: true, transactionRestriction: 'transferAndCount' }),
@@ -185,14 +185,14 @@ export const SEED_BINS: BinLocation[] = [
           altSortCode: String(a * 6 + s * 3 + l + 1).padStart(3, '0'),
           maxQty: aisle === 'B' ? 40 : 200,
           maxWeight: aisle === 'B' ? 120 : 80,
-          ...(AISLE_GROUP[aisle] ? { itemRestriction: 'itemGroup' as const, restrictedItemGroup: AISLE_GROUP[aisle] } : {}),
+          ...(AISLE_GROUP[aisle] ? { itemRestriction: 'itemGroup' as const, restrictedItemGroupId: AISLE_GROUP[aisle] } : {}),
           ...(aisle === 'C' && shelf === '02' && level === '03'
             ? {
                 description: 'Quarantine — damaged / RMA stock awaiting disposition',
                 excludeAutoAlloc: true,
                 transactionRestriction: 'transferAndCount' as const,
                 itemRestriction: 'none' as const,
-                restrictedItemGroup: '',
+                restrictedItemGroupId: '',
                 reason: 'Set aside for RMA stock after the Sep 2026 audit',
               }
             : {}),

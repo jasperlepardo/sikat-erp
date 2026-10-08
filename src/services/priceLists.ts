@@ -24,6 +24,7 @@ import {
 import { itemsPerUom, unitCost, unitPrice, type Item } from '../mocks/items';
 import type { Partner } from '../mocks/partners';
 import { formatAmount } from './format';
+import { itemGroupName } from './inventoryMasters';
 import { bpGroupName, priceLists } from './partnerMasters';
 import { createCollection } from './store';
 
@@ -193,7 +194,7 @@ export function determinePrice(o: {
         r.priceListId === o.priceListId &&
         inDates(r, date) &&
         (r.partnerScope === 'partner' ? r.partnerId === partner?.id : !!partner && r.bpGroupId === partner.bpGroupId) &&
-        (r.itemScope === 'item' ? r.itemId === item.id : r.itemGroup === item.itemGroup),
+        (r.itemScope === 'item' ? r.itemId === item.id : r.itemGroupId === item.itemGroupId),
     )
     .sort((a, b) => specificity(b) - specificity(a));
   for (const r of matching) {
@@ -205,8 +206,8 @@ export function determinePrice(o: {
 
   if (partner && !partner.noDiscountGroups) {
     const row = groups.find((g) => g.active && g.bpGroupId === partner.bpGroupId);
-    const pct = row?.discounts.find((d) => d.itemGroup === item.itemGroup)?.discountPct;
-    if (pct) return { price, basisListId: o.priceListId, discountPct: pct, source: { kind: 'group', label: `Discount group ${bpGroupName(partner.bpGroupId)} × ${item.itemGroup}: ${pct}%` } };
+    const pct = row?.discounts.find((d) => d.itemGroupId === item.itemGroupId)?.discountPct;
+    if (pct) return { price, basisListId: o.priceListId, discountPct: pct, source: { kind: 'group', label: `Discount group ${bpGroupName(partner.bpGroupId)} × ${itemGroupName(item.itemGroupId)}: ${pct}%` } };
   }
 
   return { price, basisListId: o.priceListId, discountPct: 0, source: { kind: 'list', label: priceListName(o.priceListId) } };

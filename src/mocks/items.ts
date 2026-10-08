@@ -88,7 +88,7 @@ export interface Item {
   description: string;
   foreignName: string;
   itemType: ItemType;
-  itemGroup: string;
+  itemGroupId: string;
   /** Unit stock is kept in; always one of `uoms`, with qty 1. */
   inventoryUom: string;
   /** Every unit the item uses, with its conversion to the inventory UoM. */
@@ -283,7 +283,7 @@ export function mergeVariant(variant: Item, parent: Item): Item {
 /** Zero-value skeleton for all global (non-own) Item fields. */
 const VARIANT_GLOBAL_ZEROS: Omit<Item, 'id'> = {
   itemNo: '', name: '', description: '', foreignName: '', sellingItemNo: '', gtin: '',
-  itemType: 'Items', itemGroup: '', inventoryUom: 'pc', uoms: [], purchasingUom: 'pc', salesUom: 'pc',
+  itemType: 'Items', itemGroupId: '', inventoryUom: 'pc', uoms: [], purchasingUom: 'pc', salesUom: 'pc',
   manageBy: 'None', hasTransactions: false,
   variantAxes: [], parentItemId: '', variantAttributes: {},
   purchaseItem: false, salesItem: false, inventoryItem: false, fixedAsset: false,
@@ -356,7 +356,7 @@ export function blankItem(groupOrName: ItemGroup | string = SEED_ITEM_GROUPS[0])
     description: '',
     foreignName: '',
     itemType: 'Items',
-    itemGroup: group.name,
+    itemGroupId: group.id,
     inventoryUom: 'pc',
     uoms: [newItemUom('pc')],
     manageBy: 'None',
@@ -622,7 +622,7 @@ const CORE_FAMILIES = [
 
 const familyName = (i: Item) => APPLE_PARENT_ITEMS.find((p) => p.id === i.parentItemId)?.name ?? i.name;
 const mnlStock = (i: Item) => i.warehouses.find((w) => w.code === 'WH-MNL')?.inStock ?? 0;
-const isAccessory = (i: Item) => (APPLE_PARENT_ITEMS.find((p) => p.id === i.parentItemId)?.itemGroup ?? i.itemGroup) === 'Accessories';
+const isAccessory = (i: Item) => (APPLE_PARENT_ITEMS.find((p) => p.id === i.parentItemId)?.itemGroupId ?? i.itemGroupId) === 'ig-ACC';
 
 const CORE_ITEMS = new Set(
   CORE_FAMILIES.map((f) => APPLE_ITEMS.find((i) => familyName(i) === f && mnlStock(i) > 0)?.id).filter(Boolean),
