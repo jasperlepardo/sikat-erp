@@ -1,4 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react';
+import { nameIn, salesEmployees } from '../../../services/partnerMasters';
 import { useLocation, useNavigate } from 'react-router';
 import {
   Alert,
@@ -164,7 +165,7 @@ const COUNT_FIELDS = [
   textField<InventoryCounting>('no', 'No.', countNumber),
   textField<InventoryCounting>('warehouse', 'Warehouse', countWarehouses),
   dateField<InventoryCounting>('countDate', 'Count date', (c) => c.countDate),
-  textField<InventoryCounting>('counter', 'Counted by', (c) => c.counters.map((x) => x.name)),
+  textField<InventoryCounting>('counter', 'Counted by', (c) => c.counters.map((x) => nameIn(salesEmployees, x.employeeId))),
   textField<InventoryCounting>('reference', 'Reference', (c) => c.reference),
   textField<InventoryCounting>('remarks', 'Remarks', (c) => c.remarks),
   numberField<InventoryCounting>('variance', 'Lines with variance', (c) => countSummary(c).withVariance),
@@ -193,7 +194,7 @@ export function StockCountList() {
     const filtered = presets.apply(counts).filter(
       (c) =>
         !list.query ||
-          [countNumber(c), c.reference, c.remarks, ...c.counters.map((x) => x.name), ...countWarehouses(c), ...c.lines.map((l) => `${l.itemNo} ${l.description}`)]
+          [countNumber(c), c.reference, c.remarks, ...c.counters.map((x) => nameIn(salesEmployees, x.employeeId)), ...countWarehouses(c), ...c.lines.map((l) => `${l.itemNo} ${l.description}`)]
             .join(' ')
             .toLowerCase()
             .includes(list.query),
@@ -211,7 +212,7 @@ export function StockCountList() {
       key: 'counters',
       header: 'Counted by',
       cell: (c) => (
-        <TableSubcontent subcopy={c.countingType === 'multiple' ? 'Multiple counters' : undefined}>{c.counters.map((x) => x.name).join(', ')}</TableSubcontent>
+        <TableSubcontent subcopy={c.countingType === 'multiple' ? 'Multiple counters' : undefined}>{c.counters.map((x) => nameIn(salesEmployees, x.employeeId)).join(', ')}</TableSubcontent>
       ),
     },
     {

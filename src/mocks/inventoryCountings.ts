@@ -17,6 +17,7 @@
  * - The end-of-fiscal-year date is recorded; the year-end close that would use it isn't built.
  */
 import type { Attachment, DocumentSeries } from './common';
+import { employeeId } from './masters';
 import { SEED_ITEMS } from './items';
 
 export type CountingType = 'single' | 'multiple';
@@ -27,9 +28,19 @@ export const COUNTING_TYPES: { value: CountingType; label: string }[] = [
 
 export type CounterType = 'User' | 'Employee';
 
+/** One person counting — a child row of the count (counting_counters). */
 export interface Counter {
+  /** Row id; each line's per-counter figures point at it. */
+  id: string;
   type: CounterType;
-  name: string;
+  /** Settings › Sales employees & buyers — the signed-in user is one too. */
+  employeeId: string;
+}
+
+/** One counter's figure for a line, in the line's `uomCode` — a child row of the line (count_line_counts). */
+export interface CounterCount {
+  counterId: string;
+  qty: number;
 }
 
 export type CountStatus = 'Open' | 'Closed';
@@ -54,8 +65,8 @@ export interface CountLine {
   /** Unit counted in, and inventory units per one of it. */
   uomCode: string;
   itemsPerUnit: number;
-  /** Multiple counters: each counter's count in `uomCode`, by name (missing = not counted yet). */
-  counterQtys: Record<string, number>;
+  /** Multiple counters: one figure per counter who has counted the line (no row = not counted yet). */
+  counts: CounterCount[];
   /** Ticked once counted; only counted lines go to the posting. */
   counted: boolean;
   /** The count in `uomCode` (single counter, or the agreed figure). Counted Qty = this × items per unit. */
@@ -151,7 +162,7 @@ export const newCountLine = (patch: Partial<CountLine> = {}): CountLine => ({
   inWhseQty: 0,
   uomCode: '',
   itemsPerUnit: 1,
-  counterQtys: {},
+  counts: [],
   counted: false,
   uomCountedQty: 0,
   ...patch,
@@ -176,7 +187,14 @@ export const newPostingLine = (patch: Partial<PostingLine> = {}): PostingLine =>
   id: patch.id ?? `pl-${crypto.randomUUID().slice(0, 8)}`,
 });
 
-export function blankCounting(today: string, now: string, counter: string): Omit<InventoryCounting, 'id'> {
+export const newCounter = (patch: Partial<Counter> = {}): Counter => ({
+  type: 'Employee',
+  employeeId: '',
+  ...patch,
+  id: patch.id ?? `cnt-${crypto.randomUUID().slice(0, 8)}`,
+});
+
+export function blankCounting(today: string, now: string, employeeId: string): Omit<InventoryCounting, 'id'> {
   return {
     seriesId: COUNT_SERIES[0].id,
     docNum: 0,
@@ -184,7 +202,7 @@ export function blankCounting(today: string, now: string, counter: string): Omit
     countDate: today,
     countTime: now,
     countingType: 'single',
-    counters: [{ type: 'User', name: counter }],
+    counters: [newCounter({ type: 'User', employeeId })],
     reference: '',
     endOfFiscalYear: '',
     referencedDocument: '',
@@ -251,18 +269,21 @@ const dvo = (n: number, a: number, b: number) => {
   const agree = a === b;
   return {
     ...base,
-    counterQtys: { 'Ben Salazar': base.inWhseQty + a, 'Fe Lopez': base.inWhseQty + b },
+    counts: [
+      { counterId: 'cnt-dvo-1', qty: base.inWhseQty + a },
+      { counterId: 'cnt-dvo-2', qty: base.inWhseQty + b },
+    ],
     ...(agree ? { counted: true, uomCountedQty: base.inWhseQty + a } : {}),
   };
 };
 
-const user = (name: string): Counter => ({ type: 'User', name });
-const employee = (name: string): Counter => ({ type: 'Employee', name });
+
 
 export const SEED_COUNTINGS: InventoryCounting[] = [
   {
-    ...blankCounting('2026-09-30', '18:00', 'Carla Uy'),
+    ...blankCounting('2026-09-30', '18:00', employeeId('Carla Uy')),
     id: 'ic-001',
+    counters: [newCounter({ id: 'cnt-mnl-1', type: 'User', employeeId: employeeId('Carla Uy') })],
     docNum: 310001,
     status: 'Closed',
     reference: 'CS-MNL-2026-09',
@@ -271,20 +292,23 @@ export const SEED_COUNTINGS: InventoryCounting[] = [
     lines: sept,
   },
   {
-    ...blankCounting('2026-10-05', '07:30', 'Dino Pascual'),
+    ...blankCounting('2026-10-05', '07:30', employeeId('Dino Pascual')),
     id: 'ic-002',
     docNum: 310002,
-    counters: [employee('Dino Pascual')],
+    counters: [newCounter({ id: 'cnt-ceb-1', employeeId: employeeId('Dino Pascual') })],
     reference: 'CS-CEB-2026-10',
     remarks: 'Cebu store opening count before trading hours. Two lines still to count.',
     lines: [line('WH-CEB', 0, 0), line('WH-CEB', 1, -1), line('WH-CEB', 2, 1), line('WH-CEB', 3, undefined), line('WH-CEB', 4, undefined)],
   },
   {
-    ...blankCounting('2026-10-04', '20:00', 'Ben Salazar'),
+    ...blankCounting('2026-10-04', '20:00', employeeId('Ben Salazar')),
     id: 'ic-003',
     docNum: 310003,
     countingType: 'multiple',
-    counters: [user('Ben Salazar'), employee('Fe Lopez')],
+    counters: [
+      newCounter({ id: 'cnt-dvo-1', type: 'User', employeeId: employeeId('Ben Salazar') }),
+      newCounter({ id: 'cnt-dvo-2', employeeId: employeeId('Carla Uy') }),
+    ],
     reference: 'CS-DVO-2026-10',
     remarks: 'High-value blind count after closing, items frozen. Counters disagree on one line — recount before copying to a posting.',
     lines: [dvo(0, 0, 0), dvo(1, -1, -1), dvo(2, 0, -1)],

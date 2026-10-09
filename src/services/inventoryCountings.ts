@@ -63,8 +63,8 @@ async function nextNumber<T extends { seriesId: string; docNum: number }>(
 export const countVariance = (l: CountLine) => (l.counted ? round2(countedQty(l) - l.inWhseQty) : 0);
 
 /** Multiple counters: whether everyone has counted the line, and whether they agree. */
-export function counterStatus(l: CountLine, names: string[]) {
-  const qtys = names.map((n) => l.counterQtys[n]);
+export function counterStatus(l: CountLine, counterIds: string[]) {
+  const qtys = counterIds.map((id) => l.counts.find((c) => c.counterId === id)?.qty);
   const all = qtys.every((q) => q !== undefined);
   const agree = all && qtys.every((q) => q === qtys[0]);
   return { all, agree, agreed: agree ? qtys[0] : undefined };
@@ -72,12 +72,12 @@ export function counterStatus(l: CountLine, names: string[]) {
 
 export function countSummary(c: Pick<InventoryCounting, 'lines' | 'countingType' | 'counters'>) {
   const counted = c.lines.filter((l) => l.counted);
-  const names = c.counters.map((x) => x.name);
+  const ids = c.counters.map((x) => x.id);
   return {
     lines: c.lines.length,
     counted: counted.length,
     withVariance: counted.filter((l) => countVariance(l) !== 0).length,
-    disagreements: c.countingType === 'multiple' ? c.lines.filter((l) => counterStatus(l, names).all && !counterStatus(l, names).agree).length : 0,
+    disagreements: c.countingType === 'multiple' ? c.lines.filter((l) => counterStatus(l, ids).all && !counterStatus(l, ids).agree).length : 0,
   };
 }
 

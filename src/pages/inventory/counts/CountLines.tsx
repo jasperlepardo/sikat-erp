@@ -5,6 +5,7 @@ import type { Errors } from '../../../components/form/fields';
 import { countedQty, newCountLine, type CountLine, type InventoryCounting } from '../../../mocks/inventoryCountings';
 import type { Item } from '../../../mocks/items';
 import { counterStatus, countVariance } from '../../../services/inventoryCountings';
+import { nameIn, salesEmployees } from '../../../services/partnerMasters';
 import { inStockAt } from '../../../services/inventoryTransfers';
 import { warehouseOptions } from '../transfers/TransferLines';
 import { AddItemsBar, FindBar, findRows, itemOptions, itemsPer, num, signed, uomOptions, type CountMasters } from './shared';
@@ -49,9 +50,15 @@ export function CountLines({
   const [find, setFind] = useState({ query: '', warehouse: '' });
   const lines = draft.lines;
   const multiple = draft.countingType === 'multiple';
-  const names = draft.counters.map((c) => c.name).filter(Boolean);
+  const counters = draft.counters.filter((c) => c.employeeId);
+  const counterIds = counters.map((c) => c.id);
   const itemOf = (l: CountLine) => m.items.find((i) => i.id === l.itemId);
   const patch = (id: string, p: Partial<CountLine>) => update({ lines: lines.map((l) => (l.id === id ? { ...l, ...p } : l)) });
+  /** A counter's figure on the line, '' when they haven't counted it. */
+  const qtyOf = (l: CountLine, counterId: string) => {
+    const q = l.counts.find((c) => c.counterId === counterId)?.qty;
+    return q === undefined ? '' : String(q);
+  };
   const err = (l: CountLine, field: string) => errors[`line:${l.id}:${field}`];
 
   const pickItem = (l: CountLine, itemId: string | null) => {
@@ -65,12 +72,11 @@ export function CountLines({
   };
 
   /** A counter's figure; when every counter is in and they agree, that becomes the counted qty. */
-  const setCounterQty = (l: CountLine, name: string, value: string) => {
-    const counterQtys = { ...l.counterQtys };
-    if (value === '') delete counterQtys[name];
-    else counterQtys[name] = num(value);
-    const s = counterStatus({ ...l, counterQtys }, names);
-    patch(l.id, { counterQtys, ...(s.agree ? { counted: true, uomCountedQty: s.agreed! } : {}) });
+  const setCounterQty = (l: CountLine, counterId: string, value: string) => {
+    const others = l.counts.filter((c) => c.counterId !== counterId);
+    const counts = value === '' ? others : [...others, { counterId, qty: num(value) }];
+    const s = counterStatus({ ...l, counts }, counterIds);
+    patch(l.id, { counts, ...(s.agree ? { counted: true, uomCountedQty: s.agreed! } : {}) });
   };
 
   const adjust = (how: string) => {
@@ -78,9 +84,9 @@ export function CountLines({
       lines: lines.map((l) => {
         if (!l.itemId) return l;
         if (how === 'match' && !l.counted) return { ...l, counted: true, uomCountedQty: Math.round((l.inWhseQty / (l.itemsPerUnit || 1)) * 1000) / 1000 };
-        if (how === 'clear') return { ...l, counted: false, uomCountedQty: 0, counterQtys: {} };
+        if (how === 'clear') return { ...l, counted: false, uomCountedQty: 0, counts: [] };
         if (how === 'agreed') {
-          const s = counterStatus(l, names);
+          const s = counterStatus(l, counterIds);
           return s.agree ? { ...l, counted: true, uomCountedQty: s.agreed! } : l;
         }
         return l;
@@ -90,29 +96,32 @@ export function CountLines({
 
   const counterColumns: TableColumn<CountLine>[] = multiple
     ? [
-        ...names.map((name) => ({
-          key: `counter:${name}`,
-          header: name,
-          cell: (l: CountLine) =>
-            itemOf(l) ? (
-              <TextField
-                aria-label={`${name}'s count`}
-                type="number"
-                min={0}
-                className="w-24"
-                readOnly={readOnly}
-                placeholder="—"
-                value={l.counterQtys[name] === undefined ? '' : String(l.counterQtys[name])}
-                onChange={(e) => setCounterQty(l, name, e.currentTarget.value)}
-              />
-            ) : null,
-        })),
+        ...counters.map((c) => {
+          const name = nameIn(salesEmployees, c.employeeId);
+          return {
+            key: `counter:${c.id}`,
+            header: name,
+            cell: (l: CountLine) =>
+              itemOf(l) ? (
+                <TextField
+                  aria-label={`${name}'s count`}
+                  type="number"
+                  min={0}
+                  className="w-24"
+                  readOnly={readOnly}
+                  placeholder="—"
+                  value={qtyOf(l, c.id)}
+                  onChange={(e) => setCounterQty(l, c.id, e.currentTarget.value)}
+                />
+              ) : null,
+          };
+        }),
         {
           key: 'agreement',
           header: 'Counters',
           cell: (l: CountLine) => {
             if (!itemOf(l)) return null;
-            const s = counterStatus(l, names);
+            const s = counterStatus(l, counterIds);
             return (
               <Text variant="small" tone={!s.all ? 'muted' : s.agree ? 'success' : 'danger'}>
                 {!s.all ? 'Waiting' : s.agree ? 'Agree' : 'Differ — recount'}
