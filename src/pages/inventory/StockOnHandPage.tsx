@@ -17,6 +17,7 @@ import { formatAmount } from '../../services/format';
 import { itemGroupName, loadInventoryMasters } from '../../services/inventoryMasters';
 import { isLowStock, listItems, stockTotals } from '../../services/items';
 import { useAsync } from '../../services/useAsync';
+import { Stat } from '../../components/Stat';
 import { DEFAULT_PAGE_SIZE, PAGE_SIZES, fillCardClass } from '../../components/form/DataTable';
 import { EMPTY_FILTER, oneRule } from '../../components/filter/engine';
 import { choiceField, numberField, textField } from '../../components/filter/fieldKit';
@@ -180,8 +181,14 @@ export function StockOnHandPage() {
 
   const onPage = rows.slice((page - 1) * pageSize, page * pageSize);
   const totals = rows.reduce(
-    (t, r) => ({ inStock: t.inStock + r.inStock, available: t.available + r.available, value: t.value + r.value }),
-    { inStock: 0, available: 0, value: 0 },
+    (t, r) => ({
+      inStock: t.inStock + r.inStock,
+      committed: t.committed + r.committed,
+      ordered: t.ordered + r.ordered,
+      available: t.available + r.available,
+      value: t.value + r.value,
+    }),
+    { inStock: 0, committed: 0, ordered: 0, available: 0, value: 0 },
   );
   /** Selected ids include fully-checked item rows and bins; count only the warehouse rows (`item:wh`). */
   const picked = selected.filter((id) => id.split(':').length === 2).length;
@@ -264,10 +271,16 @@ export function StockOnHandPage() {
           </div>,
         )}
         {items ? (
+          <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+            <Stat icon="category" label="Items" value={qty(rows.length)} sub={warehouse || group !== ALL_GROUPS || query ? 'Matching the filters' : 'Stocked items'} />
+            <Stat icon="inventory_2" label="In stock" value={qty(totals.inStock)} sub="Units on hand, inventory UoM" />
+            <Stat icon="task_alt" label="Available" value={qty(totals.available)} sub={`${qty(totals.committed)} committed · ${qty(totals.ordered)} ordered`} />
+            <Stat icon="payments" label="Value at cost" value={`PHP ${formatAmount(totals.value)}`} sub="In stock × item cost" />
+          </div>
+        ) : null}
+        {picked ? (
           <Text variant="small" tone="muted">
-            {qty(rows.length)} item{rows.length === 1 ? '' : 's'} · {qty(totals.inStock)} in stock · {qty(totals.available)} available · PHP{' '}
-            {formatAmount(totals.value)} at cost
-            {picked ? ` · ${qty(picked)} warehouse row${picked === 1 ? '' : 's'} selected` : ''}
+            {qty(picked)} warehouse row{picked === 1 ? '' : 's'} selected
           </Text>
         ) : null}
         <Card className={fillCardClass(onPage.length)}>
