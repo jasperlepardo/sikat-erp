@@ -1,4 +1,5 @@
 import { GRNI_ACCOUNT } from '../mocks/goodsReceipts';
+import { withBinCodes } from './inventoryMasters';
 import { RETURN_SERIES, needsCredit, type GoodsReturn, type ReturnLine } from '../mocks/goodsReturns';
 import { returnSeries, seriesLookup, formatDocNum } from './allSeries';
 import type { ItemGroup } from '../mocks/itemMasters';
@@ -162,7 +163,7 @@ export async function addGoodsReturn(input: ReturnInput): Promise<GoodsReturn> {
   const series = seriesLookup(returnSeries, input.seriesId, RETURN_SERIES);
   const docNum = Math.max(series.firstNo - 1, ...all.filter((r) => r.seriesId === series.id).map((r) => r.docNum)) + 1;
   const status = lines.some(needsCredit) ? 'Open' : 'Closed';
-  const saved = await returns.save({ ...input, lines, docNum, status, closeDate: status === 'Closed' ? todayISO() : '' });
+  const saved = await returns.save({ ...input, lines: withBinCodes(lines), docNum, status, closeDate: status === 'Closed' ? todayISO() : '' });
   await logConsumption(saved.id, saved.postingDate, taken);
   return saved;
 }

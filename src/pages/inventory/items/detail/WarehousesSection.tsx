@@ -57,7 +57,7 @@ export function WarehousePanel({
   const done = () => {
     const e: Errors = {};
     if (!row.code) e.code = 'Pick a warehouse.';
-    if (wh?.binEnabled && !row.defaultBin) e.defaultBin = `${wh.code} uses bins — pick a default bin.`;
+    if (wh?.binEnabled && !row.defaultBinId) e.defaultBin = `${wh.code} uses bins — pick a default bin.`;
     setErrors(e);
     // Only locations vendors deliver to keep a preferred vendor.
     if (!Object.keys(e).length) onDone(wh && !receivesFromVendors(wh) ? { ...row, preferredVendorId: '' } : row);
@@ -75,7 +75,7 @@ export function WarehousePanel({
                   options={free.map((w) => ({ value: w.code, label: `${w.code} · ${w.name}` }))}
                   placeholder="Pick a warehouse"
                   value={row.code || null}
-                  onValueChange={(code) => setRow({ ...row, code: code ?? '', defaultBin: '' })}
+                  onValueChange={(code) => setRow({ ...row, code: code ?? '', defaultBinId: '' })}
                 />
               )}
             </CtxFormField>
@@ -116,14 +116,14 @@ export function WarehousePanel({
               {(p) => (
                 <Combobox
                   {...p}
-                  options={binsOf(inv.bins, wh.code, row.defaultBin).map((b) => ({
-                    value: b.code,
+                  options={binsOf(inv.bins, wh.code, row.defaultBinId).map((b) => ({
+                    value: b.id,
                     label: b.code,
                     subLabel: b.description || undefined,
                   }))}
                   placeholder="Pick a bin"
-                  value={row.defaultBin || null}
-                  onValueChange={(v) => setRow({ ...row, defaultBin: v ?? '' })}
+                  value={row.defaultBinId || null}
+                  onValueChange={(v) => setRow({ ...row, defaultBinId: v ?? '' })}
                 />
               )}
             </CtxFormField>

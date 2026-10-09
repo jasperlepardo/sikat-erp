@@ -52,7 +52,7 @@ export function WarehouseBins({
     n.kind === 'bin'
       ? navigate(`${base}/bin-locations/${encodeURIComponent(n.id)}`)
       : n.kind === 'aisle' || n.kind === 'shelf'
-        ? onShowItems({ label: n.label, bins: n.bins.map((b) => b.code) })
+        ? onShowItems({ label: n.label, bins: n.bins.map((b) => b.id) })
         : undefined;
   const columns = locationColumns({ open, query: '', sublevels, items, showType: false });
   // "…" on an aisle or shelf opens or closes it.

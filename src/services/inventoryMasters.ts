@@ -36,6 +36,16 @@ export const uomGroups = createCollection<UomGroup>('sikat-erp:uom-groups:v2', S
 export const warehouses = createCollection<Warehouse>('sikat-erp:warehouses:v10', SEED_WAREHOUSES, 'wh');
 /** Bin locations and the aisle / shelf / level codes they're addressed by (services/binLocations.ts). */
 export const binLocations = createCollection<BinLocation>('sikat-erp:bin-locations:v1', SEED_BINS, 'bin');
+
+const codeOf = (id: string) => (id ? (binLocations.snapshot().find((b) => b.id === id)?.code ?? '') : '');
+
+/** Stamp each line's bin code as it is now — called when a document posts, so a later bin rename leaves its history as posted. */
+export const withBinCodes = <L extends { binId: string }>(lines: L[]): (L & { binCode: string })[] =>
+  lines.map((l) => ({ ...l, binCode: codeOf(l.binId) }));
+
+/** The same for transfer lines' from- and to-bins. */
+export const withTransferBinCodes = <L extends { fromBinId: string; toBinId: string }>(lines: L[]): (L & { fromBinCode: string; toBinCode: string })[] =>
+  lines.map((l) => ({ ...l, fromBinCode: codeOf(l.fromBinId), toBinCode: codeOf(l.toBinId) }));
 export const binSublevels = createCollection<BinSublevel>('sikat-erp:bin-sublevels:v1', SEED_BIN_SUBLEVELS, 'bsl');
 export const manufacturers = createCollection<Manufacturer>('sikat-erp:manufacturers:v2', SEED_MANUFACTURERS, 'mfr');
 export const customsGroups = createCollection<CustomsGroup>('sikat-erp:customs-groups:v2', SEED_CUSTOMS_GROUPS, 'cg');

@@ -6,6 +6,7 @@ import {
   type GrLine,
 } from '../mocks/goodsReceipts';
 import { grSeries, seriesLookup, formatDocNum } from './allSeries';
+import { withBinCodes } from './inventoryMasters';
 import type { RoundingRule } from '../mocks/currencies';
 import type { ItemGroup } from '../mocks/itemMasters';
 import { newItemWarehouse, type Item } from '../mocks/items';
@@ -130,7 +131,7 @@ export function grJournal(gr: Pick<GoodsReceipt, 'lines' | 'discountPct' | 'frei
  * is maintained by the cost layer service (updateFifoCosts) after each receipt or delivery.
  */
 /** What moving stock reads from a line; A/P invoice lines that bring stock in have the same fields. */
-export type StockLine = Pick<GrLine, 'itemId' | 'quantity' | 'itemsPerUnit' | 'warehouse' | 'bin' | 'baseLineId' | 'unitCostLc'>;
+export type StockLine = Pick<GrLine, 'itemId' | 'quantity' | 'itemsPerUnit' | 'warehouse' | 'binId' | 'baseLineId' | 'unitCostLc'>;
 
 export function applyStock(lines: StockLine[], items: Item[], sign: 1 | -1) {
   const touched = new Map<string, Item>();
@@ -145,8 +146,8 @@ export function applyStock(lines: StockLine[], items: Item[], sign: 1 | -1) {
       item.itemCost = round2((onHand * item.itemCost + qty * l.unitCostLc) / (onHand + qty));
     }
     let row = item.warehouses.find((w) => w.code === l.warehouse);
-    if (!row) item.warehouses.push((row = newItemWarehouse(l.warehouse, { defaultBin: l.bin })));
-    if (!row.defaultBin && l.bin) row.defaultBin = l.bin;
+    if (!row) item.warehouses.push((row = newItemWarehouse(l.warehouse, { defaultBinId: l.binId })));
+    if (!row.defaultBinId && l.binId) row.defaultBinId = l.binId;
     row.inStock = round4(row.inStock + qty);
     if (l.baseLineId) row.ordered = Math.max(0, round4(row.ordered - qty));
     touched.set(l.itemId, { ...item, hasTransactions: true });
@@ -236,7 +237,7 @@ export async function addGoodsReceipt(input: GrInput, fx: number): Promise<Goods
   const series = grSeriesOf(input.seriesId);
   const all = await receipts.list();
   const docNum = Math.max(series.firstNo - 1, ...all.filter((r) => r.seriesId === series.id).map((r) => r.docNum)) + 1;
-  const saved = await receipts.save({ ...input, lines, docNum, status: 'Open', fxRate: fx });
+  const saved = await receipts.save({ ...input, lines: withBinCodes(lines), docNum, status: 'Open', fxRate: fx });
 
   // FIFO: create a cost layer per stocked line, then refresh itemCost from remaining layers.
   const fifoItemIds = new Set<string>();

@@ -1,4 +1,5 @@
 import { AP_SERIES, WITHHOLDING_PAYABLE, type ApInvoice, type ApLine, type DownPaymentDraw } from '../mocks/apInvoices';
+import { withBinCodes } from './inventoryMasters';
 import { apSeries, seriesLookup, formatDocNum } from './allSeries';
 import { FREIGHT_IN_ACCOUNT, GRNI_ACCOUNT } from '../mocks/goodsReceipts';
 import type { RoundingRule } from '../mocks/currencies';
@@ -242,7 +243,7 @@ export async function addApInvoice(input: ApInput, fx: number, due?: number): Pr
   const all = await invoices.list();
   const docNum = Math.max(series.firstNo - 1, ...all.filter((r) => r.seriesId === series.id).map((r) => r.docNum)) + 1;
   const settled = due !== undefined && due <= 0.005;
-  const saved = await invoices.save({ ...input, lines, docNum, status: settled ? 'Closed' : 'Open', closeDate: settled ? todayISO() : '', fxRate: fx });
+  const saved = await invoices.save({ ...input, lines: withBinCodes(lines), docNum, status: settled ? 'Closed' : 'Open', closeDate: settled ? todayISO() : '', fxRate: fx });
 
   // FIFO: create layers for lines that bring stock in directly (not via a GR).
   const fifoStockLines = lines.filter((l) => movesStock(l, items) && items.find((i) => i.id === l.itemId)?.valuationMethod === 'FIFO');

@@ -26,15 +26,20 @@ export const warehouseOptions = (whs: Warehouse[], current: string, exclude = ''
     .map((w) => ({ value: w.code, label: w.name, subLabel: w.code, subLabelPlacement: 'top' as const, text: `${w.code} ${w.name}` }));
 
 /**
- * A warehouse's active bins (plus the current one), coded and described. A code that no longer
- * exists (the bin was renamed) stays listed, flagged, so the line shows what to fix.
+ * A warehouse's active bins (plus the current one) by id, labelled with code and description. A
+ * posted line passes its `snapshot` code so it reads as posted; a bin that no longer exists stays
+ * listed, flagged, so the line shows what to fix.
  */
-export const binOptions = (bins: BinLocation[], wh: Warehouse | undefined, current = '') => {
+export const binOptions = (bins: BinLocation[], wh: Warehouse | undefined, current = '', snapshot = '') => {
   const live = wh ? binsOf(bins, wh.code, current) : [];
+  const label = (b: BinLocation) => {
+    const code = b.id === current && snapshot ? snapshot : b.code;
+    return b.description ? `${code} · ${b.description}` : code;
+  };
   return [
     { value: '', label: '— Pick a bin —' },
-    ...(current && !live.some((b) => b.code === current) ? [{ value: current, label: `${current} (no longer exists)` }] : []),
-    ...live.map((b) => ({ value: b.code, label: b.description ? `${b.code} · ${b.description}` : b.code })),
+    ...(current && !live.some((b) => b.id === current) ? [{ value: current, label: `${snapshot || current} (no longer exists)` }] : []),
+    ...live.map((b) => ({ value: b.id, label: label(b) })),
   ];
 };
 
@@ -47,10 +52,10 @@ const num = (v: string) => (v === '' ? 0 : Number(v));
 export const binFor = (item: Item, wh: Warehouse | undefined, bins: BinLocation[], fallback = '', inbound = false) =>
   !wh?.binEnabled
     ? ''
-    : item.warehouses.find((w) => w.code === wh.code)?.defaultBin ||
+    : item.warehouses.find((w) => w.code === wh.code)?.defaultBinId ||
       fallback ||
-      (inbound ? receivingBin(bins, wh.code)?.code : '') ||
-      binsOf(bins, wh.code)[0]?.code ||
+      (inbound ? receivingBin(bins, wh.code)?.id : '') ||
+      binsOf(bins, wh.code)[0]?.id ||
       '';
 
 export function lineFromItem(item: Item, draft: TransferDraft, m: TransferMasters, base: Partial<TransferLine>): TransferLine {
@@ -64,9 +69,9 @@ export function lineFromItem(item: Item, draft: TransferDraft, m: TransferMaster
     name: item.name,
     description: item.description,
     uom: item.inventoryUom,
-    fromBin: binFor(item, from, m.bins),
+    fromBinId: binFor(item, from, m.bins),
     toWarehouse,
-    toBin: binFor(item, to, m.bins, draft.toBin, true),
+    toBinId: binFor(item, to, m.bins, draft.toBinId, true),
     unitCost: item.itemCost,
   });
 }
@@ -124,7 +129,7 @@ export function TransferLines({
 
   const changeTo = (l: TransferLine, toWarehouse: string) => {
     const item = itemOf(l);
-    patch(l.id, { toWarehouse, toBin: item ? binFor(item, whOf(toWarehouse), m.bins, toWarehouse === draft.toWarehouse ? draft.toBin : '', true) : '' });
+    patch(l.id, { toWarehouse, toBinId: item ? binFor(item, whOf(toWarehouse), m.bins, toWarehouse === draft.toWarehouse ? draft.toBinId : '', true) : '' });
   };
 
   const columns: TableColumn<TransferLine>[] = [
@@ -207,9 +212,9 @@ export function TransferLines({
                   className="w-48"
                   disabled={readOnly}
                   invalid={Boolean(err(l, 'fromBin'))}
-                  options={binOptions(m.bins, from, l.fromBin)}
-                  value={l.fromBin}
-                  onValueChange={(fromBin) => patch(l.id, { fromBin })}
+                  options={binOptions(m.bins, from, l.fromBinId, posted ? l.fromBinCode : '')}
+                  value={l.fromBinId}
+                  onValueChange={(fromBin) => patch(l.id, { fromBinId: fromBin })}
                 />
               ) : null,
           },
@@ -245,9 +250,9 @@ export function TransferLines({
             className="w-48"
             disabled={readOnly}
             invalid={Boolean(err(l, 'toBin'))}
-            options={binOptions(m.bins, to, l.toBin)}
-            value={l.toBin}
-            onValueChange={(toBin) => patch(l.id, { toBin })}
+            options={binOptions(m.bins, to, l.toBinId, posted ? l.toBinCode : '')}
+            value={l.toBinId}
+            onValueChange={(toBin) => patch(l.id, { toBinId: toBin })}
           />
         );
       },
@@ -320,7 +325,7 @@ export function TransferLines({
             variant="solid"
             leadingIcon={<Icon size={16}>add</Icon>}
             disabled={!draft.fromWarehouse || !draft.toWarehouse}
-            onClick={() => update({ lines: [...lines, newTransferLine({ toWarehouse: draft.toWarehouse, toBin: draft.toBin })] })}
+            onClick={() => update({ lines: [...lines, newTransferLine({ toWarehouse: draft.toWarehouse, toBinId: draft.toBinId })] })}
           >
             Add line
           </Button>

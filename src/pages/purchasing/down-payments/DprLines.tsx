@@ -60,7 +60,7 @@ export function DprLines({
     const item = m.items.find((i) => i.id === itemId);
     if (!item) return patch(l.id, { itemId: '' });
     const { invoicedQty: _i, returnedQty: _r, id: _id, ...base } = lineFromItem(item, { postingDate }, ctx, m, { quantity: l.quantity });
-    patch(l.id, { ...base, warehouse: '', bin: '', countryOfOriginCode: item.countryOfOriginCode, bpCatalogNo: item.vendors.find((v) => v.vendorId === vendorId)?.vendorItemNo ?? '' });
+    patch(l.id, { ...base, warehouse: '', binId: '', countryOfOriginCode: item.countryOfOriginCode, bpCatalogNo: item.vendors.find((v) => v.vendorId === vendorId)?.vendorItemNo ?? '' });
   };
   const changeUom = (l: DprLine, uomCode: string) => {
     const item = itemOf(l);

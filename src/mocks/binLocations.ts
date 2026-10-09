@@ -201,3 +201,7 @@ export const SEED_BINS: BinLocation[] = [
     ),
   ),
 ];
+
+const SEED_BIN_CODES = new Map(SEED_BINS.map((b) => [b.id, b.code]));
+/** A seed bin's code by id — for stamping seeded posted documents with the code they were posted with. */
+export const seedBinCode = (id: string) => (id ? (SEED_BIN_CODES.get(id) ?? '') : '');

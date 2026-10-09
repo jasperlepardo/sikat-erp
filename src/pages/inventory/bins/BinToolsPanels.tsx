@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate } from 'react-router';
 import {
   Alert,
   Button,
@@ -9,7 +8,6 @@ import {
   FormField,
   Icon,
   IconButton,
-  Link,
   Panel,
   PanelHeader,
   SidePanel,
@@ -281,7 +279,6 @@ type Change = { on: boolean; value: string };
 
 /** Renames a range of bins by replacing their aisle, shelf or level. Bins keep their history and stock. */
 export function ModifyBinCodesPanel({ warehouse: initial, onCancel, onDone }: { warehouse?: string; onCancel: () => void; onDone: () => void }) {
-  const navigate = useNavigate();
   const [warehouse, setWarehouse] = useState(initial ?? binWarehouseOptions()[0]?.value ?? '');
   const [ranges, setRanges] = useState<Ranges>(OPEN);
   const [changes, setChanges] = useState<Record<SublevelTier, Change>>({
@@ -327,20 +324,10 @@ export function ModifyBinCodesPanel({ warehouse: initial, onCancel, onDone }: { 
         }
       >
         <Alert intent="success">
-          {result.bins} bin{result.bins === 1 ? '' : 's'} renamed. {result.items} item{result.items === 1 ? '' : 's'} now default to the new codes. Posted documents
-          keep the codes they were posted with.
+          {result.bins} bin{result.bins === 1 ? '' : 's'} renamed. {result.items} item{result.items === 1 ? '' : 's'} and any draft documents on these bins
+          show the new codes; posted documents keep the codes they were posted with.
         </Alert>
         <Alert intent="warning">Relabel the bins on the warehouse floor to match before anyone picks from them.</Alert>
-        {result.drafts.length ? (
-          <Section icon="pending_actions" title="Draft transfers to review">
-            <Text variant="small" tone="muted">These drafts still name an old bin code. Open each and pick the renamed bin.</Text>
-            {result.drafts.map((t) => (
-              <Link key={t.id} onClick={() => navigate(`/inventory/stock-movements/${t.id}`)}>
-                {`Draft to ${t.toWarehouse || '—'} · ${t.remarks || t.postingDate}`}
-              </Link>
-            ))}
-          </Section>
-        ) : null}
       </ToolPanel>
     );
   }

@@ -13,6 +13,7 @@
  * - Copy from an Inventory Transfer Request isn't built yet (there are no requests).
  */
 import type { DocumentSeries } from './common';
+import { seedBinCode } from './binLocations';
 import { employeeId } from './masters';
 import { SEED_WAREHOUSES } from './itemMasters';
 import { SEED_ITEMS } from './items';
@@ -33,11 +34,14 @@ export interface TransferLine {
   /** The item's inventory UoM, for display. */
   uom: string;
   /** Source bin, when the From warehouse uses bins. */
-  fromBin: string;
+  fromBinId: string;
+  /** Bin codes when posted, so history reads as it was after a bin rename. */
+  fromBinCode: string;
   /** Destination; defaults to the header's To warehouse. */
   toWarehouse: string;
   /** Destination bin, when the To warehouse uses bins. */
-  toBin: string;
+  toBinId: string;
+  toBinCode: string;
   /** Item cost per inventory unit, fixed when the transfer is posted (PHP). */
   unitCost: number;
 }
@@ -53,7 +57,7 @@ export interface InventoryTransfer {
   fromWarehouse: string;
   toWarehouse: string;
   /** Default destination bin for new lines, when the To warehouse uses bins. */
-  toBin: string;
+  toBinId: string;
   salesEmployeeId: string;
   journalRemark: string;
   remarks: string;
@@ -74,9 +78,11 @@ export const newTransferLine = (patch: Partial<TransferLine> = {}): TransferLine
   description: '',
   quantity: 1,
   uom: '',
-  fromBin: '',
+  fromBinId: '',
+  fromBinCode: '',
   toWarehouse: '',
-  toBin: '',
+  toBinId: '',
+  toBinCode: '',
   unitCost: 0,
   ...patch,
 });
@@ -90,7 +96,7 @@ export function blankTransfer(today: string, ownerId: string): Omit<InventoryTra
     documentDate: today,
     fromWarehouse: 'WH-MNL',
     toWarehouse: '',
-    toBin: '',
+    toBinId: '',
     salesEmployeeId: ownerId,
     journalRemark: DEFAULT_JOURNAL_REMARK,
     remarks: '',
@@ -114,7 +120,7 @@ const line = (n: number, quantity: number, toWarehouse: string, patch: Partial<T
     description: item.description,
     quantity,
     uom: item.inventoryUom,
-    fromBin: item.warehouses.find((w) => w.code === 'WH-MNL')?.defaultBin || 'WH-MNL-A-01-01',
+    fromBinId: item.warehouses.find((w) => w.code === 'WH-MNL')?.defaultBinId || 'bin-WH-MNL-A-01-01',
     toWarehouse,
     unitCost: item.itemCost,
     ...patch,
@@ -198,7 +204,7 @@ function restock(itemNo: string, quantity: number): TransferLine[] {
         description: item.description,
         quantity: qty,
         uom: item.inventoryUom,
-        fromBin: item.warehouses.find((x) => x.code === 'WH-MNL')?.defaultBin || 'WH-MNL-A-01-01',
+        fromBinId: item.warehouses.find((x) => x.code === 'WH-MNL')?.defaultBinId || 'bin-WH-MNL-A-01-01',
         toWarehouse: w.code,
         unitCost: item.itemCost,
       }),
@@ -248,11 +254,14 @@ export const SEED_TRANSFERS: InventoryTransfer[] = [
           description: item.description,
           quantity: l.quantity,
           uom: item.inventoryUom,
-          fromBin: item.warehouses.find((x) => x.code === 'WH-MNL')?.defaultBin || 'WH-MNL-A-01-01',
+          fromBinId: item.warehouses.find((x) => x.code === 'WH-MNL')?.defaultBinId || 'bin-WH-MNL-A-01-01',
           toWarehouse: l.toWarehouse,
           unitCost: item.itemCost,
         });
       }),
     ),
   ),
-];
+].map((t) =>
+  // Posted transfers carry the bin codes they were posted with.
+  t.status === 'Posted' ? { ...t, lines: t.lines.map((l) => ({ ...l, fromBinCode: seedBinCode(l.fromBinId), toBinCode: seedBinCode(l.toBinId) })) } : t,
+);

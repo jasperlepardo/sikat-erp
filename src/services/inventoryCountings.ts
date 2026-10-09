@@ -18,7 +18,7 @@ import { newItemWarehouse, type Item } from '../mocks/items';
 import { inStockAt, inventoryAccountFor, type JournalLine } from './inventoryTransfers';
 import { listItems, saveItem } from './items';
 import { addLayer, consumeLayers, logConsumption, updateFifoCosts, type Taken } from './costLayers';
-import { itemGroups } from './inventoryMasters';
+import { itemGroups, withBinCodes } from './inventoryMasters';
 import { postDocumentEntry } from './journalEntries';
 import { listPrice } from './priceLists';
 import { createCollection } from './store';
@@ -147,7 +147,7 @@ export function postingFromCount(c: InventoryCounting, base: PostingInput, items
           itemNo: l.itemNo,
           description: l.description,
           warehouse: l.warehouse,
-          bin: l.bin,
+          binId: l.binId,
           inWhseQty: l.inWhseQty,
           uomCode: l.uomCode,
           itemsPerUnit: l.itemsPerUnit,
@@ -206,14 +206,14 @@ export async function addPosting(input: PostingInput): Promise<InventoryPosting>
     const item = touched.get(l.itemId) ?? structuredClone(items.find((i) => i.id === l.itemId)!);
     // Found stock in a warehouse the item was never stocked in: add the warehouse row.
     let row = item.warehouses.find((w) => w.code === l.warehouse);
-    if (!row) item.warehouses.push((row = newItemWarehouse(l.warehouse, { defaultBin: l.bin })));
+    if (!row) item.warehouses.push((row = newItemWarehouse(l.warehouse, { defaultBinId: l.binId })));
     row.inStock = round2(row.inStock + v);
     touched.set(l.itemId, { ...item, hasTransactions: true });
   }
   for (const item of touched.values()) await saveItem(item);
 
   const docNum = await nextNumber(postingSeries, POSTING_SERIES, input.seriesId, postings.list);
-  const posted = await postings.save({ ...input, docNum });
+  const posted = await postings.save({ ...input, lines: withBinCodes(input.lines), docNum });
 
   // FIFO: adjust layers for variance. Surplus → new opening layer; shortage → consume oldest first.
   const fifoItemIds = new Set<string>();

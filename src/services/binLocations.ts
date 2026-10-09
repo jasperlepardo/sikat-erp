@@ -8,8 +8,7 @@ import {
   type SublevelTier,
 } from '../mocks/binLocations';
 import type { Item } from '../mocks/items';
-import { listTransfers } from './inventoryTransfers';
-import { listItems, saveItem } from './items';
+import { listItems } from './items';
 import { binLocations, binSublevels, itemGroupName } from './inventoryMasters';
 import { newId } from './useCollectionRows';
 
@@ -17,10 +16,17 @@ export { binLocations, binSublevels };
 
 const byCode = (a: { code: string }, b: { code: string }) => a.code.localeCompare(b.code, undefined, { numeric: true });
 
-/** A warehouse's bins for a picker: active ones in code order, plus `current` if it's been deactivated. */
+/** A warehouse's bins for a picker: active ones in code order, plus the bin with id `current` if it's been deactivated. */
 export function binsOf(bins: readonly BinLocation[], warehouse: string, current = '') {
-  return bins.filter((b) => b.warehouse === warehouse && (b.active || b.code === current)).sort(byCode);
+  return bins.filter((b) => b.warehouse === warehouse && (b.active || b.id === current)).sort(byCode);
 }
+
+/**
+ * A bin's code for display. Documents link bins by id; a posted line also keeps the code it was
+ * posted with (`snapshot`), which wins so history reads as it was. Otherwise the bin's current code.
+ */
+export const binCodeOf = (bins: readonly BinLocation[], id: string, snapshot = '') =>
+  snapshot || bins.find((b) => b.id === id)?.code || id;
 
 /** Where inbound stock lands by default: the warehouse's first active receiving bin. */
 export const receivingBin = (bins: readonly BinLocation[], warehouse: string) =>
@@ -34,12 +40,12 @@ export const sublevelsOf = (rows: readonly BinSublevel[], warehouse: string, tie
  * What's in a bin. Per-bin quantities aren't tracked yet, so an item's stock in a
  * warehouse counts as sitting in its default bin there.
  */
-export function binStock(bin: Pick<BinLocation, 'warehouse' | 'code'>, items: readonly Item[]) {
+export function binStock(bin: Pick<BinLocation, 'id' | 'warehouse'>, items: readonly Item[]) {
   let qty = 0;
   let weight = 0;
   let count = 0;
   for (const item of items) {
-    const w = item.warehouses.find((x) => x.code === bin.warehouse && x.defaultBin === bin.code);
+    const w = item.warehouses.find((x) => x.code === bin.warehouse && x.defaultBinId === bin.id);
     if (!w || w.inStock <= 0) continue;
     count += 1;
     qty += w.inStock;
@@ -181,14 +187,13 @@ export function planRename(input: RenameInput, bins: readonly BinLocation[]): Re
 }
 
 /**
- * Rename the bins. Each keeps its id, properties and stock; items' default bins follow the
- * new code, and a new segment value joins the warehouse's sublevel codes. Posted documents
- * keep the old code. Returns the draft transfers still on an old code, to review.
+ * Rename the bins. Each keeps its id, properties and stock, and a new segment value joins the
+ * warehouse's sublevel codes. Items and draft documents link bins by id, so they show the new
+ * code with nothing to update; posted documents keep the code stamped when they posted.
  */
 export async function renameBins(rows: RenameRow[], reason: string) {
   const changed = rows.filter((r) => r.to.code !== r.bin.code);
   if (changed.some((r) => r.conflict)) throw new Error('Resolve the conflicts first.');
-  const renamed = new Map(changed.map((r) => [r.bin.code, r.to.code]));
   const updatedAt = new Date().toISOString();
 
   const subs = await binSublevels.list();
@@ -201,18 +206,11 @@ export async function renameBins(rows: RenameRow[], reason: string) {
     }
 
   // Independent writes, so they go together rather than one fake round trip at a time.
-  const affected = (await listItems()).filter((item) => item.warehouses.some((w) => renamed.has(w.defaultBin)));
   await Promise.all([
     ...newSubs.map((row) => binSublevels.save(row)),
     ...changed.map((r) => binLocations.save({ ...r.bin, ...r.to, updatedAt, reason: reason || `Renamed from ${r.bin.code}` })),
-    ...affected.map((item) =>
-      saveItem({ ...item, warehouses: item.warehouses.map((w) => ({ ...w, defaultBin: renamed.get(w.defaultBin) ?? w.defaultBin })) }),
-    ),
   ]);
-  const items = affected.length;
-
-  const drafts = (await listTransfers()).filter(
-    (t) => t.status === 'Draft' && (renamed.has(t.toBin) || t.lines.some((l) => renamed.has(l.fromBin) || renamed.has(l.toBin))),
-  );
-  return { bins: changed.length, items, drafts };
+  const ids = new Set(changed.map((r) => r.bin.id));
+  const items = (await listItems()).filter((item) => item.warehouses.some((w) => ids.has(w.defaultBinId))).length;
+  return { bins: changed.length, items };
 }

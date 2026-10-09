@@ -168,7 +168,7 @@ function BinEditor({
   const f = bind(b, set);
   const navigate = useNavigate();
   const stock = binStock(b, items);
-  const binItems = b.code ? locationStock(items, b.warehouse, [b.code]) : [];
+  const binItems = b.code ? locationStock(items, b.warehouse, [b.id]) : [];
   const locked = isNew ? undefined : 'Change it with Modify bin codes on the list — the bin keeps its history and stock.';
 
   return (

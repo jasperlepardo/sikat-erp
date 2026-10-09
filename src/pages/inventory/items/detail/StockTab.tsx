@@ -88,12 +88,12 @@ export function StockTab({
       const wh = inv.warehouses.find((x) => x.code === w.code);
       const row = byCode.get(w.code) ?? blankRow(w.code, 'warehouse', w.code, w.code, wh?.name ?? 'Unknown warehouse', wh?.id);
       addStock(row, w);
-      if (wh?.binEnabled && w.defaultBin) {
-        const id = `${w.code}/${w.defaultBin}`;
+      if (wh?.binEnabled && w.defaultBinId) {
+        const id = `${w.code}/${w.defaultBinId}`;
         let bin = row.bins?.find((b) => b.id === id);
         if (!bin) {
-          const b = inv.bins.find((x) => x.warehouse === w.code && x.code === w.defaultBin);
-          bin = blankRow(id, 'bin', w.code, w.defaultBin, b?.description || 'Default bin', b?.id);
+          const b = inv.bins.find((x) => x.warehouse === w.code && x.id === w.defaultBinId);
+          bin = blankRow(id, 'bin', w.code, b?.code ?? w.defaultBinId, b?.description || 'Default bin', b?.id);
           row.bins = [...(row.bins ?? []), bin];
         }
         addStock(bin, w);

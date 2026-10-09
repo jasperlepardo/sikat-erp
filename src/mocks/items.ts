@@ -22,7 +22,7 @@ export interface ItemWarehouse {
   committed: number;
   ordered: number;
   preferredVendorId: string;
-  defaultBin: string;
+  defaultBinId: string;
 }
 
 export interface ItemManufacturer {
@@ -206,7 +206,7 @@ export const newItemWarehouse = (code: string, patch: Partial<ItemWarehouse> = {
   committed: 0,
   ordered: 0,
   preferredVendorId: '',
-  defaultBin: '',
+  defaultBinId: '',
   ...patch,
 });
 
@@ -454,7 +454,7 @@ function seed(
     uoms,
     warehouses: Object.entries(stock).map(([code, [inStock, committed = 0, ordered = 0]]) =>
       // Manila main uses bins, so stocked items there need a default bin.
-      newItemWarehouse(code, { inStock, committed, ordered, defaultBin: code === 'WH-MNL' ? 'WH-MNL-A-01-01' : '' }),
+      newItemWarehouse(code, { inStock, committed, ordered, defaultBinId: code === 'WH-MNL' ? 'bin-WH-MNL-A-01-01' : '' }),
     ),
     ...rest,
     // The default vendor and main manufacturer are always among the item's vendors / manufacturers.

@@ -17,6 +17,7 @@
  * - The end-of-fiscal-year date is recorded; the year-end close that would use it isn't built.
  */
 import type { Attachment, DocumentSeries } from './common';
+import { seedBinCode } from './binLocations';
 import { employeeId } from './masters';
 import { SEED_ITEMS } from './items';
 
@@ -59,7 +60,7 @@ export interface CountLine {
   freeze: boolean;
   warehouse: string;
   /** The item's default bin there, for the count sheet. */
-  bin: string;
+  binId: string;
   /** In-Whse Qty on Count Date, in the inventory UoM — the book quantity. */
   inWhseQty: number;
   /** Unit counted in, and inventory units per one of it. */
@@ -108,7 +109,9 @@ export interface PostingLine {
   itemNo: string;
   description: string;
   warehouse: string;
-  bin: string;
+  binId: string;
+  /** The bin's code when posted, so history reads as it was after a bin rename. */
+  binCode: string;
   /** In-Whse Qty on Count Date, inventory UoM. */
   inWhseQty: number;
   uomCode: string;
@@ -158,7 +161,7 @@ export const newCountLine = (patch: Partial<CountLine> = {}): CountLine => ({
   description: '',
   freeze: false,
   warehouse: '',
-  bin: '',
+  binId: '',
   inWhseQty: 0,
   uomCode: '',
   itemsPerUnit: 1,
@@ -176,7 +179,8 @@ export const newPostingLine = (patch: Partial<PostingLine> = {}): PostingLine =>
   itemNo: '',
   description: '',
   warehouse: '',
-  bin: '',
+  binId: '',
+  binCode: '',
   inWhseQty: 0,
   uomCode: '',
   itemsPerUnit: 1,
@@ -251,7 +255,7 @@ function line(wh: string, n: number, delta: number | undefined, history = false,
     itemNo: item.itemNo,
     description: item.name,
     warehouse: wh,
-    bin: row.defaultBin,
+    binId: row.defaultBinId,
     inWhseQty,
     uomCode: item.inventoryUom,
     itemsPerUnit: 1,
@@ -336,7 +340,8 @@ function directPosting(id: string, docNum: number, date: string, reference: stri
         itemNo,
         description: item.name,
         warehouse,
-        bin: row.defaultBin,
+        binId: row.defaultBinId,
+        binCode: seedBinCode(row.defaultBinId),
         inWhseQty: row.inStock - variance,
         uomCode: item.inventoryUom,
         itemsPerUnit: 1,
@@ -366,7 +371,8 @@ export const SEED_POSTINGS: InventoryPosting[] = [
         itemNo: l.itemNo,
         description: l.description,
         warehouse: l.warehouse,
-        bin: l.bin,
+        binId: l.binId,
+        binCode: seedBinCode(l.binId),
         inWhseQty: l.inWhseQty,
         uomCode: l.uomCode,
         itemsPerUnit: l.itemsPerUnit,

@@ -144,7 +144,7 @@ function validate(d: Draft, codeMode: 'auto' | 'manual', inv: InventoryMasters):
     need(!d.maxStock || d.maxStock >= d.minStock, 'inventory', 'maxStock', 'Maximum stock is below minimum stock.');
     for (const w of d.warehouses) {
       const wh = inv.warehouses.find((x) => x.code === w.code);
-      need(!wh?.binEnabled || w.defaultBin, 'warehouses', binErrorKey(w.code), `${w.code} uses bins — pick a default bin.`);
+      need(!wh?.binEnabled || w.defaultBinId, 'warehouses', binErrorKey(w.code), `${w.code} uses bins — pick a default bin.`);
     }
   }
 

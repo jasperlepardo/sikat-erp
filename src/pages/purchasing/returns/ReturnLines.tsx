@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react';
+import { binCodeOf } from '../../../services/binLocations';
 import { Button, Card, Checkbox, Combobox, Icon, Link, Select, Text, TextField, type TableColumn } from '@jasperlepardo/sikat-design-system';
 import { DataTable } from '../../../components/form/DataTable';
 import { MasterLookup } from '../../../components/form/MasterLookup';
@@ -135,11 +136,11 @@ export function ReturnLines<L extends AnyReturnLine>({
       if (!item.inventoryItem) return <span className="text-muted">Not stocked</span>;
       if (!sendsStock(l)) return <Text variant="small" tone="muted">No stock moves</Text>;
       const wh = m.inv.warehouses.find((w) => w.code === l.warehouse);
-      if (l.baseType) return <Text variant="small">{l.warehouse}{l.bin ? ` · ${l.bin}` : ''}</Text>;
+      if (l.baseType) return <Text variant="small">{l.warehouse}{l.binId ? ` · ${binCodeOf(m.inv.bins, l.binId, readOnly ? l.binCode : '')}` : ''}</Text>;
       return (
         <div className="flex w-44 shrink-0 flex-col gap-1 whitespace-normal">
-          <Combobox aria-label="Warehouse" invalid={Boolean(err(l, 'warehouse'))} options={activeOptions(m.inv.warehouses.filter((w) => holdsStock(w) || w.code === l.warehouse), (w) => w.code, (w) => w.code, l.warehouse)} value={l.warehouse} onValueChange={(warehouse) => patch(l.id, { warehouse: warehouse ?? '', bin: warehouse ? defaultBin(item, warehouse, m) : '' })} />
-          {wh?.binEnabled ? <Combobox aria-label="Bin location" invalid={Boolean(err(l, 'bin'))} options={binOptions(m.inv.bins, wh, l.bin)} value={l.bin} onValueChange={(bin) => patch(l.id, { bin: bin ?? '' })} /> : null}
+          <Combobox aria-label="Warehouse" invalid={Boolean(err(l, 'warehouse'))} options={activeOptions(m.inv.warehouses.filter((w) => holdsStock(w) || w.code === l.warehouse), (w) => w.code, (w) => w.code, l.warehouse)} value={l.warehouse} onValueChange={(warehouse) => patch(l.id, { warehouse: warehouse ?? '', binId: warehouse ? defaultBin(item, warehouse, m) : '' })} />
+          {wh?.binEnabled ? <Combobox aria-label="Bin location" invalid={Boolean(err(l, 'bin'))} options={binOptions(m.inv.bins, wh, l.binId, readOnly ? l.binCode : '')} value={l.binId} onValueChange={(bin) => patch(l.id, { binId: bin ?? '' })} /> : null}
         </div>
       );
     }),

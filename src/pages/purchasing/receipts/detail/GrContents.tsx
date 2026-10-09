@@ -93,7 +93,7 @@ export function GrContents({ draft, update, errors, m, ctx, onCopy }: GrSectionP
   };
   const changeWarehouse = (l: GrLine, warehouse: string) => {
     const item = itemOf(l);
-    patch(l.id, { warehouse, bin: item && warehouse ? defaultBin(item, warehouse, m) : '' });
+    patch(l.id, { warehouse, binId: item && warehouse ? defaultBin(item, warehouse, m) : '' });
   };
   const changePriceList = (l: GrLine, priceListId: string) => {
     const item = itemOf(l);
@@ -183,9 +183,9 @@ export function GrContents({ draft, update, errors, m, ctx, onCopy }: GrSectionP
             <Combobox
               aria-label="Bin location"
               invalid={Boolean(err(l, 'bin'))}
-              options={binOptions(m.inv.bins, wh, l.bin)}
-              value={l.bin}
-              onValueChange={(bin) => patch(l.id, { bin: bin ?? '' })}
+              options={binOptions(m.inv.bins, wh, l.binId, ctx.readOnly ? l.binCode : '')}
+              value={l.binId}
+              onValueChange={(bin) => patch(l.id, { binId: bin ?? '' })}
             />
           ) : null}
         </div>

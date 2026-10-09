@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { binCodeOf, binLocations } from '../../../services/binLocations';
 import { TableLink, type TableColumn } from '@jasperlepardo/sikat-design-system';
 import type { Item } from '../../../mocks/items';
 
@@ -22,16 +23,17 @@ export interface StockRow {
 }
 
 /** The items stocked at a location, from each item's row for it. */
-export function locationStock(items: readonly Item[], code: string, bins?: readonly string[]): StockRow[] {
+export function locationStock(items: readonly Item[], code: string, binIds?: readonly string[]): StockRow[] {
+  const bins = binLocations.snapshot();
   const rows: StockRow[] = [];
   for (const item of items) {
     const w = item.warehouses.find((x) => x.code === code);
-    if (!w || (bins && !bins.includes(w.defaultBin))) continue;
+    if (!w || (binIds && !binIds.includes(w.defaultBinId))) continue;
     rows.push({
       id: item.id,
       itemNo: item.itemNo,
       name: item.name,
-      bin: w.defaultBin,
+      bin: w.defaultBinId ? binCodeOf(bins, w.defaultBinId) : '',
       uom: item.inventoryUom,
       inStock: w.inStock,
       committed: w.committed,

@@ -129,7 +129,7 @@ function build(): PurchasingHistory {
         id: `dl-seed-${p.id}-${i + 1}`, itemId: l.itemId, itemNo: l.itemNo, name: l.name, description: l.description, quantity: l.quantity,
         uomCode: l.uomCode, uomName: l.uomName, itemsPerUnit: l.itemsPerUnit, priceListId: l.priceListId, unitPrice: l.unitPrice, discountPct: l.discountPct,
         taxCode: l.taxCode, blanketAgreement: l.blanketAgreement, baseType: 'PO', baseId: p.id, baseLineId: l.id, baseDocNo: `${p.seriesId === 'ser-import' ? 'Import' : 'Primary'} ${p.docNum}`,
-        bpCatalogNo: l.bpCatalogNo, countryOfOriginCode: SEED_ITEMS.find((x) => x.id === l.itemId)?.countryOfOriginCode ?? '', warehouse: '', bin: '',
+        bpCatalogNo: l.bpCatalogNo, countryOfOriginCode: SEED_ITEMS.find((x) => x.id === l.itemId)?.countryOfOriginCode ?? '', warehouse: '', binId: '',
       }),
     );
   const request = (id: string, docNum: number, p: PurchaseOrder, date: string, dpmPct: number, vendorRef: string): DownPaymentRequest => {

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { binCodeOf, binLocations } from '../../../services/binLocations';
 import { Button, Checkbox, Combobox, Icon, Link, Select, Text, TextField, type TableColumn } from '@jasperlepardo/sikat-design-system';
 import { DataTable } from '../../../components/form/DataTable';
 import type { Errors } from '../../../components/form/fields';
@@ -20,7 +21,7 @@ export function countLineFor(item: Item, warehouse: string, base: Partial<CountL
     itemNo: item.itemNo,
     description: item.name,
     warehouse,
-    bin: item.warehouses.find((w) => w.code === warehouse)?.defaultBin ?? '',
+    binId: item.warehouses.find((w) => w.code === warehouse)?.defaultBinId ?? '',
     inWhseQty: inStockAt(item, warehouse),
     uomCode: item.inventoryUom,
     itemsPerUnit: 1,
@@ -187,7 +188,7 @@ export function CountLines({
               patch(l.id, item ? countLineFor(item, v ?? '', { ...l, warehouse: v ?? '' }) : { warehouse: v ?? '' });
             }}
           />
-          {l.bin ? <Text variant="small" tone="muted">Bin {l.bin}</Text> : null}
+          {l.binId ? <Text variant="small" tone="muted">Bin {binCodeOf(binLocations.snapshot(), l.binId)}</Text> : null}
         </div>
       ),
     },

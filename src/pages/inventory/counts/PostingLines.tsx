@@ -21,7 +21,7 @@ export function postingLineFor(item: Item, warehouse: string, draft: PostingDraf
     itemNo: item.itemNo,
     description: item.name,
     warehouse,
-    bin: item.warehouses.find((w) => w.code === warehouse)?.defaultBin ?? '',
+    binId: item.warehouses.find((w) => w.code === warehouse)?.defaultBinId ?? '',
     inWhseQty,
     uomCode: item.inventoryUom,
     itemsPerUnit: 1,

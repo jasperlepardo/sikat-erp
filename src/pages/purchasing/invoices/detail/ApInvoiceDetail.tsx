@@ -113,7 +113,7 @@ function validate(d: ApDraft, ctx: ApContext, m: ApMasters, asDraft: boolean): P
   need(ctx.fx > 0, 'header', 'currency', `No ${d.currency} exchange rate on or before ${d.postingDate} — add it in Settings › Accounting & Tax › Exchange rates.`);
   need(d.controlAccount, 'accounting', 'controlAccount', 'Pick the control account.');
 
-  const binOf = (warehouse: string, code: string) => m.inv.bins.find((b) => b.warehouse === warehouse && b.code === code);
+  const binOf = (warehouse: string, id: string) => m.inv.bins.find((b) => b.warehouse === warehouse && b.id === id);
   need(d.lines.length, 'contents', 'lines', 'Add at least one line, or copy from a goods receipt or purchase order.');
   const billing = new Map<string, number>();
   for (const [i, l] of d.lines.entries()) {
@@ -129,8 +129,8 @@ function validate(d: ApDraft, ctx: ApContext, m: ApMasters, asDraft: boolean): P
       need(l.warehouse, 'contents', `line:${l.id}:warehouse`, `${n}: pick the warehouse the stock goes into.`);
       const wh = m.inv.warehouses.find((w) => w.code === l.warehouse);
       if (wh?.binEnabled) {
-        need(l.bin, 'contents', `line:${l.id}:bin`, `${n}: pick the bin it's put away in, in ${l.warehouse}.`);
-        const block = l.bin ? transferBlock(binOf(l.warehouse, l.bin), item, l.uomCode, 'in') : null;
+        need(l.binId, 'contents', `line:${l.id}:bin`, `${n}: pick the bin it's put away in, in ${l.warehouse}.`);
+        const block = l.binId ? transferBlock(binOf(l.warehouse, l.binId), item, l.uomCode, 'in') : null;
         need(!block, 'contents', `line:${l.id}:bin`, `${n}: ${block}`);
       }
     }

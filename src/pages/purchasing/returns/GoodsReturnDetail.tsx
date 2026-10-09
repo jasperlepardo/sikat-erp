@@ -133,8 +133,8 @@ function validate(d: Draft, ctx: RetContext, m: RetMasters, asDraft: boolean): P
     if (item.inventoryItem) {
       need(l.warehouse, 'contents', `line:${l.id}:warehouse`, `${n}: pick the warehouse the goods leave from.`);
       const wh = m.inv.warehouses.find((w) => w.code === l.warehouse);
-      if (wh?.binEnabled && l.bin) {
-        const block = transferBlock(m.inv.bins.find((b) => b.warehouse === l.warehouse && b.code === l.bin), item, l.uomCode, 'out');
+      if (wh?.binEnabled && l.binId) {
+        const block = transferBlock(m.inv.bins.find((b) => b.warehouse === l.warehouse && b.id === l.binId), item, l.uomCode, 'out');
         need(!block, 'contents', `line:${l.id}:bin`, `${n}: ${block}`);
       }
       const have = item.warehouses.find((w) => w.code === l.warehouse)?.inStock ?? 0;

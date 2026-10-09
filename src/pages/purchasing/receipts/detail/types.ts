@@ -104,7 +104,7 @@ export function lineFromItem(item: Item, draft: Pick<GrDraft, 'postingDate'>, ct
     uomName: m.inv.uoms.find((u) => u.code === item.purchasingUom)?.name ?? item.purchasingUom,
     itemsPerUnit: itemsPerUom(item, item.purchasingUom) ?? 1,
     warehouse,
-    bin: warehouse ? defaultBin(item, warehouse, m) : '',
+    binId: warehouse ? defaultBin(item, warehouse, m) : '',
     priceListId,
     taxCode: proposedTaxCode(item, ctx.vendor, m, draft.postingDate),
   });
@@ -128,7 +128,7 @@ export function linesFromPo(po: PurchaseOrder, picks: { lineId: string; qty: num
         uomName: pl.uomName,
         itemsPerUnit: pl.itemsPerUnit,
         warehouse: pl.warehouse,
-        bin: pl.warehouse ? defaultBin(item, pl.warehouse, m) : '',
+        binId: pl.warehouse ? defaultBin(item, pl.warehouse, m) : '',
         priceListId: pl.priceListId,
         unitPrice: pl.unitPrice,
         discountPct: pl.discountPct,

@@ -5,6 +5,7 @@ import {
   type TransferLine,
 } from '../mocks/inventoryTransfers';
 import { transferSeries, seriesLookup, formatDocNum } from './allSeries';
+import { withTransferBinCodes } from './inventoryMasters';
 import type { ItemGroup } from '../mocks/itemMasters';
 import { newItemWarehouse, type Item } from '../mocks/items';
 import { listItems, saveItem } from './items';
@@ -153,11 +154,11 @@ export async function postTransfer(input: TransferInput): Promise<InventoryTrans
     const item = touched.get(l.itemId) ?? structuredClone(items.find((i) => i.id === l.itemId)!);
     const row = (code: string, bin = '') => {
       let w = item.warehouses.find((x) => x.code === code);
-      if (!w) item.warehouses.push((w = newItemWarehouse(code, { defaultBin: bin })));
+      if (!w) item.warehouses.push((w = newItemWarehouse(code, { defaultBinId: bin })));
       return w;
     };
     row(input.fromWarehouse).inStock -= l.quantity;
-    row(l.toWarehouse, l.toBin).inStock += l.quantity;
+    row(l.toWarehouse, l.toBinId).inStock += l.quantity;
     touched.set(l.itemId, { ...item, hasTransactions: true });
   }
   for (const item of touched.values()) await saveItem(item);
@@ -165,7 +166,7 @@ export async function postTransfer(input: TransferInput): Promise<InventoryTrans
   const series = seriesOf(input.seriesId);
   const all = await transfers.list();
   const docNum = Math.max(series.firstNo - 1, ...all.filter((t) => t.seriesId === series.id).map((t) => t.docNum)) + 1;
-  const posted = await transfers.save({ ...input, lines, docNum, status: 'Posted' });
+  const posted = await transfers.save({ ...input, lines: withTransferBinCodes(lines), docNum, status: 'Posted' });
 
   // FIFO: move layers from the source warehouse to each line's destination, preserving FIFO order.
   const fifoItemIds = new Set<string>();

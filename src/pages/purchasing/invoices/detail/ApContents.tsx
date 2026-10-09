@@ -127,10 +127,10 @@ export function ApContents({ draft, update, errors, m, ctx, onCopy }: ApSectionP
             invalid={Boolean(err(l, 'warehouse'))}
             options={activeOptions(m.inv.warehouses.filter((w) => receivesFromVendors(w) || w.code === l.warehouse), (w) => w.code, (w) => w.code, l.warehouse)}
             value={l.warehouse}
-            onValueChange={(warehouse) => patch(l.id, { warehouse: warehouse ?? '', bin: warehouse ? defaultBin(item, warehouse, m) : '' })}
+            onValueChange={(warehouse) => patch(l.id, { warehouse: warehouse ?? '', binId: warehouse ? defaultBin(item, warehouse, m) : '' })}
           />
           {wh?.binEnabled ? (
-            <Combobox aria-label="Bin location" invalid={Boolean(err(l, 'bin'))} options={binOptions(m.inv.bins, wh, l.bin)} value={l.bin} onValueChange={(bin) => patch(l.id, { bin: bin ?? '' })} />
+            <Combobox aria-label="Bin location" invalid={Boolean(err(l, 'bin'))} options={binOptions(m.inv.bins, wh, l.binId, ctx.readOnly ? l.binCode : '')} value={l.binId} onValueChange={(bin) => patch(l.id, { binId: bin ?? '' })} />
           ) : null}
           <Text variant="small" tone="muted">Received with this invoice</Text>
         </div>

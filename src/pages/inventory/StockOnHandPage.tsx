@@ -1,4 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react';
+import { binCodeOf, binLocations } from '../../services/binLocations';
 import { useNavigate } from 'react-router';
 import {
   Card,
@@ -126,8 +127,8 @@ export function StockOnHandPage() {
           value,
           // Per-bin quantities aren't tracked yet: the warehouse's stock sits in its default bin
           // (as binStock() counts it). Committed and ordered are warehouse-level, so a bin has neither.
-          children: w.defaultBin
-            ? [{ id: `${item.id}:${w.code}:${w.defaultBin}`, item, warehouse: w.code, bin: w.defaultBin, inStock: w.inStock, committed: 0, ordered: 0, available: 0, value }]
+          children: w.defaultBinId
+            ? [{ id: `${item.id}:${w.code}:${w.defaultBinId}`, item, warehouse: w.code, bin: binCodeOf(binLocations.snapshot(), w.defaultBinId), inStock: w.inStock, committed: 0, ordered: 0, available: 0, value }]
             : undefined,
         };
       });

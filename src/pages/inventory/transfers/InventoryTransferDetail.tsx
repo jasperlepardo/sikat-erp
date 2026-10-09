@@ -79,8 +79,8 @@ function validate(d: TransferDraft, m: Masters, asDraft: boolean): Problem<TabId
   need(d.documentDate, 'header', 'documentDate', 'Document date is required.');
 
   const whOf = (code: string) => m.warehouses.find((w) => w.code === code);
-  const binOf = (warehouse: string, code: string) => m.bins.find((b) => b.warehouse === warehouse && b.code === code);
-  const gone = (warehouse: string, code: string) => Boolean(code) && !binOf(warehouse, code);
+  const binOf = (warehouse: string, id: string) => m.bins.find((b) => b.warehouse === warehouse && b.id === id);
+  const gone = (warehouse: string, id: string) => Boolean(id) && !binOf(warehouse, id);
   const from = whOf(d.fromWarehouse);
   need(d.lines.length, 'contents', 'lines', 'Add at least one line.');
   for (const [i, l] of d.lines.entries()) {
@@ -92,16 +92,16 @@ function validate(d: TransferDraft, m: Masters, asDraft: boolean): Problem<TabId
     need(isValidToday(item, d.postingDate), 'contents', `line:${l.id}:item`, `${n}: ${item.itemNo} isn't valid on ${formatDate(d.postingDate)}.`);
     need(l.quantity > 0, 'contents', `line:${l.id}:quantity`, `${n}: quantity must be more than 0.`);
     need(Number.isInteger(l.quantity) || item.manageBy !== 'Serial Numbers', 'contents', `line:${l.id}:quantity`, `${n}: serial-managed items move in whole units.`);
-    need(!from?.binEnabled || l.fromBin, 'contents', `line:${l.id}:fromBin`, `${n}: pick the bin it leaves from in ${d.fromWarehouse}.`);
-    const outBlock = from?.binEnabled ? transferBlock(binOf(d.fromWarehouse, l.fromBin), item, l.uom, 'out') : null;
+    need(!from?.binEnabled || l.fromBinId, 'contents', `line:${l.id}:fromBin`, `${n}: pick the bin it leaves from in ${d.fromWarehouse}.`);
+    const outBlock = from?.binEnabled ? transferBlock(binOf(d.fromWarehouse, l.fromBinId), item, l.uom, 'out') : null;
     need(!outBlock, 'contents', `line:${l.id}:fromBin`, `${n}: ${outBlock}`);
-    need(!from?.binEnabled || !gone(d.fromWarehouse, l.fromBin), 'contents', `line:${l.id}:fromBin`, `${n}: bin ${l.fromBin} no longer exists — pick its new code.`);
+    need(!from?.binEnabled || !gone(d.fromWarehouse, l.fromBinId), 'contents', `line:${l.id}:fromBin`, `${n}: its from-bin no longer exists in ${d.fromWarehouse} — pick another.`);
     need(l.toWarehouse, 'contents', `line:${l.id}:toWarehouse`, `${n}: pick the To warehouse.`);
     need(l.toWarehouse !== d.fromWarehouse, 'contents', `line:${l.id}:toWarehouse`, `${n}: To warehouse is the same as From.`);
-    need(!whOf(l.toWarehouse)?.binEnabled || l.toBin, 'contents', `line:${l.id}:toBin`, `${n}: pick the bin it goes to in ${l.toWarehouse}.`);
-    const inBlock = whOf(l.toWarehouse)?.binEnabled ? transferBlock(binOf(l.toWarehouse, l.toBin), item, l.uom, 'in') : null;
+    need(!whOf(l.toWarehouse)?.binEnabled || l.toBinId, 'contents', `line:${l.id}:toBin`, `${n}: pick the bin it goes to in ${l.toWarehouse}.`);
+    const inBlock = whOf(l.toWarehouse)?.binEnabled ? transferBlock(binOf(l.toWarehouse, l.toBinId), item, l.uom, 'in') : null;
     need(!inBlock, 'contents', `line:${l.id}:toBin`, `${n}: ${inBlock}`);
-    need(!whOf(l.toWarehouse)?.binEnabled || !gone(l.toWarehouse, l.toBin), 'contents', `line:${l.id}:toBin`, `${n}: bin ${l.toBin} no longer exists — pick its new code.`);
+    need(!whOf(l.toWarehouse)?.binEnabled || !gone(l.toWarehouse, l.toBinId), 'contents', `line:${l.id}:toBin`, `${n}: its to-bin no longer exists in ${l.toWarehouse} — pick another.`);
   }
   for (const s of shortages(d, m.items)) {
     const first = d.lines.find((l) => l.itemId === s.itemId)!;
@@ -196,17 +196,17 @@ function TransferForm() {
   /** A new destination: lines that followed the header follow it again. */
   const pickTo = (toWarehouse: string) => {
     const wh = whOf(toWarehouse);
-    const toBin = wh?.binEnabled ? (receivingBin(m.bins, toWarehouse) ?? binsOf(m.bins, toWarehouse)[0])?.code ?? '' : '';
+    const toBin = wh?.binEnabled ? (receivingBin(m.bins, toWarehouse) ?? binsOf(m.bins, toWarehouse)[0])?.id ?? '' : '';
     update({
       toWarehouse,
-      toBin,
+      toBinId: toBin,
       journalRemark: remarkIsDefault ? autoRemark(draft.fromWarehouse, toWarehouse) : draft.journalRemark,
-      lines: draft.lines.map((l) => (!l.toWarehouse || l.toWarehouse === draft.toWarehouse ? { ...l, toWarehouse, toBin } : l)),
+      lines: draft.lines.map((l) => (!l.toWarehouse || l.toWarehouse === draft.toWarehouse ? { ...l, toWarehouse, toBinId: toBin } : l)),
     });
   };
 
   const pickToBin = (toBin: string) =>
-    update({ toBin, lines: draft.lines.map((l) => (l.toWarehouse === draft.toWarehouse && (!l.toBin || l.toBin === draft.toBin) ? { ...l, toBin } : l)) });
+    update({ toBinId: toBin, lines: draft.lines.map((l) => (l.toWarehouse === draft.toWarehouse && (!l.toBinId || l.toBinId === draft.toBinId) ? { ...l, toBinId: toBin } : l)) });
 
   /** Post (Add), save a draft, or — once posted — save the remarks. */
   const submit = async (e: FormEvent | null, asDraft = false) => {
@@ -267,7 +267,7 @@ function TransferForm() {
       toWarehouse: draft.fromWarehouse,
       journalRemark: autoRemark(back, draft.fromWarehouse),
       remarks: `Reverses transfer ${transferNumber(draft)}.`,
-      lines: draft.lines.map((l) => ({ ...l, id: newTransferLine().id, fromBin: l.toBin, toWarehouse: draft.fromWarehouse, toBin: l.fromBin })),
+      lines: draft.lines.map((l) => ({ ...l, id: newTransferLine().id, fromBinId: l.toBinId, toWarehouse: draft.fromWarehouse, toBinId: l.fromBinId })),
     };
     navigate(`${TRANSFER_LIST_PATH}/new`, { state: { copyFrom: copy } });
   };
@@ -375,8 +375,8 @@ function TransferForm() {
                         <Select
                           {...p}
                           disabled={posted}
-                          options={binOptions(m.bins, to, draft.toBin).filter((o) => o.value)}
-                          value={draft.toBin}
+                          options={binOptions(m.bins, to, draft.toBinId).filter((o) => o.value)}
+                          value={draft.toBinId}
                           onValueChange={pickToBin}
                         />
                       )}

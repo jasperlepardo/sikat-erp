@@ -1,4 +1,5 @@
 import { WITHHOLDING_PAYABLE } from '../mocks/apInvoices';
+import { withBinCodes } from './inventoryMasters';
 import { MEMO_SERIES, type ApCreditMemo, type CreditApplication, type MemoLine } from '../mocks/apCreditMemos';
 import { memoSeries, seriesLookup, formatDocNum } from './allSeries';
 import { FREIGHT_IN_ACCOUNT, GRNI_ACCOUNT } from '../mocks/goodsReceipts';
@@ -192,7 +193,7 @@ export async function addCreditMemo(input: MemoInput, fx: number, credit: number
   const appliedAmount = round2(credit - left);
   return memos.save({
     ...input,
-    lines,
+    lines: withBinCodes(lines),
     docNum,
     fxRate: fx,
     applications,

@@ -17,6 +17,7 @@
  *   Both are left out.
  */
 import type { DocumentSeries } from './common';
+import { seedBinCode } from './binLocations';
 import { plId } from './masters';
 import { SEED_ITEMS } from './items';
 import { SEED_RATES } from './currencies';
@@ -43,7 +44,9 @@ export interface GrLine {
   itemsPerUnit: number;
   warehouse: string;
   /** Where the stock is put away, when the warehouse uses bins. */
-  bin: string;
+  binId: string;
+  /** The bin's code when posted, so history reads as it was after a bin rename. */
+  binCode: string;
   priceListId: string;
   /** Net unit price per line unit, in the document currency. */
   unitPrice: number;
@@ -143,7 +146,8 @@ export const newGrLine = (patch: Partial<GrLine> = {}): GrLine => ({
   uomName: 'Piece',
   itemsPerUnit: 1,
   warehouse: '',
-  bin: '',
+  binId: '',
+  binCode: '',
   priceListId: plId('Last purchase price'),
   unitPrice: 0,
   discountPct: 0,
@@ -264,7 +268,8 @@ export const SEED_GOODS_RECEIPTS: GoodsReceipt[] = received
             uomName: l.uomName,
             itemsPerUnit: l.itemsPerUnit,
             warehouse: l.warehouse,
-            bin: item?.warehouses.find((w) => w.code === l.warehouse)?.defaultBin ?? '',
+            binId: item?.warehouses.find((w) => w.code === l.warehouse)?.defaultBinId ?? '',
+            binCode: seedBinCode(item?.warehouses.find((w) => w.code === l.warehouse)?.defaultBinId ?? ''),
             priceListId: l.priceListId,
             unitPrice: l.unitPrice,
             discountPct: l.discountPct,
