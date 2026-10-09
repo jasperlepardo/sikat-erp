@@ -201,7 +201,8 @@ export function UomGroupsTab(route: ListRoute) {
       ]}
       sortValue={(g, key) => (key === 'conversions' ? conversionSummary(g) : String(g[key as keyof UomGroup] ?? ''))}
       searchText={(g) => `${g.code} ${g.name} ${g.baseUom} ${g.conversions.map((c) => c.altUom).join(' ')}`}
-      blank={() => ({ id: newId('ug'), code: '', name: '', baseUom: 'pc', conversions: [], active: true })}
+      // The group's id is set from its code on save: the code is the key.
+      blank={() => ({ id: '', code: '', name: '', baseUom: 'pc', conversions: [], active: true })}
       label={(g) => g.code}
       validate={(g, all) => {
         const e: Errors = {};
@@ -220,7 +221,10 @@ export function UomGroupsTab(route: ListRoute) {
         }
         return e;
       }}
-      onSave={(g) => save({ ...g, code: g.code.trim().toUpperCase(), name: g.name.trim() })}
+      onSave={(g) => {
+        const code = g.code.trim().toUpperCase();
+        return save({ ...g, id: g.id || code, code, name: g.name.trim() });
+      }}
       editor={(g, update, errors, isNew) => {
         const f = bind(g, update);
         const patchConv = (id: string, p: Partial<UomConversion>) =>

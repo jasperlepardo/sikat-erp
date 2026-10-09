@@ -41,6 +41,7 @@ export interface ItemGroup {
   active: boolean;
 }
 
+/** A unit of measure, keyed by its code: `id` is always `code` (pc, box…), which every item, line and conversion stores. */
 export interface UnitOfMeasure {
   id: string;
   code: string;
@@ -72,6 +73,7 @@ export interface UomConversion {
  * units; "Add from UoM group" on the item copies a group's units in once (no link stays).
  */
 export interface UomGroup {
+  /** Always `code`, the key items and settings store. */
   id: string;
   /** Short code, e.g. PIECE (max 20 characters). Items store it. */
   code: string;
@@ -107,7 +109,7 @@ export const conversionSummary = (g: UomGroup) =>
 
 const conv = (altUom: string, baseQty: number, altQty = 1): UomConversion => ({ id: `uc-${altUom}`, altQty, altUom, baseQty });
 const uomGroup = (code: string, name: string, baseUom: string, conversions: UomConversion[] = []): UomGroup => ({
-  id: `ug-${code}`, code, name, baseUom, conversions, active: true,
+  id: code, code, name, baseUom, conversions, active: true,
 });
 export const SEED_UOM_GROUPS: UomGroup[] = [
   uomGroup('PIECE', 'Piece (each / pack / box / carton)', 'pc', [conv('pack', 6), conv('box', 24), conv('carton', 48)]),
@@ -118,7 +120,7 @@ export const SEED_UOM_GROUPS: UomGroup[] = [
 
 /** A unit of measure with no dimensions recorded. */
 export const blankUom = (code = ''): UnitOfMeasure => ({
-  id: `uom-${code}`, code, name: '', length: 0, width: 0, height: 0, volume: 0, lengthUnit: 'cm', weight: 0, weightUnit: 'kg', active: true,
+  id: code, code, name: '', length: 0, width: 0, height: 0, volume: 0, lengthUnit: 'cm', weight: 0, weightUnit: 'kg', active: true,
 });
 
 /**

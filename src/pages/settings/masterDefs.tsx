@@ -548,8 +548,9 @@ export const uomDef: MasterDef<UnitOfMeasure> = {
   noun: 'unit of measure',
   home: INVENTORY,
   description: 'Units items are stocked, bought and sold in. Items convert purchasing and sales units to their inventory unit.',
-  blank: (code) => ({ ...blankUom(code), id: newId('uom') }),
-  value: (u) => u.code,
+  // A new unit's id is set from its code on save: the code is the key.
+  blank: (code) => ({ ...blankUom(code), id: '' }),
+  value: (u) => u.id,
   label: (u) => `${u.code} · ${u.name}`,
   columns: [
     { key: 'code', header: 'Code', cell: (u) => u.code },
@@ -564,7 +565,7 @@ export const uomDef: MasterDef<UnitOfMeasure> = {
     statusColumn<UnitOfMeasure>(),
   ],
   searchText: (u) => `${u.code} ${u.name}`,
-  normalize: (u) => ({ ...u, code: u.code.trim(), name: u.name.trim() }),
+  normalize: (u) => ({ ...u, id: u.id || u.code.trim(), code: u.code.trim(), name: u.name.trim() }),
   validate: (u, all) => {
     const e: Errors = {};
     uniqueRequired(e, u, all, 'code', 'Code');
