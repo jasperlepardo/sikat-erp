@@ -18,7 +18,7 @@ import {
 import { describeUsage, loadAccountUsage, usageCount } from '../../services/accountUsage';
 import { accounts, taxCodes } from '../../services/masterData';
 import { useAsync } from '../../services/useAsync';
-import { newId, useCollectionRows } from '../../services/useCollectionRows';
+import { useCollectionRows } from '../../services/useCollectionRows';
 import { useHeaderSearchHost } from '../../components/form/HeaderSearch';
 
 const BASE = '/accounting/chart-of-accounts';
@@ -26,7 +26,8 @@ const CURRENCIES = ['PHP', 'USD', 'All currencies'];
 
 
 const blank = (): Account => ({
-  id: newId('acct'),
+  // The id is set from the account number on save: the number is the key.
+  id: '',
   code: '',
   name: '',
   drawer: 'Operating expenses',
@@ -192,7 +193,7 @@ export function ChartOfAccountsPage() {
         if (usageCount(used) && a.title) e.title = `Used by ${describeUsage(used)} — a title account can't take postings.`;
         return e;
       }}
-      onSave={(a) => save({ ...a, code: a.code.trim(), name: a.name.trim() })}
+      onSave={(a) => save({ ...a, id: a.id || a.code.trim(), code: a.code.trim(), name: a.name.trim() })}
       editor={(a, update, errors, isNew) => {
         // A new drawer resets what depends on it: parent, account type, classification, statement line.
         const f = bind(a, (p) =>

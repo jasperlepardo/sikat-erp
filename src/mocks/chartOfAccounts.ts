@@ -28,6 +28,7 @@ const DEBIT_DRAWERS: Drawer[] = ['Assets', 'Cost of sales', 'Operating expenses'
 export const statementOf = (d: Drawer) =>
   ['Assets', 'Liabilities', 'Equity'].includes(d) ? 'Balance sheet' : 'Income statement';
 
+/** A G/L account, keyed by its number: `id` is always `code` (1310…), which every posting, item group, tax code and partner stores. */
 export interface Account {
   id: string;
   code: string;
@@ -130,7 +131,7 @@ function drawer(drawerName: Drawer, root: Node): Account[] {
     const flags = rest.filter((x): x is Flag => typeof x === 'string');
     const title = children.length > 0 || parentCode === '';
     out.push({
-      id: `acct-${code}`,
+      id: code,
       code,
       name,
       drawer: drawerName,
