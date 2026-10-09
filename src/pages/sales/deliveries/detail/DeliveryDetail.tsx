@@ -232,14 +232,14 @@ function DeliveryForm() {
           type="details"
           icon="local_shipping"
           title={title}
-          subcopy={draft.customerName ? `${draft.customerCode} · ${draft.customerName}${draft.orderNumber ? ` · order ${draft.orderNumber}` : ''}` : 'Ship goods to a customer.'}
+          subcopy={isNew ? 'Ship goods to a customer.' : undefined}
           leading={
             isNew ? undefined : (
               <>
-                <IconButton type="button" label="Next" intent="default" variant="solid" size="extra-large" disabled={!nextId} onClick={() => navigate(`${DN_LIST_PATH}/${nextId}`)}>
+                <IconButton type="button" label="Next" intent="default" variant="solid" size="large" disabled={!nextId} onClick={() => navigate(`${DN_LIST_PATH}/${nextId}`)}>
                   {panelHeaderIcons.arrowDownward}
                 </IconButton>
-                <IconButton type="button" label="Previous" intent="default" variant="solid" size="extra-large" disabled={!prevId} onClick={() => navigate(`${DN_LIST_PATH}/${prevId}`)}>
+                <IconButton type="button" label="Previous" intent="default" variant="solid" size="large" disabled={!prevId} onClick={() => navigate(`${DN_LIST_PATH}/${prevId}`)}>
                   {panelHeaderIcons.arrowUpward}
                 </IconButton>
               </>
@@ -249,11 +249,11 @@ function DeliveryForm() {
           status={isNew ? undefined : <Badge size="small" intent={DN_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
           actions={
             <>
-              <Button type="button" intent="default" variant="solid" size="extra-large" onClick={() => navigate(DN_LIST_PATH)}>
+              <Button type="button" intent="default" variant="solid" size="large" onClick={() => navigate(DN_LIST_PATH)}>
                 {ro ? 'Back' : 'Cancel'}
               </Button>
               {menu.length ? <MoreMenu items={menu} /> : null}
-              <Button type="submit" intent="primary" variant="solid" size="extra-large" disabled={saving}>
+              <Button type="submit" intent="primary" variant="solid" size="large" disabled={saving}>
                 {saving ? 'Saving…' : ro ? 'Save' : 'Add'}
               </Button>
             </>

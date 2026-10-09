@@ -68,10 +68,10 @@ export function VendorQuickCreate({ initialName = '', onClose, onCreated }: Prop
           subcopy="Fill in the details — you can add contacts and addresses after saving."
           actions={
             <>
-              <Button type="button" intent="default" variant="solid" size="extra-large" onClick={onClose}>
+              <Button type="button" intent="default" variant="solid" size="large" onClick={onClose}>
                 Cancel
               </Button>
-              <Button type="submit" intent="primary" variant="solid" size="extra-large" disabled={saving}>
+              <Button type="submit" intent="primary" variant="solid" size="large" disabled={saving}>
                 {saving ? 'Saving…' : 'Add vendor'}
               </Button>
             </>

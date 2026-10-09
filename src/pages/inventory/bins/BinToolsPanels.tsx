@@ -78,7 +78,7 @@ function ToolPanel({
             <IconButton intent="default" variant="link" label="Close" onClick={onCancel}>
               <Icon size={20}>close</Icon>
             </IconButton>
-            <Button type="button" intent="default" variant="solid" size="extra-large" onClick={onCancel}>
+            <Button type="button" intent="default" variant="solid" size="large" onClick={onCancel}>
               Cancel
             </Button>
             {primary}
@@ -198,7 +198,7 @@ export function GenerateBinsPanel({ warehouse: initial, onCancel, onDone }: { wa
       subcopy="Adds a bin for every aisle, shelf and level in the ranges. Existing bins are left as they are."
       onCancel={onCancel}
       primary={
-        <Button type="button" intent="primary" variant="solid" size="extra-large" disabled={!add.length || saving} onClick={run}>
+        <Button type="button" intent="primary" variant="solid" size="large" disabled={!add.length || saving} onClick={run}>
           {saving ? 'Generating…' : `Generate ${add.length || ''} bin${add.length === 1 ? '' : 's'}`}
         </Button>
       }
@@ -318,7 +318,7 @@ export function ModifyBinCodesPanel({ warehouse: initial, onCancel, onDone }: { 
         subcopy={`${result.bins} bin${result.bins === 1 ? '' : 's'} renamed in ${warehouse}.`}
         onCancel={onDone}
         primary={
-          <Button type="button" intent="primary" variant="solid" size="extra-large" onClick={onDone}>
+          <Button type="button" intent="primary" variant="solid" size="large" onClick={onDone}>
             Done
           </Button>
         }
@@ -343,7 +343,7 @@ export function ModifyBinCodesPanel({ warehouse: initial, onCancel, onDone }: { 
           type="button"
           intent="primary"
           variant="solid"
-          size="extra-large"
+          size="large"
           disabled={!moving.length || conflicts.length > 0 || Boolean(badValue) || saving}
           onClick={run}
         >

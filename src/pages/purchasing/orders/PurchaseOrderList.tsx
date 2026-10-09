@@ -141,7 +141,7 @@ export function PurchaseOrderList() {
           <Button
             intent="primary"
             variant="solid"
-            size="extra-large"
+            size="large"
             leadingIcon={<Icon size={20}>add</Icon>}
             onClick={() => navigate(`${PO_LIST_PATH}/new`)}
           >

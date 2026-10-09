@@ -90,7 +90,6 @@ function VoucherEntryForm() {
   const totals = jeTotals(lines);
   const update = (patch: Partial<VoucherEntry>) => setDraft({ ...draft, ...patch });
   const h = bind(draft, update);
-  const voucherLabel = isNewVoucher ? 'New voucher' : `Journal voucher ${voucher!.voucherNo}`;
 
   /** Save into the voucher: no G/L impact, and no balance check — only a warning on the way back. */
   const save = async () => {
@@ -157,7 +156,6 @@ function VoucherEntryForm() {
           type="details"
           icon="edit_note"
           title={isNew ? 'New voucher entry' : `Entry ${draft.transNo}`}
-          subcopy={`${voucherLabel} · ${posted ? `posted as journal entry ${draft.number}` : 'draft — no G/L impact until posted'}`}
           tabs={
             <Tabs
               variant="outline"
@@ -172,12 +170,12 @@ function VoucherEntryForm() {
           status={<Badge size="small" intent={posted ? 'default' : 'success'}>{posted ? 'Posted' : 'Open'}</Badge>}
           actions={
             <>
-              <Button type="button" intent="default" variant="solid" size="extra-large" onClick={back}>
+              <Button type="button" intent="default" variant="solid" size="large" onClick={back}>
                 {posted ? 'Back' : 'Cancel'}
               </Button>
               {menu.length ? <MoreMenu items={menu} /> : null}
               {posted ? null : (
-                <Button type="submit" intent="primary" variant="solid" size="extra-large" disabled={saving}>
+                <Button type="submit" intent="primary" variant="solid" size="large" disabled={saving}>
                   {saving ? 'Saving…' : isNewVoucher ? 'Add to new voucher' : 'Save to voucher'}
                 </Button>
               )}

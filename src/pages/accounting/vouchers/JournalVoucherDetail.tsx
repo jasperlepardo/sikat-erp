@@ -168,11 +168,10 @@ export function JournalVoucherDetail() {
         type="details"
         icon="folder_open"
         title={`Journal voucher ${voucher.voucherNo}`}
-        subcopy={`Created ${formatDate(voucher.createdOn)} by ${voucher.createdBy}`}
         status={<Badge size="small" intent={state.intent}>{state.label}</Badge>}
         actions={
           <>
-            <Button type="button" intent="default" variant="solid" size="extra-large" onClick={() => navigate(JV_LIST_PATH)}>
+            <Button type="button" intent="default" variant="solid" size="large" onClick={() => navigate(JV_LIST_PATH)}>
               Back
             </Button>
             {menu.length ? <MoreMenu items={menu} /> : null}
@@ -180,7 +179,7 @@ export function JournalVoucherDetail() {
               type="button"
               intent="primary"
               variant="solid"
-              size="extra-large"
+              size="large"
               disabled={busy || !openEntries.length}
               onClick={() => post(openEntries)}
             >

@@ -94,7 +94,7 @@ function CompanyDetail({ basePath, recordId }: { basePath: string; recordId: str
                 label="Next"
                 intent="default"
                 variant="solid"
-                size="extra-large"
+                size="large"
                 disabled={!nextId}
                 onClick={() => navigate(`${basePath}/${nextId}`)}
               >
@@ -105,7 +105,7 @@ function CompanyDetail({ basePath, recordId }: { basePath: string; recordId: str
                 label="Previous"
                 intent="default"
                 variant="solid"
-                size="extra-large"
+                size="large"
                 disabled={!prevId}
                 onClick={() => navigate(`${basePath}/${prevId}`)}
               >
@@ -116,14 +116,14 @@ function CompanyDetail({ basePath, recordId }: { basePath: string; recordId: str
         }
         actions={
           <>
-            <Button type="button" intent="default" variant="solid" size="extra-large" onClick={back}>
+            <Button type="button" intent="default" variant="solid" size="large" onClick={back}>
               Cancel
             </Button>
             <Button
               type="button"
               intent="primary"
               variant="solid"
-              size="extra-large"
+              size="large"
               disabled={saving}
               onClick={save}
             >

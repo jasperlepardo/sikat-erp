@@ -216,7 +216,7 @@ export function ItemList({ basePath = '/inventory/items' }: { basePath?: string 
           <Button
             intent="primary"
             variant="solid"
-            size="extra-large"
+            size="large"
             leadingIcon={<Icon size={20}>add</Icon>}
             onClick={() => navigate(`${basePath}/new`)}
           >

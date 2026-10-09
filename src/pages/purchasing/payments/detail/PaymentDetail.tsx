@@ -291,14 +291,14 @@ function PaymentForm() {
           type="details"
           icon="payments"
           title={title}
-          subcopy={draft.payeeName ? `${draft.vendorCode ? `${draft.vendorCode} · ` : ''}${draft.payeeName}` : 'Pay a vendor, or pay straight to G/L accounts.'}
+          subcopy={isNew ? 'Pay a vendor, or pay straight to G/L accounts.' : undefined}
           leading={
             isNew ? undefined : (
               <>
-                <IconButton type="button" label="Next" intent="default" variant="solid" size="extra-large" disabled={!nextId} onClick={() => navigate(`${PAYMENT_LIST_PATH}/${nextId}`)}>
+                <IconButton type="button" label="Next" intent="default" variant="solid" size="large" disabled={!nextId} onClick={() => navigate(`${PAYMENT_LIST_PATH}/${nextId}`)}>
                   {panelHeaderIcons.arrowDownward}
                 </IconButton>
-                <IconButton type="button" label="Previous" intent="default" variant="solid" size="extra-large" disabled={!prevId} onClick={() => navigate(`${PAYMENT_LIST_PATH}/${prevId}`)}>
+                <IconButton type="button" label="Previous" intent="default" variant="solid" size="large" disabled={!prevId} onClick={() => navigate(`${PAYMENT_LIST_PATH}/${prevId}`)}>
                   {panelHeaderIcons.arrowUpward}
                 </IconButton>
               </>
@@ -308,11 +308,11 @@ function PaymentForm() {
           status={isNew ? undefined : <Badge size="small" intent={PAYMENT_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
           actions={
             <>
-              <Button type="button" intent="default" variant="solid" size="extra-large" onClick={() => navigate(PAYMENT_LIST_PATH)}>
+              <Button type="button" intent="default" variant="solid" size="large" onClick={() => navigate(PAYMENT_LIST_PATH)}>
                 {added ? 'Back' : 'Cancel'}
               </Button>
               {menu.length ? <MoreMenu items={menu} /> : null}
-              <Button type="submit" intent="primary" variant="solid" size="extra-large" disabled={saving}>
+              <Button type="submit" intent="primary" variant="solid" size="large" disabled={saving}>
                 {saving ? 'Saving…' : added ? 'Save' : 'Add'}
               </Button>
             </>

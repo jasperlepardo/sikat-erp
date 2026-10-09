@@ -282,7 +282,6 @@ function TransferForm() {
   ];
 
   const title = isNew ? 'New inventory transfer' : posted ? transferNumber(draft) : 'Draft inventory transfer';
-  const route = draft.fromWarehouse && draft.toWarehouse ? `${draft.fromWarehouse} → ${draft.toWarehouse}` : '';
 
   return (
     <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
@@ -291,7 +290,7 @@ function TransferForm() {
           type="details"
           icon="move_down"
           title={title}
-          subcopy={route || 'Move stock from one warehouse to another.'}
+          subcopy={isNew ? 'Move stock from one warehouse to another.' : undefined}
           leading={
             isNew ? undefined : (
               <>
@@ -300,7 +299,7 @@ function TransferForm() {
                   label="Next"
                   intent="default"
                   variant="solid"
-                  size="extra-large"
+                  size="large"
                   disabled={!nextId}
                   onClick={() => navigate(`${TRANSFER_LIST_PATH}/${nextId}`)}
                 >
@@ -311,7 +310,7 @@ function TransferForm() {
                   label="Previous"
                   intent="default"
                   variant="solid"
-                  size="extra-large"
+                  size="large"
                   disabled={!prevId}
                   onClick={() => navigate(`${TRANSFER_LIST_PATH}/${prevId}`)}
                 >
@@ -323,11 +322,11 @@ function TransferForm() {
           status={isNew ? undefined : <Badge size="small" intent={TRANSFER_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
           actions={
             <>
-              <Button type="button" intent="default" variant="solid" size="extra-large" onClick={() => navigate(TRANSFER_LIST_PATH)}>
+              <Button type="button" intent="default" variant="solid" size="large" onClick={() => navigate(TRANSFER_LIST_PATH)}>
                 Cancel
               </Button>
               {menu.length ? <MoreMenu items={menu} /> : null}
-              <Button type="submit" intent="primary" variant="solid" size="extra-large" disabled={saving}>
+              <Button type="submit" intent="primary" variant="solid" size="large" disabled={saving}>
                 {saving ? 'Saving…' : posted ? 'Save' : 'Add'}
               </Button>
             </>

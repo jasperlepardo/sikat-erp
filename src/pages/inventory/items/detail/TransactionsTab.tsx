@@ -22,7 +22,7 @@ import { useAsync } from '../../../../services/useAsync';
 import { DOC_SOURCES, type DocType } from '../../../partners/detail/partnerDocuments';
 import { listVariants } from '../../../../services/items';
 import { docTypesFor, isBuilt, listItemDocuments, type ItemDocument } from './itemDocuments';
-import type { Draft } from './types';
+import { variantValueLabels, type Draft } from './types';
 import { todayISO } from '../../../../services/dates';
 
 type Filter = 'open' | 'overdue' | 'all';
@@ -66,8 +66,7 @@ export function TransactionsTab({ draft }: { draft: Draft }) {
   const variantLabel = (itemId: string) => {
     const v = variants?.find((x) => x.id === itemId);
     if (!v) return undefined;
-    const axes = draft.variantAxes;
-    return axes.map((a) => v.variantAttributes[a.name]).filter(Boolean).join(' / ') || v.itemNo || undefined;
+    return variantValueLabels(draft.variantAxes, v.variantValues).join(' / ') || v.itemNo || undefined;
   };
 
   const ofType = docs.filter((d) => type === 'all' || d.type === type);

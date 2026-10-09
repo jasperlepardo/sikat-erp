@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { open, rawIds, screenText, watchErrors } from './helpers';
+import { open, rawIds, screenText, shown, watchErrors } from './helpers';
 
 /**
  * Records link by id and show names by lookup, so a rename in Settings shows everywhere, while
@@ -24,7 +24,7 @@ test('renaming a payment term shows the new name on the partner, which still sto
   await expect(page.locator('body')).toContainText('Net 30 days');
 
   await open(page, 'sales/customers/bp-003');
-  await expect(page.getByLabel('Payment terms')).toHaveValue('Net 30 days');
+  await expect.poll(() => shown(page.getByLabel('Payment terms'))).toBe('Net 30 days');
   expect(await rawIds(page)).toEqual([]);
 
   // Saving the partner writes it to storage: the link is the id, never the name.
@@ -73,8 +73,8 @@ test('a stock count with two counters shows each by name and flags the line they
   const errors = watchErrors(page);
   await open(page, 'inventory/stock-counts/ic-003');
   await expect(page.getByLabel('Counter', { exact: true })).toHaveCount(2);
-  await expect(page.getByLabel('Counter', { exact: true }).nth(0)).toHaveValue('Ben Salazar');
-  await expect(page.getByLabel('Counter', { exact: true }).nth(1)).toHaveValue('Carla Uy');
+  await expect.poll(() => shown(page.getByLabel('Counter', { exact: true }).nth(0))).toBe('Ben Salazar');
+  await expect.poll(() => shown(page.getByLabel('Counter', { exact: true }).nth(1))).toBe('Carla Uy');
   await expect(page.getByLabel("Ben Salazar's count")).toHaveCount(3);
   await expect(page.getByLabel("Carla Uy's count")).toHaveCount(3);
   await expect(page.locator('body')).toContainText('Differ — recount');
@@ -88,5 +88,25 @@ test('house bank accounts list the four bank accounts by bank name', async ({ pa
   for (const accountNo of ['0012-3456-7890', '3021-0456-77', '0001-2233-4455', '1012-3456-7891']) expect(text).toContain(accountNo);
   for (const bank of ['BDO Unibank', 'BPI', 'UnionBank']) expect(text).toContain(bank);
   expect(await rawIds(page)).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
+test('renaming a variant attribute value shows the new label on the variant, which still stores the id', async ({ page }) => {
+  const errors = watchErrors(page);
+  await open(page, 'settings/inventory/variant-attributes/va-001');
+  await expect(page.getByLabel('Attribute')).toHaveValue('Storage');
+  // Storage lists sizes smallest first: 128GB (va-001-01), then 256GB (va-001-02).
+  const second = page.getByLabel('Value', { exact: true }).nth(1);
+  await expect(second).toHaveValue('256GB');
+  await second.fill('256 GB');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page).toHaveURL(/variant-attributes$/);
+
+  // apl-0001 is the first iPhone 18 Pro Max: 256GB.
+  await open(page, 'inventory/items/apl-0001');
+  await expect.poll(() => screenText(page)).toContain('256 GB');
+  expect(await rawIds(page)).toEqual([]);
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('sikat-erp:variant-attributes') || '[]'));
+  expect(stored.find((a: { id: string }) => a.id === 'va-001').values[1]).toMatchObject({ id: 'va-001-02', label: '256 GB' });
   expect(errors).toEqual([]);
 });

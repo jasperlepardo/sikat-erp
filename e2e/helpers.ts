@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 /**
  * Ids are for linking, never for reading: a screen showing one means a lookup is missing. These
@@ -8,7 +8,7 @@ import { expect, type Page } from '@playwright/test';
  */
 const ID_PREFIXES = [
   'pt', 'prl', 'bpg', 'ind', 'emp', 'ter', 'chn', 'lds', 'emg', 'bpp', 'dun', 'hol', 'bnk', 'bcc', 'crd',
-  'fac', 'tec', 'plg', 'prj', 'hba', 'cnt', 'bin', 'ig',
+  'fac', 'tec', 'plg', 'prj', 'hba', 'cnt', 'bin', 'ig', 'va', 'vv',
 ];
 const RAW_ID = new RegExp(`\\b(?:(${ID_PREFIXES.join('|')})-[A-Za-z0-9-]*\\d[A-Za-z0-9-]*|ig-[A-Z]{2,4})\\b`, 'g');
 
@@ -60,3 +60,7 @@ export async function screenText(page: Page) {
 export async function rawIds(page: Page) {
   return [...new Set((await screenText(page)).match(RAW_ID) ?? [])];
 }
+
+/** What a field shows: an input's value, or the text of a button-style combobox (design system 0.34+ pickers). */
+export const shown = (field: Locator) =>
+  field.evaluate((el) => (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement ? el.value : (el.textContent ?? '').trim()));

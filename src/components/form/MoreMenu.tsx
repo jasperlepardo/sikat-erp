@@ -37,7 +37,7 @@ export function MoreMenu({
         type="button"
         intent="default"
         variant="solid"
-        size="extra-large"
+        size="large"
         aria-haspopup="menu"
         aria-expanded={open}
         trailingIcon={<Icon size={20}>keyboard_arrow_down</Icon>}

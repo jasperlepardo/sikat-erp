@@ -114,7 +114,7 @@ export function ArInvoiceList() {
         icon="receipt"
         title={presets.menu}
         actions={
-          <Button intent="primary" variant="solid" size="extra-large" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${AR_LIST_PATH}/new`)}>
+          <Button intent="primary" variant="solid" size="large" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${AR_LIST_PATH}/new`)}>
             New A/R invoice
           </Button>
         }

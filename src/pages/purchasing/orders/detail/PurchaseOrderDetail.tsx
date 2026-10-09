@@ -376,7 +376,7 @@ function PurchaseOrderForm() {
           type="details"
           icon="receipt_long"
           title={title}
-          subcopy={draft.vendorName ? `${draft.vendorCode} · ${draft.vendorName}` : 'Order goods or services from a vendor.'}
+          subcopy={isNew ? 'Order goods or services from a vendor.' : undefined}
           // A saved PO leads with previous/next (through the list, newest first); a new one with the icon.
           leading={
             isNew ? undefined : (
@@ -386,7 +386,7 @@ function PurchaseOrderForm() {
                   label="Next"
                   intent="default"
                   variant="solid"
-                  size="extra-large"
+                  size="large"
                   disabled={!nextId}
                   onClick={() => navigate(`${PO_LIST_PATH}/${nextId}`)}
                 >
@@ -397,7 +397,7 @@ function PurchaseOrderForm() {
                   label="Previous"
                   intent="default"
                   variant="solid"
-                  size="extra-large"
+                  size="large"
                   disabled={!prevId}
                   onClick={() => navigate(`${PO_LIST_PATH}/${prevId}`)}
                 >
@@ -425,11 +425,11 @@ function PurchaseOrderForm() {
           }
           actions={
             <>
-              <Button type="button" intent="default" variant="solid" size="extra-large" onClick={() => navigate(PO_LIST_PATH)}>
+              <Button type="button" intent="default" variant="solid" size="large" onClick={() => navigate(PO_LIST_PATH)}>
                 {ctx.readOnly ? 'Back' : 'Cancel'}
               </Button>
               {menu.length ? <MoreMenu items={menu} /> : null}
-              <Button type="submit" intent="primary" variant="solid" size="extra-large" disabled={saving}>
+              <Button type="submit" intent="primary" variant="solid" size="large" disabled={saving}>
                 {saving ? 'Saving…' : ctx.added ? 'Save' : 'Add'}
               </Button>
             </>

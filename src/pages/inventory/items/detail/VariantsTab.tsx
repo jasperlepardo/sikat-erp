@@ -17,21 +17,21 @@ import {
 } from '@jasperlepardo/sikat-design-system';
 import { Section } from '../../../../components/form/fields';
 import { RowMenu } from '../../../../components/form/RowMenu';
-import type { Item } from '../../../../mocks/items';
+import type { Item, VariantAxis, VariantValue } from '../../../../mocks/items';
 import { ItemSaveError, listVariants, saveItem, stockTotals } from '../../../../services/items';
 import { useAsync } from '../../../../services/useAsync';
 import { formatAmount } from '../../../../services/format';
 import { VariantAxesEditor } from './VariantAxesEditor';
 import { VariantPanel } from './VariantPanel';
-import { variantFromParent, type TabProps } from './types';
+import { valueIdOf, variantFromParent, variantValueLabels, type TabProps } from './types';
 
 const LIST_PATH = '/inventory/items';
 
-/** Cartesian product of all variant axes options → array of attribute maps. */
-function axisCombos(axes: { name: string; options: string[] }[]): Record<string, string>[] {
-  return axes.reduce<Record<string, string>[]>(
-    (acc, axis) => acc.flatMap((prev) => axis.options.map((opt) => ({ ...prev, [axis.name]: opt }))),
-    [{}],
+/** Cartesian product of every axis' values → one value list per combination. */
+function axisCombos(axes: VariantAxis[]): VariantValue[][] {
+  return axes.reduce<VariantValue[][]>(
+    (acc, axis) => acc.flatMap((prev) => axis.valueIds.map((valueId) => [...prev, { attributeId: axis.attributeId, valueId }])),
+    [[]],
   );
 }
 
@@ -49,13 +49,12 @@ export function VariantsTab({ draft, update }: TabProps) {
   const variants = useAsync(() => listVariants(draft.id ?? ''), [draft.id, version]);
 
   const axes = draft.variantAxes;
-  const hasValidAxes = axes.length > 0 && axes.every((a) => a.name && a.options.length > 0);
+  const hasValidAxes = axes.length > 0 && axes.every((a) => a.attributeId && a.valueIds.length > 0);
 
   const combos = hasValidAxes ? axisCombos(axes) : [];
-  const existingKeys = new Set(
-    (variants ?? []).map((v) => axes.map((a) => v.variantAttributes[a.name] ?? '').join('|')),
-  );
-  const newCombos = combos.filter((attrs) => !existingKeys.has(axes.map((a) => attrs[a.name] ?? '').join('|')));
+  const comboKey = (values: VariantValue[]) => axes.map((a) => valueIdOf(values, a.attributeId)).join('|');
+  const existingKeys = new Set((variants ?? []).map((v) => comboKey(v.variantValues)));
+  const newCombos = combos.filter((values) => !existingKeys.has(comboKey(values)));
 
   // Aggregate stock across all variants.
   const totalStock = useMemo(() => {
@@ -66,13 +65,13 @@ export function VariantsTab({ draft, update }: TabProps) {
     }, { inStock: 0, committed: 0, ordered: 0, available: 0 });
   }, [variants]);
 
-  // Variants whose attributes contain values not present in current axes options.
+  // Variants holding a value the options no longer offer.
   const staleVariants = useMemo(() => {
     if (!variants) return [];
     return variants.filter((v) =>
       axes.some((a) => {
-        const val = v.variantAttributes[a.name];
-        return val && !a.options.includes(val);
+        const valueId = valueIdOf(v.variantValues, a.attributeId);
+        return valueId && !a.valueIds.includes(valueId);
       }),
     );
   }, [variants, axes]);
@@ -82,8 +81,8 @@ export function VariantsTab({ draft, update }: TabProps) {
     setGenerating(true);
     setGenError(null);
     try {
-      for (const attrs of newCombos) {
-        await saveItem(variantFromParent(draft, attrs));
+      for (const values of newCombos) {
+        await saveItem(variantFromParent(draft, values));
       }
       setVersion((v) => v + 1);
     } catch (err) {
@@ -93,21 +92,18 @@ export function VariantsTab({ draft, update }: TabProps) {
     }
   };
 
-  /** Clear stale attributes — keeps the attribute key but clears the value so user can re-select. */
+  /** Clear stale values so the variant can be re-assigned. */
   const syncAttributes = async () => {
     for (const v of staleVariants) {
-      const synced: Record<string, string> = { ...v.variantAttributes };
-      for (const a of axes) {
-        if (synced[a.name] && !a.options.includes(synced[a.name])) synced[a.name] = '';
-      }
-      await saveItem({ ...v, variantAttributes: synced });
+      const offered = (x: VariantValue) => axes.find((a) => a.attributeId === x.attributeId)?.valueIds.includes(x.valueId) ?? true;
+      await saveItem({ ...v, variantValues: v.variantValues.filter(offered) });
     }
     setVersion((n) => n + 1);
   };
 
   /** Detach a variant: make it a standalone item by clearing its parent link. */
   const detach = async (v: Item) => {
-    await saveItem({ ...v, parentItemId: '', variantAxes: [], variantAttributes: {} });
+    await saveItem({ ...v, parentItemId: '', variantAxes: [], variantValues: [] });
     setVersion((n) => n + 1);
   };
 
@@ -129,8 +125,7 @@ export function VariantsTab({ draft, update }: TabProps) {
 
   if (!variants) return <Text tone="muted" className="p-4">Loading variants…</Text>;
 
-  const variantLabel = (v: Item) =>
-    axes.map((a) => v.variantAttributes[a.name]).filter(Boolean).join(' / ') || '—';
+  const variantLabel = (v: Item) => variantValueLabels(axes, v.variantValues).join(' / ') || '—';
 
   const columns: TableColumn<Item>[] = [
     {
@@ -227,10 +222,10 @@ export function VariantsTab({ draft, update }: TabProps) {
         <Checkbox
           checked={axes.length > 0}
           disabled={locked}
-          onChange={(checked) =>
+          onChange={(e) =>
             update(
-              checked
-                ? { variantAxes: [{ name: '', options: [] }], purchaseItem: false, salesItem: false, inventoryItem: false }
+              e.currentTarget.checked
+                ? { variantAxes: [{ attributeId: '', valueIds: [] }], purchaseItem: false, salesItem: false, inventoryItem: false }
                 : { variantAxes: [] },
             )
           }
@@ -248,9 +243,9 @@ export function VariantsTab({ draft, update }: TabProps) {
 
       {/* Stale attribute warning */}
       {staleVariants.length > 0 && (
-        <Alert intent="warning" title={`${staleVariants.length} variant${staleVariants.length !== 1 ? 's have' : ' has'} attributes that no longer match the options`}>
+        <Alert intent="warning" title={`${staleVariants.length} variant${staleVariants.length !== 1 ? 's have' : ' has'} values the options no longer offer`}>
           <div className="flex items-center gap-2">
-            <span>Option values were renamed or removed. Sync to clear the stale values so variants can be re-assigned.</span>
+            <span>Values were removed from the options above. Sync to clear them so the variants can be re-assigned.</span>
             <Button type="button" intent="warning" variant="outline" size="medium" onClick={syncAttributes}>
               Sync attributes
             </Button>
@@ -269,7 +264,7 @@ export function VariantsTab({ draft, update }: TabProps) {
             { label: 'Ordered', value: totalStock.ordered },
             { label: 'Available', value: totalStock.available },
           ].map(({ label, value }) => (
-            <div key={label} className="rounded-xl border border-border px-3 py-2">
+            <div key={label} className="rounded-xl border border-[var(--color-border-default)] text-body px-3 py-2">
               <div className="text-xs opacity-60">{label}</div>
               <div className={`text-sm font-semibold tabular-nums ${label === 'Available' && value < 0 ? 'text-danger' : ''}`}>
                 {value.toLocaleString('en-PH')}
@@ -303,7 +298,7 @@ export function VariantsTab({ draft, update }: TabProps) {
             variant="outline"
             size="large"
             leadingIcon={<Icon size={18}>add</Icon>}
-            onClick={() => navigate(`${LIST_PATH}/new`, { state: { variantOf: draft, variantAttrs: newCombos[0] ?? {} } })}
+            onClick={() => navigate(`${LIST_PATH}/new`, { state: { variantOf: draft, variantValues: newCombos[0] ?? [] } })}
           >
             New variant
           </Button>

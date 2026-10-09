@@ -135,10 +135,10 @@ export function QuickAddPanel<T extends MasterRow>({
               <IconButton intent="default" variant="link" label="Close" onClick={onCancel}>
                 <Icon size={20}>close</Icon>
               </IconButton>
-              <Button type="button" intent="default" variant="solid" size="extra-large" onClick={onCancel}>
+              <Button type="button" intent="default" variant="solid" size="large" onClick={onCancel}>
                 Cancel
               </Button>
-              <Button type="submit" intent="primary" variant="solid" size="extra-large" disabled={saving}>
+              <Button type="submit" intent="primary" variant="solid" size="large" disabled={saving}>
                 {saving ? 'Adding…' : 'Add'}
               </Button>
             </>

@@ -128,7 +128,7 @@ export function PaymentList() {
         icon="payments"
         title={presets.menu}
         actions={
-          <Button intent="primary" variant="solid" size="extra-large" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${PAYMENT_LIST_PATH}/new`)}>
+          <Button intent="primary" variant="solid" size="large" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${PAYMENT_LIST_PATH}/new`)}>
             New outgoing payment
           </Button>
         }

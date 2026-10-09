@@ -356,10 +356,10 @@ function ListView<T extends { id: string }>({
                 <IconButton type="button" label="Close" intent="default" variant="link" onClick={closePanel}>
                   <Icon size={20}>close</Icon>
                 </IconButton>
-                <Button type="button" intent="default" variant="solid" size="extra-large" onClick={closePanel}>
+                <Button type="button" intent="default" variant="solid" size="large" onClick={closePanel}>
                   Cancel
                 </Button>
-                <Button type="button" intent="primary" variant="solid" size="extra-large" disabled={panelSaving} onClick={savePanel}>
+                <Button type="button" intent="primary" variant="solid" size="large" disabled={panelSaving} onClick={savePanel}>
                   {panelSaving ? 'Saving…' : isPanelNew ? 'Add' : 'Save'}
                 </Button>
               </>
@@ -461,7 +461,7 @@ function RecordPage<T extends { id: string }>({
                 label="Next"
                 intent="default"
                 variant="solid"
-                size="extra-large"
+                size="large"
                 disabled={!nextId}
                 onClick={() => navigate(`${basePath}/${nextId}`)}
               >
@@ -472,7 +472,7 @@ function RecordPage<T extends { id: string }>({
                 label="Previous"
                 intent="default"
                 variant="solid"
-                size="extra-large"
+                size="large"
                 disabled={!prevId}
                 onClick={() => navigate(`${basePath}/${prevId}`)}
               >
@@ -483,10 +483,10 @@ function RecordPage<T extends { id: string }>({
         }
         actions={
           <>
-            <Button type="button" intent="default" variant="solid" size="extra-large" onClick={back}>
+            <Button type="button" intent="default" variant="solid" size="large" onClick={back}>
               Cancel
             </Button>
-            <Button type="button" intent="primary" variant="solid" size="extra-large" disabled={saving} onClick={save}>
+            <Button type="button" intent="primary" variant="solid" size="large" disabled={saving} onClick={save}>
               {saving ? 'Saving…' : isNew ? 'Add' : 'Save'}
             </Button>
           </>

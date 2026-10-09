@@ -162,14 +162,14 @@ function JournalEntryForm() {
           type="details"
           icon="menu_book"
           title={title}
-          subcopy={posted ? `${ORIGIN_LABEL[draft.origin]}${draft.originNo ? ` ${draft.originNo}` : ''} · ${formatDate(draft.postingDate)}` : 'Post debits and credits directly to the ledger.'}
+          subcopy={posted ? undefined : 'Post debits and credits directly to the ledger.'}
           leading={
             isNew ? undefined : (
               <>
-                <IconButton type="button" label="Next" intent="default" variant="solid" size="extra-large" disabled={!nextId} onClick={() => navigate(`${JE_LIST_PATH}/${nextId}`)}>
+                <IconButton type="button" label="Next" intent="default" variant="solid" size="large" disabled={!nextId} onClick={() => navigate(`${JE_LIST_PATH}/${nextId}`)}>
                   {panelHeaderIcons.arrowDownward}
                 </IconButton>
-                <IconButton type="button" label="Previous" intent="default" variant="solid" size="extra-large" disabled={!prevId} onClick={() => navigate(`${JE_LIST_PATH}/${prevId}`)}>
+                <IconButton type="button" label="Previous" intent="default" variant="solid" size="large" disabled={!prevId} onClick={() => navigate(`${JE_LIST_PATH}/${prevId}`)}>
                   {panelHeaderIcons.arrowUpward}
                 </IconButton>
               </>
@@ -189,11 +189,11 @@ function JournalEntryForm() {
           status={posted ? <Badge size="small" intent={JE_STATUS_INTENT[draft.status]}>{draft.status}</Badge> : undefined}
           actions={
             <>
-              <Button type="button" intent="default" variant="solid" size="extra-large" onClick={() => navigate(JE_LIST_PATH)}>
+              <Button type="button" intent="default" variant="solid" size="large" onClick={() => navigate(JE_LIST_PATH)}>
                 {posted ? 'Back' : 'Cancel'}
               </Button>
               {menu.length ? <MoreMenu items={menu} /> : null}
-              <Button type="submit" intent="primary" variant="solid" size="extra-large" disabled={saving}>
+              <Button type="submit" intent="primary" variant="solid" size="large" disabled={saving}>
                 {saving ? 'Saving…' : posted ? 'Save' : 'Add'}
               </Button>
             </>

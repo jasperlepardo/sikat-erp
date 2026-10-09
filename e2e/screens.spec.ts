@@ -25,8 +25,10 @@ const ROUTES = [
   'sales/deliveries',
   'sales/invoices',
   'sales/payments-received',
-  // Inventory: item groups, UoMs, warehouses, bins, counts, transfers, pricing.
+  // Inventory: item groups, UoMs, variant attributes, warehouses, bins, counts, transfers, pricing.
   'inventory/items',
+  'inventory/items/apl-fam-001',
+  'inventory/items/apl-0001',
   'inventory/stock-on-hand',
   'inventory/stock-movements',
   'inventory/stock-counts',
@@ -48,6 +50,8 @@ const ROUTES = [
   'settings/inventory/item-groups',
   'settings/inventory/uoms',
   'settings/inventory/manufacturers',
+  'settings/inventory/variant-attributes',
+  'settings/inventory/variant-attributes/va-001',
   'settings/accounting-and-tax/tax-codes',
   'settings/accounting-and-tax/withholding-groups',
 ];

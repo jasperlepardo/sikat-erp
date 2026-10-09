@@ -1,12 +1,18 @@
 import { useState } from 'react';
 import {
+  Badge,
   Button,
   Icon,
   IconButton,
   Text,
   TextField,
 } from '@jasperlepardo/sikat-design-system';
+import { MasterLookup, useCollection } from '../../../../components/form/MasterLookup';
 import type { VariantAxis } from '../../../../mocks/items';
+import type { VariantAttribute } from '../../../../mocks/itemMasters';
+import { variantAttributes } from '../../../../services/inventoryMasters';
+import { newId } from '../../../../services/useCollectionRows';
+import { variantAttributeDef } from '../../../settings/masterDefs';
 
 interface Props {
   axes: VariantAxis[];
@@ -16,41 +22,66 @@ interface Props {
 
 interface RowProps {
   axis: VariantAxis;
+  attribute: VariantAttribute | undefined;
+  /** Attributes other rows already use. */
+  taken: string[];
   onUpdate: (patch: Partial<VariantAxis>) => void;
   onRemove: () => void;
   disabled?: boolean;
 }
 
-function AxisRow({ axis, onUpdate, onRemove, disabled }: RowProps) {
+function AxisRow({ axis, attribute, taken, onUpdate, onRemove, disabled }: RowProps) {
   const [input, setInput] = useState('');
+  const [adding, setAdding] = useState(false);
 
-  const commit = () => {
-    const v = input.trim();
-    if (v && !axis.options.includes(v)) onUpdate({ options: [...axis.options, v] });
+  const labelOf = (id: string) => attribute?.values.find((v) => v.id === id)?.label ?? id;
+
+  /** Keeps the item's values in the attribute's order (Settings), so there's one order to maintain. */
+  const inOrder = (ids: string[]) => {
+    const rank = (id: string) => attribute?.values.findIndex((v) => v.id === id) ?? -1;
+    return [...ids].sort((a, b) => rank(a) - rank(b));
+  };
+  const addValue = (id: string) => {
+    if (!axis.valueIds.includes(id)) onUpdate({ valueIds: inOrder([...axis.valueIds, id]) });
+  };
+
+  /** Picks the typed value, adding it to the attribute's values (Settings) when it's new. */
+  const commit = async () => {
+    const label = input.trim();
+    if (!label || !attribute) return;
+    const existing = attribute.values.find((v) => v.label.toLowerCase() === label.toLowerCase());
+    if (existing) {
+      if (!existing.active) await variantAttributes.save({ ...attribute, values: attribute.values.map((v) => (v.id === existing.id ? { ...v, active: true } : v)) });
+      addValue(existing.id);
+    } else {
+      setAdding(true);
+      try {
+        const value = { id: newId(attribute.id), label, active: true };
+        await variantAttributes.save({ ...attribute, values: [...attribute.values, value] });
+        addValue(value.id);
+      } finally {
+        setAdding(false);
+      }
+    }
     setInput('');
   };
 
-  const removeOption = (opt: string) => onUpdate({ options: axis.options.filter((o) => o !== opt) });
-  const moveOption = (opt: string, dir: -1 | 1) => {
-    const arr = [...axis.options];
-    const i = arr.indexOf(opt);
-    const j = i + dir;
-    if (j < 0 || j >= arr.length) return;
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-    onUpdate({ options: arr });
-  };
+  const removeValue = (id: string) => onUpdate({ valueIds: axis.valueIds.filter((v) => v !== id) });
 
   return (
-    <div className="flex flex-col gap-1.5 rounded-xl border border-border p-3">
+    <div className="flex flex-col gap-1.5 rounded-xl border border-[var(--color-border-default)] text-body p-3">
       <div className="flex items-center gap-2">
-        <TextField
-          aria-label="Option name"
-          placeholder="e.g. Color, Size, Storage"
-          value={axis.name}
-          disabled={disabled}
-          className="flex-1 text-sm"
-          onChange={(e) => onUpdate({ name: e.currentTarget.value })}
-        />
+        <div className="flex-1">
+          <MasterLookup
+            def={variantAttributeDef}
+            fieldProps={{ 'aria-label': 'Attribute' }}
+            placeholder="Pick an attribute, e.g. Color, Size, Storage"
+            value={axis.attributeId}
+            where={(a) => !taken.includes(a.id)}
+            disabled={disabled}
+            onChange={(attributeId) => onUpdate({ attributeId, valueIds: [] })}
+          />
+        </div>
         {!disabled && (
           <IconButton
             type="button"
@@ -65,57 +96,62 @@ function AxisRow({ axis, onUpdate, onRemove, disabled }: RowProps) {
         )}
       </div>
 
-      {/* Option values as tags */}
-      {axis.options.length > 0 && (
-        <div className="flex flex-wrap gap-1">
-          {axis.options.map((opt, idx) => (
-            <span key={opt} className="inline-flex items-center gap-0.5 rounded-full border border-border px-2 py-0.5 text-xs">
-              {!disabled && idx > 0 && (
-                <button type="button" aria-label={`Move ${opt} up`} className="opacity-40 hover:opacity-100 leading-none" onClick={() => moveOption(opt, -1)}>‹</button>
-              )}
-              {opt}
-              {!disabled && idx < axis.options.length - 1 && (
-                <button type="button" aria-label={`Move ${opt} down`} className="opacity-40 hover:opacity-100 leading-none" onClick={() => moveOption(opt, 1)}>›</button>
-              )}
-              {!disabled && (
-                <button type="button" aria-label={`Remove ${opt}`} className="ml-0.5 hover:text-danger leading-none" onClick={() => removeOption(opt)}>×</button>
-              )}
-            </span>
+      {/* Values the item offers */}
+      {axis.valueIds.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          {axis.valueIds.map((id) => (
+            <Badge
+              key={id}
+              intent="primary"
+              variant="outline"
+              size="medium"
+              onDismiss={disabled ? undefined : () => removeValue(id)}
+              dismissLabel={`Remove ${labelOf(id)}`}
+            >
+              {labelOf(id)}
+            </Badge>
           ))}
         </div>
       )}
 
-      {!disabled && (
+      {!disabled && attribute && (
         <TextField
-          aria-label={`Add ${axis.name || 'option'} value`}
+          aria-label={`Add ${attribute.name} value`}
           placeholder="Type a value, press Enter"
           value={input}
+          disabled={adding}
           className="text-sm"
           onChange={(e) => setInput(e.currentTarget.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ',') {
               e.preventDefault();
-              commit();
+              void commit();
             }
           }}
           trailingIcon={
             input.trim() ? (
-              <button type="button" className="p-1" onClick={commit}>
+              <button type="button" className="p-1" onClick={() => void commit()}>
                 <Icon size={16}>check</Icon>
               </button>
             ) : undefined
           }
         />
       )}
+      {!disabled && !attribute && (
+        <Text variant="small" tone="muted">
+          Pick an attribute to choose its values. Type a new name to add it to Settings › Inventory.
+        </Text>
+      )}
     </div>
   );
 }
 
 export function VariantAxesEditor({ axes, onChange, disabled }: Props) {
+  const attributes = useCollection(variantAttributes);
   const updateAxis = (i: number, patch: Partial<VariantAxis>) =>
     onChange(axes.map((a, j) => (j === i ? { ...a, ...patch } : a)));
   const removeAxis = (i: number) => onChange(axes.filter((_, j) => j !== i));
-  const addAxis = () => onChange([...axes, { name: '', options: [] }]);
+  const addAxis = () => onChange([...axes, { attributeId: '', valueIds: [] }]);
 
   return (
     <div className="flex flex-col gap-2">
@@ -128,6 +164,8 @@ export function VariantAxesEditor({ axes, onChange, disabled }: Props) {
         <AxisRow
           key={i}
           axis={axis}
+          attribute={attributes?.find((a) => a.id === axis.attributeId)}
+          taken={axes.filter((_, j) => j !== i).map((a) => a.attributeId)}
           onUpdate={(patch) => updateAxis(i, patch)}
           onRemove={() => removeAxis(i)}
           disabled={disabled}

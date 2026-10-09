@@ -299,7 +299,7 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
             type="details"
             icon={config.icon}
             title={isNew ? `New ${config.singular.toLowerCase()}` : draft.name}
-            subcopy={isNew ? config.subcopy : draft.code}
+            subcopy={isNew ? config.subcopy : undefined}
             // A saved partner leads with previous/next (through the list it was opened from); a new one with the icon.
             leading={
               isNew ? undefined : (
@@ -309,7 +309,7 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
                     label="Next"
                     intent="default"
                     variant="solid"
-                    size="extra-large"
+                    size="large"
                     disabled={!nextId}
                     onClick={() => navigate(`${config.basePath}/${nextId}`)}
                   >
@@ -320,7 +320,7 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
                     label="Previous"
                     intent="default"
                     variant="solid"
-                    size="extra-large"
+                    size="large"
                     disabled={!prevId}
                     onClick={() => navigate(`${config.basePath}/${prevId}`)}
                   >
@@ -355,11 +355,11 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
             }
             actions={
               <>
-                <Button type="button" intent="default" variant="solid" size="extra-large" onClick={() => navigate(config.basePath)}>
+                <Button type="button" intent="default" variant="solid" size="large" onClick={() => navigate(config.basePath)}>
                   Cancel
                 </Button>
                 {menu.length ? <MoreMenu items={menu} /> : null}
-                <Button type="submit" intent="primary" variant="solid" size="extra-large" disabled={saving}>
+                <Button type="submit" intent="primary" variant="solid" size="large" disabled={saving}>
                   {saving ? 'Saving…' : isNew ? 'Add' : 'Save'}
                 </Button>
               </>

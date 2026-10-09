@@ -123,7 +123,7 @@ export function DeliveryList() {
         icon="local_shipping"
         title={presets.menu}
         actions={
-          <Button intent="primary" variant="solid" size="extra-large" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${DN_LIST_PATH}/new`)}>
+          <Button intent="primary" variant="solid" size="large" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${DN_LIST_PATH}/new`)}>
             New delivery
           </Button>
         }

@@ -7,6 +7,7 @@
  */
 import { blankPostalAddress, type PostalAddress } from './address';
 import { SEED_STORE_WAREHOUSES } from './storeWarehouses';
+import { CATALOG_ATTRIBUTES } from './appleCatalog';
 
 export type ValuationMethod = 'Moving Average' | 'FIFO' | 'Standard Price' | 'Serial/Batch';
 
@@ -212,6 +213,21 @@ export interface ItemProperty {
 }
 export const MAX_ITEM_PROPERTIES = 64;
 
+/** One value of a variant attribute, e.g. "256GB" of Storage. */
+export interface VariantAttributeValue {
+  id: string;
+  label: string;
+  active: boolean;
+}
+
+/** Something items vary by, e.g. Storage or Color, with every value it can take. Shared by all parent items. */
+export interface VariantAttribute {
+  id: string;
+  name: string;
+  values: VariantAttributeValue[];
+  active: boolean;
+}
+
 export interface InventorySettings {
   id: string;
   lengthUnit: 'cm' | 'm' | 'in';
@@ -339,3 +355,5 @@ export const SEED_ITEM_PROPERTIES: ItemProperty[] = PROPERTY_SEED.flatMap(([g, n
 export const propertyId = (name: string) => SEED_ITEM_PROPERTIES.find((p) => p.name === name)!.id;
 
 export const SEED_INVENTORY_SETTINGS: InventorySettings[] = [{ id: 'inventory', lengthUnit: 'cm', weightUnit: 'kg' }];
+
+export const SEED_VARIANT_ATTRIBUTES: VariantAttribute[] = CATALOG_ATTRIBUTES;

@@ -130,7 +130,7 @@ export function GoodsReceiptList() {
         icon="inventory"
         title={presets.menu}
         actions={
-          <Button intent="primary" variant="solid" size="extra-large" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${GR_LIST_PATH}/new`)}>
+          <Button intent="primary" variant="solid" size="large" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${GR_LIST_PATH}/new`)}>
             New goods receipt
           </Button>
         }

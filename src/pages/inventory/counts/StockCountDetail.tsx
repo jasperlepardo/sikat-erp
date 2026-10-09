@@ -9,10 +9,10 @@ import { ProblemsAlert, problemCollector, type Problem } from '../../../componen
 import { useCollection } from '../../../components/form/MasterLookup';
 import { CURRENT_USER_ID } from '../../../mocks/common';
 import { COUNTING_TYPES, COUNT_SERIES, COUNT_STATUSES, blankCounting, newCountLine, newCounter, type Counter, type CounterType, type CountStatus } from '../../../mocks/inventoryCountings';
-import { formatDate, todayISO } from '../../../services/dates';
+import { todayISO } from '../../../services/dates';
 import { loadInventoryMasters } from '../../../services/inventoryMasters';
 import { listItems } from '../../../services/items';
-import { closeCounting, countNumber, countSummary, countWarehouses, getCounting, listCountings, postingNumber, getPosting, saveCounting, saveCountingRemarks } from '../../../services/inventoryCountings';
+import { closeCounting, countNumber, countSummary, getCounting, listCountings, postingNumber, getPosting, saveCounting, saveCountingRemarks } from '../../../services/inventoryCountings';
 import { nameIn, salesEmployees } from '../../../services/partnerMasters';
 import { CountLines, type CountingDraft } from './CountLines';
 import { COUNT_LIST_PATH, POSTING_LIST_PATH, nowHHMM, type CountMasters } from './shared';
@@ -115,7 +115,6 @@ function CountForm() {
   const prevId = at > 0 ? siblings[at - 1] : undefined;
   const nextId = at >= 0 && at < siblings.length - 1 ? siblings[at + 1] : undefined;
   const summary = countSummary(draft);
-  const whs = countWarehouses(draft);
 
   const update = (patch: Partial<CountingDraft>) => setDraft({ ...draft, ...patch });
   const h = bind(draft, update);
@@ -185,14 +184,14 @@ function CountForm() {
           type="details"
           icon="inventory"
           title={isNew ? 'New inventory counting' : `Inventory counting ${countNumber(draft)}`}
-          subcopy={whs.length ? `${whs.join(', ')} · ${formatDate(draft.countDate)} ${draft.countTime}` : 'Record what’s on the shelf against the books. Stock changes only through an Inventory Posting.'}
+          subcopy={isNew ? 'Record what’s on the shelf against the books. Stock changes only through an Inventory Posting.' : undefined}
           leading={
             isNew ? undefined : (
               <>
-                <IconButton type="button" label="Next" intent="default" variant="solid" size="extra-large" disabled={!nextId} onClick={() => navigate(`${COUNT_LIST_PATH}/${nextId}`)}>
+                <IconButton type="button" label="Next" intent="default" variant="solid" size="large" disabled={!nextId} onClick={() => navigate(`${COUNT_LIST_PATH}/${nextId}`)}>
                   {panelHeaderIcons.arrowDownward}
                 </IconButton>
-                <IconButton type="button" label="Previous" intent="default" variant="solid" size="extra-large" disabled={!prevId} onClick={() => navigate(`${COUNT_LIST_PATH}/${prevId}`)}>
+                <IconButton type="button" label="Previous" intent="default" variant="solid" size="large" disabled={!prevId} onClick={() => navigate(`${COUNT_LIST_PATH}/${prevId}`)}>
                   {panelHeaderIcons.arrowUpward}
                 </IconButton>
               </>
@@ -212,7 +211,7 @@ function CountForm() {
           status={isNew ? undefined : <Badge size="small" intent={COUNT_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
           actions={
             <>
-              <Button type="button" intent="default" variant="solid" size="extra-large" onClick={() => navigate(COUNT_LIST_PATH)}>
+              <Button type="button" intent="default" variant="solid" size="large" onClick={() => navigate(COUNT_LIST_PATH)}>
                 Cancel
               </Button>
               {menu.length ? <MoreMenu items={menu} /> : null}
@@ -221,7 +220,7 @@ function CountForm() {
                   type="button"
                   intent="default"
                   variant="solid"
-                  size="extra-large"
+                  size="large"
                   leadingIcon={<Icon size={20}>arrow_forward</Icon>}
                   disabled={saving || !summary.counted}
                   onClick={() => submit(null, 'copy')}
@@ -229,7 +228,7 @@ function CountForm() {
                   Copy to inventory posting
                 </Button>
               ) : null}
-              <Button type="submit" intent="primary" variant="solid" size="extra-large" disabled={saving}>
+              <Button type="submit" intent="primary" variant="solid" size="large" disabled={saving}>
                 {saving ? 'Saving…' : isNew ? 'Add' : open ? 'Update' : 'Save'}
               </Button>
             </>

@@ -293,14 +293,14 @@ function SalesOrderForm() {
           type="details"
           icon="shopping_bag"
           title={title}
-          subcopy={draft.customerName ? `${draft.customerCode} · ${draft.customerName}` : 'Take an order from a customer.'}
+          subcopy={isNew ? 'Take an order from a customer.' : undefined}
           leading={
             isNew ? undefined : (
               <>
-                <IconButton type="button" label="Next" intent="default" variant="solid" size="extra-large" disabled={!nextId} onClick={() => navigate(`${SO_LIST_PATH}/${nextId}`)}>
+                <IconButton type="button" label="Next" intent="default" variant="solid" size="large" disabled={!nextId} onClick={() => navigate(`${SO_LIST_PATH}/${nextId}`)}>
                   {panelHeaderIcons.arrowDownward}
                 </IconButton>
-                <IconButton type="button" label="Previous" intent="default" variant="solid" size="extra-large" disabled={!prevId} onClick={() => navigate(`${SO_LIST_PATH}/${prevId}`)}>
+                <IconButton type="button" label="Previous" intent="default" variant="solid" size="large" disabled={!prevId} onClick={() => navigate(`${SO_LIST_PATH}/${prevId}`)}>
                   {panelHeaderIcons.arrowUpward}
                 </IconButton>
               </>
@@ -310,11 +310,11 @@ function SalesOrderForm() {
           status={isNew ? undefined : <Badge size="small" intent={SO_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
           actions={
             <>
-              <Button type="button" intent="default" variant="solid" size="extra-large" onClick={() => navigate(SO_LIST_PATH)}>
+              <Button type="button" intent="default" variant="solid" size="large" onClick={() => navigate(SO_LIST_PATH)}>
                 {ctx.readOnly ? 'Back' : 'Cancel'}
               </Button>
               {menu.length ? <MoreMenu items={menu} /> : null}
-              <Button type="submit" intent="primary" variant="solid" size="extra-large" disabled={saving}>
+              <Button type="submit" intent="primary" variant="solid" size="large" disabled={saving}>
                 {saving ? 'Saving…' : ctx.added ? 'Update' : 'Add'}
               </Button>
             </>

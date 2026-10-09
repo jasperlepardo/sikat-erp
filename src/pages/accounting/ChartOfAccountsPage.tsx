@@ -357,7 +357,7 @@ export function ChartOfAccountsPage() {
         icon="account_tree"
         title="Chart of Accounts"
         actions={
-          <Button intent="primary" variant="solid" size="extra-large" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${BASE}/new`)}>
+          <Button intent="primary" variant="solid" size="large" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${BASE}/new`)}>
             New account
           </Button>
         }

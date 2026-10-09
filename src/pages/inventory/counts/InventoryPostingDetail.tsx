@@ -202,14 +202,14 @@ function PostingForm() {
           type="details"
           icon="fact_check"
           title={added ? `Inventory posting ${postingNumber(draft)}` : 'New inventory posting'}
-          subcopy={whs.length ? `${whs.join(', ')} · posted ${formatDate(draft.postingDate)}` : 'Adjust stock to what was counted, and book the difference.'}
+          subcopy={isNew ? 'Adjust stock to what was counted, and book the difference.' : undefined}
           leading={
             isNew ? undefined : (
               <>
-                <IconButton type="button" label="Next" intent="default" variant="solid" size="extra-large" disabled={!nextId} onClick={() => navigate(`${POSTING_LIST_PATH}/${nextId}`)}>
+                <IconButton type="button" label="Next" intent="default" variant="solid" size="large" disabled={!nextId} onClick={() => navigate(`${POSTING_LIST_PATH}/${nextId}`)}>
                   {panelHeaderIcons.arrowDownward}
                 </IconButton>
-                <IconButton type="button" label="Previous" intent="default" variant="solid" size="extra-large" disabled={!prevId} onClick={() => navigate(`${POSTING_LIST_PATH}/${prevId}`)}>
+                <IconButton type="button" label="Previous" intent="default" variant="solid" size="large" disabled={!prevId} onClick={() => navigate(`${POSTING_LIST_PATH}/${prevId}`)}>
                   {panelHeaderIcons.arrowUpward}
                 </IconButton>
               </>
@@ -229,10 +229,10 @@ function PostingForm() {
           status={added ? <Badge size="small" intent="success">Posted</Badge> : undefined}
           actions={
             <>
-              <Button type="button" intent="default" variant="solid" size="extra-large" onClick={() => navigate(POSTING_LIST_PATH)}>
+              <Button type="button" intent="default" variant="solid" size="large" onClick={() => navigate(POSTING_LIST_PATH)}>
                 Cancel
               </Button>
-              <Button type="submit" intent="primary" variant="solid" size="extra-large" disabled={saving}>
+              <Button type="submit" intent="primary" variant="solid" size="large" disabled={saving}>
                 {saving ? 'Saving…' : added ? 'Save' : 'Add'}
               </Button>
             </>

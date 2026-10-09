@@ -253,12 +253,12 @@ function DprForm() {
             type="details"
             icon="savings"
             title={title}
-            subcopy={draft.vendorName ? `${draft.vendorCode} · ${draft.vendorName}${draft.vendorRef ? ` · ${draft.vendorRef}` : ''}` : 'Request an advance a vendor asks for before delivering.'}
+            subcopy={isNew ? 'Request an advance a vendor asks for before delivering.' : undefined}
             leading={
               isNew ? undefined : (
                 <>
-                  <IconButton type="button" label="Next" intent="default" variant="solid" size="extra-large" disabled={!nextId} onClick={() => navigate(`${DPR_LIST_PATH}/${nextId}`)}>{panelHeaderIcons.arrowDownward}</IconButton>
-                  <IconButton type="button" label="Previous" intent="default" variant="solid" size="extra-large" disabled={!prevId} onClick={() => navigate(`${DPR_LIST_PATH}/${prevId}`)}>{panelHeaderIcons.arrowUpward}</IconButton>
+                  <IconButton type="button" label="Next" intent="default" variant="solid" size="large" disabled={!nextId} onClick={() => navigate(`${DPR_LIST_PATH}/${nextId}`)}>{panelHeaderIcons.arrowDownward}</IconButton>
+                  <IconButton type="button" label="Previous" intent="default" variant="solid" size="large" disabled={!prevId} onClick={() => navigate(`${DPR_LIST_PATH}/${prevId}`)}>{panelHeaderIcons.arrowUpward}</IconButton>
                 </>
               )
             }
@@ -273,9 +273,9 @@ function DprForm() {
             }
             actions={
               <>
-                <Button type="button" intent="default" variant="solid" size="extra-large" onClick={() => navigate(DPR_LIST_PATH)}>{added ? 'Back' : 'Cancel'}</Button>
+                <Button type="button" intent="default" variant="solid" size="large" onClick={() => navigate(DPR_LIST_PATH)}>{added ? 'Back' : 'Cancel'}</Button>
                 {menu.length ? <MoreMenu items={menu} /> : null}
-                <Button type="submit" intent="primary" variant="solid" size="extra-large" disabled={saving}>{saving ? 'Saving…' : added ? 'Save' : 'Add'}</Button>
+                <Button type="submit" intent="primary" variant="solid" size="large" disabled={saving}>{saving ? 'Saving…' : added ? 'Save' : 'Add'}</Button>
               </>
             }
           />

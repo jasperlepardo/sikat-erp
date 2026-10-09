@@ -141,7 +141,7 @@ export function ReturnsList({ kind }: { kind: Kind }) {
         icon="assignment_return"
         title={presets.menu}
         actions={
-          <Button intent="primary" variant="solid" size="extra-large" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${path}/new`)}>
+          <Button intent="primary" variant="solid" size="large" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${path}/new`)}>
             {kind === 'returns' ? 'New goods return' : 'New A/P credit memo'}
           </Button>
         }

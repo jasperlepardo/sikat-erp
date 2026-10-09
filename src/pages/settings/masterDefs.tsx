@@ -2,10 +2,11 @@
  * The master-data lists the business partner form picks from. Each definition drives its
  * Settings tab and the "+ Add" panel of every field that uses it (components/form/MasterLookup).
  */
-import { Button, Text } from '@jasperlepardo/sikat-design-system';
+import { Button, Checkbox, Icon, Text, TextField } from '@jasperlepardo/sikat-design-system';
 import { FieldStack, ReadOnly, bind, type Errors } from '../../components/form/fields';
 import { statusColumn, uniqueRequired } from '../../components/form/MasterList';
 import { AccountField } from '../../components/form/AccountField';
+import { DataTable } from '../../components/form/DataTable';
 import type { MasterDef } from '../../components/form/MasterLookup';
 import { MAX_PARTNER_PROPERTIES, type Bank, type BpGroup, type Country, type HouseBankAccount, type NamedEntry, PRICE_ROUNDING, type PaymentTerm, type PriceList, type Project } from '../../mocks/partnerMasters';
 import { accountText } from '../../mocks/chartOfAccounts';
@@ -24,10 +25,12 @@ import {
   type Manufacturer,
   type ShippingType,
   type UnitOfMeasure,
+  type VariantAttribute,
+  type VariantAttributeValue,
   type WarrantyTemplate,
 } from '../../mocks/itemMasters';
 import { accounts as glAccounts, currencies } from '../../services/masterData';
-import { manufacturers, shippingTypes, unitsOfMeasure, warehouses, warrantyTemplates } from '../../services/inventoryMasters';
+import { manufacturers, shippingTypes, unitsOfMeasure, variantAttributes, warehouses, warrantyTemplates } from '../../services/inventoryMasters';
 import { blankCurrency, validateCurrency } from './accounting-tax/CurrenciesTab';
 import type { Company } from '../../mocks/companies';
 import { addressSummary, blankPostalAddress } from '../../mocks/address';
@@ -642,6 +645,104 @@ export const uomDef: MasterDef<UnitOfMeasure> = {
         {f.num('weight', 'Weight', { suffix: u.weightUnit, hint: 'Gross weight of one unit, with packaging.' })}
         {f.status('active', 'Status')}
       </FieldStack>
+    );
+  },
+};
+
+const valueKey = (v: VariantAttributeValue) => `value:${v.id}`;
+
+export const variantAttributeDef: MasterDef<VariantAttribute> = {
+  collection: variantAttributes,
+  icon: 'tune',
+  title: 'Variant attributes',
+  noun: 'variant attribute',
+  home: INVENTORY,
+  description: 'What items vary by, like Storage or Color, and the values each can take. A parent item picks its attributes and values here; renaming one renames it on every variant.',
+  blank: (name) => ({ id: '', name, values: [], active: true }),
+  value: (a) => a.id,
+  label: (a) => a.name,
+  columns: [
+    { key: 'name', header: 'Attribute', cell: (a) => a.name },
+    { key: 'values', header: 'Values', cell: (a) => a.values.filter((v) => v.active).map((v) => v.label).join(', ') || '—' },
+    statusColumn<VariantAttribute>(),
+  ],
+  searchText: (a) => `${a.name} ${a.values.map((v) => v.label).join(' ')}`,
+  normalize: (a) => ({ ...a, name: a.name.trim(), values: a.values.map((v) => ({ ...v, label: v.label.trim() })) }),
+  validate: (a, all) => {
+    const e: Errors = {};
+    uniqueRequired(e, a, all, 'name', 'Attribute');
+    const seen = new Set<string>();
+    for (const v of a.values) {
+      const label = v.label.trim().toLowerCase();
+      if (!label) e[valueKey(v)] = 'Enter a value.';
+      else if (seen.has(label)) e[valueKey(v)] = `${v.label.trim()} is listed twice.`;
+      seen.add(label);
+    }
+    return e;
+  },
+  editor: (a, update, errors) => {
+    const f = bind(a, update);
+    const patchValue = (id: string, p: Partial<VariantAttributeValue>) =>
+      update({ values: a.values.map((v) => (v.id === id ? { ...v, ...p } : v)) });
+    // Saved values may be on variants, so they deactivate rather than delete.
+    const saved = new Set(variantAttributes.snapshot().find((x) => x.id === a.id)?.values.map((v) => v.id) ?? []);
+    return (
+      <>
+        <FieldStack>
+          {f.text('name', 'Attribute', { required: true, error: errors.name, placeholder: 'e.g. Storage, Color, Size' })}
+        </FieldStack>
+        <DataTable
+          icon="list"
+          title="Values"
+          description="Parent items offer a pick of these. Deactivate a value to stop offering it; variants that have it keep it."
+          rows={a.values}
+          getRowId={(v) => v.id}
+          columns={[
+            {
+              key: 'label',
+              header: 'Value',
+              cell: (v) => (
+                <div className="w-64">
+                  <TextField
+                    aria-label="Value"
+                    placeholder="e.g. 256GB"
+                    invalid={!!errors[valueKey(v)]}
+                    value={v.label}
+                    onChange={(ev) => patchValue(v.id, { label: ev.currentTarget.value })}
+                  />
+                  {errors[valueKey(v)] && (
+                    <Text variant="caption" tone="danger" className="mt-1">
+                      {errors[valueKey(v)]}
+                    </Text>
+                  )}
+                </div>
+              ),
+            },
+            {
+              key: 'active',
+              header: 'Active',
+              cell: (v) => <Checkbox aria-label={`${v.label} active`} checked={v.active} onChange={(e) => patchValue(v.id, { active: e.currentTarget.checked })} />,
+            },
+          ]}
+          unsortable={['label', 'active']}
+          onRemove={(picked) => update({ values: a.values.filter((v) => saved.has(v.id) || !picked.includes(v)) })}
+          actions={
+            <Button
+              type="button"
+              size="small"
+              intent="primary"
+              variant="solid"
+              aria-label="New value"
+              leadingIcon={<Icon size={16}>add</Icon>}
+              onClick={() => update({ values: [...a.values, { id: newId(a.id || 'vv'), label: '', active: true }] })}
+            >
+              New
+            </Button>
+          }
+          empty={<Text variant="small" tone="muted">No values yet.</Text>}
+        />
+        <FieldStack>{f.status('active', 'Status')}</FieldStack>
+      </>
     );
   },
 };

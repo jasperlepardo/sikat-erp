@@ -71,10 +71,18 @@ export interface ItemBarcode {
   freeText: string;
 }
 
-/** One dimension along which an item varies, e.g. { name: 'Storage', options: ['256GB', '512GB', '1TB'] }. */
+/** One attribute a parent item varies by, and which of its values the item offers, in order. */
 export interface VariantAxis {
-  name: string;
-  options: string[];
+  /** Variant attribute id (Settings › Inventory › Variant attributes). */
+  attributeId: string;
+  /** Ids of the attribute's values. */
+  valueIds: string[];
+}
+
+/** A variant's value of one of its parent's attributes. */
+export interface VariantValue {
+  attributeId: string;
+  valueId: string;
 }
 
 export interface Item {
@@ -102,8 +110,8 @@ export interface Item {
   variantAxes: VariantAxis[];
   /** Parent item id when this is a variant; '' on standalone and parent items. */
   parentItemId: string;
-  /** Attribute values keyed by axis name, e.g. { Storage: '256GB', Color: 'Black' }. '' parentItemId means ignored. */
-  variantAttributes: Record<string, string>;
+  /** This variant's value of each of the parent's attributes. Empty on standalone and parent items. */
+  variantValues: VariantValue[];
 
   // General
   purchaseItem: boolean;
@@ -257,7 +265,7 @@ export const unitCost = (item: ItemUoms & Pick<Item, 'itemCost'>, uom: string) =
  */
 export const VARIANT_OWN_FIELDS = new Set<keyof Item>([
   'id', 'itemNo', 'description', 'foreignName', 'sellingItemNo', 'gtin',
-  'parentItemId', 'variantAxes', 'variantAttributes',
+  'parentItemId', 'variantAxes', 'variantValues',
   // Usage flags: variants are the actual saleable/purchasable items; parent is a template only.
   'purchaseItem', 'salesItem', 'inventoryItem', 'fixedAsset',
   // uoms, purchasingUom, salesUom are global — inherited from the parent so updating the
@@ -285,7 +293,7 @@ const VARIANT_GLOBAL_ZEROS: Omit<Item, 'id'> = {
   itemNo: '', name: '', description: '', foreignName: '', sellingItemNo: '', gtin: '',
   itemType: 'Items', itemGroupId: '', inventoryUom: 'pc', uoms: [], purchasingUom: 'pc', salesUom: 'pc',
   manageBy: 'None', hasTransactions: false,
-  variantAxes: [], parentItemId: '', variantAttributes: {},
+  variantAxes: [], parentItemId: '', variantValues: [],
   purchaseItem: false, salesItem: false, inventoryItem: false, fixedAsset: false,
   valuationMethod: 'Moving Average', glBy: 'Item Group',
   inventoryAccount: '', cogsAccount: '', revenueAccount: '',
@@ -363,7 +371,7 @@ export function blankItem(groupOrName: ItemGroup | string = SEED_ITEM_GROUPS[0])
     hasTransactions: false,
     variantAxes: [],
     parentItemId: '',
-    variantAttributes: {},
+    variantValues: [],
     purchaseItem: true,
     salesItem: true,
     inventoryItem: true,
@@ -526,7 +534,7 @@ const APPLE_PARENT_ITEMS: Item[] = catalog.families.map((f) => {
     hasTransactions: false,
     variantAxes: f.variantAxes,
     parentItemId: '',
-    variantAttributes: {},
+    variantValues: [],
     purchaseItem: false,
     salesItem: false,
     inventoryItem: false,
@@ -559,7 +567,7 @@ const APPLE_ITEMS: Item[] = catalog.entries.map((e, n) => {
     name: e.name,
     description: e.description,
     parentItemId: e.familyId,
-    variantAttributes: e.variantAttributes,
+    variantValues: e.variantValues,
     manageBy: family.serial ? 'Serial Numbers' : 'None',
     countryOfOriginCode: '',
     customsGroup: CUSTOMS_BY_GROUP[family.group] ?? ACCESSORY_CUSTOMS.find(([re]) => re.test(e.itemNo))?.[1] ?? '',

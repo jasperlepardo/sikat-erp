@@ -69,7 +69,7 @@ function CountsShell({
           <Button
             intent="primary"
             variant="solid"
-            size="extra-large"
+            size="large"
             leadingIcon={<Icon size={20}>add</Icon>}
             onClick={() => navigate(`${postings ? POSTING_LIST_PATH : COUNT_LIST_PATH}/new`)}
           >

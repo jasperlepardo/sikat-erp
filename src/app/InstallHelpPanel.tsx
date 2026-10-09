@@ -46,7 +46,7 @@ export function InstallHelpPanel({ onClose }: { onClose: () => void }) {
               <IconButton intent="default" variant="link" label="Close" onClick={onClose}>
                 <Icon size={20}>close</Icon>
               </IconButton>
-              <Button type="button" intent="primary" variant="solid" size="extra-large" onClick={onClose}>
+              <Button type="button" intent="primary" variant="solid" size="large" onClick={onClose}>
                 Done
               </Button>
             </>

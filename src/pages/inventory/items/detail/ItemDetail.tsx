@@ -31,6 +31,7 @@ import {
   type ItemType,
   type ItemVendor,
   type ItemWarehouse,
+  type VariantValue,
 } from '../../../../mocks/items';
 import {
   EMPTY_INVENTORY_MASTERS,
@@ -41,6 +42,8 @@ import {
   unitsOfMeasure,
   uomGroups,
   warrantyTemplates,
+  variantAttributeName,
+  variantValueLabel,
   type InventoryMasters,
 } from '../../../../services/inventoryMasters';
 import type { Partner } from '../../../../mocks/partners';
@@ -66,7 +69,7 @@ import { UomGroupPanel, UomsTab, uomErrorKey } from './UomsTab';
 import { VendorPanel, VendorsCards } from './VendorsSection';
 import { WarehousePanel, binErrorKey } from './WarehousesSection';
 import { uomDef } from '../../../settings/masterDefs';
-import { LOCKED_HINT, asOptions, variantFromParent, type Draft, type TaxMasters } from './types';
+import { LOCKED_HINT, asOptions, valueIdOf, variantFromParent, type Draft, type TaxMasters } from './types';
 
 const LIST_PATH = '/inventory/items';
 
@@ -124,6 +127,10 @@ function validate(d: Draft, codeMode: 'auto' | 'manual', inv: InventoryMasters):
     need(!b.uom || d.uoms.some((u) => u.uom === b.uom), 'barcodes', `barcode:${b.id}:uom`, `${b.uom} isn't one of the item's units.`);
   }
 
+  for (const [i, a] of d.variantAxes.entries()) {
+    need(a.attributeId, 'variants', `axis:${i}`, `Pick an attribute for option ${i + 1}, or remove it.`);
+    need(!a.attributeId || a.valueIds.length > 0, 'variants', `axis:${i}`, `Pick at least one value for option ${i + 1}.`);
+  }
   need(d.variantAxes.length > 0 || d.purchaseItem || d.salesItem || d.inventoryItem, 'general', 'usage', 'Tick at least one of purchase, sales or inventory item.');
   need(!d.validFrom || !d.validTo || d.validFrom <= d.validTo, 'general', 'validTo', 'Valid to is before Valid from.');
   need(!d.exciseTax || d.exciseCategory, 'general', 'exciseCategory', 'Pick the excise category.');
@@ -171,12 +178,12 @@ function ItemForm() {
   const { id } = useParams();
   const isNew = id === 'new';
   const navigate = useNavigate();
-  const locationState = useLocation().state as { copyFrom?: Draft; variantOf?: Draft; variantAttrs?: Record<string, string> } | null;
+  const locationState = useLocation().state as { copyFrom?: Draft; variantOf?: Draft; variantValues?: VariantValue[] } | null;
   const copyFrom = locationState?.copyFrom;
   const variantOf = locationState?.variantOf;
 
   const initialDraft = isNew
-    ? variantOf ? variantFromParent(variantOf, locationState?.variantAttrs ?? {}) : (copyFrom ?? blankItem())
+    ? variantOf ? variantFromParent(variantOf, locationState?.variantValues ?? []) : (copyFrom ?? blankItem())
     : undefined;
   const [draft, setDraft] = useState<Draft | null | undefined>(initialDraft);
   const [vendors, setVendors] = useState<Partner[]>([]);
@@ -377,7 +384,7 @@ function ItemForm() {
             type="details"
             icon="inventory_2"
             title={isNew ? 'New item' : (draft.name || draft.description)}
-            subcopy={isNew ? 'Add a product, material or service to the item master.' : draft.itemNo}
+            subcopy={isNew ? 'Add a product, material or service to the item master.' : undefined}
             // A saved record leads with previous/next (through the list it was opened from); a new one with the icon.
             leading={
               isNew ? undefined : (
@@ -387,7 +394,7 @@ function ItemForm() {
                     label="Next"
                     intent="default"
                     variant="solid"
-                    size="extra-large"
+                    size="large"
                     disabled={!nextId}
                     onClick={() => navigate(`${LIST_PATH}/${nextId}`)}
                   >
@@ -398,7 +405,7 @@ function ItemForm() {
                     label="Previous"
                     intent="default"
                     variant="solid"
-                    size="extra-large"
+                    size="large"
                     disabled={!prevId}
                     onClick={() => navigate(`${LIST_PATH}/${prevId}`)}
                   >
@@ -429,11 +436,11 @@ function ItemForm() {
             }
             actions={
               <>
-                <Button type="button" intent="default" variant="solid" size="extra-large" onClick={() => navigate(LIST_PATH)}>
+                <Button type="button" intent="default" variant="solid" size="large" onClick={() => navigate(LIST_PATH)}>
                   Cancel
                 </Button>
                 {menu.length ? <MoreMenu items={menu} /> : null}
-                <Button type="submit" intent="primary" variant="solid" size="extra-large" disabled={saving}>
+                <Button type="submit" intent="primary" variant="solid" size="large" disabled={saving}>
                   {saving ? 'Saving…' : isNew ? 'Add' : 'Save'}
                 </Button>
               </>
@@ -572,7 +579,7 @@ function ItemForm() {
                                 type="button"
                                 title="Remove from family"
                                 className="text-xs opacity-40 hover:opacity-100 hover:text-danger"
-                                onClick={() => update({ parentItemId: '', variantAxes: [], variantAttributes: {}, purchaseItem: true, salesItem: true, inventoryItem: draft.itemType === 'Items' })}
+                                onClick={() => update({ parentItemId: '', variantAxes: [], variantValues: [], purchaseItem: true, salesItem: true, inventoryItem: draft.itemType === 'Items' })}
                               >
                                 ×
                               </button>
@@ -594,7 +601,7 @@ function ItemForm() {
                               value={null}
                               onValueChange={(v) => {
                                 if (!v) return;
-                                update({ parentItemId: v, variantAxes: [], variantAttributes: {}, purchaseItem: true, salesItem: true, inventoryItem: draft.itemType === 'Items' });
+                                update({ parentItemId: v, variantAxes: [], variantValues: [], purchaseItem: true, salesItem: true, inventoryItem: draft.itemType === 'Items' });
                                 getItem(v).then((p) => { if (p) setParentItem(p); });
                               }}
                             />
@@ -609,17 +616,22 @@ function ItemForm() {
                     <Section icon="tune" title="Variant attributes">
                       <FieldStack>
                         {(parentItem as Item).variantAxes.map((axis) => (
-                          <FormField key={axis.name} orientation="responsive" label={axis.name}>
+                          <FormField key={axis.attributeId} orientation="responsive" label={variantAttributeName(axis.attributeId)}>
                             {(p) => (
                               <Select
                                 {...p}
                                 options={[
                                   { value: '', label: '— Not set —' },
-                                  ...axis.options.map((o) => ({ value: o, label: o })),
+                                  ...axis.valueIds.map((id) => ({ value: id, label: variantValueLabel(axis.attributeId, id) })),
                                 ]}
-                                value={draft.variantAttributes[axis.name] ?? ''}
+                                value={valueIdOf(draft.variantValues, axis.attributeId)}
                                 onValueChange={(v) =>
-                                  update({ variantAttributes: { ...draft.variantAttributes, [axis.name]: v ?? '' } })
+                                  update({
+                                    variantValues: [
+                                      ...draft.variantValues.filter((x) => x.attributeId !== axis.attributeId),
+                                      ...(v ? [{ attributeId: axis.attributeId, valueId: v }] : []),
+                                    ],
+                                  })
                                 }
                               />
                             )}
@@ -644,7 +656,7 @@ function ItemForm() {
 
                 <div className="flex min-w-0 flex-col gap-2 lg:col-span-9 lg:min-h-0 lg:overflow-y-auto">
                   {draft.parentItemId && parentItem && (
-                    <div className="flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm">
+                    <div className="flex items-center gap-2 rounded-xl border border-[var(--color-border-default)] text-body px-3 py-2 text-sm">
                       <Icon size={16} className="shrink-0 text-muted">info</Icon>
                       <Text variant="small" tone="muted">
                         Tax, UoMs, planning and other settings are inherited from{' '}

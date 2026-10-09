@@ -84,7 +84,7 @@ export function TabbedPage({
               type="button"
               intent="primary"
               variant="solid"
-              size="extra-large"
+              size="large"
               leadingIcon={<Icon size={16}>add</Icon>}
               onClick={() => navigate(`${base}/${active.value}/new`)}
             >

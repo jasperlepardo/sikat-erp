@@ -1,7 +1,7 @@
-import { itemUnits, uomSummary, type Item } from '../../../../mocks/items';
+import { itemUnits, uomSummary, type Item, type VariantAxis, type VariantValue } from '../../../../mocks/items';
 import type { Partner } from '../../../../mocks/partners';
 import type { Errors } from '../../../../components/form/fields';
-import type { InventoryMasters } from '../../../../services/inventoryMasters';
+import { variantValueLabel, type InventoryMasters } from '../../../../services/inventoryMasters';
 import { currentRate, type ExciseCategory, type TaxCode, type TaxDirection, type TaxGroup, type WithholdingGroup } from '../../../../mocks/taxes';
 
 export type Draft = Omit<Item, 'id'> & { id?: string };
@@ -85,21 +85,32 @@ export const vendorOptions = (vendors: Partner[]) => [
 /** Pickers over plain strings. */
 export const asOptions = (values: readonly string[]) => values.map((value) => ({ value, label: value }));
 
+/** The value a variant has for one attribute; '' when not set. */
+export const valueIdOf = (values: VariantValue[], attributeId: string) =>
+  values.find((v) => v.attributeId === attributeId)?.valueId ?? '';
+
+/** A variant's value labels in its parent's attribute order, e.g. ['256GB', 'Black']. */
+export const variantValueLabels = (axes: VariantAxis[], values: VariantValue[]) =>
+  axes.flatMap((a) => {
+    const valueId = valueIdOf(values, a.attributeId);
+    return valueId ? [variantValueLabel(a.attributeId, valueId)] : [];
+  });
+
 /**
  * Creates a new variant Draft pre-filled from a parent item's settings.
- * `attrs` is the axis selections, e.g. { Storage: '256GB', Color: 'Black' }.
+ * `values` is its value of each of the parent's attributes.
  * The variant inherits group, tax, UoMs and other template settings from the parent.
  */
-export function variantFromParent(parent: Draft, attrs: Record<string, string>): Draft {
-  const attrValues = Object.values(attrs).filter(Boolean);
+export function variantFromParent(parent: Draft, values: VariantValue[]): Draft {
+  const labels = variantValueLabels(parent.variantAxes, values);
   return {
     ...parent,
     id: undefined,
     itemNo: '',
-    description: attrValues.length ? [parent.name, ...attrValues].join(', ') : parent.name,
+    description: [parent.name, ...labels].join(', '),
     parentItemId: parent.id ?? '',
     variantAxes: [],
-    variantAttributes: attrs,
+    variantValues: values,
     purchaseItem: true,
     salesItem: true,
     inventoryItem: parent.itemType === 'Items',

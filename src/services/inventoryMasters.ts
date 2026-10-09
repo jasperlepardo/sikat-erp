@@ -8,6 +8,7 @@ import {
   SEED_SHIPPING_TYPES,
   SEED_UOMS,
   SEED_UOM_GROUPS,
+  SEED_VARIANT_ATTRIBUTES,
   SEED_WAREHOUSES,
   SEED_WARRANTY_TEMPLATES,
   type CommissionGroup,
@@ -19,6 +20,7 @@ import {
   type ShippingType,
   type UnitOfMeasure,
   type UomGroup,
+  type VariantAttribute,
   type Warehouse,
   type WarrantyTemplate,
 } from '../mocks/itemMasters';
@@ -53,6 +55,12 @@ export const commissionGroups = createCollection<CommissionGroup>('sikat-erp:com
 export const shippingTypes = createCollection<ShippingType>('sikat-erp:shipping-types', SEED_SHIPPING_TYPES, 'sh');
 export const warrantyTemplates = createCollection<WarrantyTemplate>('sikat-erp:warranty-templates:v2', SEED_WARRANTY_TEMPLATES, 'wr');
 export const itemProperties = createCollection<ItemProperty>('sikat-erp:item-properties:v2', SEED_ITEM_PROPERTIES, 'prop');
+export const variantAttributes = createCollection<VariantAttribute>('sikat-erp:variant-attributes', SEED_VARIANT_ATTRIBUTES, 'va');
+/** A variant attribute's name, e.g. "Storage". */
+export const variantAttributeName = (id: string) => variantAttributes.snapshot().find((a) => a.id === id)?.name ?? id;
+/** A variant attribute value's label, e.g. "256GB". */
+export const variantValueLabel = (attributeId: string, valueId: string) =>
+  variantAttributes.snapshot().find((a) => a.id === attributeId)?.values.find((v) => v.id === valueId)?.label ?? valueId;
 export const inventorySettings = createCollection<InventorySettings>('sikat-erp:inventory-settings', SEED_INVENTORY_SETTINGS, 'inventory');
 
 /** Everything the item form needs, loaded once. */

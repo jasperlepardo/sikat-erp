@@ -7,7 +7,7 @@ import { DataTable } from '../../../components/form/DataTable';
 import { FieldStack, bind } from '../../../components/form/fields';
 import { MasterList, statusColumn, uniqueRequired, type ListRoute } from '../../../components/form/MasterList';
 import { MasterDefList, MasterLookup } from '../../../components/form/MasterLookup';
-import { manufacturerDef, shippingTypeDef, uomDef, warrantyTemplateDef } from '../masterDefs';
+import { manufacturerDef, shippingTypeDef, uomDef, variantAttributeDef, warrantyTemplateDef } from '../masterDefs';
 import { AccountField, useAccounts } from '../../../components/form/AccountField';
 import { accountProblem, accountText } from '../../../mocks/chartOfAccounts';
 import {
@@ -323,6 +323,8 @@ export function UomGroupsTab(route: ListRoute) {
 }
 
 export const UnitsTab = (route: ListRoute) => <MasterDefList def={uomDef} {...route} />;
+
+export const VariantAttributesTab = (route: ListRoute) => <MasterDefList def={variantAttributeDef} {...route} />;
 
 export const ManufacturersTab = (route: ListRoute) => <MasterDefList def={manufacturerDef} {...route} />;
 

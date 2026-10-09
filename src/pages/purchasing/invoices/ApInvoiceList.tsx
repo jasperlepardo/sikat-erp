@@ -136,7 +136,7 @@ export function ApInvoiceList() {
         icon="request_quote"
         title={presets.menu}
         actions={
-          <Button intent="primary" variant="solid" size="extra-large" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${AP_LIST_PATH}/new`)}>
+          <Button intent="primary" variant="solid" size="large" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${AP_LIST_PATH}/new`)}>
             New A/P invoice
           </Button>
         }

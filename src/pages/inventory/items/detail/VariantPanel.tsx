@@ -5,8 +5,9 @@ import { Fields, FieldStack, ReadOnly, Section, bind, type Errors } from '../../
 import { newBarcodeRow, type Item, type VariantAxis } from '../../../../mocks/items';
 import { ItemSaveError, saveItem, stockTotals } from '../../../../services/items';
 import { formatAmount } from '../../../../services/format';
+import { variantAttributeName, variantValueLabel } from '../../../../services/inventoryMasters';
 import { EditPanel } from '../../../partners/detail/EditPanel';
-import type { Draft } from './types';
+import { valueIdOf, type Draft } from './types';
 
 const LIST_PATH = '/inventory/items';
 
@@ -56,9 +57,16 @@ export function VariantPanel({ variant, axes, title, onDone, onCancel }: Props) 
       {axes.length > 0 && (
         <Section icon="tune" title="Attributes">
           <FieldStack>
-            {axes.map((axis) => (
-              <ReadOnly key={axis.name} label={axis.name} value={draft.variantAttributes[axis.name] ?? '—'} />
-            ))}
+            {axes.map((axis) => {
+              const valueId = valueIdOf(draft.variantValues, axis.attributeId);
+              return (
+                <ReadOnly
+                  key={axis.attributeId}
+                  label={variantAttributeName(axis.attributeId)}
+                  value={valueId ? variantValueLabel(axis.attributeId, valueId) : '—'}
+                />
+              );
+            })}
           </FieldStack>
         </Section>
       )}
@@ -88,7 +96,7 @@ export function VariantPanel({ variant, axes, title, onDone, onCancel }: Props) 
         {draft.uoms.length > 1 && (
           <div className="mt-2 flex flex-col gap-1">
             <Text variant="small" tone="muted">Effective price per unit — click to set an override</Text>
-            <div className="rounded-xl border border-border overflow-hidden">
+            <div className="rounded-xl border border-[var(--color-border-default)] text-body overflow-hidden">
               <table className="w-full text-sm">
                 <tbody>
                   {draft.uoms.map((u) => {
@@ -96,7 +104,7 @@ export function VariantPanel({ variant, axes, title, onDone, onCancel }: Props) 
                     const hasOverride = u.price > 0;
                     const isBase = u.uom === draft.inventoryUom;
                     return (
-                      <tr key={u.uom} className="border-b border-border last:border-0">
+                      <tr key={u.uom} className="border-b border-[var(--color-border-default)] last:border-0">
                         <td className="px-3 py-1.5 font-medium">
                           {u.uom}
                           {isBase && <span className="ml-1 opacity-40 text-xs">base</span>}
@@ -112,7 +120,7 @@ export function VariantPanel({ variant, axes, title, onDone, onCancel }: Props) 
                               type="number"
                               min={0}
                               aria-label={`Price for ${u.uom}`}
-                              className="w-32 rounded border border-border px-2 py-0.5 text-right tabular-nums text-sm bg-transparent"
+                              className="w-32 rounded border border-[var(--color-border-default)] px-2 py-0.5 text-right tabular-nums text-sm bg-transparent"
                               placeholder={`₱${formatAmount(derived)}`}
                               value={u.price || ''}
                               onChange={(e) => {
