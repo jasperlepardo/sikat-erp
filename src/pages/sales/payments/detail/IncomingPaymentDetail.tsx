@@ -3,13 +3,14 @@ import { useLocation, useNavigate, useParams } from 'react-router';
 import { Alert, Badge, Button, Combobox, Form, FormField, IconButton, List, Panel, PanelHeader, panelHeaderIcons, Radio, Select, Tabs, Text, TextField } from '@jasperlepardo/sikat-design-system';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { Fields, ReadOnly, Section, bind, type Errors } from '../../../../components/form/fields';
+import { StatusField } from '../../../../components/form/StatusField';
 import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { formatAddress } from '../../../../mocks/address';
 import type { ArInvoice } from '../../../../mocks/arInvoices';
 import { accountText, type Account } from '../../../../mocks/chartOfAccounts';
 import type { Currency, ExchangeRate } from '../../../../mocks/currencies';
-import { INCOMING_SERIES, blankIncomingPayment, type IncomingPayment, type IncomingStatus, type IncomingType } from '../../../../mocks/incomingPayments';
+import { INCOMING_SERIES, INCOMING_STATUSES, blankIncomingPayment, type IncomingPayment, type IncomingStatus, type IncomingType } from '../../../../mocks/incomingPayments';
 import type { Item } from '../../../../mocks/items';
 import { contactName, type Partner } from '../../../../mocks/partners';
 import { BLANKET_AGREEMENTS } from '../../../../mocks/purchaseOrders';
@@ -227,6 +228,9 @@ function IncomingForm() {
   };
 
   const paidInvoices = [...new Map(paidRows(draft).map((r) => [r.invoiceId, r])).values()];
+  // What picking each status in the Status dropdown does; the others can't be reached from here.
+  const statusMoves: Partial<Record<IncomingStatus, () => void>> = draft.status === 'Draft' ? { Posted: () => submit(null) } : draft.status === 'Posted' ? { Cancelled: () => cancel('current') } : {};
+
   const menu: MoreMenuItem[] = [
     ...(!added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
     ...(draft.status === 'Posted'
@@ -347,7 +351,7 @@ function IncomingForm() {
                   {h.date('postingDate', 'Posting date', { required: true, error: errors.postingDate })}
                   {h.date('documentDate', 'Document date', { required: true, error: errors.documentDate })}
                   {h.date('dueDate', 'Due date', { hint: 'The BP row’s due date; follows the payment means (weighted average).' })}
-                  <ReadOnly label="Status" value={<Badge intent={RC_STATUS_INTENT[draft.status]}>{isNew ? 'New' : draft.status}</Badge>} error={errors.status} />
+                  <StatusField statuses={INCOMING_STATUSES} intents={RC_STATUS_INTENT} value={draft.status} moves={statusMoves} error={errors.status} />
                 </Fields>
               </Section>
             </div>

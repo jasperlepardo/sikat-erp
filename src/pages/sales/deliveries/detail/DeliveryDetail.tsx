@@ -3,12 +3,13 @@ import { useLocation, useNavigate, useParams } from 'react-router';
 import { Alert, Badge, Button, Checkbox, Combobox, Form, FormField, IconButton, List, Panel, PanelHeader, panelHeaderIcons, Select, Tabs, Text, TextField } from '@jasperlepardo/sikat-design-system';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { Fields, ReadOnly, Section, bind, type Errors } from '../../../../components/form/fields';
+import { StatusField } from '../../../../components/form/StatusField';
 import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { accountText } from '../../../../mocks/chartOfAccounts';
 import { CURRENT_USER_ID } from '../../../../mocks/common';
 import { formatAddress } from '../../../../mocks/address';
-import { DN_SERIES, blankDelivery, deliveryHeaderFrom, type Delivery, type DnStatus } from '../../../../mocks/deliveries';
+import { DN_SERIES, DN_STATUSES, blankDelivery, deliveryHeaderFrom, type Delivery, type DnStatus } from '../../../../mocks/deliveries';
 import { contactName } from '../../../../mocks/partners';
 import { NO_SALES_EMPLOYEE, SALES_SETTINGS, type SalesOrder } from '../../../../mocks/salesOrders';
 import { loadCurrentCompany } from '../../../../services/companies';
@@ -206,13 +207,18 @@ function DeliveryForm() {
 
   const saved = draft as Delivery;
   const invoiced = draft.lines.some((l) => l.invoicedQty > 0);
+  const closeIt = () => act(() => closeDelivery(saved), 'closed');
+  const cancelIt = () => act(() => cancelDelivery(saved), 'cancelled — the stock is back and the order lines are open again');
+  // What picking each status in the Status dropdown does; the others can't be reached from here.
+  const statusMoves: Partial<Record<DnStatus, () => void>> = draft.status === 'Draft' ? { Open: () => submit(null) } : draft.status === 'Open' ? { Closed: closeIt, ...(!invoiced ? { Cancelled: cancelIt } : {}) } : {};
+
   const menu: MoreMenuItem[] = [
     ...(!ctx.added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
     ...(draft.status === 'Open' && draft.lines.some((l) => l.quantity > l.invoicedQty)
       ? [{ label: 'Copy to A/R invoice', icon: 'receipt', onSelect: () => navigate('/sales/invoices/new', { state: { fromDelivery: draft.id } }) }]
       : []),
-    ...(draft.status === 'Open' ? [{ label: 'Close', icon: 'task_alt', onSelect: () => act(() => closeDelivery(saved), 'closed') }] : []),
-    ...(draft.status === 'Open' && !invoiced ? [{ label: 'Cancel delivery', icon: 'cancel', onSelect: () => act(() => cancelDelivery(saved), 'cancelled — the stock is back and the order lines are open again') }] : []),
+    ...(draft.status === 'Open' ? [{ label: 'Close', icon: 'task_alt', onSelect: closeIt }] : []),
+    ...(draft.status === 'Open' && !invoiced ? [{ label: 'Cancel delivery', icon: 'cancel', onSelect: cancelIt }] : []),
     ...baseOrders.map((soId) => ({ label: `Open sales order ${draft.lines.find((l) => l.baseId === soId)?.baseDocNo}`, icon: 'shopping_bag', onSelect: () => navigate(`${SO_LIST_PATH}/${soId}`) })),
     ...(customer ? [{ label: `Open customer ${customer.code}`, icon: 'person', onSelect: () => navigate(`/sales/customers/${customer.id}`) }] : []),
   ];
@@ -301,7 +307,7 @@ function DeliveryForm() {
                       </div>
                     )}
                   </FormField>
-                  <ReadOnly label="Status" value={<Badge intent={DN_STATUS_INTENT[draft.status]}>{isNew ? 'New' : draft.status}</Badge>} error={errors.status} />
+                  <StatusField statuses={DN_STATUSES} intents={DN_STATUS_INTENT} value={draft.status} moves={statusMoves} error={errors.status} />
                   {h.date('postingDate', 'Posting date', { required: true, error: errors.postingDate, hint: 'When the stock goes out and the cost is posted.' })}
                   {h.date('deliveryDate', 'Delivery date', { hint: 'When it reaches the customer.' })}
                   {h.date('documentDate', 'Document date', { required: true, error: errors.documentDate })}

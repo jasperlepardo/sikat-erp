@@ -16,6 +16,7 @@ import {
   Text,
 } from '@jasperlepardo/sikat-design-system';
 import { Fields, ReadOnly, Section, bind, type Errors } from '../../../components/form/fields';
+import { StatusField } from '../../../components/form/StatusField';
 import { MoreMenu, type MoreMenuItem } from '../../../components/form/MoreMenu';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../components/form/ProblemsAlert';
 import { CURRENT_USER_ID } from '../../../mocks/common';
@@ -27,6 +28,7 @@ import {
   blankTransfer,
   newTransferLine,
   type InventoryTransfer,
+  TRANSFER_STATUSES,
   type TransferStatus,
 } from '../../../mocks/inventoryTransfers';
 import { formatAmount } from '../../../services/format';
@@ -270,6 +272,9 @@ function TransferForm() {
     navigate(`${TRANSFER_LIST_PATH}/new`, { state: { copyFrom: copy } });
   };
 
+  // What picking each status in the Status dropdown does; the others can't be reached from here.
+  const statusMoves: Partial<Record<TransferStatus, () => void>> = draft.status === 'Draft' ? { Posted: () => submit(null) } : {};
+
   const menu: MoreMenuItem[] = [
     ...(!posted ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
     ...(!isNew ? [{ label: 'Duplicate', icon: 'content_copy', onSelect: duplicate }] : []),
@@ -394,11 +399,7 @@ function TransferForm() {
                     value={posted ? transferNumber(draft) : `${TRANSFER_SERIES.find((s) => s.id === draft.seriesId)?.name ?? 'Primary'} · next number`}
                     hint={posted ? undefined : 'Assigned from the series when the transfer is posted.'}
                   />
-                  <ReadOnly
-                    label="Status"
-                    value={<Badge intent={TRANSFER_STATUS_INTENT[draft.status]}>{isNew ? 'New' : draft.status}</Badge>}
-                    hint="Draft until posted. Posting moves the stock and can't be undone."
-                  />
+                  <StatusField statuses={TRANSFER_STATUSES} intents={TRANSFER_STATUS_INTENT} value={draft.status} moves={statusMoves} hint="Draft until posted. Posting moves the stock and can't be undone." />
                   {h.date('postingDate', 'Posting date', {
                     required: true,
                     error: errors.postingDate,

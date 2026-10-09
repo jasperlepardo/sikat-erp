@@ -3,12 +3,13 @@ import { useLocation, useNavigate, useParams } from 'react-router';
 import { Alert, Badge, Button, Combobox, Form, FormField, IconButton, List, Panel, PanelHeader, panelHeaderIcons, Select, Tabs, Text, TextField, Checkbox } from '@jasperlepardo/sikat-design-system';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { Fields, ReadOnly, Section, bind, type Errors } from '../../../../components/form/fields';
+import { StatusField } from '../../../../components/form/StatusField';
 import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { CURRENT_USER_ID } from '../../../../mocks/common';
 import { formatAddress } from '../../../../mocks/address';
 import { contactName, type Partner } from '../../../../mocks/partners';
-import { NO_SALES_EMPLOYEE, SALES_SETTINGS, SO_SERIES, blankSalesOrder, newSoLine, type SalesOrder, type SoStatus } from '../../../../mocks/salesOrders';
+import { NO_SALES_EMPLOYEE, SALES_SETTINGS, SO_SERIES, SO_STATUSES, blankSalesOrder, newSoLine, type SalesOrder, type SoStatus } from '../../../../mocks/salesOrders';
 import { loadCurrentCompany } from '../../../../services/companies';
 import { formatDate, todayISO } from '../../../../services/dates';
 import { formatAmount } from '../../../../services/format';
@@ -263,6 +264,11 @@ function SalesOrderForm() {
   };
 
   const saved = draft as SalesOrder;
+  const closeIt = () => act(() => closeSalesOrder(saved), 'closed');
+  const cancelIt = () => act(() => cancelSalesOrder(saved), 'cancelled');
+  // What picking each status in the Status dropdown does; the others can't be reached from here.
+  const statusMoves: Partial<Record<SoStatus, () => void>> = draft.status === 'Draft' ? { Open: () => submit(null) } : draft.status === 'Open' ? { Closed: closeIt, ...(!delivered ? { Cancelled: cancelIt } : {}) } : {};
+
   const menu: MoreMenuItem[] = [
     ...(!ctx.added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
     ...(draft.status === 'Open' && draft.docType === 'Item' && draft.lines.some((l) => openQty(l) > 0)
@@ -272,8 +278,8 @@ function SalesOrderForm() {
       ? [{ label: 'Copy to A/R invoice', icon: 'receipt', onSelect: () => navigate('/sales/invoices/new', { state: { fromOrder: draft.id } }) }]
       : []),
     ...(!isNew ? [{ label: 'Duplicate', icon: 'content_copy', onSelect: duplicate }] : []),
-    ...(draft.status === 'Open' ? [{ label: 'Close', icon: 'task_alt', onSelect: () => act(() => closeSalesOrder(saved), 'closed') }] : []),
-    ...(draft.status === 'Open' && !delivered ? [{ label: 'Cancel sales order', icon: 'cancel', onSelect: () => act(() => cancelSalesOrder(saved), 'cancelled') }] : []),
+    ...(draft.status === 'Open' ? [{ label: 'Close', icon: 'task_alt', onSelect: closeIt }] : []),
+    ...(draft.status === 'Open' && !delivered ? [{ label: 'Cancel sales order', icon: 'cancel', onSelect: cancelIt }] : []),
     ...(customer ? [{ label: `Open customer ${customer.code}`, icon: 'person', onSelect: () => navigate(`/sales/customers/${customer.id}`) }] : []),
   ];
 
@@ -389,7 +395,7 @@ function SalesOrderForm() {
                       </div>
                     )}
                   </FormField>
-                  <ReadOnly label="Status" value={<Badge intent={SO_STATUS_INTENT[isNew ? 'Draft' : draft.status]}>{isNew ? 'New' : draft.status}</Badge>} hint={`${series.name} series. Open, Closed or Cancelled.`} error={errors.status} />
+                  <StatusField statuses={SO_STATUSES} intents={SO_STATUS_INTENT} value={draft.status} moves={statusMoves} hint={`${series.name} series. Open, Closed or Cancelled.`} error={errors.status} />
                   {h.date('postingDate', 'Posting date', {
                     required: true,
                     error: errors.postingDate,

@@ -21,11 +21,12 @@ import {
 } from '@jasperlepardo/sikat-design-system';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { Fields, ReadOnly, Section, bind, type Errors } from '../../../../components/form/fields';
+import { StatusField } from '../../../../components/form/StatusField';
 import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { formatAddress } from '../../../../mocks/address';
 import { accountText } from '../../../../mocks/chartOfAccounts';
-import { FX_GAIN_ACCOUNT, FX_LOSS_ACCOUNT, PAYMENT_SERIES, blankPayment, type OutgoingPayment, type PaymentStatus, type PaymentType } from '../../../../mocks/outgoingPayments';
+import { FX_GAIN_ACCOUNT, FX_LOSS_ACCOUNT, PAYMENT_SERIES, PAYMENT_STATUSES, blankPayment, type OutgoingPayment, type PaymentStatus, type PaymentType } from '../../../../mocks/outgoingPayments';
 import { contactName, type Partner } from '../../../../mocks/partners';
 import { listApInvoices } from '../../../../services/apInvoices';
 import { formatDate, todayISO } from '../../../../services/dates';
@@ -252,6 +253,14 @@ function PaymentForm() {
 
   const saved = draft as OutgoingPayment;
   const paidInvoices = draft.rows.filter((r) => r.selected && r.amount > 0);
+  const cancelIt = async () => {
+    const p = await cancelPayment(saved);
+    await reverseDocumentEntry(saved.id);
+    navigate(PAYMENT_LIST_PATH, { state: { notice: `Payment ${paymentNumber(p)} cancelled — the invoices it paid are open again${p.means.checks.length ? ' and its checks are void' : ''}.` } });
+  };
+  // What picking each status in the Status dropdown does; the others can't be reached from here.
+  const statusMoves: Partial<Record<PaymentStatus, () => void>> = draft.status === 'Draft' ? { Posted: () => submit(null) } : draft.status === 'Posted' ? { Cancelled: cancelIt } : {};
+
   const menu: MoreMenuItem[] = [
     ...(!added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
     ...(draft.status === 'Posted'
@@ -259,11 +268,7 @@ function PaymentForm() {
           {
             label: 'Cancel payment',
             icon: 'cancel',
-            onSelect: async () => {
-              const p = await cancelPayment(saved);
-              await reverseDocumentEntry(saved.id);
-              navigate(PAYMENT_LIST_PATH, { state: { notice: `Payment ${paymentNumber(p)} cancelled — the invoices it paid are open again${p.means.checks.length ? ' and its checks are void' : ''}.` } });
-            },
+            onSelect: cancelIt,
           },
         ]
       : []),
@@ -409,7 +414,7 @@ function PaymentForm() {
                         </div>
                       )}
                     </FormField>
-                    <ReadOnly label="Status" value={<Badge intent={PAYMENT_STATUS_INTENT[isNew ? 'Draft' : draft.status]}>{isNew ? 'New' : draft.status}</Badge>} />
+                    <StatusField statuses={PAYMENT_STATUSES} intents={PAYMENT_STATUS_INTENT} value={draft.status} moves={statusMoves} />
                     {h.date('postingDate', 'Posting date', {
                       required: true,
                       error: errors.postingDate,

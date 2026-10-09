@@ -66,8 +66,8 @@ export function bind<T>(obj: T, update: (patch: Partial<T>) => void) {
         <Select
           {...p}
           options={[
-            { value: 'yes', text: o.yes ?? 'Active', label: <StatusLabel on>{o.yes ?? 'Active'}</StatusLabel> },
-            { value: 'no', text: o.no ?? 'Inactive', label: <StatusLabel on={false}>{o.no ?? 'Inactive'}</StatusLabel> },
+            { value: 'yes', text: o.yes ?? 'Active', label: <StatusLabel intent="success">{o.yes ?? 'Active'}</StatusLabel> },
+            { value: 'no', text: o.no ?? 'Inactive', label: <StatusLabel intent="default">{o.no ?? 'Inactive'}</StatusLabel> },
           ]}
           value={obj[key] ? 'yes' : 'no'}
           onValueChange={(v) => v && patch(key, v === 'yes')}
@@ -77,22 +77,23 @@ export function bind<T>(obj: T, update: (patch: Partial<T>) => void) {
   };
 }
 
-/**
- * The Badge's status dot: success-tinted when on, neutral when off (as `TableStatus` colors
- * Active / Inactive).
- */
-export function StatusDot({ on }: { on: boolean }) {
+export type StatusIntent = 'default' | 'primary' | 'warning' | 'success' | 'danger';
+
+/** The Badge's status dot, tinted by intent (as `TableStatus` colors a status). */
+export function StatusDot({ intent }: { intent: StatusIntent }) {
+  const color = intent === 'default' ? 'var(--color-fg-default-solid)' : `var(--color-fg-${intent})`;
   return (
     <span className="sikat-badge__dot-wrap" aria-hidden="true">
-      <span className="sikat-badge__dot" style={{ backgroundColor: on ? 'var(--color-fg-success)' : 'var(--color-fg-default-solid)' }} />
+      <span className="sikat-badge__dot" style={{ backgroundColor: color }} />
     </span>
   );
 }
 
-function StatusLabel({ on, children }: { on: boolean; children: ReactNode }) {
+/** A status name with its dot — a `Select` option label for a status dropdown. */
+export function StatusLabel({ intent, children }: { intent: StatusIntent; children: ReactNode }) {
   return (
     <span className="inline-flex items-center gap-1">
-      <StatusDot on={on} />
+      <StatusDot intent={intent} />
       {children}
     </span>
   );

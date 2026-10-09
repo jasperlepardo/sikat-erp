@@ -18,6 +18,7 @@ import {
   TextField,
 } from '@jasperlepardo/sikat-design-system';
 import { Fields, ReadOnly, Section, bind, type Errors } from '../../../../components/form/fields';
+import { StatusField } from '../../../../components/form/StatusField';
 import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { CURRENT_USER_ID } from '../../../../mocks/common';
@@ -25,6 +26,7 @@ import { contactName, type Partner } from '../../../../mocks/partners';
 import {
   blankPurchaseOrder,
   newPoLine,
+  PO_STATUSES,
   type PoStatus,
   type PurchaseOrder,
 } from '../../../../mocks/purchaseOrders';
@@ -87,6 +89,14 @@ export const STATUS_INTENT: Record<PoStatus, 'default' | 'primary' | 'warning' |
   'Not Confirmed': 'warning',
   Closed: 'success',
   Cancelled: 'danger',
+};
+
+const STATUS_HINT: Record<PoStatus, string> = {
+  Draft: 'Pick Open to add it.',
+  'Not Confirmed': 'Awaiting approval. Pick Open to approve it, or close or cancel it.',
+  Open: 'Pick Closed or Cancelled to end it. Cancelling needs nothing received.',
+  Closed: 'Closed for good.',
+  Cancelled: 'Cancelled for good.',
 };
 
 const TODAY = () => todayISO();
@@ -342,6 +352,18 @@ function PurchaseOrderForm() {
     ...(vendor ? [{ label: `Open vendor ${vendor.code}`, icon: 'local_shipping', onSelect: () => navigate(`/purchasing/vendors/${vendor.id}`) }] : []),
   ];
 
+  // What picking each status in the Status dropdown does; statuses not listed can't be reached from here.
+  const transitions: Partial<Record<PoStatus, () => void>> =
+    draft.status === 'Draft'
+      ? { Open: () => submit(null, false) }
+      : open
+        ? {
+            ...(draft.status === 'Not Confirmed' ? { Open: () => submit(null, false, { approved: true }) } : {}),
+            Closed: () => act(() => closePurchaseOrder(saved), 'closed'),
+            ...(!received ? { Cancelled: () => act(() => cancelPurchaseOrder(saved), 'cancelled') } : {}),
+          }
+        : {};
+
   const currencyEditable = !ctx.readOnly && !received;
   const title = isNew ? 'New purchase order' : draft.status === 'Draft' ? 'Draft purchase order' : poNumber(draft);
   const postingMoved = draft.postingDate && draft.postingDate !== TODAY() && !ctx.added;
@@ -556,10 +578,12 @@ function PurchaseOrderForm() {
                         </div>
                       )}
                     </FormField>
-                    <ReadOnly
-                      label="Status"
-                      value={<Badge intent={STATUS_INTENT[isNew ? 'Draft' : draft.status]}>{isNew ? 'New' : draft.status}</Badge>}
-                      hint="Set by the system: Open, Not Confirmed, Closed, Cancelled or Draft."
+                    <StatusField
+                      statuses={PO_STATUSES}
+                      intents={STATUS_INTENT}
+                      value={draft.status}
+                      moves={transitions}
+                      hint={STATUS_HINT[draft.status]}
                       error={errors.status}
                     />
                     {h.date('postingDate', 'Posting date', {

@@ -19,9 +19,10 @@ import {
   TextField,
 } from '@jasperlepardo/sikat-design-system';
 import { Fields, Flags, ReadOnly, Section, bind, type Errors } from '../../../../components/form/fields';
+import { StatusField } from '../../../../components/form/StatusField';
 import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
-import { AP_SERIES, blankApInvoice, newApLine, type ApInvoice, type ApLine, type ApStatus } from '../../../../mocks/apInvoices';
+import { AP_SERIES, AP_STATUSES, blankApInvoice, newApLine, type ApInvoice, type ApLine, type ApStatus } from '../../../../mocks/apInvoices';
 import { accountText } from '../../../../mocks/chartOfAccounts';
 import { CURRENT_USER_ID } from '../../../../mocks/common';
 import type { GoodsReceipt } from '../../../../mocks/goodsReceipts';
@@ -362,6 +363,10 @@ function ApInvoiceForm() {
 
   const saved = draft as ApInvoice;
   const bases = [...new Map(draft.lines.filter((l) => l.baseType).map((l) => [l.baseId, l])).values()];
+  const cancelIt = () => act(async () => { const inv = await cancelApInvoice(saved); await reverseDocumentEntry(saved.id); return inv; }, 'cancelled — the receipts and POs it billed are open again');
+  // What picking each status in the Status dropdown does; the others can't be reached from here.
+  const statusMoves: Partial<Record<ApStatus, () => void>> = draft.status === 'Draft' ? { Open: () => submit(null) } : draft.status === 'Open' && !draft.appliedAmount ? { Cancelled: cancelIt } : {};
+
   const menu: MoreMenuItem[] = [
     ...(!added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
     ...(draft.status === 'Open' && balance > 0 && !draft.paymentBlock
@@ -377,7 +382,7 @@ function ApInvoiceForm() {
       : []),
     ...(!isNew ? [{ label: 'Duplicate', icon: 'content_copy', onSelect: duplicate }] : []),
     ...(draft.status === 'Open' && !draft.appliedAmount
-      ? [{ label: 'Cancel A/P invoice', icon: 'cancel', onSelect: () => act(async () => { const inv = await cancelApInvoice(saved); await reverseDocumentEntry(saved.id); return inv; }, 'cancelled — the receipts and POs it billed are open again') }]
+      ? [{ label: 'Cancel A/P invoice', icon: 'cancel', onSelect: cancelIt }]
       : []),
     ...bases.map((l) => ({
       label: `Open ${l.baseType === 'GRPO' ? 'receipt' : 'PO'} ${l.baseDocNo}`,
@@ -520,12 +525,7 @@ function ApInvoiceForm() {
                         </div>
                       )}
                     </FormField>
-                    <ReadOnly
-                      label="Status"
-                      value={<Badge intent={AP_STATUS_INTENT[isNew ? 'Draft' : draft.status]}>{isNew ? 'New' : draft.status}</Badge>}
-                      hint="Open once added; Closed when paid in full; Cancelled when reversed."
-                      error={errors.status}
-                    />
+                    <StatusField statuses={AP_STATUSES} intents={AP_STATUS_INTENT} value={draft.status} moves={statusMoves} hint="Open once added; Closed when paid in full; Cancelled when reversed." error={errors.status} />
                     {h.date('postingDate', 'Posting date', { required: true, error: errors.postingDate, hint: 'Sets the period, tax rates and the exchange rate the bill is booked at.' })}
                     {h.date('dueDate', 'Due date', { required: true, error: errors.dueDate, hint: `Posting date + the payment terms${draft.paymentTermId ? ` (${paymentTermName(draft.paymentTermId)})` : ''}. Change it to override.` })}
                     {h.date('documentDate', 'Document date', { required: true, error: errors.documentDate, hint: 'The date on the vendor’s invoice — the date BIR uses for input VAT.' })}

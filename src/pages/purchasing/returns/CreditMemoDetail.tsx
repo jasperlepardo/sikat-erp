@@ -23,6 +23,7 @@ import {
 import { AccountField } from '../../../components/form/AccountField';
 import { DataTable } from '../../../components/form/DataTable';
 import { Fields, Flags, ReadOnly, Section, bind, type Errors } from '../../../components/form/fields';
+import { StatusField } from '../../../components/form/StatusField';
 import { MoreMenu, type MoreMenuItem } from '../../../components/form/MoreMenu';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../components/form/ProblemsAlert';
 import { formatAddress } from '../../../mocks/address';
@@ -69,6 +70,7 @@ import { DocumentFlow } from '../shared/DocumentFlow';
 import { loadRetMasters, vendorAddressOptions } from './GoodsReturnDetail';
 import { ReturnLines } from './ReturnLines';
 import { MEMO_LIST_PATH, MEMO_STATUS_INTENT, memoFromInvoice, memoFromReturn, type RetMasters } from './types';
+import { MEMO_STATUSES, type MemoStatus } from '../../../mocks/apCreditMemos';
 
 type Draft = Omit<ApCreditMemo, 'id'> & { id?: string };
 type TabId = 'contents' | 'logistics' | 'accounting';
@@ -268,6 +270,19 @@ function CreditMemoForm() {
   const saved = draft as ApCreditMemo;
   const bases = [...new Map(draft.lines.filter((l) => l.baseType).map((l) => [l.baseId, l])).values()];
   const openInvoices = draft.vendorId ? m.invoices.filter((i) => i.vendorId === draft.vendorId && i.status === 'Open' && i.currency === code).map((inv) => ({ inv, ...balanceOf(inv) })).filter((x) => x.balanceDue > 0) : [];
+  const cancelIt = async () => {
+    try {
+      const totalsByInvoice = new Map(saved.applications.map((a) => [a.invoiceId, balanceOf(m.invoices.find((i) => i.id === a.invoiceId)!).total]));
+      const c = await cancelCreditMemo(saved, totalsByInvoice);
+      await reverseDocumentEntry(saved.id);
+      navigate(MEMO_LIST_PATH, { state: { notice: `A/P credit memo ${memoNumber(c)} cancelled — the credit is off the invoices it was applied to.` } });
+    } catch (err) {
+      setProblems([{ tab: 'header', key: 'status', message: (err as Error).message }]);
+    }
+  };
+  // What picking each status in the Status dropdown does; the others can't be reached from here.
+  const statusMoves: Partial<Record<MemoStatus, () => void>> = draft.status === 'Draft' ? { Open: () => submit(null) } : draft.status === 'Open' || draft.status === 'Closed' ? { Cancelled: cancelIt } : {};
+
   const menu: MoreMenuItem[] = [
     ...(!added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
     ...(draft.status === 'Open' && openBalance > 0 && openInvoices.length ? [{ label: 'Apply credit to an invoice', icon: 'request_quote', onSelect: () => setApplying(true) }] : []),
@@ -276,16 +291,7 @@ function CreditMemoForm() {
           {
             label: 'Cancel credit memo',
             icon: 'cancel',
-            onSelect: async () => {
-              try {
-                const totalsByInvoice = new Map(saved.applications.map((a) => [a.invoiceId, balanceOf(m.invoices.find((i) => i.id === a.invoiceId)!).total]));
-                const c = await cancelCreditMemo(saved, totalsByInvoice);
-                await reverseDocumentEntry(saved.id);
-                navigate(MEMO_LIST_PATH, { state: { notice: `A/P credit memo ${memoNumber(c)} cancelled — the credit is off the invoices it was applied to.` } });
-              } catch (err) {
-                setProblems([{ tab: 'header', key: 'status', message: (err as Error).message }]);
-              }
-            },
+            onSelect: cancelIt,
           },
         ]
       : []),
@@ -414,7 +420,7 @@ function CreditMemoForm() {
                           </div>
                         )}
                       </FormField>
-                      <ReadOnly label="Status" value={<Badge intent={MEMO_STATUS_INTENT[isNew ? 'Draft' : draft.status]}>{isNew ? 'New' : draft.status}</Badge>} hint="Open while credit is left to apply; Closed once all of it is applied." error={errors.status} />
+                      <StatusField statuses={MEMO_STATUSES} intents={MEMO_STATUS_INTENT} value={draft.status} moves={statusMoves} hint="Open while credit is left to apply; Closed once all of it is applied." error={errors.status} />
                       {h.date('postingDate', 'Posting date', { required: true, error: errors.postingDate })}
                       {h.date('dueDate', 'Due date', { hint: 'When the credit is due, from the payment terms.' })}
                       {h.date('documentDate', 'Document date', { required: true, error: errors.documentDate, hint: "The date on the vendor's credit note." })}

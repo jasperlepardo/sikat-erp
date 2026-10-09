@@ -20,6 +20,7 @@ import {
 } from '@jasperlepardo/sikat-design-system';
 import { AttachmentsCard } from '../../../components/form/AttachmentsCard';
 import { Fields, ReadOnly, Section, bind, type Errors } from '../../../components/form/fields';
+import { StatusField } from '../../../components/form/StatusField';
 import { MoreMenu, type MoreMenuItem } from '../../../components/form/MoreMenu';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../components/form/ProblemsAlert';
 import { formatAddress } from '../../../mocks/address';
@@ -27,7 +28,7 @@ import type { ApInvoice } from '../../../mocks/apInvoices';
 import { accountText } from '../../../mocks/chartOfAccounts';
 import { CURRENT_USER_ID } from '../../../mocks/common';
 import type { GoodsReceipt } from '../../../mocks/goodsReceipts';
-import { RETURN_SERIES, blankGoodsReturn, needsCredit, newReturnLine, type GoodsReturn, type ReturnLine, type ReturnStatus } from '../../../mocks/goodsReturns';
+import { RETURN_SERIES, RETURN_STATUSES, blankGoodsReturn, needsCredit, newReturnLine, type GoodsReturn, type ReturnLine, type ReturnStatus } from '../../../mocks/goodsReturns';
 import { PAYMENT_METHODS } from '../../../mocks/masters';
 import { contactName, type Partner } from '../../../mocks/partners';
 import { INDICATORS } from '../../../mocks/purchaseOrders';
@@ -284,6 +285,18 @@ function GoodsReturnForm() {
   const saved = draft as GoodsReturn;
   const bases = [...new Map(draft.lines.filter((l) => l.baseType).map((l) => [l.baseId, l])).values()];
   const creditable = draft.status === 'Open' && draft.lines.some((l) => returnOpenQty(l, draft) > 0);
+  const cancelIt = async () => {
+    try {
+      const r = await cancelGoodsReturn(saved);
+      await reverseDocumentEntry(saved.id);
+      navigate(RETURN_LIST_PATH, { state: { notice: `Goods return ${returnNumber(r)} cancelled — the stock is back in.` } });
+    } catch (err) {
+      setProblems([{ tab: 'header', key: 'status', message: (err as Error).message }]);
+    }
+  };
+  // What picking each status in the Status dropdown does; the others can't be reached from here.
+  const statusMoves: Partial<Record<ReturnStatus, () => void>> = draft.status === 'Draft' ? { Open: () => submit(null) } : draft.status === 'Open' || draft.status === 'Closed' ? { Cancelled: cancelIt } : {};
+
   const menu: MoreMenuItem[] = [
     ...(!added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
     ...(creditable ? [{ label: 'Copy to A/P credit memo', icon: 'receipt', onSelect: () => navigate(`${MEMO_LIST_PATH}/new`, { state: { fromReturn: saved.id } }) }] : []),
@@ -292,15 +305,7 @@ function GoodsReturnForm() {
           {
             label: 'Cancel goods return',
             icon: 'cancel',
-            onSelect: async () => {
-              try {
-                const r = await cancelGoodsReturn(saved);
-                await reverseDocumentEntry(saved.id);
-                navigate(RETURN_LIST_PATH, { state: { notice: `Goods return ${returnNumber(r)} cancelled — the stock is back in.` } });
-              } catch (err) {
-                setProblems([{ tab: 'header', key: 'status', message: (err as Error).message }]);
-              }
-            },
+            onSelect: cancelIt,
           },
         ]
       : []),
@@ -408,7 +413,7 @@ function GoodsReturnForm() {
                           </div>
                         )}
                       </FormField>
-                      <ReadOnly label="Status" value={<Badge intent={RETURN_STATUS_INTENT[isNew ? 'Draft' : draft.status]}>{isNew ? 'New' : draft.status}</Badge>} hint="Open while billed goods wait for a credit memo; Closed once credited (or straight away for unbilled goods)." error={errors.status} />
+                      <StatusField statuses={RETURN_STATUSES} intents={RETURN_STATUS_INTENT} value={draft.status} moves={statusMoves} hint="Open while billed goods wait for a credit memo; Closed once credited (or straight away for unbilled goods)." error={errors.status} />
                       {h.date('postingDate', 'Posting date', { required: true, error: errors.postingDate, hint: 'When the stock leaves.' })}
                       {h.date('dueDate', 'Due date', { hint: 'When the vendor’s credit is due, from the payment terms.' })}
                       {h.date('documentDate', 'Document date', { required: true, error: errors.documentDate })}

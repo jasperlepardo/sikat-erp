@@ -3,10 +3,11 @@ import { useLocation, useNavigate, useParams } from 'react-router';
 import { Alert, Badge, Button, Checkbox, Combobox, Form, FormField, IconButton, List, Panel, PanelHeader, panelHeaderIcons, Select, Tabs, Text, TextField } from '@jasperlepardo/sikat-design-system';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { Fields, ReadOnly, Section, bind, type Errors } from '../../../../components/form/fields';
+import { StatusField } from '../../../../components/form/StatusField';
 import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { formatAddress } from '../../../../mocks/address';
-import { AR_SERIES, blankArInvoice, type ArInvoice, type ArStatus } from '../../../../mocks/arInvoices';
+import { AR_SERIES, AR_STATUSES, blankArInvoice, type ArInvoice, type ArStatus } from '../../../../mocks/arInvoices';
 import { accountText } from '../../../../mocks/chartOfAccounts';
 import { CURRENT_USER_ID } from '../../../../mocks/common';
 import { contactName } from '../../../../mocks/partners';
@@ -276,13 +277,18 @@ function ArInvoiceForm() {
 
   const saved = draft as ArInvoice;
   const bases = [...new Map(draft.lines.filter((l) => l.baseId).map((l) => [l.baseId, l])).values()];
+  const closeIt = () => act(() => closeArInvoice(saved), 'closed');
+  const cancelIt = () => act(() => cancelArInvoice(saved), 'cancelled — the entry is reversed and its deliveries and orders are open again');
+  // What picking each status in the Status dropdown does; the others can't be reached from here.
+  const statusMoves: Partial<Record<ArStatus, () => void>> = draft.status === 'Draft' ? { Open: () => submit(null) } : draft.status === 'Open' ? { Closed: closeIt, ...(!draft.appliedAmount ? { Cancelled: cancelIt } : {}) } : {};
+
   const menu: MoreMenuItem[] = [
     ...(!ctx.added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
     ...(draft.status === 'Open' && balance > 0 && !draft.paymentBlock
       ? [{ label: 'Receive payment', icon: 'savings', onSelect: () => navigate('/sales/payments-received/new', { state: { fromInvoice: draft.id } }) }]
       : []),
-    ...(draft.status === 'Open' ? [{ label: 'Close', icon: 'task_alt', onSelect: () => act(() => closeArInvoice(saved), 'closed') }] : []),
-    ...(draft.status === 'Open' && !draft.appliedAmount ? [{ label: 'Cancel A/R invoice', icon: 'cancel', onSelect: () => act(() => cancelArInvoice(saved), 'cancelled — the entry is reversed and its deliveries and orders are open again') }] : []),
+    ...(draft.status === 'Open' ? [{ label: 'Close', icon: 'task_alt', onSelect: closeIt }] : []),
+    ...(draft.status === 'Open' && !draft.appliedAmount ? [{ label: 'Cancel A/R invoice', icon: 'cancel', onSelect: cancelIt }] : []),
     ...bases.map((l) => ({ label: `Open ${l.baseType === 'DN' ? 'delivery' : 'sales order'} ${l.baseDocNo}`, icon: l.baseType === 'DN' ? 'local_shipping' : 'shopping_bag', onSelect: () => navigate(`${l.baseType === 'DN' ? DN_LIST_PATH : SO_LIST_PATH}/${l.baseId}`) })),
     ...(customer ? [{ label: `Open customer ${customer.code}`, icon: 'person', onSelect: () => navigate(`/sales/customers/${customer.id}`) }] : []),
   ];
@@ -371,7 +377,7 @@ function ArInvoiceForm() {
                       </div>
                     )}
                   </FormField>
-                  <ReadOnly label="Status" value={<Badge intent={AR_STATUS_INTENT[draft.status]}>{isNew ? 'New' : draft.status}</Badge>} error={errors.status} />
+                  <StatusField statuses={AR_STATUSES} intents={AR_STATUS_INTENT} value={draft.status} moves={statusMoves} error={errors.status} />
                   {h.date('postingDate', 'Posting date', { required: true, error: errors.postingDate, hint: 'When revenue, VAT and any stock it ships are posted.' })}
                   {h.date('dueDate', 'Due date', { required: true, error: errors.dueDate, hint: `From the payment terms (${paymentTermName(draft.paymentTermId)}).` })}
                   {h.date('documentDate', 'Document date', { required: true, error: errors.documentDate })}

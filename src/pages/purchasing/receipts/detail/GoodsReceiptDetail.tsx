@@ -19,11 +19,12 @@ import {
   TextField,
 } from '@jasperlepardo/sikat-design-system';
 import { Fields, ReadOnly, Section, bind, type Errors } from '../../../../components/form/fields';
+import { StatusField } from '../../../../components/form/StatusField';
 import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { accountText } from '../../../../mocks/chartOfAccounts';
 import { CURRENT_USER_ID } from '../../../../mocks/common';
-import { GR_SERIES, blankGoodsReceipt, newGrLine, type GoodsReceipt, type GrLine, type GrStatus } from '../../../../mocks/goodsReceipts';
+import { GR_SERIES, GR_STATUSES, blankGoodsReceipt, newGrLine, type GoodsReceipt, type GrLine, type GrStatus } from '../../../../mocks/goodsReceipts';
 import { contactName, type Partner } from '../../../../mocks/partners';
 import { type PurchaseOrder } from '../../../../mocks/purchaseOrders';
 import { loadCurrentCompany } from '../../../../services/companies';
@@ -297,6 +298,11 @@ function GoodsReceiptForm() {
 
   const saved = draft as GoodsReceipt;
   const basePos = [...new Set(draft.lines.map((l) => l.baseId).filter(Boolean))];
+  const closeIt = () => act(() => closeGoodsReceipt(saved), 'closed');
+  const cancelIt = () => act(async () => { const gr = await cancelGoodsReceipt(saved); await reverseDocumentEntry(saved.id); return gr; }, 'cancelled — the stock is back out and the PO lines are open again');
+  // What picking each status in the Status dropdown does; the others can't be reached from here.
+  const statusMoves: Partial<Record<GrStatus, () => void>> = draft.status === 'Draft' ? { Open: () => submit(null) } : draft.status === 'Open' ? { Closed: closeIt, Cancelled: cancelIt } : {};
+
   const menu: MoreMenuItem[] = [
     ...(!added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
     ...(draft.status === 'Open' && draft.lines.some((l) => grOpenQty(l, draft) > 0)
@@ -306,9 +312,9 @@ function GoodsReceiptForm() {
         ]
       : []),
     ...(!isNew ? [{ label: 'Duplicate', icon: 'content_copy', onSelect: duplicate }] : []),
-    ...(draft.status === 'Open' ? [{ label: 'Close', icon: 'task_alt', onSelect: () => act(() => closeGoodsReceipt(saved), 'closed') }] : []),
+    ...(draft.status === 'Open' ? [{ label: 'Close', icon: 'task_alt', onSelect: closeIt }] : []),
     ...(draft.status === 'Open'
-      ? [{ label: 'Cancel goods receipt', icon: 'cancel', onSelect: () => act(async () => { const gr = await cancelGoodsReceipt(saved); await reverseDocumentEntry(saved.id); return gr; }, 'cancelled — the stock is back out and the PO lines are open again') }]
+      ? [{ label: 'Cancel goods receipt', icon: 'cancel', onSelect: cancelIt }]
       : []),
     ...basePos.map((poId) => ({ label: `Open PO ${draft.lines.find((l) => l.baseId === poId)?.baseDocNo}`, icon: 'receipt_long', onSelect: () => navigate(`/purchasing/purchase-orders/${poId}`) })),
     ...(vendor ? [{ label: `Open vendor ${vendor.code}`, icon: 'local_shipping', onSelect: () => navigate(`/purchasing/vendors/${vendor.id}`) }] : []),
@@ -449,12 +455,7 @@ function GoodsReceiptForm() {
                         </div>
                       )}
                     </FormField>
-                    <ReadOnly
-                      label="Status"
-                      value={<Badge intent={GR_STATUS_INTENT[isNew ? 'Draft' : draft.status]}>{isNew ? 'New' : draft.status}</Badge>}
-                      hint="Open once added; Closed when invoiced (or closed by hand); Cancelled when reversed."
-                      error={errors.status}
-                    />
+                    <StatusField statuses={GR_STATUSES} intents={GR_STATUS_INTENT} value={draft.status} moves={statusMoves} hint="Open once added; Closed when invoiced (or closed by hand); Cancelled when reversed." error={errors.status} />
                     {h.date('postingDate', 'Posting date', {
                       required: true,
                       error: errors.postingDate,

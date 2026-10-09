@@ -21,10 +21,11 @@ import {
 import { AccountField } from '../../../components/form/AccountField';
 import { AttachmentsCard } from '../../../components/form/AttachmentsCard';
 import { Fields, Flags, ReadOnly, Section, bind, type Errors } from '../../../components/form/fields';
+import { StatusField } from '../../../components/form/StatusField';
 import { MoreMenu, type MoreMenuItem } from '../../../components/form/MoreMenu';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../components/form/ProblemsAlert';
 import { formatAddress } from '../../../mocks/address';
-import { ADVANCES_TO_SUPPLIERS, DPR_SERIES, blankDownPaymentRequest, newDprLine, type DownPaymentRequest, type DprLine, type DprStatus } from '../../../mocks/apDownPayments';
+import { ADVANCES_TO_SUPPLIERS, DPR_SERIES, DPR_STATUSES, blankDownPaymentRequest, newDprLine, type DownPaymentRequest, type DprLine, type DprStatus } from '../../../mocks/apDownPayments';
 import type { Account } from '../../../mocks/chartOfAccounts';
 import type { Attachment } from '../../../mocks/common';
 import { CURRENT_USER_ID } from '../../../mocks/common';
@@ -226,13 +227,18 @@ function DprForm() {
     }
   };
   const bases = [...new Map(draft.lines.filter((l) => l.baseType).map((l) => [l.baseId, l])).values()];
+  const cancelIt = () => act(() => cancelDownPayment(saved), 'cancelled');
+  const closeIt = () => act(() => closeDownPayment(saved), 'closed');
+  // What picking each status in the Status dropdown does; the others can't be reached from here.
+  const statusMoves: Partial<Record<DprStatus, () => void>> = draft.status === 'Draft' ? { Open: () => submit(null) } : draft.status === 'Open' ? { Closed: closeIt, ...(!draft.appliedAmount ? { Cancelled: cancelIt } : {}) } : {};
+
   const menu: MoreMenuItem[] = [
     ...(!added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
     ...(draft.status === 'Open' && balance > 0 && !draft.paymentBlock
       ? [{ label: 'Pay', icon: 'payments', onSelect: () => navigate('/purchasing/payments-made/new', { state: { vendorId: draft.vendorId, invoiceIds: [saved.id] } }) }]
       : []),
-    ...(draft.status === 'Open' && !draft.appliedAmount ? [{ label: 'Cancel request', icon: 'cancel', onSelect: () => act(() => cancelDownPayment(saved), 'cancelled') }] : []),
-    ...(draft.status === 'Open' ? [{ label: 'Close', icon: 'task_alt', onSelect: () => act(() => closeDownPayment(saved), 'closed') }] : []),
+    ...(draft.status === 'Open' && !draft.appliedAmount ? [{ label: 'Cancel request', icon: 'cancel', onSelect: cancelIt }] : []),
+    ...(draft.status === 'Open' ? [{ label: 'Close', icon: 'task_alt', onSelect: closeIt }] : []),
     ...bases.map((l) => ({ label: `Open PO ${l.baseDocNo}`, icon: 'receipt_long', onSelect: () => navigate(`/purchasing/purchase-orders/${l.baseId}`) })),
     ...(vendor ? [{ label: `Open vendor ${vendor.code}`, icon: 'local_shipping', onSelect: () => navigate(`/purchasing/vendors/${vendor.id}`) }] : []),
   ];
@@ -324,7 +330,7 @@ function DprForm() {
                           </div>
                         )}
                       </FormField>
-                      <ReadOnly label="Status" value={<Badge intent={DPR_STATUS_INTENT[isNew ? 'Draft' : draft.status]}>{isNew ? 'New' : draft.status}</Badge>} hint="Open until drawn in full on A/P invoices, or closed by hand." error={errors.status} />
+                      <StatusField statuses={DPR_STATUSES} intents={DPR_STATUS_INTENT} value={draft.status} moves={statusMoves} hint="Open until drawn in full on A/P invoices, or closed by hand." error={errors.status} />
                       {h.date('postingDate', 'Posting date', { required: true, error: errors.postingDate })}
                       {h.date('dueDate', 'Due date', { hint: 'When the vendor wants the advance, from the payment terms.' })}
                       {h.date('documentDate', 'Document date', { required: true, error: errors.documentDate })}

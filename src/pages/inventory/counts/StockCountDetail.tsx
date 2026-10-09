@@ -3,11 +3,12 @@ import { useLocation, useNavigate, useParams } from 'react-router';
 import { Alert, Badge, Button, Combobox, Form, Icon, IconButton, Panel, PanelHeader, panelHeaderIcons, Select, Tabs, Text } from '@jasperlepardo/sikat-design-system';
 import { AttachmentsCard } from '../../../components/form/AttachmentsCard';
 import { Fields, ReadOnly, Section, bind, type Errors } from '../../../components/form/fields';
+import { StatusField } from '../../../components/form/StatusField';
 import { MoreMenu, type MoreMenuItem } from '../../../components/form/MoreMenu';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../components/form/ProblemsAlert';
 import { useCollection } from '../../../components/form/MasterLookup';
 import { CURRENT_USER_ID } from '../../../mocks/common';
-import { COUNTING_TYPES, COUNT_SERIES, blankCounting, newCountLine, newCounter, type Counter, type CounterType, type CountStatus } from '../../../mocks/inventoryCountings';
+import { COUNTING_TYPES, COUNT_SERIES, COUNT_STATUSES, blankCounting, newCountLine, newCounter, type Counter, type CounterType, type CountStatus } from '../../../mocks/inventoryCountings';
 import { formatDate, todayISO } from '../../../services/dates';
 import { loadInventoryMasters } from '../../../services/inventoryMasters';
 import { listItems } from '../../../services/items';
@@ -168,6 +169,9 @@ function CountForm() {
     navigate(`${COUNT_LIST_PATH}/new`, { state: { copyFrom: copy } });
   };
 
+  // What picking each status in the Status dropdown does; the others can't be reached from here.
+  const statusMoves: Partial<Record<CountStatus, () => void>> = open && !isNew ? { Closed: () => submit(null, 'close') } : {};
+
   const menu: MoreMenuItem[] = [
     ...(open && !isNew ? [{ label: 'Close without posting', icon: 'block', onSelect: () => submit(null, 'close') }] : []),
     ...(!isNew ? [{ label: 'Duplicate as a recount', icon: 'content_copy', onSelect: () => recount() }] : []),
@@ -262,7 +266,7 @@ function CountForm() {
                     value={draft.docNum ? countNumber(draft) : `${COUNT_SERIES.find((s) => s.id === draft.seriesId)?.name ?? 'Primary'} · next number`}
                     hint={draft.docNum ? `Series ${COUNT_SERIES.find((s) => s.id === draft.seriesId)?.name ?? 'Primary'}` : 'Assigned when the count is added.'}
                   />
-                  <ReadOnly label="Status" value={<Badge intent={COUNT_STATUS_INTENT[draft.status]}>{isNew ? 'New' : draft.status}</Badge>} hint="Closes once an Inventory Posting is made from it." />
+                  <StatusField statuses={COUNT_STATUSES} intents={COUNT_STATUS_INTENT} value={draft.status} moves={statusMoves} hint="Closes once an Inventory Posting is made from it." />
                   {h.date('countDate', 'Count date', { required: true, error: errors.countDate })}
                   {h.text('countTime', 'Time', { required: true, error: errors.countTime, placeholder: 'HH:MM', hint: 'For movements on the count day.' })}
                   {h.text('reference', 'Ref. 2', { placeholder: 'e.g. CS-MNL-2026-10', hint: 'Count sheet no.' })}
