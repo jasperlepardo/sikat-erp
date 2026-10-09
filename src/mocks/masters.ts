@@ -137,11 +137,6 @@ export const TREATY_COUNTRIES = [
 ] as const;
 export const BANKS = ['BDO Unibank', 'BPI', 'Metrobank', 'Land Bank of the Philippines', 'Security Bank', 'UnionBank', 'China Bank', 'RCBC'] as const;
 export const bankId = idIn('bnk', BANKS);
-export const HOUSE_BANKS: { bank: string; account: string; branch: string; swift: string }[] = [
-  { bank: 'BDO Unibank', account: '0012-3456-7890', branch: 'Ortigas Center', swift: 'BNORPHMM' },
-  { bank: 'BPI', account: '3141-5926-53', branch: 'Makati Ayala', swift: 'BOPIPHMM' },
-  { bank: 'UnionBank', account: '1098-7654-3210', branch: 'Pasig Capitol Commons', swift: 'UBPHPHMM' },
-];
 export const BANK_CHARGE_CODES = ['Shared (SHA)', 'We pay (OUR)', 'They pay (BEN)'] as const;
 export const bankChargeCodeId = idIn('bcc', BANK_CHARGE_CODES);
 export const CARD_BRANDS = ['Visa', 'Mastercard', 'American Express', 'JCB', 'UnionPay'] as const;
