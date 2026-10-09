@@ -143,13 +143,6 @@ export const PAYMENT_SERIES: DocumentSeries[] = [
   { id: 'ops-primary', name: 'Primary', prefix: 'PAY-', firstNo: 510001, manual: false, isDefault: true, active: true },
 ];
 
-/** House bank details for the cash-flagged bank accounts, until Banking › Accounts is built. */
-export const HOUSE_BANKS: Record<string, { bank: string; branch: string; accountNo: string; firstCheckNo: number }> = {
-  '1015': { bank: 'BDO Unibank', branch: 'Ortigas Center', accountNo: '0012-3456-7890', firstCheckNo: 100001 },
-  '1016': { bank: 'BPI', branch: 'Makati Ayala', accountNo: '3021-0456-77', firstCheckNo: 200001 },
-  '1017': { bank: 'UnionBank', branch: 'Pasig Capitol', accountNo: '0001-2233-4455', firstCheckNo: 300001 },
-  '1018': { bank: 'BDO Unibank (USD)', branch: 'Ortigas Center', accountNo: '1012-3456-7891', firstCheckNo: 400001 },
-};
 
 export const FX_GAIN_ACCOUNT = '7020';
 export const FX_LOSS_ACCOUNT = '8020';

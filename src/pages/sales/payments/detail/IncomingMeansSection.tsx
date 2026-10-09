@@ -1,11 +1,11 @@
 import { useState } from 'react';
+import { banks as bankList, houseBankFor, nameIn } from '../../../../services/partnerMasters';
 import { Button, Checkbox, Combobox, DatePicker, Icon, List, Tabs, Text, TextField, type TableColumn } from '@jasperlepardo/sikat-design-system';
 import { DataTable } from '../../../../components/form/DataTable';
 import { MasterLookup } from '../../../../components/form/MasterLookup';
 import { Fields, Section } from '../../../../components/form/fields';
 import type { Account } from '../../../../mocks/chartOfAccounts';
 import { INCOMING_DIFF_ALLOWED, newReceivedCard, newReceivedCheck, type IncomingMeans, type ReceivedCard, type ReceivedCheck } from '../../../../mocks/incomingPayments';
-import { HOUSE_BANKS } from '../../../../mocks/outgoingPayments';
 import { formatAmount } from '../../../../services/format';
 import { amountDue, meansTotal, paymentDifference, type IncomingInput } from '../../../../services/incomingPayments';
 import { cardBrandDef } from '../../../settings/masterDefs';
@@ -28,8 +28,9 @@ export function IncomingMeansSection({ draft, update, accounts, fx, readOnly }: 
   const received = meansTotal(means);
   const left = round2(due - received);
   const { diff, withinAllowance } = paymentDifference(draft, fx);
-  const banks = accounts.filter((a) => a.cash && HOUSE_BANKS[a.code] && (a.currency === 'PHP' || a.currency === code || a.currency === 'All currencies'));
-  const cashAccounts = accounts.filter((a) => a.cash && !HOUSE_BANKS[a.code]);
+  const banks = accounts.filter((a) => a.cash && houseBankFor(a.code) && (a.currency === 'PHP' || a.currency === code || a.currency === 'All currencies'));
+  const cashAccounts = accounts.filter((a) => a.cash && !houseBankFor(a.code));
+  const transferBank = houseBankFor(means.transfer.account);
   const fill = (current: number) => round2(current + Math.max(0, left));
   const patchCheck = (id: string, p: Partial<ReceivedCheck>) => set({ checks: means.checks.map((c) => (c.id === id ? { ...c, ...p } : c)) });
   const patchCard = (id: string, p: Partial<ReceivedCard>) => set({ cards: means.cards.map((c) => (c.id === id ? { ...c, ...p } : c)) });
@@ -68,7 +69,7 @@ export function IncomingMeansSection({ draft, update, accounts, fx, readOnly }: 
           <div>
             <Text variant="small" tone="muted">Bank account</Text>
             {accountPicker('Bank account', means.transfer.account, banks, (account) => set({ transfer: { ...means.transfer, account } }))}
-            {HOUSE_BANKS[means.transfer.account] ? <Text variant="small" tone="muted">{HOUSE_BANKS[means.transfer.account].bank} · {HOUSE_BANKS[means.transfer.account].accountNo}</Text> : null}
+            {transferBank ? <Text variant="small" tone="muted">{nameIn(bankList, transferBank.bankId)} · {transferBank.accountNo}</Text> : null}
           </div>
           <div>
             <Text variant="small" tone="muted">Transfer date</Text>

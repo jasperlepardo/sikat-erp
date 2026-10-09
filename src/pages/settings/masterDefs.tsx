@@ -5,8 +5,10 @@
 import { Button, Text } from '@jasperlepardo/sikat-design-system';
 import { FieldStack, ReadOnly, bind, type Errors } from '../../components/form/fields';
 import { statusColumn, uniqueRequired } from '../../components/form/MasterList';
+import { AccountField } from '../../components/form/AccountField';
 import type { MasterDef } from '../../components/form/MasterLookup';
-import { MAX_PARTNER_PROPERTIES, type Bank, type BpGroup, type Country, type NamedEntry, PRICE_ROUNDING, type PaymentTerm, type PriceList, type Project } from '../../mocks/partnerMasters';
+import { MAX_PARTNER_PROPERTIES, type Bank, type BpGroup, type Country, type HouseBankAccount, type NamedEntry, PRICE_ROUNDING, type PaymentTerm, type PriceList, type Project } from '../../mocks/partnerMasters';
+import { accountText } from '../../mocks/chartOfAccounts';
 import { ItemPricesTable } from '../inventory/pricing/ItemPricesTable';
 import { BASE_PRICE_LIST_ID, describeChain, priceChain, priceListName, roundingLabel, samplePrice } from '../../services/priceLists';
 import type { Collection } from '../../services/store';
@@ -24,7 +26,7 @@ import {
   type UnitOfMeasure,
   type WarrantyTemplate,
 } from '../../mocks/itemMasters';
-import { currencies } from '../../services/masterData';
+import { accounts as glAccounts, currencies } from '../../services/masterData';
 import { manufacturers, shippingTypes, unitsOfMeasure, warehouses, warrantyTemplates } from '../../services/inventoryMasters';
 import { blankCurrency, validateCurrency } from './accounting-tax/CurrenciesTab';
 import type { Company } from '../../mocks/companies';
@@ -339,6 +341,50 @@ export const bankDef: MasterDef<Bank> = {
       <FieldStack>
         {f.text('name', 'Name', { required: true, error: errors.name })}
         {f.text('swift', 'BIC / SWIFT', { error: errors.swift, placeholder: 'e.g. BNORPHMM' })}
+        {f.status('active', 'Status')}
+      </FieldStack>
+    );
+  },
+};
+
+/** Our own bank accounts: which bank and account number sit behind each cash G/L account, and where checks start. */
+export const houseBankAccountDef: MasterDef<HouseBankAccount> = {
+  collection: lists.houseBankAccounts,
+  icon: 'account_balance_wallet',
+  title: 'House bank accounts',
+  noun: 'house bank account',
+  home: BANKING,
+  description: 'Our bank accounts. Payments pick the cash G/L account; this says which bank and account number it is and where its checks start.',
+  blank: () => ({ id: newId('hba'), glAccount: '', bankId: '', branch: '', accountNo: '', firstCheckNo: 1, active: true }),
+  value: (h) => h.id,
+  label: (h) => `${lists.nameIn(lists.banks, h.bankId)} · ${h.accountNo}`,
+  columns: [
+    { key: 'glAccount', header: 'G/L account', cell: (h) => accountText(h.glAccount, [...glAccounts.snapshot()]) },
+    { key: 'bankId', header: 'Bank', cell: (h) => lists.nameIn(lists.banks, h.bankId) },
+    { key: 'accountNo', header: 'Account no.', cell: (h) => h.accountNo },
+    { key: 'firstCheckNo', header: 'First check', cell: (h) => String(h.firstCheckNo) },
+    statusColumn<HouseBankAccount>(),
+  ],
+  searchText: (h) => `${h.glAccount} ${lists.nameIn(lists.banks, h.bankId)} ${h.branch} ${h.accountNo}`,
+  normalize: (h) => ({ ...h, branch: h.branch.trim(), accountNo: h.accountNo.trim() }),
+  validate: (h, all) => {
+    const e: Errors = {};
+    if (!h.glAccount) e.glAccount = 'Pick the cash G/L account.';
+    else if (all.some((x) => x.id !== h.id && x.glAccount === h.glAccount)) e.glAccount = `${h.glAccount} already has a house bank account.`;
+    if (!h.bankId) e.bankId = 'Pick the bank.';
+    if (!h.accountNo.trim()) e.accountNo = 'Account number is required.';
+    if (!(h.firstCheckNo >= 1)) e.firstCheckNo = 'Start at 1 or more.';
+    return e;
+  },
+  editor: (h, update, errors) => {
+    const f = bind(h, update);
+    return (
+      <FieldStack>
+        <AccountField label="G/L account" role="cash" required value={h.glAccount} onChange={(glAccount) => update({ glAccount })} accounts={[...glAccounts.snapshot()]} error={errors.glAccount} hint="The cash account payments post to." />
+        {f.master('bankId', 'Bank', bankDef, { required: true, error: errors.bankId })}
+        {f.text('branch', 'Branch', { placeholder: 'e.g. Ortigas Center' })}
+        {f.text('accountNo', 'Account no.', { required: true, error: errors.accountNo })}
+        {f.num('firstCheckNo', 'First check no.', { error: errors.firstCheckNo, hint: 'Outgoing payments number checks from here.' })}
         {f.status('active', 'Status')}
       </FieldStack>
     );

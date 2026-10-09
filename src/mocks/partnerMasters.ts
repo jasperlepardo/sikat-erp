@@ -5,6 +5,7 @@
  */
 import {
   BANKS,
+  bankId,
   BANK_CHARGE_CODES,
   BP_GROUPS,
   CARD_BRANDS,
@@ -47,6 +48,22 @@ export interface PaymentTerm extends NamedEntry {
 /** A country. `id` is always its ISO 3166-1 alpha-2 `code` (PH, SG…), the key addresses store. */
 export interface Country extends NamedEntry {
   code: string;
+}
+
+/**
+ * One of our own bank accounts (Settings › Banking › House bank accounts). Payments pick its cash
+ * G/L account; this record says which bank and account number that is, and where checks start.
+ */
+export interface HouseBankAccount {
+  id: string;
+  /** The cash G/L account it posts to — one house bank account per G/L account. */
+  glAccount: string;
+  bankId: string;
+  branch: string;
+  accountNo: string;
+  /** First number of the account's check series. */
+  firstCheckNo: number;
+  active: boolean;
 }
 
 export interface Bank extends NamedEntry {
@@ -151,6 +168,15 @@ export const SEED_PAYMENT_TERMS: PaymentTerm[] = named('pt', PAYMENT_TERMS).map(
 export const SEED_DUNNING_TERMS = named('dun', DUNNING_TERMS);
 export const SEED_HOLIDAY_CALENDARS = named('hol', HOLIDAY_CALENDARS);
 export const SEED_BANKS: Bank[] = named('bnk', BANKS).map((b) => ({ ...b, swift: SWIFT[b.name] ?? '' }));
+
+const houseBank = (id: string, glAccount: string, bank: (typeof BANKS)[number], branch: string, accountNo: string, firstCheckNo: number): HouseBankAccount =>
+  ({ id, glAccount, bankId: bankId(bank), branch, accountNo, firstCheckNo, active: true });
+export const SEED_HOUSE_BANK_ACCOUNTS: HouseBankAccount[] = [
+  houseBank('hba-001', '1015', 'BDO Unibank', 'Ortigas Center', '0012-3456-7890', 100001),
+  houseBank('hba-002', '1016', 'BPI', 'Makati Ayala', '3021-0456-77', 200001),
+  houseBank('hba-003', '1017', 'UnionBank', 'Pasig Capitol', '0001-2233-4455', 300001),
+  houseBank('hba-004', '1018', 'BDO Unibank', 'Ortigas Center', '1012-3456-7891', 400001),
+];
 export const SEED_BANK_CHARGE_CODES = named('bcc', BANK_CHARGE_CODES);
 export const SEED_CARD_BRANDS = named('crd', CARD_BRANDS);
 export const SEED_FACTORING_COMPANIES = named('fac', FACTORING_COMPANIES);

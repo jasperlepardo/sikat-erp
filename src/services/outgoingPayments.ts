@@ -3,13 +3,13 @@ import {
   CASH_DISCOUNT_ACCOUNT,
   FX_GAIN_ACCOUNT,
   FX_LOSS_ACCOUNT,
-  HOUSE_BANKS,
   PAYMENT_SERIES,
   type OutgoingPayment,
   type PaymentMeans,
   type PaymentRow,
 } from '../mocks/outgoingPayments';
 import { outgoingPaymentSeries, seriesLookup, formatDocNum } from './allSeries';
+import { houseBankFor } from './partnerMasters';
 import { todayISO } from './dates';
 import type { JournalLine } from './inventoryTransfers';
 import { applyPayments } from './apInvoices';
@@ -129,7 +129,7 @@ export async function savePaymentRemarks(p: OutgoingPayment, patch: Pick<Outgoin
 /** The next check number on a bank account: one past the highest used, or the account's first. */
 function nextCheckNo(all: OutgoingPayment[], account: string, taken: number[]) {
   const used = [...all.flatMap((p) => p.means.checks.filter((c) => c.account === account).map((c) => c.checkNo)), ...taken];
-  return Math.max((HOUSE_BANKS[account]?.firstCheckNo ?? 1) - 1, ...used) + 1;
+  return Math.max((houseBankFor(account)?.firstCheckNo ?? 1) - 1, ...used) + 1;
 }
 
 /**

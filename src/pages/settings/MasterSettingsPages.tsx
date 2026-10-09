@@ -28,6 +28,7 @@ const BANKING_TABS = [
   tab('dunning-terms', d.dunningTermDef),
   tab('holidays', d.holidayCalendarDef),
   tab('banks', d.bankDef),
+  tab('house-bank-accounts', d.houseBankAccountDef),
   tab('bank-charges', d.bankChargeCodeDef),
   tab('card-brands', d.cardBrandDef),
   tab('factoring', d.factoringCompanyDef),
@@ -59,7 +60,7 @@ export function BankingSettingsPage() {
       base="/settings/banking"
       icon="savings"
       title="Banking"
-      subcopy="Payment terms, dunning terms, holiday calendars, banks, bank charges, card brands and factoring companies."
+      subcopy="Payment terms, dunning terms, holiday calendars, banks, house bank accounts, bank charges, card brands and factoring companies."
       tabs={BANKING_TABS}
     />
   );

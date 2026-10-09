@@ -1,5 +1,6 @@
 import {
   SEED_BANKS,
+  SEED_HOUSE_BANK_ACCOUNTS,
   SEED_BANK_CHARGE_CODES,
   SEED_BP_GROUPS,
   SEED_CARD_BRANDS,
@@ -20,6 +21,7 @@ import {
   SEED_TECHNICIANS,
   SEED_TERRITORIES,
   type Bank,
+  type HouseBankAccount,
   type Country,
   type BpGroup,
   type NamedEntry,
@@ -54,6 +56,9 @@ export const paymentTerms = createCollection<PaymentTerm>('sikat-erp:payment-ter
 export const dunningTerms = createCollection<NamedEntry>('sikat-erp:dunning-terms', SEED_DUNNING_TERMS, 'dun');
 export const holidayCalendars = createCollection<NamedEntry>('sikat-erp:holiday-calendars', SEED_HOLIDAY_CALENDARS, 'hol');
 export const banks = createCollection<Bank>('sikat-erp:banks', SEED_BANKS, 'bnk');
+export const houseBankAccounts = createCollection<HouseBankAccount>('sikat-erp:house-bank-accounts', SEED_HOUSE_BANK_ACCOUNTS, 'hba');
+/** The active house bank account behind a cash G/L account, if it's a bank account. */
+export const houseBankFor = (glAccount: string) => houseBankAccounts.snapshot().find((h) => h.active && h.glAccount === glAccount);
 export const bankChargeCodes = createCollection<NamedEntry>('sikat-erp:bank-charge-codes', SEED_BANK_CHARGE_CODES, 'bcc');
 export const cardBrands = createCollection<NamedEntry>('sikat-erp:card-brands', SEED_CARD_BRANDS, 'crd');
 export const factoringCompanies = createCollection<NamedEntry>('sikat-erp:factoring-companies', SEED_FACTORING_COMPANIES, 'fac');

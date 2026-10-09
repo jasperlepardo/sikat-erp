@@ -1,10 +1,11 @@
 import { useState } from 'react';
+import { houseBankFor } from '../../../../services/partnerMasters';
 import { Button, Checkbox, DatePicker, Icon, List, Tabs, Text, TextField, type TableColumn } from '@jasperlepardo/sikat-design-system';
 import { AccountField } from '../../../../components/form/AccountField';
 import { DataTable } from '../../../../components/form/DataTable';
 import { MasterLookup } from '../../../../components/form/MasterLookup';
 import { Fields, Section } from '../../../../components/form/fields';
-import { HOUSE_BANKS, newCardRow, newCheckRow, type CardRow, type CheckRow, type PaymentMeans } from '../../../../mocks/outgoingPayments';
+import { newCardRow, newCheckRow, type CardRow, type CheckRow, type PaymentMeans } from '../../../../mocks/outgoingPayments';
 import { formatAmount } from '../../../../services/format';
 import { meansBalance, meansTotal, overallAmount } from '../../../../services/outgoingPayments';
 import { cardBrandDef } from '../../../settings/masterDefs';
@@ -46,8 +47,8 @@ export function PaymentMeansSection({ draft, update, m, readOnly }: PaySectionPr
       header: 'Bank account',
       cell: (c) => (
         <div className="w-64">
-          <AccountField label="" role="cash" value={c.account} onChange={(account) => patchCheck(c.id, { account })} accounts={cashAccounts.filter((a) => HOUSE_BANKS[a.code])} disabled={readOnly} />
-          {HOUSE_BANKS[c.account] ? <Text variant="small" tone="muted">{HOUSE_BANKS[c.account].branch} · {HOUSE_BANKS[c.account].accountNo}</Text> : null}
+          <AccountField label="" role="cash" value={c.account} onChange={(account) => patchCheck(c.id, { account })} accounts={cashAccounts.filter((a) => houseBankFor(a.code))} disabled={readOnly} />
+          {houseBankFor(c.account) ? <Text variant="small" tone="muted">{houseBankFor(c.account)!.branch} · {houseBankFor(c.account)!.accountNo}</Text> : null}
         </div>
       ),
     },
@@ -100,7 +101,7 @@ export function PaymentMeansSection({ draft, update, m, readOnly }: PaySectionPr
             </Fields>
           ) : tab === 'cash' ? (
             <Fields>
-              <AccountField label="G/L account" role="cash" value={means.cash.account} onChange={(account) => set({ cash: { ...means.cash, account } })} accounts={cashAccounts.filter((a) => !HOUSE_BANKS[a.code])} disabled={readOnly} hint="The cash fund the money comes out of." />
+              <AccountField label="G/L account" role="cash" value={means.cash.account} onChange={(account) => set({ cash: { ...means.cash, account } })} accounts={cashAccounts.filter((a) => !houseBankFor(a.code))} disabled={readOnly} hint="The cash fund the money comes out of." />
               <TextField aria-label="Cash amount" type="number" min={0} prefix={code} disabled={readOnly} value={String(means.cash.amount)} onChange={(e) => set({ cash: { ...means.cash, amount: round2(num(e.currentTarget.value)) } })} />
               <div className="md:col-span-2">{fillButton(() => set({ cash: { ...means.cash, amount: fill(means.cash.amount) } }))}</div>
             </Fields>
