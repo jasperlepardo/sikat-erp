@@ -15,8 +15,9 @@ Demo scenario: an Apple Premium Reseller in the Philippines, with seed data cove
 - **Vite + React 19 + TypeScript** — standard Vite SPA
 - **React Router 7** — hash routing (`/#/inventory/items`)
 - **Tailwind CSS v4** — tokens come from the design system
-- **`@jasperlepardo/sikat-design-system`** — published to GitHub Packages; current version ~0.31.x
-- No backend, no real auth, no tests (Playwright in devDeps but no test files)
+- **`@jasperlepardo/sikat-design-system`** — published to GitHub Packages; current version ~0.32.x
+- No backend, no real auth
+- **Playwright** smoke tests in `e2e/` (`npm run test:e2e`)
 
 ## Commands
 
@@ -25,6 +26,7 @@ npm run dev        # Start dev server
 npm run typecheck  # TypeScript check only
 npm run build      # tsc -b && vite build
 npm run preview    # Serve dist/ locally
+npm run test:e2e   # Playwright smoke tests (starts its own dev server on :5199)
 ```
 
 ---
@@ -32,6 +34,8 @@ npm run preview    # Serve dist/ locally
 ## Directory layout
 
 ```
+e2e/            Playwright smoke tests: every screen loads with no errors or raw ids;
+                rename / bin-snapshot / counter / house-bank behaviour
 src/
   app/          AppShell, router, sidebar nav definition
   components/   Shared UI components (form helpers)
@@ -90,11 +94,13 @@ All routes use hash routing (`/#/…`). Defined in `src/app/router.tsx`.
 | `/purchasing/purchase-orders` | PurchaseOrderList |
 | `/purchasing/purchase-orders/:id` | PurchaseOrderDetail (3 tabs) |
 | `/accounting/chart-of-accounts/:recordId?` | ChartOfAccountsPage |
-| `/all`, `/leads`, `/customers`, `/vendors` | PartnerList (role-scoped) |
-| `/all/:id`, `/leads/:id`, etc. | PartnerDetail (8 tabs) |
+| `/crm/business-partners`, `/crm/leads`, `/sales/customers`, `/purchasing/vendors` | PartnerList (role-scoped) |
+| `…/:id` under each | PartnerDetail |
 | `/settings/accounting-and-tax/:tab?/:recordId?` | AccountingTaxPage (11 master tabs) |
 | `/settings/inventory/:tab?/:recordId?` | InventorySettingsPage |
-| `/settings/sales-and-crm/…`, `/settings/banking/…`, `/settings/company/…` | Placeholder (not yet built) |
+| `/settings/sales-and-crm/:tab?/:recordId?` | SalesCrmSettingsPage (partner groups, industries, employees, …) |
+| `/settings/banking/:tab?/:recordId?` | BankingSettingsPage (payment terms, banks, house bank accounts, …) |
+| `/settings/company/:tab?/:recordId?` | CompanySettingsPage (companies, projects, countries, …) |
 
 ---
 
@@ -108,6 +114,7 @@ createCollection<T>(storageKey, seed, idPrefix)
     list(): Promise<T[]>,
     get(id): Promise<T | undefined>,
     save(input): Promise<T>,
+    remove(id): Promise<void>,
     snapshot(): readonly T[],     // Sync read (no await)
     subscribe(fn): () => void,    // Called after any save
     reset(): Promise<void>
@@ -119,6 +126,21 @@ createCollection<T>(storageKey, seed, idPrefix)
 - `useCollection(collection)` hook returns `T[] | undefined` (undefined while loading)
 - `useAsync<T>(load, deps)` runs async on mount/deps change; returns `undefined` while loading
 - `useCollectionRows(collection)` returns `{ rows, save, setActive, reload }`
+- **`SEED_VERSION`** (top of `store.ts`): a saved collection overrides its seed forever, so **bump it whenever a file in `src/mocks` changes**. A browser on an older version drops every `sikat-erp:` key once and reloads the seed.
+
+---
+
+## Data conventions — ids link, codes display
+
+Shaped so collections map to SQL tables later. Follow these when adding fields or master lists.
+
+- **References are ids, never names.** A field pointing at another record is named `…Id` (`paymentTermId`, `priceListId`, `bpGroupId`, `salesEmployeeId`, `projectId`, `binId`) or, for code-keyed lists, `…Code` (`countryCode`). Screens show the name by looking it up: `nameIn(collection, id)`, `paymentTermName()`, `priceListName()`, `bpGroupName()`, `itemGroupName()`, `projectLabel()`, `countryName()`, `binCodeOf()`. A raw id on screen is a bug (the e2e sweep fails on one).
+- **Generated ids** (`pt-004`, `emp-3f9a2c1b`) for anything that can be renamed. Names and codes stay editable.
+- **Code as the id** only where the code is locked once saved: countries (ISO 3166-1 alpha-2, `PH`), units of measure and UoM groups, manufacturers, warehouses/offices, tax codes, tax groups, withholding groups, excise categories, G/L accounts. There `id === code`; a new record's id is set from its code on save.
+- **Snapshots on posted documents.** Posting stamps what must read as it was: bin codes (`binCode`, `fromBinCode`/`toBinCode`, via `withBinCodes()`), alongside the item numbers, descriptions and address text documents already keep. Drafts show the current value; posted lines show the snapshot.
+- **Child rows, not maps.** Nested lists are arrays of rows keyed by parent + their own key (`discounts: { itemGroupId, discountPct }[]`, `counts: { counterId, qty }[]`), never objects keyed by a name.
+- **"None" is `''`.** Never store a placeholder like `'— None —'` or a fake "-No Sales Employee-" record; make the picker clearable with a placeholder, or offer `{ value: '', label: '— None —' }`.
+- **Seeds stay readable** with typed helpers in `src/mocks/masters.ts` (`termId('Net 30')`, `plId('Wholesale')`, `bpgId(…)`, `employeeId(…)`, built on `idIn(prefix, LIST)`): they resolve to the seed id at build time and a misspelt name fails the typecheck. Lists are `as const`; append to them, never reorder (ids are positional).
 
 ---
 
@@ -139,7 +161,7 @@ interface MasterDef<T> {
   description?: ReactNode;
   home: string;                           // e.g., "Settings › Inventory"
   blank: (name: string) => T;             // Fresh row with name pre-filled
-  value: (row: T) => string;              // What to store (code or name)
+  value: (row: T) => string;              // What to store — the id (see Data conventions)
   label: (row: T) => string;              // What to display
   columns: TableColumn<T>[];
   searchText: (row: T) => string;
@@ -423,3 +445,5 @@ type Editing =
 5. **Hash routing** is intentional for static hosting (GitHub Pages, Netlify, etc.) without server-side routing.
 
 6. **Design system `bind()` extended** — sikat-erp adds `f.master()` for `MasterLookup`, and layout helpers (`Section`, `Fields`, `FieldStack`, `Flags`, `ReadOnly`).
+
+7. **Records link by id, show by lookup** — see Data conventions. Master lists load whole into memory at startup, so lookups are in-memory and a rename in Settings shows everywhere at once.
