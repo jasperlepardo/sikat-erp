@@ -4,9 +4,10 @@ import { MasterList, type ListRoute } from '../../../components/form/MasterList'
 import { currentRate, type TaxGroup } from '../../../mocks/taxes';
 import { taxCodes, taxGroups } from '../../../services/masterData';
 import { useAsync } from '../../../services/useAsync';
-import { newId, useCollectionRows } from '../../../services/useCollectionRows';
+import { useCollectionRows } from '../../../services/useCollectionRows';
 
-const blank = (): TaxGroup => ({ id: newId('tg'), code: '', name: '', direction: 'Sales', taxCode: '', zeroRated: false, active: true });
+// The id is set from the code on save: the code is the key.
+const blank = (): TaxGroup => ({ id: '', code: '', name: '', direction: 'Sales', taxCode: '', zeroRated: false, active: true });
 
 export function TaxGroupsTab(route: ListRoute) {
   const { rows, save, setActive } = useCollectionRows(taxGroups);
@@ -60,13 +61,13 @@ export function TaxGroupsTab(route: ListRoute) {
         else if (c.direction !== g.direction) e.taxCode = `${c.code} is a ${c.direction.toLowerCase()} code.`;
         return e;
       }}
-      onSave={(g) => save({ ...g, code: g.code.trim().toUpperCase() })}
-      editor={(g, update, errors) => {
+      onSave={(g) => save({ ...g, id: g.id || g.code.trim().toUpperCase(), code: g.code.trim().toUpperCase() })}
+      editor={(g, update, errors, isNew) => {
         const f = bind(g, update);
         return (
           <>
             <FieldStack>
-              {f.text('code', 'Code', { required: true, error: errors.code, placeholder: 'e.g. S-VAT12' })}
+              {f.text('code', 'Code', { required: true, error: errors.code, placeholder: 'e.g. S-VAT12', disabled: !isNew, hint: !isNew ? "Can't change once saved — items, partners and documents store it." : undefined })}
               {f.text('name', 'Name', { required: true, error: errors.name })}
               {f.pick('direction', 'Used on', ['Sales', 'Purchase'])}
               {f.lookup(

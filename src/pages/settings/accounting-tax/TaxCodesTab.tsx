@@ -20,13 +20,14 @@ import {
   type TaxRatePeriod,
 } from '../../../mocks/taxes';
 import { taxCodes } from '../../../services/masterData';
-import { newId, useCollectionRows } from '../../../services/useCollectionRows';
+import { useCollectionRows } from '../../../services/useCollectionRows';
 import { todayISO } from '../../../services/dates';
 
 const today = () => todayISO();
 
 const blank = (): TaxCode => ({
-  id: newId('tc'),
+  // The id is set from the code on save: the code is the key.
+  id: '',
   code: '',
   name: '',
   direction: 'Sales',
@@ -109,15 +110,16 @@ export function TaxCodesTab(route: ListRoute) {
       onSave={(t) =>
         save({
           ...t,
+          id: t.id || t.code.trim().toUpperCase(),
           code: t.code.trim().toUpperCase(),
           rates: [...t.rates].sort((a, b) => a.from.localeCompare(b.from)),
         })
       }
-      editor={(t, update, errors) => {
+      editor={(t, update, errors, isNew) => {
         const f = bind(t, update);
         return (
           <FieldStack>
-            {f.text('code', 'Code', { required: true, error: errors.code, placeholder: 'e.g. 31' })}
+            {f.text('code', 'Code', { required: true, error: errors.code, placeholder: 'e.g. 31', disabled: !isNew, hint: !isNew ? "Can't change once saved — items, partners and documents store it." : undefined })}
             {f.text('name', 'Name', { required: true, error: errors.name })}
             {f.pick('direction', 'Used on', ['Sales', 'Purchase'])}
             {f.pick('category', 'Category', TAX_CATEGORIES)}

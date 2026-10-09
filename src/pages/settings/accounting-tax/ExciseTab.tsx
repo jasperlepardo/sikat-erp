@@ -19,7 +19,7 @@ import {
 } from '../../../mocks/taxes';
 import { exciseCategories } from '../../../services/masterData';
 import { formatAmount } from '../../../services/format';
-import { newId, useCollectionRows } from '../../../services/useCollectionRows';
+import { useCollectionRows } from '../../../services/useCollectionRows';
 import { todayISO } from '../../../services/dates';
 
 const today = () => todayISO();
@@ -28,7 +28,8 @@ const blankTier = (): ExciseTier => ({ upTo: null, adValoremRate: 0, specificAmo
 const blankPeriod = (): ExciseRatePeriod => ({ effectiveFrom: today(), effectiveTo: '', tiers: [blankTier()] });
 
 const blank = (): ExciseCategory => ({
-  id: newId('ex'),
+  // The id is set from the code on save: the code is the key.
+  id: '',
   code: '',
   name: '',
   basis: 'Specific',
@@ -106,20 +107,21 @@ export function ExciseTab(route: ListRoute) {
       onSave={(x) =>
         save({
           ...x,
+          id: x.id || x.code.trim().toUpperCase(),
           code: x.code.trim().toUpperCase(),
           rates: [...x.rates]
             .sort((a, b) => a.effectiveFrom.localeCompare(b.effectiveFrom))
             .map((p) => ({ ...p, tiers: [...p.tiers].sort((a, b) => (a.upTo ?? Infinity) - (b.upTo ?? Infinity)) })),
         })
       }
-      editor={(x, update, errors) => {
+      editor={(x, update, errors, isNew) => {
         const f = bind(x, update);
         const isSpecific = x.basis === 'Specific' || x.basis === 'Specific + ad valorem';
         const isAdValorem = x.basis === 'Ad valorem' || x.basis === 'Specific + ad valorem';
         return (
           <>
             <FieldStack>
-              {f.text('code', 'Code', { required: true, error: errors.code, placeholder: 'e.g. EX-SSB' })}
+              {f.text('code', 'Code', { required: true, error: errors.code, placeholder: 'e.g. EX-SSB', disabled: !isNew, hint: !isNew ? "Can't change once saved — items, partners and documents store it." : undefined })}
               {f.text('name', 'Products', { required: true, error: errors.name })}
               {f.pick('basis', 'Basis', EXCISE_BASES)}
               {isSpecific && f.text('unit', 'Unit', { placeholder: 'e.g. pack, liter, proof liter' })}

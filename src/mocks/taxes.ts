@@ -24,6 +24,7 @@ export type TaxCategory =
   | 'Percentage tax';
 
 /** A VAT or percentage tax code, applied on document rows. */
+/** Keyed by its code: `id` is always `code` (31, 46…), which tax groups, items, partners and lines store. */
 export interface TaxCode {
   id: string;
   code: string;
@@ -63,6 +64,7 @@ export const currentRate = (code: Pick<TaxCode, 'rates'>) => rateAt(code, todayI
  * capital goods…). Partner and company status can override it — see
  * services/taxDetermination.ts.
  */
+/** Keyed by its code: `id` is always `code` (S-VAT12…), which items store. */
 export interface TaxGroup {
   id: string;
   code: string;
@@ -101,6 +103,7 @@ export const newVatExemptionEntry = (): VatExemptionEntry => ({
  * What items point to for withholding tax determination. The group carries the
  * ATCs for each payee type and income tier so `determineWithholding` is table-driven.
  */
+/** Keyed by its code: `id` is always `code` (WH-GDS…), which items and partners store. */
 export interface WithholdingGroup {
   id: string;
   code: string;
@@ -515,6 +518,7 @@ export interface ExciseRatePeriod {
 }
 
 /** An excise tax category an item can fall under (NIRC Title VI). */
+/** Keyed by its code: `id` is always `code` (EX-SSB…), which items store. */
 export interface ExciseCategory {
   id: string;
   code: string;
@@ -565,7 +569,7 @@ const tc = (
   code: string, name: string, direction: TaxDirection, category: TaxCategory, rate: number | TaxRatePeriod[],
   glAccount: string, birReturn: string, legalBasis: string, notes = '',
 ): TaxCode => ({
-  id: `tc-${code}`, code, name, direction, category,
+  id: code, code, name, direction, category,
   rates: typeof rate === 'number' ? [{ from: rate ? VAT_SINCE : ZERO_SINCE, rate }] : rate,
   glAccount: toAccountCode(glAccount), birReturn, legalBasis, active: true, notes,
 });
@@ -607,7 +611,7 @@ export const SEED_TAX_CODES: TaxCode[] = [
 ];
 
 const tg = (code: string, name: string, direction: TaxDirection, taxCode: string, zeroRated = false): TaxGroup => ({
-  id: `tg-${code}`, code, name, direction, taxCode, zeroRated, active: true,
+  id: code, code, name, direction, taxCode, zeroRated, active: true,
 });
 
 export const SEED_TAX_GROUPS: TaxGroup[] = [
@@ -909,7 +913,7 @@ const wg = (
     notes?: string;
   } = {},
 ): WithholdingGroup => ({
-  id: `wg-${code.toLowerCase()}`,
+  id: code,
   code, name,
   atcIndividual, atcIndividualHigh,
   atcCorporate, atcCorporateHigh,
@@ -991,7 +995,7 @@ const ex = (
   rates: [string, TierDef[]][],  // [effectiveFrom, tiers][]
   legalBasis: string, notes = '',
 ): ExciseCategory => ({
-  id: `ex-${code}`, code, name, basis, unit, adValoremBase,
+  id: code, code, name, basis, unit, adValoremBase,
   rates: rates.map(([effectiveFrom, tiers]) => ({
     effectiveFrom,
     effectiveTo: '',

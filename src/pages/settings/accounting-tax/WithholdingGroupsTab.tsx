@@ -7,10 +7,11 @@ import {
 } from '../../../mocks/taxes';
 import { withholdingGroups, withholdingTaxes } from '../../../services/masterData';
 import { useAsync } from '../../../services/useAsync';
-import { newId, useCollectionRows } from '../../../services/useCollectionRows';
+import { useCollectionRows } from '../../../services/useCollectionRows';
 
 const blank = (): WithholdingGroup => ({
-  id: newId('wg'),
+  // The id is set from the code on save: the code is the key.
+  id: '',
   code: '',
   name: '',
   atcIndividual: null,
@@ -86,8 +87,8 @@ export function WithholdingGroupsTab(route: ListRoute) {
         if (!g.name.trim()) e.name = 'Name is required.';
         return e;
       }}
-      onSave={(g) => save({ ...g, code: g.code.trim().toUpperCase() })}
-      editor={(g, update, errors) => {
+      onSave={(g) => save({ ...g, id: g.id || g.code.trim().toUpperCase(), code: g.code.trim().toUpperCase() })}
+      editor={(g, update, errors, isNew) => {
         const f = bind(g, update);
         const atcOptions = (includeNull: boolean) => [
           ...(includeNull ? [{ value: '', label: '— None —' }] : []),
@@ -111,7 +112,7 @@ export function WithholdingGroupsTab(route: ListRoute) {
         return (
           <>
             <FieldStack>
-              {f.text('code', 'Code', { required: true, error: errors.code, placeholder: 'e.g. WH-PROF' })}
+              {f.text('code', 'Code', { required: true, error: errors.code, placeholder: 'e.g. WH-PROF', disabled: !isNew, hint: !isNew ? "Can't change once saved — items, partners and documents store it." : undefined })}
               {f.text('name', 'Name', { required: true, error: errors.name })}
               {f.area('notes', 'Notes', { rows: 2 })}
             </FieldStack>
