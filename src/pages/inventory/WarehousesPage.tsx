@@ -9,7 +9,7 @@ import { LOCATION_TYPES, type LocationType, type Warehouse } from '../../mocks/i
 import { warehouses } from '../../services/inventoryMasters';
 import { listItems } from '../../services/items';
 import { useAsync } from '../../services/useAsync';
-import { newId, useCollectionRows } from '../../services/useCollectionRows';
+import { useCollectionRows } from '../../services/useCollectionRows';
 import { statusColumn, uniqueRequired } from '../settings/inventory/lists';
 import { BinLocationsTab } from './bins/BinLocationsTab';
 import { LocationsTab } from './bins/LocationsTab';
@@ -72,8 +72,9 @@ function WarehousesTab(route: ListRoute) {
             : String(w[key as keyof Warehouse] ?? '').toLowerCase()
       }
       searchText={(w) => `${w.code} ${w.name} ${typeLabel(w.type)} ${addressSummary(w.address)}`}
+      // The id is set from the code on save: the code is the key.
       blank={() => ({
-        id: newId('wh'),
+        id: '',
         code: '',
         name: '',
         type: newType,
@@ -91,7 +92,10 @@ function WarehousesTab(route: ListRoute) {
           e.type = `${stocked} item${stocked === 1 ? ' is' : 's are'} stocked here — offices hold no stock. Remove ${w.code} from them first.`;
         return e;
       }}
-      onSave={(w) => save({ ...w, code: w.code.trim().toUpperCase(), binEnabled: w.type === 'warehouse' })}
+      onSave={(w) => {
+        const code = w.code.trim().toUpperCase();
+        return save({ ...w, id: w.id || code, code, binEnabled: w.type === 'warehouse' });
+      }}
       editor={(w, update, errors, isNew) => {
         const f = bind(w, update);
         return (

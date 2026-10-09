@@ -137,6 +137,7 @@ export const LOCATION_TYPES: { value: LocationType; label: string; hint: string 
 ];
 
 /** A location: an office, warehouse or store. Documents refer to it by `code`. */
+/** A location (warehouse, store or office), keyed by its code: `id` is always `code` (WH-MNL, HQ…), which items, lines, bins and companies store. */
 export interface Warehouse {
   id: string;
   code: string;
@@ -271,11 +272,11 @@ const ph = (
 // HQ: the company's registered address (mocks/companies.ts). Store addresses per powermaccenter.com/pages/store-list (Oct 2026). WH-MNL: the warehouse address the
 // user supplied; its barangay isn't confirmed, so it's left blank (1600 is Pasig's general ZIP).
 const CORE_WAREHOUSES: Warehouse[] = [
-  { id: 'loc-HQ', code: 'HQ', name: 'Head office (Kapitolyo)', type: 'office', address: ph('Pasig', 'Kapitolyo', 'Kapitolyo Bldg., 7A 2nd St.', '1600', '1300', '137403', '137403009'), binEnabled: false, active: true },
-  { id: 'wh-MNL', code: 'WH-MNL', name: 'Pasig warehouse', type: 'warehouse', address: ph('Pasig', '', '155 Dr. Sixto Antonio Ave.', '1600', '1300', '137403', ''), binEnabled: true, active: true },
-  { id: 'wh-CEB', code: 'WH-CEB', name: 'Cebu store (Robinsons Galleria)', type: 'store', address: ph('Cebu', 'Tejero', '1/L Robinsons Galleria Cebu, Maxilom-Osmeña Blvd., 13th Ave. cor. Benedict St.', '6000', '0722', '072217', '072217083'), binEnabled: false, active: true },
-  { id: 'wh-DVO', code: 'WH-DVO', name: 'Davao store (Abreeza)', type: 'store', address: ph('Davao', 'Barangay 20-B', '2nd Flr., Abreeza Mall, J.P. Laurel Ave., Bajada', '8000', '1124', '112402', '112402153'), binEnabled: false, active: true },
-  { id: 'wh-PRD', code: 'WH-PRD', name: 'Mobile Care (Greenbelt 3)', type: 'store', address: ph('Makati', 'San Lorenzo', '2/F Greenbelt 3, Greenbelt Complex, Ayala Center', '1223', '1300', '137602', '137602025'), binEnabled: false, active: true },
+  { id: 'HQ', code: 'HQ', name: 'Head office (Kapitolyo)', type: 'office', address: ph('Pasig', 'Kapitolyo', 'Kapitolyo Bldg., 7A 2nd St.', '1600', '1300', '137403', '137403009'), binEnabled: false, active: true },
+  { id: 'WH-MNL', code: 'WH-MNL', name: 'Pasig warehouse', type: 'warehouse', address: ph('Pasig', '', '155 Dr. Sixto Antonio Ave.', '1600', '1300', '137403', ''), binEnabled: true, active: true },
+  { id: 'WH-CEB', code: 'WH-CEB', name: 'Cebu store (Robinsons Galleria)', type: 'store', address: ph('Cebu', 'Tejero', '1/L Robinsons Galleria Cebu, Maxilom-Osmeña Blvd., 13th Ave. cor. Benedict St.', '6000', '0722', '072217', '072217083'), binEnabled: false, active: true },
+  { id: 'WH-DVO', code: 'WH-DVO', name: 'Davao store (Abreeza)', type: 'store', address: ph('Davao', 'Barangay 20-B', '2nd Flr., Abreeza Mall, J.P. Laurel Ave., Bajada', '8000', '1124', '112402', '112402153'), binEnabled: false, active: true },
+  { id: 'WH-PRD', code: 'WH-PRD', name: 'Mobile Care (Greenbelt 3)', type: 'store', address: ph('Makati', 'San Lorenzo', '2/F Greenbelt 3, Greenbelt Complex, Ayala Center', '1223', '1300', '137602', '137602025'), binEnabled: false, active: true },
 ];
 
 /** The head office and core locations, then every store (mocks/storeWarehouses.ts). */

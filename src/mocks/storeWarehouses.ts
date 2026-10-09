@@ -151,7 +151,7 @@ const ROWS: Row[] = [
 
 export const SEED_STORE_WAREHOUSES: Warehouse[] = ROWS.map(
   ([code, name, addressLine, block, city, zip, province, provinceCode, cityCode, barangayCode]) => ({
-    id: `wh-${code}`,
+    id: code,
     code,
     name,
     type: 'store',

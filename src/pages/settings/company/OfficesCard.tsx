@@ -7,12 +7,12 @@ import { RowMenu } from '../../../components/form/RowMenu';
 import { addressSummary, blankPostalAddress } from '../../../mocks/address';
 import type { Warehouse } from '../../../mocks/itemMasters';
 import { warehouses } from '../../../services/inventoryMasters';
-import { newId } from '../../../services/useCollectionRows';
 import { uniqueRequired } from '../inventory/lists';
 import { EditPanel } from '../../partners/detail/EditPanel';
 
 const blankOffice = (): Warehouse => ({
-  id: newId('loc'),
+  // The id is set from the code on save: the code is the key.
+  id: '',
   code: '',
   name: '',
   type: 'office',
@@ -129,7 +129,8 @@ function OfficePanel({
     if (!row.name.trim()) e.name = 'Name is required.';
     setErrors(e);
     if (Object.keys(e).length) return;
-    await warehouses.save({ ...row, code: row.code.trim().toUpperCase(), name: row.name.trim() });
+    const code = row.code.trim().toUpperCase();
+    await warehouses.save({ ...row, id: row.id || code, code, name: row.name.trim() });
     onSaved();
   };
 
