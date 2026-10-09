@@ -607,8 +607,9 @@ export const manufacturerDef: MasterDef<Manufacturer> = {
   noun: 'manufacturer',
   home: INVENTORY,
   description: 'Who makes an item — separate from the vendor you buy it from.',
-  blank: (name) => ({ id: newId('mfr'), code: '', name, countryCode: 'PH', contactPerson: '', email: '', phone: '', active: true }),
-  value: (m) => m.code,
+  // A new manufacturer's id is set from its code on save: the code is the key.
+  blank: (name) => ({ id: '', code: '', name, countryCode: 'PH', contactPerson: '', email: '', phone: '', active: true }),
+  value: (m) => m.id,
   label: (m) => `${m.code} · ${m.name}`,
   columns: [
     { key: 'code', header: 'Code', cell: (m) => m.code },
@@ -618,7 +619,10 @@ export const manufacturerDef: MasterDef<Manufacturer> = {
     statusColumn<Manufacturer>(),
   ],
   searchText: (m) => `${m.code} ${m.name} ${lists.countryName(m.countryCode)} ${m.contactPerson}`,
-  normalize: (m) => ({ ...m, code: m.code.trim().toUpperCase(), name: m.name.trim() }),
+  normalize: (m) => {
+    const code = m.code.trim().toUpperCase();
+    return { ...m, id: m.id || code, code, name: m.name.trim() };
+  },
   validate: (m, all) => {
     const e: Errors = {};
     uniqueRequired(e, m, all, 'code', 'Code');

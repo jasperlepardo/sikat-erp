@@ -157,6 +157,7 @@ export const receivesFromVendors = (w: Pick<Warehouse, 'type'>) => w.type === 'w
 export const vendorDeliveryLocation = (codes: string[], all: readonly Warehouse[], fallback = 'WH-MNL') =>
   codes.find((c) => all.some((w) => w.code === c && receivesFromVendors(w))) ?? fallback;
 
+/** A manufacturer, keyed by its code: `id` is always `code` (MFR-APL…), which items store. */
 export interface Manufacturer {
   id: string;
   code: string;
@@ -281,7 +282,7 @@ const CORE_WAREHOUSES: Warehouse[] = [
 export const SEED_WAREHOUSES: Warehouse[] = [...CORE_WAREHOUSES, ...SEED_STORE_WAREHOUSES];
 
 const mfr = (code: string, name: string, country: string, contactPerson = '', email = '', phone = ''): Manufacturer => ({
-  id: `mfr-${code}`, code, name, countryCode: country, contactPerson, email, phone, active: true,
+  id: code, code, name, countryCode: country, contactPerson, email, phone, active: true,
 });
 export const SEED_MANUFACTURERS: Manufacturer[] = [
   mfr('MFR-APL', 'Apple Inc.', 'US'),
