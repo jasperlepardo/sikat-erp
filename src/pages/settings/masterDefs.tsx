@@ -6,7 +6,7 @@ import { Button, Text } from '@jasperlepardo/sikat-design-system';
 import { FieldStack, ReadOnly, bind, type Errors } from '../../components/form/fields';
 import { statusColumn, uniqueRequired } from '../../components/form/MasterList';
 import type { MasterDef } from '../../components/form/MasterLookup';
-import { MAX_PARTNER_PROPERTIES, projectValue, type Bank, type BpGroup, type Country, type NamedEntry, PRICE_ROUNDING, type PaymentTerm, type PriceList, type Project } from '../../mocks/partnerMasters';
+import { MAX_PARTNER_PROPERTIES, type Bank, type BpGroup, type Country, type NamedEntry, PRICE_ROUNDING, type PaymentTerm, type PriceList, type Project } from '../../mocks/partnerMasters';
 import { ItemPricesTable } from '../inventory/pricing/ItemPricesTable';
 import { BASE_PRICE_LIST_ID, describeChain, priceChain, priceListName, roundingLabel, samplePrice } from '../../services/priceLists';
 import type { Collection } from '../../services/store';
@@ -35,7 +35,6 @@ const SALES = 'Settings › Sales & CRM';
 const BANKING = 'Settings › Banking';
 const COMPANY = 'Settings › Company';
 
-const NAME_LOCK = 'Partners store this name, so renaming leaves them on the old one. Deactivate and add a new entry instead.';
 
 /** A list whose entries are just a name. */
 function namedDef(o: {
@@ -373,7 +372,7 @@ export const projectDef: MasterDef<Project> = {
     const next = Math.max(0, ...all.map((p) => Number(/(\d+)$/.exec(p.code)?.[1] ?? 0))) + 1;
     return { id: newId('prj'), code: `PRJ-${String(next).padStart(3, '0')}`, name, active: true };
   },
-  value: projectValue,
+  value: (p) => p.id,
   label: (p) => `${p.code} · ${p.name}`,
   columns: [
     { key: 'code', header: 'Code', cell: (p) => p.code },
@@ -388,12 +387,12 @@ export const projectDef: MasterDef<Project> = {
     if (!p.name.trim()) e.name = 'Name is required.';
     return e;
   },
-  editor: (p, update, errors, isNew) => {
+  editor: (p, update, errors) => {
     const f = bind(p, update);
     return (
       <FieldStack>
-        {f.text('code', 'Code', { required: true, error: errors.code, disabled: !isNew, hint: !isNew ? NAME_LOCK : undefined })}
-        {f.text('name', 'Name', { required: true, error: errors.name, disabled: !isNew, hint: !isNew ? NAME_LOCK : undefined, placeholder: 'e.g. Davao store opening' })}
+        {f.text('code', 'Code', { required: true, error: errors.code })}
+        {f.text('name', 'Name', { required: true, error: errors.name, placeholder: 'e.g. Davao store opening' })}
         {f.status('active', 'Status')}
       </FieldStack>
     );

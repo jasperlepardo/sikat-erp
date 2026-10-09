@@ -97,7 +97,7 @@ export function DnAccounting({ draft, update, errors, m }: DnSectionProps) {
       <Section icon="account_balance" title="Journal & payment">
         <Fields>
           {f.text('journalRemark', 'Journal remark', { hint: 'Defaults to “Deliveries – customer code”; the journal entry’s remark.' })}
-          {f.master('project', 'BP project', projectDef, { clearable: true })}
+          {f.master('projectId', 'BP project', projectDef, { clearable: true })}
           {f.master('paymentTermId', 'Payment terms', paymentTermDef, { hint: 'From the order or customer; carries to the invoice.' })}
           {f.lookup('paymentMethod', 'Payment method', PAYMENT_METHODS.map((p) => ({ value: p.code, label: `${p.code} · ${p.description}` })))}
           {f.date('dueDate', 'Due date', {

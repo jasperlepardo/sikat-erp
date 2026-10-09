@@ -395,7 +395,7 @@ function PaymentForm() {
                         </FormField>
                       </>
                     )}
-                    {h.master('project', 'Project', projectDef, { clearable: true })}
+                    {h.master('projectId', 'Project', projectDef, { clearable: true })}
                   </Fields>
                 </Section>
 
@@ -485,7 +485,7 @@ function vendorDefaults(v: Partner, d: PaymentDraft, m: PayMasters, tick: string
     payeeName: v.name,
     contactId: v.defaultContactId,
     payTo: payTo ? formatAddress(payTo, v.name) : '',
-    project: v.project,
+    projectId: v.projectId,
     currency,
     rows: openRows(m, v.id, currency, tick),
     controlAccount: v.payableAccount || '2010',

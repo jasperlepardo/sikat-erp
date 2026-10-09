@@ -63,7 +63,7 @@ export function openRows(customerId: string, currency: string, invoices: readonl
       cashDiscountPct: 0,
       invoiceFx: inv.fxRate || 1,
       controlAccount: inv.controlAccount || '1120',
-      project: inv.project && inv.project !== '— None —' ? inv.project : '',
+      projectId: inv.projectId,
       selected: false,
     };
     if (inv.installments <= 1) {

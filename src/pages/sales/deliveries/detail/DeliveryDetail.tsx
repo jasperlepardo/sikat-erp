@@ -149,7 +149,7 @@ function DeliveryForm() {
       paymentTermId: c.customerPaymentTermId,
       paymentMethod: c.defaultPaymentMethod || draft.paymentMethod,
       dueDate: soDueDate(draft.postingDate, termDays(c.customerPaymentTermId)),
-      project: c.project || '— None —',
+      projectId: c.projectId,
       shippingType: c.shippingType,
       federalTaxId: c.tin,
       salesEmployeeId: c.salesEmployeeId,

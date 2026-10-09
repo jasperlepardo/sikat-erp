@@ -98,7 +98,7 @@ export interface SalesOrder {
 
   // Accounting
   journalRemark: string;
-  project: string;
+  projectId: string;
   cancellationDate: string;
   requiredDate: string;
   paymentTermId: string;
@@ -207,7 +207,7 @@ export function blankSalesOrder(ownerId: string): Omit<SalesOrder, 'id'> {
     bpChannelName: '',
     bpChannelContact: '',
     journalRemark: '',
-    project: '— None —',
+    projectId: '',
     cancellationDate: '',
     requiredDate: '',
     paymentTermId: termId('Net 30'),
@@ -349,7 +349,7 @@ export const SEED_SALES_ORDERS: SalesOrder[] = [
     documentDate: '2026-09-30',
     deliveryDate: '2026-10-20',
     customerRef: 'DepEd-Pasig-PO-26-0412',
-    project: 'PRJ-002 DepEd Pasig iPad rollout',
+    projectId: 'prj-002',
     remarks: 'Awarded under public bidding; contract price per the special price list.',
     lines: [line('so-002-1', 'apl-0079', 120, { priceListId: plId('Government'), unitPrice: round2(69900 / 1.12), priceSource: 'Special price (100+)' })],
   }),

@@ -113,7 +113,7 @@ export interface PurchaseOrder {
   paymentMethod: string;
   dueDate: string;
   cashDiscountDays: number;
-  project: string;
+  projectId: string;
   cancellationDate: string;
   requiredDate: string;
   indicator: string;
@@ -256,7 +256,7 @@ export function blankPurchaseOrder(buyerId: string): Omit<PurchaseOrder, 'id'> {
     paymentMethod: 'BANK',
     dueDate: '',
     cashDiscountDays: 0,
-    project: '— None —',
+    projectId: '',
     cancellationDate: '',
     requiredDate: '',
     indicator: '— None —',
@@ -451,7 +451,7 @@ export const SEED_PURCHASE_ORDERS: PurchaseOrder[] = [
     remarks: 'Accessories restock. 2% cash discount if paid within 10 days.',
   }),
   po('po-009', 260006, {
-    status: 'Open', project: 'PRJ-002 DepEd Pasig iPad rollout', discountPct: 2, freight: 3500,
+    status: 'Open', projectId: 'prj-002', discountPct: 2, freight: 3500,
     postingDate: '2026-09-21', documentDate: '2026-09-21', deliveryDate: '2026-10-05', dueDate: '2026-10-21', requiredDate: '2026-10-09',
     vendorRef: 'LID-SO-561870',
     lines: [
@@ -540,7 +540,7 @@ export const SEED_PURCHASE_ORDERS: PurchaseOrder[] = [
     lines: [svc('po-025-1', 'SVC-IT-CONSULT', 40, 2500, '44', { receivedQty: 16, freeText: 'MDM setup — Bayanihan Savings Bank deployment', deliveryDate: '2026-10-16', department: 'IT' })],
   }),
   svcPo('po-026', 260022, 'bp-025', {
-    status: 'Open', project: 'PRJ-003 Cebu store opening', postingDate: '2026-09-07', documentDate: '2026-09-07', deliveryDate: '2026-10-31', dueDate: '2026-11-15',
+    status: 'Open', projectId: 'prj-003', postingDate: '2026-09-07', documentDate: '2026-09-07', deliveryDate: '2026-10-31', dueDate: '2026-11-15',
     lines: [svc('po-026-1', 'SVC-SUB-FITOUT', 320, 450, '48', { receivedQty: 120, freeText: 'Cebu store fit-out', deliveryDate: '2026-10-31', department: 'Store operations' })],
     references: [{ id: 'po-026-r1', docType: 'Contract', docNo: 'FO-2026-CEB-01', docDate: '2026-09-05', remarks: '50% down payment paid' }],
   }),
@@ -603,7 +603,7 @@ export const SEED_PURCHASE_ORDERS: PurchaseOrder[] = [
   }),
   vendorPo('po-039', 860003, 'bp-017', {
     status: 'Open', seriesId: 'ser-import', currencyView: 'BP', shipTo: MNL_SHIP_TO, shippingType: 'sh-own',
-    postingDate: '2026-09-30', documentDate: '2026-09-30', deliveryDate: '2026-10-14', dueDate: '2026-10-30', project: 'PRJ-002 DepEd Pasig iPad rollout',
+    postingDate: '2026-09-30', documentDate: '2026-09-30', deliveryDate: '2026-10-14', dueDate: '2026-10-30', projectId: 'prj-002',
     vendorRef: 'ASA-PH-2026-10-0081',
     lines: [{ ...importLine('po-039-1', 'IPD-PRO-11-256-SG-WF-SBK', 120), deliveryDate: '2026-10-14' }],
     references: [{ id: 'po-039-r1', docType: 'Sales order', docNo: 'Government 470001', docDate: '2026-09-30', remarks: 'DepEd Pasig — 120 iPad Pro, 4 on hand' }],

@@ -103,7 +103,7 @@ export interface GoodsReceipt {
   paymentTermId: string;
   paymentMethod: string;
   cashDiscountDays: number;
-  project: string;
+  projectId: string;
   indicator: string;
   /** The PO number(s) the lines were copied from; set by Copy from. */
   orderNumber: string;
@@ -185,7 +185,7 @@ export function blankGoodsReceipt(today: string, buyerId: string): Omit<GoodsRec
     paymentTermId: '',
     paymentMethod: '',
     cashDiscountDays: 0,
-    project: '',
+    projectId: '',
     indicator: '— None —',
     orderNumber: '',
     references: [],
@@ -244,7 +244,7 @@ export const SEED_GOODS_RECEIPTS: GoodsReceipt[] = received
       journalRemark: `Goods Receipt PO – ${po.vendorCode}`,
       paymentTermId: po.paymentTermId,
       paymentMethod: po.paymentMethod,
-      project: po.project,
+      projectId: po.projectId,
       orderNumber: poNo,
       ownerId: po.ownerId,
       discountPct: po.discountPct,

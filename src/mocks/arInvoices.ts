@@ -90,7 +90,7 @@ export interface ArInvoice {
 
   // Accounting
   journalRemark: string;
-  project: string;
+  projectId: string;
   paymentTermId: string;
   paymentMethod: string;
   indicator: string;
@@ -184,7 +184,7 @@ export function blankArInvoice(today: string, ownerId: string): Omit<ArInvoice, 
     bpChannelName: '',
     bpChannelContact: '',
     journalRemark: '',
-    project: '— None —',
+    projectId: '',
     paymentTermId: termId('Net 30'),
     paymentMethod: 'BANK',
     indicator: '— None —',

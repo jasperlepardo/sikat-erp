@@ -241,7 +241,7 @@ function PurchaseOrderForm() {
       paymentTermId: v.vendorPaymentTermId,
       paymentMethod: v.defaultPaymentMethod,
       dueDate: dueDateFor(draft.postingDate, v.vendorPaymentTermId),
-      project: v.project,
+      projectId: v.projectId,
       shippingType: v.shippingType,
       journalRemark: `Purchase Orders – ${v.code}`,
       // Tax codes depend on the vendor's VAT status, so lines re-propose theirs.

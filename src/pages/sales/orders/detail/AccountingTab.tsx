@@ -36,7 +36,7 @@ export function AccountingTab({ draft, update, errors, ctx }: SoTabProps) {
       <Section icon="account_balance" title="Journal & payment">
         <Fields>
           {f.text('journalRemark', 'Journal remark', { hint: 'Defaults to “Sales Orders – customer code”.' })}
-          {f.master('project', 'BP project', projectDef, { clearable: true, hint: 'Defaults from the customer.' })}
+          {f.master('projectId', 'BP project', projectDef, { clearable: true, hint: 'Defaults from the customer.' })}
           {f.master('paymentTermId', 'Payment terms', paymentTermDef, { hint: 'Defaults from the customer; sets the due date.' })}
           {f.lookup('paymentMethod', 'Payment method', PAYMENT_METHODS.map((p) => ({ value: p.code, label: `${p.code} · ${p.description}` })))}
           {f.date('dueDate', 'Due date', {

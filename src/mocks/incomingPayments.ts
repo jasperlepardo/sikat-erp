@@ -56,7 +56,7 @@ export interface IncomingRow {
   invoiceFx: number;
   /** The invoice's A/R account — what the payment credits. */
   controlAccount: string;
-  project: string;
+  projectId: string;
   selected: boolean;
 }
 
@@ -112,7 +112,7 @@ export interface IncomingPayment {
   customerName: string;
   billTo: string;
   contactId: string;
-  project: string;
+  projectId: string;
   blanketAgreement: string;
   seriesId: string;
   /** Auto-numbered, or typed for the Manual series. */
@@ -190,7 +190,7 @@ export function blankIncomingPayment(today: string): Omit<IncomingPayment, 'id'>
     customerName: '',
     billTo: '',
     contactId: '',
-    project: '',
+    projectId: '',
     blanketAgreement: '',
     seriesId: INCOMING_SERIES[0].id,
     docNum: 0,
@@ -241,7 +241,7 @@ function row(inv: ArInvoice, amount: number): IncomingRow {
     amount,
     invoiceFx: inv.fxRate || 1,
     controlAccount: inv.controlAccount,
-    project: '',
+    projectId: '',
     selected: true,
   };
 }

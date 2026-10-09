@@ -173,7 +173,7 @@ function IncomingForm() {
       customerName: c.name,
       billTo: bill ? formatAddress(bill, c.name) : '',
       contactId: c.defaultContactId,
-      project: c.project && c.project !== '— None —' ? c.project : '',
+      projectId: c.projectId,
       currency,
       controlAccount: rows.find((r) => r.selected)?.controlAccount ?? controlAccountOf(c),
       journalRemark: `Incoming - ${c.code}`,
@@ -327,7 +327,7 @@ function IncomingForm() {
                       {(p) => <Select {...p} disabled={ro} options={m.currencies.map((c) => ({ value: c.code, label: `${c.code} — ${c.name}` }))} value={draft.currency} onValueChange={(currency) => update({ currency })} />}
                     </FormField>
                   )}
-                  {h.master('project', 'Project', projectDef, { clearable: true })}
+                  {h.master('projectId', 'Project', projectDef, { clearable: true })}
                   {h.choose('blanketAgreement', 'Blanket agreement', [{ value: '', label: '— None —' }, ...BLANKET_AGREEMENTS.map((b) => ({ value: b.no, label: `${b.no} · ${b.description}` }))])}
                   {h.text('reference', 'Reference', { hint: draft.type === 'Customer' ? "The customer's reference for this payment." : undefined })}
                   <ReadOnly label="Created by Payment Wizard" value="No" />

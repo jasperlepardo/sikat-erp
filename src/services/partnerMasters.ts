@@ -60,6 +60,11 @@ export const factoringCompanies = createCollection<NamedEntry>('sikat-erp:factor
 
 // Company
 export const projects = createCollection<Project>('sikat-erp:projects', SEED_PROJECTS, 'prj');
+/** "PRJ-002 · DepEd Pasig iPad rollout" for display — the id itself if the project is gone. */
+export const projectLabel = (id: string) => {
+  const p = projects.snapshot().find((x) => x.id === id);
+  return p ? `${p.code} · ${p.name}` : id;
+};
 export const technicians = createCollection<NamedEntry>('sikat-erp:technicians', SEED_TECHNICIANS, 'tec');
 export const planningGroups = createCollection<NamedEntry>('sikat-erp:planning-groups', SEED_PLANNING_GROUPS, 'plg');
 export const countries = createCollection<Country>('sikat-erp:countries:v2', SEED_COUNTRIES, 'cty');

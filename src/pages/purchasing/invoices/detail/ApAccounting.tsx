@@ -42,7 +42,7 @@ export function ApAccounting({ draft, update, errors, m, ctx }: ApSectionProps) 
               />
             )}
           </FormField>
-          {f.master('project', 'BP project', projectDef, { clearable: true, hint: 'Defaults from the vendor or the base document.' })}
+          {f.master('projectId', 'BP project', projectDef, { clearable: true, hint: 'Defaults from the vendor or the base document.' })}
           {f.choose('indicator', 'Indicator', asOptions(INDICATORS))}
           <ReadOnly
             label="Federal tax ID"

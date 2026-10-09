@@ -1,4 +1,5 @@
 import { Button, Checkbox, Combobox, Icon, Link, Text, TextField, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { projectLabel } from '../../../../services/partnerMasters';
 import { useNavigate } from 'react-router';
 import { DataTable } from '../../../../components/form/DataTable';
 import type { Errors } from '../../../../components/form/fields';
@@ -92,7 +93,7 @@ export function IncomingDocuments({ draft, update, errors, fx, readOnly }: Props
         />
       ),
     },
-    { key: 'project', header: 'Project', cell: (r) => r.project || '—' },
+    { key: 'project', header: 'Project', cell: (r) => (r.projectId ? projectLabel(r.projectId) : '—') },
   ];
 
   return (

@@ -136,7 +136,7 @@ function JournalEntryForm() {
           ...blankJournalEntry(today),
           remarks: draft.remarks,
           transCode: draft.transCode,
-          project: draft.project,
+          projectId: draft.projectId,
           indicator: draft.indicator,
           automaticTax: draft.automaticTax,
           lines: draft.lines.filter((l) => !l.taxOf).map((l) => newJeLine({ ...l, id: undefined })),

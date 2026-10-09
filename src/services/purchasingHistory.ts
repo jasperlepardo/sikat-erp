@@ -77,7 +77,7 @@ function build(): PurchasingHistory {
     return {
       id: `pr-${bill.id}`, invoiceId: bill.id, docNo: apNo(bill), vendorRef: bill.vendorRef, docDate: bill.postingDate, dueDate: bill.dueDate,
       total: a.net, wtAmount: a.wt, balanceDue: balance, cashDiscountPct: 0, amount: amount ?? balance, invoiceFx: bill.fxRate || 1,
-      project: bill.project, selected: true, docType: 'APINV',
+      projectId: bill.projectId, selected: true, docType: 'APINV',
     };
   };
   const pay = (id: string, date: string, vendorId: string, rows: PaymentRow[], means: (amount: number) => Partial<OutgoingPayment['means']>, patch: Partial<OutgoingPayment> = {}) => {
@@ -87,7 +87,7 @@ function build(): PurchasingHistory {
     const p: OutgoingPayment = {
       ...blankPayment(date),
       id,
-      vendorId, vendorCode: v.code, payeeName: v.name, contactId: v.defaultContactId, project: v.project,
+      vendorId, vendorCode: v.code, payeeName: v.name, contactId: v.defaultContactId, projectId: v.projectId,
       docNum: ++payNo, status: 'Posted', currency, fxRate: fxOn(currency, date), controlAccount: v.payableAccount || '2010',
       journalRemark: `Outgoing – ${v.code}`, rows, means: { ...blankMeans(date), ...means(overall) },
       ...patch,
@@ -138,7 +138,7 @@ function build(): PurchasingHistory {
       id, vendorId: v.id, vendorCode: v.code, vendorName: v.name, contactId: p.contactId, vendorRef, currency: p.currency, seriesId: DPR_SERIES[0].id, docNum,
       status: 'Open', postingDate: date, dueDate: date, documentDate: date, closeDate: '', lines: dprLines(p), shipTo: p.shipTo, payTo: '', shippingType: p.shippingType,
       language: 'English', journalRemark: `A/P Down Payment – ${v.code}`, paymentTermId: p.paymentTermId, paymentMethod: v.defaultPaymentMethod, cashDiscountDays: 0,
-      project: p.project, indicator: '— None —', orderNumber: `${p.seriesId === 'ser-import' ? 'Import' : 'Primary'} ${p.docNum}`, references: [], buyerId: p.buyerId, ownerId: p.ownerId,
+      projectId: p.projectId, indicator: '— None —', orderNumber: `${p.seriesId === 'ser-import' ? 'Import' : 'Primary'} ${p.docNum}`, references: [], buyerId: p.buyerId, ownerId: p.ownerId,
       remarks: '', discountPct: p.discountPct, freight: 0, freightTaxCode: '', fxRate: fxOn(p.currency, date), controlAccount: v.payableAccount || '2010',
       paymentBlock: false, maxCashDiscount: false, installments: 1, consolidatingBpId: '', paymentOrderRun: true, appliedAmount: 0,
       dpmPct, paidLc: 0, drawnAmount: 0, downPaymentAccount: v.downPaymentClearingAccount || ADVANCES_TO_SUPPLIERS,
@@ -155,7 +155,7 @@ function build(): PurchasingHistory {
   const macsDue = dprTotal(macs);
   const macsPay = pay(
     'op-006', '2026-09-26', macs.vendorId,
-    [{ id: 'pr-dp-002', invoiceId: macs.id, docNo: `Primary ${macs.docNum}`, vendorRef: macs.vendorRef, docDate: macs.postingDate, dueDate: macs.dueDate, total: macsDue, wtAmount: 0, balanceDue: macsDue, cashDiscountPct: 0, amount: macsDue, invoiceFx: 1, project: macs.project, selected: true, docType: 'DPR', account: macs.downPaymentAccount }],
+    [{ id: 'pr-dp-002', invoiceId: macs.id, docNo: `Primary ${macs.docNum}`, vendorRef: macs.vendorRef, docDate: macs.postingDate, dueDate: macs.dueDate, total: macsDue, wtAmount: 0, balanceDue: macsDue, cashDiscountPct: 0, amount: macsDue, invoiceFx: 1, projectId: macs.projectId, selected: true, docType: 'DPR', account: macs.downPaymentAccount }],
     transfer('1015', '2026-09-26', 'InstaPay 0926-7731'),
   );
   Object.assign(macs, { appliedAmount: macsDue, paidLc: round2(macsDue * macsPay.fxRate) });

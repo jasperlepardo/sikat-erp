@@ -85,7 +85,7 @@ export interface JeLine {
   /** Set on the tax rows Automatic Tax adds. */
   taxOf?: string;
   dueDate: string;
-  project: string;
+  projectId: string;
   remarks: string;
 }
 
@@ -107,7 +107,7 @@ export interface JournalEntry {
   /** The source document's id, to open it. */
   originId: string;
   indicator: string;
-  project: string;
+  projectId: string;
   transCode: string;
   ref1: string;
   ref2: string;
@@ -138,7 +138,7 @@ export const newJeLine = (patch: Partial<JeLine> = {}): JeLine => ({
   credit: 0,
   taxCode: '',
   dueDate: '',
-  project: '',
+  projectId: '',
   remarks: '',
   ...patch,
   // A copied line passes id: undefined; it still needs an id of its own.
@@ -159,7 +159,7 @@ export function blankJournalEntry(today: string): Omit<JournalEntry, 'id'> {
     originNo: '',
     originId: '',
     indicator: '— None —',
-    project: '',
+    projectId: '',
     transCode: '',
     ref1: '',
     ref2: '',

@@ -135,7 +135,7 @@ export function JeHeaderSections({
           {h.text('ref3', 'Ref. 3')}
           {h.choose('transCode', 'Trans. code', TRANS_CODES.map((c) => ({ value: c, label: TRANS_CODE_LABEL[c] })))}
           {h.choose('indicator', 'Indicator', INDICATORS.map((v) => ({ value: v, label: v })))}
-          {h.master('project', 'Project', projectDef, { clearable: true })}
+          {h.master('projectId', 'Project', projectDef, { clearable: true })}
           {h.choose('blanketAgreement', 'Blanket agreement', [{ value: '', label: '— None —' }, ...BLANKET_AGREEMENTS.map((b) => ({ value: b.no, label: `${b.no} · ${b.description}` }))])}
         </Fields>
       </Section>

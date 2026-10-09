@@ -345,7 +345,7 @@ function DprForm() {
                       {h.lookup('paymentMethod', 'Payment method', PAYMENT_METHODS.map((p) => ({ value: p.code, label: `${p.code} · ${p.description}` })))}
                       <ReadOnly label="Installments" value={String(draft.installments)} />
                       {h.num('cashDiscountDays', 'Cash discount date offset', { suffix: 'days' })}
-                      {h.master('project', 'BP project', projectDef, { clearable: true })}
+                      {h.master('projectId', 'BP project', projectDef, { clearable: true })}
                       {h.choose('indicator', 'Indicator', asOptions(INDICATORS))}
                       <ReadOnly label="Federal tax ID" value={vendor?.tin || '—'} hint="The vendor's TIN." />
                       <ReadOnly label="Order number" value={draft.orderNumber || '—'} hint="The PO the lines were copied from." />
@@ -445,7 +445,7 @@ function vendorDefaults(v: Partner | undefined, d: Draft, m: Masters): Partial<D
     paymentTermId: v.vendorPaymentTermId,
     paymentMethod: v.defaultPaymentMethod,
     dueDate: dueDateFor(d.postingDate, v.vendorPaymentTermId),
-    project: v.project,
+    projectId: v.projectId,
     shippingType: v.shippingType,
     journalRemark: `A/P Down Payment – ${v.code}`,
     payTo: bill ? formatAddress(bill, v.name) : '',
@@ -462,7 +462,7 @@ function withPo(d: Draft, po: PurchaseOrder, lines: DprLine[]): Draft {
   return {
     ...d,
     ...(first
-      ? { currency: po.currency, contactId: po.contactId || d.contactId, paymentTermId: po.paymentTermId || d.paymentTermId, project: po.project || d.project, discountPct: po.discountPct, buyerId: po.buyerId || d.buyerId, shipTo: po.shipTo || d.shipTo }
+      ? { currency: po.currency, contactId: po.contactId || d.contactId, paymentTermId: po.paymentTermId || d.paymentTermId, projectId: po.projectId || d.projectId, discountPct: po.discountPct, buyerId: po.buyerId || d.buyerId, shipTo: po.shipTo || d.shipTo }
       : {}),
     orderNumber: [...new Set(all.filter((l) => l.baseType).map((l) => l.baseDocNo))].join(', '),
     lines: all,

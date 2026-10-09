@@ -147,7 +147,7 @@ export interface Partner {
   contactChannels: PartnerContactChannel[];
   /** Shipping type id (Settings › Inventory › Shipping types). */
   shippingType: string;
-  project: string;
+  projectId: string;
   industryId: string;
   businessType: string;
   aliasName: string;
@@ -361,7 +361,7 @@ export function blankPartner(role: PartnerRole): Omit<Partner, 'id'> {
     tin: '',
     contactChannels: [],
     shippingType: 'sh-own',
-    project: '',
+    projectId: '',
     industryId: industryId('Retail'),
     businessType: 'Company',
     aliasName: '',

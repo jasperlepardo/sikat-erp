@@ -46,7 +46,7 @@ export interface PaymentRow {
   amount: number;
   /** PHP per unit of currency the invoice was booked at — the rate it's cleared at. */
   invoiceFx: number;
-  project: string;
+  projectId: string;
   /** Ticked for payment. Unticked rows stay listed but aren't paid. */
   selected: boolean;
   /** What the row pays: an A/P invoice (default) or an A/P down payment request. */
@@ -63,7 +63,7 @@ export interface AccountRow {
   account: string;
   remarks: string;
   amount: number;
-  project: string;
+  projectId: string;
 }
 
 export interface CheckRow {
@@ -108,7 +108,7 @@ export interface OutgoingPayment {
   payeeName: string;
   payTo: string;
   contactId: string;
-  project: string;
+  projectId: string;
   seriesId: string;
   docNum: number;
   status: PaymentStatus;
@@ -165,7 +165,7 @@ export const newCheckRow = (patch: Partial<CheckRow> = {}): CheckRow => ({
 export const newCardRow = (patch: Partial<CardRow> = {}): CardRow => ({
   id: rowId('crd'), cardBrandId: '', account: CARD_PAYABLE_ACCOUNT, voucherNo: '', payments: 1, amount: 0, ...patch,
 });
-export const newAccountRow = (patch: Partial<AccountRow> = {}): AccountRow => ({ id: rowId('acr'), account: '', remarks: '', amount: 0, project: '', ...patch });
+export const newAccountRow = (patch: Partial<AccountRow> = {}): AccountRow => ({ id: rowId('acr'), account: '', remarks: '', amount: 0, projectId: '', ...patch });
 
 export const blankMeans = (today: string): PaymentMeans => ({
   transfer: { account: '1015', date: today, reference: '', amount: 0 },
@@ -183,7 +183,7 @@ export function blankPayment(today: string): Omit<OutgoingPayment, 'id'> {
     payeeName: '',
     payTo: '',
     contactId: '',
-    project: '',
+    projectId: '',
     seriesId: PAYMENT_SERIES[0].id,
     docNum: 0,
     status: 'Draft',

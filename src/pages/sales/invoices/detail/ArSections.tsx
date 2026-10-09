@@ -83,7 +83,7 @@ export function ArAccounting({ draft, update, errors, m, ctx, balance }: ArSecti
               />
             )}
           </FormField>
-          {f.master('project', 'BP project', projectDef, { clearable: true })}
+          {f.master('projectId', 'BP project', projectDef, { clearable: true })}
           {f.choose('indicator', 'Indicator', asOptions(INDICATORS))}
           <ReadOnly label="Federal tax ID" value={draft.federalTaxId || <span className="text-muted">Customer has no TIN on file</span>} />
           {f.text('orderNumber', 'Order number', { hint: 'Set by Copy from.' })}

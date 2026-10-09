@@ -188,7 +188,7 @@ export function AccountRows({ draft, update, errors, m, readOnly }: PaySectionPr
       ),
     },
     { key: 'remarks', header: 'Doc. remarks', cell: (r) => <TextField aria-label="Doc. remarks" className="w-56" value={r.remarks} onChange={(e) => patch(r.id, { remarks: e.currentTarget.value })} /> },
-    { key: 'project', header: 'Project', cell: (r) => <MasterLookup def={projectDef} fieldProps={{ 'aria-label': 'Project', className: 'w-48' }} clearable value={r.project} onChange={(project) => patch(r.id, { project })} /> },
+    { key: 'project', header: 'Project', cell: (r) => <MasterLookup def={projectDef} fieldProps={{ 'aria-label': 'Project', className: 'w-48' }} clearable value={r.projectId} onChange={(project) => patch(r.id, { projectId: project })} /> },
     {
       key: 'amount',
       header: `Amount (${draft.currency})`,
@@ -211,7 +211,7 @@ export function AccountRows({ draft, update, errors, m, readOnly }: PaySectionPr
       onRemove={readOnly ? undefined : (picked) => update({ accountRows: rows.filter((r) => !picked.includes(r)) })}
       actions={
         readOnly ? null : (
-          <Button type="button" size="small" intent="primary" variant="solid" leadingIcon={<Icon size={16}>add</Icon>} onClick={() => update({ accountRows: [...rows, newAccountRow({ project: draft.project })] })}>
+          <Button type="button" size="small" intent="primary" variant="solid" leadingIcon={<Icon size={16}>add</Icon>} onClick={() => update({ accountRows: [...rows, newAccountRow({ projectId: draft.projectId })] })}>
             Add account
           </Button>
         )

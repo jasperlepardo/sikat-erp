@@ -60,7 +60,7 @@ export function SettingsTab(props: TabProps) {
           {f.master('territoryId', 'Territory', territoryDef, { clearable: true })}
           {f.master('channelId', 'Channel', channelDef, { clearable: true })}
           {f.master('technicianId', 'Technician', technicianDef, { clearable: true })}
-          {f.master('project', 'Project', projectDef, { clearable: true, hint: 'Default project on documents. Projects live in Settings › Company.' })}
+          {f.master('projectId', 'Project', projectDef, { clearable: true, hint: 'Default project on documents. Projects live in Settings › Company.' })}
         </Fields>
       </Section>
 

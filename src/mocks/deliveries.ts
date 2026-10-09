@@ -101,7 +101,7 @@ export interface Delivery {
 
   // Accounting
   journalRemark: string;
-  project: string;
+  projectId: string;
   paymentTermId: string;
   paymentMethod: string;
   indicator: string;
@@ -186,7 +186,7 @@ export function blankDelivery(today: string, ownerId: string): Omit<Delivery, 'i
     bpChannelName: '',
     bpChannelContact: '',
     journalRemark: '',
-    project: '— None —',
+    projectId: '',
     paymentTermId: termId('Net 30'),
     paymentMethod: 'BANK',
     indicator: '— None —',
@@ -210,7 +210,7 @@ export function blankDelivery(today: string, ownerId: string): Omit<Delivery, 'i
 }
 
 /** A delivery's header, taken from the sales order it's copied from. */
-export function deliveryHeaderFrom(so: Pick<SalesOrder, 'customerId' | 'customerCode' | 'customerName' | 'contactId' | 'customerRef' | 'currency' | 'shipTo' | 'billTo' | 'shippingType' | 'language' | 'pickPackRemarks' | 'bpChannelName' | 'bpChannelContact' | 'project' | 'paymentTermId' | 'paymentMethod' | 'indicator' | 'federalTaxId' | 'salesEmployeeId' | 'discountPct' | 'freightTaxCode' | 'rounding' | 'dueMonths' | 'dueDays' | 'cashDiscountDays'>): Partial<Delivery> {
+export function deliveryHeaderFrom(so: Pick<SalesOrder, 'customerId' | 'customerCode' | 'customerName' | 'contactId' | 'customerRef' | 'currency' | 'shipTo' | 'billTo' | 'shippingType' | 'language' | 'pickPackRemarks' | 'bpChannelName' | 'bpChannelContact' | 'projectId' | 'paymentTermId' | 'paymentMethod' | 'indicator' | 'federalTaxId' | 'salesEmployeeId' | 'discountPct' | 'freightTaxCode' | 'rounding' | 'dueMonths' | 'dueDays' | 'cashDiscountDays'>): Partial<Delivery> {
   return {
     customerId: so.customerId,
     customerCode: so.customerCode,
@@ -225,7 +225,7 @@ export function deliveryHeaderFrom(so: Pick<SalesOrder, 'customerId' | 'customer
     pickPackRemarks: so.pickPackRemarks,
     bpChannelName: so.bpChannelName,
     bpChannelContact: so.bpChannelContact,
-    project: so.project,
+    projectId: so.projectId,
     paymentTermId: so.paymentTermId,
     paymentMethod: so.paymentMethod,
     indicator: so.indicator,

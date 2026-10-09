@@ -165,5 +165,3 @@ export const SEED_PLANNING_GROUPS = named('plg', PLANNING_GROUPS);
 /** Keyed by ISO 3166-1 alpha-2 code (PH, SG…), the natural key every address and origin field stores. */
 export const SEED_COUNTRIES: Country[] = COUNTRIES.map(([code, name]) => ({ id: code, code, name, active: true }));
 
-/** What a partner stores for a project, e.g. "PRJ-001 Northgate store renovation". */
-export const projectValue = (p: Project) => `${p.code} ${p.name}`.trim();

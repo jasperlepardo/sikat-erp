@@ -470,7 +470,7 @@ function CreditMemoForm() {
                       {h.lookup('paymentMethod', 'Payment method', PAYMENT_METHODS.map((p) => ({ value: p.code, label: `${p.code} · ${p.description}` })))}
                       <ReadOnly label="Installments" value={String(draft.installments)} />
                       {h.num('cashDiscountDays', 'Cash discount date offset', { suffix: 'days' })}
-                      {h.master('project', 'BP project', projectDef, { clearable: true })}
+                      {h.master('projectId', 'BP project', projectDef, { clearable: true })}
                       {h.choose('indicator', 'Indicator', asOptions(INDICATORS))}
                       <ReadOnly label="Federal tax ID" value={vendor?.tin || '—'} hint="The vendor's TIN." />
                       <ReadOnly label="Order number" value={draft.orderNumber || '—'} />
@@ -667,7 +667,7 @@ function vendorDefaults(v: Partner | undefined, d: Draft): Partial<Draft> {
     paymentTermId: v.vendorPaymentTermId,
     paymentMethod: v.defaultPaymentMethod,
     dueDate: dueDateFor(d.postingDate, v.vendorPaymentTermId),
-    project: v.project,
+    projectId: v.projectId,
     shippingType: v.shippingType,
     journalRemark: `A/P Credit Memo – ${v.code}`,
     shipTo: ship ? formatAddress(ship, v.name) : '',
@@ -689,7 +689,7 @@ function withBase(d: Draft, base: ApInvoice | GoodsReturn, lines: MemoLine[]): D
           paymentTermId: base.paymentTermId || d.paymentTermId,
           paymentMethod: base.paymentMethod || d.paymentMethod,
           dueDate: dueDateFor(d.postingDate, base.paymentTermId || d.paymentTermId),
-          project: base.project || d.project,
+          projectId: base.projectId || d.projectId,
           discountPct: base.discountPct,
           buyerId: base.buyerId || d.buyerId,
           controlAccount: 'controlAccount' in base && base.controlAccount ? base.controlAccount : d.controlAccount,
