@@ -125,7 +125,7 @@ export function DnAccounting({ draft, update, errors, m }: DnSectionProps) {
       </Section>
       <Section icon="event" title="References">
         <Fields>
-          {f.choose('indicator', 'Indicator', asOptions(INDICATORS))}
+          {f.choose('indicator', 'Indicator', [{ value: '', label: '— None —' }, ...asOptions(INDICATORS)])}
           <ReadOnly label="Federal tax ID" value={draft.federalTaxId || <span className="text-muted">Customer has no TIN on file</span>} />
           {f.text('orderNumber', 'Order number', { hint: 'Set by Copy from sales order.' })}
         </Fields>

@@ -158,7 +158,7 @@ export function blankJournalEntry(today: string): Omit<JournalEntry, 'id'> {
     origin: 'JE',
     originNo: '',
     originId: '',
-    indicator: '— None —',
+    indicator: '',
     projectId: '',
     transCode: '',
     ref1: '',

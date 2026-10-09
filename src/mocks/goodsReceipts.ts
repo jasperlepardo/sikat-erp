@@ -186,7 +186,7 @@ export function blankGoodsReceipt(today: string, buyerId: string): Omit<GoodsRec
     paymentMethod: '',
     cashDiscountDays: 0,
     projectId: '',
-    indicator: '— None —',
+    indicator: '',
     orderNumber: '',
     references: [],
     buyerId: buyerId,

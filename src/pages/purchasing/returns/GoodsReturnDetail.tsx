@@ -467,7 +467,7 @@ function GoodsReturnForm() {
                       {h.lookup('paymentMethod', 'Payment method', PAYMENT_METHODS.map((p) => ({ value: p.code, label: `${p.code} · ${p.description}` })))}
                       {h.num('cashDiscountDays', 'Cash discount date offset', { suffix: 'days' })}
                       {h.master('projectId', 'BP project', projectDef, { clearable: true })}
-                      {h.choose('indicator', 'Indicator', asOptions(INDICATORS))}
+                      {h.choose('indicator', 'Indicator', [{ value: '', label: '— None —' }, ...asOptions(INDICATORS)])}
                       <ReadOnly label="Federal tax ID" value={vendor?.tin || '—'} hint="The vendor's TIN." />
                       <ReadOnly label="Order number" value={draft.orderNumber || '—'} hint="The PO behind the lines." />
                       <FormField label="Consolidating BP" tooltip="Settle this return's credit through another partner.">

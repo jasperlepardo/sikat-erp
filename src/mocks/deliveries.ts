@@ -189,7 +189,7 @@ export function blankDelivery(today: string, ownerId: string): Omit<Delivery, 'i
     projectId: '',
     paymentTermId: termId('Net 30'),
     paymentMethod: 'BANK',
-    indicator: '— None —',
+    indicator: '',
     federalTaxId: '',
     orderNumber: '',
     dueMonths: 0,

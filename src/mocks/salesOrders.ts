@@ -212,7 +212,7 @@ export function blankSalesOrder(ownerId: string): Omit<SalesOrder, 'id'> {
     requiredDate: '',
     paymentTermId: termId('Net 30'),
     paymentMethod: 'BANK',
-    indicator: '— None —',
+    indicator: '',
     federalTaxId: '',
     orderNumber: '',
     dueDate: '',

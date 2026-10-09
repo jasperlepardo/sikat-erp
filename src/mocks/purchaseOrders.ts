@@ -161,8 +161,10 @@ export const PO_SERIES: DocumentSeries[] = [
 ];
 
 export const LANGUAGES = ['English', 'Filipino'];
-export const INDICATORS = ['— None —', 'Regular', 'Consignment', 'Drop ship'];
-export const DEPARTMENTS = ['— None —', 'Store operations', 'Service center', 'Marketing', 'IT', 'Finance'];
+/** Indicator choices; '' = none. */
+export const INDICATORS = ['Regular', 'Consignment', 'Drop ship'];
+/** Department choices for service lines; '' = none. */
+export const DEPARTMENTS = ['Store operations', 'Service center', 'Marketing', 'IT', 'Finance'];
 export const REFERENCE_DOC_TYPES = ['Purchase request', 'Purchase quotation', 'Sales order', 'Contract', 'Email', 'Other'];
 
 export interface BlanketAgreement {
@@ -222,7 +224,7 @@ export const newPoLine = (patch: Partial<PoLine> = {}): PoLine => ({
   mfrNo: '',
   freeText: '',
   requisitionSlipNo: '',
-  department: '— None —',
+  department: '',
   status: 'Open',
   ...patch,
 });
@@ -259,7 +261,7 @@ export function blankPurchaseOrder(buyerId: string): Omit<PurchaseOrder, 'id'> {
     projectId: '',
     cancellationDate: '',
     requiredDate: '',
-    indicator: '— None —',
+    indicator: '',
     orderNumber: '',
     references: [],
     buyerId: buyerId,

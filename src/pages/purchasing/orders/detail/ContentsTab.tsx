@@ -346,7 +346,7 @@ export function ContentsTab({ draft, update, errors, m, ctx }: PoTabProps) {
       <TextField aria-label="Requisition slip no." className="w-36" value={l.requisitionSlipNo} onChange={(e) => patch(l.id, { requisitionSlipNo: e.currentTarget.value })} />
     ) : null, 'references'),
     col('department', 'Department', (l) => l.itemId ? (
-      <Select aria-label="Department" className="w-40" options={asOptions(DEPARTMENTS)} value={l.department} onValueChange={(department) => patch(l.id, { department })} />
+      <Select aria-label="Department" className="w-40" options={[{ value: '', label: '— None —' }, ...asOptions(DEPARTMENTS)]} value={l.department} onValueChange={(department) => patch(l.id, { department })} />
     ) : null, 'references'),
     col('freeText', 'Free text', (l) => l.itemId ? (
       <TextField aria-label="Free text" className="w-48" value={l.freeText} onChange={(e) => patch(l.id, { freeText: e.currentTarget.value })} />

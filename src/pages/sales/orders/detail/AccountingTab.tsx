@@ -66,7 +66,7 @@ export function AccountingTab({ draft, update, errors, ctx }: SoTabProps) {
         <Fields>
           {f.date('requiredDate', 'Required date', { error: errors.requiredDate, hint: 'When the customer needs it — for planning; separate from the delivery date.' })}
           {f.date('cancellationDate', 'Cancellation date', { error: errors.cancellationDate, hint: 'Set when the order is cancelled, or the date it lapses.' })}
-          {f.choose('indicator', 'Indicator', asOptions(INDICATORS))}
+          {f.choose('indicator', 'Indicator', [{ value: '', label: '— None —' }, ...asOptions(INDICATORS)])}
           <ReadOnly label="Federal tax ID" value={draft.federalTaxId || <span className="text-muted">Customer has no TIN on file</span>} hint="The customer’s TIN, from the customer record." />
           {f.text('orderNumber', 'Order number', { hint: 'Internal or chain-store order reference.' })}
         </Fields>
