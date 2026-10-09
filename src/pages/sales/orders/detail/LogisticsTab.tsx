@@ -1,4 +1,5 @@
 import { CardField, FormField, Icon, Select, Text, type CardFieldOption } from '@jasperlepardo/sikat-design-system';
+import { countryName } from '../../../../services/partnerMasters';
 import { Fields, Flags, Section, bind } from '../../../../components/form/fields';
 import { formatAddress, type PostalAddress } from '../../../../mocks/address';
 import { contactName, type PartnerAddress } from '../../../../mocks/partners';
@@ -14,9 +15,9 @@ function addressFields(a: PostalAddress): { label: string; value: string }[] {
     { label: 'Address', value: a.addressLine },
     { label: 'Barangay', value: a.block },
     { label: 'City', value: a.city },
-    ...(a.country === 'Philippines' ? [{ label: 'Province', value: a.province }] : []),
+    ...(a.countryCode === 'PH' ? [{ label: 'Province', value: a.province }] : []),
     { label: 'ZIP code', value: a.zip },
-    ...(a.country !== 'Philippines' ? [{ label: 'Country', value: a.country }] : []),
+    ...(a.countryCode !== 'PH' ? [{ label: 'Country', value: countryName(a.countryCode) }] : []),
   ].filter((x) => !!x.value);
 }
 

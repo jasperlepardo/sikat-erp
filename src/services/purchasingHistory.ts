@@ -129,7 +129,7 @@ function build(): PurchasingHistory {
         id: `dl-seed-${p.id}-${i + 1}`, itemId: l.itemId, itemNo: l.itemNo, name: l.name, description: l.description, quantity: l.quantity,
         uomCode: l.uomCode, uomName: l.uomName, itemsPerUnit: l.itemsPerUnit, priceListId: l.priceListId, unitPrice: l.unitPrice, discountPct: l.discountPct,
         taxCode: l.taxCode, blanketAgreement: l.blanketAgreement, baseType: 'PO', baseId: p.id, baseLineId: l.id, baseDocNo: `${p.seriesId === 'ser-import' ? 'Import' : 'Primary'} ${p.docNum}`,
-        bpCatalogNo: l.bpCatalogNo, countryOfOrigin: SEED_ITEMS.find((x) => x.id === l.itemId)?.countryOfOrigin ?? '', warehouse: '', bin: '',
+        bpCatalogNo: l.bpCatalogNo, countryOfOriginCode: SEED_ITEMS.find((x) => x.id === l.itemId)?.countryOfOriginCode ?? '', warehouse: '', bin: '',
       }),
     );
   const request = (id: string, docNum: number, p: PurchaseOrder, date: string, dpmPct: number, vendorRef: string): DownPaymentRequest => {
@@ -181,7 +181,7 @@ function build(): PurchasingHistory {
   returns.push({
     ...structuredClone(g7), id: 'rt-001', seriesId: RETURN_SERIES[0].id, docNum: 610001, status: 'Closed', postingDate: '2026-10-02', documentDate: '2026-10-02', dueDate: '2026-10-02', closeDate: '2026-10-02',
     vendorRef: 'RMA-LID-2610-014', journalRemark: `Goods Returns – ${g7.vendorCode}`, consolidatingBpId: '', attachments: [], remarks: 'Dead on arrival — no display on power-up.',
-    lines: [retLine({ ...g7base, id: 'rl-seed-1', quantity: 1, baseType: 'GRPO', baseId: g7.id, baseLineId: g7l.id, baseDocNo: grNo(g7), returnReason: 'Defective', countryOfOrigin: '' })],
+    lines: [retLine({ ...g7base, id: 'rl-seed-1', quantity: 1, baseType: 'GRPO', baseId: g7.id, baseLineId: g7l.id, baseDocNo: grNo(g7), returnReason: 'Defective', countryOfOriginCode: '' })],
   });
   // 2 iPhone 17 from the billed Luzon delivery, boxes crushed in transit — credited on memo 620001.
   const b6 = inv('po-001');

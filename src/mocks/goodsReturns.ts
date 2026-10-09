@@ -31,7 +31,7 @@ export type ReturnBaseType = 'GRPO' | 'APINV' | '';
 export interface ReturnLine extends Omit<GrLine, 'invoicedQty' | 'returnedQty'> {
   baseType: ReturnBaseType;
   returnReason: string;
-  countryOfOrigin: string;
+  countryOfOriginCode: string;
   /** Credited so far on A/P credit memos copied from this line. */
   creditedQty: number;
 }
@@ -49,7 +49,7 @@ export const RETURN_SERIES: DocumentSeries[] = [
 
 export const newReturnLine = (patch: Partial<ReturnLine> = {}): ReturnLine => {
   const { invoicedQty: _i, returnedQty: _r, ...base } = newGrLine();
-  return { ...base, id: `rl-${crypto.randomUUID().slice(0, 8)}`, baseType: '', returnReason: '', countryOfOrigin: '', creditedQty: 0, ...patch };
+  return { ...base, id: `rl-${crypto.randomUUID().slice(0, 8)}`, baseType: '', returnReason: '', countryOfOriginCode: '', creditedQty: 0, ...patch };
 };
 
 export function blankGoodsReturn(today: string, buyerId: string): Omit<GoodsReturn, 'id'> {

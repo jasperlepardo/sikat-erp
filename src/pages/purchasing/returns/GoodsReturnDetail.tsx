@@ -109,7 +109,7 @@ export async function loadRetMasters(): Promise<RetMasters> {
 
 /** The vendor's addresses as pick options, keyed by their formatted text. */
 export const vendorAddressOptions = (v: Partner | undefined) =>
-  (v?.addresses ?? []).map((a) => ({ value: formatAddress(a, v!.name), label: `${a.label || 'Address'} · ${a.city || a.country}` }));
+  (v?.addresses ?? []).map((a) => ({ value: formatAddress(a, v!.name), label: `${a.label || 'Address'} · ${a.city || a.countryCode}` }));
 
 function validate(d: Draft, ctx: RetContext, m: RetMasters, asDraft: boolean): Problem<TabId>[] {
   const { problems, need } = problemCollector<TabId>();

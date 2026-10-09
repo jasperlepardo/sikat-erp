@@ -31,7 +31,7 @@ export interface ApSectionProps {
 /** The item's vendor catalog number and country of origin, which invoice lines show. */
 const itemExtras = (item: Item | undefined, vendorId: string) => ({
   bpCatalogNo: item?.vendors.find((v) => v.vendorId === vendorId)?.vendorItemNo ?? '',
-  countryOfOrigin: item?.countryOfOrigin ?? '',
+  countryOfOriginCode: item?.countryOfOriginCode ?? '',
 });
 
 /** A receipt/PO-shaped line as an invoice line. */

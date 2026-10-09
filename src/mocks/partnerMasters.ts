@@ -44,6 +44,11 @@ export interface PaymentTerm extends NamedEntry {
   days: number;
 }
 
+/** A country. `id` is always its ISO 3166-1 alpha-2 `code` (PH, SG…), the key addresses store. */
+export interface Country extends NamedEntry {
+  code: string;
+}
+
 export interface Bank extends NamedEntry {
   swift: string;
 }
@@ -157,7 +162,8 @@ export const SEED_PROJECTS: Project[] = PROJECTS.map((p, i) => {
 });
 export const SEED_TECHNICIANS = named('tec', TECHNICIANS);
 export const SEED_PLANNING_GROUPS = named('plg', PLANNING_GROUPS);
-export const SEED_COUNTRIES = named('cty', COUNTRIES);
+/** Keyed by ISO 3166-1 alpha-2 code (PH, SG…), the natural key every address and origin field stores. */
+export const SEED_COUNTRIES: Country[] = COUNTRIES.map(([code, name]) => ({ id: code, code, name, active: true }));
 
 /** What a partner stores for a project, e.g. "PRJ-001 Northgate store renovation". */
 export const projectValue = (p: Project) => `${p.code} ${p.name}`.trim();

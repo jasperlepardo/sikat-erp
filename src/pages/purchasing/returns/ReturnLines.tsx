@@ -85,7 +85,7 @@ export function ReturnLines<L extends AnyReturnLine>({
     const item = m.items.find((i) => i.id === itemId);
     if (!item) return patch(l.id, { itemId: '' });
     const { invoicedQty: _i, returnedQty: _r, id: _id, ...base } = lineFromItem(item, { postingDate }, ctx, m, { quantity: l.quantity });
-    patch(l.id, { ...base, countryOfOrigin: item.countryOfOrigin } as Partial<AnyReturnLine>);
+    patch(l.id, { ...base, countryOfOriginCode: item.countryOfOriginCode } as Partial<AnyReturnLine>);
   };
   const changeUom = (l: L, uomCode: string) => {
     const item = itemOf(l);
@@ -160,7 +160,7 @@ export function ReturnLines<L extends AnyReturnLine>({
     ),
     ...extraColumns,
     col('inventoryQty', 'Qty (inventory UoM)', (l) => (itemOf(l) ? `${grInventoryQty(l).toLocaleString('en-PH')} ${itemOf(l)!.inventoryUom}` : null), 'details'),
-    col('countryOfOrigin', 'Country of origin', (l) => (l.itemId ? <MasterLookup def={countryDef} fieldProps={{ 'aria-label': 'Country of origin', className: 'w-40' }} clearable value={l.countryOfOrigin} onChange={(countryOfOrigin) => patch(l.id, { countryOfOrigin })} /> : null), 'details'),
+    col('countryOfOriginCode', 'Country of origin', (l) => (l.itemId ? <MasterLookup def={countryDef} fieldProps={{ 'aria-label': 'Country of origin', className: 'w-40' }} clearable value={l.countryOfOriginCode} onChange={(countryOfOriginCode) => patch(l.id, { countryOfOriginCode })} /> : null), 'details'),
     col('warranty', 'Warranty', (l) => {
       const w = itemOf(l)?.warrantyTemplate;
       return l.itemId ? <Text variant="small" tone={w ? 'default' : 'muted'}>{w ? m.inv.warranties.find((x) => x.id === w)?.name ?? w : 'None'}</Text> : null;

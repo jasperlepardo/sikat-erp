@@ -118,7 +118,7 @@ export function ContactPanel({
           {f.text('mobile', 'Mobile phone', { placeholder: 'e.g. 0917 123 4567', type: 'tel' })}
           {f.text('fax', 'Fax', { placeholder: 'e.g. (02) 8123 4568', type: 'tel' })}
           {f.text('pager', 'Pager', { hint: 'Kept for older records; rarely used.' })}
-          {f.master('birthCountry', 'Country of birth', countryDef, { clearable: true })}
+          {f.master('birthCountryCode', 'Country of birth', countryDef, { clearable: true })}
           {f.text('portalPassword', 'Portal password', { type: 'password', placeholder: 'Not set', hint: 'This contact’s own portal login.' })}
           {f.text('address', 'Address', { placeholder: 'Street, barangay, city', className: 'md:col-span-2' })}
           {f.text('remarks1', 'Remarks 1', { placeholder: 'Add a note' })}

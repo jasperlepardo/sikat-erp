@@ -35,7 +35,7 @@ export interface ApLine extends Omit<GrLine, 'invoicedQty'> {
   baseType: ApBaseType;
   /** The vendor's catalog number for the item. */
   bpCatalogNo: string;
-  countryOfOrigin: string;
+  countryOfOriginCode: string;
   /**
    * For a line from a receipt: the receipt's PHP cost per inventory unit — what's in Goods
    * Received Not Invoiced for it. 0 otherwise.
@@ -95,7 +95,7 @@ export const WITHHOLDING_PAYABLE: Record<string, string> = {
 
 export const newApLine = (patch: Partial<ApLine> = {}): ApLine => {
   const { invoicedQty: _ignored, ...base } = newGrLine();
-  return { ...base, baseType: '', bpCatalogNo: '', countryOfOrigin: '', receiptCostLc: 0, ...patch };
+  return { ...base, baseType: '', bpCatalogNo: '', countryOfOriginCode: '', receiptCostLc: 0, ...patch };
 };
 
 export function blankApInvoice(today: string, buyerId: string): Omit<ApInvoice, 'id'> {
@@ -195,7 +195,7 @@ export const SEED_AP_INVOICES: ApInvoice[] = SEED_GOODS_RECEIPTS.filter((gr) => 
         baseLineId: l.id,
         baseDocNo: `${gr.docNum ? `Primary ${gr.docNum}` : 'Draft'}`,
         bpCatalogNo: item?.vendors.find((v) => v.vendorId === gr.vendorId)?.vendorItemNo ?? '',
-        countryOfOrigin: item?.countryOfOrigin ?? '',
+        countryOfOriginCode: item?.countryOfOriginCode ?? '',
         receiptCostLc: l.unitCostLc,
       };
     }),

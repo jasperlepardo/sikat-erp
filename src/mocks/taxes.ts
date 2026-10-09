@@ -291,56 +291,56 @@ export const TREATY_INCOME_TYPES = ['Dividends', 'Interest', 'Royalties', 'Techn
 export type TreatyIncomeType = (typeof TREATY_INCOME_TYPES)[number];
 
 /**
- * Standard treaty withholding rates (%) by country and income type.
+ * Standard treaty withholding rates (%) by country (ISO code) and income type.
  * Source: BIR-published treaty summaries. Verify against the actual treaty text
  * before filing — some rates have additional conditions (ownership %, industry, etc.).
  * A rate of 0 means the treaty does not specify a reduced rate for that income type
  * (domestic rate applies).
  */
 export const TREATY_RATES: Record<string, Record<TreatyIncomeType, number>> = {
-  'Australia':            { Dividends: 15, Interest: 15, Royalties: 25, 'Technical fees': 25 },
-  'Austria':              { Dividends: 10, Interest: 10, Royalties: 10, 'Technical fees': 10 },
-  'Bahrain':              { Dividends: 10, Interest: 10, Royalties: 10, 'Technical fees': 10 },
-  'Bangladesh':           { Dividends: 10, Interest: 15, Royalties: 10, 'Technical fees': 10 },
-  'Belgium':              { Dividends: 10, Interest: 10, Royalties: 15, 'Technical fees': 0  },
-  'Brazil':               { Dividends: 15, Interest: 15, Royalties: 15, 'Technical fees': 15 },
-  'Canada':               { Dividends: 15, Interest: 15, Royalties: 10, 'Technical fees': 0  },
-  'China':                { Dividends: 10, Interest: 10, Royalties: 15, 'Technical fees': 0  },
-  'Czech Republic':       { Dividends: 10, Interest: 10, Royalties: 10, 'Technical fees': 0  },
-  'Denmark':              { Dividends: 15, Interest: 10, Royalties: 15, 'Technical fees': 0  },
-  'Finland':              { Dividends: 15, Interest: 15, Royalties: 15, 'Technical fees': 0  },
-  'France':               { Dividends: 15, Interest: 15, Royalties: 15, 'Technical fees': 0  },
-  'Germany':              { Dividends: 10, Interest: 10, Royalties: 10, 'Technical fees': 10 },
-  'Hungary':              { Dividends: 10, Interest: 10, Royalties: 10, 'Technical fees': 0  },
-  'India':                { Dividends: 15, Interest: 15, Royalties: 15, 'Technical fees': 15 },
-  'Indonesia':            { Dividends: 15, Interest: 15, Royalties: 15, 'Technical fees': 0  },
-  'Israel':               { Dividends: 10, Interest: 10, Royalties: 10, 'Technical fees': 0  },
-  'Italy':                { Dividends: 10, Interest: 10, Royalties: 10, 'Technical fees': 0  },
-  'Japan':                { Dividends: 10, Interest: 10, Royalties: 10, 'Technical fees': 0  },
-  'Kuwait':               { Dividends: 10, Interest: 10, Royalties: 10, 'Technical fees': 0  },
-  'Malaysia':             { Dividends: 15, Interest: 15, Royalties: 25, 'Technical fees': 0  },
-  'Netherlands':          { Dividends: 10, Interest: 10, Royalties: 10, 'Technical fees': 0  },
-  'New Zealand':          { Dividends: 15, Interest: 10, Royalties: 15, 'Technical fees': 0  },
-  'Nigeria':              { Dividends: 12.5, Interest: 12.5, Royalties: 12.5, 'Technical fees': 0 },
-  'Norway':               { Dividends: 15, Interest: 15, Royalties: 25, 'Technical fees': 0  },
-  'Pakistan':             { Dividends: 15, Interest: 15, Royalties: 15, 'Technical fees': 0  },
-  'Poland':               { Dividends: 10, Interest: 10, Royalties: 10, 'Technical fees': 0  },
-  'Qatar':                { Dividends: 10, Interest: 10, Royalties: 10, 'Technical fees': 10 },
-  'Romania':              { Dividends: 10, Interest: 10, Royalties: 10, 'Technical fees': 0  },
-  'Russia':               { Dividends: 10, Interest: 10, Royalties: 15, 'Technical fees': 0  },
-  'Singapore':            { Dividends: 15, Interest: 15, Royalties: 15, 'Technical fees': 0  },
-  'South Korea':          { Dividends: 10, Interest: 10, Royalties: 10, 'Technical fees': 0  },
-  'Spain':                { Dividends: 10, Interest: 10, Royalties: 10, 'Technical fees': 0  },
-  'Sri Lanka':            { Dividends: 10, Interest: 10, Royalties: 10, 'Technical fees': 0  },
-  'Sweden':               { Dividends: 15, Interest: 15, Royalties: 15, 'Technical fees': 0  },
-  'Switzerland':          { Dividends: 15, Interest: 10, Royalties: 10, 'Technical fees': 0  },
-  'Thailand':             { Dividends: 15, Interest: 15, Royalties: 15, 'Technical fees': 0  },
-  'Turkey':               { Dividends: 15, Interest: 10, Royalties: 10, 'Technical fees': 0  },
-  'United Arab Emirates': { Dividends: 10, Interest: 10, Royalties: 10, 'Technical fees': 0  },
-  'United Kingdom':       { Dividends: 15, Interest: 10, Royalties: 15, 'Technical fees': 0  },
-  'United States':        { Dividends: 20, Interest: 15, Royalties: 15, 'Technical fees': 0  },
-  'Vietnam':              { Dividends: 10, Interest: 15, Royalties: 10, 'Technical fees': 0  },
-  'Zimbabwe':             { Dividends: 10, Interest: 10, Royalties: 10, 'Technical fees': 0  },
+  AU: { Dividends: 15, Interest: 15, Royalties: 25, 'Technical fees': 25 }, // Australia
+  AT: { Dividends: 10, Interest: 10, Royalties: 10, 'Technical fees': 10 }, // Austria
+  BH: { Dividends: 10, Interest: 10, Royalties: 10, 'Technical fees': 10 }, // Bahrain
+  BD: { Dividends: 10, Interest: 15, Royalties: 10, 'Technical fees': 10 }, // Bangladesh
+  BE: { Dividends: 10, Interest: 10, Royalties: 15, 'Technical fees': 0  }, // Belgium
+  BR: { Dividends: 15, Interest: 15, Royalties: 15, 'Technical fees': 15 }, // Brazil
+  CA: { Dividends: 15, Interest: 15, Royalties: 10, 'Technical fees': 0  }, // Canada
+  CN: { Dividends: 10, Interest: 10, Royalties: 15, 'Technical fees': 0  }, // China
+  CZ: { Dividends: 10, Interest: 10, Royalties: 10, 'Technical fees': 0  }, // Czech Republic
+  DK: { Dividends: 15, Interest: 10, Royalties: 15, 'Technical fees': 0  }, // Denmark
+  FI: { Dividends: 15, Interest: 15, Royalties: 15, 'Technical fees': 0  }, // Finland
+  FR: { Dividends: 15, Interest: 15, Royalties: 15, 'Technical fees': 0  }, // France
+  DE: { Dividends: 10, Interest: 10, Royalties: 10, 'Technical fees': 10 }, // Germany
+  HU: { Dividends: 10, Interest: 10, Royalties: 10, 'Technical fees': 0  }, // Hungary
+  IN: { Dividends: 15, Interest: 15, Royalties: 15, 'Technical fees': 15 }, // India
+  ID: { Dividends: 15, Interest: 15, Royalties: 15, 'Technical fees': 0  }, // Indonesia
+  IL: { Dividends: 10, Interest: 10, Royalties: 10, 'Technical fees': 0  }, // Israel
+  IT: { Dividends: 10, Interest: 10, Royalties: 10, 'Technical fees': 0  }, // Italy
+  JP: { Dividends: 10, Interest: 10, Royalties: 10, 'Technical fees': 0  }, // Japan
+  KW: { Dividends: 10, Interest: 10, Royalties: 10, 'Technical fees': 0  }, // Kuwait
+  MY: { Dividends: 15, Interest: 15, Royalties: 25, 'Technical fees': 0  }, // Malaysia
+  NL: { Dividends: 10, Interest: 10, Royalties: 10, 'Technical fees': 0  }, // Netherlands
+  NZ: { Dividends: 15, Interest: 10, Royalties: 15, 'Technical fees': 0  }, // New Zealand
+  NG: { Dividends: 12.5, Interest: 12.5, Royalties: 12.5, 'Technical fees': 0 }, // Nigeria
+  NO: { Dividends: 15, Interest: 15, Royalties: 25, 'Technical fees': 0  }, // Norway
+  PK: { Dividends: 15, Interest: 15, Royalties: 15, 'Technical fees': 0  }, // Pakistan
+  PL: { Dividends: 10, Interest: 10, Royalties: 10, 'Technical fees': 0  }, // Poland
+  QA: { Dividends: 10, Interest: 10, Royalties: 10, 'Technical fees': 10 }, // Qatar
+  RO: { Dividends: 10, Interest: 10, Royalties: 10, 'Technical fees': 0  }, // Romania
+  RU: { Dividends: 10, Interest: 10, Royalties: 15, 'Technical fees': 0  }, // Russia
+  SG: { Dividends: 15, Interest: 15, Royalties: 15, 'Technical fees': 0  }, // Singapore
+  KR: { Dividends: 10, Interest: 10, Royalties: 10, 'Technical fees': 0  }, // South Korea
+  ES: { Dividends: 10, Interest: 10, Royalties: 10, 'Technical fees': 0  }, // Spain
+  LK: { Dividends: 10, Interest: 10, Royalties: 10, 'Technical fees': 0  }, // Sri Lanka
+  SE: { Dividends: 15, Interest: 15, Royalties: 15, 'Technical fees': 0  }, // Sweden
+  CH: { Dividends: 15, Interest: 10, Royalties: 10, 'Technical fees': 0  }, // Switzerland
+  TH: { Dividends: 15, Interest: 15, Royalties: 15, 'Technical fees': 0  }, // Thailand
+  TR: { Dividends: 15, Interest: 10, Royalties: 10, 'Technical fees': 0  }, // Turkey
+  AE: { Dividends: 10, Interest: 10, Royalties: 10, 'Technical fees': 0  }, // United Arab Emirates
+  GB: { Dividends: 15, Interest: 10, Royalties: 15, 'Technical fees': 0  }, // United Kingdom
+  US: { Dividends: 20, Interest: 15, Royalties: 15, 'Technical fees': 0  }, // United States
+  VN: { Dividends: 10, Interest: 15, Royalties: 10, 'Technical fees': 0  }, // Vietnam
+  ZW: { Dividends: 10, Interest: 10, Royalties: 10, 'Technical fees': 0  }, // Zimbabwe
 };
 
 /** The company's own tax registration (Settings › Accounting & Tax › Company tax profile). */

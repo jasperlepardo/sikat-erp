@@ -20,6 +20,7 @@ import {
   SEED_TECHNICIANS,
   SEED_TERRITORIES,
   type Bank,
+  type Country,
   type BpGroup,
   type NamedEntry,
   type PaymentTerm,
@@ -61,4 +62,6 @@ export const factoringCompanies = createCollection<NamedEntry>('sikat-erp:factor
 export const projects = createCollection<Project>('sikat-erp:projects', SEED_PROJECTS, 'prj');
 export const technicians = createCollection<NamedEntry>('sikat-erp:technicians', SEED_TECHNICIANS, 'tec');
 export const planningGroups = createCollection<NamedEntry>('sikat-erp:planning-groups', SEED_PLANNING_GROUPS, 'plg');
-export const countries = createCollection<NamedEntry>('sikat-erp:countries:v2', SEED_COUNTRIES, 'cty');
+export const countries = createCollection<Country>('sikat-erp:countries:v2', SEED_COUNTRIES, 'cty');
+/** A country's name by ISO code, as Settings names it — the code itself if unknown. */
+export const countryName = (code: string) => nameIn(countries, code);

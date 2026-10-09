@@ -116,7 +116,7 @@ export interface Item {
   cogsAccount: string;
   revenueAccount: string;
   /** Country name, '' when unknown. */
-  countryOfOrigin: string;
+  countryOfOriginCode: string;
   /** Customs group id, '' for none. */
   customsGroup: string;
   gtin: string;
@@ -289,7 +289,7 @@ const VARIANT_GLOBAL_ZEROS: Omit<Item, 'id'> = {
   purchaseItem: false, salesItem: false, inventoryItem: false, fixedAsset: false,
   valuationMethod: 'Moving Average', glBy: 'Item Group',
   inventoryAccount: '', cogsAccount: '', revenueAccount: '',
-  countryOfOrigin: '', customsGroup: '', taxLiable: false, exciseTax: false,
+  countryOfOriginCode: '', customsGroup: '', taxLiable: false, exciseTax: false,
   exciseCategory: '', validFrom: '', validTo: '', generalRemarks: '',
   defaultVendorId: '', manufacturer: '',
   dutyPct: 0, purchaseTaxGroup: '', purchaseTaxCode: '', withholdingGroup: '',
@@ -373,7 +373,7 @@ export function blankItem(groupOrName: ItemGroup | string = SEED_ITEM_GROUPS[0])
     inventoryAccount: group.inventoryAccount,
     cogsAccount: group.cogsAccount,
     revenueAccount: group.revenueAccount,
-    countryOfOrigin: '',
+    countryOfOriginCode: '',
     customsGroup: '',
     gtin: '',
     taxLiable: true,
@@ -533,7 +533,7 @@ const APPLE_PARENT_ITEMS: Item[] = catalog.families.map((f) => {
     warehouses: [],
     cycleCountDays: 0,
     planningMethod: 'None' as PlanningMethod,
-    countryOfOrigin: '',
+    countryOfOriginCode: '',
     customsGroup: CUSTOMS_BY_GROUP[f.family.group] ?? '',
     defaultVendorId: APPLE_VENDOR,
     manufacturer: 'MFR-APL',
@@ -561,7 +561,7 @@ const APPLE_ITEMS: Item[] = catalog.entries.map((e, n) => {
     parentItemId: e.familyId,
     variantAttributes: e.variantAttributes,
     manageBy: family.serial ? 'Serial Numbers' : 'None',
-    countryOfOrigin: '',
+    countryOfOriginCode: '',
     customsGroup: CUSTOMS_BY_GROUP[family.group] ?? ACCESSORY_CUSTOMS.find(([re]) => re.test(e.itemNo))?.[1] ?? '',
     defaultVendorId: APPLE_VENDOR,
     vendors: [{ id: `apl-${n}-v1`, vendorId: APPLE_DIRECT, vendorItemNo: e.itemNo }],

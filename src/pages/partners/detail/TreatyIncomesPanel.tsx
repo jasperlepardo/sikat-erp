@@ -16,13 +16,13 @@ const INCOME_ICONS: Record<string, string> = {
 
 function EntryForm({
   entry,
-  treatyCountry,
+  treatyCountryCode,
   isNew,
   onDone,
   onCancel,
 }: {
   entry: TreatyIncomeEntry;
-  treatyCountry: string;
+  treatyCountryCode: string;
   isNew: boolean;
   onDone: (e: TreatyIncomeEntry) => void;
   onCancel: () => void;
@@ -32,8 +32,8 @@ function EntryForm({
   const update = (patch: Partial<TreatyIncomeEntry>) => {
     setLocal((prev) => {
       const next = { ...prev, ...patch };
-      if (patch.incomeType !== undefined && treatyCountry) {
-        const rate = TREATY_RATES[treatyCountry]?.[patch.incomeType as TreatyIncomeType];
+      if (patch.incomeType !== undefined && treatyCountryCode) {
+        const rate = TREATY_RATES[treatyCountryCode]?.[patch.incomeType as TreatyIncomeType];
         if (rate !== undefined) next.approvedRate = rate;
       }
       return next;
@@ -77,11 +77,11 @@ function EntryForm({
 
 export function TreatyIncomesPanel({
   incomes,
-  treatyCountry,
+  treatyCountryCode,
   onChange,
 }: {
   incomes: TreatyIncomeEntry[];
-  treatyCountry: string;
+  treatyCountryCode: string;
   onChange: (incomes: TreatyIncomeEntry[]) => void;
 }) {
   const [editing, setEditing] = useState<{ entry: TreatyIncomeEntry; isNew: boolean } | null>(null);
@@ -139,7 +139,7 @@ export function TreatyIncomesPanel({
       {editing ? (
         <EntryForm
           entry={editing.entry}
-          treatyCountry={treatyCountry}
+          treatyCountryCode={treatyCountryCode}
           isNew={editing.isNew}
           onDone={(e) => apply(e, editing.isNew)}
           onCancel={() => setEditing(null)}

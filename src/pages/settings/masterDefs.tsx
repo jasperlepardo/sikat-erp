@@ -6,7 +6,7 @@ import { Button, Text } from '@jasperlepardo/sikat-design-system';
 import { FieldStack, ReadOnly, bind, type Errors } from '../../components/form/fields';
 import { statusColumn, uniqueRequired } from '../../components/form/MasterList';
 import type { MasterDef } from '../../components/form/MasterLookup';
-import { MAX_PARTNER_PROPERTIES, projectValue, type Bank, type BpGroup, type NamedEntry, PRICE_ROUNDING, type PaymentTerm, type PriceList, type Project } from '../../mocks/partnerMasters';
+import { MAX_PARTNER_PROPERTIES, projectValue, type Bank, type BpGroup, type Country, type NamedEntry, PRICE_ROUNDING, type PaymentTerm, type PriceList, type Project } from '../../mocks/partnerMasters';
 import { ItemPricesTable } from '../inventory/pricing/ItemPricesTable';
 import { BASE_PRICE_LIST_ID, describeChain, priceChain, priceListName, roundingLabel, samplePrice } from '../../services/priceLists';
 import type { Collection } from '../../services/store';
@@ -49,8 +49,6 @@ function namedDef(o: {
   placeholder?: string;
   /** Validation beyond "required and unique" (e.g. a size cap). */
   check?: (row: NamedEntry, all: NamedEntry[], e: Errors) => void;
-  /** Records store the entry's name rather than its id (countries, until they move to ISO codes), so renames are locked. */
-  storeNames?: boolean;
 }): MasterDef<NamedEntry> {
   return {
     collection: o.collection,
@@ -60,7 +58,7 @@ function namedDef(o: {
     home: o.home,
     description: o.description,
     blank: (name) => ({ id: newId(o.idPrefix), name, active: true }),
-    value: (r) => (o.storeNames ? r.name : r.id),
+    value: (r) => r.id,
     label: (r) => r.name,
     columns: [{ key: 'name', header: 'Name', cell: (r) => r.name }, statusColumn<NamedEntry>()],
     searchText: (r) => r.name,
@@ -71,11 +69,11 @@ function namedDef(o: {
       o.check?.(r, all, e);
       return e;
     },
-    editor: (r, update, errors, isNew) => {
+    editor: (r, update, errors) => {
       const f = bind(r, update);
       return (
         <FieldStack>
-          {f.text('name', 'Name', { required: true, error: errors.name, placeholder: o.placeholder, disabled: o.storeNames && !isNew, hint: o.storeNames && !isNew ? NAME_LOCK : undefined })}
+          {f.text('name', 'Name', { required: true, error: errors.name, placeholder: o.placeholder, })}
           {f.status('active', 'Status')}
         </FieldStack>
       );
@@ -459,10 +457,51 @@ export const companyDef: MasterDef<Company> = {
   },
 };
 
-export const countryDef = namedDef({
-  collection: lists.countries, idPrefix: 'cty', storeNames: true, icon: 'public', title: 'Countries', noun: 'country', home: COMPANY,
-  description: "Countries on addresses, banks and items' country of origin.",
-});
+/** Countries are keyed by their ISO 3166-1 alpha-2 code (PH, SG…): a new country's id is set from its code on save. */
+export const countryDef: MasterDef<Country> = {
+  collection: lists.countries,
+  icon: 'public',
+  title: 'Countries',
+  noun: 'country',
+  home: COMPANY,
+  description: "Countries on addresses, banks and items' country of origin, by ISO code.",
+  blank: (name) => ({ id: '', code: '', name, active: true }),
+  value: (c) => c.id,
+  label: (c) => c.name,
+  columns: [
+    { key: 'code', header: 'Code', cell: (c) => c.code },
+    { key: 'name', header: 'Name', cell: (c) => c.name },
+    statusColumn<Country>(),
+  ],
+  searchText: (c) => `${c.code} ${c.name}`,
+  normalize: (c) => {
+    const code = c.code.trim().toUpperCase();
+    return { ...c, id: c.id || code, code, name: c.name.trim() };
+  },
+  validate: (c, all) => {
+    const e: Errors = {};
+    uniqueRequired(e, c, all, 'code', 'ISO code');
+    if (!e.code && !/^[A-Za-z]{2}$/.test(c.code.trim())) e.code = 'Enter the two-letter ISO code, e.g. PH.';
+    uniqueRequired(e, c, all, 'name', 'Name');
+    return e;
+  },
+  editor: (c, update, errors, isNew) => {
+    const f = bind(c, update);
+    return (
+      <FieldStack>
+        {f.text('code', 'ISO code', {
+          required: true,
+          error: errors.code,
+          placeholder: 'e.g. PH',
+          disabled: !isNew,
+          hint: isNew ? 'ISO 3166-1 alpha-2. Addresses store it, so it can\'t change later.' : 'Addresses store this code.',
+        })}
+        {f.text('name', 'Name', { required: true, error: errors.name })}
+        {f.status('active', 'Status')}
+      </FieldStack>
+    );
+  },
+};
 
 // ── Lists owned by other settings pages ──────────────────────────────────────
 
@@ -568,17 +607,17 @@ export const manufacturerDef: MasterDef<Manufacturer> = {
   noun: 'manufacturer',
   home: INVENTORY,
   description: 'Who makes an item — separate from the vendor you buy it from.',
-  blank: (name) => ({ id: newId('mfr'), code: '', name, country: 'Philippines', contactPerson: '', email: '', phone: '', active: true }),
+  blank: (name) => ({ id: newId('mfr'), code: '', name, countryCode: 'PH', contactPerson: '', email: '', phone: '', active: true }),
   value: (m) => m.code,
   label: (m) => `${m.code} · ${m.name}`,
   columns: [
     { key: 'code', header: 'Code', cell: (m) => m.code },
     { key: 'name', header: 'Name', cell: (m) => m.name },
-    { key: 'country', header: 'Country', cell: (m) => m.country || '—' },
+    { key: 'country', header: 'Country', cell: (m) => (m.countryCode ? lists.countryName(m.countryCode) : '—') },
     { key: 'contactPerson', header: 'Contact', cell: (m) => [m.contactPerson, m.email].filter(Boolean).join(' · ') || '—' },
     statusColumn<Manufacturer>(),
   ],
-  searchText: (m) => `${m.code} ${m.name} ${m.country} ${m.contactPerson}`,
+  searchText: (m) => `${m.code} ${m.name} ${lists.countryName(m.countryCode)} ${m.contactPerson}`,
   normalize: (m) => ({ ...m, code: m.code.trim().toUpperCase(), name: m.name.trim() }),
   validate: (m, all) => {
     const e: Errors = {};
@@ -593,7 +632,7 @@ export const manufacturerDef: MasterDef<Manufacturer> = {
       <FieldStack>
         {f.text('code', 'Code', { required: true, error: errors.code, placeholder: 'e.g. MFR-007', disabled: !isNew, hint: !isNew ? CODE_LOCK : undefined })}
         {f.text('name', 'Name', { required: true, error: errors.name })}
-        {f.master('country', 'Country', countryDef)}
+        {f.master('countryCode', 'Country', countryDef)}
         {f.text('contactPerson', 'Contact person')}
         {f.text('email', 'Email', { type: 'email', error: errors.email })}
         {f.text('phone', 'Phone', { type: 'tel' })}

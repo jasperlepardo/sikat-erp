@@ -54,7 +54,7 @@ const ACCOUNT_KINDS: Record<string, AccountKind> = {
     }),
     fields: (f, _a, errors) => (
       <Fields>
-        {f.master('country', 'Bank country/region', countryDef)}
+        {f.master('countryCode', 'Bank country/region', countryDef)}
         {f.master('bankId', 'Bank name', bankDef, { required: true, error: errors.bankId, placeholder: 'Search banks' })}
         {f.text('branch', 'Branch', { placeholder: 'e.g. Ayala Avenue' })}
         {f.text('accountNo', 'Account no.', { placeholder: 'e.g. 0012-3456-7890', required: true, error: errors.accountNo })}
@@ -63,7 +63,7 @@ const ACCOUNT_KINDS: Record<string, AccountKind> = {
         {f.master('currency', 'Currency', currencyDef)}
       </Fields>
     ),
-    prefill: (p) => ({ country: 'Philippines', accountName: p.name, currency: p.currency === 'All currencies' ? 'PHP' : p.currency }),
+    prefill: (p) => ({ countryCode: 'PH', accountName: p.name, currency: p.currency === 'All currencies' ? 'PHP' : p.currency }),
   },
   GCASH: wallet('GCash'),
   MAYA: wallet('Maya'),

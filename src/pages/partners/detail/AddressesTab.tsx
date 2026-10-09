@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { countryName } from '../../../services/partnerMasters';
 import { Icon, Link, List, Text } from '@jasperlepardo/sikat-design-system';
 import { RowMenu } from '../../../components/form/RowMenu';
 import { AddressFields } from '../../../components/form/AddressFields';
@@ -7,7 +8,7 @@ import { EditPanel } from './EditPanel';
 import { Fields, Section, bind, type Draft, type Errors, DefaultFlags, useDefaultPicks, type DefaultPicks, type DefaultRole } from './fields';
 
 const mapUrl = (a: PartnerAddress) =>
-  `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([addressLine(a), a.zip, a.country].filter(Boolean).join(', '))}`;
+  `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([addressLine(a), a.zip, a.countryCode].filter(Boolean).join(', '))}`;
 
 export const addressLine = (a: PartnerAddress) =>
   [a.addressLine, a.block, a.city, a.province].filter(Boolean).join(', ');
@@ -16,7 +17,7 @@ export const addressLine = (a: PartnerAddress) =>
 export function addressProblems(a: PartnerAddress): Errors {
   const e: Errors = {};
   if (!a.label.trim()) e[`address:${a.id}:label`] = 'Every address needs an Address ID.';
-  if (!a.country) e[`address:${a.id}:country`] = 'Every address needs a country.';
+  if (!a.countryCode) e[`address:${a.id}:country`] = 'Every address needs a country.';
   return e;
 }
 
@@ -73,7 +74,7 @@ export function AddressesCards({
                   { label: 'Barangay', value: a.block },
                   { label: 'City', value: a.city },
                   { label: 'Province', value: [a.province, a.zip].filter(Boolean) },
-                  { label: 'Country', value: a.country },
+                  { label: 'Country', value: countryName(a.countryCode) },
                 ].filter((x): x is NonNullable<typeof x> => !!x && (Array.isArray(x.value) ? x.value.length > 0 : !!x.value))}
                 actions={
                   <RowMenu
@@ -129,7 +130,7 @@ export function AddressPanel({
   // Clears the country error once a country is picked.
   const setLocation = (p: Partial<PartnerAddress>) => {
     setAddress((a) => ({ ...a, ...p }));
-    if (p.country) setErrors((e) => Object.fromEntries(Object.entries(e).filter(([k]) => !k.endsWith(':country'))));
+    if (p.countryCode) setErrors((e) => Object.fromEntries(Object.entries(e).filter(([k]) => !k.endsWith(':country'))));
   };
   const done = () => {
     const found = addressProblems(address);

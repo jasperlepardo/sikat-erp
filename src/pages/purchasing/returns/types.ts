@@ -42,7 +42,7 @@ export interface RetSectionProps<D> {
   ctx: RetContext;
 }
 
-const extras = (item: Item | undefined) => ({ countryOfOrigin: item?.countryOfOrigin ?? '' });
+const extras = (item: Item | undefined) => ({ countryOfOriginCode: item?.countryOfOriginCode ?? '' });
 
 /** Return lines sending back receipt lines not yet billed, each `qty` (defaults to what's open). */
 export function returnFromReceipt(gr: GoodsReceipt, picks: { lineId: string; qty: number }[], items: Item[]): ReturnLine[] {

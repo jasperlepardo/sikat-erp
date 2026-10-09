@@ -57,7 +57,7 @@ export function ManufacturersCards({
                 fields={[
                   { label: 'Main', value: main ? 'Main manufacturer' : '' },
                   { label: 'Catalog no.', value: r.catalogNo ? `Catalog no. ${r.catalogNo}` : '' },
-                  { label: 'Country', value: m?.country ?? '' },
+                  { label: 'Country', value: m?.countryCode ?? '' },
                 ].filter((x) => !!x.value)}
                 actions={
                   <RowMenu

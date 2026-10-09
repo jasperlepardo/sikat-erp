@@ -159,7 +159,7 @@ export interface Manufacturer {
   id: string;
   code: string;
   name: string;
-  country: string;
+  countryCode: string;
   contactPerson: string;
   email: string;
   phone: string;
@@ -279,10 +279,10 @@ const CORE_WAREHOUSES: Warehouse[] = [
 export const SEED_WAREHOUSES: Warehouse[] = [...CORE_WAREHOUSES, ...SEED_STORE_WAREHOUSES];
 
 const mfr = (code: string, name: string, country: string, contactPerson = '', email = '', phone = ''): Manufacturer => ({
-  id: `mfr-${code}`, code, name, country, contactPerson, email, phone, active: true,
+  id: `mfr-${code}`, code, name, countryCode: country, contactPerson, email, phone, active: true,
 });
 export const SEED_MANUFACTURERS: Manufacturer[] = [
-  mfr('MFR-APL', 'Apple Inc.', 'United States'),
+  mfr('MFR-APL', 'Apple Inc.', 'US'),
 ];
 
 const customs = (name: string, hsCode: string, duty: number): CustomsGroup => ({ id: `cg-${hsCode}`, name, hsCode, duty, active: true });

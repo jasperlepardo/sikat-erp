@@ -60,7 +60,7 @@ export function DprLines({
     const item = m.items.find((i) => i.id === itemId);
     if (!item) return patch(l.id, { itemId: '' });
     const { invoicedQty: _i, returnedQty: _r, id: _id, ...base } = lineFromItem(item, { postingDate }, ctx, m, { quantity: l.quantity });
-    patch(l.id, { ...base, warehouse: '', bin: '', countryOfOrigin: item.countryOfOrigin, bpCatalogNo: item.vendors.find((v) => v.vendorId === vendorId)?.vendorItemNo ?? '' });
+    patch(l.id, { ...base, warehouse: '', bin: '', countryOfOriginCode: item.countryOfOriginCode, bpCatalogNo: item.vendors.find((v) => v.vendorId === vendorId)?.vendorItemNo ?? '' });
   };
   const changeUom = (l: DprLine, uomCode: string) => {
     const item = itemOf(l);
@@ -108,7 +108,7 @@ export function DprLines({
       ) : null,
     ),
     col('totalLc', 'Total (LC)', (l) => (l.itemId ? <span className="whitespace-nowrap">PHP {formatAmount(lineNet(l) * ctx.fx)}</span> : null)),
-    col('countryOfOrigin', 'Country of origin', (l) => (l.itemId ? <MasterLookup def={countryDef} fieldProps={{ 'aria-label': 'Country of origin', className: 'w-40' }} clearable value={l.countryOfOrigin} onChange={(countryOfOrigin) => patch(l.id, { countryOfOrigin })} /> : null), 'details'),
+    col('countryOfOriginCode', 'Country of origin', (l) => (l.itemId ? <MasterLookup def={countryDef} fieldProps={{ 'aria-label': 'Country of origin', className: 'w-40' }} clearable value={l.countryOfOriginCode} onChange={(countryOfOriginCode) => patch(l.id, { countryOfOriginCode })} /> : null), 'details'),
     col('warranty', 'Warranty', (l) => {
       const w = itemOf(l)?.warrantyTemplate;
       return l.itemId ? <Text variant="small" tone={w ? 'default' : 'muted'}>{w ? m.inv.warranties.find((x) => x.id === w)?.name ?? w : 'None'}</Text> : null;

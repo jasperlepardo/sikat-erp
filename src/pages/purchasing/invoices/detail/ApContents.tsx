@@ -148,9 +148,9 @@ export function ApContents({ draft, update, errors, m, ctx, onCopy }: ApSectionP
     col('totalLc', 'Total (LC)', (l) => (l.itemId ? <span className="whitespace-nowrap">PHP {formatAmount(lineNet(l) * ctx.fx)}</span> : null)),
     col('inventoryQty', 'Qty (inventory UoM)', (l) => (itemOf(l) ? `${grInventoryQty(l).toLocaleString('en-PH')} ${itemOf(l)!.inventoryUom}` : null), 'details'),
     col('bpCatalogNo', 'BP catalog no.', (l) => (l.itemId ? <TextField aria-label="BP catalog no." className="w-36" value={l.bpCatalogNo} onChange={(e) => patch(l.id, { bpCatalogNo: e.currentTarget.value })} /> : null), 'details'),
-    col('countryOfOrigin', 'Country of origin', (l) =>
+    col('countryOfOriginCode', 'Country of origin', (l) =>
       l.itemId ? (
-        <MasterLookup def={countryDef} fieldProps={{ 'aria-label': 'Country of origin', className: 'w-40' }} clearable value={l.countryOfOrigin} onChange={(countryOfOrigin) => patch(l.id, { countryOfOrigin })} />
+        <MasterLookup def={countryDef} fieldProps={{ 'aria-label': 'Country of origin', className: 'w-40' }} clearable value={l.countryOfOriginCode} onChange={(countryOfOriginCode) => patch(l.id, { countryOfOriginCode })} />
       ) : null, 'details'),
     col('unitCost', 'Unit cost price', (l) => (itemOf(l) ? <span className="whitespace-nowrap">PHP {formatAmount(itemOf(l)!.itemCost)}</span> : null), 'details'),
     col('base', 'Base document', (l) =>

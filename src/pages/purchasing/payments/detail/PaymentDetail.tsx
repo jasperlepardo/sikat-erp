@@ -277,7 +277,7 @@ function PaymentForm() {
 
   const title = isNew ? 'New outgoing payment' : added ? paymentNumber(draft) : 'Draft outgoing payment';
   const sectionProps = { draft, update, errors, m, fx, readOnly: added };
-  const payToOptions = (vendor?.addresses ?? []).map((a) => ({ value: formatAddress(a, vendor!.name), label: `${a.label || 'Address'} · ${a.city || a.country}` }));
+  const payToOptions = (vendor?.addresses ?? []).map((a) => ({ value: formatAddress(a, vendor!.name), label: `${a.label || 'Address'} · ${a.city || a.countryCode}` }));
 
   return (
     <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>

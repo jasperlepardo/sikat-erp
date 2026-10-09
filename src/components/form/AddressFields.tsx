@@ -25,14 +25,14 @@ export function AddressFields({
   unwrapped?: boolean;
 }) {
   const f = bind(value, (p: Partial<PostalAddress>) =>
-    p.country !== undefined && p.country !== value.country
-      ? onChange({ country: p.country, province: '', provinceCode: '', city: '', cityCode: '', block: '', barangayCode: '' })
+    p.countryCode !== undefined && p.countryCode !== value.countryCode
+      ? onChange({ countryCode: p.countryCode, province: '', provinceCode: '', city: '', cityCode: '', block: '', barangayCode: '' })
       : onChange(p),
   );
   const fields = (
     <>
       {f.text('addressLine', 'Address', { placeholder: 'e.g. Unit 1203, Tektite East Tower, Exchange Road' })}
-      {value.country === PHILIPPINES ? (
+      {value.countryCode === PHILIPPINES ? (
         <PhLocationFields value={value} onChange={onChange} />
       ) : (
         <>
@@ -41,7 +41,7 @@ export function AddressFields({
         </>
       )}
       {f.text('zip', 'ZIP code', { placeholder: 'e.g. 1223' })}
-      {f.master('country', 'Country/Region', countryDef, { required: true, error: countryError })}
+      {f.master('countryCode', 'Country/Region', countryDef, { required: true, error: countryError })}
     </>
   );
   return unwrapped ? fields : <Fields cols={cols}>{fields}</Fields>;

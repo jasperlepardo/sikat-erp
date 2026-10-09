@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { countryName } from '../../../services/partnerMasters';
 import { Text } from '@jasperlepardo/sikat-design-system';
 import { BUSINESS_TYPES, TREATY_COUNTRIES } from '../../../mocks/masters';
 import type { WithholdingTax } from '../../../mocks/taxes';
@@ -172,7 +173,7 @@ export function TaxTab({ draft, update }: TabProps) {
                 : null}
             </Flags>
             <Fields>
-              {f.pick('taxTreatyCountry', 'Treaty country', [...TREATY_COUNTRIES], {
+              {f.choose('taxTreatyCountryCode', 'Treaty country', TREATY_COUNTRIES.map((c) => ({ value: c, label: countryName(c) })), {
                 clearable: true,
                 placeholder: 'Select a country',
                 hint: 'Country whose tax treaty with the Philippines applies to this vendor.',
@@ -199,10 +200,10 @@ export function TaxTab({ draft, update }: TabProps) {
         </Section>
         )
       ) : null}
-      {isVendor && draft.nonResident && draft.taxTreatyCountry ? (
+      {isVendor && draft.nonResident && draft.taxTreatyCountryCode ? (
         <TreatyIncomesPanel
           incomes={draft.taxTreatyIncomes}
-          treatyCountry={draft.taxTreatyCountry}
+          treatyCountryCode={draft.taxTreatyCountryCode}
           onChange={(taxTreatyIncomes) => update({ taxTreatyIncomes })}
         />
       ) : null}

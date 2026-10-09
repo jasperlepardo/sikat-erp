@@ -1,3 +1,5 @@
+import { seedCountryName } from './masters';
+
 /**
  * A postal address, shared by business partner addresses, warehouses and the company. For a
  * Philippine address the province, city and barangay come from the PSGC (services/locations.ts).
@@ -15,7 +17,7 @@ export interface PostalAddress {
   provinceCode: string;
   cityCode: string;
   barangayCode: string;
-  country: string;
+  countryCode: string;
 }
 
 export const blankPostalAddress = (patch: Partial<PostalAddress> = {}): PostalAddress => ({
@@ -27,7 +29,7 @@ export const blankPostalAddress = (patch: Partial<PostalAddress> = {}): PostalAd
   provinceCode: '',
   cityCode: '',
   barangayCode: '',
-  country: 'Philippines',
+  countryCode: 'PH',
   ...patch,
 });
 
@@ -38,7 +40,7 @@ export const formatAddress = (a?: PostalAddress, name = '') =>
         name,
         a.addressLine,
         [a.block, a.city].filter(Boolean).join(', '),
-        [a.zip, a.country === 'Philippines' ? a.province : a.country].filter(Boolean).join(' '),
+        [a.zip, a.countryCode === 'PH' ? a.province : seedCountryName(a.countryCode)].filter(Boolean).join(' '),
       ]
         .filter(Boolean)
         .join('\n')
@@ -46,4 +48,4 @@ export const formatAddress = (a?: PostalAddress, name = '') =>
 
 /** One line, for lists: "Ugong, City of Pasig, Metro Manila". */
 export const addressSummary = (a?: PostalAddress) =>
-  a ? [a.block, a.city, a.country === 'Philippines' ? a.province : a.country].filter(Boolean).join(', ') : '';
+  a ? [a.block, a.city, a.countryCode === 'PH' ? a.province : seedCountryName(a.countryCode)].filter(Boolean).join(', ') : '';

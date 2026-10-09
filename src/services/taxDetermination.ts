@@ -7,6 +7,7 @@
  * Every step is recorded in `trace`, so the UI can explain the result.
  */
 import type { Item } from '../mocks/items';
+import { countryName } from './partnerMasters';
 import type { Partner } from '../mocks/partners';
 import {
   currentWithholdingRate,
@@ -48,7 +49,7 @@ export type LineParty = Pick<
   | 'swornDeclarationRef'
   | 'swornDeclarationDate'
   | 'swornDeclarationAttachments'
-  | 'taxTreatyCountry'
+  | 'taxTreatyCountryCode'
   | 'taxTreatyCertificate'
   | 'taxTreatyCertificateExpiry'
   | 'taxTreatyIncomes'
@@ -262,10 +263,10 @@ export function determineTax(
  * of Residence (RMO 14-2021).
  */
 function treatyRelief(group: WithholdingGroup, partner: LineParty, date: string) {
-  if (!group.treatyIncomeType || !partner.taxTreatyCountry) return undefined;
+  if (!group.treatyIncomeType || !partner.taxTreatyCountryCode) return undefined;
   const entry = partner.taxTreatyIncomes.find((e) => e.incomeType === group.treatyIncomeType);
   if (!entry) return undefined;
-  const label = `${partner.taxTreatyCountry} treaty, ${entry.incomeType.toLowerCase()}`;
+  const label = `${countryName(partner.taxTreatyCountryCode)} treaty, ${entry.incomeType.toLowerCase()}`;
   if (!entry.approvedRate) return { valid: false as const, why: `${label}: no approved rate entered — domestic rate applies.` };
   if (!entry.attachments.length) return { valid: false as const, why: `${label}: no document attached — domestic rate applies.` };
   if (!partner.taxTreatyCertificate) return { valid: false as const, why: `${label}: no Certificate of Residence on file — domestic rate applies.` };

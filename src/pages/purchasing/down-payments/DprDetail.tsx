@@ -429,7 +429,7 @@ function toDprLines(po: PurchaseOrder, picks: { lineId: string; qty: number }[],
     const { invoicedQty: _i, returnedQty: _r, unitCostLc: _c, id: _id, ...line } = l;
     const pl = po.lines.find((x) => x.id === l.baseLineId);
     const qty = picks.find((p) => p.lineId === l.baseLineId)?.qty ?? l.quantity;
-    return newDprLine({ ...line, quantity: qty, baseType: 'PO', warehouse: '', bin: '', unitCostLc: 0, bpCatalogNo: pl?.bpCatalogNo ?? '', countryOfOrigin: m.items.find((x) => x.id === l.itemId)?.countryOfOrigin ?? '' });
+    return newDprLine({ ...line, quantity: qty, baseType: 'PO', warehouse: '', bin: '', unitCostLc: 0, bpCatalogNo: pl?.bpCatalogNo ?? '', countryOfOriginCode: m.items.find((x) => x.id === l.itemId)?.countryOfOriginCode ?? '' });
   });
 }
 

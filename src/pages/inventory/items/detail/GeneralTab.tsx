@@ -97,7 +97,7 @@ export function GeneralTab({ draft, update, errors, tax, inv }: TabProps) {
 
       <Section icon="public" title="Trade & tax">
         <Fields>
-          {f.master('countryOfOrigin', 'Country of origin', countryDef, { clearable: true })}
+          {f.master('countryOfOriginCode', 'Country of origin', countryDef, { clearable: true })}
           {f.lookup(
             'customsGroup',
             'Customs group',

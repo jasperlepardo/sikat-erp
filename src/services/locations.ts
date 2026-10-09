@@ -5,7 +5,8 @@
  */
 import { useEffect, useState } from 'react';
 
-export const PHILIPPINES = 'Philippines';
+/** ISO code of the Philippines — addresses here use the PSGC province / city / barangay pickers. */
+export const PHILIPPINES = 'PH';
 
 export interface Region {
   code: string;

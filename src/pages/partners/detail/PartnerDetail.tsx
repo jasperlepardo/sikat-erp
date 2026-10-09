@@ -83,7 +83,7 @@ function validate(d: Draft, codeMode: 'auto' | 'manual', chart: Account[] | unde
   }
   for (const a of d.addresses) {
     need(a.label.trim(), 'addresses', `address:${a.id}:label`, 'Every address needs an Address ID.');
-    need(a.country, 'addresses', `address:${a.id}:country`, 'Every address needs a country.');
+    need(a.countryCode, 'addresses', `address:${a.id}:country`, 'Every address needs a country.');
   }
   if (d.roles.includes('customer')) {
     need(d.customerPaymentTermId, 'settings', 'customerPaymentTermId', 'Customer payment terms are required.');

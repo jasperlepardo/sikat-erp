@@ -29,7 +29,7 @@ export interface ContactPerson {
   email: string;
   emailGroupId: string;
   /** Country of birth (some compliance checks ask for it). */
-  birthCountry: string;
+  birthCountryCode: string;
   /** Contact's own customer-portal login. Prototype only: stored as typed. */
   portalPassword: string;
   remarks1: string;
@@ -62,7 +62,7 @@ export interface PaymentAccount {
   accountName: string;
   active: boolean;
   // Bank transfer
-  country?: string;
+  countryCode?: string;
   bankId?: string;
   branch?: string;
   accountNo?: string;
@@ -259,7 +259,7 @@ export interface Partner {
   taxTreatyCertificate: string;
   taxTreatyCertificateExpiry: string;
   /** Country whose tax treaty with the Philippines is being invoked. */
-  taxTreatyCountry: string;
+  taxTreatyCountryCode: string;
   /** One entry per income type covered by the treaty (Dividends, Interest, Royalties, etc.). */
   taxTreatyIncomes: TreatyIncomeEntry[];
 
@@ -304,7 +304,7 @@ export const newContact = (patch: Partial<ContactPerson> = {}): ContactPerson =>
   pager: '',
   email: '',
   emailGroupId: '',
-  birthCountry: '',
+  birthCountryCode: '',
   portalPassword: '',
   remarks1: '',
   remarks2: '',
@@ -430,7 +430,7 @@ export function blankPartner(role: PartnerRole): Omit<Partner, 'id'> {
     nonResident: false,
     taxTreatyCertificate: '',
     taxTreatyCertificateExpiry: '',
-    taxTreatyCountry: '',
+    taxTreatyCountryCode: '',
     taxTreatyIncomes: [],
     consolidatingPartnerId: '',
     consolidationType: 'payment',
@@ -603,7 +603,7 @@ export const SEED_PARTNERS: Partner[] = [
       remarks: 'Singapore travel company buying iPhones for its Manila-based staff, delivered here.\n'
         + 'Tax scenario (sales): non-resident buyer, goods consumed in the Philippines → 31 VATable (no exemption applies).' },
     { firstName: 'Rachel', lastName: 'Tan', position: 'Finance Manager', email: 'finance@harbourline.example.sg' },
-    { addressLine: '138 Cecil St.', city: 'Singapore', zip: '069538', country: 'Singapore' },
+    { addressLine: '138 Cecil St.', city: 'Singapore', zip: '069538', countryCode: 'SG' },
   ),
 
   // ── Leads ──────────────────────────────────────────────────────────────────
@@ -651,7 +651,7 @@ export const SEED_PARTNERS: Partner[] = [
       remarks: 'Cloud hosting for our online store and POS back office, billed monthly in USD.\n'
         + 'Tax scenario (purchase, digital services, provider not registered with BIR — demo setting): 45 reverse-charge VAT · WV070 12% withholding VAT (1600-VT) · WC230 25% final tax.' },
     { firstName: 'AWS', lastName: 'Billing', position: 'Accounts receivable' },
-    { addressLine: '410 Terry Ave. North', city: 'Seattle, WA', zip: '98109', country: 'United States' },
+    { addressLine: '410 Terry Ave. North', city: 'Seattle, WA', zip: '98109', countryCode: 'US' },
   ),
   seed(
     'bp-016', 'vendor',
@@ -659,7 +659,7 @@ export const SEED_PARTNERS: Partner[] = [
       contactChannels: [phone('bp-016-ch1', '+63 2 8845 6000'), email('bp-016-ch2', 'reseller.orders@luzonidist.example.ph')],
       customerPaymentTermId: termId('Net 30'), vendorPaymentTermId: termId('Net 30'), propertyIds: [partnerPropertyId('Preferred supplier'), partnerPropertyId('Accepts e-invoice')], ...sworn('bp-016', 'SD-LID-2026', '2026-01-03'),
       paymentMethods: withAccounts('BANK', [
-        newPaymentAccount({ id: 'bp-016-b1', country: 'Philippines', bankId: bankId('BDO Unibank'), branch: 'Ayala Avenue', accountNo: '0045-8812-3301', accountName: 'Luzon iDistribution Corp.', currency: 'PHP' }),
+        newPaymentAccount({ id: 'bp-016-b1', countryCode: 'PH', bankId: bankId('BDO Unibank'), branch: 'Ayala Avenue', accountNo: '0045-8812-3301', accountName: 'Luzon iDistribution Corp.', currency: 'PHP' }),
       ]),
       remarks: 'Authorized Apple distributor: our local source for iPhone, iPad, Mac and AppleCare+. Also buys surplus stock back from us.\n'
         + 'Tax scenario (purchase, goods): 44 input VAT · WC158 1% EWT. AppleCare+ (services): 44 · WC160 2%.\n'
@@ -676,7 +676,7 @@ export const SEED_PARTNERS: Partner[] = [
       remarks: 'Direct imports of Apple products, shipped from Singapore and cleared through our customs broker.\n'
         + 'Tax scenario (purchase, imported goods): 46 importations — the 12% import VAT is paid to the Bureau of Customs on the import entry, not to Apple · no withholding (foreign-source income).' },
     { firstName: 'Channel', lastName: 'Operations', position: 'Reseller channel' },
-    { addressLine: '7 Ang Mo Kio Street 64', city: 'Singapore', zip: '569086', country: 'Singapore' },
+    { addressLine: '7 Ang Mo Kio Street 64', city: 'Singapore', zip: '569086', countryCode: 'SG' },
   ),
   seed(
     'bp-018', 'vendor',
@@ -686,7 +686,7 @@ export const SEED_PARTNERS: Partner[] = [
       remarks: 'ChatGPT Team seats for the store and marketing teams, charged to the company card monthly.\n'
         + 'Tax scenario (purchase, digital services, provider not registered with BIR — demo setting): 45 · WV070 12% · WC230 25%.' },
     { firstName: 'OpenAI', lastName: 'Billing', position: 'Accounts receivable' },
-    { addressLine: '1455 3rd Street', city: 'San Francisco, CA', zip: '94158', country: 'United States' },
+    { addressLine: '1455 3rd Street', city: 'San Francisco, CA', zip: '94158', countryCode: 'US' },
   ),
   seed(
     'bp-019', 'vendor',
@@ -696,7 +696,7 @@ export const SEED_PARTNERS: Partner[] = [
       remarks: 'Google Ads (search and YouTube) and Google Workspace.\n'
         + 'Tax scenario (purchase, digital services, provider registered with BIR — demo setting): it charges 12% VAT on the invoice → 44 input VAT · WC230 25% final tax.' },
     { firstName: 'Google Ads', lastName: 'Billing', position: 'Collections' },
-    { addressLine: '#03-71 Mapletree Business City II, 70 Pasir Panjang Rd.', city: 'Singapore', zip: '117371', country: 'Singapore' },
+    { addressLine: '#03-71 Mapletree Business City II, 70 Pasir Panjang Rd.', city: 'Singapore', zip: '117371', countryCode: 'SG' },
   ),
   seed(
     'bp-020', 'vendor',
@@ -706,7 +706,7 @@ export const SEED_PARTNERS: Partner[] = [
       remarks: 'Facebook and Instagram ads for launches and promos.\n'
         + 'Tax scenario (purchase, digital services, provider registered with BIR — demo setting): 44 input VAT from its invoice · WC230 25% final tax.' },
     { firstName: 'Meta Ads', lastName: 'Billing', position: 'Collections' },
-    { addressLine: 'Merrion Rd.', city: 'Dublin 4', zip: 'D04 X2K5', country: 'Ireland' },
+    { addressLine: 'Merrion Rd.', city: 'Dublin 4', zip: 'D04 X2K5', countryCode: 'IE' },
   ),
 
   // ── Vendors: professionals and service providers ───────────────────────────
@@ -788,23 +788,23 @@ export const SEED_PARTNERS: Partner[] = [
     'bp-029', 'vendor',
     { name: 'Kestrel Retail Systems Pte. Ltd.', businessType: 'Non-resident foreign company', bpGroupId: bpgId('Vendors – Services'), industryId: industryId('Technology'),
       contactChannels: [email('bp-029-ch1', 'projects@kestrelretail.example.sg')], currency: 'USD', vendorPaymentTermId: termId('Net 30'), vatRegistered: false, nonResident: true,
-      taxTreatyCountry: 'Singapore', taxTreatyCertificate: 'IRAS-COR-2026-118830', taxTreatyCertificateExpiry: '2026-12-31',
+      taxTreatyCountryCode: 'SG', taxTreatyCertificate: 'IRAS-COR-2026-118830', taxTreatyCertificateExpiry: '2026-12-31',
       remarks: 'Singapore firm integrating our POS with the ERP; its consultants work remotely and on site.\n'
         + 'Tax scenario (purchase, services from a non-resident, not digital services): 45 reverse-charge VAT · WV070 12% · WC230 25% final tax (no treaty income entered — the Philippines–Singapore treaty has no reduced rate for technical fees).' },
     { firstName: 'Daniel', lastName: 'Koh', position: 'Project Director', email: 'daniel.koh@kestrelretail.example.sg' },
-    { addressLine: '1 Tanjong Pagar Rd.', city: 'Singapore', zip: '088537', country: 'Singapore' },
+    { addressLine: '1 Tanjong Pagar Rd.', city: 'Singapore', zip: '088537', countryCode: 'SG' },
   ),
   seed(
     'bp-030', 'vendor',
     { name: 'Nakamura Retail Software K.K.', businessType: 'Non-resident foreign company', bpGroupId: bpgId('Vendors – Services'), industryId: industryId('Technology'),
       contactChannels: [email('bp-030-ch1', 'licensing@nakamura-rs.example.jp')], currency: 'JPY', vendorPaymentTermId: termId('Net 30'), vatRegistered: false, nonResident: true,
-      taxTreatyCountry: 'Japan', taxTreatyCertificate: 'NTA-COR-2026-55102', taxTreatyCertificateExpiry: '2027-03-31',
+      taxTreatyCountryCode: 'JP', taxTreatyCertificate: 'NTA-COR-2026-55102', taxTreatyCertificateExpiry: '2027-03-31',
       taxTreatyIncomes: [{ id: 'ti-bp-030', incomeType: 'Royalties', approvedRate: 10, ttraApprovalDate: '2026-03-18',
         attachments: [doc('att-bp-030-ttra', 'TTRA_Confirmation_Royalties.pdf', '2026-03-18', 'BIR ruling on the treaty rate'), doc('att-bp-030-cor', 'Certificate_of_Residence_2026.pdf', '2026-02-10')] }],
       remarks: 'Licenses the POS software we run in every store (annual licence fee).\n'
         + 'Tax scenario (purchase, royalties from a non-resident with treaty relief): 45 · WV050 12% withholding VAT on use of property rights · WC230 at the 10% Japan treaty rate instead of 25%.' },
     { firstName: 'Haruto', lastName: 'Sato', position: 'Licensing', email: 'licensing@nakamura-rs.example.jp' },
-    { addressLine: '2-4-1 Shiba-koen', city: 'Minato-ku, Tokyo', zip: '105-0011', country: 'Japan' },
+    { addressLine: '2-4-1 Shiba-koen', city: 'Minato-ku, Tokyo', zip: '105-0011', countryCode: 'JP' },
   ),
   seed(
     'bp-031', 'vendor',
@@ -813,7 +813,7 @@ export const SEED_PARTNERS: Partner[] = [
       remarks: 'Freelance motion designer in Jakarta; makes our launch videos remotely.\n'
         + 'Tax scenario (purchase, services from a non-resident individual): 45 · WV070 12% · WI330 25% final tax.' },
     { firstName: 'Ayu', lastName: 'Pratama', position: 'Motion designer', email: 'ayu.pratama@example.id' },
-    { addressLine: '12 Jl. Kemang Raya', city: 'Jakarta', zip: '12730', country: 'Indonesia' },
+    { addressLine: '12 Jl. Kemang Raya', city: 'Jakarta', zip: '12730', countryCode: 'ID' },
   ),
   seed(
     'bp-032', 'vendor',
@@ -822,7 +822,7 @@ export const SEED_PARTNERS: Partner[] = [
       remarks: 'Hong Kong lender: USD inventory financing for the iPhone launch season.\n'
         + 'Tax scenario (purchase, interest): 48 no input tax (interest is not VATable) · WC180 20% final tax on interest on foreign loans.' },
     { firstName: 'Winnie', lastName: 'Chan', position: 'Relationship Manager', email: 'winnie.chan@harbourcapital.example.hk' },
-    { addressLine: "99 Queen's Rd. Central", city: 'Hong Kong', country: 'Hong Kong' },
+    { addressLine: "99 Queen's Rd. Central", city: 'Hong Kong', countryCode: 'HK' },
   ),
 
   // ── Edge cases: overrides, incomplete paperwork, other business types ──────
@@ -880,19 +880,19 @@ export const SEED_PARTNERS: Partner[] = [
       remarks: 'Hong Kong lessor of our POS terminals and card readers (36-month operating lease).\n'
         + 'Tax scenario (purchase, equipment lease from a non-resident): 45 · WV050 12% withholding VAT on use of property · WC300 7.5% final tax on equipment rentals.' },
     { firstName: 'Kelvin', lastName: 'Lau', position: 'Lease Administrator', email: 'kelvin.lau@pacificrimleasing.example.hk' },
-    { addressLine: '28 Connaught Rd. Central', city: 'Hong Kong', country: 'Hong Kong' },
+    { addressLine: '28 Connaught Rd. Central', city: 'Hong Kong', countryCode: 'HK' },
   ),
   seed(
     'bp-039', 'vendor',
     { name: 'Hanil Digital Signage Co., Ltd.', businessType: 'Non-resident foreign company', bpGroupId: bpgId('Vendors – Services'), industryId: industryId('Technology'),
       contactChannels: [email('bp-039-ch1', 'global@hanilsignage.example.kr')], currency: 'USD', vendorPaymentTermId: termId('Net 30'), vatRegistered: false, nonResident: true,
-      taxTreatyCountry: 'South Korea', taxTreatyCertificate: 'NTS-COR-2025-30418', taxTreatyCertificateExpiry: '2026-06-30',
+      taxTreatyCountryCode: 'KR', taxTreatyCertificate: 'NTS-COR-2025-30418', taxTreatyCertificateExpiry: '2026-06-30',
       taxTreatyIncomes: [{ id: 'ti-bp-039', incomeType: 'Royalties', approvedRate: 10, ttraApprovalDate: '2025-08-12',
         attachments: [doc('att-bp-039-ttra', 'TTRA_Confirmation_Royalties.pdf', '2025-08-12', 'BIR ruling on the treaty rate')] }],
       remarks: 'Licenses the content software for our in-store video walls.\n'
         + 'Tax scenario (purchase, royalties, treaty paperwork lapsed): Certificate of Residence expired 30 Jun 2026 → warning, WC230 25% instead of the 10% treaty rate until a new one arrives · 45 · WV050 12%.' },
     { firstName: 'Ji-woo', lastName: 'Park', position: 'Global Accounts', email: 'global@hanilsignage.example.kr' },
-    { addressLine: '152 Teheran-ro', city: 'Gangnam-gu, Seoul', zip: '06236', country: 'South Korea' },
+    { addressLine: '152 Teheran-ro', city: 'Gangnam-gu, Seoul', zip: '06236', countryCode: 'KR' },
   ),
   seed(
     'bp-040', 'customer',
@@ -931,7 +931,7 @@ export const SEED_PARTNERS: Partner[] = [
       remarks: 'UK retail consultancy that reviewed our store layouts and staffing, working remotely.\n'
         + 'Tax scenario (purchase, services from a non-resident partnership): 45 · WV070 12% · WC230 25% final tax.' },
     { firstName: 'Olivia', lastName: 'Hart', position: 'Partner', email: 'olivia.hart@brightline.example.co.uk' },
-    { addressLine: '25 Old Broad St.', city: 'London', zip: 'EC2N 1HN', country: 'United Kingdom' },
+    { addressLine: '25 Old Broad St.', city: 'London', zip: 'EC2N 1HN', countryCode: 'GB' },
   ),
   seed(
     'bp-044', 'customer',
