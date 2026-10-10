@@ -29,7 +29,7 @@ import { plId, termId } from './masters';
 import { SEED_DELIVERIES, type DnLine } from './deliveries';
 import { SEED_PARTNERS, formatAddress } from './partners';
 import type { PoReference } from './purchaseOrders';
-import { H1_SALES, SEED_SALES_ORDERS, termDaysOf, type SoDocType } from './salesOrders';
+import { H1_SALES, SEED_SALES_ORDERS, seedSoNo, termDaysOf, type SoDocType } from './salesOrders';
 import { SEED_ITEMS } from './items';
 import { SEED_WAREHOUSES } from './itemMasters';
 import { MONTH_NAMES, POS_CUSTOMER_ID, STORE_SALES } from './storeSales';
@@ -326,6 +326,9 @@ function subic(): Partial<ArInvoice> {
   return { customerId: c.id, customerCode: c.code, customerName: c.name, contactId: c.defaultContactId, federalTaxId: c.tin, billTo: addr ? formatAddress(addr, c.name) : '', shipTo: addr ? formatAddress(addr, c.name) : '' };
 }
 
+/** The bundle order's number, for the remarks of the two invoices that split it. */
+const BUNDLE_NO = seedSoNo(SEED_SALES_ORDERS.find((o) => o.id === 'so-b01')!);
+
 const invoices: ArInvoice[] = [
   fromDelivery('ar-001', 1, 'dn-002', {
     postingDate: '2026-08-21', documentDate: '2026-08-21', dueDate: '2026-09-20', status: 'Closed', closeDate: '2026-09-18',
@@ -390,11 +393,11 @@ const invoices: ArInvoice[] = [
   // Mixed bundle order so-b01 (CGS): split into SI for goods and OR for services.
   fromSalesOrder('ar-b01-si', AR_SERIES[0].id, 11, 'so-b01', ['so-b01-1'], {
     postingDate: '2026-09-17', documentDate: '2026-09-17', dueDate: '2026-10-17', status: 'Closed', closeDate: '2026-10-08',
-    remarks: 'MacBook Airs — goods lines of so-b01. Paid by bank transfer 8 Oct.',
+    remarks: `MacBook Airs — goods lines of ${BUNDLE_NO}. Paid by bank transfer 8 Oct.`,
   }),
   fromSalesOrder('ar-b01-or', OR_SERIES_ID, 2, 'so-b01', ['so-b01-2', 'so-b01-3'], {
     postingDate: '2026-09-17', documentDate: '2026-09-17', dueDate: '2026-10-17', docType: 'Service', status: 'Closed', closeDate: '2026-10-08',
-    remarks: 'Device setup and same-day delivery — service lines of so-b01. Paid with the Sales Invoice.',
+    remarks: `Device setup and same-day delivery — service lines of ${BUNDLE_NO}. Paid with the Sales Invoice.`,
   }),
 ];
 

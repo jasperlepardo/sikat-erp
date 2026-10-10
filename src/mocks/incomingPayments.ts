@@ -22,7 +22,7 @@
  */
 import type { Attachment, DocumentSeries } from './common';
 import { POS_SERIES_ID, SEED_AR_INVOICES, SEED_CREDITED, SEED_PAID, seedArNo, seedNetDue, type ArInvoice } from './arInvoices';
-import { H1_SALES } from './salesOrders';
+import { H1_SALES, SEED_SALES_ORDERS, seedSoNo } from './salesOrders';
 import { cardBrandId, type CARD_BRANDS } from './masters';
 import { SALES_MONTHS } from './storeSales';
 import { seedRateOn } from './salesOrders';
@@ -320,7 +320,7 @@ const PAYMENTS: IncomingPayment[] = [
     const or = SEED_AR_INVOICES.find((a) => a.id === 'ar-b01-or')!;
     const amount = round2(total(si.id) + total(or.id));
     return {
-      ...customerPayment('rc-b01', 9, si.id, { postingDate: '2026-10-08', documentDate: '2026-10-08', dueDate: '2026-10-08', reference: 'CGS-PAY-1008', remarks: 'so-b01 bundle: Sales Invoice and Official Receipt in one transfer.' }, {
+      ...customerPayment('rc-b01', 9, si.id, { postingDate: '2026-10-08', documentDate: '2026-10-08', dueDate: '2026-10-08', reference: 'CGS-PAY-1008', remarks: `Bundle order ${seedSoNo(SEED_SALES_ORDERS.find((o) => o.id === 'so-b01')!)}: Sales Invoice and Official Receipt in one transfer.` }, {
         transfer: { account: '1015', date: '2026-10-08', reference: 'BDO RTGS 2026100800361', amount },
       }),
       rows: [row(si, total(si.id)), row(or, total(or.id))],
