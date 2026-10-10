@@ -933,5 +933,13 @@ export const SEED_PARTNERS: Partner[] = [
         + 'Tax scenario (sales): 31 VATable.' },
     { firstName: 'Lukas', lastName: 'Brandt', position: 'Office Manager', email: 'office.manila@kesslervoss.example.de' },
     { addressLine: '30 5th Ave.', block: 'Fort Bonifacio', city: 'City of Taguig', zip: '1634', province: 'Metro Manila', provinceCode: '1300', cityCode: '137607', barangayCode: '137607020' },
+  ),  seed(
+    'bp-045', 'customer',
+    { name: 'Walk-in Customers (POS)', businessType: 'Individual', bpGroupId: bpgId('Customers – Retail'), industryId: industryId('Retail'),
+      customerPaymentTermId: termId('COD'),
+      remarks: 'The stores\' walk-in customers. The POS posts each store\'s month as one A/R invoice here, paid at the till (cash and cards).\n'
+        + 'Tax scenario (sales): 31 VATable, prices VAT-inclusive at the SRP.' },
+    { firstName: 'Store', lastName: 'Operations', position: 'POS administrator', email: 'pos@sikat.ph' },
+    { addressLine: '155 Dr. Sixto Antonio Ave.', city: 'City of Pasig', zip: '1600', province: 'Metro Manila', provinceCode: '1300', cityCode: '137403' },
   ),
 ];

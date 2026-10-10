@@ -13,10 +13,10 @@ import { consumeLayers, logConsumption, restoreLayer, updateFifoCosts, type Take
 import { postDocumentEntry, reverseDocumentEntry } from './journalEntries';
 import { applyDelivered, listSalesOrders, openQty as soOpenQty, soNumber, soTotals } from './salesOrders';
 import { createCollection } from './store';
-import { FIFO_HISTORY } from './fifoHistory';
+import { withLineCosts } from './stockHistory';
 
-// Seeded deliveries carry the FIFO cost their lines consumed (services/fifoHistory.ts).
-const SEEDED = SEED_DELIVERIES.map((d) => ({ ...d, lines: d.lines.map((l) => (FIFO_HISTORY.costs.has(l.id) ? { ...l, unitCostLc: FIFO_HISTORY.costs.get(l.id)! } : l)) }));
+// Seeded deliveries carry the cost their lines went out at (services/stockHistory.ts).
+const SEEDED = withLineCosts(SEED_DELIVERIES);
 const deliveries = createCollection<Delivery>('sikat-erp:deliveries:v8', SEEDED, 'dn');
 
 export const listDeliveries = deliveries.list;

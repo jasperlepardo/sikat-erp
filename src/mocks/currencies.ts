@@ -103,8 +103,43 @@ const rerbDay = ([date, row]: (typeof RERB_HISTORY)[number]): ExchangeRate =>
     RERB_CODES.filter((_, i) => row[i] == null),
   );
 
-/** Sample history: the RERB of 30 April 2026 (partial), then every banking day 1 Jul – 5 Oct 2026. */
+/** Philippine regular holidays and special non-working days in H1 2026 that close the banks. */
+const H1_HOLIDAYS = new Set(['2026-01-01', '2026-01-02', '2026-02-17', '2026-02-25', '2026-04-02', '2026-04-03', '2026-04-09', '2026-05-01', '2026-06-12']);
+
+/**
+ * January–June 2026 USD rates — ILLUSTRATIVE, NOT FROM BSP BULLETINS. The bulletin history here
+ * starts on 1 July, and the seeded history needs a rate for every January–June USD document. These
+ * follow a smooth path from 58.95 in early January to the real 30 April bulletin (61.506) and on to
+ * where July opens, with a small daily wobble. They're entered as Manual rates; replace them with
+ * the RERB once the bulletins are on hand.
+ */
+function illustrativeUsd(): ExchangeRate[] {
+  const out: ExchangeRate[] = [];
+  const start = Date.UTC(2026, 0, 1);
+  // Anchors: (day of year, rate). 30 Apr is day 119; 30 Jun is day 180.
+  const anchors: [number, number][] = [[0, 58.95], [59, 59.8], [119, 61.506], [180, 61.25]];
+  const along = (d: number) => {
+    const i = anchors.findIndex((_, k) => k < anchors.length - 1 && d <= anchors[k + 1][0]);
+    const [x0, y0] = anchors[i];
+    const [x1, y1] = anchors[i + 1];
+    return y0 + ((y1 - y0) * (d - x0)) / (x1 - x0);
+  };
+  for (let d = 0; d <= 180; d++) {
+    const date = new Date(start + d * 86400000).toISOString().slice(0, 10);
+    const weekday = new Date(start + d * 86400000).getUTCDay();
+    if (weekday === 0 || weekday === 6 || H1_HOLIDAYS.has(date) || date === '2026-04-30') continue;
+    const usd = Math.round((along(d) + 0.12 * Math.sin(d / 3.1) + 0.07 * Math.sin(d / 1.7)) * 1000) / 1000;
+    out.push({ id: `fx-${date}`, date, rates: { USD: usd }, unavailable: [], source: 'Manual' });
+  }
+  return out;
+}
+
+/**
+ * Sample history: illustrative USD rates for January–June 2026 (see above), the RERB of 30 April
+ * 2026 (partial), then every banking day 1 Jul – 5 Oct 2026 from the bulletins.
+ */
 export const SEED_RATES: ExchangeRate[] = [
+  ...illustrativeUsd(),
   rerb('2026-04-30', { USD: 61.506, JPY: 0.3836, BHD: 163.0378, BND: 47.8311 }),
   ...RERB_HISTORY.map(rerbDay),
-];
+].sort((a, b) => a.date.localeCompare(b.date));

@@ -16,6 +16,7 @@ import { SEED_ITEMS } from '../mocks/items';
 import { blankMeans, blankPayment, newAccountRow, newCheckRow, type OutgoingPayment, type PaymentRow } from '../mocks/outgoingPayments';
 import { SEED_PARTNERS } from '../mocks/partners';
 import { SEED_PURCHASE_ORDERS, type PurchaseOrder } from '../mocks/purchaseOrders';
+import { SEED_AS_OF } from '../mocks/supplyPlan';
 import { RETAIL_RETURNS } from '../mocks/retailHistory';
 import { SEED_COMPANY_TAX, SEED_TAX_CODES, SEED_TAX_GROUPS, SEED_WITHHOLDING, SEED_WITHHOLDING_GROUPS, rateAt, vatNotPaidToVendor } from '../mocks/taxes';
 import { SEED_RATES } from '../mocks/currencies';
@@ -58,8 +59,12 @@ function build(): PurchasingHistory {
   const receipts = structuredClone(SEED_GOODS_RECEIPTS);
   const invoices = structuredClone(SEED_AP_INVOICES);
   // Receipts and bills are numbered in date order, so they're found by the PO they came from.
-  const gr = (poId: string) => receipts.find((r) => r.lines.some((l) => l.baseId === poId))!;
-  const inv = (poId: string) => invoices.find((i) => i.lines.some((l) => l.baseId === gr(poId).id))!;
+  const receiptOf = new Map<string, GoodsReceipt>();
+  for (const r of receipts) for (const l of r.lines) if (!receiptOf.has(l.baseId)) receiptOf.set(l.baseId, r);
+  const billOf = new Map<string, ApInvoice>();
+  for (const i of invoices) for (const l of i.lines) if (!billOf.has(l.baseId)) billOf.set(l.baseId, i);
+  const gr = (poId: string) => receiptOf.get(poId)!;
+  const inv = (poId: string) => billOf.get(gr(poId).id)!;
   const po = (id: string) => SEED_PURCHASE_ORDERS.find((p) => p.id === id)!;
 
   /** Apply `amount` of payment or credit to a bill; it closes once nothing is left. */
@@ -282,10 +287,25 @@ function build(): PurchasingHistory {
   payBill('op-020', 'po-058', '2026-10-07', transfer('1017', '2026-10-07', 'UnionBank PESONet 1007-0042'));
   payBill('op-021', 'po-053', '2026-10-06', transfer('1016', '2026-10-06', 'BPI InstaPay 1006-9024'));
 
+  // ── January–June, and the planned orders ────────────────────────────────────
+  // Bills for the monthly services, store replenishment and release orders (mocks/purchaseOrders.ts)
+  // are paid by transfer on their due date — from the USD account for dollar bills — up to the
+  // seed's as-of day. Later ones are still open.
+  const generated = /^po-[rlm]/;
+  const receiptById = new Map(receipts.map((r) => [r.id, r]));
+  const poOf = (bill: ApInvoice) => receiptById.get(bill.lines[0]?.baseId ?? '')?.lines[0]?.baseId ?? '';
+  let gen = 0;
+  for (const bill of invoices.filter((b) => generated.test(poOf(b)) && b.status === 'Open' && b.dueDate <= SEED_AS_OF).sort((a, b) => a.dueDate.localeCompare(b.dueDate) || a.id.localeCompare(b.id))) {
+    const account = bill.currency === 'USD' ? '1018' : '1015';
+    pay(`op-g${String(++gen).padStart(3, '0')}`, bill.dueDate, bill.vendorId, [billRow(bill)], transfer(account, bill.dueDate, `${account === '1018' ? 'TT' : 'InstaPay'} ${bill.dueDate.slice(5).replace('-', '')}-${String(gen).padStart(4, '0')}`));
+  }
+
   // Numbered in date order, like payments added one after another.
   payments.sort((a, b) => a.postingDate.localeCompare(b.postingDate) || a.id.localeCompare(b.id)).forEach((p, n) => (p.docNum = 1 + n));
 
   return { receipts, invoices, payments, returns, memos, downPayments: [booking, macs, ipads] };
 }
 
-export const PURCHASING_HISTORY: PurchasingHistory = build();
+let built: PurchasingHistory | undefined;
+/** The history, built on first use (collections seed from it lazily; see createCollection). */
+export const purchasingHistory = (): PurchasingHistory => (built ??= build());

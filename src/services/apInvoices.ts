@@ -23,11 +23,11 @@ import { listItems, saveItem } from './items';
 import { addLayer, removeLayersBySource, updateFifoCosts } from './costLayers';
 import { lineNet, listPurchaseOrders, openQty, poTotals, saveReceivedQuantities, type WithholdingLine } from './purchaseOrders';
 import { createCollection } from './store';
-import { PURCHASING_HISTORY } from './purchasingHistory';
+import { purchasingHistory } from './purchasingHistory';
 import { taxCodes } from './masterData';
 import { drawDownPayments, drawableAmount, dprTotal, listDownPayments } from './apDownPayments';
 
-const invoices = createCollection<ApInvoice>('sikat-erp:ap-invoices:v6', PURCHASING_HISTORY.invoices, 'ap');
+const invoices = createCollection<ApInvoice>('sikat-erp:ap-invoices:v6', () => purchasingHistory().invoices, 'ap');
 
 export const listApInvoices = invoices.list;
 export async function getApInvoice(idOrNumber: string) {

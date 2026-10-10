@@ -17,6 +17,7 @@ import { seedBinCode } from './binLocations';
 import { employeeId } from './masters';
 import { SEED_WAREHOUSES } from './itemMasters';
 import { SEED_ITEMS } from './items';
+import { LAUNCH_ALLOCATIONS, MONTH_NAMES, SALES_MONTHS, STORE_SALES, HAND_TRANSFER_LINES, handTransferItem } from './storeSales';
 
 export type TransferStatus = 'Draft' | 'Posted';
 export const TRANSFER_STATUSES: TransferStatus[] = ['Draft', 'Posted'];
@@ -104,13 +105,11 @@ export function blankTransfer(today: string, ownerId: string): Omit<InventoryTra
 }
 
 // ── Seed ─────────────────────────────────────────────────────────────────────
-// Past replenishments from the Pasig warehouse to the stores. They're history: the seeded
-// item stock already reflects them.
+// History: the seeded item stock already reflects it (services/stockHistory.ts replays it).
 
-const stocked = SEED_ITEMS.filter((i) => i.inventoryItem && (i.warehouses.find((w) => w.code === 'WH-MNL')?.inStock ?? 0) >= 2);
-
+/** A hand-written transfer line: the item mocks/storeSales.ts picks for it. */
 const line = (n: number, quantity: number, toWarehouse: string, patch: Partial<TransferLine> = {}): TransferLine => {
-  const item = stocked[n % stocked.length];
+  const item = handTransferItem(n, quantity, toWarehouse);
   return newTransferLine({
     id: `tl-seed-${n}-${toWarehouse}`,
     itemId: item.id,
@@ -141,7 +140,7 @@ const REPLENISHMENTS: InventoryTransfer[] = [
     toWarehouse: 'WH-CEB',
     journalRemark: 'Inventory Transfers – WH-MNL to WH-CEB',
     remarks: 'Monthly replenishment of the Cebu store — stock below reorder point as at 2 Sep 2026.',
-    lines: [line(0, 2, 'WH-CEB'), line(3, 1, 'WH-CEB'), line(7, 4, 'WH-CEB')],
+    lines: HAND_TRANSFER_LINES['it-001'].map(([n, q, to]) => line(n, q, to)),
   }),
   transfer('it-002', 2, {
     postingDate: '2026-09-10',
@@ -149,7 +148,7 @@ const REPLENISHMENTS: InventoryTransfer[] = [
     toWarehouse: 'WH-DVO',
     journalRemark: 'Inventory Transfers – WH-MNL to WH-DVO',
     remarks: 'Monthly replenishment of the Davao store.',
-    lines: [line(1, 2, 'WH-DVO'), line(5, 1, 'WH-DVO')],
+    lines: HAND_TRANSFER_LINES['it-002'].map(([n, q, to]) => line(n, q, to)),
   }),
   transfer('it-003', 3, {
     postingDate: '2026-09-18',
@@ -157,7 +156,7 @@ const REPLENISHMENTS: InventoryTransfer[] = [
     toWarehouse: 'ST-001',
     journalRemark: 'Inventory Transfers – WH-MNL to ST-001',
     remarks: 'Launch-week stock for Greenbelt 3.',
-    lines: [line(2, 2, 'ST-001'), line(4, 2, 'ST-001'), line(6, 1, 'ST-005')],
+    lines: HAND_TRANSFER_LINES['it-003'].map(([n, q, to]) => line(n, q, to)),
   }),
   transfer('it-004', 0, {
     status: 'Draft',
@@ -165,78 +164,63 @@ const REPLENISHMENTS: InventoryTransfer[] = [
     documentDate: '2026-10-05',
     toWarehouse: 'WH-PRD',
     remarks: 'Demo units for Mobile Care — waiting on the store manager to confirm.',
-    lines: [line(8, 1, 'WH-PRD')],
+    lines: HAND_TRANSFER_LINES['it-004'].map(([n, q, to]) => line(n, q, to)),
   }),
 ];
 
-// Store restocks of stock received into Pasig that's no longer there, so each warehouse's
-// receipts, transfers and deliveries add up to its In stock. A restock goes to the stores
-// holding the item, largest first, never more than a store holds now (its stock came from here).
-const STORES = new Set(SEED_WAREHOUSES.filter((w) => w.type === 'store').map((w) => w.code));
-/** Restocked so far per item@store, so a second restock of an item draws on what's left. */
-const restocked = new Map<string, number>();
+// ── Store restocks ───────────────────────────────────────────────────────────
+// Pasig restocks each store with what it sold the month before, and sends release-day stock of
+// new items (mocks/storeSales.ts): one transfer per store each time.
 
-function restock(itemNo: string, quantity: number): TransferLine[] {
-  const item = SEED_ITEMS.find((i) => i.itemNo === itemNo)!;
-  // Stores that already have a seeded transfer of the item keep their own history.
-  const moved = new Set(REPLENISHMENTS.flatMap((t) => t.lines.filter((l) => l.itemId === item.id).map((l) => l.toWarehouse)));
-  const room = (code: string, inStock: number) => inStock - (restocked.get(`${item.id}@${code}`) ?? 0);
-  const stores = item.warehouses
-    .filter((w) => STORES.has(w.code) && !moved.has(w.code) && room(w.code, w.inStock) > 0)
-    .sort((a, b) => room(b.code, b.inStock) - room(a.code, a.inStock) || a.code.localeCompare(b.code));
-  const lines: TransferLine[] = [];
-  let left = quantity;
-  for (const w of stores) {
-    if (!left) break;
-    const key = `${item.id}@${w.code}`;
-    const before = restocked.get(key) ?? 0;
-    const qty = Math.min(room(w.code, w.inStock), left);
-    left -= qty;
-    restocked.set(key, before + qty);
-    lines.push(
-      newTransferLine({
-        // Unique per restock: a store restocked twice has had `before` units already.
-        id: `tl-rs-${item.id}-${w.code}-${before}`,
-        itemId: item.id,
-        itemNo: item.itemNo,
-        name: item.name,
-        description: item.description,
-        quantity: qty,
-        uom: item.inventoryUom,
-        fromBinId: item.warehouses.find((x) => x.code === 'WH-MNL')?.defaultBinId || 'bin-WH-MNL-A-01-01',
-        toWarehouse: w.code,
-        unitCost: item.itemCost,
-      }),
-    );
-  }
-  if (left) throw new Error(`Seed restock of ${itemNo}: ${left} more than the stores hold.`);
-  return lines;
-}
+const itemById = new Map(SEED_ITEMS.map((i) => [i.id, i]));
+const MNL_BIN = (itemId: string) => itemById.get(itemId)!.warehouses.find((w) => w.code === 'WH-MNL')?.defaultBinId || 'bin-WH-MNL-A-01-01';
+const storeName = (code: string) => SEED_WAREHOUSES.find((w) => w.code === code)?.name ?? code;
+const MONTH_NAME = (month: string) => MONTH_NAMES[Number(month.slice(5)) - 1];
 
-const storeRestock = (id: string, docNum: number, date: string, remarks: string, lines: TransferLine[]) =>
-  transfer(id, docNum, {
+const toStore = (id: string, date: string, store: string, remarks: string, lines: { itemId: string; qty: number }[]) =>
+  transfer(id, 0, {
     postingDate: date,
     documentDate: date,
-    toWarehouse: lines[0].toWarehouse,
-    journalRemark: 'Inventory Transfers – WH-MNL to stores',
+    toWarehouse: store,
+    journalRemark: `Inventory Transfers – WH-MNL to ${store}`,
     remarks,
-    lines,
+    lines: lines.map((l, k) => {
+      const item = itemById.get(l.itemId)!;
+      return newTransferLine({
+        id: `${id}-${k + 1}`, itemId: item.id, itemNo: item.itemNo, name: item.name, description: item.description, quantity: l.qty,
+        uom: item.inventoryUom, fromBinId: MNL_BIN(item.id), toWarehouse: store, unitCost: item.itemCost,
+      });
+    }),
   });
 
+const RESTOCKS: InventoryTransfer[] = STORE_SALES.map((sale) => {
+  const m = SALES_MONTHS.find((x) => x.month === sale.month)!;
+  return toStore(`it-rs-${sale.month.replace('-', '')}-${sale.store}`, m.restock, sale.store, `Restock of ${storeName(sale.store)}: what it sold in ${MONTH_NAME(sale.month)}.`, sale.lines);
+});
+
+// A store's release-day stock is what it holds now, less what the transfers above already sent it.
+const sentByHand = (store: string, itemId: string) =>
+  REPLENISHMENTS.filter((t) => t.status === 'Posted').reduce((n, t) => n + t.lines.filter((l) => l.itemId === itemId && (l.toWarehouse || t.toWarehouse) === store).reduce((k, l) => k + l.quantity, 0), 0);
+
+const RELEASES: InventoryTransfer[] = LAUNCH_ALLOCATIONS.flatMap((a) => {
+  const lines = a.lines.map((l) => ({ ...l, qty: l.qty - sentByHand(l.store, l.itemId) })).filter((l) => l.qty > 0);
+  const stores = [...new Set(lines.map((l) => l.store))];
+  return stores.map((store) =>
+    toStore(`it-la-${a.date.replace(/-/g, '')}-${store}`, a.date, store, `Release-day stock for ${storeName(store)}.`, lines.filter((l) => l.store === store).map((l) => ({ itemId: l.itemId, qty: l.qty }))),
+  );
+});
+
+let postedNo = 0;
+/** Numbered in date order; drafts have no number. */
 export const SEED_TRANSFERS: InventoryTransfer[] = [
   ...REPLENISHMENTS,
-  storeRestock('it-005', 4, '2026-09-08', 'Accessory restock of the stores from the 5 Sep Techzone receipt.', [
-    ...restock('ACC-CBL1M', 22),
-    ...restock('ACC-MAGSF1', 692),
-    ...restock('ACC-PWR20', 50),
-  ]),
-  storeRestock('it-006', 5, '2026-09-19', 'iPhone 17 and charger restock of the stores from the 17 Sep Luzon iDistribution receipt.', [
-    ...restock('ACC-PWR20', 32),
-    ...restock('IPH-17-256-BLK', 3),
-    ...restock('IPH-17-256-WHT', 7),
-  ]),
-  storeRestock('it-007', 6, '2026-10-01', 'iPhone 18 Pro restock of the stores from the 30 Sep receipt.', [...restock('IPH-18P-256-BLK', 2)]),
-].map((t) =>
-  // Posted transfers carry the bin codes they were posted with.
-  t.status === 'Posted' ? { ...t, lines: t.lines.map((l) => ({ ...l, fromBinCode: seedBinCode(l.fromBinId), toBinCode: seedBinCode(l.toBinId) })) } : t,
-);
+  ...RESTOCKS,
+  ...RELEASES,
+]
+  .sort((a, b) => a.postingDate.localeCompare(b.postingDate) || a.id.localeCompare(b.id))
+  .map((t) =>
+    // Posted transfers carry the bin codes they were posted with.
+    t.status === 'Posted'
+      ? { ...t, docNum: ++postedNo, lines: t.lines.map((l) => ({ ...l, fromBinCode: seedBinCode(l.fromBinId), toBinCode: seedBinCode(l.toBinId) })) }
+      : t,
+  );

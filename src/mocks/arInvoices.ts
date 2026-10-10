@@ -30,6 +30,9 @@ import { SEED_DELIVERIES, type DnLine } from './deliveries';
 import { SEED_PARTNERS, formatAddress } from './partners';
 import type { PoReference } from './purchaseOrders';
 import { SEED_SALES_ORDERS, type SoDocType } from './salesOrders';
+import { SEED_ITEMS } from './items';
+import { SEED_WAREHOUSES } from './itemMasters';
+import { MONTH_NAMES, POS_CUSTOMER_ID, STORE_SALES } from './storeSales';
 
 export type ArStatus = 'Draft' | 'Open' | 'Closed' | 'Cancelled';
 export const AR_STATUSES: ArStatus[] = ['Draft', 'Open', 'Closed', 'Cancelled'];
@@ -126,8 +129,18 @@ export interface ArInvoice {
 
 export const AR_SERIES: DocumentSeries[] = [
   { id: 'ars-primary', name: 'Sales Invoice', prefix: '', firstNo: 13, manual: false, isDefault: true, active: true, segments: [{ type: 'literal', value: 'SI' }, { type: 'year' }, { type: 'sequence', padding: 4 }] },
-  { id: 'ars-or', name: 'Official Receipt', prefix: '', firstNo: 3, manual: false, isDefault: false, active: true, segments: [{ type: 'literal', value: 'OR' }, { type: 'year' }, { type: 'sequence', padding: 4 }] },
+  { id: 'ars-or', name: 'Official Receipt', prefix: '', firstNo: 3, manual: false, isDefault: false, active: true, segments: [{ type: 'literal', value: 'OR' }, { type: 'year' }, { type: 'sequence', padding: 4 }] },  { id: 'ars-pos', name: 'POS Sales', prefix: '', firstNo: 1, manual: false, isDefault: false, active: true, segments: [{ type: 'literal', value: 'POS' }, { type: 'year' }, { type: 'sequence', padding: 5 }] },
 ];
+
+export const POS_SERIES_ID = 'ars-pos';
+
+/** A seeded invoice's number as the series formats it: SI-2026-0001, OR-2026-0001, POS-2026-00001. */
+export const seedArNo = (a: Pick<ArInvoice, 'seriesId' | 'docNum' | 'postingDate'>) => {
+  const series = AR_SERIES.find((x) => x.id === a.seriesId) ?? AR_SERIES[0];
+  const literal = series.segments?.find((x) => x.type === 'literal');
+  const pad = series.segments?.find((x) => x.type === 'sequence');
+  return `${literal?.value ?? 'SI'}-${a.postingDate.slice(0, 4)}-${String(a.docNum).padStart(pad?.padding ?? 4, '0')}`;
+};
 
 export const OR_SERIES_ID = 'ars-or';
 
@@ -385,10 +398,56 @@ const invoices: ArInvoice[] = [
   }),
 ];
 
+// ── Store sales (POS) ────────────────────────────────────────────────────────
+// Each store's month at the till, posted by the POS as one invoice to the walk-in customer
+// (mocks/storeSales.ts). Prices are the SRP less VAT; paid in full at the till, so they're
+// closed by the month's POS collection.
+
+const MONTH_NAME = (month: string) => `${MONTH_NAMES[Number(month.slice(5)) - 1]} ${month.slice(0, 4)}`;
+
+const itemById = new Map(SEED_ITEMS.map((i) => [i.id, i]));
+
+export const SEED_POS_INVOICES: ArInvoice[] = STORE_SALES.map((sale, n) => {
+  const c = SEED_PARTNERS.find((p) => p.id === POS_CUSTOMER_ID)!;
+  const store = SEED_WAREHOUSES.find((w) => w.code === sale.store)!;
+  const id = `pos-${sale.month.replace('-', '')}-${sale.store}`;
+  const units = sale.lines.reduce((k, l) => k + l.qty, 0);
+  return {
+    ...blankArInvoice(sale.date, CURRENT_USER_ID),
+    id,
+    seriesId: POS_SERIES_ID,
+    docNum: n + 1,
+    status: 'Closed',
+    closeDate: sale.date,
+    customerId: c.id,
+    customerCode: c.code,
+    customerName: c.name,
+    contactId: c.defaultContactId,
+    customerRef: `${sale.store}-${sale.month}`,
+    paymentTermId: termId('COD'),
+    paymentMethod: 'CASH',
+    shipTo: `${store.name}`,
+    billTo: c.name,
+    controlAccount: '1120',
+    journalRemark: `POS Sales – ${store.code} ${MONTH_NAME(sale.month)}`,
+    remarks: `${store.name}: POS sales for ${MONTH_NAME(sale.month)}, ${units} units.`,
+    lines: sale.lines.map((l, k) => {
+      const item = itemById.get(l.itemId)!;
+      return newArLine({
+        id: `${id}-${k + 1}`, itemId: item.id, itemNo: item.itemNo, description: item.name, quantity: l.qty,
+        uomCode: item.salesUom, uomName: item.salesUom === 'pc' ? 'Piece' : item.salesUom, itemsPerUnit: 1, warehouse: sale.store,
+        priceListId: plId('Base price'), unitPrice: round2(item.basePrice / 1.12), priceSource: 'Base price (SRP)', taxCode: '31',
+      });
+    }),
+  };
+});
+invoices.push(...SEED_POS_INVOICES);
+
 /** Paid by the seeded incoming payments (document currency). */
 const PAID: Record<string, 'full' | 'half'> = {
   'ar-001': 'full', 'ar-002': 'full', 'ar-003': 'half', 'ar-005': 'half',
   'ar-c01': 'full', 'ar-c02': 'full', 'ar-c04': 'half', 'ar-b01-si': 'full', 'ar-b01-or': 'full',
+  ...Object.fromEntries(SEED_POS_INVOICES.map((a) => [a.id, 'full' as const])),
 };
 
 /** A credit for `qty` of a delivered line, at its price with VAT — what a credit memo for it comes to. */

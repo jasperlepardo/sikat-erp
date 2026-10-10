@@ -13,8 +13,9 @@ import { inventoryAccountFor, type JournalLine } from './inventoryTransfers';
 import { listItems, saveItem } from './items';
 import { soTotals } from './salesOrders';
 import { createCollection } from './store';
+import { withLineCosts } from './stockHistory';
 
-const creditMemos = createCollection<ArCreditMemo>('sikat-erp:ar-credit-memos', SEED_AR_CREDIT_MEMOS, 'acm');
+const creditMemos = createCollection<ArCreditMemo>('sikat-erp:ar-credit-memos', withLineCosts(SEED_AR_CREDIT_MEMOS), 'acm');
 
 export const listArCreditMemos = creditMemos.list;
 export async function getArCreditMemo(idOrNumber: string) {

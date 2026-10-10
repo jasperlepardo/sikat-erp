@@ -278,7 +278,7 @@ export const SEED_RFQS: Rfq[] = [
         requiredDate: '2026-09-22', unitPrice: 685, quotedQty: 120, quotedDate: '2026-09-08', taxCode: '46',
       }),
     ],
-    remarks: 'Quote for the DepEd Pasig award (120 iPad Pro 11"). Apple confirmed allocation on 8 Sep; converted to IMP-2026-0003 (po-039).',
+    remarks: 'Quote for the DepEd Pasig award (120 iPad Pro 11"). Apple confirmed allocation on 8 Sep; converted to the 30 Sep import order.',
   }),
 
   // ── Luzon iDistribution: MacBook Air for B2B pipeline ──────────────────────

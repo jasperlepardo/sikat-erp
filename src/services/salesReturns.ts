@@ -12,8 +12,9 @@ import { consumeLayers, logConsumption, restoreLayer, updateFifoCosts, type Take
 import { postDocumentEntry, reverseDocumentEntry } from './journalEntries';
 import { soTotals } from './salesOrders';
 import { createCollection } from './store';
+import { withLineCosts } from './stockHistory';
 
-const salesReturns = createCollection<SalesReturn>('sikat-erp:sales-returns', SEED_SALES_RETURNS, 'sr');
+const salesReturns = createCollection<SalesReturn>('sikat-erp:sales-returns', withLineCosts(SEED_SALES_RETURNS), 'sr');
 
 export const listSalesReturns = salesReturns.list;
 export async function getSalesReturn(idOrNumber: string) {

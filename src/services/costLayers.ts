@@ -7,7 +7,7 @@
  */
 import { createCollection } from './store';
 import { listItems, saveItem } from './items';
-import { FIFO_HISTORY } from './fifoHistory';
+import { stockHistory } from './stockHistory';
 
 export interface CostLayer {
   id: string;
@@ -46,9 +46,9 @@ export interface CostConsumption {
 /** What `consumeLayers` took, before the document has an id to log it under. */
 export type Taken = Omit<CostConsumption, 'id' | 'docId' | 'date'>;
 
-// Seeded with the layers and consumptions the seeded history leaves (services/fifoHistory.ts).
-const layers = createCollection<CostLayer>('sikat-erp:cost-layers:v4', FIFO_HISTORY.layers, 'cl');
-const consumptions = createCollection<CostConsumption>('sikat-erp:cost-consumptions:v2', FIFO_HISTORY.consumptions, 'cc');
+// Seeded with the layers and consumptions the seeded history leaves (services/stockHistory.ts).
+const layers = createCollection<CostLayer>('sikat-erp:cost-layers:v5', () => stockHistory().layers, 'cl');
+const consumptions = createCollection<CostConsumption>('sikat-erp:cost-consumptions:v3', () => stockHistory().consumptions, 'cc');
 
 /** A document's cost breakdown: the batches each of its items came out of. */
 export const consumptionsAt = async (itemId: string, warehouse: string) =>

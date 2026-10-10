@@ -13,9 +13,9 @@ import { listItems, saveItem } from './items';
 import { consumeLayers, logConsumption, restoreLayer, updateFifoCosts, type Taken } from './costLayers';
 import { poTotals } from './purchaseOrders';
 import { createCollection } from './store';
-import { PURCHASING_HISTORY } from './purchasingHistory';
+import { purchasingHistory } from './purchasingHistory';
 
-const returns = createCollection<GoodsReturn>('sikat-erp:goods-returns:v4', PURCHASING_HISTORY.returns, 'rt');
+const returns = createCollection<GoodsReturn>('sikat-erp:goods-returns:v4', () => purchasingHistory().returns, 'rt');
 
 export const listGoodsReturns = returns.list;
 export async function getGoodsReturn(idOrNumber: string) {

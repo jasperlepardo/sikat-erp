@@ -329,12 +329,12 @@ const CORPORATE_ORDERS: SalesOrder[] = [
   }),
   header('so-c05', CORPORATE_SO_START + 4, 'bp-041', {
     postingDate: '2026-09-24', documentDate: '2026-09-24', deliveryDate: '2026-10-02',
-    customerRef: 'ARHI-PR-2026-118', baseQuotationId: 'qt-005', remarks: 'Phones for the field researchers. 12 delivered 2 Oct; 8 wait on Luzon\'s balance (PO-2026-0051).',
+    customerRef: 'ARHI-PR-2026-118', baseQuotationId: 'qt-005', remarks: 'Phones for the field researchers. 12 delivered 2 Oct; 8 wait on the balance of Luzon\'s 25 Sep order.',
     lines: [line('so-c05-1', idOf('IPH-17-256-LAV'), 20, { deliveredQty: 12, priceListId: plId('Wholesale'), discountPct: 2, priceSource: 'Discount group Customers – Trade × iPhone: 2%' })],
   }),
   header('so-c06', CORPORATE_SO_START + 5, 'bp-040', {
     postingDate: '2026-10-05', documentDate: '2026-10-05', deliveryDate: '2026-10-20',
-    customerRef: 'SBML-PO-2026-077', baseQuotationId: 'qt-006', remarks: 'iPad Airs for the vessel crews. Nothing on hand; on order from Apple (IMP-2026-0007).',
+    customerRef: 'SBML-PO-2026-077', baseQuotationId: 'qt-006', remarks: 'iPad Airs for the vessel crews. Nothing on hand; on order from Apple (the 6 Oct import).',
     lines: [line('so-c06-1', idOf('IPD-AIR-11-128-WF-BLU'), 30, { priceListId: plId('Wholesale'), discountPct: 3, priceSource: 'Discount group Customers – Trade × iPad: 3%' })],
   }),
 ];

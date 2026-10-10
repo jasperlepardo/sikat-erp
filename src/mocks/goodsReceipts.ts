@@ -22,9 +22,9 @@ import { plId } from './masters';
 import { SEED_ITEMS } from './items';
 import { SEED_RATES } from './currencies';
 import { PO_SERIES, SEED_PURCHASE_ORDERS, type PoReference } from './purchaseOrders';
-import { todayISO } from '../services/dates';
+// The last delivery date, but never after the seed's as-of day (it records goods already received) and never before the PO.
+import { receiptDate } from './supplyPlan';
 
-const SEED_TODAY = todayISO();
 
 export type GrStatus = 'Draft' | 'Open' | 'Closed' | 'Cancelled';
 export const GR_STATUSES: GrStatus[] = ['Draft', 'Open', 'Closed', 'Cancelled'];
@@ -212,12 +212,6 @@ const seedFx = (currency: string, date: string) =>
     ? 1
     : ([...SEED_RATES].filter((d) => d.date <= date && d.rates[currency] > 0).sort((a, b) => b.date.localeCompare(a.date))[0]?.rates[currency] ?? 0);
 
-/** The last delivery date, but never in the future (it records goods already received) and never before the PO. */
-const receiptDate = (po: (typeof SEED_PURCHASE_ORDERS)[number]) => {
-  const planned = po.lines.map((l) => l.deliveryDate).filter(Boolean).sort().at(-1) || po.deliveryDate || po.postingDate;
-  const capped = planned > SEED_TODAY ? SEED_TODAY : planned;
-  return capped < po.postingDate ? po.postingDate : capped;
-};
 
 const received = SEED_PURCHASE_ORDERS.filter((po) => po.status !== 'Cancelled' && po.lines.some((l) => l.receivedQty > 0)).map((po) => ({
   po,
