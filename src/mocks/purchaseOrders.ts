@@ -672,12 +672,12 @@ export const SEED_PURCHASE_ORDERS: PurchaseOrder[] = [
   vendorPo('po-045', 39, 'bp-013', {
     status: 'Open', shipTo: MNL_SHIP_TO, shippingType: 'sh-own',
     postingDate: '2026-10-01', documentDate: '2026-10-01', deliveryDate: '2026-10-03', dueDate: '2026-11-02',
-    vendorRef: 'TZ-SO-44260',
+    vendorRef: 'TZ-SO-44260', baseRfqId: 'rfq-002',
     lines: [
       line('po-045-1', 'ACC-PWR20', 100, { receivedQty: 60, deliveryDate: '2026-10-03', unitPrice: 1680, discountPct: 8 }),
       line('po-045-2', 'ACC-MAGSF1', 2, { receivedQty: 1, deliveryDate: '2026-10-03', unitPrice: 24 * 2410 }),
     ],
-    remarks: 'October accessories. Techzone shipped 60 chargers and 1 of 2 boxes of MagSafe; the rest is backordered.',
+    remarks: 'October accessories, ordered from Techzone’s quotation. Techzone shipped 60 chargers and 1 of 2 boxes of MagSafe; the rest is backordered.',
   }),
 
   // ── Earlier replenishment, July–October ────────────────────────────────────

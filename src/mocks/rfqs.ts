@@ -251,18 +251,19 @@ export const SEED_RFQS: Rfq[] = [
     remarks: 'Holiday season allocation. Luzon responded on 20 Sep; Silver allocation is short (15 of 20). Following up on the 5-unit gap.',
   }),
 
-  // ── Techzone: Q4 accessories bundle ────────────────────────────────────────
+  // ── Techzone: October chargers and MagSafe (from prq-003, converted → po-045) ──
   rfq('rfq-002', 2, 'bp-013', {
-    postingDate: '2026-09-20', documentDate: '2026-09-20', validUntil: '2026-10-20',
+    postingDate: '2026-09-24', documentDate: '2026-09-24', validUntil: '2026-10-24',
     basePrId: 'prq-003',
-    requiredDate: '2026-10-01',
+    requiredDate: '2026-10-03',
     shipTo: MNL_SHIP_TO,
+    status: 'Closed',
+    convertedToPoId: 'po-045',
     lines: [
-      rl('rfq-002-1', 'ACC-PWR20', 200, { requiredDate: '2026-10-01', unitPrice: 1590, quotedQty: 200, quotedDate: '2026-09-22', taxCode: '44', discountPct: 8 }),
-      rl('rfq-002-2', 'ACC-CBL1M', 150, { requiredDate: '2026-10-01', unitPrice: 1460, quotedQty: 150, quotedDate: '2026-09-22', taxCode: '44' }),
-      rl('rfq-002-3', 'ACC-MAGSF2', 3, { requiredDate: '2026-10-01', unitPrice: 24 * 3100, quotedQty: 3, quotedDate: '2026-09-22', taxCode: '44' }),
+      rl('rfq-002-1', 'ACC-PWR20', 100, { requiredDate: '2026-10-03', unitPrice: 1680, quotedQty: 100, quotedDate: '2026-09-26', taxCode: '44', discountPct: 8 }),
+      rl('rfq-002-2', 'ACC-MAGSF1', 2, { requiredDate: '2026-10-03', unitPrice: 24 * 2410, quotedQty: 2, quotedDate: '2026-09-26', taxCode: '44' }),
     ],
-    remarks: 'Techzone confirmed all quantities on 22 Sep with the standard 8% discount on chargers.',
+    remarks: 'Techzone quoted on 26 Sep with the standard 8% discount on chargers. Ordered on 1 Oct.',
   }),
 
   // ── Apple South Asia: iPad Pro import quote (converted → po-039) ───────────
@@ -283,7 +284,6 @@ export const SEED_RFQS: Rfq[] = [
   // ── Luzon iDistribution: MacBook Air for B2B pipeline ──────────────────────
   rfq('rfq-004', 4, 'bp-016', {
     postingDate: '2026-09-28', documentDate: '2026-09-28', validUntil: '2026-10-28',
-    basePrId: 'prq-002',
     requiredDate: '2026-10-20',
     shipTo: MNL_SHIP_TO,
     lines: [

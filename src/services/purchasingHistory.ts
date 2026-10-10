@@ -9,7 +9,7 @@
  */
 import { ADVANCES_TO_SUPPLIERS, DPR_SERIES, newDprLine, type DownPaymentRequest } from '../mocks/apDownPayments';
 import { MEMO_SERIES, newMemoLine, type ApCreditMemo, type MemoLine } from '../mocks/apCreditMemos';
-import { SEED_AP_INVOICES, type ApInvoice } from '../mocks/apInvoices';
+import { SEED_AP_INVOICES, billFromReceipt, type ApInvoice } from '../mocks/apInvoices';
 import { SEED_GOODS_RECEIPTS, type GoodsReceipt } from '../mocks/goodsReceipts';
 import { RETURN_SERIES, newReturnLine, type GoodsReturn, type ReturnLine } from '../mocks/goodsReturns';
 import { SEED_ITEMS } from '../mocks/items';
@@ -42,6 +42,7 @@ function amounts(doc: Pick<ApInvoice, 'discountPct' | 'freight' | 'freightTaxCod
 }
 
 const apNo = (inv: ApInvoice) => `BILL-${inv.postingDate.slice(0, 4)}-${String(inv.docNum).padStart(4, '0')}`;
+const dprNo = (d: DownPaymentRequest) => `DPR-${d.postingDate.slice(0, 4)}-${String(d.docNum).padStart(4, '0')}`;
 const grNo = (gr: GoodsReceipt) => `GR-${gr.postingDate.slice(0, 4)}-${String(gr.docNum).padStart(4, '0')}`;
 
 export interface PurchasingHistory {
@@ -59,13 +60,58 @@ function build(): PurchasingHistory {
   // Receipts and bills are numbered in date order, so they're found by the PO they came from.
   const gr = (poId: string) => receipts.find((r) => r.lines.some((l) => l.baseId === poId))!;
   const inv = (poId: string) => invoices.find((i) => i.lines.some((l) => l.baseId === gr(poId).id))!;
-  const po = (docNum: number) => SEED_PURCHASE_ORDERS.find((p) => p.docNum === docNum)!;
+  const po = (id: string) => SEED_PURCHASE_ORDERS.find((p) => p.id === id)!;
 
   /** Apply `amount` of payment or credit to a bill; it closes once nothing is left. */
   const settle = (bill: ApInvoice, amount: number, date: string) => {
     const { net } = amounts(bill, bill.downPayment);
     bill.appliedAmount = round2(bill.appliedAmount + amount);
     if (bill.appliedAmount >= net - 0.005) Object.assign(bill, { status: 'Closed', closeDate: date });
+  };
+
+  // ── Down payment requests ───────────────────────────────────────────────────
+  // Built here, ahead of the payments that pay them; numbered in date order.
+  const poRef = (p: PurchaseOrder) => `${p.seriesId === 'ser-import' ? 'Import' : 'Primary'} ${p.docNum}`;
+  const dprLines = (p: PurchaseOrder) =>
+    p.lines.map((l, i) =>
+      newDprLine({
+        id: `dl-seed-${p.id}-${i + 1}`, itemId: l.itemId, itemNo: l.itemNo, name: l.name, description: l.description, quantity: l.quantity,
+        uomCode: l.uomCode, uomName: l.uomName, itemsPerUnit: l.itemsPerUnit, priceListId: l.priceListId, unitPrice: l.unitPrice, discountPct: l.discountPct,
+        taxCode: l.taxCode, blanketAgreement: l.blanketAgreement, baseType: 'PO', baseId: p.id, baseLineId: l.id, baseDocNo: poRef(p),
+        bpCatalogNo: l.bpCatalogNo, countryOfOriginCode: SEED_ITEMS.find((x) => x.id === l.itemId)?.countryOfOriginCode ?? '', warehouse: '', binId: '',
+      }),
+    );
+  const request = (id: string, docNum: number, p: PurchaseOrder, date: string, dpmPct: number, vendorRef: string): DownPaymentRequest => {
+    const v = vendorOf(p.vendorId);
+    return {
+      id, vendorId: v.id, vendorCode: v.code, vendorName: v.name, contactId: p.contactId, vendorRef, currency: p.currency, seriesId: DPR_SERIES[0].id, docNum,
+      status: 'Open', postingDate: date, dueDate: date, documentDate: date, closeDate: '', lines: dprLines(p), shipTo: p.shipTo, payTo: '', shippingType: p.shippingType,
+      language: 'English', journalRemark: `A/P Down Payment – ${v.code}`, paymentTermId: p.paymentTermId, paymentMethod: v.defaultPaymentMethod, cashDiscountDays: 0,
+      projectId: p.projectId, indicator: '', orderNumber: poRef(p), references: [], buyerId: p.buyerId, ownerId: p.ownerId,
+      remarks: '', discountPct: p.discountPct, freight: 0, freightTaxCode: '', fxRate: fxOn(p.currency, date), controlAccount: v.payableAccount || '2010',
+      paymentBlock: false, maxCashDiscount: false, installments: 1, consolidatingBpId: '', paymentOrderRun: true, appliedAmount: 0,
+      dpmPct, paidLc: 0, drawnAmount: 0, downPaymentAccount: v.downPaymentClearingAccount || ADVANCES_TO_SUPPLIERS,
+    };
+  };
+  const dprTotal = (d: DownPaymentRequest) => {
+    const t = poTotals({ ...d, freight: 0 }, rateOf(d.postingDate), undefined, reverse);
+    return round2((t.beforeDiscount - t.discount) * (d.dpmPct / 100) + t.tax * (d.dpmPct / 100));
+  };
+  /** A payment row paying a request in full. */
+  const dprRow = (d: DownPaymentRequest): PaymentRow => {
+    const due = dprTotal(d);
+    return {
+      id: `pr-${d.id}`, invoiceId: d.id, docNo: dprNo(d), vendorRef: d.vendorRef, docDate: d.postingDate, dueDate: d.dueDate, total: due, wtAmount: 0, balanceDue: due,
+      cashDiscountPct: 0, amount: due, invoiceFx: d.fxRate || 1, projectId: d.projectId, selected: true, docType: 'DPR', account: d.downPaymentAccount,
+    };
+  };
+  /** Record a payment on a request: what's paid, and the PHP the advance sits at. */
+  const paid = (d: DownPaymentRequest, p: OutgoingPayment) => Object.assign(d, { appliedAmount: dprTotal(d), paidLc: round2(dprTotal(d) * p.fxRate) });
+  /** Draw a request's whole paid amount on a bill. It closes, being drawn in full. */
+  const draw = (bill: ApInvoice, d: DownPaymentRequest) => {
+    bill.downPayment = round2(bill.downPayment + d.appliedAmount);
+    bill.drawnDownPayments = [...(bill.drawnDownPayments ?? []), { requestId: d.id, docNo: dprNo(d), amount: d.appliedAmount, amountLc: d.paidLc, account: d.downPaymentAccount }];
+    Object.assign(d, { drawnAmount: d.appliedAmount, status: 'Closed', closeDate: bill.postingDate });
   };
 
   // ── Outgoing payments ───────────────────────────────────────────────────────
@@ -104,8 +150,12 @@ function build(): PurchasingHistory {
   // PHLPost: registered mail paid from petty cash the next day.
   const postal = inv('po-019');
   pay('op-002', '2026-09-12', postal.vendorId, [billRow(postal)], (amount) => ({ cash: { account: '1011', amount } }));
-  // The launch photographer, by BPI check.
+  // The launch photographer took half up front to book the shoot, paid by InstaPay the next day.
+  // The bill draws it, so the check pays only the balance less withholding.
   const photo = inv('po-022');
+  const booking = request('dp-001', 1, po('po-022'), '2026-09-03', 50, 'Booking confirmation 0903');
+  paid(booking, pay('op-022', '2026-09-04', booking.vendorId, [dprRow(booking)], transfer('1015', '2026-09-04', 'InstaPay 0904-2218')));
+  draw(photo, booking);
   pay('op-003', '2026-09-21', photo.vendorId, [billRow(photo)], (amount) => ({ checks: [newCheckRow({ id: 'chk-seed-1', account: '1016', dueDate: '2026-09-21', checkNo: 200001, amount })] }), { reference: 'OR 1187' });
   // Apple, from the USD account at the 1 Oct rate — booked at the 2 Sep rate, so a realized exchange difference.
   const apple = inv('po-007');
@@ -123,43 +173,11 @@ function build(): PurchasingHistory {
   });
 
   // ── Down payment requests ───────────────────────────────────────────────────
-  const dprLines = (p: PurchaseOrder) =>
-    p.lines.map((l, i) =>
-      newDprLine({
-        id: `dl-seed-${p.id}-${i + 1}`, itemId: l.itemId, itemNo: l.itemNo, name: l.name, description: l.description, quantity: l.quantity,
-        uomCode: l.uomCode, uomName: l.uomName, itemsPerUnit: l.itemsPerUnit, priceListId: l.priceListId, unitPrice: l.unitPrice, discountPct: l.discountPct,
-        taxCode: l.taxCode, blanketAgreement: l.blanketAgreement, baseType: 'PO', baseId: p.id, baseLineId: l.id, baseDocNo: `${p.seriesId === 'ser-import' ? 'Import' : 'Primary'} ${p.docNum}`,
-        bpCatalogNo: l.bpCatalogNo, countryOfOriginCode: SEED_ITEMS.find((x) => x.id === l.itemId)?.countryOfOriginCode ?? '', warehouse: '', binId: '',
-      }),
-    );
-  const request = (id: string, docNum: number, p: PurchaseOrder, date: string, dpmPct: number, vendorRef: string): DownPaymentRequest => {
-    const v = vendorOf(p.vendorId);
-    return {
-      id, vendorId: v.id, vendorCode: v.code, vendorName: v.name, contactId: p.contactId, vendorRef, currency: p.currency, seriesId: DPR_SERIES[0].id, docNum,
-      status: 'Open', postingDate: date, dueDate: date, documentDate: date, closeDate: '', lines: dprLines(p), shipTo: p.shipTo, payTo: '', shippingType: p.shippingType,
-      language: 'English', journalRemark: `A/P Down Payment – ${v.code}`, paymentTermId: p.paymentTermId, paymentMethod: v.defaultPaymentMethod, cashDiscountDays: 0,
-      projectId: p.projectId, indicator: '', orderNumber: `${p.seriesId === 'ser-import' ? 'Import' : 'Primary'} ${p.docNum}`, references: [], buyerId: p.buyerId, ownerId: p.ownerId,
-      remarks: '', discountPct: p.discountPct, freight: 0, freightTaxCode: '', fxRate: fxOn(p.currency, date), controlAccount: v.payableAccount || '2010',
-      paymentBlock: false, maxCashDiscount: false, installments: 1, consolidatingBpId: '', paymentOrderRun: true, appliedAmount: 0,
-      dpmPct, paidLc: 0, drawnAmount: 0, downPaymentAccount: v.downPaymentClearingAccount || ADVANCES_TO_SUPPLIERS,
-    };
-  };
-  const dprTotal = (d: DownPaymentRequest) => {
-    const t = poTotals({ ...d, freight: 0 }, rateOf(d.postingDate), undefined, reverse);
-    return round2((t.beforeDiscount - t.discount) * (d.dpmPct / 100) + t.tax * (d.dpmPct / 100));
-  };
-  // Apple wants 30% ahead on the DepEd iPads — not paid yet.
-  const ipads = request('dp-001', 1, po(3), '2026-10-01', 30, 'PROFORMA APL-26-3391');
   // Luzon wants half up front on the backordered MacBooks — paid, not yet drawn (the goods haven't come).
-  const macs = request('dp-002', 2, po(34), '2026-09-24', 50, 'PI-26-00871');
-  const macsDue = dprTotal(macs);
-  const macsPay = pay(
-    'op-006', '2026-09-26', macs.vendorId,
-    [{ id: 'pr-dp-002', invoiceId: macs.id, docNo: `Primary ${macs.docNum}`, vendorRef: macs.vendorRef, docDate: macs.postingDate, dueDate: macs.dueDate, total: macsDue, wtAmount: 0, balanceDue: macsDue, cashDiscountPct: 0, amount: macsDue, invoiceFx: 1, projectId: macs.projectId, selected: true, docType: 'DPR', account: macs.downPaymentAccount }],
-    transfer('1015', '2026-09-26', 'InstaPay 0926-7731'),
-  );
-  Object.assign(macs, { appliedAmount: macsDue, paidLc: round2(macsDue * macsPay.fxRate) });
-  for (const d of [ipads]) d.fxRate = fxOn(d.currency, d.postingDate);
+  const macs = request('dp-002', 2, po('po-038'), '2026-09-24', 50, 'PI-26-00871');
+  paid(macs, pay('op-006', '2026-09-26', macs.vendorId, [dprRow(macs)], transfer('1015', '2026-09-26', 'InstaPay 0926-7731')));
+  // Apple wants 30% ahead on the DepEd iPad import — not paid yet.
+  const ipads = request('dp-003', 3, po('po-039'), '2026-10-01', 30, 'PROFORMA APL-26-3391');
 
   // The store replenishment bills: Luzon's iPhones by InstaPay, Techzone's accessories by BPI check, and
   // Apple's iPad Air import from the USD account. Luzon's second September bill (po-044) isn't due yet.
@@ -169,6 +187,17 @@ function build(): PurchasingHistory {
   pay('op-008', '2026-10-07', accessories.vendorId, [billRow(accessories)], (amount) => ({ checks: [newCheckRow({ id: 'chk-seed-2', account: '1016', dueDate: '2026-10-07', checkNo: 200002, amount })] }), { reference: 'OR 2291' });
   const ipadAir = inv('po-043');
   pay('op-009', '2026-10-06', ipadAir.vendorId, [billRow(ipadAir)], transfer('1018', '2026-10-06', 'TT 26-1006-APL'));
+
+  // ── A bill for part of a receipt, paid in part ───────────────────────────────
+  // Techzone billed the 60 chargers that came on 3 Oct; the MagSafe box waits to be billed with
+  // the rest of the order, so the receipt stays open. Half the bill was paid on 9 Oct, the balance
+  // waits for the due date.
+  const october = gr('po-045');
+  const chargers = october.lines.find((l) => l.itemNo === 'ACC-PWR20')!;
+  chargers.invoicedQty = chargers.quantity;
+  const partBill = billFromReceipt(october, invoices.length, '2026-10-05', (l) => (l === chargers ? l.quantity : 0));
+  invoices.push(partBill);
+  pay('op-023', '2026-10-09', partBill.vendorId, [billRow(partBill, round2(amounts(partBill).net / 2))], transfer('1015', '2026-10-09', 'InstaPay 1009-3307'), { remarks: 'First half, as agreed with Techzone; balance on the due date.' });
 
   // ── Goods returns ───────────────────────────────────────────────────────────
   const returns: GoodsReturn[] = [];
@@ -256,7 +285,7 @@ function build(): PurchasingHistory {
   // Numbered in date order, like payments added one after another.
   payments.sort((a, b) => a.postingDate.localeCompare(b.postingDate) || a.id.localeCompare(b.id)).forEach((p, n) => (p.docNum = 1 + n));
 
-  return { receipts, invoices, payments, returns, memos, downPayments: [ipads, macs] };
+  return { receipts, invoices, payments, returns, memos, downPayments: [booking, macs, ipads] };
 }
 
 export const PURCHASING_HISTORY: PurchasingHistory = build();

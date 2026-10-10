@@ -13,8 +13,9 @@
  *   item cost) while the stock is on hand, else to cost of sales.
  * - Withholding tax (EWT, final tax) comes off the vendor's balance when the invoice is added,
  *   as the BIR withholding agent rules have it.
- * - Payments aren't built: Applied amount stays 0 and Balance due is the net payment due.
- *   Down payments, installments and deferred tax wait for them.
+ * - Outgoing payments and A/P credit memos settle it (Applied amount); it closes once nothing is
+ *   left. Paid down payment requests are drawn as its Total Down Payment. Installments and
+ *   deferred tax are left out.
  * - Left out as other countries' localizations: VAT code (the tax code is the VAT code here),
  *   Central Bank Ind., Stamp No., Net procedure and the QR code. Distribution rules, commodity
  *   classification and serial numbers wait for their masters.
@@ -77,7 +78,7 @@ export interface ApInvoice extends Omit<GoodsReceipt, 'lines' | 'status'> {
   drawnDownPayments?: DownPaymentDraw[];
   /** Include in payment runs (Payment Order Ref.). */
   paymentOrderRun: boolean;
-  /** Paid or reconciled so far, in the document currency. Payments aren't built, so 0. */
+  /** Paid or credited so far, in the document currency. */
   appliedAmount: number;
 }
 
@@ -145,8 +146,8 @@ export function blankApInvoice(today: string, buyerId: string): Omit<ApInvoice, 
 }
 
 // ── Seed ─────────────────────────────────────────────────────────────────────
-// One invoice for every receipt billed in full, at the receipt's prices and rate. They're
-// unpaid: payments aren't built yet.
+// One invoice for every receipt billed in full, at the receipt's prices and rate. Payments,
+// credits and down payments against them are seeded in services/purchasingHistory.ts.
 
 const plusDays = (date: string, days: number) => {
   const d = new Date(`${date}T00:00:00Z`);
@@ -155,9 +156,11 @@ const plusDays = (date: string, days: number) => {
 };
 const termDays = (termId: string) => SEED_PAYMENT_TERMS.find((t) => t.id === termId)?.days ?? 0;
 
-export const SEED_AP_INVOICES: ApInvoice[] = SEED_GOODS_RECEIPTS.filter((gr) => gr.status === 'Closed').map((gr, n): ApInvoice => {
-  // Billed when the receipt was closed, but never before the goods arrived.
-  const posting = gr.closeDate && gr.closeDate > gr.postingDate ? gr.closeDate : gr.postingDate;
+/**
+ * A seeded bill copied from a receipt, the `n`th bill. `billed` is how much of each receipt line
+ * it bills (by default what the receipt line counts as invoiced); lines it doesn't bill are left out.
+ */
+export function billFromReceipt(gr: GoodsReceipt, n: number, posting: string, billed: (l: GrLine) => number = (l) => l.invoicedQty): ApInvoice {
   const vendor = SEED_PARTNERS.find((p) => p.id === gr.vendorId);
   return {
     ...blankApInvoice(posting, gr.buyerId),
@@ -183,21 +186,28 @@ export const SEED_AP_INVOICES: ApInvoice[] = SEED_GOODS_RECEIPTS.filter((gr) => 
     discountPct: gr.discountPct,
     fxRate: gr.fxRate,
     controlAccount: vendor?.payableAccount ?? '2010',
-    lines: gr.lines.map((l) => {
-      const { invoicedQty: _billed, ...line } = l;
-      const item = SEED_ITEMS.find((i) => i.id === l.itemId);
-      return {
-        ...line,
-        id: `al-seed-${l.id}`,
-        quantity: l.invoicedQty,
-        baseType: 'GRPO' as const,
-        baseId: gr.id,
-        baseLineId: l.id,
-        baseDocNo: gr.docNum ? `GR-${gr.postingDate.slice(0, 4)}-${String(gr.docNum).padStart(4, '0')}` : 'Draft',
-        bpCatalogNo: item?.vendors.find((v) => v.vendorId === gr.vendorId)?.vendorItemNo ?? '',
-        countryOfOriginCode: item?.countryOfOriginCode ?? '',
-        receiptCostLc: l.unitCostLc,
-      };
-    }),
+    lines: gr.lines
+      .filter((l) => billed(l) > 0)
+      .map((l) => {
+        const { invoicedQty: _billed, ...line } = l;
+        const item = SEED_ITEMS.find((i) => i.id === l.itemId);
+        return {
+          ...line,
+          id: `al-seed-${l.id}`,
+          quantity: billed(l),
+          baseType: 'GRPO' as const,
+          baseId: gr.id,
+          baseLineId: l.id,
+          baseDocNo: gr.docNum ? `GR-${gr.postingDate.slice(0, 4)}-${String(gr.docNum).padStart(4, '0')}` : 'Draft',
+          bpCatalogNo: item?.vendors.find((v) => v.vendorId === gr.vendorId)?.vendorItemNo ?? '',
+          countryOfOriginCode: item?.countryOfOriginCode ?? '',
+          receiptCostLc: l.unitCostLc,
+        };
+      }),
   };
-});
+}
+
+// Billed when the receipt was closed, but never before the goods arrived.
+export const SEED_AP_INVOICES: ApInvoice[] = SEED_GOODS_RECEIPTS.filter((gr) => gr.status === 'Closed').map((gr, n) =>
+  billFromReceipt(gr, n, gr.closeDate && gr.closeDate > gr.postingDate ? gr.closeDate : gr.postingDate),
+);
