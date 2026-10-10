@@ -135,22 +135,9 @@ function fromDelivery(
 }
 
 export const SEED_SALES_RETURNS: SalesReturn[] = [
-  // SR-2026-0001: Northgate returns 2 defective iPhones from DN-2026-0004.
-  // The return is Open — stock came back in, but the credit memo hasn't been issued yet.
-  fromDelivery('sr-001', 1, 'dn-004', [
-    { lineId: 'dn-004-so-006-1', qty: 2, creditedQty: 0, returnReason: 'Defective' },
-  ], {
-    postingDate: '2026-09-25',
-    documentDate: '2026-09-25',
-    dueDate: '2026-10-25',
-    status: 'Open',
-    remarks: 'Customer reported screen flickering on both units. RMA issued; units received at MNL warehouse.',
-    customerRef: 'NPM-RMA-2026-0012',
-  }),
-
-  // SR-2026-0002: Bayanihan returns 1 wrong-spec MacBook Air from DN-2026-0001.
-  // Closed — the A/R credit memo (acm-001) was issued and the return is fully credited.
-  fromDelivery('sr-002', 2, 'dn-001', [
+  // SRT-2026-0001: Bayanihan returns 1 wrong-spec MacBook Air from DN-2026-0001, before it was billed.
+  // Closed — credited by A/R credit memo ACM-2026-0003 (acm-003).
+  fromDelivery('sr-001', 1, 'dn-001', [
     { lineId: 'dn-001-so-001-2', qty: 1, creditedQty: 1, returnReason: 'Wrong item' },
   ], {
     postingDate: '2026-10-03',
@@ -158,7 +145,7 @@ export const SEED_SALES_RETURNS: SalesReturn[] = [
     dueDate: '2026-11-02',
     status: 'Closed',
     closeDate: '2026-10-05',
-    remarks: 'Branch ordered the wrong colour (Sky Blue instead of Midnight). Unit returned in original packaging. Credit memo ACM-2026-0001 issued.',
+    remarks: 'Branch ordered the wrong colour (Sky Blue instead of Midnight). Unit returned in original packaging. Credit memo ACM-2026-0003 issued.',
     customerRef: 'BSB-RMA-2026-0003',
   }),
 ];

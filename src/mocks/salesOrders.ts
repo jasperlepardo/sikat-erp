@@ -376,8 +376,8 @@ export const SEED_SALES_ORDERS: SalesOrder[] = [
     baseQuotationId: 'qt-004',
     remarks: 'Laptop refresh, batch 1 of 3. Special price: 6% off Wholesale (contract through Dec 2026).',
     lines: [
-      line('so-001-1', 'apl-0239', 12, { priceListId: plId('Wholesale'), unitPrice: round2(94750 / 1.12), discountPct: 6, priceSource: 'Special price: 6% off Wholesale' }),
-      line('so-001-2', 'apl-0240', 8, { priceListId: plId('Wholesale'), unitPrice: round2(94750 / 1.12), discountPct: 6, priceSource: 'Special price: 6% off Wholesale', deliveredQty: 8, status: 'Closed' }),
+      line('so-001-1', 'apl-0239', 12, { priceListId: plId('Wholesale'), unitPrice: round2(94750 / 1.12), discountPct: 6, priceSource: 'Special price: 6% off Wholesale', agreementId: 'ba-001', agreementLineId: 'ba-001-1' }),
+      line('so-001-2', 'apl-0240', 8, { priceListId: plId('Wholesale'), unitPrice: round2(94750 / 1.12), discountPct: 6, priceSource: 'Special price: 6% off Wholesale', deliveredQty: 8, status: 'Closed', agreementId: 'ba-001', agreementLineId: 'ba-001-2' }),
     ],
   }),
   header('so-002', 470001, 'bp-009', { // sos-gov series, docNum unchanged
@@ -397,7 +397,7 @@ export const SEED_SALES_ORDERS: SalesOrder[] = [
     status: 'Closed',
     closeDate: '2026-08-21',
     remarks: 'Delivered and invoiced in full.',
-    lines: [line('so-004-1', 'apl-0362', 30, { deliveredQty: 30, status: 'Closed', discountPct: 5, taxCode: '32', priceSource: 'Discount group Customers – Trade × Accessories: 5%' })],
+    lines: [line('so-004-1', 'apl-0362', 30, { deliveredQty: 30, status: 'Closed', discountPct: 5, taxCode: '32', priceSource: 'Discount group Customers – Trade × Accessories: 5%', agreementId: 'ba-002', agreementLineId: 'ba-002-3' })],
   }),
   header('so-005', 3, 'bp-005', {
     postingDate: '2026-08-26',
@@ -475,8 +475,8 @@ export const SEED_SALES_ORDERS: SalesOrder[] = [
     customerRef: 'NPM-PR-2026-0877',
     remarks: 'MacBook Airs for the mall admin offices. Delivered in full 4 Sep.',
     lines: [
-      line('so-013-1', 'apl-0242', 15, { deliveredQty: 15, status: 'Closed', priceListId: plId('Wholesale'), discountPct: 3, priceSource: 'Discount group Customers – Trade × Mac: 3%' }),
-      line('so-013-2', 'apl-0243', 8, { deliveredQty: 8, status: 'Closed', priceListId: plId('Wholesale'), discountPct: 3, priceSource: 'Discount group Customers – Trade × Mac: 3%' }),
+      line('so-013-1', 'apl-0242', 15, { deliveredQty: 15, status: 'Closed', priceListId: plId('Wholesale'), discountPct: 3, priceSource: 'Discount group Customers – Trade × Mac: 3%', agreementId: 'ba-003', agreementLineId: 'ba-003-1' }),
+      line('so-013-2', 'apl-0243', 8, { deliveredQty: 8, status: 'Closed', priceListId: plId('Wholesale'), discountPct: 3, priceSource: 'Discount group Customers – Trade × Mac: 3%', agreementId: 'ba-003', agreementLineId: 'ba-003-2' }),
     ],
   }),
   // B2B orders at every stage, each supplied by its own PO into Pasig (po-055–po-060).

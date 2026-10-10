@@ -324,7 +324,7 @@ const invoices: ArInvoice[] = [
   }),
   fromDelivery('ar-003', 3, 'dn-004', {
     postingDate: '2026-09-18', documentDate: '2026-09-18', dueDate: '2026-10-18', wtaxLiable: true,
-    remarks: 'Northgate withholds 1% (top withholding agent); half paid by check on 2 Oct, balance due 18 Oct.',
+    remarks: 'Northgate withholds 1% (top withholding agent). 2 defective units credited 25 Sep (ACM-2026-0002); half paid by check on 2 Oct, balance due 18 Oct.',
   }),
   fromDelivery('ar-005', 4, 'dn-005', {
     postingDate: '2026-09-10', documentDate: '2026-09-10', dueDate: '2026-09-10',
@@ -357,37 +357,61 @@ const invoices: ArInvoice[] = [
       newArLine({ id: 'ar-004-2', description: 'Staff training, half day', glAccount: '4030', quantity: 1, unitPrice: 12000, taxCode: '31', priceSource: 'Manual' }),
     ],
   },
-  // Corporate orders: paid, past due, half paid and not yet due.
+  // Corporate orders: paid, past due and half paid. ASEAN's first 12 iPhones (dn-c05) aren't billed
+  // yet: the institute asked for one invoice once all 20 are delivered.
   ...([
     // [id, delivery, posted, due, closed (paid in full) on, remarks]
     ['ar-c01', 'dn-c01', '2026-08-14', '2026-09-13', '2026-09-10', 'Paid by bank transfer 10 Sep 2026.'],
     ['ar-c02', 'dn-c02', '2026-08-29', '2026-09-13', '2026-09-12', 'Paid by BPI transfer 12 Sep 2026.'],
     ['ar-c03', 'dn-c03', '2026-09-01', '2026-09-16', '', 'Past due; second reminder sent 1 Oct.'],
     ['ar-c04', 'dn-c04', '2026-09-11', '2026-09-26', '', 'Half paid 25 Sep; the cooperative pays the balance after its October dividend.'],
-    ['ar-c05', 'dn-c05', '2026-10-02', '2026-11-01', '', 'First 12 iPhones. Not yet due.'],
   ] as const).map(([id, dn, date, due, paid, remarks], k) =>
     fromDelivery(id, 7 + k, dn, { postingDate: date, documentDate: date, dueDate: due, remarks, ...(paid ? { status: 'Closed' as const, closeDate: paid } : {}) }),
   ),
+  // Bayanihan's first 8 MacBook Airs, billed after the wrong-colour unit came back on SRT-2026-0001:
+  // the delivery is billed in full and the return's credit memo is applied here.
+  fromDelivery('ar-008', 12, 'dn-001', {
+    postingDate: '2026-10-05', documentDate: '2026-10-05', dueDate: '2026-11-04',
+    remarks: 'First 8 MacBook Airs. The returned unit is credited by ACM-2026-0003, applied to this invoice.',
+  }),
   // Mixed bundle order so-b01 (CGS): split into SI for goods and OR for services.
-  fromSalesOrder('ar-b01-si', AR_SERIES[0].id, 12, 'so-b01', ['so-b01-1'], {
-    postingDate: '2026-09-17', documentDate: '2026-09-17', dueDate: '2026-10-17', status: 'Closed', closeDate: '2026-10-15',
-    remarks: 'MacBook Airs — goods lines of so-b01. Paid by bank transfer 15 Oct.',
+  fromSalesOrder('ar-b01-si', AR_SERIES[0].id, 11, 'so-b01', ['so-b01-1'], {
+    postingDate: '2026-09-17', documentDate: '2026-09-17', dueDate: '2026-10-17', status: 'Closed', closeDate: '2026-10-08',
+    remarks: 'MacBook Airs — goods lines of so-b01. Paid by bank transfer 8 Oct.',
   }),
   fromSalesOrder('ar-b01-or', OR_SERIES_ID, 2, 'so-b01', ['so-b01-2', 'so-b01-3'], {
-    postingDate: '2026-09-17', documentDate: '2026-09-17', dueDate: '2026-10-17', docType: 'Service', status: 'Closed', closeDate: '2026-10-15',
+    postingDate: '2026-09-17', documentDate: '2026-09-17', dueDate: '2026-10-17', docType: 'Service', status: 'Closed', closeDate: '2026-10-08',
     remarks: 'Device setup and same-day delivery — service lines of so-b01. Paid with the Sales Invoice.',
   }),
 ];
 
-/** Paid so far by the seeded incoming payments (document currency). */
-const APPLIED: Record<string, number | 'full' | 'half'> = {
+/** Paid by the seeded incoming payments (document currency). */
+const PAID: Record<string, 'full' | 'half'> = {
   'ar-001': 'full', 'ar-002': 'full', 'ar-003': 'half', 'ar-005': 'half',
-  'ar-c01': 'full', 'ar-c02': 'full', 'ar-c04': 'half',
+  'ar-c01': 'full', 'ar-c02': 'full', 'ar-c04': 'half', 'ar-b01-si': 'full', 'ar-b01-or': 'full',
 };
 
-export const SEED_AR_INVOICES: ArInvoice[] = invoices.map((a) => {
-  const rule = APPLIED[a.id];
-  const due = seedNetDue(a);
-  const appliedAmount = rule === 'full' ? due : rule === 'half' ? round2(due / 2) : (rule ?? 0);
-  return { ...a, appliedAmount };
-});
+/** A credit for `qty` of a delivered line, at its price with VAT — what a credit memo for it comes to. */
+export function seedLineCredit(dnId: string, lineId: string, qty: number) {
+  const l = SEED_DELIVERIES.find((d) => d.id === dnId)!.lines.find((x) => x.id === lineId)!;
+  const net = round2(qty * l.unitPrice * (1 - l.discountPct / 100));
+  return round2(net + round2((net * (RATE[l.taxCode] ?? 0)) / 100));
+}
+
+/** Credited by the seeded A/R credit memos (mocks/arCreditMemos.ts), by invoice. */
+export const SEED_CREDITED: Record<string, number> = {
+  // Northgate's 2 defective iPhones, returned after billing (ACM-2026-0002).
+  'ar-003': seedLineCredit('dn-004', 'dn-004-so-006-1', 2),
+  // Bayanihan's wrong-colour MacBook Air (SRT-2026-0001 → ACM-2026-0003).
+  'ar-008': seedLineCredit('dn-001', 'dn-001-so-001-2', 1),
+};
+
+/** What the seeded payments paid on each invoice. */
+export const SEED_PAID: Record<string, number> = Object.fromEntries(
+  invoices.filter((a) => PAID[a.id]).map((a) => {
+    const due = seedNetDue(a);
+    return [a.id, PAID[a.id] === 'full' ? round2(due - (SEED_CREDITED[a.id] ?? 0)) : round2(due / 2)];
+  }),
+);
+
+export const SEED_AR_INVOICES: ArInvoice[] = invoices.map((a) => ({ ...a, appliedAmount: round2((SEED_PAID[a.id] ?? 0) + (SEED_CREDITED[a.id] ?? 0)) }));

@@ -12,8 +12,7 @@
  *   Apply credit.
  */
 import { CURRENT_USER_ID, type DocumentSeries } from './common';
-import { blankArInvoice, newArLine, SEED_AR_INVOICES, type ArInvoice, type ArLine } from './arInvoices';
-import { SEED_DELIVERIES } from './deliveries';
+import { blankArInvoice, newArLine, SEED_AR_INVOICES, SEED_CREDITED, type ArInvoice, type ArLine } from './arInvoices';
 import { SEED_PARTNERS, formatAddress } from './partners';
 import { SEED_SALES_RETURNS } from './salesReturns';
 import { termId } from './masters';
@@ -89,139 +88,110 @@ export const newArCmLine = (patch: Partial<ArCmLine> = {}): ArCmLine => {
 };
 
 // ── Seed ─────────────────────────────────────────────────────────────────────
+// Numbered in date order. What each one credits is in SEED_CREDITED (mocks/arInvoices.ts), which
+// the invoices' applied amounts include.
 
-const round2 = (n: number) => Math.round(n * 100) / 100;
 const bp = (id: string) => SEED_PARTNERS.find((p) => p.id === id)!;
-const dn = (id: string) => SEED_DELIVERIES.find((d) => d.id === id)!;
 const sr = (id: string) => SEED_SALES_RETURNS.find((r) => r.id === id)!;
 const inv = (id: string) => SEED_AR_INVOICES.find((i) => i.id === id)!;
+const arNo = (i: ArInvoice) => `${i.seriesId === 'ars-or' ? 'OR' : 'SI'}-${i.postingDate.slice(0, 4)}-${String(i.docNum).padStart(4, '0')}`;
+
+/** A memo's header for a customer, from the document it was copied from. */
+function memo(id: string, docNum: number, customerId: string, date: string, from: Pick<ArInvoice, 'contactId' | 'salesEmployeeId' | 'shipTo' | 'customerRef' | 'paymentTermId'>, patch: Partial<ArCreditMemo>): ArCreditMemo {
+  const customer = bp(customerId);
+  const bill = customer.addresses.find((a) => a.id === customer.defaultBillToId) ?? customer.addresses[0];
+  return {
+    ...blankArCreditMemo(date, CURRENT_USER_ID),
+    id,
+    docNum,
+    customerId: customer.id,
+    customerCode: customer.code,
+    customerName: customer.name,
+    contactId: from.contactId,
+    currency: 'PHP',
+    postingDate: date,
+    documentDate: date,
+    customerRef: from.customerRef,
+    paymentTermId: from.paymentTermId || customer.customerPaymentTermId || termId('Net 30'),
+    federalTaxId: customer.tin,
+    salesEmployeeId: from.salesEmployeeId,
+    billTo: bill ? formatAddress(bill, customer.name) : '',
+    shipTo: from.shipTo,
+    journalRemark: `A/R Credit Memos – ${customer.code}`,
+    controlAccount: '1120',
+    ...patch,
+  };
+}
 
 export const SEED_AR_CREDIT_MEMOS: ArCreditMemo[] = [
-  // ACM-2026-0001: Credit memo for Bayanihan's wrong-spec MacBook Air return (sr-002).
-  // Copied from the sales return; the goods came back via the return so returnGoods: false here.
-  // Closed — applied in full to AR invoice ar-001.
+  // ACM-2026-0001: Standalone price-correction credit memo for Clarkfield.
+  // Their MacBook Airs (ar-c01) were billed at the wrong price — 1 unit overbilled by ₱5,000 net.
+  // No goods return; a price adjustment only. Not applied yet: the invoice was already paid.
   (() => {
-    const ret = sr('sr-002');
-    const delivery = dn('dn-001');
-    const customer = bp(ret.customerId);
-    const bill = customer.addresses.find((a) => a.id === customer.defaultBillToId) ?? customer.addresses[0];
-    const dnLine = delivery.lines.find((l) => l.id === 'dn-001-so-001-2')!;
-    const unitPrice = round2(94750 / 1.12);
-    const net = round2(1 * unitPrice * (1 - 6 / 100));
-    const vat = round2(net * 0.12);
-    const total = round2(net + vat);
-    return {
-      ...blankArCreditMemo(ret.postingDate, CURRENT_USER_ID),
-      id: 'acm-001',
-      docNum: 1,
-      status: 'Closed' as const,
-      closeDate: '2026-10-05',
-      customerId: customer.id,
-      customerCode: customer.code,
-      customerName: customer.name,
-      contactId: ret.contactId,
-      currency: 'PHP',
-      postingDate: '2026-10-05',
-      documentDate: '2026-10-05',
-      dueDate: '2026-11-04',
-      customerRef: ret.customerRef,
-      paymentTermId: ret.paymentTermId,
-      federalTaxId: customer.tin,
-      salesEmployeeId: ret.salesEmployeeId,
-      billTo: bill ? formatAddress(bill, customer.name) : '',
-      shipTo: ret.shipTo,
-      journalRemark: `A/R Credit Memos – ${customer.code}`,
-      controlAccount: '1120',
-      appliedAmount: total,
-      remarks: 'Credits the wrong-spec MacBook Air returned on SRT-2026-0002. Applied to SI-2026-0001.',
-      lines: [newArCmLine({
-        id: 'acm-001-1',
-        itemId: dnLine.itemId,
-        itemNo: dnLine.itemNo,
-        description: dnLine.description,
-        quantity: 1,
-        uomCode: dnLine.uomCode,
-        uomName: dnLine.uomName,
-        itemsPerUnit: 1,
-        warehouse: dnLine.warehouse,
-        priceListId: dnLine.priceListId,
-        unitPrice,
-        discountPct: 6,
-        priceSource: 'Special price: 6% off Wholesale',
-        taxCode: '31',
-        unitCostLc: dnLine.unitCostLc,
-        baseType: 'SRT' as const,
-        baseId: ret.id,
-        baseLineId: ret.lines[0].id,
-        baseDocNo: 'SRT-2026-0002',
-        baseRow: 1,
-        returnReason: 'Wrong item',
-        returnGoods: false,
-        invoiceId: 'ar-001',
-      })],
-      applications: [{ invoiceId: 'ar-001', docNo: 'SI-2026-0001', amount: total, date: '2026-10-05' }],
-    } satisfies ArCreditMemo;
-  })(),
-
-  // ACM-2026-0002: Standalone price-correction credit memo for Clarkfield.
-  // Their MacBook Airs (DN-2026-0012 / SI-2026-0001 ar-c01) were billed at the wrong price —
-  // 1 unit overbilled by ₱5,000 net. No goods return; this is a price adjustment only.
-  (() => {
-    const customer = bp('bp-004');
-    const bill = customer.addresses.find((a) => a.id === customer.defaultBillToId) ?? customer.addresses[0];
     const invoice = inv('ar-c01');
     const invLine = invoice.lines[0];
-    const net = 5000; // Clarkfield is zero-rated (PEZA), so no VAT
-    return {
-      ...blankArCreditMemo(invoice.postingDate, CURRENT_USER_ID),
-      id: 'acm-002',
-      docNum: 2,
-      status: 'Open' as const,
-      customerId: customer.id,
-      customerCode: customer.code,
-      customerName: customer.name,
-      contactId: invoice.contactId,
-      currency: 'PHP',
-      postingDate: '2026-08-20',
-      documentDate: '2026-08-20',
+    return memo('acm-001', 1, 'bp-004', '2026-08-20', { ...invoice, customerRef: 'CGSI-PRICE-ADJ-0814' }, {
+      status: 'Open',
       dueDate: '2026-09-19',
-      customerRef: 'CGSI-PRICE-ADJ-0814',
-      paymentTermId: customer.customerPaymentTermId ?? termId('Net 30'),
-      federalTaxId: customer.tin,
-      salesEmployeeId: invoice.salesEmployeeId,
-      billTo: bill ? formatAddress(bill, customer.name) : '',
-      shipTo: invoice.shipTo,
-      journalRemark: `A/R Credit Memos – ${customer.code}`,
-      controlAccount: '1120',
       appliedAmount: 0,
       remarks: 'Price correction — MacBook Airs billed at the standard Wholesale price instead of the agreed PEZA rate. Credit for the difference on 1 unit.',
       lines: [newArCmLine({
-        id: 'acm-002-1',
-        itemId: invLine.itemId,
-        itemNo: invLine.itemNo,
-        description: invLine.description,
-        quantity: 1,
-        uomCode: invLine.uomCode,
-        uomName: invLine.uomName,
-        itemsPerUnit: 1,
-        warehouse: invLine.warehouse,
-        priceListId: invLine.priceListId,
-        unitPrice: net,
-        discountPct: 0,
-        priceSource: 'Manual',
-        taxCode: '32',
-        unitCostLc: 0,
-        baseType: 'ARIN' as const,
-        baseId: invoice.id,
-        baseLineId: invLine.id,
-        baseDocNo: `SI-${invoice.postingDate.slice(0, 4)}-${String(invoice.docNum).padStart(4, '0')}`,
-        baseRow: 1,
-        returnReason: '',
-        returnGoods: false,
-        invoiceId: invoice.id,
+        id: 'acm-001-1', itemId: invLine.itemId, itemNo: invLine.itemNo, description: invLine.description, quantity: 1,
+        uomCode: invLine.uomCode, uomName: invLine.uomName, itemsPerUnit: 1, warehouse: invLine.warehouse, priceListId: invLine.priceListId,
+        // Clarkfield is zero-rated (PEZA), so no VAT.
+        unitPrice: 5000, discountPct: 0, priceSource: 'Manual', taxCode: '32', unitCostLc: 0,
+        baseType: 'ARIN', baseId: invoice.id, baseLineId: invLine.id, baseDocNo: arNo(invoice), baseRow: 1,
+        returnReason: '', returnGoods: false, invoiceId: invoice.id,
       })],
       applications: [],
-    } satisfies ArCreditMemo;
+    });
+  })(),
+
+  // ACM-2026-0002: Northgate's 2 defective iPhones, sent back after they were billed — so copied
+  // from the invoice with the goods returned, and applied to it straight away.
+  (() => {
+    const invoice = inv('ar-003');
+    const invLine = invoice.lines[0];
+    const credit = SEED_CREDITED['ar-003'];
+    return memo('acm-002', 2, invoice.customerId, '2026-09-25', { ...invoice, customerRef: 'NPM-RMA-2026-0012' }, {
+      status: 'Closed',
+      closeDate: '2026-09-25',
+      dueDate: '2026-09-25',
+      appliedAmount: credit,
+      remarks: 'Customer reported screen flickering on both units. RMA issued; units received at MNL warehouse.',
+      lines: [newArCmLine({
+        id: 'acm-002-1', itemId: invLine.itemId, itemNo: invLine.itemNo, description: invLine.description, quantity: 2,
+        uomCode: invLine.uomCode, uomName: invLine.uomName, itemsPerUnit: invLine.itemsPerUnit, warehouse: invLine.warehouse, priceListId: invLine.priceListId,
+        unitPrice: invLine.unitPrice, discountPct: invLine.discountPct, priceSource: invLine.priceSource, taxCode: invLine.taxCode, unitCostLc: invLine.unitCostLc,
+        baseType: 'ARIN', baseId: invoice.id, baseLineId: invLine.id, baseDocNo: arNo(invoice), baseRow: 1,
+        returnReason: 'Defective', returnGoods: true, invoiceId: invoice.id,
+      })],
+      applications: [{ invoiceId: invoice.id, docNo: arNo(invoice), amount: credit, date: '2026-09-25' }],
+    });
+  })(),
+
+  // ACM-2026-0003: Credit for Bayanihan's wrong-spec MacBook Air return (SRT-2026-0001), copied from
+  // the return — the goods already came back, so returnGoods: false. A memo from a return isn't
+  // tied to an invoice: its credit was applied with Apply credit to the invoice billing the delivery.
+  (() => {
+    const ret = sr('sr-001');
+    const rl = ret.lines[0];
+    const invoice = inv('ar-008');
+    const credit = SEED_CREDITED['ar-008'];
+    return memo('acm-003', 3, ret.customerId, '2026-10-05', { ...ret, paymentTermId: ret.paymentTermId }, {
+      status: 'Closed',
+      closeDate: '2026-10-05',
+      dueDate: '2026-11-04',
+      appliedAmount: credit,
+      remarks: 'Credits the wrong-spec MacBook Air returned on SRT-2026-0001. Applied to SI-2026-0012.',
+      lines: [newArCmLine({
+        id: 'acm-003-1', itemId: rl.itemId, itemNo: rl.itemNo, description: rl.description, quantity: 1,
+        uomCode: rl.uomCode, uomName: rl.uomName, itemsPerUnit: rl.itemsPerUnit, warehouse: rl.warehouse, priceListId: rl.priceListId,
+        unitPrice: rl.unitPrice, discountPct: rl.discountPct, priceSource: rl.priceSource, taxCode: rl.taxCode, unitCostLc: rl.unitCostLc,
+        baseType: 'SRT', baseId: ret.id, baseLineId: rl.id, baseDocNo: `SRT-${ret.postingDate.slice(0, 4)}-${String(ret.docNum).padStart(4, '0')}`, baseRow: 1,
+        returnReason: rl.returnReason, returnGoods: false, invoiceId: '',
+      })],
+      applications: [{ invoiceId: invoice.id, docNo: arNo(invoice), amount: credit, date: '2026-10-05' }],
+    });
   })(),
 ];
-

@@ -290,8 +290,10 @@ export const SEED_DELIVERIES: Delivery[] = [
     postingDate: '2026-09-29',
     documentDate: '2026-09-29',
     deliveryDate: '2026-09-29',
+    status: 'Closed',
+    closeDate: '2026-10-05',
     trackingNo: 'LBC-7710-2290-14',
-    remarks: 'First 8 MacBook Airs, delivered to Bayanihan head office. Balance to follow.',
+    remarks: 'First 8 MacBook Airs, delivered to Bayanihan head office. Balance to follow. Billed 5 Oct.',
   }),
   fromOrder('dn-002', 2, 'so-004', ['so-004-1'], {
     postingDate: '2026-08-21',
@@ -345,16 +347,16 @@ export const SEED_DELIVERIES: Delivery[] = [
     closeDate: '2026-09-04',
     remarks: '23 MacBook Airs delivered to Northgate’s admin offices.',
   }),
-  // Corporate orders (so-c01–so-c05), all invoiced.
+  // Corporate orders (so-c01–so-c05). All invoiced but dn-c05, which waits to be billed with the rest of the order.
   ...([
     ['dn-c01', 'so-c01', ['so-c01-1'], '2026-08-14', 'Delivered to Clarkfield’s Clark office.'],
     ['dn-c02', 'so-c02', ['so-c02-1', 'so-c02-2'], '2026-08-29', 'Shipped to the Mactan studio by 2GO Express.'],
     ['dn-c03', 'so-c03', ['so-c03-1'], '2026-09-01', 'Delivered to Kessler & Voss, BGC.'],
     ['dn-c04', 'so-c04', ['so-c04-1'], '2026-09-11', 'Picked up by the cooperative’s treasurer.'],
-    ['dn-c05', 'so-c05', ['so-c05-1'], '2026-10-02', 'First 12 of 20, delivered to the institute’s Pasig office.'],
+    ['dn-c05', 'so-c05', ['so-c05-1'], '2026-10-02', 'First 12 of 20, delivered to the institute’s Pasig office. Billed with the rest, as the institute asked.'],
   ] as const).map(([id, so, lines, date, remarks], k) =>
-    fromOrder(id, 8 + k, so, [...lines], { postingDate: date, documentDate: date, deliveryDate: date, status: 'Closed', closeDate: date, remarks }),
+    fromOrder(id, 8 + k, so, [...lines], { postingDate: date, documentDate: date, deliveryDate: date, ...(id === 'dn-c05' ? {} : { status: 'Closed' as const, closeDate: date }), remarks }),
   ),
 ];
-// The closed deliveries were invoiced in full (A/R invoices SI-2026-0001 through SI-2026-0003).
+// The closed deliveries were invoiced in full (mocks/arInvoices.ts).
 for (const d of SEED_DELIVERIES.filter((x) => x.status === 'Closed')) d.lines.forEach((l) => (l.invoicedQty = l.quantity));

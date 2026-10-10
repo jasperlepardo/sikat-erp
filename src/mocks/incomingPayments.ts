@@ -21,7 +21,7 @@
  *   exist, and branches aren't enabled, so those fields show but don't change anything.
  */
 import type { Attachment, DocumentSeries } from './common';
-import { SEED_AR_INVOICES, seedNetDue, type ArInvoice } from './arInvoices';
+import { SEED_AR_INVOICES, SEED_CREDITED, SEED_PAID, seedNetDue, type ArInvoice } from './arInvoices';
 import { seedRateOn } from './salesOrders';
 import type { PoReference } from './purchaseOrders';
 
@@ -235,7 +235,8 @@ function row(inv: ArInvoice, amount: number): IncomingRow {
     dueDate: inv.dueDate,
     total: due,
     wtAmount: round2(arTotal(inv) - due),
-    balanceDue: due,
+    // Seeded credits all came before the payments.
+    balanceDue: round2(due - (SEED_CREDITED[inv.id] ?? 0)),
     blocked: false,
     cashDiscountPct: 0,
     amount,
@@ -267,13 +268,13 @@ function customerPayment(id: string, docNum: number, invoiceId: string, patch: P
     contactId: inv.contactId,
     controlAccount: inv.controlAccount,
     journalRemark: `Incoming - ${inv.customerCode}`,
-    rows: [row(inv, inv.appliedAmount)],
+    rows: [row(inv, SEED_PAID[inv.id])],
     means: { ...base.means, ...meansPatch },
     ...patch,
   };
 }
 
-const total = (id: string) => SEED_AR_INVOICES.find((a) => a.id === id)!.appliedAmount;
+const total = (id: string) => SEED_PAID[id];
 
 export const SEED_INCOMING_PAYMENTS: IncomingPayment[] = [
   customerPayment('rc-001', 1, 'ar-001', { postingDate: '2026-09-18', documentDate: '2026-09-18', dueDate: '2026-09-18', reference: 'CGS-RTGS-0918', remarks: 'Clarkfield, bank transfer to BDO.' }, {
@@ -309,4 +310,16 @@ export const SEED_INCOMING_PAYMENTS: IncomingPayment[] = [
       transfer: { account, date, reference: bankRef, amount: total(inv) },
     }),
   ),
+  // Clarkfield pays the bundle order's Sales Invoice and Official Receipt together.
+  (() => {
+    const si = SEED_AR_INVOICES.find((a) => a.id === 'ar-b01-si')!;
+    const or = SEED_AR_INVOICES.find((a) => a.id === 'ar-b01-or')!;
+    const amount = round2(total(si.id) + total(or.id));
+    return {
+      ...customerPayment('rc-b01', 9, si.id, { postingDate: '2026-10-08', documentDate: '2026-10-08', dueDate: '2026-10-08', reference: 'CGS-PAY-1008', remarks: 'so-b01 bundle: Sales Invoice and Official Receipt in one transfer.' }, {
+        transfer: { account: '1015', date: '2026-10-08', reference: 'BDO RTGS 2026100800361', amount },
+      }),
+      rows: [row(si, total(si.id)), row(or, total(or.id))],
+    };
+  })(),
 ];
