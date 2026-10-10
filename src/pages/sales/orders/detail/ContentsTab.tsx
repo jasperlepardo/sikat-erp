@@ -7,11 +7,11 @@ import { newSoLine, type SoLine } from '../../../../mocks/salesOrders';
 import { formatAmount } from '../../../../services/format';
 import { isValidToday } from '../../../../services/items';
 import { isPriceListValid } from '../../../../services/priceLists';
-import { inventoryQty, lineNet, lineTax, openQty, priceAfterDiscount } from '../../../../services/salesOrders';
+import { lineNet, lineTax, openQty, priceAfterDiscount } from '../../../../services/salesOrders';
 import { formatDate } from '../../../../services/dates';
 import { priceListDef } from '../../../settings/masterDefs';
 import { warehouseOptions } from '../../../inventory/transfers/TransferLines';
-import { availableIn, lineFromItem, linePricing, type SoTabProps } from './types';
+import { availableIn, lineFromItem, linePricing, shortages, type SoTabProps } from './types';
 import { listBlanketAgreements, baNumber, openQty as baOpenQty } from '../../../../services/blanketAgreements';
 import { useAsync } from '../../../../services/useAsync';
 import type { BlanketAgreement, BaLine } from '../../../../mocks/blanketAgreements';
@@ -33,6 +33,8 @@ export function ContentsTab({ draft, update, errors, m, ctx }: SoTabProps) {
   const lc = (n: number) => formatAmount(n * ctx.fx);
   const taxOf = (l: SoLine) => lineTax(l, ctx.rateOf(l.taxCode), 0);
   const locked = (l: SoLine) => ctx.readOnly || l.status === 'Closed';
+  // Item@warehouse pairs the open lines (added up) need more of than is free.
+  const short = new Set(ctx.readOnly ? [] : shortages(draft, m, ctx.ownCommitted).map((s) => `${s.item.id}@${s.warehouse}`));
 
   // Sales items valid on the posting date.
   const itemOptions = (current: string) =>
@@ -202,9 +204,8 @@ export function ContentsTab({ draft, update, errors, m, ctx }: SoTabProps) {
       const item = itemOf(l);
       if (!item) return null;
       if (!item.inventoryItem) return <span className="text-muted">Not stocked</span>;
-      // What's free to promise, giving back what this order already commits on the line as saved.
-      const avail = availableIn(item, l.warehouse);
-      const need = inventoryQty(l, openQty(l));
+      // What's free to promise, giving back what this order already commits as saved.
+      const avail = availableIn(item, l.warehouse, ctx.ownCommitted);
       return (
         <div className="flex w-44 shrink-0 flex-col gap-1 whitespace-normal">
           <Combobox
@@ -215,7 +216,7 @@ export function ContentsTab({ draft, update, errors, m, ctx }: SoTabProps) {
             value={l.warehouse || null}
             onValueChange={(v) => patch(l.id, { warehouse: v ?? '' })}
           />
-          <Text variant="small" tone={!ctx.added && need > avail ? 'danger' : 'muted'}>
+          <Text variant="small" tone={openQty(l) > 0 && short.has(`${item.id}@${l.warehouse}`) ? 'danger' : 'muted'}>
             {avail} {item.inventoryUom} available
           </Text>
         </div>

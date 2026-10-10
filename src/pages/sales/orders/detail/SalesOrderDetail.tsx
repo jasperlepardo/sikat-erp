@@ -7,9 +7,9 @@ import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMen
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { CURRENT_USER_ID } from '../../../../mocks/common';
 import { formatAddress, type PostalAddress } from '../../../../mocks/address';
-import { contactName, type PartnerAddress } from '../../../../mocks/partners';
+import { contactName, type Partner, type PartnerAddress } from '../../../../mocks/partners';
 import { countryName } from '../../../../services/partnerMasters';
-import { NO_SALES_EMPLOYEE, SALES_SETTINGS, blankSalesOrder, newSoLine, type SalesOrder, type SoStatus } from '../../../../mocks/salesOrders';
+import { NO_SALES_EMPLOYEE, SALES_SETTINGS, blankSalesOrder, newSoLine, openCommitted, type SalesOrder, type SoStatus } from '../../../../mocks/salesOrders';
 import { loadCurrentCompany } from '../../../../services/companies';
 import { formatDate, todayISO } from '../../../../services/dates';
 import { formatAmount } from '../../../../services/format';
@@ -28,7 +28,9 @@ import { AccountingTab } from './AccountingTab';
 import { ContentsTab } from './ContentsTab';
 import { LogisticsTab } from './LogisticsTab';
 import { SalesDocumentFlow } from '../../shared/SalesDocumentFlow';
-import { ALL_CURRENCIES, SO_LIST_PATH, buildContext, linePricing, proposedTaxCode, type SoContext, type SoDraft, type SoMasters } from './types';
+import { ALL_CURRENCIES, SO_LIST_PATH, buildContext, linePricing, proposedTaxCode, shortages, type Shortage, type SoContext, type SoDraft, type SoMasters } from './types';
+import { PO_LIST_PATH } from '../../../purchasing/orders/detail/PurchaseOrderDetail';
+import type { PoSuggestion } from '../../../purchasing/orders/detail/types';
 import { useDocTitle } from '../../../../services/useDocTitle';
 
 type TabId = 'contents' | 'logistics' | 'accounting' | 'attachments';
@@ -99,6 +101,9 @@ function SalesOrderForm() {
   const [warning, setWarning] = useState<string>();
   const [closeWarning, setCloseWarning] = useState<string>();
   const [openBalance, setOpenBalance] = useState(0);
+  // What the order commits as saved — already in the items' Committed, so it's given back when checking stock.
+  const [ownCommitted, setOwnCommitted] = useState(() => new Map<string, number>());
+  const [vendors, setVendors] = useState<Partner[]>([]);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -117,12 +122,18 @@ function SalesOrderForm() {
       accounts.list(),
       loadCurrentCompany(),
       soSeries.list(),
-    ]).then(([customers, items, inv, [company], codes, groups, withholding, wGroups, curs, rates, accts, ours, series]) => {
+      listPartnersByRole('vendor'),
+    ]).then(([customers, items, inv, [company], codes, groups, withholding, wGroups, curs, rates, accts, ours, series, vendorRows]) => {
       if (cancelled) return;
+      setVendors(vendorRows);
       setM({ customers, items, inv, tax: { company, codes, groups, withholding, withholdingGroups: wGroups }, currencies: curs, rates, accounts: accts, company: ours, soSeries: series });
     });
     if (!isNew && id) {
-      getSalesOrder(id).then((so) => !cancelled && setDraft(so ?? null));
+      getSalesOrder(id).then((so) => {
+        if (cancelled) return;
+        setDraft(so ?? null);
+        if (so) setOwnCommitted(openCommitted(so));
+      });
       listSalesOrders().then((all) => !cancelled && setSiblings([...all].sort((a, b) => b.postingDate.localeCompare(a.postingDate)).map((o) => o.docNum ? soNumber(o) : o.id)));
     }
     return () => {
@@ -151,8 +162,9 @@ function SalesOrderForm() {
     );
   }
 
-  const ctx = buildContext(draft, m);
+  const ctx = buildContext(draft, m, ownCommitted);
   const { customer } = ctx;
+  const short = ctx.readOnly ? [] : shortages(draft, m, ownCommitted);
   const at = draft.id ? siblings.indexOf(draft.docNum ? soNumber(draft as SalesOrder) : draft.id) : -1;
   const prevId = at > 0 ? siblings[at - 1] : undefined;
   const nextId = at >= 0 && at < siblings.length - 1 ? siblings[at + 1] : undefined;
@@ -261,7 +273,8 @@ function SalesOrderForm() {
     if (!asDraft && !warning) {
       const dup = await findDuplicateCustomerRef(doc);
       const credit = overCredit ? `This order takes ${doc.customerName} to PHP ${formatAmount(openBalance + totalLc)} open, over their PHP ${formatAmount(customer!.creditLimit)} credit limit.` : '';
-      const message = [dup ? `Order ${soNumber(dup)} from ${doc.customerName} already has Customer Ref. No. ${doc.customerRef}.` : '', credit].filter(Boolean).join(' ');
+      const stock = shortages(doc, m, ownCommitted).map(shortageText).join(' ');
+      const message = [dup ? `Order ${soNumber(dup)} from ${doc.customerName} already has Customer Ref. No. ${doc.customerRef}.` : '', credit, stock].filter(Boolean).join(' ');
       if (message) return setWarning(message);
     }
     setSaving(true);
@@ -316,6 +329,24 @@ function SalesOrderForm() {
     return act(() => closeSalesOrder(saved), 'closed');
   };
   const cancelIt = () => act(() => cancelSalesOrder(saved), 'cancelled');
+
+  // What's still uncovered after incoming POs, one suggested PO per vendor: the item's default, else
+  // the first it's bought from ('' = none known, the buyer picks).
+  const toBuy = short.filter((s) => s.toOrder > 0);
+  const vendorOf = (s: Shortage) => s.item.defaultVendorId || s.item.vendors[0]?.vendorId || '';
+  const byVendor = [...new Set(toBuy.map(vendorOf))].map((vendorId) => ({
+    vendorId,
+    vendor: vendors.find((v) => v.id === vendorId),
+    rows: toBuy.filter((s) => vendorOf(s) === vendorId),
+  }));
+  const suggestPo = (vendorId: string, rows: Shortage[]) => {
+    const suggest: PoSuggestion = {
+      vendorId,
+      lines: rows.map((s) => ({ itemId: s.item.id, warehouse: s.warehouse, qty: s.toOrder })),
+      reference: { docType: 'Sales order', docNo: soNumber(saved), docDate: draft.postingDate, remarks: `Stock short for ${draft.customerName}` },
+    };
+    navigate(`${PO_LIST_PATH}/new`, { state: { suggest } });
+  };
   const openLines = draft.lines.filter((l) => openQty(l) > 0);
   const goodsLines = openLines.filter((l) => m.items.find((i) => i.id === l.itemId)?.inventoryItem);
   const svcLines = openLines.filter((l) => l.itemId ? !m.items.find((i) => i.id === l.itemId)?.inventoryItem : !!l.description);
@@ -333,6 +364,13 @@ function SalesOrderForm() {
             { label: 'Official Receipt (services)', icon: 'receipt_long', onSelect: () => navigate('/sales/invoices/new', { state: { fromOrder: draft.id, lineFilter: 'services' } }) },
           ]
         : [{ label: svcLines.length > 0 ? 'Copy to Official Receipt' : 'Copy to A/R invoice', icon: 'receipt', onSelect: () => navigate('/sales/invoices/new', { state: { fromOrder: draft.id, lineFilter: svcLines.length > 0 ? 'services' : undefined } }) }]
+      : []),
+    ...(draft.status === 'Open'
+      ? byVendor.map(({ vendorId, vendor, rows }) => ({
+          label: `Suggested PO${vendor ? ` — ${vendor.name}` : ''}`,
+          icon: 'add_shopping_cart',
+          onSelect: () => suggestPo(vendorId, rows),
+        }))
       : []),
     ...(!isNew ? [{ label: 'Duplicate', icon: 'content_copy', onSelect: duplicate }] : []),
     ...(draft.status === 'Open' ? [{ label: 'Close', icon: 'task_alt', onSelect: closeIt }] : []),
@@ -524,6 +562,32 @@ function SalesOrderForm() {
             </div>
 
             <ContentsTab draft={draft} update={update} errors={errors} m={m} ctx={ctx} />
+            {short.length ? (
+              <Alert intent="warning" variant="outline" title="Not enough stock">
+                <div className="flex flex-col gap-2">
+                  <ul className="list-disc pl-5 text-sm">
+                    {short.map((s) => (
+                      <li key={`${s.item.id}@${s.warehouse}`}>{shortageText(s)}</li>
+                    ))}
+                  </ul>
+                  {byVendor.length ? (
+                    draft.status === 'Open' ? (
+                      <div className="flex flex-wrap items-center gap-2">
+                        {byVendor.map(({ vendorId, vendor, rows }) => (
+                          <Button key={vendorId || 'none'} type="button" intent="warning" variant="outline" size="medium" leadingIcon={<Icon size={16}>add_shopping_cart</Icon>} onClick={() => suggestPo(vendorId, rows)}>
+                            {vendor ? `Suggested PO — ${vendor.name}` : 'Suggested PO (pick a vendor)'}
+                          </Button>
+                        ))}
+                      </div>
+                    ) : (
+                      <Text variant="small" tone="muted">Add the order to raise a suggested purchase order for what isn't covered.</Text>
+                    )
+                  ) : (
+                    <Text variant="small" tone="muted">Open purchase orders already cover the shortfall.</Text>
+                  )}
+                </div>
+              </Alert>
+            ) : null}
             <LogisticsTab draft={draft} update={update} errors={errors} m={m} ctx={ctx} />
             <AccountingTab draft={draft} update={update} errors={errors} m={m} ctx={ctx} />
           </fieldset>
@@ -599,6 +663,14 @@ function SalesOrderForm() {
       </Panel>
     </Form>
   );
+}
+
+/** "iPad Air: needs 20 pc in WH-MNL, 12 available, 5 on order — 3 to buy." */
+function shortageText(s: Shortage) {
+  const uom = s.item.inventoryUom;
+  const incoming = s.ordered ? `, ${s.ordered} on order` : '';
+  const verdict = s.toOrder ? `${s.toOrder} ${uom} to buy` : 'covered by open POs';
+  return `${s.item.itemNo} ${s.item.name}: needs ${s.need} ${uom} in ${s.warehouse}, ${Math.max(0, s.available)} available${incoming} — ${verdict}.`;
 }
 
 function TotalRow({ label, value, code, input, strong }: { label: string; value: number; code: string; input?: ReactNode; strong?: boolean }) {

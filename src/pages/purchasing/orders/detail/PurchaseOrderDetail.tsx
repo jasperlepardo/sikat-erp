@@ -67,17 +67,56 @@ import {
   buildContext,
   defaultShipTo,
   formatAddress,
+  lineFromItem,
   proposedTaxCode,
   viewCurrency,
   type PoContext,
   type PoDraft,
   type PoMasters,
+  type PoSuggestion,
 } from './types';
 import { formatDate, todayISO } from '../../../../services/dates';
 import { listGoodsReceipts } from '../../../../services/goodsReceipts';
 import { useDocTitle } from '../../../../services/useDocTitle';
 
 export const PO_LIST_PATH = '/purchasing/purchase-orders';
+
+/** Everything that defaults from the vendor. Tax codes depend on the vendor's VAT status, so lines re-propose theirs. */
+function vendorPatch(v: Partner, draft: PoDraft, m: PoMasters): Partial<PoDraft> {
+  return {
+    vendorId: v.id,
+    vendorCode: v.code,
+    vendorName: v.name,
+    contactId: v.defaultContactId,
+    currency: v.currency === ALL_CURRENCIES ? 'PHP' : v.currency,
+    currencyView: 'BP',
+    paymentTermId: v.vendorPaymentTermId,
+    paymentMethod: v.defaultPaymentMethod,
+    dueDate: dueDateFor(draft.postingDate, v.vendorPaymentTermId),
+    projectId: v.projectId,
+    shippingType: v.shippingType,
+    journalRemark: `Purchase Orders – ${v.code}`,
+    lines: draft.lines.map((l) => {
+      const item = m.items.find((i) => i.id === l.itemId);
+      return item ? { ...l, taxCode: proposedTaxCode(item, v, m, draft.postingDate) } : l;
+    }),
+  };
+}
+
+/** A new PO from a suggestion: the vendor's defaults, then each item priced as if picked, rounded up to whole purchasing units. */
+function fromSuggestion(s: PoSuggestion, blank: PoDraft, m: PoMasters): PoDraft {
+  const v = m.vendors.find((x) => x.id === s.vendorId);
+  const base: PoDraft = { ...blank, lines: [], ...(v ? vendorPatch(v, blank, m) : {}) };
+  const ctx = buildContext(base, m);
+  const lines = s.lines.flatMap(({ itemId, warehouse, qty }) => {
+    const item = m.items.find((i) => i.id === itemId);
+    if (!item) return [];
+    const line = lineFromItem(item, base, ctx, m, { warehouse });
+    return [lineFromItem(item, base, ctx, m, { warehouse, quantity: Math.ceil(qty / (line.itemsPerUnit || 1)) })];
+  });
+  const references = s.reference ? [{ id: `ref-${crypto.randomUUID().slice(0, 8)}`, ...s.reference }] : [];
+  return { ...base, lines: lines.length ? lines : [newPoLine()], references };
+}
 
 type TabId = 'contents' | 'logistics' | 'accounting';
 
@@ -160,7 +199,7 @@ function PurchaseOrderForm() {
   const { id } = useParams();
   const isNew = id === 'new';
   const navigate = useNavigate();
-  const copyFrom = (useLocation().state as { copyFrom?: PoDraft } | null)?.copyFrom;
+  const { copyFrom, suggest } = (useLocation().state as { copyFrom?: PoDraft; suggest?: PoSuggestion } | null) ?? {};
 
   const blank = blankPurchaseOrder(CURRENT_USER_ID);
   const [draft, setDraft] = useState<PoDraft | null | undefined>(isNew ? (copyFrom ?? { ...blank, lines: [newPoLine()] }) : undefined);
@@ -194,7 +233,9 @@ function PurchaseOrderForm() {
     ]).then(([vendors, items, inv, [company], codes, groups, withholding, wGroups, curs, rates, ours]) => {
       const masters = { vendors, items, inv, tax: { company, codes, groups, withholding, withholdingGroups: wGroups }, currencies: curs, rates, company: ours };
       setM(masters);
-      if (isNew) setDraft((d) => {
+      if (isNew) setDraft((prev) => {
+        // A suggestion needs the masters to price its lines, so it's built now.
+        const d = prev && suggest ? fromSuggestion(suggest, prev, masters) : prev;
         if (!d) return d;
         const companyAddress = formatAddress(masters.company.address, masters.company.name);
         return { ...d, shipTo: d.shipTo || defaultShipTo(d.lines, masters), billTo: d.billTo || companyAddress };
@@ -247,26 +288,7 @@ function PurchaseOrderForm() {
   const pickVendor = (vendorId: string | null, override?: Partner) => {
     const v = override ?? m.vendors.find((x) => x.id === vendorId);
     if (!v) return update({ vendorId: '', vendorCode: '', vendorName: '', contactId: '' });
-    const next = { ...draft, vendorId: v.id };
-    update({
-      vendorId: v.id,
-      vendorCode: v.code,
-      vendorName: v.name,
-      contactId: v.defaultContactId,
-      currency: v.currency === ALL_CURRENCIES ? 'PHP' : v.currency,
-      currencyView: 'BP',
-      paymentTermId: v.vendorPaymentTermId,
-      paymentMethod: v.defaultPaymentMethod,
-      dueDate: dueDateFor(draft.postingDate, v.vendorPaymentTermId),
-      projectId: v.projectId,
-      shippingType: v.shippingType,
-      journalRemark: `Purchase Orders – ${v.code}`,
-      // Tax codes depend on the vendor's VAT status, so lines re-propose theirs.
-      lines: draft.lines.map((l) => {
-        const item = m.items.find((i) => i.id === l.itemId);
-        return item ? { ...l, taxCode: proposedTaxCode(item, v, m, next.postingDate) } : l;
-      }),
-    });
+    update(vendorPatch(v, draft, m));
   };
 
   const handleVendorCreated = (vendor: Partner) => {
