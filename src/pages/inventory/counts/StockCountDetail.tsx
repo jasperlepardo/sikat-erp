@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { Alert, Badge, Button, Combobox, Form, Icon, IconButton, Panel, PanelHeader, panelHeaderIcons, Select, Tabs, Text } from '@jasperlepardo/sikat-design-system';
+import { Alert, Badge, Button, ButtonGroup, Combobox, Form, Icon, IconButton, Panel, PanelHeader, panelHeaderIcons, Select, Tabs, Text } from '@jasperlepardo/sikat-design-system';
 import { AttachmentsCard } from '../../../components/form/AttachmentsCard';
 import { Fields, ReadOnly, Section, bind, type Errors } from '../../../components/form/fields';
 import { StatusField } from '../../../components/form/StatusField';
@@ -53,7 +53,7 @@ function validate(d: CountingDraft, m: CountMasters, action: Action): Problem<Ta
     );
   }
   if (action === 'copy') {
-    need(d.lines.some((l) => l.counted), 'contents', 'lines', 'Nothing is counted yet — tick Counted on the lines you’ve counted.');
+    need(d.lines.some((l) => l.counted), 'contents', 'lines', "Nothing is counted yet — tick Counted on the lines you've counted.");
     const s = countSummary(d);
     need(!s.disagreements, 'contents', 'lines', `Counters differ on ${s.disagreements} line${s.disagreements === 1 ? '' : 's'}. Recount and agree a quantity first.`);
   }
@@ -101,7 +101,7 @@ function CountForm() {
   if (draft === null) {
     return (
       <Panel className="flex-1">
-        <PanelHeader icon="inventory" title="Count not found" />
+        <PanelHeader icon="inventory" iconIntent="default" iconShape="rounded" iconSize={32} iconVariant="outline" title="Count not found" />
         <Panel.Body>
           <Button onClick={() => navigate(COUNT_LIST_PATH)}>Back to stock counts</Button>
         </Panel.Body>
@@ -183,18 +183,21 @@ function CountForm() {
         <PanelHeader
           type="details"
           icon="inventory"
+          iconIntent="default"
+          iconShape="rounded"
+          iconSize={32}
+          iconVariant="outline"
           title={isNew ? 'New inventory counting' : `Inventory counting ${countNumber(draft)}`}
-          subcopy={isNew ? 'Record what’s on the shelf against the books. Stock changes only through an Inventory Posting.' : undefined}
-          leading={
+          trailing={
             isNew ? undefined : (
-              <>
-                <IconButton type="button" label="Next" intent="default" variant="solid" size="large" disabled={!nextId} onClick={() => navigate(`${COUNT_LIST_PATH}/${nextId}`)}>
-                  {panelHeaderIcons.arrowDownward}
-                </IconButton>
-                <IconButton type="button" label="Previous" intent="default" variant="solid" size="large" disabled={!prevId} onClick={() => navigate(`${COUNT_LIST_PATH}/${prevId}`)}>
+              <ButtonGroup type="enclosed" intent="white" buttonIntent="default" buttonVariant="link">
+                <IconButton type="button" label="Previous" size="small" shape="pill" disabled={!prevId} onClick={() => navigate(`${COUNT_LIST_PATH}/${prevId}`)}>
                   {panelHeaderIcons.arrowUpward}
                 </IconButton>
-              </>
+                <IconButton type="button" label="Next" size="small" shape="pill" disabled={!nextId} onClick={() => navigate(`${COUNT_LIST_PATH}/${nextId}`)}>
+                  {panelHeaderIcons.arrowDownward}
+                </IconButton>
+              </ButtonGroup>
             )
           }
           tabs={
@@ -211,16 +214,17 @@ function CountForm() {
           status={isNew ? undefined : <Badge size="small" intent={COUNT_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
           actions={
             <>
-              <Button type="button" intent="default" variant="solid" size="large" onClick={() => navigate(COUNT_LIST_PATH)}>
+              <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(COUNT_LIST_PATH)}>
                 Cancel
               </Button>
               {menu.length ? <MoreMenu items={menu} /> : null}
               {open ? (
                 <Button
                   type="button"
-                  intent="default"
+                  intent="white"
                   variant="solid"
-                  size="large"
+                  size="medium"
+                  shape="pill"
                   leadingIcon={<Icon size={20}>arrow_forward</Icon>}
                   disabled={saving || !summary.counted}
                   onClick={() => submit(null, 'copy')}
@@ -228,7 +232,7 @@ function CountForm() {
                   Copy to inventory posting
                 </Button>
               ) : null}
-              <Button type="submit" intent="primary" variant="solid" size="large" disabled={saving}>
+              <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
                 {saving ? 'Saving…' : isNew ? 'Add' : open ? 'Update' : 'Save'}
               </Button>
             </>
@@ -247,7 +251,7 @@ function CountForm() {
                   . Only remarks and attachments can change.
                 </>
               ) : (
-                'It was closed without a posting, so stock wasn’t changed. Only remarks and attachments can change.'
+                "It was closed without a posting, so stock wasn't changed. Only remarks and attachments can change."
               )}
             </Alert>
           ) : summary.disagreements ? (
@@ -324,7 +328,7 @@ function CountForm() {
                   <ReadOnly label="Counted" value={`${summary.counted} of ${summary.lines} line${summary.lines === 1 ? '' : 's'}`} />
                   <ReadOnly label="With variance" value={String(summary.withVariance)} />
                   {draft.countingType === 'multiple' ? <ReadOnly label="Counters differ" value={String(summary.disagreements)} /> : null}
-                  <ReadOnly label="Frozen lines" value={String(draft.lines.filter((l) => l.freeze).length)} hint="Can’t be transferred while the count is open." />
+                  <ReadOnly label="Frozen lines" value={String(draft.lines.filter((l) => l.freeze).length)} hint="Can't be transferred while the count is open." />
                 </Fields>
               </Section>
             </div>

@@ -42,7 +42,7 @@ export interface DownPaymentRequest extends Omit<ApInvoice, 'lines' | 'status' |
 }
 
 export const DPR_SERIES: DocumentSeries[] = [
-  { id: 'dps-primary', name: 'Primary', prefix: 'DPR-', firstNo: 630001, manual: false, isDefault: true, active: true },
+  { id: 'dps-primary', name: 'Primary', prefix: '', firstNo: 3, manual: false, isDefault: true, active: true, segments: [{ type: 'literal', value: 'DPR' }, { type: 'year' }, { type: 'sequence', padding: 4 }] },
 ];
 export const ADVANCES_TO_SUPPLIERS = '1150';
 

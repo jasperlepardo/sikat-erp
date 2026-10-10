@@ -27,7 +27,6 @@ import { SEED_PARTNERS, formatAddress } from './partners';
 import type { PoReference } from './purchaseOrders';
 import { todayISO } from '../services/dates';
 import { SEED_RATES } from './currencies';
-import { RETAIL_SALES, type RetailMeans } from './retailHistory';
 
 export type SoStatus = 'Draft' | 'Open' | 'Closed' | 'Cancelled';
 export const SO_STATUSES: SoStatus[] = ['Draft', 'Open', 'Closed', 'Cancelled'];
@@ -136,8 +135,9 @@ export const SALES_SETTINGS = {
 };
 
 export const SO_SERIES: DocumentSeries[] = [
-  { id: 'sos-primary', name: 'Primary', prefix: 'SO-', firstNo: 410001, manual: false, isDefault: true, active: true },
-  { id: 'sos-gov', name: 'Government', prefix: 'SO-', firstNo: 470001, manual: false, isDefault: false, active: true },
+  { id: 'sos-primary', name: 'Commercial', prefix: '', firstNo: 17, manual: false, isDefault: true, active: true, segments: [{ type: 'literal', value: 'SO' }, { type: 'year' }, { type: 'sequence', padding: 4 }] },
+  { id: 'sos-gov', name: 'Government (PhilGEPS)', prefix: '', firstNo: 1, manual: false, isDefault: false, active: true, conditions: [{ field: 'businessType', value: 'Government' }], segments: [{ type: 'literal', value: 'SO' }, { type: 'year' }, { type: 'sequence', padding: 4 }] },
+  { id: 'sos-coop', name: 'Cooperative', prefix: '', firstNo: 1, manual: false, isDefault: false, active: true, conditions: [{ field: 'businessType', value: 'Cooperative' }], segments: [{ type: 'literal', value: 'SO' }, { type: 'year' }, { type: 'sequence', padding: 4 }] },
 ];
 
 /** Placeholder shown when a document has no sales employee (stored as ''), as SAP B1 labels it. */
@@ -290,11 +290,9 @@ const header = (id: string, docNum: number, customerId: string, patch: Partial<S
   };
 };
 
-const RETAIL_PAYMENT_METHOD: Record<RetailMeans, string> = { gcash: 'GCASH', cash: 'CASH', card: 'CARD' };
-
 const idOf = (itemNo: string) => SEED_ITEMS.find((i) => i.itemNo === itemNo)!.id;
-/** Corporate orders are numbered after the store walk-in sales. */
-export const CORPORATE_SO_START = 410013 + RETAIL_SALES.length;
+
+export const CORPORATE_SO_START = 9;
 const CORPORATE_ORDERS: SalesOrder[] = [
   header('so-c01', CORPORATE_SO_START, 'bp-004', {
     postingDate: '2026-08-06', documentDate: '2026-08-06', deliveryDate: '2026-08-14', status: 'Closed', closeDate: '2026-08-14',
@@ -321,18 +319,46 @@ const CORPORATE_ORDERS: SalesOrder[] = [
   }),
   header('so-c05', CORPORATE_SO_START + 4, 'bp-041', {
     postingDate: '2026-09-24', documentDate: '2026-09-24', deliveryDate: '2026-10-02',
-    customerRef: 'ARHI-PR-2026-118', remarks: 'Phones for the field researchers. 12 delivered 2 Oct; 8 wait on Luzon’s balance (PO 260051).',
+    customerRef: 'ARHI-PR-2026-118', remarks: 'Phones for the field researchers. 12 delivered 2 Oct; 8 wait on Luzon\'s balance (PO-2026-0051).',
     lines: [line('so-c05-1', idOf('IPH-17-256-LAV'), 20, { deliveredQty: 12, priceListId: plId('Wholesale'), discountPct: 2, priceSource: 'Discount group Customers – Trade × iPhone: 2%' })],
   }),
   header('so-c06', CORPORATE_SO_START + 5, 'bp-040', {
     postingDate: '2026-10-05', documentDate: '2026-10-05', deliveryDate: '2026-10-20',
-    customerRef: 'SBML-PO-2026-077', remarks: 'iPad Airs for the vessel crews. Nothing on hand; on order from Apple (Import 860007).',
+    customerRef: 'SBML-PO-2026-077', remarks: 'iPad Airs for the vessel crews. Nothing on hand; on order from Apple (IMP-2026-0007).',
     lines: [line('so-c06-1', idOf('IPD-AIR-11-128-WF-BLU'), 30, { priceListId: plId('Wholesale'), discountPct: 3, priceSource: 'Discount group Customers – Trade × iPad: 3%' })],
   }),
 ];
 
+/** Item orders that bundle hardware with non-inventory service items (setup, delivery, AppleCare). */
+const BUNDLE_SO_START = CORPORATE_SO_START + 6;
+const BUNDLE_ORDERS: SalesOrder[] = [
+  // CGS MacBook order bundled with per-device setup and same-day delivery.
+  header('so-b01', BUNDLE_SO_START, 'bp-004', {
+    postingDate: '2026-09-15', documentDate: '2026-09-15', deliveryDate: '2026-09-17', status: 'Closed', closeDate: '2026-09-17',
+    customerRef: 'CGS-PO-2026-0388',
+    remarks: '5 MacBook Airs for the Ortigas team, with per-device setup and same-day delivery. Closed in full.',
+    lines: [
+      line('so-b01-1', idOf('MAC-MBA13-M5-8G-16-512-MDN'), 5, { deliveredQty: 5, status: 'Closed', priceListId: plId('Wholesale'), discountPct: 3, priceSource: 'Discount group Customers – Trade × Mac: 3%' }),
+      line('so-b01-2', 'itm-016', 5, { deliveredQty: 5, status: 'Closed', warehouse: '', priceSource: 'Base price' }),
+      line('so-b01-3', 'itm-017', 1, { deliveredQty: 1, status: 'Closed', warehouse: '', priceSource: 'Base price' }),
+    ],
+  }),
+  // MPAS animation studio: Mac Pro + AppleCare+ + setup, bundled for the render farm expansion.
+  header('so-b03', BUNDLE_SO_START + 1, 'bp-005', {
+    postingDate: '2026-10-03', documentDate: '2026-10-03', deliveryDate: '2026-10-07',
+    customerRef: 'MPAS-PO-1003',
+    remarks: 'Render farm expansion: 2 Mac Studio M5 Max units with AppleCare+ and device setup. Delivery 7 Oct.',
+    lines: [
+      line('so-b03-1', idOf('MAC-STUDIO-M5X-36-512-SLV'), 2, { priceListId: plId('Wholesale'), discountPct: 3, priceSource: 'Discount group Customers – Trade × Mac: 3%' }),
+      line('so-b03-2', 'acp-003', 2, { warehouse: '', priceSource: 'Base price' }),
+      line('so-b03-3', 'itm-016', 2, { warehouse: '', priceSource: 'Base price' }),
+    ],
+  }),
+];
+
+
 export const SEED_SALES_ORDERS: SalesOrder[] = [
-  header('so-001', 410001, 'bp-003', {
+  header('so-001', 1, 'bp-003', {
     postingDate: '2026-09-22',
     documentDate: '2026-09-22',
     deliveryDate: '2026-10-08',
@@ -343,7 +369,7 @@ export const SEED_SALES_ORDERS: SalesOrder[] = [
       line('so-001-2', 'apl-0240', 8, { priceListId: plId('Wholesale'), unitPrice: round2(94750 / 1.12), discountPct: 6, priceSource: 'Special price: 6% off Wholesale', deliveredQty: 8, status: 'Closed' }),
     ],
   }),
-  header('so-002', 470001, 'bp-009', {
+  header('so-002', 470001, 'bp-009', { // sos-gov series, docNum unchanged
     seriesId: 'sos-gov',
     postingDate: '2026-09-30',
     documentDate: '2026-09-30',
@@ -353,17 +379,7 @@ export const SEED_SALES_ORDERS: SalesOrder[] = [
     remarks: 'Awarded under public bidding; contract price per the special price list.',
     lines: [line('so-002-1', 'apl-0079', 120, { priceListId: plId('Government'), unitPrice: round2(69900 / 1.12), priceSource: 'Special price (100+)' })],
   }),
-  header('so-003', 410002, 'bp-001', {
-    postingDate: '2026-10-05',
-    documentDate: '2026-10-05',
-    deliveryDate: '2026-10-05',
-    status: 'Draft',
-    docNum: 0,
-    remarks: 'Walk-in reservation, customer pays on pick-up.',
-    paymentMethod: 'GCASH',
-    lines: [line('so-003-1', 'apl-0361', 2, { priceListId: plId('Retail'), priceSource: 'Retail' })],
-  }),
-  header('so-004', 410003, 'bp-004', {
+  header('so-004', 2, 'bp-004', {
     postingDate: '2026-08-14',
     documentDate: '2026-08-14',
     deliveryDate: '2026-08-21',
@@ -372,7 +388,7 @@ export const SEED_SALES_ORDERS: SalesOrder[] = [
     remarks: 'Delivered and invoiced in full.',
     lines: [line('so-004-1', 'apl-0362', 30, { deliveredQty: 30, status: 'Closed', discountPct: 5, taxCode: '32', priceSource: 'Discount group Customers – Trade × Accessories: 5%' })],
   }),
-  header('so-005', 410004, 'bp-005', {
+  header('so-005', 3, 'bp-005', {
     postingDate: '2026-08-26',
     documentDate: '2026-08-26',
     deliveryDate: '2026-08-28',
@@ -385,7 +401,7 @@ export const SEED_SALES_ORDERS: SalesOrder[] = [
       line('so-005-2', 'apl-0364', 4, { deliveredQty: 4, status: 'Closed', discountPct: 5, priceSource: 'Discount group Customers – Trade × Accessories: 5%' }),
     ],
   }),
-  header('so-006', 410005, 'bp-002', {
+  header('so-006', 4, 'bp-002', {
     postingDate: '2026-09-15',
     documentDate: '2026-09-15',
     deliveryDate: '2026-10-09',
@@ -393,7 +409,7 @@ export const SEED_SALES_ORDERS: SalesOrder[] = [
     remarks: 'Mall management phones. 6 delivered and billed; the other 4 on the next delivery.',
     lines: [line('so-006-1', 'apl-0002', 10, { deliveredQty: 6 })],
   }),
-  header('so-007', 410006, 'bp-007', {
+  header('so-007', 5, 'bp-007', {
     postingDate: '2026-09-29',
     documentDate: '2026-09-29',
     deliveryDate: '2026-10-12',
@@ -402,7 +418,7 @@ export const SEED_SALES_ORDERS: SalesOrder[] = [
     lines: [line('so-007-1', 'apl-0352', 6, { taxCode: '33' })],
   }),
   // A USD export order: priced in PHP from the price list, converted at the BSP rate on the posting date.
-  header('so-009', 410007, 'bp-010', {
+  header('so-009', 6, 'bp-010', {
     postingDate: '2026-09-08',
     documentDate: '2026-09-08',
     deliveryDate: '2026-09-10',
@@ -420,43 +436,26 @@ export const SEED_SALES_ORDERS: SalesOrder[] = [
       }),
     ],
   }),
-  header('so-008', 0, 'bp-006', {
-    postingDate: '2026-10-03',
-    documentDate: '2026-10-03',
-    deliveryDate: '2026-10-10',
-    status: 'Draft',
-    remarks: 'Phone order, customer to confirm colour. 10.10 sale applies.',
-    paymentMethod: 'CASH',
-    lines: [line('so-008-1', 'apl-0350', 1, { discountPct: 10, taxCode: '33', priceSource: 'Period discount 10%' })],
-  }),
   // Open orders for the 20W adapter (apl-0361): Committed at the Manila warehouse and at a store.
-  header('so-010', 410008, 'bp-003', {
+  header('so-010', 7, 'bp-003', {
     postingDate: '2026-10-06',
     documentDate: '2026-10-06',
     deliveryDate: '2026-10-16',
     customerRef: 'BSB-PO-2026-1188',
-    remarks: 'Chargers for the branch phone refresh. 28 on hand in Manila; the rest on PO 260035.',
+    remarks: 'Chargers for the branch phone refresh. 28 on hand in Manila; the rest on PO-2026-0035.',
     lines: [line('so-010-1', 'apl-0361', 36, { priceListId: plId('Wholesale'), discountPct: 5, priceSource: 'Discount group Customers – Trade × Accessories: 5%' })],
   }),
-  header('so-011', 410009, 'bp-001', {
-    postingDate: '2026-10-07',
-    documentDate: '2026-10-07',
-    deliveryDate: '2026-10-09',
-    remarks: 'Walk-in reservation at Greenbelt 3, paid; customer picks up Friday.',
-    paymentMethod: 'GCASH',
-    lines: [line('so-011-1', 'apl-0361', 1, { warehouse: 'ST-001', priceListId: plId('Retail'), priceSource: 'Retail' })],
-  }),
   // Sales that explain where received stock went (with the deliveries in mocks/deliveries.ts).
-  header('so-012', 470002, 'bp-009', {
+  header('so-012', 470002, 'bp-009', { // sos-gov series, docNum unchanged
     seriesId: 'sos-gov',
     postingDate: '2026-09-04',
     documentDate: '2026-09-04',
     deliveryDate: '2026-10-06',
     customerRef: 'SO-2026-0412',
-    remarks: 'DepEd Pasig — 40 iPads for teachers (PhilGEPS award). First 24 delivered 6 Oct; the rest on PO 260006.',
+    remarks: 'DepEd Pasig — 40 iPads for teachers (PhilGEPS award). First 24 delivered 6 Oct; the rest on PO-2026-0006.',
     lines: [line('so-012-1', 'apl-0080', 40, { priceListId: plId('Government'), priceSource: 'Government', deliveredQty: 24 })],
   }),
-  header('so-013', 410010, 'bp-002', {
+  header('so-013', 8, 'bp-002', {
     postingDate: '2026-09-02',
     documentDate: '2026-09-02',
     deliveryDate: '2026-09-04',
@@ -469,46 +468,8 @@ export const SEED_SALES_ORDERS: SalesOrder[] = [
       line('so-013-2', 'apl-0243', 8, { deliveredQty: 8, status: 'Closed', priceListId: plId('Wholesale'), discountPct: 3, priceSource: 'Discount group Customers – Trade × Mac: 3%' }),
     ],
   }),
-  header('so-014', 410011, 'bp-001', {
-    postingDate: '2026-09-06',
-    documentDate: '2026-09-06',
-    deliveryDate: '2026-09-06',
-    status: 'Closed',
-    closeDate: '2026-09-06',
-    remarks: 'Walk-in sale at the Cebu store, picked up the same day.',
-    paymentMethod: 'GCASH',
-    lines: [line('so-014-1', 'apl-0010', 2, { warehouse: 'WH-CEB', deliveredQty: 2, status: 'Closed', priceListId: plId('Retail'), priceSource: 'Retail' })],
-  }),
-  header('so-015', 410012, 'bp-001', {
-    postingDate: '2026-09-13',
-    documentDate: '2026-09-13',
-    deliveryDate: '2026-09-13',
-    status: 'Closed',
-    closeDate: '2026-09-13',
-    remarks: 'Walk-in sale at the Davao store, picked up the same day.',
-    paymentMethod: 'GCASH',
-    lines: [
-      line('so-015-1', 'apl-0002', 1, { warehouse: 'WH-DVO', deliveredQty: 1, status: 'Closed', priceListId: plId('Retail'), priceSource: 'Retail' }),
-      line('so-015-2', 'apl-0007', 1, { warehouse: 'WH-DVO', deliveredQty: 1, status: 'Closed', priceListId: plId('Retail'), priceSource: 'Retail' }),
-    ],
-  }),
-  // Store walk-in sales of the replenishment stock (mocks/retailHistory.ts), sold in pieces.
-  ...RETAIL_SALES.map((r) =>
-    header(r.id, 410013 + r.n, 'bp-001', {
-      postingDate: r.date,
-      documentDate: r.date,
-      deliveryDate: r.date,
-      status: 'Closed',
-      closeDate: r.date,
-      remarks: `Walk-in sale at ${r.store}, picked up the same day.`,
-      paymentMethod: RETAIL_PAYMENT_METHOD[r.means],
-      lines: r.lines.map((l, i) =>
-        line(`${r.id}-${i + 1}`, l.itemId, l.quantity, {
-          warehouse: r.store, uomCode: 'pc', uomName: 'Piece', itemsPerUnit: 1, deliveredQty: l.quantity, status: 'Closed', priceListId: plId('Retail'), priceSource: 'Retail',
-        }),
-      ),
-    }),
-  ),
   // B2B orders at every stage, each supplied by its own PO into Pasig (po-055–po-060).
   ...CORPORATE_ORDERS,
+  // Item orders bundling hardware with service items (setup, AppleCare, delivery).
+  ...BUNDLE_ORDERS,
 ];

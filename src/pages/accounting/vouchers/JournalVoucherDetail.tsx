@@ -53,7 +53,7 @@ export function JournalVoucherDetail() {
   if (voucher === null) {
     return (
       <Panel className="flex-1">
-        <PanelHeader icon="folder_open" title="Journal voucher not found" />
+        <PanelHeader icon="folder_open" iconIntent="default" iconShape="rounded" iconSize={32} iconVariant="outline" title="Journal voucher not found" />
         <Panel.Body>
           <Button onClick={() => navigate(JV_LIST_PATH)}>Back to journal vouchers</Button>
         </Panel.Body>
@@ -167,11 +167,14 @@ export function JournalVoucherDetail() {
       <PanelHeader
         type="details"
         icon="folder_open"
+        iconIntent="default"
+        iconShape="rounded"
+        iconSize={32} iconVariant="outline"
         title={`Journal voucher ${voucher.voucherNo}`}
         status={<Badge size="small" intent={state.intent}>{state.label}</Badge>}
         actions={
           <>
-            <Button type="button" intent="default" variant="solid" size="large" onClick={() => navigate(JV_LIST_PATH)}>
+            <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(JV_LIST_PATH)}>
               Back
             </Button>
             {menu.length ? <MoreMenu items={menu} /> : null}
@@ -179,7 +182,8 @@ export function JournalVoucherDetail() {
               type="button"
               intent="primary"
               variant="solid"
-              size="large"
+              size="medium"
+              shape="pill"
               disabled={busy || !openEntries.length}
               onClick={() => post(openEntries)}
             >

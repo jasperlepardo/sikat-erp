@@ -5,6 +5,7 @@ import { useLocation, useNavigate, useParams } from 'react-router';
 import {
   Badge,
   Button,
+  ButtonGroup,
   Form,
   IconButton,
   MultiSelect,
@@ -159,7 +160,7 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
   if (draft === null) {
     return (
       <Panel className="flex-1">
-        <PanelHeader icon={config.icon} title={`${config.singular} not found`} />
+        <PanelHeader icon={config.icon} iconIntent="default" iconShape="rounded" iconSize={32} iconVariant="outline" title={`${config.singular} not found`} />
         <Panel.Body>
           <Button onClick={() => navigate(config.basePath)}>Back to {config.title.toLowerCase()}</Button>
         </Panel.Body>
@@ -298,35 +299,34 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
           <PanelHeader
             type="details"
             icon={config.icon}
+            iconIntent="default"
+            iconShape="rounded"
+            iconSize={32} iconVariant="outline"
             title={isNew ? `New ${config.singular.toLowerCase()}` : draft.name}
-            subcopy={isNew ? config.subcopy : undefined}
-            // A saved partner leads with previous/next (through the list it was opened from); a new one with the icon.
-            leading={
+            trailing={
               isNew ? undefined : (
-                <>
-                  <IconButton
-                    type="button"
-                    label="Next"
-                    intent="default"
-                    variant="solid"
-                    size="large"
-                    disabled={!nextId}
-                    onClick={() => navigate(`${config.basePath}/${nextId}`)}
-                  >
-                    {panelHeaderIcons.arrowDownward}
-                  </IconButton>
+                <ButtonGroup type="enclosed" intent="white" buttonIntent="default" buttonVariant="link">
                   <IconButton
                     type="button"
                     label="Previous"
-                    intent="default"
-                    variant="solid"
-                    size="large"
+                    size="small"
+                  shape="pill"
                     disabled={!prevId}
                     onClick={() => navigate(`${config.basePath}/${prevId}`)}
                   >
                     {panelHeaderIcons.arrowUpward}
                   </IconButton>
-                </>
+                  <IconButton
+                    type="button"
+                    label="Next"
+                    size="small"
+                  shape="pill"
+                    disabled={!nextId}
+                    onClick={() => navigate(`${config.basePath}/${nextId}`)}
+                  >
+                    {panelHeaderIcons.arrowDownward}
+                  </IconButton>
+                </ButtonGroup>
               )
             }
             tabs={
@@ -355,11 +355,11 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
             }
             actions={
               <>
-                <Button type="button" intent="default" variant="solid" size="large" onClick={() => navigate(config.basePath)}>
+                <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(config.basePath)}>
                   Cancel
                 </Button>
                 {menu.length ? <MoreMenu items={menu} /> : null}
-                <Button type="submit" intent="primary" variant="solid" size="large" disabled={saving}>
+                <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
                   {saving ? 'Saving…' : isNew ? 'Add' : 'Save'}
                 </Button>
               </>

@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { Alert, Badge, Button, Form, IconButton, Panel, PanelHeader, panelHeaderIcons, Tabs, Text } from '@jasperlepardo/sikat-design-system';
+import { Alert, Badge, Button, ButtonGroup, Form, IconButton, Panel, PanelHeader, panelHeaderIcons, Tabs, Text } from '@jasperlepardo/sikat-design-system';
 import { AttachmentsCard } from '../../../components/form/AttachmentsCard';
 import { Fields, Section, bind, type Errors } from '../../../components/form/fields';
 import { MoreMenu, type MoreMenuItem } from '../../../components/form/MoreMenu';
@@ -69,7 +69,7 @@ function JournalEntryForm() {
   if (draft === null) {
     return (
       <Panel className="flex-1">
-        <PanelHeader icon="menu_book" title="Journal entry not found" />
+        <PanelHeader icon="menu_book" iconIntent="default" iconShape="rounded" iconSize={32} iconVariant="outline" title="Journal entry not found" />
         <Panel.Body>
           <Button onClick={() => navigate(JE_LIST_PATH)}>Back to journal entries</Button>
         </Panel.Body>
@@ -161,18 +161,22 @@ function JournalEntryForm() {
         <PanelHeader
           type="details"
           icon="menu_book"
+          iconIntent="default"
+          iconShape="rounded"
+          iconSize={32} iconVariant="outline"
           title={title}
-          subcopy={posted ? undefined : 'Post debits and credits directly to the ledger.'}
-          leading={
+          trailing={
             isNew ? undefined : (
-              <>
-                <IconButton type="button" label="Next" intent="default" variant="solid" size="large" disabled={!nextId} onClick={() => navigate(`${JE_LIST_PATH}/${nextId}`)}>
-                  {panelHeaderIcons.arrowDownward}
-                </IconButton>
-                <IconButton type="button" label="Previous" intent="default" variant="solid" size="large" disabled={!prevId} onClick={() => navigate(`${JE_LIST_PATH}/${prevId}`)}>
+              <ButtonGroup type="enclosed" intent="white" buttonIntent="default" buttonVariant="link">
+                <IconButton type="button" label="Previous" size="small"
+                  shape="pill" disabled={!prevId} onClick={() => navigate(`${JE_LIST_PATH}/${prevId}`)}>
                   {panelHeaderIcons.arrowUpward}
                 </IconButton>
-              </>
+                <IconButton type="button" label="Next" size="small"
+                  shape="pill" disabled={!nextId} onClick={() => navigate(`${JE_LIST_PATH}/${nextId}`)}>
+                  {panelHeaderIcons.arrowDownward}
+                </IconButton>
+              </ButtonGroup>
             )
           }
           tabs={
@@ -189,11 +193,11 @@ function JournalEntryForm() {
           status={posted ? <Badge size="small" intent={JE_STATUS_INTENT[draft.status]}>{draft.status}</Badge> : undefined}
           actions={
             <>
-              <Button type="button" intent="default" variant="solid" size="large" onClick={() => navigate(JE_LIST_PATH)}>
+              <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(JE_LIST_PATH)}>
                 {posted ? 'Back' : 'Cancel'}
               </Button>
               {menu.length ? <MoreMenu items={menu} /> : null}
-              <Button type="submit" intent="primary" variant="solid" size="large" disabled={saving}>
+              <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
                 {saving ? 'Saving…' : posted ? 'Save' : 'Add'}
               </Button>
             </>

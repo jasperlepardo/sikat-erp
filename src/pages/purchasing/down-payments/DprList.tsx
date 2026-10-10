@@ -75,7 +75,7 @@ export function DprList() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [requests, presets.filter, query, sort, codes]);
 
-  const open = (d: DownPaymentRequest) => navigate(`${DPR_LIST_PATH}/${d.id}`);
+  const open = (d: DownPaymentRequest) => navigate(`${DPR_LIST_PATH}/${d.docNum ? dprNumber(d) : d.id}`);
 
   const columns: TableColumn<DownPaymentRequest>[] = [
     { key: 'docNum', header: 'No.', sortable: true, cell: (d) => <TableSubcontent subcopy={d.vendorRef || undefined}><TableLink onClick={() => open(d)}>{dprNumber(d)}</TableLink></TableSubcontent> },
@@ -109,9 +109,12 @@ export function DprList() {
           setPage(1);
         }}
         icon="request_quote"
+        iconIntent="default"
+        iconShape="rounded"
+        iconSize={32} iconVariant="outline"
         title={presets.menu}
         actions={
-          <Button intent="primary" variant="solid" size="large" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${DPR_LIST_PATH}/new`)}>
+          <Button intent="primary" variant="solid" size="medium" shape="pill" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${DPR_LIST_PATH}/new`)}>
             New down payment request
           </Button>
         }

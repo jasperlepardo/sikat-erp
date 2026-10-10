@@ -84,7 +84,6 @@ export function PresetPanel<T>({
           type="forms"
           icon="filter_list"
           title={title}
-          subcopy="Saves these filters and the current sort as a view of this list."
           actions={
             <>
               <IconButton intent="default" variant="link" label="Close" onClick={onCancel}>

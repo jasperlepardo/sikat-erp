@@ -35,9 +35,10 @@ export function MoreMenu({
     <div ref={root} className="relative">
       <Button
         type="button"
-        intent="default"
+        intent="white"
         variant="solid"
-        size="large"
+        size="medium"
+        shape="pill"
         aria-haspopup="menu"
         aria-expanded={open}
         trailingIcon={<Icon size={20}>keyboard_arrow_down</Icon>}

@@ -33,7 +33,7 @@ export interface CoveredLine {
 
 /** One document in the link graph. */
 export interface DocNode {
-  kind: DocKind;
+  kind: string;
   id: string;
   /** "Purchase order", "Goods receipt PO", … */
   type: string;
@@ -45,7 +45,7 @@ export interface DocNode {
   currency: string;
   total: number;
   /** The documents this one was copied from, with the lines that came from each (or, for a payment, what it paid). */
-  bases: { kind: DocKind; id: string; lines: CoveredLine[]; note?: string }[];
+  bases: { kind: string; id: string; lines: CoveredLine[]; note?: string }[];
 }
 
 /** Each document type's documents, as graph nodes. */

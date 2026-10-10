@@ -114,7 +114,7 @@ export function ReturnsList({ kind }: { kind: Kind }) {
     return [...filtered].sort((a, b) => (value(a) < value(b) ? -1 : value(a) > value(b) ? 1 : 0) * dir);
   }, [all, presets.filter, query, sort]);
 
-  const open = (r: Row) => navigate(`${path}/${r.id}`);
+  const open = (r: Row) => navigate(`${path}/${r.docNum ? r.number : r.id}`);
   const intent = kind === 'returns' ? RETURN_STATUS_INTENT : MEMO_STATUS_INTENT;
 
   const columns: TableColumn<Row>[] = [
@@ -139,9 +139,12 @@ export function ReturnsList({ kind }: { kind: Kind }) {
           setPage(1);
         }}
         icon="assignment_return"
+        iconIntent="default"
+        iconShape="rounded"
+        iconSize={32} iconVariant="outline"
         title={presets.menu}
         actions={
-          <Button intent="primary" variant="solid" size="large" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${path}/new`)}>
+          <Button intent="primary" variant="solid" size="medium" shape="pill" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${path}/new`)}>
             {kind === 'returns' ? 'New goods return' : 'New A/P credit memo'}
           </Button>
         }

@@ -3,7 +3,7 @@ import { Button, Combobox, Icon, Link, Select, TableStatus, Text, TextField, typ
 import { DataTable } from '../../../../components/form/DataTable';
 import { MasterLookup } from '../../../../components/form/MasterLookup';
 import { itemUnits, itemsPerUom } from '../../../../mocks/items';
-import { newSoLine, type SoDocType, type SoLine } from '../../../../mocks/salesOrders';
+import { newSoLine, type SoLine } from '../../../../mocks/salesOrders';
 import { formatAmount } from '../../../../services/format';
 import { isValidToday } from '../../../../services/items';
 import { isPriceListValid } from '../../../../services/priceLists';
@@ -18,7 +18,6 @@ const num = (v: string) => (v === '' ? 0 : Number(v));
 export function ContentsTab({ draft, update, errors, m, ctx }: SoTabProps) {
   const [editing, setEditing] = useState<Set<string>>(new Set());
   const lines = draft.lines;
-  const service = draft.docType === 'Service';
   const itemOf = (l: SoLine) => m.items.find((i) => i.id === l.itemId);
   const patch = (id: string, p: Partial<SoLine>) => update({ lines: lines.map((l) => (l.id === id ? { ...l, ...p } : l)) });
   const err = (l: SoLine, field: string) => errors[`line:${l.id}:${field}`];
@@ -41,7 +40,6 @@ export function ContentsTab({ draft, update, errors, m, ctx }: SoTabProps) {
         text: `${i.itemNo} ${i.name} ${i.description}`,
       }));
   const taxOptions = m.tax.codes.filter((c) => c.direction === 'Sales' && c.active).map((c) => ({ value: c.code, label: `${c.code} (${ctx.rateOf(c.code)}%)` }));
-  const revenueOptions = m.accounts.filter((a) => a.drawer === 'Revenue' && !a.title && a.active && !a.contra).map((a) => ({ value: a.code, label: `${a.code} ${a.name}` }));
 
   const pickItem = (l: SoLine, itemId: string | null) => {
     const item = m.items.find((i) => i.id === itemId);
@@ -248,65 +246,17 @@ export function ContentsTab({ draft, update, errors, m, ctx }: SoTabProps) {
     ),
   ];
 
-  const serviceColumns: TableColumn<SoLine>[] = [
-    col('description', 'Description', (l) => (
-      <TextField aria-label="Description" className="w-72" readOnly={locked(l)} invalid={Boolean(err(l, 'description'))} value={l.description} onChange={(e) => patch(l.id, { description: e.currentTarget.value })} />
-    )),
-    col('glAccount', 'G/L account', (l) => (
-      <div className="w-60">
-        <Combobox aria-label="G/L account" disabled={locked(l)} invalid={Boolean(err(l, 'glAccount'))} options={revenueOptions} value={l.glAccount || null} onValueChange={(v) => patch(l.id, { glAccount: v ?? '' })} />
-      </div>
-    )),
-    col('amount', 'Amount', (l) => (
-      <TextField
-        aria-label="Amount"
-        type="number"
-        min={0}
-        prefix={draft.currency}
-        className="w-40"
-        readOnly={locked(l)}
-        invalid={Boolean(err(l, 'unitPrice'))}
-        value={String(l.unitPrice)}
-        onChange={(e) => patch(l.id, { unitPrice: num(e.currentTarget.value), quantity: 1, priceSource: 'Manual' })}
-      />
-    )),
-    col('tax', 'Tax code', (l) => (
-      <div className="flex w-32 flex-col gap-1">
-        <Combobox aria-label="Tax code" disabled={locked(l)} invalid={Boolean(err(l, 'taxCode'))} options={taxOptions} value={l.taxCode || null} onValueChange={(taxCode) => patch(l.id, { taxCode: taxCode ?? '' })} />
-        <Text variant="small" tone="muted">
-          Tax PHP {lc(taxOf(l))}
-        </Text>
-      </div>
-    )),
-    col('totals', 'Total / Gross (LC)', (l) => (
-      <div className="flex flex-col whitespace-nowrap tabular-nums">
-        <Text variant="small">PHP {lc(lineNet(l))}</Text>
-        <Text variant="small" tone="muted">
-          PHP {lc(lineNet(l) + taxOf(l))} gross
-        </Text>
-      </div>
-    )),
-  ];
-
-  const columns = service ? serviceColumns : itemColumns;
-  const hasLines = lines.some((l) => l.itemId || l.description);
-
   return (
     <DataTable
       variant="card"
       noPagination
       icon="list_alt"
       title="Contents"
-      description={
-        errors.lines ??
-        (service
-          ? `Services billed by amount, net of VAT, in ${draft.currency}. Each line posts to its revenue account.`
-          : `Items in the sales unit. Unit prices are net of VAT in ${draft.currency}${draft.currency === 'PHP' ? '' : `; totals in PHP at ${ctx.fx ? `${ctx.fx} (${formatDate(ctx.fxDate)})` : '—'}`}. Open lines commit stock in their warehouse.`)
-      }
+      description={errors.lines ?? `Items in the sales unit. Unit prices are net of VAT in ${draft.currency}${draft.currency === 'PHP' ? '' : `; totals in PHP at ${ctx.fx ? `${ctx.fx} (${formatDate(ctx.fxDate)})` : '—'}`}. Open lines commit stock in their warehouse.`}
       rows={lines}
       getRowId={(l) => l.id}
-      columns={columns}
-      unsortable={columns.map((c) => c.key).filter((k) => k !== 'item')}
+      columns={itemColumns}
+      unsortable={itemColumns.map((c) => c.key).filter((k) => k !== 'item')}
       sortValue={(l) => l.itemNo.toLowerCase()}
       onRemove={ctx.readOnly ? undefined : (picked) => update({ lines: lines.filter((l) => !picked.includes(l) || l.deliveredQty > 0) })}
       actions={
@@ -318,14 +268,7 @@ export function ContentsTab({ draft, update, errors, m, ctx }: SoTabProps) {
             variant="solid"
             leadingIcon={<Icon size={16}>add</Icon>}
             disabled={!draft.customerId}
-            onClick={() =>
-              update({
-                lines: [
-                  ...lines,
-                  newSoLine(service ? { warehouse: '', taxCode: '31', glAccount: '4030', priceSource: 'Manual' } : { warehouse: '' }),
-                ],
-              })
-            }
+            onClick={() => update({ lines: [...lines, newSoLine({ warehouse: '' })] })}
           >
             Add line
           </Button>
@@ -336,23 +279,6 @@ export function ContentsTab({ draft, update, errors, m, ctx }: SoTabProps) {
           {draft.customerId ? 'No lines yet. Add a line and pick an item.' : 'Pick a customer first, then add lines.'}
         </Text>
       }
-    >
-      <div className="flex flex-wrap items-center gap-2">
-        <Text variant="small" tone="muted">
-          Item/Service type
-        </Text>
-        <Select
-          aria-label="Item/Service type"
-          className="w-36"
-          disabled={ctx.added || hasLines}
-          options={(['Item', 'Service'] as SoDocType[]).map((t) => ({ value: t, label: t }))}
-          value={draft.docType}
-          onValueChange={(docType) => update({ docType: docType as SoDocType, lines: [] })}
-        />
-        <Text variant="small" tone="muted">
-          {ctx.added || hasLines ? 'Fixed once lines are entered.' : 'Item orders sell stock; service orders bill amounts to revenue accounts.'}
-        </Text>
-      </div>
-    </DataTable>
+    />
   );
 }

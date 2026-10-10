@@ -1,6 +1,22 @@
 /** Shapes shared by master data records. */
 import { employeeId } from './masters';
 
+/** A single routing condition for auto-selecting a document series. */
+export interface SeriesCondition {
+  field: string; // e.g. 'businessType', 'bpGroupId', 'territoryId', 'currency', 'paymentMethod'
+  value: string;
+}
+
+export type SegmentType = 'literal' | 'year' | 'year_short' | 'month' | 'month_name' | 'sequence';
+
+export interface SeriesSegment {
+  type: SegmentType;
+  /** Literal text value (literal segments only). */
+  value?: string;
+  /** Zero-pad width (sequence segments only, default 4). */
+  padding?: number;
+}
+
 /** A document numbering series — shared by all 15 document types. */
 export interface DocumentSeries {
   id: string;
@@ -14,6 +30,10 @@ export interface DocumentSeries {
   /** One series per document type is the default for new documents. */
   isDefault: boolean;
   active: boolean;
+  /** Routing conditions: all must match for this series to be auto-selected. Replaces defaultFor. */
+  conditions?: SeriesCondition[];
+  /** Dash-separated segment definitions. When present, overrides prefix for display. */
+  segments?: SeriesSegment[];
 }
 
 export interface Attachment {

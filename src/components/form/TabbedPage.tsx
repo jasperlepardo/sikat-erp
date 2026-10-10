@@ -14,6 +14,11 @@ export interface PageTab {
    * stays out of the tab bar, and its records return to the parent tab.
    */
   parent?: string;
+  /**
+   * Open records in a SidePanel overlay instead of replacing the whole panel.
+   * The list stays visible behind the panel.
+   */
+  sidePanelEdit?: boolean;
   /** List tabs get their route; other tabs (profiles, testers) can ignore it. */
   Component: ComponentType<ListRoute>;
 }
@@ -30,13 +35,11 @@ export function TabbedPage({
   base,
   icon,
   title,
-  subcopy,
   tabs,
 }: {
   base: string;
   icon: string;
   title: string;
-  subcopy: string;
   tabs: PageTab[];
 }) {
   const location = useLocation();
@@ -65,8 +68,8 @@ export function TabbedPage({
     if (active.parent && !params.recordId) navigate(`${base}/${active.parent}`, { replace: true });
   }, [active.parent, params.recordId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // A record page replaces the whole panel.
-  if (params.recordId) return <active.Component {...route} />;
+  // A record page replaces the whole panel (unless the tab uses side-panel editing).
+  if (params.recordId && !active.sidePanelEdit) return <active.Component {...route} />;
   if (active.parent) return null;
 
   const isSettings = location.pathname.startsWith('/settings');
@@ -76,15 +79,18 @@ export function TabbedPage({
       <PanelHeader
         {...search.headerProps}
         icon={icon}
+        iconIntent="default"
+        iconShape="rounded"
+        iconSize={32} iconVariant="outline"
         title={isSettings ? shown.label : title}
-        subcopy={isSettings ? shown.description : subcopy}
         actions={
           isSettings ? (
             <Button
               type="button"
               intent="primary"
               variant="solid"
-              size="large"
+              size="medium"
+              shape="pill"
               leadingIcon={<Icon size={16}>add</Icon>}
               onClick={() => navigate(`${base}/${active.value}/new`)}
             >

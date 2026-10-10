@@ -5,6 +5,7 @@ import {
   Alert,
   Badge,
   Button,
+  ButtonGroup,
   Checkbox,
   Combobox,
   Form,
@@ -71,6 +72,7 @@ import { loadRetMasters, vendorAddressOptions } from './GoodsReturnDetail';
 import { ReturnLines } from './ReturnLines';
 import { MEMO_LIST_PATH, MEMO_STATUS_INTENT, memoFromInvoice, memoFromReturn, type RetMasters } from './types';
 import { MEMO_STATUSES, type MemoStatus } from '../../../mocks/apCreditMemos';
+import { useDocTitle } from '../../../services/useDocTitle';
 
 type Draft = Omit<ApCreditMemo, 'id'> & { id?: string };
 type TabId = 'contents' | 'logistics' | 'accounting';
@@ -165,18 +167,19 @@ function CreditMemoForm() {
     if (isNew || !id) return;
     let cancelled = false;
     getCreditMemo(id).then((c) => !cancelled && setDraft(c ?? null));
-    listCreditMemos().then((all) => !cancelled && setSiblings([...all].sort((a, b) => b.postingDate.localeCompare(a.postingDate)).map((c) => c.id)));
+    listCreditMemos().then((all) => !cancelled && setSiblings([...all].sort((a, b) => b.postingDate.localeCompare(a.postingDate)).map((c) => c.docNum ? memoNumber(c) : c.id)));
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, isNew]);
 
+  useDocTitle(draft?.docNum ? (isNew ? 'New A/P credit memo' : memoNumber(draft)) : undefined);
   if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading A/P credit memo…</Text>;
   if (draft === null) {
     return (
       <Panel className="flex-1">
-        <PanelHeader icon="receipt" title="A/P credit memo not found" />
+        <PanelHeader icon="receipt" iconIntent="default" iconShape="rounded" iconSize={32} iconVariant="outline" title="A/P credit memo not found" />
         <Panel.Body>
           <Button onClick={() => navigate(MEMO_LIST_PATH)}>Back to credit memos</Button>
         </Panel.Body>
@@ -191,7 +194,7 @@ function CreditMemoForm() {
   const fx = draft.currency === 'PHP' ? 1 : added ? draft.fxRate : baseInvoice ? baseInvoice.fxRate : base.fx;
   const ctx = { ...base, fx, fxSource: baseInvoice && !added ? `invoice ${apNumber(baseInvoice)}'s rate` : base.fxSource };
   const { vendor } = ctx;
-  const at = draft.id ? siblings.indexOf(draft.id) : -1;
+  const at = draft.id ? siblings.indexOf(draft.docNum ? memoNumber(draft as ApCreditMemo) : draft.id) : -1;
   const prevId = at > 0 ? siblings[at - 1] : undefined;
   const nextId = at >= 0 && at < siblings.length - 1 ? siblings[at + 1] : undefined;
   const errors: Errors = Object.fromEntries(problems.map((p) => [p.key, p.message]));
@@ -335,29 +338,33 @@ function CreditMemoForm() {
           <PanelHeader
             type="details"
             icon="receipt"
+            iconIntent="default"
+            iconShape="rounded"
+            iconSize={32} iconVariant="outline"
             title={title}
-            subcopy={isNew ? "Record a vendor's credit note." : undefined}
-            leading={
+            trailing={
               isNew ? undefined : (
-                <>
-                  <IconButton type="button" label="Next" intent="default" variant="solid" size="large" disabled={!nextId} onClick={() => navigate(`${MEMO_LIST_PATH}/${nextId}`)}>
-                    {panelHeaderIcons.arrowDownward}
-                  </IconButton>
-                  <IconButton type="button" label="Previous" intent="default" variant="solid" size="large" disabled={!prevId} onClick={() => navigate(`${MEMO_LIST_PATH}/${prevId}`)}>
+                <ButtonGroup type="enclosed" intent="white" buttonIntent="default" buttonVariant="link">
+                  <IconButton type="button" label="Previous" size="small"
+                  shape="pill" disabled={!prevId} onClick={() => navigate(`${MEMO_LIST_PATH}/${prevId}`)}>
                     {panelHeaderIcons.arrowUpward}
                   </IconButton>
-                </>
+                  <IconButton type="button" label="Next" size="small"
+                  shape="pill" disabled={!nextId} onClick={() => navigate(`${MEMO_LIST_PATH}/${nextId}`)}>
+                    {panelHeaderIcons.arrowDownward}
+                  </IconButton>
+                </ButtonGroup>
               )
             }
             tabs={<Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={PAGES.map((p) => ({ ...p, disabled: isNew && p.value !== 'details' }))} />}
             status={isNew ? undefined : <Badge size="small" intent={MEMO_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
             actions={
               <>
-                <Button type="button" intent="default" variant="solid" size="large" onClick={() => navigate(MEMO_LIST_PATH)}>
+                <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(MEMO_LIST_PATH)}>
                   {added ? 'Back' : 'Cancel'}
                 </Button>
                 {menu.length ? <MoreMenu items={menu} /> : null}
-                <Button type="submit" intent="primary" variant="solid" size="large" disabled={saving}>
+                <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
                   {saving ? 'Saving…' : added ? 'Save' : 'Add'}
                 </Button>
               </>
@@ -413,10 +420,10 @@ function CreditMemoForm() {
                   <Section icon="tag" title="Document">
                     <Fields>
                       <FormField label="No.">
-                        {(p) => (
+                        {() => (
                           <div className="flex gap-1">
                             <Select aria-label="Series" className="w-40" disabled={added} options={MEMO_SERIES.map((s) => ({ value: s.id, label: s.name }))} value={draft.seriesId} onValueChange={(seriesId) => update({ seriesId })} />
-                            <TextField {...p} className="flex-1" readOnly placeholder="Next number" value={draft.docNum ? String(draft.docNum) : ''} />
+                            <span className="flex-1 self-center text-sm">{draft.docNum ? memoNumber(draft) : <span className="text-(--color-text-placeholder)">Next number</span>}</span>
                           </div>
                         )}
                       </FormField>

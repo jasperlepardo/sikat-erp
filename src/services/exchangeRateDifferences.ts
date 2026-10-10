@@ -133,4 +133,4 @@ export async function postErdRun(date: string, reversalDate: string, rates: Reco
   });
 }
 
-export const runLabel = (r: Pick<ErdRun, 'date' | 'journalEntryNo'>) => `${formatDate(r.date)} · journal entry ${jeNumber({ number: r.journalEntryNo })}`;
+export const runLabel = (r: Pick<ErdRun, 'date' | 'journalEntryNo'>) => `${formatDate(r.date)} · journal entry ${jeNumber({ number: r.journalEntryNo, postingDate: r.date })}`;

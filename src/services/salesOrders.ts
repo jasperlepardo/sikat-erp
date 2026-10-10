@@ -10,7 +10,12 @@ import { createCollection } from './store';
 const orders = createCollection<SalesOrder>('sikat-erp:sales-orders:v7', SEED_SALES_ORDERS, 'so');
 
 export const listSalesOrders = orders.list;
-export const getSalesOrder = orders.get;
+export async function getSalesOrder(idOrNumber: string) {
+  const direct = await orders.get(idOrNumber);
+  if (direct) return direct;
+  const all = await orders.list();
+  return all.find((o) => soNumber(o) === idOrNumber) ?? null;
+}
 
 export type SoInput = Omit<SalesOrder, 'id'> & { id?: string };
 
@@ -18,7 +23,7 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 
 export const seriesOf = (id: string) => seriesLookup(soSeries, id, SO_SERIES);
 /** "SO-410004", or "Draft" before a number is assigned. */
-export const soNumber = (so: Pick<SalesOrder, 'seriesId' | 'docNum'>) => formatDocNum(seriesOf(so.seriesId), so.docNum);
+export const soNumber = (so: Pick<SalesOrder, 'seriesId' | 'docNum' | 'postingDate'>) => formatDocNum(seriesOf(so.seriesId), so.docNum, so.postingDate);
 
 // ── Line and document math ───────────────────────────────────────────────────
 

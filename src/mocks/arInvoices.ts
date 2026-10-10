@@ -28,9 +28,8 @@ import { CURRENT_USER_ID, type Attachment, type DocumentSeries } from './common'
 import { plId, termId } from './masters';
 import { SEED_DELIVERIES, type DnLine } from './deliveries';
 import { SEED_PARTNERS, formatAddress } from './partners';
-import { RETAIL_SALES } from './retailHistory';
 import type { PoReference } from './purchaseOrders';
-import type { SoDocType } from './salesOrders';
+import { SEED_SALES_ORDERS, type SoDocType } from './salesOrders';
 
 export type ArStatus = 'Draft' | 'Open' | 'Closed' | 'Cancelled';
 export const AR_STATUSES: ArStatus[] = ['Draft', 'Open', 'Closed', 'Cancelled'];
@@ -126,8 +125,11 @@ export interface ArInvoice {
 }
 
 export const AR_SERIES: DocumentSeries[] = [
-  { id: 'ars-primary', name: 'Primary', prefix: 'AR-', firstNo: 430001, manual: false, isDefault: true, active: true },
+  { id: 'ars-primary', name: 'Sales Invoice', prefix: '', firstNo: 13, manual: false, isDefault: true, active: true, segments: [{ type: 'literal', value: 'SI' }, { type: 'year' }, { type: 'sequence', padding: 4 }] },
+  { id: 'ars-or', name: 'Official Receipt', prefix: '', firstNo: 3, manual: false, isDefault: false, active: true, segments: [{ type: 'literal', value: 'OR' }, { type: 'year' }, { type: 'sequence', padding: 4 }] },
 ];
+
+export const OR_SERIES_ID = 'ars-or';
 
 export const newArLine = (patch: Partial<ArLine> = {}): ArLine => ({
   itemId: '',
@@ -254,8 +256,52 @@ const fromDelivery = (id: string, docNum: number, dnId: string, patch: Partial<A
     appliedAmount: 0,
     remarks: '',
     lines: dn.lines.map((l, i) =>
-      newArLine({ ...l, id: `${id}-${l.id}`, baseType: 'DN', baseId: dn.id, baseLineId: l.id, baseDocNo: `Primary ${dn.docNum}`, baseRow: i + 1, glAccount: '', shippedGoods: false, wtaxLiable }),
+      newArLine({ ...l, id: `${id}-${l.id}`, baseType: 'DN', baseId: dn.id, baseLineId: l.id, baseDocNo: `DN-${dn.postingDate.slice(0, 4)}-${String(dn.docNum).padStart(4, '0')}`, baseRow: i + 1, glAccount: '', shippedGoods: false, wtaxLiable }),
     ),
+    ...rest,
+  };
+};
+
+/** Build an invoice directly from a sales order (no delivery), optionally filtering lines. */
+const fromSalesOrder = (
+  id: string,
+  seriesId: string,
+  docNum: number,
+  soId: string,
+  lineIds: string[],
+  patch: Partial<ArInvoice> & { wtaxLiable?: boolean },
+): ArInvoice => {
+  const so = SEED_SALES_ORDERS.find((s) => s.id === soId)!;
+  const c = SEED_PARTNERS.find((p) => p.id === so.customerId)!;
+  const addr = c.addresses.find((a) => a.id === c.defaultBillToId) ?? c.addresses[0];
+  const { wtaxLiable = false, ...rest } = patch;
+  return {
+    ...blankArInvoice(so.postingDate, CURRENT_USER_ID),
+    id,
+    seriesId,
+    docNum,
+    status: 'Open',
+    customerId: c.id,
+    customerCode: c.code,
+    customerName: c.name,
+    contactId: so.contactId,
+    federalTaxId: so.federalTaxId,
+    currency: so.currency,
+    paymentTermId: so.paymentTermId,
+    customerRef: so.customerRef,
+    billTo: addr ? formatAddress(addr, c.name) : '',
+    shipTo: so.shipTo,
+    projectId: so.projectId,
+    salesEmployeeId: so.salesEmployeeId,
+    docType: so.docType,
+    orderNumber: so.docNum ? String(so.docNum) : '',
+    controlAccount: '1120',
+    journalRemark: `A/R Invoices – ${c.code}`,
+    appliedAmount: 0,
+    remarks: '',
+    lines: so.lines
+      .filter((l) => lineIds.includes(l.id))
+      .map((l, i) => newArLine({ id: `${id}-${i + 1}`, itemId: l.itemId, itemNo: l.itemNo, description: l.description, quantity: l.quantity, uomCode: l.uomCode, uomName: l.uomName, itemsPerUnit: l.itemsPerUnit, warehouse: l.warehouse, priceListId: l.priceListId, unitPrice: l.unitPrice, discountPct: l.discountPct, priceSource: l.priceSource, taxCode: l.taxCode, glAccount: l.glAccount, baseType: 'SO', baseId: so.id, baseLineId: l.id, baseDocNo: `SO-${so.postingDate.slice(0, 4)}-${String(so.docNum).padStart(4, '0')}`, baseRow: so.lines.indexOf(l) + 1, wtaxLiable })),
     ...rest,
   };
 };
@@ -268,42 +314,35 @@ function subic(): Partial<ArInvoice> {
 }
 
 const invoices: ArInvoice[] = [
-  fromDelivery('ar-001', 430001, 'dn-002', {
+  fromDelivery('ar-001', 1, 'dn-002', {
     postingDate: '2026-08-21', documentDate: '2026-08-21', dueDate: '2026-09-20', status: 'Closed', closeDate: '2026-09-18',
     remarks: 'Paid by bank transfer 18 Sep 2026.',
   }),
-  fromDelivery('ar-002', 430002, 'dn-003', {
+  fromDelivery('ar-002', 2, 'dn-003', {
     postingDate: '2026-08-28', documentDate: '2026-08-28', dueDate: '2026-09-12', status: 'Closed', closeDate: '2026-09-10',
     remarks: 'Paid in full by BPI transfer, 10 Sep 2026.',
   }),
-  fromDelivery('ar-003', 430003, 'dn-004', {
+  fromDelivery('ar-003', 3, 'dn-004', {
     postingDate: '2026-09-18', documentDate: '2026-09-18', dueDate: '2026-10-18', wtaxLiable: true,
     remarks: 'Northgate withholds 1% (top withholding agent); half paid by check on 2 Oct, balance due 18 Oct.',
   }),
-  fromDelivery('ar-005', 430005, 'dn-005', {
+  fromDelivery('ar-005', 4, 'dn-005', {
     postingDate: '2026-09-10', documentDate: '2026-09-10', dueDate: '2026-09-10',
     remarks: 'USD invoice at the 10 Sep BSP rate. Half paid 22 Sep at that day’s rate (realized difference on the payment); the open half is revalued at month-end.',
   }),
-  fromDelivery('ar-006', 430006, 'dn-006', {
+  fromDelivery('ar-006', 5, 'dn-006', {
     postingDate: '2026-10-06', documentDate: '2026-10-06', dueDate: '2026-11-05',
     remarks: 'First 24 of 40 iPads for DepEd Pasig. Not yet paid.',
   }),
-  fromDelivery('ar-007', 430007, 'dn-007', {
+  fromDelivery('ar-007', 6, 'dn-007', {
     postingDate: '2026-09-04', documentDate: '2026-09-04', dueDate: '2026-10-04', wtaxLiable: true,
     remarks: 'Northgate withholds 1% (top withholding agent). Past due; follow up with their accounts payable.',
-  }),
-  fromDelivery('ar-008', 430008, 'dn-008', {
-    postingDate: '2026-09-06', documentDate: '2026-09-06', dueDate: '2026-09-06', status: 'Closed', closeDate: '2026-09-06',
-    remarks: 'Cebu store walk-in, paid by GCash at pick-up.',
-  }),
-  fromDelivery('ar-009', 430009, 'dn-009', {
-    postingDate: '2026-09-13', documentDate: '2026-09-13', dueDate: '2026-09-13', status: 'Closed', closeDate: '2026-09-13',
-    remarks: 'Davao store walk-in, paid by GCash at pick-up.',
   }),
   {
     ...blankArInvoice('2026-09-30', CURRENT_USER_ID),
     id: 'ar-004',
-    docNum: 430004,
+    seriesId: OR_SERIES_ID,
+    docNum: 1,
     status: 'Open',
     docType: 'Service',
     ...subic(),
@@ -318,13 +357,6 @@ const invoices: ArInvoice[] = [
       newArLine({ id: 'ar-004-2', description: 'Staff training, half day', glAccount: '4030', quantity: 1, unitPrice: 12000, taxCode: '31', priceSource: 'Manual' }),
     ],
   },
-  // Store walk-in sales (mocks/retailHistory.ts): invoiced on pick-up and paid on the spot.
-  ...RETAIL_SALES.map((r) =>
-    fromDelivery(`ar-${r.id}`, 430010 + r.n, `dn-${r.id}`, {
-      postingDate: r.date, documentDate: r.date, dueDate: r.date, status: 'Closed', closeDate: r.date,
-      remarks: `Walk-in sale at ${r.store}, paid by ${r.means === 'gcash' ? 'GCash' : r.means} at pick-up.`,
-    }),
-  ),
   // Corporate orders: paid, past due, half paid and not yet due.
   ...([
     // [id, delivery, posted, due, closed (paid in full) on, remarks]
@@ -334,14 +366,22 @@ const invoices: ArInvoice[] = [
     ['ar-c04', 'dn-c04', '2026-09-11', '2026-09-26', '', 'Half paid 25 Sep; the cooperative pays the balance after its October dividend.'],
     ['ar-c05', 'dn-c05', '2026-10-02', '2026-11-01', '', 'First 12 iPhones. Not yet due.'],
   ] as const).map(([id, dn, date, due, paid, remarks], k) =>
-    fromDelivery(id, 430010 + RETAIL_SALES.length + k, dn, { postingDate: date, documentDate: date, dueDate: due, remarks, ...(paid ? { status: 'Closed' as const, closeDate: paid } : {}) }),
+    fromDelivery(id, 7 + k, dn, { postingDate: date, documentDate: date, dueDate: due, remarks, ...(paid ? { status: 'Closed' as const, closeDate: paid } : {}) }),
   ),
+  // Mixed bundle order so-b01 (CGS): split into SI for goods and OR for services.
+  fromSalesOrder('ar-b01-si', AR_SERIES[0].id, 12, 'so-b01', ['so-b01-1'], {
+    postingDate: '2026-09-17', documentDate: '2026-09-17', dueDate: '2026-10-17', status: 'Closed', closeDate: '2026-10-15',
+    remarks: 'MacBook Airs — goods lines of so-b01. Paid by bank transfer 15 Oct.',
+  }),
+  fromSalesOrder('ar-b01-or', OR_SERIES_ID, 2, 'so-b01', ['so-b01-2', 'so-b01-3'], {
+    postingDate: '2026-09-17', documentDate: '2026-09-17', dueDate: '2026-10-17', docType: 'Service', status: 'Closed', closeDate: '2026-10-15',
+    remarks: 'Device setup and same-day delivery — service lines of so-b01. Paid with the Sales Invoice.',
+  }),
 ];
 
 /** Paid so far by the seeded incoming payments (document currency). */
 const APPLIED: Record<string, number | 'full' | 'half'> = {
-  'ar-001': 'full', 'ar-002': 'full', 'ar-003': 'half', 'ar-005': 'half', 'ar-008': 'full', 'ar-009': 'full',
-  ...Object.fromEntries(RETAIL_SALES.map((r) => [`ar-${r.id}`, 'full' as const])),
+  'ar-001': 'full', 'ar-002': 'full', 'ar-003': 'half', 'ar-005': 'half',
   'ar-c01': 'full', 'ar-c02': 'full', 'ar-c04': 'half',
 };
 

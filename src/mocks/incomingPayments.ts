@@ -21,10 +21,8 @@
  *   exist, and branches aren't enabled, so those fields show but don't change anything.
  */
 import type { Attachment, DocumentSeries } from './common';
-import { cardBrandId } from './masters';
 import { SEED_AR_INVOICES, seedNetDue, type ArInvoice } from './arInvoices';
 import { seedRateOn } from './salesOrders';
-import { RETAIL_SALES } from './retailHistory';
 import type { PoReference } from './purchaseOrders';
 
 export type IncomingType = 'Customer' | 'Account';
@@ -35,7 +33,7 @@ export const INCOMING_STATUSES: IncomingStatus[] = ['Draft', 'Posted', 'Cancelle
 export interface IncomingRow {
   id: string;
   invoiceId: string;
-  /** "Primary 430002", for display. */
+  /** "SI-2026-0002", for display. */
   docNo: string;
   /** Installment number, or 0 for an invoice without installments. */
   installment: number;
@@ -148,8 +146,10 @@ export interface IncomingPayment {
 }
 
 export const INCOMING_SERIES: DocumentSeries[] = [
-  { id: 'rcs-primary', name: 'Primary', prefix: 'RCV-', firstNo: 440001, manual: false, isDefault: true, active: true },
+  { id: 'rcs-primary', name: 'Regular', prefix: '', firstNo: 9, manual: false, isDefault: true, active: true, segments: [{ type: 'literal', value: 'RCV' }, { type: 'year' }, { type: 'sequence', padding: 4 }] },
   { id: 'rcs-manual', name: 'Manual', prefix: 'RCV-', firstNo: 1, manual: true, isDefault: false, active: true },
+  { id: 'rcs-gcash', name: 'GCash', prefix: '', firstNo: 1, manual: false, isDefault: false, active: true, conditions: [{ field: 'paymentMethod', value: 'GCASH' }], segments: [{ type: 'literal', value: 'GCS' }, { type: 'year' }, { type: 'sequence', padding: 4 }] },
+  { id: 'rcs-cash', name: 'Cash', prefix: '', firstNo: 1, manual: false, isDefault: false, active: true, conditions: [{ field: 'paymentMethod', value: 'CASH' }], segments: [{ type: 'literal', value: 'CSH' }, { type: 'year' }, { type: 'sequence', padding: 4 }] },
 ];
 
 /** Bank accounts a transfer can land in (the cash-flagged bank accounts). */
@@ -228,7 +228,7 @@ function row(inv: ArInvoice, amount: number): IncomingRow {
   return {
     id: `${inv.id}-1`,
     invoiceId: inv.id,
-    docNo: `Primary ${inv.docNum}`,
+    docNo: `${inv.seriesId === 'ars-or' ? 'OR' : 'SI'}-${inv.postingDate.slice(0, 4)}-${String(inv.docNum).padStart(4, '0')}`,
     installment: 0,
     installments: 1,
     docDate: inv.postingDate,
@@ -274,32 +274,24 @@ function customerPayment(id: string, docNum: number, invoiceId: string, patch: P
 }
 
 const total = (id: string) => SEED_AR_INVOICES.find((a) => a.id === id)!.appliedAmount;
-const CARD_MIX = [cardBrandId('Visa'), cardBrandId('Mastercard'), cardBrandId('Visa'), cardBrandId('JCB')];
 
 export const SEED_INCOMING_PAYMENTS: IncomingPayment[] = [
-  customerPayment('rc-001', 440001, 'ar-001', { postingDate: '2026-09-18', documentDate: '2026-09-18', dueDate: '2026-09-18', reference: 'CGS-RTGS-0918', remarks: 'Clarkfield, bank transfer to BDO.' }, {
+  customerPayment('rc-001', 1, 'ar-001', { postingDate: '2026-09-18', documentDate: '2026-09-18', dueDate: '2026-09-18', reference: 'CGS-RTGS-0918', remarks: 'Clarkfield, bank transfer to BDO.' }, {
     transfer: { account: '1015', date: '2026-09-18', reference: 'BDO RTGS 2026091800417', amount: total('ar-001') },
   }),
-  customerPayment('rc-002', 440002, 'ar-002', { postingDate: '2026-09-10', documentDate: '2026-09-10', dueDate: '2026-09-10', reference: 'MPAS-PAY-0910' }, {
+  customerPayment('rc-002', 2, 'ar-002', { postingDate: '2026-09-10', documentDate: '2026-09-10', dueDate: '2026-09-10', reference: 'MPAS-PAY-0910' }, {
     transfer: { account: '1016', date: '2026-09-10', reference: 'BPI InstaPay 51420177', amount: total('ar-002') },
   }),
-  customerPayment('rc-003', 440003, 'ar-003', { postingDate: '2026-10-02', documentDate: '2026-10-02', dueDate: '2026-10-09', reference: 'NPM-CHK-2026-1002', remarks: 'Half of invoice 430003; BIR Form 2307 for the 1% to follow.' }, {
+  customerPayment('rc-003', 3, 'ar-003', { postingDate: '2026-10-02', documentDate: '2026-10-02', dueDate: '2026-10-09', reference: 'NPM-CHK-2026-1002', remarks: 'Half of invoice SI-2026-0003; BIR Form 2307 for the 1% to follow.' }, {
     checks: [newReceivedCheck({ id: 'rc-003-chk1', dueDate: '2026-10-09', amount: total('ar-003'), bank: 'Metrobank', branch: 'Ortigas', accountNo: '7-012-55210-3', checkNo: '0004417' })],
   }),
-  customerPayment('rc-005', 440005, 'ar-005', { postingDate: '2026-09-22', documentDate: '2026-09-22', dueDate: '2026-09-22', currency: 'USD', fxRate: seedRateOn('USD', '2026-09-22'), reference: 'HBL-TT-0922', remarks: 'Half of USD invoice 430005, wired to the BDO USD account. Collected at the 22 Sep rate.' }, {
+  customerPayment('rc-005', 5, 'ar-005', { postingDate: '2026-09-22', documentDate: '2026-09-22', dueDate: '2026-09-22', currency: 'USD', fxRate: seedRateOn('USD', '2026-09-22'), reference: 'HBL-TT-0922', remarks: 'Half of USD invoice SI-2026-0004, wired to the BDO USD account. Collected at the 22 Sep rate.' }, {
     transfer: { account: '1018', date: '2026-09-22', reference: 'BDO USD TT 26092200188', amount: total('ar-005') },
-  }),
-  // Walk-in GCash takings land in the GCash wallet (1013) until it's cashed out to the bank.
-  customerPayment('rc-006', 440006, 'ar-008', { postingDate: '2026-09-06', documentDate: '2026-09-06', dueDate: '2026-09-06', reference: 'GCASH-CEB-0906', remarks: 'Cebu store walk-in, GCash.' }, {
-    cash: { account: '1013', amount: total('ar-008') },
-  }),
-  customerPayment('rc-007', 440007, 'ar-009', { postingDate: '2026-09-13', documentDate: '2026-09-13', dueDate: '2026-09-13', reference: 'GCASH-DVO-0913', remarks: 'Davao store walk-in, GCash.' }, {
-    cash: { account: '1013', amount: total('ar-009') },
   }),
   {
     ...blankIncomingPayment('2026-09-30'),
     id: 'rc-004',
-    docNum: 440004,
+    docNum: 4,
     status: 'Posted',
     type: 'Account',
     journalRemark: 'Incoming – 7010',
@@ -307,25 +299,13 @@ export const SEED_INCOMING_PAYMENTS: IncomingPayment[] = [
     accountRows: [newIncomingAccountRow({ id: 'rc-004-1', account: '7010', remarks: 'Interest income, September 2026', amount: 1842.65 })],
     means: { ...blankIncomingMeans('2026-09-30'), transfer: { account: '1015', date: '2026-09-30', reference: 'BDO interest credit', amount: 1842.65 } },
   },
-  // Store walk-in takings (mocks/retailHistory.ts): GCash to the wallet, cash to store collections, cards to settlements.
-  ...RETAIL_SALES.map((r) => {
-    const id = `ar-${r.id}`;
-    const amount = total(id);
-    const means: Partial<IncomingMeans> =
-      r.means === 'gcash'
-        ? { cash: { account: '1013', amount } }
-        : r.means === 'cash'
-          ? { cash: { account: CASH_CLEARING_ACCOUNT, amount } }
-          : { cards: [newReceivedCard({ id: `rcd-${r.id}`, cardBrandId: CARD_MIX[r.n % CARD_MIX.length], last4: String(1000 + ((r.n * 7919) % 9000)), voucherNo: `POS-${r.store}-${String(r.n + 1).padStart(4, '0')}`, amount })] };
-    return customerPayment(`rc-${r.id}`, 440008 + r.n, id, { postingDate: r.date, documentDate: r.date, dueDate: r.date, reference: `${r.store}-${r.date.replaceAll('-', '')}`, remarks: `Walk-in sale at ${r.store}.` }, means);
-  }),
-  // Corporate collections (after the walk-in takings in numbering).
+  // Corporate collections.
   ...([
     ['rc-c01', 'ar-c01', '2026-09-10', '1015', 'BDO RTGS 2026091000288', 'CGS-PAY-0910'],
     ['rc-c02', 'ar-c02', '2026-09-12', '1016', 'BPI InstaPay 51477902', 'MPAS-PAY-0912'],
     ['rc-c04', 'ar-c04', '2026-09-25', '1017', 'UnionBank PESONet 0925-3318', 'GNB-PAY-0925'],
   ] as const).map(([id, inv, date, account, bankRef, reference], k) =>
-    customerPayment(id, 440008 + RETAIL_SALES.length + k, inv, { postingDate: date, documentDate: date, dueDate: date, reference }, {
+    customerPayment(id, 6 + k, inv, { postingDate: date, documentDate: date, dueDate: date, reference }, {
       transfer: { account, date, reference: bankRef, amount: total(inv) },
     }),
   ),

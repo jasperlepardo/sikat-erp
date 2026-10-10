@@ -1,4 +1,4 @@
-import type { CoveredLine, DocKind, DocNode } from './documentLinks';
+import type { CoveredLine, DocNode } from './documentLinks';
 
 export type Relation = 'Base' | 'This' | 'Target';
 
@@ -15,7 +15,7 @@ export interface LinkedDocument extends DocNode {
   note?: string;
 }
 
-const keyOf = (kind: DocKind, id: string) => `${kind}:${id}`;
+const keyOf = (kind: string, id: string) => `${kind}:${id}`;
 
 /**
  * The open document's whole lineage: every base document it came from, however far back
@@ -23,7 +23,7 @@ const keyOf = (kind: DocKind, id: string) => `${kind}:${id}`;
  * (GRPO → A/P invoice → credit memo). Documents on other branches — another receipt from the
  * same PO — aren't in its lineage, so they aren't listed.
  */
-export function lineage(nodes: DocNode[], kind: DocKind, id: string): LinkedDocument[] {
+export function lineage(nodes: DocNode[], kind: string, id: string): LinkedDocument[] {
   const byKey = new Map(nodes.map((n) => [keyOf(n.kind, n.id), n]));
   const targetsOf = new Map<string, { node: DocNode; lines: CoveredLine[]; note?: string }[]>();
   for (const n of nodes) {

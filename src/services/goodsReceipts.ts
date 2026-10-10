@@ -23,7 +23,12 @@ import { PURCHASING_HISTORY } from './purchasingHistory';
 const receipts = createCollection<GoodsReceipt>('sikat-erp:goods-receipts:v7', PURCHASING_HISTORY.receipts, 'gr');
 
 export const listGoodsReceipts = receipts.list;
-export const getGoodsReceipt = receipts.get;
+export async function getGoodsReceipt(idOrNumber: string) {
+  const direct = await receipts.get(idOrNumber);
+  if (direct) return direct;
+  const all = await receipts.list();
+  return all.find((r) => grNumber(r) === idOrNumber) ?? null;
+}
 export const resetGoodsReceipts = receipts.reset;
 
 export type GrInput = Omit<GoodsReceipt, 'id'> & { id?: string };
@@ -33,8 +38,8 @@ const round4 = (n: number) => Math.round(n * 10000) / 10000;
 
 export const grSeriesOf = (id: string) => seriesLookup(grSeries, id, GR_SERIES);
 /** "Primary 280004", or "Draft" before it's added. */
-export const grNumber = (gr: Pick<GoodsReceipt, 'seriesId' | 'docNum'>) =>
-  formatDocNum(grSeriesOf(gr.seriesId), gr.docNum);
+export const grNumber = (gr: Pick<GoodsReceipt, 'seriesId' | 'docNum' | 'postingDate'>) =>
+  formatDocNum(grSeriesOf(gr.seriesId), gr.docNum, gr.postingDate);
 
 // ── Line and document math ───────────────────────────────────────────────────
 

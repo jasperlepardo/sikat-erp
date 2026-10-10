@@ -5,6 +5,7 @@ import {
   Alert,
   Badge,
   Button,
+  ButtonGroup,
   Combobox,
   Form,
   FormField,
@@ -17,7 +18,6 @@ import {
   Select,
   Tabs,
   Text,
-  TextField,
 } from '@jasperlepardo/sikat-design-system';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { Fields, ReadOnly, Section, bind, type Errors } from '../../../../components/form/fields';
@@ -45,7 +45,7 @@ import {
   overallAmount,
   paymentJournal,
   paymentNumber,
-  paymentSeriesOf,
+
   rowFxDifference,
   rowSettled,
   savePaymentDraft,
@@ -60,6 +60,7 @@ import { AccountRows, VendorRows } from './PaymentContents';
 import { PaymentMeansSection } from './PaymentMeansSection';
 import { invoiceBalance, openRows, requestBalance, type PayMasters, type PaymentDraft } from './types';
 import { listDownPayments } from '../../../../services/apDownPayments';
+import { useDocTitle } from '../../../../services/useDocTitle';
 
 export const PAYMENT_LIST_PATH = '/purchasing/payments-made';
 
@@ -154,18 +155,19 @@ function PaymentForm() {
     if (isNew || !id) return;
     let cancelled = false;
     getPayment(id).then((p) => !cancelled && setDraft(p ?? null));
-    listPayments().then((all) => !cancelled && setSiblings([...all].sort((a, b) => b.postingDate.localeCompare(a.postingDate)).map((p) => p.id)));
+    listPayments().then((all) => !cancelled && setSiblings([...all].sort((a, b) => b.postingDate.localeCompare(a.postingDate)).map((p) => p.docNum ? paymentNumber(p) : p.id)));
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, isNew]);
 
+  useDocTitle(draft?.docNum ? (isNew ? 'New outgoing payment' : paymentNumber(draft)) : undefined);
   if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading payment…</Text>;
   if (draft === null) {
     return (
       <Panel className="flex-1">
-        <PanelHeader icon="payments" title="Payment not found" />
+        <PanelHeader icon="payments" iconIntent="default" iconShape="rounded" iconSize={32} iconVariant="outline" title="Payment not found" />
         <Panel.Body>
           <Button onClick={() => navigate(PAYMENT_LIST_PATH)}>Back to payments</Button>
         </Panel.Body>
@@ -176,7 +178,7 @@ function PaymentForm() {
   const added = draft.status !== 'Draft';
   const fx = draft.currency === 'PHP' ? 1 : added ? draft.fxRate : (rateOn(m.rates, draft.currency, draft.postingDate)?.rate ?? 0);
   const vendor = m.vendors.find((v) => v.id === draft.vendorId);
-  const at = draft.id ? siblings.indexOf(draft.id) : -1;
+  const at = draft.id ? siblings.indexOf(draft.docNum ? paymentNumber(draft as OutgoingPayment) : draft.id) : -1;
   const prevId = at > 0 ? siblings[at - 1] : undefined;
   const nextId = at >= 0 && at < siblings.length - 1 ? siblings[at + 1] : undefined;
   const errors: Errors = Object.fromEntries(problems.map((p) => [p.key, p.message]));
@@ -290,29 +292,33 @@ function PaymentForm() {
         <PanelHeader
           type="details"
           icon="payments"
+          iconIntent="default"
+          iconShape="rounded"
+          iconSize={32} iconVariant="outline"
           title={title}
-          subcopy={isNew ? 'Pay a vendor, or pay straight to G/L accounts.' : undefined}
-          leading={
+          trailing={
             isNew ? undefined : (
-              <>
-                <IconButton type="button" label="Next" intent="default" variant="solid" size="large" disabled={!nextId} onClick={() => navigate(`${PAYMENT_LIST_PATH}/${nextId}`)}>
-                  {panelHeaderIcons.arrowDownward}
-                </IconButton>
-                <IconButton type="button" label="Previous" intent="default" variant="solid" size="large" disabled={!prevId} onClick={() => navigate(`${PAYMENT_LIST_PATH}/${prevId}`)}>
+              <ButtonGroup type="enclosed" intent="white" buttonIntent="default" buttonVariant="link">
+                <IconButton type="button" label="Previous" size="small"
+                  shape="pill" disabled={!prevId} onClick={() => navigate(`${PAYMENT_LIST_PATH}/${prevId}`)}>
                   {panelHeaderIcons.arrowUpward}
                 </IconButton>
-              </>
+                <IconButton type="button" label="Next" size="small"
+                  shape="pill" disabled={!nextId} onClick={() => navigate(`${PAYMENT_LIST_PATH}/${nextId}`)}>
+                  {panelHeaderIcons.arrowDownward}
+                </IconButton>
+              </ButtonGroup>
             )
           }
           tabs={<Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={PAGES.map((p) => ({ ...p, disabled: isNew && p.value !== 'details' }))} />}
           status={isNew ? undefined : <Badge size="small" intent={PAYMENT_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
           actions={
             <>
-              <Button type="button" intent="default" variant="solid" size="large" onClick={() => navigate(PAYMENT_LIST_PATH)}>
+              <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(PAYMENT_LIST_PATH)}>
                 {added ? 'Back' : 'Cancel'}
               </Button>
               {menu.length ? <MoreMenu items={menu} /> : null}
-              <Button type="submit" intent="primary" variant="solid" size="large" disabled={saving}>
+              <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
                 {saving ? 'Saving…' : added ? 'Save' : 'Add'}
               </Button>
             </>
@@ -407,10 +413,10 @@ function PaymentForm() {
                 <Section icon="tag" title="Document">
                   <Fields>
                     <FormField label="No." tooltip={added ? undefined : 'Assigned from the series when the payment is added.'}>
-                      {(p) => (
+                      {() => (
                         <div className="flex gap-1">
                           <Select aria-label="Series" className="w-40" disabled={added} options={PAYMENT_SERIES.map((s) => ({ value: s.id, label: s.name }))} value={draft.seriesId} onValueChange={(seriesId) => update({ seriesId })} />
-                          <TextField {...p} className="flex-1" readOnly placeholder={`Next ${paymentSeriesOf(draft.seriesId).name} number`} value={draft.docNum ? String(draft.docNum) : ''} />
+                          <span className="flex-1 self-center text-sm">{draft.docNum ? paymentNumber(draft) : <span className="text-(--color-text-placeholder)">Next number</span>}</span>
                         </div>
                       )}
                     </FormField>

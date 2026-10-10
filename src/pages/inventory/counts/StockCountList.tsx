@@ -63,13 +63,17 @@ function CountsShell({
     <Panel className="flex-1">
       <PanelHeader
         icon="inventory"
+        iconIntent="default"
+        iconShape="rounded"
+        iconSize={32} iconVariant="outline"
         title={title}
         {...search}
         actions={
           <Button
             intent="primary"
             variant="solid"
-            size="large"
+            size="medium"
+            shape="pill"
             leadingIcon={<Icon size={20}>add</Icon>}
             onClick={() => navigate(`${postings ? POSTING_LIST_PATH : COUNT_LIST_PATH}/new`)}
           >

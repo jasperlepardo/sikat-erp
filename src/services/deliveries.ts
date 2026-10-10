@@ -20,7 +20,12 @@ const SEEDED = SEED_DELIVERIES.map((d) => ({ ...d, lines: d.lines.map((l) => (FI
 const deliveries = createCollection<Delivery>('sikat-erp:deliveries:v8', SEEDED, 'dn');
 
 export const listDeliveries = deliveries.list;
-export const getDelivery = deliveries.get;
+export async function getDelivery(idOrNumber: string) {
+  const direct = await deliveries.get(idOrNumber);
+  if (direct) return direct;
+  const all = await deliveries.list();
+  return all.find((d) => dnNumber(d) === idOrNumber) ?? null;
+}
 
 export type DnInput = Omit<Delivery, 'id'> & { id?: string };
 
@@ -28,7 +33,7 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 const round4 = (n: number) => Math.round(n * 10000) / 10000;
 
 export const dnSeriesOf = (id: string) => seriesLookup(dnSeries, id, DN_SERIES);
-export const dnNumber = (d: Pick<Delivery, 'seriesId' | 'docNum'>) => formatDocNum(dnSeriesOf(d.seriesId), d.docNum);
+export const dnNumber = (d: Pick<Delivery, 'seriesId' | 'docNum' | 'postingDate'>) => formatDocNum(dnSeriesOf(d.seriesId), d.docNum, d.postingDate);
 
 /** Quantity × Items per Unit. */
 export const dnInventoryQty = (l: Pick<DnLine, 'quantity' | 'itemsPerUnit'>) => round4(l.quantity * (l.itemsPerUnit || 1));

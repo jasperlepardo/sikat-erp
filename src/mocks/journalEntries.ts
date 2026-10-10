@@ -30,7 +30,7 @@ import { SEED_INCOMING_PAYMENTS } from './incomingPayments';
 
 export type JeStatus = 'Posted' | 'Reversed';
 
-export type OriginType = 'JE' | 'IM' | 'IQ' | 'PD' | 'PU' | 'PS' | 'RD' | 'PC' | 'DN' | 'IN' | 'RC';
+export type OriginType = 'JE' | 'IM' | 'IQ' | 'PD' | 'PU' | 'PS' | 'RD' | 'PC' | 'DN' | 'IN' | 'RC' | 'AC' | 'SR';
 export const ORIGIN_LABEL: Record<OriginType, string> = {
   JE: 'Journal Entry',
   IM: 'Inventory Transfer',
@@ -43,6 +43,8 @@ export const ORIGIN_LABEL: Record<OriginType, string> = {
   DN: 'Delivery',
   IN: 'A/R Invoice',
   RC: 'Incoming Payment',
+  AC: 'A/R Credit Memo',
+  SR: 'Sales Return',
 };
 /** Where each origin document opens (once its screens exist). */
 export const ORIGIN_PATH: Partial<Record<OriginType, string>> = {
@@ -54,6 +56,10 @@ export const ORIGIN_PATH: Partial<Record<OriginType, string>> = {
   DN: '/sales/deliveries',
   RD: '/purchasing/returns-and-debits/returns',
   PC: '/purchasing/returns-and-debits/credit-memos',
+  IN: '/sales/invoices',
+  AC: '/sales/returns-and-credits/credit-memos',
+  RC: '/sales/payments-received',
+  SR: '/sales/returns-and-credits/returns',
 };
 
 export const TRANS_CODES = ['', 'ACCR', 'DEPR', 'RECL', 'CORR', 'YEND', 'FXRV'];
@@ -128,7 +134,7 @@ export interface JournalEntry {
 }
 
 export const JE_SERIES: DocumentSeries[] = [
-  { id: 'je-primary', name: 'Primary', prefix: 'JE-', firstNo: 1, manual: false, isDefault: true, active: true },
+  { id: 'je-primary', name: 'Primary', prefix: '', firstNo: 12, manual: false, isDefault: true, active: true, segments: [{ type: 'literal', value: 'JE' }, { type: 'year' }, { type: 'sequence', padding: 4 }] },
 ];
 
 export const newJeLine = (patch: Partial<JeLine> = {}): JeLine => ({
@@ -250,9 +256,9 @@ function usdSalesChain(): JournalEntry[] {
  * module's grJournal / apJournal / paymentJournal give it (lines from sikat-erp purchasing).
  */
 const usdPurchaseChain = (): JournalEntry[] => [
-  historyEntry('je-009', 9, { origin: 'PD', originNo: 280001, originId: 'gr-001', postingDate: '2026-09-01', remarks: 'Goods Receipt PO – BP-0017', lines: [['1310', 3459951.36, 0], ['2025', 0, 3459951.36]] }),
-  historyEntry('je-010', 10, { origin: 'PU', originNo: 290001, originId: 'ap-001', postingDate: '2026-09-02', remarks: 'A/P Invoices – BP-0017', partnerId: 'bp-017', controlAccount: '2010', lines: [['2025', 3459951.36, 0], ['2010', 0, 3459951.36]] }),
-  historyEntry('je-011', 11, { origin: 'PS', originNo: 510004, originId: 'op-004', postingDate: '2026-10-01', remarks: 'Outgoing – BP-0017', partnerId: 'bp-017', controlAccount: '2010', lines: [['2010', 3459951.36, 0], ['8020', 21802.33, 0], ['1018', 0, 3481753.69]] }),
+  historyEntry('je-009', 9, { origin: 'PD', originNo: 1, originId: 'gr-001', postingDate: '2026-09-01', remarks: 'Goods Receipt PO – BP-0017', lines: [['1310', 3459951.36, 0], ['2025', 0, 3459951.36]] }),
+  historyEntry('je-010', 10, { origin: 'PU', originNo: 1, originId: 'ap-001', postingDate: '2026-09-02', remarks: 'A/P Invoices – BP-0017', partnerId: 'bp-017', controlAccount: '2010', lines: [['2025', 3459951.36, 0], ['2010', 0, 3459951.36]] }),
+  historyEntry('je-011', 11, { origin: 'PS', originNo: 16, originId: 'op-004', postingDate: '2026-10-01', remarks: 'Outgoing – BP-0017', partnerId: 'bp-017', controlAccount: '2010', lines: [['2010', 3459951.36, 0], ['8020', 21802.33, 0], ['1018', 0, 3481753.69]] }),
 ];
 
 export const SEED_JOURNAL_ENTRIES: JournalEntry[] = [
@@ -279,7 +285,7 @@ export const SEED_JOURNAL_ENTRIES: JournalEntry[] = [
   je('je-003', 3, 3, {
     remarks: 'Inventory Posting – WH-MNL month-end count',
     origin: 'IQ',
-    originNo: '320001',
+    originNo: '1',
     originId: 'ip-001',
     ref2: 'CS-MNL-2026-09',
     lines: [row('je-003-1', '5050', 78564, 0), row('je-003-2', '1310', 0, 78564)],

@@ -157,6 +157,9 @@ export function PartnerList({ scope }: { scope: PartnerScope }) {
     <Panel className="flex-1">
       <PanelHeader
         icon={config.icon}
+        iconIntent="default"
+        iconShape="rounded"
+        iconSize={32} iconVariant="outline"
         title={presets.menu}
         showSearch
         searchLabel={`Search ${config.title.toLowerCase()}`}
@@ -170,7 +173,8 @@ export function PartnerList({ scope }: { scope: PartnerScope }) {
           <Button
             intent="primary"
             variant="solid"
-            size="large"
+            size="medium"
+            shape="pill"
             leadingIcon={<Icon size={20}>add</Icon>}
             onClick={() => navigate(`${config.basePath}/new`)}
           >

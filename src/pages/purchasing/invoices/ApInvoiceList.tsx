@@ -87,7 +87,7 @@ export function ApInvoiceList() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [invoices, presets.filter, query, sort, codes]);
 
-  const open = (inv: ApInvoice) => navigate(`${AP_LIST_PATH}/${inv.id}`);
+  const open = (inv: ApInvoice) => navigate(`${AP_LIST_PATH}/${inv.docNum ? apNumber(inv) : inv.id}`);
 
   const columns: TableColumn<ApInvoice>[] = [
     {
@@ -134,9 +134,12 @@ export function ApInvoiceList() {
           setPage(1);
         }}
         icon="request_quote"
+        iconIntent="default"
+        iconShape="rounded"
+        iconSize={32} iconVariant="outline"
         title={presets.menu}
         actions={
-          <Button intent="primary" variant="solid" size="large" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${AP_LIST_PATH}/new`)}>
+          <Button intent="primary" variant="solid" size="medium" shape="pill" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${AP_LIST_PATH}/new`)}>
             New A/P invoice
           </Button>
         }

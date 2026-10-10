@@ -143,10 +143,10 @@ export interface InventoryPosting {
 }
 
 export const COUNT_SERIES: DocumentSeries[] = [
-  { id: 'ic-primary', name: 'Primary', prefix: 'IC-', firstNo: 310001, manual: false, isDefault: true, active: true },
+  { id: 'ic-primary', name: 'Primary', prefix: '', firstNo: 4, manual: false, isDefault: true, active: true, segments: [{ type: 'literal', value: 'IC' }, { type: 'year' }, { type: 'sequence', padding: 4 }] },
 ];
 export const POSTING_SERIES: DocumentSeries[] = [
-  { id: 'ip-primary', name: 'Primary', prefix: 'IP-', firstNo: 320001, manual: false, isDefault: true, active: true },
+  { id: 'ip-primary', name: 'Primary', prefix: '', firstNo: 6, manual: false, isDefault: true, active: true, segments: [{ type: 'literal', value: 'IP' }, { type: 'year' }, { type: 'sequence', padding: 4 }] },
 ];
 
 export const DEFAULT_POSTING_JOURNAL_REMARK = 'Inventory Posting';
@@ -288,7 +288,7 @@ export const SEED_COUNTINGS: InventoryCounting[] = [
     ...blankCounting('2026-09-30', '18:00', employeeId('Carla Uy')),
     id: 'ic-001',
     counters: [newCounter({ id: 'cnt-mnl-1', type: 'User', employeeId: employeeId('Carla Uy') })],
-    docNum: 310001,
+    docNum: 1,
     status: 'Closed',
     reference: 'CS-MNL-2026-09',
     remarks: 'September month-end cycle count, Pasig warehouse, aisle A. Reviewed and approved by Andrea Ramos, 30 Sep 2026.',
@@ -298,7 +298,7 @@ export const SEED_COUNTINGS: InventoryCounting[] = [
   {
     ...blankCounting('2026-10-05', '07:30', employeeId('Dino Pascual')),
     id: 'ic-002',
-    docNum: 310002,
+    docNum: 2,
     counters: [newCounter({ id: 'cnt-ceb-1', employeeId: employeeId('Dino Pascual') })],
     reference: 'CS-CEB-2026-10',
     remarks: 'Cebu store opening count before trading hours. Two lines still to count.',
@@ -307,7 +307,7 @@ export const SEED_COUNTINGS: InventoryCounting[] = [
   {
     ...blankCounting('2026-10-04', '20:00', employeeId('Ben Salazar')),
     id: 'ic-003',
-    docNum: 310003,
+    docNum: 3,
     countingType: 'multiple',
     counters: [
       newCounter({ id: 'cnt-dvo-1', type: 'User', employeeId: employeeId('Ben Salazar') }),
@@ -356,7 +356,7 @@ export const SEED_POSTINGS: InventoryPosting[] = [
   {
     ...blankPosting('2026-09-30', '18:30'),
     id: 'ip-001',
-    docNum: 320001,
+    docNum: 1,
     countDate: '2026-09-30',
     countTime: '18:00',
     reference: 'CS-MNL-2026-09',
@@ -383,12 +383,20 @@ export const SEED_POSTINGS: InventoryPosting[] = [
   },
   // Counts posted straight to stock (no count sheet), where the item had no other movement after
   // the count: what the system held then is today's In stock less the variance (counted = In stock).
-  directPosting('ip-002', 320002, '2026-08-31', 'CS-STORES-2026-08', 'August spot checks at two stores. Approved by the area manager.', [
+  directPosting('ip-002', 2, '2026-08-31', 'CS-STORES-2026-08', 'August spot checks at two stores. Approved by the area manager.', [
     ['ACC-PWR20', 'ST-050', -1],
     ['ACC-CBL1M', 'ST-012', 1],
   ]),
-  directPosting('ip-003', 320003, '2026-10-07', 'CS-MNL-2026-10-07', 'MagSafe chargers crushed on the shelf in Pasig, written off; one Lightning adapter missing at ST-008.', [
+  directPosting('ip-003', 3, '2026-10-07', 'CS-MNL-2026-10-07', 'MagSafe chargers crushed on the shelf in Pasig, written off; one Lightning adapter missing at ST-008.', [
     ['ACC-MAGSF1', 'WH-MNL', -2],
     ['ACC-USBCL', 'ST-008', -1],
+  ]),
+  directPosting('ip-004', 4, '2026-09-20', 'CS-CEB-2026-09', 'September cycle count, Cebu store. Stock confirmed by Dino Pascual.', [
+    ['ACC-MAGSF1', 'WH-CEB', 0],
+    ['ACC-PWR20', 'WH-CEB', 0],
+    ['ACC-CBL1M', 'WH-CEB', 0],
+  ]),
+  directPosting('ip-005', 5, '2026-09-20', 'CS-DVO-2026-09', 'September cycle count, Davao store. Stock confirmed.', [
+    ['ACC-CBL1M', 'WH-DVO', 0],
   ]),
 ];

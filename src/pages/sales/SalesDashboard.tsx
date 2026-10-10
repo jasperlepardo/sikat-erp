@@ -43,7 +43,7 @@ export function SalesDashboard() {
     {
       key: 'docNum',
       header: 'No.',
-      cell: (so) => <TableLink onClick={() => navigate(`${SO_LIST_PATH}/${so.id}`)}>{soNumber(so)}</TableLink>,
+      cell: (so) => <TableLink onClick={() => navigate(`${SO_LIST_PATH}/${so.docNum ? soNumber(so) : so.id}`)}>{soNumber(so)}</TableLink>,
     },
     {
       key: 'customerName',
@@ -59,7 +59,7 @@ export function SalesDashboard() {
     {
       key: 'docNum',
       header: 'No.',
-      cell: (a) => <TableLink onClick={() => navigate(`${AR_LIST_PATH}/${a.id}`)}>{arNumber(a)}</TableLink>,
+      cell: (a) => <TableLink onClick={() => navigate(`${AR_LIST_PATH}/${a.docNum ? arNumber(a) : a.id}`)}>{arNumber(a)}</TableLink>,
     },
     {
       key: 'customerName',

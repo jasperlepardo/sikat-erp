@@ -666,7 +666,7 @@ for (const item of APPLE_ITEMS) {
 /** Non-stock sales items: AppleCare plans and store gift certificates. */
 const service = (id: string, group: string, patch: Partial<Item>): Item =>
   seed(id, group, {
-    itemType: 'Items', inventoryUom: 'plan', purchasingUom: 'plan', salesUom: 'plan', inventoryItem: false, purchaseItem: false,
+    itemType: 'Items', inventoryUom: 'plan', purchasingUom: 'plan', salesUom: 'plan', inventoryItem: false, purchaseItem: false, salesItem: true,
     purchaseTaxGroup: 'P-VAT12S', withholdingGroup: 'WH-SVC', warehouses: [], cycleCountDays: 0, planningMethod: 'None',
     ...patch,
   });
@@ -749,11 +749,11 @@ export const SEED_ITEMS: Item[] = [
   seed('itm-016', 'Services', {
     itemNo: 'SVC-SETUP', name: 'Device setup & data transfer', description: 'Device setup & data transfer', itemType: 'Labor', inventoryUom: 'hour', purchaseItem: false,
     purchaseTaxGroup: 'P-VAT12S', withholdingGroup: 'WH-SVC',
-    inventoryItem: false, basePrice: 990, commissionGroup: 'cm-std', cycleCountDays: 0, warehouses: [],
+    salesItem: true, inventoryItem: false, basePrice: 990, commissionGroup: 'cm-std', cycleCountDays: 0, warehouses: [],
   }),
   seed('itm-017', 'Services', {
     itemNo: 'SVC-DLV-TRIP', name: 'Same-day delivery', description: 'Same-day delivery (Metro Manila)', itemType: 'Travel', inventoryUom: 'trip',
-    purchaseItem: false, inventoryItem: false, basePrice: 350, cycleCountDays: 0, warehouses: [],
+    purchaseItem: false, salesItem: true, inventoryItem: false, basePrice: 350, cycleCountDays: 0, warehouses: [],
     purchaseTaxGroup: 'P-VAT12S', withholdingGroup: 'WH-SVC',
   }),
   seed('itm-018', 'Rent & Leases', {

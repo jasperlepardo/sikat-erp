@@ -1,8 +1,12 @@
-import { FieldStack, bind } from '../../../components/form/fields';
+import { FieldStack, Section, bind } from '../../../components/form/fields';
 import { MasterList, statusColumn, uniqueRequired, type ListRoute } from '../../../components/form/MasterList';
 import type { DocumentSeries } from '../../../mocks/common';
 import { poSeries } from '../../../services/allSeries';
 import { newId, useCollectionRows } from '../../../services/useCollectionRows';
+import { DOC_TYPES } from '../../../services/allSeries';
+import { ConditionBuilder } from '../components/ConditionBuilder';
+const PO_CONDITION_FIELDS = DOC_TYPES.find((d) => d.key === 'purchase-orders')?.conditionFields ?? [];
+import { SegmentBuilder } from '../components/SegmentBuilder';
 
 const blank = (): DocumentSeries => ({
   id: newId('ser'),
@@ -55,6 +59,7 @@ export function DocumentSeriesTab(route: ListRoute) {
       onSave={async (s) => save(s)}
       editor={(s, update, errors, isNew) => {
         const f = bind(s, update);
+        const useSegments = !!(s.segments?.length);
         return (
           <FieldStack>
             {f.text('name', 'Name', {
@@ -63,14 +68,17 @@ export function DocumentSeriesTab(route: ListRoute) {
               disabled: !isNew,
               hint: !isNew ? 'Renaming changes how existing POs display their number.' : undefined,
             })}
-            {!s.manual
-              ? f.num('firstNo', 'First number', {
-                  error: errors.firstNo,
-                  hint: 'New numbers start here; existing PO numbers are not affected.',
-                })
-              : null}
+            {!useSegments ? f.text('prefix', 'Prefix', { placeholder: 'e.g. PO-', hint: 'Displayed before the running number.' }) : null}
             {f.check('manual', 'Manual numbering')}
+            {!s.manual ? f.num('firstNo', 'First number', { error: errors.firstNo, hint: 'New numbers start here; existing PO numbers are not affected.' }) : null}
+            {f.check('isDefault', 'Default for new documents')}
             {f.status('active', 'Status')}
+            <Section icon="filter_list" title="Auto-select when">
+              <ConditionBuilder conditions={s.conditions ?? []} fields={PO_CONDITION_FIELDS} onChange={(conditions) => update({ conditions })} />
+            </Section>
+            <Section icon="tag" title="Number format">
+              <SegmentBuilder segments={s.segments ?? []} seriesName={s.name} onChange={(segments) => update({ segments, prefix: segments.length ? '' : s.prefix })} />
+            </Section>
           </FieldStack>
         );
       }}

@@ -25,7 +25,6 @@ import { plId, termId } from './masters';
 import { SEED_SALES_ORDERS, seedRateOn, type SalesOrder } from './salesOrders';
 import type { PoReference } from './purchaseOrders';
 import { SEED_ITEMS } from './items';
-import { RETAIL_SALES } from './retailHistory';
 
 export type DnStatus = 'Draft' | 'Open' | 'Closed' | 'Cancelled';
 export const DN_STATUSES: DnStatus[] = ['Draft', 'Open', 'Closed', 'Cancelled'];
@@ -130,7 +129,7 @@ export interface Delivery {
 }
 
 export const DN_SERIES: DocumentSeries[] = [
-  { id: 'dns-primary', name: 'Primary', prefix: 'DN-', firstNo: 420001, manual: false, isDefault: true, active: true },
+  { id: 'dns-primary', name: 'Primary', prefix: '', firstNo: 13, manual: false, isDefault: true, active: true, segments: [{ type: 'literal', value: 'DN' }, { type: 'year' }, { type: 'sequence', padding: 4 }] },
 ];
 
 export const newDnLine = (patch: Partial<DnLine> = {}): DnLine => ({
@@ -276,7 +275,7 @@ function fromOrder(id: string, docNum: number, orderId: string, lineIds: string[
         baseType: 'SO',
         baseId: order.id,
         baseLineId: l.id,
-        baseDocNo: `${order.seriesId === 'sos-gov' ? 'Government' : 'Primary'} ${order.docNum}`,
+        baseDocNo: `SO-${order.postingDate.slice(0, 4)}-${String(order.docNum).padStart(4, '0')}`,
         baseRow: order.lines.indexOf(l) + 1,
         // History went out at the item's cost.
         unitCostLc: SEED_ITEMS.find((i) => i.id === l.itemId)?.itemCost ?? 0,
@@ -287,14 +286,14 @@ function fromOrder(id: string, docNum: number, orderId: string, lineIds: string[
 }
 
 export const SEED_DELIVERIES: Delivery[] = [
-  fromOrder('dn-001', 420001, 'so-001', ['so-001-2'], {
+  fromOrder('dn-001', 1, 'so-001', ['so-001-2'], {
     postingDate: '2026-09-29',
     documentDate: '2026-09-29',
     deliveryDate: '2026-09-29',
     trackingNo: 'LBC-7710-2290-14',
     remarks: 'First 8 MacBook Airs, delivered to Bayanihan head office. Balance to follow.',
   }),
-  fromOrder('dn-002', 420002, 'so-004', ['so-004-1'], {
+  fromOrder('dn-002', 2, 'so-004', ['so-004-1'], {
     postingDate: '2026-08-21',
     documentDate: '2026-08-21',
     deliveryDate: '2026-08-21',
@@ -302,7 +301,7 @@ export const SEED_DELIVERIES: Delivery[] = [
     closeDate: '2026-08-21',
     remarks: 'Delivered in full and invoiced.',
   }),
-  fromOrder('dn-003', 420003, 'so-005', ['so-005-1', 'so-005-2'], {
+  fromOrder('dn-003', 3, 'so-005', ['so-005-1', 'so-005-2'], {
     postingDate: '2026-08-28',
     documentDate: '2026-08-28',
     deliveryDate: '2026-08-28',
@@ -311,7 +310,7 @@ export const SEED_DELIVERIES: Delivery[] = [
     trackingNo: '2GO-CEB-88140223',
     remarks: 'Shipped to the Mactan studio by 2GO Express; invoiced the same day.',
   }),
-  fromOrder('dn-005', 420005, 'so-009', ['so-009-1'], {
+  fromOrder('dn-005', 4, 'so-009', ['so-009-1'], {
     postingDate: '2026-09-10',
     documentDate: '2026-09-10',
     deliveryDate: '2026-09-10',
@@ -321,7 +320,7 @@ export const SEED_DELIVERIES: Delivery[] = [
     trackingNo: 'LBC-7740-1185-02',
     remarks: 'Delivered to Harbourline’s BGC office; invoiced the same day.',
   }),
-  fromOrder('dn-004', 420004, 'so-006', ['so-006-1'], {
+  fromOrder('dn-004', 5, 'so-006', ['so-006-1'], {
     postingDate: '2026-09-18',
     documentDate: '2026-09-18',
     deliveryDate: '2026-09-18',
@@ -329,8 +328,8 @@ export const SEED_DELIVERIES: Delivery[] = [
     closeDate: '2026-09-18',
     remarks: 'First 6 of 10 iPhones, picked up by Northgate’s admin. Invoiced on delivery.',
   }),
-  // Invoiced in full (A/R invoices 430006–430009), so closed.
-  fromOrder('dn-006', 420006, 'so-012', ['so-012-1'], {
+  // Invoiced in full (A/R invoices SI-2026-0006 through SI-2026-0010), so closed.
+  fromOrder('dn-006', 6, 'so-012', ['so-012-1'], {
     postingDate: '2026-10-06',
     documentDate: '2026-10-06',
     deliveryDate: '2026-10-06',
@@ -338,7 +337,7 @@ export const SEED_DELIVERIES: Delivery[] = [
     closeDate: '2026-10-06',
     remarks: 'First 24 of 40 iPads, delivered to the DepEd Pasig division office.',
   }),
-  fromOrder('dn-007', 420007, 'so-013', ['so-013-1', 'so-013-2'], {
+  fromOrder('dn-007', 7, 'so-013', ['so-013-1', 'so-013-2'], {
     postingDate: '2026-09-04',
     documentDate: '2026-09-04',
     deliveryDate: '2026-09-04',
@@ -346,34 +345,7 @@ export const SEED_DELIVERIES: Delivery[] = [
     closeDate: '2026-09-04',
     remarks: '23 MacBook Airs delivered to Northgate’s admin offices.',
   }),
-  fromOrder('dn-008', 420008, 'so-014', ['so-014-1'], {
-    postingDate: '2026-09-06',
-    documentDate: '2026-09-06',
-    deliveryDate: '2026-09-06',
-    status: 'Closed',
-    closeDate: '2026-09-06',
-    remarks: 'Walk-in pick-up at the Cebu store.',
-  }),
-  fromOrder('dn-009', 420009, 'so-015', ['so-015-1', 'so-015-2'], {
-    postingDate: '2026-09-13',
-    documentDate: '2026-09-13',
-    deliveryDate: '2026-09-13',
-    status: 'Closed',
-    closeDate: '2026-09-13',
-    remarks: 'Walk-in pick-up at the Davao store.',
-  }),
-  // Store walk-in pick-ups (mocks/retailHistory.ts), invoiced the same day.
-  ...RETAIL_SALES.map((r) =>
-    fromOrder(`dn-${r.id}`, 420010 + r.n, r.id, r.lines.map((_, i) => `${r.id}-${i + 1}`), {
-      postingDate: r.date,
-      documentDate: r.date,
-      deliveryDate: r.date,
-      status: 'Closed',
-      closeDate: r.date,
-      remarks: `Walk-in pick-up at ${r.store}.`,
-    }),
-  ),
-  // Corporate orders (so-c01–so-c05), numbered after the walk-in pick-ups; all invoiced.
+  // Corporate orders (so-c01–so-c05), all invoiced.
   ...([
     ['dn-c01', 'so-c01', ['so-c01-1'], '2026-08-14', 'Delivered to Clarkfield’s Clark office.'],
     ['dn-c02', 'so-c02', ['so-c02-1', 'so-c02-2'], '2026-08-29', 'Shipped to the Mactan studio by 2GO Express.'],
@@ -381,8 +353,8 @@ export const SEED_DELIVERIES: Delivery[] = [
     ['dn-c04', 'so-c04', ['so-c04-1'], '2026-09-11', 'Picked up by the cooperative’s treasurer.'],
     ['dn-c05', 'so-c05', ['so-c05-1'], '2026-10-02', 'First 12 of 20, delivered to the institute’s Pasig office.'],
   ] as const).map(([id, so, lines, date, remarks], k) =>
-    fromOrder(id, 420010 + RETAIL_SALES.length + k, so, [...lines], { postingDate: date, documentDate: date, deliveryDate: date, status: 'Closed', closeDate: date, remarks }),
+    fromOrder(id, 8 + k, so, [...lines], { postingDate: date, documentDate: date, deliveryDate: date, status: 'Closed', closeDate: date, remarks }),
   ),
 ];
-// The closed deliveries were invoiced in full (A/R invoices 430001–430003).
+// The closed deliveries were invoiced in full (A/R invoices SI-2026-0001 through SI-2026-0003).
 for (const d of SEED_DELIVERIES.filter((x) => x.status === 'Closed')) d.lines.forEach((l) => (l.invoicedQty = l.quantity));

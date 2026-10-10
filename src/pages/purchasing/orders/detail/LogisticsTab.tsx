@@ -19,16 +19,9 @@ type AddressKey = 'shipTo' | 'billTo';
 const OURS = 'ours';
 const WH_PREFIX = 'wh:';
 
-/** Builds List.Card field rows from a postal address. */
-function addressFields(a: PostalAddress): { label: string; value: string }[] {
-  return [
-    { label: 'Address', value: a.addressLine },
-    { label: 'Barangay', value: a.block },
-    { label: 'City', value: a.city },
-    ...(a.countryCode === 'PH' ? [{ label: 'Province', value: a.province }] : []),
-    { label: 'ZIP code', value: a.zip },
-    ...(a.countryCode !== 'PH' ? [{ label: 'Country', value: countryName(a.countryCode) }] : []),
-  ].filter((x) => !!x.value);
+function addressFields(a: PostalAddress) {
+  const line = [a.addressLine, a.block, a.city, a.countryCode === 'PH' ? a.province : countryName(a.countryCode), a.zip].filter(Boolean).join(', ');
+  return line ? [{ label: 'Address', value: line }] : [];
 }
 
 const locationIcon = <Icon size={16}>location_on</Icon>;
@@ -209,7 +202,7 @@ export function LogisticsTab({ draft, update, m, ctx, onVendorSaved }: PoTabProp
                 <AddressFields
                   value={editingAddr.address}
                   onChange={(p) => setEditingAddr({ ...editingAddr, address: { ...editingAddr.address, ...p } })}
-                  cols={1}
+                  stack
                 />
                 <Text variant="small" tone="muted">
                   Changes apply to this PO only and won't affect the address book.

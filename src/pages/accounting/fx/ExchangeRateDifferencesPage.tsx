@@ -131,8 +131,10 @@ export function ExchangeRateDifferencesPage() {
     <Panel className="flex-1">
       <PanelHeader
         icon="currency_exchange"
+        iconIntent="default"
+        iconShape="rounded"
+        iconSize={32} iconVariant="outline"
         title="Exchange Rate Differences"
-        subcopy="Revalue open foreign-currency A/R invoices and A/P bills at a period-end rate. The unrealized difference posts to 7020 / 8020 and reverses the next day; payments still realize against the booked rate."
       />
       <Panel.Body className="flex flex-col gap-2">
         {notice ? <Alert intent="success" variant="outline" title="Revaluation posted" onClose={() => setNotice(undefined)}>{notice}</Alert> : null}

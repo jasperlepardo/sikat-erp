@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { Alert, Badge, Button, Combobox, Form, FormField, IconButton, List, Panel, PanelHeader, panelHeaderIcons, Tabs, Text } from '@jasperlepardo/sikat-design-system';
+import { Alert, Badge, Button, ButtonGroup, Combobox, Form, FormField, IconButton, List, Panel, PanelHeader, panelHeaderIcons, Tabs, Text } from '@jasperlepardo/sikat-design-system';
 import { AttachmentsCard } from '../../../components/form/AttachmentsCard';
 import { Fields, ReadOnly, Section, bind, type Errors } from '../../../components/form/fields';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../components/form/ProblemsAlert';
@@ -121,7 +121,7 @@ function PostingForm() {
   if (draft === null) {
     return (
       <Panel className="flex-1">
-        <PanelHeader icon="fact_check" title="Posting not found" />
+        <PanelHeader icon="fact_check" iconIntent="default" iconShape="rounded" iconSize={32} iconVariant="outline" title="Posting not found" />
         <Panel.Body>
           <Button onClick={() => navigate(POSTING_LIST_PATH)}>Back to inventory postings</Button>
         </Panel.Body>
@@ -201,18 +201,21 @@ function PostingForm() {
         <PanelHeader
           type="details"
           icon="fact_check"
+          iconIntent="default"
+          iconShape="rounded"
+          iconSize={32}
+          iconVariant="outline"
           title={added ? `Inventory posting ${postingNumber(draft)}` : 'New inventory posting'}
-          subcopy={isNew ? 'Adjust stock to what was counted, and book the difference.' : undefined}
-          leading={
+          trailing={
             isNew ? undefined : (
-              <>
-                <IconButton type="button" label="Next" intent="default" variant="solid" size="large" disabled={!nextId} onClick={() => navigate(`${POSTING_LIST_PATH}/${nextId}`)}>
-                  {panelHeaderIcons.arrowDownward}
-                </IconButton>
-                <IconButton type="button" label="Previous" intent="default" variant="solid" size="large" disabled={!prevId} onClick={() => navigate(`${POSTING_LIST_PATH}/${prevId}`)}>
+              <ButtonGroup type="enclosed" intent="white" buttonIntent="default" buttonVariant="link">
+                <IconButton type="button" label="Previous" size="small" shape="pill" disabled={!prevId} onClick={() => navigate(`${POSTING_LIST_PATH}/${prevId}`)}>
                   {panelHeaderIcons.arrowUpward}
                 </IconButton>
-              </>
+                <IconButton type="button" label="Next" size="small" shape="pill" disabled={!nextId} onClick={() => navigate(`${POSTING_LIST_PATH}/${nextId}`)}>
+                  {panelHeaderIcons.arrowDownward}
+                </IconButton>
+              </ButtonGroup>
             )
           }
           tabs={
@@ -229,10 +232,10 @@ function PostingForm() {
           status={added ? <Badge size="small" intent="success">Posted</Badge> : undefined}
           actions={
             <>
-              <Button type="button" intent="default" variant="solid" size="large" onClick={() => navigate(POSTING_LIST_PATH)}>
+              <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(POSTING_LIST_PATH)}>
                 Cancel
               </Button>
-              <Button type="submit" intent="primary" variant="solid" size="large" disabled={saving}>
+              <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
                 {saving ? 'Saving…' : added ? 'Save' : 'Add'}
               </Button>
             </>

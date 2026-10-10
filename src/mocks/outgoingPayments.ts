@@ -140,7 +140,7 @@ export interface OutgoingPayment {
 }
 
 export const PAYMENT_SERIES: DocumentSeries[] = [
-  { id: 'ops-primary', name: 'Primary', prefix: 'PAY-', firstNo: 510001, manual: false, isDefault: true, active: true },
+  { id: 'ops-primary', name: 'Primary', prefix: '', firstNo: 22, manual: false, isDefault: true, active: true, segments: [{ type: 'literal', value: 'PAY' }, { type: 'year' }, { type: 'sequence', padding: 4 }] },
 ];
 
 

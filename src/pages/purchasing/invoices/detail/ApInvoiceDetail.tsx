@@ -5,6 +5,7 @@ import {
   Alert,
   Badge,
   Button,
+  ButtonGroup,
   Combobox,
   Form,
   FormField,
@@ -34,7 +35,7 @@ import {
   addApInvoice,
   apJournal,
   apNumber,
-  apSeriesOf,
+
   apTotals,
   cancelApInvoice,
   findDuplicateInvoice,
@@ -70,6 +71,7 @@ import { drawableAmount, listDownPayments } from '../../../../services/apDownPay
 import { ApAccounting } from './ApAccounting';
 import { ApContents } from './ApContents';
 import { linesFromReceipt, orderNumbersOf, toApLine, type ApContext, type ApDraft, type ApMasters } from './types';
+import { useDocTitle } from '../../../../services/useDocTitle';
 
 export const AP_LIST_PATH = '/purchasing/bills';
 
@@ -211,18 +213,19 @@ function ApInvoiceForm() {
     if (isNew || !id) return;
     let cancelled = false;
     getApInvoice(id).then((inv) => !cancelled && setDraft(inv ?? null));
-    listApInvoices().then((all) => !cancelled && setSiblings([...all].sort((a, b) => b.postingDate.localeCompare(a.postingDate)).map((r) => r.id)));
+    listApInvoices().then((all) => !cancelled && setSiblings([...all].sort((a, b) => b.postingDate.localeCompare(a.postingDate)).map((inv) => inv.docNum ? apNumber(inv) : inv.id)));
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, isNew]);
 
+  useDocTitle(draft?.docNum ? (isNew ? 'New A/P invoice' : draft.docNum ? apNumber(draft) : 'Draft A/P invoice') : undefined);
   if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading A/P invoice…</Text>;
   if (draft === null) {
     return (
       <Panel className="flex-1">
-        <PanelHeader icon="request_quote" title="A/P invoice not found" />
+        <PanelHeader icon="request_quote" iconIntent="default" iconShape="rounded" iconSize={32} iconVariant="outline" title="A/P invoice not found" />
         <Panel.Body>
           <Button onClick={() => navigate(AP_LIST_PATH)}>Back to bills</Button>
         </Panel.Body>
@@ -233,7 +236,7 @@ function ApInvoiceForm() {
   const ctx = buildGrContext(draft, m);
   const { vendor } = ctx;
   const added = draft.status !== 'Draft';
-  const at = draft.id ? siblings.indexOf(draft.id) : -1;
+  const at = draft.id ? siblings.indexOf(draft.docNum ? apNumber(draft as ApInvoice) : draft.id) : -1;
   const prevId = at > 0 ? siblings[at - 1] : undefined;
   const nextId = at >= 0 && at < siblings.length - 1 ? siblings[at + 1] : undefined;
   const errors: Errors = Object.fromEntries(problems.map((p) => [p.key, p.message]));
@@ -394,7 +397,7 @@ function ApInvoiceForm() {
 
   const allCurrencies = vendor?.currency === ALL_CURRENCIES;
   const title = isNew ? 'New A/P invoice' : added ? apNumber(draft) : 'Draft A/P invoice';
-  const series = apSeriesOf(draft.seriesId);
+
   const code = draft.currency;
   // Paid down payment requests of this vendor not yet drawn, in this currency.
   const drawable = m.downPayments
@@ -408,18 +411,22 @@ function ApInvoiceForm() {
         <PanelHeader
           type="details"
           icon="request_quote"
+          iconIntent="default"
+          iconShape="rounded"
+          iconSize={32} iconVariant="outline"
           title={title}
-          subcopy={isNew ? "Record a vendor's bill." : undefined}
-          leading={
+          trailing={
             isNew ? undefined : (
-              <>
-                <IconButton type="button" label="Next" intent="default" variant="solid" size="large" disabled={!nextId} onClick={() => navigate(`${AP_LIST_PATH}/${nextId}`)}>
-                  {panelHeaderIcons.arrowDownward}
-                </IconButton>
-                <IconButton type="button" label="Previous" intent="default" variant="solid" size="large" disabled={!prevId} onClick={() => navigate(`${AP_LIST_PATH}/${prevId}`)}>
+              <ButtonGroup type="enclosed" intent="white" buttonIntent="default" buttonVariant="link">
+                <IconButton type="button" label="Previous" size="small"
+                  shape="pill" disabled={!prevId} onClick={() => navigate(`${AP_LIST_PATH}/${prevId}`)}>
                   {panelHeaderIcons.arrowUpward}
                 </IconButton>
-              </>
+                <IconButton type="button" label="Next" size="small"
+                  shape="pill" disabled={!nextId} onClick={() => navigate(`${AP_LIST_PATH}/${nextId}`)}>
+                  {panelHeaderIcons.arrowDownward}
+                </IconButton>
+              </ButtonGroup>
             )
           }
           tabs={<Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={PAGES.map((p) => ({ ...p, disabled: isNew && p.value !== 'details' }))} />}
@@ -433,11 +440,11 @@ function ApInvoiceForm() {
           }
           actions={
             <>
-              <Button type="button" intent="default" variant="solid" size="large" onClick={() => navigate(AP_LIST_PATH)}>
+              <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(AP_LIST_PATH)}>
                 {added ? 'Back' : 'Cancel'}
               </Button>
               {menu.length ? <MoreMenu items={menu} /> : null}
-              <Button type="submit" intent="primary" variant="solid" size="large" disabled={saving}>
+              <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
                 {saving ? 'Saving…' : added ? 'Save' : 'Add'}
               </Button>
             </>
@@ -518,10 +525,10 @@ function ApInvoiceForm() {
                 <Section icon="tag" title="Document">
                   <Fields>
                     <FormField label="No." tooltip={added ? undefined : 'Assigned from the series when the invoice is added.'}>
-                      {(p) => (
+                      {() => (
                         <div className="flex gap-1">
                           <Select aria-label="Series" className="w-40" disabled={added} options={AP_SERIES.map((s) => ({ value: s.id, label: s.name }))} value={draft.seriesId} onValueChange={(seriesId) => update({ seriesId })} />
-                          <TextField {...p} className="flex-1" readOnly placeholder={`Next ${series.name} number`} value={draft.docNum ? String(draft.docNum) : ''} />
+                          <span className="flex-1 self-center text-sm">{draft.docNum ? apNumber(draft) : <span className="text-(--color-text-placeholder)">Next number</span>}</span>
                         </div>
                       )}
                     </FormField>

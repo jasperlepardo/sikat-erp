@@ -76,7 +76,7 @@ function VoucherEntryForm() {
   if (draft === null || (!isNewVoucher && !voucher)) {
     return (
       <Panel className="flex-1">
-        <PanelHeader icon="folder_open" title="Voucher entry not found" />
+        <PanelHeader icon="folder_open" iconIntent="default" iconShape="rounded" iconSize={32} iconVariant="outline" title="Voucher entry not found" />
         <Panel.Body>
           <Button onClick={back}>Back</Button>
         </Panel.Body>
@@ -155,6 +155,10 @@ function VoucherEntryForm() {
         <PanelHeader
           type="details"
           icon="edit_note"
+          iconIntent="default"
+          iconShape="rounded"
+          iconSize={32}
+          iconVariant="outline"
           title={isNew ? 'New voucher entry' : `Entry ${draft.transNo}`}
           tabs={
             <Tabs
@@ -170,12 +174,12 @@ function VoucherEntryForm() {
           status={<Badge size="small" intent={posted ? 'default' : 'success'}>{posted ? 'Posted' : 'Open'}</Badge>}
           actions={
             <>
-              <Button type="button" intent="default" variant="solid" size="large" onClick={back}>
+              <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={back}>
                 {posted ? 'Back' : 'Cancel'}
               </Button>
               {menu.length ? <MoreMenu items={menu} /> : null}
               {posted ? null : (
-                <Button type="submit" intent="primary" variant="solid" size="large" disabled={saving}>
+                <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
                   {saving ? 'Saving…' : isNewVoucher ? 'Add to new voucher' : 'Save to voucher'}
                 </Button>
               )}

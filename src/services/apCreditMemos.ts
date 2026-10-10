@@ -19,15 +19,20 @@ import { PURCHASING_HISTORY } from './purchasingHistory';
 const memos = createCollection<ApCreditMemo>('sikat-erp:ap-credit-memos:v5', PURCHASING_HISTORY.memos, 'cm');
 
 export const listCreditMemos = memos.list;
-export const getCreditMemo = memos.get;
+export async function getCreditMemo(idOrNumber: string) {
+  const direct = await memos.get(idOrNumber);
+  if (direct) return direct;
+  const all = await memos.list();
+  return all.find((m) => memoNumber(m) === idOrNumber) ?? null;
+}
 
 export type MemoInput = Omit<ApCreditMemo, 'id'> & { id?: string };
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
 /** "Primary 620004", or "Draft" before it's added. */
-export const memoNumber = (m: Pick<ApCreditMemo, 'seriesId' | 'docNum'>) =>
-  formatDocNum(seriesLookup(memoSeries, m.seriesId, MEMO_SERIES), m.docNum);
+export const memoNumber = (m: Pick<ApCreditMemo, 'seriesId' | 'docNum' | 'postingDate'>) =>
+  formatDocNum(seriesLookup(memoSeries, m.seriesId, MEMO_SERIES), m.docNum, m.postingDate);
 
 export const memoTotals = (
   m: Pick<ApCreditMemo, 'lines' | 'discountPct' | 'freight' | 'freightTaxCode'>,

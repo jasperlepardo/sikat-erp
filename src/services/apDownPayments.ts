@@ -9,15 +9,20 @@ import { PURCHASING_HISTORY } from './purchasingHistory';
 const requests = createCollection<DownPaymentRequest>('sikat-erp:ap-down-payments:v4', PURCHASING_HISTORY.downPayments, 'dp');
 
 export const listDownPayments = requests.list;
-export const getDownPayment = requests.get;
+export async function getDownPayment(idOrNumber: string) {
+  const direct = await requests.get(idOrNumber);
+  if (direct) return direct;
+  const all = await requests.list();
+  return all.find((d) => dprNumber(d) === idOrNumber) ?? null;
+}
 
 export type DprInput = Omit<DownPaymentRequest, 'id'> & { id?: string };
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
 /** "Primary 630004", or "Draft" before it's added. */
-export const dprNumber = (d: Pick<DownPaymentRequest, 'seriesId' | 'docNum'>) =>
-  formatDocNum(seriesLookup(dprSeries, d.seriesId, DPR_SERIES), d.docNum);
+export const dprNumber = (d: Pick<DownPaymentRequest, 'seriesId' | 'docNum' | 'postingDate'>) =>
+  formatDocNum(seriesLookup(dprSeries, d.seriesId, DPR_SERIES), d.docNum, d.postingDate);
 
 /**
  * Footer totals in the document currency. Total Payment Due = (Total Before Discount less the

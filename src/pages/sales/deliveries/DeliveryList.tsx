@@ -79,7 +79,7 @@ export function DeliveryList() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orders, presets.filter, query, sort, codes]);
 
-  const open = (so: Delivery) => navigate(`${DN_LIST_PATH}/${so.id}`);
+  const open = (so: Delivery) => navigate(`${DN_LIST_PATH}/${so.docNum ? dnNumber(so) : so.id}`);
   const onPage = rows.slice((page - 1) * pageSize, page * pageSize);
 
   const columns: TableColumn<Delivery>[] = [
@@ -121,9 +121,12 @@ export function DeliveryList() {
           setPage(1);
         }}
         icon="local_shipping"
+        iconIntent="default"
+        iconShape="rounded"
+        iconSize={32} iconVariant="outline"
         title={presets.menu}
         actions={
-          <Button intent="primary" variant="solid" size="large" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${DN_LIST_PATH}/new`)}>
+          <Button intent="primary" variant="solid" size="medium" shape="pill" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${DN_LIST_PATH}/new`)}>
             New delivery
           </Button>
         }

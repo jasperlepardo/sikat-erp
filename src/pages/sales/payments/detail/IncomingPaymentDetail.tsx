@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { Alert, Badge, Button, Combobox, Form, FormField, IconButton, List, Panel, PanelHeader, panelHeaderIcons, Radio, Select, Tabs, Text, TextField } from '@jasperlepardo/sikat-design-system';
+import { Alert, Badge, Button, ButtonGroup, Combobox, Form, FormField, IconButton, List, Panel, PanelHeader, panelHeaderIcons, Radio, Select, Tabs, Text, TextField } from '@jasperlepardo/sikat-design-system';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { Fields, ReadOnly, Section, bind, type Errors } from '../../../../components/form/fields';
 import { StatusField } from '../../../../components/form/StatusField';
@@ -43,12 +43,21 @@ import { listPartnersByRole } from '../../../../services/partners';
 import { projectDef } from '../../../settings/masterDefs';
 import { IncomingAccounts, IncomingDocuments } from './IncomingContents';
 import { IncomingMeansSection } from './IncomingMeansSection';
+import { SalesDocumentFlow } from '../../shared/SalesDocumentFlow';
+import { useDocTitle } from '../../../../services/useDocTitle';
 
 export const RC_LIST_PATH = '/sales/payments-received';
 export const RC_STATUS_INTENT: Record<IncomingStatus, 'default' | 'success' | 'danger'> = { Draft: 'default', Posted: 'success', Cancelled: 'danger' };
 
 type TabId = 'contents' | 'means' | 'attachments';
 const TAB_LABEL: Record<TabId, string> = { contents: 'Contents', means: 'Payment means', attachments: 'Attachments' };
+
+const PAGES = [
+  { value: 'details', label: 'Details' },
+  { value: 'transactions', label: 'Transactions' },
+  { value: 'activity', label: 'Activity' },
+] as const;
+type PageId = (typeof PAGES)[number]['value'];
 
 interface Masters {
   customers: Partner[];
@@ -101,6 +110,7 @@ function IncomingForm() {
 
   const [draft, setDraft] = useState<IncomingInput | null | undefined>(isNew ? blankIncomingPayment(todayISO()) : undefined);
   const [m, setM] = useState<Masters>();
+  const [page, setPage] = useState<PageId>('details');
   const [tab, setTab] = useState<TabId>('contents');
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
@@ -119,7 +129,7 @@ function IncomingForm() {
     });
     if (!isNew && id) {
       getIncomingPayment(id).then((p) => !cancelled && setDraft(p ?? null));
-      listIncomingPayments().then((all) => !cancelled && setSiblings([...all].sort((a, b) => b.postingDate.localeCompare(a.postingDate)).map((p) => p.id)));
+      listIncomingPayments().then((all) => !cancelled && setSiblings([...all].sort((a, b) => b.postingDate.localeCompare(a.postingDate)).map((p) => p.docNum ? incomingNumber(p) : p.id)));
       listJournalEntries().then((es) => !cancelled && setEntryId(es.find((e) => e.originId === id && !e.reverses)?.id));
     }
     return () => {
@@ -128,11 +138,12 @@ function IncomingForm() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, isNew]);
 
+  useDocTitle(draft?.docNum ? (isNew ? 'New incoming payment' : incomingNumber(draft)) : undefined);
   if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading payment…</Text>;
   if (draft === null) {
     return (
       <Panel className="flex-1">
-        <PanelHeader icon="savings" title="Incoming payment not found" />
+        <PanelHeader icon="savings" iconIntent="default" iconShape="rounded" iconSize={32} iconVariant="outline" title="Incoming payment not found" />
         <Panel.Body>
           <Button onClick={() => navigate(RC_LIST_PATH)}>Back to payments received</Button>
         </Panel.Body>
@@ -147,7 +158,7 @@ function IncomingForm() {
   const errors: Errors = Object.fromEntries(problems.map((p) => [p.key, p.message]));
   const journal = fx ? incomingJournal(draft, fx) : [];
   const due = amountDue(draft);
-  const at = draft.id ? siblings.indexOf(draft.id) : -1;
+  const at = draft.id ? siblings.indexOf(draft.docNum ? incomingNumber(draft as IncomingPayment) : draft.id) : -1;
   const prevId = at > 0 ? siblings[at - 1] : undefined;
   const nextId = at >= 0 && at < siblings.length - 1 ? siblings[at + 1] : undefined;
   const series = incomingSeriesOf(draft.seriesId);
@@ -252,36 +263,58 @@ function IncomingForm() {
         <PanelHeader
           type="details"
           icon="savings"
+          iconIntent="default"
+          iconShape="rounded"
+          iconSize={32} iconVariant="outline"
           title={title}
-          subcopy={isNew ? 'Record money received from a customer.' : undefined}
-          leading={
+          trailing={
             isNew ? undefined : (
-              <>
-                <IconButton type="button" label="Next" intent="default" variant="solid" size="large" disabled={!nextId} onClick={() => navigate(`${RC_LIST_PATH}/${nextId}`)}>
-                  {panelHeaderIcons.arrowDownward}
-                </IconButton>
-                <IconButton type="button" label="Previous" intent="default" variant="solid" size="large" disabled={!prevId} onClick={() => navigate(`${RC_LIST_PATH}/${prevId}`)}>
+              <ButtonGroup type="enclosed" intent="white" buttonIntent="default" buttonVariant="link">
+                <IconButton type="button" label="Previous" size="small"
+                  shape="pill" disabled={!prevId} onClick={() => navigate(`${RC_LIST_PATH}/${prevId}`)}>
                   {panelHeaderIcons.arrowUpward}
                 </IconButton>
-              </>
+                <IconButton type="button" label="Next" size="small"
+                  shape="pill" disabled={!nextId} onClick={() => navigate(`${RC_LIST_PATH}/${nextId}`)}>
+                  {panelHeaderIcons.arrowDownward}
+                </IconButton>
+              </ButtonGroup>
             )
           }
-          tabs={<Tabs variant="outline" value={tab} onValueChange={(v) => setTab(v as TabId)} items={(Object.keys(TAB_LABEL) as TabId[]).map((t) => ({ value: t, label: TAB_LABEL[t], badge: problems.some((p) => p.tab === t) ? '!' : t === 'attachments' && draft.attachments.length ? String(draft.attachments.length) : undefined }))} />}
+          tabs={<Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={PAGES.map((p) => ({ ...p, disabled: isNew && p.value !== 'details' }))} />}
           status={isNew ? undefined : <Badge size="small" intent={RC_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
           actions={
             <>
-              <Button type="button" intent="default" variant="solid" size="large" onClick={() => navigate(RC_LIST_PATH)}>
+              <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(RC_LIST_PATH)}>
                 {ro ? 'Back' : 'Cancel'}
               </Button>
               {menu.length ? <MoreMenu items={menu} /> : null}
-              <Button type="submit" intent="primary" variant="solid" size="large" disabled={saving}>
+              <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
                 {saving ? 'Saving…' : ro ? 'Save' : 'Add'}
               </Button>
             </>
           }
         />
-        <Panel.Body className="flex flex-col gap-2">
+        {page === 'activity' ? (
+          <Panel.Body>
+            <Text variant="small" tone="muted" className="p-4">Activity will show here.</Text>
+          </Panel.Body>
+        ) : page === 'transactions' && draft.id ? (
+          <Panel.Body className="flex flex-col gap-2">
+            <SalesDocumentFlow
+              kind="RCV"
+              id={draft.id}
+              notes="Everything linked to this payment: the invoices it settled."
+            />
+          </Panel.Body>
+        ) : page === 'transactions' ? (
+          <Panel.Body>
+            <Text variant="small" tone="muted" className="p-4">Save the document first to see related documents.</Text>
+          </Panel.Body>
+        ) : null}
+        {page === 'details' ? <Panel.Body className="flex flex-col gap-2">
           <ProblemsAlert problems={problems} tabLabel={(t) => TAB_LABEL[t as TabId]} />
+          <Tabs variant="outline" value={tab} onValueChange={(v) => setTab(v as TabId)} items={(Object.keys(TAB_LABEL) as TabId[]).map((t) => ({ value: t, label: TAB_LABEL[t], badge: problems.some((p) => p.tab === t) ? '!' : t === 'attachments' && draft.attachments.length ? String(draft.attachments.length) : undefined }))} />
           {added ? (
             <Alert intent="default" variant="outline" title={draft.status === 'Cancelled' ? 'This payment is cancelled' : 'This payment is posted'}>
               {draft.status === 'Cancelled'
@@ -343,7 +376,10 @@ function IncomingForm() {
                     {(p) => (
                       <div className="flex gap-1">
                         <Select aria-label="Series" className="w-32" disabled={added} options={INCOMING_SERIES.map((s) => ({ value: s.id, label: s.name }))} value={draft.seriesId} onValueChange={(seriesId) => update({ seriesId, docNum: 0 })} />
-                        <TextField {...p} className="flex-1" type={series.manual && !added ? 'number' : 'text'} readOnly={!series.manual || added} placeholder={series.manual ? 'Receipt no. from the notebook' : 'Next number'} value={draft.docNum ? String(draft.docNum) : ''} onChange={(e) => update({ docNum: Number(e.currentTarget.value) || 0 })} />
+                        {series.manual && !added
+                          ? <TextField {...p} className="flex-1" type="number" placeholder="Receipt no. from the notebook" value={draft.docNum ? String(draft.docNum) : ''} onChange={(e) => update({ docNum: Number(e.currentTarget.value) || 0 })} />
+                          : <span className="flex-1 self-center text-sm">{draft.docNum ? incomingNumber(draft) : <span className="text-(--color-text-placeholder)">Next number</span>}</span>
+                        }
                       </div>
                     )}
                   </FormField>
@@ -389,7 +425,7 @@ function IncomingForm() {
               )}
             </Section>
           </div>
-        </Panel.Body>
+        </Panel.Body> : null}
       </Panel>
     </Form>
   );

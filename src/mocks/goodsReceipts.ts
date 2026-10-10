@@ -124,7 +124,7 @@ export interface GoodsReceipt {
 }
 
 export const GR_SERIES: DocumentSeries[] = [
-  { id: 'grs-primary', name: 'Primary', prefix: 'GR-', firstNo: 280001, manual: false, isDefault: true, active: true },
+  { id: 'grs-primary', name: 'Primary', prefix: '', firstNo: 1, manual: false, isDefault: true, active: true, segments: [{ type: 'literal', value: 'GR' }, { type: 'year' }, { type: 'sequence', padding: 4 }] },
 ];
 
 /**
@@ -228,7 +228,9 @@ export const SEED_GOODS_RECEIPTS: GoodsReceipt[] = received
   .sort((a, b) => a.date.localeCompare(b.date))
   .map(({ po, date }, n): GoodsReceipt => {
     const fxRate = seedFx(po.currency, date);
-    const poNo = `${PO_SERIES.find((s) => s.id === po.seriesId)?.name ?? 'Primary'} ${po.docNum}`;
+    const poSeries = PO_SERIES.find((s) => s.id === po.seriesId);
+    const poPrefix = poSeries?.segments?.[0]?.value ?? (poSeries?.name ?? 'PO');
+    const poNo = po.docNum ? `${poPrefix}-${po.postingDate.slice(0, 4)}-${String(po.docNum).padStart(4, '0')}` : 'Draft';
     return {
       ...blankGoodsReceipt(date, po.buyerId),
       id: `gr-${String(n + 1).padStart(3, '0')}`,
@@ -238,7 +240,7 @@ export const SEED_GOODS_RECEIPTS: GoodsReceipt[] = received
       contactId: po.contactId,
       vendorRef: po.vendorRef ? `DR-${po.vendorRef.replace(/\D/g, '').slice(-6) || n + 1}` : '',
       currency: po.currency,
-      docNum: GR_SERIES[0].firstNo + n,
+      docNum: 1 + n,
       // Receipts for finished POs have been invoiced; the rest still wait on the bill.
       status: po.status === 'Closed' ? 'Closed' : 'Open',
       closeDate: po.status === 'Closed' ? po.closeDate : '',

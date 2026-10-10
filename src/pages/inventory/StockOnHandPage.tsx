@@ -241,6 +241,9 @@ export function StockOnHandPage() {
     <Panel className="flex-1">
       <PanelHeader
         icon="inventory"
+        iconIntent="default"
+        iconShape="rounded"
+        iconSize={32} iconVariant="outline"
         title={presets.menu}
         showSearch
         searchLabel="Search stock"

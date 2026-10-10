@@ -5,6 +5,7 @@ import {
   Alert,
   Badge,
   Button,
+  ButtonGroup,
   Combobox,
   Form,
   FormField,
@@ -39,7 +40,7 @@ import {
   getGoodsReceipt,
   grJournal,
   grNumber,
-  grSeriesOf,
+
   grTotals,
   listGoodsReceipts,
   saveGrDraft,
@@ -58,6 +59,7 @@ import { GrContents } from './GrContents';
 import { DocumentFlow } from '../../shared/DocumentFlow';
 import { GrAccounting, GrLogistics } from './GrSections';
 import { buildGrContext, defaultPayTo, defaultShipTo, linesFromPo, type GrContext, type GrDraft, type GrMasters } from './types';
+import { useDocTitle } from '../../../../services/useDocTitle';
 
 export const GR_LIST_PATH = '/purchasing/goods-receipts';
 
@@ -177,18 +179,19 @@ function GoodsReceiptForm() {
     if (isNew || !id) return;
     let cancelled = false;
     getGoodsReceipt(id).then((gr) => !cancelled && setDraft(gr ?? null));
-    listGoodsReceipts().then((all) => !cancelled && setSiblings([...all].sort((a, b) => b.postingDate.localeCompare(a.postingDate)).map((r) => r.id)));
+    listGoodsReceipts().then((all) => !cancelled && setSiblings([...all].sort((a, b) => b.postingDate.localeCompare(a.postingDate)).map((r) => r.docNum ? grNumber(r) : r.id)));
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, isNew]);
 
+  useDocTitle(draft?.docNum ? (isNew ? 'New goods receipt' : grNumber(draft)) : undefined);
   if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading goods receipt…</Text>;
   if (draft === null) {
     return (
       <Panel className="flex-1">
-        <PanelHeader icon="inventory" title="Goods receipt not found" />
+        <PanelHeader icon="inventory" iconIntent="default" iconShape="rounded" iconSize={32} iconVariant="outline" title="Goods receipt not found" />
         <Panel.Body>
           <Button onClick={() => navigate(GR_LIST_PATH)}>Back to goods receipts</Button>
         </Panel.Body>
@@ -199,7 +202,7 @@ function GoodsReceiptForm() {
   const ctx = buildGrContext(draft, m);
   const { vendor } = ctx;
   const added = draft.status !== 'Draft';
-  const at = draft.id ? siblings.indexOf(draft.id) : -1;
+  const at = draft.id ? siblings.indexOf(draft.docNum ? grNumber(draft as GoodsReceipt) : draft.id) : -1;
   const prevId = at > 0 ? siblings[at - 1] : undefined;
   const nextId = at >= 0 && at < siblings.length - 1 ? siblings[at + 1] : undefined;
   const errors: Errors = Object.fromEntries(problems.map((p) => [p.key, p.message]));
@@ -300,8 +303,10 @@ function GoodsReceiptForm() {
   const basePos = [...new Set(draft.lines.map((l) => l.baseId).filter(Boolean))];
   const closeIt = () => act(() => closeGoodsReceipt(saved), 'closed');
   const cancelIt = () => act(async () => { const gr = await cancelGoodsReceipt(saved); await reverseDocumentEntry(saved.id); return gr; }, 'cancelled — the stock is back out and the PO lines are open again');
+  const invoiced = draft.lines.some((l) => l.invoicedQty > 0);
+  const returned = draft.lines.some((l) => (l.returnedQty ?? 0) > 0);
   // What picking each status in the Status dropdown does; the others can't be reached from here.
-  const statusMoves: Partial<Record<GrStatus, () => void>> = draft.status === 'Draft' ? { Open: () => submit(null) } : draft.status === 'Open' ? { Closed: closeIt, Cancelled: cancelIt } : {};
+  const statusMoves: Partial<Record<GrStatus, () => void>> = draft.status === 'Draft' ? { Open: () => submit(null) } : draft.status === 'Open' ? { Closed: closeIt, ...(!invoiced && !returned ? { Cancelled: cancelIt } : {}) } : {};
 
   const menu: MoreMenuItem[] = [
     ...(!added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
@@ -313,7 +318,7 @@ function GoodsReceiptForm() {
       : []),
     ...(!isNew ? [{ label: 'Duplicate', icon: 'content_copy', onSelect: duplicate }] : []),
     ...(draft.status === 'Open' ? [{ label: 'Close', icon: 'task_alt', onSelect: closeIt }] : []),
-    ...(draft.status === 'Open'
+    ...(draft.status === 'Open' && !invoiced && !returned
       ? [{ label: 'Cancel goods receipt', icon: 'cancel', onSelect: cancelIt }]
       : []),
     ...basePos.map((poId) => ({ label: `Open PO ${draft.lines.find((l) => l.baseId === poId)?.baseDocNo}`, icon: 'receipt_long', onSelect: () => navigate(`/purchasing/purchase-orders/${poId}`) })),
@@ -322,7 +327,7 @@ function GoodsReceiptForm() {
 
   const allCurrencies = vendor?.currency === ALL_CURRENCIES;
   const title = isNew ? 'New goods receipt' : added ? grNumber(draft) : 'Draft goods receipt';
-  const series = grSeriesOf(draft.seriesId);
+
 
   return (
     <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
@@ -330,29 +335,33 @@ function GoodsReceiptForm() {
         <PanelHeader
           type="details"
           icon="inventory"
+          iconIntent="default"
+          iconShape="rounded"
+          iconSize={32} iconVariant="outline"
           title={title}
-          subcopy={isNew ? 'Record goods or services received from a vendor.' : undefined}
-          leading={
+          trailing={
             isNew ? undefined : (
-              <>
-                <IconButton type="button" label="Next" intent="default" variant="solid" size="large" disabled={!nextId} onClick={() => navigate(`${GR_LIST_PATH}/${nextId}`)}>
-                  {panelHeaderIcons.arrowDownward}
-                </IconButton>
-                <IconButton type="button" label="Previous" intent="default" variant="solid" size="large" disabled={!prevId} onClick={() => navigate(`${GR_LIST_PATH}/${prevId}`)}>
+              <ButtonGroup type="enclosed" intent="white" buttonIntent="default" buttonVariant="link">
+                <IconButton type="button" label="Previous" size="small"
+                  shape="pill" disabled={!prevId} onClick={() => navigate(`${GR_LIST_PATH}/${prevId}`)}>
                   {panelHeaderIcons.arrowUpward}
                 </IconButton>
-              </>
+                <IconButton type="button" label="Next" size="small"
+                  shape="pill" disabled={!nextId} onClick={() => navigate(`${GR_LIST_PATH}/${nextId}`)}>
+                  {panelHeaderIcons.arrowDownward}
+                </IconButton>
+              </ButtonGroup>
             )
           }
           tabs={<Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={PAGES.map((p) => ({ ...p, disabled: isNew && p.value !== 'details' }))} />}
           status={isNew ? undefined : <Badge size="small" intent={GR_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
           actions={
             <>
-              <Button type="button" intent="default" variant="solid" size="large" onClick={() => navigate(GR_LIST_PATH)}>
+              <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(GR_LIST_PATH)}>
                 {added ? 'Back' : 'Cancel'}
               </Button>
               {menu.length ? <MoreMenu items={menu} /> : null}
-              <Button type="submit" intent="primary" variant="solid" size="large" disabled={saving}>
+              <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
                 {saving ? 'Saving…' : added ? 'Save' : 'Add'}
               </Button>
             </>
@@ -441,7 +450,7 @@ function GoodsReceiptForm() {
                 <Section icon="tag" title="Document">
                   <Fields>
                     <FormField label="No." tooltip={added ? undefined : 'Assigned from the series when the receipt is added.'}>
-                      {(p) => (
+                      {() => (
                         <div className="flex gap-1">
                           <Select
                             aria-label="Series"
@@ -451,7 +460,7 @@ function GoodsReceiptForm() {
                             value={draft.seriesId}
                             onValueChange={(seriesId) => update({ seriesId })}
                           />
-                          <TextField {...p} className="flex-1" readOnly placeholder={`Next ${series.name} number`} value={draft.docNum ? String(draft.docNum) : ''} />
+                          <span className="flex-1 self-center text-sm">{draft.docNum ? grNumber(draft) : <span className="text-(--color-text-placeholder)">Next number</span>}</span>
                         </div>
                       )}
                     </FormField>

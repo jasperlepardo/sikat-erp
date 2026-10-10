@@ -82,7 +82,7 @@ export interface ApInvoice extends Omit<GoodsReceipt, 'lines' | 'status'> {
 }
 
 export const AP_SERIES: DocumentSeries[] = [
-  { id: 'aps-primary', name: 'Primary', prefix: 'BILL-', firstNo: 290001, manual: false, isDefault: true, active: true },
+  { id: 'aps-primary', name: 'Primary', prefix: '', firstNo: 1, manual: false, isDefault: true, active: true, segments: [{ type: 'literal', value: 'BILL' }, { type: 'year' }, { type: 'sequence', padding: 4 }] },
 ];
 
 /** Payable accounts withholding tax is credited to, by kind. */
@@ -168,7 +168,7 @@ export const SEED_AP_INVOICES: ApInvoice[] = SEED_GOODS_RECEIPTS.filter((gr) => 
     contactId: gr.contactId,
     vendorRef: `SI-${String(40100 + n * 7)}`,
     currency: gr.currency,
-    docNum: AP_SERIES[0].firstNo + n,
+    docNum: 1 + n,
     status: 'Open',
     dueDate: plusDays(posting, termDays(gr.paymentTermId)),
     shipTo: gr.shipTo,
@@ -193,7 +193,7 @@ export const SEED_AP_INVOICES: ApInvoice[] = SEED_GOODS_RECEIPTS.filter((gr) => 
         baseType: 'GRPO' as const,
         baseId: gr.id,
         baseLineId: l.id,
-        baseDocNo: `${gr.docNum ? `Primary ${gr.docNum}` : 'Draft'}`,
+        baseDocNo: gr.docNum ? `GR-${gr.postingDate.slice(0, 4)}-${String(gr.docNum).padStart(4, '0')}` : 'Draft',
         bpCatalogNo: item?.vendors.find((v) => v.vendorId === gr.vendorId)?.vendorItemNo ?? '',
         countryOfOriginCode: item?.countryOfOriginCode ?? '',
         receiptCostLc: l.unitCostLc,

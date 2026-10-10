@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useParams } from 'react-router';
 import {
   Badge,
   Button,
+  ButtonGroup,
   Combobox,
   Form,
   FormField,
@@ -244,7 +245,7 @@ function ItemForm() {
   if (draft === null) {
     return (
       <Panel className="flex-1">
-        <PanelHeader icon="inventory_2" title="Item not found" />
+        <PanelHeader icon="inventory_2" iconIntent="default" iconShape="rounded" iconSize={32} iconVariant="outline" title="Item not found" />
         <Panel.Body>
           <Button onClick={() => navigate(LIST_PATH)}>Back to items</Button>
         </Panel.Body>
@@ -383,35 +384,34 @@ function ItemForm() {
           <PanelHeader
             type="details"
             icon="inventory_2"
+            iconIntent="default"
+            iconShape="rounded"
+            iconSize={32} iconVariant="outline"
             title={isNew ? 'New item' : (draft.name || draft.description)}
-            subcopy={isNew ? 'Add a product, material or service to the item master.' : undefined}
-            // A saved record leads with previous/next (through the list it was opened from); a new one with the icon.
-            leading={
+            trailing={
               isNew ? undefined : (
-                <>
-                  <IconButton
-                    type="button"
-                    label="Next"
-                    intent="default"
-                    variant="solid"
-                    size="large"
-                    disabled={!nextId}
-                    onClick={() => navigate(`${LIST_PATH}/${nextId}`)}
-                  >
-                    {panelHeaderIcons.arrowDownward}
-                  </IconButton>
+                <ButtonGroup type="enclosed" intent="white" buttonIntent="default" buttonVariant="link">
                   <IconButton
                     type="button"
                     label="Previous"
-                    intent="default"
-                    variant="solid"
-                    size="large"
+                    size="small"
+                  shape="pill"
                     disabled={!prevId}
                     onClick={() => navigate(`${LIST_PATH}/${prevId}`)}
                   >
                     {panelHeaderIcons.arrowUpward}
                   </IconButton>
-                </>
+                  <IconButton
+                    type="button"
+                    label="Next"
+                    size="small"
+                  shape="pill"
+                    disabled={!nextId}
+                    onClick={() => navigate(`${LIST_PATH}/${nextId}`)}
+                  >
+                    {panelHeaderIcons.arrowDownward}
+                  </IconButton>
+                </ButtonGroup>
               )
             }
             tabs={
@@ -436,11 +436,11 @@ function ItemForm() {
             }
             actions={
               <>
-                <Button type="button" intent="default" variant="solid" size="large" onClick={() => navigate(LIST_PATH)}>
+                <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(LIST_PATH)}>
                   Cancel
                 </Button>
                 {menu.length ? <MoreMenu items={menu} /> : null}
-                <Button type="submit" intent="primary" variant="solid" size="large" disabled={saving}>
+                <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
                   {saving ? 'Saving…' : isNew ? 'Add' : 'Save'}
                 </Button>
               </>

@@ -64,14 +64,17 @@ export function VendorQuickCreate({ initialName = '', onClose, onCreated }: Prop
         <PanelHeader
           type="forms"
           icon="local_shipping"
+          iconIntent="default"
+          iconShape="rounded"
+          iconSize={32}
+          iconVariant="outline"
           title="New vendor"
-          subcopy="Fill in the details — you can add contacts and addresses after saving."
           actions={
             <>
-              <Button type="button" intent="default" variant="solid" size="large" onClick={onClose}>
+              <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={onClose}>
                 Cancel
               </Button>
-              <Button type="submit" intent="primary" variant="solid" size="large" disabled={saving}>
+              <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
                 {saving ? 'Saving…' : 'Add vendor'}
               </Button>
             </>

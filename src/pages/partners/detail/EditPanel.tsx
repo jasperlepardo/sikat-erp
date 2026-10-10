@@ -28,16 +28,20 @@ export function EditPanel({
     <SidePanel overlay onOverlayClick={onCancel} style={{ '--sikat-side-panel-width': '720px' } as CSSProperties}>
       <PanelHeader
         icon={icon}
+        iconIntent="default"
+        iconShape="rounded"
+        iconSize={32}
+        iconVariant="outline"
         title={title}
         actions={
           <>
             <IconButton intent="default" variant="link" label="Close" onClick={onCancel}>
               <Icon size={20}>close</Icon>
             </IconButton>
-            <Button type="button" intent="default" variant="solid" size="large" onClick={onCancel}>
+            <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={onCancel}>
               Cancel
             </Button>
-            <Button type="button" intent="primary" variant="solid" size="large" onClick={onDone}>
+            <Button type="button" intent="primary" variant="solid" size="medium" shape="pill" onClick={onDone}>
               Done
             </Button>
           </>

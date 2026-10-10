@@ -3,6 +3,7 @@ import { MasterDefList, type MasterDef, type MasterRow } from '../../components/
 import type { ListRoute } from '../../components/form/MasterList';
 import { TabbedPage, type PageTab } from '../../components/form/TabbedPage';
 import { CompaniesTab } from './company/CompanyTab';
+import { SalesDocSeriesTab } from './sales/SalesDocSeriesTab';
 import * as d from './masterDefs';
 
 const tab = <T extends MasterRow>(value: string, def: MasterDef<T>): PageTab => ({
@@ -13,6 +14,7 @@ const tab = <T extends MasterRow>(value: string, def: MasterDef<T>): PageTab => 
 });
 
 const SALES_TABS = [
+  { value: 'document-series', label: 'Document series', Component: SalesDocSeriesTab },
   tab('partner-groups', d.bpGroupDef),
   tab('industries', d.industryDef),
   tab('sales-employees', d.salesEmployeeDef),
@@ -48,7 +50,6 @@ export function SalesCrmSettingsPage() {
       base="/settings/sales-and-crm"
       icon="handshake"
       title="Sales & CRM"
-      subcopy="Partner groups, industries, sales employees, territories, channels, lead sources, e-mail groups and partner properties."
       tabs={SALES_TABS}
     />
   );
@@ -60,7 +61,6 @@ export function BankingSettingsPage() {
       base="/settings/banking"
       icon="savings"
       title="Banking"
-      subcopy="Payment terms, dunning terms, holiday calendars, banks, house bank accounts, bank charges, card brands and factoring companies."
       tabs={BANKING_TABS}
     />
   );
@@ -72,7 +72,6 @@ export function CompanySettingsPage() {
       base="/settings/company"
       icon="domain"
       title="Company"
-      subcopy="Our companies and their addresses, projects, technicians, planning groups and countries."
       tabs={COMPANY_TABS}
     />
   );

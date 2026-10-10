@@ -1,7 +1,10 @@
-import { FieldStack, ReadOnly, Fields, bind } from '../../../components/form/fields';
+import { FieldStack, ReadOnly, Section, bind } from '../../../components/form/fields';
 import { MasterList, statusColumn, uniqueRequired, type ListRoute } from '../../../components/form/MasterList';
 import type { DocumentSeries } from '../../../mocks/common';
 import { newId, useCollectionRows } from '../../../services/useCollectionRows';
+import type { ConditionField } from '../../../services/allSeries';
+import { ConditionBuilder } from '../components/ConditionBuilder';
+import { SegmentBuilder } from '../components/SegmentBuilder';
 
 type Collection = {
   list: () => Promise<DocumentSeries[]>;
@@ -19,7 +22,7 @@ const blank = (): DocumentSeries => ({
   active: true,
 });
 
-export function DocSeriesTab({ collection, ...route }: { collection: Collection } & ListRoute) {
+export function DocSeriesTab({ collection, conditionFields, ...route }: { collection: Collection; conditionFields?: ConditionField[] } & ListRoute) {
   const { rows, setActive, reload } = useCollectionRows(collection);
 
   const onSave = async (row: DocumentSeries) => {
@@ -38,6 +41,7 @@ export function DocSeriesTab({ collection, ...route }: { collection: Collection 
   return (
     <MasterList<DocumentSeries>
       {...route}
+      sidePanelEdit
       icon="tag"
       title="Document series"
       noun="series"
@@ -79,6 +83,7 @@ export function DocSeriesTab({ collection, ...route }: { collection: Collection 
       onSave={onSave}
       editor={(s, update, errors, isNew) => {
         const f = bind(s, update);
+        const useSegments = !!(s.segments?.length);
         return (
           <FieldStack>
             {f.text('name', 'Name', {
@@ -87,22 +92,32 @@ export function DocSeriesTab({ collection, ...route }: { collection: Collection 
               disabled: !isNew,
               hint: !isNew ? 'Renaming affects how existing documents display their number.' : undefined,
             })}
-            {f.text('prefix', 'Prefix', {
-              placeholder: 'e.g. PO- or 2025-',
-              hint: 'Displayed before the running number. Leave blank for no prefix.',
-            })}
-            {!s.manual ? (
-              <Fields cols={2}>
-                {f.num('firstNo', 'First No.', {
-                  error: errors.firstNo,
-                  hint: 'New numbers start here; existing documents advance this automatically.',
-                })}
-                <ReadOnly label="Next No." value="Computed from existing documents" />
-              </Fields>
-            ) : null}
+            {!useSegments
+              ? f.text('prefix', 'Prefix', {
+                  placeholder: 'e.g. PO- or 2025-',
+                  hint: 'Displayed before the running number. Or use segments below for a structured format.',
+                })
+              : null}
             {f.check('manual', 'Manual numbering')}
+            {!s.manual ? f.num('firstNo', 'First No.', {
+              error: errors.firstNo,
+              hint: 'New numbers start here; existing documents advance this automatically.',
+            }) : null}
+            {!s.manual ? <ReadOnly label="Next No." value="Computed from existing documents" /> : null}
             {f.check('isDefault', 'Default for new documents')}
             {f.status('active', 'Status')}
+            {conditionFields?.length ? (
+              <Section icon="filter_list" title="Auto-select when">
+                <ConditionBuilder conditions={s.conditions ?? []} fields={conditionFields} onChange={(conditions) => update({ conditions })} />
+              </Section>
+            ) : null}
+            <Section icon="tag" title="Number format">
+              <SegmentBuilder
+                segments={s.segments ?? []}
+                seriesName={s.name}
+                onChange={(segments) => update({ segments, prefix: segments.length ? '' : s.prefix })}
+              />
+            </Section>
           </FieldStack>
         );
       }}

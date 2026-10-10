@@ -5,6 +5,7 @@ import {
   Alert,
   Badge,
   Button,
+  ButtonGroup,
   Combobox,
   Form,
   FormField,
@@ -62,6 +63,7 @@ import { buildGrContext, linesFromPo } from '../receipts/detail/types';
 import { CopyPanel } from '../shared/CopyPanel';
 import { DocumentFlow } from '../shared/DocumentFlow';
 import { DprLines } from './DprLines';
+import { useDocTitle } from '../../../services/useDocTitle';
 
 export const DPR_LIST_PATH = '/purchasing/bills/down-payment-requests';
 
@@ -145,18 +147,19 @@ function DprForm() {
     if (isNew || !id) return;
     let cancelled = false;
     getDownPayment(id).then((d) => !cancelled && setDraft(d ?? null));
-    listDownPayments().then((all) => !cancelled && setSiblings([...all].sort((a, b) => b.postingDate.localeCompare(a.postingDate)).map((d) => d.id)));
+    listDownPayments().then((all) => !cancelled && setSiblings([...all].sort((a, b) => b.postingDate.localeCompare(a.postingDate)).map((d) => d.docNum ? dprNumber(d) : d.id)));
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, isNew]);
 
+  useDocTitle(draft?.docNum ? (isNew ? 'New A/P down payment request' : dprNumber(draft)) : undefined);
   if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading down payment request…</Text>;
   if (draft === null) {
     return (
       <Panel className="flex-1">
-        <PanelHeader icon="savings" title="Down payment request not found" />
+        <PanelHeader icon="savings" iconIntent="default" iconShape="rounded" iconSize={32} iconVariant="outline" title="Down payment request not found" />
         <Panel.Body>
           <Button onClick={() => navigate(DPR_LIST_PATH)}>Back to down payment requests</Button>
         </Panel.Body>
@@ -167,7 +170,7 @@ function DprForm() {
   const ctx = buildGrContext(draft, m);
   const { vendor, fx } = ctx;
   const added = draft.status !== 'Draft';
-  const at = draft.id ? siblings.indexOf(draft.id) : -1;
+  const at = draft.id ? siblings.indexOf(draft.docNum ? dprNumber(draft as DownPaymentRequest) : draft.id) : -1;
   const prevId = at > 0 ? siblings[at - 1] : undefined;
   const nextId = at >= 0 && at < siblings.length - 1 ? siblings[at + 1] : undefined;
   const errors: Errors = Object.fromEntries(problems.map((p) => [p.key, p.message]));
@@ -252,14 +255,18 @@ function DprForm() {
           <PanelHeader
             type="details"
             icon="savings"
+            iconIntent="default"
+            iconShape="rounded"
+            iconSize={32} iconVariant="outline"
             title={title}
-            subcopy={isNew ? 'Request an advance a vendor asks for before delivering.' : undefined}
-            leading={
+            trailing={
               isNew ? undefined : (
-                <>
-                  <IconButton type="button" label="Next" intent="default" variant="solid" size="large" disabled={!nextId} onClick={() => navigate(`${DPR_LIST_PATH}/${nextId}`)}>{panelHeaderIcons.arrowDownward}</IconButton>
-                  <IconButton type="button" label="Previous" intent="default" variant="solid" size="large" disabled={!prevId} onClick={() => navigate(`${DPR_LIST_PATH}/${prevId}`)}>{panelHeaderIcons.arrowUpward}</IconButton>
-                </>
+                <ButtonGroup type="enclosed" intent="white" buttonIntent="default" buttonVariant="link">
+                  <IconButton type="button" label="Previous" size="small"
+                  shape="pill" disabled={!prevId} onClick={() => navigate(`${DPR_LIST_PATH}/${prevId}`)}>{panelHeaderIcons.arrowUpward}</IconButton>
+                  <IconButton type="button" label="Next" size="small"
+                  shape="pill" disabled={!nextId} onClick={() => navigate(`${DPR_LIST_PATH}/${nextId}`)}>{panelHeaderIcons.arrowDownward}</IconButton>
+                </ButtonGroup>
               )
             }
             tabs={<Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={PAGES.map((p) => ({ ...p, disabled: isNew && p.value !== 'details' }))} />}
@@ -273,9 +280,9 @@ function DprForm() {
             }
             actions={
               <>
-                <Button type="button" intent="default" variant="solid" size="large" onClick={() => navigate(DPR_LIST_PATH)}>{added ? 'Back' : 'Cancel'}</Button>
+                <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(DPR_LIST_PATH)}>{added ? 'Back' : 'Cancel'}</Button>
                 {menu.length ? <MoreMenu items={menu} /> : null}
-                <Button type="submit" intent="primary" variant="solid" size="large" disabled={saving}>{saving ? 'Saving…' : added ? 'Save' : 'Add'}</Button>
+                <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>{saving ? 'Saving…' : added ? 'Save' : 'Add'}</Button>
               </>
             }
           />
@@ -323,10 +330,10 @@ function DprForm() {
                   <Section icon="tag" title="Document">
                     <Fields>
                       <FormField label="No.">
-                        {(p) => (
+                        {() => (
                           <div className="flex gap-1">
                             <Select aria-label="Series" className="w-40" disabled={added} options={DPR_SERIES.map((s) => ({ value: s.id, label: s.name }))} value={draft.seriesId} onValueChange={(seriesId) => update({ seriesId })} />
-                            <TextField {...p} className="flex-1" readOnly placeholder="Next number" value={draft.docNum ? String(draft.docNum) : ''} />
+                            <span className="flex-1 self-center text-sm">{draft.docNum ? dprNumber(draft) : <span className="text-(--color-text-placeholder)">Next number</span>}</span>
                           </div>
                         )}
                       </FormField>

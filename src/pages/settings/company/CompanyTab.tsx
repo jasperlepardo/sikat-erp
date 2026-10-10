@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import {
   Button,
+  ButtonGroup,
   IconButton,
   Panel,
   PanelHeader,
@@ -48,7 +49,7 @@ function CompanyDetail({ basePath, recordId }: { basePath: string; recordId: str
   if (!row) {
     return (
       <Panel className="flex-1">
-        <PanelHeader icon="domain" title="Company not found" />
+        <PanelHeader icon="domain" iconIntent="default" iconShape="rounded" iconSize={32} iconVariant="outline" title="Company not found" />
         <Panel.Body>
           <Button onClick={back}>Back to companies</Button>
         </Panel.Body>
@@ -84,46 +85,48 @@ function CompanyDetail({ basePath, recordId }: { basePath: string; recordId: str
       <PanelHeader
         type="details"
         icon="domain"
+        iconIntent="default"
+        iconShape="rounded"
+        iconSize={32}
+        iconVariant="outline"
         title={isNew ? 'New company' : companyDef.label(row)}
-        subcopy="Company"
-        leading={
+        trailing={
           isNew ? undefined : (
-            <>
-              <IconButton
-                type="button"
-                label="Next"
-                intent="default"
-                variant="solid"
-                size="large"
-                disabled={!nextId}
-                onClick={() => navigate(`${basePath}/${nextId}`)}
-              >
-                {panelHeaderIcons.arrowDownward}
-              </IconButton>
+            <ButtonGroup type="enclosed" intent="white" buttonIntent="default" buttonVariant="link">
               <IconButton
                 type="button"
                 label="Previous"
-                intent="default"
-                variant="solid"
-                size="large"
+                size="small"
+                shape="pill"
                 disabled={!prevId}
                 onClick={() => navigate(`${basePath}/${prevId}`)}
               >
                 {panelHeaderIcons.arrowUpward}
               </IconButton>
-            </>
+              <IconButton
+                type="button"
+                label="Next"
+                size="small"
+                shape="pill"
+                disabled={!nextId}
+                onClick={() => navigate(`${basePath}/${nextId}`)}
+              >
+                {panelHeaderIcons.arrowDownward}
+              </IconButton>
+            </ButtonGroup>
           )
         }
         actions={
           <>
-            <Button type="button" intent="default" variant="solid" size="large" onClick={back}>
+            <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={back}>
               Cancel
             </Button>
             <Button
               type="button"
               intent="primary"
               variant="solid"
-              size="large"
+              size="medium"
+              shape="pill"
               disabled={saving}
               onClick={save}
             >

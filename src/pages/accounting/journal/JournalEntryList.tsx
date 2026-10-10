@@ -127,9 +127,12 @@ export function JournalEntryList() {
           setPage(1);
         }}
         icon="menu_book"
+        iconIntent="default"
+        iconShape="rounded"
+        iconSize={32} iconVariant="outline"
         title={presets.menu}
         actions={
-          <Button intent="primary" variant="solid" size="large" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${JE_LIST_PATH}/new`)}>
+          <Button intent="primary" variant="solid" size="medium" shape="pill" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${JE_LIST_PATH}/new`)}>
             New journal entry
           </Button>
         }

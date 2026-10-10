@@ -4,6 +4,7 @@ import {
   Alert,
   Badge,
   Button,
+  ButtonGroup,
   Combobox,
   Form,
   FormField,
@@ -52,6 +53,7 @@ import {
 import { salesEmployeeDef } from '../../settings/masterDefs';
 import { binsOf, receivingBin, transferBlock } from '../../../services/binLocations';
 import { TransferLines, binFor, binOptions, warehouseOptions, type TransferDraft, type TransferMasters } from './TransferLines';
+import { useDocTitle } from '../../../services/useDocTitle';
 
 export const TRANSFER_LIST_PATH = '/inventory/stock-movements';
 
@@ -144,11 +146,12 @@ function TransferForm() {
     };
   }, [id, isNew]);
 
+  useDocTitle(draft?.docNum ? (isNew ? 'New inventory transfer' : transferNumber(draft)) : undefined);
   if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading transfer…</Text>;
   if (draft === null) {
     return (
       <Panel className="flex-1">
-        <PanelHeader icon="move_down" title="Transfer not found" />
+        <PanelHeader icon="move_down" iconIntent="default" iconShape="rounded" iconSize={32} iconVariant="outline" title="Transfer not found" />
         <Panel.Body>
           <Button onClick={() => navigate(TRANSFER_LIST_PATH)}>Back to stock movements</Button>
         </Panel.Body>
@@ -289,44 +292,31 @@ function TransferForm() {
         <PanelHeader
           type="details"
           icon="move_down"
+          iconIntent="default"
+          iconShape="rounded"
+          iconSize={32}
+          iconVariant="outline"
           title={title}
-          subcopy={isNew ? 'Move stock from one warehouse to another.' : undefined}
-          leading={
+          trailing={
             isNew ? undefined : (
-              <>
-                <IconButton
-                  type="button"
-                  label="Next"
-                  intent="default"
-                  variant="solid"
-                  size="large"
-                  disabled={!nextId}
-                  onClick={() => navigate(`${TRANSFER_LIST_PATH}/${nextId}`)}
-                >
-                  {panelHeaderIcons.arrowDownward}
-                </IconButton>
-                <IconButton
-                  type="button"
-                  label="Previous"
-                  intent="default"
-                  variant="solid"
-                  size="large"
-                  disabled={!prevId}
-                  onClick={() => navigate(`${TRANSFER_LIST_PATH}/${prevId}`)}
-                >
+              <ButtonGroup type="enclosed" intent="white" buttonIntent="default" buttonVariant="link">
+                <IconButton type="button" label="Previous" size="small" shape="pill" disabled={!prevId} onClick={() => navigate(`${TRANSFER_LIST_PATH}/${prevId}`)}>
                   {panelHeaderIcons.arrowUpward}
                 </IconButton>
-              </>
+                <IconButton type="button" label="Next" size="small" shape="pill" disabled={!nextId} onClick={() => navigate(`${TRANSFER_LIST_PATH}/${nextId}`)}>
+                  {panelHeaderIcons.arrowDownward}
+                </IconButton>
+              </ButtonGroup>
             )
           }
           status={isNew ? undefined : <Badge size="small" intent={TRANSFER_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
           actions={
             <>
-              <Button type="button" intent="default" variant="solid" size="large" onClick={() => navigate(TRANSFER_LIST_PATH)}>
+              <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(TRANSFER_LIST_PATH)}>
                 Cancel
               </Button>
               {menu.length ? <MoreMenu items={menu} /> : null}
-              <Button type="submit" intent="primary" variant="solid" size="large" disabled={saving}>
+              <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
                 {saving ? 'Saving…' : posted ? 'Save' : 'Add'}
               </Button>
             </>

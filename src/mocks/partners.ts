@@ -502,14 +502,6 @@ const web = (id: string, value: string): PartnerContactChannel => ({ id, type: '
 export const SEED_PARTNERS: Partner[] = [
   // ── Customers ──────────────────────────────────────────────────────────────
   seed(
-    'bp-001', 'customer',
-    { name: 'Walk-in customer', businessType: 'Individual', bpGroupId: bpgId('Customers – Retail'), industryId: industryId('Retail'), channelId: channelId('Walk-in'),
-      customerPaymentTermId: termId('COD'), vatRegistered: false,
-      remarks: 'Tax scenario (sales): regular consumer → 31 VATable sales, 12% output VAT.' },
-    { firstName: 'Walk-in', lastName: 'Customer', position: 'Consumer' },
-    { addressLine: 'Ortigas Ave.', block: 'San Antonio', city: 'City of Pasig', zip: '1605', province: 'Metro Manila', provinceCode: '1300', cityCode: '137403', barangayCode: '137403019' },
-  ),
-  seed(
     'bp-002', 'vendor',
     { roles: ['vendor', 'customer'], name: 'Northgate Prime Malls Inc.', tin: '201-334-517-000', businessType: 'Company', bpGroupId: bpgId('Vendors – Services'),
       industryId: industryId('Real estate'), contactChannels: [phone('bp-002-ch1', '+63 2 8631 4400'), email('bp-002-ch2', 'leasing@northgateprime.example.ph')],

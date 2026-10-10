@@ -52,7 +52,7 @@ export interface ApCreditMemo extends Omit<ApInvoice, 'lines' | 'status'> {
 }
 
 export const MEMO_SERIES: DocumentSeries[] = [
-  { id: 'cms-primary', name: 'Primary', prefix: 'CM-', firstNo: 620001, manual: false, isDefault: true, active: true },
+  { id: 'cms-primary', name: 'Primary', prefix: '', firstNo: 5, manual: false, isDefault: true, active: true, segments: [{ type: 'literal', value: 'CM' }, { type: 'year' }, { type: 'sequence', padding: 4 }] },
 ];
 
 export const newMemoLine = (patch: Partial<MemoLine> = {}): MemoLine => {

@@ -24,7 +24,6 @@ export function PriceListsPage() {
       base="/inventory/price-lists"
       icon="sell"
       title="Price Lists"
-      subcopy="Price tiers assigned to partners, and the rules on top of them. A document line takes the first match: special price, then period or volume discount, then discount group."
       tabs={TABS}
     />
   );

@@ -1,4 +1,4 @@
-import { bind, Fields } from './fields';
+import { bind, Fields, FieldStack } from './fields';
 import { PhLocationFields } from './PhLocationFields';
 import type { PostalAddress } from '../../mocks/address';
 import { PHILIPPINES } from '../../services/locations';
@@ -17,12 +17,15 @@ export function AddressFields({
   countryError,
   cols = 2,
   unwrapped = false,
+  stack = false,
 }: {
   value: PostalAddress;
   onChange: (patch: Partial<PostalAddress>) => void;
   countryError?: string;
   cols?: 1 | 2 | 3;
   unwrapped?: boolean;
+  /** Use side-label (FieldStack) layout instead of the default label-above grid. */
+  stack?: boolean;
 }) {
   const f = bind(value, (p: Partial<PostalAddress>) =>
     p.countryCode !== undefined && p.countryCode !== value.countryCode
@@ -44,5 +47,5 @@ export function AddressFields({
       {f.master('countryCode', 'Country/Region', countryDef, { required: true, error: countryError })}
     </>
   );
-  return unwrapped ? fields : <Fields cols={cols}>{fields}</Fields>;
+  return unwrapped ? fields : stack ? <FieldStack>{fields}</FieldStack> : <Fields cols={cols}>{fields}</Fields>;
 }

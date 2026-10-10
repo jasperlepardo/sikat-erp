@@ -41,7 +41,7 @@ export function PurchaseDashboard() {
     {
       key: 'docNum',
       header: 'No.',
-      cell: (po) => <TableLink onClick={() => navigate(`${PO_LIST_PATH}/${po.id}`)}>{poNumber(po)}</TableLink>,
+      cell: (po) => <TableLink onClick={() => navigate(`${PO_LIST_PATH}/${po.docNum ? poNumber(po) : po.id}`)}>{poNumber(po)}</TableLink>,
     },
     {
       key: 'vendorName',
@@ -57,7 +57,7 @@ export function PurchaseDashboard() {
     {
       key: 'docNum',
       header: 'No.',
-      cell: (a) => <TableLink onClick={() => navigate(`${AP_LIST_PATH}/${a.id}`)}>{apNumber(a)}</TableLink>,
+      cell: (a) => <TableLink onClick={() => navigate(`${AP_LIST_PATH}/${a.docNum ? apNumber(a) : a.id}`)}>{apNumber(a)}</TableLink>,
     },
     {
       key: 'vendorName',

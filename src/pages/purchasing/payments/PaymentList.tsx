@@ -84,7 +84,7 @@ export function PaymentList() {
     });
   }, [payments, presets.filter, query, sort]);
 
-  const open = (p: OutgoingPayment) => navigate(`${PAYMENT_LIST_PATH}/${p.id}`);
+  const open = (p: OutgoingPayment) => navigate(`${PAYMENT_LIST_PATH}/${p.docNum ? paymentNumber(p) : p.id}`);
 
   const columns: TableColumn<OutgoingPayment>[] = [
     {
@@ -126,9 +126,12 @@ export function PaymentList() {
           setPage(1);
         }}
         icon="payments"
+        iconIntent="default"
+        iconShape="rounded"
+        iconSize={32} iconVariant="outline"
         title={presets.menu}
         actions={
-          <Button intent="primary" variant="solid" size="large" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${PAYMENT_LIST_PATH}/new`)}>
+          <Button intent="primary" variant="solid" size="medium" shape="pill" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${PAYMENT_LIST_PATH}/new`)}>
             New outgoing payment
           </Button>
         }

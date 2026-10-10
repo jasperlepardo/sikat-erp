@@ -51,9 +51,9 @@ export type JeInput = Omit<JournalEntry, 'id'> & { id?: string };
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
 export const seriesOf = (id: string) => seriesLookup(jeSeries, id, JE_SERIES);
-export const jeNumber = (je: Pick<JournalEntry, 'number'> & { seriesId?: string }) =>
+export const jeNumber = (je: Pick<JournalEntry, 'number' | 'postingDate'> & { seriesId?: string }) =>
   je.seriesId
-    ? formatDocNum(seriesOf(je.seriesId), je.number, 'New')
+    ? formatDocNum(seriesOf(je.seriesId), je.number, je.postingDate, 'New')
     : je.number ? String(je.number) : 'New';
 
 export function jeTotals(lines: JeLine[]) {

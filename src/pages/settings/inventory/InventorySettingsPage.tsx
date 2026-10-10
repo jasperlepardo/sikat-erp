@@ -34,7 +34,6 @@ export function InventorySettingsPage() {
       base="/settings/inventory"
       icon="inventory"
       title="Inventory"
-      subcopy="Item groups, units and UoM groups, variant attributes, manufacturers, customs and commission groups, shipping, warranties and item properties."
       tabs={TABS}
     />
   );

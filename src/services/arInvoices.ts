@@ -13,13 +13,18 @@ import { inventoryAccountFor, type JournalLine } from './inventoryTransfers';
 import { listItems, saveItem } from './items';
 import { consumeLayers, logConsumption, restoreLayer, updateFifoCosts, type Taken } from './costLayers';
 import { postDocumentEntry, reverseDocumentEntry } from './journalEntries';
-import { applyDelivered, lineNet, soTotals } from './salesOrders';
+import { applyDelivered, closeSalesOrder, lineNet, listSalesOrders, openQty, soTotals } from './salesOrders';
 import { createCollection } from './store';
 
 const invoices = createCollection<ArInvoice>('sikat-erp:ar-invoices:v6', SEED_AR_INVOICES, 'ar');
 
 export const listArInvoices = invoices.list;
-export const getArInvoice = invoices.get;
+export async function getArInvoice(idOrNumber: string) {
+  const direct = await invoices.get(idOrNumber);
+  if (direct) return direct;
+  const all = await invoices.list();
+  return all.find((a) => arNumber(a) === idOrNumber) ?? null;
+}
 
 export type ArInput = Omit<ArInvoice, 'id'> & { id?: string };
 
@@ -27,7 +32,7 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 const round4 = (n: number) => Math.round(n * 10000) / 10000;
 
 export const arSeriesOf = (id: string) => seriesLookup(arSeries, id, AR_SERIES);
-export const arNumber = (a: Pick<ArInvoice, 'seriesId' | 'docNum'>) => formatDocNum(arSeriesOf(a.seriesId), a.docNum);
+export const arNumber = (a: Pick<ArInvoice, 'seriesId' | 'docNum' | 'postingDate'>) => formatDocNum(arSeriesOf(a.seriesId), a.docNum, a.postingDate);
 
 /** Lines that take stock out when the invoice is added: stocked items not already shipped by a delivery. */
 export const shipsStock = (l: ArLine, items: readonly Item[]) => l.baseType !== 'DN' && Boolean(items.find((i) => i.id === l.itemId)?.inventoryItem);
@@ -221,6 +226,18 @@ export async function addArInvoice(input: ArInput, fx: number, ctx: { codes: rea
   await moveStock(lines, items, -1);
   await applyDelivered(lines.filter((l) => l.baseType === 'SO' && shipsStock(l, items)), 1);
   await applyInvoiced(lines.filter((l) => l.baseType === 'DN'), 1);
+
+  // Auto-close SOs that are now fully invoiced (all open lines covered by this or prior invoices).
+  const soIds = [...new Set(lines.filter((l) => l.baseType === 'SO' || l.baseType === 'DN').map((l) => l.baseId).filter(Boolean))];
+  if (soIds.length) {
+    const allOrders = await listSalesOrders();
+    for (const soId of soIds) {
+      const so = allOrders.find((o) => o.id === soId);
+      if (so && so.status === 'Open' && so.lines.every((l) => openQty(l) === 0)) {
+        await closeSalesOrder(so);
+      }
+    }
+  }
 
   const series = arSeriesOf(input.seriesId);
   const all = await invoices.list();

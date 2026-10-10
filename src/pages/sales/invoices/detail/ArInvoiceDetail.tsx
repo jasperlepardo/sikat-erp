@@ -1,13 +1,13 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { Alert, Badge, Button, Checkbox, Combobox, Form, FormField, IconButton, List, Panel, PanelHeader, panelHeaderIcons, Select, Tabs, Text, TextField } from '@jasperlepardo/sikat-design-system';
+import { Alert, Badge, Button, ButtonGroup, Checkbox, Combobox, Form, FormField, IconButton, List, Panel, PanelHeader, panelHeaderIcons, Select, Tabs, Text, TextField } from '@jasperlepardo/sikat-design-system';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { Fields, ReadOnly, Section, bind, type Errors } from '../../../../components/form/fields';
 import { StatusField } from '../../../../components/form/StatusField';
 import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { formatAddress } from '../../../../mocks/address';
-import { AR_SERIES, AR_STATUSES, blankArInvoice, type ArInvoice, type ArStatus } from '../../../../mocks/arInvoices';
+import { AR_SERIES, AR_STATUSES, OR_SERIES_ID, blankArInvoice, type ArInvoice, type ArStatus } from '../../../../mocks/arInvoices';
 import { accountText } from '../../../../mocks/chartOfAccounts';
 import { CURRENT_USER_ID } from '../../../../mocks/common';
 import { contactName } from '../../../../mocks/partners';
@@ -38,16 +38,27 @@ import { controlAccountOf } from '../../../../services/journalEntries';
 import { accounts, companyTax, currencies, exchangeRates, taxCodes, taxGroups, withholdingGroups, withholdingTaxes } from '../../../../services/masterData';
 import { listPartnersByRole } from '../../../../services/partners';
 import { paymentTermName, termDays } from '../../../../services/purchaseOrders';
-import { listSalesOrders, openQty, soDueDate } from '../../../../services/salesOrders';
+import { listSalesOrders, openQty, soDueDate, soNumber } from '../../../../services/salesOrders';
+import { soSeries } from '../../../../services/allSeries';
 import { salesEmployeeDef } from '../../../settings/masterDefs';
 import { DN_LIST_PATH } from '../../deliveries/detail/types';
 import { ALL_CURRENCIES, SO_LIST_PATH, proposedTaxCode } from '../../orders/detail/types';
 import { ArContents, type CopyPick } from './ArContents';
 import { ArAccounting, ArLogistics } from './ArSections';
 import { AR_LIST_PATH, arLineFromDelivery, arLineFromOrder, buildArContext, type ArContext, type ArDraft, type ArMasters } from './types';
+import { SalesDocumentFlow } from '../../shared/SalesDocumentFlow';
+import { useDocTitle } from '../../../../services/useDocTitle';
+import { AR_CM_LIST_PATH } from '../../returns/types';
 
 type TabId = 'contents' | 'logistics' | 'accounting' | 'attachments';
 const TAB_LABEL: Record<TabId, string> = { contents: 'Contents', logistics: 'Logistics', accounting: 'Accounting', attachments: 'Attachments' };
+
+const PAGES = [
+  { value: 'details', label: 'Details' },
+  { value: 'transactions', label: 'Transactions' },
+  { value: 'activity', label: 'Activity' },
+] as const;
+type PageId = (typeof PAGES)[number]['value'];
 
 export const AR_STATUS_INTENT: Record<ArStatus, 'default' | 'primary' | 'success' | 'danger'> = { Draft: 'default', Open: 'primary', Closed: 'success', Cancelled: 'danger' };
 
@@ -93,10 +104,11 @@ function ArInvoiceForm() {
   const { id } = useParams();
   const isNew = id === 'new';
   const navigate = useNavigate();
-  const from = useLocation().state as { fromDelivery?: string; fromOrder?: string } | null;
+  const from = useLocation().state as { fromDelivery?: string; fromOrder?: string; lineFilter?: 'goods' | 'services' } | null;
 
   const [draft, setDraft] = useState<ArDraft | null | undefined>(isNew ? blankArInvoice(todayISO(), CURRENT_USER_ID) : undefined);
   const [m, setM] = useState<ArMasters>();
+  const [page, setPage] = useState<PageId>('details');
   const [tab, setTab] = useState<TabId>('contents');
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
@@ -106,21 +118,37 @@ function ArInvoiceForm() {
     let cancelled = false;
     Promise.all([
       listPartnersByRole('customer'), listItems(), loadInventoryMasters(), companyTax.list(), taxCodes.list(), taxGroups.list(), withholdingTaxes.list(),
-      withholdingGroups.list(), currencies.list(), exchangeRates.list(), accounts.list(), loadCurrentCompany(), listSalesOrders(), listDeliveries(),
-    ]).then(([customers, items, inv, [company], codes, groups, withholding, wGroups, curs, rates, accts, ours, orders, deliveries]) => {
+      withholdingGroups.list(), currencies.list(), exchangeRates.list(), accounts.list(), loadCurrentCompany(), listSalesOrders(), listDeliveries(), soSeries.list(),
+    ]).then(([customers, items, inv, [company], codes, groups, withholding, wGroups, curs, rates, accts, ours, orders, deliveries, series]) => {
       if (cancelled) return;
-      const masters: ArMasters = { customers, items, inv, tax: { company, codes, groups, withholding, withholdingGroups: wGroups }, currencies: curs, rates, accounts: accts, company: ours, orders, deliveries };
+      const masters: ArMasters = { customers, items, inv, tax: { company, codes, groups, withholding, withholdingGroups: wGroups }, currencies: curs, rates, accounts: accts, company: ours, orders, deliveries, soSeries: series };
       setM(masters);
       // From a delivery's or order's "Copy to A/R invoice": every open line at its open quantity.
       if (!isNew) return;
       const dn = from?.fromDelivery && deliveries.find((d) => d.id === from.fromDelivery);
       const so = from?.fromOrder && orders.find((o) => o.id === from.fromOrder);
       if (dn) setDraft((d) => d && copyLines(d, { kind: 'DN', doc: dn }, dn.lines.filter((l) => l.quantity > l.invoicedQty).map((l) => ({ lineId: l.id, qty: l.quantity - l.invoicedQty })), masters));
-      else if (so) setDraft((d) => d && copyLines(d, { kind: 'SO', doc: so }, so.lines.filter((l) => openQty(l) > 0).map((l) => ({ lineId: l.id, qty: openQty(l) })), masters));
+      else if (so) {
+        const lineFilter = from?.lineFilter;
+        const picks = so.lines
+          .filter((l) => {
+            if (openQty(l) <= 0) return false;
+            if (!lineFilter) return true;
+            const isInventory = masters.items.find((i) => i.id === l.itemId)?.inventoryItem ?? false;
+            return lineFilter === 'goods' ? isInventory : !isInventory;
+          })
+          .map((l) => ({ lineId: l.id, qty: openQty(l) }));
+        setDraft((d) => {
+          if (!d) return d;
+          const base = copyLines(d, { kind: 'SO', doc: so }, picks, masters);
+          if (lineFilter === 'services') return { ...base, docType: 'Service' as const, seriesId: OR_SERIES_ID };
+          return base;
+        });
+      }
     });
     if (!isNew && id) {
       getArInvoice(id).then((a) => !cancelled && setDraft(a ?? null));
-      listArInvoices().then((all) => !cancelled && setSiblings([...all].sort((a, b) => b.postingDate.localeCompare(a.postingDate)).map((x) => x.id)));
+      listArInvoices().then((all) => !cancelled && setSiblings([...all].sort((a, b) => b.postingDate.localeCompare(a.postingDate)).map((a) => a.docNum ? arNumber(a) : a.id)));
     }
     return () => {
       cancelled = true;
@@ -128,11 +156,12 @@ function ArInvoiceForm() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, isNew]);
 
+  useDocTitle(draft?.docNum ? (isNew ? 'New A/R invoice' : draft.status === 'Draft' ? 'Draft A/R invoice' : arNumber(draft)) : undefined);
   if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading invoice…</Text>;
   if (draft === null) {
     return (
       <Panel className="flex-1">
-        <PanelHeader icon="receipt" title="A/R invoice not found" />
+        <PanelHeader icon="receipt" iconIntent="default" iconShape="rounded" iconSize={32} iconVariant="outline" title="A/R invoice not found" />
         <Panel.Body>
           <Button onClick={() => navigate(AR_LIST_PATH)}>Back to invoices</Button>
         </Panel.Body>
@@ -150,7 +179,7 @@ function ArInvoiceForm() {
   const wtax = Math.round(withholding.reduce((n, w) => n + w.amount, 0) * 100) / 100;
   const balance = balanceDue(totals.total, wtax, draft.appliedAmount);
   const journal = ctx.fx ? arJournal(draft, ctx.fx, { items: m.items, groups: m.inv.groups, codes: m.tax.codes, rateOf: ctx.rateOf, withholding, roundingRule: docCurrency?.rounding }, ctx.added) : [];
-  const at = draft.id ? siblings.indexOf(draft.id) : -1;
+  const at = draft.id ? siblings.indexOf(draft.docNum ? arNumber(draft as ArInvoice) : draft.id) : -1;
   const prevId = at > 0 ? siblings[at - 1] : undefined;
   const nextId = at >= 0 && at < siblings.length - 1 ? siblings[at + 1] : undefined;
 
@@ -200,7 +229,7 @@ function ArInvoiceForm() {
           ...(src.kind === 'DN' ? { trackingNo: src.doc.trackingNo } : {}),
         }
       : {};
-    const orderNo = src.kind === 'SO' ? String(src.doc.docNum) : src.doc.orderNumber;
+    const orderNo = src.kind === 'SO' ? soNumber(src.doc) : src.doc.orderNumber;
     const numbers = [...new Set([...d.orderNumber.split(', ').filter(Boolean), ...orderNo.split(', ').filter(Boolean)])].join(', ');
     return { ...d, ...header, orderNumber: numbers, lines: [...d.lines.filter((l) => l.itemId || l.description), ...added] };
   }
@@ -289,6 +318,7 @@ function ArInvoiceForm() {
       : []),
     ...(draft.status === 'Open' ? [{ label: 'Close', icon: 'task_alt', onSelect: closeIt }] : []),
     ...(draft.status === 'Open' && !draft.appliedAmount ? [{ label: 'Cancel A/R invoice', icon: 'cancel', onSelect: cancelIt }] : []),
+    ...(draft.status === 'Open' ? [{ label: 'Copy to A/R credit memo', icon: 'undo', onSelect: () => navigate(`${AR_CM_LIST_PATH}/new`, { state: { fromInvoice: draft.id } }) }] : []),
     ...bases.map((l) => ({ label: `Open ${l.baseType === 'DN' ? 'delivery' : 'sales order'} ${l.baseDocNo}`, icon: l.baseType === 'DN' ? 'local_shipping' : 'shopping_bag', onSelect: () => navigate(`${l.baseType === 'DN' ? DN_LIST_PATH : SO_LIST_PATH}/${l.baseId}`) })),
     ...(customer ? [{ label: `Open customer ${customer.code}`, icon: 'person', onSelect: () => navigate(`/sales/customers/${customer.id}`) }] : []),
   ];
@@ -301,36 +331,58 @@ function ArInvoiceForm() {
         <PanelHeader
           type="details"
           icon="receipt"
+          iconIntent="default"
+          iconShape="rounded"
+          iconSize={32} iconVariant="outline"
           title={title}
-          subcopy={isNew ? 'Bill a customer.' : undefined}
-          leading={
+          trailing={
             isNew ? undefined : (
-              <>
-                <IconButton type="button" label="Next" intent="default" variant="solid" size="large" disabled={!nextId} onClick={() => navigate(`${AR_LIST_PATH}/${nextId}`)}>
-                  {panelHeaderIcons.arrowDownward}
-                </IconButton>
-                <IconButton type="button" label="Previous" intent="default" variant="solid" size="large" disabled={!prevId} onClick={() => navigate(`${AR_LIST_PATH}/${prevId}`)}>
+              <ButtonGroup type="enclosed" intent="white" buttonIntent="default" buttonVariant="link">
+                <IconButton type="button" label="Previous" size="small"
+                  shape="pill" disabled={!prevId} onClick={() => navigate(`${AR_LIST_PATH}/${prevId}`)}>
                   {panelHeaderIcons.arrowUpward}
                 </IconButton>
-              </>
+                <IconButton type="button" label="Next" size="small"
+                  shape="pill" disabled={!nextId} onClick={() => navigate(`${AR_LIST_PATH}/${nextId}`)}>
+                  {panelHeaderIcons.arrowDownward}
+                </IconButton>
+              </ButtonGroup>
             )
           }
-          tabs={<Tabs variant="outline" value={tab} onValueChange={(v) => setTab(v as TabId)} items={(Object.keys(TAB_LABEL) as TabId[]).map((t) => ({ value: t, label: TAB_LABEL[t], badge: problems.some((p) => p.tab === t) ? '!' : t === 'attachments' && draft.attachments.length ? String(draft.attachments.length) : undefined }))} />}
+          tabs={<Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={PAGES.map((p) => ({ ...p, disabled: isNew && p.value !== 'details' }))} />}
           status={isNew ? undefined : <Badge size="small" intent={AR_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
           actions={
             <>
-              <Button type="button" intent="default" variant="solid" size="large" onClick={() => navigate(AR_LIST_PATH)}>
+              <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(AR_LIST_PATH)}>
                 {ro ? 'Back' : 'Cancel'}
               </Button>
               {menu.length ? <MoreMenu items={menu} /> : null}
-              <Button type="submit" intent="primary" variant="solid" size="large" disabled={saving}>
+              <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
                 {saving ? 'Saving…' : ro ? 'Save' : 'Add'}
               </Button>
             </>
           }
         />
-        <Panel.Body className="flex flex-col gap-2">
+        {page === 'activity' ? (
+          <Panel.Body>
+            <Text variant="small" tone="muted" className="p-4">Activity will show here.</Text>
+          </Panel.Body>
+        ) : page === 'transactions' && draft.id ? (
+          <Panel.Body className="flex flex-col gap-2">
+            <SalesDocumentFlow
+              kind="ARINV"
+              id={draft.id}
+              notes="Everything linked to this invoice: the sales order or delivery it came from, and the payments collected against it."
+            />
+          </Panel.Body>
+        ) : page === 'transactions' ? (
+          <Panel.Body>
+            <Text variant="small" tone="muted" className="p-4">Save the document first to see related documents.</Text>
+          </Panel.Body>
+        ) : null}
+        {page === 'details' ? <Panel.Body className="flex flex-col gap-2">
           <ProblemsAlert problems={problems} tabLabel={(t) => TAB_LABEL[t as TabId]} />
+          <Tabs variant="outline" value={tab} onValueChange={(v) => setTab(v as TabId)} items={(Object.keys(TAB_LABEL) as TabId[]).map((t) => ({ value: t, label: TAB_LABEL[t], badge: problems.some((p) => p.tab === t) ? '!' : t === 'attachments' && draft.attachments.length ? String(draft.attachments.length) : undefined }))} />
           {ro ? (
             <Alert intent="default" variant="outline" title={`This invoice is ${draft.status.toLowerCase()}`}>
               {draft.status === 'Cancelled'
@@ -370,10 +422,10 @@ function ArInvoiceForm() {
               <Section icon="tag" title="Document">
                 <Fields>
                   <FormField label="No.">
-                    {(p) => (
+                    {() => (
                       <div className="flex gap-1">
                         <Select aria-label="Series" className="w-32" disabled={ctx.added} options={AR_SERIES.map((s) => ({ value: s.id, label: s.name }))} value={draft.seriesId} onValueChange={(seriesId) => update({ seriesId })} />
-                        <TextField {...p} className="flex-1" readOnly placeholder="Next number" value={draft.docNum ? String(draft.docNum) : ''} />
+                        <span className="flex-1 self-center text-sm">{draft.docNum ? arNumber(draft) : <span className="text-(--color-text-placeholder)">Next number</span>}</span>
                       </div>
                     )}
                   </FormField>
@@ -431,7 +483,7 @@ function ArInvoiceForm() {
               <Text variant="small" tone="muted">In PHP{draft.currency !== 'PHP' && ctx.fx ? ` at ${ctx.fx}` : ''}. {ctx.added ? 'As posted.' : 'Stock it ships is costed at today’s item cost.'}</Text>
             </Section>
           </div>
-        </Panel.Body>
+        </Panel.Body> : null}
       </Panel>
     </Form>
   );

@@ -129,7 +129,6 @@ export function QuickAddPanel<T extends MasterRow>({
           type="forms"
           icon={def.icon}
           title={`New ${def.noun}`}
-          subcopy={`Adds to ${def.title} in ${def.home}.`}
           actions={
             <>
               <IconButton intent="default" variant="link" label="Close" onClick={onCancel}>

@@ -16,14 +16,8 @@ const asOptions = (values: readonly string[]) => values.map((v) => ({ value: v, 
 const locationIcon = <Icon size={16}>location_on</Icon>;
 
 function addressFields(a: PostalAddress) {
-  return [
-    { label: 'Address', value: a.addressLine },
-    { label: 'Barangay', value: a.block },
-    { label: 'City', value: a.city },
-    ...(a.countryCode === 'PH' ? [{ label: 'Province', value: a.province }] : []),
-    { label: 'ZIP code', value: a.zip },
-    ...(a.countryCode !== 'PH' ? [{ label: 'Country', value: countryName(a.countryCode) }] : []),
-  ].filter((x) => !!x.value);
+  const line = [a.addressLine, a.block, a.city, a.countryCode === 'PH' ? a.province : countryName(a.countryCode), a.zip].filter(Boolean).join(', ');
+  return line ? [{ label: 'Address', value: line }] : [];
 }
 
 /** An option for every address, keyed by its formatted text — what the document stores. */

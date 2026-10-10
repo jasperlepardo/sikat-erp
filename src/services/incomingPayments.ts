@@ -26,14 +26,19 @@ import { createCollection } from './store';
 const payments = createCollection<IncomingPayment>('sikat-erp:incoming-payments:v7', SEED_INCOMING_PAYMENTS, 'rc');
 
 export const listIncomingPayments = payments.list;
-export const getIncomingPayment = payments.get;
+export async function getIncomingPayment(idOrNumber: string) {
+  const direct = await payments.get(idOrNumber);
+  if (direct) return direct;
+  const all = await payments.list();
+  return all.find((p) => incomingNumber(p) === idOrNumber) ?? null;
+}
 
 export type IncomingInput = Omit<IncomingPayment, 'id'> & { id?: string };
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
 export const incomingSeriesOf = (id: string) => seriesLookup(incomingPaymentSeries, id, INCOMING_SERIES);
-export const incomingNumber = (p: Pick<IncomingPayment, 'seriesId' | 'docNum'>) => formatDocNum(incomingSeriesOf(p.seriesId), p.docNum);
+export const incomingNumber = (p: Pick<IncomingPayment, 'seriesId' | 'docNum' | 'postingDate'>) => formatDocNum(incomingSeriesOf(p.seriesId), p.docNum, p.postingDate);
 
 // ── Open documents ───────────────────────────────────────────────────────────
 
@@ -202,7 +207,7 @@ export async function addIncomingPayment(input: IncomingInput, fx: number, ctx: 
   for (const r of paidRows(input)) byInvoice.set(r.invoiceId, round2((byInvoice.get(r.invoiceId) ?? 0) + rowSettled(r)));
   const over = [...byInvoice].filter(([id, amt]) => amt > (amounts.get(id)?.balanceDue ?? 0) + 0.005);
   if (over.length) {
-    throw new IncomingPostError(over.map(([id, amt]) => `${arNumber(invoices.find((i) => i.id === id) ?? { seriesId: '', docNum: 0 })}: settling ${amt} but only ${amounts.get(id)?.balanceDue ?? 0} is still due.`).join(' '));
+    throw new IncomingPostError(over.map(([id, amt]) => `${arNumber(invoices.find((i) => i.id === id) ?? { seriesId: '', docNum: 0, postingDate: '' })}: settling ${amt} but only ${amounts.get(id)?.balanceDue ?? 0} is still due.`).join(' '));
   }
   const { diff, withinAllowance } = paymentDifference(input, fx);
   if (diff && !withinAllowance) throw new IncomingPostError(`Open balance of ${input.currency} ${Math.abs(diff).toLocaleString('en-PH', { minimumFractionDigits: 2 })}: the payment means ${diff > 0 ? 'exceed' : "don't cover"} the amount due by more than the allowed difference.`);

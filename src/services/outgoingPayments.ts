@@ -20,7 +20,12 @@ import { PURCHASING_HISTORY } from './purchasingHistory';
 const payments = createCollection<OutgoingPayment>('sikat-erp:outgoing-payments:v5', PURCHASING_HISTORY.payments, 'op');
 
 export const listPayments = payments.list;
-export const getPayment = payments.get;
+export async function getPayment(idOrNumber: string) {
+  const direct = await payments.get(idOrNumber);
+  if (direct) return direct;
+  const all = await payments.list();
+  return all.find((p) => paymentNumber(p) === idOrNumber) ?? null;
+}
 export const resetPayments = payments.reset;
 
 export type PaymentInput = Omit<OutgoingPayment, 'id'> & { id?: string };
@@ -29,7 +34,7 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 
 export const paymentSeriesOf = (id: string) => seriesLookup(outgoingPaymentSeries, id, PAYMENT_SERIES);
 /** "Primary 510004", or "Draft" before it's added. */
-export const paymentNumber = (p: Pick<OutgoingPayment, 'seriesId' | 'docNum'>) => formatDocNum(paymentSeriesOf(p.seriesId), p.docNum);
+export const paymentNumber = (p: Pick<OutgoingPayment, 'seriesId' | 'docNum' | 'postingDate'>) => formatDocNum(paymentSeriesOf(p.seriesId), p.docNum, p.postingDate);
 
 // ── Amounts ──────────────────────────────────────────────────────────────────
 

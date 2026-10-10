@@ -4,9 +4,12 @@ import {
   Alert,
   Badge,
   Button,
+  ButtonGroup,
+  CardField,
   Combobox,
   Form,
   FormField,
+  Icon,
   IconButton,
   Panel,
   PanelHeader,
@@ -16,6 +19,7 @@ import {
   List,
   Text,
   TextField,
+  type CardFieldOption,
 } from '@jasperlepardo/sikat-design-system';
 import { Fields, ReadOnly, Section, bind, type Errors } from '../../../../components/form/fields';
 import { StatusField } from '../../../../components/form/StatusField';
@@ -70,6 +74,8 @@ import {
   type PoMasters,
 } from './types';
 import { formatDate, todayISO } from '../../../../services/dates';
+import { listGoodsReceipts } from '../../../../services/goodsReceipts';
+import { useDocTitle } from '../../../../services/useDocTitle';
 
 export const PO_LIST_PATH = '/purchasing/purchase-orders';
 
@@ -164,13 +170,13 @@ function PurchaseOrderForm() {
   const [siblings, setSiblings] = useState<string[]>([]);
   useEffect(() => {
     if (!isNew)
-      listPurchaseOrders().then((all) => setSiblings([...all].sort((a, b) => b.postingDate.localeCompare(a.postingDate)).map((po) => po.id)));
+      listPurchaseOrders().then((all) => setSiblings([...all].sort((a, b) => b.postingDate.localeCompare(a.postingDate)).map((po) => po.docNum ? poNumber(po) : po.id)));
   }, [isNew]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [dupWarning, setDupWarning] = useState<string>();
+  const [closeWarning, setCloseWarning] = useState<string>();
   const [saving, setSaving] = useState(false);
   const [showVendorCreate, setShowVendorCreate] = useState(false);
-  const [vendorQuery, setVendorQuery] = useState('');
 
   useEffect(() => {
     Promise.all([
@@ -202,11 +208,12 @@ function PurchaseOrderForm() {
     };
   }, [id, isNew]);
 
+  useDocTitle(draft?.docNum ? (isNew ? 'New purchase order' : draft.status === 'Draft' ? 'Draft purchase order' : poNumber(draft)) : undefined);
   if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading purchase order…</Text>;
   if (draft === null) {
     return (
       <Panel className="flex-1">
-        <PanelHeader icon="receipt_long" title="Purchase order not found" />
+        <PanelHeader icon="receipt_long" iconIntent="default" iconShape="rounded" iconSize={32} iconVariant="outline" title="Purchase order not found" />
         <Panel.Body>
           <Button onClick={() => navigate(PO_LIST_PATH)}>Back to purchase orders</Button>
         </Panel.Body>
@@ -215,7 +222,7 @@ function PurchaseOrderForm() {
   }
 
   const ctx = buildContext(draft, m);
-  const at = draft.id ? siblings.indexOf(draft.id) : -1;
+  const at = draft.id ? siblings.indexOf(draft.docNum ? poNumber(draft as PurchaseOrder) : draft.id) : -1;
   const prevId = at > 0 ? siblings[at - 1] : undefined;
   const nextId = at >= 0 && at < siblings.length - 1 ? siblings[at + 1] : undefined;
   const { vendor } = ctx;
@@ -334,6 +341,18 @@ function PurchaseOrderForm() {
 
   const saved = draft as PurchaseOrder;
   const open = draft.status === 'Open' || draft.status === 'Not Confirmed';
+  const closeIt = async () => {
+    if (!closeWarning) {
+      const grs = await listGoodsReceipts();
+      const openGrs = grs.filter((gr) => gr.status === 'Open' && gr.lines.some((l) => l.baseId === saved.id));
+      if (openGrs.length) {
+        setCloseWarning(`This PO has ${openGrs.length} open goods receipt${openGrs.length === 1 ? '' : 's'} — closing it will stop further invoicing. Click Close again to proceed.`);
+        return;
+      }
+    }
+    setCloseWarning(undefined);
+    return act(() => closePurchaseOrder(saved), 'closed');
+  };
   const menu: MoreMenuItem[] = [
     ...(!ctx.added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
     ...(draft.status === 'Not Confirmed'
@@ -347,7 +366,7 @@ function PurchaseOrderForm() {
         ]
       : []),
     ...(!isNew ? [{ label: 'Duplicate', icon: 'content_copy', onSelect: duplicate }] : []),
-    ...(open ? [{ label: 'Close', icon: 'task_alt', onSelect: () => act(() => closePurchaseOrder(saved), 'closed') }] : []),
+    ...(open ? [{ label: 'Close', icon: 'task_alt', onSelect: closeIt }] : []),
     ...(open && !received ? [{ label: 'Cancel purchase order', icon: 'cancel', onSelect: () => act(() => cancelPurchaseOrder(saved), 'cancelled') }] : []),
     ...(vendor ? [{ label: `Open vendor ${vendor.code}`, icon: 'local_shipping', onSelect: () => navigate(`/purchasing/vendors/${vendor.id}`) }] : []),
   ];
@@ -359,7 +378,7 @@ function PurchaseOrderForm() {
       : open
         ? {
             ...(draft.status === 'Not Confirmed' ? { Open: () => submit(null, false, { approved: true }) } : {}),
-            Closed: () => act(() => closePurchaseOrder(saved), 'closed'),
+            Closed: closeIt,
             ...(!received ? { Cancelled: () => act(() => cancelPurchaseOrder(saved), 'cancelled') } : {}),
           }
         : {};
@@ -375,35 +394,34 @@ function PurchaseOrderForm() {
         <PanelHeader
           type="details"
           icon="receipt_long"
+          iconIntent="default"
+          iconShape="rounded"
+          iconSize={32} iconVariant="outline"
           title={title}
-          subcopy={isNew ? 'Order goods or services from a vendor.' : undefined}
-          // A saved PO leads with previous/next (through the list, newest first); a new one with the icon.
-          leading={
+          trailing={
             isNew ? undefined : (
-              <>
-                <IconButton
-                  type="button"
-                  label="Next"
-                  intent="default"
-                  variant="solid"
-                  size="large"
-                  disabled={!nextId}
-                  onClick={() => navigate(`${PO_LIST_PATH}/${nextId}`)}
-                >
-                  {panelHeaderIcons.arrowDownward}
-                </IconButton>
+              <ButtonGroup type="enclosed" intent="white" buttonIntent="default" buttonVariant="link">
                 <IconButton
                   type="button"
                   label="Previous"
-                  intent="default"
-                  variant="solid"
-                  size="large"
+                  size="small"
+                  shape="pill"
                   disabled={!prevId}
                   onClick={() => navigate(`${PO_LIST_PATH}/${prevId}`)}
                 >
                   {panelHeaderIcons.arrowUpward}
                 </IconButton>
-              </>
+                <IconButton
+                  type="button"
+                  label="Next"
+                  size="small"
+                  shape="pill"
+                  disabled={!nextId}
+                  onClick={() => navigate(`${PO_LIST_PATH}/${nextId}`)}
+                >
+                  {panelHeaderIcons.arrowDownward}
+                </IconButton>
+              </ButtonGroup>
             )
           }
           tabs={
@@ -425,11 +443,11 @@ function PurchaseOrderForm() {
           }
           actions={
             <>
-              <Button type="button" intent="default" variant="solid" size="large" onClick={() => navigate(PO_LIST_PATH)}>
+              <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(PO_LIST_PATH)}>
                 {ctx.readOnly ? 'Back' : 'Cancel'}
               </Button>
               {menu.length ? <MoreMenu items={menu} /> : null}
-              <Button type="submit" intent="primary" variant="solid" size="large" disabled={saving}>
+              <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
                 {saving ? 'Saving…' : ctx.added ? 'Save' : 'Add'}
               </Button>
             </>
@@ -457,6 +475,11 @@ function PurchaseOrderForm() {
                 {dupWarning} Press {ctx.added ? 'Save' : 'Add'} again to keep it, or change the Vendor Ref. No.
               </Alert>
             ) : null}
+            {closeWarning ? (
+              <Alert intent="warning" variant="outline" title="Check before closing">
+                {closeWarning}
+              </Alert>
+            ) : null}
             {ctx.readOnly ? (
               <Alert intent="default" variant="outline" title={`This purchase order is ${draft.status.toLowerCase()}`}>
                 Only remarks can change{draft.closeDate ? ` (closed ${draft.closeDate})` : ''}.
@@ -468,53 +491,37 @@ function PurchaseOrderForm() {
                 <Section icon="storefront" title="Vendor">
                   <Fields>
                     <div className="md:col-span-2">
-                    {vendor && ctx.added ? (
-                      <div className="md:col-span-2">
-                        <ReadOnly
-                          label="Vendor"
-                          value={draft.vendorName}
-                          description={`${draft.vendorCode} · ${draft.currency}`}
-                        />
-                      </div>
-                    ) : (
-                      <FormField
+                      <CardField
                         label="Vendor"
                         required
-                        error={errors.vendorId}
-                        tooltip="Only vendors are listed."
-                        className="md:col-span-2"
-                      >
-                        {(p) => (
-                          <Combobox
-                            {...p}
-                            placeholder="Search vendors"
-                            options={m.vendors
-                              .filter((v) => v.status !== 'Inactive' || v.id === draft.vendorId)
-                              .map((v) => ({
-                                value: v.id,
-                                label: v.name,
-                                subLabel: v.code,
-                                subLabelPlacement: 'top' as const,
-                                description: v.currency,
-                                text: `${v.code} ${v.name}`,
-                              }))}
-                            value={draft.vendorId || null}
-                            onValueChange={pickVendor}
-                            onQueryChange={setVendorQuery}
-                            emptyContent={(close) => (
-                              <button
-                                type="button"
-                                className="w-full cursor-pointer rounded-xl px-4 py-2 text-left text-sm font-medium hover:bg-primary-subtle"
-                                style={{ color: 'var(--color-text-primary)' }}
-                                onClick={() => { close(); setShowVendorCreate(true); }}
-                              >
-                                {vendorQuery.trim() ? `+ Create "${vendorQuery.trim()}"` : '+ Create new vendor'}
-                              </button>
-                            )}
-                          />
-                        )}
-                      </FormField>
-                    )}
+                        placeholder="Search vendors"
+                        options={m.vendors
+                          .filter((v) => v.status !== 'Inactive' || v.id === draft.vendorId)
+                          .map((v): CardFieldOption => ({
+                            value: v.id,
+                            label: v.name,
+                            icon: <Icon size={16}>storefront</Icon>,
+                            fields: [
+                              { label: 'Code', value: v.code },
+                              ...(v.currency && v.currency !== 'All Currencies' ? [{ label: 'Currency', value: v.currency }] : []),
+                              ...(v.tin ? [{ label: 'TIN', value: v.tin }] : []),
+                            ],
+                          }))}
+                        value={draft.vendorId}
+                        onValueChange={(id) => pickVendor(id || null)}
+                        readOnly={!!(vendor && ctx.added)}
+                        footer={
+                          <button
+                            type="button"
+                            className="w-full cursor-pointer rounded-xl px-4 py-2 text-left text-sm font-medium hover:bg-primary-subtle"
+                            style={{ color: 'var(--color-text-primary)' }}
+                            onClick={() => setShowVendorCreate(true)}
+                          >
+                            + Create new vendor
+                          </button>
+                        }
+                      />
+                      {errors.vendorId && <Text variant="small" tone="danger">{errors.vendorId}</Text>}
                     </div>
                     {h.lookup(
                       'contactId',
@@ -566,15 +573,10 @@ function PurchaseOrderForm() {
                             value={draft.seriesId}
                             onValueChange={(seriesId) => update({ seriesId, docNum: 0 })}
                           />
-                          <TextField
-                            {...p}
-                            className="flex-1"
-                            type={series.manual ? 'number' : 'text'}
-                            readOnly={!series.manual || ctx.added}
-                            placeholder={series.manual ? 'PO number' : 'Next number'}
-                            value={draft.docNum ? String(draft.docNum) : ''}
-                            onChange={(e) => update({ docNum: Number(e.currentTarget.value) })}
-                          />
+                          {series.manual && !ctx.added
+                            ? <TextField {...p} className="flex-1" type="number" placeholder="PO number" value={draft.docNum ? String(draft.docNum) : ''} onChange={(e) => update({ docNum: Number(e.currentTarget.value) })} />
+                            : <span className="flex-1 self-center text-sm">{draft.docNum ? poNumber(draft) : <span className="text-(--color-text-placeholder)">Next number</span>}</span>
+                          }
                         </div>
                       )}
                     </FormField>
@@ -712,7 +714,7 @@ function PurchaseOrderForm() {
     </Form>
     {showVendorCreate && (
       <VendorQuickCreate
-        initialName={vendorQuery.trim()}
+        initialName=""
         onClose={() => setShowVendorCreate(false)}
         onCreated={handleVendorCreated}
       />

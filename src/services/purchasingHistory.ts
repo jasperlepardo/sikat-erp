@@ -41,8 +41,8 @@ function amounts(doc: Pick<ApInvoice, 'discountPct' | 'freight' | 'freightTaxCod
   return { total: totals.total, wt, net: round2(totals.total - wt - downPayment) };
 }
 
-const apNo = (inv: ApInvoice) => `Primary ${inv.docNum}`;
-const grNo = (gr: GoodsReceipt) => `Primary ${gr.docNum}`;
+const apNo = (inv: ApInvoice) => `BILL-${inv.postingDate.slice(0, 4)}-${String(inv.docNum).padStart(4, '0')}`;
+const grNo = (gr: GoodsReceipt) => `GR-${gr.postingDate.slice(0, 4)}-${String(gr.docNum).padStart(4, '0')}`;
 
 export interface PurchasingHistory {
   receipts: GoodsReceipt[];
@@ -69,7 +69,7 @@ function build(): PurchasingHistory {
   };
 
   // ── Outgoing payments ───────────────────────────────────────────────────────
-  let payNo = 510000;
+  let payNo = 0;
   const payments: OutgoingPayment[] = [];
   const billRow = (bill: ApInvoice, amount?: number): PaymentRow => {
     const a = amounts(bill, bill.downPayment);
@@ -149,9 +149,9 @@ function build(): PurchasingHistory {
     return round2((t.beforeDiscount - t.discount) * (d.dpmPct / 100) + t.tax * (d.dpmPct / 100));
   };
   // Apple wants 30% ahead on the DepEd iPads — not paid yet.
-  const ipads = request('dp-001', 630001, po(860003), '2026-10-01', 30, 'PROFORMA APL-26-3391');
+  const ipads = request('dp-001', 1, po(3), '2026-10-01', 30, 'PROFORMA APL-26-3391');
   // Luzon wants half up front on the backordered MacBooks — paid, not yet drawn (the goods haven't come).
-  const macs = request('dp-002', 630002, po(260034), '2026-09-24', 50, 'PI-26-00871');
+  const macs = request('dp-002', 2, po(34), '2026-09-24', 50, 'PI-26-00871');
   const macsDue = dprTotal(macs);
   const macsPay = pay(
     'op-006', '2026-09-26', macs.vendorId,
@@ -179,7 +179,7 @@ function build(): PurchasingHistory {
   g7l.returnedQty = 1;
   const { invoicedQty: _i, returnedQty: _r, id: _id, ...g7base } = g7l;
   returns.push({
-    ...structuredClone(g7), id: 'rt-001', seriesId: RETURN_SERIES[0].id, docNum: 610001, status: 'Closed', postingDate: '2026-10-02', documentDate: '2026-10-02', dueDate: '2026-10-02', closeDate: '2026-10-02',
+    ...structuredClone(g7), id: 'rt-001', seriesId: RETURN_SERIES[0].id, docNum: 1, status: 'Closed', postingDate: '2026-10-02', documentDate: '2026-10-02', dueDate: '2026-10-02', closeDate: '2026-10-02',
     vendorRef: 'RMA-LID-2610-014', journalRemark: `Goods Returns – ${g7.vendorCode}`, consolidatingBpId: '', attachments: [], remarks: 'Dead on arrival — no display on power-up.',
     lines: [retLine({ ...g7base, id: 'rl-seed-1', quantity: 1, baseType: 'GRPO', baseId: g7.id, baseLineId: g7l.id, baseDocNo: grNo(g7), returnReason: 'Defective', countryOfOriginCode: '' })],
   });
@@ -190,7 +190,7 @@ function build(): PurchasingHistory {
   const { returnedQty: _q, receiptCostLc: _rc, bpCatalogNo: _bp, baseType: _bt, id: _bid, ...b6base } = b6l;
   const crushed = retLine({ ...b6base, id: 'rl-seed-2', quantity: 2, baseType: 'APINV', baseId: b6.id, baseLineId: b6l.id, baseDocNo: apNo(b6), returnReason: 'Damaged in transit', creditedQty: 2 });
   returns.push({
-    ...structuredClone(receipts.find((r) => r.id === b6l.baseId)!), id: 'rt-002', seriesId: RETURN_SERIES[0].id, docNum: 610002, status: 'Closed', postingDate: '2026-09-25', documentDate: '2026-09-25', dueDate: '2026-09-25', closeDate: '2026-09-27',
+    ...structuredClone(receipts.find((r) => r.id === b6l.baseId)!), id: 'rt-002', seriesId: RETURN_SERIES[0].id, docNum: 2, status: 'Closed', postingDate: '2026-09-25', documentDate: '2026-09-25', dueDate: '2026-09-25', closeDate: '2026-09-27',
     vendorRef: 'RMA-LID-2609-088', journalRemark: `Goods Returns – ${b6.vendorCode}`, consolidatingBpId: '', attachments: [], remarks: 'Two units arrived with crushed boxes; vendor authorized the return.',
     orderNumber: b6.orderNumber, lines: [crushed],
   });
@@ -201,9 +201,9 @@ function build(): PurchasingHistory {
     ...structuredClone(bill), id, seriesId: MEMO_SERIES[0].id, docNum, status: 'Open', postingDate: date, documentDate: date, dueDate: date, closeDate: '',
     vendorRef, journalRemark: `A/P Credit Memo – ${bill.vendorCode}`, remarks, lines, applications: [], appliedAmount: 0, downPayment: 0, paymentOrderRun: false,
   });
-  // Luzon's credit note for the two crushed iPhones, copied from return 610002 and applied to the po-001 bill.
-  const m1Line = newMemoLine({ ...b6base, id: 'ml-seed-1', quantity: 2, baseType: 'GRET', baseId: 'rt-002', baseLineId: crushed.id, baseDocNo: 'Primary 610002', returnGoods: false, invoiceId: b6.id, returnReason: 'Damaged in transit' });
-  const m1 = memoOf('cm-001', 620001, b6, '2026-09-27', [m1Line], 'CN-LID-2609-031', 'Credit for return 610002.');
+  // Luzon's credit note for the two crushed iPhones, copied from return RTN-2026-0002 and applied to the po-001 bill.
+  const m1Line = newMemoLine({ ...b6base, id: 'ml-seed-1', quantity: 2, baseType: 'GRET', baseId: 'rt-002', baseLineId: crushed.id, baseDocNo: 'RTN-2026-0002', returnGoods: false, invoiceId: b6.id, returnReason: 'Damaged in transit' });
+  const m1 = memoOf('cm-001', 1, b6, '2026-09-27', [m1Line], 'CN-LID-2609-031', 'Credit for return RTN-2026-0002.');
   const m1Credit = amounts(m1).net;
   settle(b6, m1Credit, m1.postingDate);
   Object.assign(m1, { appliedAmount: m1Credit, applications: [{ invoiceId: b6.id, docNo: apNo(b6), amount: m1Credit, date: m1.postingDate }], status: 'Closed', closeDate: m1.postingDate });
@@ -211,7 +211,7 @@ function build(): PurchasingHistory {
   // Techzone's 5% volume rebate on the September cables — the bill was already paid, so the credit waits to be applied.
   const cables = techzone.lines.find((l) => l.itemNo === 'ACC-CBL1M')!;
   const { returnedQty: _q2, baseType: _bt2, id: _cid, ...cableBase } = cables;
-  const m2 = memoOf('cm-002', 620002, techzone, '2026-10-03', [newMemoLine({ ...cableBase, id: 'ml-seed-2', unitPrice: round2(cables.unitPrice * 0.05), baseType: 'APINV', baseId: techzone.id, baseLineId: cables.id, baseDocNo: apNo(techzone), returnGoods: false, invoiceId: techzone.id, returnReason: 'Other', freeText: '5% volume rebate, September' })], 'CN-TZ-2610-004', 'Volume rebate on USB-C cables.');
+  const m2 = memoOf('cm-002', 2, techzone, '2026-10-03', [newMemoLine({ ...cableBase, id: 'ml-seed-2', unitPrice: round2(cables.unitPrice * 0.05), baseType: 'APINV', baseId: techzone.id, baseLineId: cables.id, baseDocNo: apNo(techzone), returnGoods: false, invoiceId: techzone.id, returnReason: 'Other', freeText: '5% volume rebate, September' })], 'CN-TZ-2610-004', 'Volume rebate on USB-C cables.');
   memos.push(m2);
 
   // ── Store replenishment returns (mocks/retailHistory.ts) ────────────────────
@@ -226,8 +226,8 @@ function build(): PurchasingHistory {
       ...structuredClone(receipts.find((x) => x.id === bl.baseId)!), id: r.id, seriesId: RETURN_SERIES[0].id, docNum: r.docNum, status: 'Closed', postingDate: r.date, documentDate: r.date, dueDate: r.date, closeDate: r.date,
       vendorRef: r.vendorRef, journalRemark: `Goods Returns – ${bill.vendorCode}`, consolidatingBpId: '', attachments: [], remarks: r.remarks, orderNumber: bill.orderNumber, lines: [rl],
     });
-    const ml = newMemoLine({ ...base, id: `ml-${r.id}`, quantity: r.quantity, baseType: 'GRET', baseId: r.id, baseLineId: rl.id, baseDocNo: `Primary ${r.docNum}`, returnGoods: false, invoiceId: bill.id, returnReason: r.reason });
-    const memo = memoOf(`cm-${r.id}`, r.memoNo, bill, r.date, [ml], r.memoRef, `Credit for return ${r.docNum}.`);
+    const ml = newMemoLine({ ...base, id: `ml-${r.id}`, quantity: r.quantity, baseType: 'GRET', baseId: r.id, baseLineId: rl.id, baseDocNo: `RTN-${r.date.slice(0, 4)}-${String(r.docNum).padStart(4, '0')}`, returnGoods: false, invoiceId: bill.id, returnReason: r.reason });
+    const memo = memoOf(`cm-${r.id}`, r.memoNo, bill, r.date, [ml], r.memoRef, `Credit for return RTN-${r.date.slice(0, 4)}-${String(r.docNum).padStart(4, '0')}.`);
     const credit = amounts(memo).net;
     settle(bill, credit, memo.postingDate);
     Object.assign(memo, { appliedAmount: credit, applications: [{ invoiceId: bill.id, docNo: apNo(bill), amount: credit, date: memo.postingDate }], status: 'Closed', closeDate: memo.postingDate });
@@ -254,7 +254,7 @@ function build(): PurchasingHistory {
   payBill('op-021', 'po-053', '2026-10-06', transfer('1016', '2026-10-06', 'BPI InstaPay 1006-9024'));
 
   // Numbered in date order, like payments added one after another.
-  payments.sort((a, b) => a.postingDate.localeCompare(b.postingDate) || a.id.localeCompare(b.id)).forEach((p, n) => (p.docNum = 510001 + n));
+  payments.sort((a, b) => a.postingDate.localeCompare(b.postingDate) || a.id.localeCompare(b.id)).forEach((p, n) => (p.docNum = 1 + n));
 
   return { receipts, invoices, payments, returns, memos, downPayments: [ipads, macs] };
 }

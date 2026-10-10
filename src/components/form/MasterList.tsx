@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import {
   Button,
+  ButtonGroup,
   Card,
   Icon,
   IconButton,
@@ -350,16 +351,19 @@ function ListView<T extends { id: string }>({
           <PanelHeader
             type="details"
             icon={icon}
+            iconIntent="default"
+            iconShape="rounded"
+            iconSize={32} iconVariant="outline"
             title={isPanelNew ? `New ${noun}` : label(panelRow)}
             actions={
               <>
                 <IconButton type="button" label="Close" intent="default" variant="link" onClick={closePanel}>
                   <Icon size={20}>close</Icon>
                 </IconButton>
-                <Button type="button" intent="default" variant="solid" size="large" onClick={closePanel}>
+                <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={closePanel}>
                   Cancel
                 </Button>
-                <Button type="button" intent="primary" variant="solid" size="large" disabled={panelSaving} onClick={savePanel}>
+                <Button type="button" intent="primary" variant="solid" size="medium" shape="pill" disabled={panelSaving} onClick={savePanel}>
                   {panelSaving ? 'Saving…' : isPanelNew ? 'Add' : 'Save'}
                 </Button>
               </>
@@ -419,7 +423,7 @@ function RecordPage<T extends { id: string }>({
   if (!row) {
     return (
       <Panel className="flex-1">
-        <PanelHeader icon={icon} title={`${noun[0].toUpperCase()}${noun.slice(1)} not found`} />
+        <PanelHeader icon={icon} iconIntent="default" iconShape="rounded" iconSize={32} iconVariant="outline" title={`${noun[0].toUpperCase()}${noun.slice(1)} not found`} />
         <Panel.Body>
           <Button onClick={back}>Back to {title.toLowerCase()}</Button>
         </Panel.Body>
@@ -450,43 +454,38 @@ function RecordPage<T extends { id: string }>({
       <PanelHeader
         type="details"
         icon={icon}
+        iconIntent="default"
+        iconShape="rounded"
+        iconSize={32} iconVariant="outline"
         title={isNew ? `New ${noun}` : label(row)}
-        subcopy={title}
-        // A saved record leads with previous/next (through the list, by name); a new one with the icon.
-        leading={
+        trailing={
           isNew ? undefined : (
-            <>
-              <IconButton
-                type="button"
-                label="Next"
-                intent="default"
-                variant="solid"
-                size="large"
-                disabled={!nextId}
-                onClick={() => navigate(`${basePath}/${nextId}`)}
-              >
-                {panelHeaderIcons.arrowDownward}
-              </IconButton>
+            <ButtonGroup type="enclosed" intent="white" buttonIntent="default" buttonVariant="link">
               <IconButton
                 type="button"
                 label="Previous"
-                intent="default"
-                variant="solid"
-                size="large"
                 disabled={!prevId}
                 onClick={() => navigate(`${basePath}/${prevId}`)}
               >
                 {panelHeaderIcons.arrowUpward}
               </IconButton>
-            </>
+              <IconButton
+                type="button"
+                label="Next"
+                disabled={!nextId}
+                onClick={() => navigate(`${basePath}/${nextId}`)}
+              >
+                {panelHeaderIcons.arrowDownward}
+              </IconButton>
+            </ButtonGroup>
           )
         }
         actions={
           <>
-            <Button type="button" intent="default" variant="solid" size="large" onClick={back}>
+            <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={back}>
               Cancel
             </Button>
-            <Button type="button" intent="primary" variant="solid" size="large" disabled={saving} onClick={save}>
+            <Button type="button" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving} onClick={save}>
               {saving ? 'Saving…' : isNew ? 'Add' : 'Save'}
             </Button>
           </>

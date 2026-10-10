@@ -132,12 +132,16 @@ export function InventoryTransferList() {
           setPage(1);
         }}
         icon="move_down"
+        iconIntent="default"
+        iconShape="rounded"
+        iconSize={32} iconVariant="outline"
         title={presets.menu}
         actions={
           <Button
             intent="primary"
             variant="solid"
-            size="large"
+            size="medium"
+            shape="pill"
             leadingIcon={<Icon size={20}>add</Icon>}
             onClick={() => navigate(`${TRANSFER_LIST_PATH}/new`)}
           >

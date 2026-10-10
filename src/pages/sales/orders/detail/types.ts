@@ -6,6 +6,7 @@ import { itemsPerUom, type Item } from '../../../../mocks/items';
 import type { Partner } from '../../../../mocks/partners';
 import { newSoLine, type SoLine } from '../../../../mocks/salesOrders';
 import { SYSTEM_TAX_CODES, rateAt } from '../../../../mocks/taxes';
+import type { DocumentSeries } from '../../../../mocks/common';
 import { todayISO } from '../../../../services/dates';
 import type { InventoryMasters } from '../../../../services/inventoryMasters';
 import { rateOn } from '../../../../services/masterData';
@@ -28,6 +29,7 @@ export interface SoMasters {
   rates: ExchangeRate[];
   accounts: Account[];
   company: Company;
+  soSeries: DocumentSeries[];
 }
 
 /** Values derived from the draft and master data that several sections need. */

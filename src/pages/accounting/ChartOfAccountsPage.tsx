@@ -355,9 +355,12 @@ export function ChartOfAccountsPage() {
       <PanelHeader
         {...search.headerProps}
         icon="account_tree"
+        iconIntent="default"
+        iconShape="rounded"
+        iconSize={32} iconVariant="outline"
         title="Chart of Accounts"
         actions={
-          <Button intent="primary" variant="solid" size="large" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${BASE}/new`)}>
+          <Button intent="primary" variant="solid" size="medium" shape="pill" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${BASE}/new`)}>
             New account
           </Button>
         }

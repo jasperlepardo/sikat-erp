@@ -6,7 +6,8 @@ import { DocSeriesTab } from './DocSeriesTab';
 const TABS: PageTab[] = DOC_TYPES.map((dt) => ({
   value: dt.key,
   label: dt.label,
-  Component: (route: ListRoute) => <DocSeriesTab collection={dt.collection} {...route} />,
+  sidePanelEdit: true,
+  Component: (route: ListRoute) => <DocSeriesTab collection={dt.collection} conditionFields={dt.conditionFields} {...route} />,
 }));
 
 export function DocumentNumberingPage() {
@@ -15,7 +16,6 @@ export function DocumentNumberingPage() {
       base="/settings/document-numbering"
       icon="tag"
       title="Document Numbering"
-      subcopy="Number series for every document type. Each series has a name, optional prefix, and starting number."
       tabs={TABS}
     />
   );

@@ -44,7 +44,7 @@ export interface GoodsReturn extends Omit<GoodsReceipt, 'lines' | 'status'> {
 }
 
 export const RETURN_SERIES: DocumentSeries[] = [
-  { id: 'rts-primary', name: 'Primary', prefix: 'RTN-', firstNo: 610001, manual: false, isDefault: true, active: true },
+  { id: 'rts-primary', name: 'Primary', prefix: '', firstNo: 5, manual: false, isDefault: true, active: true, segments: [{ type: 'literal', value: 'RTN' }, { type: 'year' }, { type: 'sequence', padding: 4 }] },
 ];
 
 export const newReturnLine = (patch: Partial<ReturnLine> = {}): ReturnLine => {

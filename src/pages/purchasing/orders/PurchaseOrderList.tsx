@@ -81,7 +81,7 @@ export function PurchaseOrderList() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orders, presets.filter, query, sort, codes]);
 
-  const open = (po: PurchaseOrder) => navigate(`${PO_LIST_PATH}/${po.id}`);
+  const open = (po: PurchaseOrder) => navigate(`${PO_LIST_PATH}/${po.docNum ? poNumber(po) : po.id}`);
 
   const columns: TableColumn<PurchaseOrder>[] = [
     {
@@ -136,12 +136,16 @@ export function PurchaseOrderList() {
           setPage(1);
         }}
         icon="receipt_long"
+        iconIntent="default"
+        iconShape="rounded"
+        iconSize={32} iconVariant="outline"
         title={presets.menu}
         actions={
           <Button
             intent="primary"
             variant="solid"
-            size="large"
+            size="medium"
+            shape="pill"
             leadingIcon={<Icon size={20}>add</Icon>}
             onClick={() => navigate(`${PO_LIST_PATH}/new`)}
           >

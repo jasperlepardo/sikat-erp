@@ -211,12 +211,16 @@ export function ItemList({ basePath = '/inventory/items' }: { basePath?: string 
           setPage(1);
         }}
         icon="inventory_2"
+        iconIntent="default"
+        iconShape="rounded"
+        iconSize={32} iconVariant="outline"
         title={presets.menu}
         actions={
           <Button
             intent="primary"
             variant="solid"
-            size="large"
+            size="medium"
+            shape="pill"
             leadingIcon={<Icon size={20}>add</Icon>}
             onClick={() => navigate(`${basePath}/new`)}
           >

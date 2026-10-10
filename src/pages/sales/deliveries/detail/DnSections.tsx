@@ -17,14 +17,8 @@ const locationIcon = <Icon size={16}>location_on</Icon>;
 const asOptions = (values: readonly string[]) => values.map((v) => ({ value: v, label: v }));
 
 function addressFields(a: PostalAddress) {
-  return [
-    { label: 'Address', value: a.addressLine },
-    { label: 'Barangay', value: a.block },
-    { label: 'City', value: a.city },
-    ...(a.countryCode === 'PH' ? [{ label: 'Province', value: a.province }] : []),
-    { label: 'ZIP code', value: a.zip },
-    ...(a.countryCode !== 'PH' ? [{ label: 'Country', value: countryName(a.countryCode) }] : []),
-  ].filter((x) => !!x.value);
+  const line = [a.addressLine, a.block, a.city, a.countryCode === 'PH' ? a.province : countryName(a.countryCode), a.zip].filter(Boolean).join(', ');
+  return line ? [{ label: 'Address', value: line }] : [];
 }
 
 /** Ship To / Bill To cards from the customer's addresses (any sales document). */
@@ -36,7 +30,8 @@ export function AddressCards({ draft, update, ctx }: { draft: { shipTo: string; 
     const known: CardFieldOption[] = addresses.map((a) => ({ value: a.id, label: `${a.label || 'Untitled address'}${a.id === defaultId ? ` (${tag})` : ''}`, icon: locationIcon, fields: addressFields(a) }));
     if (!current || addresses.some((a) => text(a) === current)) return known;
     const lines = current.split('\n').filter(Boolean);
-    return [{ value: '__custom__', label: lines[0] ?? 'Address on this delivery', icon: locationIcon, fields: lines.slice(1).map((value) => ({ label: '', value })) }, ...known];
+    const rest = lines.slice(1).join(', ');
+    return [{ value: '__custom__', label: lines[0] ?? 'Address on this delivery', icon: locationIcon, fields: rest ? [{ label: 'Address', value: rest }] : [] }, ...known];
   };
   const picked = (current: string) => addresses.find((a) => text(a) === current)?.id ?? (current ? '__custom__' : '');
   const fill = (field: 'shipTo' | 'billTo', id: string) => {

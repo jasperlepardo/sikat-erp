@@ -18,7 +18,12 @@ import { PURCHASING_HISTORY } from './purchasingHistory';
 const returns = createCollection<GoodsReturn>('sikat-erp:goods-returns:v4', PURCHASING_HISTORY.returns, 'rt');
 
 export const listGoodsReturns = returns.list;
-export const getGoodsReturn = returns.get;
+export async function getGoodsReturn(idOrNumber: string) {
+  const direct = await returns.get(idOrNumber);
+  if (direct) return direct;
+  const all = await returns.list();
+  return all.find((r) => returnNumber(r) === idOrNumber) ?? null;
+}
 
 export type ReturnInput = Omit<GoodsReturn, 'id'> & { id?: string };
 
@@ -26,8 +31,8 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 const round4 = (n: number) => Math.round(n * 10000) / 10000;
 
 /** "Primary 610004", or "Draft" before it's added. */
-export const returnNumber = (r: Pick<GoodsReturn, 'seriesId' | 'docNum'>) =>
-  formatDocNum(seriesLookup(returnSeries, r.seriesId, RETURN_SERIES), r.docNum);
+export const returnNumber = (r: Pick<GoodsReturn, 'seriesId' | 'docNum' | 'postingDate'>) =>
+  formatDocNum(seriesLookup(returnSeries, r.seriesId, RETURN_SERIES), r.docNum, r.postingDate);
 
 /** Footer totals in the document currency; the total is the Total Credit the vendor owes back. */
 export const returnTotals = (

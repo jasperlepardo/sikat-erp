@@ -33,7 +33,6 @@ export function WarehousesPage() {
       base={BASE}
       icon="warehouse"
       title="Warehouses & Bins"
-      subcopy="Offices bill, warehouses receive vendor shipments into bin locations, and stores sell stock restocked by transfer."
       tabs={TABS}
     />
   );

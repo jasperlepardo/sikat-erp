@@ -17,7 +17,6 @@ import { seedBinCode } from './binLocations';
 import { employeeId } from './masters';
 import { SEED_WAREHOUSES } from './itemMasters';
 import { SEED_ITEMS } from './items';
-import { RETAIL_RESTOCKS } from './retailHistory';
 
 export type TransferStatus = 'Draft' | 'Posted';
 export const TRANSFER_STATUSES: TransferStatus[] = ['Draft', 'Posted'];
@@ -65,7 +64,7 @@ export interface InventoryTransfer {
 }
 
 export const TRANSFER_SERIES: DocumentSeries[] = [
-  { id: 'its-primary', name: 'Primary', prefix: 'IT-', firstNo: 270001, manual: false, isDefault: true, active: true },
+  { id: 'its-primary', name: 'Primary', prefix: '', firstNo: 7, manual: false, isDefault: true, active: true, segments: [{ type: 'literal', value: 'IT' }, { type: 'year' }, { type: 'sequence', padding: 4 }] },
 ];
 
 export const DEFAULT_JOURNAL_REMARK = 'Inventory Transfers –';
@@ -136,7 +135,7 @@ const transfer = (id: string, docNum: number, patch: Partial<InventoryTransfer>)
 });
 
 const REPLENISHMENTS: InventoryTransfer[] = [
-  transfer('it-001', 270001, {
+  transfer('it-001', 1, {
     postingDate: '2026-09-03',
     documentDate: '2026-09-03',
     toWarehouse: 'WH-CEB',
@@ -144,7 +143,7 @@ const REPLENISHMENTS: InventoryTransfer[] = [
     remarks: 'Monthly replenishment of the Cebu store — stock below reorder point as at 2 Sep 2026.',
     lines: [line(0, 2, 'WH-CEB'), line(3, 1, 'WH-CEB'), line(7, 4, 'WH-CEB')],
   }),
-  transfer('it-002', 270002, {
+  transfer('it-002', 2, {
     postingDate: '2026-09-10',
     documentDate: '2026-09-10',
     toWarehouse: 'WH-DVO',
@@ -152,7 +151,7 @@ const REPLENISHMENTS: InventoryTransfer[] = [
     remarks: 'Monthly replenishment of the Davao store.',
     lines: [line(1, 2, 'WH-DVO'), line(5, 1, 'WH-DVO')],
   }),
-  transfer('it-003', 270003, {
+  transfer('it-003', 3, {
     postingDate: '2026-09-18',
     documentDate: '2026-09-18',
     toWarehouse: 'ST-001',
@@ -226,41 +225,17 @@ const storeRestock = (id: string, docNum: number, date: string, remarks: string,
 
 export const SEED_TRANSFERS: InventoryTransfer[] = [
   ...REPLENISHMENTS,
-  storeRestock('it-005', 270004, '2026-09-08', 'Accessory restock of the stores from the 5 Sep Techzone receipt.', [
+  storeRestock('it-005', 4, '2026-09-08', 'Accessory restock of the stores from the 5 Sep Techzone receipt.', [
     ...restock('ACC-CBL1M', 22),
     ...restock('ACC-MAGSF1', 692),
     ...restock('ACC-PWR20', 50),
   ]),
-  storeRestock('it-006', 270005, '2026-09-19', 'iPhone 17 and charger restock of the stores from the 17 Sep Luzon iDistribution receipt.', [
+  storeRestock('it-006', 5, '2026-09-19', 'iPhone 17 and charger restock of the stores from the 17 Sep Luzon iDistribution receipt.', [
     ...restock('ACC-PWR20', 32),
     ...restock('IPH-17-256-BLK', 3),
     ...restock('IPH-17-256-WHT', 7),
   ]),
-  storeRestock('it-007', 270006, '2026-10-01', 'iPhone 18 Pro restock of the stores from the 30 Sep receipt.', [...restock('IPH-18P-256-BLK', 2)]),
-  // Replenishment POs out to the stores the day after they're received (mocks/retailHistory.ts).
-  ...RETAIL_RESTOCKS.map((r) =>
-    storeRestock(
-      r.id,
-      r.docNum,
-      r.date,
-      `Store restock from PO ${r.poNo}, received yesterday.`,
-      r.lines.map((l) => {
-        const item = SEED_ITEMS.find((i) => i.id === l.itemId)!;
-        return newTransferLine({
-          id: `tl-${r.id}-${item.id}-${l.toWarehouse}`,
-          itemId: item.id,
-          itemNo: item.itemNo,
-          name: item.name,
-          description: item.description,
-          quantity: l.quantity,
-          uom: item.inventoryUom,
-          fromBinId: item.warehouses.find((x) => x.code === 'WH-MNL')?.defaultBinId || 'bin-WH-MNL-A-01-01',
-          toWarehouse: l.toWarehouse,
-          unitCost: item.itemCost,
-        });
-      }),
-    ),
-  ),
+  storeRestock('it-007', 6, '2026-10-01', 'iPhone 18 Pro restock of the stores from the 30 Sep receipt.', [...restock('IPH-18P-256-BLK', 2)]),
 ].map((t) =>
   // Posted transfers carry the bin codes they were posted with.
   t.status === 'Posted' ? { ...t, lines: t.lines.map((l) => ({ ...l, fromBinCode: seedBinCode(l.fromBinId), toBinCode: seedBinCode(l.toBinId) })) } : t,

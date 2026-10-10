@@ -22,7 +22,12 @@ export { poSeries };
 export const purchasingSettings = createCollection<PurchasingSettings>('sikat-erp:purchasing-settings', SEED_PURCHASING_SETTINGS, 'ps');
 
 export const listPurchaseOrders = orders.list;
-export const getPurchaseOrder = orders.get;
+export async function getPurchaseOrder(idOrNumber: string) {
+  const direct = await orders.get(idOrNumber);
+  if (direct) return direct;
+  const all = await orders.list();
+  return all.find((o) => poNumber(o) === idOrNumber) ?? null;
+}
 export const resetPurchaseOrders = orders.reset;
 
 export type PoInput = Omit<PurchaseOrder, 'id'> & { id?: string };
@@ -36,8 +41,8 @@ export const seriesOf = (id: string) => seriesLookup(poSeries, id, PO_SERIES);
 export const getPurchasingSettings = (): PurchasingSettings =>
   purchasingSettings.snapshot()[0] ?? SEED_PURCHASING_SETTINGS[0];
 /** "PO-260012", or "Draft" before a number is assigned. */
-export const poNumber = (po: Pick<PurchaseOrder, 'seriesId' | 'docNum'>) =>
-  formatDocNum(seriesOf(po.seriesId), po.docNum);
+export const poNumber = (po: Pick<PurchaseOrder, 'seriesId' | 'docNum' | 'postingDate'>) =>
+  formatDocNum(seriesOf(po.seriesId), po.docNum, po.postingDate);
 
 // ── Line and document math ───────────────────────────────────────────────────
 

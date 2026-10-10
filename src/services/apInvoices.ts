@@ -30,7 +30,12 @@ import { drawDownPayments, drawableAmount, dprTotal, listDownPayments } from './
 const invoices = createCollection<ApInvoice>('sikat-erp:ap-invoices:v6', PURCHASING_HISTORY.invoices, 'ap');
 
 export const listApInvoices = invoices.list;
-export const getApInvoice = invoices.get;
+export async function getApInvoice(idOrNumber: string) {
+  const direct = await invoices.get(idOrNumber);
+  if (direct) return direct;
+  const all = await invoices.list();
+  return all.find((inv) => apNumber(inv) === idOrNumber) ?? null;
+}
 export const resetApInvoices = invoices.reset;
 
 export type ApInput = Omit<ApInvoice, 'id'> & { id?: string };
@@ -39,7 +44,7 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 
 export const apSeriesOf = (id: string) => seriesLookup(apSeries, id, AP_SERIES);
 /** "Primary 290004", or "Draft" before it's added. */
-export const apNumber = (inv: Pick<ApInvoice, 'seriesId' | 'docNum'>) => formatDocNum(apSeriesOf(inv.seriesId), inv.docNum);
+export const apNumber = (inv: Pick<ApInvoice, 'seriesId' | 'docNum' | 'postingDate'>) => formatDocNum(apSeriesOf(inv.seriesId), inv.docNum, inv.postingDate);
 
 // ── Totals ───────────────────────────────────────────────────────────────────
 

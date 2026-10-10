@@ -32,7 +32,6 @@ export function AccountingTaxPage() {
       base="/settings/accounting-and-tax"
       icon="account_balance"
       title="Accounting & Tax"
-      subcopy="Philippine VAT, percentage, withholding, compensation and excise taxes; currencies and BSP exchange rates."
       tabs={TABS}
     />
   );

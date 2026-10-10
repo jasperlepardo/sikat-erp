@@ -48,14 +48,12 @@ const OPEN: Ranges = { aisle: { from: '', to: '' }, shelf: { from: '', to: '' },
 function ToolPanel({
   icon,
   title,
-  subcopy,
   primary,
   onCancel,
   children,
 }: {
   icon: string;
   title: string;
-  subcopy: string;
   primary: ReactNode;
   onCancel: () => void;
   children: ReactNode;
@@ -71,14 +69,17 @@ function ToolPanel({
       <PanelHeader
         type="forms"
         icon={icon}
+        iconIntent="default"
+        iconShape="rounded"
+        iconSize={32}
+        iconVariant="outline"
         title={title}
-        subcopy={subcopy}
         actions={
           <>
             <IconButton intent="default" variant="link" label="Close" onClick={onCancel}>
               <Icon size={20}>close</Icon>
             </IconButton>
-            <Button type="button" intent="default" variant="solid" size="large" onClick={onCancel}>
+            <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={onCancel}>
               Cancel
             </Button>
             {primary}
@@ -195,10 +196,9 @@ export function GenerateBinsPanel({ warehouse: initial, onCancel, onDone }: { wa
     <ToolPanel
       icon="apps"
       title="Generate bins"
-      subcopy="Adds a bin for every aisle, shelf and level in the ranges. Existing bins are left as they are."
       onCancel={onCancel}
       primary={
-        <Button type="button" intent="primary" variant="solid" size="large" disabled={!add.length || saving} onClick={run}>
+        <Button type="button" intent="primary" variant="solid" size="medium" shape="pill" disabled={!add.length || saving} onClick={run}>
           {saving ? 'Generating…' : `Generate ${add.length || ''} bin${add.length === 1 ? '' : 's'}`}
         </Button>
       }
@@ -315,10 +315,9 @@ export function ModifyBinCodesPanel({ warehouse: initial, onCancel, onDone }: { 
       <ToolPanel
         icon="edit_location_alt"
         title="Bin codes changed"
-        subcopy={`${result.bins} bin${result.bins === 1 ? '' : 's'} renamed in ${warehouse}.`}
         onCancel={onDone}
         primary={
-          <Button type="button" intent="primary" variant="solid" size="large" onClick={onDone}>
+          <Button type="button" intent="primary" variant="solid" size="medium" shape="pill" onClick={onDone}>
             Done
           </Button>
         }
@@ -336,14 +335,14 @@ export function ModifyBinCodesPanel({ warehouse: initial, onCancel, onDone }: { 
     <ToolPanel
       icon="edit_location_alt"
       title="Modify bin codes"
-      subcopy="Renames bins after a warehouse reorganization. Each bin keeps its history, stock and properties; only its code changes."
       onCancel={onCancel}
       primary={
         <Button
           type="button"
           intent="primary"
           variant="solid"
-          size="large"
+          size="medium"
+          shape="pill"
           disabled={!moving.length || conflicts.length > 0 || Boolean(badValue) || saving}
           onClick={run}
         >

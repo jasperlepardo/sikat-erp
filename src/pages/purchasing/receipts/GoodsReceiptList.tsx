@@ -82,7 +82,7 @@ export function GoodsReceiptList() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [receipts, presets.filter, query, sort, codes]);
 
-  const open = (gr: GoodsReceipt) => navigate(`${GR_LIST_PATH}/${gr.id}`);
+  const open = (gr: GoodsReceipt) => navigate(`${GR_LIST_PATH}/${gr.docNum ? grNumber(gr) : gr.id}`);
 
   const columns: TableColumn<GoodsReceipt>[] = [
     {
@@ -128,9 +128,12 @@ export function GoodsReceiptList() {
           setPage(1);
         }}
         icon="inventory"
+        iconIntent="default"
+        iconShape="rounded"
+        iconSize={32} iconVariant="outline"
         title={presets.menu}
         actions={
-          <Button intent="primary" variant="solid" size="large" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${GR_LIST_PATH}/new`)}>
+          <Button intent="primary" variant="solid" size="medium" shape="pill" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${GR_LIST_PATH}/new`)}>
             New goods receipt
           </Button>
         }

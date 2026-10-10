@@ -64,6 +64,13 @@ export function AccountingTab({ draft, update, errors, ctx }: SoTabProps) {
       </Section>
       <Section icon="event" title="Dates & references">
         <Fields>
+          {f.date('postingDate', 'Posting date', {
+            required: true,
+            error: errors.postingDate,
+            disabled: ctx.added,
+            hint: 'Defaults to today. Sets the exchange rate, tax rates and which prices apply.',
+          })}
+          {f.date('deliveryDate', 'Delivery date', { error: errors.deliveryDate, hint: 'When the customer expects it. Drives delivery planning.' })}
           {f.date('requiredDate', 'Required date', { error: errors.requiredDate, hint: 'When the customer needs it — for planning; separate from the delivery date.' })}
           {f.date('cancellationDate', 'Cancellation date', { error: errors.cancellationDate, hint: 'Set when the order is cancelled, or the date it lapses.' })}
           {f.choose('indicator', 'Indicator', [{ value: '', label: '— None —' }, ...asOptions(INDICATORS)])}

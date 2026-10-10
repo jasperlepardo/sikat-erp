@@ -28,6 +28,9 @@ import { ArInvoiceList } from '../pages/sales/invoices/ArInvoiceList';
 import { ArInvoiceDetail } from '../pages/sales/invoices/detail/ArInvoiceDetail';
 import { IncomingPaymentList } from '../pages/sales/payments/IncomingPaymentList';
 import { IncomingPaymentDetail } from '../pages/sales/payments/detail/IncomingPaymentDetail';
+import { ArCreditMemoDetail } from '../pages/sales/returns/ArCreditMemoDetail';
+import { SalesReturnsList } from '../pages/sales/returns/SalesReturnsList';
+import { SalesReturnDetail } from '../pages/sales/returns/SalesReturnDetail';
 import { PurchaseOrderDetail } from '../pages/purchasing/orders/detail/PurchaseOrderDetail';
 import { GoodsReceiptList } from '../pages/purchasing/receipts/GoodsReceiptList';
 import { GoodsReceiptDetail } from '../pages/purchasing/receipts/detail/GoodsReceiptDetail';
@@ -91,6 +94,11 @@ export const router = createHashRouter([
       { path: 'sales/invoices/:id', element: <ArInvoiceDetail /> },
       { path: 'sales/payments-received', element: <IncomingPaymentList /> },
       { path: 'sales/payments-received/:id', element: <IncomingPaymentDetail /> },
+      { path: 'sales/returns-and-credits', element: <SalesReturnsList kind="returns" /> },
+      { path: 'sales/returns-and-credits/returns', element: <SalesReturnsList kind="returns" /> },
+      { path: 'sales/returns-and-credits/returns/:id', element: <SalesReturnDetail /> },
+      { path: 'sales/returns-and-credits/credit-memos', element: <SalesReturnsList kind="memos" /> },
+      { path: 'sales/returns-and-credits/credit-memos/:id', element: <ArCreditMemoDetail /> },
       { path: 'purchasing/dashboard', element: <PurchaseDashboard /> },
       { path: 'purchasing/purchase-orders', element: <PurchaseOrderList /> },
       { path: 'purchasing/purchase-orders/:id', element: <PurchaseOrderDetail /> },

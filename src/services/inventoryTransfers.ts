@@ -24,8 +24,8 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 
 export const seriesOf = (id: string) => seriesLookup(transferSeries, id, TRANSFER_SERIES);
 /** "Primary 270004", or "Draft" before posting. */
-export const transferNumber = (t: Pick<InventoryTransfer, 'seriesId' | 'docNum'>) =>
-  formatDocNum(seriesOf(t.seriesId), t.docNum);
+export const transferNumber = (t: Pick<InventoryTransfer, 'seriesId' | 'docNum' | 'postingDate'>) =>
+  formatDocNum(seriesOf(t.seriesId), t.docNum, t.postingDate);
 
 export const lineValue = (l: TransferLine) => round2(l.quantity * l.unitCost);
 export const transferValue = (t: Pick<InventoryTransfer, 'lines'>) => round2(t.lines.reduce((n, l) => n + lineValue(l), 0));
