@@ -64,6 +64,7 @@ import { SYSTEM_TAX_CODES } from '../../../mocks/taxes';
 import { QT_LIST_PATH, QT_STATUS_INTENT } from './QuotationList';
 import { blankSalesOrder, newSoLine } from '../../../mocks/salesOrders';
 import { SO_LIST_PATH } from '../orders/detail/types';
+import { SalesDocumentFlow } from '../shared/SalesDocumentFlow';
 
 type Draft = Omit<Quotation, 'id'> & { id?: string };
 type TabId = 'contents' | 'logistics' | 'accounting';
@@ -457,7 +458,15 @@ function QuotationForm() {
 
         {page !== 'details' ? (
           <Panel.Body>
-            <Text variant="small" tone="muted" className="p-4">{page === 'transactions' ? 'Transactions will show here once the quotation is added.' : 'Activity will show here.'}</Text>
+            {page === 'transactions' ? (
+              added ? (
+                <SalesDocumentFlow kind="QT" id={saved.id} notes="Sales orders and downstream documents created from this quotation." />
+              ) : (
+                <Text variant="small" tone="muted" className="p-4">Transactions will show here once the quotation is added.</Text>
+              )
+            ) : (
+              <Text variant="small" tone="muted" className="p-4">Activity will show here.</Text>
+            )}
           </Panel.Body>
         ) : (
           <Panel.Body className="flex flex-col gap-2">

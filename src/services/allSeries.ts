@@ -5,6 +5,8 @@
  */
 import type { DocumentSeries } from '../mocks/common';
 import { PO_SERIES } from '../mocks/purchaseOrders';
+import { RFQ_SERIES } from '../mocks/rfqs';
+import { PR_SERIES } from '../mocks/purchaseRequests';
 import { SO_SERIES } from '../mocks/salesOrders';
 import { GR_SERIES } from '../mocks/goodsReceipts';
 import { AP_SERIES } from '../mocks/apInvoices';
@@ -22,12 +24,16 @@ import { INCOMING_SERIES } from '../mocks/incomingPayments';
 import { PAYMENT_SERIES } from '../mocks/outgoingPayments';
 import { JE_SERIES } from '../mocks/journalEntries';
 import { BA_SERIES } from '../mocks/blanketAgreements';
+import { PBA_SERIES } from '../mocks/purchaseBlanketAgreements';
 import { BUSINESS_TYPES } from '../mocks/masters';
 import { createCollection } from './store';
 import { bpGroups, territories } from './partnerMasters';
 import { currencies } from './masterData';
 
-// Purchasing — v2 bumps the key so stale localStorage reloads with the new prefix seeds
+// Purchasing
+export const prSeries = createCollection<DocumentSeries>('sikat-erp:pr-series', PR_SERIES, 'prs');
+export const rfqSeries = createCollection<DocumentSeries>('sikat-erp:rfq-series', RFQ_SERIES, 'rfqs');
+// v2 bumps the key so stale localStorage reloads with the new prefix seeds
 export const poSeries = createCollection<DocumentSeries>('sikat-erp:po-series:v2', PO_SERIES, 'ser');
 export const grSeries = createCollection<DocumentSeries>('sikat-erp:gr-series', GR_SERIES, 'grs');
 export const apSeries = createCollection<DocumentSeries>('sikat-erp:ap-series', AP_SERIES, 'aps');
@@ -54,6 +60,9 @@ export const postingSeries = createCollection<DocumentSeries>('sikat-erp:posting
 
 // Sales Blanket Agreements
 export const baSeries = createCollection<DocumentSeries>('sikat-erp:ba-series', BA_SERIES, 'bas');
+
+// Purchase Blanket Agreements
+export const pbaSeries = createCollection<DocumentSeries>('sikat-erp:pba-series', PBA_SERIES, 'pbas');
 
 // Accounting
 export const jeSeries = createCollection<DocumentSeries>('sikat-erp:je-series', JE_SERIES, 'jes');
@@ -175,6 +184,7 @@ const PAYMENT_FIELDS: ConditionField[] = [
 ];
 
 export const DOC_TYPES: DocTypeConfig[] = [
+  { key: 'purchase-quotations', label: 'Purchase Quotations (RFQ)', icon: 'description', collection: rfqSeries, fallback: RFQ_SERIES, conditionFields: PO_FIELDS },
   { key: 'purchase-orders', label: 'Purchase Orders', icon: 'shopping_cart', collection: poSeries, fallback: PO_SERIES, conditionFields: PO_FIELDS },
   { key: 'goods-receipts', label: 'Goods Receipts', icon: 'inventory', collection: grSeries, fallback: GR_SERIES },
   { key: 'ap-invoices', label: 'AP Invoices (Bills)', icon: 'receipt_long', collection: apSeries, fallback: AP_SERIES, conditionFields: PO_FIELDS },

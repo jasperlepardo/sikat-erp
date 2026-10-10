@@ -1,7 +1,11 @@
 import { grNumber, grTotal, listGoodsReceipts } from '../../../services/goodsReceipts';
 import { taxCodes } from '../../../services/masterData';
 import { listPurchaseOrders, poNumber, poTotal } from '../../../services/purchaseOrders';
+import { listPurchaseRequests, prNumber } from '../../../services/purchaseRequests';
+import { listRfqs, rfqNumber, rfqTotal } from '../../../services/rfqs';
 import { PO_LIST_PATH, STATUS_INTENT } from '../orders/detail/PurchaseOrderDetail';
+import { PR_LIST_PATH, STATUS_INTENT as PR_STATUS_INTENT } from '../requests/detail/PurchaseRequestDetail';
+import { RFQ_LIST_PATH, STATUS_INTENT as RFQ_STATUS_INTENT } from '../rfqs/detail/RfqDetail';
 import { GR_LIST_PATH, GR_STATUS_INTENT } from '../receipts/detail/GoodsReceiptDetail';
 import { AP_LIST_PATH, AP_STATUS_INTENT } from '../invoices/detail/ApInvoiceDetail';
 import { apNumber, apTotal, listApInvoices } from '../../../services/apInvoices';
@@ -18,11 +22,7 @@ import { lineage, type LinkedDocument } from './lineage';
 
 export type { LinkedDocument, Relation } from './lineage';
 
-/**
- * Every document type that takes part in copy-from / copy-to. Adding one (purchase request,
- * RFQ, A/P invoice, goods return…) is a new entry in SOURCES whose documents name their bases.
- */
-export type DocKind = 'PO' | 'GRPO' | 'APINV' | 'PAY' | 'GRET' | 'APCM' | 'DPR';
+export type DocKind = 'PR' | 'RFQ' | 'PO' | 'GRPO' | 'APINV' | 'PAY' | 'GRET' | 'APCM' | 'DPR';
 
 /** Lines of a document copied from one base document. */
 export interface CoveredLine {
@@ -50,8 +50,40 @@ export interface DocNode {
 
 /** Each document type's documents, as graph nodes. */
 const SOURCES: Record<DocKind, () => Promise<DocNode[]>> = {
-  // Purchase requests and RFQs aren't built, so POs have no bases yet. When they are, PO lines
-  // get a base link and this lists it — the walk below then reaches them from any document.
+  PR: async () => {
+    const requests = await listPurchaseRequests();
+    return requests.map((pr) => ({
+      kind: 'PR' as const,
+      id: pr.id,
+      type: 'Purchase request',
+      number: pr.docNum ? prNumber(pr) : pr.id,
+      href: `${PR_LIST_PATH}/${pr.docNum ? prNumber(pr) : pr.id}`,
+      date: pr.postingDate,
+      status: pr.status,
+      intent: PR_STATUS_INTENT[pr.status],
+      currency: 'PHP',
+      total: 0,
+      bases: [],
+    }));
+  },
+
+  RFQ: async () => {
+    const [rfqList, codes] = await Promise.all([listRfqs(), taxCodes.list()]);
+    return rfqList.map((rfq) => ({
+      kind: 'RFQ' as const,
+      id: rfq.id,
+      type: 'Purchase quotation',
+      number: rfq.docNum ? rfqNumber(rfq) : rfq.id,
+      href: `${RFQ_LIST_PATH}/${rfq.docNum ? rfqNumber(rfq) : rfq.id}`,
+      date: rfq.postingDate,
+      status: rfq.status,
+      intent: RFQ_STATUS_INTENT[rfq.status],
+      currency: rfq.currency,
+      total: rfqTotal(rfq, codes),
+      bases: rfq.basePrId ? [{ kind: 'PR' as const, id: rfq.basePrId, lines: [] }] : [],
+    }));
+  },
+
   PO: async () => {
     const [orders, codes] = await Promise.all([listPurchaseOrders(), taxCodes.list()]);
     return orders.map((po) => ({
@@ -65,7 +97,7 @@ const SOURCES: Record<DocKind, () => Promise<DocNode[]>> = {
       intent: STATUS_INTENT[po.status],
       currency: po.currency,
       total: poTotal(po, codes),
-      bases: [],
+      bases: po.baseRfqId ? [{ kind: 'RFQ' as const, id: po.baseRfqId, lines: [] }] : [],
     }));
   },
   // Receipt lines are copied from PO lines only.

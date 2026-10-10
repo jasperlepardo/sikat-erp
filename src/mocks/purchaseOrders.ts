@@ -58,6 +58,10 @@ export interface PoLine {
   discountPct: number;
   deliveryDate: string;
   blanketAgreement: string;
+  /** Id of the PurchaseBlanketAgreement collection record this line is drawn against. */
+  agreementId: string;
+  /** Id of the specific PbaLine this line fulfils. */
+  agreementLineId: string;
   mfrNo: string;
   freeText: string;
   requisitionSlipNo: string;
@@ -128,6 +132,8 @@ export interface PurchaseOrder {
   /** Freight, net, in the document currency (when freight is managed on documents). */
   freight: number;
   freightTaxCode: string;
+  /** Id of the RFQ this PO was copied from, if any. */
+  baseRfqId: string;
   /** Set on POs created by splitting another across warehouses. */
   splitFrom?: string;
 }
@@ -221,6 +227,8 @@ export const newPoLine = (patch: Partial<PoLine> = {}): PoLine => ({
   discountPct: 0,
   deliveryDate: '',
   blanketAgreement: '',
+  agreementId: '',
+  agreementLineId: '',
   mfrNo: '',
   freeText: '',
   requisitionSlipNo: '',
@@ -270,6 +278,7 @@ export function blankPurchaseOrder(buyerId: string): Omit<PurchaseOrder, 'id'> {
     discountPct: 0,
     freight: 0,
     freightTaxCode: '44',
+    baseRfqId: '',
   };
 }
 
@@ -362,7 +371,7 @@ export const SEED_PURCHASE_ORDERS: PurchaseOrder[] = [
     postingDate: '2026-09-10', documentDate: '2026-09-10', deliveryDate: '2026-09-17', closeDate: '2026-09-18', dueDate: '2026-10-10',
     vendorRef: 'APD-SO-558120',
     lines: [
-      line('po-001-1', 'IPH-17-256-BLK', 10, { receivedQty: 10, status: 'Closed', deliveryDate: '2026-09-17', blanketAgreement: 'BA-2026-001' }),
+      line('po-001-1', 'IPH-17-256-BLK', 10, { receivedQty: 10, status: 'Closed', deliveryDate: '2026-09-17', blanketAgreement: 'BA-2026-001', agreementId: 'pba-001', agreementLineId: 'pba-001-1' }),
       line('po-001-2', 'IPH-17-256-WHT', 8, { receivedQty: 8, status: 'Closed', deliveryDate: '2026-09-17', blanketAgreement: 'BA-2026-001' }),
       line('po-001-3', 'ACC-PWR20', 40, { receivedQty: 40, status: 'Closed', deliveryDate: '2026-09-17' }),
     ],
@@ -606,7 +615,7 @@ export const SEED_PURCHASE_ORDERS: PurchaseOrder[] = [
   vendorPo('po-039', 3, 'bp-017', {
     status: 'Open', seriesId: 'ser-import', currencyView: 'BP', shipTo: MNL_SHIP_TO, shippingType: 'sh-own',
     postingDate: '2026-09-30', documentDate: '2026-09-30', deliveryDate: '2026-10-14', dueDate: '2026-10-30', projectId: 'prj-002',
-    vendorRef: 'ASA-PH-2026-10-0081',
+    vendorRef: 'ASA-PH-2026-10-0081', baseRfqId: 'rfq-003',
     lines: [{ ...importLine('po-039-1', 'IPD-PRO-11-256-SG-WF-SBK', 120), deliveryDate: '2026-10-14' }],
     references: [{ id: 'po-039-r1', docType: 'Sales order', docNo: 'SO-2026-470001', docDate: '2026-09-30', remarks: 'DepEd Pasig — 120 iPad Pro, 4 on hand' }],
     remarks: 'Direct import for the DepEd Pasig award (SO-2026-470001). Ships with the next Apple allocation; 4 already on hand stay as buffer.',
@@ -626,8 +635,8 @@ export const SEED_PURCHASE_ORDERS: PurchaseOrder[] = [
     status: 'Closed', postingDate: '2026-09-08', documentDate: '2026-09-08', deliveryDate: '2026-09-11', closeDate: '2026-09-12', dueDate: '2026-10-12',
     vendorRef: 'LID-SO-561020',
     lines: [
-      line('po-041-1', 'IPH-17-256-LAV', 24, { receivedQty: 24, status: 'Closed', deliveryDate: '2026-09-11', blanketAgreement: 'BA-2026-001' }),
-      line('po-041-2', 'IPH-17E-256-SPK', 24, { receivedQty: 24, status: 'Closed', deliveryDate: '2026-09-11', blanketAgreement: 'BA-2026-001' }),
+      line('po-041-1', 'IPH-17-256-LAV', 24, { receivedQty: 24, status: 'Closed', deliveryDate: '2026-09-11', blanketAgreement: 'BA-2026-001', agreementId: 'pba-001', agreementLineId: 'pba-001-2' }),
+      line('po-041-2', 'IPH-17E-256-SPK', 24, { receivedQty: 24, status: 'Closed', deliveryDate: '2026-09-11', blanketAgreement: 'BA-2026-001', agreementId: 'pba-001', agreementLineId: 'pba-001-3' }),
       line('po-041-3', 'IPH-18P-256-BLK', 12, { receivedQty: 12, status: 'Closed', deliveryDate: '2026-09-11' }),
     ],
     remarks: 'Store replenishment, iPhone. Received complete 11 Sep; out to the stores 12 Sep.',
@@ -655,8 +664,8 @@ export const SEED_PURCHASE_ORDERS: PurchaseOrder[] = [
     status: 'Closed', postingDate: '2026-09-24', documentDate: '2026-09-24', deliveryDate: '2026-09-29', closeDate: '2026-09-30', dueDate: '2026-10-30',
     vendorRef: 'LID-SO-562201',
     lines: [
-      line('po-044-1', 'IPH-17-256-LAV', 16, { receivedQty: 16, status: 'Closed', deliveryDate: '2026-09-29', blanketAgreement: 'BA-2026-001' }),
-      line('po-044-2', 'IPH-17E-256-SPK', 16, { receivedQty: 16, status: 'Closed', deliveryDate: '2026-09-29', blanketAgreement: 'BA-2026-001' }),
+      line('po-044-1', 'IPH-17-256-LAV', 16, { receivedQty: 16, status: 'Closed', deliveryDate: '2026-09-29', blanketAgreement: 'BA-2026-001', agreementId: 'pba-001', agreementLineId: 'pba-001-2' }),
+      line('po-044-2', 'IPH-17E-256-SPK', 16, { receivedQty: 16, status: 'Closed', deliveryDate: '2026-09-29', blanketAgreement: 'BA-2026-001', agreementId: 'pba-001', agreementLineId: 'pba-001-3' }),
     ],
     remarks: 'Second iPhone replenishment of the month. Billed; not yet due.',
   }),

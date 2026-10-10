@@ -19,6 +19,8 @@ import { InventoryPostingList, StockCountList } from '../pages/inventory/counts/
 import { InventoryPostingDetail } from '../pages/inventory/counts/InventoryPostingDetail';
 import { StockCountDetail } from '../pages/inventory/counts/StockCountDetail';
 import { PurchaseDashboard } from '../pages/purchasing/PurchaseDashboard';
+import { PurchaseRequestList } from '../pages/purchasing/requests/PurchaseRequestList';
+import { PurchaseRequestDetail } from '../pages/purchasing/requests/detail/PurchaseRequestDetail';
 import { PurchaseOrderList } from '../pages/purchasing/orders/PurchaseOrderList';
 import { SalesOrderList } from '../pages/sales/orders/SalesOrderList';
 import { SalesOrderDetail } from '../pages/sales/orders/detail/SalesOrderDetail';
@@ -33,6 +35,8 @@ import { IncomingPaymentDetail } from '../pages/sales/payments/detail/IncomingPa
 import { ArCreditMemoDetail } from '../pages/sales/returns/ArCreditMemoDetail';
 import { SalesReturnsList } from '../pages/sales/returns/SalesReturnsList';
 import { SalesReturnDetail } from '../pages/sales/returns/SalesReturnDetail';
+import { RfqList } from '../pages/purchasing/rfqs/RfqList';
+import { RfqDetail } from '../pages/purchasing/rfqs/detail/RfqDetail';
 import { PurchaseOrderDetail } from '../pages/purchasing/orders/detail/PurchaseOrderDetail';
 import { GoodsReceiptList } from '../pages/purchasing/receipts/GoodsReceiptList';
 import { GoodsReceiptDetail } from '../pages/purchasing/receipts/detail/GoodsReceiptDetail';
@@ -54,6 +58,10 @@ import { JournalVoucherList } from '../pages/accounting/vouchers/JournalVoucherL
 import { JournalVoucherDetail } from '../pages/accounting/vouchers/JournalVoucherDetail';
 import { VoucherEntryDetail } from '../pages/accounting/vouchers/VoucherEntryDetail';
 import { SalesDashboard } from '../pages/sales/SalesDashboard';
+import { BlanketAgreementList } from '../pages/sales/agreements/BlanketAgreementList';
+import { BlanketAgreementDetail } from '../pages/sales/agreements/detail/BlanketAgreementDetail';
+import { PurchaseBlanketAgreementList } from '../pages/purchasing/agreements/PurchaseBlanketAgreementList';
+import { PurchaseBlanketAgreementDetail } from '../pages/purchasing/agreements/detail/PurchaseBlanketAgreementDetail';
 import { PartnerList } from '../pages/partners/PartnerList';
 import { PartnerDetail } from '../pages/partners/detail/PartnerDetail';
 import { ROLE_CONFIG, scopeConfig, type PartnerScope } from '../pages/partners/roles';
@@ -103,7 +111,13 @@ export const router = createHashRouter([
       { path: 'sales/returns-and-credits/returns/:id', element: <SalesReturnDetail /> },
       { path: 'sales/returns-and-credits/credit-memos', element: <SalesReturnsList kind="memos" /> },
       { path: 'sales/returns-and-credits/credit-memos/:id', element: <ArCreditMemoDetail /> },
+      { path: 'sales/agreements', element: <BlanketAgreementList /> },
+      { path: 'sales/agreements/:id', element: <BlanketAgreementDetail /> },
       { path: 'purchasing/dashboard', element: <PurchaseDashboard /> },
+      { path: 'purchasing/requests', element: <PurchaseRequestList /> },
+      { path: 'purchasing/requests/:id', element: <PurchaseRequestDetail /> },
+      { path: 'purchasing/quotations', element: <RfqList /> },
+      { path: 'purchasing/quotations/:id', element: <RfqDetail /> },
       { path: 'purchasing/purchase-orders', element: <PurchaseOrderList /> },
       { path: 'purchasing/purchase-orders/:id', element: <PurchaseOrderDetail /> },
       { path: 'purchasing/goods-receipts', element: <GoodsReceiptList /> },
@@ -119,6 +133,8 @@ export const router = createHashRouter([
       { path: 'purchasing/returns-and-debits/returns/:id', element: <GoodsReturnDetail /> },
       { path: 'purchasing/returns-and-debits/credit-memos', element: <ReturnsList key="memos" kind="memos" /> },
       { path: 'purchasing/returns-and-debits/credit-memos/:id', element: <CreditMemoDetail /> },
+      { path: 'purchasing/agreements', element: <PurchaseBlanketAgreementList /> },
+      { path: 'purchasing/agreements/:id', element: <PurchaseBlanketAgreementDetail /> },
       // Settings shell: redirect bare /settings to the first settings module.
       { path: 'settings', element: <Navigate to="/settings/company" replace /> },
       // Settings pages keep the tab and an opened record in the URL.

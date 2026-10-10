@@ -37,6 +37,7 @@ import { VendorItemsTab } from './VendorItemsTab';
 import { FieldStack, Section, bind, type DefaultKey, type DefaultPicks, type DefaultRole, type Draft, type Errors } from './fields';
 import { MoreMenu } from '../../../components/form/MoreMenu';
 import { ProblemsAlert, problemCollector, type Problem as ProblemBase } from '../../../components/form/ProblemsAlert';
+import { AgreementsSection } from './AgreementsSection';
 
 const TABS = [
   { value: 'settings', label: 'Settings', Component: SettingsTab },
@@ -471,6 +472,9 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
                   <AddressesCards draft={draft} update={update} onOpen={(value, added) => setEditing({ kind: 'address', value, isNew: added })} />
                   <PaymentMethodsCards draft={draft} update={update} onOpen={(value, added) => setEditing({ kind: 'payment', value, isNew: added })} />
                   <AttachmentsCards draft={draft} update={update} />
+                  {!isNew && draft.roles.includes('customer') && draft.id && (
+                    <AgreementsSection partnerId={draft.id} />
+                  )}
                 </aside>
 
                 <div className="flex min-w-0 flex-col gap-2 lg:col-span-9 lg:min-h-0 lg:overflow-y-auto">

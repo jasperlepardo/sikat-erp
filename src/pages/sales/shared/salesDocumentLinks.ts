@@ -4,6 +4,7 @@ import { dnNumber, dnTotal, listDeliveries } from '../../../services/deliveries'
 import { amountDue, listIncomingPayments, incomingNumber } from '../../../services/incomingPayments';
 import { listSalesOrders, soNumber, soTotal } from '../../../services/salesOrders';
 import { listSalesReturns, srNumber, srTotal } from '../../../services/salesReturns';
+import { listQuotations, qtNumber, qtTotal } from '../../../services/quotations';
 import { taxCodes } from '../../../services/masterData';
 import { formatAmount } from '../../../services/format';
 import { lineage, type LinkedDocument } from '../../purchasing/shared/lineage';
@@ -16,12 +17,30 @@ import { DN_STATUS_INTENT } from '../deliveries/detail/DeliveryDetail';
 import { RC_LIST_PATH, RC_STATUS_INTENT } from '../payments/detail/IncomingPaymentDetail';
 import { SO_STATUS_INTENT } from '../orders/detail/SalesOrderDetail';
 import { AR_CM_LIST_PATH, ARCM_STATUS_INTENT, SR_LIST_PATH, SR_STATUS_INTENT } from '../returns/types';
+import { QT_LIST_PATH, QT_STATUS_INTENT } from '../quotations/QuotationList';
 
-export type SalesDocKind = 'SO' | 'DN' | 'ARINV' | 'RCV' | 'ARCM' | 'SRT';
+export type SalesDocKind = 'QT' | 'SO' | 'DN' | 'ARINV' | 'RCV' | 'ARCM' | 'SRT';
 
 export type { LinkedDocument, CoveredLine };
 
 const SOURCES: Record<SalesDocKind, () => Promise<DocNode[]>> = {
+  QT: async () => {
+    const [quots, codes] = await Promise.all([listQuotations(), taxCodes.list()]);
+    return quots.map((q) => ({
+      kind: 'QT' as const,
+      id: q.id,
+      type: 'Quotation',
+      number: q.docNum ? qtNumber(q) : q.id,
+      href: `${QT_LIST_PATH}/${q.docNum ? qtNumber(q) : q.id}`,
+      date: q.postingDate,
+      status: q.status,
+      intent: QT_STATUS_INTENT[q.status],
+      currency: q.currency,
+      total: qtTotal(q, codes),
+      bases: [],
+    }));
+  },
+
   SO: async () => {
     const [orders, codes] = await Promise.all([listSalesOrders(), taxCodes.list()]);
     return orders.map((so) => ({
@@ -35,7 +54,7 @@ const SOURCES: Record<SalesDocKind, () => Promise<DocNode[]>> = {
       intent: SO_STATUS_INTENT[so.status],
       currency: so.currency,
       total: soTotal(so, codes),
-      bases: [],
+      bases: so.baseQuotationId ? [{ kind: 'QT' as const, id: so.baseQuotationId, lines: [] }] : [],
     }));
   },
 

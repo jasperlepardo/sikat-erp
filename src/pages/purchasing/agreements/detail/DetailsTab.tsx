@@ -2,18 +2,18 @@ import { useState } from 'react';
 import { Button, Combobox, Icon, Link, TableStatus, Text, TextField, type TableColumn } from '@jasperlepardo/sikat-design-system';
 import { DataTable } from '../../../../components/form/DataTable';
 import { itemsPerUom } from '../../../../mocks/items';
-import { newBaLine, type BaLine } from '../../../../mocks/blanketAgreements';
+import { newPbaLine, type PbaLine } from '../../../../mocks/purchaseBlanketAgreements';
 import { formatAmount } from '../../../../services/format';
 import { itemGroupName } from '../../../../services/inventoryMasters';
-import { lineTotal, openAmountLC, openQty } from '../../../../services/blanketAgreements';
-import type { BaDraft, BaMasters } from './types';
+import { lineTotal, openAmountLC, openQty } from '../../../../services/purchaseBlanketAgreements';
+import type { PbaDraft, PbaMasters } from './types';
 
 const num = (v: string) => (v === '' ? 0 : Number(v));
 
 interface Props {
-  draft: BaDraft;
-  update: (patch: Partial<BaDraft>) => void;
-  m: BaMasters;
+  draft: PbaDraft;
+  update: (patch: Partial<PbaDraft>) => void;
+  m: PbaMasters;
   readOnly: boolean;
 }
 
@@ -21,13 +21,13 @@ export function DetailsTab({ draft, update, m, readOnly }: Props) {
   const [editing, setEditing] = useState<Set<string>>(new Set());
 
   const lines = draft.lines;
-  const itemOf = (l: BaLine) => m.items.find((i) => i.id === l.itemId);
-  const patch = (id: string, p: Partial<BaLine>) =>
+  const itemOf = (l: PbaLine) => m.items.find((i) => i.id === l.itemId);
+  const patch = (id: string, p: Partial<PbaLine>) =>
     update({ lines: lines.map((l) => (l.id === id ? { ...l, ...p } : l)) });
 
   const itemOptions = (current: string) =>
     m.items
-      .filter((i) => i.id === current || i.salesItem)
+      .filter((i) => i.id === current || i.purchaseItem)
       .map((i) => ({
         value: i.id,
         label: (
@@ -39,35 +39,32 @@ export function DetailsTab({ draft, update, m, readOnly }: Props) {
         text: `${i.itemNo} ${i.name} ${i.description}`,
       }));
 
-  const pickItem = (l: BaLine, itemId: string | null) => {
+  const pickItem = (l: PbaLine, itemId: string | null) => {
     const item = m.items.find((i) => i.id === itemId);
     if (!item) {
       patch(l.id, { itemId: '', itemNo: '', description: '', itemGroupId: '' });
       return;
     }
-    const uom = m.inv.uoms.find((u) => u.code === item.salesUom);
-    const uomGroupId = m.inv.uomGroups.find((g) => g.baseUom === item.salesUom || g.conversions.some((c) => c.altUom === item.salesUom))?.id ?? '';
+    const uom = m.inv.uoms.find((u) => u.code === item.purchasingUom);
+    const uomGroupId = m.inv.uomGroups.find((g) => g.baseUom === item.purchasingUom || g.conversions.some((c) => c.altUom === item.purchasingUom))?.id ?? '';
     patch(l.id, {
       itemId: item.id,
       itemNo: item.itemNo,
       description: item.name,
       itemGroupId: item.itemGroupId,
-      unitPrice: Math.round((item.basePrice / 1.12) * 100) / 100,
-      uomCode: item.salesUom,
-      uomName: uom?.name ?? item.salesUom,
-      itemsPerUnit: itemsPerUom(item, item.salesUom) ?? 1,
+      unitPrice: Math.round(item.itemCost * 100) / 100,
+      uomCode: item.purchasingUom,
+      uomName: uom?.name ?? item.purchasingUom,
+      itemsPerUnit: itemsPerUom(item, item.purchasingUom) ?? 1,
       uomGroupId,
     });
   };
 
-  const col = (key: string, header: string, cell: (l: BaLine) => React.ReactNode, opts?: Partial<TableColumn<BaLine>>): TableColumn<BaLine> => ({
-    key,
-    header,
-    cell,
-    ...opts,
+  const col = (key: string, header: string, cell: (l: PbaLine) => React.ReactNode, opts?: Partial<TableColumn<PbaLine>>): TableColumn<PbaLine> => ({
+    key, header, cell, ...opts,
   });
 
-  const columns: TableColumn<BaLine>[] = [
+  const columns: TableColumn<PbaLine>[] = [
     col('item', 'Item / Description', (l) => {
       const item = itemOf(l);
       if (!item || (editing.has(l.id) && !readOnly)) {
@@ -137,7 +134,10 @@ export function DetailsTab({ draft, update, m, readOnly }: Props) {
         />
       ),
     ),
-    col('cumulativeQty', 'Cumulative qty', (l) => (
+    col('cumulativeOrderedQty', 'Ordered qty', (l) => (
+      <Text variant="small" tone="muted" className="tabular-nums">{l.cumulativeCommittedQty}</Text>
+    )),
+    col('cumulativeQty', 'Received qty', (l) => (
       <Text variant="small" tone="muted" className="tabular-nums">{l.cumulativeQty}</Text>
     )),
     col('cumulativeAmountLC', 'Cumulative amt (LC)', (l) => (
@@ -170,11 +170,11 @@ export function DetailsTab({ draft, update, m, readOnly }: Props) {
   ];
 
   return (
-    <DataTable<BaLine>
+    <DataTable<PbaLine>
       variant="card"
       icon="list_alt"
       title="Line Items"
-      description={`Items committed under this agreement. Unit prices are net of VAT in ${draft.currency}.`}
+      description={`Items committed under this agreement. Unit prices are the agreed purchase cost in ${draft.currency}.`}
       columns={columns}
       rows={lines}
       getRowId={(l) => l.id}
@@ -182,7 +182,7 @@ export function DetailsTab({ draft, update, m, readOnly }: Props) {
       unsortable={columns.map((c) => c.key)}
       actions={
         !readOnly ? (
-          <Button type="button" intent="primary" variant="solid" size="small" leadingIcon={<Icon size={16}>add</Icon>} onClick={() => update({ lines: [...lines, newBaLine()] })}>
+          <Button type="button" intent="primary" variant="solid" size="small" leadingIcon={<Icon size={16}>add</Icon>} onClick={() => update({ lines: [...lines, newPbaLine()] })}>
             Add line
           </Button>
         ) : undefined

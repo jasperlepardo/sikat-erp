@@ -1,4 +1,5 @@
 import { SALES_SETTINGS, SEED_SALES_ORDERS, SO_SERIES, openCommitted, type SalesOrder, type SoLine } from '../mocks/salesOrders';
+import { recalculateBACommitments } from './blanketAgreements';
 import { soSeries, seriesLookup, formatDocNum } from './allSeries';
 import type { RoundingRule } from '../mocks/currencies';
 import type { Item } from '../mocks/items';
@@ -139,6 +140,8 @@ export async function saveSalesOrder(input: SoInput, { asDraft = false } = {}): 
   const status = input.status === 'Closed' || input.status === 'Cancelled' ? input.status : 'Open';
   const saved = await orders.save({ ...input, lines, docNum, status });
   await recommit(before, saved);
+  const affectedBaIds = [...new Set(saved.lines.map((l) => l.agreementId).filter(Boolean))];
+  if (affectedBaIds.length) await recalculateBACommitments(affectedBaIds);
   return saved;
 }
 

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Button, Combobox, Icon, Link, Select, TableStatus, Text, TextField, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { Button, Combobox, Icon, IconButton, Link, Select, TableStatus, Text, TextField, type TableColumn } from '@jasperlepardo/sikat-design-system';
 import { DataTable } from '../../../../components/form/DataTable';
 import { MasterLookup } from '../../../../components/form/MasterLookup';
 import { itemUnits, itemsPerUom } from '../../../../mocks/items';
@@ -12,12 +12,21 @@ import { formatDate } from '../../../../services/dates';
 import { priceListDef } from '../../../settings/masterDefs';
 import { warehouseOptions } from '../../../inventory/transfers/TransferLines';
 import { availableIn, lineFromItem, linePricing, type SoTabProps } from './types';
+import { listBlanketAgreements, baNumber, openQty as baOpenQty } from '../../../../services/blanketAgreements';
+import { useAsync } from '../../../../services/useAsync';
+import type { BlanketAgreement, BaLine } from '../../../../mocks/blanketAgreements';
+import { BA_LIST_PATH } from '../../agreements/BlanketAgreementList';
 
 const num = (v: string) => (v === '' ? 0 : Number(v));
 
 export function ContentsTab({ draft, update, errors, m, ctx }: SoTabProps) {
   const [editing, setEditing] = useState<Set<string>>(new Set());
   const lines = draft.lines;
+  const allAgreements = useAsync(listBlanketAgreements, []);
+  // Agreements for the current customer that are not Closed or Terminated.
+  const customerAgreements = (allAgreements ?? []).filter(
+    (ba) => ba.customerId === draft.customerId && ba.status !== 'Closed' && ba.status !== 'Terminated',
+  );
   const itemOf = (l: SoLine) => m.items.find((i) => i.id === l.itemId);
   const patch = (id: string, p: Partial<SoLine>) => update({ lines: lines.map((l) => (l.id === id ? { ...l, ...p } : l)) });
   const err = (l: SoLine, field: string) => errors[`line:${l.id}:${field}`];
@@ -80,6 +89,36 @@ export function ContentsTab({ draft, update, errors, m, ctx }: SoTabProps) {
           </div>
         );
       }
+      // Build agreement line options for this SO line's item.
+      const matchingBaLines: Array<{ ba: BlanketAgreement; baLine: BaLine; n: number }> = [];
+      for (const ba of customerAgreements) {
+        ba.lines.forEach((baLine, idx) => {
+          if (baLine.itemId === l.itemId && baLine.rowStatus === 'Open') {
+            matchingBaLines.push({ ba, baLine, n: idx + 1 });
+          }
+        });
+      }
+      const linkedBa = l.agreementId ? customerAgreements.find((ba) => ba.id === l.agreementId) : undefined;
+      const linkedN = linkedBa ? linkedBa.lines.indexOf(linkedBa.lines.find((bl) => bl.id === l.agreementLineId)!) + 1 : 0;
+
+      const agreementOptions = matchingBaLines.map(({ ba, baLine, n }) => ({
+        value: `${ba.id}::${baLine.id}`,
+        label: `${baNumber(ba)} · Line ${n} (${baOpenQty(baLine)} open)`,
+      }));
+
+      const pickAgreementLine = (combined: string | null) => {
+        if (!combined) {
+          patch(l.id, { agreementId: '', agreementLineId: '' });
+          return;
+        }
+        const [baId, baLineId] = combined.split('::');
+        const ba = customerAgreements.find((b) => b.id === baId);
+        const baLine = ba?.lines.find((bl) => bl.id === baLineId);
+        if (!ba || !baLine) return;
+        const pricePatch = !ba.ignorePrices ? { unitPrice: baLine.unitPrice, priceSource: `Agreement ${baNumber(ba)}` } : {};
+        patch(l.id, { agreementId: baId, agreementLineId: baLineId, ...pricePatch });
+      };
+
       return (
         <div className="flex w-64 flex-col gap-1">
           <div className="flex flex-col">
@@ -94,6 +133,38 @@ export function ContentsTab({ draft, update, errors, m, ctx }: SoTabProps) {
               <Link intent="primary" onClick={() => patch(l.id, { itemId: '', itemNo: '', description: '' })}>
                 Change
               </Link>
+            </div>
+          )}
+          {/* Agreement picker — only shown when there are matching open BA lines or one is already linked. */}
+          {(matchingBaLines.length > 0 || l.agreementId) && (
+            <div className="flex items-center gap-1">
+              {l.agreementId && linkedBa ? (
+                <>
+                  <Link intent="primary" href={`#${BA_LIST_PATH}/${linkedBa.docNum ? baNumber(linkedBa) : linkedBa.id}`}>
+                    <Text variant="caption">{baNumber(linkedBa)} &middot; Line {linkedN}</Text>
+                  </Link>
+                  {!locked(l) && (
+                    <IconButton
+                      type="button"
+                      size="small"
+                      intent="default"
+                      variant="link"
+                      label="Unlink agreement"
+                      onClick={() => patch(l.id, { agreementId: '', agreementLineId: '' })}
+                    >
+                      <Icon size={14}>close</Icon>
+                    </IconButton>
+                  )}
+                </>
+              ) : !locked(l) ? (
+                <Select
+                  aria-label="Link to agreement"
+                  placeholder="Link to agreement..."
+                  options={agreementOptions}
+                  value={undefined}
+                  onValueChange={(v) => pickAgreementLine(v ?? null)}
+                />
+              ) : null}
             </div>
           )}
         </div>
