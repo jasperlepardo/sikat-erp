@@ -25,7 +25,7 @@ import { SEED_AR_INVOICES } from '../mocks/arInvoices';
 import { SEED_DELIVERIES } from '../mocks/deliveries';
 import { SEED_POSTINGS, countedQty } from '../mocks/inventoryCountings';
 import { SEED_TRANSFERS } from '../mocks/inventoryTransfers';
-import { SEED_ITEMS, newItemWarehouse, type Item } from '../mocks/items';
+import { SEED_ITEMS, mergedItems, newItemWarehouse, type Item } from '../mocks/items';
 import { SEED_SALES_RETURNS } from '../mocks/salesReturns';
 import type { CostConsumption, CostLayer } from './costLayers';
 import { purchasingHistory } from './purchasingHistory';
@@ -127,7 +127,8 @@ function events(items: Map<string, Item>): Event[] {
 }
 
 function build(): StockHistory {
-  const items = new Map(SEED_ITEMS.map((i) => [i.id, i]));
+  // As the app reads them: a variant's valuation method and accounts are its parent's.
+  const items = new Map(mergedItems(SEED_ITEMS).map((i) => [i.id, i]));
   const evs = events(items);
   const problems: string[] = [];
   const key = (itemId: string, warehouse: string) => `${itemId}@${warehouse}`;

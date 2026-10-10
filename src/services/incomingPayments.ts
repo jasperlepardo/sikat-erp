@@ -22,8 +22,17 @@ import type { JournalLine } from './inventoryTransfers';
 import { postDocumentEntry, reverseDocumentEntry } from './journalEntries';
 import { termDays } from './purchaseOrders';
 import { createCollection } from './store';
+import { seededLedger } from './ledgerHistory';
 
-const payments = createCollection<IncomingPayment>('sikat-erp:incoming-payments:v7', SEED_INCOMING_PAYMENTS, 'rc');
+// Seeded payments carry the number of the entry they posted (services/ledgerHistory.ts), as added ones do.
+const payments = createCollection<IncomingPayment>(
+  'sikat-erp:incoming-payments:v8',
+  () => {
+    const numbers = new Map(seededLedger().entries.filter((e) => e.origin === 'RC').map((e) => [e.originId, e.number]));
+    return SEED_INCOMING_PAYMENTS.map((p) => ({ ...p, transNo: numbers.get(p.id) ?? p.transNo }));
+  },
+  'rc',
+);
 
 export const listIncomingPayments = payments.list;
 export async function getIncomingPayment(idOrNumber: string) {

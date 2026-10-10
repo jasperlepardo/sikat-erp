@@ -124,6 +124,8 @@ function illustrativeUsd(): ExchangeRate[] {
     const [x1, y1] = anchors[i + 1];
     return y0 + ((y1 - y0) * (d - x0)) / (x1 - x0);
   };
+  // The last banking day of 2025, so documents dated on the New Year holiday have a rate.
+  out.push({ id: 'fx-2025-12-29', date: '2025-12-29', rates: { USD: 58.95 }, unavailable: [], source: 'Manual' });
   for (let d = 0; d <= 180; d++) {
     const date = new Date(start + d * 86400000).toISOString().slice(0, 10);
     const weekday = new Date(start + d * 86400000).getUTCDay();

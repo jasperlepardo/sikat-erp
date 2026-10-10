@@ -12,7 +12,10 @@ import { MEMO_SERIES, newMemoLine, type ApCreditMemo, type MemoLine } from '../m
 import { SEED_AP_INVOICES, billFromReceipt, type ApInvoice } from '../mocks/apInvoices';
 import { SEED_GOODS_RECEIPTS, type GoodsReceipt } from '../mocks/goodsReceipts';
 import { RETURN_SERIES, newReturnLine, type GoodsReturn, type ReturnLine } from '../mocks/goodsReturns';
-import { SEED_ITEMS } from '../mocks/items';
+import { SEED_ITEMS, mergedItems } from '../mocks/items';
+
+/** Items as the app reads them (variants with their parent's tax and withholding setup). */
+const ITEMS = mergedItems(SEED_ITEMS);
 import { blankMeans, blankPayment, newAccountRow, newCheckRow, type OutgoingPayment, type PaymentRow } from '../mocks/outgoingPayments';
 import { SEED_PARTNERS } from '../mocks/partners';
 import { SEED_PURCHASE_ORDERS, type PurchaseOrder } from '../mocks/purchaseOrders';
@@ -37,7 +40,7 @@ const reverse = (code: string) => vatNotPaidToVendor(SEED_TAX_CODES.find((x) => 
 /** Total and net due (after withholding) of a bill-shaped document, as the forms work them out. */
 function amounts(doc: Pick<ApInvoice, 'discountPct' | 'freight' | 'freightTaxCode' | 'postingDate' | 'vendorId'> & { lines: { itemId: string; quantity: number; unitPrice: number; discountPct: number; taxCode: string }[] }, downPayment = 0) {
   const totals = poTotals(doc, rateOf(doc.postingDate), undefined, reverse);
-  const withholding = poWithholding(doc, vendorOf(doc.vendorId), SEED_ITEMS, TAX, doc.postingDate);
+  const withholding = poWithholding(doc, vendorOf(doc.vendorId), ITEMS, TAX, doc.postingDate);
   const wt = round2(withholding.filter((w) => w.deducted).reduce((n, w) => n + w.amount, 0));
   return { total: totals.total, wt, net: round2(totals.total - wt - downPayment) };
 }

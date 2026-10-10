@@ -4,7 +4,6 @@ import {
   FISCAL_YEAR_END,
   JE_SERIES,
   ORIGIN_LABEL,
-  SEED_JOURNAL_ENTRIES,
   blankJournalEntry,
   newJeLine,
   type JeLine,
@@ -16,25 +15,10 @@ import { jeSeries, seriesLookup, formatDocNum } from './allSeries';
 import { rateAt, type TaxCode } from '../mocks/taxes';
 import { formatDate, todayISO } from './dates';
 import { createCollection } from './store';
-import { purchasingHistory } from './purchasingHistory';
+import { seededLedger } from './ledgerHistory';
 
-/**
- * The seeded USD purchase chain points at its receipt, bill and payment by PO. They're numbered
- * in date order, so their numbers and ids depend on the rest of the purchasing history.
- */
-const CHAIN: Record<string, () => { id: string; docNum: number } | undefined> = {
-  'je-009': () => purchasingHistory().receipts.find((r) => r.lines.some((l) => l.baseId === 'po-007')),
-  'je-010': () => {
-    const gr = purchasingHistory().receipts.find((r) => r.lines.some((l) => l.baseId === 'po-007'));
-    return purchasingHistory().invoices.find((i) => i.lines.some((l) => l.baseId === gr?.id));
-  },
-  'je-011': () => purchasingHistory().payments.find((p) => p.id === 'op-004'),
-};
-const SEEDED = () => SEED_JOURNAL_ENTRIES.map((e) => {
-  const doc = CHAIN[e.id]?.();
-  return doc ? { ...e, originId: doc.id, originNo: String(doc.docNum) } : e;
-});
-const entries = createCollection<JournalEntry>('sikat-erp:journal-entries:v3', SEEDED, 'je');
+// The seeded ledger: opening balances, every seeded document's entry and the month's finance entries.
+const entries = createCollection<JournalEntry>('sikat-erp:journal-entries:v4', () => seededLedger().entries, 'je');
 
 /** Reversals made before line ids were guaranteed saved rows without one; give them a stable id on read. */
 const withLineIds = (je: JournalEntry): JournalEntry =>
