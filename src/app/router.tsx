@@ -24,6 +24,8 @@ import { SalesOrderList } from '../pages/sales/orders/SalesOrderList';
 import { SalesOrderDetail } from '../pages/sales/orders/detail/SalesOrderDetail';
 import { DeliveryList } from '../pages/sales/deliveries/DeliveryList';
 import { DeliveryDetail } from '../pages/sales/deliveries/detail/DeliveryDetail';
+import { QuotationList } from '../pages/sales/quotations/QuotationList';
+import { QuotationDetail } from '../pages/sales/quotations/QuotationDetail';
 import { ArInvoiceList } from '../pages/sales/invoices/ArInvoiceList';
 import { ArInvoiceDetail } from '../pages/sales/invoices/detail/ArInvoiceDetail';
 import { IncomingPaymentList } from '../pages/sales/payments/IncomingPaymentList';
@@ -86,6 +88,8 @@ export const router = createHashRouter([
       { path: 'inventory/stock-counts/:id', element: <StockCountDetail /> },
       ...partnerRoutes,
       { path: 'sales/dashboard', element: <SalesDashboard /> },
+      { path: 'sales/quotations', element: <QuotationList /> },
+      { path: 'sales/quotations/:id', element: <QuotationDetail /> },
       { path: 'sales/sales-orders', element: <SalesOrderList /> },
       { path: 'sales/sales-orders/:id', element: <SalesOrderDetail /> },
       { path: 'sales/deliveries', element: <DeliveryList /> },

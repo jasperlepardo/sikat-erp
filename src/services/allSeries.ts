@@ -15,11 +15,13 @@ import { AR_CREDIT_SERIES } from '../mocks/arCreditMemos';
 import { DN_SERIES } from '../mocks/deliveries';
 import { RETURN_SERIES } from '../mocks/goodsReturns';
 import { SR_SERIES } from '../mocks/salesReturns';
+import { QT_SERIES } from '../mocks/quotations';
 import { TRANSFER_SERIES } from '../mocks/inventoryTransfers';
 import { COUNT_SERIES, POSTING_SERIES } from '../mocks/inventoryCountings';
 import { INCOMING_SERIES } from '../mocks/incomingPayments';
 import { PAYMENT_SERIES } from '../mocks/outgoingPayments';
 import { JE_SERIES } from '../mocks/journalEntries';
+import { BA_SERIES } from '../mocks/blanketAgreements';
 import { BUSINESS_TYPES } from '../mocks/masters';
 import { createCollection } from './store';
 import { bpGroups, territories } from './partnerMasters';
@@ -38,6 +40,7 @@ export const returnSeries = createCollection<DocumentSeries>('sikat-erp:return-s
 export const srSeries = createCollection<DocumentSeries>('sikat-erp:sr-series', SR_SERIES, 'srs');
 
 // Sales
+export const qtSeries = createCollection<DocumentSeries>('sikat-erp:qt-series', QT_SERIES, 'qts');
 export const soSeries = createCollection<DocumentSeries>('sikat-erp:so-series', SO_SERIES, 'sos');
 export const dnSeries = createCollection<DocumentSeries>('sikat-erp:dn-series', DN_SERIES, 'dns');
 export const arSeries = createCollection<DocumentSeries>('sikat-erp:ar-series', AR_SERIES, 'ars');
@@ -48,6 +51,9 @@ export const incomingPaymentSeries = createCollection<DocumentSeries>('sikat-erp
 export const transferSeries = createCollection<DocumentSeries>('sikat-erp:transfer-series', TRANSFER_SERIES, 'its');
 export const countSeries = createCollection<DocumentSeries>('sikat-erp:count-series', COUNT_SERIES, 'ics');
 export const postingSeries = createCollection<DocumentSeries>('sikat-erp:posting-series', POSTING_SERIES, 'ips');
+
+// Sales Blanket Agreements
+export const baSeries = createCollection<DocumentSeries>('sikat-erp:ba-series', BA_SERIES, 'bas');
 
 // Accounting
 export const jeSeries = createCollection<DocumentSeries>('sikat-erp:je-series', JE_SERIES, 'jes');
@@ -185,5 +191,6 @@ export const DOC_TYPES: DocTypeConfig[] = [
   { key: 'inventory-transfers', label: 'Inventory Transfers', icon: 'swap_horiz', collection: transferSeries, fallback: TRANSFER_SERIES },
   { key: 'stock-counts', label: 'Stock Counts', icon: 'fact_check', collection: countSeries, fallback: COUNT_SERIES },
   { key: 'inventory-postings', label: 'Inventory Postings', icon: 'post_add', collection: postingSeries, fallback: POSTING_SERIES },
+  { key: 'blanket-agreements', label: 'Blanket Agreements', icon: 'description', collection: baSeries, fallback: BA_SERIES, conditionFields: SO_FIELDS },
   { key: 'journal-entries', label: 'Journal Entries', icon: 'menu_book', collection: jeSeries, fallback: JE_SERIES },
 ];
