@@ -54,7 +54,13 @@ test('renaming a bin: drafts show the new code, posted documents keep the code t
   expect(result.bins).toBe(1);
 
   // Posted: the snapshot taken when they posted. (Line tables render after the header, so poll.)
-  await open(page, 'purchasing/goods-receipts/gr-001');
+  // The first posted receipt into that bin (receipts are numbered in date order, so look it up).
+  const receiptId = await page.evaluate(async () => {
+    const { listGoodsReceipts } = await import('/src/services/goodsReceipts.ts');
+    return (await listGoodsReceipts()).find((g) => g.status !== 'Draft' && g.lines.some((l) => l.binCode === 'WH-MNL-A-01-01'))?.id;
+  });
+  expect(receiptId).toBeTruthy();
+  await open(page, `purchasing/goods-receipts/${receiptId}`);
   await expect.poll(() => screenText(page)).toContain('WH-MNL-A-01-01');
   await open(page, 'inventory/stock-movements/it-001');
   await expect.poll(() => screenText(page)).toContain('WH-MNL-A-01-01');

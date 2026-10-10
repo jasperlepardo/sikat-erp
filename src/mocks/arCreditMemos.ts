@@ -183,7 +183,7 @@ export const SEED_AR_CREDIT_MEMOS: ArCreditMemo[] = [
       closeDate: '2026-10-05',
       dueDate: '2026-11-04',
       appliedAmount: credit,
-      remarks: 'Credits the wrong-spec MacBook Air returned on SRT-2026-0001. Applied to SI-2026-0012.',
+      remarks: `Credits the wrong-spec MacBook Air returned on SRT-2026-0001. Applied to ${arNo(invoice)}.`,
       lines: [newArCmLine({
         id: 'acm-003-1', itemId: rl.itemId, itemNo: rl.itemNo, description: rl.description, quantity: 1,
         uomCode: rl.uomCode, uomName: rl.uomName, itemsPerUnit: rl.itemsPerUnit, warehouse: rl.warehouse, priceListId: rl.priceListId,

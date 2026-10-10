@@ -29,7 +29,7 @@ import { plId, termId } from './masters';
 import { SEED_DELIVERIES, type DnLine } from './deliveries';
 import { SEED_PARTNERS, formatAddress } from './partners';
 import type { PoReference } from './purchaseOrders';
-import { SEED_SALES_ORDERS, type SoDocType } from './salesOrders';
+import { H1_SALES, SEED_SALES_ORDERS, termDaysOf, type SoDocType } from './salesOrders';
 import { SEED_ITEMS } from './items';
 import { SEED_WAREHOUSES } from './itemMasters';
 import { MONTH_NAMES, POS_CUSTOMER_ID, STORE_SALES } from './storeSales';
@@ -398,6 +398,24 @@ const invoices: ArInvoice[] = [
   }),
 ];
 
+// ── January–June corporate orders ────────────────────────────────────────────
+// Billed on delivery, paid on the due date (mocks/incomingPayments.ts). Northgate withholds 1%.
+
+const plusDays = (iso: string, days: number) => {
+  const d = new Date(`${iso}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+};
+const H1_INVOICES: ArInvoice[] = H1_SALES.map((p) => {
+  const c = SEED_PARTNERS.find((x) => x.id === p.customerId)!;
+  const due = plusDays(p.delivered, termDaysOf(c.customerPaymentTermId));
+  return fromDelivery(`ar-${p.id}`, 0, `dn-${p.id}`, {
+    postingDate: p.delivered, documentDate: p.delivered, dueDate: due, status: 'Closed', closeDate: due, wtaxLiable: c.topWithholdingAgent,
+    remarks: `Paid by bank transfer on the due date.`,
+  });
+});
+invoices.push(...H1_INVOICES);
+
 // ── Store sales (POS) ────────────────────────────────────────────────────────
 // Each store's month at the till, posted by the POS as one invoice to the walk-in customer
 // (mocks/storeSales.ts). Prices are the SRP less VAT; paid in full at the till, so they're
@@ -407,7 +425,7 @@ const MONTH_NAME = (month: string) => `${MONTH_NAMES[Number(month.slice(5)) - 1]
 
 const itemById = new Map(SEED_ITEMS.map((i) => [i.id, i]));
 
-export const SEED_POS_INVOICES: ArInvoice[] = STORE_SALES.map((sale, n) => {
+const POS_INVOICES: ArInvoice[] = STORE_SALES.map((sale, n) => {
   const c = SEED_PARTNERS.find((p) => p.id === POS_CUSTOMER_ID)!;
   const store = SEED_WAREHOUSES.find((w) => w.code === sale.store)!;
   const id = `pos-${sale.month.replace('-', '')}-${sale.store}`;
@@ -441,13 +459,13 @@ export const SEED_POS_INVOICES: ArInvoice[] = STORE_SALES.map((sale, n) => {
     }),
   };
 });
-invoices.push(...SEED_POS_INVOICES);
+invoices.push(...POS_INVOICES);
 
 /** Paid by the seeded incoming payments (document currency). */
 const PAID: Record<string, 'full' | 'half'> = {
   'ar-001': 'full', 'ar-002': 'full', 'ar-003': 'half', 'ar-005': 'half',
   'ar-c01': 'full', 'ar-c02': 'full', 'ar-c04': 'half', 'ar-b01-si': 'full', 'ar-b01-or': 'full',
-  ...Object.fromEntries(SEED_POS_INVOICES.map((a) => [a.id, 'full' as const])),
+  ...Object.fromEntries([...H1_INVOICES, ...POS_INVOICES].map((a) => [a.id, 'full' as const])),
 };
 
 /** A credit for `qty` of a delivered line, at its price with VAT — what a credit memo for it comes to. */
@@ -473,4 +491,16 @@ export const SEED_PAID: Record<string, number> = Object.fromEntries(
   }),
 );
 
-export const SEED_AR_INVOICES: ArInvoice[] = invoices.map((a) => ({ ...a, appliedAmount: round2((SEED_PAID[a.id] ?? 0) + (SEED_CREDITED[a.id] ?? 0)) }));
+/** Every seeded invoice, numbered per series in date order. */
+export const SEED_AR_INVOICES: ArInvoice[] = (() => {
+  const next = new Map<string, number>();
+  return invoices
+    .map((a) => ({ ...a, appliedAmount: round2((SEED_PAID[a.id] ?? 0) + (SEED_CREDITED[a.id] ?? 0)) }))
+    .sort((a, b) => a.postingDate.localeCompare(b.postingDate) || a.id.localeCompare(b.id))
+    .map((a) => {
+      if (a.status === 'Draft') return { ...a, docNum: 0 };
+      const n = (next.get(a.seriesId) ?? 0) + 1;
+      next.set(a.seriesId, n);
+      return { ...a, docNum: n };
+    });
+})();

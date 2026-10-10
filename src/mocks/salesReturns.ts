@@ -135,7 +135,7 @@ function fromDelivery(
 }
 
 export const SEED_SALES_RETURNS: SalesReturn[] = [
-  // SRT-2026-0001: Bayanihan returns 1 wrong-spec MacBook Air from DN-2026-0001, before it was billed.
+  // SRT-2026-0001: Bayanihan returns 1 wrong-spec MacBook Air from its first delivery (dn-001), before it was billed.
   // Closed — credited by A/R credit memo ACM-2026-0003 (acm-003).
   fromDelivery('sr-001', 1, 'dn-001', [
     { lineId: 'dn-001-so-001-2', qty: 1, creditedQty: 1, returnReason: 'Wrong item' },

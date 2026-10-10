@@ -22,7 +22,7 @@
  */
 import { CURRENT_USER_ID, type Attachment, type DocumentSeries } from './common';
 import { plId, termId } from './masters';
-import { SEED_SALES_ORDERS, seedRateOn, type SalesOrder } from './salesOrders';
+import { H1_SALES, SEED_SALES_ORDERS, seedRateOn, type SalesOrder } from './salesOrders';
 import type { PoReference } from './purchaseOrders';
 import { SEED_ITEMS } from './items';
 
@@ -285,7 +285,7 @@ function fromOrder(id: string, docNum: number, orderId: string, lineIds: string[
   };
 }
 
-export const SEED_DELIVERIES: Delivery[] = [
+const HAND_DELIVERIES: Delivery[] = [
   fromOrder('dn-001', 1, 'so-001', ['so-001-2'], {
     postingDate: '2026-09-29',
     documentDate: '2026-09-29',
@@ -330,7 +330,7 @@ export const SEED_DELIVERIES: Delivery[] = [
     closeDate: '2026-09-18',
     remarks: 'First 6 of 10 iPhones, picked up by Northgate’s admin. Invoiced on delivery.',
   }),
-  // Invoiced in full (A/R invoices SI-2026-0006 through SI-2026-0010), so closed.
+  // Invoiced in full, so closed.
   fromOrder('dn-006', 6, 'so-012', ['so-012-1'], {
     postingDate: '2026-10-06',
     documentDate: '2026-10-06',
@@ -358,5 +358,21 @@ export const SEED_DELIVERIES: Delivery[] = [
     fromOrder(id, 8 + k, so, [...lines], { postingDate: date, documentDate: date, deliveryDate: date, ...(id === 'dn-c05' ? {} : { status: 'Closed' as const, closeDate: date }), remarks }),
   ),
 ];
+// January–June corporate orders (mocks/salesOrders.ts): delivered from Pasig and invoiced the same day.
+const H1_DELIVERIES: Delivery[] = H1_SALES.map((p) => {
+  const order = so(`so-${p.id}`);
+  return fromOrder(`dn-${p.id}`, 0, order.id, order.lines.map((l) => l.id), {
+    postingDate: p.delivered, documentDate: p.delivered, deliveryDate: p.delivered, status: 'Closed', closeDate: p.delivered,
+    remarks: `Delivered to ${order.customerName}; invoiced the same day.`,
+  });
+});
+
+/** Every seeded delivery, numbered in date order. */
+export const SEED_DELIVERIES: Delivery[] = [...HAND_DELIVERIES, ...H1_DELIVERIES]
+  .sort((a, b) => a.postingDate.localeCompare(b.postingDate) || a.id.localeCompare(b.id))
+  .map((d, n) => ({ ...d, docNum: n + 1 }));
 // The closed deliveries were invoiced in full (mocks/arInvoices.ts).
 for (const d of SEED_DELIVERIES.filter((x) => x.status === 'Closed')) d.lines.forEach((l) => (l.invoicedQty = l.quantity));
+
+/** A delivery's number as its series formats it: DN-2026-0001. */
+export const seedDnNo = (d: Pick<Delivery, 'docNum' | 'postingDate'>) => `DN-${d.postingDate.slice(0, 4)}-${String(d.docNum).padStart(4, '0')}`;
