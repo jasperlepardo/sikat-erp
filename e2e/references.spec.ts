@@ -6,11 +6,18 @@ import { open, rawIds, screenText, shown, watchErrors } from './helpers';
  * posted documents keep the bin codes they were posted with.
  */
 
-/** A collection's saved rows, found by key prefix (keys carry a version, e.g. sikat-erp:partners:v26). Empty until its first save. */
+/**
+ * A collection's saved rows, found by key prefix (keys carry a version, e.g. sikat-erp:partners:v26).
+ * The store persists only changed rows as `{ saved: T[], removed: string[] }`; this returns the saved array.
+ * Empty until its first save.
+ */
 const stored = (page: Page, prefix: string) =>
   page.evaluate((p) => {
     const key = Object.keys(localStorage).find((k) => k === p || k.startsWith(`${p}:`));
-    return JSON.parse((key && localStorage.getItem(key)) || '[]') as Record<string, unknown>[];
+    const raw = key ? localStorage.getItem(key) : null;
+    if (!raw) return [] as Record<string, unknown>[];
+    const data = JSON.parse(raw) as { saved?: Record<string, unknown>[] } | Record<string, unknown>[];
+    return (Array.isArray(data) ? data : (data.saved ?? [])) as Record<string, unknown>[];
   }, prefix);
 
 test('renaming a payment term shows the new name on the partner, which still stores the id', async ({ page }) => {
@@ -112,7 +119,7 @@ test('renaming a variant attribute value shows the new label on the variant, whi
   await open(page, 'inventory/items/apl-0001');
   await expect.poll(() => screenText(page)).toContain('256 GB');
   expect(await rawIds(page)).toEqual([]);
-  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('sikat-erp:variant-attributes') || '[]'));
-  expect(stored.find((a: { id: string }) => a.id === 'va-001').values[1]).toMatchObject({ id: 'va-001-02', label: '256 GB' });
+  const attrs = await stored(page, 'sikat-erp:variant-attributes');
+  expect((attrs.find((a) => a.id === 'va-001') as { values: { id: string; label: string }[] }).values[1]).toMatchObject({ id: 'va-001-02', label: '256 GB' });
   expect(errors).toEqual([]);
 });
