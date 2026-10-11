@@ -66,7 +66,7 @@ interface DescriptionGroup {
 }
 
 /** Build the BIR-style grouped structure from flat WithholdingTax rows. */
-function buildGroups(taxes: WithholdingTax[]): Map<WithholdingKind, DescriptionGroup[]> {
+function buildGroups(taxes: readonly WithholdingTax[]): Map<WithholdingKind, DescriptionGroup[]> {
   const result = new Map<WithholdingKind, DescriptionGroup[]>();
   for (const kind of WITHHOLDING_KINDS) {
     const kindRows = taxes.filter((t) => t.kind === kind);
@@ -185,7 +185,7 @@ function WithholdingListView({
   rows,
   basePath,
 }: {
-  rows: WithholdingTax[] | undefined;
+  rows: readonly WithholdingTax[] | undefined;
   basePath: string;
 }) {
   const navigate = useNavigate();

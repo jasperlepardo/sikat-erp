@@ -1,23 +1,17 @@
-import { useState } from 'react';
-import { useAsync } from './useAsync';
+import { useCollection } from '../components/form/MasterLookup';
+import type { Collection } from './store';
 
-/** Rows of a master-data collection plus a `save` that reloads them. */
-export function useCollectionRows<T extends { id: string }>(collection: {
-  list: () => Promise<T[]>;
-  save: (row: T) => Promise<T>;
-}) {
-  const [version, setVersion] = useState(0);
-  const rows = useAsync(collection.list, [version]);
+/** Rows of a master-data collection, live (see `useCollection`), plus a `save`. Read-only: edit a copy. */
+export function useCollectionRows<T extends { id: string }>(collection: Collection<T>) {
+  const rows = useCollection(collection);
   const save = async (row: T) => {
     await collection.save(row);
-    setVersion((v) => v + 1);
   };
   /** Bulk activate/deactivate (for rows with an `active` flag). */
-  const setActive = async (picked: T[], active: boolean) => {
+  const setActive = async (picked: readonly T[], active: boolean) => {
     for (const row of picked) await collection.save({ ...row, active });
-    setVersion((v) => v + 1);
   };
-  return { rows, save, setActive, reload: () => setVersion((v) => v + 1) };
+  return { rows, save, setActive };
 }
 
 export const newId = (prefix: string) => `${prefix}-${crypto.randomUUID().slice(0, 8)}`;

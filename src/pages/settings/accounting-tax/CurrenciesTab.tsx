@@ -36,7 +36,7 @@ export const blankCurrency = (): Currency => ({
 });
 
 export function CurrenciesTab(route: ListRoute) {
-  const { rows, save, setActive, reload } = useCollectionRows(currencies);
+  const { rows, save, setActive } = useCollectionRows(currencies);
   const rates = useAsync(exchangeRates.list, []) ?? [];
 
   return (
@@ -111,7 +111,6 @@ export function CurrenciesTab(route: ListRoute) {
           }
         }
         await save({ ...c, code: c.code.trim().toUpperCase() });
-        reload();
       }}
       editor={(c, update, errors) => {
         const f = bind(c, update);
