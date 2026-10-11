@@ -4,7 +4,7 @@ import { createCollection } from './store';
 import { todayISO } from './dates';
 
 // v8: G/L accounts are stored as chart-of-accounts codes.
-const partners = createCollection<Partner>('sikat-erp:partners:v26', SEED_PARTNERS, 'bp');
+const partners = createCollection<Partner>('sikat-erp:partners:v26', SEED_PARTNERS, 'bp', { audit: 'BP' });
 
 export const listPartners = partners.list;
 export const getPartner = partners.get;

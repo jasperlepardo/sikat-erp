@@ -7,7 +7,7 @@ import type { RoundingRule } from '../mocks/currencies';
 import type { TaxCode } from '../mocks/taxes';
 import { rateAt } from '../mocks/taxes';
 
-const quotations = createCollection<Quotation>('sikat-erp:quotations', SEED_QUOTATIONS, 'qt');
+const quotations = createCollection<Quotation>('sikat-erp:quotations', SEED_QUOTATIONS, 'qt', { audit: 'QT' });
 
 export const listQuotations = quotations.list;
 export async function getQuotation(idOrNumber: string) {

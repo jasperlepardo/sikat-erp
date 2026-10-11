@@ -45,6 +45,7 @@ import { IncomingAccounts, IncomingDocuments } from './IncomingContents';
 import { IncomingMeansSection } from './IncomingMeansSection';
 import { SalesDocumentFlow } from '../../shared/SalesDocumentFlow';
 import { useDocTitle } from '../../../../services/useDocTitle';
+import { ActivityTab } from '../../../../components/activity/ActivityTab';
 
 export const RC_LIST_PATH = '/sales/payments-received';
 export const RC_STATUS_INTENT: Record<IncomingStatus, 'default' | 'success' | 'danger'> = { Draft: 'default', Posted: 'success', Cancelled: 'danger' };
@@ -297,7 +298,7 @@ function IncomingForm() {
         />
         {page === 'activity' ? (
           <Panel.Body>
-            <Text variant="small" tone="muted" className="p-4">Activity will show here.</Text>
+            <ActivityTab target={{ kind: 'RCV', id: draft.id ?? '' }} partnerId={draft.customerId} />
           </Panel.Body>
         ) : page === 'transactions' && draft.id ? (
           <Panel.Body className="flex flex-col gap-2">

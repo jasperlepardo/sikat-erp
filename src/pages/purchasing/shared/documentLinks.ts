@@ -29,7 +29,13 @@ export interface CoveredLine {
   quantity: number;
   uomCode: string;
   itemNo: string;
+  /** The item's id, for finding the documents an item is on. */
+  itemId?: string;
 }
+
+/** A document's lines as covered lines: what it moves, for item timelines. */
+export const coveredLines = (lines: { itemId: string; itemNo: string; uomCode: string; quantity?: number; requiredQty?: number }[]): CoveredLine[] =>
+  lines.filter((l) => l.itemId).map((l) => ({ itemId: l.itemId, itemNo: l.itemNo, uomCode: l.uomCode, quantity: l.quantity ?? l.requiredQty ?? 0 }));
 
 /** One document in the link graph. */
 export interface DocNode {
@@ -44,6 +50,10 @@ export interface DocNode {
   intent: 'default' | 'primary' | 'warning' | 'success' | 'danger';
   currency: string;
   total: number;
+  /** The vendor or customer on it; '' when it has none (a purchase request, a G/L payment). */
+  partnerId: string;
+  /** Its item lines. */
+  items: CoveredLine[];
   /** The documents this one was copied from, with the lines that came from each (or, for a payment, what it paid). */
   bases: { kind: string; id: string; lines: CoveredLine[]; note?: string }[];
 }
@@ -63,6 +73,8 @@ const SOURCES: Record<DocKind, () => Promise<DocNode[]>> = {
       intent: PR_STATUS_INTENT[pr.status],
       currency: 'PHP',
       total: 0,
+      partnerId: '',
+      items: coveredLines(pr.lines),
       bases: [],
     }));
   },
@@ -80,6 +92,8 @@ const SOURCES: Record<DocKind, () => Promise<DocNode[]>> = {
       intent: RFQ_STATUS_INTENT[rfq.status],
       currency: rfq.currency,
       total: rfqTotal(rfq, codes),
+      partnerId: rfq.vendorId,
+      items: coveredLines(rfq.lines),
       bases: rfq.basePrId ? [{ kind: 'PR' as const, id: rfq.basePrId, lines: [] }] : [],
     }));
   },
@@ -97,6 +111,8 @@ const SOURCES: Record<DocKind, () => Promise<DocNode[]>> = {
       intent: STATUS_INTENT[po.status],
       currency: po.currency,
       total: poTotal(po, codes),
+      partnerId: po.vendorId,
+      items: coveredLines(po.lines),
       bases: po.baseRfqId ? [{ kind: 'RFQ' as const, id: po.baseRfqId, lines: [] }] : [],
     }));
   },
@@ -114,6 +130,8 @@ const SOURCES: Record<DocKind, () => Promise<DocNode[]>> = {
       intent: GR_STATUS_INTENT[gr.status],
       currency: gr.currency,
       total: grTotal(gr, codes),
+      partnerId: gr.vendorId,
+      items: coveredLines(gr.lines),
       bases: [...new Set(gr.lines.map((l) => l.baseId).filter(Boolean))].map((poId) => ({
         kind: 'PO' as const,
         id: poId,
@@ -135,6 +153,8 @@ const SOURCES: Record<DocKind, () => Promise<DocNode[]>> = {
       intent: AP_STATUS_INTENT[inv.status],
       currency: inv.currency,
       total: apTotal(inv, codes),
+      partnerId: inv.vendorId,
+      items: coveredLines(inv.lines),
       bases: [
         ...[...new Map(inv.lines.filter((l) => l.baseType).map((l) => [`${l.baseType}:${l.baseId}`, l])).values()].map((b) => ({
           kind: b.baseType as DocKind,
@@ -159,6 +179,8 @@ const SOURCES: Record<DocKind, () => Promise<DocNode[]>> = {
       intent: PAYMENT_STATUS_INTENT[p.status],
       currency: p.currency,
       total: overallAmount(p),
+      partnerId: p.vendorId ?? '',
+      items: [],
       bases: p.rows
         .filter((r) => r.selected && r.amount > 0)
         .map((r) => ({ kind: (r.docType === 'DPR' ? 'DPR' : 'APINV') as DocKind, id: r.invoiceId, lines: [], note: `Paid ${p.currency} ${formatAmount(rowSettled(r))}` })),
@@ -177,6 +199,8 @@ const SOURCES: Record<DocKind, () => Promise<DocNode[]>> = {
       intent: RETURN_STATUS_INTENT[r.status],
       currency: r.currency,
       total: returnTotal(r, codes),
+      partnerId: r.vendorId,
+      items: coveredLines(r.lines),
       bases: [...new Map(r.lines.filter((l) => l.baseType).map((l) => [`${l.baseType}:${l.baseId}`, l])).values()].map((b) => ({
         kind: (b.baseType === 'GRPO' ? 'GRPO' : 'APINV') as DocKind,
         id: b.baseId,
@@ -198,6 +222,8 @@ const SOURCES: Record<DocKind, () => Promise<DocNode[]>> = {
       intent: MEMO_STATUS_INTENT[m.status],
       currency: m.currency,
       total: memoTotal(m, codes),
+      partnerId: m.vendorId,
+      items: coveredLines(m.lines),
       bases: [...new Map(m.lines.filter((l) => l.baseType).map((l) => [`${l.baseType}:${l.baseId}`, l])).values()].map((b) => ({
         kind: (b.baseType === 'GRET' ? 'GRET' : 'APINV') as DocKind,
         id: b.baseId,
@@ -219,6 +245,8 @@ const SOURCES: Record<DocKind, () => Promise<DocNode[]>> = {
       intent: DPR_STATUS_INTENT[d.status],
       currency: d.currency,
       total: dprTotal(d, codes),
+      partnerId: d.vendorId,
+      items: coveredLines(d.lines),
       bases: [...new Set(d.lines.filter((l) => l.baseType).map((l) => l.baseId))].map((poId) => ({
         kind: 'PO' as const,
         id: poId,
@@ -228,8 +256,12 @@ const SOURCES: Record<DocKind, () => Promise<DocNode[]>> = {
   },
 };
 
+/** Every purchasing document, as graph nodes. */
+export async function purchaseDocNodes(): Promise<DocNode[]> {
+  return (await Promise.all(Object.values(SOURCES).map((load) => load()))).flat();
+}
+
 /** Every document linked to this one, however far back or forward. See `lineage`. */
 export async function linkedDocuments(kind: DocKind, id: string): Promise<LinkedDocument[]> {
-  const nodes = (await Promise.all(Object.values(SOURCES).map((load) => load()))).flat();
-  return lineage(nodes, kind, id);
+  return lineage(await purchaseDocNodes(), kind, id);
 }

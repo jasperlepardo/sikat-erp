@@ -71,6 +71,7 @@ import { VendorPanel, VendorsCards } from './VendorsSection';
 import { WarehousePanel, binErrorKey } from './WarehousesSection';
 import { uomDef } from '../../../settings/masterDefs';
 import { LOCKED_HINT, asOptions, valueIdOf, variantFromParent, type Draft, type TaxMasters } from './types';
+import { ItemActivityTab } from './ItemActivityTab';
 
 const LIST_PATH = '/inventory/items';
 
@@ -90,7 +91,7 @@ const TABS = [
 ] as const;
 type TabId = (typeof TABS)[number]['value'];
 
-/** Top-level views in the panel header. Activity is a placeholder for now. */
+/** Top-level views in the panel header. */
 const PAGES = [
   { value: 'details', label: 'Details' },
   { value: 'inventory', label: 'Inventory' },
@@ -458,7 +459,7 @@ function ItemForm() {
               ) : page === 'transactions' ? (
                 <TransactionsTab draft={draft} />
               ) : (
-                <Text variant="small" tone="muted" className="p-4">Activity will show here.</Text>
+                <ItemActivityTab draft={draft} />
               )}
             </Panel.Body>
           ) : (

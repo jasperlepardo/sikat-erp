@@ -8,7 +8,7 @@ import { listQuotations, qtNumber, qtTotal } from '../../../services/quotations'
 import { taxCodes } from '../../../services/masterData';
 import { formatAmount } from '../../../services/format';
 import { lineage, type LinkedDocument } from '../../purchasing/shared/lineage';
-import type { CoveredLine, DocNode } from '../../purchasing/shared/documentLinks';
+import { coveredLines, type CoveredLine, type DocNode } from '../../purchasing/shared/documentLinks';
 import { SO_LIST_PATH } from '../orders/detail/types';
 import { AR_LIST_PATH } from '../invoices/detail/types';
 import { AR_STATUS_INTENT } from '../invoices/detail/ArInvoiceDetail';
@@ -37,6 +37,8 @@ const SOURCES: Record<SalesDocKind, () => Promise<DocNode[]>> = {
       intent: QT_STATUS_INTENT[q.status],
       currency: q.currency,
       total: qtTotal(q, codes),
+      partnerId: q.customerId,
+      items: coveredLines(q.lines),
       bases: [],
     }));
   },
@@ -54,6 +56,8 @@ const SOURCES: Record<SalesDocKind, () => Promise<DocNode[]>> = {
       intent: SO_STATUS_INTENT[so.status],
       currency: so.currency,
       total: soTotal(so, codes),
+      partnerId: so.customerId,
+      items: coveredLines(so.lines),
       bases: so.baseQuotationId ? [{ kind: 'QT' as const, id: so.baseQuotationId, lines: [] }] : [],
     }));
   },
@@ -71,6 +75,8 @@ const SOURCES: Record<SalesDocKind, () => Promise<DocNode[]>> = {
       intent: DN_STATUS_INTENT[dn.status],
       currency: dn.currency,
       total: dnTotal(dn, codes),
+      partnerId: dn.customerId,
+      items: coveredLines(dn.lines),
       bases: [...new Set(dn.lines.map((l) => l.baseId).filter(Boolean))].map((soId) => ({
         kind: 'SO' as const,
         id: soId,
@@ -92,6 +98,8 @@ const SOURCES: Record<SalesDocKind, () => Promise<DocNode[]>> = {
       intent: AR_STATUS_INTENT[ar.status],
       currency: ar.currency,
       total: arTotal(ar, codes),
+      partnerId: ar.customerId,
+      items: coveredLines(ar.lines),
       bases: [
         ...[...new Map(ar.lines.filter((l) => l.baseType).map((l) => [`${l.baseType}:${l.baseId}`, l])).values()].map((b) => ({
           kind: (b.baseType === 'DN' ? 'DN' : 'SO') as SalesDocKind,
@@ -115,6 +123,8 @@ const SOURCES: Record<SalesDocKind, () => Promise<DocNode[]>> = {
       intent: RC_STATUS_INTENT[p.status],
       currency: p.currency,
       total: amountDue(p),
+      partnerId: p.customerId,
+      items: [],
       bases: p.rows
         .filter((r) => r.selected && r.amount > 0)
         .map((r) => ({ kind: 'ARINV' as const, id: r.invoiceId, lines: [], note: `Collected ${p.currency} ${formatAmount(r.amount)}` })),
@@ -134,6 +144,8 @@ const SOURCES: Record<SalesDocKind, () => Promise<DocNode[]>> = {
       intent: ARCM_STATUS_INTENT[m.status],
       currency: m.currency,
       total: arCmTotal(m, codes),
+      partnerId: m.customerId,
+      items: coveredLines(m.lines),
       bases: [
         ...[...new Set(m.lines.filter((l) => l.invoiceId).map((l) => l.invoiceId))].map((id) => ({
           kind: 'ARINV' as const,
@@ -162,6 +174,8 @@ const SOURCES: Record<SalesDocKind, () => Promise<DocNode[]>> = {
       intent: SR_STATUS_INTENT[r.status],
       currency: r.currency,
       total: srTotal(r, codes),
+      partnerId: r.customerId,
+      items: coveredLines(r.lines),
       bases: [...new Set(r.lines.filter((l) => l.baseId).map((l) => l.baseId))].map((id) => ({
         kind: 'DN' as const,
         id,
@@ -171,7 +185,11 @@ const SOURCES: Record<SalesDocKind, () => Promise<DocNode[]>> = {
   },
 };
 
+/** Every sales document, as graph nodes. */
+export async function salesDocNodes(): Promise<DocNode[]> {
+  return (await Promise.all(Object.values(SOURCES).map((load) => load()))).flat() as DocNode[];
+}
+
 export async function linkedSalesDocuments(kind: SalesDocKind, id: string): Promise<LinkedDocument[]> {
-  const nodes = (await Promise.all(Object.values(SOURCES).map((load) => load()))).flat() as DocNode[];
-  return lineage(nodes, kind, id);
+  return lineage(await salesDocNodes(), kind, id);
 }

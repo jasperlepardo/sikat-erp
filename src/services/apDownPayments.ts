@@ -6,7 +6,7 @@ import { poTotals } from './purchaseOrders';
 import { createCollection } from './store';
 import { purchasingHistory } from './purchasingHistory';
 
-const requests = createCollection<DownPaymentRequest>('sikat-erp:ap-down-payments:v4', () => purchasingHistory().downPayments, 'dp');
+const requests = createCollection<DownPaymentRequest>('sikat-erp:ap-down-payments:v4', () => purchasingHistory().downPayments, 'dp', { audit: 'DPR' });
 
 export const listDownPayments = requests.list;
 export async function getDownPayment(idOrNumber: string) {

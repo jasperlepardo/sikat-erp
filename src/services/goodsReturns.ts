@@ -15,7 +15,7 @@ import { poTotals } from './purchaseOrders';
 import { createCollection } from './store';
 import { purchasingHistory } from './purchasingHistory';
 
-const returns = createCollection<GoodsReturn>('sikat-erp:goods-returns:v4', () => purchasingHistory().returns, 'rt');
+const returns = createCollection<GoodsReturn>('sikat-erp:goods-returns:v4', () => purchasingHistory().returns, 'rt', { audit: 'GRET' });
 
 export const listGoodsReturns = returns.list;
 export async function getGoodsReturn(idOrNumber: string) {

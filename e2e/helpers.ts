@@ -8,7 +8,7 @@ import { expect, type Locator, type Page } from '@playwright/test';
  */
 const ID_PREFIXES = [
   'pt', 'prl', 'bpg', 'ind', 'emp', 'ter', 'chn', 'lds', 'emg', 'bpp', 'dun', 'hol', 'bnk', 'bcc', 'crd',
-  'fac', 'tec', 'plg', 'prj', 'hba', 'cnt', 'bin', 'ig', 'va', 'vv',
+  'fac', 'tec', 'plg', 'prj', 'hba', 'cnt', 'bin', 'ig', 'va', 'vv', 'act', 'aud',
 ];
 const RAW_ID = new RegExp(`\\b(?:(${ID_PREFIXES.join('|')})-[A-Za-z0-9-]*\\d[A-Za-z0-9-]*|ig-[A-Z]{2,4})\\b`, 'g');
 

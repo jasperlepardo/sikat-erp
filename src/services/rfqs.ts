@@ -6,7 +6,7 @@ import type { RoundingRule } from '../mocks/currencies';
 import type { TaxCode } from '../mocks/taxes';
 import { rateAt, vatNotPaidToVendor } from '../mocks/taxes';
 
-const rfqs = createCollection<Rfq>('sikat-erp:rfqs:v1', SEED_RFQS, 'rfq');
+const rfqs = createCollection<Rfq>('sikat-erp:rfqs:v1', SEED_RFQS, 'rfq', { audit: 'RFQ' });
 
 export { rfqSeries };
 export const listRfqs = rfqs.list;

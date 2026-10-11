@@ -72,6 +72,7 @@ import { ApAccounting } from './ApAccounting';
 import { ApContents } from './ApContents';
 import { linesFromReceipt, orderNumbersOf, toApLine, type ApContext, type ApDraft, type ApMasters } from './types';
 import { useDocTitle } from '../../../../services/useDocTitle';
+import { ActivityTab } from '../../../../components/activity/ActivityTab';
 
 export const AP_LIST_PATH = '/purchasing/bills';
 
@@ -460,7 +461,7 @@ function ApInvoiceForm() {
           </Panel.Body>
         ) : page !== 'details' ? (
           <Panel.Body>
-            <Text variant="small" tone="muted" className="p-4">Activity will show here.</Text>
+            <ActivityTab target={{ kind: 'APINV', id: draft.id ?? '' }} partnerId={draft.vendorId} />
           </Panel.Body>
         ) : (
           <Panel.Body className="flex flex-col gap-2">

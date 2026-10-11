@@ -32,6 +32,7 @@ import { ALL_CURRENCIES, SO_LIST_PATH, buildContext, linePricing, proposedTaxCod
 import { PO_LIST_PATH } from '../../../purchasing/orders/detail/PurchaseOrderDetail';
 import type { PoSuggestion } from '../../../purchasing/orders/detail/types';
 import { useDocTitle } from '../../../../services/useDocTitle';
+import { ActivityTab } from '../../../../components/activity/ActivityTab';
 
 type TabId = 'contents' | 'logistics' | 'accounting' | 'attachments';
 const TAB_LABEL: Record<TabId, string> = { contents: 'Contents', logistics: 'Logistics', accounting: 'Accounting', attachments: 'Attachments' };
@@ -420,7 +421,7 @@ function SalesOrderForm() {
         />
         {page === 'activity' ? (
           <Panel.Body>
-            <Text variant="small" tone="muted" className="p-4">Activity will show here.</Text>
+            <ActivityTab target={{ kind: 'SO', id: draft.id ?? '' }} partnerId={draft.customerId} />
           </Panel.Body>
         ) : page === 'transactions' && draft.id ? (
           <Panel.Body className="flex flex-col gap-2">

@@ -65,6 +65,7 @@ import { QT_LIST_PATH, QT_STATUS_INTENT } from './QuotationList';
 import { blankSalesOrder, newSoLine } from '../../../mocks/salesOrders';
 import { SO_LIST_PATH } from '../orders/detail/types';
 import { SalesDocumentFlow } from '../shared/SalesDocumentFlow';
+import { ActivityTab } from '../../../components/activity/ActivityTab';
 
 type Draft = Omit<Quotation, 'id'> & { id?: string };
 type TabId = 'contents' | 'logistics' | 'accounting';
@@ -465,7 +466,7 @@ function QuotationForm() {
                 <Text variant="small" tone="muted" className="p-4">Transactions will show here once the quotation is added.</Text>
               )
             ) : (
-              <Text variant="small" tone="muted" className="p-4">Activity will show here.</Text>
+              <ActivityTab target={{ kind: 'QT', id: draft.id ?? '' }} partnerId={draft.customerId} />
             )}
           </Panel.Body>
         ) : (

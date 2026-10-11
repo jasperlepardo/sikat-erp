@@ -67,6 +67,7 @@ import { DocumentFlow } from '../shared/DocumentFlow';
 import { ReturnLines } from './ReturnLines';
 import { MEMO_LIST_PATH, RETURN_LIST_PATH, returnFromInvoice, returnFromReceipt, type RetContext, type RetMasters } from './types';
 import { useDocTitle } from '../../../services/useDocTitle';
+import { ActivityTab } from '../../../components/activity/ActivityTab';
 
 type Draft = Omit<GoodsReturn, 'id'> & { id?: string };
 type TabId = 'contents' | 'logistics' | 'accounting';
@@ -369,7 +370,7 @@ function GoodsReturnForm() {
             </Panel.Body>
           ) : page !== 'details' ? (
             <Panel.Body>
-              <Text variant="small" tone="muted" className="p-4">Activity will show here.</Text>
+              <ActivityTab target={{ kind: 'GRET', id: draft.id ?? '' }} partnerId={draft.vendorId} />
             </Panel.Body>
           ) : (
             <Panel.Body className="flex flex-col gap-2">

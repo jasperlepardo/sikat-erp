@@ -50,7 +50,7 @@ function withCommitted(seed: Item[]): Item[] {
 // v32: Accessories are FIFO-valued (cost layers in services/fifoHistory.ts).
 // v33: July–October history, corporate orders (so-c05/c06 commit; po-059/po-060 on order).
 // v34: books from 1 Jan 2026 — cost and Pasig's In stock come from the replayed history (services/stockHistory.ts).
-const items = createCollection<Item>('sikat-erp:items:v34', () => withCommitted(withOrdered(withStockHistory(SEED_ITEMS))), 'itm');
+const items = createCollection<Item>('sikat-erp:items:v34', () => withCommitted(withOrdered(withStockHistory(SEED_ITEMS))), 'itm', { audit: 'ITEM' });
 
 /** All items, with variant items' global fields merged from their parent. */
 export async function listItems(): Promise<Item[]> {

@@ -78,6 +78,7 @@ import {
 import { formatDate, todayISO } from '../../../../services/dates';
 import { listGoodsReceipts } from '../../../../services/goodsReceipts';
 import { useDocTitle } from '../../../../services/useDocTitle';
+import { ActivityTab } from '../../../../components/activity/ActivityTab';
 
 export const PO_LIST_PATH = '/purchasing/purchase-orders';
 
@@ -120,7 +121,7 @@ function fromSuggestion(s: PoSuggestion, blank: PoDraft, m: PoMasters): PoDraft 
 
 type TabId = 'contents' | 'logistics' | 'accounting';
 
-/** Top-level views in the panel header. Transactions and Activity are placeholders for now. */
+/** Top-level views in the panel header. */
 const PAGES = [
   { value: 'details', label: 'Details' },
   { value: 'transactions', label: 'Transactions' },
@@ -485,9 +486,7 @@ function PurchaseOrderForm() {
           </Panel.Body>
         ) : page !== 'details' ? (
           <Panel.Body>
-            <Text variant="small" tone="muted" className="p-4">
-              Activity will show here.
-            </Text>
+            <ActivityTab target={{ kind: 'PO', id: draft.id ?? '' }} partnerId={draft.vendorId} />
           </Panel.Body>
         ) : (
           <Panel.Body className="flex flex-col gap-2">

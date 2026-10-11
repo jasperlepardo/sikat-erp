@@ -27,7 +27,7 @@ import { purchasingHistory } from './purchasingHistory';
 import { taxCodes } from './masterData';
 import { drawDownPayments, drawableAmount, dprTotal, listDownPayments } from './apDownPayments';
 
-const invoices = createCollection<ApInvoice>('sikat-erp:ap-invoices:v6', () => purchasingHistory().invoices, 'ap');
+const invoices = createCollection<ApInvoice>('sikat-erp:ap-invoices:v6', () => purchasingHistory().invoices, 'ap', { audit: 'APINV' });
 
 export const listApInvoices = invoices.list;
 export async function getApInvoice(idOrNumber: string) {

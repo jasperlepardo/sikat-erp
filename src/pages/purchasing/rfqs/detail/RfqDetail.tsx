@@ -72,6 +72,7 @@ import { blankPurchaseOrder, newPoLine } from '../../../../mocks/purchaseOrders'
 import { formatDate, todayISO } from '../../../../services/dates';
 import { TotalNote, TotalRow } from '../../orders/detail/PurchaseOrderDetail';
 import { useDocTitle } from '../../../../services/useDocTitle';
+import { ActivityTab } from '../../../../components/activity/ActivityTab';
 
 export const RFQ_LIST_PATH = '/purchasing/quotations';
 
@@ -435,7 +436,7 @@ function RfqForm() {
                   <Text variant="small" tone="muted" className="p-4">Transactions will show here once the RFQ is added.</Text>
                 )
               ) : (
-                <Text variant="small" tone="muted" className="p-4">Activity will show here.</Text>
+                <ActivityTab target={{ kind: 'RFQ', id: draft.id ?? '' }} partnerId={draft.vendorId} />
               )}
             </Panel.Body>
           ) : (

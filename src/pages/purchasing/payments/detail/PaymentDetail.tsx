@@ -61,6 +61,7 @@ import { PaymentMeansSection } from './PaymentMeansSection';
 import { invoiceBalance, openRows, requestBalance, type PayMasters, type PaymentDraft } from './types';
 import { listDownPayments } from '../../../../services/apDownPayments';
 import { useDocTitle } from '../../../../services/useDocTitle';
+import { ActivityTab } from '../../../../components/activity/ActivityTab';
 
 export const PAYMENT_LIST_PATH = '/purchasing/payments-made';
 
@@ -330,7 +331,7 @@ function PaymentForm() {
           </Panel.Body>
         ) : page !== 'details' ? (
           <Panel.Body>
-            <Text variant="small" tone="muted" className="p-4">Activity will show here.</Text>
+            <ActivityTab target={{ kind: 'PAY', id: draft.id ?? '' }} partnerId={draft.vendorId} />
           </Panel.Body>
         ) : (
           <Panel.Body className="flex flex-col gap-2">

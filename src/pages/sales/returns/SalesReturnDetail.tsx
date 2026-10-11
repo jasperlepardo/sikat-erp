@@ -74,6 +74,7 @@ import { useDocTitle } from '../../../services/useDocTitle';
 import { AR_CM_LIST_PATH, SR_LIST_PATH, SR_STATUS_INTENT } from './types';
 import { EditPanel } from '../../partners/detail/EditPanel';
 import type { Delivery } from '../../../mocks/deliveries';
+import { ActivityTab } from '../../../components/activity/ActivityTab';
 
 type Draft = Omit<SalesReturn, 'id'> & { id?: string };
 type TabId = 'contents' | 'logistics' | 'accounting';
@@ -580,7 +581,7 @@ function SalesReturnForm() {
             </Panel.Body>
           ) : page !== 'details' ? (
             <Panel.Body>
-              <Text variant="small" tone="muted" className="p-4">Activity will show here.</Text>
+              <ActivityTab target={{ kind: 'SRT', id: draft.id ?? '' }} partnerId={draft.customerId} />
             </Panel.Body>
           ) : (
             <Panel.Body className="flex flex-col gap-2">

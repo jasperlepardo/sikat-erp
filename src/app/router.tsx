@@ -64,6 +64,7 @@ import { PurchaseBlanketAgreementList } from '../pages/purchasing/agreements/Pur
 import { PurchaseBlanketAgreementDetail } from '../pages/purchasing/agreements/detail/PurchaseBlanketAgreementDetail';
 import { PartnerList } from '../pages/partners/PartnerList';
 import { PartnerDetail } from '../pages/partners/detail/PartnerDetail';
+import { ActivityList } from '../pages/crm/ActivityList';
 import { ROLE_CONFIG, scopeConfig, type PartnerScope } from '../pages/partners/roles';
 
 /** Business Partners (all) plus Leads, Customers and Vendors: one list + form pair each. */
@@ -84,6 +85,7 @@ export const router = createHashRouter([
     element: <AppShell />,
     children: [
       { index: true, element: <Home /> },
+      { path: 'crm/activities', element: <ActivityList /> },
       { path: 'inventory/dashboard', element: <InventoryDashboard /> },
       { path: 'inventory/items', element: <ItemList /> },
       { path: 'inventory/items/:id', element: <ItemDetail /> },
