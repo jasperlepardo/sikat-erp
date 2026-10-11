@@ -71,7 +71,7 @@ export async function addDownPayment(input: DprInput, fx: number) {
   const all = await requests.list();
   const series = seriesLookup(dprSeries, input.seriesId, DPR_SERIES);
   const docNum = Math.max(series.firstNo - 1, ...all.filter((d) => d.seriesId === series.id).map((d) => d.docNum)) + 1;
-  return requests.save({ ...input, docNum, status: 'Open', fxRate: fx });
+  return requests.save({ ...input, docNum, status: input.approved ? 'Open' : 'Not Confirmed', fxRate: fx });
 }
 
 /** Close by hand: nothing more will be paid or drawn on it. */
@@ -106,4 +106,8 @@ export async function drawDownPayments(draws: { requestId: string; amount: numbe
       closeDate: done && d.status === 'Open' ? todayISO() : !done && d.status === 'Closed' ? '' : d.closeDate,
     });
   }
+}
+
+export async function recallDownPayment(d: DownPaymentRequest): Promise<DownPaymentRequest> {
+  return requests.save({ ...d, status: 'Draft', approved: false });
 }

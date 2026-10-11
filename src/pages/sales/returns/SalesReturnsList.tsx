@@ -28,8 +28,8 @@ import { useAsync } from '../../../services/useAsync';
 import { AR_CM_LIST_PATH, ARCM_STATUS_INTENT, SR_LIST_PATH, SR_STATUS_INTENT } from './types';
 
 type Kind = 'returns' | 'memos';
-type Status = 'Draft' | 'Open' | 'Closed' | 'Cancelled';
-const STATUSES: Status[] = ['Draft', 'Open', 'Closed', 'Cancelled'];
+type Status = 'Draft' | 'Not Confirmed' | 'Open' | 'Closed' | 'Cancelled';
+const STATUSES: Status[] = ['Draft', 'Not Confirmed', 'Open', 'Closed', 'Cancelled'];
 
 interface Row {
   id: string;

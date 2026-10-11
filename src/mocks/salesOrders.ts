@@ -29,8 +29,8 @@ import { todayISO } from '../services/dates';
 import { SEED_RATES } from './currencies';
 import { SEED_PAYMENT_TERMS } from './partnerMasters';
 
-export type SoStatus = 'Draft' | 'Open' | 'Closed' | 'Cancelled';
-export const SO_STATUSES: SoStatus[] = ['Draft', 'Open', 'Closed', 'Cancelled'];
+export type SoStatus = 'Draft' | 'Not Confirmed' | 'Open' | 'Closed' | 'Cancelled';
+export const SO_STATUSES: SoStatus[] = ['Draft', 'Not Confirmed', 'Open', 'Closed', 'Cancelled'];
 
 export type SoDocType = 'Item' | 'Service';
 export type SoRowStatus = 'Open' | 'Closed';
@@ -141,6 +141,28 @@ export const SALES_SETTINGS = {
   /** Warn when an order takes the customer over their credit limit. */
   creditLimitCheck: true,
 };
+
+export interface SalesSettings {
+  id: string;
+  requireQuotationApproval: boolean;
+  requireSoApproval: boolean;
+  requireDeliveryApproval: boolean;
+  requireArInvoiceApproval: boolean;
+  requireSalesReturnApproval: boolean;
+  requireArCreditMemoApproval: boolean;
+  requireIncomingPaymentApproval: boolean;
+}
+
+export const SEED_SALES_SETTINGS: SalesSettings[] = [{
+  id: 'sales',
+  requireQuotationApproval: false,
+  requireSoApproval: false,
+  requireDeliveryApproval: false,
+  requireArInvoiceApproval: false,
+  requireSalesReturnApproval: false,
+  requireArCreditMemoApproval: false,
+  requireIncomingPaymentApproval: false,
+}];
 
 export const SO_SERIES: DocumentSeries[] = [
   { id: 'sos-primary', name: 'Commercial', prefix: '', firstNo: 17, manual: false, isDefault: true, active: true, segments: [{ type: 'literal', value: 'SO' }, { type: 'year' }, { type: 'sequence', padding: 4 }] },

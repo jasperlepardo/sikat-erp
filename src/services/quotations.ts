@@ -56,7 +56,7 @@ export async function addQuotation(input: QtInput): Promise<Quotation> {
   const all = await quotations.list();
   const series = seriesOf(input.seriesId);
   const docNum = Math.max(series.firstNo - 1, ...all.filter((q) => q.seriesId === series.id).map((q) => q.docNum)) + 1;
-  return quotations.save({ ...input, docNum, status: 'Open' });
+  return quotations.save({ ...input, docNum, status: input.approved ? 'Open' : 'Not Confirmed' });
 }
 
 export async function saveQuotationRemarks(q: Quotation, patch: Pick<Quotation, 'remarks' | 'attachments'>): Promise<Quotation> {
@@ -75,4 +75,8 @@ export async function cancelQuotation(q: Quotation): Promise<Quotation> {
 
 export async function markConverted(q: Quotation, orderId: string): Promise<Quotation> {
   return quotations.save({ ...q, convertedToOrderId: orderId, status: 'Closed', closeDate: todayISO() });
+}
+
+export async function recallQuotation(q: Quotation): Promise<Quotation> {
+  return quotations.save({ ...q, status: 'Draft', approved: false });
 }

@@ -165,6 +165,14 @@ export async function addArCreditMemo(input: ArCmInput, fx: number, credit: numb
   }
   if (problems.length) throw new ArCmPostError(problems.map((p) => p.lineId), problems.map((p) => p.message).join(' '));
 
+  const allCm = await creditMemos.list();
+  const series = arCreditSeriesOf(input.seriesId);
+  const docNum = input.docNum || Math.max(series.firstNo - 1, ...allCm.filter((m) => m.seriesId === series.id).map((m) => m.docNum)) + 1;
+
+  if (!input.approved) {
+    return creditMemos.save({ ...input, docNum, status: 'Not Confirmed', fxRate: fx });
+  }
+
   const lines = input.lines.map((l) => ({ ...l, unitCostLc: l.unitCostLc || 0 }));
   await moveArStock(lines, items, 1);
 
@@ -179,9 +187,6 @@ export async function addArCreditMemo(input: ArCmInput, fx: number, credit: numb
     left = round2(left - amount);
   }
 
-  const all = await creditMemos.list();
-  const series = arCreditSeriesOf(input.seriesId);
-  const docNum = Math.max(series.firstNo - 1, ...all.filter((m) => m.seriesId === series.id).map((m) => m.docNum)) + 1;
   const appliedAmount = round2(credit - left);
   const saved = await creditMemos.save({
     ...input,
@@ -330,4 +335,8 @@ export function arCreditMemoFromReturn(
       }),
     ];
   });
+}
+
+export async function recallArCreditMemo(m: ArCreditMemo): Promise<ArCreditMemo> {
+  return creditMemos.save({ ...m, status: 'Draft', approved: false });
 }

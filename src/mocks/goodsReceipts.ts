@@ -26,8 +26,8 @@ import { PO_SERIES, SEED_PURCHASE_ORDERS, type PoReference } from './purchaseOrd
 import { receiptDate } from './supplyPlan';
 
 
-export type GrStatus = 'Draft' | 'Open' | 'Closed' | 'Cancelled';
-export const GR_STATUSES: GrStatus[] = ['Draft', 'Open', 'Closed', 'Cancelled'];
+export type GrStatus = 'Draft' | 'Not Confirmed' | 'Open' | 'Closed' | 'Cancelled';
+export const GR_STATUSES: GrStatus[] = ['Draft', 'Not Confirmed', 'Open', 'Closed', 'Cancelled'];
 
 export interface GrLine {
   id: string;
@@ -121,6 +121,7 @@ export interface GoodsReceipt {
   freightTaxCode: string;
   /** PHP per unit of the document currency, fixed when the receipt is added (1 for PHP). */
   fxRate: number;
+  approved: boolean;
 }
 
 export const GR_SERIES: DocumentSeries[] = [
@@ -200,6 +201,7 @@ export function blankGoodsReceipt(today: string, buyerId: string): Omit<GoodsRec
     freight: 0,
     freightTaxCode: '',
     fxRate: 1,
+    approved: true,
   };
 }
 

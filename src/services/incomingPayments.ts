@@ -225,7 +225,11 @@ export async function addIncomingPayment(input: IncomingInput, fx: number, ctx: 
   const series = incomingSeriesOf(input.seriesId);
   const all = await payments.list();
   if (series.manual && all.some((p) => p.seriesId === series.id && p.docNum === input.docNum && p.id !== input.id)) throw new IncomingPostError(`Manual no. ${input.docNum} is already used.`);
-  const docNum = series.manual ? input.docNum : Math.max(series.firstNo - 1, ...all.filter((p) => p.seriesId === series.id).map((p) => p.docNum)) + 1;
+  const docNum = input.docNum && !series.manual ? input.docNum : series.manual ? input.docNum : Math.max(series.firstNo - 1, ...all.filter((p) => p.seriesId === series.id).map((p) => p.docNum)) + 1;
+
+  if (!input.approved) {
+    return payments.save({ ...input, docNum, status: 'Not Confirmed', fxRate: fx });
+  }
 
   await applyArPayments(settlements(input, (id) => amounts.get(id)?.due ?? 0), 1);
   const saved = await payments.save({ ...input, rows: input.type === 'Customer' ? paidRows(input) : [], docNum, status: 'Posted', fxRate: fx });
@@ -260,4 +264,8 @@ export async function cancelIncomingPayment(p: IncomingPayment, on: 'current' | 
   const date = on === 'original' ? p.postingDate : todayISO();
   await reverseDocumentEntry(p.id, date);
   return payments.save({ ...p, status: 'Cancelled', cancelDate: date, journalRemark: `${p.journalRemark} (Cancelled)` });
+}
+
+export async function recallIncomingPayment(p: IncomingPayment): Promise<IncomingPayment> {
+  return payments.save({ ...p, status: 'Draft', approved: false });
 }

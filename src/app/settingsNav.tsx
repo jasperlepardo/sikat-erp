@@ -46,6 +46,7 @@ export const SETTINGS_NAV: SideNavSection[] = [
         icon: icon('handshake'),
         items: [
           { id: 'settings/sales-and-crm/document-series', label: 'Document series', icon: icon('tag') },
+          { id: 'settings/sales-and-crm/settings', label: 'Sales settings', icon: icon('tune') },
           { id: 'settings/sales-and-crm/partner-groups', label: 'Business partner groups', icon: icon('workspaces') },
           { id: 'settings/sales-and-crm/industries', label: 'Industries', icon: icon('factory') },
           { id: 'settings/sales-and-crm/sales-employees', label: 'Sales employees & buyers', icon: icon('badge') },

@@ -70,7 +70,7 @@ export async function addRfq(input: RfqInput): Promise<Rfq> {
   const series = seriesOf(input.seriesId);
   const docNum =
     Math.max(series.firstNo - 1, ...all.filter((q) => q.seriesId === series.id && q.docNum).map((q) => q.docNum)) + 1;
-  return rfqs.save({ ...input, docNum, status: 'Open' });
+  return rfqs.save({ ...input, docNum, status: input.approved ? 'Open' : 'Not Confirmed' });
 }
 
 export async function saveRfq(input: RfqInput): Promise<Rfq> {
@@ -83,6 +83,10 @@ export async function closeRfq(q: Rfq): Promise<Rfq> {
 
 export async function cancelRfq(q: Rfq): Promise<Rfq> {
   return rfqs.save({ ...q, status: 'Cancelled' as RfqStatus });
+}
+
+export async function recallRfq(q: Rfq): Promise<Rfq> {
+  return rfqs.save({ ...q, status: 'Draft', approved: false });
 }
 
 export async function markConvertedToPo(q: Rfq, poId: string): Promise<Rfq> {

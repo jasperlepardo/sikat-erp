@@ -148,6 +148,12 @@ export async function addPayment(input: PaymentInput, fx: number, balances: Map<
     throw new PaymentPostError(over.map((r) => `${r.docNo}: settling ${rowSettled(r)} but only ${balances.get(r.invoiceId) ?? 0} is still due.`).join(' '));
   }
   const all = await payments.list();
+  const series = paymentSeriesOf(input.seriesId);
+  const docNum = input.docNum || Math.max(series.firstNo - 1, ...all.filter((r) => r.seriesId === series.id).map((r) => r.docNum)) + 1;
+
+  if (!input.approved) {
+    return payments.save({ ...input, docNum, status: 'Not Confirmed', fxRate: fx });
+  }
   const taken: Record<string, number[]> = {};
   const checks = input.means.checks.map((c) => {
     if (c.manual && c.checkNo) return c;
@@ -158,8 +164,6 @@ export async function addPayment(input: PaymentInput, fx: number, balances: Map<
   await applyPayments(paidRows(input).filter((r) => r.docType !== 'DPR').map((r) => ({ invoiceId: r.invoiceId, amount: rowSettled(r), total: r.total })), 1);
   await applyDownPaymentPayments(paidRows(input).filter((r) => r.docType === 'DPR').map((r) => ({ requestId: r.invoiceId, amount: rowSettled(r), amountLc: round2(rowSettled(r) * fx) })), 1);
 
-  const series = paymentSeriesOf(input.seriesId);
-  const docNum = Math.max(series.firstNo - 1, ...all.filter((r) => r.seriesId === series.id).map((r) => r.docNum)) + 1;
   return payments.save({
     ...input,
     rows: input.rows.filter((r) => r.selected && r.amount > 0),
@@ -175,4 +179,8 @@ export async function cancelPayment(p: OutgoingPayment) {
   await applyPayments(paidRows(p).filter((r) => r.docType !== 'DPR').map((r) => ({ invoiceId: r.invoiceId, amount: rowSettled(r), total: r.total })), -1);
   await applyDownPaymentPayments(paidRows(p).filter((r) => r.docType === 'DPR').map((r) => ({ requestId: r.invoiceId, amount: rowSettled(r), amountLc: round2(rowSettled(r) * p.fxRate) })), -1);
   return payments.save({ ...p, status: 'Cancelled', cancelDate: todayISO() });
+}
+
+export async function recallPayment(p: OutgoingPayment): Promise<OutgoingPayment> {
+  return payments.save({ ...p, status: 'Draft', approved: false });
 }

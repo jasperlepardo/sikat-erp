@@ -43,9 +43,11 @@ import {
 
   grTotals,
   listGoodsReceipts,
+  recallGoodsReceipt,
   saveGrDraft,
   saveGrRemarks,
 } from '../../../../services/goodsReceipts';
+import { logRejection } from '../../../../services/approvalRules';
 import { loadInventoryMasters } from '../../../../services/inventoryMasters';
 import { isValidToday, listItems } from '../../../../services/items';
 import { companyTax, currencies, exchangeRates, taxCodes, taxGroups, withholdingGroups, withholdingTaxes } from '../../../../services/masterData';
@@ -73,8 +75,9 @@ const PAGES = [
 ] as const;
 type PageId = (typeof PAGES)[number]['value'];
 
-export const GR_STATUS_INTENT: Record<GrStatus, 'default' | 'primary' | 'success' | 'danger'> = {
+export const GR_STATUS_INTENT: Record<GrStatus, 'default' | 'primary' | 'success' | 'danger' | 'warning'> = {
   Draft: 'default',
+  'Not Confirmed': 'warning',
   Open: 'primary',
   Closed: 'success',
   Cancelled: 'danger',
@@ -141,14 +144,17 @@ function GoodsReceiptForm() {
   const navigate = useNavigate();
   const state = useLocation().state as { copyFrom?: GrDraft; fromPo?: string } | null;
 
+  const grApproved = !getPurchasingSettings().requireGrpoApproval;
   const [draft, setDraft] = useState<GrDraft | null | undefined>(
-    isNew ? (state?.copyFrom ?? { ...blankGoodsReceipt(todayISO(), CURRENT_USER_ID), lines: [] }) : undefined,
+    isNew ? { ...(state?.copyFrom ?? { ...blankGoodsReceipt(todayISO(), CURRENT_USER_ID), lines: [] }), approved: grApproved } : undefined,
   );
   const [m, setM] = useState<GrMasters>();
   const [page, setPage] = useState<PageId>('details');
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
 
   useEffect(() => {
     Promise.all([
@@ -239,7 +245,7 @@ function GoodsReceiptForm() {
 
   const copyLines = (po: PurchaseOrder, lines: GrLine[]) => setDraft(withPo(draft, po, lines, m));
 
-  const submit = async (e: FormEvent | null, asDraft = false) => {
+  const submit = async (e: FormEvent | null, asDraft = false, overrides: Partial<GrDraft> = {}) => {
     e?.preventDefault();
     if (added) {
       setSaving(true);
@@ -251,17 +257,19 @@ function GoodsReceiptForm() {
       }
       return;
     }
-    const found = validate(draft, ctx, m, asDraft);
+    const doc: GrDraft = { ...draft, ...overrides };
+    const effectiveDraft = asDraft || (e !== null && draft.status === 'Draft' && !doc.approved);
+    const found = validate(doc, ctx, m, effectiveDraft);
     setProblems(found);
     if (found.length) return;
     setSaving(true);
     try {
-      const saved = asDraft ? await saveGrDraft(draft) : await addGoodsReceipt(draft, ctx.fx);
-      if (!asDraft) {
+      const saved = effectiveDraft ? await saveGrDraft(doc) : await addGoodsReceipt(doc, ctx.fx);
+      if (!effectiveDraft && saved.status === 'Open') {
         await postDocumentEntry({ origin: 'PD', originNo: saved.docNum, originId: saved.id, postingDate: saved.postingDate, remarks: saved.journalRemark, lines: journal });
       }
       navigate(GR_LIST_PATH, {
-        state: { notice: asDraft ? `Draft saved — ${saved.vendorName}.` : `Goods receipt ${grNumber(saved)} added — stock is in and the PO lines are updated.` },
+        state: { notice: effectiveDraft ? `Draft saved — ${saved.vendorName}.` : saved.status === 'Not Confirmed' ? `Goods receipt ${grNumber(saved)} submitted for approval.` : `Goods receipt ${grNumber(saved)} added — stock is in and the PO lines are updated.` },
       });
     } catch (err) {
       if (!(err instanceof GrPostError)) throw err;
@@ -306,11 +314,17 @@ function GoodsReceiptForm() {
   const cancelIt = () => act(async () => { const gr = await cancelGoodsReceipt(saved); await reverseDocumentEntry(saved.id); return gr; }, 'cancelled — the stock is back out and the PO lines are open again');
   const invoiced = draft.lines.some((l) => l.invoicedQty > 0);
   const returned = draft.lines.some((l) => (l.returnedQty ?? 0) > 0);
-  // What picking each status in the Status dropdown does; the others can't be reached from here.
-  const statusMoves: Partial<Record<GrStatus, () => void>> = draft.status === 'Draft' ? { Open: () => submit(null) } : draft.status === 'Open' ? { Closed: closeIt, ...(!invoiced && !returned ? { Cancelled: cancelIt } : {}) } : {};
+  const recallIt = () => act(() => recallGoodsReceipt(saved), 'recalled to draft');
+  const rejectIt = async () => {
+    await logRejection('GRPO', saved.id, saved.vendorId, rejectionReason);
+    await recallGoodsReceipt(saved);
+    navigate(GR_LIST_PATH, { state: { notice: `Goods receipt ${grNumber(saved)} rejected and returned to draft.` } });
+  };
+  const statusMoves: Partial<Record<GrStatus, () => void>> = draft.status === 'Draft' ? (draft.approved ? { Open: () => submit(null) } : { 'Not Confirmed': () => submit(null) }) : draft.status === 'Not Confirmed' ? { Open: () => submit(null, false, { approved: true }) } : draft.status === 'Open' ? { Closed: closeIt, ...(!invoiced && !returned ? { Cancelled: cancelIt } : {}) } : {};
 
   const menu: MoreMenuItem[] = [
     ...(!added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
+    ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => setRejecting(true) }] : []),
     ...(draft.status === 'Open' && draft.lines.some((l) => grOpenQty(l, draft) > 0)
       ? [
           { label: 'Copy to A/P invoice', icon: 'request_quote', onSelect: () => navigate('/purchasing/bills/new', { state: { fromReceipt: saved.id } }) },
@@ -383,6 +397,7 @@ function GoodsReceiptForm() {
         ) : (
           <Panel.Body className="flex flex-col gap-2">
             <ProblemsAlert problems={problems} tabLabel={(t) => ({ contents: 'Contents', logistics: 'Logistics', accounting: 'Accounting' })[t]} />
+            {rejecting ? (<Alert intent="danger" variant="outline" title="Reject goods receipt"><div className="flex flex-col gap-2"><TextField aria-label="Rejection reason" value={rejectionReason} onChange={(e) => setRejectionReason(e.currentTarget.value)} placeholder="Explain why…" /><div className="flex gap-2"><Button type="button" intent="danger" variant="solid" size="small" onClick={rejectIt}>Confirm reject</Button><Button type="button" intent="white" variant="solid" size="small" onClick={() => { setRejecting(false); setRejectionReason(''); }}>Cancel</Button></div></div></Alert>) : null}
             {added ? (
               <Alert intent="default" variant="outline" title={draft.status === 'Open' ? 'This goods receipt is added' : `This goods receipt is ${draft.status.toLowerCase()}`}>
                 {draft.status === 'Open'

@@ -45,6 +45,7 @@ import type { Item } from '../../../mocks/items';
 import {
   ArCmPostError,
   addArCreditMemo,
+  recallArCreditMemo,
   applyArCredit,
   arCmJournal,
   arCmNumber,
@@ -72,6 +73,8 @@ import { isValidToday, listItems } from '../../../services/items';
 import { postDocumentEntry, reverseDocumentEntry } from '../../../services/journalEntries';
 import { companyTax, currencies, exchangeRates, taxCodes, taxGroups, withholdingGroups, withholdingTaxes, rateOn } from '../../../services/masterData';
 import { listPartnersByRole } from '../../../services/partners';
+import { logRejection } from '../../../services/approvalRules';
+import { getSalesSettings } from '../../../services/salesOrders';
 import { dueDateFor } from '../../../services/purchaseOrders';
 import { type TaxMasterData } from '../../../services/taxDetermination';
 import { paymentTermDef, projectDef, salesEmployeeDef } from '../../settings/masterDefs';
@@ -166,12 +169,15 @@ function ArCreditMemoForm() {
   const navigate = useNavigate();
   const state = useLocation().state as { fromInvoice?: string; fromReturn?: string } | null;
 
-  const [draft, setDraft] = useState<ArCmInput | null | undefined>(isNew ? blankArCreditMemo(todayISO(), CURRENT_USER_ID) : undefined);
+  const arcmApproved = !getSalesSettings().requireArCreditMemoApproval;
+  const [draft, setDraft] = useState<ArCmInput | null | undefined>(isNew ? { ...blankArCreditMemo(todayISO(), CURRENT_USER_ID), approved: arcmApproved } : undefined);
   const [m, setM] = useState<ArCmMasters>();
   const [page, setPage] = useState<PageId>('details');
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
   const [applying, setApplying] = useState(false);
 
   useEffect(() => {
@@ -281,7 +287,7 @@ function ArCreditMemoForm() {
   const sameCurrency = <T extends { currency: string }>(docs: T[]) => docs.filter((d) => !draft.lines.some((l) => l.baseType) || d.currency === code);
   const invoices = draft.customerId ? sameCurrency(creditableInvoices(m, draft.customerId)) : [];
 
-  const submit = async (e: FormEvent | null, asDraft = false) => {
+  const submit = async (e: FormEvent | null, asDraft = false, overrides: Partial<ArCmInput> = {}) => {
     e?.preventDefault();
     if (added) {
       setSaving(true);
@@ -293,40 +299,44 @@ function ArCreditMemoForm() {
       }
       return;
     }
-    const found = validate(draft, fx, m, asDraft);
+    const doc: ArCmInput = { ...draft, ...overrides };
+    const effectiveDraft = asDraft || (e !== null && draft.status === 'Draft' && !doc.approved);
+    const found = validate(doc, fx, m, effectiveDraft);
     setProblems(found);
     if (found.length) return;
     setSaving(true);
     try {
-      if (asDraft) {
-        const saved = await saveArCmDraft(draft);
+      if (effectiveDraft) {
+        const saved = await saveArCmDraft(doc);
         navigate(AR_CM_LIST_PATH, { state: { notice: `Draft saved — ${saved.customerName}.` } });
         return;
       }
       const balances: ArInvoiceBalances = new Map(
-        baseArInvoiceIds(draft).flatMap((invoiceId) => {
+        baseArInvoiceIds(doc).flatMap((invoiceId) => {
           const inv = m.invoices.find((i) => i.id === invoiceId);
           if (!inv || inv.status !== 'Open') return [];
           const amounts = arAmounts(inv, customer, m.items, m.tax.codes);
           return [[invoiceId, { docNo: arNumber(inv), balance: amounts.balanceDue, total: amounts.due }]];
         }),
       );
-      const saved = await addArCreditMemo(draft, fx, totals.total, balances);
-      await postDocumentEntry({
-        origin: 'AC',
-        originNo: saved.docNum,
-        originId: saved.id,
-        postingDate: saved.postingDate,
-        dueDate: saved.dueDate,
-        remarks: saved.journalRemark,
-        partnerId: saved.customerId,
-        controlAccount: saved.controlAccount,
-        lines: journal,
-      });
+      const saved = await addArCreditMemo(doc, fx, totals.total, balances);
+      if (saved.status !== 'Not Confirmed') {
+        await postDocumentEntry({
+          origin: 'AC',
+          originNo: saved.docNum,
+          originId: saved.id,
+          postingDate: saved.postingDate,
+          dueDate: saved.dueDate,
+          remarks: saved.journalRemark,
+          partnerId: saved.customerId,
+          controlAccount: saved.controlAccount,
+          lines: journal,
+        });
+      }
       const applied = saved.applications.map((a) => `${a.docNo} (${code} ${formatAmount(a.amount)})`).join(', ');
       navigate(AR_CM_LIST_PATH, {
         state: {
-          notice: `A/R credit memo ${arCmNumber(saved)} added — ${code} ${formatAmount(totals.total)} credit${applied ? `, applied to ${applied}` : ''}${saved.status === 'Open' ? `; ${code} ${formatAmount(totals.total - saved.appliedAmount)} left to apply` : ''}.`,
+          notice: saved.status === 'Not Confirmed' ? `A/R credit memo ${arCmNumber(saved)} submitted for approval.` : `A/R credit memo ${arCmNumber(saved)} added — ${code} ${formatAmount(totals.total)} credit${applied ? `, applied to ${applied}` : ''}${saved.status === 'Open' ? `; ${code} ${formatAmount(totals.total - saved.appliedAmount)} left to apply` : ''}.`,
         },
       });
     } catch (err) {
@@ -360,12 +370,16 @@ function ArCreditMemoForm() {
     }
   };
 
+  const recallIt = async () => { const m2 = await recallArCreditMemo(saved); navigate(AR_CM_LIST_PATH, { state: { notice: `A/R credit memo ${arCmNumber(m2)} recalled to draft.` } }); };
+  const rejectIt = async () => { await logRejection('ARCM', saved.id, saved.customerId, rejectionReason); await recallArCreditMemo(saved); navigate(AR_CM_LIST_PATH, { state: { notice: `A/R credit memo ${arCmNumber(saved)} rejected and returned to draft.` } }); };
   const statusMoves: Partial<Record<ArCmStatus, () => void>> =
     draft.status === 'Draft'
-      ? { Open: () => submit(null) }
-      : draft.status === 'Open' || draft.status === 'Closed'
-        ? { Cancelled: cancelIt }
-        : {};
+      ? (draft.approved ? { Open: () => submit(null) } : { 'Not Confirmed': () => submit(null) })
+      : draft.status === 'Not Confirmed'
+        ? { Open: () => submit(null, false, { approved: true }) }
+        : draft.status === 'Open' || draft.status === 'Closed'
+          ? { Cancelled: cancelIt }
+          : {};
 
   const baseInvIds = baseArInvoiceIds(draft);
   const baseInvoiceDocs = baseInvIds.flatMap((invoiceId) => {
@@ -375,6 +389,7 @@ function ArCreditMemoForm() {
 
   const menu: MoreMenuItem[] = [
     ...(!added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
+    ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => setRejecting(true) }] : []),
     ...(draft.status === 'Open' && openBalance > 0 && openInvoices.length ? [{ label: 'Apply credit to an invoice', icon: 'request_quote', onSelect: () => setApplying(true) }] : []),
     ...(draft.status === 'Open' || draft.status === 'Closed' ? [{ label: 'Cancel credit memo', icon: 'cancel', onSelect: cancelIt }] : []),
     ...baseInvoiceDocs.map((inv) => ({
@@ -465,6 +480,7 @@ function ArCreditMemoForm() {
           ) : (
             <Panel.Body className="flex flex-col gap-2">
               <ProblemsAlert problems={problems} tabLabel={() => 'Details'} />
+              {rejecting ? (<Alert intent="danger" variant="outline" title="Reject A/R credit memo"><div className="flex flex-col gap-2"><TextField aria-label="Rejection reason" value={rejectionReason} onChange={(e) => setRejectionReason(e.currentTarget.value)} placeholder="Explain why…" /><div className="flex gap-2"><Button type="button" intent="danger" variant="solid" size="small" onClick={rejectIt}>Confirm reject</Button><Button type="button" intent="white" variant="solid" size="small" onClick={() => { setRejecting(false); setRejectionReason(''); }}>Cancel</Button></div></div></Alert>) : null}
               {added ? (
                 <Alert intent="default" variant="outline" title={draft.status === 'Open' ? `${code} ${formatAmount(openBalance)} of credit left to apply` : `This credit memo is ${draft.status.toLowerCase()}`}>
                   {draft.status === 'Open'

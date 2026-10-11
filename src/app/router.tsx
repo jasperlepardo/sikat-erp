@@ -62,6 +62,7 @@ import { BlanketAgreementList } from '../pages/sales/agreements/BlanketAgreement
 import { BlanketAgreementDetail } from '../pages/sales/agreements/detail/BlanketAgreementDetail';
 import { PurchaseBlanketAgreementList } from '../pages/purchasing/agreements/PurchaseBlanketAgreementList';
 import { PurchaseBlanketAgreementDetail } from '../pages/purchasing/agreements/detail/PurchaseBlanketAgreementDetail';
+import { ApprovalsPage } from '../pages/approvals/ApprovalsPage';
 import { PartnerList } from '../pages/partners/PartnerList';
 import { PartnerDetail } from '../pages/partners/detail/PartnerDetail';
 import { ActivityList } from '../pages/crm/ActivityList';
@@ -85,6 +86,7 @@ export const router = createHashRouter([
     element: <AppShell />,
     children: [
       { index: true, element: <Home /> },
+      { path: 'approvals/pending-approvals', element: <ApprovalsPage /> },
       { path: 'crm/activities', element: <ActivityList /> },
       { path: 'inventory/dashboard', element: <InventoryDashboard /> },
       { path: 'inventory/items', element: <ItemList /> },

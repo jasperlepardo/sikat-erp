@@ -30,6 +30,7 @@ export const QT_LIST_PATH = '/sales/quotations';
 
 export const QT_STATUS_INTENT: Record<string, 'default' | 'primary' | 'success' | 'danger' | 'warning'> = {
   Draft: 'default',
+  'Not Confirmed': 'warning',
   Open: 'primary',
   Closed: 'success',
   Cancelled: 'danger',

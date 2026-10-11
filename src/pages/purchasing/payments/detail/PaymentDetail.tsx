@@ -18,6 +18,7 @@ import {
   Select,
   Tabs,
   Text,
+  TextField,
 } from '@jasperlepardo/sikat-design-system';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { Fields, ReadOnly, Section, bind, type Errors } from '../../../../components/form/fields';
@@ -48,6 +49,7 @@ import {
 
   rowFxDifference,
   rowSettled,
+  recallPayment,
   savePaymentDraft,
   savePaymentRemarks,
   weightedDueDate,
@@ -60,6 +62,8 @@ import { AccountRows, VendorRows } from './PaymentContents';
 import { PaymentMeansSection } from './PaymentMeansSection';
 import { invoiceBalance, openRows, requestBalance, type PayMasters, type PaymentDraft } from './types';
 import { listDownPayments } from '../../../../services/apDownPayments';
+import { logRejection } from '../../../../services/approvalRules';
+import { getPurchasingSettings } from '../../../../services/purchaseOrders';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
 
@@ -74,8 +78,9 @@ const PAGES = [
 ] as const;
 type PageId = (typeof PAGES)[number]['value'];
 
-export const PAYMENT_STATUS_INTENT: Record<PaymentStatus, 'default' | 'success' | 'danger'> = {
+export const PAYMENT_STATUS_INTENT: Record<PaymentStatus, 'default' | 'success' | 'danger' | 'warning'> = {
   Draft: 'default',
+  'Not Confirmed': 'warning',
   Posted: 'success',
   Cancelled: 'danger',
 };
@@ -124,12 +129,15 @@ function PaymentForm() {
   const navigate = useNavigate();
   const state = useLocation().state as { vendorId?: string; invoiceIds?: string[] } | null;
 
-  const [draft, setDraft] = useState<PaymentDraft | null | undefined>(isNew ? blankPayment(todayISO()) : undefined);
+  const payApproved = !getPurchasingSettings().requireOutgoingPaymentApproval;
+  const [draft, setDraft] = useState<PaymentDraft | null | undefined>(isNew ? { ...blankPayment(todayISO()), approved: payApproved } : undefined);
   const [m, setM] = useState<PayMasters>();
   const [page, setPage] = useState<PageId>('details');
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
 
   useEffect(() => {
     Promise.all([
@@ -203,7 +211,7 @@ function PaymentForm() {
   const switchType = (type: PaymentType) =>
     update({ ...blankPayment(draft.postingDate), type, postingDate: draft.postingDate, documentDate: draft.documentDate, journalRemark: type === 'Account' ? 'Outgoing –' : '' });
 
-  const submit = async (e: FormEvent | null, asDraft = false) => {
+  const submit = async (e: FormEvent | null, asDraft = false, overrides: Partial<PaymentDraft> = {}) => {
     e?.preventDefault();
     if (added) {
       setSaving(true);
@@ -215,7 +223,9 @@ function PaymentForm() {
       }
       return;
     }
-    const found = validate(draft, m, fx, asDraft);
+    const doc: PaymentDraft = { ...draft, ...overrides };
+    const effectiveDraft = asDraft || (e !== null && draft.status === 'Draft' && !doc.approved);
+    const found = validate(doc, m, fx, effectiveDraft);
     setProblems(found);
     if (found.length) return;
     setSaving(true);
@@ -226,8 +236,8 @@ function PaymentForm() {
         ...fresh.map((inv) => [inv.id, invoiceBalance(inv, m).balanceDue] as const),
         ...requests.map((d) => [d.id, requestBalance(d, m).balanceDue] as const),
       ]);
-      const saved = asDraft ? await savePaymentDraft(draft) : await addPayment(draft, fx, balances);
-      if (!asDraft) {
+      const saved = effectiveDraft ? await savePaymentDraft(doc) : await addPayment(doc, fx, balances);
+      if (!effectiveDraft && saved.status === 'Posted') {
         await postDocumentEntry({
           origin: 'PS',
           originNo: saved.docNum,
@@ -241,8 +251,10 @@ function PaymentForm() {
       }
       navigate(PAYMENT_LIST_PATH, {
         state: {
-          notice: asDraft
+          notice: effectiveDraft
             ? `Draft saved — ${saved.payeeName || 'payment'}.`
+            : saved.status === 'Not Confirmed'
+            ? `Payment ${paymentNumber(saved)} submitted for approval.`
             : `Payment ${paymentNumber(saved)} added — ${code} ${formatAmount(overallAmount(saved))} to ${saved.payeeName}${fxLine ? `, with a realized exchange ${fxLine.debit ? 'loss' : 'gain'} of PHP ${formatAmount(fxLine.debit || fxLine.credit)}` : ''}.`,
         },
       });
@@ -261,11 +273,13 @@ function PaymentForm() {
     await reverseDocumentEntry(saved.id);
     navigate(PAYMENT_LIST_PATH, { state: { notice: `Payment ${paymentNumber(p)} cancelled — the invoices it paid are open again${p.means.checks.length ? ' and its checks are void' : ''}.` } });
   };
-  // What picking each status in the Status dropdown does; the others can't be reached from here.
-  const statusMoves: Partial<Record<PaymentStatus, () => void>> = draft.status === 'Draft' ? { Posted: () => submit(null) } : draft.status === 'Posted' ? { Cancelled: cancelIt } : {};
+  const recallIt = async () => { const p = await recallPayment(saved); navigate(PAYMENT_LIST_PATH, { state: { notice: `Payment ${paymentNumber(p)} recalled to draft.` } }); };
+  const rejectIt = async () => { await logRejection('PAY', saved.id, saved.vendorId, rejectionReason); await recallPayment(saved); navigate(PAYMENT_LIST_PATH, { state: { notice: `Payment ${paymentNumber(saved)} rejected and returned to draft.` } }); };
+  const statusMoves: Partial<Record<PaymentStatus, () => void>> = draft.status === 'Draft' ? (draft.approved ? { Posted: () => submit(null) } : { 'Not Confirmed': () => submit(null) }) : draft.status === 'Not Confirmed' ? { Posted: () => submit(null, false, { approved: true }) } : draft.status === 'Posted' ? { Cancelled: cancelIt } : {};
 
   const menu: MoreMenuItem[] = [
     ...(!added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
+    ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => setRejecting(true) }] : []),
     ...(draft.status === 'Posted'
       ? [
           {
@@ -336,6 +350,7 @@ function PaymentForm() {
         ) : (
           <Panel.Body className="flex flex-col gap-2">
             <ProblemsAlert problems={problems} tabLabel={(t) => ({ contents: 'Contents', means: 'Payment means' })[t]} />
+            {rejecting ? (<Alert intent="danger" variant="outline" title="Reject outgoing payment"><div className="flex flex-col gap-2"><TextField aria-label="Rejection reason" value={rejectionReason} onChange={(e) => setRejectionReason(e.currentTarget.value)} placeholder="Explain why…" /><div className="flex gap-2"><Button type="button" intent="danger" variant="solid" size="small" onClick={rejectIt}>Confirm reject</Button><Button type="button" intent="white" variant="solid" size="small" onClick={() => { setRejecting(false); setRejectionReason(''); }}>Cancel</Button></div></div></Alert>) : null}
             {added ? (
               <Alert intent="default" variant="outline" title={draft.status === 'Posted' ? 'This payment is added' : `This payment was cancelled ${formatDate(draft.cancelDate)}`}>
                 {draft.status === 'Posted'

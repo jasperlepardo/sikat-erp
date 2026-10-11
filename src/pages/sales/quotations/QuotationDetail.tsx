@@ -47,6 +47,7 @@ import { companyTax, currencies, exchangeRates, taxCodes, rateOn } from '../../.
 import { listPartnersByRole } from '../../../services/partners';
 import {
   addQuotation,
+  recallQuotation,
   cancelQuotation,
   closeQuotation,
   getQuotation,
@@ -63,6 +64,8 @@ import { determineTax, type TaxMasterData as TaxMD } from '../../../services/tax
 import { SYSTEM_TAX_CODES } from '../../../mocks/taxes';
 import { QT_LIST_PATH, QT_STATUS_INTENT } from './QuotationList';
 import { blankSalesOrder, newSoLine } from '../../../mocks/salesOrders';
+import { logRejection } from '../../../services/approvalRules';
+import { getSalesSettings } from '../../../services/salesOrders';
 import { SO_LIST_PATH } from '../orders/detail/types';
 import { SalesDocumentFlow } from '../shared/SalesDocumentFlow';
 import { ActivityTab } from '../../../components/activity/ActivityTab';
@@ -178,12 +181,15 @@ function QuotationForm() {
   const isNew = id === 'new';
   const navigate = useNavigate();
 
-  const [draft, setDraft] = useState<Draft | null | undefined>(isNew ? blankQuotation(CURRENT_USER_ID) : undefined);
+  const qtApproved = !getSalesSettings().requireQuotationApproval;
+  const [draft, setDraft] = useState<Draft | null | undefined>(isNew ? { ...blankQuotation(CURRENT_USER_ID), approved: qtApproved } : undefined);
   const [m, setM] = useState<QtMasters>();
   const [page, setPage] = useState<PageId>('details');
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
 
   useEffect(() => {
     loadQtMasters().then(setM);
@@ -264,7 +270,7 @@ function QuotationForm() {
   const withCurrent = (opts: { value: string; label: string }[], v: string) =>
     !v || opts.some((o) => o.value === v) ? opts : [{ value: v, label: v.split('\n')[0] }, ...opts];
 
-  const submit = async (e: FormEvent | null, asDraft = false) => {
+  const submit = async (e: FormEvent | null, asDraft = false, overrides: Partial<Draft> = {}) => {
     e?.preventDefault();
     if (added) {
       setSaving(true);
@@ -274,25 +280,30 @@ function QuotationForm() {
       } finally { setSaving(false); }
       return;
     }
-    const found = validate(draft, fx, m, asDraft);
+    const doc: Draft = { ...draft, ...overrides };
+    const effectiveDraft = asDraft || (e !== null && draft.status === 'Draft' && !doc.approved);
+    const found = validate(doc, fx, m, effectiveDraft);
     setProblems(found);
     if (found.length) return;
     setSaving(true);
     try {
-      if (asDraft) {
-        const saved = await saveQuotationDraft(draft);
+      if (effectiveDraft) {
+        const saved = await saveQuotationDraft(doc);
         navigate(QT_LIST_PATH, { state: { notice: `Draft saved — ${saved.customerName}.` } });
         return;
       }
-      const saved = await addQuotation(draft);
-      navigate(QT_LIST_PATH, { state: { notice: `Quotation ${qtNumber(saved)} added.` } });
+      const saved = await addQuotation(doc);
+      navigate(QT_LIST_PATH, { state: { notice: saved.status === 'Not Confirmed' ? `Quotation ${qtNumber(saved)} submitted for approval.` : `Quotation ${qtNumber(saved)} added.` } });
     } finally { setSaving(false); }
   };
 
   const saved = draft as Quotation;
+  const recallIt = async () => { const q = await recallQuotation(saved); navigate(QT_LIST_PATH, { state: { notice: `Quotation ${qtNumber(q)} recalled to draft.` } }); };
+  const rejectIt = async () => { await logRejection('QT', saved.id, saved.customerId, rejectionReason); await recallQuotation(saved); navigate(QT_LIST_PATH, { state: { notice: `Quotation ${qtNumber(saved)} rejected and returned to draft.` } }); };
 
   const statusMoves: Partial<Record<string, () => void>> =
-    draft.status === 'Draft' ? { Open: () => submit(null) } :
+    draft.status === 'Draft' ? (draft.approved ? { Open: () => submit(null) } : { 'Not Confirmed': () => submit(null) }) :
+    draft.status === 'Not Confirmed' ? { Open: () => submit(null, false, { approved: true }) } :
     draft.status === 'Open' ? {
       Closed: async () => { const r = await closeQuotation(saved); navigate(QT_LIST_PATH, { state: { notice: `Quotation ${qtNumber(r)} closed.` } }); },
       Cancelled: async () => { const r = await cancelQuotation(saved); navigate(QT_LIST_PATH, { state: { notice: `Quotation ${qtNumber(r)} cancelled.` } }); },
@@ -301,6 +312,7 @@ function QuotationForm() {
   const convertToOrder = () => {
     const copyFrom = {
       ...blankSalesOrder(CURRENT_USER_ID),
+      approved: !getSalesSettings().requireSoApproval,
       customerId: draft.customerId,
       customerCode: draft.customerCode,
       customerName: draft.customerName,
@@ -341,6 +353,7 @@ function QuotationForm() {
 
   const menu: MoreMenuItem[] = [
     ...(!added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
+    ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => setRejecting(true) }] : []),
     ...(draft.status === 'Open' ? [{ label: 'Copy to sales order', icon: 'shopping_bag', onSelect: convertToOrder }] : []),
     ...(draft.status === 'Open' ? [{ label: 'Close quotation', icon: 'task_alt', onSelect: () => closeQuotation(saved).then((r) => navigate(QT_LIST_PATH, { state: { notice: `Quotation ${qtNumber(r)} closed.` } })) }] : []),
     ...(draft.status === 'Open' ? [{ label: 'Cancel quotation', icon: 'cancel', onSelect: () => cancelQuotation(saved).then((r) => navigate(QT_LIST_PATH, { state: { notice: `Quotation ${qtNumber(r)} cancelled.` } })) }] : []),
@@ -472,6 +485,7 @@ function QuotationForm() {
         ) : (
           <Panel.Body className="flex flex-col gap-2">
             <ProblemsAlert problems={problems} tabLabel={(t) => ({ contents: 'Contents', logistics: 'Logistics', accounting: 'Accounting' })[t]} />
+            {rejecting ? (<Alert intent="danger" variant="outline" title="Reject quotation"><div className="flex flex-col gap-2"><TextField aria-label="Rejection reason" value={rejectionReason} onChange={(e) => setRejectionReason(e.currentTarget.value)} placeholder="Explain why…" /><div className="flex gap-2"><Button type="button" intent="danger" variant="solid" size="small" onClick={rejectIt}>Confirm reject</Button><Button type="button" intent="white" variant="solid" size="small" onClick={() => { setRejecting(false); setRejectionReason(''); }}>Cancel</Button></div></div></Alert>) : null}
 
             {added ? (
               <Alert intent="default" variant="outline" title={

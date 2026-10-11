@@ -30,8 +30,8 @@ import { RETURN_STATUS_INTENT } from './GoodsReturnDetail';
 import { MEMO_LIST_PATH, MEMO_STATUS_INTENT, RETURN_LIST_PATH } from './types';
 
 type Kind = 'returns' | 'memos';
-type Status = 'Draft' | 'Open' | 'Closed' | 'Cancelled';
-const STATUSES: Status[] = ['Draft', 'Open', 'Closed', 'Cancelled'];
+type Status = 'Draft' | 'Not Confirmed' | 'Open' | 'Closed' | 'Cancelled';
+const STATUSES: Status[] = ['Draft', 'Not Confirmed', 'Open', 'Closed', 'Cancelled'];
 
 /** One row for either document, so both lists share a table. */
 interface Row {

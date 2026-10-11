@@ -213,6 +213,14 @@ export async function addArInvoice(input: ArInput, fx: number, ctx: { codes: rea
   const problems = await invoiceProblems(input, items);
   if (problems.length) throw new ArPostError(problems.map((p) => p.lineId), problems.map((p) => p.message).join(' '));
 
+  const series = arSeriesOf(input.seriesId);
+  const allInv = await invoices.list();
+  const docNum = input.docNum || Math.max(series.firstNo - 1, ...allInv.filter((a) => a.seriesId === series.id).map((a) => a.docNum)) + 1;
+
+  if (!input.approved) {
+    return invoices.save({ ...input, docNum, status: 'Not Confirmed', fxRate: fx });
+  }
+
   // Lines from a delivery keep its cost; the rest go out at today's item cost (FIFO: consume layers).
   const fifoItemIds = new Set<string>();
   const taken: Taken[] = [];
@@ -241,9 +249,6 @@ export async function addArInvoice(input: ArInput, fx: number, ctx: { codes: rea
     }
   }
 
-  const series = arSeriesOf(input.seriesId);
-  const all = await invoices.list();
-  const docNum = Math.max(series.firstNo - 1, ...all.filter((a) => a.seriesId === series.id).map((a) => a.docNum)) + 1;
   await updateFifoCosts([...fifoItemIds]);
   const saved = await invoices.save({ ...input, lines, docNum, status: 'Open', fxRate: fx });
   await logConsumption(saved.id, saved.postingDate, taken);
@@ -336,3 +341,7 @@ export async function applyArPayments(rows: { invoiceId: string; amount: number;
 }
 
 export const arTotal = (a: ArInvoice, codes: TaxCode[]) => arTotals(a, rateFrom(codes, a.postingDate)).total;
+
+export async function recallArInvoice(inv: ArInvoice): Promise<ArInvoice> {
+  return invoices.save({ ...inv, status: 'Draft', approved: false });
+}

@@ -4,6 +4,7 @@ import type { ListRoute } from '../../components/form/MasterList';
 import { TabbedPage, type PageTab } from '../../components/form/TabbedPage';
 import { CompaniesTab } from './company/CompanyTab';
 import { SalesDocSeriesTab } from './sales/SalesDocSeriesTab';
+import { SalesSettingsTab } from './sales/SalesSettingsTab';
 import * as d from './masterDefs';
 
 const tab = <T extends MasterRow>(value: string, def: MasterDef<T>): PageTab => ({
@@ -15,6 +16,7 @@ const tab = <T extends MasterRow>(value: string, def: MasterDef<T>): PageTab => 
 
 const SALES_TABS = [
   { value: 'document-series', label: 'Document series', Component: SalesDocSeriesTab },
+  { value: 'settings', label: 'Sales settings', Component: SalesSettingsTab },
   tab('partner-groups', d.bpGroupDef),
   tab('industries', d.industryDef),
   tab('sales-employees', d.salesEmployeeDef),

@@ -54,10 +54,13 @@ import { isValidToday, listItems } from '../../../services/items';
 import { postDocumentEntry, reverseDocumentEntry } from '../../../services/journalEntries';
 import { companyTax, currencies, exchangeRates, taxCodes, taxGroups, withholdingGroups, withholdingTaxes, rateOn } from '../../../services/masterData';
 import { listPartnersByRole } from '../../../services/partners';
+import { logRejection } from '../../../services/approvalRules';
+import { getSalesSettings } from '../../../services/salesOrders';
 import { dueDateFor } from '../../../services/purchaseOrders';
 import {
   SrPostError,
   addSalesReturn,
+  recallSalesReturn,
   cancelSalesReturn,
   getSalesReturn,
   listSalesReturns,
@@ -186,12 +189,15 @@ function SalesReturnForm() {
   const navigate = useNavigate();
   const state = useLocation().state as { fromDelivery?: string } | null;
 
-  const [draft, setDraft] = useState<Draft | null | undefined>(isNew ? blankSalesReturn(todayISO(), CURRENT_USER_ID) : undefined);
+  const srApproved = !getSalesSettings().requireSalesReturnApproval;
+  const [draft, setDraft] = useState<Draft | null | undefined>(isNew ? { ...blankSalesReturn(todayISO(), CURRENT_USER_ID), approved: srApproved } : undefined);
   const [m, setM] = useState<SrMasters>();
   const [page, setPage] = useState<PageId>('details');
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
   const [copying, setCopying] = useState(false);
   const [shownGroups, setShownGroups] = useState<LineGroup[]>(['references']);
   const [lineSettingsOpen, setLineSettingsOpen] = useState(false);
@@ -298,7 +304,7 @@ function SalesReturnForm() {
       )
     : [];
 
-  const submit = async (e: FormEvent | null, asDraft = false) => {
+  const submit = async (e: FormEvent | null, asDraft = false, overrides: Partial<Draft> = {}) => {
     e?.preventDefault();
     if (added) {
       setSaving(true);
@@ -310,29 +316,33 @@ function SalesReturnForm() {
       }
       return;
     }
-    const found = validate(draft, fx, m, asDraft);
+    const doc: Draft = { ...draft, ...overrides };
+    const effectiveDraft = asDraft || (e !== null && draft.status === 'Draft' && !doc.approved);
+    const found = validate(doc, fx, m, effectiveDraft);
     setProblems(found);
     if (found.length) return;
     setSaving(true);
     try {
-      if (asDraft) {
-        const saved = await saveReturnDraft(draft);
+      if (effectiveDraft) {
+        const saved = await saveReturnDraft(doc);
         navigate(SR_LIST_PATH, { state: { notice: `Draft saved — ${saved.customerName}.` } });
         return;
       }
-      const saved = await addSalesReturn(draft, fx);
-      await postDocumentEntry({
-        origin: 'SR',
-        originNo: saved.docNum,
-        originId: saved.id,
-        postingDate: saved.postingDate,
-        dueDate: saved.dueDate,
-        remarks: saved.journalRemark,
-        lines: srJournal(saved, m.items, m.inv.groups, true),
-      });
+      const saved = await addSalesReturn(doc, fx);
+      if (saved.status !== 'Not Confirmed') {
+        await postDocumentEntry({
+          origin: 'SR',
+          originNo: saved.docNum,
+          originId: saved.id,
+          postingDate: saved.postingDate,
+          dueDate: saved.dueDate,
+          remarks: saved.journalRemark,
+          lines: srJournal(saved, m.items, m.inv.groups, true),
+        });
+      }
       navigate(SR_LIST_PATH, {
         state: {
-          notice: `Sales return ${srNumber(saved)} added — the stock is back in.`,
+          notice: saved.status === 'Not Confirmed' ? `Sales return ${srNumber(saved)} submitted for approval.` : `Sales return ${srNumber(saved)} added — the stock is back in.`,
         },
       });
     } catch (err) {
@@ -357,12 +367,16 @@ function SalesReturnForm() {
     }
   };
 
+  const recallIt = async () => { const r = await recallSalesReturn(saved); navigate(SR_LIST_PATH, { state: { notice: `Sales return ${srNumber(r)} recalled to draft.` } }); };
+  const rejectIt = async () => { await logRejection('SRT', saved.id, saved.customerId, rejectionReason); await recallSalesReturn(saved); navigate(SR_LIST_PATH, { state: { notice: `Sales return ${srNumber(saved)} rejected and returned to draft.` } }); };
   const statusMoves: Partial<Record<SrStatus, () => void>> =
-    draft.status === 'Draft' ? { Open: () => submit(null) } :
+    draft.status === 'Draft' ? (draft.approved ? { Open: () => submit(null) } : { 'Not Confirmed': () => submit(null) }) :
+    draft.status === 'Not Confirmed' ? { Open: () => submit(null, false, { approved: true }) } :
     (draft.status === 'Open' || draft.status === 'Closed') ? { Cancelled: cancelIt } : {};
 
   const menu: MoreMenuItem[] = [
     ...(!added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
+    ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => setRejecting(true) }] : []),
     ...(creditable ? [{ label: 'Copy to A/R credit memo', icon: 'undo', onSelect: () => navigate(`${AR_CM_LIST_PATH}/new`, { state: { fromReturn: saved.id } }) }] : []),
     ...(draft.status === 'Open' && !draft.lines.some((l) => l.creditedQty > 0)
       ? [{ label: 'Cancel sales return', icon: 'cancel', onSelect: cancelIt }]
@@ -586,6 +600,7 @@ function SalesReturnForm() {
           ) : (
             <Panel.Body className="flex flex-col gap-2">
               <ProblemsAlert problems={problems} tabLabel={(t) => ({ contents: 'Contents', logistics: 'Logistics', accounting: 'Accounting' })[t]} />
+              {rejecting ? (<Alert intent="danger" variant="outline" title="Reject sales return"><div className="flex flex-col gap-2"><TextField aria-label="Rejection reason" value={rejectionReason} onChange={(e) => setRejectionReason(e.currentTarget.value)} placeholder="Explain why…" /><div className="flex gap-2"><Button type="button" intent="danger" variant="solid" size="small" onClick={rejectIt}>Confirm reject</Button><Button type="button" intent="white" variant="solid" size="small" onClick={() => { setRejecting(false); setRejectionReason(''); }}>Cancel</Button></div></div></Alert>) : null}
               {added ? (
                 <Alert intent="default" variant="outline" title={draft.status === 'Open' ? 'Waiting for the customer credit' : `This sales return is ${draft.status.toLowerCase()}`}>
                   {draft.status === 'Open'

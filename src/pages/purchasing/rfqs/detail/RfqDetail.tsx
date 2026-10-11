@@ -45,6 +45,7 @@ import {
   addRfq,
   cancelRfq,
   closeRfq,
+  recallRfq,
   getRfq,
   listRfqs,
   rfqNumber,
@@ -54,6 +55,7 @@ import {
   seriesOf,
 } from '../../../../services/rfqs';
 import { getPurchasingSettings } from '../../../../services/purchaseOrders';
+import { logRejection } from '../../../../services/approvalRules';
 import { AccountingTab } from './AccountingTab';
 import { ContentsTab } from './ContentsTab';
 import { LogisticsTab } from './LogisticsTab';
@@ -85,8 +87,9 @@ const PAGES = [
 ] as const;
 type PageId = (typeof PAGES)[number]['value'];
 
-export const STATUS_INTENT: Record<RfqStatus, 'default' | 'primary' | 'success' | 'danger'> = {
+export const STATUS_INTENT: Record<RfqStatus, 'default' | 'primary' | 'success' | 'danger' | 'warning'> = {
   Draft: 'default',
+  'Not Confirmed': 'warning',
   Open: 'primary',
   Closed: 'success',
   Cancelled: 'danger',
@@ -94,6 +97,7 @@ export const STATUS_INTENT: Record<RfqStatus, 'default' | 'primary' | 'success' 
 
 const STATUS_HINT: Record<RfqStatus, string> = {
   Draft: 'Pick Open to send the RFQ.',
+  'Not Confirmed': 'Awaiting approval.',
   Open: 'Awaiting vendor response. Close or cancel when done.',
   Closed: 'Closed for good.',
   Cancelled: 'Cancelled for good.',
@@ -134,8 +138,9 @@ function RfqForm() {
   const copyFrom = (useLocation().state as { copyFrom?: RfqDraft } | null)?.copyFrom;
 
   const blank = blankRfq(CURRENT_USER_ID);
+  const rfqApproved = !getPurchasingSettings().requireRfqApproval;
   const [draft, setDraft] = useState<RfqDraft | null | undefined>(
-    isNew ? (copyFrom ?? { ...blank, lines: [newRfqLine()] }) : undefined,
+    isNew ? { ...(copyFrom ?? { ...blank, lines: [newRfqLine()] }), approved: rfqApproved } : undefined,
   );
   const [m, setM] = useState<RfqMasters>();
   const [page, setPage] = useState<PageId>('details');
@@ -151,6 +156,8 @@ function RfqForm() {
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);
   const [showVendorCreate, setShowVendorCreate] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
 
   useEffect(() => {
     Promise.all([
@@ -254,18 +261,22 @@ function RfqForm() {
     pickVendor(vendor.id, vendor);
   };
 
-  const submit = async (e: FormEvent | null, asDraft = false) => {
+  const submit = async (e: FormEvent | null, asDraft = false, overrides: Partial<RfqDraft> = {}) => {
     e?.preventDefault();
-    const found = validate(draft, asDraft);
+    const doc: RfqDraft = { ...draft, ...overrides };
+    const effectiveDraft = asDraft || (e !== null && draft.status === 'Draft' && !doc.approved);
+    const found = validate(doc, effectiveDraft);
     setProblems(found);
     if (found.length) return;
     setSaving(true);
     try {
-      const saved = asDraft ? await saveRfqDraft(draft) : await addRfq(draft);
+      const saved = effectiveDraft ? await saveRfqDraft(doc) : await addRfq(doc);
       navigate(RFQ_LIST_PATH, {
         state: {
-          notice: asDraft
+          notice: effectiveDraft
             ? `Draft saved — ${saved.vendorName}.`
+            : saved.status === 'Not Confirmed'
+            ? `Purchase quotation ${rfqNumber(saved)} submitted for approval.`
             : `Purchase quotation ${rfqNumber(saved)} saved — ${saved.vendorName}.`,
         },
       });
@@ -283,6 +294,7 @@ function RfqForm() {
     const today = todayISO();
     const poDraft = {
       ...blankPurchaseOrder(CURRENT_USER_ID),
+      approved: !getPurchasingSettings().requirePoApproval,
       vendorId: draft.vendorId,
       vendorCode: draft.vendorCode,
       vendorName: draft.vendorName,
@@ -341,8 +353,15 @@ function RfqForm() {
 
   const saved = draft as Rfq;
   const open = draft.status === 'Open';
+  const recallIt = () => act(() => recallRfq(saved), 'recalled to draft');
+  const rejectIt = async () => {
+    await logRejection('RFQ', saved.id, saved.vendorId, rejectionReason);
+    await recallRfq(saved);
+    navigate(RFQ_LIST_PATH, { state: { notice: `Purchase quotation ${rfqNumber(saved)} rejected and returned to draft.` } });
+  };
   const menu: MoreMenuItem[] = [
     ...(!ctx.added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
+    ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => setRejecting(true) }] : []),
     ...(open
       ? [
           { label: 'Copy to purchase order', icon: 'shopping_cart', onSelect: copyToPo },
@@ -356,13 +375,15 @@ function RfqForm() {
 
   const transitions: Partial<Record<RfqStatus, () => void>> =
     draft.status === 'Draft'
-      ? { Open: () => submit(null, false) }
-      : open
-        ? {
-            Closed: () => act(() => closeRfq(saved), 'closed'),
-            Cancelled: () => act(() => cancelRfq(saved), 'cancelled'),
-          }
-        : {};
+      ? draft.approved ? { Open: () => submit(null, false) } : { 'Not Confirmed': () => submit(null, false) }
+      : draft.status === 'Not Confirmed'
+        ? { Open: () => submit(null, false, { approved: true }) }
+        : open
+          ? {
+              Closed: () => act(() => closeRfq(saved), 'closed'),
+              Cancelled: () => act(() => cancelRfq(saved), 'cancelled'),
+            }
+          : {};
 
   const title = isNew
     ? 'New purchase quotation'
@@ -445,6 +466,7 @@ function RfqForm() {
                 problems={problems}
                 tabLabel={(t) => ({ contents: 'Contents', logistics: 'Logistics', accounting: 'Accounting' }[t])}
               />
+              {rejecting ? (<Alert intent="danger" variant="outline" title="Reject purchase quotation"><div className="flex flex-col gap-2"><TextField aria-label="Rejection reason" value={rejectionReason} onChange={(e) => setRejectionReason(e.currentTarget.value)} placeholder="Explain why…" /><div className="flex gap-2"><Button type="button" intent="danger" variant="solid" size="small" onClick={rejectIt}>Confirm reject</Button><Button type="button" intent="white" variant="solid" size="small" onClick={() => { setRejecting(false); setRejectionReason(''); }}>Cancel</Button></div></div></Alert>) : null}
               {ctx.readOnly ? (
                 <Alert intent="default" variant="outline" title={`This quotation is ${draft.status.toLowerCase()}`}>
                   Only remarks can change{draft.convertedToPoId ? ` (converted to a purchase order)` : ''}.

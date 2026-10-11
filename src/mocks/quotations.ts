@@ -20,8 +20,8 @@ import { SEED_PARTNERS, formatAddress } from './partners';
 import { H1_SALES, SEED_SALES_ORDERS } from './salesOrders';
 import { MONTH_NAMES } from './storeSales';
 
-export type QuotationStatus = 'Draft' | 'Open' | 'Closed' | 'Cancelled';
-export const QUOTATION_STATUSES: QuotationStatus[] = ['Draft', 'Open', 'Closed', 'Cancelled'];
+export type QuotationStatus = 'Draft' | 'Not Confirmed' | 'Open' | 'Closed' | 'Cancelled';
+export const QUOTATION_STATUSES: QuotationStatus[] = ['Draft', 'Not Confirmed', 'Open', 'Closed', 'Cancelled'];
 
 export interface QuoteLine {
   id: string;
@@ -97,6 +97,7 @@ export interface Quotation {
 
   /** Id of the sales order this was copied to, if any. */
   convertedToOrderId: string;
+  approved: boolean;
 }
 
 export const QT_SERIES: DocumentSeries[] = [
@@ -179,6 +180,7 @@ export function blankQuotation(ownerId: string): Omit<Quotation, 'id'> {
     rounding: false,
     remarks: '',
     convertedToOrderId: '',
+    approved: true,
   };
 }
 

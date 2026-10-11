@@ -54,9 +54,11 @@ import {
   poSeries,
   poTotals,
   poWithholding,
+  recallPurchaseOrder,
   savePurchaseOrder,
   seriesOf,
 } from '../../../../services/purchaseOrders';
+import { logRejection } from '../../../../services/approvalRules';
 import { AccountingTab } from './AccountingTab';
 import { ContentsTab } from './ContentsTab';
 import { LogisticsTab } from './LogisticsTab';
@@ -203,7 +205,8 @@ function PurchaseOrderForm() {
   const { copyFrom, suggest } = (useLocation().state as { copyFrom?: PoDraft; suggest?: PoSuggestion } | null) ?? {};
 
   const blank = blankPurchaseOrder(CURRENT_USER_ID);
-  const [draft, setDraft] = useState<PoDraft | null | undefined>(isNew ? (copyFrom ?? { ...blank, lines: [newPoLine()] }) : undefined);
+  const approved = !getPurchasingSettings().requirePoApproval;
+  const [draft, setDraft] = useState<PoDraft | null | undefined>(isNew ? { ...(copyFrom ?? { ...blank, lines: [newPoLine()] }), approved } : undefined);
   const [m, setM] = useState<PoMasters>();
   const [page, setPage] = useState<PageId>('details');
   // POs in the list's default order (newest posting date first), for previous/next.
@@ -217,6 +220,8 @@ function PurchaseOrderForm() {
   const [closeWarning, setCloseWarning] = useState<string>();
   const [saving, setSaving] = useState(false);
   const [showVendorCreate, setShowVendorCreate] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
 
   useEffect(() => {
     Promise.all([
@@ -307,7 +312,8 @@ function PurchaseOrderForm() {
     if (found.length) return;
 
     // "When duplicate Vendor Ref. No. occurs": Warn asks once, then lets it through.
-    if (!asDraft && getPurchasingSettings().duplicateVendorRef === 'Warn' && !dupWarning) {
+    const effectiveDraft = asDraft || (e !== null && draft.status === 'Draft' && !doc.approved);
+    if (!effectiveDraft && getPurchasingSettings().duplicateVendorRef === 'Warn' && !dupWarning) {
       const dup = await findDuplicateVendorRef(doc);
       if (dup) {
         setDupWarning(`PO ${poNumber(dup)} from ${doc.vendorName} already has Vendor Ref. No. ${doc.vendorRef}.`);
@@ -317,13 +323,17 @@ function PurchaseOrderForm() {
     setSaving(true);
     try {
       if (Object.keys(patch).length) setDraft(doc);
-      const saved = await savePurchaseOrder(doc, { asDraft });
+      const saved = await savePurchaseOrder(doc, { asDraft: effectiveDraft });
       navigate(PO_LIST_PATH, {
         state: {
           notice:
             saved.length > 1
               ? `Split into ${saved.length} purchase orders: ${saved.map(poNumber).join(', ')}.`
-              : `${asDraft ? 'Draft saved' : `Purchase order ${poNumber(saved[0])} saved`} — ${saved[0].vendorName}.`,
+              : effectiveDraft
+              ? `Draft saved — ${saved[0].vendorName}.`
+              : saved[0].status === 'Not Confirmed'
+              ? `Purchase order ${poNumber(saved[0])} submitted for approval — ${saved[0].vendorName}.`
+              : `Purchase order ${poNumber(saved[0])} saved — ${saved[0].vendorName}.`,
         },
       });
     } catch (err) {
@@ -376,11 +386,19 @@ function PurchaseOrderForm() {
     setCloseWarning(undefined);
     return act(() => closePurchaseOrder(saved), 'closed');
   };
+  const recallIt = () => act(() => recallPurchaseOrder(saved), 'recalled to draft');
+  const rejectIt = async () => {
+    await logRejection('PO', saved.id, saved.vendorId, rejectionReason);
+    await recallPurchaseOrder(saved);
+    navigate(PO_LIST_PATH, { state: { notice: `Purchase order ${poNumber(saved)} rejected and returned to draft.` } });
+  };
+
   const menu: MoreMenuItem[] = [
     ...(!ctx.added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
-    ...(draft.status === 'Not Confirmed'
-      ? [{ label: 'Approve', icon: 'verified', onSelect: () => submit(null, false, { approved: true }) }]
-      : []),
+    ...(draft.status === 'Draft' && !draft.approved ? [{ label: 'Submit for approval', icon: 'upload', onSelect: () => submit(null, false) }] : []),
+    ...(draft.status === 'Not Confirmed' ? [{ label: 'Approve', icon: 'verified', onSelect: () => submit(null, false, { approved: true }) }] : []),
+    ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }] : []),
+    ...(draft.status === 'Not Confirmed' ? [{ label: 'Reject', icon: 'cancel', onSelect: () => setRejecting(true) }] : []),
     ...(draft.status === 'Open' && draft.lines.some((l) => l.status === 'Open' && l.receivedQty < l.quantity)
       ? [
           { label: 'Copy to goods receipt', icon: 'inventory', onSelect: () => navigate('/purchasing/goods-receipts/new', { state: { fromPo: saved.id } }) },
@@ -397,7 +415,7 @@ function PurchaseOrderForm() {
   // What picking each status in the Status dropdown does; statuses not listed can't be reached from here.
   const transitions: Partial<Record<PoStatus, () => void>> =
     draft.status === 'Draft'
-      ? { Open: () => submit(null, false) }
+      ? draft.approved ? { Open: () => submit(null, false) } : { 'Not Confirmed': () => submit(null, false) }
       : open
         ? {
             ...(draft.status === 'Not Confirmed' ? { Open: () => submit(null, false, { approved: true }) } : {}),
@@ -491,6 +509,17 @@ function PurchaseOrderForm() {
         ) : (
           <Panel.Body className="flex flex-col gap-2">
             <ProblemsAlert problems={problems} tabLabel={(t) => ({ contents: 'Contents', logistics: 'Logistics', accounting: 'Accounting' }[t])} />
+            {rejecting ? (
+              <Alert intent="danger" variant="outline" title="Reject purchase order">
+                <div className="flex flex-col gap-2">
+                  <TextField aria-label="Rejection reason" value={rejectionReason} onChange={(e) => setRejectionReason(e.currentTarget.value)} placeholder="Explain why this is being rejected…" />
+                  <div className="flex gap-2">
+                    <Button type="button" intent="danger" variant="solid" size="small" onClick={rejectIt}>Confirm reject</Button>
+                    <Button type="button" intent="white" variant="solid" size="small" onClick={() => { setRejecting(false); setRejectionReason(''); }}>Cancel</Button>
+                  </div>
+                </div>
+              </Alert>
+            ) : null}
             {dupWarning ? (
               <Alert intent="warning" variant="outline" title="Duplicate vendor reference">
                 {dupWarning} Press {ctx.added ? 'Save' : 'Add'} again to keep it, or change the Vendor Ref. No.

@@ -31,6 +31,7 @@ import { listItems } from '../../../../services/items';
 import { listPartnersByRole } from '../../../../services/partners';
 import { pbaSeries } from '../../../../services/allSeries';
 import { pbaNumber, pbaTotals, openQty, getPurchaseBlanketAgreement, listPurchaseBlanketAgreements, savePurchaseBlanketAgreement, type PbaInput } from '../../../../services/purchaseBlanketAgreements';
+import { getPurchasingSettings } from '../../../../services/purchaseOrders';
 import { PO_LIST_PATH } from '../../orders/detail/PurchaseOrderDetail';
 import { projectDef } from '../../../settings/masterDefs';
 import { useDocTitle } from '../../../../services/useDocTitle';
@@ -209,6 +210,7 @@ function PbaForm() {
     const openLines = draft.lines.filter((l) => openQty(l) > 0);
     const po = {
       ...blankPurchaseOrder(CURRENT_USER_ID),
+      approved: !getPurchasingSettings().requirePoApproval,
       vendorId: draft.vendorId,
       vendorCode: draft.vendorCode,
       vendorName: draft.vendorName,

@@ -26,8 +26,8 @@ import { SEED_ITEMS } from './items';
 import { SEED_PAYMENT_TERMS } from './partnerMasters';
 import { SEED_PARTNERS } from './partners';
 
-export type ApStatus = 'Draft' | 'Open' | 'Closed' | 'Cancelled';
-export const AP_STATUSES: ApStatus[] = ['Draft', 'Open', 'Closed', 'Cancelled'];
+export type ApStatus = 'Draft' | 'Not Confirmed' | 'Open' | 'Closed' | 'Cancelled';
+export const AP_STATUSES: ApStatus[] = ['Draft', 'Not Confirmed', 'Open', 'Closed', 'Cancelled'];
 
 /** Where a line was copied from. '' = entered by hand. */
 export type ApBaseType = 'GRPO' | 'PO' | '';
@@ -142,6 +142,7 @@ export function blankApInvoice(today: string, buyerId: string): Omit<ApInvoice, 
     downPayment: 0,
     paymentOrderRun: true,
     appliedAmount: 0,
+    approved: true,
   };
 }
 

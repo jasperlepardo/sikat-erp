@@ -235,13 +235,18 @@ export async function addGoodsReceipt(input: GrInput, fx: number): Promise<Goods
   }
   if (over.length) throw new GrPostError(over.map((o) => o.lineId), over.map((o) => o.message).join(' '));
 
+  const series = grSeriesOf(input.seriesId);
+  const all = await receipts.list();
+  const docNum = input.docNum || Math.max(series.firstNo - 1, ...all.filter((r) => r.seriesId === series.id).map((r) => r.docNum)) + 1;
+
+  if (!input.approved) {
+    return receipts.save({ ...input, docNum, status: 'Not Confirmed', fxRate: fx });
+  }
+
   const lines = input.lines.map((l) => ({ ...l, unitCostLc: unitCostLc(l, input, fx) }));
   for (const item of applyStock(lines, items, 1)) await saveItem(item);
   for (const po of applyToOrders(lines, pos, 1)) await saveReceivedQuantities(po);
 
-  const series = grSeriesOf(input.seriesId);
-  const all = await receipts.list();
-  const docNum = Math.max(series.firstNo - 1, ...all.filter((r) => r.seriesId === series.id).map((r) => r.docNum)) + 1;
   const saved = await receipts.save({ ...input, lines: withBinCodes(lines), docNum, status: 'Open', fxRate: fx });
 
   // FIFO: create a cost layer per stocked line, then refresh itemCost from remaining layers.
@@ -347,4 +352,8 @@ export async function cancelGoodsReceipt(gr: GoodsReceipt) {
   await updateFifoCosts(fifoItemIds);
 
   return receipts.save({ ...gr, status: 'Cancelled', closeDate: todayISO() });
+}
+
+export async function recallGoodsReceipt(gr: GoodsReceipt): Promise<GoodsReceipt> {
+  return receipts.save({ ...gr, status: 'Draft', approved: false });
 }

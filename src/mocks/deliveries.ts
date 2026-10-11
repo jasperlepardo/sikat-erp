@@ -26,8 +26,8 @@ import { H1_SALES, SEED_SALES_ORDERS, seedRateOn, type SalesOrder } from './sale
 import type { PoReference } from './purchaseOrders';
 import { SEED_ITEMS } from './items';
 
-export type DnStatus = 'Draft' | 'Open' | 'Closed' | 'Cancelled';
-export const DN_STATUSES: DnStatus[] = ['Draft', 'Open', 'Closed', 'Cancelled'];
+export type DnStatus = 'Draft' | 'Not Confirmed' | 'Open' | 'Closed' | 'Cancelled';
+export const DN_STATUSES: DnStatus[] = ['Draft', 'Not Confirmed', 'Open', 'Closed', 'Cancelled'];
 
 /** Shipped goods (Use Shipped Goods Account): an asset until invoiced. The chart has no dedicated account, so Goods in Transit stands in. */
 export const SHIPPED_GOODS_ACCOUNT = '1340';
@@ -126,6 +126,7 @@ export interface Delivery {
   remarks: string;
   /** PHP per unit of the document currency, fixed when added (1 for PHP). */
   fxRate: number;
+  approved: boolean;
 }
 
 export const DN_SERIES: DocumentSeries[] = [
@@ -205,6 +206,7 @@ export function blankDelivery(today: string, ownerId: string): Omit<Delivery, 'i
     rounding: false,
     remarks: '',
     fxRate: 1,
+    approved: true,
   };
 }
 

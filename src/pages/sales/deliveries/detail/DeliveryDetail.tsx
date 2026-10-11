@@ -14,14 +14,15 @@ import { contactName } from '../../../../mocks/partners';
 import { NO_SALES_EMPLOYEE, SALES_SETTINGS, type SalesOrder } from '../../../../mocks/salesOrders';
 import { loadCurrentCompany } from '../../../../services/companies';
 import { formatDate, todayISO } from '../../../../services/dates';
-import { DnPostError, addDelivery, cancelDelivery, closeDelivery, dnJournal, dnNumber, dnTotals, getDelivery, listDeliveries, saveDeliveryDraft, saveDeliveryNotes } from '../../../../services/deliveries';
+import { DnPostError, addDelivery, recallDelivery, cancelDelivery, closeDelivery, dnJournal, dnNumber, dnTotals, getDelivery, listDeliveries, saveDeliveryDraft, saveDeliveryNotes } from '../../../../services/deliveries';
 import { formatAmount } from '../../../../services/format';
 import { loadInventoryMasters } from '../../../../services/inventoryMasters';
 import { isValidToday, listItems } from '../../../../services/items';
 import { accounts, companyTax, currencies, exchangeRates, taxCodes, taxGroups, withholdingGroups, withholdingTaxes } from '../../../../services/masterData';
 import { listPartnersByRole } from '../../../../services/partners';
 import { termDays } from '../../../../services/purchaseOrders';
-import { listSalesOrders, openQty, soDueDate, soNumber } from '../../../../services/salesOrders';
+import { logRejection } from '../../../../services/approvalRules';
+import { getSalesSettings, listSalesOrders, openQty, soDueDate, soNumber } from '../../../../services/salesOrders';
 import { soSeries } from '../../../../services/allSeries';
 import { salesEmployeeDef } from '../../../settings/masterDefs';
 import { ALL_CURRENCIES, SO_LIST_PATH, proposedTaxCode } from '../../orders/detail/types';
@@ -43,7 +44,7 @@ const PAGES = [
 ] as const;
 type PageId = (typeof PAGES)[number]['value'];
 
-export const DN_STATUS_INTENT: Record<DnStatus, 'default' | 'primary' | 'success' | 'danger'> = { Draft: 'default', Open: 'primary', Closed: 'success', Cancelled: 'danger' };
+export const DN_STATUS_INTENT: Record<DnStatus, 'default' | 'primary' | 'success' | 'danger' | 'warning'> = { Draft: 'default', 'Not Confirmed': 'warning', Open: 'primary', Closed: 'success', Cancelled: 'danger' };
 
 function validate(d: DnDraft, ctx: DnContext, m: DnMasters, asDraft: boolean): Problem<TabId>[] {
   const { problems, need } = problemCollector<TabId>();
@@ -82,13 +83,16 @@ function DeliveryForm() {
   const navigate = useNavigate();
   const fromOrder = (useLocation().state as { fromOrder?: string } | null)?.fromOrder;
 
-  const [draft, setDraft] = useState<DnDraft | null | undefined>(isNew ? blankDelivery(todayISO(), CURRENT_USER_ID) : undefined);
+  const dnApproved = !getSalesSettings().requireDeliveryApproval;
+  const [draft, setDraft] = useState<DnDraft | null | undefined>(isNew ? { ...blankDelivery(todayISO(), CURRENT_USER_ID), approved: dnApproved } : undefined);
   const [m, setM] = useState<DnMasters>();
   const [page, setPage] = useState<PageId>('details');
   const [tab, setTab] = useState<TabId>('contents');
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -180,7 +184,7 @@ function DeliveryForm() {
     });
   };
 
-  const submit = async (e: FormEvent | null, asDraft = false) => {
+  const submit = async (e: FormEvent | null, asDraft = false, overrides: Partial<DnDraft> = {}) => {
     e?.preventDefault();
     if (ro) {
       setSaving(true);
@@ -188,8 +192,9 @@ function DeliveryForm() {
       setSaving(false);
       return navigate(DN_LIST_PATH, { state: { notice: `Remarks saved on delivery ${dnNumber(dn)}.` } });
     }
-    const doc: DnDraft = { ...draft, lines: draft.lines.filter((l) => l.itemId) };
-    const found = validate(doc, ctx, m, asDraft);
+    const doc: DnDraft = { ...draft, ...overrides, lines: draft.lines.filter((l) => l.itemId) };
+    const effectiveDraft = asDraft || (e !== null && draft.status === 'Draft' && !doc.approved);
+    const found = validate(doc, ctx, m, effectiveDraft);
     setProblems(found);
     if (found.length) {
       const first = found.find((p) => p.tab !== 'header');
@@ -198,8 +203,8 @@ function DeliveryForm() {
     }
     setSaving(true);
     try {
-      const dn = asDraft ? await saveDeliveryDraft(doc) : await addDelivery(doc, ctx.fx);
-      navigate(DN_LIST_PATH, { state: { notice: asDraft ? `Draft saved — ${dn.customerName}.` : `Delivery ${dnNumber(dn)} added — stock is out and the sales order lines are updated.` } });
+      const dn = effectiveDraft ? await saveDeliveryDraft(doc) : await addDelivery(doc, ctx.fx);
+      navigate(DN_LIST_PATH, { state: { notice: effectiveDraft ? `Draft saved — ${dn.customerName}.` : dn.status === 'Not Confirmed' ? `Delivery ${dnNumber(dn)} submitted for approval.` : `Delivery ${dnNumber(dn)} added — stock is out and the sales order lines are updated.` } });
     } catch (err) {
       if (!(err instanceof DnPostError)) throw err;
       setTab('contents');
@@ -223,11 +228,13 @@ function DeliveryForm() {
   const invoiced = draft.lines.some((l) => l.invoicedQty > 0);
   const closeIt = () => act(() => closeDelivery(saved), 'closed');
   const cancelIt = () => act(() => cancelDelivery(saved), 'cancelled — the stock is back and the order lines are open again');
-  // What picking each status in the Status dropdown does; the others can't be reached from here.
-  const statusMoves: Partial<Record<DnStatus, () => void>> = draft.status === 'Draft' ? { Open: () => submit(null) } : draft.status === 'Open' ? { Closed: closeIt, ...(!invoiced ? { Cancelled: cancelIt } : {}) } : {};
+  const recallIt = () => act(() => recallDelivery(saved), 'recalled to draft');
+  const rejectIt = async () => { await logRejection('DN', saved.id, saved.customerId, rejectionReason); await recallDelivery(saved); navigate(DN_LIST_PATH, { state: { notice: `Delivery ${dnNumber(saved)} rejected and returned to draft.` } }); };
+  const statusMoves: Partial<Record<DnStatus, () => void>> = draft.status === 'Draft' ? (draft.approved ? { Open: () => submit(null) } : { 'Not Confirmed': () => submit(null) }) : draft.status === 'Not Confirmed' ? { Open: () => submit(null, false, { approved: true }) } : draft.status === 'Open' ? { Closed: closeIt, ...(!invoiced ? { Cancelled: cancelIt } : {}) } : {};
 
   const menu: MoreMenuItem[] = [
     ...(!ctx.added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
+    ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => setRejecting(true) }] : []),
     ...(draft.status === 'Open' && draft.lines.some((l) => l.quantity > l.invoicedQty)
       ? [{ label: 'Copy to A/R invoice', icon: 'receipt', onSelect: () => navigate('/sales/invoices/new', { state: { fromDelivery: draft.id } }) }]
       : []),
@@ -297,6 +304,7 @@ function DeliveryForm() {
         ) : null}
         {page === 'details' ? <Panel.Body className="flex flex-col gap-2">
           <ProblemsAlert problems={problems} tabLabel={(t) => TAB_LABEL[t as TabId]} />
+          {rejecting ? (<Alert intent="danger" variant="outline" title="Reject delivery"><div className="flex flex-col gap-2"><TextField aria-label="Rejection reason" value={rejectionReason} onChange={(e) => setRejectionReason(e.currentTarget.value)} placeholder="Explain why…" /><div className="flex gap-2"><Button type="button" intent="danger" variant="solid" size="small" onClick={rejectIt}>Confirm reject</Button><Button type="button" intent="white" variant="solid" size="small" onClick={() => { setRejecting(false); setRejectionReason(''); }}>Cancel</Button></div></div></Alert>) : null}
           <Tabs variant="outline" value={tab} onValueChange={(v) => setTab(v as TabId)} items={(Object.keys(TAB_LABEL) as TabId[]).map((t) => ({ value: t, label: TAB_LABEL[t], badge: problems.some((p) => p.tab === t) ? '!' : t === 'attachments' && draft.attachments.length ? String(draft.attachments.length) : undefined }))} />
           {ro ? (
             <Alert intent="default" variant="outline" title={`This delivery is ${draft.status.toLowerCase()}`}>

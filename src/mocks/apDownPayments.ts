@@ -20,7 +20,7 @@
 import type { DocumentSeries } from './common';
 import { blankApInvoice, newApLine, type ApInvoice, type ApLine } from './apInvoices';
 
-export type DprStatus = 'Draft' | 'Open' | 'Closed' | 'Cancelled';
+export type DprStatus = 'Draft' | 'Not Confirmed' | 'Open' | 'Closed' | 'Cancelled';
 export const DPR_STATUSES: DprStatus[] = ['Draft', 'Open', 'Closed', 'Cancelled'];
 
 export interface DprLine extends Omit<ApLine, 'baseType' | 'receiptCostLc' | 'returnedQty'> {

@@ -8,15 +8,17 @@ export const SR_LIST_PATH = '/sales/returns-and-credits/returns';
 
 export type ArCmDraft = ArCmInput;
 
-export const ARCM_STATUS_INTENT: Record<ArCmStatus, 'default' | 'primary' | 'success' | 'danger'> = {
+export const ARCM_STATUS_INTENT: Record<ArCmStatus, 'default' | 'primary' | 'success' | 'danger' | 'warning'> = {
   Draft: 'default',
+  'Not Confirmed': 'warning',
   Open: 'primary',
   Closed: 'success',
   Cancelled: 'danger',
 };
 
-export const SR_STATUS_INTENT: Record<SrStatus, 'default' | 'primary' | 'success' | 'danger'> = {
+export const SR_STATUS_INTENT: Record<SrStatus, 'default' | 'primary' | 'success' | 'danger' | 'warning'> = {
   Draft: 'default',
+  'Not Confirmed': 'warning',
   Open: 'primary',
   Closed: 'success',
   Cancelled: 'danger',

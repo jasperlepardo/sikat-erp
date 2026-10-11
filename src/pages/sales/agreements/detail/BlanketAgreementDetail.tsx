@@ -24,6 +24,7 @@ import { CURRENT_USER_ID } from '../../../../mocks/common';
 import { contactName } from '../../../../mocks/partners';
 import { blankBlanketAgreement, newBaLine, type BlanketAgreement } from '../../../../mocks/blanketAgreements';
 import { blankSalesOrder, newSoLine } from '../../../../mocks/salesOrders';
+import { getSalesSettings } from '../../../../services/salesOrders';
 import { SO_LIST_PATH } from '../../orders/detail/types';
 import { formatDate, todayISO } from '../../../../services/dates';
 import { formatAmount } from '../../../../services/format';
@@ -211,6 +212,7 @@ function BaForm() {
     const openLines = draft.lines.filter((l) => openQty(l) > 0);
     const so = {
       ...blankSalesOrder(CURRENT_USER_ID),
+      approved: !getSalesSettings().requireSoApproval,
       customerId: draft.customerId,
       customerCode: draft.customerCode,
       customerName: draft.customerName,

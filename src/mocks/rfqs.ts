@@ -19,8 +19,8 @@ import { SEED_WAREHOUSES } from './itemMasters';
 import { formatAddress } from './address';
 import { todayISO } from '../services/dates';
 
-export type RfqStatus = 'Draft' | 'Open' | 'Closed' | 'Cancelled';
-export const RFQ_STATUSES: RfqStatus[] = ['Draft', 'Open', 'Closed', 'Cancelled'];
+export type RfqStatus = 'Draft' | 'Not Confirmed' | 'Open' | 'Closed' | 'Cancelled';
+export const RFQ_STATUSES: RfqStatus[] = ['Draft', 'Not Confirmed', 'Open', 'Closed', 'Cancelled'];
 
 export type { DocumentSeries };
 
@@ -104,6 +104,7 @@ export interface Rfq {
   basePrId: string;
   /** Id of the PO this was copied to (set when the RFQ closes via copy-to-PO). */
   convertedToPoId: string;
+  approved: boolean;
 }
 
 export const RFQ_SERIES: DocumentSeries[] = [
@@ -186,6 +187,7 @@ export function blankRfq(ownerId: string): Omit<Rfq, 'id'> {
     remarks: '',
     basePrId: '',
     convertedToPoId: '',
+    approved: true,
   };
 }
 

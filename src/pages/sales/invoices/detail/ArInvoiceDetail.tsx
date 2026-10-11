@@ -15,6 +15,7 @@ import { NO_SALES_EMPLOYEE, SALES_SETTINGS } from '../../../../mocks/salesOrders
 import {
   ArPostError,
   addArInvoice,
+  recallArInvoice,
   arJournal,
   arNumber,
   arTotals,
@@ -38,7 +39,8 @@ import { controlAccountOf } from '../../../../services/journalEntries';
 import { accounts, companyTax, currencies, exchangeRates, taxCodes, taxGroups, withholdingGroups, withholdingTaxes } from '../../../../services/masterData';
 import { listPartnersByRole } from '../../../../services/partners';
 import { paymentTermName, termDays } from '../../../../services/purchaseOrders';
-import { listSalesOrders, openQty, soDueDate, soNumber } from '../../../../services/salesOrders';
+import { logRejection } from '../../../../services/approvalRules';
+import { getSalesSettings, listSalesOrders, openQty, soDueDate, soNumber } from '../../../../services/salesOrders';
 import { soSeries } from '../../../../services/allSeries';
 import { salesEmployeeDef } from '../../../settings/masterDefs';
 import { DN_LIST_PATH } from '../../deliveries/detail/types';
@@ -61,7 +63,7 @@ const PAGES = [
 ] as const;
 type PageId = (typeof PAGES)[number]['value'];
 
-export const AR_STATUS_INTENT: Record<ArStatus, 'default' | 'primary' | 'success' | 'danger'> = { Draft: 'default', Open: 'primary', Closed: 'success', Cancelled: 'danger' };
+export const AR_STATUS_INTENT: Record<ArStatus, 'default' | 'primary' | 'success' | 'danger' | 'warning'> = { Draft: 'default', 'Not Confirmed': 'warning', Open: 'primary', Closed: 'success', Cancelled: 'danger' };
 
 function validate(d: ArDraft, ctx: ArContext, m: ArMasters, asDraft: boolean): Problem<TabId>[] {
   const { problems, need } = problemCollector<TabId>();
@@ -107,13 +109,16 @@ function ArInvoiceForm() {
   const navigate = useNavigate();
   const from = useLocation().state as { fromDelivery?: string; fromOrder?: string; lineFilter?: 'goods' | 'services' } | null;
 
-  const [draft, setDraft] = useState<ArDraft | null | undefined>(isNew ? blankArInvoice(todayISO(), CURRENT_USER_ID) : undefined);
+  const arApproved = !getSalesSettings().requireArInvoiceApproval;
+  const [draft, setDraft] = useState<ArDraft | null | undefined>(isNew ? { ...blankArInvoice(todayISO(), CURRENT_USER_ID), approved: arApproved } : undefined);
   const [m, setM] = useState<ArMasters>();
   const [page, setPage] = useState<PageId>('details');
   const [tab, setTab] = useState<TabId>('contents');
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -266,7 +271,7 @@ function ArInvoiceForm() {
     });
   };
 
-  const submit = async (e: FormEvent | null, asDraft = false) => {
+  const submit = async (e: FormEvent | null, asDraft = false, overrides: Partial<ArDraft> = {}) => {
     e?.preventDefault();
     if (ro) {
       setSaving(true);
@@ -274,8 +279,9 @@ function ArInvoiceForm() {
       setSaving(false);
       return navigate(AR_LIST_PATH, { state: { notice: `Remarks saved on invoice ${arNumber(a)}.` } });
     }
-    const doc: ArDraft = { ...draft, lines: draft.lines.filter((l) => (draft.docType === 'Service' ? l.description.trim() || l.unitPrice : l.itemId)) };
-    const found = validate(doc, ctx, m, asDraft);
+    const doc: ArDraft = { ...draft, ...overrides, lines: draft.lines.filter((l) => (draft.docType === 'Service' ? l.description.trim() || l.unitPrice : l.itemId)) };
+    const effectiveDraft = asDraft || (e !== null && draft.status === 'Draft' && !doc.approved);
+    const found = validate(doc, ctx, m, effectiveDraft);
     setProblems(found);
     if (found.length) {
       const first = found.find((p) => p.tab !== 'header');
@@ -284,8 +290,8 @@ function ArInvoiceForm() {
     }
     setSaving(true);
     try {
-      const a = asDraft ? await saveArDraft(doc) : await addArInvoice(doc, ctx.fx, { codes: m.tax.codes, withholding: arWithholding(doc, customer, m.items, ctx.rateOf), roundingRule: docCurrency?.rounding });
-      navigate(AR_LIST_PATH, { state: { notice: asDraft ? `Draft saved — ${a.customerName}.` : `A/R invoice ${arNumber(a)} added — ${a.customerName} owes ${a.currency} ${formatAmount(balance)}.` } });
+      const a = effectiveDraft ? await saveArDraft(doc) : await addArInvoice(doc, ctx.fx, { codes: m.tax.codes, withholding: arWithholding(doc, customer, m.items, ctx.rateOf), roundingRule: docCurrency?.rounding });
+      navigate(AR_LIST_PATH, { state: { notice: effectiveDraft ? `Draft saved — ${a.customerName}.` : a.status === 'Not Confirmed' ? `A/R invoice ${arNumber(a)} submitted for approval.` : `A/R invoice ${arNumber(a)} added — ${a.customerName} owes ${a.currency} ${formatAmount(balance)}.` } });
     } catch (err) {
       if (!(err instanceof ArPostError)) throw err;
       setTab('contents');
@@ -309,11 +315,13 @@ function ArInvoiceForm() {
   const bases = [...new Map(draft.lines.filter((l) => l.baseId).map((l) => [l.baseId, l])).values()];
   const closeIt = () => act(() => closeArInvoice(saved), 'closed');
   const cancelIt = () => act(() => cancelArInvoice(saved), 'cancelled — the entry is reversed and its deliveries and orders are open again');
-  // What picking each status in the Status dropdown does; the others can't be reached from here.
-  const statusMoves: Partial<Record<ArStatus, () => void>> = draft.status === 'Draft' ? { Open: () => submit(null) } : draft.status === 'Open' ? { Closed: closeIt, ...(!draft.appliedAmount ? { Cancelled: cancelIt } : {}) } : {};
+  const recallIt = () => act(() => recallArInvoice(saved), 'recalled to draft');
+  const rejectIt = async () => { await logRejection('ARINV', saved.id, saved.customerId, rejectionReason); await recallArInvoice(saved); navigate(AR_LIST_PATH, { state: { notice: `A/R invoice ${arNumber(saved)} rejected and returned to draft.` } }); };
+  const statusMoves: Partial<Record<ArStatus, () => void>> = draft.status === 'Draft' ? (draft.approved ? { Open: () => submit(null) } : { 'Not Confirmed': () => submit(null) }) : draft.status === 'Not Confirmed' ? { Open: () => submit(null, false, { approved: true }) } : draft.status === 'Open' ? { Closed: closeIt, ...(!draft.appliedAmount ? { Cancelled: cancelIt } : {}) } : {};
 
   const menu: MoreMenuItem[] = [
     ...(!ctx.added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
+    ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => setRejecting(true) }] : []),
     ...(draft.status === 'Open' && balance > 0 && !draft.paymentBlock
       ? [{ label: 'Receive payment', icon: 'savings', onSelect: () => navigate('/sales/payments-received/new', { state: { fromInvoice: draft.id } }) }]
       : []),
@@ -383,6 +391,7 @@ function ArInvoiceForm() {
         ) : null}
         {page === 'details' ? <Panel.Body className="flex flex-col gap-2">
           <ProblemsAlert problems={problems} tabLabel={(t) => TAB_LABEL[t as TabId]} />
+          {rejecting ? (<Alert intent="danger" variant="outline" title="Reject A/R invoice"><div className="flex flex-col gap-2"><TextField aria-label="Rejection reason" value={rejectionReason} onChange={(e) => setRejectionReason(e.currentTarget.value)} placeholder="Explain why…" /><div className="flex gap-2"><Button type="button" intent="danger" variant="solid" size="small" onClick={rejectIt}>Confirm reject</Button><Button type="button" intent="white" variant="solid" size="small" onClick={() => { setRejecting(false); setRejectionReason(''); }}>Cancel</Button></div></div></Alert>) : null}
           <Tabs variant="outline" value={tab} onValueChange={(v) => setTab(v as TabId)} items={(Object.keys(TAB_LABEL) as TabId[]).map((t) => ({ value: t, label: TAB_LABEL[t], badge: problems.some((p) => p.tab === t) ? '!' : t === 'attachments' && draft.attachments.length ? String(draft.attachments.length) : undefined }))} />
           {ro ? (
             <Alert intent="default" variant="outline" title={`This invoice is ${draft.status.toLowerCase()}`}>

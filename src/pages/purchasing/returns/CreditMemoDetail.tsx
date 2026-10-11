@@ -48,18 +48,20 @@ import {
   memoNumber,
   memoTotals,
   netCredit,
+  recallCreditMemo,
   saveMemoDraft,
   saveMemoRemarks,
   sendsStock,
   type InvoiceBalances,
 } from '../../../services/apCreditMemos';
+import { logRejection } from '../../../services/approvalRules';
 import { apNumber, returnableQty } from '../../../services/apInvoices';
 import { formatDate, todayISO } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
 import { creditableReturns, returnNumber, returnOpenQty } from '../../../services/goodsReturns';
 import { isValidToday } from '../../../services/items';
 import { postDocumentEntry, reverseDocumentEntry } from '../../../services/journalEntries';
-import { dueDateFor, poWithholding } from '../../../services/purchaseOrders';
+import { dueDateFor, getPurchasingSettings, poWithholding } from '../../../services/purchaseOrders';
 import { paymentTermDef, projectDef, salesEmployeeDef } from '../../settings/masterDefs';
 import { ReferencesTable } from '../orders/detail/AccountingTab';
 import { TotalNote, TotalRow } from '../orders/detail/PurchaseOrderDetail';
@@ -142,12 +144,15 @@ function CreditMemoForm() {
   const navigate = useNavigate();
   const state = useLocation().state as { fromInvoice?: string; fromReturn?: string } | null;
 
-  const [draft, setDraft] = useState<Draft | null | undefined>(isNew ? blankCreditMemo(todayISO(), CURRENT_USER_ID) : undefined);
+  const cmApproved = !getPurchasingSettings().requireApCreditMemoApproval;
+  const [draft, setDraft] = useState<Draft | null | undefined>(isNew ? { ...blankCreditMemo(todayISO(), CURRENT_USER_ID), approved: cmApproved } : undefined);
   const [m, setM] = useState<RetMasters>();
   const [page, setPage] = useState<PageId>('details');
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
   const [copying, setCopying] = useState(false);
   const [applying, setApplying] = useState(false);
 
@@ -225,7 +230,7 @@ function CreditMemoForm() {
   const invoices = draft.vendorId ? sameCurrency(creditableInvoices(m, draft.vendorId)) : [];
   const returns = draft.vendorId ? sameCurrency(creditableReturns(m.returns, draft.vendorId)) : [];
 
-  const submit = async (e: FormEvent | null, asDraft = false) => {
+  const submit = async (e: FormEvent | null, asDraft = false, overrides: Partial<Draft> = {}) => {
     e?.preventDefault();
     if (added) {
       setSaving(true);
@@ -237,30 +242,34 @@ function CreditMemoForm() {
       }
       return;
     }
-    const found = validate(draft, fx, m, asDraft);
+    const doc: Draft = { ...draft, ...overrides };
+    const effectiveDraft = asDraft || (e !== null && draft.status === 'Draft' && !doc.approved);
+    const found = validate(doc, fx, m, effectiveDraft);
     setProblems(found);
     if (found.length) return;
     setSaving(true);
     try {
-      if (asDraft) {
-        const saved = await saveMemoDraft(draft);
+      if (effectiveDraft) {
+        const saved = await saveMemoDraft(doc);
         navigate(MEMO_LIST_PATH, { state: { notice: `Draft saved — ${saved.vendorName}.` } });
         return;
       }
       const balances: InvoiceBalances = new Map(
-        baseInvoiceIds(draft).flatMap((invoiceId) => {
+        baseInvoiceIds(doc).flatMap((invoiceId) => {
           const inv = m.invoices.find((i) => i.id === invoiceId);
           if (!inv || inv.status !== 'Open') return [];
           const b = balanceOf(inv);
           return [[invoiceId, { docNo: apNumber(inv), balance: b.balanceDue, total: b.total }]];
         }),
       );
-      const saved = await addCreditMemo(draft, fx, credit, balances);
-      await postDocumentEntry({ origin: 'PC', originNo: saved.docNum, originId: saved.id, postingDate: saved.postingDate, dueDate: saved.dueDate, remarks: saved.journalRemark, partnerId: saved.vendorId, controlAccount: saved.controlAccount, lines: journal });
+      const saved = await addCreditMemo(doc, fx, credit, balances);
+      if (saved.status !== 'Not Confirmed') {
+        await postDocumentEntry({ origin: 'PC', originNo: saved.docNum, originId: saved.id, postingDate: saved.postingDate, dueDate: saved.dueDate, remarks: saved.journalRemark, partnerId: saved.vendorId, controlAccount: saved.controlAccount, lines: journal });
+      }
       const applied = saved.applications.map((a) => `${a.docNo} (${code} ${formatAmount(a.amount)})`).join(', ');
       navigate(MEMO_LIST_PATH, {
         state: {
-          notice: `A/P credit memo ${memoNumber(saved)} added — ${code} ${formatAmount(credit)} credit${applied ? `, applied to ${applied}` : ''}${saved.status === 'Open' ? `; ${code} ${formatAmount(credit - saved.appliedAmount)} left to apply` : ''}.`,
+          notice: saved.status === 'Not Confirmed' ? `A/P credit memo ${memoNumber(saved)} submitted for approval.` : `A/P credit memo ${memoNumber(saved)} added — ${code} ${formatAmount(credit)} credit${applied ? `, applied to ${applied}` : ''}${saved.status === 'Open' ? `; ${code} ${formatAmount(credit - saved.appliedAmount)} left to apply` : ''}.`,
         },
       });
     } catch (err) {
@@ -284,11 +293,13 @@ function CreditMemoForm() {
       setProblems([{ tab: 'header', key: 'status', message: (err as Error).message }]);
     }
   };
-  // What picking each status in the Status dropdown does; the others can't be reached from here.
-  const statusMoves: Partial<Record<MemoStatus, () => void>> = draft.status === 'Draft' ? { Open: () => submit(null) } : draft.status === 'Open' || draft.status === 'Closed' ? { Cancelled: cancelIt } : {};
+  const recallIt = async () => { const m2 = await recallCreditMemo(saved); navigate(MEMO_LIST_PATH, { state: { notice: `A/P credit memo ${memoNumber(m2)} recalled to draft.` } }); };
+  const rejectIt = async () => { await logRejection('APCM', saved.id, saved.vendorId, rejectionReason); await recallCreditMemo(saved); navigate(MEMO_LIST_PATH, { state: { notice: `A/P credit memo ${memoNumber(saved)} rejected and returned to draft.` } }); };
+  const statusMoves: Partial<Record<MemoStatus, () => void>> = draft.status === 'Draft' ? (draft.approved ? { Open: () => submit(null) } : { 'Not Confirmed': () => submit(null) }) : draft.status === 'Not Confirmed' ? { Open: () => submit(null, false, { approved: true }) } : draft.status === 'Open' || draft.status === 'Closed' ? { Cancelled: cancelIt } : {};
 
   const menu: MoreMenuItem[] = [
     ...(!added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
+    ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => setRejecting(true) }] : []),
     ...(draft.status === 'Open' && openBalance > 0 && openInvoices.length ? [{ label: 'Apply credit to an invoice', icon: 'request_quote', onSelect: () => setApplying(true) }] : []),
     ...(draft.status === 'Open' || draft.status === 'Closed'
       ? [
@@ -382,6 +393,7 @@ function CreditMemoForm() {
           ) : (
             <Panel.Body className="flex flex-col gap-2">
               <ProblemsAlert problems={problems} tabLabel={(t) => ({ contents: 'Contents', logistics: 'Logistics', accounting: 'Accounting' })[t]} />
+              {rejecting ? (<Alert intent="danger" variant="outline" title="Reject A/P credit memo"><div className="flex flex-col gap-2"><TextField aria-label="Rejection reason" value={rejectionReason} onChange={(e) => setRejectionReason(e.currentTarget.value)} placeholder="Explain why…" /><div className="flex gap-2"><Button type="button" intent="danger" variant="solid" size="small" onClick={rejectIt}>Confirm reject</Button><Button type="button" intent="white" variant="solid" size="small" onClick={() => { setRejecting(false); setRejectionReason(''); }}>Cancel</Button></div></div></Alert>) : null}
               {added ? (
                 <Alert intent="default" variant="outline" title={draft.status === 'Open' ? `${code} ${formatAmount(openBalance)} of credit left to apply` : `This credit memo is ${draft.status.toLowerCase()}`}>
                   {draft.status === 'Open'

@@ -167,6 +167,14 @@ export async function addCreditMemo(input: MemoInput, fx: number, credit: number
   }
   if (problems.length) throw new MemoPostError(problems.map((p) => p.lineId), problems.map((p) => p.message).join(' '));
 
+  const allMemos = await memos.list();
+  const series = seriesLookup(memoSeries, input.seriesId, MEMO_SERIES);
+  const docNum = input.docNum || Math.max(series.firstNo - 1, ...allMemos.filter((m) => m.seriesId === series.id).map((m) => m.docNum)) + 1;
+
+  if (!input.approved) {
+    return memos.save({ ...input, docNum, status: 'Not Confirmed', fxRate: fx });
+  }
+
   const lines = input.lines.map((l) => ({ ...l, unitCostLc: unitCostLc(l, input, fx) }));
   const moved = new Map(applyStock(lines.filter((l) => sendsStock(l, items)).map((l) => ({ ...l, baseLineId: '' })), items, -1).map((i) => [i.id, i]));
   const costing = new Map(items.map((i) => [i.id, moved.get(i.id) ?? i]));
@@ -192,9 +200,6 @@ export async function addCreditMemo(input: MemoInput, fx: number, credit: number
     left = round2(left - amount);
   }
 
-  const all = await memos.list();
-  const series = seriesLookup(memoSeries, input.seriesId, MEMO_SERIES);
-  const docNum = Math.max(series.firstNo - 1, ...all.filter((m) => m.seriesId === series.id).map((m) => m.docNum)) + 1;
   const appliedAmount = round2(credit - left);
   return memos.save({
     ...input,
@@ -246,4 +251,8 @@ export async function cancelCreditMemo(m: ApCreditMemo, totals: Map<string, numb
   await applyInvoiceReturns(m.lines.filter((l) => l.baseType === 'APINV' && l.returnGoods), -1);
   await applyCreditedQty(m.lines.filter((l) => l.baseType === 'GRET'), -1);
   return memos.save({ ...m, status: 'Cancelled', closeDate: todayISO(), appliedAmount: 0, applications: [] });
+}
+
+export async function recallCreditMemo(m: ApCreditMemo): Promise<ApCreditMemo> {
+  return memos.save({ ...m, status: 'Draft', approved: false });
 }

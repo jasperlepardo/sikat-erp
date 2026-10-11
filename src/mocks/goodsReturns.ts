@@ -20,7 +20,7 @@
 import type { Attachment, DocumentSeries } from './common';
 import { blankGoodsReceipt, newGrLine, type GoodsReceipt, type GrLine } from './goodsReceipts';
 
-export type ReturnStatus = 'Draft' | 'Open' | 'Closed' | 'Cancelled';
+export type ReturnStatus = 'Draft' | 'Not Confirmed' | 'Open' | 'Closed' | 'Cancelled';
 export const RETURN_STATUSES: ReturnStatus[] = ['Draft', 'Open', 'Closed', 'Cancelled'];
 
 /** Return reasons (SAP: Return Reason master). */

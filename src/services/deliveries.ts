@@ -149,6 +149,14 @@ export async function addDelivery(input: DnInput, fx: number): Promise<Delivery>
   const problems = await deliveryProblems(input, items);
   if (problems.length) throw new DnPostError(problems.map((p) => p.lineId), problems.map((p) => p.message).join(' '));
 
+  const series = dnSeriesOf(input.seriesId);
+  const allDn = await deliveries.list();
+  const docNum = input.docNum || Math.max(series.firstNo - 1, ...allDn.filter((d) => d.seriesId === series.id).map((d) => d.docNum)) + 1;
+
+  if (!input.approved) {
+    return deliveries.save({ ...input, docNum, status: 'Not Confirmed', fxRate: fx });
+  }
+
   // FIFO: consume layers per item+warehouse to get the true FIFO cost for each line.
   const fifoCosts = new Map<string, number>();
   const taken: Taken[] = [];
@@ -177,9 +185,6 @@ export async function addDelivery(input: DnInput, fx: number): Promise<Delivery>
   for (const item of touched.values()) await saveItem(item);
   await applyDelivered(lines.filter((l) => l.baseType === 'SO'), 1);
 
-  const series = dnSeriesOf(input.seriesId);
-  const all = await deliveries.list();
-  const docNum = Math.max(series.firstNo - 1, ...all.filter((d) => d.seriesId === series.id).map((d) => d.docNum)) + 1;
   const saved = await deliveries.save({ ...input, lines, docNum, status: 'Open', fxRate: fx });
   await logConsumption(saved.id, saved.postingDate, taken);
   await postDocumentEntry({
@@ -256,4 +261,8 @@ export async function cancelDelivery(d: Delivery) {
   const saved = await deliveries.save({ ...d, status: 'Cancelled', closeDate: todayISO() });
   await reverseDocumentEntry(d.id);
   return saved;
+}
+
+export async function recallDelivery(d: Delivery): Promise<Delivery> {
+  return deliveries.save({ ...d, status: 'Draft', approved: false });
 }

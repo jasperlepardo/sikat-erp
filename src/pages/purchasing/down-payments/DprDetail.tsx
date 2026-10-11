@@ -42,9 +42,11 @@ import {
   drawableAmount,
   getDownPayment,
   listDownPayments,
+  recallDownPayment,
   saveDprDraft,
   saveDprRemarks,
 } from '../../../services/apDownPayments';
+import { logRejection } from '../../../services/approvalRules';
 import { loadCurrentCompany } from '../../../services/companies';
 import { formatDate, todayISO } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
@@ -53,7 +55,7 @@ import { loadInventoryMasters } from '../../../services/inventoryMasters';
 import { isValidToday, listItems } from '../../../services/items';
 import { companyTax, currencies, exchangeRates, taxCodes, taxGroups, withholdingGroups, withholdingTaxes } from '../../../services/masterData';
 import { listPartnersByRole } from '../../../services/partners';
-import { dueDateFor, listPurchaseOrders, openQty, poNumber } from '../../../services/purchaseOrders';
+import { dueDateFor, getPurchasingSettings, listPurchaseOrders, openQty, poNumber } from '../../../services/purchaseOrders';
 import { paymentTermDef, projectDef, salesEmployeeDef } from '../../settings/masterDefs';
 import { ReferencesTable } from '../orders/detail/AccountingTab';
 import { TotalNote, TotalRow } from '../orders/detail/PurchaseOrderDetail';
@@ -68,7 +70,7 @@ import { ActivityTab } from '../../../components/activity/ActivityTab';
 
 export const DPR_LIST_PATH = '/purchasing/bills/down-payment-requests';
 
-export const DPR_STATUS_INTENT: Record<DprStatus, 'default' | 'primary' | 'success' | 'danger'> = { Draft: 'default', Open: 'primary', Closed: 'success', Cancelled: 'danger' };
+export const DPR_STATUS_INTENT: Record<DprStatus, 'default' | 'primary' | 'success' | 'danger' | 'warning'> = { Draft: 'default', 'Not Confirmed': 'warning', Open: 'primary', Closed: 'success', Cancelled: 'danger' };
 
 /** The request's attachments: kept on the remarks side, since attachments aren't on the shared base type. */
 type Draft = Omit<DownPaymentRequest, 'id'> & { id?: string; attachments?: Attachment[] };
@@ -123,12 +125,15 @@ function DprForm() {
   const navigate = useNavigate();
   const state = useLocation().state as { fromPo?: string } | null;
 
-  const [draft, setDraft] = useState<Draft | null | undefined>(isNew ? blankDownPaymentRequest(todayISO(), CURRENT_USER_ID) : undefined);
+  const dprApproved = !getPurchasingSettings().requireDprApproval;
+  const [draft, setDraft] = useState<Draft | null | undefined>(isNew ? { ...blankDownPaymentRequest(todayISO(), CURRENT_USER_ID), approved: dprApproved } : undefined);
   const [m, setM] = useState<Masters>();
   const [page, setPage] = useState<PageId>('details');
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
   const [copying, setCopying] = useState(false);
 
   useEffect(() => {
@@ -195,7 +200,7 @@ function DprForm() {
     update(v ? { ...vendorDefaults(v, draft, m), lines: draft.lines.filter((l) => !l.baseType) } : { vendorId: '', vendorCode: '', vendorName: '', contactId: '' });
   };
 
-  const submit = async (e: FormEvent | null, asDraft = false) => {
+  const submit = async (e: FormEvent | null, asDraft = false, overrides: Partial<Draft> = {}) => {
     e?.preventDefault();
     if (added) {
       setSaving(true);
@@ -207,14 +212,16 @@ function DprForm() {
       }
       return;
     }
-    const found = validate(draft, fx, m, asDraft);
+    const doc: Draft = { ...draft, ...overrides };
+    const effectiveDraft = asDraft || (e !== null && draft.status === 'Draft' && !doc.approved);
+    const found = validate(doc, fx, m, effectiveDraft);
     setProblems(found);
     if (found.length) return;
     setSaving(true);
     try {
-      const saved = asDraft ? await saveDprDraft(draft) : await addDownPayment(draft, fx);
+      const saved = effectiveDraft ? await saveDprDraft(doc) : await addDownPayment(doc, fx);
       navigate(DPR_LIST_PATH, {
-        state: { notice: asDraft ? `Draft saved — ${saved.vendorName}.` : `Down payment request ${dprNumber(saved)} added — ${code} ${formatAmount(totals.total)} to pay ${saved.vendorName}. Pay it from Payments Made.` },
+        state: { notice: effectiveDraft ? `Draft saved — ${saved.vendorName}.` : saved.status === 'Not Confirmed' ? `Down payment request ${dprNumber(saved)} submitted for approval.` : `Down payment request ${dprNumber(saved)} added — ${code} ${formatAmount(totals.total)} to pay ${saved.vendorName}. Pay it from Payments Made.` },
       });
     } finally {
       setSaving(false);
@@ -233,11 +240,13 @@ function DprForm() {
   const bases = [...new Map(draft.lines.filter((l) => l.baseType).map((l) => [l.baseId, l])).values()];
   const cancelIt = () => act(() => cancelDownPayment(saved), 'cancelled');
   const closeIt = () => act(() => closeDownPayment(saved), 'closed');
-  // What picking each status in the Status dropdown does; the others can't be reached from here.
-  const statusMoves: Partial<Record<DprStatus, () => void>> = draft.status === 'Draft' ? { Open: () => submit(null) } : draft.status === 'Open' ? { Closed: closeIt, ...(!draft.appliedAmount ? { Cancelled: cancelIt } : {}) } : {};
+  const recallIt = () => act(() => recallDownPayment(saved), 'recalled to draft');
+  const rejectIt = async () => { await logRejection('DPR', saved.id, saved.vendorId, rejectionReason); await recallDownPayment(saved); navigate(DPR_LIST_PATH, { state: { notice: `Down payment request ${dprNumber(saved)} rejected and returned to draft.` } }); };
+  const statusMoves: Partial<Record<DprStatus, () => void>> = draft.status === 'Draft' ? (draft.approved ? { Open: () => submit(null) } : { 'Not Confirmed': () => submit(null) }) : draft.status === 'Not Confirmed' ? { Open: () => submit(null, false, { approved: true }) } : draft.status === 'Open' ? { Closed: closeIt, ...(!draft.appliedAmount ? { Cancelled: cancelIt } : {}) } : {};
 
   const menu: MoreMenuItem[] = [
     ...(!added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
+    ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => setRejecting(true) }] : []),
     ...(draft.status === 'Open' && balance > 0 && !draft.paymentBlock
       ? [{ label: 'Pay', icon: 'payments', onSelect: () => navigate('/purchasing/payments-made/new', { state: { vendorId: draft.vendorId, invoiceIds: [saved.id] } }) }]
       : []),
@@ -296,6 +305,7 @@ function DprForm() {
           ) : (
             <Panel.Body className="flex flex-col gap-2">
               <ProblemsAlert problems={problems} tabLabel={(t) => ({ contents: 'Contents', logistics: 'Logistics', accounting: 'Accounting' })[t]} />
+              {rejecting ? (<Alert intent="danger" variant="outline" title="Reject down payment request"><div className="flex flex-col gap-2"><TextField aria-label="Rejection reason" value={rejectionReason} onChange={(e) => setRejectionReason(e.currentTarget.value)} placeholder="Explain why…" /><div className="flex gap-2"><Button type="button" intent="danger" variant="solid" size="small" onClick={rejectIt}>Confirm reject</Button><Button type="button" intent="white" variant="solid" size="small" onClick={() => { setRejecting(false); setRejectionReason(''); }}>Cancel</Button></div></div></Alert>) : null}
               {added ? (
                 <Alert intent="default" variant="outline" title={draft.status === 'Open' ? (balance > 0 ? `${code} ${formatAmount(balance)} still to pay` : `Paid — ${code} ${formatAmount(drawableAmount(saved))} left to draw`) : `This request is ${draft.status.toLowerCase()}`}>
                   {draft.status === 'Open'

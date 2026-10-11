@@ -23,7 +23,7 @@
 import type { DocumentSeries } from './common';
 import { blankApInvoice, newApLine, type ApInvoice, type ApLine } from './apInvoices';
 
-export type MemoStatus = 'Draft' | 'Open' | 'Closed' | 'Cancelled';
+export type MemoStatus = 'Draft' | 'Not Confirmed' | 'Open' | 'Closed' | 'Cancelled';
 export const MEMO_STATUSES: MemoStatus[] = ['Draft', 'Open', 'Closed', 'Cancelled'];
 
 export type MemoBaseType = 'APINV' | 'GRET' | '';

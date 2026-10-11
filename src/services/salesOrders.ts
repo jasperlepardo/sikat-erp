@@ -1,4 +1,4 @@
-import { SALES_SETTINGS, SEED_SALES_ORDERS, SO_SERIES, openCommitted, type SalesOrder, type SoLine } from '../mocks/salesOrders';
+import { SALES_SETTINGS, SEED_SALES_ORDERS, SEED_SALES_SETTINGS, SO_SERIES, openCommitted, type SalesOrder, type SalesSettings, type SoLine } from '../mocks/salesOrders';
 import { recalculateBACommitments } from './blanketAgreements';
 import { soSeries, seriesLookup, formatDocNum } from './allSeries';
 import type { RoundingRule } from '../mocks/currencies';
@@ -9,6 +9,8 @@ import { listItems, saveItem } from './items';
 import { createCollection } from './store';
 
 const orders = createCollection<SalesOrder>('sikat-erp:sales-orders:v7', SEED_SALES_ORDERS, 'so', { audit: 'SO' });
+export const salesSettings = createCollection<SalesSettings>('sikat-erp:sales-settings', SEED_SALES_SETTINGS, 'ss');
+export const getSalesSettings = (): SalesSettings => salesSettings.snapshot()[0] ?? SEED_SALES_SETTINGS[0];
 
 export const listSalesOrders = orders.list;
 export async function getSalesOrder(idOrNumber: string) {
@@ -137,7 +139,7 @@ export async function saveSalesOrder(input: SoInput, { asDraft = false } = {}): 
   const docNum = input.docNum || Math.max(series.firstNo - 1, ...all.filter((o) => o.seriesId === series.id).map((o) => o.docNum)) + 1;
   // Fully delivered lines close; an order with every line closed is closed.
   const lines = input.lines.map((l) => (l.deliveredQty >= l.quantity && l.quantity > 0 ? { ...l, status: 'Closed' as const } : l));
-  const status = input.status === 'Closed' || input.status === 'Cancelled' ? input.status : 'Open';
+  const status = input.status === 'Closed' || input.status === 'Cancelled' ? input.status : input.approved ? 'Open' : 'Not Confirmed';
   const saved = await orders.save({ ...input, lines, docNum, status });
   await recommit(before, saved);
   const affectedBaIds = [...new Set(saved.lines.map((l) => l.agreementId).filter(Boolean))];
@@ -188,4 +190,8 @@ export async function cancelSalesOrder(so: SalesOrder) {
   });
   await recommit(so, saved);
   return saved;
+}
+
+export async function recallSalesOrder(so: SalesOrder): Promise<SalesOrder> {
+  return orders.save({ ...so, status: 'Draft', approved: false });
 }

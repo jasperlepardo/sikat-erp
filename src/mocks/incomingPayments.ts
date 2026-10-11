@@ -29,7 +29,7 @@ import { seedRateOn } from './salesOrders';
 import type { PoReference } from './purchaseOrders';
 
 export type IncomingType = 'Customer' | 'Account';
-export type IncomingStatus = 'Draft' | 'Posted' | 'Cancelled';
+export type IncomingStatus = 'Draft' | 'Not Confirmed' | 'Posted' | 'Cancelled';
 export const INCOMING_STATUSES: IncomingStatus[] = ['Draft', 'Posted', 'Cancelled'];
 
 /** One open A/R invoice (or installment of one) in the payment. */
@@ -146,6 +146,7 @@ export interface IncomingPayment {
 
   means: IncomingMeans;
   cancelDate: string;
+  approved: boolean;
 }
 
 export const INCOMING_SERIES: DocumentSeries[] = [
@@ -217,6 +218,7 @@ export function blankIncomingPayment(today: string): Omit<IncomingPayment, 'id'>
     accountRows: [],
     means: blankIncomingMeans(today),
     cancelDate: '',
+    approved: true,
   };
 }
 

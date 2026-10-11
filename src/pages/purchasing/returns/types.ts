@@ -1,5 +1,5 @@
 import type { Errors } from '../../../components/form/fields';
-import { newMemoLine, type MemoLine } from '../../../mocks/apCreditMemos';
+import { newMemoLine, type MemoLine, type MemoStatus } from '../../../mocks/apCreditMemos';
 import type { ApInvoice } from '../../../mocks/apInvoices';
 import type { Account } from '../../../mocks/chartOfAccounts';
 import type { GoodsReceipt } from '../../../mocks/goodsReceipts';
@@ -14,8 +14,9 @@ export const RETURNS_PATH = '/purchasing/returns-and-debits';
 export const RETURN_LIST_PATH = `${RETURNS_PATH}/returns`;
 export const MEMO_LIST_PATH = `${RETURNS_PATH}/credit-memos`;
 
-export const MEMO_STATUS_INTENT: Record<'Draft' | 'Open' | 'Closed' | 'Cancelled', 'default' | 'primary' | 'success' | 'danger'> = {
+export const MEMO_STATUS_INTENT: Record<MemoStatus, 'default' | 'primary' | 'success' | 'danger' | 'warning'> = {
   Draft: 'default',
+  'Not Confirmed': 'warning',
   Open: 'primary',
   Closed: 'success',
   Cancelled: 'danger',

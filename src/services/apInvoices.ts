@@ -234,6 +234,14 @@ export async function addApInvoice(input: ApInput, fx: number, due?: number): Pr
   });
   if (overDrawn.length) throw new ApPostError([], `Down payment ${overDrawn.map((d) => d.docNo).join(', ')} doesn't have that much paid and undrawn any more.`);
 
+  const series = apSeriesOf(input.seriesId);
+  const all = await invoices.list();
+  const docNum = input.docNum || Math.max(series.firstNo - 1, ...all.filter((r) => r.seriesId === series.id).map((r) => r.docNum)) + 1;
+
+  if (!input.approved) {
+    return invoices.save({ ...input, docNum, status: 'Not Confirmed', fxRate: fx });
+  }
+
   const lines = input.lines.map((l) => ({ ...l, unitCostLc: unitCostLc(l, input, fx) }));
   const touched = new Map(applyStock(lines.filter((l) => movesStock(l, items)), items, 1).map((i) => [i.id, i]));
   const costing = new Map(items.map((i) => [i.id, touched.get(i.id) ?? i]));
@@ -244,9 +252,6 @@ export async function addApInvoice(input: ApInput, fx: number, due?: number): Pr
   await applyInvoicedQty(lines.filter((l) => l.baseType === 'GRPO'), 1);
   await drawRequests(input.drawnDownPayments ?? [], 1);
 
-  const series = apSeriesOf(input.seriesId);
-  const all = await invoices.list();
-  const docNum = Math.max(series.firstNo - 1, ...all.filter((r) => r.seriesId === series.id).map((r) => r.docNum)) + 1;
   const settled = due !== undefined && due <= 0.005;
   const saved = await invoices.save({ ...input, lines: withBinCodes(lines), docNum, status: settled ? 'Closed' : 'Open', closeDate: settled ? todayISO() : '', fxRate: fx });
 
@@ -336,4 +341,8 @@ async function drawRequests(draws: DownPaymentDraw[], sign: 1 | -1) {
   if (!draws.length) return;
   const codes = await taxCodes.list();
   await drawDownPayments(draws.map((d) => ({ requestId: d.requestId, amount: d.amount })), (r) => dprTotal(r, codes), sign);
+}
+
+export async function recallApInvoice(inv: ApInvoice): Promise<ApInvoice> {
+  return invoices.save({ ...inv, status: 'Draft', approved: false });
 }

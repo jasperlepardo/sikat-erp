@@ -22,7 +22,7 @@ import type { Attachment, DocumentSeries } from './common';
 import type { PoReference } from './purchaseOrders';
 
 export type PaymentType = 'Vendor' | 'Account';
-export type PaymentStatus = 'Draft' | 'Posted' | 'Cancelled';
+export type PaymentStatus = 'Draft' | 'Not Confirmed' | 'Posted' | 'Cancelled';
 export const PAYMENT_STATUSES: PaymentStatus[] = ['Draft', 'Posted', 'Cancelled'];
 
 /** One open A/P invoice in the payment, and how much of it this payment settles. */
@@ -128,6 +128,7 @@ export interface OutgoingPayment {
   controlAccount: string;
   references: PoReference[];
   attachments: Attachment[];
+  approved: boolean;
 
   // Contents
   rows: PaymentRow[];
@@ -192,6 +193,7 @@ export function blankPayment(today: string): Omit<OutgoingPayment, 'id'> {
     controlAccount: '',
     references: [],
     attachments: [],
+    approved: true,
     rows: [],
     onAccount: 0,
     accountRows: [],

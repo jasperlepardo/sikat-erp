@@ -15,7 +15,7 @@ import { blankDelivery, newDnLine, SEED_DELIVERIES, type Delivery, type DnLine }
 import { SEED_PARTNERS, formatAddress } from './partners';
 import { termId } from './masters';
 
-export type SrStatus = 'Draft' | 'Open' | 'Closed' | 'Cancelled';
+export type SrStatus = 'Draft' | 'Not Confirmed' | 'Open' | 'Closed' | 'Cancelled';
 export const SR_STATUSES: SrStatus[] = ['Draft', 'Open', 'Closed', 'Cancelled'];
 
 export type SrBaseType = 'DN' | '';

@@ -20,7 +20,8 @@ import { listPartnersByRole } from '../../../../services/partners';
 import { BASE_PRICE_LIST_ID } from '../../../../services/priceLists';
 import { matchingSeries, soSeries } from '../../../../services/allSeries';
 import { termDays } from '../../../../services/purchaseOrders';
-import { cancelSalesOrder, closeSalesOrder, openQty, findDuplicateCustomerRef, getSalesOrder, listSalesOrders, openOrdersTotal, saveSalesOrder, soDueDate, soNumber, soTotals } from '../../../../services/salesOrders';
+import { cancelSalesOrder, closeSalesOrder, getSalesSettings, openQty, findDuplicateCustomerRef, getSalesOrder, listSalesOrders, openOrdersTotal, recallSalesOrder, saveSalesOrder, soDueDate, soNumber, soTotals } from '../../../../services/salesOrders';
+import { logRejection } from '../../../../services/approvalRules';
 import { listDeliveries } from '../../../../services/deliveries';
 import { determineTax } from '../../../../services/taxDetermination';
 import { salesEmployeeDef } from '../../../settings/masterDefs';
@@ -44,8 +45,9 @@ const PAGES = [
 ] as const;
 type PageId = (typeof PAGES)[number]['value'];
 
-export const SO_STATUS_INTENT: Record<SoStatus, 'default' | 'primary' | 'success' | 'danger'> = {
+export const SO_STATUS_INTENT: Record<SoStatus, 'default' | 'primary' | 'success' | 'danger' | 'warning'> = {
   Draft: 'default',
+  'Not Confirmed': 'warning',
   Open: 'primary',
   Closed: 'success',
   Cancelled: 'danger',
@@ -94,13 +96,16 @@ function SalesOrderForm() {
   const navigate = useNavigate();
   const copyFrom = (useLocation().state as { copyFrom?: SoDraft } | null)?.copyFrom;
 
-  const [draft, setDraft] = useState<SoDraft | null | undefined>(isNew ? (copyFrom ?? { ...blankSalesOrder(CURRENT_USER_ID), lines: [newSoLine({ warehouse: '' })] }) : undefined);
+  const approved = !getSalesSettings().requireSoApproval;
+  const [draft, setDraft] = useState<SoDraft | null | undefined>(isNew ? { ...(copyFrom ?? { ...blankSalesOrder(CURRENT_USER_ID), lines: [newSoLine({ warehouse: '' })] }), approved } : undefined);
   const [m, setM] = useState<SoMasters>();
   const [page, setPage] = useState<PageId>('details');
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [warning, setWarning] = useState<string>();
   const [closeWarning, setCloseWarning] = useState<string>();
+  const [rejecting, setRejecting] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
   const [openBalance, setOpenBalance] = useState(0);
   // What the order commits as saved — already in the items' Committed, so it's given back when checking stock.
   const [ownCommitted, setOwnCommitted] = useState(() => new Map<string, number>());
@@ -260,18 +265,19 @@ function SalesOrderForm() {
     });
   };
 
-  const submit = async (e: FormEvent | null, asDraft = false) => {
+  const submit = async (e: FormEvent | null, asDraft = false, overrides: Partial<SoDraft> = {}) => {
     e?.preventDefault();
     // Lines never given an item (or, on service orders, a description) are dropped.
-    const doc: SoDraft = { ...draft, lines: draft.lines.filter((l) => l.itemId) };
-    const found = validate(doc, buildContext(doc, m), m, asDraft);
+    const doc: SoDraft = { ...draft, ...overrides, lines: draft.lines.filter((l) => l.itemId) };
+    const effectiveDraft = asDraft || (e !== null && draft.status === 'Draft' && !doc.approved);
+    const found = validate(doc, buildContext(doc, m), m, effectiveDraft);
     setProblems(found);
     if (found.length) {
       const first = found.find((p) => p.tab !== 'header');
       if (first) void first.tab; // scroll to section when panel support lands
       return;
     }
-    if (!asDraft && !warning) {
+    if (!effectiveDraft && !warning) {
       const dup = await findDuplicateCustomerRef(doc);
       const credit = overCredit ? `This order takes ${doc.customerName} to PHP ${formatAmount(openBalance + totalLc)} open, over their PHP ${formatAmount(customer!.creditLimit)} credit limit.` : '';
       const stock = shortages(doc, m, ownCommitted).map(shortageText).join(' ');
@@ -280,8 +286,8 @@ function SalesOrderForm() {
     }
     setSaving(true);
     try {
-      const so = await saveSalesOrder(doc, { asDraft });
-      navigate(SO_LIST_PATH, { state: { notice: asDraft ? `Draft saved — ${so.customerName}.` : `Sales order ${soNumber(so)} ${isNew || draft.status === 'Draft' ? 'added' : 'updated'} — ${so.customerName}.` } });
+      const so = await saveSalesOrder(doc, { asDraft: effectiveDraft });
+      navigate(SO_LIST_PATH, { state: { notice: effectiveDraft ? `Draft saved — ${so.customerName}.` : so.status === 'Not Confirmed' ? `Sales order ${soNumber(so)} submitted for approval — ${so.customerName}.` : `Sales order ${soNumber(so)} ${isNew || draft.status === 'Draft' ? 'added' : 'updated'} — ${so.customerName}.` } });
     } finally {
       setSaving(false);
     }
@@ -353,8 +359,22 @@ function SalesOrderForm() {
   const svcLines = openLines.filter((l) => l.itemId ? !m.items.find((i) => i.id === l.itemId)?.inventoryItem : !!l.description);
   const isMixed = goodsLines.length > 0 && svcLines.length > 0;
 
+  const recallIt = async () => {
+    const r = await recallSalesOrder(saved);
+    navigate(SO_LIST_PATH, { state: { notice: `Sales order ${soNumber(r)} recalled to draft.` } });
+  };
+  const rejectIt = async () => {
+    await logRejection('SO', saved.id, saved.customerId, rejectionReason);
+    await recallSalesOrder(saved);
+    navigate(SO_LIST_PATH, { state: { notice: `Sales order ${soNumber(saved)} rejected and returned to draft.` } });
+  };
+
   const menu: MoreMenuItem[] = [
     ...(!ctx.added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
+    ...(draft.status === 'Draft' && !draft.approved ? [{ label: 'Submit for approval', icon: 'upload', onSelect: () => submit(null, false) }] : []),
+    ...(draft.status === 'Not Confirmed' ? [{ label: 'Approve', icon: 'verified', onSelect: () => submit(null, false, { approved: true }) }] : []),
+    ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }] : []),
+    ...(draft.status === 'Not Confirmed' ? [{ label: 'Reject', icon: 'cancel', onSelect: () => setRejecting(true) }] : []),
     ...(draft.status === 'Open' && openLines.length > 0
       ? [{ label: 'Copy to delivery', icon: 'local_shipping', onSelect: () => navigate('/sales/deliveries/new', { state: { fromOrder: draft.id } }) }]
       : []),
@@ -438,6 +458,17 @@ function SalesOrderForm() {
         ) : null}
         {page === 'details' ? <Panel.Body className="flex flex-col gap-2">
           <ProblemsAlert problems={problems} tabLabel={(t) => TAB_LABEL[t as TabId]} />
+          {rejecting ? (
+            <Alert intent="danger" variant="outline" title="Reject sales order">
+              <div className="flex flex-col gap-2">
+                <TextField aria-label="Rejection reason" value={rejectionReason} onChange={(e) => setRejectionReason(e.currentTarget.value)} placeholder="Explain why this is being rejected…" />
+                <div className="flex gap-2">
+                  <Button type="button" intent="danger" variant="solid" size="small" onClick={rejectIt}>Confirm reject</Button>
+                  <Button type="button" intent="white" variant="solid" size="small" onClick={() => { setRejecting(false); setRejectionReason(''); }}>Cancel</Button>
+                </div>
+              </div>
+            </Alert>
+          ) : null}
           {warning ? (
             <Alert intent="warning" variant="outline" title="Check before saving">
               {warning} Press {ctx.added ? 'Update' : 'Add'} again to save anyway.

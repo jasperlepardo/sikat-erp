@@ -34,8 +34,8 @@ import { SEED_ITEMS } from './items';
 import { SEED_WAREHOUSES } from './itemMasters';
 import { MONTH_NAMES, POS_CUSTOMER_ID, STORE_SALES } from './storeSales';
 
-export type ArStatus = 'Draft' | 'Open' | 'Closed' | 'Cancelled';
-export const AR_STATUSES: ArStatus[] = ['Draft', 'Open', 'Closed', 'Cancelled'];
+export type ArStatus = 'Draft' | 'Not Confirmed' | 'Open' | 'Closed' | 'Cancelled';
+export const AR_STATUSES: ArStatus[] = ['Draft', 'Not Confirmed', 'Open', 'Closed', 'Cancelled'];
 
 /** Freight and rounding on an invoice: other income. */
 export const FREIGHT_INCOME_ACCOUNT = '7030';
@@ -125,6 +125,7 @@ export interface ArInvoice {
   /** Paid so far by incoming payments, document currency. */
   appliedAmount: number;
   fxRate: number;
+  approved: boolean;
 }
 
 export const AR_SERIES: DocumentSeries[] = [
@@ -224,6 +225,7 @@ export function blankArInvoice(today: string, ownerId: string): Omit<ArInvoice, 
     remarks: '',
     appliedAmount: 0,
     fxRate: 1,
+    approved: true,
   };
 }
 

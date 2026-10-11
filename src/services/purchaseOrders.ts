@@ -289,3 +289,8 @@ export async function cancelPurchaseOrder(po: PurchaseOrder) {
   await applyOrderedChange(po, cancelled);
   return cancelled;
 }
+
+/** Recall: move Not Confirmed back to Draft without clearing the document number. */
+export async function recallPurchaseOrder(po: PurchaseOrder) {
+  return orders.save({ ...po, status: 'Draft', approved: false });
+}

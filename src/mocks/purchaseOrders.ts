@@ -150,6 +150,14 @@ export interface PurchasingSettings {
   multiLanguageSupport: boolean;
   duplicateVendorRef: 'Allow' | 'Warn' | 'Block';
   useBpCatalogNumbers: boolean;
+  requireRfqApproval: boolean;
+  requirePoApproval: boolean;
+  requireGrpoApproval: boolean;
+  requireApInvoiceApproval: boolean;
+  requireGoodsReturnApproval: boolean;
+  requireApCreditMemoApproval: boolean;
+  requireDprApproval: boolean;
+  requireOutgoingPaymentApproval: boolean;
 }
 
 export const SEED_PURCHASING_SETTINGS: PurchasingSettings[] = [{
@@ -160,6 +168,14 @@ export const SEED_PURCHASING_SETTINGS: PurchasingSettings[] = [{
   multiLanguageSupport: false,
   duplicateVendorRef: 'Warn',
   useBpCatalogNumbers: true,
+  requireRfqApproval: false,
+  requirePoApproval: false,
+  requireGrpoApproval: false,
+  requireApInvoiceApproval: false,
+  requireGoodsReturnApproval: false,
+  requireApCreditMemoApproval: false,
+  requireDprApproval: false,
+  requireOutgoingPaymentApproval: false,
 }];
 
 export type { DocumentSeries };

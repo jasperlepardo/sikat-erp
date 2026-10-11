@@ -21,6 +21,7 @@ import { formatAmount } from '../../../../services/format';
 import {
   IncomingPostError,
   addIncomingPayment,
+  recallIncomingPayment,
   amountDue,
   cancelIncomingPayment,
   getIncomingPayment,
@@ -40,6 +41,8 @@ import { listItems } from '../../../../services/items';
 import { controlAccountOf, listJournalEntries } from '../../../../services/journalEntries';
 import { accounts as accountsCollection, currencies as currenciesCollection, exchangeRates, rateOn, taxCodes } from '../../../../services/masterData';
 import { listPartnersByRole } from '../../../../services/partners';
+import { logRejection } from '../../../../services/approvalRules';
+import { getSalesSettings } from '../../../../services/salesOrders';
 import { projectDef } from '../../../settings/masterDefs';
 import { IncomingAccounts, IncomingDocuments } from './IncomingContents';
 import { IncomingMeansSection } from './IncomingMeansSection';
@@ -48,7 +51,7 @@ import { useDocTitle } from '../../../../services/useDocTitle';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
 
 export const RC_LIST_PATH = '/sales/payments-received';
-export const RC_STATUS_INTENT: Record<IncomingStatus, 'default' | 'success' | 'danger'> = { Draft: 'default', Posted: 'success', Cancelled: 'danger' };
+export const RC_STATUS_INTENT: Record<IncomingStatus, 'default' | 'success' | 'danger' | 'warning'> = { Draft: 'default', 'Not Confirmed': 'warning', Posted: 'success', Cancelled: 'danger' };
 
 type TabId = 'contents' | 'means' | 'attachments';
 const TAB_LABEL: Record<TabId, string> = { contents: 'Contents', means: 'Payment means', attachments: 'Attachments' };
@@ -109,13 +112,16 @@ function IncomingForm() {
   const navigate = useNavigate();
   const fromInvoice = (useLocation().state as { fromInvoice?: string } | null)?.fromInvoice;
 
-  const [draft, setDraft] = useState<IncomingInput | null | undefined>(isNew ? blankIncomingPayment(todayISO()) : undefined);
+  const rcApproved = !getSalesSettings().requireIncomingPaymentApproval;
+  const [draft, setDraft] = useState<IncomingInput | null | undefined>(isNew ? { ...blankIncomingPayment(todayISO()), approved: rcApproved } : undefined);
   const [m, setM] = useState<Masters>();
   const [page, setPage] = useState<PageId>('details');
   const [tab, setTab] = useState<TabId>('contents');
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
   const [entryId, setEntryId] = useState<string>();
 
   useEffect(() => {
@@ -199,7 +205,7 @@ function IncomingForm() {
   const setType = (type: IncomingType) =>
     update({ type, ...(type === 'Account' ? { customerId: '', customerCode: '', customerName: '', billTo: '', rows: [], onAccount: 0, journalRemark: 'Incoming –' } : { accountRows: [] }) });
 
-  const submit = async (e: FormEvent | null, asDraft = false) => {
+  const submit = async (e: FormEvent | null, asDraft = false, overrides: Partial<IncomingInput> = {}) => {
     e?.preventDefault();
     if (ro) {
       setSaving(true);
@@ -209,8 +215,10 @@ function IncomingForm() {
     }
     // Account payments' journal remark names the (last) account, as SAP does.
     const lastAccount = draft.accountRows[draft.accountRows.length - 1]?.account;
-    const doc: IncomingInput = draft.type === 'Account' && lastAccount && /^Incoming\s*[–-]\s*\d*$/.test(draft.journalRemark) ? { ...draft, journalRemark: `Incoming – ${lastAccount}` } : draft;
-    const found = validate(doc, fx, asDraft);
+    const base: IncomingInput = draft.type === 'Account' && lastAccount && /^Incoming\s*[–-]\s*\d*$/.test(draft.journalRemark) ? { ...draft, journalRemark: `Incoming – ${lastAccount}` } : draft;
+    const doc: IncomingInput = { ...base, ...overrides };
+    const effectiveDraft = asDraft || (e !== null && draft.status === 'Draft' && !doc.approved);
+    const found = validate(doc, fx, effectiveDraft);
     setProblems(found);
     if (found.length) {
       const first = found.find((p) => p.tab !== 'header');
@@ -219,8 +227,8 @@ function IncomingForm() {
     }
     setSaving(true);
     try {
-      const p = asDraft ? await saveIncomingDraft(doc) : await addIncomingPayment(doc, fx, m);
-      navigate(RC_LIST_PATH, { state: { notice: asDraft ? 'Draft saved.' : `Payment ${incomingNumber(p)} added — ${p.currency} ${formatAmount(due)} from ${p.customerName || 'the account'}; journal entry ${p.transNo}.` } });
+      const p = effectiveDraft ? await saveIncomingDraft(doc) : await addIncomingPayment(doc, fx, m);
+      navigate(RC_LIST_PATH, { state: { notice: effectiveDraft ? 'Draft saved.' : p.status === 'Not Confirmed' ? `Payment ${incomingNumber(p)} submitted for approval.` : `Payment ${incomingNumber(p)} added — ${p.currency} ${formatAmount(due)} from ${p.customerName || 'the account'}; journal entry ${p.transNo}.` } });
     } catch (err) {
       if (!(err instanceof IncomingPostError)) throw err;
       setProblems([{ tab: 'contents', key: 'rows', message: err.message }]);
@@ -240,11 +248,14 @@ function IncomingForm() {
   };
 
   const paidInvoices = [...new Map(paidRows(draft).map((r) => [r.invoiceId, r])).values()];
-  // What picking each status in the Status dropdown does; the others can't be reached from here.
-  const statusMoves: Partial<Record<IncomingStatus, () => void>> = draft.status === 'Draft' ? { Posted: () => submit(null) } : draft.status === 'Posted' ? { Cancelled: () => cancel('current') } : {};
+  const saved = draft as IncomingPayment;
+  const recallIt = async () => { const p = await recallIncomingPayment(saved); navigate(RC_LIST_PATH, { state: { notice: `Payment ${incomingNumber(p)} recalled to draft.` } }); };
+  const rejectIt = async () => { await logRejection('RCV', saved.id, saved.customerId, rejectionReason); await recallIncomingPayment(saved); navigate(RC_LIST_PATH, { state: { notice: `Payment ${incomingNumber(saved)} rejected and returned to draft.` } }); };
+  const statusMoves: Partial<Record<IncomingStatus, () => void>> = draft.status === 'Draft' ? (draft.approved ? { Posted: () => submit(null) } : { 'Not Confirmed': () => submit(null) }) : draft.status === 'Not Confirmed' ? { Posted: () => submit(null, false, { approved: true }) } : draft.status === 'Posted' ? { Cancelled: () => cancel('current') } : {};
 
   const menu: MoreMenuItem[] = [
     ...(!added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
+    ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => setRejecting(true) }] : []),
     ...(draft.status === 'Posted'
       ? [
           { label: 'Cancel — date it today', icon: 'cancel', onSelect: () => cancel('current') },
@@ -315,6 +326,7 @@ function IncomingForm() {
         ) : null}
         {page === 'details' ? <Panel.Body className="flex flex-col gap-2">
           <ProblemsAlert problems={problems} tabLabel={(t) => TAB_LABEL[t as TabId]} />
+          {rejecting ? (<Alert intent="danger" variant="outline" title="Reject incoming payment"><div className="flex flex-col gap-2"><TextField aria-label="Rejection reason" value={rejectionReason} onChange={(e) => setRejectionReason(e.currentTarget.value)} placeholder="Explain why…" /><div className="flex gap-2"><Button type="button" intent="danger" variant="solid" size="small" onClick={rejectIt}>Confirm reject</Button><Button type="button" intent="white" variant="solid" size="small" onClick={() => { setRejecting(false); setRejectionReason(''); }}>Cancel</Button></div></div></Alert>) : null}
           <Tabs variant="outline" value={tab} onValueChange={(v) => setTab(v as TabId)} items={(Object.keys(TAB_LABEL) as TabId[]).map((t) => ({ value: t, label: TAB_LABEL[t], badge: problems.some((p) => p.tab === t) ? '!' : t === 'attachments' && draft.attachments.length ? String(draft.attachments.length) : undefined }))} />
           {added ? (
             <Alert intent="default" variant="outline" title={draft.status === 'Cancelled' ? 'This payment is cancelled' : 'This payment is posted'}>

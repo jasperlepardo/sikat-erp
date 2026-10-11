@@ -146,6 +146,14 @@ export async function addGoodsReturn(input: ReturnInput): Promise<GoodsReturn> {
   }
   if (problems.length) throw new ReturnPostError(problems.map((p) => p.lineId), problems.map((p) => p.message).join(' '));
 
+  const allRtn = await returns.list();
+  const series = seriesLookup(returnSeries, input.seriesId, RETURN_SERIES);
+  const docNum = input.docNum || Math.max(series.firstNo - 1, ...allRtn.filter((r) => r.seriesId === series.id).map((r) => r.docNum)) + 1;
+
+  if (!input.approved) {
+    return returns.save({ ...input, docNum, status: 'Not Confirmed' });
+  }
+
   // Lines entered by hand go out at the item's cost; FIFO items consume from the oldest layer.
   const fifoItemIds = new Set<string>();
   const taken: Taken[] = [];
@@ -164,9 +172,6 @@ export async function addGoodsReturn(input: ReturnInput): Promise<GoodsReturn> {
   await applyReturnedQty(lines.filter((l) => l.baseType === 'GRPO'), 1);
   await applyInvoiceReturns(lines.filter((l) => l.baseType === 'APINV'), 1);
 
-  const all = await returns.list();
-  const series = seriesLookup(returnSeries, input.seriesId, RETURN_SERIES);
-  const docNum = Math.max(series.firstNo - 1, ...all.filter((r) => r.seriesId === series.id).map((r) => r.docNum)) + 1;
   const status = lines.some(needsCredit) ? 'Open' : 'Closed';
   const saved = await returns.save({ ...input, lines: withBinCodes(lines), docNum, status, closeDate: status === 'Closed' ? todayISO() : '' });
   await logConsumption(saved.id, saved.postingDate, taken);
@@ -214,4 +219,8 @@ export async function applyCreditedQty(lines: { baseId: string; baseLineId: stri
     if (!done && r.status === 'Closed') Object.assign(r, { status: 'Open', closeDate: '' });
     await returns.save(r);
   }
+}
+
+export async function recallGoodsReturn(r: GoodsReturn): Promise<GoodsReturn> {
+  return returns.save({ ...r, status: 'Draft', approved: false });
 }

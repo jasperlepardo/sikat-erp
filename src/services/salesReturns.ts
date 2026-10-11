@@ -173,6 +173,14 @@ export async function addSalesReturn(input: SrInput, fx: number): Promise<SalesR
   }
   if (problems.length) throw new SrPostError(problems.map((p) => p.lineId), problems.map((p) => p.message).join(' '));
 
+  const allSr = await salesReturns.list();
+  const series = srSeriesOf(input.seriesId);
+  const docNum = input.docNum || Math.max(series.firstNo - 1, ...allSr.filter((r) => r.seriesId === series.id).map((r) => r.docNum)) + 1;
+
+  if (!input.approved) {
+    return salesReturns.save({ ...input, docNum, status: 'Not Confirmed', fxRate: fx });
+  }
+
   // FIFO: restore layers when goods come back in
   const fifoItemIds = new Set<string>();
   const taken: Taken[] = [];
@@ -212,9 +220,6 @@ export async function addSalesReturn(input: SrInput, fx: number): Promise<SalesR
   }
   await updateFifoCosts([...fifoItemIds]);
 
-  const all = await salesReturns.list();
-  const series = srSeriesOf(input.seriesId);
-  const docNum = Math.max(series.firstNo - 1, ...all.filter((r) => r.seriesId === series.id).map((r) => r.docNum)) + 1;
   const saved = await salesReturns.save({ ...input, lines, docNum, status: 'Open', fxRate: fx });
   await logConsumption(saved.id, saved.postingDate, taken);
 
@@ -265,4 +270,8 @@ export async function cancelSalesReturn(r: SalesReturn) {
   const saved = await salesReturns.save({ ...r, status: 'Cancelled', closeDate: todayISO() });
   await reverseDocumentEntry(r.id);
   return saved;
+}
+
+export async function recallSalesReturn(r: SalesReturn): Promise<SalesReturn> {
+  return salesReturns.save({ ...r, status: 'Draft', approved: false });
 }

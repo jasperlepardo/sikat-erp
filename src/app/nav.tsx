@@ -36,6 +36,9 @@ const hub = (label: string, glyph: string, pages: [string, string][]): SideNavIt
 
 /** The apps, in the app selector's order; each hub's pages are that app's sidebar. */
 const APP_MODULES: SideNavItem[] = [
+  hub('Approvals', 'verified', [
+    ['Pending Approvals', 'pending_actions'],
+  ]),
   hub('CRM', 'handshake', [
     ['Dashboard', 'dashboard'],
     ['Business Partners', 'groups'],

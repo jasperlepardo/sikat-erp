@@ -46,9 +46,11 @@ import {
   netDue,
   receiptValueLc,
   returnableQty,
+  recallApInvoice,
   saveApDraft,
   saveApRemarks,
 } from '../../../../services/apInvoices';
+import { logRejection } from '../../../../services/approvalRules';
 import { transferBlock } from '../../../../services/binLocations';
 import { loadCurrentCompany } from '../../../../services/companies';
 import { formatDate, todayISO } from '../../../../services/dates';
@@ -85,8 +87,9 @@ const PAGES = [
 ] as const;
 type PageId = (typeof PAGES)[number]['value'];
 
-export const AP_STATUS_INTENT: Record<ApStatus, 'default' | 'primary' | 'success' | 'danger'> = {
+export const AP_STATUS_INTENT: Record<ApStatus, 'default' | 'primary' | 'success' | 'danger' | 'warning'> = {
   Draft: 'default',
+  'Not Confirmed': 'warning',
   Open: 'primary',
   Closed: 'success',
   Cancelled: 'danger',
@@ -169,13 +172,16 @@ function ApInvoiceForm() {
   const navigate = useNavigate();
   const state = useLocation().state as { copyFrom?: ApDraft; fromReceipt?: string; fromPo?: string } | null;
 
-  const [draft, setDraft] = useState<ApDraft | null | undefined>(isNew ? (state?.copyFrom ?? { ...blankApInvoice(todayISO(), CURRENT_USER_ID), lines: [] }) : undefined);
+  const apApproved = !getPurchasingSettings().requireApInvoiceApproval;
+  const [draft, setDraft] = useState<ApDraft | null | undefined>(isNew ? { ...(state?.copyFrom ?? { ...blankApInvoice(todayISO(), CURRENT_USER_ID), lines: [] }), approved: apApproved } : undefined);
   const [m, setM] = useState<ApMasters>();
   const [page, setPage] = useState<PageId>('details');
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [dupWarning, setDupWarning] = useState<string>();
   const [saving, setSaving] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
   const [drawing, setDrawing] = useState(false);
 
   useEffect(() => {
@@ -284,7 +290,7 @@ function ApInvoiceForm() {
     if (base) setDraft(withBase(draft, base, lines, m));
   };
 
-  const submit = async (e: FormEvent | null, asDraft = false) => {
+  const submit = async (e: FormEvent | null, asDraft = false, overrides: Partial<ApDraft> = {}) => {
     e?.preventDefault();
     if (added) {
       setSaving(true);
@@ -296,22 +302,24 @@ function ApInvoiceForm() {
       }
       return;
     }
-    const found = validate(draft, ctx, m, asDraft);
+    const doc: ApDraft = { ...draft, ...overrides };
+    const effectiveDraft = asDraft || (e !== null && draft.status === 'Draft' && !doc.approved);
+    const found = validate(doc, ctx, m, effectiveDraft);
     setProblems(found);
     if (found.length) return;
     // The same vendor invoice number twice is usually the same bill entered twice: ask once.
-    if (!asDraft && getPurchasingSettings().duplicateVendorRef !== 'Allow' && !dupWarning) {
-      const dup = await findDuplicateInvoice(draft);
+    if (!effectiveDraft && doc.approved && getPurchasingSettings().duplicateVendorRef !== 'Allow' && !dupWarning) {
+      const dup = await findDuplicateInvoice(doc);
       if (dup) {
-        const message = `A/P invoice ${apNumber(dup)} from ${draft.vendorName} already has Vendor Ref. No. ${draft.vendorRef}.`;
+        const message = `A/P invoice ${apNumber(dup)} from ${doc.vendorName} already has Vendor Ref. No. ${doc.vendorRef}.`;
         if (getPurchasingSettings().duplicateVendorRef === 'Block') return setProblems([{ tab: 'header', key: 'vendorRef', message }]);
         return setDupWarning(message);
       }
     }
     setSaving(true);
     try {
-      const saved = asDraft ? await saveApDraft(draft) : await addApInvoice(draft, ctx.fx, due);
-      if (!asDraft) {
+      const saved = effectiveDraft ? await saveApDraft(doc) : await addApInvoice(doc, ctx.fx, due);
+      if (!effectiveDraft && saved.status === 'Open') {
         await postDocumentEntry({
           origin: 'PU',
           originNo: saved.docNum,
@@ -324,7 +332,7 @@ function ApInvoiceForm() {
           lines: journal,
         });
       }
-      navigate(AP_LIST_PATH, { state: { notice: asDraft ? `Draft saved — ${saved.vendorName}.` : `A/P invoice ${apNumber(saved)} added — ${saved.vendorName} is owed ${saved.currency} ${formatAmount(due)}.` } });
+      navigate(AP_LIST_PATH, { state: { notice: effectiveDraft ? `Draft saved — ${saved.vendorName}.` : saved.status === 'Not Confirmed' ? `A/P invoice ${apNumber(saved)} submitted for approval.` : `A/P invoice ${apNumber(saved)} added — ${saved.vendorName} is owed ${saved.currency} ${formatAmount(due)}.` } });
     } catch (err) {
       if (!(err instanceof ApPostError)) throw err;
       setProblems([{ tab: 'contents', key: err.lineIds[0] ? `line:${err.lineIds[0]}:quantity` : 'status', message: err.message }]);
@@ -368,11 +376,17 @@ function ApInvoiceForm() {
   const saved = draft as ApInvoice;
   const bases = [...new Map(draft.lines.filter((l) => l.baseType).map((l) => [l.baseId, l])).values()];
   const cancelIt = () => act(async () => { const inv = await cancelApInvoice(saved); await reverseDocumentEntry(saved.id); return inv; }, 'cancelled — the receipts and POs it billed are open again');
-  // What picking each status in the Status dropdown does; the others can't be reached from here.
-  const statusMoves: Partial<Record<ApStatus, () => void>> = draft.status === 'Draft' ? { Open: () => submit(null) } : draft.status === 'Open' && !draft.appliedAmount ? { Cancelled: cancelIt } : {};
+  const recallIt = () => act(() => recallApInvoice(saved), 'recalled to draft');
+  const rejectIt = async () => {
+    await logRejection('APINV', saved.id, saved.vendorId, rejectionReason);
+    await recallApInvoice(saved);
+    navigate(AP_LIST_PATH, { state: { notice: `A/P invoice ${apNumber(saved)} rejected and returned to draft.` } });
+  };
+  const statusMoves: Partial<Record<ApStatus, () => void>> = draft.status === 'Draft' ? (draft.approved ? { Open: () => submit(null) } : { 'Not Confirmed': () => submit(null) }) : draft.status === 'Not Confirmed' ? { Open: () => submit(null, false, { approved: true }) } : draft.status === 'Open' && !draft.appliedAmount ? { Cancelled: cancelIt } : {};
 
   const menu: MoreMenuItem[] = [
     ...(!added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
+    ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => setRejecting(true) }] : []),
     ...(draft.status === 'Open' && balance > 0 && !draft.paymentBlock
       ? [{ label: 'Pay', icon: 'payments', onSelect: () => navigate('/purchasing/payments-made/new', { state: { vendorId: draft.vendorId, invoiceIds: [saved.id] } }) }]
       : []),
@@ -466,6 +480,7 @@ function ApInvoiceForm() {
         ) : (
           <Panel.Body className="flex flex-col gap-2">
             <ProblemsAlert problems={problems} tabLabel={(t) => ({ contents: 'Contents', logistics: 'Logistics', accounting: 'Accounting' })[t]} />
+            {rejecting ? (<Alert intent="danger" variant="outline" title="Reject A/P invoice"><div className="flex flex-col gap-2"><TextField aria-label="Rejection reason" value={rejectionReason} onChange={(e) => setRejectionReason(e.currentTarget.value)} placeholder="Explain why…" /><div className="flex gap-2"><Button type="button" intent="danger" variant="solid" size="small" onClick={rejectIt}>Confirm reject</Button><Button type="button" intent="white" variant="solid" size="small" onClick={() => { setRejecting(false); setRejectionReason(''); }}>Cancel</Button></div></div></Alert>) : null}
             {dupWarning ? (
               <Alert intent="warning" variant="outline" title="Possible duplicate bill">
                 {dupWarning} Press Add again if it's a different bill, or change the Vendor Ref. No.
