@@ -36,10 +36,13 @@ import { grossPrice, inventoryQty, lineNet, openQty, priceAfterDiscount } from '
 import { linePricing, lineFromItem, type PoTabProps } from './types';
 import { formatDate } from '../../../../services/dates';
 
-/** Optional column groups (the table's column settings). Item, quantity, price, tax and totals always show. */
+/** Optional column groups (the table's column settings). Item, quantity, price and totals always show. */
 const GROUPS = {
   quantities: 'Quantities & UoM',
   pricing: 'Pricing',
+  warehouse: 'Warehouse',
+  priceListId: 'Price list',
+  tax: 'Tax',
   delivery: 'Delivery & status',
   references: 'References',
 } as const;
@@ -263,11 +266,11 @@ export function ContentsTab({ draft, update, errors, m, ctx }: PoTabProps) {
           onValueChange={(warehouse) => patch(l.id, { warehouse: warehouse ?? '' })}
         />
       );
-    }),
+    }, 'warehouse'),
     col('priceListId', 'Price list', (l) => l.itemId ? (
       <MasterLookup def={priceListDef} fieldProps={{ 'aria-label': 'Price list', className: 'w-44' }} where={(r) => isPriceListValid(r, draft.postingDate)} value={l.priceListId} onChange={(v) => changePriceList(l, v)} />
-    ) : null, 'pricing'),
-    col('pricing', 'Unit price / Tax / Discount', (l) => {
+    ) : null, 'priceListId'),
+    col('pricing', 'Unit price / Discount', (l) => {
       if (!l.itemId) return null;
       const rate = ctx.rateOf(l.taxCode);
       return (
@@ -293,13 +296,6 @@ export function ContentsTab({ draft, update, errors, m, ctx }: PoTabProps) {
               onChange={(e) => patch(l.id, { unitPrice: round2(num(e.currentTarget.value) / (1 + rate / 100)) })}
             />
           ) : null}
-          <Combobox
-            aria-label="Tax code"
-            invalid={Boolean(err(l, 'taxCode'))}
-            options={taxOptions}
-            value={l.taxCode}
-            onValueChange={(taxCode) => patch(l.id, { taxCode: taxCode ?? '' })}
-          />
           <TextField
             aria-label="Discount %"
             type="number"
@@ -316,6 +312,18 @@ export function ContentsTab({ draft, update, errors, m, ctx }: PoTabProps) {
         </div>
       );
     }),
+    col('taxCode', 'Tax code', (l) => {
+      if (!l.itemId) return null;
+      return (
+        <Combobox
+          aria-label="Tax code"
+          invalid={Boolean(err(l, 'taxCode'))}
+          options={taxOptions}
+          value={l.taxCode}
+          onValueChange={(taxCode) => patch(l.id, { taxCode: taxCode ?? '' })}
+        />
+      );
+    }, 'tax'),
     col('priceAfterDiscount', 'Price after discount', (l) => l.itemId ? formatAmount(priceAfterDiscount(l)) : null, 'pricing'),
     col('totalLc', 'Total (LC)', (l) => l.itemId ? <span className="whitespace-nowrap">PHP {lc(lineNet(l))}</span> : null),
     col('grossTotalLc', 'Gross total (LC)', (l) => l.itemId ? (

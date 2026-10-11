@@ -28,6 +28,7 @@ import { FX_GAIN_ACCOUNT, FX_LOSS_ACCOUNT, PAYMENT_SERIES, PAYMENT_STATUSES, bla
 import { contactName, type Partner } from '../../../../mocks/partners';
 import { listApInvoices } from '../../../../services/apInvoices';
 import { formatDate, todayISO } from '../../../../services/dates';
+import { defaultJournalRemark } from '../../../../services/journalPatterns';
 import { formatAmount } from '../../../../services/format';
 import { cardBrands } from '../../../../services/partnerMasters';
 import { loadInventoryMasters } from '../../../../services/inventoryMasters';
@@ -297,7 +298,9 @@ function PaymentForm() {
           iconIntent="default"
           iconShape="rounded"
           iconSize={32} iconVariant="outline"
-          title={title}
+          breadcrumbs={[{ label: 'Payments Made', href: PAYMENT_LIST_PATH }, { label: title }]}
+          onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
+          onBack={() => navigate(PAYMENT_LIST_PATH)}
           trailing={
             isNew ? undefined : <PrevNext path={PAYMENT_LIST_PATH} prevId={prevId} nextId={nextId} />
           }
@@ -492,7 +495,7 @@ function vendorDefaults(v: Partner, d: PaymentDraft, m: PayMasters, tick: string
     currency,
     rows: openRows(m, v.id, currency, tick),
     controlAccount: v.payableAccount || '2010',
-    journalRemark: `Outgoing – ${v.code}`,
+    journalRemark: defaultJournalRemark('outgoing-payments', { entityCode: v.code, entityName: v.name }),
     onAccount: 0,
     means: { ...d.means, transfer: { ...d.means.transfer, account: currency === 'USD' ? '1018' : '1015' } },
   };

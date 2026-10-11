@@ -64,6 +64,7 @@ import type { SalesReturn } from '../../../mocks/salesReturns';
 import { arAmounts, arNumber, listArInvoices } from '../../../services/arInvoices';
 import { loadCurrentCompany } from '../../../services/companies';
 import { formatDate, todayISO } from '../../../services/dates';
+import { defaultJournalRemark } from '../../../services/journalPatterns';
 import { formatAmount } from '../../../services/format';
 import { loadInventoryMasters, activeOptions, type InventoryMasters } from '../../../services/inventoryMasters';
 import { isValidToday, listItems } from '../../../services/items';
@@ -425,7 +426,9 @@ function ArCreditMemoForm() {
             iconIntent="default"
             iconShape="rounded"
             iconSize={32} iconVariant="outline"
-            title={title}
+            breadcrumbs={[{ label: 'A/R Credit Memos', href: AR_CM_LIST_PATH }, { label: title }]}
+            onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
+            onBack={() => navigate(AR_CM_LIST_PATH)}
             trailing={
               isNew ? undefined : <PrevNext path={AR_CM_LIST_PATH} prevId={prevId} nextId={nextId} />
             }
@@ -1093,7 +1096,7 @@ function customerDefaults(c: Partner | undefined, d: ArCmInput): Partial<ArCmInp
     federalTaxId: c.tin,
     salesEmployeeId: c.salesEmployeeId,
     controlAccount: '1120',
-    journalRemark: `A/R Credit Memo – ${c.code}`,
+    journalRemark: defaultJournalRemark('ar-credit-memos', { entityCode: c.code, entityName: c.name }),
     shipTo: ship ? formatAddress(ship, c.name) : '',
     billTo: bill ? formatAddress(bill, c.name) : '',
   };

@@ -51,6 +51,7 @@ import { logRejection } from '../../../../services/approvalRules';
 import { transferBlock } from '../../../../services/binLocations';
 import { loadCurrentCompany } from '../../../../services/companies';
 import { formatDate, todayISO } from '../../../../services/dates';
+import { defaultJournalRemark } from '../../../../services/journalPatterns';
 import { formatAmount } from '../../../../services/format';
 import { grOpenQty, listGoodsReceipts } from '../../../../services/goodsReceipts';
 import { loadInventoryMasters } from '../../../../services/inventoryMasters';
@@ -416,7 +417,9 @@ function ApInvoiceForm() {
           iconIntent="default"
           iconShape="rounded"
           iconSize={32} iconVariant="outline"
-          title={title}
+          breadcrumbs={[{ label: 'Bills', href: AP_LIST_PATH }, { label: title }]}
+          onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
+          onBack={() => navigate(AP_LIST_PATH)}
           trailing={
             isNew ? undefined : <PrevNext path={AP_LIST_PATH} prevId={prevId} nextId={nextId} />
           }
@@ -691,7 +694,7 @@ function vendorDefaults(v: Partner | undefined, d: ApDraft): Partial<ApDraft> {
     dueDate: dueDateFor(d.postingDate, v.vendorPaymentTermId),
     projectId: v.projectId,
     shippingType: v.shippingType,
-    journalRemark: `A/P Invoices – ${v.code}`,
+    journalRemark: defaultJournalRemark('ap-invoices', { entityCode: v.code, entityName: v.name }),
     payTo: defaultPayTo(v),
     controlAccount: v.payableAccount || '2010',
     paymentBlock: v.paymentBlock,

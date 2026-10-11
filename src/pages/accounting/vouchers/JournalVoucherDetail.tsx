@@ -162,7 +162,9 @@ export function JournalVoucherDetail() {
         iconIntent="default"
         iconShape="rounded"
         iconSize={32} iconVariant="outline"
-        title={`Journal voucher ${voucher.voucherNo}`}
+        breadcrumbs={[{ label: 'Journal Vouchers', href: JV_LIST_PATH }, { label: `Journal voucher ${voucher.voucherNo}` }]}
+        onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
+        onBack={() => navigate(JV_LIST_PATH)}
         status={<Badge size="small" intent={state.intent}>{state.label}</Badge>}
         actions={
           <>

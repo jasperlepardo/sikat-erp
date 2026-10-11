@@ -389,7 +389,9 @@ function RfqForm() {
             iconShape="rounded"
             iconSize={32}
             iconVariant="outline"
-            title={title}
+            breadcrumbs={[{ label: 'Purchase Quotations', href: RFQ_LIST_PATH }, { label: title }]}
+            onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
+            onBack={() => navigate(RFQ_LIST_PATH)}
             trailing={
               isNew ? undefined : <PrevNext path={RFQ_LIST_PATH} prevId={prevId} nextId={nextId} />
             }

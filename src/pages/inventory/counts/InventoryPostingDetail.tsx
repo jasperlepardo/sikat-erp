@@ -195,7 +195,9 @@ function PostingForm() {
           iconShape="rounded"
           iconSize={32}
           iconVariant="outline"
-          title={added ? `Inventory posting ${postingNumber(draft)}` : 'New inventory posting'}
+          breadcrumbs={[{ label: 'Inventory Postings', href: POSTING_LIST_PATH }, { label: added ? `Inventory posting ${postingNumber(draft)}` : 'New inventory posting' }]}
+          onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
+          onBack={() => navigate(POSTING_LIST_PATH)}
           trailing={
             isNew ? undefined : <PrevNext path={POSTING_LIST_PATH} prevId={prevId} nextId={nextId} />
           }

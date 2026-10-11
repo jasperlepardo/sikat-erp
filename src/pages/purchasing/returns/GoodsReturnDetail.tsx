@@ -34,6 +34,7 @@ import { apNumber, listApInvoices, returnableQty } from '../../../services/apInv
 import { transferBlock } from '../../../services/binLocations';
 import { loadCurrentCompany } from '../../../services/companies';
 import { formatDate, todayISO } from '../../../services/dates';
+import { defaultJournalRemark } from '../../../services/journalPatterns';
 import { formatAmount } from '../../../services/format';
 import { grNumber, grOpenQty, listGoodsReceipts } from '../../../services/goodsReceipts';
 import {
@@ -338,7 +339,9 @@ function GoodsReturnForm() {
             iconIntent="default"
             iconShape="rounded"
             iconSize={32} iconVariant="outline"
-            title={title}
+            breadcrumbs={[{ label: 'Goods Returns', href: RETURN_LIST_PATH }, { label: title }]}
+            onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
+            onBack={() => navigate(RETURN_LIST_PATH)}
             trailing={
               isNew ? undefined : <PrevNext path={RETURN_LIST_PATH} prevId={prevId} nextId={nextId} />
             }
@@ -585,7 +588,7 @@ function vendorDefaults(v: Partner | undefined, d: Draft): Partial<Draft> {
     dueDate: dueDateFor(d.postingDate, v.vendorPaymentTermId),
     projectId: v.projectId,
     shippingType: v.shippingType,
-    journalRemark: `Goods Returns – ${v.code}`,
+    journalRemark: defaultJournalRemark('goods-returns', { entityCode: v.code, entityName: v.name }),
     shipTo: ship ? formatAddress(ship, v.name) : '',
     payTo: bill ? formatAddress(bill, v.name) : '',
   };

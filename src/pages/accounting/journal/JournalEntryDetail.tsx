@@ -154,7 +154,9 @@ function JournalEntryForm() {
           iconIntent="default"
           iconShape="rounded"
           iconSize={32} iconVariant="outline"
-          title={title}
+          breadcrumbs={[{ label: 'Journal Entries', href: JE_LIST_PATH }, { label: title }]}
+          onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
+          onBack={() => navigate(JE_LIST_PATH)}
           trailing={
             isNew ? undefined : <PrevNext path={JE_LIST_PATH} prevId={prevId} nextId={nextId} />
           }

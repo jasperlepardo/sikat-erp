@@ -283,7 +283,9 @@ function TransferForm() {
           iconShape="rounded"
           iconSize={32}
           iconVariant="outline"
-          title={title}
+          breadcrumbs={[{ label: 'Stock Movements', href: TRANSFER_LIST_PATH }, { label: title }]}
+          onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
+          onBack={() => navigate(TRANSFER_LIST_PATH)}
           trailing={
             isNew ? undefined : <PrevNext path={TRANSFER_LIST_PATH} prevId={prevId} nextId={nextId} />
           }

@@ -44,6 +44,7 @@ import type { InventoryMasters } from '../../../services/inventoryMasters';
 import type { TaxMasterData } from '../../../services/taxDetermination';
 import { loadCurrentCompany } from '../../../services/companies';
 import { formatDate, todayISO } from '../../../services/dates';
+import { defaultJournalRemark } from '../../../services/journalPatterns';
 import { formatAmount } from '../../../services/format';
 import { dnNumber, dnOpenQty, listDeliveries } from '../../../services/deliveries';
 import { loadInventoryMasters, activeOptions } from '../../../services/inventoryMasters';
@@ -143,7 +144,7 @@ function customerDefaults(c: Partner | undefined, d: Draft): Partial<Draft> {
     shippingType: c.shippingType,
     federalTaxId: c.tin,
     salesEmployeeId: c.salesEmployeeId,
-    journalRemark: `Sales Returns – ${c.code}`,
+    journalRemark: defaultJournalRemark('sales-returns', { entityCode: c.code, entityName: c.name }),
     shipTo: ship ? formatAddress(ship, c.name) : '',
     billTo: bill ? formatAddress(bill, c.name) : '',
   };
@@ -545,7 +546,9 @@ function SalesReturnForm() {
             iconShape="rounded"
             iconSize={32}
             iconVariant="outline"
-            title={title}
+            breadcrumbs={[{ label: 'Sales Returns', href: SR_LIST_PATH }, { label: title }]}
+            onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
+            onBack={() => navigate(SR_LIST_PATH)}
             trailing={
               isNew ? undefined : <PrevNext path={SR_LIST_PATH} prevId={prevId} nextId={nextId} />
             }

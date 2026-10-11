@@ -300,7 +300,9 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
             iconIntent="default"
             iconShape="rounded"
             iconSize={32} iconVariant="outline"
-            title={isNew ? `New ${config.singular.toLowerCase()}` : draft.name}
+            breadcrumbs={[{ label: config.title, href: config.basePath }, { label: isNew ? `New ${config.singular.toLowerCase()}` : draft.name }]}
+            onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
+            onBack={() => navigate(config.basePath)}
             trailing={
               isNew ? undefined : <PrevNext path={config.basePath} prevId={prevId} nextId={nextId} />
             }

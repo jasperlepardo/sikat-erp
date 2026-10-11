@@ -46,6 +46,7 @@ import {
 import { logRejection } from '../../../services/approvalRules';
 import { loadCurrentCompany } from '../../../services/companies';
 import { formatDate, todayISO } from '../../../services/dates';
+import { defaultJournalRemark } from '../../../services/journalPatterns';
 import { formatAmount } from '../../../services/format';
 import { receivablePos } from '../../../services/goodsReceipts';
 import { loadInventoryMasters } from '../../../services/inventoryMasters';
@@ -255,7 +256,9 @@ function DprForm() {
             iconIntent="default"
             iconShape="rounded"
             iconSize={32} iconVariant="outline"
-            title={title}
+            breadcrumbs={[{ label: 'Down Payment Requests', href: DPR_LIST_PATH }, { label: title }]}
+            onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
+            onBack={() => navigate(DPR_LIST_PATH)}
             trailing={
               isNew ? undefined : <PrevNext path={DPR_LIST_PATH} prevId={prevId} nextId={nextId} />
             }
@@ -451,7 +454,7 @@ function vendorDefaults(v: Partner | undefined, d: Draft, m: Masters): Partial<D
     dueDate: dueDateFor(d.postingDate, v.vendorPaymentTermId),
     projectId: v.projectId,
     shippingType: v.shippingType,
-    journalRemark: `A/P Down Payment – ${v.code}`,
+    journalRemark: defaultJournalRemark('down-payment-requests', { entityCode: v.code, entityName: v.name }),
     payTo: bill ? formatAddress(bill, v.name) : '',
     shipTo: d.shipTo || formatAddress(m.company.address, m.company.name),
     downPaymentAccount: v.downPaymentClearingAccount || ADVANCES_TO_SUPPLIERS,

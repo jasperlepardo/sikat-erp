@@ -177,7 +177,9 @@ function CountForm() {
           iconShape="rounded"
           iconSize={32}
           iconVariant="outline"
-          title={isNew ? 'New inventory counting' : `Inventory counting ${countNumber(draft)}`}
+          breadcrumbs={[{ label: 'Stock Counts', href: COUNT_LIST_PATH }, { label: isNew ? 'New inventory counting' : `Inventory counting ${countNumber(draft)}` }]}
+          onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
+          onBack={() => navigate(COUNT_LIST_PATH)}
           trailing={
             isNew ? undefined : <PrevNext path={COUNT_LIST_PATH} prevId={prevId} nextId={nextId} />
           }

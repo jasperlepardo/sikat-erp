@@ -159,7 +159,13 @@ function VoucherEntryForm() {
           iconShape="rounded"
           iconSize={32}
           iconVariant="outline"
-          title={isNew ? 'New voucher entry' : `Entry ${draft.transNo}`}
+          breadcrumbs={
+            voucher
+              ? [{ label: 'Journal Vouchers', href: JV_LIST_PATH }, { label: `Journal voucher ${voucher.voucherNo}`, href: `${JV_LIST_PATH}/${voucher.id}` }, { label: isNew ? 'New entry' : `Entry ${draft.transNo}` }]
+              : [{ label: 'Journal Vouchers', href: JV_LIST_PATH }, { label: isNew ? 'New entry' : `Entry ${draft.transNo}` }]
+          }
+          onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
+          onBack={back}
           tabs={
             <Tabs
               variant="outline"

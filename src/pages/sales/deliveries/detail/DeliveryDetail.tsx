@@ -14,6 +14,7 @@ import { contactName } from '../../../../mocks/partners';
 import { NO_SALES_EMPLOYEE, SALES_SETTINGS, type SalesOrder } from '../../../../mocks/salesOrders';
 import { loadCurrentCompany } from '../../../../services/companies';
 import { formatDate, todayISO } from '../../../../services/dates';
+import { defaultJournalRemark } from '../../../../services/journalPatterns';
 import { DnPostError, addDelivery, recallDelivery, cancelDelivery, closeDelivery, dnJournal, dnNumber, dnTotals, getDelivery, listDeliveries, saveDeliveryDraft, saveDeliveryNotes } from '../../../../services/deliveries';
 import { formatAmount } from '../../../../services/format';
 import { loadInventoryMasters } from '../../../../services/inventoryMasters';
@@ -166,7 +167,7 @@ function DeliveryForm() {
       discountPct: c.totalDiscount || 0,
       billTo: bill ? formatAddress(bill, c.name) : '',
       shipTo: ship ? formatAddress(ship, c.name) : '',
-      journalRemark: `Deliveries – ${c.code}`,
+      journalRemark: defaultJournalRemark('deliveries', { entityCode: c.code, entityName: c.name }),
       lines: draft.lines.map((l) => {
         const item = m.items.find((i) => i.id === l.itemId);
         return item && !l.baseId ? { ...l, taxCode: proposedTaxCode(item, c, m, draft.postingDate) } : l;
@@ -246,7 +247,9 @@ function DeliveryForm() {
           iconIntent="default"
           iconShape="rounded"
           iconSize={32} iconVariant="outline"
-          title={title}
+          breadcrumbs={[{ label: 'Deliveries', href: DN_LIST_PATH }, { label: title }]}
+          onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
+          onBack={() => navigate(DN_LIST_PATH)}
           trailing={
             isNew ? undefined : <PrevNext path={DN_LIST_PATH} prevId={prevId} nextId={nextId} />
           }

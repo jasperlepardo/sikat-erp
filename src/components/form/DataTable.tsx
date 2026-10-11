@@ -2,8 +2,8 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { Button, Card, Icon, Table, Text, type TableColumn, type TableSort } from '@jasperlepardo/sikat-design-system';
 
 export interface DataTableProps<T> {
-  icon: string;
-  title: string;
+  icon?: string;
+  title?: string;
   description?: ReactNode;
   /** Buttons on the right of the title row (e.g. "New"). */
   actions?: ReactNode;
@@ -36,6 +36,8 @@ export interface DataTableProps<T> {
    * Uses a real `<td colSpan={N}>` that counts columns + the selection column dynamically.
    */
   spanRow?: ReactNode;
+  /** Content rendered inside the Card after the table (plain variant only). */
+  cardFooter?: ReactNode;
 }
 
 /** Page sizes every paginated table offers; tables open at `DEFAULT_PAGE_SIZE`. */
@@ -78,6 +80,7 @@ export function DataTable<T>({
   variant = 'plain',
   children,
   spanRow,
+  cardFooter,
 }: DataTableProps<T>) {
   const [sort, setSort] = useState<TableSort | null>(null);
   const [page, setPage] = useState(1);
@@ -152,6 +155,7 @@ export function DataTable<T>({
         })}
         {...(spanRow ? { footerRow: spanRow } : {})}
       />
+      {cardFooter}
     </Card>
   ) : (
     <div className="px-2">{empty}</div>
@@ -160,8 +164,8 @@ export function DataTable<T>({
   if (variant === 'card') {
     return (
       <Card>
-        <Card.Header icon={<Icon size={24}>{icon}</Icon>} actions={toolbar}>
-          {title}
+        <Card.Header icon={icon ? <Icon size={24}>{icon}</Icon> : undefined} actions={toolbar}>
+          {title ?? ''}
         </Card.Header>
         <Card.Content>
           {description ? (
@@ -178,20 +182,22 @@ export function DataTable<T>({
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex flex-wrap items-start justify-between gap-2 px-2 pt-2">
-        <div className="flex min-w-0 flex-1 items-start gap-2">
-          <Icon size={24}>{icon}</Icon>
-          <div className="min-w-0">
-            <Text weight="semibold" tone="heading">{title}</Text>
-            {description ? (
-              <Text variant="small" tone="muted">
-                {description}
-              </Text>
-            ) : null}
+      {(icon || title || description || actions || onRemove) ? (
+        <div className="flex flex-wrap items-start justify-between gap-2 px-2 pt-2">
+          <div className="flex min-w-0 flex-1 items-start gap-2">
+            {icon ? <Icon size={24}>{icon}</Icon> : null}
+            <div className="min-w-0">
+              {title ? <Text weight="semibold" tone="heading">{title}</Text> : null}
+              {description ? (
+                <Text variant="small" tone="muted">
+                  {description}
+                </Text>
+              ) : null}
+            </div>
           </div>
+          {toolbar}
         </div>
-        {toolbar}
-      </div>
+      ) : null}
       {table}
     </div>
   );

@@ -54,6 +54,7 @@ import {
 import { logRejection } from '../../../services/approvalRules';
 import { apNumber, returnableQty } from '../../../services/apInvoices';
 import { formatDate, todayISO } from '../../../services/dates';
+import { defaultJournalRemark } from '../../../services/journalPatterns';
 import { formatAmount } from '../../../services/format';
 import { creditableReturns, returnNumber, returnOpenQty } from '../../../services/goodsReturns';
 import { isValidToday } from '../../../services/items';
@@ -340,7 +341,9 @@ function CreditMemoForm() {
             iconIntent="default"
             iconShape="rounded"
             iconSize={32} iconVariant="outline"
-            title={title}
+            breadcrumbs={[{ label: 'A/P Credit Memos', href: MEMO_LIST_PATH }, { label: title }]}
+            onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
+            onBack={() => navigate(MEMO_LIST_PATH)}
             trailing={
               isNew ? undefined : <PrevNext path={MEMO_LIST_PATH} prevId={prevId} nextId={nextId} />
             }
@@ -671,7 +674,7 @@ function vendorDefaults(v: Partner | undefined, d: Draft): Partial<Draft> {
     dueDate: dueDateFor(d.postingDate, v.vendorPaymentTermId),
     projectId: v.projectId,
     shippingType: v.shippingType,
-    journalRemark: `A/P Credit Memo – ${v.code}`,
+    journalRemark: defaultJournalRemark('ap-credit-memos', { entityCode: v.code, entityName: v.name }),
     shipTo: ship ? formatAddress(ship, v.name) : '',
     payTo: bill ? formatAddress(bill, v.name) : '',
     controlAccount: v.payableAccount || '2010',

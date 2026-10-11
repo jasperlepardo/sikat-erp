@@ -283,7 +283,7 @@ const line = (id: string, itemId: string, quantity: number, patch: Partial<SoLin
     id,
     itemId,
     itemNo: item.itemNo,
-    description: item.name,
+    description: item.name || item.description,
     quantity,
     uomCode: item.salesUom,
     uomName: item.salesUom === 'pc' ? 'Piece' : item.salesUom,

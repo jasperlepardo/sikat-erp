@@ -107,7 +107,7 @@ export function lineFromItem(item: Item, draft: SoDraft, ctx: SoContext, m: SoMa
     ...base,
     itemId: item.id,
     itemNo: item.itemNo,
-    description: item.name,
+    description: item.name || item.description,
     uomCode: item.salesUom,
     uomName: uom?.name ?? item.salesUom,
     itemsPerUnit: itemsPerUom(item, item.salesUom) ?? 1,

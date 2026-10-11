@@ -27,6 +27,7 @@ import { contactName, type Partner } from '../../../../mocks/partners';
 import { type PurchaseOrder } from '../../../../mocks/purchaseOrders';
 import { loadCurrentCompany } from '../../../../services/companies';
 import { formatDate, todayISO } from '../../../../services/dates';
+import { defaultJournalRemark } from '../../../../services/journalPatterns';
 import { formatAmount } from '../../../../services/format';
 import {
   GrPostError,
@@ -82,7 +83,7 @@ export const GR_STATUS_INTENT: Record<GrStatus, 'default' | 'primary' | 'success
 };
 
 const ALL_CURRENCIES = 'All currencies';
-const journalRemarkFor = (vendorCode: string) => `Goods Receipt PO – ${vendorCode}`;
+const journalRemarkFor = (vendor: { code: string; name: string }) => defaultJournalRemark('goods-receipts', { entityCode: vendor.code, entityName: vendor.name });
 
 /** Required and conditional fields from the GRPO field map, checked on Add. Drafts only need a vendor. */
 function validate(d: GrDraft, ctx: GrContext, m: GrMasters, asDraft: boolean): Problem<TabId>[] {
@@ -340,7 +341,9 @@ function GoodsReceiptForm() {
           iconIntent="default"
           iconShape="rounded"
           iconSize={32} iconVariant="outline"
-          title={title}
+          breadcrumbs={[{ label: 'Goods Receipts', href: GR_LIST_PATH }, { label: title }]}
+          onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
+          onBack={() => navigate(GR_LIST_PATH)}
           trailing={
             isNew ? undefined : <PrevNext path={GR_LIST_PATH} prevId={prevId} nextId={nextId} />
           }
@@ -594,7 +597,7 @@ function vendorDefaults(v: Partner | undefined, d: GrDraft): Partial<GrDraft> {
     dueDate: dueDateFor(d.postingDate, v.vendorPaymentTermId),
     projectId: v.projectId,
     shippingType: v.shippingType,
-    journalRemark: journalRemarkFor(v.code),
+    journalRemark: journalRemarkFor(v),
     payTo: defaultPayTo(v),
   };
 }

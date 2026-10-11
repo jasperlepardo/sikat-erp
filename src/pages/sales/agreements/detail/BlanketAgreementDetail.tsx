@@ -252,7 +252,9 @@ function BaForm() {
           iconShape="rounded"
           iconSize={32}
           iconVariant="outline"
-          title={title}
+          breadcrumbs={[{ label: 'Agreements', href: BA_LIST_PATH }, { label: title }]}
+          onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
+          onBack={() => navigate(BA_LIST_PATH)}
           trailing={
             isNew ? undefined : <PrevNext path={BA_LIST_PATH} prevId={prevId} nextId={nextId} />
           }

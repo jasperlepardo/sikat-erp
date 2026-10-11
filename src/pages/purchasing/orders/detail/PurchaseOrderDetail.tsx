@@ -75,6 +75,7 @@ import {
   type PoSuggestion,
 } from './types';
 import { formatDate, todayISO } from '../../../../services/dates';
+import { defaultJournalRemark } from '../../../../services/journalPatterns';
 import { listGoodsReceipts } from '../../../../services/goodsReceipts';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
@@ -96,7 +97,7 @@ function vendorPatch(v: Partner, draft: PoDraft, m: PoMasters): Partial<PoDraft>
     dueDate: dueDateFor(draft.postingDate, v.vendorPaymentTermId),
     projectId: v.projectId,
     shippingType: v.shippingType,
-    journalRemark: `Purchase Orders – ${v.code}`,
+    journalRemark: defaultJournalRemark('purchase-orders', { entityCode: v.code, entityName: v.name }),
     lines: draft.lines.map((l) => {
       const item = m.items.find((i) => i.id === l.itemId);
       return item ? { ...l, taxCode: proposedTaxCode(item, v, m, draft.postingDate) } : l;
@@ -425,7 +426,9 @@ function PurchaseOrderForm() {
           iconIntent="default"
           iconShape="rounded"
           iconSize={32} iconVariant="outline"
-          title={title}
+          breadcrumbs={[{ label: 'Purchase Orders', href: PO_LIST_PATH }, { label: title }]}
+          onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
+          onBack={() => navigate(PO_LIST_PATH)}
           trailing={
             isNew ? undefined : <PrevNext path={PO_LIST_PATH} prevId={prevId} nextId={nextId} />
           }

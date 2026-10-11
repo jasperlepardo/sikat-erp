@@ -17,6 +17,7 @@ import { BLANKET_AGREEMENTS } from '../../../../mocks/purchaseOrders';
 import type { TaxCode } from '../../../../mocks/taxes';
 import { listArInvoices } from '../../../../services/arInvoices';
 import { formatDate, todayISO } from '../../../../services/dates';
+import { defaultJournalRemark } from '../../../../services/journalPatterns';
 import { formatAmount } from '../../../../services/format';
 import {
   IncomingPostError,
@@ -185,7 +186,7 @@ function IncomingForm() {
       projectId: c.projectId,
       currency,
       controlAccount: rows.find((r) => r.selected)?.controlAccount ?? controlAccountOf(c),
-      journalRemark: `Incoming - ${c.code}`,
+      journalRemark: defaultJournalRemark('incoming-payments', { entityCode: c.code, entityName: c.name }),
       rows,
       onAccount: 0,
       addInSequence: false,
@@ -268,7 +269,9 @@ function IncomingForm() {
           iconIntent="default"
           iconShape="rounded"
           iconSize={32} iconVariant="outline"
-          title={title}
+          breadcrumbs={[{ label: 'Payments Received', href: RC_LIST_PATH }, { label: title }]}
+          onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
+          onBack={() => navigate(RC_LIST_PATH)}
           trailing={
             isNew ? undefined : <PrevNext path={RC_LIST_PATH} prevId={prevId} nextId={nextId} />
           }

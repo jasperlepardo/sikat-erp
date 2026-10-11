@@ -31,6 +31,7 @@ import {
 } from '../../../../services/arInvoices';
 import { loadCurrentCompany } from '../../../../services/companies';
 import { formatDate, todayISO } from '../../../../services/dates';
+import { defaultJournalRemark } from '../../../../services/journalPatterns';
 import { listDeliveries } from '../../../../services/deliveries';
 import { formatAmount } from '../../../../services/format';
 import { loadInventoryMasters } from '../../../../services/inventoryMasters';
@@ -220,7 +221,7 @@ function ArInvoiceForm() {
           cashDiscountDays: s.cashDiscountDays,
           dueDate: soDueDate(d.postingDate, termDays(s.paymentTermId), s.dueMonths, s.dueDays),
           controlAccount: c ? controlAccountOf(c) : '1120',
-          journalRemark: `A/R Invoices – ${s.customerCode}`,
+          journalRemark: defaultJournalRemark('ar-invoices', { entityCode: s.customerCode, entityName: s.customerName }),
           docType: src.kind === 'SO' ? src.doc.docType : 'Item',
           ...(src.kind === 'DN' ? { trackingNo: src.doc.trackingNo } : {}),
         }
@@ -253,7 +254,7 @@ function ArInvoiceForm() {
       controlAccount: controlAccountOf(c),
       billTo: bill ? formatAddress(bill, c.name) : '',
       shipTo: ship ? formatAddress(ship, c.name) : '',
-      journalRemark: `A/R Invoices – ${c.code}`,
+      journalRemark: defaultJournalRemark('ar-invoices', { entityCode: c.code, entityName: c.name }),
       lines: draft.lines.map((l) => {
         const item = m.items.find((i) => i.id === l.itemId);
         return { ...l, wtaxLiable: liable, ...(item && !l.baseId ? { taxCode: proposedTaxCode(item, c, m, draft.postingDate) } : {}) };
@@ -333,7 +334,9 @@ function ArInvoiceForm() {
           iconIntent="default"
           iconShape="rounded"
           iconSize={32} iconVariant="outline"
-          title={title}
+          breadcrumbs={[{ label: 'Invoices', href: AR_LIST_PATH }, { label: title }]}
+          onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
+          onBack={() => navigate(AR_LIST_PATH)}
           trailing={
             isNew ? undefined : <PrevNext path={AR_LIST_PATH} prevId={prevId} nextId={nextId} />
           }
