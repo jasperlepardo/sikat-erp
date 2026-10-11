@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { Alert, Badge, Button, ButtonGroup, Card, CardField, Combobox, Form, Icon, IconButton, List, Panel, PanelHeader, panelHeaderIcons, Tabs, Text, TextField, Checkbox, type CardFieldOption } from '@jasperlepardo/sikat-design-system';
+import { Alert, Badge, Button, Card, CardField, Combobox, Form, Icon, List, Panel, PanelHeader, Tabs, Text, TextField, Checkbox, type CardFieldOption } from '@jasperlepardo/sikat-design-system';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { Fields, Section, bind, type Errors } from '../../../../components/form/fields';
 import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
@@ -34,6 +34,7 @@ import { PO_LIST_PATH } from '../../../purchasing/orders/detail/PurchaseOrderDet
 import type { PoSuggestion } from '../../../purchasing/orders/detail/types';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
+import { NotFound, PrevNext, neighbours } from '../../../../components/form/DetailNav';
 
 type TabId = 'contents' | 'logistics' | 'accounting' | 'attachments';
 const TAB_LABEL: Record<TabId, string> = { contents: 'Contents', logistics: 'Logistics', accounting: 'Accounting', attachments: 'Attachments' };
@@ -157,23 +158,12 @@ function SalesOrderForm() {
 
   useDocTitle(draft == null || !draft.docNum ? undefined : isNew ? 'New sales order' : draft.status === 'Draft' ? 'Draft sales order' : soNumber(draft));
   if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading sales order…</Text>;
-  if (draft === null) {
-    return (
-      <Panel className="flex-1">
-        <PanelHeader icon="shopping_bag" iconIntent="default" iconShape="rounded" iconSize={32} iconVariant="outline" title="Sales order not found" />
-        <Panel.Body>
-          <Button onClick={() => navigate(SO_LIST_PATH)}>Back to sales orders</Button>
-        </Panel.Body>
-      </Panel>
-    );
-  }
+  if (draft === null) return <NotFound icon="shopping_bag" title="Sales order not found" backTo={SO_LIST_PATH} backLabel="Back to sales orders" />;
 
   const ctx = buildContext(draft, m, ownCommitted);
   const { customer } = ctx;
   const short = ctx.readOnly ? [] : shortages(draft, m, ownCommitted);
-  const at = draft.id ? siblings.indexOf(draft.docNum ? soNumber(draft as SalesOrder) : draft.id) : -1;
-  const prevId = at > 0 ? siblings[at - 1] : undefined;
-  const nextId = at >= 0 && at < siblings.length - 1 ? siblings[at + 1] : undefined;
+  const { prevId, nextId } = neighbours(siblings, draft.id && (draft.docNum ? soNumber(draft as SalesOrder) : draft.id));
   const errors: Errors = Object.fromEntries(problems.map((p) => [p.key, p.message]));
   const docCurrency = m.currencies.find((c) => c.code === draft.currency);
   const totals = soTotals(draft, ctx.rateOf, docCurrency?.rounding);
@@ -412,18 +402,7 @@ function SalesOrderForm() {
           iconSize={32} iconVariant="outline"
           title={title}
           trailing={
-            isNew ? undefined : (
-              <ButtonGroup type="enclosed" intent="white" buttonIntent="default" buttonVariant="link">
-                <IconButton type="button" label="Previous" size="small"
-                  shape="pill" disabled={!prevId} onClick={() => navigate(`${SO_LIST_PATH}/${prevId}`)}>
-                  {panelHeaderIcons.arrowUpward}
-                </IconButton>
-                <IconButton type="button" label="Next" size="small"
-                  shape="pill" disabled={!nextId} onClick={() => navigate(`${SO_LIST_PATH}/${nextId}`)}>
-                  {panelHeaderIcons.arrowDownward}
-                </IconButton>
-              </ButtonGroup>
-            )
+            isNew ? undefined : <PrevNext path={SO_LIST_PATH} prevId={prevId} nextId={nextId} />
           }
           tabs={<Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={PAGES.map((p) => ({ ...p, disabled: isNew && p.value !== 'details' }))} />}
           status={isNew ? undefined : <Badge size="small" intent={SO_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}

@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { Alert, Badge, Button, ButtonGroup, Combobox, Form, Icon, IconButton, Panel, PanelHeader, panelHeaderIcons, Select, Tabs, Text } from '@jasperlepardo/sikat-design-system';
+import { Alert, Badge, Button, Combobox, Form, Icon, IconButton, Panel, PanelHeader, Select, Tabs, Text } from '@jasperlepardo/sikat-design-system';
 import { AttachmentsCard } from '../../../components/form/AttachmentsCard';
 import { Fields, ReadOnly, Section, bind, type Errors } from '../../../components/form/fields';
 import { StatusField } from '../../../components/form/StatusField';
@@ -16,6 +16,7 @@ import { closeCounting, countNumber, countSummary, getCounting, listCountings, p
 import { nameIn, salesEmployees } from '../../../services/partnerMasters';
 import { CountLines, type CountingDraft } from './CountLines';
 import { COUNT_LIST_PATH, POSTING_LIST_PATH, nowHHMM, type CountMasters } from './shared';
+import { NotFound, PrevNext, neighbours } from '../../../components/form/DetailNav';
 
 export const COUNT_STATUS_INTENT: Record<CountStatus, 'primary' | 'default'> = { Open: 'primary', Closed: 'default' };
 
@@ -98,22 +99,11 @@ function CountForm() {
   }, [id, isNew]);
 
   if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading count…</Text>;
-  if (draft === null) {
-    return (
-      <Panel className="flex-1">
-        <PanelHeader icon="inventory" iconIntent="default" iconShape="rounded" iconSize={32} iconVariant="outline" title="Count not found" />
-        <Panel.Body>
-          <Button onClick={() => navigate(COUNT_LIST_PATH)}>Back to stock counts</Button>
-        </Panel.Body>
-      </Panel>
-    );
-  }
+  if (draft === null) return <NotFound icon="inventory" title="Count not found" backTo={COUNT_LIST_PATH} backLabel="Back to stock counts" />;
 
   const open = draft.status === 'Open';
   const errors: Errors = Object.fromEntries(problems.map((p) => [p.key, p.message]));
-  const at = draft.id ? siblings.indexOf(draft.id) : -1;
-  const prevId = at > 0 ? siblings[at - 1] : undefined;
-  const nextId = at >= 0 && at < siblings.length - 1 ? siblings[at + 1] : undefined;
+  const { prevId, nextId } = neighbours(siblings, draft.id);
   const summary = countSummary(draft);
 
   const update = (patch: Partial<CountingDraft>) => setDraft({ ...draft, ...patch });
@@ -189,16 +179,7 @@ function CountForm() {
           iconVariant="outline"
           title={isNew ? 'New inventory counting' : `Inventory counting ${countNumber(draft)}`}
           trailing={
-            isNew ? undefined : (
-              <ButtonGroup type="enclosed" intent="white" buttonIntent="default" buttonVariant="link">
-                <IconButton type="button" label="Previous" size="small" shape="pill" disabled={!prevId} onClick={() => navigate(`${COUNT_LIST_PATH}/${prevId}`)}>
-                  {panelHeaderIcons.arrowUpward}
-                </IconButton>
-                <IconButton type="button" label="Next" size="small" shape="pill" disabled={!nextId} onClick={() => navigate(`${COUNT_LIST_PATH}/${nextId}`)}>
-                  {panelHeaderIcons.arrowDownward}
-                </IconButton>
-              </ButtonGroup>
-            )
+            isNew ? undefined : <PrevNext path={COUNT_LIST_PATH} prevId={prevId} nextId={nextId} />
           }
           tabs={
             <Tabs

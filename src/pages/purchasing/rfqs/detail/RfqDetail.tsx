@@ -4,17 +4,14 @@ import {
   Alert,
   Badge,
   Button,
-  ButtonGroup,
   CardField,
   DatePicker,
   Form,
   FormField,
   Icon,
-  IconButton,
   List,
   Panel,
   PanelHeader,
-  panelHeaderIcons,
   Select,
   Tabs,
   Text,
@@ -75,6 +72,7 @@ import { formatDate, todayISO } from '../../../../services/dates';
 import { TotalNote, TotalRow } from '../../orders/detail/PurchaseOrderDetail';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
+import { PrevNext, neighbours } from '../../../../components/form/DetailNav';
 
 export const RFQ_LIST_PATH = '/purchasing/quotations';
 
@@ -218,11 +216,7 @@ function RfqForm() {
     );
 
   const ctx = buildContext(draft, m);
-  const at = draft.id
-    ? siblings.indexOf(draft.docNum ? rfqNumber(draft as Rfq) : draft.id)
-    : -1;
-  const prevId = at > 0 ? siblings[at - 1] : undefined;
-  const nextId = at >= 0 && at < siblings.length - 1 ? siblings[at + 1] : undefined;
+  const { prevId, nextId } = neighbours(siblings, draft.id && (draft.docNum ? rfqNumber(draft as Rfq) : draft.id));
   const { vendor } = ctx;
   const errors: Errors = Object.fromEntries(problems.map((p) => [p.key, p.message]));
   const series = seriesOf(draft.seriesId);
@@ -405,16 +399,7 @@ function RfqForm() {
             iconVariant="outline"
             title={title}
             trailing={
-              isNew ? undefined : (
-                <ButtonGroup type="enclosed" intent="white" buttonIntent="default" buttonVariant="link">
-                  <IconButton type="button" label="Previous" size="small" shape="pill" disabled={!prevId} onClick={() => navigate(`${RFQ_LIST_PATH}/${prevId}`)}>
-                    {panelHeaderIcons.arrowUpward}
-                  </IconButton>
-                  <IconButton type="button" label="Next" size="small" shape="pill" disabled={!nextId} onClick={() => navigate(`${RFQ_LIST_PATH}/${nextId}`)}>
-                    {panelHeaderIcons.arrowDownward}
-                  </IconButton>
-                </ButtonGroup>
-              )
+              isNew ? undefined : <PrevNext path={RFQ_LIST_PATH} prevId={prevId} nextId={nextId} />
             }
             tabs={
               <Tabs

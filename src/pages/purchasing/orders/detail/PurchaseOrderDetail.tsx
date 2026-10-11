@@ -4,16 +4,13 @@ import {
   Alert,
   Badge,
   Button,
-  ButtonGroup,
   CardField,
   Combobox,
   Form,
   FormField,
   Icon,
-  IconButton,
   Panel,
   PanelHeader,
-  panelHeaderIcons,
   Select,
   Tabs,
   List,
@@ -81,6 +78,7 @@ import { formatDate, todayISO } from '../../../../services/dates';
 import { listGoodsReceipts } from '../../../../services/goodsReceipts';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
+import { NotFound, PrevNext, neighbours } from '../../../../components/form/DetailNav';
 
 export const PO_LIST_PATH = '/purchasing/purchase-orders';
 
@@ -257,21 +255,10 @@ function PurchaseOrderForm() {
 
   useDocTitle(draft?.docNum ? (isNew ? 'New purchase order' : draft.status === 'Draft' ? 'Draft purchase order' : poNumber(draft)) : undefined);
   if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading purchase order…</Text>;
-  if (draft === null) {
-    return (
-      <Panel className="flex-1">
-        <PanelHeader icon="receipt_long" iconIntent="default" iconShape="rounded" iconSize={32} iconVariant="outline" title="Purchase order not found" />
-        <Panel.Body>
-          <Button onClick={() => navigate(PO_LIST_PATH)}>Back to purchase orders</Button>
-        </Panel.Body>
-      </Panel>
-    );
-  }
+  if (draft === null) return <NotFound icon="receipt_long" title="Purchase order not found" backTo={PO_LIST_PATH} backLabel="Back to purchase orders" />;
 
   const ctx = buildContext(draft, m);
-  const at = draft.id ? siblings.indexOf(draft.docNum ? poNumber(draft as PurchaseOrder) : draft.id) : -1;
-  const prevId = at > 0 ? siblings[at - 1] : undefined;
-  const nextId = at >= 0 && at < siblings.length - 1 ? siblings[at + 1] : undefined;
+  const { prevId, nextId } = neighbours(siblings, draft.id && (draft.docNum ? poNumber(draft as PurchaseOrder) : draft.id));
   const { vendor } = ctx;
   const errors: Errors = Object.fromEntries(problems.map((p) => [p.key, p.message]));
   const series = seriesOf(draft.seriesId);
@@ -440,30 +427,7 @@ function PurchaseOrderForm() {
           iconSize={32} iconVariant="outline"
           title={title}
           trailing={
-            isNew ? undefined : (
-              <ButtonGroup type="enclosed" intent="white" buttonIntent="default" buttonVariant="link">
-                <IconButton
-                  type="button"
-                  label="Previous"
-                  size="small"
-                  shape="pill"
-                  disabled={!prevId}
-                  onClick={() => navigate(`${PO_LIST_PATH}/${prevId}`)}
-                >
-                  {panelHeaderIcons.arrowUpward}
-                </IconButton>
-                <IconButton
-                  type="button"
-                  label="Next"
-                  size="small"
-                  shape="pill"
-                  disabled={!nextId}
-                  onClick={() => navigate(`${PO_LIST_PATH}/${nextId}`)}
-                >
-                  {panelHeaderIcons.arrowDownward}
-                </IconButton>
-              </ButtonGroup>
-            )
+            isNew ? undefined : <PrevNext path={PO_LIST_PATH} prevId={prevId} nextId={nextId} />
           }
           tabs={
             <Tabs

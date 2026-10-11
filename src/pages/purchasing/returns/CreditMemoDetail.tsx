@@ -5,16 +5,13 @@ import {
   Alert,
   Badge,
   Button,
-  ButtonGroup,
   Checkbox,
   Combobox,
   Form,
   FormField,
-  IconButton,
   List,
   Panel,
   PanelHeader,
-  panelHeaderIcons,
   Select,
   Tabs,
   Text,
@@ -76,6 +73,7 @@ import { MEMO_LIST_PATH, MEMO_STATUS_INTENT, memoFromInvoice, memoFromReturn, ty
 import { MEMO_STATUSES, type MemoStatus } from '../../../mocks/apCreditMemos';
 import { useDocTitle } from '../../../services/useDocTitle';
 import { ActivityTab } from '../../../components/activity/ActivityTab';
+import { NotFound, PrevNext, neighbours } from '../../../components/form/DetailNav';
 
 type Draft = Omit<ApCreditMemo, 'id'> & { id?: string };
 type TabId = 'contents' | 'logistics' | 'accounting';
@@ -182,16 +180,7 @@ function CreditMemoForm() {
 
   useDocTitle(draft?.docNum ? (isNew ? 'New A/P credit memo' : memoNumber(draft)) : undefined);
   if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading A/P credit memo…</Text>;
-  if (draft === null) {
-    return (
-      <Panel className="flex-1">
-        <PanelHeader icon="receipt" iconIntent="default" iconShape="rounded" iconSize={32} iconVariant="outline" title="A/P credit memo not found" />
-        <Panel.Body>
-          <Button onClick={() => navigate(MEMO_LIST_PATH)}>Back to credit memos</Button>
-        </Panel.Body>
-      </Panel>
-    );
-  }
+  if (draft === null) return <NotFound icon="receipt" title="A/P credit memo not found" backTo={MEMO_LIST_PATH} backLabel="Back to credit memos" />;
 
   const base = buildGrContext(draft, m);
   const added = draft.status !== 'Draft';
@@ -200,9 +189,7 @@ function CreditMemoForm() {
   const fx = draft.currency === 'PHP' ? 1 : added ? draft.fxRate : baseInvoice ? baseInvoice.fxRate : base.fx;
   const ctx = { ...base, fx, fxSource: baseInvoice && !added ? `invoice ${apNumber(baseInvoice)}'s rate` : base.fxSource };
   const { vendor } = ctx;
-  const at = draft.id ? siblings.indexOf(draft.docNum ? memoNumber(draft as ApCreditMemo) : draft.id) : -1;
-  const prevId = at > 0 ? siblings[at - 1] : undefined;
-  const nextId = at >= 0 && at < siblings.length - 1 ? siblings[at + 1] : undefined;
+  const { prevId, nextId } = neighbours(siblings, draft.id && (draft.docNum ? memoNumber(draft as ApCreditMemo) : draft.id));
   const errors: Errors = Object.fromEntries(problems.map((p) => [p.key, p.message]));
   const totals = memoTotals(draft, ctx.rateOf, ctx.isReverseCharge);
   const withholding = poWithholding(draft, vendor, m.items, m.tax, draft.postingDate);
@@ -355,18 +342,7 @@ function CreditMemoForm() {
             iconSize={32} iconVariant="outline"
             title={title}
             trailing={
-              isNew ? undefined : (
-                <ButtonGroup type="enclosed" intent="white" buttonIntent="default" buttonVariant="link">
-                  <IconButton type="button" label="Previous" size="small"
-                  shape="pill" disabled={!prevId} onClick={() => navigate(`${MEMO_LIST_PATH}/${prevId}`)}>
-                    {panelHeaderIcons.arrowUpward}
-                  </IconButton>
-                  <IconButton type="button" label="Next" size="small"
-                  shape="pill" disabled={!nextId} onClick={() => navigate(`${MEMO_LIST_PATH}/${nextId}`)}>
-                    {panelHeaderIcons.arrowDownward}
-                  </IconButton>
-                </ButtonGroup>
-              )
+              isNew ? undefined : <PrevNext path={MEMO_LIST_PATH} prevId={prevId} nextId={nextId} />
             }
             tabs={<Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={PAGES.map((p) => ({ ...p, disabled: isNew && p.value !== 'details' }))} />}
             status={isNew ? undefined : <Badge size="small" intent={MEMO_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}

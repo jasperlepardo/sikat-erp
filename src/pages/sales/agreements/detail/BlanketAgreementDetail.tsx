@@ -4,14 +4,11 @@ import {
   Alert,
   Badge,
   Button,
-  ButtonGroup,
   CardField,
   Form,
   Icon,
-  IconButton,
   Panel,
   PanelHeader,
-  panelHeaderIcons,
   Tabs,
   Text,
   type CardFieldOption,
@@ -40,6 +37,7 @@ import { DetailsTab } from './DetailsTab';
 import { DocumentsTab } from './DocumentsTab';
 import { BA_LIST_PATH, BA_STATUS_INTENT } from '../BlanketAgreementList';
 import type { BaDraft, BaMasters } from './types';
+import { NotFound, PrevNext, neighbours } from '../../../../components/form/DetailNav';
 
 type TabId = 'general' | 'details' | 'documents' | 'attachments' | 'recurring';
 const TABS: { value: TabId; label: string }[] = [
@@ -124,24 +122,13 @@ function BaForm() {
   if (draft === undefined || !m) {
     return <Text tone="muted" className="p-4">Loading…</Text>;
   }
-  if (draft === null) {
-    return (
-      <Panel className="flex-1">
-        <PanelHeader icon="description" iconIntent="default" iconShape="rounded" iconSize={32} iconVariant="outline" title="Agreement not found" />
-        <Panel.Body>
-          <Button onClick={() => navigate(BA_LIST_PATH)}>Back to agreements</Button>
-        </Panel.Body>
-      </Panel>
-    );
-  }
+  if (draft === null) return <NotFound icon="description" title="Agreement not found" backTo={BA_LIST_PATH} backLabel="Back to agreements" />;
 
   const readOnly = draft.status === 'Closed' || draft.status === 'Terminated';
   const added = draft.status !== 'Draft';
   const errors: Errors = Object.fromEntries(problems.map((p) => [p.key, p.message]));
 
-  const at = draft.id ? siblings.indexOf(draft.docNum ? baNumber(draft as BlanketAgreement) : draft.id) : -1;
-  const prevId = at > 0 ? siblings[at - 1] : undefined;
-  const nextId = at >= 0 && at < siblings.length - 1 ? siblings[at + 1] : undefined;
+  const { prevId, nextId } = neighbours(siblings, draft.id && (draft.docNum ? baNumber(draft as BlanketAgreement) : draft.id));
 
   const totals = baTotals(draft);
   const customer = m.customers.find((c) => c.id === draft.customerId);
@@ -267,16 +254,7 @@ function BaForm() {
           iconVariant="outline"
           title={title}
           trailing={
-            isNew ? undefined : (
-              <ButtonGroup type="enclosed" intent="white" buttonIntent="default" buttonVariant="link">
-                <IconButton type="button" label="Previous" size="small" shape="pill" disabled={!prevId} onClick={() => navigate(`${BA_LIST_PATH}/${prevId}`)}>
-                  {panelHeaderIcons.arrowUpward}
-                </IconButton>
-                <IconButton type="button" label="Next" size="small" shape="pill" disabled={!nextId} onClick={() => navigate(`${BA_LIST_PATH}/${nextId}`)}>
-                  {panelHeaderIcons.arrowDownward}
-                </IconButton>
-              </ButtonGroup>
-            )
+            isNew ? undefined : <PrevNext path={BA_LIST_PATH} prevId={prevId} nextId={nextId} />
           }
           status={isNew ? undefined : <Badge size="small" intent={BA_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
           actions={

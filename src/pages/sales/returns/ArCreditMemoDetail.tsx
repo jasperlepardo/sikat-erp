@@ -5,16 +5,13 @@ import {
   Alert,
   Badge,
   Button,
-  ButtonGroup,
   Checkbox,
   Combobox,
   Form,
   FormField,
-  IconButton,
   List,
   Panel,
   PanelHeader,
-  panelHeaderIcons,
   Select,
   Tabs,
   Text,
@@ -83,6 +80,7 @@ import { SalesDocumentFlow } from '../shared/SalesDocumentFlow';
 import { useDocTitle } from '../../../services/useDocTitle';
 import { AR_CM_LIST_PATH, ARCM_STATUS_INTENT } from './types';
 import { ActivityTab } from '../../../components/activity/ActivityTab';
+import { NotFound, PrevNext, neighbours } from '../../../components/form/DetailNav';
 
 type TabId = 'header';
 
@@ -241,16 +239,7 @@ function ArCreditMemoForm() {
 
   useDocTitle(draft?.docNum ? (isNew ? 'New A/R credit memo' : arCmNumber(draft as ArCreditMemo)) : undefined);
   if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading A/R credit memo…</Text>;
-  if (draft === null) {
-    return (
-      <Panel className="flex-1">
-        <PanelHeader icon="undo" iconIntent="default" iconShape="rounded" iconSize={32} iconVariant="outline" title="A/R credit memo not found" />
-        <Panel.Body>
-          <Button onClick={() => navigate(AR_CM_LIST_PATH)}>Back to credit memos</Button>
-        </Panel.Body>
-      </Panel>
-    );
-  }
+  if (draft === null) return <NotFound icon="undo" title="A/R credit memo not found" backTo={AR_CM_LIST_PATH} backLabel="Back to credit memos" />;
 
   const added = draft.status !== 'Draft';
   const date = draft.postingDate || todayISO();
@@ -262,9 +251,7 @@ function ArCreditMemoForm() {
     return c ? (rateAt(c, date) ?? 0) : 0;
   };
   const customer = m.customers.find((c) => c.id === draft.customerId);
-  const at = (draft as ArCreditMemo).id ? siblings.indexOf(draft.docNum ? arCmNumber(draft as ArCreditMemo) : (draft as ArCreditMemo).id) : -1;
-  const prevId = at > 0 ? siblings[at - 1] : undefined;
-  const nextId = at >= 0 && at < siblings.length - 1 ? siblings[at + 1] : undefined;
+  const { prevId, nextId } = neighbours(siblings, (draft as ArCreditMemo).id && (draft.docNum ? arCmNumber(draft as ArCreditMemo) : (draft as ArCreditMemo).id));
   const errors: Errors = Object.fromEntries(problems.map((p) => [p.key, p.message]));
   const totals = arCmTotals(draft, rateOf);
   const openBalance = round2(totals.total - draft.appliedAmount);
@@ -440,16 +427,7 @@ function ArCreditMemoForm() {
             iconSize={32} iconVariant="outline"
             title={title}
             trailing={
-              isNew ? undefined : (
-                <ButtonGroup type="enclosed" intent="white" buttonIntent="default" buttonVariant="link">
-                  <IconButton type="button" label="Previous" size="small" shape="pill" disabled={!prevId} onClick={() => navigate(`${AR_CM_LIST_PATH}/${prevId}`)}>
-                    {panelHeaderIcons.arrowUpward}
-                  </IconButton>
-                  <IconButton type="button" label="Next" size="small" shape="pill" disabled={!nextId} onClick={() => navigate(`${AR_CM_LIST_PATH}/${nextId}`)}>
-                    {panelHeaderIcons.arrowDownward}
-                  </IconButton>
-                </ButtonGroup>
-              )
+              isNew ? undefined : <PrevNext path={AR_CM_LIST_PATH} prevId={prevId} nextId={nextId} />
             }
             tabs={<Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={PAGES.map((p) => ({ ...p, disabled: isNew && p.value !== 'details' }))} />}
             status={isNew ? undefined : <Badge size="small" intent={ARCM_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}

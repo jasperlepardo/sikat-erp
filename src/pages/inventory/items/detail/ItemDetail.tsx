@@ -3,16 +3,13 @@ import { useLocation, useNavigate, useParams } from 'react-router';
 import {
   Badge,
   Button,
-  ButtonGroup,
   Combobox,
   Form,
   FormField,
   Icon,
-  IconButton,
   Link,
   Panel,
   PanelHeader,
-  panelHeaderIcons,
   Select,
   Tabs,
   TextField,
@@ -72,6 +69,7 @@ import { WarehousePanel, binErrorKey } from './WarehousesSection';
 import { uomDef } from '../../../settings/masterDefs';
 import { LOCKED_HINT, asOptions, valueIdOf, variantFromParent, type Draft, type TaxMasters } from './types';
 import { ItemActivityTab } from './ItemActivityTab';
+import { NotFound, PrevNext, neighbours } from '../../../../components/form/DetailNav';
 
 const LIST_PATH = '/inventory/items';
 
@@ -243,16 +241,7 @@ function ItemForm() {
   }, [id, isNew]);
 
   if (draft === undefined || !mastersReady) return <Text tone="muted" className="p-4">Loading item…</Text>;
-  if (draft === null) {
-    return (
-      <Panel className="flex-1">
-        <PanelHeader icon="inventory_2" iconIntent="default" iconShape="rounded" iconSize={32} iconVariant="outline" title="Item not found" />
-        <Panel.Body>
-          <Button onClick={() => navigate(LIST_PATH)}>Back to items</Button>
-        </Panel.Body>
-      </Panel>
-    );
-  }
+  if (draft === null) return <NotFound icon="inventory_2" title="Item not found" backTo={LIST_PATH} backLabel="Back to items" />;
 
   // A new inventory UoM replaces the old one among the item's units.
   const update = (patch: Partial<Draft>) => {
@@ -374,9 +363,7 @@ function ItemForm() {
     uoms: draft.uoms.length,
   };
   const ActiveTab = TABS.find((t) => t.value === tab)!.Component;
-  const at = draft.id ? siblings.indexOf(draft.id) : -1;
-  const prevId = at > 0 ? siblings[at - 1] : undefined;
-  const nextId = at >= 0 && at < siblings.length - 1 ? siblings[at + 1] : undefined;
+  const { prevId, nextId } = neighbours(siblings, draft.id);
 
   return (
     <>
@@ -390,30 +377,7 @@ function ItemForm() {
             iconSize={32} iconVariant="outline"
             title={isNew ? 'New item' : (draft.name || draft.description)}
             trailing={
-              isNew ? undefined : (
-                <ButtonGroup type="enclosed" intent="white" buttonIntent="default" buttonVariant="link">
-                  <IconButton
-                    type="button"
-                    label="Previous"
-                    size="small"
-                  shape="pill"
-                    disabled={!prevId}
-                    onClick={() => navigate(`${LIST_PATH}/${prevId}`)}
-                  >
-                    {panelHeaderIcons.arrowUpward}
-                  </IconButton>
-                  <IconButton
-                    type="button"
-                    label="Next"
-                    size="small"
-                  shape="pill"
-                    disabled={!nextId}
-                    onClick={() => navigate(`${LIST_PATH}/${nextId}`)}
-                  >
-                    {panelHeaderIcons.arrowDownward}
-                  </IconButton>
-                </ButtonGroup>
-              )
+              isNew ? undefined : <PrevNext path={LIST_PATH} prevId={prevId} nextId={nextId} />
             }
             tabs={
               <Tabs

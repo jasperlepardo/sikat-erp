@@ -5,13 +5,10 @@ import { useLocation, useNavigate, useParams } from 'react-router';
 import {
   Badge,
   Button,
-  ButtonGroup,
   Form,
-  IconButton,
   MultiSelect,
   Panel,
   PanelHeader,
-  panelHeaderIcons,
   Select,
   Tabs,
   TextField,
@@ -39,6 +36,7 @@ import { MoreMenu } from '../../../components/form/MoreMenu';
 import { ProblemsAlert, problemCollector, type Problem as ProblemBase } from '../../../components/form/ProblemsAlert';
 import { AgreementsSection } from './AgreementsSection';
 import { ActivityTab } from '../../../components/activity/ActivityTab';
+import { PrevNext, neighbours } from '../../../components/form/DetailNav';
 
 const TABS = [
   { value: 'settings', label: 'Settings', Component: SettingsTab },
@@ -290,9 +288,7 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
   ].filter((m) => m.show);
 
   const ActiveTab = TABS.find((t) => t.value === tab)!.Component;
-  const at = siblings.findIndex((p) => p.id === draft.id);
-  const prevId = at > 0 ? siblings[at - 1].id : undefined;
-  const nextId = at >= 0 && at < siblings.length - 1 ? siblings[at + 1].id : undefined;
+  const { prevId, nextId } = neighbours(siblings.map((p) => p.id), draft.id);
 
   return (
     <>
@@ -306,30 +302,7 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
             iconSize={32} iconVariant="outline"
             title={isNew ? `New ${config.singular.toLowerCase()}` : draft.name}
             trailing={
-              isNew ? undefined : (
-                <ButtonGroup type="enclosed" intent="white" buttonIntent="default" buttonVariant="link">
-                  <IconButton
-                    type="button"
-                    label="Previous"
-                    size="small"
-                  shape="pill"
-                    disabled={!prevId}
-                    onClick={() => navigate(`${config.basePath}/${prevId}`)}
-                  >
-                    {panelHeaderIcons.arrowUpward}
-                  </IconButton>
-                  <IconButton
-                    type="button"
-                    label="Next"
-                    size="small"
-                  shape="pill"
-                    disabled={!nextId}
-                    onClick={() => navigate(`${config.basePath}/${nextId}`)}
-                  >
-                    {panelHeaderIcons.arrowDownward}
-                  </IconButton>
-                </ButtonGroup>
-              )
+              isNew ? undefined : <PrevNext path={config.basePath} prevId={prevId} nextId={nextId} />
             }
             tabs={
               <Tabs
