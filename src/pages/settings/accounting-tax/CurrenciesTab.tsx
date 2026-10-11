@@ -8,7 +8,7 @@ import { CurrencyRateHistory } from './CurrencyRateHistory';
 import { newId, useCollectionRows } from '../../../services/useCollectionRows';
 
 /** Code, name and decimals checks, shared with "+ Add" on currency fields. */
-export function validateCurrency(c: Currency, all: Currency[]) {
+export function validateCurrency(c: Currency, all: readonly Currency[]) {
   const e: Record<string, string> = {};
   const code = c.code.trim().toUpperCase();
   if (!/^[A-Z]{3}$/.test(code)) e.code = 'Use the 3-letter ISO 4217 code, e.g. USD.';

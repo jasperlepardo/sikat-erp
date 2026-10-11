@@ -27,7 +27,7 @@ export interface MasterListProps<T extends { id: string }> {
   title: string;
   /** One line under the title: what the list is for. */
   description?: ReactNode;
-  rows: T[] | undefined;
+  rows: readonly T[] | undefined;
   /** Columns are sortable unless they set `sortable: false`. */
   columns: TableColumn<T>[];
   /** Text the search box matches against. */
@@ -49,7 +49,7 @@ export interface MasterListProps<T extends { id: string }> {
   /** `isNew` is false once the row is saved — lock key fields other records refer to. */
   editor: (row: T, update: (patch: Partial<T>) => void, errors: Errors, isNew: boolean) => ReactNode;
   /** Field errors for a row about to be saved (checked against all rows). */
-  validate: (row: T, all: T[]) => Errors;
+  validate: (row: T, all: readonly T[]) => Errors;
   onSave: (row: T) => Promise<void>;
   /** Makes rows selectable with "Activate / Deactivate selected". */
   onSetActive?: (rows: T[], active: boolean) => Promise<void>;
@@ -95,7 +95,7 @@ export const statusColumn = <T extends { active: boolean }>() => ({
 export function uniqueRequired<T extends { id: string }>(
   e: Errors,
   row: T,
-  all: T[],
+  all: readonly T[],
   key: keyof T & string,
   label: string,
 ) {

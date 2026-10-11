@@ -128,7 +128,7 @@ export function systemEntries(target: FeedTarget): Promise<FeedEntry[]> {
 const AUDIT_ICON = { created: 'add_circle', updated: 'edit', removed: 'delete' } as const;
 
 /** Changes made in the app to this record. */
-export const auditEntries = (target: FeedTarget, log: AuditEvent[]): FeedEntry[] => {
+export const auditEntries = (target: FeedTarget, log: readonly AuditEvent[]): FeedEntry[] => {
   const ids = [target.id, ...(target.ids ?? [])];
   return log
     .filter((e) => e.kind === target.kind && ids.includes(e.recordId))
@@ -144,7 +144,7 @@ export const auditEntries = (target: FeedTarget, log: AuditEvent[]): FeedEntry[]
 };
 
 /** Activities logged against this record (or, for a partner, for it). */
-export const activityEntries = (target: FeedTarget, all: Activity[], ownerName: (id: string) => string): FeedEntry[] => {
+export const activityEntries = (target: FeedTarget, all: readonly Activity[], ownerName: (id: string) => string): FeedEntry[] => {
   const ids = [target.id, ...(target.ids ?? [])];
   return all
     .filter((a) => isLinkedTo(a, target.kind, ids))

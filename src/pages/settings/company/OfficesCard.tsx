@@ -115,7 +115,7 @@ function OfficePanel({
 }: {
   value: Warehouse;
   isNew: boolean;
-  all: Warehouse[];
+  all: readonly Warehouse[];
   onCancel: () => void;
   onSaved: () => void;
 }) {

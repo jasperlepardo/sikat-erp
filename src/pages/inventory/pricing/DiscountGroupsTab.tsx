@@ -26,7 +26,7 @@ export function DiscountGroupsTab() {
   // Start from what's saved (again after a save elsewhere, unless there are edits).
   const dirty = draft !== undefined && JSON.stringify(draft) !== JSON.stringify(saved);
   useEffect(() => {
-    if (saved && !dirty) setDraft(saved);
+    if (saved && !dirty) setDraft([...saved]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [saved]);
 
@@ -142,7 +142,7 @@ export function DiscountGroupsTab() {
             <Button type="button" size="small" variant="outline" leadingIcon={<Icon size={16}>add</Icon>} disabled={!adding} onClick={addRow}>
               Add row
             </Button>
-            <Button type="button" size="small" variant="outline" disabled={!dirty || saving} onClick={() => setDraft(saved)}>
+            <Button type="button" size="small" variant="outline" disabled={!dirty || saving} onClick={() => setDraft(saved && [...saved])}>
               Cancel
             </Button>
             <Button type="button" size="small" intent="primary" variant="solid" disabled={!dirty || saving || invalid} onClick={save}>
