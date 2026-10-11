@@ -53,11 +53,6 @@ import { BOOKS_OPEN, stockHistory, withLineCosts, withStockHistory } from './sto
 import type { TaxMasterData } from './taxDetermination';
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
-const plusDays = (iso: string, days: number) => {
-  const d = new Date(`${iso}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
-};
 const nextMonth = (month: string, day: number) => {
   const [y, m] = month.split('-').map(Number);
   return `${m === 12 ? y + 1 : y}-${String((m % 12) + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
