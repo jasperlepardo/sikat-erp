@@ -72,7 +72,7 @@ import { formatDate, todayISO } from '../../../../services/dates';
 import { TotalNote, TotalRow } from '../../orders/detail/PurchaseOrderDetail';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
-import { PrevNext, neighbours } from '../../../../components/form/DetailNav';
+import { NotFound, PrevNext, neighbours } from '../../../../components/form/DetailNav';
 
 export const RFQ_LIST_PATH = '/purchasing/quotations';
 
@@ -205,15 +205,7 @@ function RfqForm() {
   );
 
   if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading purchase quotation…</Text>;
-  if (draft === null)
-    return (
-      <Panel className="flex-1">
-        <PanelHeader icon="description" iconIntent="default" iconShape="rounded" iconSize={32} iconVariant="outline" title="Purchase quotation not found" />
-        <Panel.Body>
-          <Button onClick={() => navigate(RFQ_LIST_PATH)}>Back to purchase quotations</Button>
-        </Panel.Body>
-      </Panel>
-    );
+  if (draft === null) return <NotFound icon="description" title="Purchase quotation not found" backTo={RFQ_LIST_PATH} backLabel="Back to purchase quotations" />;
 
   const ctx = buildContext(draft, m);
   const { prevId, nextId } = neighbours(siblings, draft.id && (draft.docNum ? rfqNumber(draft as Rfq) : draft.id));
