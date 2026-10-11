@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { Button, Combobox, Icon, IconButton, Link, Select, TableStatus, Text, TextField, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { Combobox, Icon, IconButton, Link, Select, TableStatus, Text, TextField, type TableColumn } from '@jasperlepardo/sikat-design-system';
 import { DataTable } from '../../../../components/form/DataTable';
 import { MasterLookup } from '../../../../components/form/MasterLookup';
 import { itemUnits, itemsPerUom } from '../../../../mocks/items';
-import { newSoLine, type SoLine } from '../../../../mocks/salesOrders';
+import type { SoLine } from '../../../../mocks/salesOrders';
 import { formatAmount } from '../../../../services/format';
 import { isValidToday } from '../../../../services/items';
 import { isPriceListValid } from '../../../../services/priceLists';
@@ -21,7 +21,9 @@ const num = (v: string) => (v === '' ? 0 : Number(v));
 
 export function ContentsTab({ draft, update, errors, m, ctx }: SoTabProps) {
   const [editing, setEditing] = useState<Set<string>>(new Set());
+  const [addKey, setAddKey] = useState(0);
   const lines = draft.lines;
+  const itemLines = lines.filter((l) => !!l.itemId);
   const allAgreements = useAsync(listBlanketAgreements, []);
   // Agreements for the current customer that are not Closed or Terminated.
   const customerAgreements = (allAgreements ?? []).filter(
@@ -320,36 +322,35 @@ export function ContentsTab({ draft, update, errors, m, ctx }: SoTabProps) {
 
   return (
     <DataTable
-      variant="card"
+      variant="plain"
       noPagination
       icon="list_alt"
       title="Contents"
       description={errors.lines ?? `Items in the sales unit. Unit prices are net of VAT in ${draft.currency}${draft.currency === 'PHP' ? '' : `; totals in PHP at ${ctx.fx ? `${ctx.fx} (${formatDate(ctx.fxDate)})` : '—'}`}. Open lines commit stock in their warehouse.`}
-      rows={lines}
+      rows={itemLines}
       getRowId={(l) => l.id}
       columns={itemColumns}
       unsortable={itemColumns.map((c) => c.key).filter((k) => k !== 'item')}
       sortValue={(l) => l.itemNo.toLowerCase()}
       onRemove={ctx.readOnly ? undefined : (picked) => update({ lines: lines.filter((l) => !picked.includes(l) || l.deliveredQty > 0) })}
-      actions={
-        ctx.readOnly ? null : (
-          <Button
-            type="button"
-            size="small"
-            intent="primary"
-            variant="solid"
-            leadingIcon={<Icon size={16}>add</Icon>}
-            disabled={!draft.customerId}
-            onClick={() => update({ lines: [...lines, newSoLine({ warehouse: '' })] })}
-          >
-            Add line
-          </Button>
+      empty={<Text variant="small" tone="muted">No lines yet.</Text>}
+      spanRow={
+        ctx.readOnly ? undefined : (
+          <Combobox
+            key={addKey}
+            aria-label="Search items to add a line"
+            placeholder="Search items to add a line…"
+            options={itemOptions('')}
+            value={null}
+            onValueChange={(id) => {
+              if (!id) return;
+              const item = m.items.find((i) => i.id === id);
+              if (!item) return;
+              update({ lines: [...itemLines, lineFromItem(item, draft, ctx, m, {})] });
+              setAddKey((k) => k + 1);
+            }}
+          />
         )
-      }
-      empty={
-        <Text variant="small" tone={errors.lines ? 'danger' : 'muted'}>
-          {draft.customerId ? 'No lines yet. Add a line and pick an item.' : 'Pick a customer first, then add lines.'}
-        </Text>
       }
     />
   );

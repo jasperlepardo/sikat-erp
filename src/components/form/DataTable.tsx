@@ -31,6 +31,11 @@ export interface DataTableProps<T> {
   variant?: 'plain' | 'card';
   /** Content above the table (card variant only), e.g. options that apply to every row. */
   children?: ReactNode;
+  /**
+   * A row that spans all columns, rendered at the bottom of the table Card.
+   * Uses a real `<td colSpan={N}>` that counts columns + the selection column dynamically.
+   */
+  spanRow?: ReactNode;
 }
 
 /** Page sizes every paginated table offers; tables open at `DEFAULT_PAGE_SIZE`. */
@@ -72,6 +77,7 @@ export function DataTable<T>({
   noPagination = false,
   variant = 'plain',
   children,
+  spanRow,
 }: DataTableProps<T>) {
   const [sort, setSort] = useState<TableSort | null>(null);
   const [page, setPage] = useState(1);
@@ -117,7 +123,7 @@ export function DataTable<T>({
       {actions}
     </div>
   );
-  const table = rows.length ? (
+  const table = rows.length || spanRow ? (
     <Card>
       <Table
         // The card variant names the table in its header; no hidden caption.
@@ -144,6 +150,7 @@ export function DataTable<T>({
             },
           },
         })}
+        {...(spanRow ? { footerRow: spanRow } : {})}
       />
     </Card>
   ) : (
