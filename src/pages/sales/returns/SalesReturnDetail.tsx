@@ -5,19 +5,16 @@ import {
   Alert,
   Badge,
   Button,
-  ButtonGroup,
   Card,
   Checkbox,
   Combobox,
   Form,
   FormField,
   Icon,
-  IconButton,
   Link,
   List,
   Panel,
   PanelHeader,
-  panelHeaderIcons,
   Select,
   Tabs,
   Text,
@@ -78,6 +75,7 @@ import { AR_CM_LIST_PATH, SR_LIST_PATH, SR_STATUS_INTENT } from './types';
 import { EditPanel } from '../../partners/detail/EditPanel';
 import type { Delivery } from '../../../mocks/deliveries';
 import { ActivityTab } from '../../../components/activity/ActivityTab';
+import { NotFound, PrevNext, neighbours } from '../../../components/form/DetailNav';
 
 type Draft = Omit<SalesReturn, 'id'> & { id?: string };
 type TabId = 'contents' | 'logistics' | 'accounting';
@@ -251,16 +249,7 @@ function SalesReturnForm() {
 
   useDocTitle(draft?.docNum ? (isNew ? 'New sales return' : srNumber(draft)) : undefined);
   if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading sales return…</Text>;
-  if (draft === null) {
-    return (
-      <Panel className="flex-1">
-        <PanelHeader icon="assignment_return" iconIntent="default" iconShape="rounded" iconSize={32} iconVariant="outline" title="Sales return not found" />
-        <Panel.Body>
-          <Button onClick={() => navigate(SR_LIST_PATH)}>Back to sales returns</Button>
-        </Panel.Body>
-      </Panel>
-    );
-  }
+  if (draft === null) return <NotFound icon="assignment_return" title="Sales return not found" backTo={SR_LIST_PATH} backLabel="Back to sales returns" />;
 
   const added = draft.status !== 'Draft';
   const date = draft.postingDate || todayISO();
@@ -272,9 +261,7 @@ function SalesReturnForm() {
     return c ? (rateAt(c, date) ?? 0) : 0;
   };
   const customer = m.customers.find((c) => c.id === draft.customerId);
-  const at = (draft as SalesReturn).id ? siblings.indexOf(draft.docNum ? srNumber(draft as SalesReturn) : (draft as SalesReturn).id) : -1;
-  const prevId = at > 0 ? siblings[at - 1] : undefined;
-  const nextId = at >= 0 && at < siblings.length - 1 ? siblings[at + 1] : undefined;
+  const { prevId, nextId } = neighbours(siblings, (draft as SalesReturn).id && (draft.docNum ? srNumber(draft as SalesReturn) : (draft as SalesReturn).id));
   const errors: Errors = Object.fromEntries(problems.map((p) => [p.key, p.message]));
   const totals = srTotals(draft, rateOf);
   const journal = fx ? srJournal(draft, m.items, m.inv.groups, added) : [];
@@ -560,16 +547,7 @@ function SalesReturnForm() {
             iconVariant="outline"
             title={title}
             trailing={
-              isNew ? undefined : (
-                <ButtonGroup type="enclosed" intent="white" buttonIntent="default" buttonVariant="link">
-                  <IconButton type="button" label="Previous" size="small" shape="pill" disabled={!prevId} onClick={() => navigate(`${SR_LIST_PATH}/${prevId}`)}>
-                    {panelHeaderIcons.arrowUpward}
-                  </IconButton>
-                  <IconButton type="button" label="Next" size="small" shape="pill" disabled={!nextId} onClick={() => navigate(`${SR_LIST_PATH}/${nextId}`)}>
-                    {panelHeaderIcons.arrowDownward}
-                  </IconButton>
-                </ButtonGroup>
-              )
+              isNew ? undefined : <PrevNext path={SR_LIST_PATH} prevId={prevId} nextId={nextId} />
             }
             tabs={<Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={PAGES.map((p) => ({ ...p, disabled: isNew && p.value !== 'details' }))} />}
             status={isNew ? undefined : <Badge size="small" intent={SR_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}

@@ -45,7 +45,7 @@ export function restrictionSummary(b: BinLocation) {
 }
 
 /** Field errors for a bin about to be saved. */
-function validateBin(b: BinLocation, all: BinLocation[], items: Item[]): Errors {
+function validateBin(b: BinLocation, all: readonly BinLocation[], items: Item[]): Errors {
   const e: Errors = {};
   if (!b.warehouse) e.warehouse = 'Pick a bin-enabled warehouse.';
   for (const t of SUBLEVEL_TIERS) if (!b[t]) e[t] = `${TIER_LABEL[t]} is required.`;

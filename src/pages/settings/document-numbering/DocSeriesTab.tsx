@@ -5,12 +5,8 @@ import { newId, useCollectionRows } from '../../../services/useCollectionRows';
 import type { ConditionField } from '../../../services/allSeries';
 import { ConditionBuilder } from '../components/ConditionBuilder';
 import { SegmentBuilder } from '../components/SegmentBuilder';
+import type { Collection } from '../../../services/store';
 
-type Collection = {
-  list: () => Promise<DocumentSeries[]>;
-  save: (r: DocumentSeries) => Promise<DocumentSeries>;
-  snapshot: () => readonly DocumentSeries[];
-};
 
 const blank = (): DocumentSeries => ({
   id: newId('ser'),
@@ -22,8 +18,8 @@ const blank = (): DocumentSeries => ({
   active: true,
 });
 
-export function DocSeriesTab({ collection, conditionFields, ...route }: { collection: Collection; conditionFields?: ConditionField[] } & ListRoute) {
-  const { rows, setActive, reload } = useCollectionRows(collection);
+export function DocSeriesTab({ collection, conditionFields, ...route }: { collection: Collection<DocumentSeries>; conditionFields?: ConditionField[] } & ListRoute) {
+  const { rows, setActive } = useCollectionRows(collection);
 
   const onSave = async (row: DocumentSeries) => {
     if (row.isDefault) {
@@ -35,7 +31,6 @@ export function DocSeriesTab({ collection, conditionFields, ...route }: { collec
       }
     }
     await collection.save(row);
-    reload();
   };
 
   return (

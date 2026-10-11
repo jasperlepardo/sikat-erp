@@ -41,6 +41,29 @@ interface StoredChanges<T> {
   removed: string[];
 }
 
+/** Bumped by every write to any collection: the key for values derived from several of them. */
+let storeVersion = 0;
+
+/**
+ * `build`, run once and shared until any collection changes — for values derived from many
+ * collections at once, such as the document link graph. A failed build isn't kept.
+ */
+export function cachedUntilChange<T>(build: () => Promise<T>): () => Promise<T> {
+  let at = -1;
+  let cached: Promise<T> | undefined;
+  return () => {
+    if (!cached || at !== storeVersion) {
+      at = storeVersion;
+      const pending = build();
+      cached = pending;
+      pending.catch(() => {
+        if (cached === pending) cached = undefined;
+      });
+    }
+    return cached;
+  };
+}
+
 export interface CollectionOptions {
   /** Record kind ('PO', 'ITEM', 'BP'…): log each save and removal in `auditLog` under it. */
   audit?: string;
@@ -65,7 +88,10 @@ export function createCollection<T extends { id: string }>(
   /** The records, loaded on first use. */
   const current = () => (loaded ??= load());
   const listeners = new Set<() => void>();
-  const changed = () => listeners.forEach((fn) => fn());
+  const changed = () => {
+    storeVersion++;
+    listeners.forEach((fn) => fn());
+  };
 
   function load(): T[] {
     const base = structuredClone(seed());

@@ -26,7 +26,7 @@ const today = () => todayISO();
 const fmt = (n: number) => n.toLocaleString('en-PH', { maximumFractionDigits: 6 });
 
 export function ExchangeRatesTab(route: ListRoute) {
-  const { rows, save, reload } = useCollectionRows(exchangeRates);
+  const { rows, save } = useCollectionRows(exchangeRates);
   const allCurrencies = useAsync(currencies.list, []) ?? [];
   const foreign = allCurrencies.filter((c) => !c.isLocal);
   // The list shows a column per active foreign currency; the rest are on the day's page.
@@ -44,7 +44,6 @@ export function ExchangeRatesTab(route: ListRoute) {
           onClose={() => setImporting(false)}
           onImported={() => {
             setImporting(false);
-            reload();
           }}
         />
       ) : null}
@@ -172,7 +171,7 @@ function BspImport({
   onClose,
   onImported,
 }: {
-  existing: ExchangeRate[];
+  existing: readonly ExchangeRate[];
   codes: string[];
   onClose: () => void;
   onImported: () => void;

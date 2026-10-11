@@ -219,11 +219,6 @@ export function LocationsTab({ basePath }: ListRoute) {
 
   const columns = locationColumns({ open, query, sublevels, items, showType: true });
 
-  const reloadBins = () => {
-    setTool(null);
-    binRows.reload();
-  };
-
   return (
     <>
       <div className="flex flex-wrap items-start justify-between gap-2 px-2 pt-2">
@@ -301,8 +296,8 @@ export function LocationsTab({ basePath }: ListRoute) {
           </Text>
         )}
       </Card>
-      {tool === 'generate' ? <GenerateBinsPanel onCancel={() => setTool(null)} onDone={reloadBins} /> : null}
-      {tool === 'modify' ? <ModifyBinCodesPanel onCancel={() => setTool(null)} onDone={reloadBins} /> : null}
+      {tool === 'generate' ? <GenerateBinsPanel onCancel={() => setTool(null)} onDone={() => setTool(null)} /> : null}
+      {tool === 'modify' ? <ModifyBinCodesPanel onCancel={() => setTool(null)} onDone={() => setTool(null)} /> : null}
     </>
   );
 }

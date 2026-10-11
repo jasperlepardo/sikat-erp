@@ -1,6 +1,6 @@
 import { Outlet, useLocation, useNavigate } from 'react-router';
-import { Navbar, Page, SideNav, useHoverIntent, useTheme, type NavbarMenuItem } from '@jasperlepardo/sikat-design-system';
-import { useEffect, useState } from 'react';
+import { Navbar, Page, SideNav, Text, useHoverIntent, useTheme, type NavbarMenuItem } from '@jasperlepardo/sikat-design-system';
+import { Suspense, useEffect, useState } from 'react';
 import { APPS, appNav, firstPageOf, leafForPath, moduleOf, pathOf } from './nav';
 import { SETTINGS_NAV, settingsLeafForPath, settingsModuleOf } from './settingsNav';
 import { useCollection } from '../components/form/MasterLookup';
@@ -118,7 +118,10 @@ export function AppShell() {
         )}
         {/* Bounded to the viewport so a Panel fills it and scrolls its own body; list tables then scroll their rows. */}
         <main className="flex h-[calc(100dvh-64px)] min-w-0 flex-1 flex-col gap-2 overflow-y-auto p-2 *:min-h-0">
-          <Outlet />
+          {/* Pages load on first visit (see router.tsx). */}
+          <Suspense fallback={<Text tone="muted" className="p-4">Loading…</Text>}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
     </Page>

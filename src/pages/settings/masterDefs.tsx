@@ -52,7 +52,7 @@ function namedDef(o: {
   description: string;
   placeholder?: string;
   /** Validation beyond "required and unique" (e.g. a size cap). */
-  check?: (row: NamedEntry, all: NamedEntry[], e: Errors) => void;
+  check?: (row: NamedEntry, all: readonly NamedEntry[], e: Errors) => void;
 }): MasterDef<NamedEntry> {
   return {
     collection: o.collection,

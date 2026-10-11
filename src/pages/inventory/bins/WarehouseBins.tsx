@@ -63,10 +63,6 @@ export function WarehouseBins({
     await binRows.setActive(picked, active);
     setSelected([]);
   };
-  const reload = () => {
-    setTool(null);
-    binRows.reload();
-  };
 
   const usesBins = warehouse.type === 'warehouse';
   const title = `Bin locations${own.length ? ` (${own.length})` : ''}`;
@@ -148,8 +144,8 @@ export function WarehouseBins({
           </Text>
         )}
       </Section>
-      {tool === 'generate' ? <GenerateBinsPanel warehouse={warehouse.code} onCancel={() => setTool(null)} onDone={reload} /> : null}
-      {tool === 'modify' ? <ModifyBinCodesPanel warehouse={warehouse.code} onCancel={() => setTool(null)} onDone={reload} /> : null}
+      {tool === 'generate' ? <GenerateBinsPanel warehouse={warehouse.code} onCancel={() => setTool(null)} onDone={() => setTool(null)} /> : null}
+      {tool === 'modify' ? <ModifyBinCodesPanel warehouse={warehouse.code} onCancel={() => setTool(null)} onDone={() => setTool(null)} /> : null}
     </>
   );
 }

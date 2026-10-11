@@ -4,17 +4,14 @@ import {
   Alert,
   Badge,
   Button,
-  ButtonGroup,
   Combobox,
   Form,
   FormField,
   Icon,
-  IconButton,
   Link,
   List,
   Panel,
   PanelHeader,
-  panelHeaderIcons,
   Select,
   Tabs,
   Text,
@@ -69,6 +66,7 @@ import { getSalesSettings } from '../../../services/salesOrders';
 import { SO_LIST_PATH } from '../orders/detail/types';
 import { SalesDocumentFlow } from '../shared/SalesDocumentFlow';
 import { ActivityTab } from '../../../components/activity/ActivityTab';
+import { NotFound, PrevNext, neighbours } from '../../../components/form/DetailNav';
 
 type Draft = Omit<Quotation, 'id'> & { id?: string };
 type TabId = 'contents' | 'logistics' | 'accounting';
@@ -204,14 +202,7 @@ function QuotationForm() {
   useDocTitle(draft?.docNum ? (isNew ? 'New quotation' : qtNumber(draft)) : undefined);
 
   if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading quotation…</Text>;
-  if (draft === null) {
-    return (
-      <Panel className="flex-1">
-        <PanelHeader icon="request_quote" iconIntent="default" iconShape="rounded" iconSize={32} iconVariant="outline" title="Quotation not found" />
-        <Panel.Body><Button onClick={() => navigate(QT_LIST_PATH)}>Back to quotations</Button></Panel.Body>
-      </Panel>
-    );
-  }
+  if (draft === null) return <NotFound icon="request_quote" title="Quotation not found" backTo={QT_LIST_PATH} backLabel="Back to quotations" />;
 
   const added = draft.status !== 'Draft';
   const readOnly = draft.status === 'Closed' || draft.status === 'Cancelled';
@@ -225,9 +216,7 @@ function QuotationForm() {
     return c ? (rateAt(c, date) ?? 0) : 0;
   };
   const customer = m.customers.find((c) => c.id === draft.customerId);
-  const at = (draft as Quotation).id ? siblings.indexOf(draft.docNum ? qtNumber(draft as Quotation) : (draft as Quotation).id) : -1;
-  const prevId = at > 0 ? siblings[at - 1] : undefined;
-  const nextId = at >= 0 && at < siblings.length - 1 ? siblings[at + 1] : undefined;
+  const { prevId, nextId } = neighbours(siblings, (draft as Quotation).id && (draft.docNum ? qtNumber(draft as Quotation) : (draft as Quotation).id));
   const errors: Errors = Object.fromEntries(problems.map((p) => [p.key, p.message]));
   const totals = qtTotals(draft, rateOf);
   const net = (l: QuoteLine) => round2(l.quantity * l.unitPrice * (1 - l.discountPct / 100));
@@ -440,12 +429,7 @@ function QuotationForm() {
           iconVariant="outline"
           title={title}
           trailing={
-            isNew ? undefined : (
-              <ButtonGroup type="enclosed" intent="white" buttonIntent="default" buttonVariant="link">
-                <IconButton type="button" label="Previous" size="small" shape="pill" disabled={!prevId} onClick={() => navigate(`${QT_LIST_PATH}/${prevId}`)}>{panelHeaderIcons.arrowUpward}</IconButton>
-                <IconButton type="button" label="Next" size="small" shape="pill" disabled={!nextId} onClick={() => navigate(`${QT_LIST_PATH}/${nextId}`)}>{panelHeaderIcons.arrowDownward}</IconButton>
-              </ButtonGroup>
-            )
+            isNew ? undefined : <PrevNext path={QT_LIST_PATH} prevId={prevId} nextId={nextId} />
           }
           tabs={<Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={PAGES.map((p) => ({ ...p, disabled: isNew && p.value !== 'details' }))} />}
           status={

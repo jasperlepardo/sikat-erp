@@ -1,4 +1,5 @@
 import { arNumber, arTotal, listArInvoices } from '../../../services/arInvoices';
+import { cachedUntilChange } from '../../../services/store';
 import { arCmNumber, arCmTotal, listArCreditMemos } from '../../../services/arCreditMemos';
 import { dnNumber, dnTotal, listDeliveries } from '../../../services/deliveries';
 import { amountDue, listIncomingPayments, incomingNumber } from '../../../services/incomingPayments';
@@ -185,9 +186,14 @@ const SOURCES: Record<SalesDocKind, () => Promise<DocNode[]>> = {
   },
 };
 
-/** Every sales document, as graph nodes. */
+/**
+ * Every sales document, as graph nodes. Built once and shared until any collection changes (the
+ * Activity tabs, document flows and CRM › Activities all ask for it), so treat the nodes as read-only.
+ */
+const allSalesDocNodes = cachedUntilChange(async () => (await Promise.all(Object.values(SOURCES).map((load) => load()))).flat() as DocNode[]);
+
 export async function salesDocNodes(): Promise<DocNode[]> {
-  return (await Promise.all(Object.values(SOURCES).map((load) => load()))).flat() as DocNode[];
+  return [...(await allSalesDocNodes())];
 }
 
 export async function linkedSalesDocuments(kind: SalesDocKind, id: string): Promise<LinkedDocument[]> {

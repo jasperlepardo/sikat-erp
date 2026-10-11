@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { Alert, Badge, Button, ButtonGroup, Checkbox, Combobox, Form, FormField, IconButton, List, Panel, PanelHeader, panelHeaderIcons, Select, Tabs, Text, TextField } from '@jasperlepardo/sikat-design-system';
+import { Alert, Badge, Button, Checkbox, Combobox, Form, FormField, List, Panel, PanelHeader, Select, Tabs, Text, TextField } from '@jasperlepardo/sikat-design-system';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { Fields, ReadOnly, Section, bind, type Errors } from '../../../../components/form/fields';
 import { StatusField } from '../../../../components/form/StatusField';
@@ -52,6 +52,7 @@ import { SalesDocumentFlow } from '../../shared/SalesDocumentFlow';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { AR_CM_LIST_PATH } from '../../returns/types';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
+import { NotFound, PrevNext, neighbours } from '../../../../components/form/DetailNav';
 
 type TabId = 'contents' | 'logistics' | 'accounting' | 'attachments';
 const TAB_LABEL: Record<TabId, string> = { contents: 'Contents', logistics: 'Logistics', accounting: 'Accounting', attachments: 'Attachments' };
@@ -164,16 +165,7 @@ function ArInvoiceForm() {
 
   useDocTitle(draft?.docNum ? (isNew ? 'New A/R invoice' : draft.status === 'Draft' ? 'Draft A/R invoice' : arNumber(draft)) : undefined);
   if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading invoice…</Text>;
-  if (draft === null) {
-    return (
-      <Panel className="flex-1">
-        <PanelHeader icon="receipt" iconIntent="default" iconShape="rounded" iconSize={32} iconVariant="outline" title="A/R invoice not found" />
-        <Panel.Body>
-          <Button onClick={() => navigate(AR_LIST_PATH)}>Back to invoices</Button>
-        </Panel.Body>
-      </Panel>
-    );
-  }
+  if (draft === null) return <NotFound icon="receipt" title="A/R invoice not found" backTo={AR_LIST_PATH} backLabel="Back to invoices" />;
 
   const ctx = buildArContext(draft, m);
   const { customer } = ctx;
@@ -185,9 +177,7 @@ function ArInvoiceForm() {
   const wtax = Math.round(withholding.reduce((n, w) => n + w.amount, 0) * 100) / 100;
   const balance = balanceDue(totals.total, wtax, draft.appliedAmount);
   const journal = ctx.fx ? arJournal(draft, ctx.fx, { items: m.items, groups: m.inv.groups, codes: m.tax.codes, rateOf: ctx.rateOf, withholding, roundingRule: docCurrency?.rounding }, ctx.added) : [];
-  const at = draft.id ? siblings.indexOf(draft.docNum ? arNumber(draft as ArInvoice) : draft.id) : -1;
-  const prevId = at > 0 ? siblings[at - 1] : undefined;
-  const nextId = at >= 0 && at < siblings.length - 1 ? siblings[at + 1] : undefined;
+  const { prevId, nextId } = neighbours(siblings, draft.id && (draft.docNum ? arNumber(draft as ArInvoice) : draft.id));
 
   const update = (patch: Partial<ArDraft>) => setDraft({ ...draft, ...patch });
   const h = bind(draft, update);
@@ -345,18 +335,7 @@ function ArInvoiceForm() {
           iconSize={32} iconVariant="outline"
           title={title}
           trailing={
-            isNew ? undefined : (
-              <ButtonGroup type="enclosed" intent="white" buttonIntent="default" buttonVariant="link">
-                <IconButton type="button" label="Previous" size="small"
-                  shape="pill" disabled={!prevId} onClick={() => navigate(`${AR_LIST_PATH}/${prevId}`)}>
-                  {panelHeaderIcons.arrowUpward}
-                </IconButton>
-                <IconButton type="button" label="Next" size="small"
-                  shape="pill" disabled={!nextId} onClick={() => navigate(`${AR_LIST_PATH}/${nextId}`)}>
-                  {panelHeaderIcons.arrowDownward}
-                </IconButton>
-              </ButtonGroup>
-            )
+            isNew ? undefined : <PrevNext path={AR_LIST_PATH} prevId={prevId} nextId={nextId} />
           }
           tabs={<Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={PAGES.map((p) => ({ ...p, disabled: isNew && p.value !== 'details' }))} />}
           status={isNew ? undefined : <Badge size="small" intent={AR_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}

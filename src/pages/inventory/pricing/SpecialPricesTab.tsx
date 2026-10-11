@@ -38,7 +38,7 @@ const termsError = (t: { unitPrice: number | null; discountPct: number | null })
           ? 'needs a discount of 0–100%'
           : undefined;
 
-function validate(s: SpecialPriceSet, all: SpecialPriceSet[], items: Item[]): Errors {
+function validate(s: SpecialPriceSet, all: readonly SpecialPriceSet[], items: Item[]): Errors {
   const e: Errors = {};
   const itemNo = (id: string) => items.find((i) => i.id === id)?.itemNo ?? 'An item';
   if (!s.partnerId) e.partnerId = 'Business partner is required.';

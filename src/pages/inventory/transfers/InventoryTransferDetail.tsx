@@ -4,15 +4,12 @@ import {
   Alert,
   Badge,
   Button,
-  ButtonGroup,
   Combobox,
   Form,
   FormField,
-  IconButton,
   List,
   Panel,
   PanelHeader,
-  panelHeaderIcons,
   Select,
   Text,
 } from '@jasperlepardo/sikat-design-system';
@@ -54,6 +51,7 @@ import { salesEmployeeDef } from '../../settings/masterDefs';
 import { binsOf, receivingBin, transferBlock } from '../../../services/binLocations';
 import { TransferLines, binFor, binOptions, warehouseOptions, type TransferDraft, type TransferMasters } from './TransferLines';
 import { useDocTitle } from '../../../services/useDocTitle';
+import { NotFound, PrevNext, neighbours } from '../../../components/form/DetailNav';
 
 export const TRANSFER_LIST_PATH = '/inventory/stock-movements';
 
@@ -148,22 +146,11 @@ function TransferForm() {
 
   useDocTitle(draft?.docNum ? (isNew ? 'New inventory transfer' : transferNumber(draft)) : undefined);
   if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading transfer…</Text>;
-  if (draft === null) {
-    return (
-      <Panel className="flex-1">
-        <PanelHeader icon="move_down" iconIntent="default" iconShape="rounded" iconSize={32} iconVariant="outline" title="Transfer not found" />
-        <Panel.Body>
-          <Button onClick={() => navigate(TRANSFER_LIST_PATH)}>Back to stock movements</Button>
-        </Panel.Body>
-      </Panel>
-    );
-  }
+  if (draft === null) return <NotFound icon="move_down" title="Transfer not found" backTo={TRANSFER_LIST_PATH} backLabel="Back to stock movements" />;
 
   const posted = draft.status === 'Posted';
   const errors: Errors = Object.fromEntries(problems.map((p) => [p.key, p.message]));
-  const at = draft.id ? siblings.indexOf(draft.id) : -1;
-  const prevId = at > 0 ? siblings[at - 1] : undefined;
-  const nextId = at >= 0 && at < siblings.length - 1 ? siblings[at + 1] : undefined;
+  const { prevId, nextId } = neighbours(siblings, draft.id);
   const whOf = (code: string) => m.warehouses.find((w) => w.code === code);
   const to = whOf(draft.toWarehouse);
   const journal = transferJournal(draft, m.items, m.groups);
@@ -298,16 +285,7 @@ function TransferForm() {
           iconVariant="outline"
           title={title}
           trailing={
-            isNew ? undefined : (
-              <ButtonGroup type="enclosed" intent="white" buttonIntent="default" buttonVariant="link">
-                <IconButton type="button" label="Previous" size="small" shape="pill" disabled={!prevId} onClick={() => navigate(`${TRANSFER_LIST_PATH}/${prevId}`)}>
-                  {panelHeaderIcons.arrowUpward}
-                </IconButton>
-                <IconButton type="button" label="Next" size="small" shape="pill" disabled={!nextId} onClick={() => navigate(`${TRANSFER_LIST_PATH}/${nextId}`)}>
-                  {panelHeaderIcons.arrowDownward}
-                </IconButton>
-              </ButtonGroup>
-            )
+            isNew ? undefined : <PrevNext path={TRANSFER_LIST_PATH} prevId={prevId} nextId={nextId} />
           }
           status={isNew ? undefined : <Badge size="small" intent={TRANSFER_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
           actions={

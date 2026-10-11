@@ -5,15 +5,12 @@ import {
   Alert,
   Badge,
   Button,
-  ButtonGroup,
   Combobox,
   Form,
   FormField,
-  IconButton,
   List,
   Panel,
   PanelHeader,
-  panelHeaderIcons,
   Select,
   Tabs,
   Text,
@@ -75,6 +72,7 @@ import { ApContents } from './ApContents';
 import { linesFromReceipt, orderNumbersOf, toApLine, type ApContext, type ApDraft, type ApMasters } from './types';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
+import { NotFound, PrevNext, neighbours } from '../../../../components/form/DetailNav';
 
 export const AP_LIST_PATH = '/purchasing/bills';
 
@@ -229,23 +227,12 @@ function ApInvoiceForm() {
 
   useDocTitle(draft?.docNum ? (isNew ? 'New A/P invoice' : draft.docNum ? apNumber(draft) : 'Draft A/P invoice') : undefined);
   if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading A/P invoice…</Text>;
-  if (draft === null) {
-    return (
-      <Panel className="flex-1">
-        <PanelHeader icon="request_quote" iconIntent="default" iconShape="rounded" iconSize={32} iconVariant="outline" title="A/P invoice not found" />
-        <Panel.Body>
-          <Button onClick={() => navigate(AP_LIST_PATH)}>Back to bills</Button>
-        </Panel.Body>
-      </Panel>
-    );
-  }
+  if (draft === null) return <NotFound icon="request_quote" title="A/P invoice not found" backTo={AP_LIST_PATH} backLabel="Back to bills" />;
 
   const ctx = buildGrContext(draft, m);
   const { vendor } = ctx;
   const added = draft.status !== 'Draft';
-  const at = draft.id ? siblings.indexOf(draft.docNum ? apNumber(draft as ApInvoice) : draft.id) : -1;
-  const prevId = at > 0 ? siblings[at - 1] : undefined;
-  const nextId = at >= 0 && at < siblings.length - 1 ? siblings[at + 1] : undefined;
+  const { prevId, nextId } = neighbours(siblings, draft.id && (draft.docNum ? apNumber(draft as ApInvoice) : draft.id));
   const errors: Errors = Object.fromEntries(problems.map((p) => [p.key, p.message]));
   const docCurrency = m.currencies.find((c) => c.code === draft.currency);
   const totals = apTotals(draft, ctx.rateOf, docCurrency?.rounding, ctx.isReverseCharge);
@@ -431,18 +418,7 @@ function ApInvoiceForm() {
           iconSize={32} iconVariant="outline"
           title={title}
           trailing={
-            isNew ? undefined : (
-              <ButtonGroup type="enclosed" intent="white" buttonIntent="default" buttonVariant="link">
-                <IconButton type="button" label="Previous" size="small"
-                  shape="pill" disabled={!prevId} onClick={() => navigate(`${AP_LIST_PATH}/${prevId}`)}>
-                  {panelHeaderIcons.arrowUpward}
-                </IconButton>
-                <IconButton type="button" label="Next" size="small"
-                  shape="pill" disabled={!nextId} onClick={() => navigate(`${AP_LIST_PATH}/${nextId}`)}>
-                  {panelHeaderIcons.arrowDownward}
-                </IconButton>
-              </ButtonGroup>
-            )
+            isNew ? undefined : <PrevNext path={AP_LIST_PATH} prevId={prevId} nextId={nextId} />
           }
           tabs={<Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={PAGES.map((p) => ({ ...p, disabled: isNew && p.value !== 'details' }))} />}
           status={

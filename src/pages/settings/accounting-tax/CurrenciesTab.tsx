@@ -8,7 +8,7 @@ import { CurrencyRateHistory } from './CurrencyRateHistory';
 import { newId, useCollectionRows } from '../../../services/useCollectionRows';
 
 /** Code, name and decimals checks, shared with "+ Add" on currency fields. */
-export function validateCurrency(c: Currency, all: Currency[]) {
+export function validateCurrency(c: Currency, all: readonly Currency[]) {
   const e: Record<string, string> = {};
   const code = c.code.trim().toUpperCase();
   if (!/^[A-Z]{3}$/.test(code)) e.code = 'Use the 3-letter ISO 4217 code, e.g. USD.';
@@ -36,7 +36,7 @@ export const blankCurrency = (): Currency => ({
 });
 
 export function CurrenciesTab(route: ListRoute) {
-  const { rows, save, setActive, reload } = useCollectionRows(currencies);
+  const { rows, save, setActive } = useCollectionRows(currencies);
   const rates = useAsync(exchangeRates.list, []) ?? [];
 
   return (
@@ -111,7 +111,6 @@ export function CurrenciesTab(route: ListRoute) {
           }
         }
         await save({ ...c, code: c.code.trim().toUpperCase() });
-        reload();
       }}
       editor={(c, update, errors) => {
         const f = bind(c, update);

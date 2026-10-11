@@ -56,6 +56,7 @@ src/
       ProblemsAlert.tsx   Validation error alert with tab links
       MoreMenu.tsx        "You can also" actions dropdown
       RowMenu.tsx         Row "⋯" actions dropdown
+      DetailNav.tsx       PrevNext, neighbours(), NotFound for detail pages
   data/psgc/    Philippine Standard Geographic Code data
   mocks/        Type definitions + seed data (items, partners, taxes, POs, etc.)
   pages/        Feature pages
@@ -89,7 +90,7 @@ src/
 
 ## Routes
 
-All routes use hash routing (`/#/…`). Defined in `src/app/router.tsx`.
+All routes use hash routing (`/#/…`). Defined in `src/app/router.tsx`; pages other than Home load on first visit (`page()` → `React.lazy`, Suspense in AppShell).
 
 | Route | Page |
 |---|---|
@@ -130,9 +131,10 @@ createCollection<T>(storageKey, seed, idPrefix, { audit?: kind })
 
 - Reads/writes `localStorage`; fake 250ms latency on async calls
 - `subscribe()` fires when any screen saves → other screens' pickers reload live
-- `useCollection(collection)` hook returns `T[] | undefined` (undefined while loading)
+- `useCollection(collection)` hook returns the store's live `readonly T[]` (via `useSyncExternalStore`): shared by every picker, no fetch or clone. Don't mutate it; copy before editing
 - `useAsync<T>(load, deps)` runs async on mount/deps change; returns `undefined` while loading
-- `useCollectionRows(collection)` returns `{ rows, save, setActive, reload }`
+- `useCollectionRows(collection)` returns `{ rows, save, setActive }`; rows are live, so no reload after a save
+- `cachedUntilChange(build)` shares a value derived from many collections until any collection is written (the document link graph uses it)
 - **`SEED_VERSION`** (top of `store.ts`): a saved collection overrides its seed forever, so **bump it whenever a file in `src/mocks` changes**. A browser on an older version drops every `sikat-erp:` key once and reloads the seed.
 - Storage keeps only what changed from the seed (saved records and removed ids), so seeds can be large.
 - `{ audit: 'PO' }` logs every save and removal to `auditLog` (who, when, `describeChanges()`: status, posting, changed fields). On for items (`ITEM`), partners (`BP`) and every sales and purchasing document collection. The log holds only changes made in the app; seeded history is derived from the documents.

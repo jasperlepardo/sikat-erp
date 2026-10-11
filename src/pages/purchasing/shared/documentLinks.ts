@@ -1,4 +1,5 @@
 import { grNumber, grTotal, listGoodsReceipts } from '../../../services/goodsReceipts';
+import { cachedUntilChange } from '../../../services/store';
 import { taxCodes } from '../../../services/masterData';
 import { listPurchaseOrders, poNumber, poTotal } from '../../../services/purchaseOrders';
 import { listPurchaseRequests, prNumber } from '../../../services/purchaseRequests';
@@ -256,9 +257,14 @@ const SOURCES: Record<DocKind, () => Promise<DocNode[]>> = {
   },
 };
 
-/** Every purchasing document, as graph nodes. */
+/**
+ * Every purchasing document, as graph nodes. Built once and shared until any collection changes (the
+ * Activity tabs, document flows and CRM › Activities all ask for it), so treat the nodes as read-only.
+ */
+const allPurchaseDocNodes = cachedUntilChange(async () => (await Promise.all(Object.values(SOURCES).map((load) => load()))).flat());
+
 export async function purchaseDocNodes(): Promise<DocNode[]> {
-  return (await Promise.all(Object.values(SOURCES).map((load) => load()))).flat();
+  return [...(await allPurchaseDocNodes())];
 }
 
 /** Every document linked to this one, however far back or forward. See `lineage`. */

@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { Alert, Badge, Button, ButtonGroup, Form, IconButton, Panel, PanelHeader, panelHeaderIcons, Tabs, Text } from '@jasperlepardo/sikat-design-system';
+import { Alert, Badge, Button, Form, Panel, PanelHeader, Tabs, Text } from '@jasperlepardo/sikat-design-system';
 import { AttachmentsCard } from '../../../components/form/AttachmentsCard';
 import { Fields, Section, bind, type Errors } from '../../../components/form/fields';
 import { MoreMenu, type MoreMenuItem } from '../../../components/form/MoreMenu';
@@ -23,6 +23,7 @@ import {
 import { accounts as accountsCollection, taxCodes as taxCodesCollection } from '../../../services/masterData';
 import { listPartners } from '../../../services/partners';
 import { JeHeaderSections, JeRowsTable, jeProblems, rowsToPost, type JeMasters } from './JeEditor';
+import { NotFound, PrevNext, neighbours } from '../../../components/form/DetailNav';
 
 export const JE_LIST_PATH = '/accounting/journal-entries';
 
@@ -66,16 +67,7 @@ function JournalEntryForm() {
   }, [id, isNew]);
 
   if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading journal entry…</Text>;
-  if (draft === null) {
-    return (
-      <Panel className="flex-1">
-        <PanelHeader icon="menu_book" iconIntent="default" iconShape="rounded" iconSize={32} iconVariant="outline" title="Journal entry not found" />
-        <Panel.Body>
-          <Button onClick={() => navigate(JE_LIST_PATH)}>Back to journal entries</Button>
-        </Panel.Body>
-      </Panel>
-    );
-  }
+  if (draft === null) return <NotFound icon="menu_book" title="Journal entry not found" backTo={JE_LIST_PATH} backLabel="Back to journal entries" />;
 
   const posted = Boolean(draft.number);
   const manual = draft.origin === 'JE';
@@ -84,9 +76,7 @@ function JournalEntryForm() {
   const lines = posted ? draft.lines : withAutoTax(draft, m.codes);
   const totals = jeTotals(lines);
   const sorted = [...all].sort((a, b) => b.transNo - a.transNo).map((e) => e.id);
-  const at = draft.id ? sorted.indexOf(draft.id) : -1;
-  const prevId = at > 0 ? sorted[at - 1] : undefined;
-  const nextId = at >= 0 && at < sorted.length - 1 ? sorted[at + 1] : undefined;
+  const { prevId, nextId } = neighbours(sorted, draft.id);
   const reversedBy = all.find((e) => e.id === draft.reversedBy);
   const reverses = all.find((e) => e.id === draft.reverses);
   const originPath = ORIGIN_PATH[draft.origin];
@@ -166,18 +156,7 @@ function JournalEntryForm() {
           iconSize={32} iconVariant="outline"
           title={title}
           trailing={
-            isNew ? undefined : (
-              <ButtonGroup type="enclosed" intent="white" buttonIntent="default" buttonVariant="link">
-                <IconButton type="button" label="Previous" size="small"
-                  shape="pill" disabled={!prevId} onClick={() => navigate(`${JE_LIST_PATH}/${prevId}`)}>
-                  {panelHeaderIcons.arrowUpward}
-                </IconButton>
-                <IconButton type="button" label="Next" size="small"
-                  shape="pill" disabled={!nextId} onClick={() => navigate(`${JE_LIST_PATH}/${nextId}`)}>
-                  {panelHeaderIcons.arrowDownward}
-                </IconButton>
-              </ButtonGroup>
-            )
+            isNew ? undefined : <PrevNext path={JE_LIST_PATH} prevId={prevId} nextId={nextId} />
           }
           tabs={
             <Tabs

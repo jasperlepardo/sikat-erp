@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { Alert, Badge, Button, ButtonGroup, Checkbox, Combobox, Form, FormField, IconButton, List, Panel, PanelHeader, panelHeaderIcons, Select, Tabs, Text, TextField } from '@jasperlepardo/sikat-design-system';
+import { Alert, Badge, Button, Checkbox, Combobox, Form, FormField, List, Panel, PanelHeader, Select, Tabs, Text, TextField } from '@jasperlepardo/sikat-design-system';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { Fields, ReadOnly, Section, bind, type Errors } from '../../../../components/form/fields';
 import { StatusField } from '../../../../components/form/StatusField';
@@ -33,6 +33,7 @@ import { SalesDocumentFlow } from '../../shared/SalesDocumentFlow';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { SR_LIST_PATH } from '../../returns/types';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
+import { NotFound, PrevNext, neighbours } from '../../../../components/form/DetailNav';
 
 type TabId = 'contents' | 'logistics' | 'accounting' | 'attachments';
 const TAB_LABEL: Record<TabId, string> = { contents: 'Contents', logistics: 'Logistics', accounting: 'Accounting', attachments: 'Attachments' };
@@ -119,16 +120,7 @@ function DeliveryForm() {
 
   useDocTitle(draft?.docNum ? (isNew ? 'New delivery' : draft.status === 'Draft' ? 'Draft delivery' : dnNumber(draft)) : undefined);
   if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading delivery…</Text>;
-  if (draft === null) {
-    return (
-      <Panel className="flex-1">
-        <PanelHeader icon="local_shipping" iconIntent="default" iconShape="rounded" iconSize={32} iconVariant="outline" title="Delivery not found" />
-        <Panel.Body>
-          <Button onClick={() => navigate(DN_LIST_PATH)}>Back to deliveries</Button>
-        </Panel.Body>
-      </Panel>
-    );
-  }
+  if (draft === null) return <NotFound icon="local_shipping" title="Delivery not found" backTo={DN_LIST_PATH} backLabel="Back to deliveries" />;
 
   const ctx = buildDnContext(draft, m);
   const { customer } = ctx;
@@ -137,9 +129,7 @@ function DeliveryForm() {
   const docCurrency = m.currencies.find((c) => c.code === draft.currency);
   const totals = dnTotals(draft, ctx.rateOf, docCurrency?.rounding);
   const journal = dnJournal(draft, m.items, m.inv.groups, ctx.added);
-  const at = draft.id ? siblings.indexOf(draft.docNum ? dnNumber(draft as Delivery) : draft.id) : -1;
-  const prevId = at > 0 ? siblings[at - 1] : undefined;
-  const nextId = at >= 0 && at < siblings.length - 1 ? siblings[at + 1] : undefined;
+  const { prevId, nextId } = neighbours(siblings, draft.id && (draft.docNum ? dnNumber(draft as Delivery) : draft.id));
   const baseOrders = [...new Set(draft.lines.map((l) => l.baseId).filter(Boolean))];
 
   const update = (patch: Partial<DnDraft>) => setDraft({ ...draft, ...patch });
@@ -258,18 +248,7 @@ function DeliveryForm() {
           iconSize={32} iconVariant="outline"
           title={title}
           trailing={
-            isNew ? undefined : (
-              <ButtonGroup type="enclosed" intent="white" buttonIntent="default" buttonVariant="link">
-                <IconButton type="button" label="Previous" size="small"
-                  shape="pill" disabled={!prevId} onClick={() => navigate(`${DN_LIST_PATH}/${prevId}`)}>
-                  {panelHeaderIcons.arrowUpward}
-                </IconButton>
-                <IconButton type="button" label="Next" size="small"
-                  shape="pill" disabled={!nextId} onClick={() => navigate(`${DN_LIST_PATH}/${nextId}`)}>
-                  {panelHeaderIcons.arrowDownward}
-                </IconButton>
-              </ButtonGroup>
-            )
+            isNew ? undefined : <PrevNext path={DN_LIST_PATH} prevId={prevId} nextId={nextId} />
           }
           tabs={<Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={PAGES.map((p) => ({ ...p, disabled: isNew && p.value !== 'details' }))} />}
           status={isNew ? undefined : <Badge size="small" intent={DN_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}

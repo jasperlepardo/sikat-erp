@@ -2,12 +2,9 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import {
   Button,
-  ButtonGroup,
-  IconButton,
   Panel,
   PanelHeader,
   Text,
-  panelHeaderIcons,
 } from '@jasperlepardo/sikat-design-system';
 import { Section, type Errors } from '../../../components/form/fields';
 import { MasterDefList } from '../../../components/form/MasterLookup';
@@ -20,6 +17,7 @@ import { companyDef } from '../masterDefs';
 import { companies } from '../../../services/companies';
 import { companyTax } from '../../../services/masterData';
 import { useAsync } from '../../../services/useAsync';
+import { PrevNext } from '../../../components/form/DetailNav';
 
 /** Companies list; when a record is open, a two-card company detail page. */
 export function CompaniesTab({ basePath, recordId }: ListRoute) {
@@ -91,30 +89,7 @@ function CompanyDetail({ basePath, recordId }: { basePath: string; recordId: str
         iconVariant="outline"
         title={isNew ? 'New company' : companyDef.label(row)}
         trailing={
-          isNew ? undefined : (
-            <ButtonGroup type="enclosed" intent="white" buttonIntent="default" buttonVariant="link">
-              <IconButton
-                type="button"
-                label="Previous"
-                size="small"
-                shape="pill"
-                disabled={!prevId}
-                onClick={() => navigate(`${basePath}/${prevId}`)}
-              >
-                {panelHeaderIcons.arrowUpward}
-              </IconButton>
-              <IconButton
-                type="button"
-                label="Next"
-                size="small"
-                shape="pill"
-                disabled={!nextId}
-                onClick={() => navigate(`${basePath}/${nextId}`)}
-              >
-                {panelHeaderIcons.arrowDownward}
-              </IconButton>
-            </ButtonGroup>
-          )
+          isNew ? undefined : <PrevNext path={basePath} prevId={prevId} nextId={nextId} />
         }
         actions={
           <>

@@ -5,15 +5,12 @@ import {
   Alert,
   Badge,
   Button,
-  ButtonGroup,
   Combobox,
   Form,
   FormField,
-  IconButton,
   List,
   Panel,
   PanelHeader,
-  panelHeaderIcons,
   Select,
   Tabs,
   Text,
@@ -67,6 +64,7 @@ import { DocumentFlow } from '../shared/DocumentFlow';
 import { DprLines } from './DprLines';
 import { useDocTitle } from '../../../services/useDocTitle';
 import { ActivityTab } from '../../../components/activity/ActivityTab';
+import { NotFound, PrevNext, neighbours } from '../../../components/form/DetailNav';
 
 export const DPR_LIST_PATH = '/purchasing/bills/down-payment-requests';
 
@@ -162,23 +160,12 @@ function DprForm() {
 
   useDocTitle(draft?.docNum ? (isNew ? 'New A/P down payment request' : dprNumber(draft)) : undefined);
   if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading down payment request…</Text>;
-  if (draft === null) {
-    return (
-      <Panel className="flex-1">
-        <PanelHeader icon="savings" iconIntent="default" iconShape="rounded" iconSize={32} iconVariant="outline" title="Down payment request not found" />
-        <Panel.Body>
-          <Button onClick={() => navigate(DPR_LIST_PATH)}>Back to down payment requests</Button>
-        </Panel.Body>
-      </Panel>
-    );
-  }
+  if (draft === null) return <NotFound icon="savings" title="Down payment request not found" backTo={DPR_LIST_PATH} backLabel="Back to down payment requests" />;
 
   const ctx = buildGrContext(draft, m);
   const { vendor, fx } = ctx;
   const added = draft.status !== 'Draft';
-  const at = draft.id ? siblings.indexOf(draft.docNum ? dprNumber(draft as DownPaymentRequest) : draft.id) : -1;
-  const prevId = at > 0 ? siblings[at - 1] : undefined;
-  const nextId = at >= 0 && at < siblings.length - 1 ? siblings[at + 1] : undefined;
+  const { prevId, nextId } = neighbours(siblings, draft.id && (draft.docNum ? dprNumber(draft as DownPaymentRequest) : draft.id));
   const errors: Errors = Object.fromEntries(problems.map((p) => [p.key, p.message]));
   const totals = dprTotals(draft, ctx.rateOf, ctx.isReverseCharge);
   const balance = Math.round((totals.total - draft.appliedAmount) * 100) / 100;
@@ -270,14 +257,7 @@ function DprForm() {
             iconSize={32} iconVariant="outline"
             title={title}
             trailing={
-              isNew ? undefined : (
-                <ButtonGroup type="enclosed" intent="white" buttonIntent="default" buttonVariant="link">
-                  <IconButton type="button" label="Previous" size="small"
-                  shape="pill" disabled={!prevId} onClick={() => navigate(`${DPR_LIST_PATH}/${prevId}`)}>{panelHeaderIcons.arrowUpward}</IconButton>
-                  <IconButton type="button" label="Next" size="small"
-                  shape="pill" disabled={!nextId} onClick={() => navigate(`${DPR_LIST_PATH}/${nextId}`)}>{panelHeaderIcons.arrowDownward}</IconButton>
-                </ButtonGroup>
-              )
+              isNew ? undefined : <PrevNext path={DPR_LIST_PATH} prevId={prevId} nextId={nextId} />
             }
             tabs={<Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={PAGES.map((p) => ({ ...p, disabled: isNew && p.value !== 'details' }))} />}
             status={

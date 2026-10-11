@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { Alert, Badge, Button, ButtonGroup, Combobox, Form, FormField, IconButton, List, Panel, PanelHeader, panelHeaderIcons, Radio, Select, Tabs, Text, TextField } from '@jasperlepardo/sikat-design-system';
+import { Alert, Badge, Button, Combobox, Form, FormField, List, Panel, PanelHeader, Radio, Select, Tabs, Text, TextField } from '@jasperlepardo/sikat-design-system';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { Fields, ReadOnly, Section, bind, type Errors } from '../../../../components/form/fields';
 import { StatusField } from '../../../../components/form/StatusField';
@@ -49,6 +49,7 @@ import { IncomingMeansSection } from './IncomingMeansSection';
 import { SalesDocumentFlow } from '../../shared/SalesDocumentFlow';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
+import { NotFound, PrevNext, neighbours } from '../../../../components/form/DetailNav';
 
 export const RC_LIST_PATH = '/sales/payments-received';
 export const RC_STATUS_INTENT: Record<IncomingStatus, 'default' | 'success' | 'danger' | 'warning'> = { Draft: 'default', 'Not Confirmed': 'warning', Posted: 'success', Cancelled: 'danger' };
@@ -147,16 +148,7 @@ function IncomingForm() {
 
   useDocTitle(draft?.docNum ? (isNew ? 'New incoming payment' : incomingNumber(draft)) : undefined);
   if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading payment…</Text>;
-  if (draft === null) {
-    return (
-      <Panel className="flex-1">
-        <PanelHeader icon="savings" iconIntent="default" iconShape="rounded" iconSize={32} iconVariant="outline" title="Incoming payment not found" />
-        <Panel.Body>
-          <Button onClick={() => navigate(RC_LIST_PATH)}>Back to payments received</Button>
-        </Panel.Body>
-      </Panel>
-    );
-  }
+  if (draft === null) return <NotFound icon="savings" title="Incoming payment not found" backTo={RC_LIST_PATH} backLabel="Back to payments received" />;
 
   const added = draft.status !== 'Draft';
   const ro = added;
@@ -165,9 +157,7 @@ function IncomingForm() {
   const errors: Errors = Object.fromEntries(problems.map((p) => [p.key, p.message]));
   const journal = fx ? incomingJournal(draft, fx) : [];
   const due = amountDue(draft);
-  const at = draft.id ? siblings.indexOf(draft.docNum ? incomingNumber(draft as IncomingPayment) : draft.id) : -1;
-  const prevId = at > 0 ? siblings[at - 1] : undefined;
-  const nextId = at >= 0 && at < siblings.length - 1 ? siblings[at + 1] : undefined;
+  const { prevId, nextId } = neighbours(siblings, draft.id && (draft.docNum ? incomingNumber(draft as IncomingPayment) : draft.id));
   const series = incomingSeriesOf(draft.seriesId);
 
   // The BP row's due date follows the payment means until it's typed over.
@@ -280,18 +270,7 @@ function IncomingForm() {
           iconSize={32} iconVariant="outline"
           title={title}
           trailing={
-            isNew ? undefined : (
-              <ButtonGroup type="enclosed" intent="white" buttonIntent="default" buttonVariant="link">
-                <IconButton type="button" label="Previous" size="small"
-                  shape="pill" disabled={!prevId} onClick={() => navigate(`${RC_LIST_PATH}/${prevId}`)}>
-                  {panelHeaderIcons.arrowUpward}
-                </IconButton>
-                <IconButton type="button" label="Next" size="small"
-                  shape="pill" disabled={!nextId} onClick={() => navigate(`${RC_LIST_PATH}/${nextId}`)}>
-                  {panelHeaderIcons.arrowDownward}
-                </IconButton>
-              </ButtonGroup>
-            )
+            isNew ? undefined : <PrevNext path={RC_LIST_PATH} prevId={prevId} nextId={nextId} />
           }
           tabs={<Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={PAGES.map((p) => ({ ...p, disabled: isNew && p.value !== 'details' }))} />}
           status={isNew ? undefined : <Badge size="small" intent={RC_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}

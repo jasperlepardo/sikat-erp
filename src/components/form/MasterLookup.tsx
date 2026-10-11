@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useState, useSyncExternalStore, type CSSProperties, type FormEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Button, Combobox, Icon, IconButton, Panel, PanelHeader, SidePanel, Text, type TableColumn } from '@jasperlepardo/sikat-design-system';
 import type { Collection } from '../../services/store';
@@ -28,25 +28,17 @@ export interface MasterDef<T extends MasterRow> {
   columns: TableColumn<T>[];
   searchText: (row: T) => string;
   editor: (row: T, update: (patch: Partial<T>) => void, errors: Errors, isNew: boolean) => ReactNode;
-  validate: (row: T, all: T[]) => Errors;
+  validate: (row: T, all: readonly T[]) => Errors;
   /** Tidy a row before it's saved (trim, upper-case codes…). */
   normalize?: (row: T) => T;
 }
 
-/** A collection's rows, reloaded whenever any screen saves to it. `undefined` while loading. */
-export function useCollection<T extends { id: string }>(collection: Collection<T>) {
-  const [rows, setRows] = useState<T[]>();
-  useEffect(() => {
-    let live = true;
-    const load = () => collection.list().then((r) => live && setRows(r));
-    load();
-    const off = collection.subscribe(load);
-    return () => {
-      live = false;
-      off();
-    };
-  }, [collection]);
-  return rows;
+/**
+ * A collection's rows, live: re-renders whenever any screen saves to it. Every picker on a screen
+ * shares the store's own array (no per-picker fetch, latency or clone), so treat it as read-only.
+ */
+export function useCollection<T extends { id: string }>(collection: Collection<T>): readonly T[] | undefined {
+  return useSyncExternalStore(collection.subscribe, collection.snapshot);
 }
 
 /** A Settings tab for one list. */

@@ -29,7 +29,10 @@ export function lineage(nodes: DocNode[], kind: string, id: string): LinkedDocum
   for (const n of nodes) {
     for (const b of n.bases) {
       const k = keyOf(b.kind, b.id);
-      targetsOf.set(k, [...(targetsOf.get(k) ?? []), { node: n, lines: b.lines, note: b.note }]);
+      const targets = targetsOf.get(k);
+      const target = { node: n, lines: b.lines, note: b.note };
+      if (targets) targets.push(target);
+      else targetsOf.set(k, [target]);
     }
   }
 

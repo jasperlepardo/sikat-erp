@@ -28,6 +28,7 @@ import { listPartners } from '../../../services/partners';
 import { JE_LIST_PATH } from '../journal/JournalEntryDetail';
 import { jeProblems, type JeMasters } from '../journal/JeEditor';
 import { JV_LIST_PATH, entryPath, voucherState } from './JournalVoucherList';
+import { NotFound } from '../../../components/form/DetailNav';
 
 /** A voucher: its draft entries, what each needs before it can post, and Post / Delete. */
 export function JournalVoucherDetail() {
@@ -50,16 +51,7 @@ export function JournalVoucherDetail() {
   }, [id]);
 
   if (voucher === undefined || !m) return <Text tone="muted" className="p-4">Loading journal voucher…</Text>;
-  if (voucher === null) {
-    return (
-      <Panel className="flex-1">
-        <PanelHeader icon="folder_open" iconIntent="default" iconShape="rounded" iconSize={32} iconVariant="outline" title="Journal voucher not found" />
-        <Panel.Body>
-          <Button onClick={() => navigate(JV_LIST_PATH)}>Back to journal vouchers</Button>
-        </Panel.Body>
-      </Panel>
-    );
-  }
+  if (voucher === null) return <NotFound icon="folder_open" title="Journal voucher not found" backTo={JV_LIST_PATH} backLabel="Back to journal vouchers" />;
 
   const entries = [...voucher.entries].sort((a, b) => a.transNo - b.transNo);
   const openEntries = entries.filter((e) => e.entryStatus === 'Open');
