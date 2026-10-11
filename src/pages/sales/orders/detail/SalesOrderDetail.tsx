@@ -1,15 +1,18 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { Alert, Badge, Button, Card, CardField, Combobox, Form, Icon, List, Panel, PanelHeader, Tabs, Text, TextField, Checkbox, type CardFieldOption } from '@jasperlepardo/sikat-design-system';
-import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
-import { Fields, Section, bind, type Errors } from '../../../../components/form/fields';
+import { Alert, Badge, Button, Card, CardField, Form, FormField, Icon, IconButton, Link, List, Panel, PanelHeader, Select, SidePanel, Tabs, Text, TextField, Tooltip, type CardFieldOption } from '@jasperlepardo/sikat-design-system';
+import { fileIcon, formatSize, toAttachments } from '../../../../components/form/AttachmentsCard';
+import { DataTable } from '../../../../components/form/DataTable';
+import { Fields, Flags, Section, bind, type Errors } from '../../../../components/form/fields';
 import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
+import { RowMenu } from '../../../../components/form/RowMenu';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { CURRENT_USER_ID } from '../../../../mocks/common';
 import { formatAddress, type PostalAddress } from '../../../../mocks/address';
 import { contactName, type Partner, type PartnerAddress } from '../../../../mocks/partners';
 import { countryName } from '../../../../services/partnerMasters';
 import { NO_SALES_EMPLOYEE, SALES_SETTINGS, blankSalesOrder, newSoLine, openCommitted, type SalesOrder, type SoStatus } from '../../../../mocks/salesOrders';
+import { INDICATORS } from '../../../../mocks/purchaseOrders';
 import { loadCurrentCompany } from '../../../../services/companies';
 import { formatDate, todayISO } from '../../../../services/dates';
 import { formatAmount } from '../../../../services/format';
@@ -20,14 +23,13 @@ import { listPartnersByRole } from '../../../../services/partners';
 import { BASE_PRICE_LIST_ID } from '../../../../services/priceLists';
 import { matchingSeries, soSeries } from '../../../../services/allSeries';
 import { termDays } from '../../../../services/purchaseOrders';
-import { cancelSalesOrder, closeSalesOrder, getSalesSettings, openQty, findDuplicateCustomerRef, getSalesOrder, listSalesOrders, openOrdersTotal, recallSalesOrder, saveSalesOrder, soDueDate, soNumber, soTotals } from '../../../../services/salesOrders';
+import { cancelSalesOrder, closeSalesOrder, getSalesSettings, openQty, findDuplicateCustomerRef, getSalesOrder, listSalesOrders, openOrdersTotal, recallSalesOrder, saveSalesOrder, soDueDate, soNumber, soTotals, soWithholding } from '../../../../services/salesOrders';
+import { defaultJournalRemark } from '../../../../services/journalPatterns';
 import { logRejection } from '../../../../services/approvalRules';
 import { listDeliveries } from '../../../../services/deliveries';
 import { determineTax } from '../../../../services/taxDetermination';
 import { salesEmployeeDef } from '../../../settings/masterDefs';
-import { AccountingTab } from './AccountingTab';
 import { ContentsTab } from './ContentsTab';
-import { LogisticsTab } from './LogisticsTab';
 import { SalesDocumentFlow } from '../../shared/SalesDocumentFlow';
 import { ALL_CURRENCIES, SO_LIST_PATH, buildContext, linePricing, proposedTaxCode, shortages, type Shortage, type SoContext, type SoDraft, type SoMasters } from './types';
 import { PO_LIST_PATH } from '../../../purchasing/orders/detail/PurchaseOrderDetail';
@@ -98,13 +100,18 @@ function SalesOrderForm() {
   const copyFrom = (useLocation().state as { copyFrom?: SoDraft } | null)?.copyFrom;
 
   const approved = !getSalesSettings().requireSoApproval;
+  const attachInput = useRef<HTMLInputElement>(null);
   const [draft, setDraft] = useState<SoDraft | null | undefined>(isNew ? { ...(copyFrom ?? { ...blankSalesOrder(CURRENT_USER_ID), lines: [newSoLine({ warehouse: '' })] }), approved } : undefined);
   const [m, setM] = useState<SoMasters>();
   const [page, setPage] = useState<PageId>('details');
+  const [contentTab, setContentTab] = useState<'item' | 'delivery'>('item');
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [warning, setWarning] = useState<string>();
   const [closeWarning, setCloseWarning] = useState<string>();
+  const [customerDetailsOpen, setCustomerDetailsOpen] = useState(false);
+  const [editDiscount, setEditDiscount] = useState(false);
+  const [editFreight, setEditFreight] = useState(false);
   const [rejecting, setRejecting] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [openBalance, setOpenBalance] = useState(0);
@@ -167,6 +174,9 @@ function SalesOrderForm() {
   const errors: Errors = Object.fromEntries(problems.map((p) => [p.key, p.message]));
   const docCurrency = m.currencies.find((c) => c.code === draft.currency);
   const totals = soTotals(draft, ctx.rateOf, docCurrency?.rounding);
+  const withholdingLines = m ? soWithholding(draft, customer, m.items, m.tax) : [];
+
+  const withholdingTotal = withholdingLines.reduce((n, w) => n + w.amount, 0);
   const delivered = draft.lines.some((l) => l.deliveredQty > 0);
   const totalLc = totals.total * ctx.fx;
   const overCredit = SALES_SETTINGS.creditLimitCheck && customer && customer.creditLimit > 0 && openBalance + totalLc > customer.creditLimit && !ctx.readOnly;
@@ -239,7 +249,7 @@ function SalesOrderForm() {
       docNum: seriesId !== draft.seriesId ? 0 : draft.docNum,
       billTo: bill ? formatAddress(bill, c.name) : '',
       shipTo: ship ? formatAddress(ship, c.name) : '',
-      journalRemark: `Sales Orders – ${c.code}`,
+      journalRemark: defaultJournalRemark('sales-orders', { entityCode: c.code, entityName: c.name }),
     };
     const nextCtx = buildContext(next, m);
     // Tax codes and prices depend on the customer, so lines re-propose theirs.
@@ -392,6 +402,7 @@ function SalesOrderForm() {
   const title = isNew ? 'New sales order' : draft.status === 'Draft' ? 'Draft sales order' : soNumber(draft);
 
   return (
+    <>
     <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
       <Panel className="flex-1">
         <PanelHeader
@@ -400,7 +411,9 @@ function SalesOrderForm() {
           iconIntent="default"
           iconShape="rounded"
           iconSize={32} iconVariant="outline"
-          title={title}
+          breadcrumbs={[{ label: 'Sales Orders', href: SO_LIST_PATH }, { label: title }]}
+          onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
+          onBack={() => navigate(SO_LIST_PATH)}
           trailing={
             isNew ? undefined : <PrevNext path={SO_LIST_PATH} prevId={prevId} nextId={nextId} />
           }
@@ -464,11 +477,128 @@ function SalesOrderForm() {
             </Alert>
           ) : null}
 
-          <fieldset disabled={ctx.readOnly} className="contents">
-            <div className="grid grid-cols-1 gap-2">
-              <Section icon="person" title="Customer">
-                <Fields>
-                  <div className="md:col-span-2">
+          <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
+            <aside className="flex flex-col gap-2 lg:col-span-3">
+              <fieldset disabled={ctx.readOnly} className="contents">
+                <Section icon="calendar_today" title="Dates">
+                  <div className="flex flex-col gap-2">
+                    {h.date('postingDate', 'Posting date', {
+                      required: true,
+                      error: errors.postingDate,
+                      disabled: ctx.added,
+                      hint: 'Sets the exchange rate, tax rates and which prices apply.',
+                    })}
+                    {h.date('deliveryDate', 'Delivery date', {
+                      error: errors.deliveryDate,
+                      hint: 'When the customer expects delivery.',
+                    })}
+                    {h.date('requiredDate', 'Required date', {
+                      error: errors.requiredDate,
+                      hint: 'When the customer needs it — for planning.',
+                    })}
+                    {h.date('cancellationDate', 'Cancellation date', {
+                      error: errors.cancellationDate,
+                      hint: 'Set when the order is cancelled or lapses.',
+                    })}
+                  </div>
+                </Section>
+                <Section icon="settings" title="Settings">
+                  <Flags>
+                    {h.check('allowPartialDelivery', 'Allow partial delivery')}
+                    {h.check('approved', 'Approved')}
+                  </Flags>
+                  <Text variant="small" tone="muted">
+                    {draft.allowPartialDelivery ? 'Lines can be delivered in parts.' : 'Each line must be delivered in full in one go.'} Defaults from the customer.
+                  </Text>
+                </Section>
+                <Section icon="storefront" title="BP channel">
+                  <Fields cols={1}>
+                    {h.text('bpChannelName', 'BP channel name', { placeholder: 'e.g. Lazada, Shopee, Apple online store', hint: 'The marketplace or channel the order came through.' })}
+                    <FormField label="BP channel contact" tooltip="A contact person on the customer for the channel.">
+                      {(p) => (
+                        <Select
+                          {...p}
+                          disabled={ctx.readOnly || !customer}
+                          options={[{ value: '', label: '— None —' }, ...(customer?.contacts ?? []).map((c) => ({ value: c.id, label: contactName(c) }))]}
+                          value={draft.bpChannelContact}
+                          onValueChange={(bpChannelContact) => update({ bpChannelContact })}
+                        />
+                      )}
+                    </FormField>
+                  </Fields>
+                </Section>
+                <Section icon="person_search" title="Assignment">
+                  <Fields cols={1}>
+                    {h.master('salesEmployeeId', 'Sales employee', salesEmployeeDef, { clearable: true, placeholder: NO_SALES_EMPLOYEE, hint: 'Defaults from the customer.' })}
+                    {h.master('ownerId', 'Owner', salesEmployeeDef, { hint: 'Owns the document.' })}
+                  </Fields>
+                  {h.area('remarks', 'Remarks', { rows: 3, hint: 'Can be changed after the order is closed.' })}
+                </Section>
+              </fieldset>
+              <input
+                ref={attachInput}
+                type="file"
+                multiple
+                hidden
+                onChange={(e) => {
+                  if (e.currentTarget.files?.length) update({ attachments: [...draft.attachments, ...toAttachments(e.currentTarget.files)] });
+                  e.currentTarget.value = '';
+                }}
+              />
+              <Section
+                icon="attach_file"
+                title={`Attachments${draft.attachments.length ? ` (${draft.attachments.length})` : ''}`}
+                actions={
+                  ctx.readOnly ? undefined : (
+                    <Link aria-label="Browse for attachments" leadingIcon={<Icon size={20}>upload</Icon>} onClick={() => attachInput.current?.click()}>
+                      Browse
+                    </Link>
+                  )
+                }
+              >
+                {draft.attachments.length ? (
+                  <List.Group>
+                    {draft.attachments.map((file) => (
+                      <List.Card
+                        key={file.id}
+                        title={file.fileName}
+                        icon={<Icon size={16}>{fileIcon(file.fileName)}</Icon>}
+                        fields={[
+                          ...(file.description ? [{ label: 'Description', value: file.description }] : []),
+                          { label: 'Size', value: formatSize(file.size) },
+                          { label: 'Attached on', value: file.attachedOn },
+                        ]}
+                        actions={
+                          ctx.readOnly ? undefined : (
+                            <RowMenu
+                              label={`Actions for ${file.fileName}`}
+                              items={[{ label: 'Remove', icon: 'delete', onSelect: () => update({ attachments: draft.attachments.filter((a) => a.id !== file.id) }) }]}
+                            />
+                          )
+                        }
+                      />
+                    ))}
+                  </List.Group>
+                ) : (
+                  <Text variant="small" tone="muted">
+                    No attachments yet. Add the customer's PO, quotation or approval e-mail.
+                  </Text>
+                )}
+              </Section>
+            </aside>
+
+            <div className="flex flex-col gap-2 lg:col-span-9">
+              <fieldset disabled={ctx.readOnly} className="contents">
+                <Section
+                  icon="person"
+                  title="Customer"
+                  actions={
+                    <IconButton type="button" label="Customer details" size="small" shape="pill" intent="white" variant="ghost" disabled={!customer} onClick={() => setCustomerDetailsOpen(true)}>
+                      <Icon size={16}>tune</Icon>
+                    </IconButton>
+                  }
+                >
+                  <div>
                     <CardField
                       label="Customer"
                       required
@@ -489,190 +619,255 @@ function SalesOrderForm() {
                       readOnly={!!(customer && ctx.added)}
                     />
                     {errors.customerId && <Text variant="small" tone="danger">{errors.customerId}</Text>}
+                    {overCredit ? (
+                      <div className="flex items-center gap-1 mt-1">
+                        <Icon size={14} style={{ color: 'var(--color-text-danger)' }}>warning</Icon>
+                        <Text variant="small" tone="danger">Over credit limit</Text>
+                      </div>
+                    ) : null}
                   </div>
-                  <CardField
-                    label="Contact person"
-                    options={(customer?.contacts ?? [])
-                      .filter((c) => c.active || c.id === draft.contactId)
-                      .map((c) => ({
-                        value: c.id,
-                        label: contactName(c),
-                        icon: <Icon size={16}>person</Icon>,
-                        fields: [
-                          ...(c.position ? [{ label: 'Position', value: c.position }] : []),
-                          ...(c.mobile || c.tel1 ? [{ label: 'Phone', value: c.mobile || c.tel1 }] : []),
-                          ...(c.email ? [{ label: 'Email', value: c.email }] : []),
-                        ],
-                      }))}
-                    value={draft.contactId}
-                    onValueChange={(contactId) => update({ contactId: contactId ?? '' })}
-                    placeholder={customer ? 'Select a contact person' : 'Pick a customer first'}
-                    readOnly={ctx.readOnly || !customer}
-                  />
-                  {h.text('customerRef', 'Customer ref. no.', { hint: "The customer's own PO or reference number." })}
-                  <CardField
-                    label="Ship to"
-                    options={addrOptions(draft.shipTo, customer?.defaultShipToId, 'default ship-to')}
-                    value={addrPicked(draft.shipTo)}
-                    onValueChange={(v) => fillAddr('shipTo', v)}
-                    placeholder={customer ? 'Select a delivery address' : 'Pick a customer first'}
-                    readOnly={ctx.readOnly}
-                  />
-                  <CardField
-                    label="Bill to"
-                    options={addrOptions(draft.billTo, customer?.defaultBillToId, 'default bill-to')}
-                    value={addrPicked(draft.billTo)}
-                    onValueChange={(v) => fillAddr('billTo', v)}
-                    placeholder={customer ? 'Select a billing address' : 'Pick a customer first'}
-                    readOnly={ctx.readOnly}
-                  />
-                  {customer && !customerAddresses.length ? (
-                    <Text variant="small" tone="muted">
-                      {customer.name} has no addresses yet — add them on the customer record.
-                    </Text>
-                  ) : null}
-                </Fields>
-                {customer && customer.creditLimit > 0 ? (
-                  <Card>
-                    <Card.Header icon={<Icon size={24}>credit_score</Icon>}>Credit</Card.Header>
-                    <Card.Content>
-                      <div className="flex items-baseline justify-between gap-2">
-                        <Text variant="h3" as="p" tone={overCredit ? 'danger' : undefined}>
-                          PHP {formatAmount(openBalance + totalLc)}
-                        </Text>
-                        <Text variant="small" tone={overCredit ? 'danger' : 'muted'}>
-                          {Math.round(((openBalance + totalLc) / customer.creditLimit) * 100)}% of PHP {formatAmount(customer.creditLimit)}
-                        </Text>
-                      </div>
-                      <div className="flex h-2 overflow-hidden rounded-full" style={{ backgroundColor: 'var(--color-bg-neutral-subtle)' }}>
-                        {overCredit ? (
-                          <div className="h-full w-full rounded-full" style={{ backgroundColor: 'var(--color-bg-danger)' }} />
-                        ) : (
-                          <>
-                            <div className="h-full" style={{ width: `${Math.min((openBalance / customer.creditLimit) * 100, 100)}%`, backgroundColor: 'var(--color-bg-primary)' }} />
-                            <div className="h-full" style={{ width: `${Math.min((totalLc / customer.creditLimit) * 100, Math.max(0, 100 - (openBalance / customer.creditLimit) * 100))}%`, backgroundColor: 'var(--color-bg-primary-muted)' }} />
-                          </>
-                        )}
-                      </div>
-                      <div className="flex justify-between gap-2">
-                        <Text variant="small" tone={overCredit ? 'danger' : 'muted'}>
-                          {overCredit
-                            ? `Over limit by PHP ${formatAmount(openBalance + totalLc - customer.creditLimit)}`
-                            : `PHP ${formatAmount(customer.creditLimit - openBalance - totalLc)} available`}
-                        </Text>
-                        {!overCredit && totalLc > 0 ? (
-                          <Text variant="small" tone="muted">
-                            this order PHP {formatAmount(totalLc)}
-                          </Text>
-                        ) : null}
-                      </div>
-                    </Card.Content>
-                  </Card>
-                ) : null}
-              </Section>
-            </div>
-
-            <ContentsTab draft={draft} update={update} errors={errors} m={m} ctx={ctx} />
-            {short.length ? (
-              <Alert intent="warning" variant="outline" title="Not enough stock">
-                <div className="flex flex-col gap-2">
-                  <ul className="list-disc pl-5 text-sm">
-                    {short.map((s) => (
-                      <li key={`${s.item.id}@${s.warehouse}`}>{shortageText(s)}</li>
-                    ))}
-                  </ul>
-                  {byVendor.length ? (
-                    draft.status === 'Open' ? (
-                      <div className="flex flex-wrap items-center gap-2">
-                        {byVendor.map(({ vendorId, vendor, rows }) => (
-                          <Button key={vendorId || 'none'} type="button" intent="warning" variant="outline" size="medium" leadingIcon={<Icon size={16}>add_shopping_cart</Icon>} onClick={() => suggestPo(vendorId, rows)}>
-                            {vendor ? `Suggested PO — ${vendor.name}` : 'Suggested PO (pick a vendor)'}
-                          </Button>
-                        ))}
-                      </div>
-                    ) : (
-                      <Text variant="small" tone="muted">Add the order to raise a suggested purchase order for what isn't covered.</Text>
-                    )
-                  ) : (
-                    <Text variant="small" tone="muted">Open purchase orders already cover the shortfall.</Text>
-                  )}
-                </div>
-              </Alert>
-            ) : null}
-            <LogisticsTab draft={draft} update={update} errors={errors} m={m} ctx={ctx} />
-            <AccountingTab draft={draft} update={update} errors={errors} m={m} ctx={ctx} />
-          </fieldset>
-          <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} emptyHint="The customer's PO, quotation or approval e-mail." withDescription />
-
-
-          <Section icon="functions" title="Totals">
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-              <Fields cols={1}>
-                <fieldset disabled={ctx.readOnly} className="contents">
-                  <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                    {h.master('salesEmployeeId', 'Sales employee', salesEmployeeDef, { clearable: true, placeholder: NO_SALES_EMPLOYEE, hint: 'Defaults from the customer.' })}
-                    {h.master('ownerId', 'Owner', salesEmployeeDef, { hint: 'Owns the document.' })}
-                  </div>
-                </fieldset>
-                {h.area('remarks', 'Remarks', { rows: 3, hint: 'Can be changed after the order is closed.' })}
-              </Fields>
-              <fieldset disabled={ctx.readOnly} className="contents">
-                <List.Group divider>
-                  <TotalRow label="Total before discount" value={totals.beforeDiscount} code={draft.currency} />
-                  <TotalRow
-                    label="Discount"
-                    value={totals.discount ? -totals.discount : 0}
-                    code={draft.currency}
-                    input={
-                      <TextField aria-label="Document discount %" type="number" min={0} className="w-24" suffix="%" value={String(draft.discountPct)} onChange={(e) => update({ discountPct: Math.min(100, Number(e.currentTarget.value)) })} />
-                    }
-                  />
-                  {SALES_SETTINGS.manageFreightInDocuments ? (
-                    <TotalRow
-                      label="Freight"
-                      value={totals.freight}
-                      code={draft.currency}
-                      input={
-                        <div className="flex gap-1">
-                          <TextField aria-label={`Freight (${draft.currency}, net)`} type="number" min={0} className="w-32" prefix={draft.currency} value={String(draft.freight)} onChange={(e) => update({ freight: Number(e.currentTarget.value) })} />
-                          <Combobox
-                            aria-label="Freight tax code"
-                            className="w-28"
-                            options={m.tax.codes.filter((c) => c.direction === 'Sales' && c.active).map((c) => ({ value: c.code, label: c.code }))}
-                            value={draft.freightTaxCode}
-                            onValueChange={(freightTaxCode) => update({ freightTaxCode: freightTaxCode ?? '' })}
-                          />
-                        </div>
+                </Section>
+                <Tabs
+                  variant="primary"
+                  value={contentTab}
+                  onValueChange={(v) => setContentTab(v as 'item' | 'delivery')}
+                  items={[
+                    { value: 'item', label: 'Item' },
+                    { value: 'delivery', label: 'Delivery' },
+                  ]}
+                />
+                {contentTab === 'item' ? (
+                  <>
+                    <ContentsTab
+                      draft={draft}
+                      update={update}
+                      errors={errors}
+                      m={m}
+                      ctx={ctx}
+                      hideDeliveries
+                      cardFooter={
+                        <fieldset disabled={ctx.readOnly} className="contents">
+                          <div className="flex flex-col gap-1 px-2 py-1">
+                            <div className="flex items-center justify-between gap-4">
+                              <Text variant="small" tone="muted">Subtotal</Text>
+                              <Text variant="small" className="tabular-nums">{draft.currency} {formatAmount(totals.beforeDiscount)}</Text>
+                            </div>
+                            {draft.discountPct > 0 || editDiscount ? (
+                              <div className="flex items-center justify-between gap-4">
+                                <div className="flex items-center gap-2">
+                                  <Text variant="small" tone="muted">Discount</Text>
+                                  <TextField aria-label="Document discount %" type="number" min={0} className="w-20" suffix="%" value={String(draft.discountPct)} onChange={(e) => update({ discountPct: Math.min(100, Number(e.currentTarget.value)) })} />
+                                </div>
+                                <Text variant="small" className="tabular-nums">{totals.discount ? `–${draft.currency} ${formatAmount(totals.discount)}` : '—'}</Text>
+                              </div>
+                            ) : (
+                              <Link onClick={() => setEditDiscount(true)}>+ Add discount</Link>
+                            )}
+                            {SALES_SETTINGS.manageFreightInDocuments ? (
+                              draft.freight > 0 || editFreight ? (
+                                <div className="flex items-center justify-between gap-4">
+                                  <div className="flex items-center gap-2">
+                                    <Text variant="small" tone="muted">Freight</Text>
+                                    <TextField aria-label="Freight amount" type="number" min={0} className="w-24" prefix={draft.currency} value={String(draft.freight)} onChange={(e) => update({ freight: Number(e.currentTarget.value) })} />
+                                  </div>
+                                  <Text variant="small" className="tabular-nums">{draft.currency} {formatAmount(totals.freight)}</Text>
+                                </div>
+                              ) : (
+                                <Link onClick={() => setEditFreight(true)}>+ Add freight</Link>
+                              )
+                            ) : null}
+                            <div className="flex items-center justify-between gap-4">
+                              <div className="flex items-center gap-1">
+                                <Text variant="small" tone="muted">Tax</Text>
+                                {taxNotes.length > 0 && (
+                                  <Tooltip message={<div className="flex flex-col gap-1">{taxNotes.map((n) => <span key={n}>{n}</span>)}</div>} icon="info" />
+                                )}
+                              </div>
+                              <Text variant="small" className="tabular-nums">{draft.currency} {formatAmount(totals.tax)}</Text>
+                            </div>
+                            <div className="flex items-baseline justify-between gap-4 border-t pt-1" style={{ borderColor: 'var(--color-border-neutral-subtle)' }}>
+                              <Text variant="small" weight="semibold" tone="heading">Total</Text>
+                              <Text variant="small" weight="semibold" tone="heading" className="tabular-nums">{draft.currency} {formatAmount(totals.total)}</Text>
+                            </div>
+                            {withholdingLines.map((w) => (
+                              <div key={w.atc} className="flex items-center justify-between gap-4">
+                                <Text variant="small" tone="muted">{w.kind === 'Withholding VAT' ? 'VAT' : 'EWT'} withheld — {w.atc} ({w.rate}%)</Text>
+                                <Text variant="small" tone="danger" className="tabular-nums">–{draft.currency} {formatAmount(w.amount)}</Text>
+                              </div>
+                            ))}
+                            {withholdingLines.length > 0 && (
+                              <div className="flex items-baseline justify-between gap-4 border-t pt-1" style={{ borderColor: 'var(--color-border-neutral-subtle)' }}>
+                                <Text variant="small" weight="semibold" tone="heading">Net to receive</Text>
+                                <Text variant="small" weight="semibold" tone="heading" className="tabular-nums">{draft.currency} {formatAmount(totals.total - withholdingTotal)}</Text>
+                              </div>
+                            )}
+                            {draft.currency !== 'PHP' ? (
+                              <Text variant="small" tone="muted" className="text-right">≈ PHP {formatAmount(totalLc)}</Text>
+                            ) : null}
+                          </div>
+                        </fieldset>
                       }
                     />
-                  ) : null}
-                  <TotalRow
-                    label="Rounding"
-                    value={totals.rounding}
-                    code={draft.currency}
-                    input={
-                      <Checkbox aria-label="Apply rounding" checked={draft.rounding} onChange={(e) => update({ rounding: e.currentTarget.checked })}>
-                        {docCurrency?.rounding ?? 'No rounding'}
-                      </Checkbox>
-                    }
+                  </>
+                ) : (
+                  <DataTable
+                    variant="plain"
+                    noPagination
+                    rows={draft.lines.filter((l) => !!l.itemId)}
+                    getRowId={(l) => l.id}
+                    unsortable={['item', 'ordered', 'delivered']}
+                    empty={<Text variant="small" tone="muted">No deliveries yet.</Text>}
+                    columns={[
+                      {
+                        key: 'item',
+                        header: 'Item / Description',
+                        cell: (l) => (
+                          <div className="flex flex-col">
+                            <Text variant="caption">{l.itemNo}</Text>
+                            <Text variant="small">{l.description}</Text>
+                          </div>
+                        ),
+                      },
+                      {
+                        key: 'ordered',
+                        header: 'Ordered',
+                        align: 'end' as const,
+                        cell: (l) => (
+                          <Text variant="small" className="whitespace-nowrap tabular-nums">
+                            {l.quantity.toLocaleString('en-PH')} {l.uomName}
+                          </Text>
+                        ),
+                      },
+                      {
+                        key: 'delivered',
+                        header: 'Delivered',
+                        align: 'end' as const,
+                        cell: (l) => (
+                          <Text variant="small" className="whitespace-nowrap tabular-nums">
+                            {l.deliveredQty.toLocaleString('en-PH')} {l.uomName}
+                          </Text>
+                        ),
+                      },
+                    ]}
                   />
-                  <TotalRow label="Tax" value={totals.tax} code={draft.currency} />
-                  <TotalRow label="Total" value={totals.total} code={draft.currency} strong />
-                  {draft.currency !== 'PHP' ? (
-                    <TotalNote>
-                      ≈ PHP {formatAmount(totalLc)} at {ctx.fx ? `${ctx.fx} (${formatDate(ctx.fxDate)} rate)` : '—'}.
-                    </TotalNote>
-                  ) : null}
-                  {taxNotes.map((n) => (
-                    <TotalNote key={n}>{n}</TotalNote>
-                  ))}
-                </List.Group>
+                )}
               </fieldset>
+
             </div>
-          </Section>
+          </div>
         </Panel.Body> : null}
       </Panel>
     </Form>
+    {customerDetailsOpen && customer && (
+
+      <SidePanel overlay onOverlayClick={() => setCustomerDetailsOpen(false)}>
+        <PanelHeader
+          type="details"
+          icon="person"
+          title={customer.name}
+          actions={
+            <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => setCustomerDetailsOpen(false)}>
+              Done
+            </Button>
+          }
+        />
+        <Panel.Body>
+          {customer.creditLimit > 0 ? (
+            <Card>
+              <Card.Header icon={<Icon size={24}>credit_score</Icon>}>Credit</Card.Header>
+              <Card.Content>
+                <div className="flex items-baseline justify-between gap-2">
+                  <Text variant="h3" as="p" tone={overCredit ? 'danger' : undefined}>
+                    PHP {formatAmount(openBalance + totalLc)}
+                  </Text>
+                  <Text variant="small" tone={overCredit ? 'danger' : 'muted'}>
+                    {Math.round(((openBalance + totalLc) / customer.creditLimit) * 100)}% of PHP {formatAmount(customer.creditLimit)}
+                  </Text>
+                </div>
+                <div className="flex h-2 overflow-hidden rounded-full" style={{ backgroundColor: 'var(--color-bg-neutral-subtle)' }}>
+                  {overCredit ? (
+                    <div className="h-full w-full rounded-full" style={{ backgroundColor: 'var(--color-bg-danger)' }} />
+                  ) : (
+                    <>
+                      <div className="h-full" style={{ width: `${Math.min((openBalance / customer.creditLimit) * 100, 100)}%`, backgroundColor: 'var(--color-bg-primary)' }} />
+                      <div className="h-full" style={{ width: `${Math.min((totalLc / customer.creditLimit) * 100, Math.max(0, 100 - (openBalance / customer.creditLimit) * 100))}%`, backgroundColor: 'var(--color-bg-primary-muted)' }} />
+                    </>
+                  )}
+                </div>
+                <div className="flex justify-between gap-2">
+                  <Text variant="small" tone={overCredit ? 'danger' : 'muted'}>
+                    {overCredit
+                      ? `Over limit by PHP ${formatAmount(openBalance + totalLc - customer.creditLimit)}`
+                      : `PHP ${formatAmount(customer.creditLimit - openBalance - totalLc)} available`}
+                  </Text>
+                  {!overCredit && totalLc > 0 ? (
+                    <Text variant="small" tone="muted">this order PHP {formatAmount(totalLc)}</Text>
+                  ) : null}
+                </div>
+              </Card.Content>
+            </Card>
+          ) : null}
+          <fieldset disabled={ctx.readOnly} className="contents">
+            <Section icon="person" title="Contact">
+              <Fields cols={1}>
+                <CardField
+                  label="Contact person"
+                  options={(customer?.contacts ?? [])
+                    .filter((c) => c.active || c.id === draft.contactId)
+                    .map((c) => ({
+                      value: c.id,
+                      label: contactName(c),
+                      icon: <Icon size={16}>person</Icon>,
+                      fields: [
+                        ...(c.position ? [{ label: 'Position', value: c.position }] : []),
+                        ...(c.mobile || c.tel1 ? [{ label: 'Phone', value: c.mobile || c.tel1 }] : []),
+                        ...(c.email ? [{ label: 'Email', value: c.email }] : []),
+                      ],
+                    }))}
+                  value={draft.contactId}
+                  onValueChange={(contactId) => update({ contactId: contactId ?? '' })}
+                  placeholder="Select a contact person"
+                  readOnly={ctx.readOnly}
+                />
+                {h.text('customerRef', 'Customer ref. no.', { hint: "The customer's own PO or reference number." })}
+              </Fields>
+            </Section>
+            <Section icon="local_shipping" title="Delivery & billing">
+              <Fields cols={1}>
+                <CardField
+                  label="Ship to"
+                  options={addrOptions(draft.shipTo, customer?.defaultShipToId, 'default ship-to')}
+                  value={addrPicked(draft.shipTo)}
+                  onValueChange={(v) => fillAddr('shipTo', v)}
+                  placeholder="Select a delivery address"
+                  readOnly={ctx.readOnly}
+                />
+                <CardField
+                  label="Bill to"
+                  options={addrOptions(draft.billTo, customer?.defaultBillToId, 'default bill-to')}
+                  value={addrPicked(draft.billTo)}
+                  onValueChange={(v) => fillAddr('billTo', v)}
+                  placeholder="Select a billing address"
+                  readOnly={ctx.readOnly}
+                />
+                {customer && !customerAddresses.length ? (
+                  <Text variant="small" tone="muted">
+                    {customer.name} has no addresses yet — add them on the customer record.
+                  </Text>
+                ) : null}
+              </Fields>
+            </Section>
+            <Section icon="tune" title="Order details">
+              <Fields cols={1}>
+                {h.choose('indicator', 'Indicator', [{ value: '', label: '— None —' }, ...INDICATORS.map((v) => ({ value: v, label: v }))])}
+                {h.text('orderNumber', 'Order number', { hint: 'Internal or chain-store order reference.' })}
+              </Fields>
+            </Section>
+          </fieldset>
+        </Panel.Body>
+      </SidePanel>
+    )}
+    </>
   );
 }
 
@@ -684,30 +879,3 @@ function shortageText(s: Shortage) {
   return `${s.item.itemNo} ${s.item.name}: needs ${s.need} ${uom} in ${s.warehouse}, ${Math.max(0, s.available)} available${incoming} — ${verdict}.`;
 }
 
-function TotalRow({ label, value, code, input, strong }: { label: string; value: number; code: string; input?: ReactNode; strong?: boolean }) {
-  const emphasis = (node: ReactNode) => (strong ? <Text as="span" weight="semibold" tone="heading">{node}</Text> : node);
-  return (
-    <List.Item
-      title={
-        <span className="flex items-center gap-2">
-          <span className="whitespace-nowrap">{emphasis(label)}</span>
-          {input ? <span className="flex-none">{input}</span> : null}
-        </span>
-      }
-      content={<span className="whitespace-nowrap tabular-nums">{emphasis(`${code} ${formatAmount(value)}`)}</span>}
-    />
-  );
-}
-
-function TotalNote({ children }: { children: ReactNode }) {
-  return (
-    <List.Item
-      variant="value-only"
-      content={
-        <Text variant="small" tone="muted">
-          {children}
-        </Text>
-      }
-    />
-  );
-}

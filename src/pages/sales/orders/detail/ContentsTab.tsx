@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Combobox, Icon, IconButton, Link, Select, TableStatus, Text, TextField, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import React, { useState } from 'react';
+import { Card, Checkbox, Combobox, Icon, IconButton, Link, Select, TableStatus, Text, TextField, Tooltip, type TableColumn } from '@jasperlepardo/sikat-design-system';
 import { DataTable } from '../../../../components/form/DataTable';
 import { MasterLookup } from '../../../../components/form/MasterLookup';
 import { itemUnits, itemsPerUom } from '../../../../mocks/items';
@@ -8,7 +8,6 @@ import { formatAmount } from '../../../../services/format';
 import { isValidToday } from '../../../../services/items';
 import { isPriceListValid } from '../../../../services/priceLists';
 import { lineNet, lineTax, openQty, priceAfterDiscount } from '../../../../services/salesOrders';
-import { formatDate } from '../../../../services/dates';
 import { priceListDef } from '../../../settings/masterDefs';
 import { warehouseOptions } from '../../../inventory/transfers/TransferLines';
 import { availableIn, lineFromItem, linePricing, shortages, type SoTabProps } from './types';
@@ -19,9 +18,15 @@ import { BA_LIST_PATH } from '../../agreements/BlanketAgreementList';
 
 const num = (v: string) => (v === '' ? 0 : Number(v));
 
-export function ContentsTab({ draft, update, errors, m, ctx }: SoTabProps) {
+const GROUPS = { warehouse: 'Warehouse', priceListId: 'Price list', tax: 'Tax', delivery: 'Delivered / Open' } as const;
+type Group = keyof typeof GROUPS;
+
+export function ContentsTab({ draft, update, errors, m, ctx, hideDeliveries, spanRow, cardFooter }: SoTabProps & { hideDeliveries?: boolean; spanRow?: React.ReactNode; cardFooter?: React.ReactNode }) {
   const [editing, setEditing] = useState<Set<string>>(new Set());
   const [addKey, setAddKey] = useState(0);
+  const [shown, setShown] = useState<Group[]>([]);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const is = (g: Group) => shown.includes(g);
   const lines = draft.lines;
   const itemLines = lines.filter((l) => !!l.itemId);
   const allAgreements = useAsync(listBlanketAgreements, []);
@@ -34,9 +39,11 @@ export function ContentsTab({ draft, update, errors, m, ctx }: SoTabProps) {
   const err = (l: SoLine, field: string) => errors[`line:${l.id}:${field}`];
   const lc = (n: number) => formatAmount(n * ctx.fx);
   const taxOf = (l: SoLine) => lineTax(l, ctx.rateOf(l.taxCode), 0);
-  const locked = (l: SoLine) => ctx.readOnly || l.status === 'Closed';
+  const linesLocked = ctx.readOnly || draft.status !== 'Draft';
+  const locked = (l: SoLine) => linesLocked || l.status === 'Closed';
   // Item@warehouse pairs the open lines (added up) need more of than is free.
-  const short = new Set(ctx.readOnly ? [] : shortages(draft, m, ctx.ownCommitted).map((s) => `${s.item.id}@${s.warehouse}`));
+  const shortSet = new Set(shortages(draft, m, ctx.ownCommitted).map((s) => `${s.item.id}@${s.warehouse}`));
+  const short = new Set(linesLocked ? [] : shortSet);
 
   // Sales items valid on the posting date.
   const itemOptions = (current: string) =>
@@ -72,7 +79,7 @@ export function ContentsTab({ draft, update, errors, m, ctx }: SoTabProps) {
     reprice(l, { uomCode, uomName: m.inv.uoms.find((u) => u.code === uomCode)?.name ?? uomCode, itemsPerUnit });
   };
 
-  const col = (key: string, header: string, cell: (l: SoLine) => React.ReactNode): TableColumn<SoLine> => ({ key, header, cell });
+  const col = (key: string, header: React.ReactNode, cell: (l: SoLine) => React.ReactNode, group?: Group, align?: 'start' | 'end'): TableColumn<SoLine> & { group?: Group } => ({ key, header, cell, group, ...(align ? { align } : {}) });
 
   const itemColumns: TableColumn<SoLine>[] = [
     col('item', 'Item / Description', (l) => {
@@ -124,10 +131,10 @@ export function ContentsTab({ draft, update, errors, m, ctx }: SoTabProps) {
       };
 
       return (
-        <div className="flex w-64 flex-col gap-1">
+        <div className="flex flex-col gap-1">
           <div className="flex flex-col">
-            <Text variant="caption">{l.itemNo}</Text>
-            <Text variant="small">{l.description}</Text>
+            <Text variant="caption" className="wrap-break-word">{l.itemNo}</Text>
+            <Text variant="small" className="wrap-break-word">{l.description}</Text>
           </div>
           {locked(l) ? null : (
             <div className="flex gap-3">
@@ -177,20 +184,31 @@ export function ContentsTab({ draft, update, errors, m, ctx }: SoTabProps) {
     col('qty', 'Qty / UoM', (l) => {
       const item = itemOf(l);
       if (!item) return null;
+      const isShort = short.has(`${l.itemId}@${l.warehouse}`);
+      if (linesLocked) return (
+        <div className="flex items-center justify-end gap-1">
+          <Text variant="small" className="whitespace-nowrap tabular-nums">
+            {l.quantity.toLocaleString('en-PH')} {l.uomName}
+          </Text>
+          {isShort && <Tooltip message="Not enough stock" icon="warning" />}
+        </div>
+      );
       return (
         <div className="flex w-40 shrink-0 flex-col gap-1 whitespace-normal">
-          <TextField
-            aria-label="Quantity"
-            type="number"
-            min={0}
-            readOnly={locked(l)}
-            invalid={Boolean(err(l, 'quantity'))}
-            value={String(l.quantity)}
-            onChange={(e) => reprice(l, { quantity: num(e.currentTarget.value) })}
-          />
+          <div className="flex items-center gap-1">
+            <TextField
+              aria-label="Quantity"
+              type="number"
+              min={0}
+              invalid={Boolean(err(l, 'quantity'))}
+              value={String(l.quantity)}
+              onChange={(e) => reprice(l, { quantity: num(e.currentTarget.value) })}
+            />
+            {isShort && <Tooltip message="Not enough stock" icon="warning" />}
+          </div>
           <Select
             aria-label="UoM code"
-            disabled={locked(l) || l.deliveredQty > 0}
+            disabled={l.deliveredQty > 0}
             options={itemUnits(item, 'sales').map((u) => ({ value: u.uom, label: u.uom }))}
             value={l.uomCode}
             onValueChange={(v) => v && changeUom(l, v)}
@@ -201,18 +219,18 @@ export function ContentsTab({ draft, update, errors, m, ctx }: SoTabProps) {
           </Text>
         </div>
       );
-    }),
+    }, undefined, 'end'),
     col('warehouse', 'Whse', (l) => {
       const item = itemOf(l);
       if (!item) return null;
       if (!item.inventoryItem) return <span className="text-muted">Not stocked</span>;
+      if (linesLocked) return <Text variant="small">{l.warehouse || '—'}</Text>;
       // What's free to promise, giving back what this order already commits as saved.
       const avail = availableIn(item, l.warehouse, ctx.ownCommitted);
       return (
         <div className="flex w-44 shrink-0 flex-col gap-1 whitespace-normal">
           <Combobox
             aria-label="Warehouse"
-            disabled={locked(l)}
             invalid={Boolean(err(l, 'warehouse'))}
             options={warehouseOptions(m.inv.warehouses, l.warehouse)}
             value={l.warehouse || null}
@@ -223,9 +241,14 @@ export function ContentsTab({ draft, update, errors, m, ctx }: SoTabProps) {
           </Text>
         </div>
       );
-    }),
-    col('priceListId', 'Price list', (l) =>
-      itemOf(l) ? (
+    }, 'warehouse'),
+    col('priceListId', 'Price list', (l) => {
+      if (!itemOf(l)) return null;
+      if (linesLocked) {
+        const plRow = priceListDef.collection.snapshot().find((p) => p.id === l.priceListId);
+        return <Text variant="small">{plRow ? priceListDef.label(plRow) : l.priceListId || '—'}</Text>;
+      }
+      return (
         <MasterLookup
           def={priceListDef}
           fieldProps={{ 'aria-label': 'Price list', className: 'w-40' }}
@@ -237,10 +260,16 @@ export function ContentsTab({ draft, update, errors, m, ctx }: SoTabProps) {
             patch(l.id, { priceListId: v, ...(ctx.fx ? linePricing(item, next, draft, ctx) : {}) });
           }}
         />
-      ) : null,
-    ),
+      );
+    }, 'priceListId'),
     col('pricing', 'Unit price / Discount', (l) => {
       if (!itemOf(l)) return null;
+      if (linesLocked) return (
+        <div className="flex flex-col whitespace-nowrap tabular-nums">
+          <Text variant="small">{draft.currency} {formatAmount(l.discountPct ? priceAfterDiscount(l) : l.unitPrice)}</Text>
+          {l.discountPct ? <Text variant="small" tone="muted" className="line-through">{draft.currency} {formatAmount(l.unitPrice)}</Text> : null}
+        </div>
+      );
       return (
         <div className="flex w-44 shrink-0 flex-col gap-1 whitespace-normal">
           <TextField
@@ -248,7 +277,6 @@ export function ContentsTab({ draft, update, errors, m, ctx }: SoTabProps) {
             type="number"
             min={0}
             prefix={draft.currency}
-            readOnly={locked(l)}
             invalid={Boolean(err(l, 'unitPrice'))}
             value={String(l.unitPrice)}
             onChange={(e) => patch(l.id, { unitPrice: num(e.currentTarget.value), priceSource: 'Manual' })}
@@ -258,13 +286,12 @@ export function ContentsTab({ draft, update, errors, m, ctx }: SoTabProps) {
             type="number"
             min={0}
             suffix="%"
-            readOnly={locked(l)}
             value={String(l.discountPct)}
             onChange={(e) => patch(l.id, { discountPct: Math.min(100, num(e.currentTarget.value)), priceSource: 'Manual' })}
           />
           <Text variant="small" tone="muted">
             {l.priceSource || '—'}
-            {l.priceSource === 'Manual' && !locked(l) ? (
+            {l.priceSource === 'Manual' ? (
               <>
                 {' · '}
                 <Link intent="primary" onClick={() => reprice({ ...l, priceSource: '' }, {})}>
@@ -275,13 +302,19 @@ export function ContentsTab({ draft, update, errors, m, ctx }: SoTabProps) {
           </Text>
         </div>
       );
-    }),
-    col('tax', 'Tax code', (l) =>
-      itemOf(l) ? (
+    }, undefined, 'end'),
+    col('tax', 'Tax code', (l) => {
+      if (!itemOf(l)) return null;
+      if (linesLocked) return (
+        <div className="flex flex-col gap-0.5">
+          <Text variant="small">{l.taxCode} ({ctx.rateOf(l.taxCode)}%)</Text>
+          <Text variant="small" tone="muted">Tax PHP {lc(taxOf(l))}</Text>
+        </div>
+      );
+      return (
         <div className="flex w-32 flex-col gap-1">
           <Combobox
             aria-label="Tax code"
-            disabled={locked(l)}
             invalid={Boolean(err(l, 'taxCode'))}
             options={taxOptions}
             value={l.taxCode || null}
@@ -291,51 +324,60 @@ export function ContentsTab({ draft, update, errors, m, ctx }: SoTabProps) {
             Tax PHP {lc(taxOf(l))}
           </Text>
         </div>
-      ) : null,
-    ),
-    col('totals', 'Total / Gross (LC)', (l) =>
+      );
+    }, 'tax', 'end'),
+    col('totals', 'Total (LC)', (l) =>
       itemOf(l) ? (
-        <div className="flex flex-col whitespace-nowrap tabular-nums">
-          <Text variant="small">PHP {lc(lineNet(l))}</Text>
-          <Text variant="small" tone="muted">
-            PHP {lc(lineNet(l) + taxOf(l))} gross
-          </Text>
-          {l.discountPct ? (
-            <Text variant="small" tone="muted">
-              {formatAmount(priceAfterDiscount(l))} after discount
-            </Text>
-          ) : null}
-        </div>
+        <Text variant="small" className="whitespace-nowrap tabular-nums">
+          PHP {lc(lineNet(l))}
+        </Text>
       ) : null,
-    ),
+    undefined, 'end'),
     col('delivery', 'Delivered / Open', (l) =>
       itemOf(l) ? (
-        <div className="flex flex-col gap-1 whitespace-nowrap tabular-nums">
+        <div className="flex flex-col items-end gap-1 whitespace-nowrap tabular-nums">
           <Text variant="small">
             {l.deliveredQty} / {openQty(l)}
           </Text>
           <TableStatus intent={l.status === 'Open' ? 'primary' : 'success'}>{l.status}</TableStatus>
         </div>
       ) : null,
-    ),
-  ];
+    'delivery', 'end'),
+  ].filter((c) => !c.group || is(c.group));
 
   return (
+    <div className="flex flex-col gap-2">
+    {settingsOpen ? (
+      <Card>
+        <Card.Header icon={<Icon size={24}>tune</Icon>}>Columns</Card.Header>
+        <Card.Content>
+          <div className="flex flex-wrap gap-x-6 gap-y-3">
+            {(Object.keys(GROUPS) as Group[]).map((g) => (
+              <Checkbox
+                key={g}
+                checked={is(g)}
+                onChange={(e) => setShown(e.currentTarget.checked ? [...shown, g] : shown.filter((x) => x !== g))}
+              >
+                {GROUPS[g]}
+              </Checkbox>
+            ))}
+          </div>
+        </Card.Content>
+      </Card>
+    ) : null}
+    <div className={linesLocked ? '[&_.sikat-table__row:hover>.sikat-table__td]:[box-shadow:none]' : undefined}>
     <DataTable
       variant="plain"
       noPagination
-      icon="list_alt"
-      title="Contents"
-      description={errors.lines ?? `Items in the sales unit. Unit prices are net of VAT in ${draft.currency}${draft.currency === 'PHP' ? '' : `; totals in PHP at ${ctx.fx ? `${ctx.fx} (${formatDate(ctx.fxDate)})` : '—'}`}. Open lines commit stock in their warehouse.`}
       rows={itemLines}
       getRowId={(l) => l.id}
       columns={itemColumns}
-      unsortable={itemColumns.map((c) => c.key).filter((k) => k !== 'item')}
-      sortValue={(l) => l.itemNo.toLowerCase()}
-      onRemove={ctx.readOnly ? undefined : (picked) => update({ lines: lines.filter((l) => !picked.includes(l) || l.deliveredQty > 0) })}
+      unsortable={itemColumns.map((c) => c.key)}
+      onRemove={linesLocked ? undefined : (picked) => update({ lines: lines.filter((l) => !picked.includes(l) || l.deliveredQty > 0) })}
+      onColumnSettings={() => setSettingsOpen(!settingsOpen)}
       empty={<Text variant="small" tone="muted">No lines yet.</Text>}
       spanRow={
-        ctx.readOnly ? undefined : (
+        linesLocked ? undefined : (
           <Combobox
             key={addKey}
             aria-label="Search items to add a line"
@@ -352,6 +394,51 @@ export function ContentsTab({ draft, update, errors, m, ctx }: SoTabProps) {
           />
         )
       }
+      cardFooter={cardFooter}
     />
+    </div>
+    {spanRow}
+    {!hideDeliveries && itemLines.length > 0 && (
+      <DataTable
+        variant="plain"
+        noPagination
+        rows={itemLines}
+        getRowId={(l) => l.id}
+        empty={<Text variant="small" tone="muted">No deliveries yet.</Text>}
+        columns={[
+          {
+            key: 'item',
+            header: 'Item / Description',
+            cell: (l) => (
+              <div className="flex flex-col">
+                <Text variant="caption">{l.itemNo}</Text>
+                <Text variant="small">{l.description}</Text>
+              </div>
+            ),
+          },
+          {
+            key: 'ordered',
+            header: 'Ordered',
+            align: 'end' as const,
+            cell: (l) => (
+              <Text variant="small" className="whitespace-nowrap tabular-nums">
+                {l.quantity.toLocaleString('en-PH')} {l.uomName}
+              </Text>
+            ),
+          },
+          {
+            key: 'delivered',
+            header: 'Delivered',
+            align: 'end' as const,
+            cell: (l) => (
+              <Text variant="small" className="whitespace-nowrap tabular-nums">
+                {l.deliveredQty.toLocaleString('en-PH')} {l.uomName}
+              </Text>
+            ),
+          },
+        ]}
+      />
+    )}
+    </div>
   );
 }
