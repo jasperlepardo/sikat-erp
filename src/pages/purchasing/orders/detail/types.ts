@@ -5,7 +5,7 @@ import { vendorDeliveryLocation } from '../../../../mocks/itemMasters';
 import { itemsPerUom, type Item } from '../../../../mocks/items';
 import type { Partner } from '../../../../mocks/partners';
 import type { Company } from '../../../../mocks/companies';
-import { newPoLine, type PoLine } from '../../../../mocks/purchaseOrders';
+import { newPoLine, type PoLine, type PoReference } from '../../../../mocks/purchaseOrders';
 import { getPurchasingSettings } from '../../../../services/purchaseOrders';
 import { rateAt, vatNotPaidToVendor } from '../../../../mocks/taxes';
 import type { InventoryMasters } from '../../../../services/inventoryMasters';
@@ -58,6 +58,13 @@ export interface PoContext {
 }
 
 export const ALL_CURRENCIES = 'All currencies';
+
+/** A PO to start from, e.g. a sales order's stock shortfall: the vendor ('' to pick one), items and what to buy in the inventory unit. */
+export interface PoSuggestion {
+  vendorId: string;
+  lines: { itemId: string; warehouse: string; qty: number }[];
+  reference?: Omit<PoReference, 'id'>;
+}
 
 export function buildContext(draft: PoDraft, m: PoMasters): PoContext {
   const date = draft.postingDate || todayISO();
