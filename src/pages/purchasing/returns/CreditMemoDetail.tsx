@@ -73,6 +73,7 @@ import { ReturnLines } from './ReturnLines';
 import { MEMO_LIST_PATH, MEMO_STATUS_INTENT, memoFromInvoice, memoFromReturn, type RetMasters } from './types';
 import { MEMO_STATUSES, type MemoStatus } from '../../../mocks/apCreditMemos';
 import { useDocTitle } from '../../../services/useDocTitle';
+import { ActivityTab } from '../../../components/activity/ActivityTab';
 
 type Draft = Omit<ApCreditMemo, 'id'> & { id?: string };
 type TabId = 'contents' | 'logistics' | 'accounting';
@@ -376,7 +377,7 @@ function CreditMemoForm() {
             </Panel.Body>
           ) : page !== 'details' ? (
             <Panel.Body>
-              <Text variant="small" tone="muted" className="p-4">Activity will show here.</Text>
+              <ActivityTab target={{ kind: 'APCM', id: draft.id ?? '' }} partnerId={draft.vendorId} />
             </Panel.Body>
           ) : (
             <Panel.Body className="flex flex-col gap-2">

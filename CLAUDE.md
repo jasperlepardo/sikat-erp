@@ -35,10 +35,14 @@ npm run test:e2e   # Playwright smoke tests (starts its own dev server on :5199)
 
 ```
 e2e/            Playwright smoke tests: every screen loads with no errors or raw ids;
-                rename / bin-snapshot / counter / house-bank behaviour
+                rename / bin-snapshot / counter / house-bank behaviour; Activity tabs
 src/
   app/          AppShell, router, sidebar nav definition
   components/   Shared UI components (form helpers)
+    activity/
+      ActivityTab.tsx     A record's Activity timeline + "Log activity" menu
+      ActivityPanel.tsx   SidePanel editor for one activity
+      feed.ts             Builds timeline entries: document chain, audit log, activities
     form/
       fields.tsx          bind() field builder + layout helpers
       MasterLookup.tsx    Searchable master-data picker + inline "+ Add"
@@ -61,9 +65,11 @@ src/
     inventory/    WarehousesPage, ItemList, ItemDetail (11 tabs)
     partners/     PartnerList, PartnerDetail (8 tabs)
     purchasing/   PurchaseOrderList, PurchaseOrderDetail (3 tabs)
+    crm/          ActivityList (CRM › Activities)
     settings/     MasterSettingsPages, masterDefs, accounting-tax/, inventory/
   services/     Fake async API + domain logic
-    store.ts            createCollection() — localStorage-backed collections
+    store.ts            createCollection() — localStorage-backed collections; auditLog
+    activities.ts       CRM activities collection + helpers
     items.ts            Item CRUD + business rules
     partners.ts         Partner CRUD + business rules
     purchaseOrders.ts   PO CRUD + line calculations
@@ -95,6 +101,7 @@ All routes use hash routing (`/#/…`). Defined in `src/app/router.tsx`.
 | `/purchasing/purchase-orders/:id` | PurchaseOrderDetail (3 tabs) |
 | `/accounting/chart-of-accounts/:recordId?` | ChartOfAccountsPage |
 | `/crm/business-partners`, `/crm/leads`, `/sales/customers`, `/purchasing/vendors` | PartnerList (role-scoped) |
+| `/crm/activities` | ActivityList (all calls, meetings, tasks, notes, emails) |
 | `…/:id` under each | PartnerDetail |
 | `/settings/accounting-and-tax/:tab?/:recordId?` | AccountingTaxPage (11 master tabs) |
 | `/settings/inventory/:tab?/:recordId?` | InventorySettingsPage |
@@ -109,7 +116,7 @@ All routes use hash routing (`/#/…`). Defined in `src/app/router.tsx`.
 `src/services/store.ts`
 
 ```ts
-createCollection<T>(storageKey, seed, idPrefix)
+createCollection<T>(storageKey, seed, idPrefix, { audit?: kind })
 → {
     list(): Promise<T[]>,
     get(id): Promise<T | undefined>,
@@ -128,6 +135,7 @@ createCollection<T>(storageKey, seed, idPrefix)
 - `useCollectionRows(collection)` returns `{ rows, save, setActive, reload }`
 - **`SEED_VERSION`** (top of `store.ts`): a saved collection overrides its seed forever, so **bump it whenever a file in `src/mocks` changes**. A browser on an older version drops every `sikat-erp:` key once and reloads the seed.
 - Storage keeps only what changed from the seed (saved records and removed ids), so seeds can be large.
+- `{ audit: 'PO' }` logs every save and removal to `auditLog` (who, when, `describeChanges()`: status, posting, changed fields). On for items (`ITEM`), partners (`BP`) and every sales and purchasing document collection. The log holds only changes made in the app; seeded history is derived from the documents.
 - The seed may be a function (`createCollection(key, () => seed, prefix)`): it's built on first use. Seeds built from other seeds (the histories below) must be lazy, or modules that import each other read one another before they're ready.
 
 ---
@@ -338,6 +346,12 @@ statusColumn<T>()  →  TableColumn<T>   // "Active" / "Inactive" badge
 
 ## Services overview
 
+### activities.ts
+```ts
+activities (collection), saveActivity(input), removeActivity(id)
+isLinkedTo(activity, kind, ids), isOpenTask(activity), isOverdue(activity, today)
+```
+
 ### items.ts
 ```ts
 listItems(), getItem(id), saveItem(input), resetItems()
@@ -394,6 +408,14 @@ determineWithholding(vendor, item, company, masters) → Determination
 `findProvince(data, code, name)`, `findCity(data, province, code, name)`, `findBarangay(rows, code, name)`
 
 ---
+
+## Activity tabs
+
+Items, partners and every sales and purchasing document (PR, RFQ, PO, DPR, GRPO, A/P invoice, outgoing payment, goods return, A/P credit memo, quotation, SO, delivery, A/R invoice, incoming payment, sales return, A/R credit memo) have an **Activity** tab: `<ActivityTab target={{ kind, id }} partnerId={…} />`. It shows one timeline, newest first, grouped by month:
+
+- **Documents**, from the link graph (`purchaseDocNodes()` / `salesDocNodes()`, each node carrying its `partnerId` and item lines). A document shows its whole chain, from quotation to payment or from request to payment. A partner shows every document with it on, and an item every document with it (or, for a parent, its variants) on a line.
+- **Changes** saved in the app, from `auditLog`.
+- **Activities** (`mocks/activities.ts`, `services/activities.ts`): call, meeting, task, note or email, with owner (employee id), partner, contact, and `links: { kind, id }[]` to the records it shows on. One logged on a document is linked to the document and shows on its partner too. Tasks have a due date and can be ticked done. CRM › Activities lists them all.
 
 ## Design system components used
 

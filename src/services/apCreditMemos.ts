@@ -16,7 +16,7 @@ import { lineNet, poTotals, type WithholdingLine } from './purchaseOrders';
 import { createCollection } from './store';
 import { purchasingHistory } from './purchasingHistory';
 
-const memos = createCollection<ApCreditMemo>('sikat-erp:ap-credit-memos:v5', () => purchasingHistory().memos, 'cm');
+const memos = createCollection<ApCreditMemo>('sikat-erp:ap-credit-memos:v5', () => purchasingHistory().memos, 'cm', { audit: 'APCM' });
 
 export const listCreditMemos = memos.list;
 export async function getCreditMemo(idOrNumber: string) {

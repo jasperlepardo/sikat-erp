@@ -32,6 +32,7 @@ const payments = createCollection<IncomingPayment>(
     return SEED_INCOMING_PAYMENTS.map((p) => ({ ...p, transNo: numbers.get(p.id) ?? p.transNo }));
   },
   'rc',
+  { audit: 'RCV' },
 );
 
 export const listIncomingPayments = payments.list;

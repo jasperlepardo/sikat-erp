@@ -198,6 +198,37 @@ check('Nothing posts after the as-of day', L.entries.filter((e) => e.postingDate
   check('Cash accounts never go negative', bad);
 }
 
+// ── Activities ───────────────────────────────────────────────────────────────
+{
+  const { seedActivities } = await import('../src/mocks/activities');
+  const { SEED_SALES_EMPLOYEES } = await import('../src/mocks/partnerMasters');
+  const { SEED_RFQS } = await import('../src/mocks/rfqs');
+  const { SEED_PURCHASE_ORDERS } = await import('../src/mocks/purchaseOrders');
+  const { SEED_PURCHASE_REQUESTS } = await import('../src/mocks/purchaseRequests');
+  type Doc = { id: string; vendorId?: string; customerId?: string };
+  const records: Record<string, Doc[]> = {
+    ITEM: SEED_ITEMS, BP: SEED_PARTNERS, PR: SEED_PURCHASE_REQUESTS, RFQ: SEED_RFQS, PO: SEED_PURCHASE_ORDERS,
+    GRPO: H.receipts, APINV: H.invoices, PAY: H.payments, GRET: H.returns, APCM: H.memos, DPR: H.downPayments,
+    QT: SEED_QUOTATIONS, SO: SEED_SALES_ORDERS, DN: SEED_DELIVERIES, ARINV: SEED_AR_INVOICES, RCV: SEED_INCOMING_PAYMENTS,
+    ARCM: SEED_AR_CREDIT_MEMOS, SRT: SEED_SALES_RETURNS,
+  };
+  const bad: string[] = [];
+  for (const a of seedActivities()) {
+    const partner = SEED_PARTNERS.find((p) => p.id === a.partnerId);
+    if (a.partnerId && !partner) bad.push(`${a.id}: no partner ${a.partnerId}`);
+    if (a.contactId && !partner?.contacts.some((c) => c.id === a.contactId)) bad.push(`${a.id}: contact ${a.contactId} isn't ${a.partnerId}'s`);
+    if (!SEED_SALES_EMPLOYEES.some((e) => e.id === a.ownerId)) bad.push(`${a.id}: no employee ${a.ownerId}`);
+    if (a.date > SEED_AS_OF) bad.push(`${a.id}: dated ${a.date}, after the as-of day`);
+    for (const l of a.links) {
+      const doc = records[l.kind]?.find((r) => r.id === l.id);
+      if (!doc) bad.push(`${a.id}: no ${l.kind} ${l.id}`);
+      else if (a.partnerId && (doc.vendorId ?? doc.customerId) !== undefined && (doc.vendorId ?? doc.customerId) !== a.partnerId)
+        bad.push(`${a.id}: ${l.kind} ${l.id} is ${doc.vendorId ?? doc.customerId}'s, not ${a.partnerId}'s`);
+    }
+  }
+  check('Activities link to records that exist, for the right partner', bad);
+}
+
 const profit = -r2([...balance.entries()].filter(([a]) => a >= '4000').reduce((n, [, v]) => n + v, 0));
 console.log(`\n${L.entries.length} journal entries · revenue ${r2(-bal('4010', '4030', '4040', '4050')).toLocaleString()} · profit before tax ${profit.toLocaleString()} (1 Jan – ${SEED_AS_OF})`);
 if (failures.length) {

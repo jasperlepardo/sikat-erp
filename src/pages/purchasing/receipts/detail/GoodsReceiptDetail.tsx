@@ -60,6 +60,7 @@ import { DocumentFlow } from '../../shared/DocumentFlow';
 import { GrAccounting, GrLogistics } from './GrSections';
 import { buildGrContext, defaultPayTo, defaultShipTo, linesFromPo, type GrContext, type GrDraft, type GrMasters } from './types';
 import { useDocTitle } from '../../../../services/useDocTitle';
+import { ActivityTab } from '../../../../components/activity/ActivityTab';
 
 export const GR_LIST_PATH = '/purchasing/goods-receipts';
 
@@ -377,9 +378,7 @@ function GoodsReceiptForm() {
           </Panel.Body>
         ) : page !== 'details' ? (
           <Panel.Body>
-            <Text variant="small" tone="muted" className="p-4">
-              Activity will show here.
-            </Text>
+            <ActivityTab target={{ kind: 'GRPO', id: draft.id ?? '' }} partnerId={draft.vendorId} />
           </Panel.Body>
         ) : (
           <Panel.Body className="flex flex-col gap-2">

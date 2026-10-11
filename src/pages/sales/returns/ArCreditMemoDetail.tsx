@@ -79,6 +79,7 @@ import { EditPanel } from '../../partners/detail/EditPanel';
 import { SalesDocumentFlow } from '../shared/SalesDocumentFlow';
 import { useDocTitle } from '../../../services/useDocTitle';
 import { AR_CM_LIST_PATH, ARCM_STATUS_INTENT } from './types';
+import { ActivityTab } from '../../../components/activity/ActivityTab';
 
 type TabId = 'header';
 
@@ -459,7 +460,7 @@ function ArCreditMemoForm() {
             </Panel.Body>
           ) : page !== 'details' ? (
             <Panel.Body>
-              <Text variant="small" tone="muted" className="p-4">Activity will show here.</Text>
+              <ActivityTab target={{ kind: 'ARCM', id: draft.id ?? '' }} partnerId={draft.customerId} />
             </Panel.Body>
           ) : (
             <Panel.Body className="flex flex-col gap-2">

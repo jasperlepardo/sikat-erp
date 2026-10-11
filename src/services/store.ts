@@ -1,3 +1,4 @@
+import { CURRENT_USER } from '../mocks/common';
 import { filterRows, type ListQuery } from './listQuery';
 
 /**
@@ -15,7 +16,7 @@ const wait = () => new Promise((r) => setTimeout(r, LATENCY_MS));
  * shadow the seed forever, so a browser holding an older version drops every
  * `sikat-erp:` key on load and starts again from the current seed.
  */
-const SEED_VERSION = 46;
+const SEED_VERSION = 47;
 const VERSION_KEY = 'sikat-erp:seed-version';
 
 // Runs once at module load — before any collection below reads storage.
@@ -40,12 +41,22 @@ interface StoredChanges<T> {
   removed: string[];
 }
 
+export interface CollectionOptions {
+  /** Record kind ('PO', 'ITEM', 'BP'…): log each save and removal in `auditLog` under it. */
+  audit?: string;
+}
+
 /**
  * A collection over a seed. The seed may be a function: it's built on first use, not when the
  * module loads — seeds built from other collections' seeds (the replayed history) need that, or
  * modules that import each other would read one another before they're ready.
  */
-export function createCollection<T extends { id: string }>(storageKey: string, seedOrBuild: T[] | (() => T[]), idPrefix: string) {
+export function createCollection<T extends { id: string }>(
+  storageKey: string,
+  seedOrBuild: T[] | (() => T[]),
+  idPrefix: string,
+  options: CollectionOptions = {},
+) {
   /** Ids saved or removed since the seed: what `persist` writes. */
   const dirty = new Set<string>();
   let built: T[] | undefined;
@@ -107,20 +118,24 @@ export function createCollection<T extends { id: string }>(storageKey: string, s
       const record = { ...input, id: input.id ?? `${idPrefix}-${crypto.randomUUID().slice(0, 8)}` } as T;
       const records = current();
       const index = records.findIndex((r) => r.id === record.id);
+      const before = index === -1 ? undefined : records[index];
       loaded = index === -1 ? [...records, record] : records.map((r) => (r.id === record.id ? record : r));
       dirty.add(record.id);
       persist();
       changed();
+      if (options.audit) recordAudit(options.audit, record.id, before, record);
       return structuredClone(record);
     },
 
     /** Delete a record (for records nothing refers to yet, such as unposted drafts). */
     async remove(id: string): Promise<void> {
       await wait();
+      const before = current().find((r) => r.id === id);
       loaded = current().filter((r) => r.id !== id);
       dirty.add(id);
       persist();
       changed();
+      if (options.audit && before) recordAudit(options.audit, id, before, undefined);
     },
 
     /** The records as they are now, without the fake latency — for sync lookups such as a payment term's days. */
@@ -145,3 +160,54 @@ export function createCollection<T extends { id: string }>(storageKey: string, s
 }
 
 export type Collection<T extends { id: string }> = ReturnType<typeof createCollection<T>>;
+
+/** One change made in the app: who saved which record, when, and what changed. */
+export interface AuditEvent {
+  id: string;
+  /** Record kind, as passed to `createCollection`'s `audit` option. */
+  kind: string;
+  recordId: string;
+  /** ISO timestamp. */
+  at: string;
+  by: string;
+  action: 'created' | 'updated' | 'removed';
+  /** "Status Open → Closed", "Changed remarks, due date"… Empty when a save changed nothing. */
+  changes: string[];
+}
+
+/**
+ * Saves and removals made in the app, for the Activity tabs. Seeded history isn't here: a
+ * record's timeline derives that from its documents. Not audited itself.
+ */
+export const auditLog = createCollection<AuditEvent>('sikat-erp:audit', [], 'aud');
+
+/** "dueDate" → "due date". */
+const words = (key: string) => key.replace(/([a-z0-9])([A-Z])/g, '$1 $2').toLowerCase();
+
+/** What a save changed, as short phrases: status and posting first, then the other fields by name. */
+export function describeChanges(before: object, after: object): string[] {
+  const a = before as Record<string, unknown>;
+  const b = after as Record<string, unknown>;
+  const out: string[] = [];
+  if (a.status !== b.status && b.status !== undefined) out.push(`Status ${String(a.status ?? '—')} → ${String(b.status)}`);
+  if (!a.docNum && b.docNum) out.push('Posted');
+  const keys = [...new Set([...Object.keys(a), ...Object.keys(b)])].filter(
+    (k) => k !== 'id' && k !== 'status' && k !== 'docNum' && JSON.stringify(a[k]) !== JSON.stringify(b[k]),
+  );
+  if (keys.length) out.push(`Changed ${keys.slice(0, 4).map(words).join(', ')}${keys.length > 4 ? ` and ${keys.length - 4} more` : ''}`);
+  return out;
+}
+
+function recordAudit(kind: string, recordId: string, before: object | undefined, after: object | undefined) {
+  const changes = before && after ? describeChanges(before, after) : [];
+  // A save that changed nothing isn't news.
+  if (before && after && !changes.length) return;
+  void auditLog.save({
+    kind,
+    recordId,
+    at: new Date().toISOString(),
+    by: CURRENT_USER,
+    action: !before ? 'created' : !after ? 'removed' : 'updated',
+    changes,
+  });
+}

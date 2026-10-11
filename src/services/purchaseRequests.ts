@@ -8,7 +8,7 @@ import { createCollection } from './store';
 import { prSeries, seriesLookup, formatDocNum } from './allSeries';
 import { todayISO } from './dates';
 
-const requests = createCollection<PurchaseRequest>('sikat-erp:purchase-requests', SEED_PURCHASE_REQUESTS, 'prq');
+const requests = createCollection<PurchaseRequest>('sikat-erp:purchase-requests', SEED_PURCHASE_REQUESTS, 'prq', { audit: 'PR' });
 
 export { prSeries };
 

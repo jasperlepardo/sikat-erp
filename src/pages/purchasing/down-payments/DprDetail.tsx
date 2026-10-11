@@ -64,6 +64,7 @@ import { CopyPanel } from '../shared/CopyPanel';
 import { DocumentFlow } from '../shared/DocumentFlow';
 import { DprLines } from './DprLines';
 import { useDocTitle } from '../../../services/useDocTitle';
+import { ActivityTab } from '../../../components/activity/ActivityTab';
 
 export const DPR_LIST_PATH = '/purchasing/bills/down-payment-requests';
 
@@ -291,7 +292,7 @@ function DprForm() {
               <DocumentFlow kind="DPR" id={draft.id} notes="Everything linked to this request: the PO it's for, the payments that paid it, and the A/P invoices that drew it." />
             </Panel.Body>
           ) : page !== 'details' ? (
-            <Panel.Body><Text variant="small" tone="muted" className="p-4">Activity will show here.</Text></Panel.Body>
+            <Panel.Body><ActivityTab target={{ kind: 'DPR', id: draft.id ?? '' }} partnerId={draft.vendorId} /></Panel.Body>
           ) : (
             <Panel.Body className="flex flex-col gap-2">
               <ProblemsAlert problems={problems} tabLabel={(t) => ({ contents: 'Contents', logistics: 'Logistics', accounting: 'Accounting' })[t]} />

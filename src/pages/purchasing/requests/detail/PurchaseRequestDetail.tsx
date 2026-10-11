@@ -14,6 +14,7 @@ import {
   PanelHeader,
   panelHeaderIcons,
   Select,
+  Tabs,
   Text,
   TextField,
 } from '@jasperlepardo/sikat-design-system';
@@ -50,12 +51,21 @@ import {
 import { ContentsTab } from './ContentsTab';
 import { buildContext, type PrDraft, type PrMasters } from './types';
 import { DocumentFlow } from '../../shared/DocumentFlow';
+import { ActivityTab } from '../../../../components/activity/ActivityTab';
 import { todayISO } from '../../../../services/dates';
 import { useDocTitle } from '../../../../services/useDocTitle';
 
 export const PR_LIST_PATH = '/purchasing/requests';
 
 type TabId = 'contents';
+
+/** Top-level views in the panel header. */
+const PAGES = [
+  { value: 'details', label: 'Details' },
+  { value: 'transactions', label: 'Transactions' },
+  { value: 'activity', label: 'Activity' },
+] as const;
+type PageId = (typeof PAGES)[number]['value'];
 
 export const STATUS_INTENT: Record<PrStatus, 'default' | 'primary' | 'success' | 'danger'> = {
   Open: 'primary',
@@ -116,6 +126,7 @@ function PurchaseRequestForm() {
   }, [isNew]);
 
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
+  const [page, setPage] = useState<PageId>('details');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -275,6 +286,15 @@ function PurchaseRequestForm() {
               </ButtonGroup>
             )
           }
+          tabs={
+            <Tabs
+              variant="outline"
+              value={page}
+              onValueChange={(v) => setPage(v as PageId)}
+              // A request has no transactions or activity until it's added.
+              items={PAGES.map((p) => ({ ...p, disabled: !ctx.added && p.value !== 'details' }))}
+            />
+          }
           status={
             isNew ? undefined : (
               <Badge size="small" intent={STATUS_INTENT[draft.status]}>{draft.status}</Badge>
@@ -293,191 +313,198 @@ function PurchaseRequestForm() {
           }
         />
 
-        <Panel.Body className="flex flex-col gap-2">
-          <ProblemsAlert problems={problems} tabLabel={() => 'Contents'} />
-          {ctx.readOnly ? (
-            <Alert intent="default" variant="outline" title="This request is closed">
-              Only remarks can change{draft.closeDate ? ` (closed ${draft.closeDate})` : ''}.
-            </Alert>
-          ) : null}
-
-          <fieldset disabled={ctx.readOnly} className="contents">
-            <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
-              {/* Requester section */}
-              <Section icon="person" title="Requester">
-                <FieldStack>
-                  <FormField label="Requester" required error={errors.requesterId}>
-                    {(p) => (
-                      <Select
-                        {...p}
-                        options={[
-                          { value: '', label: '— None —' },
-                          ...m.employees
-                            .filter((e) => e.active || e.id === draft.requesterId)
-                            .map((e) => ({ value: e.id, label: e.name })),
-                        ]}
-                        value={draft.requesterId}
-                        onValueChange={(id) => pickRequester(id || null)}
-                      />
-                    )}
-                  </FormField>
-                  {h.text('requesterName', 'Requester name', {
-                    readOnly: true,
-                    hint: 'Auto-filled from the requester selection.',
-                  })}
-                  <FormField label="Branch" required>
-                    {(p) => (
-                      <Select
-                        {...p}
-                        options={BRANCHES.map((b) => ({ value: b, label: b }))}
-                        value={draft.branch}
-                        onValueChange={(v) => v && update({ branch: v })}
-                      />
-                    )}
-                  </FormField>
-                  <FormField label="Department">
-                    {(p) => (
-                      <Select
-                        {...p}
-                        options={[{ value: '', label: '— None —' }, ...DEPARTMENTS.map((d) => ({ value: d, label: d }))]}
-                        value={draft.department}
-                        onValueChange={(v) => update({ department: v ?? '' })}
-                      />
-                    )}
-                  </FormField>
-                  <Flags>
-                    <Checkbox
-                      checked={draft.notifyOnPo}
-                      onChange={(e) => update({ notifyOnPo: e.currentTarget.checked })}
-                    >
-                      Send e-mail when PO or goods receipt is added
-                    </Checkbox>
-                  </Flags>
-                  {draft.notifyOnPo ? (
-                    h.text('notifyEmail', 'Email address', {
-                      hint: "Notification email. Defaults to the requester's email.",
-                    })
-                  ) : null}
-                </FieldStack>
-              </Section>
-
-              {/* Document section */}
-              <Section icon="tag" title="Document">
-                <Fields>
-                  <FormField
-                    label="No."
-                    required
-                    error={errors.docNum}
-                    tooltip={
-                      ctx.added
-                        ? undefined
-                        : series.manual
-                          ? 'Manual series: type the number.'
-                          : 'Assigned from the series when the request is added.'
-                    }
-                  >
-                    {(p) => (
-                      <div className="flex gap-1">
-                        <Select
-                          aria-label="Series"
-                          className="w-40"
-                          disabled={ctx.added}
-                          options={prSeries.snapshot().filter((s) => s.active).map((s) => ({ value: s.id, label: s.name }))}
-                          value={draft.seriesId}
-                          onValueChange={(seriesId) => update({ seriesId, docNum: 0 })}
-                        />
-                        {series.manual && !ctx.added ? (
-                          <TextField
-                            {...p}
-                            className="flex-1"
-                            type="number"
-                            placeholder="Request number"
-                            value={draft.docNum ? String(draft.docNum) : ''}
-                            onChange={(e) => update({ docNum: Number(e.currentTarget.value) })}
-                          />
-                        ) : (
-                          <span className="flex-1 self-center text-sm">
-                            {draft.docNum ? prNumber(draft as PurchaseRequest) : (
-                              <span className="text-(--color-text-placeholder)">Next number</span>
-                            )}
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </FormField>
-
-                  <StatusField
-                    statuses={PR_STATUSES}
-                    intents={STATUS_INTENT}
-                    value={draft.status}
-                    moves={transitions}
-                    hint={STATUS_HINT[draft.status]}
-                    error={errors.status}
-                  />
-
-                  {h.date('postingDate', 'Posting date', {
-                    required: true,
-                    error: errors.postingDate,
-                    hint: 'Defaults to today.',
-                  })}
-                  {h.date('documentDate', 'Document date', {
-                    required: true,
-                    error: errors.documentDate,
-                    hint: 'The date for records. Defaults to today.',
-                  })}
-                  {h.date('requiredDate', 'Required date', {
-                    hint: 'When the items or services are needed. Cascades to new lines.',
-                  })}
-                  {h.date('validUntil', 'Valid until', {
-                    hint: 'Date the request lapses if unfulfilled.',
-                  })}
-                  <ReadOnly label="Close date" value={draft.closeDate || '—'} hint="Set when the request is closed." />
-                </Fields>
-              </Section>
-            </div>
-
-            <ContentsTab draft={draft} update={update} errors={errors} m={m} ctx={ctx} />
-
-            {/* Footer totals */}
-            <Section icon="functions" title="Totals">
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                <Fields cols={1}>
-                  {h.master('ownerId', 'Owner', salesEmployeeDef, {
-                    hint: 'Owns the document for access control.',
-                  })}
-                  {h.area('remarks', 'Remarks', {
-                    rows: 3,
-                    hint: 'Can be changed after the request is added.',
-                  })}
-                </Fields>
-                <List.Group divider>
-                  <TotalRow label="Total before discount" value={totals.beforeDiscount} />
-                  <TotalRow label="Discount" value={-totals.discount} />
-                  <TotalRow
-                    label="Freight (estimate)"
-                    input={
-                      <TextField
-                        aria-label="Freight estimate"
-                        type="number"
-                        min={0}
-                        className="w-32"
-                        prefix="PHP"
-                        value={String(draft.freight)}
-                        onChange={(e) => update({ freight: Number(e.currentTarget.value) })}
-                      />
-                    }
-                    value={totals.freight}
-                  />
-                  <TotalRow label="Tax (estimate)" value={totals.tax} />
-                  <TotalRow label="Total payment due (estimate)" value={totals.total} strong />
-                </List.Group>
-              </div>
-            </Section>
-          </fieldset>
-          {ctx.added && (
+        {page === 'transactions' && ctx.added ? (
+          <Panel.Body>
             <DocumentFlow kind="PR" id={(draft as PurchaseRequest).id} notes="RFQs raised from this request, and the purchase orders they became." />
-          )}
-        </Panel.Body>
+          </Panel.Body>
+        ) : page === 'activity' && ctx.added ? (
+          <Panel.Body>
+            <ActivityTab target={{ kind: 'PR', id: (draft as PurchaseRequest).id }} />
+          </Panel.Body>
+        ) : (
+          <Panel.Body className="flex flex-col gap-2">
+            <ProblemsAlert problems={problems} tabLabel={() => 'Contents'} />
+            {ctx.readOnly ? (
+              <Alert intent="default" variant="outline" title="This request is closed">
+                Only remarks can change{draft.closeDate ? ` (closed ${draft.closeDate})` : ''}.
+              </Alert>
+            ) : null}
+
+            <fieldset disabled={ctx.readOnly} className="contents">
+              <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
+                {/* Requester section */}
+                <Section icon="person" title="Requester">
+                  <FieldStack>
+                    <FormField label="Requester" required error={errors.requesterId}>
+                      {(p) => (
+                        <Select
+                          {...p}
+                          options={[
+                            { value: '', label: '— None —' },
+                            ...m.employees
+                              .filter((e) => e.active || e.id === draft.requesterId)
+                              .map((e) => ({ value: e.id, label: e.name })),
+                          ]}
+                          value={draft.requesterId}
+                          onValueChange={(id) => pickRequester(id || null)}
+                        />
+                      )}
+                    </FormField>
+                    {h.text('requesterName', 'Requester name', {
+                      readOnly: true,
+                      hint: 'Auto-filled from the requester selection.',
+                    })}
+                    <FormField label="Branch" required>
+                      {(p) => (
+                        <Select
+                          {...p}
+                          options={BRANCHES.map((b) => ({ value: b, label: b }))}
+                          value={draft.branch}
+                          onValueChange={(v) => v && update({ branch: v })}
+                        />
+                      )}
+                    </FormField>
+                    <FormField label="Department">
+                      {(p) => (
+                        <Select
+                          {...p}
+                          options={[{ value: '', label: '— None —' }, ...DEPARTMENTS.map((d) => ({ value: d, label: d }))]}
+                          value={draft.department}
+                          onValueChange={(v) => update({ department: v ?? '' })}
+                        />
+                      )}
+                    </FormField>
+                    <Flags>
+                      <Checkbox
+                        checked={draft.notifyOnPo}
+                        onChange={(e) => update({ notifyOnPo: e.currentTarget.checked })}
+                      >
+                        Send e-mail when PO or goods receipt is added
+                      </Checkbox>
+                    </Flags>
+                    {draft.notifyOnPo ? (
+                      h.text('notifyEmail', 'Email address', {
+                        hint: "Notification email. Defaults to the requester's email.",
+                      })
+                    ) : null}
+                  </FieldStack>
+                </Section>
+
+                {/* Document section */}
+                <Section icon="tag" title="Document">
+                  <Fields>
+                    <FormField
+                      label="No."
+                      required
+                      error={errors.docNum}
+                      tooltip={
+                        ctx.added
+                          ? undefined
+                          : series.manual
+                            ? 'Manual series: type the number.'
+                            : 'Assigned from the series when the request is added.'
+                      }
+                    >
+                      {(p) => (
+                        <div className="flex gap-1">
+                          <Select
+                            aria-label="Series"
+                            className="w-40"
+                            disabled={ctx.added}
+                            options={prSeries.snapshot().filter((s) => s.active).map((s) => ({ value: s.id, label: s.name }))}
+                            value={draft.seriesId}
+                            onValueChange={(seriesId) => update({ seriesId, docNum: 0 })}
+                          />
+                          {series.manual && !ctx.added ? (
+                            <TextField
+                              {...p}
+                              className="flex-1"
+                              type="number"
+                              placeholder="Request number"
+                              value={draft.docNum ? String(draft.docNum) : ''}
+                              onChange={(e) => update({ docNum: Number(e.currentTarget.value) })}
+                            />
+                          ) : (
+                            <span className="flex-1 self-center text-sm">
+                              {draft.docNum ? prNumber(draft as PurchaseRequest) : (
+                                <span className="text-(--color-text-placeholder)">Next number</span>
+                              )}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </FormField>
+
+                    <StatusField
+                      statuses={PR_STATUSES}
+                      intents={STATUS_INTENT}
+                      value={draft.status}
+                      moves={transitions}
+                      hint={STATUS_HINT[draft.status]}
+                      error={errors.status}
+                    />
+
+                    {h.date('postingDate', 'Posting date', {
+                      required: true,
+                      error: errors.postingDate,
+                      hint: 'Defaults to today.',
+                    })}
+                    {h.date('documentDate', 'Document date', {
+                      required: true,
+                      error: errors.documentDate,
+                      hint: 'The date for records. Defaults to today.',
+                    })}
+                    {h.date('requiredDate', 'Required date', {
+                      hint: 'When the items or services are needed. Cascades to new lines.',
+                    })}
+                    {h.date('validUntil', 'Valid until', {
+                      hint: 'Date the request lapses if unfulfilled.',
+                    })}
+                    <ReadOnly label="Close date" value={draft.closeDate || '—'} hint="Set when the request is closed." />
+                  </Fields>
+                </Section>
+              </div>
+
+              <ContentsTab draft={draft} update={update} errors={errors} m={m} ctx={ctx} />
+
+              {/* Footer totals */}
+              <Section icon="functions" title="Totals">
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                  <Fields cols={1}>
+                    {h.master('ownerId', 'Owner', salesEmployeeDef, {
+                      hint: 'Owns the document for access control.',
+                    })}
+                    {h.area('remarks', 'Remarks', {
+                      rows: 3,
+                      hint: 'Can be changed after the request is added.',
+                    })}
+                  </Fields>
+                  <List.Group divider>
+                    <TotalRow label="Total before discount" value={totals.beforeDiscount} />
+                    <TotalRow label="Discount" value={-totals.discount} />
+                    <TotalRow
+                      label="Freight (estimate)"
+                      input={
+                        <TextField
+                          aria-label="Freight estimate"
+                          type="number"
+                          min={0}
+                          className="w-32"
+                          prefix="PHP"
+                          value={String(draft.freight)}
+                          onChange={(e) => update({ freight: Number(e.currentTarget.value) })}
+                        />
+                      }
+                      value={totals.freight}
+                    />
+                    <TotalRow label="Tax (estimate)" value={totals.tax} />
+                    <TotalRow label="Total payment due (estimate)" value={totals.total} strong />
+                  </List.Group>
+                </div>
+              </Section>
+            </fieldset>
+          </Panel.Body>
+        )}
       </Panel>
     </Form>
   );

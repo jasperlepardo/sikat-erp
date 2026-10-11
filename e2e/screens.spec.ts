@@ -20,6 +20,7 @@ const ROUTES = [
   'sales/customers/bp-003',
   'purchasing/vendors/bp-016',
   'crm/leads',
+  'crm/activities',
   // Purchasing documents.
   'purchasing/requests',
   'purchasing/requests/prq-001',

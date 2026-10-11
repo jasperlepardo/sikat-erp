@@ -20,7 +20,7 @@ import { lineNet, listPurchaseOrders, openQty, poTotals, priceAfterDiscount, sav
 import { createCollection } from './store';
 import { purchasingHistory } from './purchasingHistory';
 
-const receipts = createCollection<GoodsReceipt>('sikat-erp:goods-receipts:v7', () => purchasingHistory().receipts, 'gr');
+const receipts = createCollection<GoodsReceipt>('sikat-erp:goods-receipts:v7', () => purchasingHistory().receipts, 'gr', { audit: 'GRPO' });
 
 export const listGoodsReceipts = receipts.list;
 export async function getGoodsReceipt(idOrNumber: string) {

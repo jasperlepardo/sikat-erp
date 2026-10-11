@@ -17,7 +17,7 @@ import { applyDownPaymentPayments } from './apDownPayments';
 import { createCollection } from './store';
 import { purchasingHistory } from './purchasingHistory';
 
-const payments = createCollection<OutgoingPayment>('sikat-erp:outgoing-payments:v5', () => purchasingHistory().payments, 'op');
+const payments = createCollection<OutgoingPayment>('sikat-erp:outgoing-payments:v5', () => purchasingHistory().payments, 'op', { audit: 'PAY' });
 
 export const listPayments = payments.list;
 export async function getPayment(idOrNumber: string) {

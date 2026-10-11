@@ -14,7 +14,7 @@ import { soTotals } from './salesOrders';
 import { createCollection } from './store';
 import { withLineCosts } from './stockHistory';
 
-const salesReturns = createCollection<SalesReturn>('sikat-erp:sales-returns', withLineCosts(SEED_SALES_RETURNS), 'sr');
+const salesReturns = createCollection<SalesReturn>('sikat-erp:sales-returns', withLineCosts(SEED_SALES_RETURNS), 'sr', { audit: 'SRT' });
 
 export const listSalesReturns = salesReturns.list;
 export async function getSalesReturn(idOrNumber: string) {

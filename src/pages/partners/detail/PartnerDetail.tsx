@@ -38,6 +38,7 @@ import { FieldStack, Section, bind, type DefaultKey, type DefaultPicks, type Def
 import { MoreMenu } from '../../../components/form/MoreMenu';
 import { ProblemsAlert, problemCollector, type Problem as ProblemBase } from '../../../components/form/ProblemsAlert';
 import { AgreementsSection } from './AgreementsSection';
+import { ActivityTab } from '../../../components/activity/ActivityTab';
 
 const TABS = [
   { value: 'settings', label: 'Settings', Component: SettingsTab },
@@ -46,7 +47,7 @@ const TABS = [
 ] as const;
 type TabId = (typeof TABS)[number]['value'];
 
-/** Top-level views in the panel header. Items shows for vendors only; Activity is a placeholder for now. */
+/** Top-level views in the panel header. Items shows for vendors only. */
 const PAGES = [
   { value: 'details', label: 'Details' },
   { value: 'items', label: 'Items' },
@@ -373,7 +374,7 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
               ) : page === 'transactions' ? (
                 <TransactionsTab draft={draft} />
               ) : (
-                <Text variant="small" tone="muted" className="p-4">Activity will show here.</Text>
+                <ActivityTab target={{ kind: 'BP', id: draft.id ?? '' }} />
               )}
             </Panel.Body>
           ) : (

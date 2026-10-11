@@ -17,7 +17,7 @@ import { withLineCosts } from './stockHistory';
 
 // Seeded deliveries carry the cost their lines went out at (services/stockHistory.ts).
 const SEEDED = withLineCosts(SEED_DELIVERIES);
-const deliveries = createCollection<Delivery>('sikat-erp:deliveries:v8', SEEDED, 'dn');
+const deliveries = createCollection<Delivery>('sikat-erp:deliveries:v8', SEEDED, 'dn', { audit: 'DN' });
 
 export const listDeliveries = deliveries.list;
 export async function getDelivery(idOrNumber: string) {

@@ -7,6 +7,14 @@ const MANILA = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Manila', year:
 
 export const todayISO = (now = new Date()) => MANILA.format(now);
 
+const MANILA_TIME = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit', hour12: false });
+
+/** An ISO timestamp as "YYYY-MM-DDTHH:mm" in Philippine time. */
+export const manilaDateTime = (iso: string) => {
+  const at = new Date(iso);
+  return `${MANILA.format(at)}T${MANILA_TIME.format(at)}`;
+};
+
 // en-US short months ("Sep"); en-GB now prints "Sept".
 const DISPLAY = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', day: 'numeric', month: 'short', year: 'numeric' });
 
