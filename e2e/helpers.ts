@@ -19,7 +19,8 @@ const RAW_ID = new RegExp(`\\b(?:(${ID_PREFIXES.join('|')})-[A-Za-z0-9-]*\\d[A-Z
 export async function open(page: Page, route: string) {
   await page.goto(`/#/${route.replace(/^\/+/, '')}`);
   await page.waitForLoadState('networkidle');
-  await expect(page.locator('body')).not.toContainText('Loading…', { timeout: 10_000 });
+  // "Loading…", "Loading purchase quotation…": any screen still fetching.
+  await expect(page.locator('body')).not.toContainText(/Loading[^\n…]*…/, { timeout: 10_000 });
   let last = '';
   await expect
     .poll(async () => {
