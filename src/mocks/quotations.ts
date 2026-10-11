@@ -17,6 +17,8 @@ import type { PoReference } from './purchaseOrders';
 import { todayISO } from '../services/dates';
 import { SEED_ITEMS, itemsPerUom } from './items';
 import { SEED_PARTNERS, formatAddress } from './partners';
+import { H1_SALES, SEED_SALES_ORDERS } from './salesOrders';
+import { MONTH_NAMES } from './storeSales';
 
 export type QuotationStatus = 'Draft' | 'Open' | 'Closed' | 'Cancelled';
 export const QUOTATION_STATUSES: QuotationStatus[] = ['Draft', 'Open', 'Closed', 'Cancelled'];
@@ -362,4 +364,29 @@ const qt008 = qtHeader('qt-008', 8, 'bp-007', {
   ],
 });
 
-export const SEED_QUOTATIONS: Quotation[] = [qt001, qt002, qt003, qt004, qt005, qt006, qt007, qt008];
+// January–June: the quoted corporate orders (mocks/salesOrders.ts), quoted a week before the
+// customer ordered and closed when it did.
+const plusDays = (iso: string, days: number) => {
+  const d = new Date(`${iso}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+};
+const H1_QUOTES: Quotation[] = H1_SALES.filter((p) => p.quoted).map((p) => {
+  const quoted = plusDays(p.ordered, -7);
+  const order = SEED_SALES_ORDERS.find((o) => o.id === `so-${p.id}`)!;
+  return qtHeader(`qt-${p.id}`, 0, p.customerId, {
+    postingDate: quoted, documentDate: quoted, validUntil: plusDays(quoted, 30),
+    status: 'Closed', closeDate: p.ordered,
+    customerRef: p.customerRef.replace('-PO-', '-RFQ-').replace('-PR-', '-RFQ-'),
+    convertedToOrderId: order.id,
+    remarks: `${p.remarks} Customer confirmed on ${Number(p.ordered.slice(8))} ${MONTH_NAMES[Number(p.ordered.slice(5, 7)) - 1].slice(0, 3)}.`,
+    lines: order.lines.map((l, k) =>
+      qtLine(`qt-${p.id}-${k + 1}`, byId(l.itemId), l.quantity, { priceListId: l.priceListId, discountPct: l.discountPct, priceSource: l.priceSource, taxCode: l.taxCode }),
+    ),
+  });
+});
+
+/** Every seeded quotation, numbered in date order (drafts have no number). */
+export const SEED_QUOTATIONS: Quotation[] = [qt001, qt002, qt003, qt004, qt005, qt006, qt007, qt008, ...H1_QUOTES]
+  .sort((a, b) => a.postingDate.localeCompare(b.postingDate) || a.id.localeCompare(b.id))
+  .map((q, n, all) => (q.status === 'Draft' ? { ...q, docNum: 0 } : { ...q, docNum: all.slice(0, n).filter((x) => x.status !== 'Draft').length + 1 }));

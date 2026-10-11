@@ -127,6 +127,32 @@ createCollection<T>(storageKey, seed, idPrefix)
 - `useAsync<T>(load, deps)` runs async on mount/deps change; returns `undefined` while loading
 - `useCollectionRows(collection)` returns `{ rows, save, setActive, reload }`
 - **`SEED_VERSION`** (top of `store.ts`): a saved collection overrides its seed forever, so **bump it whenever a file in `src/mocks` changes**. A browser on an older version drops every `sikat-erp:` key once and reloads the seed.
+- Storage keeps only what changed from the seed (saved records and removed ids), so seeds can be large.
+- The seed may be a function (`createCollection(key, () => seed, prefix)`): it's built on first use. Seeds built from other seeds (the histories below) must be lazy, or modules that import each other read one another before they're ready.
+
+---
+
+## The seeded year — books from 1 Jan 2026
+
+The company runs on Sikat from 1 Jan 2026; the seed is its year to the as-of day, **9 Oct 2026** (`SEED_AS_OF`, `mocks/supplyPlan.ts`). Everything ties out — run the checks after changing any seed:
+
+```sh
+npx tsx scripts/check-seeds.ts   # documents, stock and ledger tie-outs; exits non-zero on a failure
+```
+
+| Piece | Where |
+|---|---|
+| Stores' monthly POS sales (one A/R invoice per store per month, POS series, walk-in customer `bp-045`), monthly POS collections, Pasig → store restocks and release-day allocations | `mocks/storeSales.ts` → `arInvoices`, `incomingPayments`, `inventoryTransfers` |
+| Pasig's January–June replenishment and release orders | `mocks/supplyPlan.ts` → `purchaseOrders` |
+| January–June monthly service orders, corporate sales (quotation → order → delivery → invoice → payment) | `mocks/purchaseOrders.ts`, `mocks/salesOrders.ts` (+ quotations, deliveries, invoices, payments) |
+| Receipts, bills, payments, returns, credit memos, down payments | `services/purchasingHistory.ts` (`purchasingHistory()`) |
+| Stock and cost replayed from the opening: line costs, item costs, FIFO layers, Pasig's stock | `services/stockHistory.ts` (`stockHistory()`) |
+| The ledger: opening balances, every document's entry (the live journal functions), monthly finance entries | `services/ledgerHistory.ts` (`seededLedger()`) |
+
+- Documents are numbered per series in date order; text that names a number computes it (`seedPoNo`, `seedSoNo`, `seedDnNo`, `seedArNo`).
+- Pasig (`WH-MNL`) is the balancing warehouse: its opening and today's In stock follow from the documents. Stores open with today's stock; items released during the year open at nil.
+- January–June USD rates are **illustrative** (`mocks/currencies.ts`), not from BSP bulletins.
+- Journals and costing read items merged with their parent (`mergedItems`): a variant's group, accounts and valuation method are its parent's.
 
 ---
 

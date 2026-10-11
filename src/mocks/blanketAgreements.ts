@@ -210,7 +210,14 @@ const seedHeader = (id: string, docNum: number, customerId: string, patch: Parti
   };
 };
 
+// Cumulative figures are what services/blanketAgreements works out from the linked order lines:
+// committed = open lines on open orders, cumulative = closed lines.
+const used = (l: BaLine, qty: number): Partial<BaLine> => ({ cumulativeQty: qty, cumulativeAmountLC: round2(qty * l.unitPrice) });
+const committed = (l: BaLine, qty: number): Partial<BaLine> => ({ cumulativeCommittedQty: qty, cumulativeCommittedAmountLC: round2(qty * l.unitPrice) });
+const withUse = (l: BaLine, patch: (l: BaLine) => Partial<BaLine>): BaLine => ({ ...l, ...patch(l) });
+
 export const SEED_BLANKET_AGREEMENTS: BlanketAgreement[] = [
+  // so-001: 12 Sky Blue still open (committed), 8 Midnight delivered (closed).
   seedHeader('ba-001', 1, 'bp-003', {
     startDate: '2026-07-01',
     endDate: '2026-12-31',
@@ -220,40 +227,26 @@ export const SEED_BLANKET_AGREEMENTS: BlanketAgreement[] = [
     remarks: 'Commitment for up to 50 MacBook Airs at the special pricing agreed in June. Delivery in batches per approved PR.',
     settlementProbability: 85,
     lines: [
-      seedLine('ba-001-1', 'apl-0239', 25, {
-        unitPrice: round2(94750 / 1.12),
-        cumulativeQty: 20,
-        cumulativeAmountLC: round2(20 * (94750 / 1.12)),
-      }),
-      seedLine('ba-001-2', 'apl-0240', 25, {
-        unitPrice: round2(94750 / 1.12),
-        cumulativeQty: 8,
-        cumulativeAmountLC: round2(8 * (94750 / 1.12)),
-      }),
+      withUse(seedLine('ba-001-1', 'apl-0239', 25, { unitPrice: round2(94750 / 1.12) }), (l) => committed(l, 12)),
+      withUse(seedLine('ba-001-2', 'apl-0240', 25, { unitPrice: round2(94750 / 1.12) }), (l) => used(l, 8)),
     ],
   }),
+  // so-004: the 30 power adapters of August.
   seedHeader('ba-002', 2, 'bp-004', {
-    startDate: '2026-09-01',
-    endDate: '2027-08-31',
-    signingDate: '2026-08-25',
-    description: 'Annual device refresh — Clarkfield GS FY2027',
+    startDate: '2026-08-01',
+    endDate: '2027-07-31',
+    signingDate: '2026-07-28',
+    description: 'Annual device refresh — Clarkfield GS, Aug 2026 – Jul 2027',
     customerRef: 'CGS-FA-2026-ANN',
     remarks: 'Annual agreement for Mac, iPad and accessories for the Clark and Pampanga offices.',
     settlementProbability: 90,
     lines: [
-      seedLine('ba-002-1', 'apl-0239', 20, {
-        unitPrice: round2(94750 / 1.12),
-        cumulativeQty: 10,
-        cumulativeAmountLC: round2(10 * (94750 / 1.12)),
-      }),
-      seedLine('ba-002-2', 'apl-0079', 15, { cumulativeQty: 0 }),
-      seedLine('ba-002-3', 'apl-0362', 40, {
-        unitPrice: round2(itemById('apl-0362').basePrice / 1.12),
-        cumulativeQty: 30,
-        cumulativeAmountLC: round2(30 * (itemById('apl-0362').basePrice / 1.12)),
-      }),
+      seedLine('ba-002-1', 'apl-0239', 20, { unitPrice: round2(94750 / 1.12) }),
+      seedLine('ba-002-2', 'apl-0079', 15),
+      withUse(seedLine('ba-002-3', 'apl-0362', 40), (l) => used(l, 30)),
     ],
   }),
+  // so-013: the 23 MacBook Airs delivered in September fulfilled it.
   seedHeader('ba-003', 3, 'bp-002', {
     startDate: '2026-01-01',
     endDate: '2026-12-31',
@@ -261,14 +254,11 @@ export const SEED_BLANKET_AGREEMENTS: BlanketAgreement[] = [
     description: 'Northgate Prime — annual mall device contract',
     customerRef: 'NPM-SAFC-2026',
     status: 'Closed',
-    remarks: 'Closed — fulfilled in full as of October 2026.',
+    remarks: 'Closed — fulfilled in full by the September MacBook Air order.',
     settlementProbability: 100,
     lines: [
-      seedLine('ba-003-1', 'apl-0002', 10, {
-        cumulativeQty: 10,
-        cumulativeAmountLC: round2(10 * (itemById('apl-0002').basePrice / 1.12)),
-        rowStatus: 'Closed',
-      }),
+      withUse(seedLine('ba-003-1', 'apl-0242', 15, { rowStatus: 'Closed' }), (l) => used(l, 15)),
+      withUse(seedLine('ba-003-2', 'apl-0243', 8, { rowStatus: 'Closed' }), (l) => used(l, 8)),
     ],
   }),
 ];

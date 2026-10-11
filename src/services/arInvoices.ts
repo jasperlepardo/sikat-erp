@@ -15,8 +15,10 @@ import { consumeLayers, logConsumption, restoreLayer, updateFifoCosts, type Take
 import { postDocumentEntry, reverseDocumentEntry } from './journalEntries';
 import { applyDelivered, closeSalesOrder, lineNet, listSalesOrders, openQty, soTotals } from './salesOrders';
 import { createCollection } from './store';
+import { withLineCosts } from './stockHistory';
 
-const invoices = createCollection<ArInvoice>('sikat-erp:ar-invoices:v6', SEED_AR_INVOICES, 'ar');
+// Seeded lines carry the cost their stock went out at (services/stockHistory.ts).
+const invoices = createCollection<ArInvoice>('sikat-erp:ar-invoices:v7', withLineCosts(SEED_AR_INVOICES), 'ar');
 
 export const listArInvoices = invoices.list;
 export async function getArInvoice(idOrNumber: string) {

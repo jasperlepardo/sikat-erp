@@ -29,7 +29,10 @@ import { plId, termId } from './masters';
 import { SEED_DELIVERIES, type DnLine } from './deliveries';
 import { SEED_PARTNERS, formatAddress } from './partners';
 import type { PoReference } from './purchaseOrders';
-import { SEED_SALES_ORDERS, type SoDocType } from './salesOrders';
+import { H1_SALES, SEED_SALES_ORDERS, seedSoNo, termDaysOf, type SoDocType } from './salesOrders';
+import { SEED_ITEMS } from './items';
+import { SEED_WAREHOUSES } from './itemMasters';
+import { MONTH_NAMES, POS_CUSTOMER_ID, STORE_SALES } from './storeSales';
 
 export type ArStatus = 'Draft' | 'Open' | 'Closed' | 'Cancelled';
 export const AR_STATUSES: ArStatus[] = ['Draft', 'Open', 'Closed', 'Cancelled'];
@@ -126,8 +129,18 @@ export interface ArInvoice {
 
 export const AR_SERIES: DocumentSeries[] = [
   { id: 'ars-primary', name: 'Sales Invoice', prefix: '', firstNo: 13, manual: false, isDefault: true, active: true, segments: [{ type: 'literal', value: 'SI' }, { type: 'year' }, { type: 'sequence', padding: 4 }] },
-  { id: 'ars-or', name: 'Official Receipt', prefix: '', firstNo: 3, manual: false, isDefault: false, active: true, segments: [{ type: 'literal', value: 'OR' }, { type: 'year' }, { type: 'sequence', padding: 4 }] },
+  { id: 'ars-or', name: 'Official Receipt', prefix: '', firstNo: 3, manual: false, isDefault: false, active: true, segments: [{ type: 'literal', value: 'OR' }, { type: 'year' }, { type: 'sequence', padding: 4 }] },  { id: 'ars-pos', name: 'POS Sales', prefix: '', firstNo: 1, manual: false, isDefault: false, active: true, segments: [{ type: 'literal', value: 'POS' }, { type: 'year' }, { type: 'sequence', padding: 5 }] },
 ];
+
+export const POS_SERIES_ID = 'ars-pos';
+
+/** A seeded invoice's number as the series formats it: SI-2026-0001, OR-2026-0001, POS-2026-00001. */
+export const seedArNo = (a: Pick<ArInvoice, 'seriesId' | 'docNum' | 'postingDate'>) => {
+  const series = AR_SERIES.find((x) => x.id === a.seriesId) ?? AR_SERIES[0];
+  const literal = series.segments?.find((x) => x.type === 'literal');
+  const pad = series.segments?.find((x) => x.type === 'sequence');
+  return `${literal?.value ?? 'SI'}-${a.postingDate.slice(0, 4)}-${String(a.docNum).padStart(pad?.padding ?? 4, '0')}`;
+};
 
 export const OR_SERIES_ID = 'ars-or';
 
@@ -313,6 +326,9 @@ function subic(): Partial<ArInvoice> {
   return { customerId: c.id, customerCode: c.code, customerName: c.name, contactId: c.defaultContactId, federalTaxId: c.tin, billTo: addr ? formatAddress(addr, c.name) : '', shipTo: addr ? formatAddress(addr, c.name) : '' };
 }
 
+/** The bundle order's number, for the remarks of the two invoices that split it. */
+const BUNDLE_NO = seedSoNo(SEED_SALES_ORDERS.find((o) => o.id === 'so-b01')!);
+
 const invoices: ArInvoice[] = [
   fromDelivery('ar-001', 1, 'dn-002', {
     postingDate: '2026-08-21', documentDate: '2026-08-21', dueDate: '2026-09-20', status: 'Closed', closeDate: '2026-09-18',
@@ -324,7 +340,7 @@ const invoices: ArInvoice[] = [
   }),
   fromDelivery('ar-003', 3, 'dn-004', {
     postingDate: '2026-09-18', documentDate: '2026-09-18', dueDate: '2026-10-18', wtaxLiable: true,
-    remarks: 'Northgate withholds 1% (top withholding agent); half paid by check on 2 Oct, balance due 18 Oct.',
+    remarks: 'Northgate withholds 1% (top withholding agent). 2 defective units credited 25 Sep (ACM-2026-0002); half paid by check on 2 Oct, balance due 18 Oct.',
   }),
   fromDelivery('ar-005', 4, 'dn-005', {
     postingDate: '2026-09-10', documentDate: '2026-09-10', dueDate: '2026-09-10',
@@ -357,37 +373,137 @@ const invoices: ArInvoice[] = [
       newArLine({ id: 'ar-004-2', description: 'Staff training, half day', glAccount: '4030', quantity: 1, unitPrice: 12000, taxCode: '31', priceSource: 'Manual' }),
     ],
   },
-  // Corporate orders: paid, past due, half paid and not yet due.
+  // Corporate orders: paid, past due and half paid. ASEAN's first 12 iPhones (dn-c05) aren't billed
+  // yet: the institute asked for one invoice once all 20 are delivered.
   ...([
     // [id, delivery, posted, due, closed (paid in full) on, remarks]
     ['ar-c01', 'dn-c01', '2026-08-14', '2026-09-13', '2026-09-10', 'Paid by bank transfer 10 Sep 2026.'],
     ['ar-c02', 'dn-c02', '2026-08-29', '2026-09-13', '2026-09-12', 'Paid by BPI transfer 12 Sep 2026.'],
     ['ar-c03', 'dn-c03', '2026-09-01', '2026-09-16', '', 'Past due; second reminder sent 1 Oct.'],
     ['ar-c04', 'dn-c04', '2026-09-11', '2026-09-26', '', 'Half paid 25 Sep; the cooperative pays the balance after its October dividend.'],
-    ['ar-c05', 'dn-c05', '2026-10-02', '2026-11-01', '', 'First 12 iPhones. Not yet due.'],
   ] as const).map(([id, dn, date, due, paid, remarks], k) =>
     fromDelivery(id, 7 + k, dn, { postingDate: date, documentDate: date, dueDate: due, remarks, ...(paid ? { status: 'Closed' as const, closeDate: paid } : {}) }),
   ),
+  // Bayanihan's first 8 MacBook Airs, billed after the wrong-colour unit came back on SRT-2026-0001:
+  // the delivery is billed in full and the return's credit memo is applied here.
+  fromDelivery('ar-008', 12, 'dn-001', {
+    postingDate: '2026-10-05', documentDate: '2026-10-05', dueDate: '2026-11-04',
+    remarks: 'First 8 MacBook Airs. The returned unit is credited by ACM-2026-0003, applied to this invoice.',
+  }),
   // Mixed bundle order so-b01 (CGS): split into SI for goods and OR for services.
-  fromSalesOrder('ar-b01-si', AR_SERIES[0].id, 12, 'so-b01', ['so-b01-1'], {
-    postingDate: '2026-09-17', documentDate: '2026-09-17', dueDate: '2026-10-17', status: 'Closed', closeDate: '2026-10-15',
-    remarks: 'MacBook Airs — goods lines of so-b01. Paid by bank transfer 15 Oct.',
+  fromSalesOrder('ar-b01-si', AR_SERIES[0].id, 11, 'so-b01', ['so-b01-1'], {
+    postingDate: '2026-09-17', documentDate: '2026-09-17', dueDate: '2026-10-17', status: 'Closed', closeDate: '2026-10-08',
+    remarks: `MacBook Airs — goods lines of ${BUNDLE_NO}. Paid by bank transfer 8 Oct.`,
   }),
   fromSalesOrder('ar-b01-or', OR_SERIES_ID, 2, 'so-b01', ['so-b01-2', 'so-b01-3'], {
-    postingDate: '2026-09-17', documentDate: '2026-09-17', dueDate: '2026-10-17', docType: 'Service', status: 'Closed', closeDate: '2026-10-15',
-    remarks: 'Device setup and same-day delivery — service lines of so-b01. Paid with the Sales Invoice.',
+    postingDate: '2026-09-17', documentDate: '2026-09-17', dueDate: '2026-10-17', docType: 'Service', status: 'Closed', closeDate: '2026-10-08',
+    remarks: `Device setup and same-day delivery — service lines of ${BUNDLE_NO}. Paid with the Sales Invoice.`,
   }),
 ];
 
-/** Paid so far by the seeded incoming payments (document currency). */
-const APPLIED: Record<string, number | 'full' | 'half'> = {
+// ── January–June corporate orders ────────────────────────────────────────────
+// Billed on delivery, paid on the due date (mocks/incomingPayments.ts). Northgate withholds 1%.
+
+const plusDays = (iso: string, days: number) => {
+  const d = new Date(`${iso}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+};
+const H1_INVOICES: ArInvoice[] = H1_SALES.map((p) => {
+  const c = SEED_PARTNERS.find((x) => x.id === p.customerId)!;
+  const due = plusDays(p.delivered, termDaysOf(c.customerPaymentTermId));
+  return fromDelivery(`ar-${p.id}`, 0, `dn-${p.id}`, {
+    postingDate: p.delivered, documentDate: p.delivered, dueDate: due, status: 'Closed', closeDate: due, wtaxLiable: c.topWithholdingAgent,
+    remarks: `Paid by bank transfer on the due date.`,
+  });
+});
+invoices.push(...H1_INVOICES);
+
+// ── Store sales (POS) ────────────────────────────────────────────────────────
+// Each store's month at the till, posted by the POS as one invoice to the walk-in customer
+// (mocks/storeSales.ts). Prices are the SRP less VAT; paid in full at the till, so they're
+// closed by the month's POS collection.
+
+const MONTH_NAME = (month: string) => `${MONTH_NAMES[Number(month.slice(5)) - 1]} ${month.slice(0, 4)}`;
+
+const itemById = new Map(SEED_ITEMS.map((i) => [i.id, i]));
+
+const POS_INVOICES: ArInvoice[] = STORE_SALES.map((sale, n) => {
+  const c = SEED_PARTNERS.find((p) => p.id === POS_CUSTOMER_ID)!;
+  const store = SEED_WAREHOUSES.find((w) => w.code === sale.store)!;
+  const id = `pos-${sale.month.replace('-', '')}-${sale.store}`;
+  const units = sale.lines.reduce((k, l) => k + l.qty, 0);
+  return {
+    ...blankArInvoice(sale.date, CURRENT_USER_ID),
+    id,
+    seriesId: POS_SERIES_ID,
+    docNum: n + 1,
+    status: 'Closed',
+    closeDate: sale.date,
+    customerId: c.id,
+    customerCode: c.code,
+    customerName: c.name,
+    contactId: c.defaultContactId,
+    customerRef: `${sale.store}-${sale.month}`,
+    paymentTermId: termId('COD'),
+    paymentMethod: 'CASH',
+    shipTo: `${store.name}`,
+    billTo: c.name,
+    controlAccount: '1120',
+    journalRemark: `POS Sales – ${store.code} ${MONTH_NAME(sale.month)}`,
+    remarks: `${store.name}: POS sales for ${MONTH_NAME(sale.month)}, ${units} units.`,
+    lines: sale.lines.map((l, k) => {
+      const item = itemById.get(l.itemId)!;
+      return newArLine({
+        id: `${id}-${k + 1}`, itemId: item.id, itemNo: item.itemNo, description: item.name, quantity: l.qty,
+        uomCode: item.salesUom, uomName: item.salesUom === 'pc' ? 'Piece' : item.salesUom, itemsPerUnit: 1, warehouse: sale.store,
+        priceListId: plId('Base price'), unitPrice: round2(item.basePrice / 1.12), priceSource: 'Base price (SRP)', taxCode: '31',
+      });
+    }),
+  };
+});
+invoices.push(...POS_INVOICES);
+
+/** Paid by the seeded incoming payments (document currency). */
+const PAID: Record<string, 'full' | 'half'> = {
   'ar-001': 'full', 'ar-002': 'full', 'ar-003': 'half', 'ar-005': 'half',
-  'ar-c01': 'full', 'ar-c02': 'full', 'ar-c04': 'half',
+  'ar-c01': 'full', 'ar-c02': 'full', 'ar-c04': 'half', 'ar-b01-si': 'full', 'ar-b01-or': 'full',
+  ...Object.fromEntries([...H1_INVOICES, ...POS_INVOICES].map((a) => [a.id, 'full' as const])),
 };
 
-export const SEED_AR_INVOICES: ArInvoice[] = invoices.map((a) => {
-  const rule = APPLIED[a.id];
-  const due = seedNetDue(a);
-  const appliedAmount = rule === 'full' ? due : rule === 'half' ? round2(due / 2) : (rule ?? 0);
-  return { ...a, appliedAmount };
-});
+/** A credit for `qty` of a delivered line, at its price with VAT — what a credit memo for it comes to. */
+export function seedLineCredit(dnId: string, lineId: string, qty: number) {
+  const l = SEED_DELIVERIES.find((d) => d.id === dnId)!.lines.find((x) => x.id === lineId)!;
+  const net = round2(qty * l.unitPrice * (1 - l.discountPct / 100));
+  return round2(net + round2((net * (RATE[l.taxCode] ?? 0)) / 100));
+}
+
+/** Credited by the seeded A/R credit memos (mocks/arCreditMemos.ts), by invoice. */
+export const SEED_CREDITED: Record<string, number> = {
+  // Northgate's 2 defective iPhones, returned after billing (ACM-2026-0002).
+  'ar-003': seedLineCredit('dn-004', 'dn-004-so-006-1', 2),
+  // Bayanihan's wrong-colour MacBook Air (SRT-2026-0001 → ACM-2026-0003).
+  'ar-008': seedLineCredit('dn-001', 'dn-001-so-001-2', 1),
+};
+
+/** What the seeded payments paid on each invoice. */
+export const SEED_PAID: Record<string, number> = Object.fromEntries(
+  invoices.filter((a) => PAID[a.id]).map((a) => {
+    const due = seedNetDue(a);
+    return [a.id, PAID[a.id] === 'full' ? round2(due - (SEED_CREDITED[a.id] ?? 0)) : round2(due / 2)];
+  }),
+);
+
+/** Every seeded invoice, numbered per series in date order. */
+export const SEED_AR_INVOICES: ArInvoice[] = (() => {
+  const next = new Map<string, number>();
+  return invoices
+    .map((a) => ({ ...a, appliedAmount: round2((SEED_PAID[a.id] ?? 0) + (SEED_CREDITED[a.id] ?? 0)) }))
+    .sort((a, b) => a.postingDate.localeCompare(b.postingDate) || a.id.localeCompare(b.id))
+    .map((a) => {
+      if (a.status === 'Draft') return { ...a, docNum: 0 };
+      const n = (next.get(a.seriesId) ?? 0) + 1;
+      next.set(a.seriesId, n);
+      return { ...a, docNum: n };
+    });
+})();

@@ -288,6 +288,15 @@ export function mergeVariant(variant: Item, parent: Item): Item {
   return result as unknown as Item;
 }
 
+/** Items as the app reads them: variants with their parent's global fields (group, accounts, valuation…). */
+export function mergedItems(items: readonly Item[]): Item[] {
+  const byId = new Map(items.map((i) => [i.id, i]));
+  return items.map((i) => {
+    const parent = i.parentItemId ? byId.get(i.parentItemId) : undefined;
+    return parent ? mergeVariant(i, parent) : i;
+  });
+}
+
 /** Zero-value skeleton for all global (non-own) Item fields. */
 const VARIANT_GLOBAL_ZEROS: Omit<Item, 'id'> = {
   itemNo: '', name: '', description: '', foreignName: '', sellingItemNo: '', gtin: '',

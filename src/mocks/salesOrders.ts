@@ -27,6 +27,7 @@ import { SEED_PARTNERS, formatAddress } from './partners';
 import type { PoReference } from './purchaseOrders';
 import { todayISO } from '../services/dates';
 import { SEED_RATES } from './currencies';
+import { SEED_PAYMENT_TERMS } from './partnerMasters';
 
 export type SoStatus = 'Draft' | 'Open' | 'Closed' | 'Cancelled';
 export const SO_STATUSES: SoStatus[] = ['Draft', 'Open', 'Closed', 'Cancelled'];
@@ -329,12 +330,12 @@ const CORPORATE_ORDERS: SalesOrder[] = [
   }),
   header('so-c05', CORPORATE_SO_START + 4, 'bp-041', {
     postingDate: '2026-09-24', documentDate: '2026-09-24', deliveryDate: '2026-10-02',
-    customerRef: 'ARHI-PR-2026-118', baseQuotationId: 'qt-005', remarks: 'Phones for the field researchers. 12 delivered 2 Oct; 8 wait on Luzon\'s balance (PO-2026-0051).',
+    customerRef: 'ARHI-PR-2026-118', baseQuotationId: 'qt-005', remarks: 'Phones for the field researchers. 12 delivered 2 Oct; 8 wait on the balance of Luzon\'s 25 Sep order.',
     lines: [line('so-c05-1', idOf('IPH-17-256-LAV'), 20, { deliveredQty: 12, priceListId: plId('Wholesale'), discountPct: 2, priceSource: 'Discount group Customers – Trade × iPhone: 2%' })],
   }),
   header('so-c06', CORPORATE_SO_START + 5, 'bp-040', {
     postingDate: '2026-10-05', documentDate: '2026-10-05', deliveryDate: '2026-10-20',
-    customerRef: 'SBML-PO-2026-077', baseQuotationId: 'qt-006', remarks: 'iPad Airs for the vessel crews. Nothing on hand; on order from Apple (IMP-2026-0007).',
+    customerRef: 'SBML-PO-2026-077', baseQuotationId: 'qt-006', remarks: 'iPad Airs for the vessel crews. Nothing on hand; on order from Apple (the 6 Oct import).',
     lines: [line('so-c06-1', idOf('IPD-AIR-11-128-WF-BLU'), 30, { priceListId: plId('Wholesale'), discountPct: 3, priceSource: 'Discount group Customers – Trade × iPad: 3%' })],
   }),
 ];
@@ -367,7 +368,8 @@ const BUNDLE_ORDERS: SalesOrder[] = [
 ];
 
 
-export const SEED_SALES_ORDERS: SalesOrder[] = [
+/** The hand-written orders, July onwards; January–June is added below. */
+const HAND_ORDERS: SalesOrder[] = [
   header('so-001', 1, 'bp-003', {
     postingDate: '2026-09-22',
     documentDate: '2026-09-22',
@@ -376,8 +378,8 @@ export const SEED_SALES_ORDERS: SalesOrder[] = [
     baseQuotationId: 'qt-004',
     remarks: 'Laptop refresh, batch 1 of 3. Special price: 6% off Wholesale (contract through Dec 2026).',
     lines: [
-      line('so-001-1', 'apl-0239', 12, { priceListId: plId('Wholesale'), unitPrice: round2(94750 / 1.12), discountPct: 6, priceSource: 'Special price: 6% off Wholesale' }),
-      line('so-001-2', 'apl-0240', 8, { priceListId: plId('Wholesale'), unitPrice: round2(94750 / 1.12), discountPct: 6, priceSource: 'Special price: 6% off Wholesale', deliveredQty: 8, status: 'Closed' }),
+      line('so-001-1', 'apl-0239', 12, { priceListId: plId('Wholesale'), unitPrice: round2(94750 / 1.12), discountPct: 6, priceSource: 'Special price: 6% off Wholesale', agreementId: 'ba-001', agreementLineId: 'ba-001-1' }),
+      line('so-001-2', 'apl-0240', 8, { priceListId: plId('Wholesale'), unitPrice: round2(94750 / 1.12), discountPct: 6, priceSource: 'Special price: 6% off Wholesale', deliveredQty: 8, status: 'Closed', agreementId: 'ba-001', agreementLineId: 'ba-001-2' }),
     ],
   }),
   header('so-002', 470001, 'bp-009', { // sos-gov series, docNum unchanged
@@ -397,7 +399,7 @@ export const SEED_SALES_ORDERS: SalesOrder[] = [
     status: 'Closed',
     closeDate: '2026-08-21',
     remarks: 'Delivered and invoiced in full.',
-    lines: [line('so-004-1', 'apl-0362', 30, { deliveredQty: 30, status: 'Closed', discountPct: 5, taxCode: '32', priceSource: 'Discount group Customers – Trade × Accessories: 5%' })],
+    lines: [line('so-004-1', 'apl-0362', 30, { deliveredQty: 30, status: 'Closed', discountPct: 5, taxCode: '32', priceSource: 'Discount group Customers – Trade × Accessories: 5%', agreementId: 'ba-002', agreementLineId: 'ba-002-3' })],
   }),
   header('so-005', 3, 'bp-005', {
     postingDate: '2026-08-26',
@@ -475,8 +477,8 @@ export const SEED_SALES_ORDERS: SalesOrder[] = [
     customerRef: 'NPM-PR-2026-0877',
     remarks: 'MacBook Airs for the mall admin offices. Delivered in full 4 Sep.',
     lines: [
-      line('so-013-1', 'apl-0242', 15, { deliveredQty: 15, status: 'Closed', priceListId: plId('Wholesale'), discountPct: 3, priceSource: 'Discount group Customers – Trade × Mac: 3%' }),
-      line('so-013-2', 'apl-0243', 8, { deliveredQty: 8, status: 'Closed', priceListId: plId('Wholesale'), discountPct: 3, priceSource: 'Discount group Customers – Trade × Mac: 3%' }),
+      line('so-013-1', 'apl-0242', 15, { deliveredQty: 15, status: 'Closed', priceListId: plId('Wholesale'), discountPct: 3, priceSource: 'Discount group Customers – Trade × Mac: 3%', agreementId: 'ba-003', agreementLineId: 'ba-003-1' }),
+      line('so-013-2', 'apl-0243', 8, { deliveredQty: 8, status: 'Closed', priceListId: plId('Wholesale'), discountPct: 3, priceSource: 'Discount group Customers – Trade × Mac: 3%', agreementId: 'ba-003', agreementLineId: 'ba-003-2' }),
     ],
   }),
   // B2B orders at every stage, each supplied by its own PO into Pasig (po-055–po-060).
@@ -484,3 +486,75 @@ export const SEED_SALES_ORDERS: SalesOrder[] = [
   // Item orders bundling hardware with service items (setup, AppleCare, delivery).
   ...BUNDLE_ORDERS,
 ];
+
+// ── January–June corporate orders ────────────────────────────────────────────
+// Delivered from Pasig, billed on delivery and paid on the due date (mocks/deliveries.ts,
+// mocks/arInvoices.ts, mocks/incomingPayments.ts); about half started as a quotation
+// (mocks/quotations.ts). Each customer's usual terms, tax and discount group apply.
+
+export interface PlannedSale {
+  id: string;
+  customerId: string;
+  ordered: string;
+  delivered: string;
+  quoted: boolean;
+  customerRef: string;
+  remarks: string;
+  lines: { itemNo: string; qty: number; discountPct: number }[];
+}
+
+const sale = (n: number, customerId: string, ordered: string, delivered: string, quoted: boolean, customerRef: string, remarks: string, lines: [string, number, number][]): PlannedSale => ({
+  id: `h${String(n).padStart(2, '0')}`, customerId, ordered, delivered, quoted, customerRef, remarks, lines: lines.map(([itemNo, qty, discountPct]) => ({ itemNo, qty, discountPct })),
+});
+
+export const H1_SALES: PlannedSale[] = [
+  sale(1, 'bp-004', '2026-01-13', '2026-01-19', true, 'CGS-PO-2026-0021', 'MacBook Airs and adapters for new hires at the Clark office.', [['MAC-MBA13-M5-8G-16-512-MDN', 6, 3], ['ACC-PWR35D', 6, 5]]),
+  sale(2, 'bp-002', '2026-01-26', '2026-02-02', false, 'NPM-PO-26-0107', 'iPhones for the mall operations supervisors.', [['IPH-17-256-BLK', 10, 2]]),
+  sale(3, 'bp-003', '2026-02-09', '2026-02-16', true, 'BSB-PR-2026-0118', 'Branch managers\' laptops, first quarter.', [['MAC-MBA13-M5-8G-16-512-SKB', 10, 6]]),
+  sale(4, 'bp-005', '2026-02-23', '2026-03-02', true, 'MPAS-PO-0223', 'iPad Pro kits for the storyboard team.', [['IPD-PRO-11-256-SG-WF-SBK', 4, 3], ['ACC-PENPRO', 4, 5]]),
+  sale(5, 'bp-044', '2026-03-09', '2026-03-13', false, 'KVA-MNL-0309', 'MacBook Airs for the Manila designers.', [['MAC-MBA13-M5-8G-16-512-STL', 4, 0]]),
+  sale(6, 'bp-007', '2026-03-23', '2026-03-27', false, 'GNB-2026-PEN-Q1', 'Apple Pencils for the teacher-members, first batch.', [['ACC-PENUSBC', 10, 0]]),
+  sale(7, 'bp-004', '2026-04-06', '2026-04-13', true, 'CGS-PO-2026-0144', 'iPad Airs for the Pampanga site supervisors.', [['IPD-AIR-11-128-WF-BLU', 10, 3]]),
+  sale(8, 'bp-002', '2026-04-20', '2026-04-24', false, 'NPM-PO-26-0412', 'MacBook Airs for the leasing team.', [['MAC-MBA13-M5-8G-16-512-SLV', 8, 3]]),
+  sale(9, 'bp-003', '2026-05-11', '2026-05-18', true, 'BSB-PR-2026-0502', 'iPhones and chargers for the branch tellers.', [['IPH-17-256-WHT', 12, 6], ['ACC-PWR20', 12, 5]]),
+  sale(10, 'bp-005', '2026-05-25', '2026-06-01', false, 'MPAS-PO-0525', 'MacBook Airs for the animation leads.', [['MAC-MBA13-M5-10G-24-1T-SKB', 3, 3]]),
+  sale(11, 'bp-044', '2026-06-08', '2026-06-15', true, 'KVA-MNL-0608', 'iPad Pros for site visits.', [['IPD-PRO-11-256-SG-WF-SLV', 4, 0]]),
+  sale(12, 'bp-002', '2026-06-22', '2026-06-26', false, 'NPM-PO-26-0622', 'iPhone 17e units for the security supervisors.', [['IPH-17E-256-SPK', 15, 2]]),
+];
+
+/** A customer's usual tax code on its orders: zero-rated (PEZA) for Clarkfield, exempt for the cooperative. */
+const taxFor = (customerId: string) => (customerId === 'bp-004' ? '32' : customerId === 'bp-007' ? '33' : '31');
+export const termDaysOf = (termId: string) => SEED_PAYMENT_TERMS.find((t) => t.id === termId)?.days ?? 30;
+
+const H1_ORDERS: SalesOrder[] = H1_SALES.map((p) =>
+  header(`so-${p.id}`, 0, p.customerId, {
+    postingDate: p.ordered, documentDate: p.ordered, deliveryDate: p.delivered, status: 'Closed', closeDate: p.delivered,
+    customerRef: p.customerRef, remarks: p.remarks, baseQuotationId: p.quoted ? `qt-${p.id}` : '',
+    lines: p.lines.map((l, k) =>
+      line(`so-${p.id}-${k + 1}`, idOf(l.itemNo), l.qty, {
+        deliveredQty: l.qty, status: 'Closed', taxCode: taxFor(p.customerId),
+        ...(l.discountPct ? { priceListId: plId('Wholesale'), discountPct: l.discountPct, priceSource: `Discount: ${l.discountPct}%` } : {}),
+      }),
+    ),
+  }),
+);
+
+/** An order's number as its series formats it: SO-2026-0001. */
+export const seedSoNo = (so: Pick<SalesOrder, 'docNum' | 'postingDate'>) => `SO-${so.postingDate.slice(0, 4)}-${String(so.docNum).padStart(4, '0')}`;
+
+/**
+ * Every seeded order, numbered per series in date order (drafts have no number). Government
+ * orders keep their PhilGEPS-assigned numbers.
+ */
+export const SEED_SALES_ORDERS: SalesOrder[] = (() => {
+  const next = new Map<string, number>();
+  return [...HAND_ORDERS, ...H1_ORDERS]
+    .sort((a, b) => a.postingDate.localeCompare(b.postingDate) || a.id.localeCompare(b.id))
+    .map((so) => {
+      if (so.seriesId === 'sos-gov') return so;
+      if (so.status === 'Draft') return { ...so, docNum: 0 };
+      const n = (next.get(so.seriesId) ?? 0) + 1;
+      next.set(so.seriesId, n);
+      return { ...so, docNum: n };
+    });
+})();

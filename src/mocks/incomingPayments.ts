@@ -21,7 +21,10 @@
  *   exist, and branches aren't enabled, so those fields show but don't change anything.
  */
 import type { Attachment, DocumentSeries } from './common';
-import { SEED_AR_INVOICES, seedNetDue, type ArInvoice } from './arInvoices';
+import { POS_SERIES_ID, SEED_AR_INVOICES, SEED_CREDITED, SEED_PAID, seedArNo, seedNetDue, type ArInvoice } from './arInvoices';
+import { H1_SALES, SEED_SALES_ORDERS, seedSoNo } from './salesOrders';
+import { cardBrandId, type CARD_BRANDS } from './masters';
+import { SALES_MONTHS } from './storeSales';
 import { seedRateOn } from './salesOrders';
 import type { PoReference } from './purchaseOrders';
 
@@ -228,14 +231,15 @@ function row(inv: ArInvoice, amount: number): IncomingRow {
   return {
     id: `${inv.id}-1`,
     invoiceId: inv.id,
-    docNo: `${inv.seriesId === 'ars-or' ? 'OR' : 'SI'}-${inv.postingDate.slice(0, 4)}-${String(inv.docNum).padStart(4, '0')}`,
+    docNo: seedArNo(inv),
     installment: 0,
     installments: 1,
     docDate: inv.postingDate,
     dueDate: inv.dueDate,
     total: due,
     wtAmount: round2(arTotal(inv) - due),
-    balanceDue: due,
+    // Seeded credits all came before the payments.
+    balanceDue: round2(due - (SEED_CREDITED[inv.id] ?? 0)),
     blocked: false,
     cashDiscountPct: 0,
     amount,
@@ -267,25 +271,26 @@ function customerPayment(id: string, docNum: number, invoiceId: string, patch: P
     contactId: inv.contactId,
     controlAccount: inv.controlAccount,
     journalRemark: `Incoming - ${inv.customerCode}`,
-    rows: [row(inv, inv.appliedAmount)],
+    rows: [row(inv, SEED_PAID[inv.id])],
     means: { ...base.means, ...meansPatch },
     ...patch,
   };
 }
 
-const total = (id: string) => SEED_AR_INVOICES.find((a) => a.id === id)!.appliedAmount;
+const total = (id: string) => SEED_PAID[id];
+const invNo = (id: string) => seedArNo(SEED_AR_INVOICES.find((a) => a.id === id)!);
 
-export const SEED_INCOMING_PAYMENTS: IncomingPayment[] = [
+const PAYMENTS: IncomingPayment[] = [
   customerPayment('rc-001', 1, 'ar-001', { postingDate: '2026-09-18', documentDate: '2026-09-18', dueDate: '2026-09-18', reference: 'CGS-RTGS-0918', remarks: 'Clarkfield, bank transfer to BDO.' }, {
     transfer: { account: '1015', date: '2026-09-18', reference: 'BDO RTGS 2026091800417', amount: total('ar-001') },
   }),
   customerPayment('rc-002', 2, 'ar-002', { postingDate: '2026-09-10', documentDate: '2026-09-10', dueDate: '2026-09-10', reference: 'MPAS-PAY-0910' }, {
     transfer: { account: '1016', date: '2026-09-10', reference: 'BPI InstaPay 51420177', amount: total('ar-002') },
   }),
-  customerPayment('rc-003', 3, 'ar-003', { postingDate: '2026-10-02', documentDate: '2026-10-02', dueDate: '2026-10-09', reference: 'NPM-CHK-2026-1002', remarks: 'Half of invoice SI-2026-0003; BIR Form 2307 for the 1% to follow.' }, {
+  customerPayment('rc-003', 3, 'ar-003', { postingDate: '2026-10-02', documentDate: '2026-10-02', dueDate: '2026-10-09', reference: 'NPM-CHK-2026-1002', remarks: `Half of invoice ${invNo('ar-003')}; BIR Form 2307 for the 1% to follow.` }, {
     checks: [newReceivedCheck({ id: 'rc-003-chk1', dueDate: '2026-10-09', amount: total('ar-003'), bank: 'Metrobank', branch: 'Ortigas', accountNo: '7-012-55210-3', checkNo: '0004417' })],
   }),
-  customerPayment('rc-005', 5, 'ar-005', { postingDate: '2026-09-22', documentDate: '2026-09-22', dueDate: '2026-09-22', currency: 'USD', fxRate: seedRateOn('USD', '2026-09-22'), reference: 'HBL-TT-0922', remarks: 'Half of USD invoice SI-2026-0004, wired to the BDO USD account. Collected at the 22 Sep rate.' }, {
+  customerPayment('rc-005', 5, 'ar-005', { postingDate: '2026-09-22', documentDate: '2026-09-22', dueDate: '2026-09-22', currency: 'USD', fxRate: seedRateOn('USD', '2026-09-22'), reference: 'HBL-TT-0922', remarks: `Half of USD invoice ${invNo('ar-005')}, wired to the BDO USD account. Collected at the 22 Sep rate.` }, {
     transfer: { account: '1018', date: '2026-09-22', reference: 'BDO USD TT 26092200188', amount: total('ar-005') },
   }),
   {
@@ -309,4 +314,67 @@ export const SEED_INCOMING_PAYMENTS: IncomingPayment[] = [
       transfer: { account, date, reference: bankRef, amount: total(inv) },
     }),
   ),
+  // Clarkfield pays the bundle order's Sales Invoice and Official Receipt together.
+  (() => {
+    const si = SEED_AR_INVOICES.find((a) => a.id === 'ar-b01-si')!;
+    const or = SEED_AR_INVOICES.find((a) => a.id === 'ar-b01-or')!;
+    const amount = round2(total(si.id) + total(or.id));
+    return {
+      ...customerPayment('rc-b01', 9, si.id, { postingDate: '2026-10-08', documentDate: '2026-10-08', dueDate: '2026-10-08', reference: 'CGS-PAY-1008', remarks: `Bundle order ${seedSoNo(SEED_SALES_ORDERS.find((o) => o.id === 'so-b01')!)}: Sales Invoice and Official Receipt in one transfer.` }, {
+        transfer: { account: '1015', date: '2026-10-08', reference: 'BDO RTGS 2026100800361', amount },
+      }),
+      rows: [row(si, total(si.id)), row(or, total(or.id))],
+    };
+  })(),
 ];
+
+// ── January–June corporate collections ───────────────────────────────────────
+// Each invoice paid in full by transfer on its due date (mocks/arInvoices.ts).
+const H1_COLLECTIONS: IncomingPayment[] = H1_SALES.map((p) => {
+  const inv = SEED_AR_INVOICES.find((a) => a.id === `ar-${p.id}`)!;
+  return customerPayment(`rc-${p.id}`, 0, inv.id, { postingDate: inv.dueDate, documentDate: inv.dueDate, dueDate: inv.dueDate, reference: `${inv.customerCode}-PAY-${inv.dueDate.slice(5).replace('-', '')}` }, {
+    transfer: { account: '1015', date: inv.dueDate, reference: `BDO RTGS ${inv.dueDate.replace(/-/g, '')}${p.id.slice(1)}`, amount: total(inv.id) },
+  });
+});
+
+// ── POS collections ──────────────────────────────────────────────────────────
+// What the stores took at the till each month, settling that month's POS invoices: cash into
+// Store Collections, card slips into Card Settlements Receivable, by brand. Banking them is in
+// the ledger (the monthly deposits and card settlements).
+
+/** Each brand's share of card sales; cash takes the rest. */
+const CARD_MIX: [brand: (typeof CARD_BRANDS)[number], share: number][] = [['Visa', 0.38], ['Mastercard', 0.2], ['American Express', 0.04], ['JCB', 0.02], ['UnionPay', 0.01]];
+
+const POS_COLLECTIONS: IncomingPayment[] = SALES_MONTHS.flatMap((m) => {
+  const invoices = SEED_AR_INVOICES.filter((a) => a.seriesId === POS_SERIES_ID && a.postingDate === m.end);
+  if (!invoices.length) return [];
+  const c = invoices[0];
+  const rows = invoices.map((inv) => row(inv, SEED_PAID[inv.id]));
+  const total = round2(rows.reduce((n, r) => n + r.amount, 0));
+  const cards = CARD_MIX.map(([brand, share]) =>
+    newReceivedCard({ id: `rc-pos-${m.month}-${cardBrandId(brand)}`, cardBrandId: cardBrandId(brand), voucherNo: `POS-${m.month.replace('-', '')}-${brand.slice(0, 4).toUpperCase()}`, amount: round2(total * share) }),
+  );
+  const cash = round2(total - cards.reduce((n, x) => n + x.amount, 0));
+  const base = blankIncomingPayment(m.end);
+  return [{
+    ...base,
+    id: `rc-pos-${m.month.replace('-', '')}`,
+    status: 'Posted' as const,
+    customerId: c.customerId,
+    customerCode: c.customerCode,
+    customerName: c.customerName,
+    billTo: c.billTo,
+    contactId: c.contactId,
+    controlAccount: c.controlAccount,
+    journalRemark: `POS Collections – ${m.month}`,
+    reference: `POS-${m.month}`,
+    remarks: `Cash and card sales at the stores, ${m.month}: ${invoices.length} store invoices.`,
+    rows,
+    means: { ...base.means, cash: { ...base.means.cash, amount: cash }, cards },
+  }];
+});
+
+/** Numbered in date order, like payments added one after another. */
+export const SEED_INCOMING_PAYMENTS: IncomingPayment[] = [...PAYMENTS, ...H1_COLLECTIONS, ...POS_COLLECTIONS]
+  .sort((a, b) => a.postingDate.localeCompare(b.postingDate) || a.id.localeCompare(b.id))
+  .map((p, n) => ({ ...p, docNum: n + 1 }));

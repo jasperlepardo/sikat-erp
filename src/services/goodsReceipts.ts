@@ -18,9 +18,9 @@ import { listItems, saveItem } from './items';
 import { addLayer, removeLayersBySource, updateFifoCosts } from './costLayers';
 import { lineNet, listPurchaseOrders, openQty, poTotals, priceAfterDiscount, saveReceivedQuantities } from './purchaseOrders';
 import { createCollection } from './store';
-import { PURCHASING_HISTORY } from './purchasingHistory';
+import { purchasingHistory } from './purchasingHistory';
 
-const receipts = createCollection<GoodsReceipt>('sikat-erp:goods-receipts:v7', PURCHASING_HISTORY.receipts, 'gr');
+const receipts = createCollection<GoodsReceipt>('sikat-erp:goods-receipts:v7', () => purchasingHistory().receipts, 'gr');
 
 export const listGoodsReceipts = receipts.list;
 export async function getGoodsReceipt(idOrNumber: string) {

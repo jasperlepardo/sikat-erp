@@ -22,6 +22,10 @@ import { SEED_WAREHOUSES } from './itemMasters';
 import { SEED_ITEMS, itemsPerUom } from './items';
 import { SEED_PARTNERS, formatAddress } from './partners';
 import { todayISO } from '../services/dates';
+import { SEED_PAYMENT_TERMS } from './partnerMasters';
+import { MONTH_NAMES, SALES_MONTHS } from './storeSales';
+import { APPLE, planSupply } from './supplyPlan';
+import { SEED_SALES_ORDERS, seedSoNo } from './salesOrders';
 
 export type PoStatus = 'Draft' | 'Open' | 'Not Confirmed' | 'Closed' | 'Cancelled';
 export const PO_STATUSES: PoStatus[] = ['Draft', 'Open', 'Not Confirmed', 'Closed', 'Cancelled'];
@@ -365,7 +369,8 @@ const svc = (n: string, itemNo: string, quantity: number, unitPrice: number, tax
   });
 };
 
-export const SEED_PURCHASE_ORDERS: PurchaseOrder[] = [
+/** The hand-written orders, July onwards; the planned and monthly ones are added below. */
+const HAND_ORDERS: PurchaseOrder[] = [
   po('po-001', 1, {
     status: 'Closed',
     postingDate: '2026-09-10', documentDate: '2026-09-10', deliveryDate: '2026-09-17', closeDate: '2026-09-18', dueDate: '2026-10-10',
@@ -509,12 +514,12 @@ export const SEED_PURCHASE_ORDERS: PurchaseOrder[] = [
   }),
   svcPo('po-017', 14, 'bp-042', {
     status: 'Open', postingDate: '2026-09-22', documentDate: '2026-09-22', deliveryDate: '2026-10-06', dueDate: '2026-10-22',
-    lines: [svc('po-017-1', 'SVC-FREIGHT', 1, 142000, '44', { freeText: 'SIN–MNL air freight for import IMP-2026-0001', deliveryDate: '2026-10-06' })],
+    lines: [svc('po-017-1', 'SVC-FREIGHT', 1, 142000, '44', { freeText: 'SIN–MNL air freight for the 22 Sep Apple South Asia import', deliveryDate: '2026-10-06' })],
     references: [{ id: 'po-017-r1', docType: 'Other', docNo: 'IMP-2026-0001', docDate: '2026-09-22', remarks: 'Apple South Asia import' }],
   }),
   svcPo('po-018', 15, 'bp-022', {
     status: 'Open', postingDate: '2026-09-22', documentDate: '2026-09-22', deliveryDate: '2026-10-07', dueDate: '2026-10-14',
-    lines: [svc('po-018-1', 'SVC-CUSTOMS', 1, 18000, '44', { freeText: 'Import entry for IMP-2026-0001', deliveryDate: '2026-10-07' })],
+    lines: [svc('po-018-1', 'SVC-CUSTOMS', 1, 18000, '44', { freeText: 'Import entry for the 22 Sep Apple South Asia import', deliveryDate: '2026-10-07' })],
     references: [{ id: 'po-018-r1', docType: 'Other', docNo: 'IMP-2026-0001', docDate: '2026-09-22', remarks: 'Apple South Asia import' }],
   }),
   svcPo('po-019', 16, 'bp-028', {
@@ -672,12 +677,12 @@ export const SEED_PURCHASE_ORDERS: PurchaseOrder[] = [
   vendorPo('po-045', 39, 'bp-013', {
     status: 'Open', shipTo: MNL_SHIP_TO, shippingType: 'sh-own',
     postingDate: '2026-10-01', documentDate: '2026-10-01', deliveryDate: '2026-10-03', dueDate: '2026-11-02',
-    vendorRef: 'TZ-SO-44260',
+    vendorRef: 'TZ-SO-44260', baseRfqId: 'rfq-002',
     lines: [
       line('po-045-1', 'ACC-PWR20', 100, { receivedQty: 60, deliveryDate: '2026-10-03', unitPrice: 1680, discountPct: 8 }),
       line('po-045-2', 'ACC-MAGSF1', 2, { receivedQty: 1, deliveryDate: '2026-10-03', unitPrice: 24 * 2410 }),
     ],
-    remarks: 'October accessories. Techzone shipped 60 chargers and 1 of 2 boxes of MagSafe; the rest is backordered.',
+    remarks: 'October accessories, ordered from Techzone’s quotation. Techzone shipped 60 chargers and 1 of 2 boxes of MagSafe; the rest is backordered.',
   }),
 
   // ── Earlier replenishment, July–October ────────────────────────────────────
@@ -754,3 +759,97 @@ export const SEED_PURCHASE_ORDERS: PurchaseOrder[] = [
   }),
 ];
 
+// ── January–June: monthly services ──────────────────────────────────────────
+// The recurring services, each month as the hand-written order for September or October has it:
+// rent and subscriptions are for the month ahead (received on the 1st), the rest for the month's
+// work (received at month-end). Billed and paid in services/purchasingHistory.ts.
+
+const H1 = SALES_MONTHS.filter((m) => m.month <= '2026-06');
+const RECURRING = ['po-005', 'po-011', 'po-012', 'po-013', 'po-015', 'po-016', 'po-021', 'po-028', 'po-034'];
+const IN_ADVANCE = new Set(['RNT-MALL', 'RNT-CEB', 'SVC-CLD-HOST', 'SVC-AI-SEAT', 'SVC-POS-LEASE']);
+const termDays = (termId: string) => SEED_PAYMENT_TERMS.find((t) => t.id === termId)?.days ?? 30;
+/** "October 2026" / "September" in a template's text, as the order's month. */
+const forMonth = (text: string, month: string) => {
+  const name = MONTH_NAMES[Number(month.slice(5)) - 1];
+  return text.replace(new RegExp(`(${MONTH_NAMES.join('|')})( 2026)?`, 'g'), (_, __, year) => `${name}${year ?? ''}`);
+};
+
+const MONTHLY_SERVICES: PurchaseOrder[] = H1.flatMap((m) =>
+  RECURRING.map((templateId) => {
+    const t = HAND_ORDERS.find((p) => p.id === templateId)!;
+    const id = `po-m${templateId.slice(3)}-${m.month.slice(5)}`;
+    const ahead = t.lines.every((l) => IN_ADVANCE.has(l.itemNo));
+    const start = `${m.month}-01`;
+    const received = ahead ? start : m.end;
+    return {
+      ...t,
+      id,
+      docNum: 0,
+      status: 'Closed' as const,
+      approved: true,
+      postingDate: start,
+      documentDate: start,
+      deliveryDate: received,
+      closeDate: received,
+      dueDate: plusDays(received, termDays(t.paymentTermId)),
+      vendorRef: '',
+      references: [],
+      remarks: '',
+      lines: t.lines.map((l, k) => ({
+        ...l, id: `${id}-${k + 1}`, receivedQty: l.quantity, status: 'Closed' as const, deliveryDate: received,
+        freeText: forMonth(l.freeText, m.month), description: forMonth(l.description, m.month),
+      })),
+    };
+  }),
+);
+
+// ── January–June replenishment and release orders ───────────────────────────
+// What Pasig buys for the stores (mocks/supplyPlan.ts), received complete.
+
+const itemByIdForPlan = new Map(SEED_ITEMS.map((i) => [i.id, i]));
+const PLANNED: PurchaseOrder[] = planSupply([...HAND_ORDERS, ...MONTHLY_SERVICES]).map((p) => {
+  const imported = p.vendorId === APPLE;
+  const lines = p.lines.map((l, k) => {
+    const item = itemByIdForPlan.get(l.itemId)!;
+    const qty = Math.ceil(l.units / (itemsPerUom(item, item.purchasingUom) ?? 1));
+    const base = imported ? importLine(`${p.id}-${k + 1}`, item.itemNo, qty) : line(`${p.id}-${k + 1}`, item.itemNo, qty);
+    return { ...base, receivedQty: qty, status: 'Closed' as const, deliveryDate: p.receivedOn };
+  });
+  const month = p.month ? MONTH_NAMES[Number(p.month.slice(5)) - 1] : '';
+  return vendorPo(p.id, 0, p.vendorId, {
+    status: 'Closed',
+    ...(imported ? { seriesId: 'ser-import', freightTaxCode: '46', freight: 1500 } : {}),
+    currencyView: 'BP', shipTo: MNL_SHIP_TO, shippingType: 'sh-own',
+    postingDate: p.postingDate, documentDate: p.postingDate, deliveryDate: p.receivedOn, closeDate: p.receivedOn,
+    dueDate: plusDays(p.receivedOn, 30),
+    lines,
+    remarks: p.kind === 'release' ? 'Release stock for the stores, received before release day.' : `Store replenishment: what the stores sold in ${month}.`,
+  });
+});
+
+/** A PO's number as its series formats it: PO-2026-0001, IMP-2026-0001. */
+export const seedPoNo = (po: Pick<PurchaseOrder, 'seriesId' | 'docNum' | 'postingDate'>) =>
+  `${po.seriesId === 'ser-import' ? 'IMP' : 'PO'}-${po.postingDate.slice(0, 4)}-${String(po.docNum).padStart(4, '0')}`;
+
+/** Every seeded order, numbered per series in date order (drafts have no number). */
+export const SEED_PURCHASE_ORDERS: PurchaseOrder[] = (() => {
+  const next = new Map<string, number>();
+  const all = [...HAND_ORDERS, ...MONTHLY_SERVICES, ...PLANNED]
+    .sort((a, b) => a.postingDate.localeCompare(b.postingDate) || a.id.localeCompare(b.id))
+    .map((po) => {
+      if (po.status === 'Draft') return { ...po, docNum: 0 };
+      const n = (next.get(po.seriesId) ?? 0) + 1;
+      next.set(po.seriesId, n);
+      return { ...po, docNum: n };
+    });
+  // The freight and customs orders name the import they're for; backorders, the sales order they're for.
+  const imp = all.find((p) => p.id === 'po-006')!;
+  const forOrder: Record<string, string> = { 'po-009': 'so-012', 'po-038': 'so-001', 'po-039': 'so-002', 'po-040': 'so-010' };
+  return all.map((p) => {
+    if (p.id === 'po-017' || p.id === 'po-018') return { ...p, references: p.references.map((r) => ({ ...r, docNo: seedPoNo(imp) })) };
+    const so = SEED_SALES_ORDERS.find((o) => o.id === forOrder[p.id]);
+    if (!so) return p;
+    const no = seedSoNo(so);
+    return { ...p, remarks: p.remarks.replace(/SO-2026-\d+/g, no), references: p.references.map((r) => (r.docType === 'Sales order' ? { ...r, docNo: no } : r)) };
+  });
+})();

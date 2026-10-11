@@ -15,9 +15,9 @@ import type { JournalLine } from './inventoryTransfers';
 import { applyPayments } from './apInvoices';
 import { applyDownPaymentPayments } from './apDownPayments';
 import { createCollection } from './store';
-import { PURCHASING_HISTORY } from './purchasingHistory';
+import { purchasingHistory } from './purchasingHistory';
 
-const payments = createCollection<OutgoingPayment>('sikat-erp:outgoing-payments:v5', PURCHASING_HISTORY.payments, 'op');
+const payments = createCollection<OutgoingPayment>('sikat-erp:outgoing-payments:v5', () => purchasingHistory().payments, 'op');
 
 export const listPayments = payments.list;
 export async function getPayment(idOrNumber: string) {
