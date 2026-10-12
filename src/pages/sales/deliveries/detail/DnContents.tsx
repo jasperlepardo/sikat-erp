@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Button, Combobox, Icon, Link, Select, Text, TextField, type TableColumn } from '@jasperlepardo/sikat-design-system';
 import { DataTable } from '../../../../components/form/DataTable';
@@ -19,7 +19,7 @@ import { asSoDraft, type DnSectionProps } from './types';
 
 const num = (v: string) => (v === '' ? 0 : Number(v));
 
-export function DnContents({ draft, update, errors, m, ctx, onCopy }: DnSectionProps & { onCopy: (so: SalesOrder, picks: { lineId: string; qty: number }[]) => void }) {
+export function DnContents({ draft, update, errors, m, ctx, onCopy, cardFooter }: DnSectionProps & { onCopy: (so: SalesOrder, picks: { lineId: string; qty: number }[]) => void; cardFooter?: ReactNode }) {
   const [copying, setCopying] = useState(false);
   const lines = draft.lines;
   const ro = ctx.readOnly;
@@ -201,6 +201,7 @@ export function DnContents({ draft, update, errors, m, ctx, onCopy }: DnSectionP
         unsortable={columns.map((c) => c.key).filter((k) => k !== 'item')}
         sortValue={(l) => l.itemNo.toLowerCase()}
         onRemove={ro ? undefined : (picked) => update({ lines: lines.filter((l) => !picked.includes(l)) })}
+        cardFooter={cardFooter}
         actions={
           ro ? null : (
             <div className="flex items-center gap-1">
