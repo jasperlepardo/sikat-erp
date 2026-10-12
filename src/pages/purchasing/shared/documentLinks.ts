@@ -30,13 +30,14 @@ export interface CoveredLine {
   quantity: number;
   uomCode: string;
   itemNo: string;
+  description?: string;
   /** The item's id, for finding the documents an item is on. */
   itemId?: string;
 }
 
 /** A document's lines as covered lines: what it moves, for item timelines. */
-export const coveredLines = (lines: { itemId: string; itemNo: string; uomCode: string; quantity?: number; requiredQty?: number }[]): CoveredLine[] =>
-  lines.filter((l) => l.itemId).map((l) => ({ itemId: l.itemId, itemNo: l.itemNo, uomCode: l.uomCode, quantity: l.quantity ?? l.requiredQty ?? 0 }));
+export const coveredLines = (lines: { itemId: string; itemNo: string; description?: string; uomCode: string; quantity?: number; requiredQty?: number }[]): CoveredLine[] =>
+  lines.filter((l) => l.itemId).map((l) => ({ itemId: l.itemId, itemNo: l.itemNo, description: l.description, uomCode: l.uomCode, quantity: l.quantity ?? l.requiredQty ?? 0 }));
 
 /** One document in the link graph. */
 export interface DocNode {

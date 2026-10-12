@@ -188,7 +188,7 @@ export function ContentsTab({ draft, update, errors, m, ctx, hideDeliveries, spa
       if (linesLocked) return (
         <div className="flex items-center justify-end gap-1">
           <Text variant="small" className="whitespace-nowrap tabular-nums">
-            {l.quantity.toLocaleString('en-PH')} {l.uomName}
+            {l.quantity.toLocaleString('en-PH')} {l.uomCode}
           </Text>
           {isShort && <Tooltip message="Not enough stock" icon="warning" />}
         </div>
@@ -214,7 +214,7 @@ export function ContentsTab({ draft, update, errors, m, ctx, hideDeliveries, spa
             onValueChange={(v) => v && changeUom(l, v)}
           />
           <Text variant="small" tone="muted">
-            {l.uomName}
+            {l.uomCode}
             {l.uomCode === item.inventoryUom ? ' · inventory UoM' : ` · ${l.itemsPerUnit} ${item.inventoryUom} each`}
           </Text>
         </div>
@@ -422,7 +422,7 @@ export function ContentsTab({ draft, update, errors, m, ctx, hideDeliveries, spa
             align: 'end' as const,
             cell: (l) => (
               <Text variant="small" className="whitespace-nowrap tabular-nums">
-                {l.quantity.toLocaleString('en-PH')} {l.uomName}
+                {l.quantity.toLocaleString('en-PH')} {l.uomCode}
               </Text>
             ),
           },
@@ -432,7 +432,7 @@ export function ContentsTab({ draft, update, errors, m, ctx, hideDeliveries, spa
             align: 'end' as const,
             cell: (l) => (
               <Text variant="small" className="whitespace-nowrap tabular-nums">
-                {l.deliveredQty.toLocaleString('en-PH')} {l.uomName}
+                {l.deliveredQty ? `${l.deliveredQty.toLocaleString('en-PH')} ${l.uomCode}` : '—'}
               </Text>
             ),
           },

@@ -185,7 +185,7 @@ export function ArContents({ draft, update, errors, m, ctx, onCopy, cardFooter }
       if (!item) return null;
       if (ro) return (
         <Text variant="small" className="whitespace-nowrap tabular-nums">
-          {l.quantity.toLocaleString('en-PH')} {l.uomName}
+          {l.quantity.toLocaleString('en-PH')} {l.uomCode}
         </Text>
       );
       return (
@@ -195,7 +195,7 @@ export function ArContents({ draft, update, errors, m, ctx, onCopy, cardFooter }
             <Select aria-label="UoM code" options={itemUnits(item, 'sales').map((u) => ({ value: u.uom, label: u.uom }))} value={l.uomCode} onValueChange={(uomCode) => reprice(l, { uomCode, uomName: m.inv.uoms.find((u) => u.code === uomCode)?.name ?? uomCode, itemsPerUnit: itemsPerUom(item, uomCode) ?? 1 })} />
           )}
           <Text variant="small" tone="muted">
-            {l.uomName}
+            {l.uomCode}
             {l.uomCode === item.inventoryUom ? ' · inventory UoM' : ` · ${l.itemsPerUnit} ${item.inventoryUom} each`}
           </Text>
         </div>

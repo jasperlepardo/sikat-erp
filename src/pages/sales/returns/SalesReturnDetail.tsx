@@ -38,12 +38,12 @@ import {
 } from '../../../services/salesReturns';
 import { SalesDocumentFlow } from '../shared/SalesDocumentFlow';
 import { CustomerCard } from '../shared/CustomerCard';
-import { TotalsFooter } from '../shared/TotalsFooter';
+
 import { buildDnContext, type DnDraft, type DnMasters } from '../deliveries/detail/types';
 import { useDocTitle } from '../../../services/useDocTitle';
 import { AR_CM_LIST_PATH, SR_LIST_PATH, SR_STATUS_INTENT, type SrContext, type SrDraft, type SrMasters } from './types';
 import { SrContents } from './SrContents';
-import { ReturnAssignmentCard, ReturnDatesCard, ReturnJournalCard, ReturnShipmentCard } from './ReturnSideCards';
+import { ReturnAssignmentCard, ReturnDatesCard, ReturnShipmentCard } from './ReturnSideCards';
 import { SrCustomerDetailsPanel } from './SrCustomerDetailsPanel';
 import { ActivityTab } from '../../../components/activity/ActivityTab';
 import { NotFound, PrevNext, neighbours } from '../../../components/form/DetailNav';
@@ -214,7 +214,7 @@ function SalesReturnForm() {
   const ctx: SrContext = { ...buildDnContext(draft as unknown as DnDraft, m as unknown as DnMasters), fx, rateOf };
   const { prevId, nextId } = neighbours(siblings, (draft as SalesReturn).id && (draft.docNum ? srNumber(draft as SalesReturn) : (draft as SalesReturn).id));
   const errors: Errors = Object.fromEntries(problems.map((p) => [p.key, p.message]));
-  const journal = fx ? srJournal(draft, m.items, m.inv.groups, added) : [];
+
 
   const update = (patch: Partial<Draft>) => {
     const next = { ...draft, ...patch };
@@ -436,14 +436,8 @@ function SalesReturnForm() {
                     {...tabProps}
                     deliveries={availableDeliveries}
                     onCopy={copyFromDelivery}
-                    cardFooter={<TotalsFooter {...tabProps} withholding={[]} />}
                   />
-                  <ReturnJournalCard
-                    journal={journal}
-                    accounts={m.accounts}
-                    empty="Adding brings the stock back: Dr Inventory / Cr COGS, at item cost."
-                    note="In PHP, at item cost — the reverse of the delivery entry. The customer's credit posts on the A/R credit memo."
-                  />
+
                 </div>
               </div>
             </Panel.Body>

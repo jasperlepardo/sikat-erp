@@ -8,15 +8,13 @@ import { formatAmount } from '../../../../services/format';
 import { isValidToday } from '../../../../services/items';
 import { isPriceListValid } from '../../../../services/priceLists';
 import { lineNet } from '../../../../services/quotations';
-import { lineTax, priceAfterDiscount } from '../../../../services/salesOrders';
+import { priceAfterDiscount } from '../../../../services/salesOrders';
 import { priceListDef } from '../../../settings/masterDefs';
-import { warehouseOptions } from '../../../inventory/transfers/TransferLines';
-import { availableIn } from '../../orders/detail/types';
 import { lineFromItem, linePricing, type QtTabProps } from './types';
 
 const num = (v: string) => (v === '' ? 0 : Number(v));
 
-const GROUPS = { warehouse: 'Warehouse', priceListId: 'Price list', tax: 'Tax' } as const;
+const GROUPS = { priceListId: 'Price list' } as const;
 type Group = keyof typeof GROUPS;
 
 /** The quotation's lines, laid out like the sales order's Item table. */
@@ -32,7 +30,7 @@ export function QtContentsTable({ draft, update, errors, ctx, m, cardFooter }: Q
   const patch = (id: string, p: Partial<QuoteLine>) => update({ lines: lines.map((l) => (l.id === id ? { ...l, ...p } : l)) });
   const err = (l: QuoteLine, field: string) => errors[`line:${l.id}:${field}`];
   const lc = (n: number) => formatAmount(n * ctx.fx);
-  const taxOf = (l: QuoteLine) => lineTax(l, ctx.rateOf(l.taxCode), 0);
+
   // Once added, only remarks and attachments change.
   const linesLocked = ctx.readOnly || ctx.added;
 
@@ -50,7 +48,7 @@ export function QtContentsTable({ draft, update, errors, ctx, m, cardFooter }: Q
         ),
         text: `${i.itemNo} ${i.name} ${i.description}`,
       }));
-  const taxOptions = m.tax.codes.filter((c) => c.direction === 'Sales' && c.active).map((c) => ({ value: c.code, label: `${c.code} (${ctx.rateOf(c.code)}%)` }));
+
 
   const pickItem = (l: QuoteLine, itemId: string | null) => {
     const item = m.items.find((i) => i.id === itemId);
@@ -115,7 +113,7 @@ export function QtContentsTable({ draft, update, errors, ctx, m, cardFooter }: Q
       if (!item) return null;
       if (linesLocked) return (
         <Text variant="small" className="whitespace-nowrap tabular-nums">
-          {l.quantity.toLocaleString('en-PH')} {l.uomName}
+          {l.quantity.toLocaleString('en-PH')} {l.uomCode}
         </Text>
       );
       return (
@@ -135,32 +133,12 @@ export function QtContentsTable({ draft, update, errors, ctx, m, cardFooter }: Q
             onValueChange={(v) => v && changeUom(l, v)}
           />
           <Text variant="small" tone="muted">
-            {l.uomName}
+            {l.uomCode}
             {l.uomCode === item.inventoryUom ? ' · inventory UoM' : ` · ${l.itemsPerUnit} ${item.inventoryUom} each`}
           </Text>
         </div>
       );
     }, undefined, 'end'),
-    col('warehouse', 'Whse', (l) => {
-      const item = itemOf(l);
-      if (!item) return null;
-      if (!item.inventoryItem) return <span className="text-muted">Not stocked</span>;
-      if (linesLocked) return <Text variant="small">{l.warehouse || '—'}</Text>;
-      return (
-        <div className="flex w-44 shrink-0 flex-col gap-1 whitespace-normal">
-          <Combobox
-            aria-label="Warehouse"
-            invalid={Boolean(err(l, 'warehouse'))}
-            options={warehouseOptions(m.inv.warehouses, l.warehouse)}
-            value={l.warehouse || null}
-            onValueChange={(v) => patch(l.id, { warehouse: v ?? '' })}
-          />
-          <Text variant="small" tone="muted">
-            {availableIn(item, l.warehouse)} {item.inventoryUom} available
-          </Text>
-        </div>
-      );
-    }, 'warehouse'),
     col('priceListId', 'Price list', (l) => {
       if (!itemOf(l)) return null;
       if (linesLocked) {
@@ -222,29 +200,6 @@ export function QtContentsTable({ draft, update, errors, ctx, m, cardFooter }: Q
         </div>
       );
     }, undefined, 'end'),
-    col('tax', 'Tax code', (l) => {
-      if (!itemOf(l)) return null;
-      if (linesLocked) return (
-        <div className="flex flex-col gap-0.5">
-          <Text variant="small">{l.taxCode} ({ctx.rateOf(l.taxCode)}%)</Text>
-          <Text variant="small" tone="muted">Tax PHP {lc(taxOf(l))}</Text>
-        </div>
-      );
-      return (
-        <div className="flex w-32 flex-col gap-1">
-          <Combobox
-            aria-label="Tax code"
-            invalid={Boolean(err(l, 'taxCode'))}
-            options={taxOptions}
-            value={l.taxCode || null}
-            onValueChange={(taxCode) => reprice(l, { taxCode: taxCode ?? '' })}
-          />
-          <Text variant="small" tone="muted">
-            Tax PHP {lc(taxOf(l))}
-          </Text>
-        </div>
-      );
-    }, 'tax', 'end'),
     col('totals', 'Total (LC)', (l) =>
       itemOf(l) ? (
         <Text variant="small" className="whitespace-nowrap tabular-nums">

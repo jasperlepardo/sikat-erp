@@ -12,7 +12,6 @@ import {
   ArPostError,
   addArInvoice,
   recallArInvoice,
-  arJournal,
   arNumber,
   arTotals,
   arWithholding,
@@ -42,7 +41,7 @@ import { soSeries } from '../../../../services/allSeries';
 import { DN_LIST_PATH } from '../../deliveries/detail/types';
 import { ALL_CURRENCIES, SO_LIST_PATH, proposedTaxCode } from '../../orders/detail/types';
 import { ArContents, type CopyPick } from './ArContents';
-import { ArAssignmentCard, ArBpChannelCard, ArDatesCard, ArInstallmentsCard, ArJournalCard, ArSettingsCard, ArShipmentCard } from './ArSideCards';
+import { ArAssignmentCard, ArBpChannelCard, ArDatesCard, ArInstallmentsCard, ArSettingsCard, ArShipmentCard } from './ArSideCards';
 import { ArCustomerDetailsPanel } from './ArCustomerDetailsPanel';
 import { CustomerCard } from '../../shared/CustomerCard';
 import { TotalsFooter } from '../../shared/TotalsFooter';
@@ -176,7 +175,6 @@ function ArInvoiceForm() {
   const withholding = arWithholding(draft, customer, m.items, ctx.rateOf);
   const wtax = Math.round(withholding.reduce((n, w) => n + w.amount, 0) * 100) / 100;
   const balance = balanceDue(totals.total, wtax, draft.appliedAmount);
-  const journal = ctx.fx ? arJournal(draft, ctx.fx, { items: m.items, groups: m.inv.groups, codes: m.tax.codes, rateOf: ctx.rateOf, withholding, roundingRule: docCurrency?.rounding }, ctx.added) : [];
   const { prevId, nextId } = neighbours(siblings, draft.id && (draft.docNum ? arNumber(draft as ArInvoice) : draft.id));
 
   const update = (patch: Partial<ArDraft>) => setDraft({ ...draft, ...patch });
@@ -410,7 +408,7 @@ function ArInvoiceForm() {
                     <TotalsFooter
                       {...tabProps}
                       withRounding
-                      withholding={withholding.map((w) => ({ label: `WTax — ${w.label}`, amount: w.amount }))}
+                      withholding={withholding.map((w) => ({ label: `${w.kind === 'Withholding VAT' ? 'VAT' : 'EWT'} withheld — ${w.atc} (${w.rate}%)`, amount: w.amount }))}
                       extraRows={
                         // Until something is applied, the total (or net to receive) is the balance due.
                         draft.appliedAmount ? (
@@ -430,7 +428,7 @@ function ArInvoiceForm() {
                   }
                 />
                 <ArInstallmentsCard draft={draft} balance={balance} />
-                <ArJournalCard journal={journal} ctx={ctx} m={m} currency={draft.currency} />
+
               </div>
             </div>
           </Panel.Body>

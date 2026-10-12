@@ -140,7 +140,7 @@ export function SrContents({
       ].filter(Boolean).join(' · ');
       if (ro) return (
         <div className="flex flex-col items-end">
-          <Text variant="small" className="whitespace-nowrap tabular-nums">{l.quantity.toLocaleString('en-PH')} {l.uomName}</Text>
+          <Text variant="small" className="whitespace-nowrap tabular-nums">{l.quantity.toLocaleString('en-PH')} {l.uomCode}</Text>
           {note ? <Text variant="small" tone="muted" className="whitespace-nowrap">{note}</Text> : null}
         </div>
       );
@@ -151,7 +151,7 @@ export function SrContents({
             <Select aria-label="UoM code" options={itemUnits(item, 'sales').map((u) => ({ value: u.uom, label: u.uom }))} value={l.uomCode} onValueChange={(uomCode) => patch(l.id, { uomCode, uomName: m.inv.uoms.find((u) => u.code === uomCode)?.name ?? uomCode, itemsPerUnit: itemsPerUom(item, uomCode) ?? 1 })} />
           )}
           <Text variant="small" tone="muted">
-            {l.uomName}
+            {l.uomCode}
             {note ? ` · ${note}` : ''}
           </Text>
         </div>
@@ -247,7 +247,7 @@ export function SrContents({
       );
     }, 'references'),
     col('creditedQty', 'Credited', (l) =>
-      itemOf(l) ? <Text variant="small" className="whitespace-nowrap tabular-nums">{l.creditedQty > 0 ? `${l.creditedQty} ${l.uomName}` : '—'}</Text> : null,
+      itemOf(l) ? <Text variant="small" className="whitespace-nowrap tabular-nums">{l.creditedQty > 0 ? `${l.creditedQty} ${l.uomCode}` : '—'}</Text> : null,
     'references', 'end'),
   ].filter((c) => !c.group || is(c.group));
 

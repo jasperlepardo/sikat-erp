@@ -19,10 +19,20 @@ import { RC_LIST_PATH, RC_STATUS_INTENT } from '../payments/detail/IncomingPayme
 import { SO_STATUS_INTENT } from '../orders/detail/SalesOrderDetail';
 import { AR_CM_LIST_PATH, ARCM_STATUS_INTENT, SR_LIST_PATH, SR_STATUS_INTENT } from '../returns/types';
 import { QT_LIST_PATH, QT_STATUS_INTENT } from '../quotations/QuotationList';
+import { listJournalEntries, jeNumber, jeTotals } from '../../../services/journalEntries';
+import { JE_LIST_PATH, JE_STATUS_INTENT } from '../../accounting/journal/JournalEntryDetail';
 
-export type SalesDocKind = 'QT' | 'SO' | 'DN' | 'ARINV' | 'RCV' | 'ARCM' | 'SRT';
+export type SalesDocKind = 'QT' | 'SO' | 'DN' | 'ARINV' | 'RCV' | 'ARCM' | 'SRT' | 'JE';
 
 export type { LinkedDocument, CoveredLine };
+
+const SALES_ORIGIN: Partial<Record<string, SalesDocKind>> = {
+  DN: 'DN',
+  IN: 'ARINV',
+  RC: 'RCV',
+  AC: 'ARCM',
+  SR: 'SRT',
+};
 
 const SOURCES: Record<SalesDocKind, () => Promise<DocNode[]>> = {
   QT: async () => {
@@ -183,6 +193,27 @@ const SOURCES: Record<SalesDocKind, () => Promise<DocNode[]>> = {
         lines: r.lines.filter((l) => l.baseId === id) as CoveredLine[],
       })),
     }));
+  },
+
+  JE: async () => {
+    const jes = await listJournalEntries();
+    return jes
+      .filter((je) => je.originId && SALES_ORIGIN[je.origin])
+      .map((je) => ({
+        kind: 'JE' as const,
+        id: je.id,
+        type: je.reverses ? 'Reversal entry' : 'Journal entry',
+        number: jeNumber(je),
+        href: `${JE_LIST_PATH}/${je.id}`,
+        date: je.postingDate,
+        status: je.reverses ? 'Reversal' : je.status,
+        intent: JE_STATUS_INTENT[je.status],
+        currency: 'PHP',
+        total: jeTotals(je.lines).debit,
+        partnerId: '',
+        items: [],
+        bases: [{ kind: SALES_ORIGIN[je.origin]!, id: je.originId, lines: [] }],
+      }));
   },
 };
 

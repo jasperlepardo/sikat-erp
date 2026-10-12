@@ -9,7 +9,7 @@ import { linkedDocuments, type CoveredLine, type DocKind, type LinkedDocument } 
 const RELATION_LABEL = { Base: '← Base', This: '● This document', Target: 'Target →' } as const;
 
 /** "7 pc IPH-18P-256-BLK · 30 pc ACC-CASE-18P" for the lines a link covers. */
-const coversText = (lines: CoveredLine[]) => lines.map((l) => `${l.quantity.toLocaleString('en-PH')} ${l.uomCode} ${l.itemNo}`).join(' · ');
+const coversText = (lines: CoveredLine[]) => lines.map((l) => `${l.quantity.toLocaleString('en-PH')} ${l.uomCode} ${l.description || l.itemNo}`).join(' · ');
 
 /**
  * A document's Transactions view — SAP's relationship map as one list. Every document linked to

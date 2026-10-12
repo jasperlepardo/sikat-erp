@@ -13,6 +13,7 @@ import type { ArInvoice } from '../../../mocks/arInvoices';
 import { CURRENT_USER_ID } from '../../../mocks/common';
 import type { Partner } from '../../../mocks/partners';
 import { rateAt } from '../../../mocks/taxes';
+import { arWithholding } from '../../../services/arInvoices';
 import {
   ArCmPostError,
   addArCreditMemo,
@@ -56,7 +57,7 @@ import { useDocTitle } from '../../../services/useDocTitle';
 import { AR_CM_LIST_PATH, ARCM_STATUS_INTENT, type ArCmMasters, type SrContext } from './types';
 import { AcmContents } from './AcmContents';
 import { AcmCustomerDetailsPanel } from './AcmCustomerDetailsPanel';
-import { ReturnAssignmentCard, ReturnDatesCard, ReturnJournalCard, ReturnShipmentCard } from './ReturnSideCards';
+import { ReturnAssignmentCard, ReturnDatesCard, ReturnShipmentCard } from './ReturnSideCards';
 import { ActivityTab } from '../../../components/activity/ActivityTab';
 import { NotFound, PrevNext, neighbours } from '../../../components/form/DetailNav';
 
@@ -220,6 +221,7 @@ function ArCreditMemoForm() {
   const { prevId, nextId } = neighbours(siblings, (draft as ArCreditMemo).id && (draft.docNum ? arCmNumber(draft as ArCreditMemo) : (draft as ArCreditMemo).id));
   const errors: Errors = Object.fromEntries(problems.map((p) => [p.key, p.message]));
   const totals = arCmTotals(draft, rateOf);
+  const withholding = arWithholding(draft as never, customer, m.items, rateOf);
   const openBalance = round2(totals.total - draft.appliedAmount);
   const journal = fx ? arCmJournal(draft, fx, { items: m.items, groups: m.inv.groups, codes: m.tax.codes, rateOf }) : [];
 
@@ -444,7 +446,7 @@ function ArCreditMemoForm() {
                     cardFooter={
                       <TotalsFooter
                         {...tabProps}
-                        withholding={[]}
+                        withholding={withholding.map((w) => ({ label: `${w.kind === 'Withholding VAT' ? 'VAT' : 'EWT'} withheld — ${w.atc} (${w.rate}%)`, amount: w.amount }))}
                         extraRows={
                           added ? (
                             <>
@@ -467,12 +469,7 @@ function ArCreditMemoForm() {
                       />
                     }
                   />
-                  <ReturnJournalCard
-                    journal={journal}
-                    accounts={m.accounts}
-                    empty="Adding posts Dr Revenue and Output VAT / Cr A/R, plus Dr Inventory / Cr COGS for goods put back."
-                    note={`In PHP${code === 'PHP' ? '' : ` at ${fx}`}. Reduces what the customer owes.`}
-                  />
+
                 </div>
               </div>
             </Panel.Body>

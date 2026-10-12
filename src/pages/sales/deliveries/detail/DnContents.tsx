@@ -6,11 +6,11 @@ import { MasterLookup } from '../../../../components/form/MasterLookup';
 import { newDnLine, type DnLine } from '../../../../mocks/deliveries';
 import { itemUnits, itemsPerUom } from '../../../../mocks/items';
 import type { SalesOrder } from '../../../../mocks/salesOrders';
-import { dnInventoryQty, dnOpenQty } from '../../../../services/deliveries';
+import { dnInventoryQty } from '../../../../services/deliveries';
 import { formatAmount } from '../../../../services/format';
 import { isValidToday } from '../../../../services/items';
 import { isPriceListValid, priceListName } from '../../../../services/priceLists';
-import { lineNet, lineTax, openQty, priceAfterDiscount, soNumber } from '../../../../services/salesOrders';
+import { lineTax, openQty, priceAfterDiscount, soNumber } from '../../../../services/salesOrders';
 import { priceListDef } from '../../../settings/masterDefs';
 import { warehouseOptions } from '../../../inventory/transfers/TransferLines';
 import { CopyPanel, type CopySourceType } from '../../../purchasing/shared/CopyPanel';
@@ -19,7 +19,7 @@ import { asSoDraft, type DnSectionProps } from './types';
 
 const num = (v: string) => (v === '' ? 0 : Number(v));
 
-const GROUPS = { warehouse: 'Warehouse', priceListId: 'Price list', tax: 'Tax', base: 'Base document' } as const;
+const GROUPS = { warehouse: 'Warehouse', priceListId: 'Price list', pricing: 'Unit price / Discount', tax: 'Tax', base: 'Base document' } as const;
 type Group = keyof typeof GROUPS;
 
 /** The delivery's lines, laid out like the sales order's Item table. */
@@ -39,6 +39,7 @@ export function DnContents({ draft, update, errors, m, ctx, onCopy, cardFooter }
   const lc = (n: number) => formatAmount(n * ctx.fx);
   const taxOf = (l: DnLine) => lineTax(l, ctx.rateOf(l.taxCode), 0);
   const orderOf = (l: DnLine) => (l.baseId ? m.orders.find((o) => o.id === l.baseId) : undefined);
+  const baseLineOf = (l: DnLine) => orderOf(l)?.lines.find((x) => x.id === l.baseLineId);
   const so = asSoDraft(draft);
   const taxOptions = m.tax.codes.filter((c) => c.direction === 'Sales' && c.active).map((c) => ({ value: c.code, label: `${c.code} (${ctx.rateOf(c.code)}%)` }));
 
@@ -127,21 +128,25 @@ export function DnContents({ draft, update, errors, m, ctx, onCopy, cardFooter }
         </div>
       );
     }),
-    col('qty', 'Qty / UoM', (l) => {
+    col('ordered', 'Ordered', (l) => {
+      const base = baseLineOf(l);
+      if (!base) return <Text variant="small" tone="muted">—</Text>;
+      return (
+        <Text variant="small" className="whitespace-nowrap tabular-nums">
+          {base.quantity.toLocaleString('en-PH')} {l.uomCode}
+        </Text>
+      );
+    }, undefined, 'end'),
+    col('shipped', 'Shipped', (l) => {
       const item = itemOf(l);
       if (!item) return null;
-      const base = l.baseLineId ? orderOf(l)?.lines.find((x) => x.id === l.baseLineId) : undefined;
-      const note = [
-        l.uomCode === item.inventoryUom ? null : `${dnInventoryQty(l)} ${item.inventoryUom}`,
-        base && !ro ? `${openQty(base)} open on order` : null,
-        draft.status === 'Open' ? `${dnOpenQty(l, draft)} to invoice` : null,
-      ].filter(Boolean).join(' · ');
+      const invNote = l.uomCode === item.inventoryUom ? null : `${dnInventoryQty(l)} ${item.inventoryUom}`;
       if (ro) return (
         <div className="flex flex-col items-end">
           <Text variant="small" className="whitespace-nowrap tabular-nums">
-            {l.quantity.toLocaleString('en-PH')} {l.uomName}
+            {l.quantity.toLocaleString('en-PH')} {l.uomCode}
           </Text>
-          {note ? <Text variant="small" tone="muted" className="whitespace-nowrap">{note}</Text> : null}
+          {invNote ? <Text variant="small" tone="muted" className="whitespace-nowrap">{invNote}</Text> : null}
         </div>
       );
       return (
@@ -150,12 +155,20 @@ export function DnContents({ draft, update, errors, m, ctx, onCopy, cardFooter }
           {l.baseId ? null : (
             <Select aria-label="UoM code" options={itemUnits(item, 'sales').map((u) => ({ value: u.uom, label: u.uom }))} value={l.uomCode} onValueChange={(uomCode) => reprice(l, { uomCode, uomName: m.inv.uoms.find((u) => u.code === uomCode)?.name ?? uomCode, itemsPerUnit: itemsPerUom(item, uomCode) ?? 1 })} />
           )}
-          <Text variant="small" tone="muted">
-            {l.uomName}
-            {l.uomCode === item.inventoryUom ? ' · inventory UoM' : ''}
-            {note ? ` · ${note}` : ''}
-          </Text>
+          {invNote ? <Text variant="small" tone="muted">{invNote}</Text> : null}
         </div>
+      );
+    }, undefined, 'end'),
+    col('outstanding', 'Outstanding', (l) => {
+      const base = baseLineOf(l);
+      if (!base) return <Text variant="small" tone="muted">—</Text>;
+      const remaining = ctx.added
+        ? openQty(base)
+        : Math.max(0, openQty(base) - l.quantity);
+      return (
+        <Text variant="small" className="whitespace-nowrap tabular-nums">
+          {remaining.toLocaleString('en-PH')} {l.uomCode}
+        </Text>
       );
     }, undefined, 'end'),
     col('warehouse', 'Whse', (l) => {
@@ -204,7 +217,7 @@ export function DnContents({ draft, update, errors, m, ctx, onCopy, cardFooter }
           </Text>
         </div>
       );
-    }, undefined, 'end'),
+    }, 'pricing', 'end'),
     col('tax', 'Tax code', (l) => {
       if (!itemOf(l)) return null;
       if (ro) return (
@@ -220,13 +233,6 @@ export function DnContents({ draft, update, errors, m, ctx, onCopy, cardFooter }
         </div>
       );
     }, 'tax', 'end'),
-    col('totals', 'Total (LC)', (l) =>
-      itemOf(l) ? (
-        <Text variant="small" className="whitespace-nowrap tabular-nums">
-          PHP {lc(lineNet(l))}
-        </Text>
-      ) : null,
-    undefined, 'end'),
     col('base', 'Base document', (l) => {
       const order = orderOf(l);
       if (!l.baseId) return <Text variant="small" tone="muted">—</Text>;

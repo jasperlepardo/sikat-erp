@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router';
-import { TableAmount, TableLink, TableStatus, TableSubcontent, Text, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { TableLink, TableStatus, TableSubcontent, Text, type TableColumn } from '@jasperlepardo/sikat-design-system';
 import { DataTable } from '../../../components/form/DataTable';
 import { formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
@@ -9,7 +9,7 @@ import { linkedSalesDocuments, type CoveredLine, type LinkedDocument, type Sales
 const RELATION_LABEL = { Base: '← Base', This: '● This document', Target: 'Target →' } as const;
 
 const coversText = (lines: CoveredLine[]) =>
-  lines.map((l) => `${l.quantity.toLocaleString('en-PH')} ${l.uomCode} ${l.itemNo}`).join(' · ');
+  lines.map((l) => `${l.quantity.toLocaleString('en-PH')} ${l.uomCode} ${l.description || l.itemNo}`).join(' · ');
 
 export function SalesDocumentFlow({ kind, id, notes }: { kind: SalesDocKind; id: string; notes: string }) {
   const navigate = useNavigate();
@@ -20,7 +20,7 @@ export function SalesDocumentFlow({ kind, id, notes }: { kind: SalesDocKind; id:
       key: 'relation',
       header: 'Relation',
       cell: (d) => (
-        <TableSubcontent subcopy={d.via ? `via ${d.via}` : d.relation === 'Base' ? 'Copied from' : d.relation === 'Target' ? 'Copied to' : undefined}>
+        <TableSubcontent subcopy={d.via ? `via ${d.via}` : d.relation === 'Base' ? 'Copied from' : d.relation === 'Target' ? (d.kind === 'JE' ? 'Accounting entry' : 'Copied to') : undefined}>
           {RELATION_LABEL[d.relation]}
         </TableSubcontent>
       ),
@@ -35,8 +35,8 @@ export function SalesDocumentFlow({ kind, id, notes }: { kind: SalesDocKind; id:
       ),
     },
     { key: 'date', header: 'Posting date', cell: (d) => formatDate(d.date) },
-    { key: 'covers', header: 'What it covers', cell: (d) => coversText(d.covers) || d.note || '—' },
-    { key: 'total', header: 'Total', cell: (d) => <TableAmount currency={d.currency}>{formatAmount(d.total)}</TableAmount> },
+    { key: 'covers', header: 'What it covers', cell: (d) => coversText(d.covers) || d.note || coversText(d.items) || '—' },
+    { key: 'total', header: 'Total', align: 'end', cell: (d) => `${d.currency} ${formatAmount(d.total)}` },
     { key: 'status', header: 'Status', cell: (d) => <TableStatus intent={d.intent}>{d.status}</TableStatus> },
   ];
 

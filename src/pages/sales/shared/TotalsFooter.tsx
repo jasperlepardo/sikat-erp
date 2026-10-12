@@ -1,5 +1,5 @@
-import { useState, type ReactNode } from 'react';
-import { Checkbox, Icon, Link, Text, TextField, Tooltip } from '@jasperlepardo/sikat-design-system';
+import type { ReactNode } from 'react';
+import { Checkbox, Text, TextField, Tooltip } from '@jasperlepardo/sikat-design-system';
 import { formatAmount } from '../../../services/format';
 import { SALES_SETTINGS } from '../../../mocks/salesOrders';
 import { soTotals, soWithholding } from '../../../services/salesOrders';
@@ -28,8 +28,7 @@ interface TotalsFooterProps {
 /** Subtotal, discount, freight, tax, total and withholding under a sales document's lines. */
 export function TotalsFooter({ draft, update, ctx, m, withRounding, withholding, extraRows }: TotalsFooterProps) {
   const doc = draft as unknown as SoTotalsInput;
-  const [editDiscount, setEditDiscount] = useState(false);
-  const [editFreight, setEditFreight] = useState(false);
+
 
   const customer = ctx.customer;
   const docCurrency = m.currencies.find((c) => c.code === draft.currency);
@@ -53,7 +52,7 @@ export function TotalsFooter({ draft, update, ctx, m, withRounding, withholding,
           <Text variant="small" tone="muted">Subtotal</Text>
           <Text variant="small" className="tabular-nums">{draft.currency} {formatAmount(totals.beforeDiscount)}</Text>
         </div>
-        {draft.discountPct > 0 || editDiscount ? (
+        {draft.discountPct > 0 ? (
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <Text variant="small" tone="muted">Discount</Text>
@@ -61,21 +60,15 @@ export function TotalsFooter({ draft, update, ctx, m, withRounding, withholding,
             </div>
             <Text variant="small" className="tabular-nums">{totals.discount ? `–${draft.currency} ${formatAmount(totals.discount)}` : '—'}</Text>
           </div>
-        ) : ctx.readOnly ? null : (
-          <Link leadingIcon={<Icon size={20}>add</Icon>} onClick={() => setEditDiscount(true)}>Add discount</Link>
-        )}
-        {SALES_SETTINGS.manageFreightInDocuments ? (
-          draft.freight > 0 || editFreight ? (
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-2">
-                <Text variant="small" tone="muted">Freight</Text>
-                <TextField aria-label="Freight amount" type="number" min={0} className="w-24" prefix={draft.currency} value={String(draft.freight)} onChange={(e) => update({ freight: Number(e.currentTarget.value) })} />
-              </div>
-              <Text variant="small" className="tabular-nums">{draft.currency} {formatAmount(totals.freight)}</Text>
+        ) : null}
+        {SALES_SETTINGS.manageFreightInDocuments && draft.freight > 0 ? (
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <Text variant="small" tone="muted">Freight</Text>
+              <TextField aria-label="Freight amount" type="number" min={0} className="w-24" prefix={draft.currency} value={String(draft.freight)} onChange={(e) => update({ freight: Number(e.currentTarget.value) })} />
             </div>
-          ) : ctx.readOnly ? null : (
-            <Link leadingIcon={<Icon size={20}>add</Icon>} onClick={() => setEditFreight(true)}>Add freight</Link>
-          )
+            <Text variant="small" className="tabular-nums">{draft.currency} {formatAmount(totals.freight)}</Text>
+          </div>
         ) : null}
         {withRounding ? (
           <div className="flex items-center justify-between gap-4">

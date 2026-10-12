@@ -28,7 +28,7 @@ export function DeliverySubTab({ draft }: { draft: SoDraft }) {
           align: 'end' as const,
           cell: (l) => (
             <Text variant="small" className="whitespace-nowrap tabular-nums">
-              {l.quantity.toLocaleString('en-PH')} {l.uomName}
+              {l.quantity.toLocaleString('en-PH')} {l.uomCode}
             </Text>
           ),
         },
@@ -38,7 +38,7 @@ export function DeliverySubTab({ draft }: { draft: SoDraft }) {
           align: 'end' as const,
           cell: (l) => (
             <Text variant="small" className="whitespace-nowrap tabular-nums">
-              {l.deliveredQty.toLocaleString('en-PH')} {l.uomName}
+              {l.deliveredQty ? `${l.deliveredQty.toLocaleString('en-PH')} ${l.uomCode}` : '—'}
             </Text>
           ),
         },

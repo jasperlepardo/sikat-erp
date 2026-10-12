@@ -36,8 +36,8 @@ import { DnShipmentCard } from './DnShipmentCard';
 import { DnAssignmentCard } from './DnAssignmentCard';
 import { CustomerCard } from '../../shared/CustomerCard';
 import { DnCustomerDetailsPanel } from './DnCustomerDetailsPanel';
-import { TotalsFooter } from '../../shared/TotalsFooter';
-import { DnJournalCard } from './DnJournalCard';
+
+
 
 type TabId = 'contents';
 const TAB_LABEL: Record<TabId, string> = { contents: 'Contents' };
@@ -324,9 +324,8 @@ function DeliveryForm() {
                   <DnContents
                     {...tabProps}
                     onCopy={(so, picks) => setDraft(copyLines(draft, so, picks))}
-                    cardFooter={<TotalsFooter {...tabProps} withRounding />}
                   />
-                  <DnJournalCard {...tabProps} />
+
                 </div>
               </div>
             </Panel.Body>

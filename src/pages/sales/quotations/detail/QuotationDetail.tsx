@@ -231,7 +231,7 @@ function QuotationForm() {
     ...(!added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
     ...(draft.status === 'Draft' && !draft.approved ? [{ label: 'Submit for approval', icon: 'upload', onSelect: () => submit(null, false) }] : []),
     ...(draft.status === 'Not Confirmed' ? [{ label: 'Approve', icon: 'verified', onSelect: () => submit(null, false, { approved: true }) }, { label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => setRejecting(true) }] : []),
-    ...(draft.status === 'Open' ? [{ label: 'Copy to sales order', icon: 'shopping_bag', onSelect: convertToOrder }] : []),
+    ...(draft.status === 'Open' ? [{ label: 'Create sales order', icon: 'shopping_bag', onSelect: convertToOrder }] : []),
     ...(draft.status === 'Open' ? [{ label: 'Close quotation', icon: 'task_alt', onSelect: () => closeQuotation(saved).then((r) => navigate(QT_LIST_PATH, { state: { notice: `Quotation ${qtNumber(r)} closed.` } })) }] : []),
     ...(draft.status === 'Open' ? [{ label: 'Cancel quotation', icon: 'cancel', onSelect: () => cancelQuotation(saved).then((r) => navigate(QT_LIST_PATH, { state: { notice: `Quotation ${qtNumber(r)} cancelled.` } })) }] : []),
     ...(customer ? [{ label: `Open customer ${customer.code}`, icon: 'storefront', onSelect: () => navigate(`/sales/customers/${customer.id}`) }] : []),
@@ -267,7 +267,7 @@ function QuotationForm() {
             }
             actions={
               <>
-                {readOnly ? null : <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(QT_LIST_PATH)}>Cancel</Button>}
+
                 {menu.length ? <MoreMenu items={menu} /> : null}
                 <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
                   {saving ? 'Saving…' : added ? 'Save' : 'Add'}
@@ -310,8 +310,8 @@ function QuotationForm() {
                 >
                   {draft.status === 'Open'
                     ? (isExpired
-                      ? 'The valid until date has passed. Copy to a sales order or close it.'
-                      : 'Copy to a sales order when the customer confirms. Only remarks and attachments can change.')
+                      ? 'The valid until date has passed. Create a sales order or close it.'
+                      : 'Create a sales order when the customer confirms. Only remarks and attachments can change.')
                     : 'Only remarks and attachments can change.'}
                 </Alert>
               ) : null}
@@ -338,7 +338,7 @@ function QuotationForm() {
                   />
                   <QtContentsTable
                     {...tabProps}
-                    cardFooter={<TotalsFooter {...tabProps} ctx={{ ...ctx, readOnly: readOnly || added }} />}
+                    cardFooter={<TotalsFooter {...tabProps} ctx={{ ...ctx, readOnly: readOnly || added }} withholding={[]} />}
                   />
                 </div>
               </div>

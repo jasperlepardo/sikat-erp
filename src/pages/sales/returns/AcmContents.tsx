@@ -131,14 +131,14 @@ export function AcmContents({
     col('qty', 'Qty / UoM', (l) => {
       const item = itemOf(l);
       if (!item) return null;
-      if (ro) return <Text variant="small" className="whitespace-nowrap tabular-nums">{l.quantity.toLocaleString('en-PH')} {l.uomName}</Text>;
+      if (ro) return <Text variant="small" className="whitespace-nowrap tabular-nums">{l.quantity.toLocaleString('en-PH')} {l.uomCode}</Text>;
       return (
         <div className="flex w-40 shrink-0 flex-col gap-1 whitespace-normal">
           <TextField aria-label="Quantity" type="number" min={0} invalid={Boolean(err(l, 'quantity'))} value={String(l.quantity)} onChange={(e) => patch(l.id, { quantity: num(e.currentTarget.value) })} />
           {l.baseId ? null : (
             <Select aria-label="UoM code" options={itemUnits(item, 'sales').map((u) => ({ value: u.uom, label: u.uom }))} value={l.uomCode} onValueChange={(uomCode) => patch(l.id, { uomCode, uomName: m.inv.uoms.find((u) => u.code === uomCode)?.name ?? uomCode, itemsPerUnit: itemsPerUom(item, uomCode) ?? 1 })} />
           )}
-          <Text variant="small" tone="muted">{l.uomName}</Text>
+          <Text variant="small" tone="muted">{l.uomCode}</Text>
         </div>
       );
     }, undefined, 'end'),

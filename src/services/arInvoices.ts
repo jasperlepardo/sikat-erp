@@ -49,6 +49,7 @@ const rateFrom = (codes: readonly TaxCode[], date: string) => (code: string) => 
 
 export interface ArWithholding {
   kind: 'Expanded (EWT)' | 'Withholding VAT';
+  atc: string;
   label: string;
   rate: number;
   base: number;
@@ -79,9 +80,9 @@ export function arWithholding(a: Pick<ArInvoice, 'lines' | 'discountPct' | 'docT
     if (rateOf(l.taxCode) > 0) vatable += net;
   }
   const out: ArWithholding[] = [];
-  if (goods) out.push({ kind: 'Expanded (EWT)', label: 'Creditable withholding tax — goods (1%)', rate: 1, base: round2(goods), amount: round2(goods * 0.01), account: CWT_ACCOUNT });
-  if (services) out.push({ kind: 'Expanded (EWT)', label: 'Creditable withholding tax — services (2%)', rate: 2, base: round2(services), amount: round2(services * 0.02), account: CWT_ACCOUNT });
-  if (gov && vatable) out.push({ kind: 'Withholding VAT', label: 'VAT withheld by government (5%)', rate: 5, base: round2(vatable), amount: round2(vatable * 0.05), account: CREDITABLE_VAT_ACCOUNT });
+  if (goods) out.push({ kind: 'Expanded (EWT)', atc: 'WC158', label: 'Creditable withholding tax — goods (1%)', rate: 1, base: round2(goods), amount: round2(goods * 0.01), account: CWT_ACCOUNT });
+  if (services) out.push({ kind: 'Expanded (EWT)', atc: 'WC159', label: 'Creditable withholding tax — services (2%)', rate: 2, base: round2(services), amount: round2(services * 0.02), account: CWT_ACCOUNT });
+  if (gov && vatable) out.push({ kind: 'Withholding VAT', atc: 'WVO10', label: 'VAT withheld by government (5%)', rate: 5, base: round2(vatable), amount: round2(vatable * 0.05), account: CREDITABLE_VAT_ACCOUNT });
   return out;
 }
 
