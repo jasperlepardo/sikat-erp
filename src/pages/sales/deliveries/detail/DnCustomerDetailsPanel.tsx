@@ -1,5 +1,6 @@
-import { Button, Panel, PanelHeader, SidePanel, Text } from '@jasperlepardo/sikat-design-system';
+import { Button, Panel, PanelHeader, SidePanel, Text, TextField } from '@jasperlepardo/sikat-design-system';
 import { Fields, ReadOnly, Section, bind } from '../../../../components/form/fields';
+import { contactName } from '../../../../mocks/partners';
 import { INDICATORS } from '../../../../mocks/purchaseOrders';
 import { PAYMENT_METHODS } from '../../../../mocks/masters';
 import { termDays } from '../../../../services/purchaseOrders';
@@ -13,7 +14,7 @@ interface DnCustomerDetailsPanelProps extends DnSectionProps {
   onClose: () => void;
 }
 
-export function DnCustomerDetailsPanel({ draft, update, ctx, open, onClose }: DnCustomerDetailsPanelProps) {
+export function DnCustomerDetailsPanel({ draft, update, errors, ctx, open, onClose }: DnCustomerDetailsPanelProps) {
   if (!open || !ctx.customer) return null;
 
   const customer = ctx.customer;
@@ -43,7 +44,7 @@ export function DnCustomerDetailsPanel({ draft, update, ctx, open, onClose }: Dn
             <Fields cols={1}>
               {h.lookup('contactId', 'Contact person', [
                 { value: '', label: '— None —' },
-                ...(customer.contacts ?? []).filter((c) => c.active || c.id === draft.contactId).map((c) => ({ value: c.id, label: [c.firstName, c.lastName].filter(Boolean).join(' ') || c.firstName || '—' })),
+                ...(customer.contacts ?? []).filter((c) => c.active || c.id === draft.contactId).map((c) => ({ value: c.id, label: contactName(c) })),
               ], { disabled: !customer })}
               {h.text('customerRef', 'Customer ref. no.')}
             </Fields>
@@ -56,21 +57,24 @@ export function DnCustomerDetailsPanel({ draft, update, ctx, open, onClose }: Dn
               {h.master('paymentTermId', 'Payment terms', paymentTermDef, { hint: 'From the order or customer; carries to the invoice.' })}
               {h.lookup('paymentMethod', 'Payment method', PAYMENT_METHODS.map((p) => ({ value: p.code, label: `${p.code} · ${p.description}` })))}
               {h.date('dueDate', 'Due date', {
+                error: errors.dueDate,
                 hint: (
                   <>
                     = {computedDue || '—'}.{' '}
                     {draft.dueDate !== computedDue ? (
-                      <button type="button" className="text-xs underline" onClick={() => update({ dueDate: computedDue })}>
-                        Recalculate
-                      </button>
+                      <Button type="button" size="small" variant="ghost" onClick={() => update({ dueDate: computedDue })}>
+                        Recalculate due date
+                      </Button>
                     ) : null}
                   </>
                 ),
               })}
               <div className="grid grid-cols-2 gap-2">
-                <input type="number" aria-label="Due months" min={0} className="border rounded px-2 py-1 text-sm" value={String(draft.dueMonths)} onChange={(e) => setRecalc({ dueMonths: Number(e.currentTarget.value) || 0 })} />
-                <input type="number" aria-label="Due days" min={0} className="border rounded px-2 py-1 text-sm" value={String(draft.dueDays)} onChange={(e) => setRecalc({ dueDays: Number(e.currentTarget.value) || 0 })} />
-                <Text variant="small" tone="muted" className="col-span-2">Months then days from posting date instead of the terms.</Text>
+                <TextField aria-label="Recalculate due date: months" type="number" min={0} suffix="months" value={String(draft.dueMonths)} onChange={(e) => setRecalc({ dueMonths: Number(e.currentTarget.value) || 0 })} />
+                <TextField aria-label="Recalculate due date: days" type="number" min={0} suffix="days" value={String(draft.dueDays)} onChange={(e) => setRecalc({ dueDays: Number(e.currentTarget.value) || 0 })} />
+                <Text variant="small" tone="muted" className="col-span-2">
+                  Manually recalculate due date: months and days from the posting date instead of the terms.
+                </Text>
               </div>
               {h.num('cashDiscountDays', 'Cash discount date offset', { suffix: 'days' })}
             </Fields>
@@ -78,7 +82,7 @@ export function DnCustomerDetailsPanel({ draft, update, ctx, open, onClose }: Dn
           <Section icon="tag" title="References">
             <Fields cols={1}>
               {h.choose('indicator', 'Indicator', [{ value: '', label: '— None —' }, ...INDICATORS.map((v) => ({ value: v, label: v }))])}
-              <ReadOnly label="Federal tax ID" value={draft.federalTaxId || 'Customer has no TIN on file'} />
+              <ReadOnly label="Federal tax ID" value={draft.federalTaxId || <span className="text-muted">Customer has no TIN on file</span>} />
               {h.text('orderNumber', 'Order number', { hint: 'Set by Copy from sales order.' })}
             </Fields>
           </Section>
