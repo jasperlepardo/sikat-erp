@@ -21,6 +21,22 @@ export const SETTINGS_NAV: SideNavSection[] = [
           { id: 'settings/company/technicians', label: 'Technicians', icon: icon('engineering') },
           { id: 'settings/company/planning-groups', label: 'Planning groups', icon: icon('insights') },
           { id: 'settings/company/countries', label: 'Countries', icon: icon('public') },
+          { id: 'settings/company/branches', label: 'Branches', icon: icon('store') },
+          { id: 'settings/company/cost-centers', label: 'Cost centers', icon: icon('account_tree') },
+          { id: 'settings/company/users', label: 'Users', icon: icon('person') },
+        ],
+      },
+      {
+        id: 'settings/people',
+        label: 'People',
+        icon: icon('group'),
+        items: [
+          { id: 'settings/people/positions', label: 'Positions', icon: icon('work') },
+          { id: 'settings/people/departments', label: 'Departments', icon: icon('corporate_fare') },
+          { id: 'settings/people/employee-roles', label: 'Employee roles', icon: icon('assignment_ind') },
+          { id: 'settings/people/teams', label: 'Teams', icon: icon('groups') },
+          { id: 'settings/people/employee-statuses', label: 'Employee statuses', icon: icon('how_to_reg') },
+          { id: 'settings/people/termination-reasons', label: 'Termination reasons', icon: icon('logout') },
         ],
       },
       {

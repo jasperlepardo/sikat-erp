@@ -19,7 +19,7 @@ export function postingLineFor(item: Item, warehouse: string, draft: PostingDraf
     ...base,
     itemId: item.id,
     itemNo: item.itemNo,
-    description: item.name,
+    description: item.description || item.name,
     warehouse,
     binId: item.warehouses.find((w) => w.code === warehouse)?.defaultBinId ?? '',
     inWhseQty,

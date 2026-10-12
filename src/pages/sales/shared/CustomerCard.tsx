@@ -1,15 +1,23 @@
 import { CardField, Icon, IconButton, Text, type CardFieldOption } from '@jasperlepardo/sikat-design-system';
-import { Section } from '../../../../components/form/fields';
-import type { SoTabProps } from './types';
+import { Section } from '../../../components/form/fields';
+import type { Partner } from '../../../mocks/partners';
 
-interface CustomerCardProps extends SoTabProps {
-  overCredit: boolean;
+interface CustomerCardProps {
+  customers: Partner[];
+  customerId: string;
+  /** The picked customer, when it's found; enables the details button. */
+  customer: Partner | undefined;
   onPickCustomer: (id: string | null) => void;
   onOpenDetails: () => void;
+  /** The customer can't change any more (added, or set by the copied document). */
+  locked: boolean;
+  error?: string;
+  hint?: string;
+  overCredit?: boolean;
 }
 
-export function CustomerCard({ draft, ctx, m, errors, overCredit, onPickCustomer, onOpenDetails }: CustomerCardProps) {
-  const customer = ctx.customer;
+/** A sales document's customer: picked as a card with code and TIN, details in the side panel. */
+export function CustomerCard({ customers, customerId, customer, onPickCustomer, onOpenDetails, locked, error, hint, overCredit }: CustomerCardProps) {
   return (
     <Section
       icon="person"
@@ -25,8 +33,8 @@ export function CustomerCard({ draft, ctx, m, errors, overCredit, onPickCustomer
           label="Customer"
           required
           placeholder="Search customers"
-          options={m.customers
-            .filter((c) => c.status !== 'Inactive' || c.id === draft.customerId)
+          options={customers
+            .filter((c) => c.status !== 'Inactive' || c.id === customerId)
             .map((c): CardFieldOption => ({
               value: c.id,
               label: c.name,
@@ -36,11 +44,12 @@ export function CustomerCard({ draft, ctx, m, errors, overCredit, onPickCustomer
                 ...(c.tin ? [{ label: 'TIN', value: c.tin }] : []),
               ],
             }))}
-          value={draft.customerId}
+          value={customerId}
           onValueChange={(id) => onPickCustomer(id || null)}
-          readOnly={!!(customer && ctx.added)}
+          readOnly={!!customer && locked}
         />
-        {errors.customerId && <Text variant="small" tone="danger">{errors.customerId}</Text>}
+        {error ? <Text variant="small" tone="danger">{error}</Text> : null}
+        {hint ? <Text variant="small" tone="muted">{hint}</Text> : null}
         {overCredit ? (
           <div className="flex items-center gap-1 mt-1">
             <Icon size={14} style={{ color: 'var(--color-text-danger)' }}>warning</Icon>

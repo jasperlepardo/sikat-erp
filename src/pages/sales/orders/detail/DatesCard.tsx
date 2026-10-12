@@ -1,4 +1,4 @@
-import { Section, bind } from '../../../../components/form/fields';
+import { FieldStack, Section, bind } from '../../../../components/form/fields';
 import type { SoTabProps } from './types';
 
 export function DatesCard({ draft, update, errors, ctx }: SoTabProps) {
@@ -6,7 +6,7 @@ export function DatesCard({ draft, update, errors, ctx }: SoTabProps) {
   return (
     <fieldset disabled={ctx.readOnly} className="contents">
       <Section icon="calendar_today" title="Dates">
-        <div className="flex flex-col gap-2">
+        <FieldStack>
           {h.date('postingDate', 'Posting date', {
             required: true,
             error: errors.postingDate,
@@ -25,7 +25,7 @@ export function DatesCard({ draft, update, errors, ctx }: SoTabProps) {
             error: errors.cancellationDate,
             hint: 'Set when the order is cancelled or lapses.',
           })}
-        </div>
+        </FieldStack>
       </Section>
     </fieldset>
   );

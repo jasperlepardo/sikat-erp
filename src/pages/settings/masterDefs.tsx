@@ -15,6 +15,7 @@ import { BASE_PRICE_LIST_ID, describeChain, priceChain, priceListName, roundingL
 import type { Collection } from '../../services/store';
 import { newId } from '../../services/useCollectionRows';
 import * as lists from '../../services/partnerMasters';
+import * as people from '../../services/peopleMasters';
 import { ROLE_CONFIG, ROLE_ORDER } from '../partners/roles';
 import type { Currency } from '../../mocks/currencies';
 import {
@@ -39,6 +40,7 @@ import { companies, registeredOfficeOf, withRegisteredAddress } from '../../serv
 const SALES = 'Settings › Sales & CRM';
 const BANKING = 'Settings › Banking';
 const COMPANY = 'Settings › Company';
+const PEOPLE = 'Settings › People';
 
 
 /** A list whose entries are just a name. */
@@ -864,3 +866,45 @@ export const shippingTypeDef: MasterDef<ShippingType> = {
     );
   },
 };
+
+// ── People ───────────────────────────────────────────────────────────────────
+
+export const positionDef = namedDef({
+  collection: people.positions, idPrefix: 'pos', icon: 'work', title: 'Positions', noun: 'position', home: PEOPLE,
+  description: 'Job positions in the organisation, for employees.', placeholder: 'e.g. Store Manager',
+});
+export const departmentDef = namedDef({
+  collection: people.departments, idPrefix: 'dpt', icon: 'corporate_fare', title: 'Departments', noun: 'department', home: PEOPLE,
+  description: 'Departments employees belong to.', placeholder: 'e.g. Finance',
+});
+export const employeeRoleDef = namedDef({
+  collection: people.employeeRoles, idPrefix: 'erl', icon: 'assignment_ind', title: 'Employee roles', noun: 'employee role', home: PEOPLE,
+  description: 'Roles an employee can hold, such as Sales or Purchaser. An employee has one default role.', placeholder: 'e.g. Purchaser',
+});
+export const teamDef = namedDef({
+  collection: people.teams, idPrefix: 'tm', icon: 'groups', title: 'Teams', noun: 'team', home: PEOPLE,
+  description: 'Cross-functional teams employees take part in, as leader or member.', placeholder: 'e.g. Month-end close',
+});
+export const employeeStatusDef = namedDef({
+  collection: people.employeeStatuses, idPrefix: 'est', icon: 'how_to_reg', title: 'Employee statuses', noun: 'employee status', home: PEOPLE,
+  description: 'Employment status, such as Regular, Probationary or Contractual.', placeholder: 'e.g. Probationary',
+});
+export const terminationReasonDef = namedDef({
+  collection: people.terminationReasons, idPrefix: 'trm', icon: 'logout', title: 'Termination reasons', noun: 'termination reason', home: PEOPLE,
+  description: 'Why an employee left, recorded with the termination date.', placeholder: 'e.g. Resignation',
+});
+
+// ── Company: branches, cost centers, users ──────────────────────────────────
+
+export const branchDef = namedDef({
+  collection: people.branches, idPrefix: 'brn', icon: 'store', title: 'Branches', noun: 'branch', home: COMPANY,
+  description: 'Company branches: the head office and stores.', placeholder: 'e.g. Cebu (Robinsons Galleria)',
+});
+export const costCenterDef = namedDef({
+  collection: people.costCenters, idPrefix: 'cc', icon: 'account_tree', title: 'Cost centers', noun: 'cost center', home: COMPANY,
+  description: 'Cost centers employee and operating costs are allocated to.', placeholder: 'e.g. Store operations',
+});
+export const userDef = namedDef({
+  collection: people.users, idPrefix: 'usr', icon: 'person', title: 'Users', noun: 'user', home: COMPANY,
+  description: 'System user accounts (login names). An employee can be linked to one.', placeholder: 'e.g. jdelacruz',
+});

@@ -1,13 +1,12 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { Alert, Badge, Button, Form, FormField, Panel, PanelHeader, Select, Tabs, Text, TextField } from '@jasperlepardo/sikat-design-system';
+import { Alert, Badge, Button, Form, Panel, PanelHeader, Tabs, Text, TextField } from '@jasperlepardo/sikat-design-system';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { type Errors } from '../../../../components/form/fields';
 import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
-import { StatusField } from '../../../../components/form/StatusField';
 import { CURRENT_USER_ID } from '../../../../mocks/common';
-import { QUOTATION_STATUSES, QT_SERIES, blankQuotation, type Quotation } from '../../../../mocks/quotations';
+import { blankQuotation, type Quotation } from '../../../../mocks/quotations';
 import { rateAt } from '../../../../mocks/taxes';
 import { loadCurrentCompany } from '../../../../services/companies';
 import { todayISO } from '../../../../services/dates';
@@ -17,10 +16,10 @@ import { companyTax, currencies, exchangeRates, rateOn, taxCodes } from '../../.
 import { listPartnersByRole } from '../../../../services/partners';
 import {
   addQuotation, cancelQuotation, closeQuotation, getQuotation, listQuotations,
-  qtNumber, recallQuotation, saveQuotationDraft, saveQuotationRemarks,
+  qtNumber, qtTotals, recallQuotation, saveQuotationDraft, saveQuotationRemarks,
 } from '../../../../services/quotations';
-import { getSalesSettings } from '../../../../services/salesOrders';
-import { blankSalesOrder, newSoLine } from '../../../../mocks/salesOrders';
+import { getSalesSettings, openOrdersTotal } from '../../../../services/salesOrders';
+import { SALES_SETTINGS, blankSalesOrder, newSoLine } from '../../../../mocks/salesOrders';
 import { logRejection } from '../../../../services/approvalRules';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { QT_LIST_PATH, QT_STATUS_INTENT } from '../QuotationList';
@@ -33,10 +32,10 @@ import { QtDatesCard } from './QtDatesCard';
 import { QtLogisticsCard } from './QtLogisticsCard';
 import { QtAccountingCard } from './QtAccountingCard';
 import { QtAssignmentCard } from './QtAssignmentCard';
-import { QtCustomerCard } from './QtCustomerCard';
-import { QtCustomerDetailsPanel } from './QtCustomerDetailsPanel';
+import { CustomerCard } from '../../shared/CustomerCard';
+import { CustomerDetailsPanel } from '../../shared/CustomerDetailsPanel';
 import { QtContentsTable } from './QtContentsTable';
-import { QtTotalsFooter } from './QtTotalsFooter';
+import { TotalsFooter } from '../../shared/TotalsFooter';
 
 type TabId = 'contents';
 const TAB_LABEL: Record<TabId, string> = { contents: 'Contents' };
@@ -104,6 +103,7 @@ function QuotationForm() {
   const [rejecting, setRejecting] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [customerDetailsOpen, setCustomerDetailsOpen] = useState(false);
+  const [openBalance, setOpenBalance] = useState(0);
 
   useEffect(() => {
     loadQtMasters().then(setM);
@@ -114,6 +114,13 @@ function QuotationForm() {
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, isNew]);
+
+  // The customer's open sales orders, for the credit bar in the customer panel.
+  const customerId = draft?.customerId;
+  useEffect(() => {
+    if (!customerId || !m) return;
+    openOrdersTotal(customerId, undefined, m.tax.codes).then(setOpenBalance);
+  }, [customerId, m]);
 
   useDocTitle(draft?.docNum ? (isNew ? 'New quotation' : qtNumber(draft)) : undefined);
 
@@ -134,6 +141,9 @@ function QuotationForm() {
   const ctx: QtContext = { customer, fx, rateOf, vatRegistered, readOnly, added };
   const { prevId, nextId } = neighbours(siblings, (draft as Quotation).id && (draft.docNum ? qtNumber(draft as Quotation) : (draft as Quotation).id));
   const errors: Errors = Object.fromEntries(problems.map((p) => [p.key, p.message]));
+  const totalLc = qtTotals(draft, rateOf).total * fx;
+  // Only a heads-up here: the limit is enforced when the quotation is copied to an order.
+  const overCredit = SALES_SETTINGS.creditLimitCheck && !!customer && customer.creditLimit > 0 && openBalance + totalLc > customer.creditLimit && !readOnly;
   const isExpired = draft.status === 'Open' && !!draft.validUntil && draft.validUntil < todayISO();
 
   const update = (patch: Partial<Draft>) => setDraft((d) => d && { ...d, ...patch });
@@ -145,7 +155,8 @@ function QuotationForm() {
 
   const submit = async (e: FormEvent | null, asDraft = false, overrides: Partial<Draft> = {}) => {
     e?.preventDefault();
-    if (added) {
+    // Added: only remarks and attachments save, unless this is approving it.
+    if (added && !overrides.approved) {
       setSaving(true);
       try {
         const saved = await saveQuotationRemarks(draft as Quotation, { remarks: draft.remarks, attachments: draft.attachments });
@@ -173,14 +184,6 @@ function QuotationForm() {
   const saved = draft as Quotation;
   const recallIt = async () => { const q = await recallQuotation(saved); navigate(QT_LIST_PATH, { state: { notice: `Quotation ${qtNumber(q)} recalled to draft.` } }); };
   const rejectIt = async () => { await logRejection('QT', saved.id, saved.customerId, rejectionReason); await recallQuotation(saved); navigate(QT_LIST_PATH, { state: { notice: `Quotation ${qtNumber(saved)} rejected and returned to draft.` } }); };
-
-  const statusMoves: Partial<Record<string, () => void>> =
-    draft.status === 'Draft' ? (draft.approved ? { Open: () => submit(null) } : { 'Not Confirmed': () => submit(null) }) :
-    draft.status === 'Not Confirmed' ? { Open: () => submit(null, false, { approved: true }) } :
-    draft.status === 'Open' ? {
-      Closed: async () => { const r = await closeQuotation(saved); navigate(QT_LIST_PATH, { state: { notice: `Quotation ${qtNumber(r)} closed.` } }); },
-      Cancelled: async () => { const r = await cancelQuotation(saved); navigate(QT_LIST_PATH, { state: { notice: `Quotation ${qtNumber(r)} cancelled.` } }); },
-    } : {};
 
   const convertToOrder = () => {
     const copyFrom = {
@@ -226,7 +229,8 @@ function QuotationForm() {
 
   const menu: MoreMenuItem[] = [
     ...(!added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
-    ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => setRejecting(true) }] : []),
+    ...(draft.status === 'Draft' && !draft.approved ? [{ label: 'Submit for approval', icon: 'upload', onSelect: () => submit(null, false) }] : []),
+    ...(draft.status === 'Not Confirmed' ? [{ label: 'Approve', icon: 'verified', onSelect: () => submit(null, false, { approved: true }) }, { label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => setRejecting(true) }] : []),
     ...(draft.status === 'Open' ? [{ label: 'Copy to sales order', icon: 'shopping_bag', onSelect: convertToOrder }] : []),
     ...(draft.status === 'Open' ? [{ label: 'Close quotation', icon: 'task_alt', onSelect: () => closeQuotation(saved).then((r) => navigate(QT_LIST_PATH, { state: { notice: `Quotation ${qtNumber(r)} closed.` } })) }] : []),
     ...(draft.status === 'Open' ? [{ label: 'Cancel quotation', icon: 'cancel', onSelect: () => cancelQuotation(saved).then((r) => navigate(QT_LIST_PATH, { state: { notice: `Quotation ${qtNumber(r)} cancelled.` } })) }] : []),
@@ -263,9 +267,7 @@ function QuotationForm() {
             }
             actions={
               <>
-                <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(QT_LIST_PATH)}>
-                  {readOnly ? 'Back' : 'Cancel'}
-                </Button>
+                {readOnly ? null : <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(QT_LIST_PATH)}>Cancel</Button>}
                 {menu.length ? <MoreMenu items={menu} /> : null}
                 <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
                   {saving ? 'Saving…' : added ? 'Save' : 'Add'}
@@ -324,38 +326,34 @@ function QuotationForm() {
                 </aside>
 
                 <div className="flex flex-col gap-2 lg:col-span-9">
-                  <fieldset disabled={readOnly} className="contents">
-                    <div className="flex gap-2 items-center">
-                      <FormField label="No." className="flex-1">
-                        {() => (
-                          <div className="flex gap-1">
-                            <Select aria-label="Series" className="w-40" disabled={added} options={QT_SERIES.map((s) => ({ value: s.id, label: s.name }))} value={draft.seriesId} onValueChange={(seriesId) => update({ seriesId })} />
-                            <span className="flex-1 self-center text-sm">
-                              {draft.docNum ? qtNumber(draft) : <span className="text-(--color-text-placeholder)">Next number</span>}
-                            </span>
-                          </div>
-                        )}
-                      </FormField>
-                      <StatusField statuses={QUOTATION_STATUSES} intents={QT_STATUS_INTENT} value={draft.status} moves={statusMoves} hint="Open once added; Close or Cancel to end it." error={errors.status} />
-                    </div>
-                    <QtCustomerCard
-                      {...tabProps}
-                      onPickCustomer={pickCustomer}
-                      onOpenDetails={() => setCustomerDetailsOpen(true)}
-                    />
-                    <QtContentsTable
-                      {...tabProps}
-                      cardFooter={<QtTotalsFooter {...tabProps} />}
-                    />
-                  </fieldset>
+                  <CustomerCard
+                    customers={m.customers}
+                    customerId={draft.customerId}
+                    customer={customer}
+                    locked={added}
+                    error={errors.customerId}
+                    overCredit={overCredit}
+                    onPickCustomer={pickCustomer}
+                    onOpenDetails={() => setCustomerDetailsOpen(true)}
+                  />
+                  <QtContentsTable
+                    {...tabProps}
+                    cardFooter={<TotalsFooter {...tabProps} ctx={{ ...ctx, readOnly: readOnly || added }} />}
+                  />
                 </div>
               </div>
             </Panel.Body>
           )}
         </Panel>
       </Form>
-      <QtCustomerDetailsPanel
-        {...tabProps}
+      <CustomerDetailsPanel
+        customer={customer}
+        draft={draft}
+        update={update}
+        // Once added only remarks and attachments save, so the panel is read-only too.
+        readOnly={readOnly || added}
+        noun="quotation"
+        credit={{ overCredit: overCredit, openBalance, totalLc }}
         open={customerDetailsOpen}
         onClose={() => setCustomerDetailsOpen(false)}
       />

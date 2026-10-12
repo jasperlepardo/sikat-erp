@@ -1,4 +1,4 @@
-/** Settings › Sales & CRM, Banking and Company: the lists the business partner form picks from. */
+/** Settings › Sales & CRM, Banking, Company and People: the lists the business partner and employee forms pick from. */
 import { MasterDefList, type MasterDef, type MasterRow } from '../../components/form/MasterLookup';
 import type { ListRoute } from '../../components/form/MasterList';
 import { TabbedPage, type PageTab } from '../../components/form/TabbedPage';
@@ -44,6 +44,18 @@ const COMPANY_TABS = [
   tab('technicians', d.technicianDef),
   tab('planning-groups', d.planningGroupDef),
   tab('countries', d.countryDef),
+  tab('branches', d.branchDef),
+  tab('cost-centers', d.costCenterDef),
+  tab('users', d.userDef),
+];
+
+const PEOPLE_TABS = [
+  tab('positions', d.positionDef),
+  tab('departments', d.departmentDef),
+  tab('employee-roles', d.employeeRoleDef),
+  tab('teams', d.teamDef),
+  tab('employee-statuses', d.employeeStatusDef),
+  tab('termination-reasons', d.terminationReasonDef),
 ];
 
 export function SalesCrmSettingsPage() {
@@ -75,6 +87,17 @@ export function CompanySettingsPage() {
       icon="domain"
       title="Company"
       tabs={COMPANY_TABS}
+    />
+  );
+}
+
+export function PeopleSettingsPage() {
+  return (
+    <TabbedPage
+      base="/settings/people"
+      icon="group"
+      title="People"
+      tabs={PEOPLE_TABS}
     />
   );
 }

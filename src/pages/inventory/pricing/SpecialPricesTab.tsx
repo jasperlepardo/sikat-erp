@@ -173,7 +173,7 @@ function SpecialRowsEditor({
     const b = base(r);
     return r.unitPrice !== null ? r.unitPrice : b !== undefined && r.discountPct !== null ? Math.round(b * (1 - r.discountPct / 100) * 100) / 100 : undefined;
   };
-  const itemOptions = items.map((i) => ({ value: i.id, label: `${i.itemNo} · ${i.name}`, text: `${i.itemNo} ${i.name}` }));
+  const itemOptions = items.map((i) => ({ value: i.id, label: `${i.itemNo} · ${i.description || i.name}`, text: `${i.itemNo} ${i.name} ${i.description}` }));
   const open = rows.find((r) => r.id === selected);
   const add = () => {
     const row = blankRow();

@@ -202,8 +202,8 @@ export function StockOnHandPage() {
       header: 'Item / Warehouse / Bin',
       sortable: true,
       // Cells don't wrap, so a long name would widen the column and push Status off the card:
-      // cap the width and let the name wrap instead.
-      cell: (r) => <span className="block max-w-64 whitespace-normal">{rowLabel(r)}</span>,
+      // let the name wrap, so it stays on one line while the card has room and wraps when it doesn't.
+      cell: (r) => <span className="block whitespace-normal">{rowLabel(r)}</span>,
     },
     { key: 'inStock', header: numHeader('In stock'), sortable: true, cell: (r) => num(r.inStock ? <>{qty(r.inStock)}{affix(r.item.inventoryUom)}</> : DASH) },
     { key: 'committed', header: numHeader('Committed'), sortable: true, cell: (r) => (r.bin ? null : num(cellQty(r.committed))) },

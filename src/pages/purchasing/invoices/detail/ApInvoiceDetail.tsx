@@ -434,9 +434,7 @@ function ApInvoiceForm() {
           }
           actions={
             <>
-              <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(AP_LIST_PATH)}>
-                {added ? 'Back' : 'Cancel'}
-              </Button>
+              {added ? null : <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(AP_LIST_PATH)}>Cancel</Button>}
               {menu.length ? <MoreMenu items={menu} /> : null}
               <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
                 {saving ? 'Saving…' : added ? 'Save' : 'Add'}

@@ -174,9 +174,7 @@ function JournalEntryForm() {
           status={posted ? <Badge size="small" intent={JE_STATUS_INTENT[draft.status]}>{draft.status}</Badge> : undefined}
           actions={
             <>
-              <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(JE_LIST_PATH)}>
-                {posted ? 'Back' : 'Cancel'}
-              </Button>
+              {posted ? null : <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(JE_LIST_PATH)}>Cancel</Button>}
               {menu.length ? <MoreMenu items={menu} /> : null}
               <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
                 {saving ? 'Saving…' : posted ? 'Save' : 'Add'}

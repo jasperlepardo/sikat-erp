@@ -11,7 +11,6 @@ export function QtAccountingCard({ draft, update, ctx }: QtTabProps) {
           {h.text('journalRemark', 'Journal remark')}
           {h.master('paymentTermId', 'Payment terms', paymentTermDef)}
           {h.master('projectId', 'BP project', projectDef, { clearable: true })}
-          {h.text('indicator', 'Indicator')}
           <ReadOnly label="Federal tax ID" value={ctx.customer?.tin || '—'} hint="The customer's TIN." />
         </div>
       </Section>

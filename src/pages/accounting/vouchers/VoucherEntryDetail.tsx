@@ -180,9 +180,7 @@ function VoucherEntryForm() {
           status={<Badge size="small" intent={posted ? 'default' : 'success'}>{posted ? 'Posted' : 'Open'}</Badge>}
           actions={
             <>
-              <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={back}>
-                {posted ? 'Back' : 'Cancel'}
-              </Button>
+              {posted ? null : <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={back}>Cancel</Button>}
               {menu.length ? <MoreMenu items={menu} /> : null}
               {posted ? null : (
                 <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>

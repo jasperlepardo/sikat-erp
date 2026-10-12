@@ -50,7 +50,7 @@ export function ApContents({ draft, update, errors, m, ctx, onCopy }: ApSectionP
         label: (
           <div className="flex flex-col gap-0.5">
             <span className="text-xs opacity-60">{i.itemNo}</span>
-            <span>{i.name}</span>
+            <span>{i.description || i.name}</span>
           </div>
         ),
         text: `${i.itemNo} ${i.description}`,

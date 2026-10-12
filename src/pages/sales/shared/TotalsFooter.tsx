@@ -1,19 +1,40 @@
-import { useState } from 'react';
-import { Link, Text, TextField, Tooltip } from '@jasperlepardo/sikat-design-system';
-import { formatAmount } from '../../../../services/format';
-import { SALES_SETTINGS } from '../../../../mocks/salesOrders';
-import { soTotals, soWithholding } from '../../../../services/salesOrders';
-import { determineTax } from '../../../../services/taxDetermination';
-import type { SoTabProps } from './types';
+import { useState, type ReactNode } from 'react';
+import { Checkbox, Icon, Link, Text, TextField, Tooltip } from '@jasperlepardo/sikat-design-system';
+import { formatAmount } from '../../../services/format';
+import { SALES_SETTINGS } from '../../../mocks/salesOrders';
+import { soTotals, soWithholding } from '../../../services/salesOrders';
+import { determineTax } from '../../../services/taxDetermination';
+import type { Currency } from '../../../mocks/currencies';
+import type { Item } from '../../../mocks/items';
+import type { Partner } from '../../../mocks/partners';
+import type { TaxMasterData } from '../../../services/taxDetermination';
 
-export function TotalsFooter({ draft, update, ctx, m }: SoTabProps) {
+type SoTotalsInput = Parameters<typeof soTotals>[0];
+
+/** What the footer reads; sales orders and quotations both carry it (quotation lines are a subset of an order's). */
+interface TotalsFooterProps {
+  draft: Omit<SoTotalsInput, 'lines'> & { lines: { itemId: string }[]; currency: string; postingDate: string };
+  update: (patch: { discountPct?: number; freight?: number; rounding?: boolean }) => void;
+  ctx: { customer?: Partner; rateOf: (taxCode: string) => number; fx: number; readOnly: boolean };
+  m: { currencies: Currency[]; items: Item[]; tax: TaxMasterData };
+  /** Shows the rounding switch (the currency's rounding rule) above Tax. */
+  withRounding?: boolean;
+  /** The document's own withholding lines, in place of the sales order's per-ATC estimate. */
+  withholding?: { label: string; amount: number }[];
+  /** Rows after the total and net, e.g. what's been applied and the balance due. */
+  extraRows?: ReactNode;
+}
+
+/** Subtotal, discount, freight, tax, total and withholding under a sales document's lines. */
+export function TotalsFooter({ draft, update, ctx, m, withRounding, withholding, extraRows }: TotalsFooterProps) {
+  const doc = draft as unknown as SoTotalsInput;
   const [editDiscount, setEditDiscount] = useState(false);
   const [editFreight, setEditFreight] = useState(false);
 
   const customer = ctx.customer;
   const docCurrency = m.currencies.find((c) => c.code === draft.currency);
-  const totals = soTotals(draft, ctx.rateOf, docCurrency?.rounding);
-  const withholdingLines = soWithholding(draft, customer, m.items, m.tax);
+  const totals = soTotals(doc, ctx.rateOf, docCurrency?.rounding);
+  const withholdingLines = withholding ?? soWithholding(doc, customer, m.items, m.tax).map((w) => ({ label: `${w.kind === 'Withholding VAT' ? 'VAT' : 'EWT'} withheld — ${w.atc} (${w.rate}%)`, amount: w.amount }));
   const withholdingTotal = withholdingLines.reduce((n, w) => n + w.amount, 0);
   const totalLc = totals.total * ctx.fx;
   const taxNotes = [
@@ -40,8 +61,8 @@ export function TotalsFooter({ draft, update, ctx, m }: SoTabProps) {
             </div>
             <Text variant="small" className="tabular-nums">{totals.discount ? `–${draft.currency} ${formatAmount(totals.discount)}` : '—'}</Text>
           </div>
-        ) : (
-          <Link onClick={() => setEditDiscount(true)}>+ Add discount</Link>
+        ) : ctx.readOnly ? null : (
+          <Link leadingIcon={<Icon size={20}>add</Icon>} onClick={() => setEditDiscount(true)}>Add discount</Link>
         )}
         {SALES_SETTINGS.manageFreightInDocuments ? (
           draft.freight > 0 || editFreight ? (
@@ -52,9 +73,18 @@ export function TotalsFooter({ draft, update, ctx, m }: SoTabProps) {
               </div>
               <Text variant="small" className="tabular-nums">{draft.currency} {formatAmount(totals.freight)}</Text>
             </div>
-          ) : (
-            <Link onClick={() => setEditFreight(true)}>+ Add freight</Link>
+          ) : ctx.readOnly ? null : (
+            <Link leadingIcon={<Icon size={20}>add</Icon>} onClick={() => setEditFreight(true)}>Add freight</Link>
           )
+        ) : null}
+        {withRounding ? (
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <Text variant="small" tone="muted">Rounding</Text>
+              <Checkbox aria-label="Apply rounding" checked={draft.rounding} onChange={(e) => update({ rounding: e.currentTarget.checked })}>{docCurrency?.rounding ?? 'No rounding'}</Checkbox>
+            </div>
+            <Text variant="small" className="tabular-nums">{totals.rounding ? `${draft.currency} ${formatAmount(totals.rounding)}` : '—'}</Text>
+          </div>
         ) : null}
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-1">
@@ -70,8 +100,8 @@ export function TotalsFooter({ draft, update, ctx, m }: SoTabProps) {
           <Text variant="small" weight="semibold" tone="heading" className="tabular-nums">{draft.currency} {formatAmount(totals.total)}</Text>
         </div>
         {withholdingLines.map((w) => (
-          <div key={w.atc} className="flex items-center justify-between gap-4">
-            <Text variant="small" tone="muted">{w.kind === 'Withholding VAT' ? 'VAT' : 'EWT'} withheld — {w.atc} ({w.rate}%)</Text>
+          <div key={w.label} className="flex items-center justify-between gap-4">
+            <Text variant="small" tone="muted">{w.label}</Text>
             <Text variant="small" tone="danger" className="tabular-nums">–{draft.currency} {formatAmount(w.amount)}</Text>
           </div>
         ))}
@@ -81,6 +111,7 @@ export function TotalsFooter({ draft, update, ctx, m }: SoTabProps) {
             <Text variant="small" weight="semibold" tone="heading" className="tabular-nums">{draft.currency} {formatAmount(totals.total - withholdingTotal)}</Text>
           </div>
         )}
+        {extraRows}
         {draft.currency !== 'PHP' ? (
           <Text variant="small" tone="muted" className="text-right">≈ PHP {formatAmount(totalLc)}</Text>
         ) : null}

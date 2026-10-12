@@ -1,133 +1,311 @@
-import type { ReactNode } from 'react';
-import { Button, Combobox, FormField, Icon, Link, Select, Text, TextField, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { useState, type ReactNode } from 'react';
+import { Card, Checkbox, Combobox, Icon, Link, Select, Text, TextField, type TableColumn } from '@jasperlepardo/sikat-design-system';
 import { DataTable } from '../../../../components/form/DataTable';
-import { newQuoteLine, type QuoteLine } from '../../../../mocks/quotations';
-import { isValidToday } from '../../../../services/items';
-import { activeOptions } from '../../../../services/inventoryMasters';
-import { BASE_PRICE_LIST_ID } from '../../../../services/priceLists';
+import { MasterLookup } from '../../../../components/form/MasterLookup';
+import { itemUnits, itemsPerUom } from '../../../../mocks/items';
+import type { QuoteLine } from '../../../../mocks/quotations';
 import { formatAmount } from '../../../../services/format';
-import { linePricing, proposedTaxCode, round2, itemsPerUnit, type QtTabProps } from './types';
+import { isValidToday } from '../../../../services/items';
+import { isPriceListValid } from '../../../../services/priceLists';
+import { lineNet } from '../../../../services/quotations';
+import { lineTax, priceAfterDiscount } from '../../../../services/salesOrders';
+import { priceListDef } from '../../../settings/masterDefs';
+import { warehouseOptions } from '../../../inventory/transfers/TransferLines';
+import { availableIn } from '../../orders/detail/types';
+import { lineFromItem, linePricing, type QtTabProps } from './types';
 
+const num = (v: string) => (v === '' ? 0 : Number(v));
+
+const GROUPS = { warehouse: 'Warehouse', priceListId: 'Price list', tax: 'Tax' } as const;
+type Group = keyof typeof GROUPS;
+
+/** The quotation's lines, laid out like the sales order's Item table. */
 export function QtContentsTable({ draft, update, errors, ctx, m, cardFooter }: QtTabProps & { cardFooter?: ReactNode }) {
-  const { readOnly, fx, vatRegistered, rateOf, customer } = ctx;
-  const date = draft.postingDate;
-  const code = draft.currency;
+  const [editing, setEditing] = useState<Set<string>>(new Set());
+  const [addKey, setAddKey] = useState(0);
+  const [shown, setShown] = useState<Group[]>([]);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const is = (g: Group) => shown.includes(g);
+  const lines = draft.lines;
+  const itemLines = lines.filter((l) => !!l.itemId);
+  const itemOf = (l: QuoteLine) => m.items.find((i) => i.id === l.itemId);
+  const patch = (id: string, p: Partial<QuoteLine>) => update({ lines: lines.map((l) => (l.id === id ? { ...l, ...p } : l)) });
+  const err = (l: QuoteLine, field: string) => errors[`line:${l.id}:${field}`];
+  const lc = (n: number) => formatAmount(n * ctx.fx);
+  const taxOf = (l: QuoteLine) => lineTax(l, ctx.rateOf(l.taxCode), 0);
+  // Once added, only remarks and attachments change.
+  const linesLocked = ctx.readOnly || ctx.added;
 
-  const patch = (lineId: string, p: Partial<QuoteLine>) =>
-    update({ lines: draft.lines.map((l) => (l.id === lineId ? { ...l, ...p } : l)) });
+  // Sales items valid on the posting date.
+  const itemOptions = (current: string) =>
+    m.items
+      .filter((i) => i.id === current || (i.salesItem && isValidToday(i, draft.postingDate)))
+      .map((i) => ({
+        value: i.id,
+        label: (
+          <div className="flex flex-col gap-0.5">
+            <span className="text-xs opacity-60">{i.itemNo}</span>
+            <span>{i.description || i.name}</span>
+          </div>
+        ),
+        text: `${i.itemNo} ${i.name} ${i.description}`,
+      }));
+  const taxOptions = m.tax.codes.filter((c) => c.direction === 'Sales' && c.active).map((c) => ({ value: c.code, label: `${c.code} (${ctx.rateOf(c.code)}%)` }));
 
   const pickItem = (l: QuoteLine, itemId: string | null) => {
     const item = m.items.find((i) => i.id === itemId);
-    if (!item) { patch(l.id, { itemId: '' }); return; }
-    const uom = m.inv.uoms.find((u) => u.code === item.salesUom);
-    const priceListId = customer?.priceListId || BASE_PRICE_LIST_ID;
-    const taxCode = proposedTaxCode(item, customer, m, date);
-    const base: Partial<QuoteLine> = {
-      itemId: item.id,
-      itemNo: item.itemNo,
-      description: item.name,
-      uomCode: item.salesUom,
-      uomName: uom?.name ?? item.salesUom,
-      itemsPerUnit: itemsPerUnit(item),
-      warehouse: item.inventoryItem ? (item.warehouses[0]?.code ?? 'WH-MNL') : '',
-      priceListId,
-      taxCode,
-    };
-    const pricing = linePricing(item, { ...l, ...base }, draft, m.customers, vatRegistered, rateOf, fx);
-    patch(l.id, { ...base, ...pricing });
+    patch(l.id, item ? lineFromItem(item, draft, ctx, m, { id: l.id, quantity: l.quantity }) : { itemId: '' });
+  };
+  /** Re-run pricing after a change, unless the price was typed over. */
+  const reprice = (l: QuoteLine, change: Partial<QuoteLine>) => {
+    const item = itemOf(l);
+    const next = { ...l, ...change };
+    if (!item || !ctx.fx || l.priceSource === 'Manual') return patch(l.id, change);
+    patch(l.id, { ...change, ...linePricing(item, next, draft, m.customers, ctx.vatRegistered, ctx.rateOf, ctx.fx) });
+  };
+  const changeUom = (l: QuoteLine, uomCode: string) => {
+    const item = itemOf(l);
+    const itemsPerUnit = item ? itemsPerUom(item, uomCode) : undefined;
+    if (!itemsPerUnit) return;
+    reprice(l, { uomCode, uomName: m.inv.uoms.find((u) => u.code === uomCode)?.name ?? uomCode, itemsPerUnit });
   };
 
-  const net = (l: QuoteLine) => round2(l.quantity * l.unitPrice * (1 - l.discountPct / 100));
-  const taxOptions = m.tax.codes.filter((c) => c.direction === 'Sales' && c.active).map((c) => ({ value: c.code, label: `${c.code} (${rateOf(c.code)}%)` }));
-  const warehouseOpts = (cur: string) => activeOptions(m.inv.warehouses, (w) => w.code, (w) => `${w.code} — ${w.name}`, cur);
+  const col = (key: string, header: ReactNode, cell: (l: QuoteLine) => ReactNode, group?: Group, align?: 'start' | 'end'): TableColumn<QuoteLine> & { group?: Group } => ({ key, header, cell, group, ...(align ? { align } : {}) });
 
   const columns: TableColumn<QuoteLine>[] = [
-    {
-      key: 'item',
-      header: 'Item',
-      cell: (l) => {
-        const item = m.items.find((i) => i.id === l.itemId);
-        if (item) {
-          return (
-            <div className="flex w-52 shrink-0 flex-col whitespace-normal">
-              <Text variant="caption">{item.itemNo}</Text>
-              <Text variant="small">{l.description}</Text>
-              {!readOnly ? <Link intent="primary" onClick={() => patch(l.id, { itemId: '', itemNo: '', description: '' })}>Change</Link> : null}
-            </div>
-          );
-        }
-        const opts = m.items
-          .filter((i) => i.id === l.itemId || (i.salesItem && isValidToday(i, date)))
-          .map((i) => ({ value: i.id, label: i.itemNo, subLabel: i.description, text: `${i.itemNo} ${i.name} ${i.description}` }));
+    col('item', 'Item / Description', (l) => {
+      const item = itemOf(l);
+      if (!item || (editing.has(l.id) && !linesLocked)) {
         return (
-          <FormField label="" error={errors[`line:${l.id}:item`]}>
-            {(fp) => (
-              <Combobox {...fp} aria-label="Item" className="w-52" placeholder="Search items" options={opts} value={l.itemId || null} disabled={readOnly} onValueChange={(v) => pickItem(l, v)} />
+          <div className="flex w-64 flex-col gap-1">
+            {item ? (
+              <TextField aria-label="Item description" value={l.description} onChange={(e) => patch(l.id, { description: e.currentTarget.value })} />
+            ) : (
+              <Combobox aria-label="Item No." placeholder="Search items" options={itemOptions(l.itemId)} value={l.itemId || null} invalid={Boolean(err(l, 'item'))} onValueChange={(v) => pickItem(l, v)} />
             )}
-          </FormField>
+            {item ? (
+              <Link intent="primary" onClick={() => setEditing((s) => { const n = new Set(s); n.delete(l.id); return n; })}>
+                Done
+              </Link>
+            ) : null}
+          </div>
         );
-      },
-    },
-    {
-      key: 'qty',
-      header: 'Qty / UoM',
-      cell: (l) => !l.itemId ? null : (
-        <div className="flex w-32 shrink-0 flex-col gap-1 whitespace-normal">
-          <TextField aria-label="Quantity" type="number" min={0} invalid={Boolean(errors[`line:${l.id}:quantity`])} value={String(l.quantity)} disabled={readOnly} onChange={(e) => patch(l.id, { quantity: Number(e.currentTarget.value) || 0 })} />
-          <Text variant="small" tone="muted">{l.uomCode}</Text>
+      }
+      return (
+        <div className="flex flex-col gap-1 whitespace-normal">
+          <div className="flex flex-col">
+            <Text variant="caption" className="wrap-break-word">{l.itemNo}</Text>
+            <Text variant="small" className="wrap-break-word">{l.description}</Text>
+          </div>
+          {linesLocked ? null : (
+            <div className="flex gap-3">
+              <Link intent="primary" onClick={() => setEditing((s) => new Set(s).add(l.id))}>
+                Edit
+              </Link>
+              <Link intent="primary" onClick={() => patch(l.id, { itemId: '', itemNo: '', description: '' })}>
+                Change
+              </Link>
+            </div>
+          )}
         </div>
-      ),
-    },
-    {
-      key: 'pricing',
-      header: 'Price / Disc. / Tax',
-      cell: (l) => !l.itemId ? null : (
+      );
+    }),
+    col('qty', 'Qty / UoM', (l) => {
+      const item = itemOf(l);
+      if (!item) return null;
+      if (linesLocked) return (
+        <Text variant="small" className="whitespace-nowrap tabular-nums">
+          {l.quantity.toLocaleString('en-PH')} {l.uomName}
+        </Text>
+      );
+      return (
+        <div className="flex w-40 shrink-0 flex-col gap-1 whitespace-normal">
+          <TextField
+            aria-label="Quantity"
+            type="number"
+            min={0}
+            invalid={Boolean(err(l, 'quantity'))}
+            value={String(l.quantity)}
+            onChange={(e) => reprice(l, { quantity: num(e.currentTarget.value) })}
+          />
+          <Select
+            aria-label="UoM code"
+            options={itemUnits(item, 'sales').map((u) => ({ value: u.uom, label: u.uom }))}
+            value={l.uomCode}
+            onValueChange={(v) => v && changeUom(l, v)}
+          />
+          <Text variant="small" tone="muted">
+            {l.uomName}
+            {l.uomCode === item.inventoryUom ? ' · inventory UoM' : ` · ${l.itemsPerUnit} ${item.inventoryUom} each`}
+          </Text>
+        </div>
+      );
+    }, undefined, 'end'),
+    col('warehouse', 'Whse', (l) => {
+      const item = itemOf(l);
+      if (!item) return null;
+      if (!item.inventoryItem) return <span className="text-muted">Not stocked</span>;
+      if (linesLocked) return <Text variant="small">{l.warehouse || '—'}</Text>;
+      return (
         <div className="flex w-44 shrink-0 flex-col gap-1 whitespace-normal">
-          <TextField aria-label="Unit price" type="number" min={0} prefix={code} invalid={Boolean(errors[`line:${l.id}:unitPrice`])} value={String(l.unitPrice)} disabled={readOnly} onChange={(e) => patch(l.id, { unitPrice: round2(Number(e.currentTarget.value) || 0), priceSource: 'Manual' })} />
-          <TextField aria-label="Discount %" type="number" min={0} suffix="%" value={String(l.discountPct)} disabled={readOnly} onChange={(e) => patch(l.id, { discountPct: Math.min(100, Number(e.currentTarget.value) || 0) })} />
-          <Select aria-label="Tax code" invalid={Boolean(errors[`line:${l.id}:taxCode`])} options={[{ value: '', label: '— None —' }, ...taxOptions]} value={l.taxCode} disabled={readOnly} onValueChange={(taxCode) => patch(l.id, { taxCode })} />
+          <Combobox
+            aria-label="Warehouse"
+            invalid={Boolean(err(l, 'warehouse'))}
+            options={warehouseOptions(m.inv.warehouses, l.warehouse)}
+            value={l.warehouse || null}
+            onValueChange={(v) => patch(l.id, { warehouse: v ?? '' })}
+          />
+          <Text variant="small" tone="muted">
+            {availableIn(item, l.warehouse)} {item.inventoryUom} available
+          </Text>
         </div>
-      ),
-    },
-    {
-      key: 'total',
-      header: `Total (${code})`,
-      cell: (l) => l.itemId ? <span className="whitespace-nowrap tabular-nums">{formatAmount(net(l))}</span> : null,
-    },
-    {
-      key: 'warehouse',
-      header: 'Warehouse',
-      cell: (l) => {
-        const item = m.items.find((i) => i.id === l.itemId);
-        if (!item?.inventoryItem) return l.itemId ? <Text variant="small" tone="muted">—</Text> : null;
-        return (
-          <Select aria-label="Warehouse" className="w-40" options={[{ value: '', label: '— None —' }, ...warehouseOpts(l.warehouse)]} value={l.warehouse} disabled={readOnly} onValueChange={(warehouse) => patch(l.id, { warehouse })} />
-        );
-      },
-    },
-  ];
+      );
+    }, 'warehouse'),
+    col('priceListId', 'Price list', (l) => {
+      if (!itemOf(l)) return null;
+      if (linesLocked) {
+        const plRow = priceListDef.collection.snapshot().find((p) => p.id === l.priceListId);
+        return <Text variant="small">{plRow ? priceListDef.label(plRow) : '—'}</Text>;
+      }
+      return (
+        <MasterLookup
+          def={priceListDef}
+          fieldProps={{ 'aria-label': 'Price list', className: 'w-40' }}
+          where={(r) => isPriceListValid(r, draft.postingDate)}
+          value={l.priceListId}
+          onChange={(v) => {
+            const item = itemOf(l)!;
+            const next = { ...l, priceListId: v };
+            patch(l.id, { priceListId: v, ...(ctx.fx ? linePricing(item, next, draft, m.customers, ctx.vatRegistered, ctx.rateOf, ctx.fx) : {}) });
+          }}
+        />
+      );
+    }, 'priceListId'),
+    col('pricing', 'Unit price / Discount', (l) => {
+      if (!itemOf(l)) return null;
+      if (linesLocked) return (
+        <div className="flex flex-col whitespace-nowrap tabular-nums">
+          <Text variant="small">{draft.currency} {formatAmount(l.discountPct ? priceAfterDiscount(l) : l.unitPrice)}</Text>
+          {l.discountPct ? <Text variant="small" tone="muted" className="line-through">{draft.currency} {formatAmount(l.unitPrice)}</Text> : null}
+        </div>
+      );
+      return (
+        <div className="flex w-44 shrink-0 flex-col gap-1 whitespace-normal">
+          <TextField
+            aria-label="Unit price"
+            type="number"
+            min={0}
+            prefix={draft.currency}
+            invalid={Boolean(err(l, 'unitPrice'))}
+            value={String(l.unitPrice)}
+            onChange={(e) => patch(l.id, { unitPrice: num(e.currentTarget.value), priceSource: 'Manual' })}
+          />
+          <TextField
+            aria-label="Discount %"
+            type="number"
+            min={0}
+            suffix="%"
+            value={String(l.discountPct)}
+            onChange={(e) => patch(l.id, { discountPct: Math.min(100, num(e.currentTarget.value)), priceSource: 'Manual' })}
+          />
+          <Text variant="small" tone="muted">
+            {l.priceSource || '—'}
+            {l.priceSource === 'Manual' ? (
+              <>
+                {' · '}
+                <Link intent="primary" onClick={() => reprice({ ...l, priceSource: '' }, {})}>
+                  Reprice
+                </Link>
+              </>
+            ) : null}
+          </Text>
+        </div>
+      );
+    }, undefined, 'end'),
+    col('tax', 'Tax code', (l) => {
+      if (!itemOf(l)) return null;
+      if (linesLocked) return (
+        <div className="flex flex-col gap-0.5">
+          <Text variant="small">{l.taxCode} ({ctx.rateOf(l.taxCode)}%)</Text>
+          <Text variant="small" tone="muted">Tax PHP {lc(taxOf(l))}</Text>
+        </div>
+      );
+      return (
+        <div className="flex w-32 flex-col gap-1">
+          <Combobox
+            aria-label="Tax code"
+            invalid={Boolean(err(l, 'taxCode'))}
+            options={taxOptions}
+            value={l.taxCode || null}
+            onValueChange={(taxCode) => reprice(l, { taxCode: taxCode ?? '' })}
+          />
+          <Text variant="small" tone="muted">
+            Tax PHP {lc(taxOf(l))}
+          </Text>
+        </div>
+      );
+    }, 'tax', 'end'),
+    col('totals', 'Total (LC)', (l) =>
+      itemOf(l) ? (
+        <Text variant="small" className="whitespace-nowrap tabular-nums">
+          PHP {lc(lineNet(l))}
+        </Text>
+      ) : null,
+    undefined, 'end'),
+  ].filter((c) => !c.group || is(c.group));
 
   return (
-    <DataTable
-      variant="card"
-      icon="receipt_long"
-      title="Contents"
-      description="Items and prices being quoted. No stock is committed until copied to a sales order."
-      rows={draft.lines}
-      getRowId={(l) => l.id}
-      columns={columns}
-      unsortable={columns.map((c) => c.key)}
-      noPagination
-      empty={<Text variant="small" tone="muted">{draft.customerId ? 'Add items to quote.' : 'Pick a customer first.'}</Text>}
-      onRemove={!readOnly ? (removed) => update({ lines: draft.lines.filter((l) => !removed.includes(l)) }) : undefined}
-      actions={
-        !readOnly && draft.customerId ? (
-          <Button type="button" size="small" intent="primary" variant="solid" leadingIcon={<Icon size={16}>add</Icon>} onClick={() => update({ lines: [...draft.lines, newQuoteLine()] })}>
-            Add line
-          </Button>
-        ) : undefined
-      }
-      cardFooter={cardFooter}
-    />
+    <div className="flex flex-col gap-2">
+      {settingsOpen ? (
+        <Card>
+          <Card.Header icon={<Icon size={24}>tune</Icon>}>Columns</Card.Header>
+          <Card.Content>
+            <div className="flex flex-wrap gap-x-6 gap-y-3">
+              {(Object.keys(GROUPS) as Group[]).map((g) => (
+                <Checkbox
+                  key={g}
+                  checked={is(g)}
+                  onChange={(e) => setShown(e.currentTarget.checked ? [...shown, g] : shown.filter((x) => x !== g))}
+                >
+                  {GROUPS[g]}
+                </Checkbox>
+              ))}
+            </div>
+          </Card.Content>
+        </Card>
+      ) : null}
+      <div className={linesLocked ? '[&_.sikat-table__row:hover>.sikat-table__td]:[box-shadow:none]' : undefined}>
+        <DataTable
+          variant="plain"
+          noPagination
+          rows={itemLines}
+          getRowId={(l) => l.id}
+          columns={columns}
+          unsortable={columns.map((c) => c.key)}
+          onRemove={linesLocked ? undefined : (picked) => update({ lines: lines.filter((l) => !picked.includes(l)) })}
+          onColumnSettings={() => setSettingsOpen(!settingsOpen)}
+          empty={<Text variant="small" tone="muted">{draft.customerId ? 'No lines yet.' : 'Pick a customer first.'}</Text>}
+          spanRow={
+            linesLocked || !draft.customerId ? undefined : (
+              <Combobox
+                key={addKey}
+                aria-label="Search items to add a line"
+                placeholder="Search items to add a line…"
+                options={itemOptions('')}
+                value={null}
+                onValueChange={(id) => {
+                  if (!id) return;
+                  const item = m.items.find((i) => i.id === id);
+                  if (!item) return;
+                  update({ lines: [...itemLines, lineFromItem(item, draft, ctx, m)] });
+                  setAddKey((k) => k + 1);
+                }}
+              />
+            )
+          }
+          cardFooter={cardFooter}
+        />
+      </div>
+    </div>
   );
 }

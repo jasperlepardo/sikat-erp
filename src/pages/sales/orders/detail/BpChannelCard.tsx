@@ -1,5 +1,5 @@
-import { FormField, Select } from '@jasperlepardo/sikat-design-system';
-import { Fields, Section, bind } from '../../../../components/form/fields';
+import { Select } from '@jasperlepardo/sikat-design-system';
+import { CtxFormField, FieldStack, Section, bind } from '../../../../components/form/fields';
 import { contactName } from '../../../../mocks/partners';
 import type { SoTabProps } from './types';
 
@@ -9,9 +9,9 @@ export function BpChannelCard({ draft, update, ctx }: SoTabProps) {
   return (
     <fieldset disabled={ctx.readOnly} className="contents">
       <Section icon="storefront" title="BP channel">
-        <Fields cols={1}>
+        <FieldStack>
           {h.text('bpChannelName', 'BP channel name', { placeholder: 'e.g. Lazada, Shopee, Apple online store', hint: 'The marketplace or channel the order came through.' })}
-          <FormField label="BP channel contact" tooltip="A contact person on the customer for the channel.">
+          <CtxFormField label="BP channel contact" tooltip="A contact person on the customer for the channel.">
             {(p) => (
               <Select
                 {...p}
@@ -21,8 +21,8 @@ export function BpChannelCard({ draft, update, ctx }: SoTabProps) {
                 onValueChange={(bpChannelContact) => update({ bpChannelContact })}
               />
             )}
-          </FormField>
-        </Fields>
+          </CtxFormField>
+        </FieldStack>
       </Section>
     </fieldset>
   );

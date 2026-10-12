@@ -8,7 +8,6 @@ import {
   Panel,
   PanelHeader,
   Table,
-  TableAmount,
   TableLink,
   TableStatus,
   TableSubcontent,
@@ -25,17 +24,32 @@ import { formatAmount } from '../../../services/format';
 import { taxCodes } from '../../../services/masterData';
 import { arNumber, arTotal, listArInvoices } from '../../../services/arInvoices';
 import { useAsync } from '../../../services/useAsync';
+import { listDeliveries } from '../../../services/deliveries';
+import { listSalesOrders, soNumber } from '../../../services/salesOrders';
 import { AR_STATUS_INTENT } from './detail/ArInvoiceDetail';
 import { AR_LIST_PATH } from './detail/types';
 
 export function ArInvoiceList() {
   const navigate = useNavigate();
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
-  const data = useAsync(() => Promise.all([listArInvoices(), taxCodes.list()]), []);
+  const data = useAsync(() => Promise.all([listArInvoices(), taxCodes.list(), listSalesOrders(), listDeliveries()]), []);
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
-  const [orders, codes] = data ?? [undefined, []];
+  const [orders, codes, salesOrders, deliveries] = data ?? [undefined, [], [], []];
+  /** The sales orders an invoice bills, by number ("SO-2026-0021"): copied from the order, or from a delivery of it. */
+  const baseOrders = (inv: ArInvoice) => {
+    const ids = new Set<string>();
+    for (const l of inv.lines) {
+      if (l.baseType === 'SO' && l.baseId) ids.add(l.baseId);
+      if (l.baseType === 'DN' && l.baseId) {
+        const dn = deliveries.find((d) => d.id === l.baseId);
+        const dnLine = dn?.lines.find((x) => x.id === l.baseLineId);
+        if (dnLine?.baseType === 'SO' && dnLine.baseId) ids.add(dnLine.baseId);
+      }
+    }
+    return [...ids].map((id) => salesOrders.find((o) => o.id === id)).filter((o) => o !== undefined).map(soNumber);
+  };
   const totalOf = (so: ArInvoice) => arTotal(so, codes);
   const fields = [
     textField<ArInvoice>('no', 'No.', arNumber),
@@ -93,10 +107,10 @@ export function ArInvoiceList() {
       ),
     },
     { key: 'customerName', header: 'Customer', sortable: true, cell: (so) => <TableSubcontent subcopy={so.customerCode}>{so.customerName || '—'}</TableSubcontent> },
-    { key: 'postingDate', header: 'Posting date', sortable: true, cell: (so) => formatDate(so.postingDate) },
-    { key: 'orderNumber', header: 'Order', cell: (so) => so.orderNumber || '—' },
-    { key: 'dueDate', header: 'Due date', sortable: true, cell: (so) => formatDate(so.dueDate) },
-    { key: 'total', header: 'Total', sortable: true, cell: (so) => <TableAmount currency={so.currency}>{formatAmount(totalOf(so))}</TableAmount> },
+    { key: 'postingDate', header: 'Posting date', align: 'end', cell: (so) => formatDate(so.postingDate) },
+    { key: 'orderNumber', header: 'Order', cell: (so) => baseOrders(so).join(', ') || so.orderNumber || '—' },
+    { key: 'dueDate', header: 'Due date', align: 'end', cell: (so) => formatDate(so.dueDate) },
+    { key: 'total', header: 'Total', align: 'end', cell: (so) => `${so.currency} ${formatAmount(totalOf(so))}` },
     { key: 'status', header: 'Status', sortable: true, cell: (so) => <TableStatus intent={AR_STATUS_INTENT[so.status]}>{so.status}</TableStatus> },
   ];
 

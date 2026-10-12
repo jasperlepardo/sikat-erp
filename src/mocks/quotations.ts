@@ -196,7 +196,7 @@ const qtLine = (id: string, item: ReturnType<typeof byId>, quantity: number, pat
     id,
     itemId: item.id,
     itemNo: item.itemNo,
-    description: item.name,
+    description: item.description || item.name,
     quantity,
     uomCode: item.salesUom,
     uomName: item.salesUom === 'pc' ? 'Piece' : item.salesUom,

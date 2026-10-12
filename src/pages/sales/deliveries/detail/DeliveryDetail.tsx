@@ -1,13 +1,13 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { Alert, Badge, Button, Form, FormField, Panel, PanelHeader, Select, Tabs, Text, TextField } from '@jasperlepardo/sikat-design-system';
+import { Alert, Badge, Button, Form, Panel, PanelHeader, Tabs, Text, TextField } from '@jasperlepardo/sikat-design-system';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { type Errors } from '../../../../components/form/fields';
 import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { CURRENT_USER_ID } from '../../../../mocks/common';
 import { formatAddress } from '../../../../mocks/address';
-import { DN_SERIES, DN_STATUSES, blankDelivery, deliveryHeaderFrom, type Delivery, type DnStatus } from '../../../../mocks/deliveries';
+import { blankDelivery, deliveryHeaderFrom, type Delivery, type DnStatus } from '../../../../mocks/deliveries';
 import { type SalesOrder } from '../../../../mocks/salesOrders';
 import { loadCurrentCompany } from '../../../../services/companies';
 import { todayISO } from '../../../../services/dates';
@@ -29,15 +29,14 @@ import { useDocTitle } from '../../../../services/useDocTitle';
 import { SR_LIST_PATH } from '../../returns/types';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
 import { NotFound, PrevNext, neighbours } from '../../../../components/form/DetailNav';
-import { StatusField } from '../../../../components/form/StatusField';
 import { DnDatesCard } from './DnDatesCard';
 import { DnSettingsCard } from './DnSettingsCard';
 import { DnBpChannelCard } from './DnBpChannelCard';
 import { DnShipmentCard } from './DnShipmentCard';
 import { DnAssignmentCard } from './DnAssignmentCard';
-import { DnCustomerCard } from './DnCustomerCard';
+import { CustomerCard } from '../../shared/CustomerCard';
 import { DnCustomerDetailsPanel } from './DnCustomerDetailsPanel';
-import { DnTotalsFooter } from './DnTotalsFooter';
+import { TotalsFooter } from '../../shared/TotalsFooter';
 import { DnJournalCard } from './DnJournalCard';
 
 type TabId = 'contents';
@@ -173,7 +172,8 @@ function DeliveryForm() {
 
   const submit = async (e: FormEvent | null, asDraft = false, overrides: Partial<DnDraft> = {}) => {
     e?.preventDefault();
-    if (ro) {
+    // Added: only remarks and attachments save, unless this is approving it (which posts it).
+    if (ro && !overrides.approved) {
       setSaving(true);
       const dn = await saveDeliveryNotes(draft.id!, { remarks: draft.remarks, attachments: draft.attachments });
       setSaving(false);
@@ -216,15 +216,10 @@ function DeliveryForm() {
     await recallDelivery(saved);
     navigate(DN_LIST_PATH, { state: { notice: `Delivery ${dnNumber(saved)} rejected and returned to draft.` } });
   };
-  const statusMoves: Partial<Record<DnStatus, () => void>> = draft.status === 'Draft'
-    ? (draft.approved ? { Open: () => submit(null) } : { 'Not Confirmed': () => submit(null) })
-    : draft.status === 'Not Confirmed' ? { Open: () => submit(null, false, { approved: true }) }
-    : draft.status === 'Open' ? { Closed: closeIt, ...(!invoiced ? { Cancelled: cancelIt } : {}) }
-    : {};
-
   const menu: MoreMenuItem[] = [
     ...(!ctx.added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
-    ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => setRejecting(true) }] : []),
+    ...(draft.status === 'Draft' && !draft.approved ? [{ label: 'Submit for approval', icon: 'upload', onSelect: () => submit(null, false) }] : []),
+    ...(draft.status === 'Not Confirmed' ? [{ label: 'Approve', icon: 'verified', onSelect: () => submit(null, false, { approved: true }) }, { label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => setRejecting(true) }] : []),
     ...(draft.status === 'Open' && draft.lines.some((l) => l.quantity > l.invoicedQty)
       ? [{ label: 'Copy to A/R invoice', icon: 'receipt', onSelect: () => navigate('/sales/invoices/new', { state: { fromDelivery: draft.id } }) }]
       : []),
@@ -256,9 +251,7 @@ function DeliveryForm() {
             status={isNew ? undefined : <Badge size="small" intent={DN_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
             actions={
               <>
-                <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(DN_LIST_PATH)}>
-                  {ro ? 'Back' : 'Cancel'}
-                </Button>
+                {ro ? null : <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(DN_LIST_PATH)}>Cancel</Button>}
                 {menu.length ? <MoreMenu items={menu} /> : null}
                 <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
                   {saving ? 'Saving…' : ro ? 'Save' : 'Add'}
@@ -317,29 +310,22 @@ function DeliveryForm() {
                 </aside>
 
                 <div className="flex flex-col gap-2 lg:col-span-9">
-                  <fieldset disabled={ro} className="contents">
-                    <div className="flex gap-2 items-center">
-                      <FormField label="No." className="flex-1">
-                        {() => (
-                          <div className="flex gap-1">
-                            <Select aria-label="Series" className="w-32" disabled={ctx.added} options={DN_SERIES.map((s) => ({ value: s.id, label: s.name }))} value={draft.seriesId} onValueChange={(seriesId) => update({ seriesId })} />
-                            <span className="flex-1 self-center text-sm">{draft.docNum ? dnNumber(draft) : <span className="text-(--color-text-placeholder)">Next number</span>}</span>
-                          </div>
-                        )}
-                      </FormField>
-                      <StatusField statuses={DN_STATUSES} intents={DN_STATUS_INTENT} value={draft.status} moves={statusMoves} error={errors.status} />
-                    </div>
-                    <DnCustomerCard
-                      {...tabProps}
-                      onPickCustomer={pickCustomer}
-                      onOpenDetails={() => setCustomerDetailsOpen(true)}
-                    />
-                    <DnContents
-                      {...tabProps}
-                      onCopy={(so, picks) => setDraft(copyLines(draft, so, picks))}
-                      cardFooter={<DnTotalsFooter {...tabProps} />}
-                    />
-                  </fieldset>
+                  <CustomerCard
+                    customers={m.customers}
+                    customerId={draft.customerId}
+                    customer={customer}
+                    locked={ro || ctx.based}
+                    error={errors.customerId}
+                    hint={ctx.based && !ro ? 'Set by the sales order the lines come from.' : undefined}
+                    onPickCustomer={pickCustomer}
+                    onOpenDetails={() => setCustomerDetailsOpen(true)}
+                  />
+                  {/* Not in a disabled fieldset: the table locks its own inputs and keeps its column settings. */}
+                  <DnContents
+                    {...tabProps}
+                    onCopy={(so, picks) => setDraft(copyLines(draft, so, picks))}
+                    cardFooter={<TotalsFooter {...tabProps} withRounding />}
+                  />
                   <DnJournalCard {...tabProps} />
                 </div>
               </div>

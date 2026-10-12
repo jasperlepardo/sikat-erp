@@ -1,12 +1,10 @@
-import { Button, Panel, PanelHeader, SidePanel, Text, TextField } from '@jasperlepardo/sikat-design-system';
+import { Button, Text, TextField } from '@jasperlepardo/sikat-design-system';
 import { Fields, ReadOnly, Section, bind } from '../../../../components/form/fields';
-import { contactName } from '../../../../mocks/partners';
-import { INDICATORS } from '../../../../mocks/purchaseOrders';
 import { PAYMENT_METHODS } from '../../../../mocks/masters';
 import { termDays } from '../../../../services/purchaseOrders';
 import { soDueDate } from '../../../../services/salesOrders';
 import { paymentTermDef, projectDef } from '../../../settings/masterDefs';
-import { AddressCards } from './DnSections';
+import { CustomerDetailsPanel } from '../../shared/CustomerDetailsPanel';
 import type { DnSectionProps } from './types';
 
 interface DnCustomerDetailsPanelProps extends DnSectionProps {
@@ -14,6 +12,7 @@ interface DnCustomerDetailsPanelProps extends DnSectionProps {
   onClose: () => void;
 }
 
+/** The shared customer panel, plus the payment details a delivery carries to its invoice. */
 export function DnCustomerDetailsPanel({ draft, update, errors, ctx, open, onClose }: DnCustomerDetailsPanelProps) {
   if (!open || !ctx.customer) return null;
 
@@ -27,67 +26,50 @@ export function DnCustomerDetailsPanel({ draft, update, errors, ctx, open, onClo
   };
 
   return (
-    <SidePanel overlay onOverlayClick={onClose}>
-      <PanelHeader
-        type="details"
-        icon="person"
-        title={customer.name}
-        actions={
-          <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={onClose}>
-            Done
-          </Button>
-        }
-      />
-      <Panel.Body>
-        <fieldset disabled={ctx.readOnly} className="contents">
-          <Section icon="person" title="Contact">
-            <Fields cols={1}>
-              {h.lookup('contactId', 'Contact person', [
-                { value: '', label: '— None —' },
-                ...(customer.contacts ?? []).filter((c) => c.active || c.id === draft.contactId).map((c) => ({ value: c.id, label: contactName(c) })),
-              ], { disabled: !customer })}
-              {h.text('customerRef', 'Customer ref. no.')}
-            </Fields>
-          </Section>
-          <AddressCards draft={draft} update={update} ctx={ctx} />
-          <Section icon="account_balance" title="Payment">
-            <Fields cols={1}>
-              {h.text('journalRemark', 'Journal remark', { hint: "The journal entry's remark. Defaults to \"Deliveries – customer code\"." })}
-              {h.master('projectId', 'BP project', projectDef, { clearable: true })}
-              {h.master('paymentTermId', 'Payment terms', paymentTermDef, { hint: 'From the order or customer; carries to the invoice.' })}
-              {h.lookup('paymentMethod', 'Payment method', PAYMENT_METHODS.map((p) => ({ value: p.code, label: `${p.code} · ${p.description}` })))}
-              {h.date('dueDate', 'Due date', {
-                error: errors.dueDate,
-                hint: (
-                  <>
-                    = {computedDue || '—'}.{' '}
-                    {draft.dueDate !== computedDue ? (
-                      <Button type="button" size="small" variant="ghost" onClick={() => update({ dueDate: computedDue })}>
-                        Recalculate due date
-                      </Button>
-                    ) : null}
-                  </>
-                ),
-              })}
-              <div className="grid grid-cols-2 gap-2">
-                <TextField aria-label="Recalculate due date: months" type="number" min={0} suffix="months" value={String(draft.dueMonths)} onChange={(e) => setRecalc({ dueMonths: Number(e.currentTarget.value) || 0 })} />
-                <TextField aria-label="Recalculate due date: days" type="number" min={0} suffix="days" value={String(draft.dueDays)} onChange={(e) => setRecalc({ dueDays: Number(e.currentTarget.value) || 0 })} />
-                <Text variant="small" tone="muted" className="col-span-2">
-                  Manually recalculate due date: months and days from the posting date instead of the terms.
-                </Text>
-              </div>
-              {h.num('cashDiscountDays', 'Cash discount date offset', { suffix: 'days' })}
-            </Fields>
-          </Section>
-          <Section icon="tag" title="References">
-            <Fields cols={1}>
-              {h.choose('indicator', 'Indicator', [{ value: '', label: '— None —' }, ...INDICATORS.map((v) => ({ value: v, label: v }))])}
-              <ReadOnly label="Federal tax ID" value={draft.federalTaxId || <span className="text-muted">Customer has no TIN on file</span>} />
-              {h.text('orderNumber', 'Order number', { hint: 'Set by Copy from sales order.' })}
-            </Fields>
-          </Section>
-        </fieldset>
-      </Panel.Body>
-    </SidePanel>
+    <CustomerDetailsPanel
+      customer={customer}
+      draft={draft}
+      update={update}
+      readOnly={ctx.readOnly}
+      noun="delivery"
+      open={open}
+      onClose={onClose}
+      orderNumberHint="Set by Copy from sales order."
+    >
+      <Section icon="account_balance" title="Payment">
+        <Fields cols={1}>
+          {h.text('journalRemark', 'Journal remark', { hint: "The journal entry's remark. Defaults to \"Deliveries – customer code\"." })}
+          {h.master('projectId', 'BP project', projectDef, { clearable: true })}
+          {h.master('paymentTermId', 'Payment terms', paymentTermDef, { hint: 'From the order or customer; carries to the invoice.' })}
+          {h.lookup('paymentMethod', 'Payment method', PAYMENT_METHODS.map((p) => ({ value: p.code, label: `${p.code} · ${p.description}` })))}
+          {h.date('dueDate', 'Due date', {
+            error: errors.dueDate,
+            hint: (
+              <>
+                = {computedDue || '—'}.{' '}
+                {draft.dueDate !== computedDue ? (
+                  <Button type="button" size="small" variant="ghost" onClick={() => update({ dueDate: computedDue })}>
+                    Recalculate due date
+                  </Button>
+                ) : null}
+              </>
+            ),
+          })}
+          <div className="grid grid-cols-2 gap-2">
+            <TextField aria-label="Recalculate due date: months" type="number" min={0} suffix="months" value={String(draft.dueMonths)} onChange={(e) => setRecalc({ dueMonths: Number(e.currentTarget.value) || 0 })} />
+            <TextField aria-label="Recalculate due date: days" type="number" min={0} suffix="days" value={String(draft.dueDays)} onChange={(e) => setRecalc({ dueDays: Number(e.currentTarget.value) || 0 })} />
+            <Text variant="small" tone="muted" className="col-span-2">
+              Manually recalculate due date: months and days from the posting date instead of the terms.
+            </Text>
+          </div>
+          {h.num('cashDiscountDays', 'Cash discount date offset', { suffix: 'days' })}
+        </Fields>
+      </Section>
+      <Section icon="tag" title="Tax">
+        <Fields cols={1}>
+          <ReadOnly label="Federal tax ID" value={draft.federalTaxId || <span className="text-muted">Customer has no TIN on file</span>} />
+        </Fields>
+      </Section>
+    </CustomerDetailsPanel>
   );
 }

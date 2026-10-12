@@ -457,7 +457,7 @@ const POS_INVOICES: ArInvoice[] = STORE_SALES.map((sale, n) => {
     lines: sale.lines.map((l, k) => {
       const item = itemById.get(l.itemId)!;
       return newArLine({
-        id: `${id}-${k + 1}`, itemId: item.id, itemNo: item.itemNo, description: item.name, quantity: l.qty,
+        id: `${id}-${k + 1}`, itemId: item.id, itemNo: item.itemNo, description: item.description || item.name, quantity: l.qty,
         uomCode: item.salesUom, uomName: item.salesUom === 'pc' ? 'Piece' : item.salesUom, itemsPerUnit: 1, warehouse: sale.store,
         priceListId: plId('Base price'), unitPrice: round2(item.basePrice / 1.12), priceSource: 'Base price (SRP)', taxCode: '31',
       });

@@ -55,7 +55,8 @@ export async function saveQuotationDraft(input: QtInput): Promise<Quotation> {
 export async function addQuotation(input: QtInput): Promise<Quotation> {
   const all = await quotations.list();
   const series = seriesOf(input.seriesId);
-  const docNum = Math.max(series.firstNo - 1, ...all.filter((q) => q.seriesId === series.id).map((q) => q.docNum)) + 1;
+  // One waiting for approval keeps the number it was given.
+  const docNum = input.docNum || Math.max(series.firstNo - 1, ...all.filter((q) => q.seriesId === series.id).map((q) => q.docNum)) + 1;
   return quotations.save({ ...input, docNum, status: input.approved ? 'Open' : 'Not Confirmed' });
 }
 

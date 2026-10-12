@@ -1,17 +1,13 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { Alert, Badge, Button, Checkbox, Combobox, Form, FormField, List, Panel, PanelHeader, Select, Tabs, Text, TextField } from '@jasperlepardo/sikat-design-system';
+import { Alert, Badge, Button, Form, Panel, PanelHeader, Tabs, Text, TextField } from '@jasperlepardo/sikat-design-system';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
-import { Fields, ReadOnly, Section, bind, type Errors } from '../../../../components/form/fields';
-import { StatusField } from '../../../../components/form/StatusField';
+import { type Errors } from '../../../../components/form/fields';
 import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { formatAddress } from '../../../../mocks/address';
-import { AR_SERIES, AR_STATUSES, OR_SERIES_ID, blankArInvoice, type ArInvoice, type ArStatus } from '../../../../mocks/arInvoices';
-import { accountText } from '../../../../mocks/chartOfAccounts';
+import { OR_SERIES_ID, blankArInvoice, type ArInvoice, type ArStatus } from '../../../../mocks/arInvoices';
 import { CURRENT_USER_ID } from '../../../../mocks/common';
-import { contactName } from '../../../../mocks/partners';
-import { NO_SALES_EMPLOYEE, SALES_SETTINGS } from '../../../../mocks/salesOrders';
 import {
   ArPostError,
   addArInvoice,
@@ -30,7 +26,7 @@ import {
   saveArNotes,
 } from '../../../../services/arInvoices';
 import { loadCurrentCompany } from '../../../../services/companies';
-import { formatDate, todayISO } from '../../../../services/dates';
+import { todayISO } from '../../../../services/dates';
 import { defaultJournalRemark } from '../../../../services/journalPatterns';
 import { listDeliveries } from '../../../../services/deliveries';
 import { formatAmount } from '../../../../services/format';
@@ -39,15 +35,17 @@ import { isValidToday, listItems } from '../../../../services/items';
 import { controlAccountOf } from '../../../../services/journalEntries';
 import { accounts, companyTax, currencies, exchangeRates, taxCodes, taxGroups, withholdingGroups, withholdingTaxes } from '../../../../services/masterData';
 import { listPartnersByRole } from '../../../../services/partners';
-import { paymentTermName, termDays } from '../../../../services/purchaseOrders';
+import { termDays } from '../../../../services/purchaseOrders';
 import { logRejection } from '../../../../services/approvalRules';
 import { getSalesSettings, listSalesOrders, openQty, soDueDate, soNumber } from '../../../../services/salesOrders';
 import { soSeries } from '../../../../services/allSeries';
-import { salesEmployeeDef } from '../../../settings/masterDefs';
 import { DN_LIST_PATH } from '../../deliveries/detail/types';
 import { ALL_CURRENCIES, SO_LIST_PATH, proposedTaxCode } from '../../orders/detail/types';
 import { ArContents, type CopyPick } from './ArContents';
-import { ArAccounting, ArLogistics } from './ArSections';
+import { ArAssignmentCard, ArBpChannelCard, ArDatesCard, ArInstallmentsCard, ArJournalCard, ArSettingsCard, ArShipmentCard } from './ArSideCards';
+import { ArCustomerDetailsPanel } from './ArCustomerDetailsPanel';
+import { CustomerCard } from '../../shared/CustomerCard';
+import { TotalsFooter } from '../../shared/TotalsFooter';
 import { AR_LIST_PATH, arLineFromDelivery, arLineFromOrder, buildArContext, type ArContext, type ArDraft, type ArMasters } from './types';
 import { SalesDocumentFlow } from '../../shared/SalesDocumentFlow';
 import { useDocTitle } from '../../../../services/useDocTitle';
@@ -55,8 +53,9 @@ import { AR_CM_LIST_PATH } from '../../returns/types';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
 import { NotFound, PrevNext, neighbours } from '../../../../components/form/DetailNav';
 
-type TabId = 'contents' | 'logistics' | 'accounting' | 'attachments';
-const TAB_LABEL: Record<TabId, string> = { contents: 'Contents', logistics: 'Logistics', accounting: 'Accounting', attachments: 'Attachments' };
+/** Where a problem's field is: the lines, or the customer details panel (payment and accounting). */
+type TabId = 'contents' | 'accounting';
+const TAB_LABEL: Record<TabId, string> = { contents: 'Contents', accounting: 'Customer details' };
 
 const PAGES = [
   { value: 'details', label: 'Details' },
@@ -115,7 +114,7 @@ function ArInvoiceForm() {
   const [draft, setDraft] = useState<ArDraft | null | undefined>(isNew ? { ...blankArInvoice(todayISO(), CURRENT_USER_ID), approved: arApproved } : undefined);
   const [m, setM] = useState<ArMasters>();
   const [page, setPage] = useState<PageId>('details');
-  const [tab, setTab] = useState<TabId>('contents');
+  const [customerDetailsOpen, setCustomerDetailsOpen] = useState(false);
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);
@@ -181,7 +180,6 @@ function ArInvoiceForm() {
   const { prevId, nextId } = neighbours(siblings, draft.id && (draft.docNum ? arNumber(draft as ArInvoice) : draft.id));
 
   const update = (patch: Partial<ArDraft>) => setDraft({ ...draft, ...patch });
-  const h = bind(draft, update);
 
   /** Copy lines from a delivery or order; the header follows the first one copied. */
   function copyLines(d: ArDraft, src: CopyPick, picks: { lineId: string; qty: number }[], masters: ArMasters): ArDraft {
@@ -264,7 +262,8 @@ function ArInvoiceForm() {
 
   const submit = async (e: FormEvent | null, asDraft = false, overrides: Partial<ArDraft> = {}) => {
     e?.preventDefault();
-    if (ro) {
+    // Added: only remarks and attachments save, unless this is approving it (which posts it).
+    if (ro && !overrides.approved) {
       setSaving(true);
       const a = await saveArNotes(draft.id!, { remarks: draft.remarks, attachments: draft.attachments });
       setSaving(false);
@@ -275,8 +274,8 @@ function ArInvoiceForm() {
     const found = validate(doc, ctx, m, effectiveDraft);
     setProblems(found);
     if (found.length) {
-      const first = found.find((p) => p.tab !== 'header');
-      if (first) setTab(first.tab as TabId);
+      // Payment and accounting fields live in the customer panel.
+      if (found.some((p) => p.tab === 'accounting') && customer) setCustomerDetailsOpen(true);
       return;
     }
     setSaving(true);
@@ -285,7 +284,6 @@ function ArInvoiceForm() {
       navigate(AR_LIST_PATH, { state: { notice: effectiveDraft ? `Draft saved — ${a.customerName}.` : a.status === 'Not Confirmed' ? `A/R invoice ${arNumber(a)} submitted for approval.` : `A/R invoice ${arNumber(a)} added — ${a.customerName} owes ${a.currency} ${formatAmount(balance)}.` } });
     } catch (err) {
       if (!(err instanceof ArPostError)) throw err;
-      setTab('contents');
       setProblems([{ tab: 'contents', key: err.lineIds[0] ? `line:${err.lineIds[0]}:quantity` : 'lines', message: err.message }]);
       listItems().then((items) => setM((prev) => prev && { ...prev, items }));
     } finally {
@@ -308,11 +306,11 @@ function ArInvoiceForm() {
   const cancelIt = () => act(() => cancelArInvoice(saved), 'cancelled — the entry is reversed and its deliveries and orders are open again');
   const recallIt = () => act(() => recallArInvoice(saved), 'recalled to draft');
   const rejectIt = async () => { await logRejection('ARINV', saved.id, saved.customerId, rejectionReason); await recallArInvoice(saved); navigate(AR_LIST_PATH, { state: { notice: `A/R invoice ${arNumber(saved)} rejected and returned to draft.` } }); };
-  const statusMoves: Partial<Record<ArStatus, () => void>> = draft.status === 'Draft' ? (draft.approved ? { Open: () => submit(null) } : { 'Not Confirmed': () => submit(null) }) : draft.status === 'Not Confirmed' ? { Open: () => submit(null, false, { approved: true }) } : draft.status === 'Open' ? { Closed: closeIt, ...(!draft.appliedAmount ? { Cancelled: cancelIt } : {}) } : {};
 
   const menu: MoreMenuItem[] = [
     ...(!ctx.added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
-    ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => setRejecting(true) }] : []),
+    ...(draft.status === 'Draft' && !draft.approved ? [{ label: 'Submit for approval', icon: 'upload', onSelect: () => submit(null, false) }] : []),
+    ...(draft.status === 'Not Confirmed' ? [{ label: 'Approve', icon: 'verified', onSelect: () => submit(null, false, { approved: true }) }, { label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => setRejecting(true) }] : []),
     ...(draft.status === 'Open' && balance > 0 && !draft.paymentBlock
       ? [{ label: 'Receive payment', icon: 'savings', onSelect: () => navigate('/sales/payments-received/new', { state: { fromInvoice: draft.id } }) }]
       : []),
@@ -323,9 +321,11 @@ function ArInvoiceForm() {
     ...(customer ? [{ label: `Open customer ${customer.code}`, icon: 'person', onSelect: () => navigate(`/sales/customers/${customer.id}`) }] : []),
   ];
 
+  const tabProps = { draft, update, errors, m, ctx };
   const title = isNew ? 'New A/R invoice' : draft.status === 'Draft' ? 'Draft A/R invoice' : arNumber(draft);
 
   return (
+    <>
     <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
       <Panel className="flex-1">
         <PanelHeader
@@ -344,9 +344,7 @@ function ArInvoiceForm() {
           status={isNew ? undefined : <Badge size="small" intent={AR_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
           actions={
             <>
-              <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(AR_LIST_PATH)}>
-                {ro ? 'Back' : 'Cancel'}
-              </Button>
+              {ro ? null : <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(AR_LIST_PATH)}>Cancel</Button>}
               {menu.length ? <MoreMenu items={menu} /> : null}
               <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
                 {saving ? 'Saving…' : ro ? 'Save' : 'Add'}
@@ -371,127 +369,75 @@ function ArInvoiceForm() {
             <Text variant="small" tone="muted" className="p-4">Save the document first to see related documents.</Text>
           </Panel.Body>
         ) : null}
-        {page === 'details' ? <Panel.Body className="flex flex-col gap-2">
-          <ProblemsAlert problems={problems} tabLabel={(t) => TAB_LABEL[t as TabId]} />
-          {rejecting ? (<Alert intent="danger" variant="outline" title="Reject A/R invoice"><div className="flex flex-col gap-2"><TextField aria-label="Rejection reason" value={rejectionReason} onChange={(e) => setRejectionReason(e.currentTarget.value)} placeholder="Explain why…" /><div className="flex gap-2"><Button type="button" intent="danger" variant="solid" size="small" onClick={rejectIt}>Confirm reject</Button><Button type="button" intent="white" variant="solid" size="small" onClick={() => { setRejecting(false); setRejectionReason(''); }}>Cancel</Button></div></div></Alert>) : null}
-          <Tabs variant="outline" value={tab} onValueChange={(v) => setTab(v as TabId)} items={(Object.keys(TAB_LABEL) as TabId[]).map((t) => ({ value: t, label: TAB_LABEL[t], badge: problems.some((p) => p.tab === t) ? '!' : t === 'attachments' && draft.attachments.length ? String(draft.attachments.length) : undefined }))} />
-          {ro ? (
-            <Alert intent="default" variant="outline" title={`This invoice is ${draft.status.toLowerCase()}`}>
-              {draft.status === 'Cancelled'
-                ? 'Its journal entry was reversed, stock it shipped came back, and its deliveries and orders reopened.'
-                : 'It’s posted to the ledger. Only remarks and attachments can change; to undo it, cancel the invoice.'}
-            </Alert>
-          ) : null}
+        {page === 'details' ? (
+          <Panel.Body className="flex flex-col gap-2">
+            <ProblemsAlert problems={problems} tabLabel={(t) => TAB_LABEL[t as TabId]} />
+            {rejecting ? (<Alert intent="danger" variant="outline" title="Reject A/R invoice"><div className="flex flex-col gap-2"><TextField aria-label="Rejection reason" value={rejectionReason} onChange={(e) => setRejectionReason(e.currentTarget.value)} placeholder="Explain why…" /><div className="flex gap-2"><Button type="button" intent="danger" variant="solid" size="small" onClick={rejectIt}>Confirm reject</Button><Button type="button" intent="white" variant="solid" size="small" onClick={() => { setRejecting(false); setRejectionReason(''); }}>Cancel</Button></div></div></Alert>) : null}
+            {ro ? (
+              <Alert intent="default" variant="outline" title={`This invoice is ${draft.status.toLowerCase()}`}>
+                {draft.status === 'Cancelled'
+                  ? 'Its journal entry was reversed, stock it shipped came back, and its deliveries and orders reopened.'
+                  : 'It’s posted to the ledger. Only remarks and attachments can change; to undo it, cancel the invoice.'}
+              </Alert>
+            ) : null}
 
-          <fieldset disabled={ro} className="contents">
-            <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
-              <Section icon="person" title="Customer">
-                <Fields>
-                  <div className="md:col-span-2">
-                    {ctx.based || ro ? (
-                      <ReadOnly label="Customer" value={draft.customerName || '—'} description={`${draft.customerCode} · ${draft.currency}`} hint={ctx.based && !ro ? 'Set by the document the lines come from.' : undefined} />
-                    ) : (
-                      <FormField label="Customer" required error={errors.customerId}>
-                        {(p) => (
-                          <Combobox
-                            {...p}
-                            placeholder="Search customers"
-                            options={m.customers.filter((c) => c.status !== 'Inactive' || c.id === draft.customerId).map((c) => ({ value: c.id, label: c.name, subLabel: c.code, subLabelPlacement: 'top' as const, text: `${c.code} ${c.name}` }))}
-                            value={draft.customerId || null}
-                            onValueChange={pickCustomer}
-                          />
-                        )}
-                      </FormField>
-                    )}
-                  </div>
-                  {h.lookup('contactId', 'Contact person', [{ value: '', label: '— None —' }, ...(customer?.contacts ?? []).filter((c) => c.active || c.id === draft.contactId).map((c) => ({ value: c.id, label: contactName(c) }))], { disabled: !customer })}
-                  {h.text('customerRef', 'Customer ref. no.')}
-                  <FormField label="Currency" error={errors.currency} className="md:col-span-2">
-                    {(p) => <Select {...p} disabled={ro || ctx.based} options={m.currencies.map((c) => ({ value: c.code, label: `${c.code} — ${c.name}` }))} value={draft.currency} onValueChange={(currency) => update({ currency })} />}
-                  </FormField>
-                </Fields>
-              </Section>
-              <Section icon="tag" title="Document">
-                <Fields>
-                  <FormField label="No.">
-                    {() => (
-                      <div className="flex gap-1">
-                        <Select aria-label="Series" className="w-32" disabled={ctx.added} options={AR_SERIES.map((s) => ({ value: s.id, label: s.name }))} value={draft.seriesId} onValueChange={(seriesId) => update({ seriesId })} />
-                        <span className="flex-1 self-center text-sm">{draft.docNum ? arNumber(draft) : <span className="text-(--color-text-placeholder)">Next number</span>}</span>
-                      </div>
-                    )}
-                  </FormField>
-                  <StatusField statuses={AR_STATUSES} intents={AR_STATUS_INTENT} value={draft.status} moves={statusMoves} error={errors.status} />
-                  {h.date('postingDate', 'Posting date', { required: true, error: errors.postingDate, hint: 'When revenue, VAT and any stock it ships are posted.' })}
-                  {h.date('dueDate', 'Due date', { required: true, error: errors.dueDate, hint: `From the payment terms (${paymentTermName(draft.paymentTermId)}).` })}
-                  {h.date('documentDate', 'Document date', { required: true, error: errors.documentDate })}
-                  <ReadOnly label="Close date" value={draft.closeDate ? formatDate(draft.closeDate) : '—'} />
-                </Fields>
-              </Section>
+            <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
+              <aside className="flex flex-col gap-2 lg:col-span-3">
+                <ArDatesCard {...tabProps} />
+                <ArSettingsCard {...tabProps} />
+                <ArBpChannelCard {...tabProps} />
+                <ArShipmentCard {...tabProps} />
+                <ArAssignmentCard {...tabProps} />
+                <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} emptyHint="The signed invoice, the customer's PO, Form 2307 when it arrives." withDescription />
+              </aside>
+
+              <div className="flex flex-col gap-2 lg:col-span-9">
+                <CustomerCard
+                  customers={m.customers}
+                  customerId={draft.customerId}
+                  customer={customer}
+                  locked={ro || ctx.based}
+                  error={errors.customerId}
+                  hint={ctx.based && !ro ? 'Set by the document the lines come from.' : undefined}
+                  onPickCustomer={pickCustomer}
+                  onOpenDetails={() => setCustomerDetailsOpen(true)}
+                />
+                {/* Not in a disabled fieldset: the table locks its own inputs and keeps its column settings. */}
+                <ArContents
+                  {...tabProps}
+                  onCopy={(src, picks) => setDraft(copyLines(draft, src, picks, m))}
+                  cardFooter={
+                    <TotalsFooter
+                      {...tabProps}
+                      withRounding
+                      withholding={withholding.map((w) => ({ label: `WTax — ${w.label}`, amount: w.amount }))}
+                      extraRows={
+                        // Until something is applied, the total (or net to receive) is the balance due.
+                        draft.appliedAmount ? (
+                          <>
+                            <div className="flex items-center justify-between gap-4">
+                              <Text variant="small" tone="muted">Applied amount</Text>
+                              <Text variant="small" className="tabular-nums">–{draft.currency} {formatAmount(draft.appliedAmount)}</Text>
+                            </div>
+                            <div className="flex items-baseline justify-between gap-4 border-t pt-1" style={{ borderColor: 'var(--color-border-neutral-subtle)' }}>
+                              <Text variant="small" weight="semibold" tone="heading">Balance due</Text>
+                              <Text variant="small" weight="semibold" tone="heading" className="tabular-nums">{draft.currency} {formatAmount(balance)}</Text>
+                            </div>
+                          </>
+                        ) : null
+                      }
+                    />
+                  }
+                />
+                <ArInstallmentsCard draft={draft} balance={balance} />
+                <ArJournalCard journal={journal} ctx={ctx} m={m} currency={draft.currency} />
+              </div>
             </div>
-
-            {tab === 'contents' ? <ArContents draft={draft} update={update} errors={errors} m={m} ctx={ctx} onCopy={(src, picks) => setDraft(copyLines(draft, src, picks, m))} /> : null}
-            {tab === 'logistics' ? <ArLogistics draft={draft} update={update} errors={errors} m={m} ctx={ctx} /> : null}
-            {tab === 'accounting' ? <ArAccounting draft={draft} update={update} errors={errors} m={m} ctx={ctx} balance={balance} /> : null}
-          </fieldset>
-          {tab === 'attachments' ? <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} emptyHint="The signed invoice, the customer's PO, Form 2307 when it arrives." withDescription /> : null}
-
-          <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
-            <Section icon="functions" title="Totals">
-              <fieldset disabled={ro} className="contents">
-                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                  {h.master('salesEmployeeId', 'Sales employee', salesEmployeeDef, { clearable: true, placeholder: NO_SALES_EMPLOYEE })}
-                  {h.master('ownerId', 'Owner', salesEmployeeDef)}
-                </div>
-                <List.Group divider>
-                  <TotalRow label="Total before discount" value={totals.beforeDiscount} code={draft.currency} />
-                  <TotalRow label="Discount" value={totals.discount ? -totals.discount : 0} code={draft.currency} input={<TextField aria-label="Document discount %" type="number" min={0} className="w-24" suffix="%" value={String(draft.discountPct)} onChange={(e) => update({ discountPct: Math.min(100, Number(e.currentTarget.value)) })} />} />
-                  <TotalRow label="Total down payment" value={0} code={draft.currency} note="Down payments aren't built yet." />
-                  {SALES_SETTINGS.manageFreightInDocuments ? (
-                    <TotalRow label="Freight" value={totals.freight} code={draft.currency} input={<TextField aria-label="Freight" type="number" min={0} className="w-32" prefix={draft.currency} value={String(draft.freight)} onChange={(e) => update({ freight: Number(e.currentTarget.value) })} />} />
-                  ) : null}
-                  <TotalRow label="Rounding" value={totals.rounding} code={draft.currency} input={<Checkbox aria-label="Apply rounding" checked={draft.rounding} onChange={(e) => update({ rounding: e.currentTarget.checked })}>{docCurrency?.rounding ?? 'No rounding'}</Checkbox>} />
-                  <TotalRow label="Tax" value={totals.tax} code={draft.currency} />
-                  <TotalRow label="Total" value={totals.total} code={draft.currency} strong />
-                  {withholding.map((w) => (
-                    <TotalRow key={w.label} label={`WTax — ${w.label}`} value={-w.amount} code={draft.currency} note={`On ${draft.currency} ${formatAmount(w.base)}.`} />
-                  ))}
-                  <TotalRow label="Applied amount" value={-draft.appliedAmount} code={draft.currency} />
-                  <TotalRow label="Balance due" value={balance} code={draft.currency} strong />
-                </List.Group>
-              </fieldset>
-              {h.area('remarks', 'Remarks', { rows: 3, hint: 'Can be changed after the invoice is added.' })}
-            </Section>
-            <Section icon="account_balance" title="Journal entry">
-              {journal.length ? (
-                <List.Group divider>
-                  {journal.map((j) => (
-                    <List.Item key={j.account} title={accountText(j.account, m.accounts)} content={<span className="whitespace-nowrap tabular-nums">{j.debit ? `Dr ${formatAmount(j.debit)}` : `Cr ${formatAmount(j.credit)}`}</span>} />
-                  ))}
-                </List.Group>
-              ) : (
-                <Text variant="small" tone="muted">Adding posts Dr A/R / Cr Revenue and Output VAT, plus the cost of any stock the invoice ships.</Text>
-              )}
-              <Text variant="small" tone="muted">In PHP{draft.currency !== 'PHP' && ctx.fx ? ` at ${ctx.fx}` : ''}. {ctx.added ? 'As posted.' : 'Stock it ships is costed at today’s item cost.'}</Text>
-            </Section>
-          </div>
-        </Panel.Body> : null}
+          </Panel.Body>
+        ) : null}
       </Panel>
     </Form>
-  );
-}
-
-function TotalRow({ label, value, code, input, strong, note }: { label: string; value: number; code: string; input?: ReactNode; strong?: boolean; note?: string }) {
-  const emphasis = (node: ReactNode) => (strong ? <Text as="span" weight="semibold" tone="heading">{node}</Text> : node);
-  return (
-    <List.Item
-      title={
-        <span className="flex flex-col">
-          <span className="flex items-center gap-2"><span className="whitespace-nowrap">{emphasis(label)}</span>{input ? <span className="flex-none">{input}</span> : null}</span>
-          {note ? <Text variant="small" tone="muted">{note}</Text> : null}
-        </span>
-      }
-      content={<span className="whitespace-nowrap tabular-nums">{emphasis(`${code} ${formatAmount(value)}`)}</span>}
-    />
+    <ArCustomerDetailsPanel {...tabProps} open={customerDetailsOpen} onClose={() => setCustomerDetailsOpen(false)} />
+    </>
   );
 }

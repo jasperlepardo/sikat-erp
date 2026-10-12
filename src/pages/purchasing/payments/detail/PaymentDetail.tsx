@@ -308,9 +308,7 @@ function PaymentForm() {
           status={isNew ? undefined : <Badge size="small" intent={PAYMENT_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
           actions={
             <>
-              <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(PAYMENT_LIST_PATH)}>
-                {added ? 'Back' : 'Cancel'}
-              </Button>
+              {added ? null : <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(PAYMENT_LIST_PATH)}>Cancel</Button>}
               {menu.length ? <MoreMenu items={menu} /> : null}
               <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
                 {saving ? 'Saving…' : added ? 'Save' : 'Add'}

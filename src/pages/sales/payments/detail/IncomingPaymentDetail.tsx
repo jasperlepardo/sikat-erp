@@ -1,19 +1,17 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { Alert, Badge, Button, Combobox, Form, FormField, List, Panel, PanelHeader, Radio, Select, Tabs, Text, TextField } from '@jasperlepardo/sikat-design-system';
+import { Alert, Badge, Button, Form, FormField, List, Panel, PanelHeader, Select, Tabs, Text, TextField } from '@jasperlepardo/sikat-design-system';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
-import { Fields, ReadOnly, Section, bind, type Errors } from '../../../../components/form/fields';
-import { StatusField } from '../../../../components/form/StatusField';
+import { Section, type Errors } from '../../../../components/form/fields';
 import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { formatAddress } from '../../../../mocks/address';
 import type { ArInvoice } from '../../../../mocks/arInvoices';
 import { accountText, type Account } from '../../../../mocks/chartOfAccounts';
 import type { Currency, ExchangeRate } from '../../../../mocks/currencies';
-import { INCOMING_SERIES, INCOMING_STATUSES, blankIncomingPayment, type IncomingPayment, type IncomingStatus, type IncomingType } from '../../../../mocks/incomingPayments';
+import { blankIncomingPayment, type IncomingPayment, type IncomingStatus, type IncomingType } from '../../../../mocks/incomingPayments';
 import type { Item } from '../../../../mocks/items';
-import { contactName, type Partner } from '../../../../mocks/partners';
-import { BLANKET_AGREEMENTS } from '../../../../mocks/purchaseOrders';
+import { type Partner } from '../../../../mocks/partners';
 import type { TaxCode } from '../../../../mocks/taxes';
 import { listArInvoices } from '../../../../services/arInvoices';
 import { formatDate, todayISO } from '../../../../services/dates';
@@ -44,9 +42,11 @@ import { accounts as accountsCollection, currencies as currenciesCollection, exc
 import { listPartnersByRole } from '../../../../services/partners';
 import { logRejection } from '../../../../services/approvalRules';
 import { getSalesSettings } from '../../../../services/salesOrders';
-import { projectDef } from '../../../settings/masterDefs';
 import { IncomingAccounts, IncomingDocuments } from './IncomingContents';
 import { IncomingMeansSection } from './IncomingMeansSection';
+import { IncomingDocumentCard, IncomingRemarksCard, IncomingSettingsCard } from './IncomingSideCards';
+import { IncomingCustomerPanel } from './IncomingCustomerPanel';
+import { CustomerCard } from '../../shared/CustomerCard';
 import { SalesDocumentFlow } from '../../shared/SalesDocumentFlow';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
@@ -55,8 +55,8 @@ import { NotFound, PrevNext, neighbours } from '../../../../components/form/Deta
 export const RC_LIST_PATH = '/sales/payments-received';
 export const RC_STATUS_INTENT: Record<IncomingStatus, 'default' | 'success' | 'danger' | 'warning'> = { Draft: 'default', 'Not Confirmed': 'warning', Posted: 'success', Cancelled: 'danger' };
 
-type TabId = 'contents' | 'means' | 'attachments';
-const TAB_LABEL: Record<TabId, string> = { contents: 'Contents', means: 'Payment means', attachments: 'Attachments' };
+type TabId = 'contents' | 'means';
+const TAB_LABEL: Record<TabId, string> = { contents: 'Contents', means: 'Payment means' };
 
 const PAGES = [
   { value: 'details', label: 'Details' },
@@ -118,7 +118,7 @@ function IncomingForm() {
   const [draft, setDraft] = useState<IncomingInput | null | undefined>(isNew ? { ...blankIncomingPayment(todayISO()), approved: rcApproved } : undefined);
   const [m, setM] = useState<Masters>();
   const [page, setPage] = useState<PageId>('details');
-  const [tab, setTab] = useState<TabId>('contents');
+  const [customerDetailsOpen, setCustomerDetailsOpen] = useState(false);
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);
@@ -159,7 +159,6 @@ function IncomingForm() {
   const journal = fx ? incomingJournal(draft, fx) : [];
   const due = amountDue(draft);
   const { prevId, nextId } = neighbours(siblings, draft.id && (draft.docNum ? incomingNumber(draft as IncomingPayment) : draft.id));
-  const series = incomingSeriesOf(draft.seriesId);
 
   // The BP row's due date follows the payment means until it's typed over.
   const update = (patch: Partial<IncomingInput>) => {
@@ -167,7 +166,6 @@ function IncomingForm() {
     if (patch.means && draft.dueDate === weightedDueDate(draft.means, draft.postingDate)) next.dueDate = weightedDueDate(patch.means, draft.postingDate);
     setDraft(next);
   };
-  const h = bind(draft, update);
 
   /** Picking the customer lists its open invoices in its currency (optionally with one ticked). */
   function withCustomer(d: IncomingInput, customerId: string | null, masters: Masters, tick?: string): IncomingInput {
@@ -198,7 +196,8 @@ function IncomingForm() {
 
   const submit = async (e: FormEvent | null, asDraft = false, overrides: Partial<IncomingInput> = {}) => {
     e?.preventDefault();
-    if (ro) {
+    // Added: only remarks and attachments save, unless this is approving it (which posts it).
+    if (ro && !overrides.approved) {
       setSaving(true);
       const p = await saveIncomingNotes(draft.id!, { remarks: draft.remarks, attachments: draft.attachments });
       setSaving(false);
@@ -212,8 +211,8 @@ function IncomingForm() {
     const found = validate(doc, fx, effectiveDraft);
     setProblems(found);
     if (found.length) {
-      const first = found.find((p) => p.tab !== 'header');
-      if (first) setTab(first.tab as TabId);
+      // The control account lives in the customer panel.
+      if (found.some((p) => p.key === 'controlAccount') && customer) setCustomerDetailsOpen(true);
       return;
     }
     setSaving(true);
@@ -242,11 +241,11 @@ function IncomingForm() {
   const saved = draft as IncomingPayment;
   const recallIt = async () => { const p = await recallIncomingPayment(saved); navigate(RC_LIST_PATH, { state: { notice: `Payment ${incomingNumber(p)} recalled to draft.` } }); };
   const rejectIt = async () => { await logRejection('RCV', saved.id, saved.customerId, rejectionReason); await recallIncomingPayment(saved); navigate(RC_LIST_PATH, { state: { notice: `Payment ${incomingNumber(saved)} rejected and returned to draft.` } }); };
-  const statusMoves: Partial<Record<IncomingStatus, () => void>> = draft.status === 'Draft' ? (draft.approved ? { Posted: () => submit(null) } : { 'Not Confirmed': () => submit(null) }) : draft.status === 'Not Confirmed' ? { Posted: () => submit(null, false, { approved: true }) } : draft.status === 'Posted' ? { Cancelled: () => cancel('current') } : {};
 
   const menu: MoreMenuItem[] = [
     ...(!added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
-    ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => setRejecting(true) }] : []),
+    ...(draft.status === 'Draft' && !draft.approved ? [{ label: 'Submit for approval', icon: 'upload', onSelect: () => submit(null, false) }] : []),
+    ...(draft.status === 'Not Confirmed' ? [{ label: 'Approve', icon: 'verified', onSelect: () => submit(null, false, { approved: true }) }, { label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => setRejecting(true) }] : []),
     ...(draft.status === 'Posted'
       ? [
           { label: 'Cancel — date it today', icon: 'cancel', onSelect: () => cancel('current') },
@@ -261,6 +260,7 @@ function IncomingForm() {
   const title = isNew ? 'New incoming payment' : added ? incomingNumber(draft) : 'Draft incoming payment';
 
   return (
+    <>
     <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
       <Panel className="flex-1">
         <PanelHeader
@@ -279,9 +279,7 @@ function IncomingForm() {
           status={isNew ? undefined : <Badge size="small" intent={RC_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
           actions={
             <>
-              <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(RC_LIST_PATH)}>
-                {ro ? 'Back' : 'Cancel'}
-              </Button>
+              {ro ? null : <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(RC_LIST_PATH)}>Cancel</Button>}
               {menu.length ? <MoreMenu items={menu} /> : null}
               <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
                 {saving ? 'Saving…' : ro ? 'Save' : 'Add'}
@@ -306,122 +304,73 @@ function IncomingForm() {
             <Text variant="small" tone="muted" className="p-4">Save the document first to see related documents.</Text>
           </Panel.Body>
         ) : null}
-        {page === 'details' ? <Panel.Body className="flex flex-col gap-2">
-          <ProblemsAlert problems={problems} tabLabel={(t) => TAB_LABEL[t as TabId]} />
-          {rejecting ? (<Alert intent="danger" variant="outline" title="Reject incoming payment"><div className="flex flex-col gap-2"><TextField aria-label="Rejection reason" value={rejectionReason} onChange={(e) => setRejectionReason(e.currentTarget.value)} placeholder="Explain why…" /><div className="flex gap-2"><Button type="button" intent="danger" variant="solid" size="small" onClick={rejectIt}>Confirm reject</Button><Button type="button" intent="white" variant="solid" size="small" onClick={() => { setRejecting(false); setRejectionReason(''); }}>Cancel</Button></div></div></Alert>) : null}
-          <Tabs variant="outline" value={tab} onValueChange={(v) => setTab(v as TabId)} items={(Object.keys(TAB_LABEL) as TabId[]).map((t) => ({ value: t, label: TAB_LABEL[t], badge: problems.some((p) => p.tab === t) ? '!' : t === 'attachments' && draft.attachments.length ? String(draft.attachments.length) : undefined }))} />
-          {added ? (
-            <Alert intent="default" variant="outline" title={draft.status === 'Cancelled' ? 'This payment is cancelled' : 'This payment is posted'}>
-              {draft.status === 'Cancelled'
-                ? `A reversing entry was posted on ${formatDate(draft.cancelDate)}, and the invoices it paid reopened.`
-                : `Journal entry ${draft.transNo}. Only remarks and attachments can change; to undo it, cancel it.`}
-            </Alert>
-          ) : null}
-
-          <fieldset disabled={ro} className="contents">
-            <div className="flex flex-wrap items-center gap-6" role="radiogroup" aria-label="Payment type">
-              {(['Customer', 'Account'] as IncomingType[]).map((t) => (
-                <Radio key={t} name="incoming-type" checked={draft.type === t} disabled={ro} onChange={() => setType(t)}>
-                  {t}
-                </Radio>
-              ))}
-              <Text variant="small" tone="muted">Vendor refunds (against A/P credit memos) aren't built yet.</Text>
-            </div>
-            <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
-              <Section icon={draft.type === 'Account' ? 'account_balance' : 'person'} title={draft.type === 'Account' ? 'Account payment' : 'Customer'}>
-                <Fields>
-                  {draft.type === 'Customer' ? (
-                    <>
-                      <div className="md:col-span-2">
-                        {added ? (
-                          <ReadOnly label="Code" value={draft.customerCode} />
-                        ) : (
-                          <FormField label="Code" required error={errors.customerId}>
-                            {(p) => (
-                              <Combobox
-                                {...p}
-                                placeholder="Search customers"
-                                options={m.customers.filter((c) => c.status !== 'Inactive' || c.id === draft.customerId).map((c) => ({ value: c.id, label: c.name, subLabel: c.code, subLabelPlacement: 'top' as const, text: `${c.code} ${c.name}` }))}
-                                value={draft.customerId || null}
-                                onValueChange={(v) => setDraft(withCustomer(draft, v, m))}
-                              />
-                            )}
-                          </FormField>
-                        )}
-                      </div>
-                      {h.text('customerName', 'Name')}
-                      {h.lookup('contactId', 'Contact person', [{ value: '', label: '— None —' }, ...(customer?.contacts ?? []).map((c) => ({ value: c.id, label: contactName(c) }))], { disabled: !customer })}
-                      <div className="md:col-span-2">{h.area('billTo', 'Bill to', { rows: 3 })}</div>
-                      {h.choose('controlAccount', 'Control account', m.accounts.filter((a) => a.control && a.active && a.drawer === 'Assets').map((a) => ({ value: a.code, label: `${a.code} ${a.name}` })), { required: true, error: errors.controlAccount, hint: 'For the part not tied to an invoice (on account).' })}
-                    </>
-                  ) : (
-                    <FormField label="Doc. currency" error={errors.currency}>
-                      {(p) => <Select {...p} disabled={ro} options={m.currencies.map((c) => ({ value: c.code, label: `${c.code} — ${c.name}` }))} value={draft.currency} onValueChange={(currency) => update({ currency })} />}
-                    </FormField>
-                  )}
-                  {h.master('projectId', 'Project', projectDef, { clearable: true })}
-                  {h.choose('blanketAgreement', 'Blanket agreement', [{ value: '', label: '— None —' }, ...BLANKET_AGREEMENTS.map((b) => ({ value: b.no, label: `${b.no} · ${b.description}` }))])}
-                  {h.text('reference', 'Reference', { hint: draft.type === 'Customer' ? "The customer's reference for this payment." : undefined })}
-                  <ReadOnly label="Created by Payment Wizard" value="No" />
-                </Fields>
-              </Section>
-              <Section icon="tag" title="Document">
-                <Fields>
-                  <FormField label="No." required error={errors.docNum}>
-                    {(p) => (
-                      <div className="flex gap-1">
-                        <Select aria-label="Series" className="w-32" disabled={added} options={INCOMING_SERIES.map((s) => ({ value: s.id, label: s.name }))} value={draft.seriesId} onValueChange={(seriesId) => update({ seriesId, docNum: 0 })} />
-                        {series.manual && !added
-                          ? <TextField {...p} className="flex-1" type="number" placeholder="Receipt no. from the notebook" value={draft.docNum ? String(draft.docNum) : ''} onChange={(e) => update({ docNum: Number(e.currentTarget.value) || 0 })} />
-                          : <span className="flex-1 self-center text-sm">{draft.docNum ? incomingNumber(draft) : <span className="text-(--color-text-placeholder)">Next number</span>}</span>
-                        }
-                      </div>
-                    )}
-                  </FormField>
-                  <ReadOnly label="Transaction No." value={draft.transNo ? String(draft.transNo) : '—'} hint="The journal entry's number, once added." />
-                  {h.date('postingDate', 'Posting date', { required: true, error: errors.postingDate })}
-                  {h.date('documentDate', 'Document date', { required: true, error: errors.documentDate })}
-                  {h.date('dueDate', 'Due date', { hint: 'The BP row’s due date; follows the payment means (weighted average).' })}
-                  <StatusField statuses={INCOMING_STATUSES} intents={RC_STATUS_INTENT} value={draft.status} moves={statusMoves} error={errors.status} />
-                </Fields>
-              </Section>
-            </div>
-
-            {tab === 'contents' ? (
-              draft.type === 'Customer' ? (
-                <IncomingDocuments draft={draft} update={update} errors={errors} accounts={m.accounts} fx={fx} readOnly={ro} />
-              ) : (
-                <IncomingAccounts draft={draft} update={update} errors={errors} accounts={m.accounts} fx={fx} readOnly={ro} />
-              )
+        {page === 'details' ? (
+          <Panel.Body className="flex flex-col gap-2">
+            <ProblemsAlert problems={problems} tabLabel={(t) => TAB_LABEL[t as TabId]} />
+            {rejecting ? (<Alert intent="danger" variant="outline" title="Reject incoming payment"><div className="flex flex-col gap-2"><TextField aria-label="Rejection reason" value={rejectionReason} onChange={(e) => setRejectionReason(e.currentTarget.value)} placeholder="Explain why…" /><div className="flex gap-2"><Button type="button" intent="danger" variant="solid" size="small" onClick={rejectIt}>Confirm reject</Button><Button type="button" intent="white" variant="solid" size="small" onClick={() => { setRejecting(false); setRejectionReason(''); }}>Cancel</Button></div></div></Alert>) : null}
+            {added ? (
+              <Alert intent="default" variant="outline" title={draft.status === 'Cancelled' ? 'This payment is cancelled' : draft.status === 'Not Confirmed' ? 'This payment is waiting for approval' : 'This payment is posted'}>
+                {draft.status === 'Cancelled'
+                  ? `A reversing entry was posted on ${formatDate(draft.cancelDate)}, and the invoices it paid reopened.`
+                  : draft.status === 'Not Confirmed'
+                    ? 'Approve it from You can also to post it. Only remarks and attachments can change.'
+                    : `Journal entry ${draft.transNo}. Only remarks and attachments can change; to undo it, cancel it.`}
+              </Alert>
             ) : null}
-            {tab === 'means' ? <IncomingMeansSection draft={draft} update={update} accounts={m.accounts} fx={fx} readOnly={ro} /> : null}
-          </fieldset>
-          {tab === 'means' && errors.means ? <Text variant="small" tone="danger">{errors.means}</Text> : null}
-          {tab === 'attachments' ? <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} emptyHint="Deposit slip, bank advice, scanned check, the customer's BIR Form 2307." withDescription /> : null}
 
-          <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
-            <Section icon="notes" title="Remarks">
-              <Fields cols={1}>
-                {h.area('remarks', 'Remarks', { rows: 3 })}
-                <fieldset disabled={ro} className="contents">
-                  {h.text('journalRemark', 'Journal remarks', { hint: draft.type === 'Customer' ? 'Default: Incoming - customer code.' : 'Default: Incoming – the (last) account code.' })}
-                </fieldset>
-              </Fields>
-            </Section>
-            <Section icon="account_balance" title="Journal entry">
-              {journal.length ? (
-                <List.Group divider>
-                  {journal.map((j) => (
-                    <List.Item key={j.account} title={accountText(j.account, m.accounts)} content={<span className="whitespace-nowrap tabular-nums">{j.debit ? `Dr ${formatAmount(j.debit)}` : `Cr ${formatAmount(j.credit)}`}</span>} />
-                  ))}
-                </List.Group>
-              ) : (
-                <Text variant="small" tone="muted">Dr the payment means' accounts / Cr the customer (or the G/L lines), in PHP.</Text>
-              )}
-            </Section>
-          </div>
-        </Panel.Body> : null}
+            <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
+              <aside className="flex flex-col gap-2 lg:col-span-3">
+                <IncomingDocumentCard draft={draft} update={update} errors={errors} readOnly={ro} />
+                <IncomingSettingsCard draft={draft} update={update} readOnly={ro} onType={setType} />
+                <IncomingRemarksCard draft={draft} update={update} readOnly={ro} />
+                <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} emptyHint="Deposit slip, bank advice, scanned check, the customer's BIR Form 2307." withDescription />
+              </aside>
+
+              <div className="flex flex-col gap-2 lg:col-span-9">
+                {draft.type === 'Customer' ? (
+                  <CustomerCard
+                    customers={m.customers}
+                    customerId={draft.customerId}
+                    customer={customer}
+                    locked={added}
+                    error={errors.customerId}
+                    onPickCustomer={(v) => setDraft(withCustomer(draft, v, m))}
+                    onOpenDetails={() => setCustomerDetailsOpen(true)}
+                  />
+                ) : (
+                  <fieldset disabled={ro} className="contents">
+                    <Section icon="account_balance" title="Account payment">
+                      <FormField label="Doc. currency" error={errors.currency}>
+                        {(p) => <Select {...p} disabled={ro} options={m.currencies.map((c) => ({ value: c.code, label: `${c.code} — ${c.name}` }))} value={draft.currency} onValueChange={(currency) => update({ currency })} />}
+                      </FormField>
+                    </Section>
+                  </fieldset>
+                )}
+                {draft.type === 'Customer' ? (
+                  <IncomingDocuments draft={draft} update={update} errors={errors} accounts={m.accounts} fx={fx} readOnly={ro} />
+                ) : (
+                  <IncomingAccounts draft={draft} update={update} errors={errors} accounts={m.accounts} fx={fx} readOnly={ro} />
+                )}
+                <IncomingMeansSection draft={draft} update={update} accounts={m.accounts} fx={fx} readOnly={ro} />
+                {errors.means ? <Text variant="small" tone="danger">{errors.means}</Text> : null}
+                <Section icon="account_balance" title="Journal entry">
+                  {journal.length ? (
+                    <List.Group divider>
+                      {journal.map((j) => (
+                        <List.Item key={j.account} title={accountText(j.account, m.accounts)} content={<span className="whitespace-nowrap tabular-nums">{j.debit ? `Dr ${formatAmount(j.debit)}` : `Cr ${formatAmount(j.credit)}`}</span>} />
+                      ))}
+                    </List.Group>
+                  ) : (
+                    <Text variant="small" tone="muted">Dr the payment means' accounts / Cr the customer (or the G/L lines), in PHP.</Text>
+                  )}
+                </Section>
+              </div>
+            </div>
+          </Panel.Body>
+        ) : null}
       </Panel>
     </Form>
+    <IncomingCustomerPanel customer={customer} draft={draft} update={update} errors={errors} accounts={m.accounts} readOnly={ro} open={customerDetailsOpen} onClose={() => setCustomerDetailsOpen(false)} />
+    </>
   );
 }

@@ -9,7 +9,6 @@ import {
   Panel,
   PanelHeader,
   Table,
-  TableAmount,
   TableLink,
   TableStatus,
   TableSubcontent,
@@ -97,23 +96,23 @@ export function QuotationList() {
       ),
     },
     { key: 'customerName', header: 'Customer', sortable: true, cell: (q) => <TableSubcontent subcopy={q.customerCode}>{q.customerName || '—'}</TableSubcontent> },
-    { key: 'postingDate', header: 'Posting date', sortable: true, cell: (q) => formatDate(q.postingDate) },
+    { key: 'postingDate', header: 'Posting date', align: 'end', cell: (q) => formatDate(q.postingDate) },
     {
       key: 'validUntil',
       header: 'Valid until',
-      sortable: true,
+      align: 'end',
       cell: (q) => {
         if (!q.validUntil) return <Text variant="small" tone="muted">—</Text>;
         const expired = q.status === 'Open' && q.validUntil < today;
         return (
-          <span className="flex items-center gap-1">
+          <span className="flex items-center justify-end gap-1">
             <span className={expired ? 'text-danger' : ''}>{formatDate(q.validUntil)}</span>
             {expired ? <Badge size="small" intent="danger">Expired</Badge> : null}
           </span>
         );
       },
     },
-    { key: 'total', header: 'Total', sortable: true, cell: (q) => <TableAmount currency={q.currency}>{formatAmount(totalOf(q))}</TableAmount> },
+    { key: 'total', header: 'Total', align: 'end', cell: (q) => `${q.currency} ${formatAmount(totalOf(q))}` },
     { key: 'status', header: 'Status', sortable: true, cell: (q) => <TableStatus intent={QT_STATUS_INTENT[q.status]}>{q.status}</TableStatus> },
   ];
 

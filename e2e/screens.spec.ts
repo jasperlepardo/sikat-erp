@@ -79,6 +79,11 @@ const ROUTES = [
   'accounting/journal-vouchers',
   'accounting/journal-vouchers/jv-001',
   'accounting/journal-vouchers/jv-001/entries/jve-001-1',
+  // People: employees and the lists they pick from.
+  'people/employees',
+  'people/employees/hem-002',
+  'people/employees/hem-003',
+  'people/employees/new',
   // Settings lists.
   'settings/document-numbering',
   'settings/purchasing',
@@ -89,6 +94,10 @@ const ROUTES = [
   'settings/company',
   'settings/company/projects',
   'settings/company/countries',
+  'settings/company/branches',
+  'settings/company/users',
+  'settings/people',
+  'settings/people/teams',
   'settings/inventory/item-groups',
   'settings/inventory/uoms',
   'settings/inventory/manufacturers',

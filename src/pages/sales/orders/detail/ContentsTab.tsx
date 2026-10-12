@@ -54,7 +54,7 @@ export function ContentsTab({ draft, update, errors, m, ctx, hideDeliveries, spa
         label: (
           <div className="flex flex-col gap-0.5">
             <span className="text-xs opacity-60">{i.itemNo}</span>
-            <span>{i.name}</span>
+            <span>{i.description || i.name}</span>
           </div>
         ),
         text: `${i.itemNo} ${i.name} ${i.description}`,
@@ -131,7 +131,7 @@ export function ContentsTab({ draft, update, errors, m, ctx, hideDeliveries, spa
       };
 
       return (
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-1 whitespace-normal">
           <div className="flex flex-col">
             <Text variant="caption" className="wrap-break-word">{l.itemNo}</Text>
             <Text variant="small" className="wrap-break-word">{l.description}</Text>

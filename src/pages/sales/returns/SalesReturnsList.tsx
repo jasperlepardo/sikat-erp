@@ -8,7 +8,6 @@ import {
   Panel,
   PanelHeader,
   Table,
-  TableAmount,
   TableLink,
   TableStatus,
   TableSubcontent,
@@ -125,19 +124,25 @@ export function SalesReturnsList({ kind }: { kind: Kind }) {
   const srColumns: TableColumn<Row>[] = [
     { key: 'docNum', header: 'No.', sortable: true, cell: (r) => <TableLink onClick={() => open(r)}>{r.number}</TableLink> },
     { key: 'customerName', header: 'Customer', sortable: true, cell: (r) => <TableSubcontent subcopy={r.customerCode}>{r.customerName || '—'}</TableSubcontent> },
-    { key: 'postingDate', header: 'Posting date', sortable: true, cell: (r) => formatDate(r.postingDate) },
+    { key: 'postingDate', header: 'Posting date', align: 'end', cell: (r) => formatDate(r.postingDate) },
     { key: 'basedOn', header: 'Based on', cell: (r) => r.basedOn || <span className="text-muted">Entered by hand</span> },
-    { key: 'total', header: 'Total', sortable: true, cell: (r) => <TableAmount currency={r.currency}>{formatAmount(r.total)}</TableAmount> },
+    { key: 'total', header: 'Total', align: 'end', cell: (r) => `${r.currency} ${formatAmount(r.total)}` },
     { key: 'status', header: 'Status', sortable: true, cell: (r) => <TableStatus intent={intent[r.status]}>{r.status}</TableStatus> },
   ];
 
   const cmColumns: TableColumn<Row>[] = [
     { key: 'docNum', header: 'No.', sortable: true, cell: (r) => <TableLink onClick={() => open(r)}>{r.number}</TableLink> },
     { key: 'customerName', header: 'Customer', sortable: true, cell: (r) => <TableSubcontent subcopy={r.customerCode}>{r.customerName || '—'}</TableSubcontent> },
-    { key: 'postingDate', header: 'Posting date', sortable: true, cell: (r) => formatDate(r.postingDate) },
+    { key: 'postingDate', header: 'Posting date', align: 'end', cell: (r) => formatDate(r.postingDate) },
     { key: 'basedOn', header: 'Based on', cell: (r) => r.basedOn || '—' },
-    { key: 'total', header: 'Total', sortable: true, cell: (r) => <TableAmount currency={r.currency}>{formatAmount(r.total)}</TableAmount> },
-    { key: 'applied', header: 'Applied', cell: (r) => <TableAmount currency={r.currency}>{formatAmount(r.applied ?? 0)}</TableAmount> },
+    { key: 'total', header: 'Total', align: 'end', cell: (r) => `${r.currency} ${formatAmount(r.total)}` },
+    {
+      key: 'applied',
+      header: 'Applied',
+      align: 'end',
+      // Nothing applied yet: a muted dash, so applied memos stand out.
+      cell: (r) => (r.applied ? `${r.currency} ${formatAmount(r.applied)}` : <span className="text-(--color-text-caption)">-</span>),
+    },
     { key: 'status', header: 'Status', sortable: true, cell: (r) => <TableStatus intent={intent[r.status]}>{r.status}</TableStatus> },
   ];
 

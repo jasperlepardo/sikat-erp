@@ -273,7 +273,7 @@ function DprForm() {
             }
             actions={
               <>
-                <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(DPR_LIST_PATH)}>{added ? 'Back' : 'Cancel'}</Button>
+                {added ? null : <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(DPR_LIST_PATH)}>Cancel</Button>}
                 {menu.length ? <MoreMenu items={menu} /> : null}
                 <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>{saving ? 'Saving…' : added ? 'Save' : 'Add'}</Button>
               </>

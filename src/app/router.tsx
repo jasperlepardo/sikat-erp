@@ -22,6 +22,9 @@ const InventorySettingsPage = page(() => import('../pages/settings/inventory/Inv
 const BankingSettingsPage = page(() => import('../pages/settings/MasterSettingsPages'), 'BankingSettingsPage');
 const CompanySettingsPage = page(() => import('../pages/settings/MasterSettingsPages'), 'CompanySettingsPage');
 const SalesCrmSettingsPage = page(() => import('../pages/settings/MasterSettingsPages'), 'SalesCrmSettingsPage');
+const PeopleSettingsPage = page(() => import('../pages/settings/MasterSettingsPages'), 'PeopleSettingsPage');
+const EmployeeList = page(() => import('../pages/people/EmployeeList'), 'EmployeeList');
+const EmployeeDetail = page(() => import('../pages/people/detail/EmployeeDetail'), 'EmployeeDetail');
 const PurchasingSettingsPage = page(() => import('../pages/settings/purchasing/PurchasingSettingsPage'), 'PurchasingSettingsPage');
 const DocumentNumberingPage = page(() => import('../pages/settings/document-numbering/DocumentNumberingPage'), 'DocumentNumberingPage');
 const JournalPatternsPage = page(() => import('../pages/settings/journal-patterns/JournalPatternsPage'), 'JournalPatternsPage');
@@ -169,6 +172,9 @@ export const router = createHashRouter([
           { path: 'settings/sales-and-crm/:tab?/:recordId?', element: <SalesCrmSettingsPage /> },
           { path: 'settings/banking/:tab?/:recordId?', element: <BankingSettingsPage /> },
           { path: 'settings/company/:tab?/:recordId?', element: <CompanySettingsPage /> },
+          { path: 'settings/people/:tab?/:recordId?', element: <PeopleSettingsPage /> },
+          { path: 'people/employees', element: <EmployeeList /> },
+          { path: 'people/employees/:id', element: <EmployeeDetail /> },
           { path: 'inventory/warehouses-and-bins/:tab?/:recordId?', element: <WarehousesPage /> },
           { path: 'inventory/price-lists/:tab?/:recordId?', element: <PriceListsPage /> },
           { path: 'accounting/dashboard', element: <AccountingDashboard /> },

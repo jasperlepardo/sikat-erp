@@ -8,11 +8,11 @@ import {
   Panel,
   PanelHeader,
   Table,
-  TableAmount,
   TableLink,
   TableStatus,
   TableSubcontent,
   Text,
+  Tooltip,
   type TableColumn,
 } from '@jasperlepardo/sikat-design-system';
 import { dateField, linesField, masterField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
@@ -25,17 +25,23 @@ import { formatAmount } from '../../../services/format';
 import { taxCodes } from '../../../services/masterData';
 import { dnNumber, dnTotal, listDeliveries } from '../../../services/deliveries';
 import { useAsync } from '../../../services/useAsync';
+import { listSalesOrders, soNumber } from '../../../services/salesOrders';
 import { DN_STATUS_INTENT } from './detail/DeliveryDetail';
 import { DN_LIST_PATH } from './detail/types';
 
 export function DeliveryList() {
   const navigate = useNavigate();
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
-  const data = useAsync(() => Promise.all([listDeliveries(), taxCodes.list()]), []);
+  const data = useAsync(() => Promise.all([listDeliveries(), taxCodes.list(), listSalesOrders()]), []);
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
-  const [orders, codes] = data ?? [undefined, []];
+  const [orders, codes, salesOrders] = data ?? [undefined, [], []];
+  /** The sales orders a delivery was copied from, by number ("SO-2026-0021"). */
+  const baseOrders = (d: Delivery) => {
+    const ids = [...new Set(d.lines.filter((l) => l.baseType === 'SO' && l.baseId).map((l) => l.baseId))];
+    return ids.map((id) => salesOrders.find((o) => o.id === id)).filter((o) => o !== undefined).map(soNumber);
+  };
   const totalOf = (so: Delivery) => dnTotal(so, codes);
   const fields = [
     textField<Delivery>('no', 'No.', dnNumber),
@@ -94,18 +100,38 @@ export function DeliveryList() {
       ),
     },
     { key: 'customerName', header: 'Customer', sortable: true, cell: (so) => <TableSubcontent subcopy={so.customerCode}>{so.customerName || '—'}</TableSubcontent> },
-    { key: 'postingDate', header: 'Posting date', sortable: true, cell: (so) => formatDate(so.postingDate) },
+    { key: 'postingDate', header: 'Posting date', align: 'end', cell: (so) => formatDate(so.postingDate) },
     { key: 'trackingNo', header: 'Tracking no.', cell: (so) => so.trackingNo || '—' },
     {
       key: 'qty',
       header: 'Shipped',
-      cell: (so) => (
-        <TableSubcontent subcopy={so.orderNumber ? `Order ${so.orderNumber}` : `${so.lines.length} line${so.lines.length === 1 ? '' : 's'}`}>
-          {so.lines.reduce((n, l) => n + l.quantity, 0).toLocaleString('en-PH')}
-        </TableSubcontent>
-      ),
+      align: 'end',
+      cell: (so) => {
+        const shipped = so.lines.filter((l) => l.quantity > 0);
+        // Nothing shipped: a muted dash, so deliveries with stock on them stand out.
+        if (!shipped.length) return <span className="text-(--color-text-caption)">-</span>;
+        // Hover the quantity to see what was shipped, line by line, and the order it came from.
+        return (
+          <Tooltip
+            position="bottom"
+            align="end"
+            message={
+              <div className="flex flex-col gap-1">
+                {baseOrders(so).length ? <span className="font-semibold">From {baseOrders(so).join(', ')}</span> : null}
+                {shipped.map((l) => (
+                  <span key={l.id}>
+                    {l.quantity.toLocaleString('en-PH')} {l.uomCode} · {l.description || l.itemNo}
+                  </span>
+                ))}
+              </div>
+            }
+          >
+            {shipped.reduce((n, l) => n + l.quantity, 0).toLocaleString('en-PH')}
+          </Tooltip>
+        );
+      },
     },
-    { key: 'total', header: 'Total', sortable: true, cell: (so) => <TableAmount currency={so.currency}>{formatAmount(totalOf(so))}</TableAmount> },
+    { key: 'total', header: 'Total', align: 'end', cell: (so) => `${so.currency} ${formatAmount(totalOf(so))}` },
     { key: 'status', header: 'Status', sortable: true, cell: (so) => <TableStatus intent={DN_STATUS_INTENT[so.status]}>{so.status}</TableStatus> },
   ];
 

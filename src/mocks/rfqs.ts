@@ -202,7 +202,7 @@ const rl = (id: string, itemNo: string, requiredQty: number, patch: Partial<RfqL
     id,
     itemId: item.id,
     itemNo: item.itemNo,
-    description: item.name,
+    description: item.description || item.name,
     requiredQty,
     uomCode: item.purchasingUom,
     uomName: item.purchasingUom === 'pc' ? 'Piece' : item.purchasingUom,

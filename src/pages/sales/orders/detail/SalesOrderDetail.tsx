@@ -35,10 +35,10 @@ import { SettingsCard } from './SettingsCard';
 import { BpChannelCard } from './BpChannelCard';
 import { AssignmentCard } from './AssignmentCard';
 import { SoAttachmentsCard } from './SoAttachmentsCard';
-import { CustomerCard } from './CustomerCard';
-import { TotalsFooter } from './TotalsFooter';
+import { CustomerCard } from '../../shared/CustomerCard';
+import { TotalsFooter } from '../../shared/TotalsFooter';
 import { DeliverySubTab } from './DeliverySubTab';
-import { CustomerDetailsPanel } from './CustomerDetailsPanel';
+import { CustomerDetailsPanel } from '../../shared/CustomerDetailsPanel';
 
 type TabId = 'contents';
 const TAB_LABEL: Record<TabId, string> = { contents: 'Contents' };
@@ -376,13 +376,11 @@ function SalesOrderForm() {
             trailing={
               isNew ? undefined : <PrevNext path={SO_LIST_PATH} prevId={prevId} nextId={nextId} />
             }
-            tabs={<Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={PAGES.map((p) => ({ ...p, disabled: isNew && p.value !== 'details' }))} />}
+            tabs={isNew ? undefined : <Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={[...PAGES]} />}
             status={isNew ? undefined : <Badge size="small" intent={SO_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
             actions={
               <>
-                <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(SO_LIST_PATH)}>
-                  {ctx.readOnly ? 'Back' : 'Cancel'}
-                </Button>
+                {ctx.readOnly ? null : <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(SO_LIST_PATH)}>Cancel</Button>}
                 {menu.length ? <MoreMenu items={menu} /> : null}
                 <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
                   {saving ? 'Saving…' : ctx.added ? 'Update' : 'Add'}
@@ -447,32 +445,34 @@ function SalesOrderForm() {
                 </aside>
 
                 <div className="flex flex-col gap-2 lg:col-span-9">
-                  <fieldset disabled={ctx.readOnly} className="contents">
-                    <CustomerCard
+                  <CustomerCard
+                    customers={m.customers}
+                    customerId={draft.customerId}
+                    customer={customer}
+                    locked={ctx.added}
+                    error={errors.customerId}
+                    overCredit={!!overCredit}
+                    onPickCustomer={pickCustomer}
+                    onOpenDetails={() => setCustomerDetailsOpen(true)}
+                  />
+                  <Tabs
+                    variant="primary"
+                    value={contentTab}
+                    onValueChange={(v) => setContentTab(v as 'item' | 'delivery')}
+                    items={[
+                      { value: 'item', label: 'Item' },
+                      { value: 'delivery', label: 'Delivery' },
+                    ]}
+                  />
+                  {contentTab === 'item' ? (
+                    <ContentsTab
                       {...tabProps}
-                      overCredit={!!overCredit}
-                      onPickCustomer={pickCustomer}
-                      onOpenDetails={() => setCustomerDetailsOpen(true)}
+                      hideDeliveries
+                      cardFooter={<TotalsFooter {...tabProps} />}
                     />
-                    <Tabs
-                      variant="primary"
-                      value={contentTab}
-                      onValueChange={(v) => setContentTab(v as 'item' | 'delivery')}
-                      items={[
-                        { value: 'item', label: 'Item' },
-                        { value: 'delivery', label: 'Delivery' },
-                      ]}
-                    />
-                    {contentTab === 'item' ? (
-                      <ContentsTab
-                        {...tabProps}
-                        hideDeliveries
-                        cardFooter={<TotalsFooter {...tabProps} />}
-                      />
-                    ) : (
-                      <DeliverySubTab draft={draft} />
-                    )}
-                  </fieldset>
+                  ) : (
+                    <DeliverySubTab draft={draft} />
+                  )}
                 </div>
               </div>
             </Panel.Body>
@@ -480,12 +480,14 @@ function SalesOrderForm() {
         </Panel>
       </Form>
       <CustomerDetailsPanel
-        {...tabProps}
+        customer={customer}
+        draft={draft}
+        update={update}
+        readOnly={ctx.readOnly}
+        noun="order"
         open={customerDetailsOpen}
         onClose={() => setCustomerDetailsOpen(false)}
-        overCredit={!!overCredit}
-        openBalance={openBalance}
-        totalLc={totalLc}
+        credit={{ overCredit: !!overCredit, openBalance, totalLc }}
       />
     </>
   );

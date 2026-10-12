@@ -416,9 +416,7 @@ function RfqForm() {
             }
             actions={
               <>
-                <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(RFQ_LIST_PATH)}>
-                  {ctx.readOnly ? 'Back' : 'Cancel'}
-                </Button>
+                {ctx.readOnly ? null : <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(RFQ_LIST_PATH)}>Cancel</Button>}
                 {menu.length ? <MoreMenu items={menu} /> : null}
                 <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
                   {saving ? 'Saving…' : ctx.added ? 'Save' : 'Add'}

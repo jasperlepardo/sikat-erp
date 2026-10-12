@@ -1,23 +1,24 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { Button, Checkbox, Combobox, Icon, Link, Select, Text, TextField, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { Button, Card, Checkbox, Combobox, Icon, Link, Select, Text, TextField, type TableColumn } from '@jasperlepardo/sikat-design-system';
 import { DataTable } from '../../../../components/form/DataTable';
 import { MasterLookup } from '../../../../components/form/MasterLookup';
 import { newArLine, type ArLine } from '../../../../mocks/arInvoices';
 import type { Delivery } from '../../../../mocks/deliveries';
 import { itemUnits, itemsPerUom } from '../../../../mocks/items';
-import type { SalesOrder, SoDocType } from '../../../../mocks/salesOrders';
+import type { SalesOrder } from '../../../../mocks/salesOrders';
+import { accountText } from '../../../../mocks/chartOfAccounts';
 import { customerWithholds, shipsStock } from '../../../../services/arInvoices';
 import { dnInventoryQty, dnNumber } from '../../../../services/deliveries';
 import { formatAmount } from '../../../../services/format';
 import { isValidToday } from '../../../../services/items';
 import { isPriceListValid, priceListName } from '../../../../services/priceLists';
-import { lineNet, lineTax, openQty, soNumber } from '../../../../services/salesOrders';
+import { lineNet, lineTax, openQty, priceAfterDiscount, soNumber } from '../../../../services/salesOrders';
 import { priceListDef } from '../../../settings/masterDefs';
 import { warehouseOptions } from '../../../inventory/transfers/TransferLines';
 import { CopyPanel, type CopySourceType } from '../../../purchasing/shared/CopyPanel';
-import { asSoDraft } from '../../deliveries/detail/types';
-import { lineFromItem, linePricing } from '../../orders/detail/types';
+import { DN_LIST_PATH, asSoDraft } from '../../deliveries/detail/types';
+import { SO_LIST_PATH, lineFromItem, linePricing } from '../../orders/detail/types';
 import type { ArSectionProps } from './types';
 
 const num = (v: string) => (v === '' ? 0 : Number(v));
@@ -25,18 +26,30 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 
 export type CopyPick = { kind: 'DN'; doc: Delivery } | { kind: 'SO'; doc: SalesOrder };
 
-export function ArContents({ draft, update, errors, m, ctx, onCopy }: ArSectionProps & { onCopy: (from: CopyPick, picks: { lineId: string; qty: number }[]) => void }) {
+const GROUPS = { warehouse: 'Warehouse', priceListId: 'Price list', gross: 'Gross price', tax: 'Tax', wtax: 'WTax liable', commission: 'Commission', base: 'Base document' } as const;
+type Group = keyof typeof GROUPS;
+
+/** The invoice's lines, laid out like the sales order's Item table; service invoices bill amounts to revenue accounts. */
+export function ArContents({ draft, update, errors, m, ctx, onCopy, cardFooter }: ArSectionProps & { onCopy: (from: CopyPick, picks: { lineId: string; qty: number }[]) => void; cardFooter?: ReactNode }) {
   const [copying, setCopying] = useState(false);
-  const lines = draft.lines;
-  const ro = ctx.readOnly;
-  const service = draft.docType === 'Service';
+  const [editing, setEditing] = useState<Set<string>>(new Set());
+  const [addKey, setAddKey] = useState(0);
   const withholds = customerWithholds(ctx.customer);
+  // Until changed, WTax liable shows when the customer withholds (it can be picked after the table loads).
+  const [picked, setShown] = useState<Group[] | null>(null);
+  const shown = picked ?? (withholds ? ['wtax' as Group] : []);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const service = draft.docType === 'Service';
+  const is = (g: Group) => shown.includes(g) || (service && g === 'tax');
+  const lines = draft.lines;
+  const shownLines = lines.filter((l) => (service ? true : !!l.itemId));
+  const ro = ctx.readOnly;
   const itemOf = (l: ArLine) => m.items.find((i) => i.id === l.itemId);
   const patch = (id: string, p: Partial<ArLine>) => update({ lines: lines.map((l) => (l.id === id ? { ...l, ...p } : l)) });
   const err = (l: ArLine, f: string) => errors[`line:${l.id}:${f}`];
   const lc = (n: number) => formatAmount(n * ctx.fx);
   const rate = (l: ArLine) => ctx.rateOf(l.taxCode);
-  const taxOf = (l: ArLine) => lineTax(l as never, rate(l), 0);
+  const taxOf = (l: ArLine) => lineTax(l, rate(l), 0);
   const so = asSoDraft(draft as never);
   const taxOptions = m.tax.codes.filter((c) => c.direction === 'Sales' && c.active).map((c) => ({ value: c.code, label: `${c.code} (${ctx.rateOf(c.code)}%)` }));
   const revenueOptions = m.accounts.filter((a) => a.drawer === 'Revenue' && !a.title && a.active && !a.contra).map((a) => ({ value: a.code, label: `${a.code} ${a.name}` }));
@@ -75,16 +88,22 @@ export function ArContents({ draft, update, errors, m, ctx, onCopy }: ArSectionP
     },
   ];
 
+  // Sales items valid on the posting date.
   const itemOptions = (current: string) =>
     m.items
       .filter((i) => i.id === current || (i.salesItem && isValidToday(i, draft.postingDate)))
-      .map((i) => ({ value: i.id, label: <div className="flex flex-col gap-0.5"><span className="text-xs opacity-60">{i.itemNo}</span><span>{i.name}</span></div>, text: `${i.itemNo} ${i.name}` }));
-  const pickItem = (l: ArLine, itemId: string | null) => {
+      .map((i) => ({ value: i.id, label: <div className="flex flex-col gap-0.5"><span className="text-xs opacity-60">{i.itemNo}</span><span>{i.description || i.name}</span></div>, text: `${i.itemNo} ${i.name} ${i.description}` }));
+  const fromItem = (itemId: string, base: Partial<ArLine>) => {
     const item = m.items.find((i) => i.id === itemId);
-    if (!item) return patch(l.id, { itemId: '' });
-    const s = lineFromItem(item, so, ctx, m, { quantity: l.quantity });
-    patch(l.id, newArLine({ ...s, id: l.id, baseType: '', baseId: '', baseLineId: '', baseDocNo: '', baseRow: 0, wtaxLiable: withholds }));
+    if (!item) return undefined;
+    const s = lineFromItem(item, so, ctx, m, { quantity: base.quantity ?? 1 });
+    return newArLine({ ...s, ...(base.id ? { id: base.id } : {}), baseType: '', baseId: '', baseLineId: '', baseDocNo: '', baseRow: 0, wtaxLiable: withholds });
   };
+  const pickItem = (l: ArLine, itemId: string | null) => {
+    const line = itemId ? fromItem(itemId, { id: l.id, quantity: l.quantity }) : undefined;
+    patch(l.id, line ?? { itemId: '' });
+  };
+  /** Re-run pricing after a change, unless the price was typed over or comes from the base document. */
   const reprice = (l: ArLine, change: Partial<ArLine>) => {
     const item = itemOf(l);
     if (!item || l.baseId || !ctx.fx || l.priceSource === 'Manual') return patch(l.id, change);
@@ -97,186 +116,245 @@ export function ArContents({ draft, update, errors, m, ctx, onCopy }: ArSectionP
     patch(l.id, { unitPrice: round2(l.discountPct < 100 ? net / (1 - l.discountPct / 100) : net), priceSource: 'Manual' });
   };
 
-  const wtaxCol: TableColumn<ArLine> = {
-    key: 'wtax',
-    header: 'WTax liable',
-    cell: (l) =>
-      l.itemId || service ? <Checkbox aria-label={`WTax liable ${l.itemNo || l.description}`} disabled={ro || !withholds} checked={l.wtaxLiable} onChange={(e) => patch(l.id, { wtaxLiable: e.currentTarget.checked })} /> : null,
-  };
-  const totalsCol: TableColumn<ArLine> = {
-    key: 'totals',
-    header: 'Total / Gross (LC)',
-    cell: (l) =>
-      l.itemId || service ? (
-        <div className="flex flex-col whitespace-nowrap tabular-nums">
-          <Text variant="small">PHP {lc(lineNet(l as never))}</Text>
-          <Text variant="small" tone="muted">PHP {lc(lineNet(l as never) + taxOf(l))} gross</Text>
-        </div>
-      ) : null,
-  };
-  const taxCol: TableColumn<ArLine> = {
-    key: 'tax',
-    header: 'Tax code',
-    cell: (l) =>
-      l.itemId || service ? (
-        <div className="flex w-32 flex-col gap-1">
-          <Combobox aria-label="Tax code" disabled={ro} invalid={Boolean(err(l, 'taxCode'))} options={taxOptions} value={l.taxCode || null} onValueChange={(v) => patch(l.id, { taxCode: v ?? '' })} />
-          <Text variant="small" tone="muted">Tax PHP {lc(taxOf(l))}</Text>
-        </div>
-      ) : null,
-  };
+  const col = (key: string, header: ReactNode, cell: (l: ArLine) => ReactNode, group?: Group, align?: 'start' | 'end'): TableColumn<ArLine> & { group?: Group } => ({ key, header, cell, group, ...(align ? { align } : {}) });
 
-  const itemColumns: TableColumn<ArLine>[] = [
-    {
-      key: 'item',
-      header: 'Item / Description',
-      cell: (l) => {
-        const item = itemOf(l);
-        if (!item && !ro) return <div className="w-60"><Combobox aria-label="Item No." placeholder="Search items" options={itemOptions(l.itemId)} value={l.itemId || null} invalid={Boolean(err(l, 'item'))} onValueChange={(v) => pickItem(l, v)} /></div>;
+  const taxCol = col('tax', 'Tax code', (l) => {
+    if (ro) return (
+      <div className="flex flex-col gap-0.5">
+        <Text variant="small">{l.taxCode} ({rate(l)}%)</Text>
+        <Text variant="small" tone="muted">Tax PHP {lc(taxOf(l))}</Text>
+      </div>
+    );
+    return (
+      <div className="flex w-32 flex-col gap-1">
+        <Combobox aria-label="Tax code" invalid={Boolean(err(l, 'taxCode'))} options={taxOptions} value={l.taxCode || null} onValueChange={(v) => patch(l.id, { taxCode: v ?? '' })} />
+        <Text variant="small" tone="muted">Tax PHP {lc(taxOf(l))}</Text>
+      </div>
+    );
+  }, 'tax', 'end');
+  const totalCol = col('totals', 'Total (LC)', (l) => (
+    <Text variant="small" className="whitespace-nowrap tabular-nums">PHP {lc(lineNet(l))}</Text>
+  ), undefined, 'end');
+  const wtaxCol = col('wtax', 'WTax', (l) => (
+    <Checkbox aria-label={`WTax liable ${l.itemNo || l.description}`} disabled={ro || !withholds} checked={l.wtaxLiable} onChange={(e) => patch(l.id, { wtaxLiable: e.currentTarget.checked })} />
+  ), 'wtax');
+
+  const itemColumns = [
+    col('item', 'Item / Description', (l) => {
+      const item = itemOf(l);
+      if (!item || (editing.has(l.id) && !ro)) {
         return (
-          <div className="flex w-60 flex-col gap-1">
-            <Text variant="caption">{l.itemNo}</Text>
-            {ro ? <Text variant="small">{l.description}</Text> : <TextField aria-label="Item description" value={l.description} onChange={(e) => patch(l.id, { description: e.currentTarget.value })} />}
-            {!ro && !l.baseId ? <Link intent="primary" onClick={() => patch(l.id, { itemId: '', itemNo: '', description: '' })}>Change</Link> : null}
-          </div>
-        );
-      },
-    },
-    {
-      key: 'qty',
-      header: 'Qty / UoM',
-      cell: (l) => {
-        const item = itemOf(l);
-        if (!item) return null;
-        return (
-          <div className="flex w-40 shrink-0 flex-col gap-1 whitespace-normal">
-            <TextField aria-label="Quantity" type="number" min={0} readOnly={ro} invalid={Boolean(err(l, 'quantity'))} value={String(l.quantity)} onChange={(e) => reprice(l, { quantity: num(e.currentTarget.value) })} />
-            {l.baseId || ro ? (
-              <Text variant="small" tone="muted">{l.uomCode} · {l.uomName}</Text>
+          <div className="flex w-64 flex-col gap-1">
+            {item ? (
+              <TextField aria-label="Item description" value={l.description} onChange={(e) => patch(l.id, { description: e.currentTarget.value })} />
             ) : (
-              <Select aria-label="UoM code" options={itemUnits(item, 'sales').map((u) => ({ value: u.uom, label: u.uom }))} value={l.uomCode} onValueChange={(uomCode) => reprice(l, { uomCode, uomName: m.inv.uoms.find((u) => u.code === uomCode)?.name ?? uomCode, itemsPerUnit: itemsPerUom(item, uomCode) ?? 1 })} />
+              <Combobox aria-label="Item No." placeholder="Search items" options={itemOptions(l.itemId)} value={l.itemId || null} invalid={Boolean(err(l, 'item'))} onValueChange={(v) => pickItem(l, v)} />
             )}
+            {item ? (
+              <Link intent="primary" onClick={() => setEditing((s) => { const n = new Set(s); n.delete(l.id); return n; })}>
+                Done
+              </Link>
+            ) : null}
           </div>
         );
-      },
-    },
-    {
-      key: 'warehouse',
-      header: 'Whse',
-      cell: (l) => {
-        const item = itemOf(l);
-        if (!item) return null;
-        if (!item.inventoryItem) return <Text variant="small" tone="muted">Not stocked</Text>;
-        if (!shipsStock(l, m.items)) return <Text variant="small" tone="muted">{l.warehouse} · shipped</Text>;
-        const inWhse = item.warehouses.find((w) => w.code === l.warehouse)?.inStock ?? 0;
-        return (
-          <div className="flex w-44 shrink-0 flex-col gap-1 whitespace-normal">
-            <Combobox aria-label="Warehouse" disabled={ro} invalid={Boolean(err(l, 'warehouse'))} options={warehouseOptions(m.inv.warehouses, l.warehouse)} value={l.warehouse || null} onValueChange={(v) => patch(l.id, { warehouse: v ?? '' })} />
-            {ro ? null : <Text variant="small" tone={dnInventoryQty(l) > inWhse ? 'danger' : 'muted'}>{inWhse} {item.inventoryUom} in stock · ships now</Text>}
+      }
+      return (
+        <div className="flex flex-col gap-1 whitespace-normal">
+          <div className="flex flex-col">
+            <Text variant="caption" className="wrap-break-word">{l.itemNo}</Text>
+            <Text variant="small" className="wrap-break-word">{l.description}</Text>
           </div>
-        );
-      },
-    },
-    {
-      key: 'priceListId',
-      header: 'Price list',
-      cell: (l) =>
-        itemOf(l) ? (
-          l.baseId || ro ? <Text variant="small">{priceListName(l.priceListId)}</Text> : <MasterLookup def={priceListDef} fieldProps={{ 'aria-label': 'Price list', className: 'w-40' }} where={(r) => isPriceListValid(r, draft.postingDate)} value={l.priceListId} onChange={(v) => reprice({ ...l, priceSource: '' }, { priceListId: v })} />
-        ) : null,
-    },
-    {
-      key: 'pricing',
-      header: 'Unit price / Discount / Gross after disc.',
-      cell: (l) =>
-        itemOf(l) ? (
-          <div className="flex w-44 shrink-0 flex-col gap-1 whitespace-normal">
-            <TextField aria-label="Unit price" type="number" min={0} prefix={draft.currency} readOnly={ro} invalid={Boolean(err(l, 'unitPrice'))} value={String(l.unitPrice)} onChange={(e) => patch(l.id, { unitPrice: num(e.currentTarget.value), priceSource: 'Manual' })} />
-            <TextField aria-label="Discount %" type="number" min={0} suffix="%" readOnly={ro} value={String(l.discountPct)} onChange={(e) => patch(l.id, { discountPct: Math.min(100, num(e.currentTarget.value)), priceSource: 'Manual' })} />
-            <TextField aria-label="Gross price after discount" type="number" min={0} prefix="gross" readOnly={ro} value={String(grossAfter(l))} onChange={(e) => setGrossAfter(l, num(e.currentTarget.value))} />
-            <Text variant="small" tone="muted">{l.priceSource || '—'}</Text>
-          </div>
-        ) : null,
-    },
-    taxCol,
-    totalsCol,
-    wtaxCol,
-    {
-      key: 'commission',
-      header: 'Comm. %',
-      cell: (l) => (itemOf(l) ? <TextField aria-label="Commission %" type="number" min={0} suffix="%" className="w-24" readOnly={ro} value={String(l.commissionPct)} onChange={(e) => patch(l.id, { commissionPct: Math.min(100, num(e.currentTarget.value)) })} /> : null),
-    },
-    {
-      key: 'base',
-      header: 'Base document',
-      cell: (l) =>
-        l.baseId ? (
-          <div className="flex flex-col whitespace-nowrap">
-            <Text variant="small">{l.baseType === 'DN' ? 'Delivery' : 'Sales order'} {l.baseDocNo}</Text>
-            <Text variant="small" tone="muted">Row {l.baseRow}</Text>
-          </div>
-        ) : (
-          <Text variant="small" tone="muted">—</Text>
-        ),
-    },
-  ];
-
-  const serviceColumns: TableColumn<ArLine>[] = [
-    { key: 'description', header: 'Description', cell: (l) => <TextField aria-label="Description" className="w-72" readOnly={ro} invalid={Boolean(err(l, 'description'))} value={l.description} onChange={(e) => patch(l.id, { description: e.currentTarget.value })} /> },
-    { key: 'glAccount', header: 'G/L account', cell: (l) => <div className="w-60"><Combobox aria-label="G/L account" disabled={ro} invalid={Boolean(err(l, 'glAccount'))} options={revenueOptions} value={l.glAccount || null} onValueChange={(v) => patch(l.id, { glAccount: v ?? '' })} /></div> },
-    { key: 'amount', header: 'Amount', cell: (l) => <TextField aria-label="Amount" type="number" min={0} prefix={draft.currency} className="w-40" readOnly={ro} invalid={Boolean(err(l, 'unitPrice'))} value={String(l.unitPrice)} onChange={(e) => patch(l.id, { unitPrice: num(e.currentTarget.value), quantity: 1, priceSource: 'Manual' })} /> },
-    taxCol,
-    totalsCol,
-    wtaxCol,
-  ];
-
-  const columns = service ? serviceColumns : itemColumns;
-  const hasLines = lines.some((l) => l.itemId || l.description);
-
-  return (
-    <>
-      <DataTable
-        variant="card"
-        noPagination
-        icon="receipt"
-        title="Contents"
-        description={errors.lines ?? (service ? `Services billed by amount, net of VAT, to revenue accounts.` : `Prices net of VAT in ${draft.currency}. Lines from a delivery bill what was shipped; other stocked lines also ship the stock when the invoice is added.`)}
-        rows={lines}
-        getRowId={(l) => l.id}
-        columns={columns}
-        unsortable={columns.map((c) => c.key).filter((k) => k !== 'item')}
-        sortValue={(l) => l.itemNo.toLowerCase()}
-        onRemove={ro ? undefined : (picked) => update({ lines: lines.filter((l) => !picked.includes(l)) })}
-        actions={
-          ro ? null : (
-            <div className="flex items-center gap-1">
-              <Button type="button" size="small" variant="outline" leadingIcon={<Icon size={16}>content_copy</Icon>} disabled={!dns.length && !sos.length} onClick={() => setCopying(true)}>
-                Copy from
-              </Button>
-              <Button
-                type="button"
-                size="small"
-                intent="primary"
-                variant="solid"
-                leadingIcon={<Icon size={16}>add</Icon>}
-                disabled={!draft.customerId}
-                onClick={() => update({ lines: [...lines, newArLine(service ? { taxCode: '31', glAccount: '4030', priceSource: 'Manual', wtaxLiable: withholds } : { wtaxLiable: withholds })] })}
-              >
-                Add line
-              </Button>
+          {ro ? null : (
+            <div className="flex gap-3">
+              <Link intent="primary" onClick={() => setEditing((s) => new Set(s).add(l.id))}>
+                Edit
+              </Link>
+              {/* A copied line stays its base document's item. */}
+              {l.baseId ? null : (
+                <Link intent="primary" onClick={() => patch(l.id, { itemId: '', itemNo: '', description: '' })}>
+                  Change
+                </Link>
+              )}
             </div>
-          )
-        }
-        empty={<Text variant="small" tone={errors.lines ? 'danger' : 'muted'}>{draft.customerId ? 'Copy from a delivery or sales order, or add lines.' : 'Pick a customer, or copy from a delivery or sales order.'}</Text>}
-      >
-        <div className="flex flex-wrap items-center gap-2">
-          <Text variant="small" tone="muted">Item/Service type</Text>
-          <Select aria-label="Item/Service type" className="w-36" disabled={ctx.added || hasLines} options={(['Item', 'Service'] as SoDocType[]).map((t) => ({ value: t, label: t }))} value={draft.docType} onValueChange={(docType) => update({ docType: docType as SoDocType, lines: [] })} />
+          )}
+        </div>
+      );
+    }),
+    col('qty', 'Qty / UoM', (l) => {
+      const item = itemOf(l);
+      if (!item) return null;
+      if (ro) return (
+        <Text variant="small" className="whitespace-nowrap tabular-nums">
+          {l.quantity.toLocaleString('en-PH')} {l.uomName}
+        </Text>
+      );
+      return (
+        <div className="flex w-40 shrink-0 flex-col gap-1 whitespace-normal">
+          <TextField aria-label="Quantity" type="number" min={0} invalid={Boolean(err(l, 'quantity'))} value={String(l.quantity)} onChange={(e) => reprice(l, { quantity: num(e.currentTarget.value) })} />
+          {l.baseId ? null : (
+            <Select aria-label="UoM code" options={itemUnits(item, 'sales').map((u) => ({ value: u.uom, label: u.uom }))} value={l.uomCode} onValueChange={(uomCode) => reprice(l, { uomCode, uomName: m.inv.uoms.find((u) => u.code === uomCode)?.name ?? uomCode, itemsPerUnit: itemsPerUom(item, uomCode) ?? 1 })} />
+          )}
           <Text variant="small" tone="muted">
-            {withholds ? `${ctx.customer?.name} withholds tax — WTax liable lines default on.` : ctx.customer ? `${ctx.customer.name} doesn’t withhold.` : ''}
+            {l.uomName}
+            {l.uomCode === item.inventoryUom ? ' · inventory UoM' : ` · ${l.itemsPerUnit} ${item.inventoryUom} each`}
           </Text>
         </div>
-      </DataTable>
+      );
+    }, undefined, 'end'),
+    col('warehouse', 'Whse', (l) => {
+      const item = itemOf(l);
+      if (!item) return null;
+      if (!item.inventoryItem) return <Text variant="small" tone="muted">Not stocked</Text>;
+      if (!shipsStock(l, m.items)) return <Text variant="small" tone="muted">{l.warehouse} · shipped</Text>;
+      if (ro) return <Text variant="small">{l.warehouse || '—'}</Text>;
+      const inWhse = item.warehouses.find((w) => w.code === l.warehouse)?.inStock ?? 0;
+      return (
+        <div className="flex w-44 shrink-0 flex-col gap-1 whitespace-normal">
+          <Combobox aria-label="Warehouse" invalid={Boolean(err(l, 'warehouse'))} options={warehouseOptions(m.inv.warehouses, l.warehouse)} value={l.warehouse || null} onValueChange={(v) => patch(l.id, { warehouse: v ?? '' })} />
+          <Text variant="small" tone={dnInventoryQty(l) > inWhse ? 'danger' : 'muted'}>{inWhse} {item.inventoryUom} in stock · ships now</Text>
+        </div>
+      );
+    }, 'warehouse'),
+    col('priceListId', 'Price list', (l) => {
+      if (!itemOf(l)) return null;
+      if (l.baseId || ro) return <Text variant="small">{priceListName(l.priceListId) || '—'}</Text>;
+      return <MasterLookup def={priceListDef} fieldProps={{ 'aria-label': 'Price list', className: 'w-40' }} where={(r) => isPriceListValid(r, draft.postingDate)} value={l.priceListId} onChange={(v) => reprice({ ...l, priceSource: '' }, { priceListId: v })} />;
+    }, 'priceListId'),
+    col('pricing', 'Unit price / Discount', (l) => {
+      if (!itemOf(l)) return null;
+      if (ro) return (
+        <div className="flex flex-col whitespace-nowrap tabular-nums">
+          <Text variant="small">{draft.currency} {formatAmount(l.discountPct ? priceAfterDiscount(l) : l.unitPrice)}</Text>
+          {l.discountPct ? <Text variant="small" tone="muted" className="line-through">{draft.currency} {formatAmount(l.unitPrice)}</Text> : null}
+        </div>
+      );
+      return (
+        <div className="flex w-44 shrink-0 flex-col gap-1 whitespace-normal">
+          <TextField aria-label="Unit price" type="number" min={0} prefix={draft.currency} invalid={Boolean(err(l, 'unitPrice'))} value={String(l.unitPrice)} onChange={(e) => patch(l.id, { unitPrice: num(e.currentTarget.value), priceSource: 'Manual' })} />
+          <TextField aria-label="Discount %" type="number" min={0} suffix="%" value={String(l.discountPct)} onChange={(e) => patch(l.id, { discountPct: Math.min(100, num(e.currentTarget.value)), priceSource: 'Manual' })} />
+          <Text variant="small" tone="muted">
+            {l.priceSource || '—'}
+            {l.priceSource === 'Manual' && !l.baseId ? (
+              <>
+                {' · '}
+                <Link intent="primary" onClick={() => reprice({ ...l, priceSource: '' }, {})}>
+                  Reprice
+                </Link>
+              </>
+            ) : null}
+          </Text>
+        </div>
+      );
+    }, undefined, 'end'),
+    col('gross', 'Gross after disc.', (l) => {
+      if (!itemOf(l)) return null;
+      if (ro) return <Text variant="small" className="whitespace-nowrap tabular-nums">{draft.currency} {formatAmount(grossAfter(l))}</Text>;
+      return <TextField aria-label="Gross price after discount" type="number" min={0} prefix={draft.currency} className="w-40" value={String(grossAfter(l))} onChange={(e) => setGrossAfter(l, num(e.currentTarget.value))} />;
+    }, 'gross', 'end'),
+    taxCol,
+    totalCol,
+    wtaxCol,
+    col('commission', 'Comm. %', (l) => {
+      if (!itemOf(l)) return null;
+      if (ro) return <Text variant="small" className="tabular-nums">{l.commissionPct ? `${l.commissionPct}%` : '—'}</Text>;
+      return <TextField aria-label="Commission %" type="number" min={0} suffix="%" className="w-24" value={String(l.commissionPct)} onChange={(e) => patch(l.id, { commissionPct: Math.min(100, num(e.currentTarget.value)) })} />;
+    }, 'commission', 'end'),
+    col('base', 'Base document', (l) => {
+      if (!l.baseId) return <Text variant="small" tone="muted">—</Text>;
+      const path = l.baseType === 'DN' ? DN_LIST_PATH : SO_LIST_PATH;
+      return (
+        <div className="flex flex-col whitespace-nowrap">
+          <Link intent="primary" href={`#${path}/${l.baseId}`}>{l.baseDocNo}</Link>
+          <Text variant="small" tone="muted">{l.baseType === 'DN' ? 'Delivery' : 'Sales order'} · row {l.baseRow}</Text>
+        </div>
+      );
+    }, 'base'),
+  ];
+
+  const serviceColumns = [
+    col('description', 'Description', (l) =>
+      ro ? <Text variant="small" className="whitespace-normal">{l.description}</Text> : <TextField aria-label="Description" className="w-72" invalid={Boolean(err(l, 'description'))} value={l.description} onChange={(e) => patch(l.id, { description: e.currentTarget.value })} />,
+    ),
+    col('glAccount', 'G/L account', (l) =>
+      ro ? <Text variant="small">{l.glAccount ? accountText(l.glAccount, m.accounts) : '—'}</Text> : <div className="w-60"><Combobox aria-label="G/L account" invalid={Boolean(err(l, 'glAccount'))} options={revenueOptions} value={l.glAccount || null} onValueChange={(v) => patch(l.id, { glAccount: v ?? '' })} /></div>,
+    ),
+    col('amount', 'Amount', (l) =>
+      ro ? <Text variant="small" className="whitespace-nowrap tabular-nums">{draft.currency} {formatAmount(l.unitPrice)}</Text> : <TextField aria-label="Amount" type="number" min={0} prefix={draft.currency} className="w-40" invalid={Boolean(err(l, 'unitPrice'))} value={String(l.unitPrice)} onChange={(e) => patch(l.id, { unitPrice: num(e.currentTarget.value), quantity: 1, priceSource: 'Manual' })} />,
+    undefined, 'end'),
+    taxCol,
+    totalCol,
+    wtaxCol,
+  ];
+
+  const columns: TableColumn<ArLine>[] = (service ? serviceColumns : itemColumns).filter((c) => !c.group || is(c.group));
+  const groups = (Object.keys(GROUPS) as Group[]).filter((g) => !service || g === 'wtax');
+
+  const copyButton = (
+    <Button type="button" size="small" variant="outline" leadingIcon={<Icon size={16}>content_copy</Icon>} disabled={!dns.length && !sos.length} onClick={() => setCopying(true)}>
+      Copy from
+    </Button>
+  );
+  const addRow = ro ? undefined : service ? (
+    <div className="flex items-center justify-between gap-2">
+      <Link leadingIcon={<Icon size={20}>add</Icon>} disabled={!draft.customerId} onClick={() => update({ lines: [...lines, newArLine({ taxCode: '31', glAccount: '4030', priceSource: 'Manual', wtaxLiable: withholds })] })}>
+        Add service line
+      </Link>
+      {copyButton}
+    </div>
+  ) : (
+    <div className="flex items-center gap-2">
+      <div className="flex-1">
+        <Combobox
+          key={addKey}
+          aria-label="Search items to add a line"
+          placeholder={draft.customerId ? 'Search items to add a line…' : 'Pick a customer to add items'}
+          disabled={!draft.customerId}
+          options={itemOptions('')}
+          value={null}
+          onValueChange={(id) => {
+            const line = id ? fromItem(id, {}) : undefined;
+            if (!line) return;
+            update({ lines: [...shownLines, line] });
+            setAddKey((k) => k + 1);
+          }}
+        />
+      </div>
+      {copyButton}
+    </div>
+  );
+
+  return (
+    <div className="flex flex-col gap-2">
+      {settingsOpen ? (
+        <Card>
+          <Card.Header icon={<Icon size={24}>tune</Icon>}>Columns</Card.Header>
+          <Card.Content>
+            <div className="flex flex-wrap gap-x-6 gap-y-3">
+              {groups.map((g) => (
+                <Checkbox key={g} checked={shown.includes(g)} onChange={(e) => setShown(e.currentTarget.checked ? [...shown, g] : shown.filter((x) => x !== g))}>
+                  {GROUPS[g]}
+                </Checkbox>
+              ))}
+            </div>
+          </Card.Content>
+        </Card>
+      ) : null}
+      {errors.lines ? <Text variant="small" tone="danger">{errors.lines}</Text> : null}
+      <div className={ro ? '[&_.sikat-table__row:hover>.sikat-table__td]:[box-shadow:none]' : undefined}>
+        <DataTable
+          variant="plain"
+          noPagination
+          rows={shownLines}
+          getRowId={(l) => l.id}
+          columns={columns}
+          unsortable={columns.map((c) => c.key)}
+          onRemove={ro ? undefined : (picked) => update({ lines: lines.filter((l) => !picked.includes(l)) })}
+          onColumnSettings={() => setSettingsOpen(!settingsOpen)}
+          empty={<Text variant="small" tone="muted">No lines yet.</Text>}
+          spanRow={addRow}
+          cardFooter={cardFooter}
+        />
+      </div>
       {copying
         ? createPortal(
             <CopyPanel
@@ -297,6 +375,6 @@ export function ArContents({ draft, update, errors, m, ctx, onCopy }: ArSectionP
             document.body,
           )
         : null}
-    </>
+    </div>
   );
 }

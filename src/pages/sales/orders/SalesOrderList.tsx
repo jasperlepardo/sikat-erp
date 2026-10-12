@@ -8,11 +8,11 @@ import {
   Panel,
   PanelHeader,
   Table,
-  TableAmount,
   TableLink,
   TableStatus,
   TableSubcontent,
   Text,
+  Tooltip,
   type TableColumn,
 } from '@jasperlepardo/sikat-design-system';
 import { dateField, linesField, masterField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
@@ -92,18 +92,38 @@ export function SalesOrderList() {
       ),
     },
     { key: 'customerName', header: 'Customer', sortable: true, cell: (so) => <TableSubcontent subcopy={so.customerCode}>{so.customerName || '—'}</TableSubcontent> },
-    { key: 'postingDate', header: 'Posting date', sortable: true, cell: (so) => formatDate(so.postingDate) },
-    { key: 'deliveryDate', header: 'Delivery date', sortable: true, cell: (so) => (so.deliveryDate ? formatDate(so.deliveryDate) : '—') },
+    { key: 'postingDate', header: 'Posting date', align: 'end', cell: (so) => formatDate(so.postingDate) },
+    { key: 'deliveryDate', header: 'Delivery date', align: 'end', cell: (so) => (so.deliveryDate ? formatDate(so.deliveryDate) : '—') },
     {
       key: 'open',
       header: 'Open qty',
-      cell: (so) => (
-        <TableSubcontent subcopy={`${so.lines.length} line${so.lines.length === 1 ? '' : 's'}`}>
-          {so.docType === 'Service' ? 'Service' : so.lines.reduce((n, l) => n + openQty(l), 0).toLocaleString('en-PH')}
-        </TableSubcontent>
-      ),
+      align: 'end',
+      cell: (so) => {
+        if (so.docType === 'Service') return 'Service';
+        const open = so.lines.filter((l) => openQty(l) > 0);
+        const total = open.reduce((n, l) => n + openQty(l), 0).toLocaleString('en-PH');
+        // Nothing open (delivered, cancelled or closed): a muted dash, so open orders stand out.
+        if (!open.length) return <span className="text-(--color-text-caption)">-</span>;
+        // Hover the quantity to see what's still open, line by line.
+        return (
+          <Tooltip
+            position="bottom"
+            message={
+              <div className="flex flex-col gap-1">
+                {open.map((l) => (
+                  <span key={l.id}>
+                    {openQty(l).toLocaleString('en-PH')} {l.uomCode} · {l.description || l.itemNo}
+                  </span>
+                ))}
+              </div>
+            }
+          >
+            {total}
+          </Tooltip>
+        );
+      },
     },
-    { key: 'total', header: 'Total', sortable: true, cell: (so) => <TableAmount currency={so.currency}>{formatAmount(totalOf(so))}</TableAmount> },
+    { key: 'total', header: 'Total', align: 'end', cell: (so) => `${so.currency} ${formatAmount(totalOf(so))}` },
     { key: 'status', header: 'Status', sortable: true, cell: (so) => <TableStatus intent={SO_STATUS_INTENT[so.status]}>{so.status}</TableStatus> },
   ];
 

@@ -1,24 +1,42 @@
+import type { ReactNode } from 'react';
 import { Button, Card, CardField, Icon, Panel, PanelHeader, SidePanel, Text } from '@jasperlepardo/sikat-design-system';
-import { formatAddress, type PostalAddress } from '../../../../mocks/address';
-import { contactName, type PartnerAddress } from '../../../../mocks/partners';
-import { INDICATORS } from '../../../../mocks/purchaseOrders';
-import { countryName } from '../../../../services/partnerMasters';
-import { formatAmount } from '../../../../services/format';
-import { Fields, Section, bind } from '../../../../components/form/fields';
-import type { SoTabProps } from './types';
+import { formatAddress, type PostalAddress } from '../../../mocks/address';
+import { contactName, type Partner, type PartnerAddress } from '../../../mocks/partners';
+import { INDICATORS } from '../../../mocks/purchaseOrders';
+import { countryName } from '../../../services/partnerMasters';
+import { formatAmount } from '../../../services/format';
+import { Fields, Section, bind } from '../../../components/form/fields';
 
-interface CustomerDetailsPanelProps extends SoTabProps {
-  open: boolean;
-  onClose: () => void;
-  overCredit: boolean;
-  openBalance: number;
-  totalLc: number;
+/** The header fields the panel edits; sales orders and quotations both carry them. */
+export interface CustomerDetailsFields {
+  contactId: string;
+  customerRef: string;
+  shipTo: string;
+  billTo: string;
+  indicator: string;
+  orderNumber: string;
 }
 
-export function CustomerDetailsPanel({ draft, update, ctx, open, onClose, overCredit, openBalance, totalLc }: CustomerDetailsPanelProps) {
-  if (!open || !ctx.customer) return null;
+interface CustomerDetailsPanelProps {
+  customer: Partner | undefined;
+  draft: CustomerDetailsFields;
+  update: (patch: Partial<CustomerDetailsFields>) => void;
+  readOnly: boolean;
+  /** What the document is called in the credit note: "order", "quotation". */
+  noun: string;
+  open: boolean;
+  onClose: () => void;
+  /** The credit bar; left out where the document adds nothing to what the customer owes (a delivery against an order). */
+  credit?: { overCredit: boolean; openBalance: number; totalLc: number };
+  orderNumberHint?: string;
+  /** Sections only this document has, after Order details. */
+  children?: ReactNode;
+}
 
-  const customer = ctx.customer;
+/** The customer side panel on a sales document: credit, contact, addresses and order details. */
+export function CustomerDetailsPanel({ customer, draft, update, readOnly, noun, open, onClose, credit, orderNumberHint = 'Internal or chain-store order reference.', children }: CustomerDetailsPanelProps) {
+  if (!open || !customer) return null;
+
   const h = bind(draft, update);
   const customerAddresses = customer.addresses ?? [];
 
@@ -38,7 +56,7 @@ export function CustomerDetailsPanel({ draft, update, ctx, open, onClose, overCr
     if (!current || customerAddresses.some((a) => addrText(a) === current)) return known;
     const lines = current.split('\n').filter(Boolean);
     const rest = lines.slice(1).join(', ');
-    return [{ value: '__custom__', label: lines[0] ?? 'Address on this order', icon: locationIcon, fields: rest ? [{ label: 'Address', value: rest }] : [] }, ...known];
+    return [{ value: '__custom__', label: lines[0] ?? `Address on this ${noun}`, icon: locationIcon, fields: rest ? [{ label: 'Address', value: rest }] : [] }, ...known];
   };
   const addrPicked = (current: string) => customerAddresses.find((a) => addrText(a) === current)?.id ?? (current ? '__custom__' : '');
   const fillAddr = (field: 'shipTo' | 'billTo', id: string) => {
@@ -59,42 +77,42 @@ export function CustomerDetailsPanel({ draft, update, ctx, open, onClose, overCr
         }
       />
       <Panel.Body>
-        {customer.creditLimit > 0 ? (
+        {credit && customer.creditLimit > 0 ? (
           <Card>
             <Card.Header icon={<Icon size={24}>credit_score</Icon>}>Credit</Card.Header>
             <Card.Content>
               <div className="flex items-baseline justify-between gap-2">
-                <Text variant="h3" as="p" tone={overCredit ? 'danger' : undefined}>
-                  PHP {formatAmount(openBalance + totalLc)}
+                <Text variant="h3" as="p" tone={credit.overCredit ? 'danger' : undefined}>
+                  PHP {formatAmount(credit.openBalance + credit.totalLc)}
                 </Text>
-                <Text variant="small" tone={overCredit ? 'danger' : 'muted'}>
-                  {Math.round(((openBalance + totalLc) / customer.creditLimit) * 100)}% of PHP {formatAmount(customer.creditLimit)}
+                <Text variant="small" tone={credit.overCredit ? 'danger' : 'muted'}>
+                  {Math.round(((credit.openBalance + credit.totalLc) / customer.creditLimit) * 100)}% of PHP {formatAmount(customer.creditLimit)}
                 </Text>
               </div>
               <div className="flex h-2 overflow-hidden rounded-full" style={{ backgroundColor: 'var(--color-bg-neutral-subtle)' }}>
-                {overCredit ? (
+                {credit.overCredit ? (
                   <div className="h-full w-full rounded-full" style={{ backgroundColor: 'var(--color-bg-danger)' }} />
                 ) : (
                   <>
-                    <div className="h-full" style={{ width: `${Math.min((openBalance / customer.creditLimit) * 100, 100)}%`, backgroundColor: 'var(--color-bg-primary)' }} />
-                    <div className="h-full" style={{ width: `${Math.min((totalLc / customer.creditLimit) * 100, Math.max(0, 100 - (openBalance / customer.creditLimit) * 100))}%`, backgroundColor: 'var(--color-bg-primary-muted)' }} />
+                    <div className="h-full" style={{ width: `${Math.min((credit.openBalance / customer.creditLimit) * 100, 100)}%`, backgroundColor: 'var(--color-bg-primary)' }} />
+                    <div className="h-full" style={{ width: `${Math.min((credit.totalLc / customer.creditLimit) * 100, Math.max(0, 100 - (credit.openBalance / customer.creditLimit) * 100))}%`, backgroundColor: 'var(--color-bg-primary-muted)' }} />
                   </>
                 )}
               </div>
               <div className="flex justify-between gap-2">
-                <Text variant="small" tone={overCredit ? 'danger' : 'muted'}>
-                  {overCredit
-                    ? `Over limit by PHP ${formatAmount(openBalance + totalLc - customer.creditLimit)}`
-                    : `PHP ${formatAmount(customer.creditLimit - openBalance - totalLc)} available`}
+                <Text variant="small" tone={credit.overCredit ? 'danger' : 'muted'}>
+                  {credit.overCredit
+                    ? `Over limit by PHP ${formatAmount(credit.openBalance + credit.totalLc - customer.creditLimit)}`
+                    : `PHP ${formatAmount(customer.creditLimit - credit.openBalance - credit.totalLc)} available`}
                 </Text>
-                {!overCredit && totalLc > 0 ? (
-                  <Text variant="small" tone="muted">this order PHP {formatAmount(totalLc)}</Text>
+                {!credit.overCredit && credit.totalLc > 0 ? (
+                  <Text variant="small" tone="muted">this {noun} PHP {formatAmount(credit.totalLc)}</Text>
                 ) : null}
               </div>
             </Card.Content>
           </Card>
         ) : null}
-        <fieldset disabled={ctx.readOnly} className="contents">
+        <fieldset disabled={readOnly} className="contents">
           <Section icon="person" title="Contact">
             <Fields cols={1}>
               <CardField
@@ -114,7 +132,7 @@ export function CustomerDetailsPanel({ draft, update, ctx, open, onClose, overCr
                 value={draft.contactId}
                 onValueChange={(contactId) => update({ contactId: contactId ?? '' })}
                 placeholder="Select a contact person"
-                readOnly={ctx.readOnly}
+                readOnly={readOnly}
               />
               {h.text('customerRef', 'Customer ref. no.', { hint: "The customer's own PO or reference number." })}
             </Fields>
@@ -127,7 +145,7 @@ export function CustomerDetailsPanel({ draft, update, ctx, open, onClose, overCr
                 value={addrPicked(draft.shipTo)}
                 onValueChange={(v) => fillAddr('shipTo', v)}
                 placeholder="Select a delivery address"
-                readOnly={ctx.readOnly}
+                readOnly={readOnly}
               />
               <CardField
                 label="Bill to"
@@ -135,7 +153,7 @@ export function CustomerDetailsPanel({ draft, update, ctx, open, onClose, overCr
                 value={addrPicked(draft.billTo)}
                 onValueChange={(v) => fillAddr('billTo', v)}
                 placeholder="Select a billing address"
-                readOnly={ctx.readOnly}
+                readOnly={readOnly}
               />
               {!customerAddresses.length ? (
                 <Text variant="small" tone="muted">
@@ -147,9 +165,10 @@ export function CustomerDetailsPanel({ draft, update, ctx, open, onClose, overCr
           <Section icon="tune" title="Order details">
             <Fields cols={1}>
               {h.choose('indicator', 'Indicator', [{ value: '', label: '— None —' }, ...INDICATORS.map((v) => ({ value: v, label: v }))])}
-              {h.text('orderNumber', 'Order number', { hint: 'Internal or chain-store order reference.' })}
+              {h.text('orderNumber', 'Order number', { hint: orderNumberHint })}
             </Fields>
           </Section>
+          {children}
         </fieldset>
       </Panel.Body>
     </SidePanel>

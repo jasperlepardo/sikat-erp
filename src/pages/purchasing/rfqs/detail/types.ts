@@ -100,7 +100,7 @@ export function lineFromItem(item: Item, draft: RfqDraft, ctx: RfqContext, m: Rf
     ...base,
     itemId: item.id,
     itemNo: item.itemNo,
-    description: item.name,
+    description: item.description || item.name,
     uomCode: item.purchasingUom,
     uomName: uom?.name ?? item.purchasingUom,
     itemsPerUnit: itemsPerUom(item, item.purchasingUom) ?? 1,

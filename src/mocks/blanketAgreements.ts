@@ -178,7 +178,7 @@ const seedLine = (id: string, itemId: string, plannedQty: number, patch: Partial
     id,
     itemId,
     itemNo: item.itemNo,
-    description: item.name,
+    description: item.description || item.name,
     itemGroupId: item.itemGroupId,
     plannedQty,
     unitPrice: round2(item.basePrice / 1.12),

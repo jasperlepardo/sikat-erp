@@ -241,7 +241,7 @@ function QuotationForm() {
     const base: Partial<QuoteLine> = {
       itemId: item.id,
       itemNo: item.itemNo,
-      description: item.name,
+      description: item.description || item.name,
       uomCode: item.salesUom,
       uomName: uom?.name ?? item.salesUom,
       itemsPerUnit: itemsPerUom(item, item.salesUom) ?? 1,
@@ -445,9 +445,7 @@ function QuotationForm() {
           }
           actions={
             <>
-              <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(QT_LIST_PATH)}>
-                {readOnly ? 'Back' : 'Cancel'}
-              </Button>
+              {readOnly ? null : <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(QT_LIST_PATH)}>Cancel</Button>}
               {menu.length ? <MoreMenu items={menu} /> : null}
               <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
                 {saving ? 'Saving…' : added ? 'Save' : 'Add'}

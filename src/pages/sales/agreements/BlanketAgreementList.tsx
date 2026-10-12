@@ -115,24 +115,25 @@ export function BlanketAgreementList() {
     {
       key: 'description',
       header: 'Description',
-      cell: (ba) => ba.description || <Text tone="muted">—</Text>,
+      // Cells don't wrap, so a long description would push Planned total off the card: let it wrap.
+      cell: (ba) => (ba.description ? <span className="block whitespace-normal">{ba.description}</span> : <Text tone="muted">—</Text>),
     },
     {
       key: 'startDate',
       header: 'Start date',
-      sortable: true,
+      align: 'end',
       cell: (ba) => formatDate(ba.startDate),
     },
     {
       key: 'endDate',
       header: 'End date',
-      sortable: true,
+      align: 'end',
       cell: (ba) => ba.endDate ? formatDate(ba.endDate) : <Text tone="muted">—</Text>,
     },
     {
       key: 'total',
       header: 'Planned total',
-      sortable: true,
+      align: 'end',
       cell: (ba) => {
         const totals = baTotals(ba);
         return <span className="tabular-nums">{ba.currency} {formatAmount(totals.plannedTotal)}</span>;

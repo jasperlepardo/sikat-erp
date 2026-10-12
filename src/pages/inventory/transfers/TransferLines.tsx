@@ -108,7 +108,7 @@ export function TransferLines({
         label: (
           <div className="flex flex-col gap-0.5">
             <span className="text-xs opacity-60">{i.itemNo}</span>
-            <span>{i.name}</span>
+            <span>{i.description || i.name}</span>
             <span className="text-xs opacity-60">
               {inStockAt(i, draft.fromWarehouse)} {i.inventoryUom} in {draft.fromWarehouse}
             </span>

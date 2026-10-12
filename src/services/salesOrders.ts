@@ -34,9 +34,12 @@ export const soNumber = (so: Pick<SalesOrder, 'seriesId' | 'docNum' | 'postingDa
 export const openQty = (l: SoLine) => (l.status === 'Closed' ? 0 : Math.max(0, l.quantity - l.deliveredQty));
 /** Quantity × Items per Unit. */
 export const inventoryQty = (l: SoLine, qty = l.quantity) => qty * (l.itemsPerUnit || 1);
-export const priceAfterDiscount = (l: SoLine) => l.unitPrice * (1 - l.discountPct / 100);
+/** The pricing fields of a line; quotation lines carry them too. */
+type PricedLine = Pick<SoLine, 'quantity' | 'unitPrice' | 'discountPct'>;
+
+export const priceAfterDiscount = (l: PricedLine) => l.unitPrice * (1 - l.discountPct / 100);
 /** Total (LC basis): quantity × price after discount, in the document currency. */
-export const lineNet = (l: SoLine) => round2(l.quantity * priceAfterDiscount(l));
+export const lineNet = (l: PricedLine) => round2(l.quantity * priceAfterDiscount(l));
 
 const ROUNDING_STEP: Record<RoundingRule, number> = { 'No rounding': 0, 'Round to 0.05': 0.05, 'Round to 1': 1, 'Round to 5': 5, 'Round to 10': 10 };
 
@@ -50,7 +53,7 @@ export interface SoTotals {
 }
 
 /** Tax on a line after the document discount, document currency. */
-export const lineTax = (l: SoLine, rate: number, discountPct: number) => round2((lineNet(l) * (1 - discountPct / 100) * rate) / 100);
+export const lineTax = (l: PricedLine, rate: number, discountPct: number) => round2((lineNet(l) * (1 - discountPct / 100) * rate) / 100);
 
 /** Footer totals in the document currency. The document discount reduces each line's tax base. */
 export function soTotals(

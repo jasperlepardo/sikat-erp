@@ -120,7 +120,7 @@ export interface Project extends NamedEntry {
 /** Real products allow up to 64 partner properties. */
 export const MAX_PARTNER_PROPERTIES = 64;
 
-const named = (prefix: string, names: readonly string[]): NamedEntry[] =>
+export const named = (prefix: string, names: readonly string[]): NamedEntry[] =>
   names.map((name, i) => ({ id: `${prefix}-${String(i + 1).padStart(3, '0')}`, name, active: true }));
 
 const SWIFT: Record<string, string> = {

@@ -54,7 +54,7 @@ export function DprLines({
   const itemOptions = (current: string) =>
     m.items
       .filter((i) => i.id === current || (i.purchaseItem && isValidToday(i, postingDate)))
-      .map((i) => ({ value: i.id, label: <div className="flex flex-col gap-0.5"><span className="text-xs opacity-60">{i.itemNo}</span><span>{i.name}</span></div>, text: `${i.itemNo} ${i.description}` }));
+      .map((i) => ({ value: i.id, label: <div className="flex flex-col gap-0.5"><span className="text-xs opacity-60">{i.itemNo}</span><span>{i.description || i.name}</span></div>, text: `${i.itemNo} ${i.description}` }));
 
   const pickItem = (l: DprLine, itemId: string | null) => {
     const item = m.items.find((i) => i.id === itemId);

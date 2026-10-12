@@ -39,61 +39,78 @@ export function IncomingDocuments({ draft, update, errors, fx, readOnly }: Props
     },
     {
       key: 'docNo',
-      header: 'Document No.',
+      header: 'Document',
       cell: (r) => (
-        <div className="flex flex-col">
+        <div className="flex flex-col whitespace-nowrap">
           <Link intent="primary" onClick={() => navigate(`/sales/invoices/${r.invoiceId}`)}>{r.docNo}</Link>
-          <Text variant="small" tone="muted">IN · A/R invoice</Text>
+          <Text variant="small" tone="muted">
+            A/R invoice{r.installment ? ` · installment ${r.installment} of ${r.installments}` : ''}{r.projectId ? ` · ${projectLabel(r.projectId)}` : ''}
+          </Text>
+          {r.blocked ? <Text variant="small" tone="danger">Payment block</Text> : null}
         </div>
       ),
     },
-    { key: 'installment', header: 'Installment', cell: (r) => (r.installment ? `${r.installment} of ${r.installments}` : '—') },
-    { key: 'date', header: 'Date', cell: (r) => formatDate(r.docDate) },
     {
-      key: 'overdue',
-      header: 'Overdue days',
+      key: 'date',
+      header: 'Date',
+      align: 'end',
       cell: (r) => {
         const d = overdueDays(r, draft.postingDate);
         return (
-          <Text variant="small" tone={d > 0 ? 'danger' : 'default'}>
-            {d > 0 ? '* ' : ''}
-            {d}
-          </Text>
+          <div className="flex flex-col items-end whitespace-nowrap">
+            <Text variant="small">{formatDate(r.docDate)}</Text>
+            {d > 0 ? <Text variant="small" tone="danger">{d} {d === 1 ? 'day' : 'days'} overdue</Text> : null}
+          </div>
         );
       },
     },
-    { key: 'total', header: 'Total', cell: (r) => <span className="tabular-nums">{formatAmount(r.total)}</span> },
-    { key: 'wt', header: 'WT amount', cell: (r) => <span className="tabular-nums">{r.wtAmount ? formatAmount(r.wtAmount) : '—'}</span> },
-    { key: 'balance', header: 'Balance due', cell: (r) => <span className="tabular-nums">{formatAmount(r.balanceDue)}</span> },
-    { key: 'blocked', header: 'Blocked', cell: (r) => (r.blocked ? <Text variant="small" tone="danger">* Payment block</Text> : '') },
     {
-      key: 'discount',
-      header: 'Cash disc. %',
+      key: 'total',
+      header: 'Total',
+      align: 'end',
       cell: (r) => (
-        <div className="flex w-24 flex-col">
-          <TextField aria-label={`Cash discount % for ${r.docNo}`} type="number" min={0} suffix="%" readOnly={readOnly || !r.selected} value={String(r.cashDiscountPct)} onChange={(e) => patch(r.id, { cashDiscountPct: Math.min(100, num(e.currentTarget.value)) })} />
-          {rowDiscount(r) ? <Text variant="small" tone="muted">{formatAmount(rowDiscount(r))}</Text> : null}
+        <div className="flex flex-col items-end whitespace-nowrap tabular-nums">
+          <Text variant="small">{formatAmount(r.total)}</Text>
+          {r.wtAmount ? <Text variant="small" tone="muted">WT {formatAmount(r.wtAmount)}</Text> : null}
         </div>
       ),
+    },
+    { key: 'balance', header: 'Balance due', align: 'end', cell: (r) => <Text variant="small" className="whitespace-nowrap tabular-nums">{formatAmount(r.balanceDue)}</Text> },
+    {
+      key: 'discount',
+      header: 'Cash disc.',
+      align: 'end',
+      cell: (r) =>
+        readOnly ? (
+          <Text variant="small" className="whitespace-nowrap tabular-nums">{r.cashDiscountPct ? `${r.cashDiscountPct}% · ${formatAmount(rowDiscount(r))}` : '—'}</Text>
+        ) : (
+          <div className="flex w-24 flex-col">
+            <TextField aria-label={`Cash discount % for ${r.docNo}`} type="number" min={0} suffix="%" readOnly={!r.selected} value={String(r.cashDiscountPct)} onChange={(e) => patch(r.id, { cashDiscountPct: Math.min(100, num(e.currentTarget.value)) })} />
+            {rowDiscount(r) ? <Text variant="small" tone="muted">{formatAmount(rowDiscount(r))}</Text> : null}
+          </div>
+        ),
     },
     {
       key: 'amount',
       header: 'Total payment',
-      cell: (r) => (
-        <TextField
-          aria-label={`Total payment for ${r.docNo}`}
-          type="number"
-          min={0}
-          className="w-36"
-          prefix={code}
-          readOnly={readOnly || !r.selected || draft.addInSequence}
-          invalid={Boolean(errors[`row:${r.id}`])}
-          value={String(r.amount)}
-          onChange={(e) => patch(r.id, { amount: num(e.currentTarget.value) })}
-        />
-      ),
+      align: 'end',
+      cell: (r) =>
+        readOnly ? (
+          <Text variant="small" className="whitespace-nowrap tabular-nums">{r.selected ? `${code} ${formatAmount(r.amount)}` : '—'}</Text>
+        ) : (
+          <TextField
+            aria-label={`Total payment for ${r.docNo}`}
+            type="number"
+            min={0}
+            className="w-36"
+            prefix={code}
+            readOnly={!r.selected || draft.addInSequence}
+            invalid={Boolean(errors[`row:${r.id}`])}
+            value={String(r.amount)}
+            onChange={(e) => patch(r.id, { amount: num(e.currentTarget.value) })}
+          />
+        ),
     },
-    { key: 'project', header: 'Project', cell: (r) => (r.projectId ? projectLabel(r.projectId) : '—') },
   ];
 
   return (
@@ -102,7 +119,7 @@ export function IncomingDocuments({ draft, update, errors, fx, readOnly }: Props
       noPagination
       icon="request_quote"
       title="Contents"
-      description={errors.rows ?? `The customer's open A/R invoices in ${code}. Tick what's being paid; change Total Payment to pay part of one. Overdue rows are marked *.`}
+      description={errors.rows ?? `The customer's open A/R invoices in ${code}. Tick what's being paid; change Total payment to pay part of one.`}
       rows={rows}
       getRowId={(r) => r.id}
       columns={columns}

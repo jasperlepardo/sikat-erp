@@ -4,10 +4,10 @@ import type { Company } from '../../../../mocks/companies';
 import type { Currency, ExchangeRate } from '../../../../mocks/currencies';
 import { itemsPerUom, type Item } from '../../../../mocks/items';
 import type { Partner } from '../../../../mocks/partners';
-import type { Quotation, QuoteLine } from '../../../../mocks/quotations';
+import { newQuoteLine, type Quotation, type QuoteLine } from '../../../../mocks/quotations';
 import { SYSTEM_TAX_CODES } from '../../../../mocks/taxes';
 import type { InventoryMasters } from '../../../../services/inventoryMasters';
-import { determinePrice, isGrossList } from '../../../../services/priceLists';
+import { BASE_PRICE_LIST_ID, determinePrice, isGrossList } from '../../../../services/priceLists';
 import { determineTax, type TaxMasterData } from '../../../../services/taxDetermination';
 
 export type Draft = Omit<Quotation, 'id'> & { id?: string };
@@ -84,8 +84,22 @@ export function customerDefaults(c: Partner, d: Draft): Partial<Draft> {
   };
 }
 
-export function customerAddressOptions(c: Partner | undefined) {
-  return (c?.addresses ?? []).map((a) => ({ value: formatAddress(a, c!.name), label: `${a.label || 'Address'} · ${a.city || a.countryCode}` }));
+/** A line for `item`: its sales unit, first warehouse, the customer's price list and tax code, priced. */
+export function lineFromItem(item: Item, draft: Draft, ctx: QtContext, m: QtMasters, base: Partial<QuoteLine> = {}): QuoteLine {
+  const uom = m.inv.uoms.find((u) => u.code === item.salesUom);
+  const line = newQuoteLine({
+    ...base,
+    itemId: item.id,
+    itemNo: item.itemNo,
+    description: item.description || item.name,
+    uomCode: item.salesUom,
+    uomName: uom?.name ?? item.salesUom,
+    itemsPerUnit: itemsPerUnit(item),
+    warehouse: item.inventoryItem ? (item.warehouses[0]?.code ?? 'WH-MNL') : '',
+    priceListId: ctx.customer?.priceListId || BASE_PRICE_LIST_ID,
+    taxCode: proposedTaxCode(item, ctx.customer, m, draft.postingDate),
+  });
+  return { ...line, ...linePricing(item, line, draft, m.customers, ctx.vatRegistered, ctx.rateOf, ctx.fx) };
 }
 
 export const itemsPerUnit = (item: Item) => itemsPerUom(item, item.salesUom) ?? 1;
