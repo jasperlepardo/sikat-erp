@@ -1,0 +1,91 @@
+import type { Errors } from '../../../../components/form/fields';
+import { formatAddress } from '../../../../mocks/address';
+import type { Company } from '../../../../mocks/companies';
+import type { Currency, ExchangeRate } from '../../../../mocks/currencies';
+import { itemsPerUom, type Item } from '../../../../mocks/items';
+import type { Partner } from '../../../../mocks/partners';
+import type { Quotation, QuoteLine } from '../../../../mocks/quotations';
+import { SYSTEM_TAX_CODES } from '../../../../mocks/taxes';
+import type { InventoryMasters } from '../../../../services/inventoryMasters';
+import { determinePrice, isGrossList } from '../../../../services/priceLists';
+import { determineTax, type TaxMasterData } from '../../../../services/taxDetermination';
+
+export type Draft = Omit<Quotation, 'id'> & { id?: string };
+
+export const ALL_CURRENCIES = 'All currencies';
+export const round2 = (n: number) => Math.round(n * 100) / 100;
+
+export interface QtMasters {
+  customers: Partner[];
+  items: Item[];
+  inv: InventoryMasters;
+  tax: TaxMasterData;
+  currencies: Currency[];
+  rates: ExchangeRate[];
+  company: Company;
+}
+
+export interface QtContext {
+  customer?: Partner;
+  fx: number;
+  rateOf: (code: string) => number;
+  vatRegistered: boolean;
+  readOnly: boolean;
+  added: boolean;
+}
+
+export interface QtTabProps {
+  draft: Draft;
+  update: (patch: Partial<Draft>) => void;
+  errors: Errors;
+  m: QtMasters;
+  ctx: QtContext;
+}
+
+export function proposedTaxCode(item: Item, customer: Partner | undefined, m: QtMasters, date: string) {
+  if (!customer) return '';
+  return determineTax('Sales', item, customer, m.tax, date).taxCode?.code ?? '';
+}
+
+export function linePricing(
+  item: Item,
+  l: Pick<QuoteLine, 'priceListId' | 'uomCode' | 'quantity' | 'taxCode'>,
+  draft: Draft,
+  customers: Partner[],
+  vatRegistered: boolean,
+  rateOf: (c: string) => number,
+  fx: number,
+) {
+  const customer = customers.find((c) => c.id === draft.customerId);
+  const p = determinePrice({ item, partner: customer, priceListId: l.priceListId, uom: l.uomCode, quantity: l.quantity, date: draft.postingDate });
+  const vat = vatRegistered ? rateOf(SYSTEM_TAX_CODES.VATABLE) : 0;
+  const net = isGrossList(p.basisListId) ? p.price / (1 + vat / 100) : p.price;
+  return { unitPrice: fx ? round2(net / fx) : 0, discountPct: p.discountPct, priceSource: p.source.label };
+}
+
+export function customerDefaults(c: Partner, d: Draft): Partial<Draft> {
+  const bill = c.addresses.find((a) => a.id === c.defaultBillToId) ?? c.addresses[0];
+  const ship = c.addresses.find((a) => a.id === c.defaultShipToId) ?? bill;
+  return {
+    customerId: c.id,
+    customerCode: c.code,
+    customerName: c.name,
+    contactId: c.defaultContactId,
+    currency: c.currency === ALL_CURRENCIES ? 'PHP' : c.currency,
+    paymentTermId: c.customerPaymentTermId,
+    paymentMethod: c.defaultPaymentMethod || d.paymentMethod,
+    projectId: c.projectId,
+    shippingType: c.shippingType,
+    federalTaxId: c.tin,
+    salesEmployeeId: c.salesEmployeeId,
+    journalRemark: `Sales Quotations – ${c.code}`,
+    billTo: bill ? formatAddress(bill, c.name) : '',
+    shipTo: ship ? formatAddress(ship, c.name) : '',
+  };
+}
+
+export function customerAddressOptions(c: Partner | undefined) {
+  return (c?.addresses ?? []).map((a) => ({ value: formatAddress(a, c!.name), label: `${a.label || 'Address'} · ${a.city || a.countryCode}` }));
+}
+
+export const itemsPerUnit = (item: Item) => itemsPerUom(item, item.salesUom) ?? 1;

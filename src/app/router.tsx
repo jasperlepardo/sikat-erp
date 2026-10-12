@@ -43,7 +43,7 @@ const SalesOrderDetail = page(() => import('../pages/sales/orders/detail/SalesOr
 const DeliveryList = page(() => import('../pages/sales/deliveries/DeliveryList'), 'DeliveryList');
 const DeliveryDetail = page(() => import('../pages/sales/deliveries/detail/DeliveryDetail'), 'DeliveryDetail');
 const QuotationList = page(() => import('../pages/sales/quotations/QuotationList'), 'QuotationList');
-const QuotationDetail = page(() => import('../pages/sales/quotations/QuotationDetail'), 'QuotationDetail');
+const QuotationDetail = page(() => import('../pages/sales/quotations/detail/QuotationDetail'), 'QuotationDetail');
 const ArInvoiceList = page(() => import('../pages/sales/invoices/ArInvoiceList'), 'ArInvoiceList');
 const ArInvoiceDetail = page(() => import('../pages/sales/invoices/detail/ArInvoiceDetail'), 'ArInvoiceDetail');
 const IncomingPaymentList = page(() => import('../pages/sales/payments/IncomingPaymentList'), 'IncomingPaymentList');
