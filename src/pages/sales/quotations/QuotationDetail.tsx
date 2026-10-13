@@ -346,7 +346,6 @@ function QuotationForm() {
     ...(draft.status === 'Open' ? [{ label: 'Copy to sales order', icon: 'shopping_bag', onSelect: convertToOrder }] : []),
     ...(draft.status === 'Open' ? [{ label: 'Close quotation', icon: 'task_alt', onSelect: () => closeQuotation(saved).then((r) => navigate(QT_LIST_PATH, { state: { notice: `Quotation ${qtNumber(r)} closed.` } })) }] : []),
     ...(draft.status === 'Open' ? [{ label: 'Cancel quotation', icon: 'cancel', onSelect: () => cancelQuotation(saved).then((r) => navigate(QT_LIST_PATH, { state: { notice: `Quotation ${qtNumber(r)} cancelled.` } })) }] : []),
-    ...(customer ? [{ label: `Open customer ${customer.code}`, icon: 'storefront', onSelect: () => navigate(`/sales/customers/${customer.id}`) }] : []),
   ];
 
   const title = isNew ? 'New quotation' : added ? qtNumber(draft) : 'Draft quotation';

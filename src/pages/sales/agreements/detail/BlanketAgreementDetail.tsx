@@ -233,7 +233,6 @@ function BaForm() {
       ? [{ label: 'Copy to Sales Order', icon: 'shopping_bag', onSelect: copyToSo }]
       : []),
     ...(!isNew ? [{ label: 'Duplicate', icon: 'content_copy', onSelect: duplicate }] : []),
-    ...(customer ? [{ label: `Open customer ${customer.code}`, icon: 'person', onSelect: () => navigate(`/sales/customers/${customer.id}`) }] : []),
   ];
 
   const title = isNew

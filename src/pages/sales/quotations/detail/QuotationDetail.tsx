@@ -27,11 +27,9 @@ import { SO_LIST_PATH } from '../../orders/detail/types';
 import { SalesDocumentFlow } from '../../shared/SalesDocumentFlow';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
 import { NotFound, PrevNext, neighbours } from '../../../../components/form/DetailNav';
-import { customerDefaults, type Draft, type QtContext, type QtMasters } from './types';
-import { QtDatesCard } from './QtDatesCard';
-import { QtLogisticsCard } from './QtLogisticsCard';
-import { QtAccountingCard } from './QtAccountingCard';
-import { QtAssignmentCard } from './QtAssignmentCard';
+import { customerDefaults, linePricing, proposedTaxCode, type Draft, type QtContext, type QtMasters } from './types';
+import { BASE_PRICE_LIST_ID } from '../../../../services/priceLists';
+import { QtDetailsCard } from './QtDetailsCard';
 import { CustomerCard } from '../../shared/CustomerCard';
 import { CustomerDetailsPanel } from '../../shared/CustomerDetailsPanel';
 import { QtContentsTable } from './QtContentsTable';
@@ -150,7 +148,17 @@ function QuotationForm() {
 
   const pickCustomer = (customerId: string | null) => {
     const c = m.customers.find((x) => x.id === customerId);
-    update(c ? customerDefaults(c, draft) : { customerId: '', customerCode: '', customerName: '', contactId: '', shipTo: '', billTo: '' });
+    if (!c) return update({ customerId: '', customerCode: '', customerName: '', contactId: '', shipTo: '', billTo: '' });
+    // Lines can be added before the customer: reprice them on the customer's price list, tax code and currency.
+    const next = { ...draft, ...customerDefaults(c, draft) };
+    const nextFx = next.currency === 'PHP' ? 1 : (rateOn(m.rates, next.currency, date)?.rate ?? 0);
+    const lines = draft.lines.map((l) => {
+      const item = m.items.find((i) => i.id === l.itemId);
+      if (!item) return l;
+      const repriced = { ...l, priceListId: c.priceListId || BASE_PRICE_LIST_ID, taxCode: proposedTaxCode(item, c, m, next.postingDate) };
+      return l.priceSource === 'Manual' || !nextFx ? repriced : { ...repriced, ...linePricing(item, repriced, next, m.customers, vatRegistered, rateOf, nextFx) };
+    });
+    update({ ...customerDefaults(c, draft), lines });
   };
 
   const submit = async (e: FormEvent | null, asDraft = false, overrides: Partial<Draft> = {}) => {
@@ -165,13 +173,12 @@ function QuotationForm() {
       return;
     }
     const doc: Draft = { ...draft, ...overrides };
-    const effectiveDraft = asDraft || (e !== null && draft.status === 'Draft' && !doc.approved);
-    const found = validate(doc, fx, effectiveDraft);
+    const found = validate(doc, fx, asDraft);
     setProblems(found);
     if (found.length) return;
     setSaving(true);
     try {
-      if (effectiveDraft) {
+      if (asDraft) {
         const saved = await saveQuotationDraft(doc);
         navigate(QT_LIST_PATH, { state: { notice: `Draft saved — ${saved.customerName}.` } });
         return;
@@ -228,13 +235,10 @@ function QuotationForm() {
   };
 
   const menu: MoreMenuItem[] = [
-    ...(!added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
-    ...(draft.status === 'Draft' && !draft.approved ? [{ label: 'Submit for approval', icon: 'upload', onSelect: () => submit(null, false) }] : []),
     ...(draft.status === 'Not Confirmed' ? [{ label: 'Approve', icon: 'verified', onSelect: () => submit(null, false, { approved: true }) }, { label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => setRejecting(true) }] : []),
     ...(draft.status === 'Open' ? [{ label: 'Create sales order', icon: 'shopping_bag', onSelect: convertToOrder }] : []),
     ...(draft.status === 'Open' ? [{ label: 'Close quotation', icon: 'task_alt', onSelect: () => closeQuotation(saved).then((r) => navigate(QT_LIST_PATH, { state: { notice: `Quotation ${qtNumber(r)} closed.` } })) }] : []),
     ...(draft.status === 'Open' ? [{ label: 'Cancel quotation', icon: 'cancel', onSelect: () => cancelQuotation(saved).then((r) => navigate(QT_LIST_PATH, { state: { notice: `Quotation ${qtNumber(r)} cancelled.` } })) }] : []),
-    ...(customer ? [{ label: `Open customer ${customer.code}`, icon: 'storefront', onSelect: () => navigate(`/sales/customers/${customer.id}`) }] : []),
   ];
 
   const title = isNew ? 'New quotation' : added ? qtNumber(draft) : 'Draft quotation';
@@ -242,7 +246,7 @@ function QuotationForm() {
 
   return (
     <>
-      <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
+      <Form className="flex-1" onSubmit={(e) => submit(e, !added)} noValidate>
         <Panel className="flex-1">
           <PanelHeader
             type="details"
@@ -255,7 +259,7 @@ function QuotationForm() {
             onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
             onBack={() => navigate(QT_LIST_PATH)}
             trailing={isNew ? undefined : <PrevNext path={QT_LIST_PATH} prevId={prevId} nextId={nextId} />}
-            tabs={<Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={PAGES.map((p) => ({ ...p, disabled: isNew && p.value !== 'details' }))} />}
+            tabs={isNew ? undefined : <Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={[...PAGES]} />}
             status={
               isNew ? undefined : (
                 <div className="flex gap-1">
@@ -269,9 +273,20 @@ function QuotationForm() {
               <>
 
                 {menu.length ? <MoreMenu items={menu} /> : null}
-                <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
-                  {saving ? 'Saving…' : added ? 'Save' : 'Add'}
-                </Button>
+                {added ? (
+                  <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
+                    {saving ? 'Saving…' : 'Save'}
+                  </Button>
+                ) : (
+                  <>
+                    <Button type="submit" intent="white" variant="solid" size="medium" shape="pill" disabled={saving}>
+                      Save as draft
+                    </Button>
+                    <Button type="button" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving} onClick={() => submit(null, false)}>
+                      Submit for approval
+                    </Button>
+                  </>
+                )}
               </>
             }
           />
@@ -317,14 +332,6 @@ function QuotationForm() {
               ) : null}
 
               <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
-                <aside className="flex flex-col gap-2 lg:col-span-3">
-                  <QtDatesCard {...tabProps} />
-                  <QtLogisticsCard {...tabProps} />
-                  <QtAccountingCard {...tabProps} />
-                  <QtAssignmentCard {...tabProps} />
-                  <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach the RFQ, specs sheet, or supporting documents." />
-                </aside>
-
                 <div className="flex flex-col gap-2 lg:col-span-9">
                   <CustomerCard
                     customers={m.customers}
@@ -341,6 +348,11 @@ function QuotationForm() {
                     cardFooter={<TotalsFooter {...tabProps} ctx={{ ...ctx, readOnly: readOnly || added }} withholding={[]} />}
                   />
                 </div>
+
+                <aside className="flex flex-col gap-2 lg:col-span-3">
+                  <QtDetailsCard {...tabProps} />
+                  <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach the RFQ, specs sheet, or supporting documents." />
+                </aside>
               </div>
             </Panel.Body>
           )}

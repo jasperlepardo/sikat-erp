@@ -345,7 +345,6 @@ function ArCreditMemoForm() {
       icon: 'receipt' as const,
       onSelect: () => navigate(`/sales/invoices/${inv.id}`),
     })),
-    ...(customer ? [{ label: `Open customer ${customer.code}`, icon: 'person', onSelect: () => navigate(`/sales/customers/${customer.id}`) }] : []),
   ];
 
   const title = isNew ? 'New A/R credit memo' : added ? arCmNumber(draft as ArCreditMemo) : 'Draft A/R credit memo';
@@ -385,7 +384,7 @@ function ArCreditMemoForm() {
             onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
             onBack={() => navigate(AR_CM_LIST_PATH)}
             trailing={isNew ? undefined : <PrevNext path={AR_CM_LIST_PATH} prevId={prevId} nextId={nextId} />}
-            tabs={<Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={PAGES.map((p) => ({ ...p, disabled: isNew && p.value !== 'details' }))} />}
+            tabs={isNew ? undefined : <Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={[...PAGES]} />}
             status={isNew ? undefined : <Badge size="small" intent={ARCM_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
             actions={
               <>

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import { Button, Card, CardField, Icon, Panel, PanelHeader, SidePanel, Text } from '@jasperlepardo/sikat-design-system';
+import { useNavigate } from 'react-router';
+import { Card, CardField, Icon, IconButton, Panel, PanelHeader, SidePanel, Text } from '@jasperlepardo/sikat-design-system';
 import { formatAddress, type PostalAddress } from '../../../mocks/address';
 import { contactName, type Partner, type PartnerAddress } from '../../../mocks/partners';
 import { INDICATORS } from '../../../mocks/purchaseOrders';
@@ -35,6 +36,7 @@ interface CustomerDetailsPanelProps {
 
 /** The customer side panel on a sales document: credit, contact, addresses and order details. */
 export function CustomerDetailsPanel({ customer, draft, update, readOnly, noun, open, onClose, credit, orderNumberHint = 'Internal or chain-store order reference.', children }: CustomerDetailsPanelProps) {
+  const navigate = useNavigate();
   if (!open || !customer) return null;
 
   const h = bind(draft, update);
@@ -69,11 +71,20 @@ export function CustomerDetailsPanel({ customer, draft, update, readOnly, noun, 
       <PanelHeader
         type="details"
         icon="person"
+        iconIntent="default"
+        iconShape="rounded"
+        iconSize={32}
+        iconVariant="outline"
         title={customer.name}
         actions={
-          <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={onClose}>
-            Done
-          </Button>
+          <>
+            <IconButton type="button" intent="default" variant="link" label={`Open customer ${customer.code}`} onClick={() => navigate(`/sales/customers/${customer.id}`)}>
+              <Icon size={20}>open_in_new</Icon>
+            </IconButton>
+            <IconButton type="button" intent="default" variant="link" label="Close" onClick={onClose}>
+              <Icon size={20}>close</Icon>
+            </IconButton>
+          </>
         }
       />
       <Panel.Body>

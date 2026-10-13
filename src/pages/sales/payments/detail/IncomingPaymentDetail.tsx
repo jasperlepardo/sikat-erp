@@ -254,7 +254,6 @@ function IncomingForm() {
       : []),
     ...(entryId ? [{ label: `Open journal entry ${draft.transNo}`, icon: 'menu_book', onSelect: () => navigate(`/accounting/journal-entries/${entryId}`) }] : []),
     ...paidInvoices.map((r) => ({ label: `Open A/R invoice ${r.docNo}`, icon: 'receipt', onSelect: () => navigate(`/sales/invoices/${r.invoiceId}`) })),
-    ...(customer ? [{ label: `Open customer ${customer.code}`, icon: 'person', onSelect: () => navigate(`/sales/customers/${customer.id}`) }] : []),
   ];
 
   const title = isNew ? 'New incoming payment' : added ? incomingNumber(draft) : 'Draft incoming payment';
@@ -275,7 +274,7 @@ function IncomingForm() {
           trailing={
             isNew ? undefined : <PrevNext path={RC_LIST_PATH} prevId={prevId} nextId={nextId} />
           }
-          tabs={<Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={PAGES.map((p) => ({ ...p, disabled: isNew && p.value !== 'details' }))} />}
+          tabs={isNew ? undefined : <Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={[...PAGES]} />}
           status={isNew ? undefined : <Badge size="small" intent={RC_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
           actions={
             <>

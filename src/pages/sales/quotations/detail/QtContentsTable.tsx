@@ -239,9 +239,9 @@ export function QtContentsTable({ draft, update, errors, ctx, m, cardFooter }: Q
           unsortable={columns.map((c) => c.key)}
           onRemove={linesLocked ? undefined : (picked) => update({ lines: lines.filter((l) => !picked.includes(l)) })}
           onColumnSettings={() => setSettingsOpen(!settingsOpen)}
-          empty={<Text variant="small" tone="muted">{draft.customerId ? 'No lines yet.' : 'Pick a customer first.'}</Text>}
+          empty={<Text variant="small" tone="muted">No lines yet.</Text>}
           spanRow={
-            linesLocked || !draft.customerId ? undefined : (
+            linesLocked ? undefined : (
               <Combobox
                 key={addKey}
                 aria-label="Search items to add a line"
