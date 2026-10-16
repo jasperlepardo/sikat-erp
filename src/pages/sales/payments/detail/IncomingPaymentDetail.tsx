@@ -339,13 +339,7 @@ function IncomingForm() {
                     onOpenDetails={() => setCustomerDetailsOpen(true)}
                   />
                 ) : (
-                  <fieldset disabled={ro} className="contents">
-                    <Section icon="account_balance" title="Account payment">
-                      <FormField label="Doc. currency" error={errors.currency}>
-                        {(p) => <Select {...p} disabled={ro} options={m.currencies.map((c) => ({ value: c.code, label: `${c.code} — ${c.name}` }))} value={draft.currency} onValueChange={(currency) => update({ currency })} />}
-                      </FormField>
-                    </Section>
-                  </fieldset>
+                  <IncomingAccountCard currency={draft.currency} currencies={m.currencies} update={update} error={errors.currency} readOnly={ro} />
                 )}
                 {draft.type === 'Customer' ? (
                   <IncomingDocuments draft={draft} update={update} errors={errors} accounts={m.accounts} fx={fx} readOnly={ro} />
@@ -354,17 +348,7 @@ function IncomingForm() {
                 )}
                 <IncomingMeansSection draft={draft} update={update} accounts={m.accounts} fx={fx} readOnly={ro} />
                 {errors.means ? <Text variant="small" tone="danger">{errors.means}</Text> : null}
-                <Section icon="account_balance" title="Journal entry">
-                  {journal.length ? (
-                    <List.Group divider>
-                      {journal.map((j) => (
-                        <List.Item key={j.account} title={accountText(j.account, m.accounts)} content={<span className="whitespace-nowrap tabular-nums">{j.debit ? `Dr ${formatAmount(j.debit)}` : `Cr ${formatAmount(j.credit)}`}</span>} />
-                      ))}
-                    </List.Group>
-                  ) : (
-                    <Text variant="small" tone="muted">Dr the payment means' accounts / Cr the customer (or the G/L lines), in PHP.</Text>
-                  )}
-                </Section>
+                <IncomingJournalCard journal={journal} accounts={m.accounts} />
               </div>
             </div>
           </Panel.Body>
@@ -373,5 +357,33 @@ function IncomingForm() {
     </Form>
     <IncomingCustomerPanel customer={customer} draft={draft} update={update} errors={errors} accounts={m.accounts} readOnly={ro} open={customerDetailsOpen} onClose={() => setCustomerDetailsOpen(false)} />
     </>
+  );
+}
+
+function IncomingAccountCard({ currency, currencies, update, error, readOnly }: { currency: string; currencies: Currency[]; update: (p: { currency: string }) => void; error?: string; readOnly: boolean }) {
+  return (
+    <fieldset disabled={readOnly} className="contents">
+      <Section icon="account_balance" title="Account payment">
+        <FormField label="Doc. currency" error={error}>
+          {(p) => <Select {...p} disabled={readOnly} options={currencies.map((c) => ({ value: c.code, label: `${c.code} — ${c.name}` }))} value={currency} onValueChange={(c) => c && update({ currency: c })} />}
+        </FormField>
+      </Section>
+    </fieldset>
+  );
+}
+
+function IncomingJournalCard({ journal, accounts }: { journal: ReturnType<typeof incomingJournal>; accounts: Account[] }) {
+  return (
+    <Section icon="account_balance" title="Journal entry">
+      {journal.length ? (
+        <List.Group divider>
+          {journal.map((j) => (
+            <List.Item key={j.account} title={accountText(j.account, accounts)} content={<span className="whitespace-nowrap tabular-nums">{j.debit ? `Dr ${formatAmount(j.debit)}` : `Cr ${formatAmount(j.credit)}`}</span>} />
+          ))}
+        </List.Group>
+      ) : (
+        <Text variant="small" tone="muted">Dr the payment means' accounts / Cr the customer (or the G/L lines), in PHP.</Text>
+      )}
+    </Section>
   );
 }
