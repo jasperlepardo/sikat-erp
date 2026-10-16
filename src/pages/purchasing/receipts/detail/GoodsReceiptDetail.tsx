@@ -5,30 +5,23 @@ import {
   Alert,
   Badge,
   Button,
-  Combobox,
   Form,
-  FormField,
-  List,
   Panel,
   PanelHeader,
-  Select,
   Tabs,
   Text,
   TextField,
 } from '@jasperlepardo/sikat-design-system';
-import { Fields, ReadOnly, Section, bind, type Errors } from '../../../../components/form/fields';
-import { StatusField } from '../../../../components/form/StatusField';
+import { type Errors } from '../../../../components/form/fields';
 import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
-import { accountText } from '../../../../mocks/chartOfAccounts';
 import { CURRENT_USER_ID } from '../../../../mocks/common';
-import { GR_SERIES, GR_STATUSES, blankGoodsReceipt, newGrLine, type GoodsReceipt, type GrLine, type GrStatus } from '../../../../mocks/goodsReceipts';
-import { contactName, type Partner } from '../../../../mocks/partners';
+import { blankGoodsReceipt, newGrLine, type GoodsReceipt, type GrLine, type GrStatus } from '../../../../mocks/goodsReceipts';
+import { type Partner } from '../../../../mocks/partners';
 import { type PurchaseOrder } from '../../../../mocks/purchaseOrders';
 import { loadCurrentCompany } from '../../../../services/companies';
 import { formatDate, todayISO } from '../../../../services/dates';
 import { defaultJournalRemark } from '../../../../services/journalPatterns';
-import { formatAmount } from '../../../../services/format';
 import {
   GrPostError,
   addGoodsReceipt,
@@ -38,8 +31,6 @@ import {
   getGoodsReceipt,
   grJournal,
   grNumber,
-
-  grTotals,
   listGoodsReceipts,
   recallGoodsReceipt,
   saveGrDraft,
@@ -50,10 +41,8 @@ import { loadInventoryMasters } from '../../../../services/inventoryMasters';
 import { isValidToday, listItems } from '../../../../services/items';
 import { companyTax, currencies, exchangeRates, taxCodes, taxGroups, withholdingGroups, withholdingTaxes } from '../../../../services/masterData';
 import { listPartnersByRole } from '../../../../services/partners';
-import { dueDateFor, getPurchasingSettings, listPurchaseOrders, openQty, paymentTermName, poNumber } from '../../../../services/purchaseOrders';
+import { dueDateFor, getPurchasingSettings, listPurchaseOrders, openQty, poNumber } from '../../../../services/purchaseOrders';
 import { transferBlock } from '../../../../services/binLocations';
-import { salesEmployeeDef } from '../../../settings/masterDefs';
-import { TotalNote, TotalRow } from '../../shared/TotalRow';
 import { proposedTaxCode } from '../../orders/detail/types';
 import { GrContents } from './GrContents';
 import { DocumentFlow } from '../../shared/DocumentFlow';
@@ -62,6 +51,12 @@ import { buildGrContext, defaultPayTo, defaultShipTo, linesFromPo, type GrContex
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
 import { NotFound, PrevNext, neighbours } from '../../../../components/form/DetailNav';
+import { GrVendorCard } from './GrVendorCard';
+import { GrDocumentCard } from './GrDocumentCard';
+import { GrTotalsCard } from './GrTotalsCard';
+import { GrJournalCard } from './GrJournalCard';
+import { GR_STATUS_INTENT } from './types';
+export { GR_STATUS_INTENT };
 
 export const GR_LIST_PATH = '/purchasing/goods-receipts';
 
@@ -73,14 +68,6 @@ const PAGES = [
   { value: 'activity', label: 'Activity' },
 ] as const;
 type PageId = (typeof PAGES)[number]['value'];
-
-export const GR_STATUS_INTENT: Record<GrStatus, 'default' | 'primary' | 'success' | 'danger' | 'warning'> = {
-  Draft: 'default',
-  'Not Confirmed': 'warning',
-  Open: 'primary',
-  Closed: 'success',
-  Cancelled: 'danger',
-};
 
 const ALL_CURRENCIES = 'All currencies';
 const journalRemarkFor = (vendor: { code: string; name: string }) => defaultJournalRemark('goods-receipts', { entityCode: vendor.code, entityName: vendor.name });
@@ -203,8 +190,6 @@ function GoodsReceiptForm() {
   const added = draft.status !== 'Draft';
   const { prevId, nextId } = neighbours(siblings, draft.id && (draft.docNum ? grNumber(draft as GoodsReceipt) : draft.id));
   const errors: Errors = Object.fromEntries(problems.map((p) => [p.key, p.message]));
-  const docCurrency = m.currencies.find((c) => c.code === draft.currency);
-  const totals = grTotals(draft, ctx.rateOf, docCurrency?.rounding, ctx.isReverseCharge);
   const journal = ctx.fx ? grJournal(draft, ctx.fx, m.items, m.inv.groups) : [];
 
   // Ship To follows the lines, and the due date the terms, while each still holds its default.
@@ -216,7 +201,6 @@ function GoodsReceiptForm() {
     }
     setDraft(next);
   };
-  const h = bind(draft, update);
 
   /** Picking the vendor fills everything that defaults from it. Lines copied from another vendor's PO go. */
   const pickVendor = (vendorId: string | null) => {
@@ -330,8 +314,8 @@ function GoodsReceiptForm() {
     ...(vendor ? [{ label: `Open vendor ${vendor.code}`, icon: 'local_shipping', onSelect: () => navigate(`/purchasing/vendors/${vendor.id}`) }] : []),
   ];
 
-  const allCurrencies = vendor?.currency === ALL_CURRENCIES;
   const title = isNew ? 'New goods receipt' : added ? grNumber(draft) : 'Draft goods receipt';
+  const sectionProps = { draft, update, errors, m, ctx };
 
 
   return (
@@ -385,196 +369,18 @@ function GoodsReceiptForm() {
               </Alert>
             ) : null}
 
-            <fieldset disabled={added} className="contents">
-              <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
-                <Section icon="storefront" title="Vendor">
-                  <Fields>
-                    <div className="md:col-span-2">
-                      {vendor && (added || ctx.based) ? (
-                        <ReadOnly
-                          label="Vendor"
-                          value={draft.vendorName}
-                          description={`${draft.vendorCode} · ${draft.currency}`}
-                          hint={!added ? 'Locked while lines from its POs are on the receipt.' : undefined}
-                        />
-                      ) : (
-                        <FormField label="Vendor" required error={errors.vendorId} tooltip="Only vendors are listed. Picking one fills the name, contact, currency and terms.">
-                          {(p) => (
-                            <Combobox
-                              {...p}
-                              placeholder="Search vendors"
-                              options={m.vendors
-                                .filter((v) => v.status !== 'Inactive' || v.id === draft.vendorId)
-                                .map((v) => ({ value: v.id, label: v.name, subLabel: v.code, subLabelPlacement: 'top' as const, description: v.currency, text: `${v.code} ${v.name}` }))}
-                              value={draft.vendorId || null}
-                              onValueChange={pickVendor}
-                            />
-                          )}
-                        </FormField>
-                      )}
-                    </div>
-                    {h.lookup(
-                      'contactId',
-                      'Contact person',
-                      [{ value: '', label: '— None —' }, ...(vendor?.contacts ?? []).filter((c) => c.active || c.id === draft.contactId).map((c) => ({ value: c.id, label: contactName(c) }))],
-                      { hint: !vendor ? 'Pick a vendor first.' : "Defaults to the vendor's default contact.", disabled: !vendor },
-                    )}
-                    {h.text('vendorRef', 'Vendor ref. no.', { hint: "The vendor's delivery receipt or waybill no." })}
-                    <FormField
-                      label="Currency"
-                      required
-                      error={errors.currency}
-                      className="md:col-span-2"
-                      tooltip={ctx.based ? 'Locked to the currency of the PO the lines came from.' : allCurrencies ? 'This vendor takes all currencies — pick the document currency.' : `Defaults to the vendor's currency (${vendor?.currency ?? '—'}).`}
-                    >
-                      {(p) => (
-                        <Select
-                          {...p}
-                          disabled={added || ctx.based}
-                          options={m.currencies.map((c) => ({ value: c.code, label: `${c.code} — ${c.name}` }))}
-                          value={draft.currency}
-                          onValueChange={(currency) => update({ currency })}
-                        />
-                      )}
-                    </FormField>
-                  </Fields>
-                </Section>
-
-                <Section icon="tag" title="Document">
-                  <Fields>
-                    <FormField label="No." tooltip={added ? undefined : 'Assigned from the series when the receipt is added.'}>
-                      {() => (
-                        <div className="flex gap-1">
-                          <Select
-                            aria-label="Series"
-                            className="w-40"
-                            disabled={added}
-                            options={GR_SERIES.map((s) => ({ value: s.id, label: s.name }))}
-                            value={draft.seriesId}
-                            onValueChange={(seriesId) => update({ seriesId })}
-                          />
-                          <span className="flex-1 self-center text-sm">{draft.docNum ? grNumber(draft) : <span className="text-(--color-text-placeholder)">Next number</span>}</span>
-                        </div>
-                      )}
-                    </FormField>
-                    <StatusField statuses={GR_STATUSES} intents={GR_STATUS_INTENT} value={draft.status} moves={statusMoves} hint="Open once added; Closed when invoiced (or closed by hand); Cancelled when reversed." error={errors.status} />
-                    {h.date('postingDate', 'Posting date', {
-                      required: true,
-                      error: errors.postingDate,
-                      hint: 'When the stock is recorded. Sets the exchange rate, tax rates and period.',
-                    })}
-                    {h.date('dueDate', 'Due date', {
-                      error: errors.dueDate,
-                      hint: `Posting date + the payment terms${draft.paymentTermId ? ` (${paymentTermName(draft.paymentTermId)})` : ''}. The A/P invoice takes it.`,
-                    })}
-                    {h.date('documentDate', 'Document date', { required: true, error: errors.documentDate, hint: 'The date on the vendor’s delivery receipt. Defaults to today.' })}
-                    <ReadOnly label="Close date" value={draft.closeDate ? formatDate(draft.closeDate) : '—'} hint="Set when the receipt is closed or cancelled." />
-                  </Fields>
-                </Section>
-              </div>
-
-              <GrContents draft={draft} update={update} errors={errors} m={m} ctx={ctx} onCopy={copyLines} />
-
-              <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
-                <GrLogistics draft={draft} update={update} m={m} ctx={ctx} />
-                <GrAccounting draft={draft} update={update} errors={errors} m={m} ctx={ctx} />
-              </div>
-            </fieldset>
-
             <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
-              <Section icon="functions" title="Totals">
-                <Fields cols={1}>
-                  <fieldset disabled={added} className="contents">
-                    <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                      {h.master('buyerId', 'Buyer', salesEmployeeDef, { hint: 'Who bought the goods.' })}
-                      {h.master('ownerId', 'Owner', salesEmployeeDef, { hint: 'Owns the document (data access).' })}
-                    </div>
-                  </fieldset>
-                  <fieldset disabled={added} className="contents">
-                    <List.Group divider>
-                      <TotalRow label="Total before discount" value={totals.beforeDiscount} code={draft.currency} />
-                      <TotalRow
-                        label="Discount"
-                        value={totals.discount ? -totals.discount : 0}
-                        code={draft.currency}
-                        input={
-                          <TextField
-                            aria-label="Document discount %"
-                            type="number"
-                            min={0}
-                            className="w-24"
-                            suffix="%"
-                            value={String(draft.discountPct)}
-                            onChange={(e) => update({ discountPct: Math.min(100, Number(e.currentTarget.value)) })}
-                          />
-                        }
-                      />
-                      {getPurchasingSettings().manageFreightInDocuments ? (
-                        <TotalRow
-                          label="Freight"
-                          value={totals.freight}
-                          code={draft.currency}
-                          input={
-                            <div className="flex gap-1">
-                              <TextField
-                                aria-label={`Freight (${draft.currency}, net)`}
-                                type="number"
-                                min={0}
-                                className="w-32"
-                                prefix={draft.currency}
-                                value={String(draft.freight)}
-                                onChange={(e) => update({ freight: Number(e.currentTarget.value) })}
-                              />
-                              <Combobox
-                                aria-label="Freight tax code"
-                                className="w-28"
-                                options={m.tax.codes.filter((c) => c.direction === 'Purchase' && c.active).map((c) => ({ value: c.code, label: c.code }))}
-                                value={draft.freightTaxCode}
-                                onValueChange={(freightTaxCode) => update({ freightTaxCode: freightTaxCode ?? '' })}
-                              />
-                            </div>
-                          }
-                        />
-                      ) : null}
-                      {getPurchasingSettings().roundingMethod === 'By Currency' ? (
-                        <TotalRow label={`Rounding (${docCurrency?.rounding ?? 'No rounding'})`} value={totals.rounding} code={draft.currency} />
-                      ) : null}
-                      <TotalRow label="Tax" value={totals.tax} code={draft.currency} />
-                      {totals.reverseCharge ? (
-                        <TotalNote>
-                          VAT of {draft.currency} {formatAmount(totals.reverseCharge)} isn't paid to the vendor (reverse charge or import VAT).
-                        </TotalNote>
-                      ) : null}
-                      <TotalRow label="Total payment due" value={totals.total} code={draft.currency} strong />
-                      {draft.currency !== 'PHP' ? (
-                        <Text variant="small" tone="muted">
-                          ≈ PHP {formatAmount(totals.total * ctx.fx)} at {ctx.fx ? `${ctx.fx} (${ctx.fxSource})` : '—'}.
-                        </Text>
-                      ) : null}
-                    </List.Group>
-                  </fieldset>
-                  {h.area('remarks', 'Remarks', { rows: 3, hint: 'Can be changed after the receipt is added.' })}
-                </Fields>
-              </Section>
-
-              <Section icon="account_balance" title="Journal entry">
-                {journal.length ? (
-                  <List.Group divider>
-                    {journal.map((j) => (
-                      <List.Item
-                        key={j.account}
-                        title={accountText(j.account, m.inv.accounts)}
-                        content={<span className="whitespace-nowrap tabular-nums">{j.debit ? `Dr ${formatAmount(j.debit)}` : `Cr ${formatAmount(j.credit)}`}</span>}
-                      />
-                    ))}
-                  </List.Group>
-                ) : null}
-                <Text variant="small" tone="muted">
-                  {journal.length
-                    ? `In PHP${draft.currency === 'PHP' ? '' : ` at ${ctx.fx}`}. Stock goes in at net cost after discounts; VAT isn't posted until the vendor's A/P invoice, which clears Goods Received Not Invoiced.`
-                    : 'Made when the receipt is added: Dr Inventory (or the cost account for non-stock items) / Cr Goods Received Not Invoiced. Add lines to see it.'}
-                </Text>
-              </Section>
+              <GrVendorCard {...sectionProps} pickVendor={pickVendor} />
+              <GrDocumentCard {...sectionProps} statusMoves={statusMoves} />
+            </div>
+            <GrContents {...sectionProps} onCopy={copyLines} />
+            <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
+              <GrLogistics draft={draft} update={update} m={m} ctx={ctx} />
+              <GrAccounting {...sectionProps} />
+            </div>
+            <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
+              <GrTotalsCard {...sectionProps} />
+              <GrJournalCard {...sectionProps} />
             </div>
           </Panel.Body>
         )}

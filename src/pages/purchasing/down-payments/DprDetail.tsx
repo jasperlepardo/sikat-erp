@@ -5,31 +5,22 @@ import {
   Alert,
   Badge,
   Button,
-  Combobox,
   Form,
-  FormField,
-  List,
   Panel,
   PanelHeader,
-  Select,
   Tabs,
   Text,
   TextField,
 } from '@jasperlepardo/sikat-design-system';
-import { AccountField } from '../../../components/form/AccountField';
 import { AttachmentsCard } from '../../../components/form/AttachmentsCard';
-import { Fields, Flags, ReadOnly, Section, bind, type Errors } from '../../../components/form/fields';
-import { StatusField } from '../../../components/form/StatusField';
+import { type Errors } from '../../../components/form/fields';
 import { MoreMenu, type MoreMenuItem } from '../../../components/form/MoreMenu';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../components/form/ProblemsAlert';
 import { formatAddress } from '../../../mocks/address';
-import { ADVANCES_TO_SUPPLIERS, DPR_SERIES, DPR_STATUSES, blankDownPaymentRequest, newDprLine, type DownPaymentRequest, type DprLine, type DprStatus } from '../../../mocks/apDownPayments';
-import type { Account } from '../../../mocks/chartOfAccounts';
-import type { Attachment } from '../../../mocks/common';
+import { ADVANCES_TO_SUPPLIERS, blankDownPaymentRequest, newDprLine, type DownPaymentRequest, type DprLine, type DprStatus } from '../../../mocks/apDownPayments';
 import { CURRENT_USER_ID } from '../../../mocks/common';
-import { PAYMENT_METHODS } from '../../../mocks/masters';
-import { contactName, type Partner } from '../../../mocks/partners';
-import { INDICATORS, type PurchaseOrder } from '../../../mocks/purchaseOrders';
+import { type Partner } from '../../../mocks/partners';
+import { type PurchaseOrder } from '../../../mocks/purchaseOrders';
 import {
   addDownPayment,
   cancelDownPayment,
@@ -54,10 +45,6 @@ import { isValidToday, listItems } from '../../../services/items';
 import { companyTax, currencies, exchangeRates, taxCodes, taxGroups, withholdingGroups, withholdingTaxes } from '../../../services/masterData';
 import { listPartnersByRole } from '../../../services/partners';
 import { dueDateFor, getPurchasingSettings, listPurchaseOrders, openQty, poNumber } from '../../../services/purchaseOrders';
-import { paymentTermDef, projectDef, salesEmployeeDef } from '../../settings/masterDefs';
-import { ReferencesTable } from '../orders/detail/AccountingTab';
-import { TotalNote, TotalRow } from '../shared/TotalRow';
-import type { PoMasters } from '../orders/detail/types';
 import { GrLogistics } from '../receipts/detail/GrSections';
 import { buildGrContext, linesFromPo } from '../receipts/detail/types';
 import { CopyPanel } from '../shared/CopyPanel';
@@ -66,18 +53,16 @@ import { DprLines } from './DprLines';
 import { useDocTitle } from '../../../services/useDocTitle';
 import { ActivityTab } from '../../../components/activity/ActivityTab';
 import { NotFound, PrevNext, neighbours } from '../../../components/form/DetailNav';
+import { DprVendorCard } from './DprVendorCard';
+import { DprDocumentCard } from './DprDocumentCard';
+import { DprAccountingCard } from './DprAccountingCard';
+import { DprTotalsCard } from './DprTotalsCard';
+import { DPR_STATUS_INTENT, type DprDraft as Draft, type DprMasters as Masters } from './types';
+export { DPR_STATUS_INTENT };
 
 export const DPR_LIST_PATH = '/purchasing/bills/down-payment-requests';
 
-export const DPR_STATUS_INTENT: Record<DprStatus, 'default' | 'primary' | 'success' | 'danger' | 'warning'> = { Draft: 'default', 'Not Confirmed': 'warning', Open: 'primary', Closed: 'success', Cancelled: 'danger' };
-
-/** The request's attachments: kept on the remarks side, since attachments aren't on the shared base type. */
-type Draft = Omit<DownPaymentRequest, 'id'> & { id?: string; attachments?: Attachment[] };
 type TabId = 'contents' | 'logistics' | 'accounting';
-interface Masters extends PoMasters {
-  orders: PurchaseOrder[];
-  accounts: Account[];
-}
 
 const PAGES = [
   { value: 'details', label: 'Details' },
@@ -86,7 +71,7 @@ const PAGES = [
 ] as const;
 type PageId = (typeof PAGES)[number]['value'];
 const ALL_CURRENCIES = 'All currencies';
-const asOptions = (values: readonly string[]) => values.map((v) => ({ value: v, label: v }));
+
 
 function validate(d: Draft, fx: number, m: Masters, asDraft: boolean): Problem<TabId>[] {
   const { problems, need } = problemCollector<TabId>();
@@ -183,12 +168,12 @@ function DprForm() {
     if (patch.lines) next.orderNumber = [...new Set(next.lines.filter((l) => l.baseType).map((l) => l.baseDocNo))].join(', ');
     setDraft(next);
   };
-  const h = bind(draft, update);
 
   const pickVendor = (vendorId: string | null) => {
     const v = m.vendors.find((x) => x.id === vendorId);
     update(v ? { ...vendorDefaults(v, draft, m), lines: draft.lines.filter((l) => !l.baseType) } : { vendorId: '', vendorCode: '', vendorName: '', contactId: '' });
   };
+  const sectionProps = { draft, update, errors, m, ctx };
 
   const submit = async (e: FormEvent | null, asDraft = false, overrides: Partial<Draft> = {}) => {
     e?.preventDefault();
@@ -301,98 +286,16 @@ function DprForm() {
                 </Alert>
               ) : null}
 
-              <fieldset disabled={added} className="contents">
-                <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
-                  <Section icon="storefront" title="Vendor">
-                    <Fields>
-                      <div className="md:col-span-2">
-                        {vendor && (added || ctx.based) ? (
-                          <ReadOnly label="Vendor" value={draft.vendorName} description={`${draft.vendorCode} · ${code}`} />
-                        ) : (
-                          <FormField label="Vendor" required error={errors.vendorId}>
-                            {(p) => (
-                              <Combobox {...p} placeholder="Search vendors" options={m.vendors.filter((v) => v.status !== 'Inactive' || v.id === draft.vendorId).map((v) => ({ value: v.id, label: v.name, subLabel: v.code, subLabelPlacement: 'top' as const, description: v.currency, text: `${v.code} ${v.name}` }))} value={draft.vendorId || null} onValueChange={pickVendor} />
-                            )}
-                          </FormField>
-                        )}
-                      </div>
-                      {h.lookup('contactId', 'Contact person', [{ value: '', label: '— None —' }, ...(vendor?.contacts ?? []).filter((c) => c.active || c.id === draft.contactId).map((c) => ({ value: c.id, label: contactName(c) }))], { disabled: !vendor })}
-                      {h.text('vendorRef', 'Vendor ref. no.', { hint: "The vendor's proforma or billing no." })}
-                      <FormField label="Currency" required error={errors.currency} className="md:col-span-2">
-                        {(p) => <Select {...p} disabled={added || ctx.based} options={m.currencies.map((c) => ({ value: c.code, label: `${c.code} — ${c.name}` }))} value={code} onValueChange={(currency) => update({ currency })} />}
-                      </FormField>
-                    </Fields>
-                  </Section>
-                  <Section icon="tag" title="Document">
-                    <Fields>
-                      <FormField label="No.">
-                        {() => (
-                          <div className="flex gap-1">
-                            <Select aria-label="Series" className="w-40" disabled={added} options={DPR_SERIES.map((s) => ({ value: s.id, label: s.name }))} value={draft.seriesId} onValueChange={(seriesId) => update({ seriesId })} />
-                            <span className="flex-1 self-center text-sm">{draft.docNum ? dprNumber(draft) : <span className="text-(--color-text-placeholder)">Next number</span>}</span>
-                          </div>
-                        )}
-                      </FormField>
-                      <StatusField statuses={DPR_STATUSES} intents={DPR_STATUS_INTENT} value={draft.status} moves={statusMoves} hint="Open until drawn in full on A/P invoices, or closed by hand." error={errors.status} />
-                      {h.date('postingDate', 'Posting date', { required: true, error: errors.postingDate })}
-                      {h.date('dueDate', 'Due date', { hint: 'When the vendor wants the advance, from the payment terms.' })}
-                      {h.date('documentDate', 'Document date', { required: true, error: errors.documentDate })}
-                      <ReadOnly label="Close date" value={draft.closeDate ? formatDate(draft.closeDate) : '—'} />
-                    </Fields>
-                  </Section>
-                </div>
-
-                <DprLines lines={draft.lines} onChange={(lines) => update({ lines })} errors={errors} m={m} ctx={ctx} currency={code} postingDate={draft.postingDate} vendorId={draft.vendorId} onCopy={() => setCopying(true)} canCopy={orders.length > 0} />
-
-                <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
-                  <GrLogistics draft={draft} update={update} m={m} ctx={ctx} />
-                  <Section icon="account_balance" title="Accounting">
-                    <Fields>
-                      {h.text('journalRemark', 'Journal remark', { hint: 'Used on the payment that pays it.' })}
-                      <AccountField label="Down payment account" role="downPaymentClearing" value={draft.downPaymentAccount} onChange={(downPaymentAccount) => update({ downPaymentAccount })} accounts={m.accounts} required error={errors.downPaymentAccount} disabled={added} hint="Where the advance sits once paid: the vendor's down payment account, else Advances to Suppliers." />
-                      {h.master('paymentTermId', 'Payment terms', paymentTermDef, { hint: 'Sets the due date.' })}
-                      {h.lookup('paymentMethod', 'Payment method', PAYMENT_METHODS.map((p) => ({ value: p.code, label: `${p.code} · ${p.description}` })))}
-                      <ReadOnly label="Installments" value={String(draft.installments)} />
-                      {h.num('cashDiscountDays', 'Cash discount date offset', { suffix: 'days' })}
-                      {h.master('projectId', 'BP project', projectDef, { clearable: true })}
-                      {h.choose('indicator', 'Indicator', [{ value: '', label: '— None —' }, ...asOptions(INDICATORS)])}
-                      <ReadOnly label="Federal tax ID" value={vendor?.tin || '—'} hint="The vendor's TIN." />
-                      <ReadOnly label="Order number" value={draft.orderNumber || '—'} hint="The PO the lines were copied from." />
-                    </Fields>
-                    <Flags>{h.check('paymentBlock', 'Payment block')}</Flags>
-                  </Section>
-                </div>
-                <ReferencesTable refs={draft.references} onChange={(references) => update({ references })} readOnly={added} description="Other documents this request refers to, e.g. the vendor's proforma invoice." />
-              </fieldset>
-
-              <Section icon="functions" title="Totals">
-                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                  <Fields cols={1}>
-                    <fieldset disabled={added} className="contents">
-                      <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                        {h.master('buyerId', 'Buyer', salesEmployeeDef)}
-                        {h.master('ownerId', 'Owner', salesEmployeeDef)}
-                        {h.num('dpmPct', 'DPM %', { required: true, suffix: '%', error: errors.dpmPct, hint: 'The share of the order requested up front.' })}
-                      </div>
-                    </fieldset>
-                    <Flags>{h.check('paymentOrderRun', 'Include in payment runs (Payment Order Run)')}</Flags>
-                    {h.area('remarks', 'Remarks', { rows: 3 })}
-                  </Fields>
-                  <fieldset disabled={added} className="contents">
-                    <List.Group divider>
-                      <TotalRow label="Total before discount" value={totals.beforeDiscount} code={code} />
-                      <TotalRow label="Discount" value={totals.discount ? -totals.discount : 0} code={code} input={<TextField aria-label="Document discount %" type="number" min={0} className="w-24" suffix="%" value={String(draft.discountPct)} onChange={(e) => update({ discountPct: Math.min(100, Number(e.currentTarget.value)) })} />} />
-                      <TotalRow label={`Down payment (${draft.dpmPct}%)`} value={totals.dpm} code={code} />
-                      <TotalRow label="Tax" value={totals.tax} code={code} />
-                      {totals.reverseCharge ? <TotalNote>VAT of {code} {formatAmount(totals.reverseCharge)} isn't paid to the vendor (reverse charge or import VAT).</TotalNote> : null}
-                      <TotalRow label="Total payment due" value={totals.total} code={code} strong />
-                      <TotalRow label="Applied amount" value={-draft.appliedAmount} code={code} />
-                      <TotalRow label="Balance due" value={balance} code={code} strong />
-                      {added && draft.appliedAmount ? <TotalNote>Drawn on A/P invoices: {code} {formatAmount(draft.drawnAmount)} of {formatAmount(draft.appliedAmount)} paid.</TotalNote> : null}
-                    </List.Group>
-                  </fieldset>
-                </div>
-              </Section>
+              <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
+                <DprVendorCard {...sectionProps} pickVendor={pickVendor} />
+                <DprDocumentCard {...sectionProps} statusMoves={statusMoves} />
+              </div>
+              <DprLines lines={draft.lines} onChange={(lines) => update({ lines })} errors={errors} m={m} ctx={ctx} currency={code} postingDate={draft.postingDate} vendorId={draft.vendorId} onCopy={() => setCopying(true)} canCopy={orders.length > 0} />
+              <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
+                <GrLogistics draft={draft} update={update} m={m} ctx={ctx} />
+                <DprAccountingCard {...sectionProps} />
+              </div>
+              <DprTotalsCard {...sectionProps} />
               <AttachmentsCard attachments={draft.attachments ?? []} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach the vendor's proforma invoice or quotation." />
             </Panel.Body>
           )}
