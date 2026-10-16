@@ -5,43 +5,33 @@ import {
   Alert,
   Badge,
   Button,
-  Combobox,
   Form,
-  FormField,
-  List,
   Panel,
   PanelHeader,
-  Select,
   Tabs,
   Text,
   TextField,
 } from '@jasperlepardo/sikat-design-system';
-import { Fields, Flags, ReadOnly, Section, bind, type Errors } from '../../../../components/form/fields';
-import { StatusField } from '../../../../components/form/StatusField';
+import { type Errors } from '../../../../components/form/fields';
 import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
-import { AP_SERIES, AP_STATUSES, blankApInvoice, newApLine, type ApInvoice, type ApLine, type ApStatus } from '../../../../mocks/apInvoices';
-import { accountText } from '../../../../mocks/chartOfAccounts';
+import { blankApInvoice, newApLine, type ApInvoice, type ApLine, type ApStatus } from '../../../../mocks/apInvoices';
 import { CURRENT_USER_ID } from '../../../../mocks/common';
 import type { GoodsReceipt } from '../../../../mocks/goodsReceipts';
-import type { Item } from '../../../../mocks/items';
-import { contactName, type Partner } from '../../../../mocks/partners';
+import { type Partner } from '../../../../mocks/partners';
 import { type PurchaseOrder } from '../../../../mocks/purchaseOrders';
 import {
   ApPostError,
   addApInvoice,
   apJournal,
   apNumber,
-
   apTotals,
   cancelApInvoice,
   findDuplicateInvoice,
   getApInvoice,
-  lineValueLc,
   listApInvoices,
   movesStock,
   netDue,
-  receiptValueLc,
   returnableQty,
   recallApInvoice,
   saveApDraft,
@@ -58,22 +48,24 @@ import { loadInventoryMasters } from '../../../../services/inventoryMasters';
 import { isValidToday, listItems } from '../../../../services/items';
 import { companyTax, currencies, exchangeRates, taxCodes, taxGroups, withholdingGroups, withholdingTaxes } from '../../../../services/masterData';
 import { listPartnersByRole } from '../../../../services/partners';
-import { dueDateFor, getPurchasingSettings, listPurchaseOrders, openQty, paymentTermName, poWithholding } from '../../../../services/purchaseOrders';
-import { salesEmployeeDef } from '../../../settings/masterDefs';
-import { TotalNote, TotalRow } from '../../orders/detail/PurchaseOrderDetail';
+import { dueDateFor, getPurchasingSettings, listPurchaseOrders, openQty, poWithholding } from '../../../../services/purchaseOrders';
 import { proposedTaxCode } from '../../orders/detail/types';
 import { GrLogistics } from '../../receipts/detail/GrSections';
 import { buildGrContext, defaultPayTo, defaultShipTo, linesFromPo } from '../../receipts/detail/types';
 import { DocumentFlow } from '../../shared/DocumentFlow';
-import { createPortal } from 'react-dom';
-import { DrawPanel } from './DrawPanel';
-import { drawableAmount, listDownPayments } from '../../../../services/apDownPayments';
+import { listDownPayments } from '../../../../services/apDownPayments';
 import { ApAccounting } from './ApAccounting';
 import { ApContents } from './ApContents';
 import { linesFromReceipt, orderNumbersOf, toApLine, type ApContext, type ApDraft, type ApMasters } from './types';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
 import { NotFound, PrevNext, neighbours } from '../../../../components/form/DetailNav';
+import { ApVendorCard } from './ApVendorCard';
+import { ApDocumentCard } from './ApDocumentCard';
+import { ApTotalsCard } from './ApTotalsCard';
+import { ApJournalCard } from './ApJournalCard';
+import { AP_STATUS_INTENT } from './types';
+export { AP_STATUS_INTENT };
 
 export const AP_LIST_PATH = '/purchasing/bills';
 
@@ -85,22 +77,6 @@ const PAGES = [
   { value: 'activity', label: 'Activity' },
 ] as const;
 type PageId = (typeof PAGES)[number]['value'];
-
-export const AP_STATUS_INTENT: Record<ApStatus, 'default' | 'primary' | 'success' | 'danger' | 'warning'> = {
-  Draft: 'default',
-  'Not Confirmed': 'warning',
-  Open: 'primary',
-  Closed: 'success',
-  Cancelled: 'danger',
-};
-
-/** How each kind of withholding tax reads in the footer. */
-const WITHHELD_LABEL: Record<string, string> = {
-  'Expanded (EWT)': 'EWT',
-  'Final (FWT)': 'Final tax',
-  'Withholding VAT': 'VAT',
-  'Percentage tax': 'Percentage tax',
-};
 
 const ALL_CURRENCIES = 'All currencies';
 
@@ -183,7 +159,6 @@ function ApInvoiceForm() {
   const [saving, setSaving] = useState(false);
   const [rejecting, setRejecting] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
-  const [drawing, setDrawing] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -243,11 +218,6 @@ function ApInvoiceForm() {
   const due = netDue(totals.total, withholding, draft.downPayment);
   const balance = Math.round((due - draft.appliedAmount) * 100) / 100;
   const journal = ctx.fx ? apJournal(draft, ctx.fx, { items: m.items, groups: m.inv.groups, codes: m.tax.codes, rateOf: ctx.rateOf, withholding }) : [];
-  // Price or exchange-rate differences against the receipts the lines bill.
-  const differences = draft.lines
-    .filter((l) => l.baseType === 'GRPO')
-    .map((l) => ({ l, gr: m.receipts.find((r) => r.id === l.baseId), diff: ctx.fx ? Math.round((lineValueLc(l, draft, ctx.fx) - receiptValueLc(l)) * 100) / 100 : 0 }))
-    .filter((x) => x.diff);
 
   // Ship To follows the lines, and the due date the terms, while each still holds its default.
   const update = (patch: Partial<ApDraft>) => {
@@ -259,7 +229,6 @@ function ApInvoiceForm() {
     if (patch.lines) next.orderNumber = orderNumbersOf(next.lines, m);
     setDraft(next);
   };
-  const h = bind(draft, update);
 
   /** Picking the vendor fills everything that defaults from it. Lines copied from another vendor's documents go. */
   const pickVendor = (vendorId: string | null) => {
@@ -400,14 +369,8 @@ function ApInvoiceForm() {
     ...(vendor ? [{ label: `Open vendor ${vendor.code}`, icon: 'local_shipping', onSelect: () => navigate(`/purchasing/vendors/${vendor.id}`) }] : []),
   ];
 
-  const allCurrencies = vendor?.currency === ALL_CURRENCIES;
   const title = isNew ? 'New A/P invoice' : added ? apNumber(draft) : 'Draft A/P invoice';
-
-  const code = draft.currency;
-  // Paid down payment requests of this vendor not yet drawn, in this currency.
-  const drawable = m.downPayments
-    .filter((d) => d.vendorId === draft.vendorId && d.currency === code && (d.status === 'Open' || (draft.drawnDownPayments ?? []).some((x) => x.requestId === d.id)))
-    .filter((d) => drawableAmount(d) > 0 || (draft.drawnDownPayments ?? []).some((x) => x.requestId === d.id));
+  const sectionProps = { draft, update, errors, m, ctx };
 
   return (
     <>
@@ -468,216 +431,31 @@ function ApInvoiceForm() {
             {added ? (
               <Alert intent="default" variant="outline" title={draft.status === 'Open' ? 'This A/P invoice is added' : `This A/P invoice is ${draft.status.toLowerCase()}`}>
                 {draft.status === 'Open'
-                  ? `The vendor is owed ${code} ${formatAmount(balance)}. Only remarks, the payment block and the payment run flag can change; to undo it, cancel the invoice.`
+                  ? `The vendor is owed ${draft.currency} ${formatAmount(balance)}. Only remarks, the payment block and the payment run flag can change; to undo it, cancel the invoice.`
                   : `Only remarks can change${draft.closeDate ? ` (${draft.status.toLowerCase()} ${formatDate(draft.closeDate)})` : ''}.`}
               </Alert>
             ) : null}
 
-            <fieldset disabled={added} className="contents">
-              <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
-                <Section icon="storefront" title="Vendor">
-                  <Fields>
-                    <div className="md:col-span-2">
-                      {vendor && (added || ctx.based) ? (
-                        <ReadOnly label="Vendor" value={draft.vendorName} description={`${draft.vendorCode} · ${draft.currency}`} hint={!added ? 'Locked while lines copied from its documents are on the invoice.' : undefined} />
-                      ) : (
-                        <FormField label="Vendor" required error={errors.vendorId} tooltip="Only vendors are listed. Picking one fills the name, contact, currency, terms and control account.">
-                          {(p) => (
-                            <Combobox
-                              {...p}
-                              placeholder="Search vendors"
-                              options={m.vendors
-                                .filter((v) => v.status !== 'Inactive' || v.id === draft.vendorId)
-                                .map((v) => ({ value: v.id, label: v.name, subLabel: v.code, subLabelPlacement: 'top' as const, description: v.currency, text: `${v.code} ${v.name}` }))}
-                              value={draft.vendorId || null}
-                              onValueChange={pickVendor}
-                            />
-                          )}
-                        </FormField>
-                      )}
-                    </div>
-                    {h.lookup(
-                      'contactId',
-                      'Contact person',
-                      [{ value: '', label: '— None —' }, ...(vendor?.contacts ?? []).filter((c) => c.active || c.id === draft.contactId).map((c) => ({ value: c.id, label: contactName(c) }))],
-                      { hint: !vendor ? 'Pick a vendor first.' : "Defaults to the vendor's default contact.", disabled: !vendor },
-                    )}
-                    {h.text('vendorRef', 'Vendor ref. no.', { error: errors.vendorRef, hint: "The vendor's invoice no. — checked against their other bills so it isn't entered twice." })}
-                    <FormField
-                      label="Currency"
-                      required
-                      error={errors.currency}
-                      className="md:col-span-2"
-                      tooltip={ctx.based ? 'Locked to the currency of the documents the lines came from.' : allCurrencies ? 'This vendor takes all currencies — pick the document currency.' : `Defaults to the vendor's currency (${vendor?.currency ?? '—'}).`}
-                    >
-                      {(p) => (
-                        <Select {...p} disabled={added || ctx.based} options={m.currencies.map((c) => ({ value: c.code, label: `${c.code} — ${c.name}` }))} value={draft.currency} onValueChange={(currency) => update({ currency })} />
-                      )}
-                    </FormField>
-                  </Fields>
-                </Section>
-
-                <Section icon="tag" title="Document">
-                  <Fields>
-                    <FormField label="No." tooltip={added ? undefined : 'Assigned from the series when the invoice is added.'}>
-                      {() => (
-                        <div className="flex gap-1">
-                          <Select aria-label="Series" className="w-40" disabled={added} options={AP_SERIES.map((s) => ({ value: s.id, label: s.name }))} value={draft.seriesId} onValueChange={(seriesId) => update({ seriesId })} />
-                          <span className="flex-1 self-center text-sm">{draft.docNum ? apNumber(draft) : <span className="text-(--color-text-placeholder)">Next number</span>}</span>
-                        </div>
-                      )}
-                    </FormField>
-                    <StatusField statuses={AP_STATUSES} intents={AP_STATUS_INTENT} value={draft.status} moves={statusMoves} hint="Open once added; Closed when paid in full; Cancelled when reversed." error={errors.status} />
-                    {h.date('postingDate', 'Posting date', { required: true, error: errors.postingDate, hint: 'Sets the period, tax rates and the exchange rate the bill is booked at.' })}
-                    {h.date('dueDate', 'Due date', { required: true, error: errors.dueDate, hint: `Posting date + the payment terms${draft.paymentTermId ? ` (${paymentTermName(draft.paymentTermId)})` : ''}. Change it to override.` })}
-                    {h.date('documentDate', 'Document date', { required: true, error: errors.documentDate, hint: 'The date on the vendor’s invoice — the date BIR uses for input VAT.' })}
-                    <ReadOnly label="Close date" value={draft.closeDate ? formatDate(draft.closeDate) : '—'} hint="Set when the invoice is paid in full or cancelled." />
-                  </Fields>
-                </Section>
-              </div>
-
-              <ApContents draft={draft} update={update} errors={errors} m={m} ctx={ctx} onCopy={copyLines} />
-
-              <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
-                <GrLogistics draft={draft} update={update} m={m} ctx={ctx} />
-                <ApAccounting draft={draft} update={update} errors={errors} m={m} ctx={ctx} />
-              </div>
-            </fieldset>
-
             <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
-              <Section icon="functions" title="Totals">
-                <Fields cols={1}>
-                  <fieldset disabled={added} className="contents">
-                    <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                      {h.master('buyerId', 'Buyer', salesEmployeeDef, { hint: 'Who bought the goods.' })}
-                      {h.master('ownerId', 'Owner', salesEmployeeDef, { hint: 'Owns the document (data access).' })}
-                    </div>
-                  </fieldset>
-                  <fieldset disabled={added} className="contents">
-                    <List.Group divider>
-                      <TotalRow label="Total before discount" value={totals.beforeDiscount} code={code} />
-                      <TotalRow
-                        label="Discount"
-                        value={totals.discount ? -totals.discount : 0}
-                        code={code}
-                        input={<TextField aria-label="Document discount %" type="number" min={0} className="w-24" suffix="%" value={String(draft.discountPct)} onChange={(e) => update({ discountPct: Math.min(100, Number(e.currentTarget.value)) })} />}
-                      />
-                      {getPurchasingSettings().manageFreightInDocuments ? (
-                        <TotalRow
-                          label="Freight"
-                          value={totals.freight}
-                          code={code}
-                          input={
-                            <div className="flex gap-1">
-                              <TextField aria-label={`Freight (${code}, net)`} type="number" min={0} className="w-32" prefix={code} value={String(draft.freight)} onChange={(e) => update({ freight: Number(e.currentTarget.value) })} />
-                              <Combobox
-                                aria-label="Freight tax code"
-                                className="w-28"
-                                options={m.tax.codes.filter((c) => c.direction === 'Purchase' && c.active).map((c) => ({ value: c.code, label: c.code }))}
-                                value={draft.freightTaxCode}
-                                onValueChange={(freightTaxCode) => update({ freightTaxCode: freightTaxCode ?? '' })}
-                              />
-                            </div>
-                          }
-                        />
-                      ) : null}
-                      {getPurchasingSettings().roundingMethod === 'By Currency' ? <TotalRow label={`Rounding (${docCurrency?.rounding ?? 'No rounding'})`} value={totals.rounding} code={code} /> : null}
-                      <TotalRow label="Tax" value={totals.tax} code={code} />
-                      {totals.reverseCharge ? <TotalNote>VAT of {code} {formatAmount(totals.reverseCharge)} isn't owed to the vendor (reverse charge or import VAT).</TotalNote> : null}
-                      <TotalRow label="Total payment due" value={totals.total} code={code} strong />
-                      {withholding.filter((w) => w.deducted).map((w) => (
-                        <TotalRow key={w.atc} label={`${WITHHELD_LABEL[w.kind] ?? 'Tax'} withheld — ${w.atc} (${w.rate}%)`} value={-w.amount} code={code} />
-                      ))}
-                      <TotalRow
-                        label="Total down payment"
-                        value={-draft.downPayment}
-                        code={code}
-                        input={
-                          !added && drawable.length ? (
-                            <Button type="button" size="small" variant="ghost" onClick={() => setDrawing(true)}>
-                              {draft.downPayment ? 'Change…' : `Draw… (${drawable.length})`}
-                            </Button>
-                          ) : undefined
-                        }
-                      />
-                      {(draft.drawnDownPayments ?? []).length ? (
-                        <TotalNote>
-                          Drawn from {(draft.drawnDownPayments ?? []).map((d) => `request ${d.docNo} (${code} ${formatAmount(d.amount)})`).join(', ')} — clears PHP{' '}
-                          {formatAmount((draft.drawnDownPayments ?? []).reduce((n, d) => n + d.amountLc, 0))} from the advance account.
-                        </TotalNote>
-                      ) : null}
-                      <TotalRow label="Net payment due" value={due} code={code} strong />
-                      <TotalRow label="Applied amount" value={-draft.appliedAmount} code={code} />
-                      <TotalRow label="Balance due" value={balance} code={code} strong />
-                      {code !== 'PHP' ? <Text variant="small" tone="muted">≈ PHP {formatAmount(balance * ctx.fx)} at {ctx.fx ? `${ctx.fx} (${ctx.fxSource})` : '—'}.</Text> : null}
-                    </List.Group>
-                  </fieldset>
-                  <Flags>
-                    {h.check('paymentBlock', 'Payment block (keep out of payment runs)')}
-                    {h.check('paymentOrderRun', 'Include in payment runs (Payment Order Ref.)')}
-                  </Flags>
-                  {h.area('remarks', 'Remarks', { rows: 3, hint: 'Can be changed after the invoice is added.' })}
-                </Fields>
-              </Section>
+              <ApVendorCard {...sectionProps} pickVendor={pickVendor} />
+              <ApDocumentCard {...sectionProps} statusMoves={statusMoves} />
+            </div>
 
-              <Section icon="account_balance" title="Journal entry">
-                {journal.length ? (
-                  <List.Group divider>
-                    {journal.map((j) => (
-                      <List.Item
-                        key={j.account}
-                        title={accountText(j.account, m.accounts)}
-                        content={<span className="whitespace-nowrap tabular-nums">{j.debit ? `Dr ${formatAmount(j.debit)}` : `Cr ${formatAmount(j.credit)}`}</span>}
-                      />
-                    ))}
-                  </List.Group>
-                ) : null}
-                {differences.length ? (
-                  <Alert intent="warning" variant="outline" title="Billed at a different price or rate than received">
-                    {differences.map(({ l, gr, diff }) => (
-                      <div key={l.id}>
-                        {l.itemNo}: receipt {l.baseDocNo}
-                        {gr && gr.currency !== 'PHP' ? ` at ${gr.fxRate}, billed at ${ctx.fx}` : ''} — PHP {formatAmount(Math.abs(diff))} {diff > 0 ? 'more' : 'less'}, posted to{' '}
-                        {differenceTarget(m.items.find((i) => i.id === l.itemId))}.
-                      </div>
-                    ))}
-                  </Alert>
-                ) : null}
-                <Text variant="small" tone="muted">
-                  {journal.length
-                    ? `In PHP${code === 'PHP' ? '' : ` at ${ctx.fx}`}. Receipt lines clear Goods Received Not Invoiced at the receipt's cost; other stocked lines receive the stock now. Realized exchange gains and losses come when the bill is paid.`
-                    : 'Made when the invoice is added: Dr Goods Received Not Invoiced (or Inventory) and Input VAT / Cr the vendor and any withholding tax. Add lines to see it.'}
-                </Text>
-              </Section>
+            <ApContents {...sectionProps} onCopy={copyLines} />
+            <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
+              <GrLogistics draft={draft} update={update} m={m} ctx={ctx} />
+              <ApAccounting {...sectionProps} />
+            </div>
+            <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
+              <ApTotalsCard {...sectionProps} />
+              <ApJournalCard {...sectionProps} />
             </div>
           </Panel.Body>
         )}
       </Panel>
     </Form>
-    {drawing
-      ? createPortal(
-          <DrawPanel
-            code={code}
-            requests={drawable}
-            current={draft.drawnDownPayments ?? []}
-            max={Math.max(0, Math.round((totals.total - withholding.filter((w) => w.deducted).reduce((n, w) => n + w.amount, 0)) * 100) / 100)}
-            onCancel={() => setDrawing(false)}
-            onDone={(draws) => {
-              update({ drawnDownPayments: draws, downPayment: Math.round(draws.reduce((n, d) => n + d.amount, 0) * 100) / 100 });
-              setDrawing(false);
-            }}
-          />,
-          document.body,
-        )
-      : null}
     </>
   );
-}
-
-/** Where a line's price or rate difference against its receipt is posted, in words. */
-function differenceTarget(item: Item | undefined) {
-  if (!item?.inventoryItem) return "the item's cost account (it isn't stocked)";
-  return item.warehouses.reduce((n, w) => n + w.inStock, 0) > 0 ? 'inventory (the item cost re-averages)' : 'cost of sales (the stock is gone)';
 }
 
 /** What picking a vendor fills on the invoice. */

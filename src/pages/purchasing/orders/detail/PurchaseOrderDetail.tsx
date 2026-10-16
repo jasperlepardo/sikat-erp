@@ -1,43 +1,32 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import {
   Alert,
   Badge,
   Button,
-  CardField,
-  Combobox,
   Form,
-  FormField,
-  Icon,
   Panel,
   PanelHeader,
-  Select,
   Tabs,
-  List,
   Text,
   TextField,
-  type CardFieldOption,
 } from '@jasperlepardo/sikat-design-system';
-import { Fields, ReadOnly, Section, bind, type Errors } from '../../../../components/form/fields';
-import { StatusField } from '../../../../components/form/StatusField';
+import { type Errors } from '../../../../components/form/fields';
 import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { CURRENT_USER_ID } from '../../../../mocks/common';
-import { contactName, type Partner } from '../../../../mocks/partners';
+import { type Partner } from '../../../../mocks/partners';
 import {
   blankPurchaseOrder,
   newPoLine,
-  PO_STATUSES,
   type PoStatus,
   type PurchaseOrder,
 } from '../../../../mocks/purchaseOrders';
-import { formatAmount } from '../../../../services/format';
 import { loadInventoryMasters } from '../../../../services/inventoryMasters';
 import { isValidToday, listItems } from '../../../../services/items';
 import { companyTax, currencies, exchangeRates, taxCodes, taxGroups, withholdingGroups, withholdingTaxes } from '../../../../services/masterData';
 import { listPartnersByRole } from '../../../../services/partners';
 import { loadCurrentCompany } from '../../../../services/companies';
-import { salesEmployeeDef } from '../../../settings/masterDefs';
 import {
   PoSaveError,
   cancelPurchaseOrder,
@@ -48,9 +37,6 @@ import {
   getPurchasingSettings,
   listPurchaseOrders,
   poNumber,
-  poSeries,
-  poTotals,
-  poWithholding,
   recallPurchaseOrder,
   savePurchaseOrder,
   seriesOf,
@@ -68,19 +54,23 @@ import {
   formatAddress,
   lineFromItem,
   proposedTaxCode,
-  viewCurrency,
   type PoContext,
   type PoDraft,
   type PoMasters,
   type PoSuggestion,
 } from './types';
-import { formatDate, todayISO } from '../../../../services/dates';
+import { todayISO } from '../../../../services/dates';
 import { defaultJournalRemark } from '../../../../services/journalPatterns';
 import { listGoodsReceipts } from '../../../../services/goodsReceipts';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
 import { NotFound, PrevNext, neighbours } from '../../../../components/form/DetailNav';
+import { VendorCard } from './VendorCard';
+import { DocumentCard } from './DocumentCard';
+import { TotalsCard } from './TotalsCard';
 
+import { STATUS_INTENT } from './types';
+export { STATUS_INTENT };
 export const PO_LIST_PATH = '/purchasing/purchase-orders';
 
 /** Everything that defaults from the vendor. Tax codes depend on the vendor's VAT status, so lines re-propose theirs. */
@@ -122,39 +112,12 @@ function fromSuggestion(s: PoSuggestion, blank: PoDraft, m: PoMasters): PoDraft 
 
 type TabId = 'contents' | 'logistics' | 'accounting';
 
-/** Top-level views in the panel header. */
 const PAGES = [
   { value: 'details', label: 'Details' },
   { value: 'transactions', label: 'Transactions' },
   { value: 'activity', label: 'Activity' },
 ] as const;
 type PageId = (typeof PAGES)[number]['value'];
-
-export const STATUS_INTENT: Record<PoStatus, 'default' | 'primary' | 'warning' | 'success' | 'danger'> = {
-  Draft: 'default',
-  Open: 'primary',
-  'Not Confirmed': 'warning',
-  Closed: 'success',
-  Cancelled: 'danger',
-};
-
-const STATUS_HINT: Record<PoStatus, string> = {
-  Draft: 'Pick Open to add it.',
-  'Not Confirmed': 'Awaiting approval. Pick Open to approve it, or close or cancel it.',
-  Open: 'Pick Closed or Cancelled to end it. Cancelling needs nothing received.',
-  Closed: 'Closed for good.',
-  Cancelled: 'Cancelled for good.',
-};
-
-const TODAY = () => todayISO();
-
-/** How each kind of withholding tax reads in the footer. */
-const WITHHELD_LABEL: Record<string, string> = {
-  'Expanded (EWT)': 'EWT',
-  'Final (FWT)': 'Final tax',
-  'Withholding VAT': 'VAT',
-  'Percentage tax': 'Percentage tax',
-};
 
 /** Required and conditional fields from the PO field map, checked on Add / Save. Drafts only need a vendor. */
 function validate(d: PoDraft, ctx: PoContext, m: PoMasters, asDraft: boolean): Problem<TabId>[] {
@@ -210,7 +173,6 @@ function PurchaseOrderForm() {
   const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
   const setPage = (v: PageId) => navigate(`${PO_LIST_PATH}/${id}/${v}`, { replace: true });
   useEffect(() => { if (!tabParam) navigate(`${PO_LIST_PATH}/${id}/details`, { replace: true }); }, []);
-  // POs in the list's default order (newest posting date first), for previous/next.
   const [siblings, setSiblings] = useState<string[]>([]);
   useEffect(() => {
     if (!isNew)
@@ -241,7 +203,6 @@ function PurchaseOrderForm() {
       const masters = { vendors, items, inv, tax: { company, codes, groups, withholding, withholdingGroups: wGroups }, currencies: curs, rates, company: ours };
       setM(masters);
       if (isNew) setDraft((prev) => {
-        // A suggestion needs the masters to price its lines, so it's built now.
         const d = prev && suggest ? fromSuggestion(suggest, prev, masters) : prev;
         if (!d) return d;
         const companyAddress = formatAddress(masters.company.address, masters.company.name);
@@ -251,9 +212,7 @@ function PurchaseOrderForm() {
     if (isNew || !id) return;
     let cancelled = false;
     getPurchaseOrder(id).then((po) => !cancelled && setDraft(po ?? null));
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [id, isNew]);
 
   useDocTitle(draft?.docNum ? (isNew ? 'New purchase order' : draft.status === 'Draft' ? 'Draft purchase order' : poNumber(draft)) : undefined);
@@ -262,25 +221,15 @@ function PurchaseOrderForm() {
 
   const ctx = buildContext(draft, m);
   const { prevId, nextId } = neighbours(siblings, draft.id && (draft.docNum ? poNumber(draft as PurchaseOrder) : draft.id));
-  const { vendor } = ctx;
   const errors: Errors = Object.fromEntries(problems.map((p) => [p.key, p.message]));
-  const series = seriesOf(draft.seriesId);
-  const docCurrency = m.currencies.find((c) => c.code === draft.currency);
-  const totals = poTotals(draft, ctx.rateOf, docCurrency?.rounding, ctx.isReverseCharge);
-  const withholdingLines = poWithholding(draft, ctx.vendor, m.items, m.tax, draft.postingDate);
-  const withholdingTotal = withholdingLines.filter((w) => w.deducted).reduce((s, w) => s + w.amount, 0);
-  const view = viewCurrency(draft, ctx, m);
   const received = draft.lines.some((l) => l.receivedQty > 0);
 
-  // Ship To follows the lines while it still holds the default.
   const update = (patch: Partial<PoDraft>) => {
     const next = { ...draft, ...patch };
     if (patch.lines && patch.shipTo === undefined && draft.shipTo === defaultShipTo(draft.lines, m)) next.shipTo = defaultShipTo(patch.lines, m);
     setDraft(next);
   };
-  const h = bind(draft, update);
 
-  /** Picking the vendor fills everything that defaults from it. */
   const pickVendor = (vendorId: string | null, override?: Partner) => {
     const v = override ?? m.vendors.find((x) => x.id === vendorId);
     if (!v) return update({ vendorId: '', vendorCode: '', vendorName: '', contactId: '' });
@@ -293,7 +242,6 @@ function PurchaseOrderForm() {
     pickVendor(vendor.id, vendor);
   };
 
-  /** Add / Save (or save as draft). `patch` applies last-moment changes, e.g. Approve. */
   const submit = async (e: FormEvent | null, asDraft = false, patch: Partial<PoDraft> = {}) => {
     e?.preventDefault();
     const doc = { ...draft, ...patch };
@@ -301,7 +249,6 @@ function PurchaseOrderForm() {
     setProblems(found);
     if (found.length) return;
 
-    // "When duplicate Vendor Ref. No. occurs": Warn asks once, then lets it through.
     const effectiveDraft = asDraft || (e !== null && draft.status === 'Draft' && !doc.approved);
     if (!effectiveDraft && getPurchasingSettings().duplicateVendorRef === 'Warn' && !dupWarning) {
       const dup = await findDuplicateVendorRef(doc);
@@ -344,7 +291,7 @@ function PurchaseOrderForm() {
   };
 
   const duplicate = () => {
-    const today = TODAY();
+    const today = todayISO();
     const copy: PoDraft = {
       ...structuredClone(draft),
       id: undefined,
@@ -399,10 +346,9 @@ function PurchaseOrderForm() {
     ...(!isNew ? [{ label: 'Duplicate', icon: 'content_copy', onSelect: duplicate }] : []),
     ...(open ? [{ label: 'Close', icon: 'task_alt', onSelect: closeIt }] : []),
     ...(open && !received ? [{ label: 'Cancel purchase order', icon: 'cancel', onSelect: () => act(() => cancelPurchaseOrder(saved), 'cancelled') }] : []),
-    ...(vendor ? [{ label: `Open vendor ${vendor.code}`, icon: 'local_shipping', onSelect: () => navigate(`/purchasing/vendors/${vendor.id}`) }] : []),
+    ...(ctx.vendor ? [{ label: `Open vendor ${ctx.vendor.code}`, icon: 'local_shipping', onSelect: () => navigate(`/purchasing/vendors/${ctx.vendor!.id}`) }] : []),
   ];
 
-  // What picking each status in the Status dropdown does; statuses not listed can't be reached from here.
   const transitions: Partial<Record<PoStatus, () => void>> =
     draft.status === 'Draft'
       ? draft.approved ? { Open: () => submit(null, false) } : { 'Not Confirmed': () => submit(null, false) }
@@ -414,9 +360,8 @@ function PurchaseOrderForm() {
           }
         : {};
 
-  const currencyEditable = !ctx.readOnly && !received;
   const title = isNew ? 'New purchase order' : draft.status === 'Draft' ? 'Draft purchase order' : poNumber(draft);
-  const postingMoved = draft.postingDate && draft.postingDate !== TODAY() && !ctx.added;
+  const sectionProps = { draft, update, errors, m, ctx };
 
   return (
     <>
@@ -431,15 +376,12 @@ function PurchaseOrderForm() {
           breadcrumbs={[{ label: 'Purchase Orders', href: PO_LIST_PATH }, { label: title }]}
           onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
           onBack={() => navigate(PO_LIST_PATH)}
-          trailing={
-            isNew ? undefined : <PrevNext path={PO_LIST_PATH} prevId={prevId} nextId={nextId} />
-          }
+          trailing={isNew ? undefined : <PrevNext path={PO_LIST_PATH} prevId={prevId} nextId={nextId} />}
           tabs={
             <Tabs
               variant="outline"
               value={page}
               onValueChange={(v) => setPage(v as PageId)}
-              // A PO has no transactions or activity until it's added.
               items={PAGES.map((p) => ({ ...p, disabled: isNew && p.value !== 'details' }))}
             />
           }
@@ -503,229 +445,16 @@ function PurchaseOrderForm() {
               </Alert>
             ) : null}
 
-            <fieldset disabled={ctx.readOnly} className="contents">
-              <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
-                <Section icon="storefront" title="Vendor">
-                  <Fields>
-                    <div className="md:col-span-2">
-                      <CardField
-                        label="Vendor"
-                        required
-                        placeholder="Search vendors"
-                        options={m.vendors
-                          .filter((v) => v.status !== 'Inactive' || v.id === draft.vendorId)
-                          .map((v): CardFieldOption => ({
-                            value: v.id,
-                            label: v.name,
-                            icon: <Icon size={16}>storefront</Icon>,
-                            fields: [
-                              { label: 'Code', value: v.code },
-                              ...(v.currency && v.currency !== 'All Currencies' ? [{ label: 'Currency', value: v.currency }] : []),
-                              ...(v.tin ? [{ label: 'TIN', value: v.tin }] : []),
-                            ],
-                            href: `/#/purchasing/vendors/${v.id}`,
-                          }))}
-                        value={draft.vendorId}
-                        onValueChange={(id) => pickVendor(id || null)}
-                        readOnly={!!(vendor && ctx.added)}
-                        footer={
-                          <button
-                            type="button"
-                            className="w-full cursor-pointer rounded-xl px-4 py-2 text-left text-sm font-medium hover:bg-primary-subtle"
-                            style={{ color: 'var(--color-text-primary)' }}
-                            onClick={() => setShowVendorCreate(true)}
-                          >
-                            + Create new vendor
-                          </button>
-                        }
-                      />
-                      {errors.vendorId && <Text variant="small" tone="danger">{errors.vendorId}</Text>}
-                    </div>
-                    {h.lookup(
-                      'contactId',
-                      'Contact person',
-                      [{ value: '', label: '— None —' }, ...(vendor?.contacts ?? []).filter((c) => c.active || c.id === draft.contactId).map((c) => ({ value: c.id, label: contactName(c) }))],
-                      { hint: !vendor ? 'Pick a vendor first.' : "Defaults to the vendor's default contact.", disabled: !vendor },
-                    )}
-                    {h.text('vendorRef', 'Vendor ref. no.', {
-                      error: errors.vendorRef,
-                      hint: "The vendor's own reference, e.g. their sales order no.",
-                    })}
-                    <FormField
-                      label="Currency"
-                      required
-                      error={errors.currency}
-                      tooltip={
-                        received
-                          ? 'Locked: goods were already received on this PO.'
-                          : vendor && vendor.currency !== ALL_CURRENCIES
-                          ? `Defaults to the vendor's currency. You can override it before receiving goods.`
-                          : 'Pick the document currency for this order.'
-                      }
-                    >
-                      {(p) => (
-                        <Select
-                          {...p}
-                          disabled={!currencyEditable}
-                          options={m.currencies
-                            .filter((c) => c.active || c.code === draft.currency)
-                            .map((c) => ({ value: c.code, label: c.code }))}
-                          value={draft.currency}
-                          onValueChange={(currency) => currency && update({ currency, currencyView: 'BP' })}
-                        />
-                      )}
-                    </FormField>
-                  </Fields>
-                </Section>
+            <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
+              <VendorCard {...sectionProps} pickVendor={pickVendor} onNewVendor={() => setShowVendorCreate(true)} />
+              <DocumentCard {...sectionProps} transitions={transitions} />
+            </div>
 
-                <Section icon="tag" title="Document">
-                  <Fields>
-                    <FormField label="No." required error={errors.docNum} tooltip={ctx.added ? undefined : series.manual ? 'Manual series: type the number.' : 'Assigned from the series when the PO is added.'}>
-                      {(p) => (
-                        <div className="flex gap-1">
-                          <Select
-                            aria-label="Series"
-                            className="w-40"
-                            disabled={ctx.added}
-                            options={poSeries.snapshot().filter((s) => s.active).map((s) => ({ value: s.id, label: s.name }))}
-                            value={draft.seriesId}
-                            onValueChange={(seriesId) => update({ seriesId, docNum: 0 })}
-                          />
-                          {series.manual && !ctx.added
-                            ? <TextField {...p} className="flex-1" type="number" placeholder="PO number" value={draft.docNum ? String(draft.docNum) : ''} onChange={(e) => update({ docNum: Number(e.currentTarget.value) })} />
-                            : <span className="flex-1 self-center text-sm">{draft.docNum ? poNumber(draft) : <span className="text-(--color-text-placeholder)">Next number</span>}</span>
-                          }
-                        </div>
-                      )}
-                    </FormField>
-                    <StatusField
-                      statuses={PO_STATUSES}
-                      intents={STATUS_INTENT}
-                      value={draft.status}
-                      moves={transitions}
-                      hint={STATUS_HINT[draft.status]}
-                      error={errors.status}
-                    />
-                    {h.date('postingDate', 'Posting date', {
-                      required: true,
-                      error: errors.postingDate,
-                      disabled: ctx.added,
-                      hint: postingMoved
-                        ? '⚠ Not today: this breaks the continuity of document numbers and dates.'
-                        : 'Defaults to today. Sets the exchange rate and tax rates used.',
-                    })}
-                    <DeliveryDate draft={draft} update={update} error={errors.deliveryDate} />
-                    {h.date('documentDate', 'Document date', {
-                      required: true,
-                      error: errors.documentDate,
-                      hint: 'The date for tax purposes. Defaults to today.',
-                    })}
-                    <ReadOnly label="Close date" value={draft.closeDate || '—'} hint="Set when the PO is closed or cancelled." />
-                  </Fields>
-                </Section>
-              </div>
+            <ContentsTab {...sectionProps} onVendorSaved={(v) => setM((prev) => prev && { ...prev, vendors: prev.vendors.map((x) => (x.id === v.id ? v : x)) })} />
+            <LogisticsTab {...sectionProps} onVendorSaved={(v) => setM((prev) => prev && { ...prev, vendors: prev.vendors.map((x) => (x.id === v.id ? v : x)) })} />
+            <AccountingTab {...sectionProps} onVendorSaved={(v) => setM((prev) => prev && { ...prev, vendors: prev.vendors.map((x) => (x.id === v.id ? v : x)) })} />
 
-              <ContentsTab draft={draft} update={update} errors={errors} m={m} ctx={ctx} onVendorSaved={(v) => setM((prev) => prev && { ...prev, vendors: prev.vendors.map((x) => (x.id === v.id ? v : x)) })} />
-              <LogisticsTab draft={draft} update={update} errors={errors} m={m} ctx={ctx} onVendorSaved={(v) => setM((prev) => prev && { ...prev, vendors: prev.vendors.map((x) => (x.id === v.id ? v : x)) })} />
-              <AccountingTab draft={draft} update={update} errors={errors} m={m} ctx={ctx} onVendorSaved={(v) => setM((prev) => prev && { ...prev, vendors: prev.vendors.map((x) => (x.id === v.id ? v : x)) })} />
-            </fieldset>
-
-            <Section icon="functions" title="Totals">
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                <Fields cols={1}>
-                  <fieldset disabled={ctx.readOnly} className="contents">
-                    <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                      {h.master('buyerId', 'Buyer', salesEmployeeDef, { hint: 'Who placed the order.' })}
-                      {h.master('ownerId', 'Owner', salesEmployeeDef, { hint: 'Owns the document (data access).' })}
-                    </div>
-                  </fieldset>
-                  {h.area('remarks', 'Remarks', { rows: 3, hint: 'Can be changed after the PO is added.' })}
-                </Fields>
-                <fieldset disabled={ctx.readOnly} className="contents">
-                  <List.Group divider>
-                    <TotalRow label="Total before discount" value={view.convert(totals.beforeDiscount)} code={view.code} />
-                    <TotalRow
-                      label="Discount"
-                      value={totals.discount ? -view.convert(totals.discount) : 0}
-                      code={view.code}
-                      input={
-                        <TextField
-                          aria-label="Document discount %"
-                          type="number"
-                          min={0}
-                          className="w-24"
-                          suffix="%"
-                          value={String(draft.discountPct)}
-                          onChange={(e) => update({ discountPct: Math.min(100, Number(e.currentTarget.value)) })}
-                        />
-                      }
-                    />
-                    {getPurchasingSettings().manageFreightInDocuments ? (
-                      <TotalRow
-                        label="Freight"
-                        value={view.convert(totals.freight)}
-                        code={view.code}
-                        input={
-                          <div className="flex gap-1">
-                            <TextField
-                              aria-label={`Freight (${draft.currency}, net)`}
-                              type="number"
-                              min={0}
-                              className="w-32"
-                              prefix={draft.currency}
-                              value={String(draft.freight)}
-                              onChange={(e) => update({ freight: Number(e.currentTarget.value) })}
-                            />
-                            <Combobox
-                              aria-label="Freight tax code"
-                              className="w-28"
-                              options={m.tax.codes.filter((c) => c.direction === 'Purchase' && c.active).map((c) => ({ value: c.code, label: c.code }))}
-                              value={draft.freightTaxCode}
-                              onValueChange={(freightTaxCode) => update({ freightTaxCode: freightTaxCode ?? '' })}
-                            />
-                          </div>
-                        }
-                      />
-                    ) : null}
-                    {getPurchasingSettings().roundingMethod === 'By Currency' ? (
-                      <TotalRow label={`Rounding (${docCurrency?.rounding ?? 'No rounding'})`} value={view.convert(totals.rounding)} code={view.code} />
-                    ) : null}
-                    <TotalRow label="Tax" value={view.convert(totals.tax)} code={view.code} />
-                    {totals.reverseCharge ? (
-                      <TotalNote>
-                        VAT of {view.code} {formatAmount(view.convert(totals.reverseCharge))} isn't paid to the vendor: reverse-charge VAT
-                        you withhold and remit (BIR 1600-VT), and import VAT is paid to the Bureau of Customs. Both are claimed as input VAT.
-                      </TotalNote>
-                    ) : null}
-                    {withholdingLines.filter((w) => w.deducted).map((w) => (
-                      <TotalRow
-                        key={w.atc}
-                        label={`${WITHHELD_LABEL[w.kind] ?? 'Tax'} withheld — ${w.atc} (${w.rate}%)`}
-                        value={-view.convert(w.amount)}
-                        code={view.code}
-                      />
-                    ))}
-                    {withholdingLines.filter((w) => !w.deducted).map((w) => (
-                      <TotalNote key={w.atc}>
-                        VAT withheld — {w.atc} ({w.rate}%): {view.code} {formatAmount(view.convert(w.amount))} remitted by you on BIR 1600-VT, not
-                        deducted from the vendor.
-                      </TotalNote>
-                    ))}
-                    <TotalRow
-                      label="Net payment due"
-                      value={view.convert(totals.total - withholdingTotal)}
-                      code={view.code}
-                      strong
-                    />
-                    {draft.currency !== 'PHP' && draft.currencyView === 'BP' ? (
-                      <Text variant="small" tone="muted">
-                        ≈ PHP {formatAmount(totals.total * ctx.fx)} at {ctx.fx ? `${ctx.fx} (${formatDate(ctx.fxDate)} rate)` : '—'}.
-                      </Text>
-                    ) : null}
-                  </List.Group>
-                </fieldset>
-              </div>
-            </Section>
+            <TotalsCard {...sectionProps} />
           </Panel.Body>
         )}
       </Panel>
@@ -738,50 +467,5 @@ function PurchaseOrderForm() {
       />
     )}
     </>
-  );
-}
-
-/** Header delivery date; changing it also moves line dates that matched the old one. */
-function DeliveryDate({ draft, update, error }: { draft: PoDraft; update: (p: Partial<PoDraft>) => void; error?: string }) {
-  const h = bind(draft, (p) =>
-    update({
-      ...p,
-      lines: draft.lines.map((l) => (!l.deliveryDate || l.deliveryDate === draft.deliveryDate ? { ...l, deliveryDate: p.deliveryDate ?? '' } : l)),
-    }),
-  );
-  return h.date('deliveryDate', 'Delivery date', {
-    required: true,
-    error,
-    hint: 'When the items should arrive. Lines take it unless they have their own.',
-  });
-}
-
-export function TotalRow({ label, value, code, input, strong }: { label: string; value: number; code: string; input?: ReactNode; strong?: boolean }) {
-  const emphasis = (node: ReactNode) => (strong ? <Text as="span" weight="semibold" tone="heading">{node}</Text> : node);
-  return (
-    <List.Item
-      title={
-        <span className="flex items-center gap-2">
-          <span className="whitespace-nowrap">{emphasis(label)}</span>
-          {/* Design system fields are width: 100% (unlayered, so it beats w-* utilities): give the input room here or it collapses to its suffix. */}
-          {input ? <span className="min-w-24 flex-none">{input}</span> : null}
-        </span>
-      }
-      content={<span className="whitespace-nowrap tabular-nums">{emphasis(`${code} ${formatAmount(value)}`)}</span>}
-    />
-  );
-}
-
-/** An explanatory line between the totals. */
-export function TotalNote({ children }: { children: ReactNode }) {
-  return (
-    <List.Item
-      variant="value-only"
-      content={
-        <Text variant="small" tone="muted">
-          {children}
-        </Text>
-      }
-    />
   );
 }

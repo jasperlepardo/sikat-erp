@@ -60,7 +60,7 @@ import { listPartnersByRole } from '../../../services/partners';
 import { dueDateFor, getPurchasingSettings, listPurchaseOrders } from '../../../services/purchaseOrders';
 import { paymentTermDef, projectDef, salesEmployeeDef } from '../../settings/masterDefs';
 import { ReferencesTable } from '../orders/detail/AccountingTab';
-import { TotalNote, TotalRow } from '../orders/detail/PurchaseOrderDetail';
+import { TotalNote, TotalRow } from '../shared/TotalRow';
 import { buildGrContext } from '../receipts/detail/types';
 import { CopyPanel } from '../shared/CopyPanel';
 import { DocumentFlow } from '../shared/DocumentFlow';

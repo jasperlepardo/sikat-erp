@@ -4,53 +4,25 @@ import {
   Alert,
   Badge,
   Button,
-  CardField,
-  DatePicker,
   Form,
-  FormField,
-  Icon,
-  List,
   Panel,
   PanelHeader,
-  Select,
   Tabs,
   Text,
   TextField,
-  type CardFieldOption,
 } from '@jasperlepardo/sikat-design-system';
-import { Fields, Section, bind, type Errors } from '../../../../components/form/fields';
-import { StatusField } from '../../../../components/form/StatusField';
+import { type Errors } from '../../../../components/form/fields';
 import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { CURRENT_USER_ID } from '../../../../mocks/common';
-import { contactName, type Partner } from '../../../../mocks/partners';
-import {
-  blankRfq,
-  newRfqLine,
-  RFQ_STATUSES,
-  type Rfq,
-  type RfqStatus,
-} from '../../../../mocks/rfqs';
-import { formatAmount } from '../../../../services/format';
+import { type Partner } from '../../../../mocks/partners';
+import { blankRfq, newRfqLine, type Rfq, type RfqStatus } from '../../../../mocks/rfqs';
 import { loadInventoryMasters } from '../../../../services/inventoryMasters';
 import { listItems } from '../../../../services/items';
 import { companyTax, currencies, exchangeRates, taxCodes, taxGroups, withholdingGroups, withholdingTaxes } from '../../../../services/masterData';
 import { listPartnersByRole } from '../../../../services/partners';
 import { loadCurrentCompany } from '../../../../services/companies';
-import { salesEmployeeDef } from '../../../settings/masterDefs';
-import {
-  addRfq,
-  cancelRfq,
-  closeRfq,
-  recallRfq,
-  getRfq,
-  listRfqs,
-  rfqNumber,
-  rfqSeries,
-  rfqTotals,
-  saveRfqDraft,
-  seriesOf,
-} from '../../../../services/rfqs';
+import { addRfq, cancelRfq, closeRfq, getRfq, listRfqs, recallRfq, rfqNumber, saveRfqDraft, seriesOf } from '../../../../services/rfqs';
 import { getPurchasingSettings } from '../../../../services/purchaseOrders';
 import { logRejection } from '../../../../services/approvalRules';
 import { AccountingTab } from './AccountingTab';
@@ -67,12 +39,16 @@ import {
   type RfqDraft,
   type RfqMasters,
 } from './types';
+import { todayISO } from '../../../../services/dates';
 import { blankPurchaseOrder, newPoLine } from '../../../../mocks/purchaseOrders';
-import { formatDate, todayISO } from '../../../../services/dates';
-import { TotalNote, TotalRow } from '../../orders/detail/PurchaseOrderDetail';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
 import { NotFound, PrevNext, neighbours } from '../../../../components/form/DetailNav';
+import { VendorCard } from './VendorCard';
+import { DocumentCard } from './DocumentCard';
+import { TotalsCard } from './TotalsCard';
+import { STATUS_INTENT } from './types';
+export { STATUS_INTENT };
 
 export const RFQ_LIST_PATH = '/purchasing/quotations';
 
@@ -84,22 +60,6 @@ const PAGES = [
   { value: 'activity', label: 'Activity' },
 ] as const;
 type PageId = (typeof PAGES)[number]['value'];
-
-export const STATUS_INTENT: Record<RfqStatus, 'default' | 'primary' | 'success' | 'danger' | 'warning'> = {
-  Draft: 'default',
-  'Not Confirmed': 'warning',
-  Open: 'primary',
-  Closed: 'success',
-  Cancelled: 'danger',
-};
-
-const STATUS_HINT: Record<RfqStatus, string> = {
-  Draft: 'Pick Open to send the RFQ.',
-  'Not Confirmed': 'Awaiting approval.',
-  Open: 'Awaiting vendor response. Close or cancel when done.',
-  Closed: 'Closed for good.',
-  Cancelled: 'Cancelled for good.',
-};
 
 function validate(d: RfqDraft, asDraft: boolean): Problem<TabId>[] {
   const { problems, need } = problemCollector<TabId>();
@@ -148,9 +108,7 @@ function RfqForm() {
   useEffect(() => {
     if (!isNew)
       listRfqs().then((all) =>
-        setSiblings(
-          [...all].sort((a, b) => b.postingDate.localeCompare(a.postingDate)).map((q) => (q.docNum ? rfqNumber(q) : q.id)),
-        ),
+        setSiblings([...all].sort((a, b) => b.postingDate.localeCompare(a.postingDate)).map((q) => (q.docNum ? rfqNumber(q) : q.id))),
       );
   }, [isNew]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
@@ -173,15 +131,7 @@ function RfqForm() {
       exchangeRates.list(),
       loadCurrentCompany(),
     ]).then(([vendors, items, inv, [company], codes, groups, withholding, wGroups, curs, rates, ours]) => {
-      const masters: RfqMasters = {
-        vendors,
-        items,
-        inv,
-        tax: { company, codes, groups, withholding, withholdingGroups: wGroups },
-        currencies: curs,
-        rates,
-        company: ours,
-      };
+      const masters: RfqMasters = { vendors, items, inv, tax: { company, codes, groups, withholding, withholdingGroups: wGroups }, currencies: curs, rates, company: ours };
       setM(masters);
       if (isNew)
         setDraft((d) => {
@@ -198,11 +148,7 @@ function RfqForm() {
 
   useDocTitle(
     draft?.docNum
-      ? isNew
-        ? 'New purchase quotation'
-        : draft.status === 'Draft'
-          ? 'Draft purchase quotation'
-          : rfqNumber(draft)
+      ? isNew ? 'New purchase quotation' : draft.status === 'Draft' ? 'Draft purchase quotation' : rfqNumber(draft)
       : undefined,
   );
 
@@ -211,28 +157,18 @@ function RfqForm() {
 
   const ctx = buildContext(draft, m);
   const { prevId, nextId } = neighbours(siblings, draft.id && (draft.docNum ? rfqNumber(draft as Rfq) : draft.id));
-  const { vendor } = ctx;
   const errors: Errors = Object.fromEntries(problems.map((p) => [p.key, p.message]));
-  const series = seriesOf(draft.seriesId);
-  const docCurrency = m.currencies.find((c) => c.code === draft.currency);
-  const totals = rfqTotals(draft, ctx.rateOf, docCurrency?.rounding, ctx.isReverseCharge);
 
   const update = (patch: Partial<RfqDraft>) => setDraft((d) => (d ? { ...d, ...patch } : d));
-
-  const h = bind(draft, update);
 
   const pickVendor = (vendorId: string | null, override?: Partner) => {
     const v = override ?? m.vendors.find((x) => x.id === vendorId);
     if (!v) return update({ vendorId: '', vendorCode: '', vendorName: '', contactId: '' });
     const billAddr = v.addresses.find((a) => a.id === v.defaultBillToId) ?? v.addresses[0];
     update({
-      vendorId: v.id,
-      vendorCode: v.code,
-      vendorName: v.name,
-      contactId: v.defaultContactId,
+      vendorId: v.id, vendorCode: v.code, vendorName: v.name, contactId: v.defaultContactId,
       currency: v.currency === ALL_CURRENCIES ? 'PHP' : v.currency,
-      paymentTermId: v.vendorPaymentTermId,
-      paymentMethod: v.defaultPaymentMethod,
+      paymentTermId: v.vendorPaymentTermId, paymentMethod: v.defaultPaymentMethod,
       shippingType: v.shippingType,
       journalRemark: `Purchase Quotations – ${v.code}`,
       payTo: billAddr ? formatAddress(billAddr, v.name) : '',
@@ -283,40 +219,21 @@ function RfqForm() {
     const poDraft = {
       ...blankPurchaseOrder(CURRENT_USER_ID),
       approved: !getPurchasingSettings().requirePoApproval,
-      vendorId: draft.vendorId,
-      vendorCode: draft.vendorCode,
-      vendorName: draft.vendorName,
-      contactId: draft.contactId,
-      vendorRef: draft.vendorRef,
-      currency: draft.currency,
-      paymentTermId: draft.paymentTermId,
-      paymentMethod: draft.paymentMethod,
-      shippingType: draft.shippingType,
-      shipTo: draft.shipTo,
-      projectId: draft.projectId,
+      vendorId: draft.vendorId, vendorCode: draft.vendorCode, vendorName: draft.vendorName,
+      contactId: draft.contactId, vendorRef: draft.vendorRef, currency: draft.currency,
+      paymentTermId: draft.paymentTermId, paymentMethod: draft.paymentMethod,
+      shippingType: draft.shippingType, shipTo: draft.shipTo, projectId: draft.projectId,
       journalRemark: draft.journalRemark.replace('Quotations', 'Orders'),
-      postingDate: today,
-      documentDate: today,
-      lines: draft.lines
-        .filter((l) => l.itemId)
-        .map((l) =>
-          newPoLine({
-            itemId: l.itemId,
-            itemNo: l.itemNo,
-            name: l.description,
-            description: l.description,
-            quantity: l.quotedQty || l.requiredQty,
-            uomCode: l.uomCode,
-            uomName: l.uomName,
-            itemsPerUnit: l.itemsPerUnit,
-            priceListId: l.priceListId,
-            unitPrice: l.unitPrice,
-            discountPct: l.discountPct,
-            taxCode: l.taxCode,
-            blanketAgreement: l.blanketAgreement,
-            requisitionSlipNo: l.requisitionSlipNo,
-          }),
-        ),
+      postingDate: today, documentDate: today,
+      lines: draft.lines.filter((l) => l.itemId).map((l) =>
+        newPoLine({
+          itemId: l.itemId, itemNo: l.itemNo, name: l.description, description: l.description,
+          quantity: l.quotedQty || l.requiredQty, uomCode: l.uomCode, uomName: l.uomName,
+          itemsPerUnit: l.itemsPerUnit, priceListId: l.priceListId, unitPrice: l.unitPrice,
+          discountPct: l.discountPct, taxCode: l.taxCode,
+          blanketAgreement: l.blanketAgreement, requisitionSlipNo: l.requisitionSlipNo,
+        }),
+      ),
       remarks: `From RFQ ${rfqNumber(draft as Rfq)}.`,
     };
     navigate('/purchasing/purchase-orders/new', { state: { copyFrom: poDraft } });
@@ -325,15 +242,8 @@ function RfqForm() {
   const duplicate = () => {
     const today = todayISO();
     const copy: RfqDraft = {
-      ...structuredClone(draft),
-      id: undefined,
-      status: 'Draft',
-      docNum: 0,
-      vendorRef: '',
-      postingDate: today,
-      documentDate: today,
-      validUntil: '',
-      convertedToPoId: '',
+      ...structuredClone(draft), id: undefined, status: 'Draft', docNum: 0, vendorRef: '',
+      postingDate: today, documentDate: today, validUntil: '', convertedToPoId: '',
       lines: draft.lines.map((l) => ({ ...l, id: `rl-${crypto.randomUUID().slice(0, 8)}`, quotedQty: 0, quotedDate: '' })),
     };
     navigate(`${RFQ_LIST_PATH}/new`, { state: { copyFrom: copy } });
@@ -347,18 +257,17 @@ function RfqForm() {
     await recallRfq(saved);
     navigate(RFQ_LIST_PATH, { state: { notice: `Purchase quotation ${rfqNumber(saved)} rejected and returned to draft.` } });
   };
+
   const menu: MoreMenuItem[] = [
     ...(!ctx.added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
     ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => setRejecting(true) }] : []),
-    ...(open
-      ? [
-          { label: 'Copy to purchase order', icon: 'shopping_cart', onSelect: copyToPo },
-          { label: 'Close', icon: 'task_alt', onSelect: () => act(() => closeRfq(saved), 'closed') },
-          { label: 'Cancel', icon: 'cancel', onSelect: () => act(() => cancelRfq(saved), 'cancelled') },
-        ]
-      : []),
+    ...(open ? [
+      { label: 'Copy to purchase order', icon: 'shopping_cart', onSelect: copyToPo },
+      { label: 'Close', icon: 'task_alt', onSelect: () => act(() => closeRfq(saved), 'closed') },
+      { label: 'Cancel', icon: 'cancel', onSelect: () => act(() => cancelRfq(saved), 'cancelled') },
+    ] : []),
     ...(!isNew ? [{ label: 'Duplicate', icon: 'content_copy', onSelect: duplicate }] : []),
-    ...(vendor ? [{ label: `Open vendor ${vendor.code}`, icon: 'local_shipping', onSelect: () => navigate(`/purchasing/vendors/${vendor.id}`) }] : []),
+    ...(ctx.vendor ? [{ label: `Open vendor ${ctx.vendor.code}`, icon: 'local_shipping', onSelect: () => navigate(`/purchasing/vendors/${ctx.vendor!.id}`) }] : []),
   ];
 
   const transitions: Partial<Record<RfqStatus, () => void>> =
@@ -367,18 +276,11 @@ function RfqForm() {
       : draft.status === 'Not Confirmed'
         ? { Open: () => submit(null, false, { approved: true }) }
         : open
-          ? {
-              Closed: () => act(() => closeRfq(saved), 'closed'),
-              Cancelled: () => act(() => cancelRfq(saved), 'cancelled'),
-            }
+          ? { Closed: () => act(() => closeRfq(saved), 'closed'), Cancelled: () => act(() => cancelRfq(saved), 'cancelled') }
           : {};
 
-  const title = isNew
-    ? 'New purchase quotation'
-    : draft.status === 'Draft'
-      ? 'Draft purchase quotation'
-      : rfqNumber(draft);
-  const postingMoved = draft.postingDate && draft.postingDate !== todayISO() && !ctx.added;
+  const title = isNew ? 'New purchase quotation' : draft.status === 'Draft' ? 'Draft purchase quotation' : rfqNumber(draft);
+  const sectionProps = { draft, update, errors, m, ctx };
 
   return (
     <>
@@ -394,9 +296,7 @@ function RfqForm() {
             breadcrumbs={[{ label: 'Purchase Quotations', href: RFQ_LIST_PATH }, { label: title }]}
             onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
             onBack={() => navigate(RFQ_LIST_PATH)}
-            trailing={
-              isNew ? undefined : <PrevNext path={RFQ_LIST_PATH} prevId={prevId} nextId={nextId} />
-            }
+            trailing={isNew ? undefined : <PrevNext path={RFQ_LIST_PATH} prevId={prevId} nextId={nextId} />}
             tabs={
               <Tabs
                 variant="outline"
@@ -441,244 +341,40 @@ function RfqForm() {
             </Panel.Body>
           ) : (
             <Panel.Body className="flex flex-col gap-2">
-              <ProblemsAlert
-                problems={problems}
-                tabLabel={(t) => ({ contents: 'Contents', logistics: 'Logistics', accounting: 'Accounting' }[t])}
-              />
-              {rejecting ? (<Alert intent="danger" variant="outline" title="Reject purchase quotation"><div className="flex flex-col gap-2"><TextField aria-label="Rejection reason" value={rejectionReason} onChange={(e) => setRejectionReason(e.currentTarget.value)} placeholder="Explain why…" /><div className="flex gap-2"><Button type="button" intent="danger" variant="solid" size="small" onClick={rejectIt}>Confirm reject</Button><Button type="button" intent="white" variant="solid" size="small" onClick={() => { setRejecting(false); setRejectionReason(''); }}>Cancel</Button></div></div></Alert>) : null}
+              <ProblemsAlert problems={problems} tabLabel={(t) => ({ contents: 'Contents', logistics: 'Logistics', accounting: 'Accounting' }[t])} />
+              {rejecting ? (
+                <Alert intent="danger" variant="outline" title="Reject purchase quotation">
+                  <div className="flex flex-col gap-2">
+                    <TextField aria-label="Rejection reason" value={rejectionReason} onChange={(e) => setRejectionReason(e.currentTarget.value)} placeholder="Explain why…" />
+                    <div className="flex gap-2">
+                      <Button type="button" intent="danger" variant="solid" size="small" onClick={rejectIt}>Confirm reject</Button>
+                      <Button type="button" intent="white" variant="solid" size="small" onClick={() => { setRejecting(false); setRejectionReason(''); }}>Cancel</Button>
+                    </div>
+                  </div>
+                </Alert>
+              ) : null}
               {ctx.readOnly ? (
                 <Alert intent="default" variant="outline" title={`This quotation is ${draft.status.toLowerCase()}`}>
                   Only remarks can change{draft.convertedToPoId ? ` (converted to a purchase order)` : ''}.
                 </Alert>
               ) : null}
 
-              <fieldset disabled={ctx.readOnly} className="contents">
-                <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
-                  <Section icon="storefront" title="Vendor">
-                    <Fields>
-                      <div className="md:col-span-2">
-                        <CardField
-                          label="Vendor"
-                          required
-                          placeholder="Search vendors"
-                          options={m.vendors
-                            .filter((v) => v.status !== 'Inactive' || v.id === draft.vendorId)
-                            .map((v): CardFieldOption => ({
-                              value: v.id,
-                              label: v.name,
-                              icon: <Icon size={16}>storefront</Icon>,
-                              fields: [
-                                { label: 'Code', value: v.code },
-                                ...(v.currency && !v.currency.startsWith('All') ? [{ label: 'Currency', value: v.currency }] : []),
-                                ...(v.tin ? [{ label: 'TIN', value: v.tin }] : []),
-                              ],
-                              href: `/#/purchasing/vendors/${v.id}`,
-                            }))}
-                          value={draft.vendorId}
-                          onValueChange={(id) => pickVendor(id || null)}
-                          readOnly={!!(vendor && ctx.added)}
-                          footer={
-                            <button
-                              type="button"
-                              className="w-full cursor-pointer rounded-xl px-4 py-2 text-left text-sm font-medium hover:bg-primary-subtle"
-                              style={{ color: 'var(--color-text-primary)' }}
-                              onClick={() => setShowVendorCreate(true)}
-                            >
-                              + Create new vendor
-                            </button>
-                          }
-                        />
-                        {errors.vendorId && <Text variant="small" tone="danger">{errors.vendorId}</Text>}
-                      </div>
-                      {h.lookup(
-                        'contactId',
-                        'Contact person',
-                        [
-                          { value: '', label: '— None —' },
-                          ...(vendor?.contacts ?? [])
-                            .filter((c) => c.active || c.id === draft.contactId)
-                            .map((c) => ({ value: c.id, label: contactName(c) })),
-                        ],
-                        { hint: !vendor ? 'Pick a vendor first.' : "Defaults to the vendor's default contact.", disabled: !vendor },
-                      )}
-                      {h.text('vendorRef', 'Vendor ref. no.', {
-                        hint: "The vendor's own reference or quote number.",
-                      })}
-                      <FormField
-                        label="Currency"
-                        required
-                        error={errors.currency}
-                        tooltip={vendor && !vendor.currency?.startsWith('All') ? "Defaults to the vendor's currency." : 'Pick the document currency.'}
-                      >
-                        {(p) => (
-                          <Select
-                            {...p}
-                            disabled={!!(vendor && ctx.added)}
-                            options={m.currencies
-                              .filter((c) => c.active || c.code === draft.currency)
-                              .map((c) => ({ value: c.code, label: c.code }))}
-                            value={draft.currency}
-                            onValueChange={(currency) => currency && update({ currency })}
-                          />
-                        )}
-                      </FormField>
-                    </Fields>
-                  </Section>
+              <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
+                <VendorCard {...sectionProps} pickVendor={pickVendor} onNewVendor={() => setShowVendorCreate(true)} />
+                <DocumentCard {...sectionProps} transitions={transitions} />
+              </div>
 
-                  <Section icon="tag" title="Document">
-                    <Fields>
-                      <FormField label="No." required error={errors.docNum} tooltip={ctx.added ? undefined : series.manual ? 'Manual series: type the number.' : 'Assigned from the series when the RFQ is added.'}>
-                        {(p) => (
-                          <div className="flex gap-1">
-                            <Select
-                              aria-label="Series"
-                              className="w-40"
-                              disabled={ctx.added}
-                              options={rfqSeries.snapshot().filter((s) => s.active).map((s) => ({ value: s.id, label: s.name }))}
-                              value={draft.seriesId}
-                              onValueChange={(seriesId) => update({ seriesId, docNum: 0 })}
-                            />
-                            {series.manual && !ctx.added ? (
-                              <TextField
-                                {...p}
-                                className="flex-1"
-                                type="number"
-                                placeholder="RFQ number"
-                                value={draft.docNum ? String(draft.docNum) : ''}
-                                onChange={(e) => update({ docNum: Number(e.currentTarget.value) })}
-                              />
-                            ) : (
-                              <span className="flex-1 self-center text-sm">
-                                {draft.docNum ? rfqNumber(draft) : <span className="text-(--color-text-placeholder)">Next number</span>}
-                              </span>
-                            )}
-                          </div>
-                        )}
-                      </FormField>
-                      <StatusField
-                        statuses={RFQ_STATUSES}
-                        intents={STATUS_INTENT}
-                        value={draft.status}
-                        moves={transitions}
-                        hint={STATUS_HINT[draft.status]}
-                        error={errors.status}
-                      />
-                      {h.date('postingDate', 'Posting date', {
-                        required: true,
-                        error: errors.postingDate,
-                        disabled: ctx.added,
-                        hint: postingMoved ? '⚠ Not today: this breaks the continuity of document numbers and dates.' : 'Defaults to today.',
-                      })}
-                      {h.date('validUntil', 'Valid until', {
-                        hint: 'Expiry date for the quoted prices.',
-                      })}
-                      {h.date('documentDate', 'Document date', {
-                        required: true,
-                        error: errors.documentDate,
-                        hint: 'The date for tax purposes. Defaults to today.',
-                      })}
-                      <FormField label="Required date" hint="When the items are needed. Cascades to new lines.">
-                        {(p) => (
-                          <DatePicker
-                            {...p}
-                            value={draft.requiredDate || null}
-                            onValueChange={(v) => {
-                              const date = v ?? '';
-                              update({
-                                requiredDate: date,
-                                lines: draft.lines.map((l) =>
-                                  !l.requiredDate || l.requiredDate === draft.requiredDate
-                                    ? { ...l, requiredDate: date }
-                                    : l,
-                                ),
-                              });
-                            }}
-                          />
-                        )}
-                      </FormField>
-                    </Fields>
-                  </Section>
-                </div>
+              <ContentsTab {...sectionProps} onVendorSaved={(v) => setM((prev) => prev && { ...prev, vendors: prev.vendors.map((x) => (x.id === v.id ? v : x)) })} />
+              <LogisticsTab {...sectionProps} onVendorSaved={(v) => setM((prev) => prev && { ...prev, vendors: prev.vendors.map((x) => (x.id === v.id ? v : x)) })} />
+              <AccountingTab {...sectionProps} onVendorSaved={(v) => setM((prev) => prev && { ...prev, vendors: prev.vendors.map((x) => (x.id === v.id ? v : x)) })} />
 
-                <ContentsTab draft={draft} update={update} errors={errors} m={m} ctx={ctx} onVendorSaved={(v) => setM((prev) => prev && { ...prev, vendors: prev.vendors.map((x) => (x.id === v.id ? v : x)) })} />
-                <LogisticsTab draft={draft} update={update} errors={errors} m={m} ctx={ctx} onVendorSaved={(v) => setM((prev) => prev && { ...prev, vendors: prev.vendors.map((x) => (x.id === v.id ? v : x)) })} />
-                <AccountingTab draft={draft} update={update} errors={errors} m={m} ctx={ctx} onVendorSaved={(v) => setM((prev) => prev && { ...prev, vendors: prev.vendors.map((x) => (x.id === v.id ? v : x)) })} />
-              </fieldset>
-
-              <Section icon="functions" title="Totals">
-                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                  <Fields cols={1}>
-                    <fieldset disabled={ctx.readOnly} className="contents">
-                      <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                        {h.master('buyerId', 'Buyer', salesEmployeeDef, { hint: 'Who placed the RFQ.' })}
-                        {h.master('ownerId', 'Owner', salesEmployeeDef, { hint: 'Owns the document (data access).' })}
-                      </div>
-                    </fieldset>
-                    {h.area('remarks', 'Remarks', { rows: 3, hint: 'Can be changed after the RFQ is added.' })}
-                  </Fields>
-                  <fieldset disabled={ctx.readOnly} className="contents">
-                    <List.Group divider>
-                      <TotalRow label="Total before discount" value={totals.beforeDiscount} code={draft.currency} />
-                      <TotalRow
-                        label="Discount"
-                        value={totals.discount ? -totals.discount : 0}
-                        code={draft.currency}
-                        input={
-                          <TextField
-                            aria-label="Document discount %"
-                            type="number"
-                            min={0}
-                            className="w-24"
-                            suffix="%"
-                            value={String(draft.discountPct)}
-                            onChange={(e) => update({ discountPct: Math.min(100, Number(e.currentTarget.value)) })}
-                          />
-                        }
-                      />
-                      {getPurchasingSettings().manageFreightInDocuments ? (
-                        <TotalRow
-                          label="Freight"
-                          value={totals.freight}
-                          code={draft.currency}
-                          input={
-                            <TextField
-                              aria-label={`Freight (${draft.currency}, net)`}
-                              type="number"
-                              min={0}
-                              className="w-32"
-                              prefix={draft.currency}
-                              value={String(draft.freight)}
-                              onChange={(e) => update({ freight: Number(e.currentTarget.value) })}
-                            />
-                          }
-                        />
-                      ) : null}
-                      <TotalRow label="Tax" value={totals.tax} code={draft.currency} />
-                      {totals.reverseCharge ? (
-                        <TotalNote>
-                          VAT of {draft.currency} {formatAmount(totals.reverseCharge)} won't be paid to the vendor: reverse-charge or import VAT remitted separately.
-                        </TotalNote>
-                      ) : null}
-                      <TotalRow label="Total payment due" value={totals.total} code={draft.currency} strong />
-                      {draft.currency !== 'PHP' && ctx.fx ? (
-                        <Text variant="small" tone="muted">
-                          ≈ PHP {formatAmount(totals.total * ctx.fx)} at {ctx.fx} ({formatDate(ctx.fxDate)} rate).
-                        </Text>
-                      ) : null}
-                    </List.Group>
-                  </fieldset>
-                </div>
-              </Section>
+              <TotalsCard {...sectionProps} />
             </Panel.Body>
           )}
         </Panel>
       </Form>
       {showVendorCreate && (
-        <VendorQuickCreate
-          initialName=""
-          onClose={() => setShowVendorCreate(false)}
-          onCreated={handleVendorCreated}
-        />
+        <VendorQuickCreate initialName="" onClose={() => setShowVendorCreate(false)} onCreated={handleVendorCreated} />
       )}
     </>
   );

@@ -56,7 +56,7 @@ import { listPartnersByRole } from '../../../services/partners';
 import { dueDateFor, getPurchasingSettings, listPurchaseOrders, openQty, poNumber } from '../../../services/purchaseOrders';
 import { paymentTermDef, projectDef, salesEmployeeDef } from '../../settings/masterDefs';
 import { ReferencesTable } from '../orders/detail/AccountingTab';
-import { TotalNote, TotalRow } from '../orders/detail/PurchaseOrderDetail';
+import { TotalNote, TotalRow } from '../shared/TotalRow';
 import type { PoMasters } from '../orders/detail/types';
 import { GrLogistics } from '../receipts/detail/GrSections';
 import { buildGrContext, linesFromPo } from '../receipts/detail/types';

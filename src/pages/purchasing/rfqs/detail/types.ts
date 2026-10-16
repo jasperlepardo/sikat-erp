@@ -1,4 +1,5 @@
 import type { Errors } from '../../../../components/form/fields';
+import type { RfqStatus } from '../../../../mocks/rfqs';
 import type { Currency, ExchangeRate } from '../../../../mocks/currencies';
 import { rateAt, vatNotPaidToVendor } from '../../../../mocks/taxes';
 import type { InventoryMasters } from '../../../../services/inventoryMasters';
@@ -9,6 +10,8 @@ import type { Company } from '../../../../mocks/companies';
 import type { Item } from '../../../../mocks/items';
 import type { RfqInput } from '../../../../services/rfqs';
 import { itemsPerUom } from '../../../../mocks/items';
+import { vendorDeliveryLocation } from '../../../../mocks/itemMasters';
+
 import { BLANKET_AGREEMENTS } from '../../../../mocks/purchaseOrders';
 import { newRfqLine, type RfqLine } from '../../../../mocks/rfqs';
 import { determineTax, type TaxMasterData } from '../../../../services/taxDetermination';
@@ -29,14 +32,25 @@ export interface RfqMasters {
   company: Company;
 }
 
-export interface RfqTabProps {
+export interface RfqSectionProps {
   draft: RfqDraft;
   update: (patch: Partial<RfqDraft>) => void;
   errors: Errors;
   m: RfqMasters;
   ctx: RfqContext;
+}
+
+export interface RfqTabProps extends RfqSectionProps {
   onVendorSaved: (vendor: Partner) => void;
 }
+
+export const STATUS_INTENT: Record<RfqStatus, 'default' | 'primary' | 'success' | 'danger' | 'warning'> = {
+  Draft: 'default',
+  'Not Confirmed': 'warning',
+  Open: 'primary',
+  Closed: 'success',
+  Cancelled: 'danger',
+};
 
 export interface RfqContext {
   vendor?: Partner;
@@ -74,10 +88,9 @@ export const proposedTaxCode = (item: Item, vendor: Partner | undefined, m: RfqM
 /** Default ship-to: warehouse of first inventory line, or company address for service-only. */
 export function defaultShipTo(lines: RfqLine[], m: RfqMasters) {
   const stocked = lines.find((l) => l.itemId && m.items.find((i) => i.id === l.itemId)?.inventoryItem);
-  if (stocked) {
-    const wh = m.inv.warehouses.find((w) => w.code === 'WH-MNL');
-    if (wh) return formatAddress(wh.address, wh.name);
-  }
+  const item = stocked && m.items.find((i) => i.id === stocked.itemId);
+  const wh = item && m.inv.warehouses.find((w) => w.code === vendorDeliveryLocation(item.warehouses.map((w) => w.code), m.inv.warehouses));
+  if (wh) return formatAddress(wh.address, wh.name);
   return lines.length ? formatAddress(m.company.address, m.company.name) : '';
 }
 

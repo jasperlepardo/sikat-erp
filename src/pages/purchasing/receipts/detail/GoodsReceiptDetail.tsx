@@ -53,7 +53,7 @@ import { listPartnersByRole } from '../../../../services/partners';
 import { dueDateFor, getPurchasingSettings, listPurchaseOrders, openQty, paymentTermName, poNumber } from '../../../../services/purchaseOrders';
 import { transferBlock } from '../../../../services/binLocations';
 import { salesEmployeeDef } from '../../../settings/masterDefs';
-import { TotalNote, TotalRow } from '../../orders/detail/PurchaseOrderDetail';
+import { TotalNote, TotalRow } from '../../shared/TotalRow';
 import { proposedTaxCode } from '../../orders/detail/types';
 import { GrContents } from './GrContents';
 import { DocumentFlow } from '../../shared/DocumentFlow';

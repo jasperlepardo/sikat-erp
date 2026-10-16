@@ -62,7 +62,7 @@ import { postDocumentEntry, reverseDocumentEntry } from '../../../services/journ
 import { dueDateFor, getPurchasingSettings, poWithholding } from '../../../services/purchaseOrders';
 import { paymentTermDef, projectDef, salesEmployeeDef } from '../../settings/masterDefs';
 import { ReferencesTable } from '../orders/detail/AccountingTab';
-import { TotalNote, TotalRow } from '../orders/detail/PurchaseOrderDetail';
+import { TotalNote, TotalRow } from '../shared/TotalRow';
 import { invoiceBalance } from '../payments/detail/types';
 import { buildGrContext } from '../receipts/detail/types';
 import { EditPanel } from '../../partners/detail/EditPanel';
