@@ -5,9 +5,8 @@ import {
   Panel,
   Table,
   TableAmount,
-  TableLink,
+  TableContent,
   TableStatus,
-  TableSubcontent,
   Text,
   type TableColumn,
 } from '@jasperlepardo/sikat-design-system';
@@ -42,9 +41,7 @@ export function AccountingDashboard() {
       key: 'transNo',
       header: 'No.',
       cell: (e) => (
-        <TableSubcontent subcopy={`Trans. ${e.transNo}`}>
-          <TableLink onClick={() => navigate(`${JE_LIST_PATH}/${e.id}`)}>{jeNumber(e)}</TableLink>
-        </TableSubcontent>
+        <TableContent href={`/#${JE_LIST_PATH}/${e.id}`} subcopy={`Trans. ${e.transNo}`}>{jeNumber(e)}</TableContent>
       ),
     },
     { key: 'postingDate', header: 'Date', cell: (e) => formatDate(e.postingDate) },
@@ -52,9 +49,9 @@ export function AccountingDashboard() {
       key: 'origin',
       header: 'Origin',
       cell: (e) => (
-        <TableSubcontent subcopy={ORIGIN_LABEL[e.origin]}>
+        <TableContent subcopy={ORIGIN_LABEL[e.origin]}>
           {e.origin === 'JE' ? 'JE' : `${e.origin} ${e.originNo}`}
-        </TableSubcontent>
+        </TableContent>
       ),
     },
     { key: 'amount', header: 'Amount', cell: (e) => <TableAmount currency="PHP">{formatAmount(jeTotals(e.lines).debit)}</TableAmount> },
@@ -65,7 +62,7 @@ export function AccountingDashboard() {
     {
       key: 'voucherNo',
       header: 'Voucher No.',
-      cell: (v) => <TableLink onClick={() => navigate(`${JV_LIST_PATH}/${v.id}`)}>{v.voucherNo}</TableLink>,
+      cell: (v) => <TableContent href={`/#${JV_LIST_PATH}/${v.id}`}>{v.voucherNo}</TableContent>,
     },
     {
       key: 'entries',
@@ -73,9 +70,9 @@ export function AccountingDashboard() {
       cell: (v) => {
         const posted = v.entries.filter((e) => e.entryStatus === 'Closed').length;
         return (
-          <TableSubcontent subcopy={posted ? `${posted} posted` : 'None posted'}>
+          <TableContent subcopy={posted ? `${posted} posted` : 'None posted'}>
             {`${v.entries.length} entr${v.entries.length === 1 ? 'y' : 'ies'}`}
-          </TableSubcontent>
+          </TableContent>
         );
       },
     },

@@ -8,16 +8,15 @@ import {
   Panel,
   PanelHeader,
   Table,
-  TableLink,
+  TableContent,
   TableStatus,
-  TableSubcontent,
   Text,
   type TableColumn,
 } from '@jasperlepardo/sikat-design-system';
 import { choiceField, dateField, masterField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { currencyDef } from '../../settings/masterDefs';
-import { DEFAULT_PAGE_SIZE, PAGE_SIZES, fillCardClass } from '../../../components/form/DataTable';
+import { fillCardClass, useListPage } from '../../../components/form/DataTable';
 import { INCOMING_STATUSES, type IncomingPayment } from '../../../mocks/incomingPayments';
 import { formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
@@ -31,8 +30,7 @@ export function IncomingPaymentList() {
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const data = useAsync(() => Promise.all([listIncomingPayments(), taxCodes.list()]), []);
   const [query, setQuery] = useState('');
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const { resetPage, paginate } = useListPage();
   const [orders, codes] = data ?? [undefined, []];
   const totalOf = (so: IncomingPayment) => amountDue(so);
   const fields = [
@@ -55,7 +53,7 @@ export function IncomingPaymentList() {
     builtIns: statusViews('payments received', INCOMING_STATUSES),
     defaultSort: { key: 'postingDate', direction: 'desc' },
     rows: orders,
-    onChange: () => setPage(1),
+    onChange: resetPage,
   });
   const { sort, setSort } = presets;
 
@@ -76,8 +74,7 @@ export function IncomingPaymentList() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orders, presets.filter, query, sort, codes]);
 
-  const open = (so: IncomingPayment) => navigate(`${RC_LIST_PATH}/${so.docNum ? incomingNumber(so) : so.id}`);
-  const onPage = rows.slice((page - 1) * pageSize, page * pageSize);
+  const { visible: onPage, pagination } = paginate(rows);
 
   const columns: TableColumn<IncomingPayment>[] = [
     {
@@ -85,12 +82,10 @@ export function IncomingPaymentList() {
       header: 'No.',
       sortable: true,
       cell: (so) => (
-        <TableSubcontent subcopy={so.reference ? `Ref. ${so.reference}` : undefined}>
-          <TableLink onClick={() => open(so)}>{incomingNumber(so)}</TableLink>
-        </TableSubcontent>
+        <TableContent href={`/#${RC_LIST_PATH}/${so.docNum ? incomingNumber(so) : so.id}`} subcopy={so.reference ? `Ref. ${so.reference}` : undefined}>{incomingNumber(so)}</TableContent>
       ),
     },
-    { key: 'customerName', header: 'Customer', sortable: true, cell: (so) => <TableSubcontent subcopy={so.type === 'Account' ? 'Account' : so.customerCode}>{so.customerName || (so.type === 'Account' ? so.accountRows.map((r) => r.account).join(', ') || '—' : '—')}</TableSubcontent> },
+    { key: 'customerName', header: 'Customer', sortable: true, cell: (so) => <TableContent subcopy={so.type === 'Account' ? 'Account' : so.customerCode}>{so.customerName || (so.type === 'Account' ? so.accountRows.map((r) => r.account).join(', ') || '—' : '—')}</TableContent> },
     { key: 'postingDate', header: 'Posting date', align: 'end', cell: (so) => formatDate(so.postingDate) },
     { key: 'transNo', header: 'Trans. No.', cell: (so) => (so.transNo ? String(so.transNo) : '—') },
     {
@@ -112,7 +107,7 @@ export function IncomingPaymentList() {
         searchValue={query}
         onSearchChange={(value) => {
           setQuery(value);
-          setPage(1);
+          resetPage();
         }}
         icon="savings"
         iconIntent="default"
@@ -142,18 +137,7 @@ export function IncomingPaymentList() {
               sort={sort}
               onSortChange={setSort}
               layout="fill"
-              onRowAction={open}
-              pagination={{
-                page,
-                pageSize,
-                total: rows.length,
-                pageSizes: PAGE_SIZES,
-                onPageChange: setPage,
-                onPageSizeChange: (size) => {
-                  setPageSize(size);
-                  setPage(1);
-                },
-              }}
+              pagination={pagination}
             />
           ) : (
             <Text tone="muted" className="p-4">Loading payments…</Text>

@@ -5,9 +5,8 @@ import {
   Panel,
   Table,
   TableAmount,
-  TableLink,
+  TableContent,
   TableStatus,
-  TableSubcontent,
   Text,
   type TableColumn,
 } from '@jasperlepardo/sikat-design-system';
@@ -38,15 +37,15 @@ export function InventoryDashboard() {
     {
       key: 'docNum',
       header: 'No.',
-      cell: (t) => <TableLink onClick={() => navigate(`${TRANSFER_LIST_PATH}/${t.id}`)}>{transferNumber(t)}</TableLink>,
+      cell: (t) => <TableContent href={`/#${TRANSFER_LIST_PATH}/${t.id}`}>{transferNumber(t)}</TableContent>,
     },
     {
       key: 'fromWarehouse',
       header: 'From / To',
       cell: (t) => (
-        <TableSubcontent subcopy={t.toWarehouse || '—'}>
+        <TableContent subcopy={t.toWarehouse || '—'}>
           {t.fromWarehouse || '—'}
-        </TableSubcontent>
+        </TableContent>
       ),
     },
     { key: 'postingDate', header: 'Date', cell: (t) => formatDate(t.postingDate) },
@@ -59,9 +58,7 @@ export function InventoryDashboard() {
       key: 'itemNo',
       header: 'Item',
       cell: (i) => (
-        <TableSubcontent subcopy={i.itemNo}>
-          <TableLink onClick={() => navigate(`${ITEM_LIST_PATH}/${i.id}`)}>{i.name}</TableLink>
-        </TableSubcontent>
+        <TableContent href={`/#${ITEM_LIST_PATH}/${i.id}`} subcopy={i.itemNo}>{i.name}</TableContent>
       ),
     },
     { key: 'inStock', header: 'In stock', cell: (i) => stockTotals(i).inStock.toLocaleString('en-PH') },

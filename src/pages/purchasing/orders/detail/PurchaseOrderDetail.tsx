@@ -198,7 +198,7 @@ export function PurchaseOrderDetail() {
 }
 
 function PurchaseOrderForm() {
-  const { id } = useParams();
+  const { id, tab: tabParam } = useParams();
   const isNew = id === 'new';
   const navigate = useNavigate();
   const { copyFrom, suggest } = (useLocation().state as { copyFrom?: PoDraft; suggest?: PoSuggestion } | null) ?? {};
@@ -207,7 +207,9 @@ function PurchaseOrderForm() {
   const approved = !getPurchasingSettings().requirePoApproval;
   const [draft, setDraft] = useState<PoDraft | null | undefined>(isNew ? { ...(copyFrom ?? { ...blank, lines: [newPoLine()] }), approved } : undefined);
   const [m, setM] = useState<PoMasters>();
-  const [page, setPage] = useState<PageId>('details');
+  const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
+  const setPage = (v: PageId) => navigate(`${PO_LIST_PATH}/${id}/${v}`, { replace: true });
+  useEffect(() => { if (!tabParam) navigate(`${PO_LIST_PATH}/${id}/details`, { replace: true }); }, []);
   // POs in the list's default order (newest posting date first), for previous/next.
   const [siblings, setSiblings] = useState<string[]>([]);
   useEffect(() => {
@@ -521,6 +523,7 @@ function PurchaseOrderForm() {
                               ...(v.currency && v.currency !== 'All Currencies' ? [{ label: 'Currency', value: v.currency }] : []),
                               ...(v.tin ? [{ label: 'TIN', value: v.tin }] : []),
                             ],
+                            href: `/#/purchasing/vendors/${v.id}`,
                           }))}
                         value={draft.vendorId}
                         onValueChange={(id) => pickVendor(id || null)}

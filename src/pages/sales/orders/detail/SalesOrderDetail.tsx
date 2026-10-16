@@ -94,7 +94,7 @@ export function SalesOrderDetail() {
 }
 
 function SalesOrderForm() {
-  const { id } = useParams();
+  const { id, tab: tabParam } = useParams();
   const isNew = id === 'new';
   const navigate = useNavigate();
   const copyFrom = (useLocation().state as { copyFrom?: SoDraft } | null)?.copyFrom;
@@ -102,7 +102,9 @@ function SalesOrderForm() {
   const approved = !getSalesSettings().requireSoApproval;
   const [draft, setDraft] = useState<SoDraft | null | undefined>(isNew ? { ...(copyFrom ?? { ...blankSalesOrder(CURRENT_USER_ID), lines: [newSoLine({ warehouse: '' })] }), approved } : undefined);
   const [m, setM] = useState<SoMasters>();
-  const [page, setPage] = useState<PageId>('details');
+  const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
+  const setPage = (v: PageId) => navigate(`${SO_LIST_PATH}/${id}/${v}`, { replace: true });
+  useEffect(() => { if (!tabParam) navigate(`${SO_LIST_PATH}/${id}/details`, { replace: true }); }, []);
   const [contentTab, setContentTab] = useState<'item' | 'delivery'>('item');
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);

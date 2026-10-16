@@ -1,17 +1,16 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router';
 import {
   Card,
   Icon,
   Table,
-  TableLink,
+  TableContent,
   TableStatus,
   Text,
   TextField,
   type TableColumn,
   type TableSort,
 } from '@jasperlepardo/sikat-design-system';
-import { DEFAULT_PAGE_SIZE, PAGE_SIZES } from '../../../components/form/DataTable';
+import { useListPage } from '../../../components/form/DataTable';
 import { Stat } from '../../../components/Stat';
 import { itemGroupName } from '../../../services/inventoryMasters';
 import { isValidToday, listItems } from '../../../services/items';
@@ -39,12 +38,10 @@ interface VendorItemRow {
  * source of truth: vendors and catalog numbers are added and changed there).
  */
 export function VendorItemsTab({ draft }: { draft: Draft }) {
-  const navigate = useNavigate();
   const items = useAsync(listItems, []);
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<TableSort | null>({ key: 'itemNo', direction: 'asc' });
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const { resetPage, paginate } = useListPage();
 
   if (!items) return <Text tone="muted" className="p-4">Loading items…</Text>;
 
@@ -72,7 +69,6 @@ export function VendorItemsTab({ draft }: { draft: Draft }) {
         return x.localeCompare(y, undefined, { numeric: true }) * dir;
       })
     : found;
-  const open = (r: VendorItemRow) => navigate(`${ITEM_PATH}/${r.id}`);
   const muted = (text: string) => (text ? text : <span className="text-muted">—</span>);
 
   const columns: TableColumn<VendorItemRow>[] = [
@@ -86,7 +82,7 @@ export function VendorItemsTab({ draft }: { draft: Draft }) {
       key: 'name',
       header: '',
       sortable: false,
-      cell: (r) => <TableLink onClick={() => open(r)}>{r.name}</TableLink>,
+      cell: (r) => <TableContent href={`/#${ITEM_PATH}/${r.id}`}>{r.name}</TableContent>,
     },
     { key: 'itemGroup', header: 'Item group', cell: (r) => muted(r.itemGroup) },
     { key: 'catalogNo', header: 'Vendor catalog no.', cell: (r) => muted(r.catalogNo) },
@@ -102,6 +98,8 @@ export function VendorItemsTab({ draft }: { draft: Draft }) {
       cell: (r) => (r.valid ? <TableStatus intent="success">Active</TableStatus> : <TableStatus>Not valid today</TableStatus>),
     },
   ];
+
+  const { visible, pagination } = paginate(sorted);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2">
@@ -128,7 +126,7 @@ export function VendorItemsTab({ draft }: { draft: Draft }) {
         value={query}
         onChange={(e) => {
           setQuery(e.currentTarget.value);
-          setPage(1);
+          resetPage();
         }}
       />
 
@@ -138,23 +136,12 @@ export function VendorItemsTab({ draft }: { draft: Draft }) {
           <Table
             caption="Items supplied"
             columns={columns.map((c) => ({ sortable: true, ...c }))}
-            rows={sorted.slice((page - 1) * pageSize, page * pageSize)}
+            rows={visible}
             getRowId={(r) => r.id}
             sort={sort}
             onSortChange={setSort}
             layout="fill"
-            onRowAction={open}
-            pagination={{
-              page,
-              pageSize,
-              total: sorted.length,
-              pageSizes: PAGE_SIZES,
-              onPageChange: setPage,
-              onPageSizeChange: (size) => {
-                setPageSize(size);
-                setPage(1);
-              },
-            }}
+            pagination={pagination}
           />
         ) : (
           <Card.Content>

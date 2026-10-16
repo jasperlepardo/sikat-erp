@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Button, Card, Icon, Table, TableLink, Text, type TableColumn, type TableSort } from '@jasperlepardo/sikat-design-system';
+import { Button, Card, Icon, Table, TableContent, Text, type TableColumn } from '@jasperlepardo/sikat-design-system';
 import { RowMenu } from '../../../../components/form/RowMenu';
 import { holdsStock } from '../../../../mocks/itemMasters';
 import { newItemWarehouse, type ItemWarehouse } from '../../../../mocks/items';
@@ -67,8 +67,12 @@ export function StockTab({
   const navigate = useNavigate();
   const isParent = draft.variantAxes.length > 0;
   const variants = useAsync(() => (isParent && draft.id ? listVariants(draft.id) : Promise.resolve([])), [draft.id, isParent]);
-  const [sort, setSort] = useState<TableSort | null>({ key: 'code', direction: 'asc' });
   const [selected, setSelected] = useState<string[]>([]);
+  // Bin-enabled warehouses on this item — compute before early returns so useState stays in order.
+  const initExpanded = draft.warehouses
+    .filter((w) => inv.warehouses.find((x) => x.code === w.code)?.binEnabled && w.defaultBinId)
+    .map((w) => w.code);
+  const [expandedIds, setExpandedIds] = useState<string[]>(initExpanded);
 
   // A parent item keeps no stock itself (its variants do), so it isn't an inventory item.
   if (!draft.inventoryItem && !isParent) {
@@ -106,17 +110,9 @@ export function StockTab({
   const uom = draft.inventoryUom;
   const where = (n: number) => `Across ${n} warehouse${n === 1 ? '' : 's'}`;
 
-  const dir = sort?.direction === 'asc' ? 1 : -1;
-  const sortKey = sort?.key as keyof StockRow | undefined;
-  const sortRows = (list: StockRow[]): StockRow[] =>
-    sortKey
-      ? [...list].sort((a, b) => {
-          const x = a[sortKey] ?? '';
-          const y = b[sortKey] ?? '';
-          return (x < y ? -1 : x > y ? 1 : 0) * dir;
-        })
-      : list;
-  const sorted = sortRows(rows).map((r) => (r.bins ? { ...r, bins: sortRows(r.bins) } : r));
+  const sorted = [...rows].sort((a, b) => a.code.localeCompare(b.code))
+    .map((r) => r.bins ? { ...r, bins: [...r.bins].sort((a, b) => a.code.localeCompare(b.code)) } : r);
+  const expandableIds = sorted.filter((r) => r.bins?.length).map((r) => r.id);
   const openPage = (r: StockRow) =>
     r.recordId && navigate(`/inventory/warehouses-and-bins/${r.kind === 'bin' ? 'bin-locations' : 'warehouses'}/${r.recordId}`);
   // A row opens its warehouse's panel, where the default bin is set too. A parent item has no
@@ -143,6 +139,7 @@ export function StockTab({
     {
       key: 'code',
       header: 'Location',
+      expandToggle: expandableIds.length > 0,
       cell: (r) => <span className="whitespace-nowrap">{r.code}</span>,
     },
     // The name shares the Location header; sorting is on the code.
@@ -152,7 +149,9 @@ export function StockTab({
       sortable: false,
       cell: (r) => (
         <span className="whitespace-nowrap">
-          <TableLink onClick={() => open(r)}>{r.name}</TableLink>
+          {r.recordId
+            ? <TableContent href={`/#/inventory/warehouses-and-bins/${r.kind === 'bin' ? 'bin-locations' : 'warehouses'}/${r.recordId}`}>{r.name}</TableContent>
+            : r.name}
         </span>
       ),
     },
@@ -242,14 +241,13 @@ export function StockTab({
         {rows.length ? (
           <Table
             caption="Stock by warehouse"
-            columns={columns.map((c) => ({ sortable: true, ...c }))}
+            columns={columns}
             rows={sorted}
             getRowId={(r) => r.id}
             getSubRows={(r) => r.bins}
-            sort={sort}
-            onSortChange={setSort}
+            expandedIds={expandedIds}
+            onExpandedChange={setExpandedIds}
             layout="fill"
-            onRowAction={open}
             {...(!isParent ? { selectable: true, selectedIds: liveSelection, onSelectionChange: setSelected } : {})}
           />
         ) : (

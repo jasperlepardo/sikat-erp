@@ -109,7 +109,7 @@ export function IncomingPaymentDetail() {
 }
 
 function IncomingForm() {
-  const { id } = useParams();
+  const { id, tab: tabParam } = useParams();
   const isNew = id === 'new';
   const navigate = useNavigate();
   const fromInvoice = (useLocation().state as { fromInvoice?: string } | null)?.fromInvoice;
@@ -117,7 +117,9 @@ function IncomingForm() {
   const rcApproved = !getSalesSettings().requireIncomingPaymentApproval;
   const [draft, setDraft] = useState<IncomingInput | null | undefined>(isNew ? { ...blankIncomingPayment(todayISO()), approved: rcApproved } : undefined);
   const [m, setM] = useState<Masters>();
-  const [page, setPage] = useState<PageId>('details');
+  const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
+  const setPage = (v: PageId) => navigate(`${RC_LIST_PATH}/${id}/${v}`, { replace: true });
+  useEffect(() => { if (!tabParam) navigate(`${RC_LIST_PATH}/${id}/details`, { replace: true }); }, []);
   const [customerDetailsOpen, setCustomerDetailsOpen] = useState(false);
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);

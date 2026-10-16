@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Badge, Button, Card, Icon, Table, TableLink, TableStatus, Text, TextField, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { Badge, Button, Card, Icon, Table, TableContent, TableStatus, Text, TextField, type TableActionItem, type TableColumn } from '@jasperlepardo/sikat-design-system';
 import { fillCardClass } from '../../../components/form/DataTable';
 import { useHeaderSearch } from '../../../components/form/HeaderSearch';
 import type { ListRoute } from '../../../components/form/MasterList';
@@ -77,8 +77,9 @@ export function locationColumns({
     {
       key: 'location',
       header: 'Location',
+      expandToggle: true,
       cell: (n) => (
-        <TableLink onClick={() => open(n)}>
+        <TableContent onClick={() => open(n)}>
           {n.kind === 'warehouse'
             ? `${n.warehouse.code} · ${n.warehouse.name}`
             : n.kind === 'bin'
@@ -86,7 +87,7 @@ export function locationColumns({
                 ? n.bin.code
                 : tierLabel(sublevels, n.bin.warehouse, 'level', n.bin.level)
               : n.label}
-        </TableLink>
+        </TableContent>
       ),
     },
     ...(showType
@@ -199,6 +200,9 @@ export function LocationsTab({ basePath }: ListRoute) {
   // Warehouses start open; aisles and shelves start closed.
   const expandedIds = expanded ?? tree.map((n) => n.id);
   const toggle = (id: string) => setExpanded(expandedIds.includes(id) ? expandedIds.filter((x) => x !== id) : [...expandedIds, id]);
+  const expandableIds = rows.filter((n) => n.children?.length).map((n) => n.id);
+  const allExpanded = expandableIds.length > 0 && expandableIds.every((id) => expandedIds.includes(id));
+  const headerActions: TableActionItem[] = [{ type: 'expand', expanded: allExpanded, onToggle: () => setExpanded(allExpanded ? [] : expandableIds) }];
 
   const open = (n: Node) =>
     n.kind === 'warehouse'
@@ -282,13 +286,13 @@ export function LocationsTab({ basePath }: ListRoute) {
             rows={rows}
             getRowId={(n) => n.id}
             layout="fill"
-            onRowAction={open}
             selectable
             selectedIds={selected}
             onSelectionChange={setSelected}
             getSubRows={(n) => n.children}
             expandedIds={expandedIds}
             onExpandedChange={setExpanded}
+            headerActions={headerActions}
           />
         ) : (
           <Text tone="muted" className="p-4">

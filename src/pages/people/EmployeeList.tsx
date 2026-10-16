@@ -7,10 +7,8 @@ import {
   Panel,
   PanelHeader,
   Table,
-  TableLink,
+  TableContent,
   TableStatus,
-  TableSubcontent,
-  TableUser,
   Text,
   type TableColumn,
 } from '@jasperlepardo/sikat-design-system';
@@ -19,7 +17,7 @@ import { employeeName, employeeNameOf, employees } from '../../services/employee
 import { nameIn } from '../../services/partnerMasters';
 import { branches, departments, positions } from '../../services/peopleMasters';
 import { useCollection } from '../../components/form/MasterLookup';
-import { DEFAULT_PAGE_SIZE, PAGE_SIZES, fillCardClass } from '../../components/form/DataTable';
+import { fillCardClass, useListPage } from '../../components/form/DataTable';
 import { EMPTY_FILTER, oneRule } from '../../components/filter/engine';
 import { choiceField, textField } from '../../components/filter/fieldKit';
 import { useListPresets } from '../../components/filter/useListPresets';
@@ -66,15 +64,14 @@ export function EmployeeList() {
   useCollection(branches);
   useCollection(positions);
   const [query, setQuery] = useState('');
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const { resetPage, paginate } = useListPage();
   const presets = useListPresets({
     list: 'employees',
     fields: FIELDS,
     builtIns: VIEWS,
     defaultSort: { key: 'name', direction: 'asc' },
     rows: loaded ? all : undefined,
-    onChange: () => setPage(1),
+    onChange: resetPage,
   });
   const { sort, setSort } = presets;
 
@@ -89,8 +86,7 @@ export function EmployeeList() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [all, presets.filter, query, sort]);
 
-  const open = (e: Employee) => navigate(`${EMPLOYEES_PATH}/${e.id}`);
-  const onPage = rows.slice((page - 1) * pageSize, page * pageSize);
+  const { visible: onPage, pagination } = paginate(rows);
 
   const columns: TableColumn<Employee>[] = [
     {
@@ -98,16 +94,14 @@ export function EmployeeList() {
       header: 'Employee',
       sortable: true,
       cell: (e) => (
-        <TableSubcontent subcopy={e.code}>
-          <TableLink onClick={() => open(e)}>{employeeName(e)}</TableLink>
-        </TableSubcontent>
+        <TableContent href={`/#${EMPLOYEES_PATH}/${e.id}`} subcopy={e.code}>{employeeName(e)}</TableContent>
       ),
     },
     {
       key: 'jobTitle',
       header: 'Job title',
       sortable: true,
-      cell: (e) => <TableSubcontent subcopy={name(positions, e.positionId)}>{e.jobTitle || '—'}</TableSubcontent>,
+      cell: (e) => <TableContent subcopy={name(positions, e.positionId)}>{e.jobTitle || '—'}</TableContent>,
     },
     { key: 'department', header: 'Department', sortable: true, cell: (e) => name(departments, e.departmentId) || '—' },
     { key: 'branch', header: 'Branch', sortable: true, cell: (e) => name(branches, e.branchId) || '—' },
@@ -117,13 +111,13 @@ export function EmployeeList() {
       sortable: true,
       cell: (e) => {
         const m = all.find((x) => x.id === e.managerId);
-        return m ? <TableUser name={employeeName(m)} initials={initials(m)} /> : '—';
+        return m ? <TableContent initials={initials(m)}>{employeeName(m)}</TableContent> : '—';
       },
     },
     {
       key: 'contact',
       header: 'Contact',
-      cell: (e) => <TableSubcontent subcopy={e.mobilePhone}>{e.email || '—'}</TableSubcontent>,
+      cell: (e) => <TableContent subcopy={e.mobilePhone}>{e.email || '—'}</TableContent>,
     },
     {
       key: 'status',
@@ -146,7 +140,7 @@ export function EmployeeList() {
         searchValue={query}
         onSearchChange={(value) => {
           setQuery(value);
-          setPage(1);
+          resetPage();
         }}
         actions={
           <Button
@@ -173,18 +167,7 @@ export function EmployeeList() {
               sort={sort}
               onSortChange={setSort}
               layout="fill"
-              onRowAction={open}
-              pagination={{
-                page,
-                pageSize,
-                total: rows.length,
-                pageSizes: PAGE_SIZES,
-                onPageChange: setPage,
-                onPageSizeChange: (size) => {
-                  setPageSize(size);
-                  setPage(1);
-                },
-              }}
+              pagination={pagination}
             />
           ) : (
             <Text tone="muted" className="p-4">Loading employees…</Text>

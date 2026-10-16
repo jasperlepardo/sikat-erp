@@ -10,9 +10,8 @@ import {
   PanelHeader,
   Table,
   TableAmount,
-  TableLink,
+  TableContent,
   TableStatus,
-  TableSubcontent,
   type TableColumn,
   Text,
 } from '@jasperlepardo/sikat-design-system';
@@ -25,15 +24,14 @@ import { RFQ_LIST_PATH, STATUS_INTENT } from './detail/RfqDetail';
 import { dateField, linesField, masterField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { currencyDef, salesEmployeeDef } from '../../settings/masterDefs';
-import { DEFAULT_PAGE_SIZE, PAGE_SIZES, fillCardClass } from '../../../components/form/DataTable';
+import { fillCardClass, useListPage } from '../../../components/form/DataTable';
 
 export function RfqList() {
   const navigate = useNavigate();
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const data = useAsync(() => Promise.all([listRfqs(), taxCodes.list()]), []);
   const [query, setQuery] = useState('');
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const { resetPage, paginate } = useListPage();
 
   const [rfqs, codes] = data ?? [undefined, []];
   const totalOf = (q: Rfq) => rfqTotal(q, codes);
@@ -58,7 +56,7 @@ export function RfqList() {
     builtIns: statusViews('purchase quotations', RFQ_STATUSES),
     defaultSort: { key: 'postingDate', direction: 'desc' },
     rows: rfqs,
-    onChange: () => setPage(1),
+    onChange: resetPage,
   });
   const { sort, setSort } = presets;
 
@@ -84,8 +82,6 @@ export function RfqList() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rfqs, presets.filter, query, sort, codes]);
 
-  const open = (rfq: Rfq) => navigate(`${RFQ_LIST_PATH}/${rfq.docNum ? rfqNumber(rfq) : rfq.id}`);
-
   const today = new Date().toISOString().slice(0, 10);
 
   const columns: TableColumn<Rfq>[] = [
@@ -94,16 +90,14 @@ export function RfqList() {
       header: 'No.',
       sortable: true,
       cell: (rfq) => (
-        <TableSubcontent subcopy={rfq.vendorRef ? `Vendor ref. ${rfq.vendorRef}` : undefined}>
-          <TableLink onClick={() => open(rfq)}>{rfqNumber(rfq)}</TableLink>
-        </TableSubcontent>
+        <TableContent href={`/#${RFQ_LIST_PATH}/${rfq.docNum ? rfqNumber(rfq) : rfq.id}`} subcopy={rfq.vendorRef ? `Vendor ref. ${rfq.vendorRef}` : undefined}>{rfqNumber(rfq)}</TableContent>
       ),
     },
     {
       key: 'vendorName',
       header: 'Vendor',
       sortable: true,
-      cell: (rfq) => <TableSubcontent subcopy={rfq.vendorCode}>{rfq.vendorName || '—'}</TableSubcontent>,
+      cell: (rfq) => <TableContent subcopy={rfq.vendorCode}>{rfq.vendorName || '—'}</TableContent>,
     },
     { key: 'postingDate', header: 'Posting date', sortable: true, cell: (rfq) => rfq.postingDate },
     {
@@ -126,9 +120,9 @@ export function RfqList() {
         const total = rfq.lines.length;
         const quoted = rfq.lines.filter((l) => l.quotedQty > 0 || l.quotedDate).length;
         return (
-          <TableSubcontent subcopy={total ? `${quoted} of ${total} quoted` : undefined}>
+          <TableContent subcopy={total ? `${quoted} of ${total} quoted` : undefined}>
             {total} {total === 1 ? 'line' : 'lines'}
-          </TableSubcontent>
+          </TableContent>
         );
       },
     },
@@ -153,6 +147,8 @@ export function RfqList() {
     },
   ];
 
+  const { visible, pagination } = paginate(rows);
+
   return (
     <Panel className="flex-1">
       <PanelHeader
@@ -162,7 +158,7 @@ export function RfqList() {
         searchValue={query}
         onSearchChange={(value) => {
           setQuery(value);
-          setPage(1);
+          resetPage();
         }}
         icon="description"
         iconIntent="default"
@@ -190,28 +186,17 @@ export function RfqList() {
           </Alert>
         ) : null}
         {presets.bar(null)}
-        <Card className={fillCardClass(rows.slice((page - 1) * pageSize, page * pageSize).length)}>
+        <Card className={fillCardClass(visible.length)}>
           {rfqs ? (
             <Table
               caption="Purchase quotations"
               columns={columns}
-              rows={rows.slice((page - 1) * pageSize, page * pageSize)}
+              rows={visible}
               getRowId={(q) => q.id}
               sort={sort}
               onSortChange={setSort}
               layout="fill"
-              onRowAction={open}
-              pagination={{
-                page,
-                pageSize,
-                total: rows.length,
-                pageSizes: PAGE_SIZES,
-                onPageChange: setPage,
-                onPageSizeChange: (size) => {
-                  setPageSize(size);
-                  setPage(1);
-                },
-              }}
+              pagination={pagination}
             />
           ) : (
             <Text tone="muted" className="p-4">

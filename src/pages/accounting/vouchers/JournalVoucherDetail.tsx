@@ -10,9 +10,8 @@ import {
   PanelHeader,
   Table,
   TableAmount,
-  TableLink,
+  TableContent,
   TableStatus,
-  TableSubcontent,
   Text,
   type TableColumn,
 } from '@jasperlepardo/sikat-design-system';
@@ -112,13 +111,13 @@ export function JournalVoucherDetail() {
     {
       key: 'transNo',
       header: 'Trans. No.',
-      cell: (e) => <TableLink onClick={() => navigate(entryPath(voucher.id, e.id))}>{e.transNo}</TableLink>,
+      cell: (e) => <TableContent href={`/#${entryPath(voucher.id, e.id)}`}>{e.transNo}</TableContent>,
     },
     { key: 'postingDate', header: 'Posting date', cell: (e) => formatDate(e.postingDate) },
     {
       key: 'remarks',
       header: 'Remarks',
-      cell: (e) => <TableSubcontent subcopy={[e.ref1, e.ref2].filter(Boolean).join(' · ') || undefined}>{e.remarks || '—'}</TableSubcontent>,
+      cell: (e) => <TableContent subcopy={[e.ref1, e.ref2].filter(Boolean).join(' · ') || undefined}>{e.remarks || '—'}</TableContent>,
     },
     { key: 'debit', header: 'Debit', cell: (e) => <TableAmount currency="PHP">{formatAmount(jeTotals(e.lines).debit)}</TableAmount> },
     { key: 'credit', header: 'Credit', cell: (e) => <TableAmount currency="PHP">{formatAmount(jeTotals(e.lines).credit)}</TableAmount> },
@@ -128,9 +127,9 @@ export function JournalVoucherDetail() {
       cell: (e) => {
         if (e.entryStatus === 'Closed')
           return (
-            <TableLink onClick={() => navigate(`${JE_LIST_PATH}/${e.journalEntryId}`)}>
+            <TableContent href={`/#${JE_LIST_PATH}/${e.journalEntryId}`}>
               {`Journal entry ${e.number}`}
-            </TableLink>
+            </TableContent>
           );
         const blocker = blockerOf(e);
         // The short version here; the reason shows on hover and when posting is refused.
@@ -248,7 +247,6 @@ export function JournalVoucherDetail() {
             columns={columns}
             rows={entries}
             getRowId={(e) => e.id}
-            onRowAction={(e) => navigate(entryPath(voucher.id, e.id))}
             selectable
             selectedIds={selected}
             onSelectionChange={setSelected}

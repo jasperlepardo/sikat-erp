@@ -118,7 +118,7 @@ export function PartnerDetail({ scope }: { scope: PartnerScope }) {
 }
 
 function PartnerForm({ scope }: { scope: PartnerScope }) {
-  const { id } = useParams();
+  const { id, tab: tabParam } = useParams();
   const isNew = id === 'new';
   const navigate = useNavigate();
   const copyFrom = (useLocation().state as { copyFrom?: Draft } | null)?.copyFrom;
@@ -129,7 +129,7 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
     isNew ? (copyFrom ?? blankPartner(initialType)) : undefined,
   );
   const [codeMode, setCodeMode] = useState<'auto' | 'manual'>('auto');
-  const [page, setPage] = useState<PageId>('details');
+  const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
   const [tab, setTab] = useState<TabId>('settings');
   const [problems, setProblems] = useState<Problem[]>([]);
   const [saving, setSaving] = useState(false);
@@ -155,6 +155,8 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
   }, [id, isNew]);
 
   const config = scope === 'all' ? MASTER_CONFIG : ROLE_CONFIG[isNew ? (draft?.roles[0] ?? initialType) : scope];
+  const setPage = (v: PageId) => navigate(`${config.basePath}/${id}/${v}`, { replace: true });
+  useEffect(() => { if (!tabParam) navigate(`${config.basePath}/${id}/details`, { replace: true }); }, []);
 
   if (draft === undefined) return <Text tone="muted" className="p-4">Loading {config.singular.toLowerCase()}…</Text>;
   if (draft === null) {

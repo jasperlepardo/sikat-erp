@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { binCodeOf, binLocations } from '../../../services/binLocations';
-import { TableLink, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { TableContent, type TableColumn } from '@jasperlepardo/sikat-design-system';
 import type { Item } from '../../../mocks/items';
 
 const qty = (n: number) => n.toLocaleString('en-PH');
@@ -45,9 +45,9 @@ export function locationStock(items: readonly Item[], code: string, binIds?: rea
 }
 
 /** Columns for a location's (or bin's) item list; `withBin` adds the default bin. */
-export function stockColumns(open: (row: StockRow) => void, withBin: boolean): TableColumn<StockRow>[] {
+export function stockColumns(href: (row: StockRow) => string, withBin: boolean): TableColumn<StockRow>[] {
   return [
-    { key: 'itemNo', header: 'Item No.', cell: (r) => <TableLink onClick={() => open(r)}>{r.itemNo}</TableLink> },
+    { key: 'itemNo', header: 'Item No.', cell: (r) => <TableContent href={href(r)}>{r.itemNo}</TableContent> },
     { key: 'name', header: 'Name', cell: (r) => r.name },
     ...(withBin ? [{ key: 'bin', header: 'Default bin', cell: (r: StockRow) => r.bin || '—' }] : []),
     { key: 'inStock', header: numHeader('In stock'), cell: (r) => num(`${qty(r.inStock)} ${r.uom}`) },

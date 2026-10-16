@@ -9,9 +9,8 @@ import {
   PanelHeader,
   Table,
   TableAmount,
-  TableLink,
+  TableContent,
   TableStatus,
-  TableSubcontent,
   Tabs,
   Text,
   type TableColumn,
@@ -19,7 +18,7 @@ import {
 import { dateField, masterField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { currencyDef } from '../../settings/masterDefs';
-import { DEFAULT_PAGE_SIZE, PAGE_SIZES, fillCardClass } from '../../../components/form/DataTable';
+import { fillCardClass, useListPage } from '../../../components/form/DataTable';
 import { formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
 import { listCreditMemos, memoNumber, memoTotal } from '../../../services/apCreditMemos';
@@ -59,8 +58,7 @@ export function ReturnsList({ kind }: { kind: Kind }) {
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const data = useAsync(() => Promise.all([listGoodsReturns(), listCreditMemos(), taxCodes.list()]), []);
   const [query, setQuery] = useState('');
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const { resetPage, paginate } = useListPage();
   const path = kind === 'returns' ? RETURN_LIST_PATH : MEMO_LIST_PATH;
 
   const all: Row[] | undefined = useMemo(() => {
@@ -101,7 +99,7 @@ export function ReturnsList({ kind }: { kind: Kind }) {
     builtIns: statusViews(kind === 'returns' ? 'goods returns' : 'A/P credit memos', STATUSES),
     defaultSort: { key: 'postingDate', direction: 'desc' },
     rows: all,
-    onChange: () => setPage(1),
+    onChange: resetPage,
   });
   const { sort, setSort } = presets;
 
@@ -114,18 +112,19 @@ export function ReturnsList({ kind }: { kind: Kind }) {
     return [...filtered].sort((a, b) => (value(a) < value(b) ? -1 : value(a) > value(b) ? 1 : 0) * dir);
   }, [all, presets.filter, query, sort]);
 
-  const open = (r: Row) => navigate(`${path}/${r.docNum ? r.number : r.id}`);
   const intent = kind === 'returns' ? RETURN_STATUS_INTENT : MEMO_STATUS_INTENT;
 
   const columns: TableColumn<Row>[] = [
-    { key: 'docNum', header: 'No.', sortable: true, cell: (r) => <TableSubcontent subcopy={r.ref || undefined}><TableLink onClick={() => open(r)}>{r.number}</TableLink></TableSubcontent> },
-    { key: 'vendorName', header: 'Vendor', sortable: true, cell: (r) => <TableSubcontent subcopy={r.vendorCode}>{r.vendorName || '—'}</TableSubcontent> },
+    { key: 'docNum', header: 'No.', sortable: true, cell: (r) => <TableContent href={`/#${path}/${r.docNum ? r.number : r.id}`} subcopy={r.ref || undefined}>{r.number}</TableContent> },
+    { key: 'vendorName', header: 'Vendor', sortable: true, cell: (r) => <TableContent subcopy={r.vendorCode}>{r.vendorName || '—'}</TableContent> },
     { key: 'postingDate', header: 'Posting date', sortable: true, cell: (r) => formatDate(r.postingDate) },
     { key: 'base', header: 'Based on', cell: (r) => r.base || <span className="text-muted">Entered by hand</span> },
     { key: 'reasons', header: 'Reason', cell: (r) => r.reasons || '—' },
     { key: 'total', header: 'Total credit', sortable: true, cell: (r) => <TableAmount currency={r.currency}>{formatAmount(r.total)}</TableAmount> },
     { key: 'status', header: 'Status', sortable: true, cell: (r) => <TableStatus intent={intent[r.status]}>{r.status}</TableStatus> },
   ];
+
+  const { visible, pagination } = paginate(rows);
 
   return (
     <Panel className="flex-1">
@@ -136,7 +135,7 @@ export function ReturnsList({ kind }: { kind: Kind }) {
         searchValue={query}
         onSearchChange={(value) => {
           setQuery(value);
-          setPage(1);
+          resetPage();
         }}
         icon="assignment_return"
         iconIntent="default"
@@ -167,20 +166,19 @@ export function ReturnsList({ kind }: { kind: Kind }) {
       <Panel.Body className="flex flex-col gap-2">
         {notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : null}
         {presets.bar(null)}
-        <Card className={fillCardClass(rows.slice((page - 1) * pageSize, page * pageSize).length)}>
+        <Card className={fillCardClass(visible.length)}>
           {!all ? (
             <Text tone="muted" className="p-4">Loading…</Text>
           ) : all.length ? (
             <Table
               caption={kind === 'returns' ? 'Goods returns' : 'A/P credit memos'}
               columns={columns}
-              rows={rows.slice((page - 1) * pageSize, page * pageSize)}
+              rows={visible}
               getRowId={(r) => r.id}
               sort={sort}
               onSortChange={setSort}
               layout="fill"
-              onRowAction={open}
-              pagination={{ page, pageSize, total: rows.length, pageSizes: PAGE_SIZES, onPageChange: setPage, onPageSizeChange: (size) => { setPageSize(size); setPage(1); } }}
+              pagination={pagination}
             />
           ) : (
             <Text tone="muted" className="p-4">

@@ -8,9 +8,8 @@ import {
   PanelHeader,
   Table,
   TableAmount,
-  TableLink,
+  TableContent,
   TableStatus,
-  TableSubcontent,
   type TableColumn,
   Text,
 } from '@jasperlepardo/sikat-design-system';
@@ -23,7 +22,7 @@ import { EMPTY_FILTER, oneRule } from '../../../components/filter/engine';
 import { boolField, numberField, textField } from '../../../components/filter/fieldKit';
 import { useListPresets } from '../../../components/filter/useListPresets';
 import type { BuiltInView } from '../../../components/filter/useListViews';
-import { DEFAULT_PAGE_SIZE, PAGE_SIZES, fillCardClass } from '../../../components/form/DataTable';
+import { fillCardClass, useListPage } from '../../../components/form/DataTable';
 
 const ITEM_VIEWS: BuiltInView[] = [
   { id: 'all', name: 'All items', filter: EMPTY_FILTER },
@@ -92,18 +91,17 @@ export function ItemList({ basePath = '/inventory/items' }: { basePath?: string 
     numberField<Item>('basePrice', 'Base price', (i) => i.basePrice),
   ], [variantStockMap]);
 
+  const [query, setQuery] = useState('');
+  const { resetPage, paginate } = useListPage();
   const presets = useListPresets({
     list: 'items',
     fields,
     builtIns: ITEM_VIEWS,
     defaultSort: { key: 'description', direction: 'asc' },
     rows: items,
-    onChange: () => setPage(1),
+    onChange: resetPage,
   });
   const { sort, setSort } = presets;
-  const [query, setQuery] = useState('');
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
 
   const rows = useMemo(() => {
     const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
@@ -127,24 +125,20 @@ export function ItemList({ basePath = '/inventory/items' }: { basePath?: string 
     });
   }, [items, presets.filter, query, sort, variantStockMap, variantSearchMap]);
 
-  const open = (i: Item) => navigate(`${basePath}/${i.id}`);
-
   const columns: TableColumn<Item>[] = [
     {
       key: 'description',
       header: 'Item',
       sortable: true,
       cell: (i) => (
-        <TableSubcontent subcopy={i.itemNo}>
-          <TableLink onClick={() => open(i)}>{i.description}</TableLink>
-        </TableSubcontent>
+        <TableContent href={`/#${basePath}/${i.id}`} subcopy={i.itemNo}>{i.description}</TableContent>
       ),
     },
     {
       key: 'itemGroupId',
       header: 'Group',
       sortable: true,
-      cell: (i) => <TableSubcontent subcopy={i.itemType === 'Items' ? undefined : i.itemType}>{itemGroupName(i.itemGroupId)}</TableSubcontent>,
+      cell: (i) => <TableContent subcopy={i.itemType === 'Items' ? undefined : i.itemType}>{itemGroupName(i.itemGroupId)}</TableContent>,
     },
     {
       key: 'inStock',
@@ -157,7 +151,7 @@ export function ItemList({ basePath = '/inventory/items' }: { basePath?: string 
         }
         if (!i.inventoryItem) return <span className="text-muted">Not stocked</span>;
         const s = effectiveStock(i, variantStockMap);
-        return <TableSubcontent subcopy={`Min ${i.minStock}`}>{s.inStock.toLocaleString('en-PH')} {i.inventoryUom}</TableSubcontent>;
+        return <TableContent subcopy={`Min ${i.minStock}`}>{s.inStock.toLocaleString('en-PH')} {i.inventoryUom}</TableContent>;
       },
     },
     {
@@ -177,9 +171,9 @@ export function ItemList({ basePath = '/inventory/items' }: { basePath?: string 
       sortable: true,
       cell: (i) =>
         i.salesItem ? (
-          <TableSubcontent subcopy={`per ${i.salesUom}`}>
+          <TableContent subcopy={`per ${i.salesUom}`}>
             <TableAmount currency="PHP">{formatAmount(i.basePrice)}</TableAmount>
-          </TableSubcontent>
+          </TableContent>
         ) : (
           <span className="text-muted">Not sold</span>
         ),
@@ -199,6 +193,8 @@ export function ItemList({ basePath = '/inventory/items' }: { basePath?: string 
     },
   ];
 
+  const { visible, pagination } = paginate(rows);
+
   return (
     <Panel className="flex-1">
       <PanelHeader
@@ -208,7 +204,7 @@ export function ItemList({ basePath = '/inventory/items' }: { basePath?: string 
         searchValue={query}
         onSearchChange={(value) => {
           setQuery(value);
-          setPage(1);
+          resetPage();
         }}
         icon="inventory_2"
         iconIntent="default"
@@ -230,28 +226,17 @@ export function ItemList({ basePath = '/inventory/items' }: { basePath?: string 
       />
       <Panel.Body className="flex flex-col gap-2">
         {presets.bar(null)}
-        <Card className={fillCardClass(rows.slice((page - 1) * pageSize, page * pageSize).length)}>
+        <Card className={fillCardClass(visible.length)}>
           {items ? (
             <Table
               caption="Items"
               columns={columns}
-              rows={rows.slice((page - 1) * pageSize, page * pageSize)}
+              rows={visible}
               getRowId={(i) => i.id}
               sort={sort}
               onSortChange={setSort}
               layout="fill"
-              onRowAction={open}
-              pagination={{
-                page,
-                pageSize,
-                total: rows.length,
-                pageSizes: PAGE_SIZES,
-                onPageChange: setPage,
-                onPageSizeChange: (size) => {
-                  setPageSize(size);
-                  setPage(1);
-                },
-              }}
+              pagination={pagination}
             />
           ) : (
             <Text tone="muted" className="p-4">Loading items…</Text>

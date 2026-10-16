@@ -1,4 +1,4 @@
-import { TableLink, TableStatus, Text, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { TableContent, TableStatus, Text, type TableColumn } from '@jasperlepardo/sikat-design-system';
 import { DataTable } from '../../../../components/form/DataTable';
 import { type SalesOrder } from '../../../../mocks/salesOrders';
 import { formatDate } from '../../../../services/dates';
@@ -29,9 +29,9 @@ export function DocumentsTab({ baId }: { baId: string | undefined }) {
       key: 'document',
       header: 'Document',
       cell: (so) => (
-        <TableLink href={`#${SO_LIST_PATH}/${soNumber(so)}`}>
+        <TableContent href={`#${SO_LIST_PATH}/${soNumber(so)}`}>
           {soNumber(so)}
-        </TableLink>
+        </TableContent>
       ),
     },
     {

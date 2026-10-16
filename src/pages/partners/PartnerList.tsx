@@ -9,10 +9,8 @@ import {
   PanelHeader,
   Table,
   TableAmount,
-  TableLink,
+  TableContent,
   TableStatus,
-  TableSubcontent,
-  TableUser,
   type TableColumn,
   Text,
 } from '@jasperlepardo/sikat-design-system';
@@ -29,7 +27,7 @@ import { useAsync } from '../../services/useAsync';
 import { formatAmount } from '../../services/format';
 import { bpGroupName, leadSources, nameIn } from '../../services/partnerMasters';
 import { paymentTermName } from '../../services/purchaseOrders';
-import { DEFAULT_PAGE_SIZE, PAGE_SIZES, fillCardClass } from '../../components/form/DataTable';
+import { fillCardClass, useListPage } from '../../components/form/DataTable';
 import { useListPresets } from '../../components/filter/useListPresets';
 import { ROLE_CONFIG, ROLE_ORDER, STAGE_INTENT, scopeConfig, type PartnerScope } from './roles';
 import { partnerFilterFields, partnerViews } from './filterFields';
@@ -59,15 +57,14 @@ export function PartnerList({ scope }: { scope: PartnerScope }) {
   const navigate = useNavigate();
   const partners = useAsync(() => (scope === 'all' ? listPartners() : listPartnersByRole(scope)), [scope]);
   const [query, setQuery] = useState('');
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const { resetPage, paginate } = useListPage();
   const presets = useListPresets({
     list: scope,
     fields: partnerFilterFields(scope),
     builtIns: partnerViews(scope),
     defaultSort: { key: 'name', direction: 'asc' },
     rows: partners,
-    onChange: () => setPage(1),
+    onChange: resetPage,
   });
   const { sort, setSort } = presets;
 
@@ -82,8 +79,6 @@ export function PartnerList({ scope }: { scope: PartnerScope }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [partners, presets.filter, query, sort]);
 
-  const open = (p: Partner) => navigate(`${config.basePath}/${p.id}`);
-
   const roleColumn: TableColumn<Partner> =
     scope === 'all'
       ? { key: 'bpGroupId', header: 'Group', sortable: true, cell: (p) => bpGroupName(p.bpGroupId) }
@@ -94,9 +89,9 @@ export function PartnerList({ scope }: { scope: PartnerScope }) {
             key: 'creditLimit',
             header: 'Credit limit',
             cell: (p) => (
-              <TableSubcontent subcopy={paymentTermName(p.customerPaymentTermId)}>
+              <TableContent subcopy={paymentTermName(p.customerPaymentTermId)}>
                 <TableAmount currency="PHP">{formatAmount(p.creditLimit ?? 0)}</TableAmount>
-              </TableSubcontent>
+              </TableContent>
             ),
           }
         : { key: 'vendorPaymentTermId', header: 'Payment terms', sortable: true, cell: (p) => (p.vendorPaymentTermId ? paymentTermName(p.vendorPaymentTermId) : '—') };
@@ -107,9 +102,7 @@ export function PartnerList({ scope }: { scope: PartnerScope }) {
       header: config.singular,
       sortable: true,
       cell: (p) => (
-        <TableSubcontent subcopy={p.code}>
-          <TableLink onClick={() => open(p)}>{p.name}</TableLink>
-        </TableSubcontent>
+        <TableContent href={`/#${config.basePath}/${p.id}`} subcopy={p.code}>{p.name}</TableContent>
       ),
     },
     {
@@ -118,7 +111,7 @@ export function PartnerList({ scope }: { scope: PartnerScope }) {
       sortable: true,
       cell: (p) => {
         const name = defaultContactName(p);
-        return name ? <TableUser name={name} subcopy={defaultContact(p)?.email || p.contactChannels.find((c) => c.type === 'Email')?.value} initials={initials(name)} /> : '—';
+        return name ? <TableContent initials={initials(name)} subcopy={defaultContact(p)?.email || p.contactChannels.find((c) => c.type === 'Email')?.value}>{name}</TableContent> : '—';
       },
     },
     { key: 'city', header: 'City', sortable: true, cell: (p) => defaultBillTo(p)?.city || '—' },
@@ -153,6 +146,8 @@ export function PartnerList({ scope }: { scope: PartnerScope }) {
     },
   ];
 
+  const { visible, pagination } = paginate(rows);
+
   return (
     <Panel className="flex-1">
       <PanelHeader
@@ -167,7 +162,7 @@ export function PartnerList({ scope }: { scope: PartnerScope }) {
         searchValue={query}
         onSearchChange={(value) => {
           setQuery(value);
-          setPage(1);
+          resetPage();
         }}
         actions={
           <Button
@@ -184,28 +179,17 @@ export function PartnerList({ scope }: { scope: PartnerScope }) {
       />
       <Panel.Body className="flex flex-col gap-2">
         {presets.bar(null)}
-        <Card className={fillCardClass(rows.slice((page - 1) * pageSize, page * pageSize).length)}>
+        <Card className={fillCardClass(visible.length)}>
           {partners ? (
             <Table
               caption={config.title}
               columns={columns}
-              rows={rows.slice((page - 1) * pageSize, page * pageSize)}
+              rows={visible}
               getRowId={(p) => p.id}
               sort={sort}
               onSortChange={setSort}
               layout="fill"
-              onRowAction={open}
-              pagination={{
-                page,
-                pageSize,
-                total: rows.length,
-                pageSizes: PAGE_SIZES,
-                onPageChange: setPage,
-                onPageSizeChange: (size) => {
-                  setPageSize(size);
-                  setPage(1);
-                },
-              }}
+              pagination={pagination}
             />
           ) : (
             <Text tone="muted" className="p-4">Loading {config.title.toLowerCase()}…</Text>

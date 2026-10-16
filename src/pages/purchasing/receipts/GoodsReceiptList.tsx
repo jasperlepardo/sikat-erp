@@ -9,9 +9,8 @@ import {
   PanelHeader,
   Table,
   TableAmount,
-  TableLink,
+  TableContent,
   TableStatus,
-  TableSubcontent,
   type TableColumn,
   Text,
 } from '@jasperlepardo/sikat-design-system';
@@ -24,7 +23,7 @@ import { useAsync } from '../../../services/useAsync';
 import { dateField, linesField, masterField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { currencyDef, salesEmployeeDef } from '../../settings/masterDefs';
-import { DEFAULT_PAGE_SIZE, PAGE_SIZES, fillCardClass } from '../../../components/form/DataTable';
+import { fillCardClass, useListPage } from '../../../components/form/DataTable';
 import { GR_LIST_PATH, GR_STATUS_INTENT } from './detail/GoodsReceiptDetail';
 
 export function GoodsReceiptList() {
@@ -32,8 +31,7 @@ export function GoodsReceiptList() {
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const data = useAsync(() => Promise.all([listGoodsReceipts(), taxCodes.list()]), []);
   const [query, setQuery] = useState('');
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const { resetPage, paginate } = useListPage();
 
   const [receipts, codes] = data ?? [undefined, []];
   const totalOf = (gr: GoodsReceipt) => grTotal(gr, codes);
@@ -56,7 +54,7 @@ export function GoodsReceiptList() {
     builtIns: statusViews('goods receipts', GR_STATUSES),
     defaultSort: { key: 'postingDate', direction: 'desc' },
     rows: receipts,
-    onChange: () => setPage(1),
+    onChange: resetPage,
   });
   const { sort, setSort } = presets;
 
@@ -82,24 +80,20 @@ export function GoodsReceiptList() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [receipts, presets.filter, query, sort, codes]);
 
-  const open = (gr: GoodsReceipt) => navigate(`${GR_LIST_PATH}/${gr.docNum ? grNumber(gr) : gr.id}`);
-
   const columns: TableColumn<GoodsReceipt>[] = [
     {
       key: 'docNum',
       header: 'No.',
       sortable: true,
       cell: (gr) => (
-        <TableSubcontent subcopy={gr.vendorRef ? `Vendor ref. ${gr.vendorRef}` : undefined}>
-          <TableLink onClick={() => open(gr)}>{grNumber(gr)}</TableLink>
-        </TableSubcontent>
+        <TableContent href={`/#${GR_LIST_PATH}/${gr.docNum ? grNumber(gr) : gr.id}`} subcopy={gr.vendorRef ? `Vendor ref. ${gr.vendorRef}` : undefined}>{grNumber(gr)}</TableContent>
       ),
     },
     {
       key: 'vendorName',
       header: 'Vendor',
       sortable: true,
-      cell: (gr) => <TableSubcontent subcopy={gr.vendorCode}>{gr.vendorName || '—'}</TableSubcontent>,
+      cell: (gr) => <TableContent subcopy={gr.vendorCode}>{gr.vendorName || '—'}</TableContent>,
     },
     { key: 'postingDate', header: 'Posting date', sortable: true, cell: (gr) => formatDate(gr.postingDate) },
     { key: 'orderNumber', header: 'Purchase order', sortable: true, cell: (gr) => (gr.orderNumber ? `PO ${gr.orderNumber}` : <span className="text-muted">Without PO</span>) },
@@ -107,14 +101,16 @@ export function GoodsReceiptList() {
       key: 'quantity',
       header: 'Quantity',
       cell: (gr) => (
-        <TableSubcontent subcopy={`${gr.lines.length} line${gr.lines.length === 1 ? '' : 's'}`}>
+        <TableContent subcopy={`${gr.lines.length} line${gr.lines.length === 1 ? '' : 's'}`}>
           {gr.lines.reduce((n, l) => n + l.quantity, 0).toLocaleString('en-PH')}
-        </TableSubcontent>
+        </TableContent>
       ),
     },
     { key: 'total', header: 'Total', sortable: true, cell: (gr) => <TableAmount currency={gr.currency}>{formatAmount(totalOf(gr))}</TableAmount> },
     { key: 'status', header: 'Status', sortable: true, cell: (gr) => <TableStatus intent={GR_STATUS_INTENT[gr.status]}>{gr.status}</TableStatus> },
   ];
+
+  const { visible, pagination } = paginate(rows);
 
   return (
     <Panel className="flex-1">
@@ -125,7 +121,7 @@ export function GoodsReceiptList() {
         searchValue={query}
         onSearchChange={(value) => {
           setQuery(value);
-          setPage(1);
+          resetPage();
         }}
         icon="inventory"
         iconIntent="default"
@@ -145,28 +141,17 @@ export function GoodsReceiptList() {
           </Alert>
         ) : null}
         {presets.bar(null)}
-        <Card className={fillCardClass(rows.slice((page - 1) * pageSize, page * pageSize).length)}>
+        <Card className={fillCardClass(visible.length)}>
           {receipts ? (
             <Table
               caption="Goods receipts"
               columns={columns}
-              rows={rows.slice((page - 1) * pageSize, page * pageSize)}
+              rows={visible}
               getRowId={(gr) => gr.id}
               sort={sort}
               onSortChange={setSort}
               layout="fill"
-              onRowAction={open}
-              pagination={{
-                page,
-                pageSize,
-                total: rows.length,
-                pageSizes: PAGE_SIZES,
-                onPageChange: setPage,
-                onPageSizeChange: (size) => {
-                  setPageSize(size);
-                  setPage(1);
-                },
-              }}
+              pagination={pagination}
             />
           ) : (
             <Text tone="muted" className="p-4">Loading goods receipts…</Text>

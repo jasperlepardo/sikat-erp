@@ -1,5 +1,4 @@
-import { useNavigate } from 'react-router';
-import { Card, Icon, Table, TableLink, TableSubcontent, Text, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { Card, Icon, Table, TableContent, Text, type TableColumn } from '@jasperlepardo/sikat-design-system';
 import { listCostLayers } from '../../../../services/costLayers';
 import { formatAmount } from '../../../../services/format';
 import { grNumber, listGoodsReceipts } from '../../../../services/goodsReceipts';
@@ -35,7 +34,6 @@ interface Batch {
  * and the move from the batch before. For a FIFO item, also how much of each batch is still on hand.
  */
 export function PurchaseHistory({ draft }: { draft: Draft }) {
-  const navigate = useNavigate();
   const fifo = draft.valuationMethod === 'FIFO';
   const data = useAsync(async () => (draft.id ? { receipts: await listGoodsReceipts(), layers: await listCostLayers() } : undefined), [draft.id]);
   if (!draft.id) return null;
@@ -87,9 +85,7 @@ export function PurchaseHistory({ draft }: { draft: Draft }) {
       key: 'receiptNo',
       header: 'Batch',
       cell: (b) => (
-        <TableSubcontent subcopy={`${b.date} · ${b.orderNo || 'No PO'}`}>
-          <TableLink onClick={() => navigate(`${GR_LIST_PATH}/${b.receiptId}`)}>{b.receiptNo}</TableLink>
-        </TableSubcontent>
+        <TableContent href={`/#${GR_LIST_PATH}/${b.receiptId}`} subcopy={`${b.date} · ${b.orderNo || 'No PO'}`}>{b.receiptNo}</TableContent>
       ),
     },
     { key: 'vendor', header: 'Vendor', cell: (b) => b.vendor },

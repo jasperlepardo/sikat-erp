@@ -9,9 +9,8 @@ import {
   PanelHeader,
   Table,
   TableAmount,
-  TableLink,
+  TableContent,
   TableStatus,
-  TableSubcontent,
   Text,
   type TableColumn,
 } from '@jasperlepardo/sikat-design-system';
@@ -19,7 +18,7 @@ import { EMPTY_FILTER, oneRule } from '../../../components/filter/engine';
 import { choiceField, dateField, numberField, textField } from '../../../components/filter/fieldKit';
 import { useListPresets } from '../../../components/filter/useListPresets';
 import type { BuiltInView } from '../../../components/filter/useListViews';
-import { DEFAULT_PAGE_SIZE, PAGE_SIZES, fillCardClass } from '../../../components/form/DataTable';
+import { fillCardClass, useListPage } from '../../../components/form/DataTable';
 import { ORIGIN_LABEL, type JournalEntry } from '../../../mocks/journalEntries';
 import { formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
@@ -51,18 +50,17 @@ export function JournalEntryList() {
     numberField<JournalEntry>('amount', 'Amount', (e) => jeTotals(e.lines).debit),
     choiceField<JournalEntry>('status', 'Status', ['Posted', 'Reversed'], (e) => e.status),
   ];
+  const [query, setQuery] = useState('');
+  const { resetPage, paginate } = useListPage();
   const presets = useListPresets({
     list: 'journal-entries',
     fields,
     builtIns: JE_VIEWS,
     defaultSort: { key: 'transNo', direction: 'desc' },
     rows: entries,
-    onChange: () => setPage(1),
+    onChange: resetPage,
   });
   const { sort, setSort } = presets;
-  const [query, setQuery] = useState('');
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -84,8 +82,7 @@ export function JournalEntryList() {
     });
   }, [entries, presets.filter, query, sort]);
 
-  const open = (e: JournalEntry) => navigate(`${JE_LIST_PATH}/${e.id}`);
-  const onPage = rows.slice((page - 1) * pageSize, page * pageSize);
+  const { visible: onPage, pagination } = paginate(rows);
 
   const columns: TableColumn<JournalEntry>[] = [
     {
@@ -93,9 +90,7 @@ export function JournalEntryList() {
       header: 'No.',
       sortable: true,
       cell: (e) => (
-        <TableSubcontent subcopy={`Trans. ${e.transNo}`}>
-          <TableLink onClick={() => open(e)}>{jeNumber(e)}</TableLink>
-        </TableSubcontent>
+        <TableContent href={`/#${JE_LIST_PATH}/${e.id}`} subcopy={`Trans. ${e.transNo}`}>{jeNumber(e)}</TableContent>
       ),
     },
     { key: 'postingDate', header: 'Posting date', sortable: true, cell: (e) => formatDate(e.postingDate) },
@@ -103,9 +98,9 @@ export function JournalEntryList() {
       key: 'origin',
       header: 'Origin',
       sortable: true,
-      cell: (e) => <TableSubcontent subcopy={ORIGIN_LABEL[e.origin]}>{e.origin === 'JE' ? 'JE' : `${e.origin} ${e.originNo}`}</TableSubcontent>,
+      cell: (e) => <TableContent subcopy={ORIGIN_LABEL[e.origin]}>{e.origin === 'JE' ? 'JE' : `${e.origin} ${e.originNo}`}</TableContent>,
     },
-    { key: 'remarks', header: 'Remarks', cell: (e) => <TableSubcontent subcopy={[e.ref1, e.ref2].filter(Boolean).join(' · ') || undefined}>{e.remarks || '—'}</TableSubcontent> },
+    { key: 'remarks', header: 'Remarks', cell: (e) => <TableContent subcopy={[e.ref1, e.ref2].filter(Boolean).join(' · ') || undefined}>{e.remarks || '—'}</TableContent> },
     { key: 'amount', header: 'Amount', sortable: true, cell: (e) => <TableAmount currency="PHP">{formatAmount(jeTotals(e.lines).debit)}</TableAmount> },
     {
       key: 'status',
@@ -124,7 +119,7 @@ export function JournalEntryList() {
         searchValue={query}
         onSearchChange={(value) => {
           setQuery(value);
-          setPage(1);
+          resetPage();
         }}
         icon="menu_book"
         iconIntent="default"
@@ -154,18 +149,7 @@ export function JournalEntryList() {
               sort={sort}
               onSortChange={setSort}
               layout="fill"
-              onRowAction={open}
-              pagination={{
-                page,
-                pageSize,
-                total: rows.length,
-                pageSizes: PAGE_SIZES,
-                onPageChange: setPage,
-                onPageSizeChange: (size) => {
-                  setPageSize(size);
-                  setPage(1);
-                },
-              }}
+              pagination={pagination}
             />
           ) : (
             <Text tone="muted" className="p-4">Loading journal entries…</Text>

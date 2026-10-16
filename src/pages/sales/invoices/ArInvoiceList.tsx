@@ -8,16 +8,15 @@ import {
   Panel,
   PanelHeader,
   Table,
-  TableLink,
+  TableContent,
   TableStatus,
-  TableSubcontent,
   Text,
   type TableColumn,
 } from '@jasperlepardo/sikat-design-system';
 import { dateField, linesField, masterField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { currencyDef, salesEmployeeDef } from '../../settings/masterDefs';
-import { DEFAULT_PAGE_SIZE, PAGE_SIZES, fillCardClass } from '../../../components/form/DataTable';
+import { fillCardClass, useListPage } from '../../../components/form/DataTable';
 import { AR_STATUSES, type ArInvoice } from '../../../mocks/arInvoices';
 import { formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
@@ -34,8 +33,7 @@ export function ArInvoiceList() {
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const data = useAsync(() => Promise.all([listArInvoices(), taxCodes.list(), listSalesOrders(), listDeliveries()]), []);
   const [query, setQuery] = useState('');
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const { resetPage, paginate } = useListPage();
   const [orders, codes, salesOrders, deliveries] = data ?? [undefined, [], [], []];
   /** The sales orders an invoice bills, by number ("SO-2026-0021"): copied from the order, or from a delivery of it. */
   const baseOrders = (inv: ArInvoice) => {
@@ -71,7 +69,7 @@ export function ArInvoiceList() {
     builtIns: statusViews('A/R invoices', AR_STATUSES),
     defaultSort: { key: 'postingDate', direction: 'desc' },
     rows: orders,
-    onChange: () => setPage(1),
+    onChange: resetPage,
   });
   const { sort, setSort } = presets;
 
@@ -92,8 +90,7 @@ export function ArInvoiceList() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orders, presets.filter, query, sort, codes]);
 
-  const open = (so: ArInvoice) => navigate(`${AR_LIST_PATH}/${so.docNum ? arNumber(so) : so.id}`);
-  const onPage = rows.slice((page - 1) * pageSize, page * pageSize);
+  const { visible: onPage, pagination } = paginate(rows);
 
   const columns: TableColumn<ArInvoice>[] = [
     {
@@ -101,12 +98,10 @@ export function ArInvoiceList() {
       header: 'No.',
       sortable: true,
       cell: (so) => (
-        <TableSubcontent subcopy={so.customerRef ? `Customer ref. ${so.customerRef}` : undefined}>
-          <TableLink onClick={() => open(so)}>{arNumber(so)}</TableLink>
-        </TableSubcontent>
+        <TableContent href={`/#${AR_LIST_PATH}/${so.docNum ? arNumber(so) : so.id}`} subcopy={so.customerRef ? `Customer ref. ${so.customerRef}` : undefined}>{arNumber(so)}</TableContent>
       ),
     },
-    { key: 'customerName', header: 'Customer', sortable: true, cell: (so) => <TableSubcontent subcopy={so.customerCode}>{so.customerName || '—'}</TableSubcontent> },
+    { key: 'customerName', header: 'Customer', sortable: true, cell: (so) => <TableContent subcopy={so.customerCode}>{so.customerName || '—'}</TableContent> },
     { key: 'postingDate', header: 'Posting date', align: 'end', cell: (so) => formatDate(so.postingDate) },
     { key: 'orderNumber', header: 'Order', cell: (so) => baseOrders(so).join(', ') || so.orderNumber || '—' },
     { key: 'dueDate', header: 'Due date', align: 'end', cell: (so) => formatDate(so.dueDate) },
@@ -123,7 +118,7 @@ export function ArInvoiceList() {
         searchValue={query}
         onSearchChange={(value) => {
           setQuery(value);
-          setPage(1);
+          resetPage();
         }}
         icon="receipt"
         iconIntent="default"
@@ -153,18 +148,7 @@ export function ArInvoiceList() {
               sort={sort}
               onSortChange={setSort}
               layout="fill"
-              onRowAction={open}
-              pagination={{
-                page,
-                pageSize,
-                total: rows.length,
-                pageSizes: PAGE_SIZES,
-                onPageChange: setPage,
-                onPageSizeChange: (size) => {
-                  setPageSize(size);
-                  setPage(1);
-                },
-              }}
+              pagination={pagination}
             />
           ) : (
             <Text tone="muted" className="p-4">Loading invoices…</Text>

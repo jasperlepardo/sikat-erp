@@ -175,7 +175,7 @@ export function ItemDetail() {
 }
 
 function ItemForm() {
-  const { id } = useParams();
+  const { id, tab: tabParam } = useParams();
   const isNew = id === 'new';
   const navigate = useNavigate();
   const locationState = useLocation().state as { copyFrom?: Draft; variantOf?: Draft; variantValues?: VariantValue[] } | null;
@@ -193,7 +193,9 @@ function ItemForm() {
   const [mastersReady, setMastersReady] = useState(false);
   const [codeMode, setCodeMode] = useState<'auto' | 'manual'>('auto');
   const [tab, setTab] = useState<TabId>('general');
-  const [page, setPage] = useState<PageId>('details');
+  const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
+  const setPage = (v: PageId) => navigate(`${LIST_PATH}/${id}/${v}`, { replace: true });
+  useEffect(() => { if (!tabParam) navigate(`${LIST_PATH}/${id}/details`, { replace: true }); }, []);
   // Items in the list's order, for previous/next.
   const [siblings, setSiblings] = useState<string[]>([]);
   useEffect(() => {

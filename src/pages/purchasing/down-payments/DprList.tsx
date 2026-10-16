@@ -9,16 +9,15 @@ import {
   PanelHeader,
   Table,
   TableAmount,
-  TableLink,
+  TableContent,
   TableStatus,
-  TableSubcontent,
   Text,
   type TableColumn,
 } from '@jasperlepardo/sikat-design-system';
 import { dateField, linesField, masterField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { currencyDef, salesEmployeeDef } from '../../settings/masterDefs';
-import { DEFAULT_PAGE_SIZE, PAGE_SIZES, fillCardClass } from '../../../components/form/DataTable';
+import { fillCardClass, useListPage } from '../../../components/form/DataTable';
 import { DPR_STATUSES, type DownPaymentRequest } from '../../../mocks/apDownPayments';
 import { dprNumber, dprTotal, listDownPayments } from '../../../services/apDownPayments';
 import { listApInvoices } from '../../../services/apInvoices';
@@ -35,8 +34,7 @@ export function DprList() {
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const data = useAsync(() => Promise.all([listDownPayments(), taxCodes.list(), listApInvoices()]), []);
   const [query, setQuery] = useState('');
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const { resetPage, paginate } = useListPage();
   const [requests, codes, invoices] = data ?? [undefined, [], undefined];
   const totalOf = (d: DownPaymentRequest) => dprTotal(d, codes);
   const fields = [
@@ -59,7 +57,7 @@ export function DprList() {
     builtIns: statusViews('down payment requests', DPR_STATUSES),
     defaultSort: { key: 'postingDate', direction: 'desc' },
     rows: requests,
-    onChange: () => setPage(1),
+    onChange: resetPage,
   });
   const { sort, setSort } = presets;
 
@@ -75,11 +73,9 @@ export function DprList() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [requests, presets.filter, query, sort, codes]);
 
-  const open = (d: DownPaymentRequest) => navigate(`${DPR_LIST_PATH}/${d.docNum ? dprNumber(d) : d.id}`);
-
   const columns: TableColumn<DownPaymentRequest>[] = [
-    { key: 'docNum', header: 'No.', sortable: true, cell: (d) => <TableSubcontent subcopy={d.vendorRef || undefined}><TableLink onClick={() => open(d)}>{dprNumber(d)}</TableLink></TableSubcontent> },
-    { key: 'vendorName', header: 'Vendor', sortable: true, cell: (d) => <TableSubcontent subcopy={d.vendorCode}>{d.vendorName || '—'}</TableSubcontent> },
+    { key: 'docNum', header: 'No.', sortable: true, cell: (d) => <TableContent href={`/#${DPR_LIST_PATH}/${d.docNum ? dprNumber(d) : d.id}`} subcopy={d.vendorRef || undefined}>{dprNumber(d)}</TableContent> },
+    { key: 'vendorName', header: 'Vendor', sortable: true, cell: (d) => <TableContent subcopy={d.vendorCode}>{d.vendorName || '—'}</TableContent> },
     { key: 'postingDate', header: 'Posting date', sortable: true, cell: (d) => formatDate(d.postingDate) },
     { key: 'dueDate', header: 'Due date', sortable: true, cell: (d) => (d.dueDate ? formatDate(d.dueDate) : '—') },
     { key: 'orderNumber', header: 'Purchase order', cell: (d) => (d.orderNumber ? `PO ${d.orderNumber}` : <span className="text-muted">Without PO</span>) },
@@ -89,13 +85,15 @@ export function DprList() {
       key: 'paid',
       header: 'Paid / drawn',
       cell: (d) => (
-        <TableSubcontent subcopy={d.drawnAmount ? `${formatAmount(d.drawnAmount)} drawn` : undefined}>
+        <TableContent subcopy={d.drawnAmount ? `${formatAmount(d.drawnAmount)} drawn` : undefined}>
           {d.appliedAmount ? (d.appliedAmount >= totalOf(d) - 0.005 ? 'Paid' : `${formatAmount(d.appliedAmount)} paid`) : 'Unpaid'}
-        </TableSubcontent>
+        </TableContent>
       ),
     },
     { key: 'status', header: 'Status', sortable: true, cell: (d) => <TableStatus intent={DPR_STATUS_INTENT[d.status]}>{d.status}</TableStatus> },
   ];
+
+  const { visible, pagination } = paginate(rows);
 
   return (
     <Panel className="flex-1">
@@ -106,7 +104,7 @@ export function DprList() {
         searchValue={query}
         onSearchChange={(value) => {
           setQuery(value);
-          setPage(1);
+          resetPage();
         }}
         icon="request_quote"
         iconIntent="default"
@@ -123,20 +121,19 @@ export function DprList() {
       <Panel.Body className="flex flex-col gap-2">
         {notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : null}
         {presets.bar(null)}
-        <Card className={fillCardClass(rows.slice((page - 1) * pageSize, page * pageSize).length)}>
+        <Card className={fillCardClass(visible.length)}>
           {!requests ? (
             <Text tone="muted" className="p-4">Loading down payment requests…</Text>
           ) : requests.length ? (
             <Table
               caption="A/P down payment requests"
               columns={columns}
-              rows={rows.slice((page - 1) * pageSize, page * pageSize)}
+              rows={visible}
               getRowId={(d) => d.id}
               sort={sort}
               onSortChange={setSort}
               layout="fill"
-              onRowAction={open}
-              pagination={{ page, pageSize, total: rows.length, pageSizes: PAGE_SIZES, onPageChange: setPage, onPageSizeChange: (size) => { setPageSize(size); setPage(1); } }}
+              pagination={pagination}
             />
           ) : (
             <Text tone="muted" className="p-4">No down payment requests yet. Start one from a purchase order (You can also › Copy to A/P down payment request), or with New down payment request.</Text>

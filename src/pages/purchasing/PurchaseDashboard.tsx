@@ -5,9 +5,8 @@ import {
   Panel,
   Table,
   TableAmount,
-  TableLink,
+  TableContent,
   TableStatus,
-  TableSubcontent,
   Text,
   type TableColumn,
 } from '@jasperlepardo/sikat-design-system';
@@ -41,12 +40,12 @@ export function PurchaseDashboard() {
     {
       key: 'docNum',
       header: 'No.',
-      cell: (po) => <TableLink onClick={() => navigate(`${PO_LIST_PATH}/${po.docNum ? poNumber(po) : po.id}`)}>{poNumber(po)}</TableLink>,
+      cell: (po) => <TableContent href={`/#${PO_LIST_PATH}/${po.docNum ? poNumber(po) : po.id}`}>{poNumber(po)}</TableContent>,
     },
     {
       key: 'vendorName',
       header: 'Vendor',
-      cell: (po) => <TableSubcontent subcopy={po.vendorCode}>{po.vendorName || '—'}</TableSubcontent>,
+      cell: (po) => <TableContent subcopy={po.vendorCode}>{po.vendorName || '—'}</TableContent>,
     },
     { key: 'postingDate', header: 'Date', cell: (po) => formatDate(po.postingDate) },
     { key: 'total', header: 'Total', cell: (po) => <TableAmount currency={po.currency}>{formatAmount(poTotal(po, codes))}</TableAmount> },
@@ -57,12 +56,12 @@ export function PurchaseDashboard() {
     {
       key: 'docNum',
       header: 'No.',
-      cell: (a) => <TableLink onClick={() => navigate(`${AP_LIST_PATH}/${a.docNum ? apNumber(a) : a.id}`)}>{apNumber(a)}</TableLink>,
+      cell: (a) => <TableContent href={`/#${AP_LIST_PATH}/${a.docNum ? apNumber(a) : a.id}`}>{apNumber(a)}</TableContent>,
     },
     {
       key: 'vendorName',
       header: 'Vendor',
-      cell: (a) => <TableSubcontent subcopy={a.vendorCode}>{a.vendorName || '—'}</TableSubcontent>,
+      cell: (a) => <TableContent subcopy={a.vendorCode}>{a.vendorName || '—'}</TableContent>,
     },
     { key: 'dueDate', header: 'Due date', cell: (a) => formatDate(a.dueDate) },
     { key: 'total', header: 'Total', cell: (a) => <TableAmount currency={a.currency}>{formatAmount(apTotal(a, codes))}</TableAmount> },

@@ -302,6 +302,7 @@ function BaForm() {
                           { label: 'Code', value: c.code },
                           ...(c.tin ? [{ label: 'TIN', value: c.tin }] : []),
                         ],
+                        href: `/#/sales/customers/${c.id}`,
                       }))}
                     value={draft.customerId}
                     onValueChange={(id) => pickCustomer(id || null)}

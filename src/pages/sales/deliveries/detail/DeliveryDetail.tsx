@@ -83,7 +83,7 @@ export function DeliveryDetail() {
 }
 
 function DeliveryForm() {
-  const { id } = useParams();
+  const { id, tab: tabParam } = useParams();
   const isNew = id === 'new';
   const navigate = useNavigate();
   const fromOrder = (useLocation().state as { fromOrder?: string } | null)?.fromOrder;
@@ -91,7 +91,9 @@ function DeliveryForm() {
   const dnApproved = !getSalesSettings().requireDeliveryApproval;
   const [draft, setDraft] = useState<DnDraft | null | undefined>(isNew ? { ...blankDelivery(todayISO(), CURRENT_USER_ID), approved: dnApproved } : undefined);
   const [m, setM] = useState<DnMasters>();
-  const [page, setPage] = useState<PageId>('details');
+  const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
+  const setPage = (v: PageId) => navigate(`${DN_LIST_PATH}/${id}/${v}`, { replace: true });
+  useEffect(() => { if (!tabParam) navigate(`${DN_LIST_PATH}/${id}/details`, { replace: true }); }, []);
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);

@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useMemo, useState, type ReactNode } from 'react';
 import { Button, Card, Icon, Table, Text, type TableColumn, type TableSort } from '@jasperlepardo/sikat-design-system';
 
 export interface DataTableProps<T> {
@@ -14,7 +14,6 @@ export interface DataTableProps<T> {
   sortValue?: (row: T, key: string) => string | number;
   /** Keys of columns that shouldn't sort (e.g. action buttons). Columns with `sortable: false` also don't. */
   unsortable?: string[];
-  onRowAction?: (row: T) => void;
   /** Makes rows selectable with a "Remove selected" button. */
   onRemove?: (rows: T[]) => void;
   /** Shown instead of the table when there are no rows. */
@@ -52,10 +51,35 @@ export const DEFAULT_PAGE_SIZE = 50;
  */
 export const fillCardClass = (rowsOnPage: number) => (rowsOnPage >= 6 ? 'flex-initial min-h-72' : 'flex-initial');
 
-const defaultSortValue = (row: unknown, key: string): string | number => {
+export const defaultSortValue = (row: unknown, key: string): string | number => {
   const v = (row as Record<string, unknown>)[key];
-  return typeof v === 'number' ? v : String(v ?? '').toLowerCase();
+  return typeof v === 'number' ? v : typeof v === 'boolean' ? Number(v) : String(v ?? '').toLowerCase();
 };
+
+/** Manages pagination state for a list page. Returns `resetPage` and `paginate(rows)`. */
+export function useListPage() {
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+
+  const resetPage = useCallback(() => setPage(1), []);
+
+  const paginate = useCallback(
+    <T,>(rows: T[]) => ({
+      visible: rows.slice((page - 1) * pageSize, page * pageSize),
+      pagination: {
+        page,
+        pageSize,
+        total: rows.length,
+        pageSizes: PAGE_SIZES,
+        onPageChange: setPage,
+        onPageSizeChange: (size: number) => { setPageSize(size); setPage(1); },
+      },
+    }),
+    [page, pageSize],
+  );
+
+  return { resetPage, paginate };
+}
 
 /**
  * A titled table in the design system's Table pattern: the Table sits directly in
@@ -71,7 +95,6 @@ export function DataTable<T>({
   getRowId,
   sortValue = defaultSortValue,
   unsortable = [],
-  onRowAction,
   onRemove,
   empty,
   pageSize: initialPageSize = DEFAULT_PAGE_SIZE,
@@ -137,7 +160,6 @@ export function DataTable<T>({
         sort={sort}
         onSortChange={setSort}
         layout="scroll"
-        {...(onRowAction ? { onRowAction } : {})}
         {...(onColumnSettings ? { onColumnSettings } : {})}
         {...(onRemove ? { selectable: true, selectedIds: liveSelection, onSelectionChange: setSelected } : {})}
         {...(!noPagination && {
@@ -182,7 +204,7 @@ export function DataTable<T>({
 
   return (
     <div className="flex flex-col gap-2">
-      {(icon || title || description || actions || onRemove) ? (
+      {(icon || title || description || actions || (onRemove && liveSelection.length)) ? (
         <div className="flex flex-wrap items-start justify-between gap-2 px-2 pt-2">
           <div className="flex min-w-0 flex-1 items-start gap-2">
             {icon ? <Icon size={24}>{icon}</Icon> : null}

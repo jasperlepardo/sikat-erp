@@ -43,7 +43,7 @@ export function JournalEntryDetail() {
 }
 
 function JournalEntryForm() {
-  const { id } = useParams();
+  const { id, tab: tabParam } = useParams();
   const isNew = id === 'new';
   const navigate = useNavigate();
   const copyFrom = (useLocation().state as { copyFrom?: JeInput } | null)?.copyFrom;
@@ -54,7 +54,8 @@ function JournalEntryForm() {
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [notice, setNotice] = useState<string>();
   const [saving, setSaving] = useState(false);
-  const [tab, setTab] = useState<TabId>('contents');
+  const tab = (tabParam === 'contents' || tabParam === 'attachments' ? tabParam : 'contents') as TabId;
+  const setTab = (v: TabId) => navigate(`${JE_LIST_PATH}/${id}/${v}`, { replace: true });
 
   useEffect(() => {
     let cancelled = false;

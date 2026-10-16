@@ -99,7 +99,7 @@ export function PurchaseRequestDetail() {
 }
 
 function PurchaseRequestForm() {
-  const { id } = useParams();
+  const { id, tab: tabParam } = useParams();
   const isNew = id === 'new';
   const navigate = useNavigate();
 
@@ -124,7 +124,9 @@ function PurchaseRequestForm() {
   }, [isNew]);
 
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
-  const [page, setPage] = useState<PageId>('details');
+  const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
+  const setPage = (v: PageId) => navigate(`${PR_LIST_PATH}/${id}/${v}`, { replace: true });
+  useEffect(() => { if (!tabParam) navigate(`${PR_LIST_PATH}/${id}/details`, { replace: true }); }, []);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {

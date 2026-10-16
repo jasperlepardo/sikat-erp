@@ -8,9 +8,8 @@ import {
   Panel,
   PanelHeader,
   Table,
-  TableLink,
+  TableContent,
   TableStatus,
-  TableSubcontent,
   Text,
   type TableColumn,
 } from '@jasperlepardo/sikat-design-system';
@@ -22,15 +21,14 @@ import { useAsync } from '../../../services/useAsync';
 import { PR_LIST_PATH, STATUS_INTENT } from './detail/PurchaseRequestDetail';
 import { dateField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
-import { DEFAULT_PAGE_SIZE, PAGE_SIZES, fillCardClass } from '../../../components/form/DataTable';
+import { fillCardClass, useListPage } from '../../../components/form/DataTable';
 
 export function PurchaseRequestList() {
   const navigate = useNavigate();
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const data = useAsync(() => Promise.all([listPurchaseRequests(), taxCodes.list()]), []);
   const [query, setQuery] = useState('');
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const { resetPage, paginate } = useListPage();
 
   const [requests, codes] = data ?? [undefined, []];
 
@@ -55,7 +53,7 @@ export function PurchaseRequestList() {
     builtIns: statusViews('purchase requests', PR_STATUSES),
     defaultSort: { key: 'postingDate', direction: 'desc' },
     rows: requests,
-    onChange: () => setPage(1),
+    onChange: resetPage,
   });
   const { sort, setSort } = presets;
 
@@ -80,23 +78,20 @@ export function PurchaseRequestList() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [requests, presets.filter, query, sort]);
 
-  const open = (r: PurchaseRequest) =>
-    navigate(`${PR_LIST_PATH}/${r.docNum ? prNumber(r) : r.id}`);
-
   const columns: TableColumn<PurchaseRequest>[] = [
     {
       key: 'docNum',
       header: 'No.',
       sortable: true,
       cell: (r) => (
-        <TableLink onClick={() => open(r)}>{prNumber(r)}</TableLink>
+        <TableContent href={`/#${PR_LIST_PATH}/${r.docNum ? prNumber(r) : r.id}`}>{prNumber(r)}</TableContent>
       ),
     },
     {
       key: 'requesterName',
       header: 'Requester',
       sortable: true,
-      cell: (r) => <TableSubcontent subcopy={r.branch}>{r.requesterName || '—'}</TableSubcontent>,
+      cell: (r) => <TableContent subcopy={r.branch}>{r.requesterName || '—'}</TableContent>,
     },
     {
       key: 'department',
@@ -119,9 +114,9 @@ export function PurchaseRequestList() {
       key: 'lines',
       header: 'Lines',
       cell: (r) => (
-        <TableSubcontent subcopy={`${r.lines.filter((l) => l.status === 'Open').length} open`}>
+        <TableContent subcopy={`${r.lines.filter((l) => l.status === 'Open').length} open`}>
           {r.lines.length}
-        </TableSubcontent>
+        </TableContent>
       ),
     },
     {
@@ -138,6 +133,8 @@ export function PurchaseRequestList() {
     },
   ];
 
+  const { visible, pagination } = paginate(rows);
+
   return (
     <Panel className="flex-1">
       <PanelHeader
@@ -147,7 +144,7 @@ export function PurchaseRequestList() {
         searchValue={query}
         onSearchChange={(value) => {
           setQuery(value);
-          setPage(1);
+          resetPage();
         }}
         icon="inbox"
         iconIntent="default"
@@ -175,28 +172,17 @@ export function PurchaseRequestList() {
           </Alert>
         ) : null}
         {presets.bar(null)}
-        <Card className={fillCardClass(rows.slice((page - 1) * pageSize, page * pageSize).length)}>
+        <Card className={fillCardClass(visible.length)}>
           {requests ? (
             <Table
               caption="Purchase requests"
               columns={columns}
-              rows={rows.slice((page - 1) * pageSize, page * pageSize)}
+              rows={visible}
               getRowId={(r) => r.id}
               sort={sort}
               onSortChange={setSort}
               layout="fill"
-              onRowAction={open}
-              pagination={{
-                page,
-                pageSize,
-                total: rows.length,
-                pageSizes: PAGE_SIZES,
-                onPageChange: setPage,
-                onPageSizeChange: (size) => {
-                  setPageSize(size);
-                  setPage(1);
-                },
-              }}
+              pagination={pagination}
             />
           ) : (
             <Text tone="muted" className="p-4">Loading purchase requests…</Text>

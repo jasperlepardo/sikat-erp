@@ -130,7 +130,7 @@ export function RfqDetail() {
 }
 
 function RfqForm() {
-  const { id } = useParams();
+  const { id, tab: tabParam } = useParams();
   const isNew = id === 'new';
   const navigate = useNavigate();
   const copyFrom = (useLocation().state as { copyFrom?: RfqDraft } | null)?.copyFrom;
@@ -141,7 +141,9 @@ function RfqForm() {
     isNew ? { ...(copyFrom ?? { ...blank, lines: [newRfqLine()] }), approved: rfqApproved } : undefined,
   );
   const [m, setM] = useState<RfqMasters>();
-  const [page, setPage] = useState<PageId>('details');
+  const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
+  const setPage = (v: PageId) => navigate(`${RFQ_LIST_PATH}/${id}/${v}`, { replace: true });
+  useEffect(() => { if (!tabParam) navigate(`${RFQ_LIST_PATH}/${id}/details`, { replace: true }); }, []);
   const [siblings, setSiblings] = useState<string[]>([]);
   useEffect(() => {
     if (!isNew)
@@ -470,6 +472,7 @@ function RfqForm() {
                                 ...(v.currency && !v.currency.startsWith('All') ? [{ label: 'Currency', value: v.currency }] : []),
                                 ...(v.tin ? [{ label: 'TIN', value: v.tin }] : []),
                               ],
+                              href: `/#/purchasing/vendors/${v.id}`,
                             }))}
                           value={draft.vendorId}
                           onValueChange={(id) => pickVendor(id || null)}

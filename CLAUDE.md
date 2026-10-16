@@ -482,6 +482,40 @@ type Editing =
 
 ---
 
+## Coding standards
+
+Rules to follow when writing or editing any code in this repo. Details live in the sections referenced.
+
+### Naming
+- Foreign-key fields: `…Id` suffix (`paymentTermId`) or `…Code` for code-keyed lists (`countryCode`). Never store a name — look it up at render time with `nameIn()` / the named helpers. A raw id visible on screen is a bug.
+- `''` for "no selection" — never a placeholder string like `'— None —'` or a fake record.
+- New master lists: generated id (`pt-004`) for anything renameable; `id === code` only for records whose code is locked on save.
+
+### Collections and data
+- Never mutate rows from `useCollection()` or `snapshot()` — they are shared references. Copy before editing.
+- Use `activeOptions(rows, keyFn, labelFn, currentValue)` when building picker options — always pass `currentValue` so a stale saved value stays selectable.
+- Nested lists are arrays of rows (`{ itemGroupId, discountPct }[]`), never objects keyed by a name.
+- Posted documents snapshot the values that must read as they were (bin codes via `withBinCodes()`, item numbers, descriptions, addresses). Drafts show live values; posted lines show the snapshot.
+
+### Seeds
+- Bump `SEED_VERSION` in `src/services/store.ts` whenever any file in `src/mocks/` changes.
+- Seed id lists in `src/mocks/masters.ts` are `as const` and positional — **append only, never reorder**.
+- Seeds that depend on other seeds must be functions `() => seed` (lazy) to avoid circular module initialisation.
+- After changing any seed, run `npx tsx scripts/check-seeds.ts` to verify documents, stock and ledger tie out.
+
+### Forms and UI
+- Form state: `const [draft, setDraft] = useState(initial)` + `const update = (patch) => setDraft(d => ({ ...d, ...patch }))`.
+- Remount a detail form when the record id changes: `<MyForm key={id === 'new' ? location.key : id} />`.
+- Editing state for nested SidePanel editors: discriminated union `| { kind: 'contact'; value: …; isNew: boolean } | null`.
+- Use `bind()` + layout helpers (`Fields`, `FieldStack`, `Flags`) — never raw input elements in a form.
+- Validation: `problemCollector<Tab>()` → `need(ok, tab, key, message)` → `ProblemsAlert` + jump to first failing tab.
+
+### JSX / TypeScript
+- Use straight double quotes (`"it's"`) for JSX string props and literals that contain apostrophes. Curly/smart quotes break the TypeScript/Babel parser.
+- `activeOptions`, `MasterLookup`, and `MasterDef` are the standard pipeline for any picker over a master list — do not build a one-off `<Select>` with a hand-rolled options array.
+
+---
+
 ## Key architectural notes
 
 1. **No server** — everything is `localStorage` + seed data. Service functions are intentionally shaped like real async APIs so they can be replaced with `fetch` calls.

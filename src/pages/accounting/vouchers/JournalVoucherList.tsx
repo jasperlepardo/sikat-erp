@@ -9,15 +9,14 @@ import {
   PanelHeader,
   Table,
   TableAmount,
-  TableLink,
+  TableContent,
   TableStatus,
-  TableSubcontent,
   Text,
   type TableColumn,
 } from '@jasperlepardo/sikat-design-system';
 import { boolField, choiceField, dateField, numberField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
-import { DEFAULT_PAGE_SIZE, PAGE_SIZES, fillCardClass } from '../../../components/form/DataTable';
+import { fillCardClass, useListPage } from '../../../components/form/DataTable';
 import type { JournalVoucher } from '../../../mocks/journalVouchers';
 import { formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
@@ -52,18 +51,17 @@ export function JournalVoucherList() {
     choiceField<JournalVoucher>('status', 'Status', ['Open', 'Closed'], voucherStatus),
     boolField<JournalVoucher>('partlyPosted', 'Partly posted', (v) => voucherState(v).label === 'Partly posted'),
   ];
+  const [query, setQuery] = useState('');
+  const { resetPage, paginate } = useListPage();
   const presets = useListPresets({
     list: 'journal-vouchers',
     fields,
     builtIns: statusViews('journal vouchers', ['Open', 'Closed']),
     defaultSort: { key: 'voucherNo', direction: 'desc' },
     rows: vouchers,
-    onChange: () => setPage(1),
+    onChange: resetPage,
   });
   const { sort, setSort } = presets;
-  const [query, setQuery] = useState('');
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -86,11 +84,10 @@ export function JournalVoucherList() {
     });
   }, [vouchers, presets.filter, query, sort]);
 
-  const open = (v: JournalVoucher) => navigate(`${JV_LIST_PATH}/${v.id}`);
-  const onPage = rows.slice((page - 1) * pageSize, page * pageSize);
+  const { visible: onPage, pagination } = paginate(rows);
 
   const columns: TableColumn<JournalVoucher>[] = [
-    { key: 'voucherNo', header: 'Voucher No.', sortable: true, cell: (v) => <TableLink onClick={() => open(v)}>{v.voucherNo}</TableLink> },
+    { key: 'voucherNo', header: 'Voucher No.', sortable: true, cell: (v) => <TableContent href={`/#${JV_LIST_PATH}/${v.id}`}>{v.voucherNo}</TableContent> },
     {
       key: 'entries',
       header: 'Entries',
@@ -98,15 +95,15 @@ export function JournalVoucherList() {
       cell: (v) => {
         const posted = v.entries.filter((e) => e.entryStatus === 'Closed').length;
         return (
-          <TableSubcontent subcopy={posted ? `${posted} posted` : 'None posted'}>
+          <TableContent subcopy={posted ? `${posted} posted` : 'None posted'}>
             {`${v.entries.length} entr${v.entries.length === 1 ? 'y' : 'ies'}`}
-          </TableSubcontent>
+          </TableContent>
         );
       },
     },
     { key: 'remarks', header: 'Remarks', cell: (v) => v.entries[0]?.remarks || '—' },
     { key: 'amount', header: 'Debits', sortable: true, cell: (v) => <TableAmount currency="PHP">{formatAmount(debitOf(v))}</TableAmount> },
-    { key: 'createdOn', header: 'Created', sortable: true, cell: (v) => <TableSubcontent subcopy={v.createdBy}>{formatDate(v.createdOn)}</TableSubcontent> },
+    { key: 'createdOn', header: 'Created', sortable: true, cell: (v) => <TableContent subcopy={v.createdBy}>{formatDate(v.createdOn)}</TableContent> },
     {
       key: 'status',
       header: 'Status',
@@ -127,7 +124,7 @@ export function JournalVoucherList() {
         searchValue={query}
         onSearchChange={(value) => {
           setQuery(value);
-          setPage(1);
+          resetPage();
         }}
         icon="folder_open"
         iconIntent="default"
@@ -157,18 +154,7 @@ export function JournalVoucherList() {
               sort={sort}
               onSortChange={setSort}
               layout="fill"
-              onRowAction={open}
-              pagination={{
-                page,
-                pageSize,
-                total: rows.length,
-                pageSizes: PAGE_SIZES,
-                onPageChange: setPage,
-                onPageSizeChange: (size) => {
-                  setPageSize(size);
-                  setPage(1);
-                },
-              }}
+              pagination={pagination}
             />
           ) : (
             <Text tone="muted" className="p-4">Loading journal vouchers…</Text>

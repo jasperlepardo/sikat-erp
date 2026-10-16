@@ -9,9 +9,8 @@ import {
   PanelHeader,
   Table,
   TableAmount,
-  TableLink,
+  TableContent,
   TableStatus,
-  TableSubcontent,
   type TableColumn,
   Text,
 } from '@jasperlepardo/sikat-design-system';
@@ -23,7 +22,7 @@ import { useAsync } from '../../../services/useAsync';
 import { choiceField, dateField, masterField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { currencyDef } from '../../settings/masterDefs';
-import { DEFAULT_PAGE_SIZE, PAGE_SIZES, fillCardClass } from '../../../components/form/DataTable';
+import { fillCardClass, useListPage } from '../../../components/form/DataTable';
 import { PAYMENT_LIST_PATH, PAYMENT_STATUS_INTENT } from './detail/PaymentDetail';
 
 /** How a payment went out, in words: "Bank transfer", "2 checks", "Cash + card". */
@@ -54,18 +53,17 @@ export function PaymentList() {
     masterField<OutgoingPayment>('currency', 'Currency', currencyDef, (d) => d.currency),
     textField<OutgoingPayment>('remarks', 'Remarks', (d) => d.remarks),
   ];
+  const [query, setQuery] = useState('');
+  const { resetPage, paginate } = useListPage();
   const presets = useListPresets({
     list: 'outgoing-payments',
     fields,
     builtIns: statusViews('payments made', PAYMENT_STATUSES),
     defaultSort: { key: 'postingDate', direction: 'desc' },
     rows: payments,
-    onChange: () => setPage(1),
+    onChange: resetPage,
   });
   const { sort, setSort } = presets;
-  const [query, setQuery] = useState('');
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -84,20 +82,16 @@ export function PaymentList() {
     });
   }, [payments, presets.filter, query, sort]);
 
-  const open = (p: OutgoingPayment) => navigate(`${PAYMENT_LIST_PATH}/${p.docNum ? paymentNumber(p) : p.id}`);
-
   const columns: TableColumn<OutgoingPayment>[] = [
     {
       key: 'docNum',
       header: 'No.',
       sortable: true,
       cell: (p) => (
-        <TableSubcontent subcopy={p.reference || undefined}>
-          <TableLink onClick={() => open(p)}>{paymentNumber(p)}</TableLink>
-        </TableSubcontent>
+        <TableContent href={`/#${PAYMENT_LIST_PATH}/${p.docNum ? paymentNumber(p) : p.id}`} subcopy={p.reference || undefined}>{paymentNumber(p)}</TableContent>
       ),
     },
-    { key: 'payeeName', header: 'Paid to', sortable: true, cell: (p) => <TableSubcontent subcopy={p.type === 'Vendor' ? p.vendorCode : 'G/L accounts'}>{p.payeeName || '—'}</TableSubcontent> },
+    { key: 'payeeName', header: 'Paid to', sortable: true, cell: (p) => <TableContent subcopy={p.type === 'Vendor' ? p.vendorCode : 'G/L accounts'}>{p.payeeName || '—'}</TableContent> },
     { key: 'postingDate', header: 'Posting date', sortable: true, cell: (p) => formatDate(p.postingDate) },
     {
       key: 'invoices',
@@ -114,6 +108,8 @@ export function PaymentList() {
     { key: 'status', header: 'Status', sortable: true, cell: (p) => <TableStatus intent={PAYMENT_STATUS_INTENT[p.status]}>{p.status}</TableStatus> },
   ];
 
+  const { visible, pagination } = paginate(rows);
+
   return (
     <Panel className="flex-1">
       <PanelHeader
@@ -123,7 +119,7 @@ export function PaymentList() {
         searchValue={query}
         onSearchChange={(value) => {
           setQuery(value);
-          setPage(1);
+          resetPage();
         }}
         icon="payments"
         iconIntent="default"
@@ -143,29 +139,18 @@ export function PaymentList() {
           </Alert>
         ) : null}
         {presets.bar(null)}
-        <Card className={fillCardClass(rows.slice((page - 1) * pageSize, page * pageSize).length)}>
+        <Card className={fillCardClass(visible.length)}>
           {payments ? (
             rows.length || payments.length ? (
               <Table
                 caption="Outgoing payments"
                 columns={columns}
-                rows={rows.slice((page - 1) * pageSize, page * pageSize)}
+                rows={visible}
                 getRowId={(p) => p.id}
                 sort={sort}
                 onSortChange={setSort}
                 layout="fill"
-                onRowAction={open}
-                pagination={{
-                  page,
-                  pageSize,
-                  total: rows.length,
-                  pageSizes: PAGE_SIZES,
-                  onPageChange: setPage,
-                  onPageSizeChange: (size) => {
-                    setPageSize(size);
-                    setPage(1);
-                  },
-                }}
+                pagination={pagination}
               />
             ) : (
               <Text tone="muted" className="p-4">

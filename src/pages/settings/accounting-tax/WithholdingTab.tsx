@@ -7,7 +7,7 @@ import {
   Icon,
   Select,
   Table,
-  TableLink,
+  TableContent,
   TableStatus,
   Text,
   TextField,
@@ -202,8 +202,6 @@ function WithholdingListView({
     return buildGroups(filtered);
   }, [rows, query]);
 
-  const open = (t: WithholdingTax) => navigate(`${basePath}/${encodeURIComponent(t.id)}`);
-
   return (
     <>
       <div className="flex items-center justify-end gap-2 px-2 pt-2">
@@ -286,9 +284,9 @@ function WithholdingListView({
                     cell: (r) => {
                       if (r.type !== 'tier' || !r.ind || r.ind === r.corp) return null;
                       return (
-                        <TableLink onClick={() => open(r.ind!)}>
+                        <TableContent href={`/#${basePath}/${encodeURIComponent(r.ind!.id)}`}>
                           <span className="font-mono">{r.ind.atc || <span className="text-warning">No ATC</span>}</span>
-                        </TableLink>
+                        </TableContent>
                       );
                     },
                   },
@@ -299,9 +297,9 @@ function WithholdingListView({
                     cell: (r) => {
                       if (r.type !== 'tier' || !r.corp || r.ind === r.corp) return null;
                       return (
-                        <TableLink onClick={() => open(r.corp!)}>
+                        <TableContent href={`/#${basePath}/${encodeURIComponent(r.corp!.id)}`}>
                           <span className="font-mono">{r.corp.atc || <span className="text-warning">No ATC</span>}</span>
-                        </TableLink>
+                        </TableContent>
                       );
                     },
                   },
@@ -312,9 +310,9 @@ function WithholdingListView({
                     cell: (r) => {
                       if (r.type !== 'tier' || !r.ind || r.ind !== r.corp) return null;
                       return (
-                        <TableLink onClick={() => open(r.ind!)}>
+                        <TableContent href={`/#${basePath}/${encodeURIComponent(r.ind!.id)}`}>
                           <span className="font-mono">{r.ind.atc || <span className="text-warning">No ATC</span>}</span>
-                        </TableLink>
+                        </TableContent>
                       );
                     },
                   },

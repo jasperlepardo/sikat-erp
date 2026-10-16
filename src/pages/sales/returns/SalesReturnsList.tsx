@@ -8,16 +8,15 @@ import {
   Panel,
   PanelHeader,
   Table,
-  TableLink,
+  TableContent,
   TableStatus,
-  TableSubcontent,
   Tabs,
   Text,
   type TableColumn,
 } from '@jasperlepardo/sikat-design-system';
 import { dateField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
-import { DEFAULT_PAGE_SIZE, PAGE_SIZES, fillCardClass } from '../../../components/form/DataTable';
+import { fillCardClass, useListPage } from '../../../components/form/DataTable';
 import { formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
 import { arCmNumber, arCmTotal, listArCreditMemos } from '../../../services/arCreditMemos';
@@ -50,8 +49,7 @@ export function SalesReturnsList({ kind }: { kind: Kind }) {
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const data = useAsync(() => Promise.all([listSalesReturns(), listArCreditMemos(), taxCodes.list()]), []);
   const [query, setQuery] = useState('');
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const { resetPage, paginate } = useListPage();
   const path = kind === 'returns' ? SR_LIST_PATH : AR_CM_LIST_PATH;
 
   const all: Row[] | undefined = useMemo(() => {
@@ -103,7 +101,7 @@ export function SalesReturnsList({ kind }: { kind: Kind }) {
     builtIns: statusViews(kind === 'returns' ? 'sales returns' : 'A/R credit memos', STATUSES),
     defaultSort: { key: 'postingDate', direction: 'desc' },
     rows: all,
-    onChange: () => setPage(1),
+    onChange: resetPage,
   });
   const { sort, setSort } = presets;
 
@@ -117,13 +115,12 @@ export function SalesReturnsList({ kind }: { kind: Kind }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [all, presets.filter, query, sort]);
 
-  const open = (r: Row) => navigate(`${path}/${r.docNum ? r.number : r.id}`);
   const intent = kind === 'returns' ? SR_STATUS_INTENT : ARCM_STATUS_INTENT;
-  const onPage = rows.slice((page - 1) * pageSize, page * pageSize);
+  const { visible: onPage, pagination } = paginate(rows);
 
   const srColumns: TableColumn<Row>[] = [
-    { key: 'docNum', header: 'No.', sortable: true, cell: (r) => <TableLink onClick={() => open(r)}>{r.number}</TableLink> },
-    { key: 'customerName', header: 'Customer', sortable: true, cell: (r) => <TableSubcontent subcopy={r.customerCode}>{r.customerName || '—'}</TableSubcontent> },
+    { key: 'docNum', header: 'No.', sortable: true, cell: (r) => <TableContent href={`/#${path}/${r.docNum ? r.number : r.id}`}>{r.number}</TableContent> },
+    { key: 'customerName', header: 'Customer', sortable: true, cell: (r) => <TableContent subcopy={r.customerCode}>{r.customerName || '—'}</TableContent> },
     { key: 'postingDate', header: 'Posting date', align: 'end', cell: (r) => formatDate(r.postingDate) },
     { key: 'basedOn', header: 'Based on', cell: (r) => r.basedOn || <span className="text-muted">Entered by hand</span> },
     { key: 'total', header: 'Total', align: 'end', cell: (r) => `${r.currency} ${formatAmount(r.total)}` },
@@ -131,8 +128,8 @@ export function SalesReturnsList({ kind }: { kind: Kind }) {
   ];
 
   const cmColumns: TableColumn<Row>[] = [
-    { key: 'docNum', header: 'No.', sortable: true, cell: (r) => <TableLink onClick={() => open(r)}>{r.number}</TableLink> },
-    { key: 'customerName', header: 'Customer', sortable: true, cell: (r) => <TableSubcontent subcopy={r.customerCode}>{r.customerName || '—'}</TableSubcontent> },
+    { key: 'docNum', header: 'No.', sortable: true, cell: (r) => <TableContent href={`/#${path}/${r.docNum ? r.number : r.id}`}>{r.number}</TableContent> },
+    { key: 'customerName', header: 'Customer', sortable: true, cell: (r) => <TableContent subcopy={r.customerCode}>{r.customerName || '—'}</TableContent> },
     { key: 'postingDate', header: 'Posting date', align: 'end', cell: (r) => formatDate(r.postingDate) },
     { key: 'basedOn', header: 'Based on', cell: (r) => r.basedOn || '—' },
     { key: 'total', header: 'Total', align: 'end', cell: (r) => `${r.currency} ${formatAmount(r.total)}` },
@@ -156,7 +153,7 @@ export function SalesReturnsList({ kind }: { kind: Kind }) {
         searchLabel="Search"
         searchPlaceholder={kind === 'returns' ? 'Search by no., customer, or item' : 'Search by no., customer, or item'}
         searchValue={query}
-        onSearchChange={(value) => { setQuery(value); setPage(1); }}
+        onSearchChange={(value) => { setQuery(value); resetPage(); }}
         icon="assignment_return"
         iconIntent="default"
         iconShape="rounded"
@@ -195,8 +192,7 @@ export function SalesReturnsList({ kind }: { kind: Kind }) {
               sort={sort}
               onSortChange={setSort}
               layout="fill"
-              onRowAction={open}
-              pagination={{ page, pageSize, total: rows.length, pageSizes: PAGE_SIZES, onPageChange: setPage, onPageSizeChange: (size) => { setPageSize(size); setPage(1); } }}
+              pagination={pagination}
             />
           ) : (
             <Text tone="muted" className="p-4">

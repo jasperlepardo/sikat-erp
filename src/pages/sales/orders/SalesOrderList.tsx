@@ -8,9 +8,8 @@ import {
   Panel,
   PanelHeader,
   Table,
-  TableLink,
+  TableContent,
   TableStatus,
-  TableSubcontent,
   Text,
   Tooltip,
   type TableColumn,
@@ -18,7 +17,7 @@ import {
 import { dateField, linesField, masterField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { currencyDef, salesEmployeeDef } from '../../settings/masterDefs';
-import { DEFAULT_PAGE_SIZE, PAGE_SIZES, fillCardClass } from '../../../components/form/DataTable';
+import { fillCardClass, useListPage } from '../../../components/form/DataTable';
 import { SO_STATUSES, type SalesOrder } from '../../../mocks/salesOrders';
 import { formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
@@ -33,8 +32,7 @@ export function SalesOrderList() {
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const data = useAsync(() => Promise.all([listSalesOrders(), taxCodes.list()]), []);
   const [query, setQuery] = useState('');
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const { resetPage, paginate } = useListPage();
   const [orders, codes] = data ?? [undefined, []];
   const totalOf = (so: SalesOrder) => soTotal(so, codes);
   const fields = [
@@ -56,7 +54,7 @@ export function SalesOrderList() {
     builtIns: statusViews('sales orders', SO_STATUSES),
     defaultSort: { key: 'postingDate', direction: 'desc' },
     rows: orders,
-    onChange: () => setPage(1),
+    onChange: resetPage,
   });
   const { sort, setSort } = presets;
 
@@ -77,8 +75,7 @@ export function SalesOrderList() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orders, presets.filter, query, sort, codes]);
 
-  const open = (so: SalesOrder) => navigate(`${SO_LIST_PATH}/${so.docNum ? soNumber(so) : so.id}`);
-  const onPage = rows.slice((page - 1) * pageSize, page * pageSize);
+  const { visible: onPage, pagination } = paginate(rows);
 
   const columns: TableColumn<SalesOrder>[] = [
     {
@@ -86,12 +83,10 @@ export function SalesOrderList() {
       header: 'No.',
       sortable: true,
       cell: (so) => (
-        <TableSubcontent subcopy={so.customerRef ? `Customer ref. ${so.customerRef}` : undefined}>
-          <TableLink onClick={() => open(so)}>{soNumber(so)}</TableLink>
-        </TableSubcontent>
+        <TableContent href={`/#${SO_LIST_PATH}/${so.docNum ? soNumber(so) : so.id}`} subcopy={so.customerRef ? `Customer ref. ${so.customerRef}` : undefined}>{soNumber(so)}</TableContent>
       ),
     },
-    { key: 'customerName', header: 'Customer', sortable: true, cell: (so) => <TableSubcontent subcopy={so.customerCode}>{so.customerName || '—'}</TableSubcontent> },
+    { key: 'customerName', header: 'Customer', sortable: true, cell: (so) => <TableContent subcopy={so.customerCode}>{so.customerName || '—'}</TableContent> },
     { key: 'postingDate', header: 'Posting date', align: 'end', cell: (so) => formatDate(so.postingDate) },
     { key: 'deliveryDate', header: 'Delivery date', align: 'end', cell: (so) => (so.deliveryDate ? formatDate(so.deliveryDate) : '—') },
     {
@@ -136,7 +131,7 @@ export function SalesOrderList() {
         searchValue={query}
         onSearchChange={(value) => {
           setQuery(value);
-          setPage(1);
+          resetPage();
         }}
         icon="shopping_bag"
         iconIntent="default"
@@ -166,18 +161,7 @@ export function SalesOrderList() {
               sort={sort}
               onSortChange={setSort}
               layout="fill"
-              onRowAction={open}
-              pagination={{
-                page,
-                pageSize,
-                total: rows.length,
-                pageSizes: PAGE_SIZES,
-                onPageChange: setPage,
-                onPageSizeChange: (size) => {
-                  setPageSize(size);
-                  setPage(1);
-                },
-              }}
+              pagination={pagination}
             />
           ) : (
             <Text tone="muted" className="p-4">Loading sales orders…</Text>

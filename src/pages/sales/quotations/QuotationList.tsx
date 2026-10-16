@@ -9,15 +9,14 @@ import {
   Panel,
   PanelHeader,
   Table,
-  TableLink,
+  TableContent,
   TableStatus,
-  TableSubcontent,
   Text,
   type TableColumn,
 } from '@jasperlepardo/sikat-design-system';
 import { dateField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
-import { DEFAULT_PAGE_SIZE, PAGE_SIZES, fillCardClass } from '../../../components/form/DataTable';
+import { fillCardClass, useListPage } from '../../../components/form/DataTable';
 import { QUOTATION_STATUSES, type Quotation } from '../../../mocks/quotations';
 import { formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
@@ -40,8 +39,7 @@ export function QuotationList() {
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const data = useAsync(() => Promise.all([listQuotations(), taxCodes.list()]), []);
   const [query, setQuery] = useState('');
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const { resetPage, paginate } = useListPage();
   const [quotes, codes] = data ?? [undefined, []];
   const totalOf = (q: Quotation) => qtTotal(q, codes);
 
@@ -64,7 +62,7 @@ export function QuotationList() {
     builtIns: statusViews('quotations', QUOTATION_STATUSES),
     defaultSort: { key: 'postingDate', direction: 'desc' },
     rows: quotes,
-    onChange: () => setPage(1),
+    onChange: resetPage,
   });
   const { sort, setSort } = presets;
 
@@ -81,8 +79,7 @@ export function QuotationList() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [quotes, presets.filter, query, sort, codes]);
 
-  const open = (q: Quotation) => navigate(`${QT_LIST_PATH}/${q.docNum ? qtNumber(q) : q.id}`);
-  const onPage = rows.slice((page - 1) * pageSize, page * pageSize);
+  const { visible: onPage, pagination } = paginate(rows);
 
   const columns: TableColumn<Quotation>[] = [
     {
@@ -90,12 +87,10 @@ export function QuotationList() {
       header: 'No.',
       sortable: true,
       cell: (q) => (
-        <TableSubcontent subcopy={q.customerRef || undefined}>
-          <TableLink onClick={() => open(q)}>{qtNumber(q)}</TableLink>
-        </TableSubcontent>
+        <TableContent href={`/#${QT_LIST_PATH}/${q.docNum ? qtNumber(q) : q.id}`} subcopy={q.customerRef || undefined}>{qtNumber(q)}</TableContent>
       ),
     },
-    { key: 'customerName', header: 'Customer', sortable: true, cell: (q) => <TableSubcontent subcopy={q.customerCode}>{q.customerName || '—'}</TableSubcontent> },
+    { key: 'customerName', header: 'Customer', sortable: true, cell: (q) => <TableContent subcopy={q.customerCode}>{q.customerName || '—'}</TableContent> },
     { key: 'postingDate', header: 'Posting date', align: 'end', cell: (q) => formatDate(q.postingDate) },
     {
       key: 'validUntil',
@@ -123,7 +118,7 @@ export function QuotationList() {
         searchLabel="Search quotations"
         searchPlaceholder="Search by no., customer, or item"
         searchValue={query}
-        onSearchChange={(value) => { setQuery(value); setPage(1); }}
+        onSearchChange={(value) => { setQuery(value); resetPage(); }}
         icon="request_quote"
         iconIntent="default"
         iconShape="rounded"
@@ -149,8 +144,7 @@ export function QuotationList() {
               sort={sort}
               onSortChange={setSort}
               layout="fill"
-              onRowAction={open}
-              pagination={{ page, pageSize, total: rows.length, pageSizes: PAGE_SIZES, onPageChange: setPage, onPageSizeChange: (size) => { setPageSize(size); setPage(1); } }}
+              pagination={pagination}
             />
           ) : (
             <Text tone="muted" className="p-4">Loading quotations…</Text>

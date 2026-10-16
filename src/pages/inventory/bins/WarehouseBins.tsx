@@ -47,7 +47,6 @@ export function WarehouseBins({
 
   // Aisles start open; shelves start closed.
   const expandedIds = expanded ?? aisles.map((n) => n.id);
-  const toggle = (id: string) => setExpanded(expandedIds.includes(id) ? expandedIds.filter((x) => x !== id) : [...expandedIds, id]);
   const open = (n: Node) =>
     n.kind === 'bin'
       ? navigate(`${base}/bin-locations/${encodeURIComponent(n.id)}`)
@@ -55,8 +54,6 @@ export function WarehouseBins({
         ? onShowItems({ label: n.label, bins: n.bins.map((b) => b.id) })
         : undefined;
   const columns = locationColumns({ open, query: '', sublevels, items, showType: false });
-  // "…" on an aisle or shelf opens or closes it.
-  const rowAction = (n: Node) => (n.kind === 'bin' ? open(n) : toggle(n.id));
 
   const picked = own.filter((b) => selected.includes(b.id));
   const setActive = async (active: boolean) => {
@@ -128,7 +125,6 @@ export function WarehouseBins({
               columns={columns}
               rows={aisles}
               getRowId={(n) => n.id}
-              onRowAction={rowAction}
               selectable
               selectedIds={selected}
               onSelectionChange={setSelected}

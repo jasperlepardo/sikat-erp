@@ -1,5 +1,5 @@
 import { Fragment } from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
+import { useSearchParams } from 'react-router';
 import { Badge, Text } from '@jasperlepardo/sikat-design-system';
 import { FieldStack, Flags, ReadOnly, bind, type Errors } from '../../../components/form/fields';
 import { MasterList, statusColumn, type ListRoute } from '../../../components/form/MasterList';
@@ -166,7 +166,6 @@ function BinEditor({
     update({ ...patch, code: complete ? binCode(next.warehouse, next.aisle, next.shelf, next.level) : '' });
   };
   const f = bind(b, set);
-  const navigate = useNavigate();
   const stock = binStock(b, items);
   const binItems = b.code ? locationStock(items, b.warehouse, [b.id]) : [];
   const locked = isNew ? undefined : 'Change it with Modify bin codes on the list — the bin keeps its history and stock.';
@@ -246,7 +245,7 @@ function BinEditor({
           icon="inventory_2"
           title={`Items with this default bin${binItems.length ? ` (${binItems.length})` : ''}`}
           rows={binItems}
-          columns={stockColumns((r) => navigate(`/inventory/items/${encodeURIComponent(r.id)}`), false)}
+          columns={stockColumns((r) => `/#/inventory/items/${encodeURIComponent(r.id)}`, false)}
           getRowId={(r) => r.id}
           noPagination
           empty={

@@ -11,16 +11,17 @@ import {
   panelHeaderIcons,
   SidePanel,
   Table,
-  TableLink,
+  TableContent,
   TableStatus,
   Text,
   TextField,
+  type TableActionItem,
   type TableColumn,
   type TableSort,
 } from '@jasperlepardo/sikat-design-system';
 import { Section, type Errors } from './fields';
 import { useHeaderSearch } from './HeaderSearch';
-import { DEFAULT_PAGE_SIZE, PAGE_SIZES, fillCardClass } from './DataTable';
+import { DEFAULT_PAGE_SIZE, PAGE_SIZES, defaultSortValue, fillCardClass } from './DataTable';
 
 export interface MasterListProps<T extends { id: string }> {
   icon: string;
@@ -112,10 +113,6 @@ export interface ListRoute {
   listPath?: string;
 }
 
-const defaultSortValue = <T,>(row: T, key: string): string | number => {
-  const v = (row as Record<string, unknown>)[key];
-  return typeof v === 'number' ? v : typeof v === 'boolean' ? Number(v) : String(v ?? '').toLowerCase();
-};
 
 /**
  * A master-data list in the design system's Table pattern — the Table sits
@@ -191,6 +188,7 @@ function ListView<T extends { id: string }>({
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [selected, setSelected] = useState<string[]>([]);
+  const [expandedIds, setExpanded] = useState<string[]>([]);
   // A new search starts from the first page.
   useEffect(() => setPage(1), [query]);
 
@@ -223,7 +221,6 @@ function ListView<T extends { id: string }>({
   const current = useTree ? 1 : Math.min(page, pages);
   const visible = useTree ? displayRows : displayRows.slice((current - 1) * pageSize, current * pageSize);
 
-  const open = (row: T) => navigate(`${basePath}/${encodeURIComponent(row.id)}`);
   // A tree's parent rows count once, as rows.
   const selectedCount = (rows ?? []).filter((r) => selected.includes(r.id)).length;
 
@@ -240,9 +237,9 @@ function ListView<T extends { id: string }>({
     ...(i === 0
       ? {
           cell: (r: T) => (
-            <TableLink onClick={() => open(r)}>
+            <TableContent href={`/#${basePath}/${encodeURIComponent(r.id)}`}>
               {c.cell ? c.cell(r) : String((r as Record<string, unknown>)[c.key])}
-            </TableLink>
+            </TableContent>
           ),
         }
       : {}),
@@ -317,30 +314,39 @@ function ListView<T extends { id: string }>({
       )}
       <Card className={fillCardClass(visible.length)}>
         {rows ? (
-          <Table
-            caption={title}
-            columns={tableColumns}
-            rows={visible}
-            getRowId={(r) => r.id}
-            sort={sort}
-            onSortChange={setSort}
-            layout="fill"
-            onRowAction={(r) => open(r)}
-            {...(onSetActive ? { selectable: true, selectedIds: selected, onSelectionChange: setSelected } : {})}
-            {...(useTree ? { getSubRows } : {
-              pagination: {
-                page: current,
-                pageSize,
-                total: filtered.length,
-                pageSizes: PAGE_SIZES,
-                onPageChange: setPage,
-                onPageSizeChange: (size) => {
-                  setPageSize(size);
-                  setPage(1);
+          (() => {
+            const expandableIds = useTree ? visible.filter((r) => getSubRows!(r)?.length).map((r) => r.id) : [];
+            const allExpanded = expandableIds.length > 0 && expandableIds.every((id) => expandedIds.includes(id));
+            const treeHeaderActions: TableActionItem[] | undefined = useTree
+              ? [{ type: 'expand', expanded: allExpanded, onToggle: () => setExpanded(allExpanded ? [] : expandableIds) }]
+              : undefined;
+            return (
+            <Table
+              caption={title}
+              columns={tableColumns}
+              rows={visible}
+              getRowId={(r) => r.id}
+              sort={sort}
+              onSortChange={setSort}
+              layout="fill"
+              {...(treeHeaderActions ? { headerActions: treeHeaderActions, expandedIds, onExpandedChange: setExpanded } : {})}
+              {...(onSetActive ? { selectable: true, selectedIds: selected, onSelectionChange: setSelected } : {})}
+              {...(useTree ? { getSubRows } : {
+                pagination: {
+                  page: current,
+                  pageSize,
+                  total: filtered.length,
+                  pageSizes: PAGE_SIZES,
+                  onPageChange: setPage,
+                  onPageSizeChange: (size) => {
+                    setPageSize(size);
+                    setPage(1);
+                  },
                 },
-              },
-            })}
-          />
+              })}
+            />
+            );
+          })()
         ) : (
           <Text tone="muted" className="p-4">Loading…</Text>
         )}

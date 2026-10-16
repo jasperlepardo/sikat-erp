@@ -7,9 +7,8 @@ import {
   PanelHeader,
   Select,
   Table,
-  TableLink,
+  TableContent,
   TableStatus,
-  TableSubcontent,
   Tabs,
   Text,
   type TableColumn,
@@ -17,7 +16,7 @@ import {
 } from '@jasperlepardo/sikat-design-system';
 import { blankActivity, LogMenu } from '../../components/activity/ActivityTab';
 import { ActivityPanel } from '../../components/activity/ActivityPanel';
-import { DEFAULT_PAGE_SIZE, PAGE_SIZES, fillCardClass } from '../../components/form/DataTable';
+import { fillCardClass, useListPage } from '../../components/form/DataTable';
 import { useCollection } from '../../components/form/MasterLookup';
 import { ACTIVITY_ICON, ACTIVITY_KINDS, ACTIVITY_LABEL, type Activity, type ActivityLink } from '../../mocks/activities';
 import { activities, isOpenTask, isOverdue } from '../../services/activities';
@@ -55,8 +54,7 @@ export function ActivityList() {
   const [kind, setKind] = useState('');
   const [owner, setOwner] = useState('');
   const [query, setQuery] = useState('');
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const { resetPage, paginate } = useListPage();
   const [sort, setSort] = useState<TableSort | null>({ key: 'date', direction: 'desc' });
   const [editing, setEditing] = useState<{ value: Activity; isNew: boolean } | null>(null);
 
@@ -113,9 +111,7 @@ export function ActivityList() {
       cell: (a) => (
         <div className="flex items-center gap-2">
           <Icon size={20}>{ACTIVITY_ICON[a.kind]}</Icon>
-          <TableSubcontent subcopy={ACTIVITY_LABEL[a.kind]}>
-            <TableLink onClick={() => setEditing({ value: a, isNew: false })}>{a.subject}</TableLink>
-          </TableSubcontent>
+          <TableContent onClick={() => setEditing({ value: a, isNew: false })} subcopy={ACTIVITY_LABEL[a.kind]}>{a.subject}</TableContent>
         </div>
       ),
     },
@@ -126,9 +122,7 @@ export function ActivityList() {
       cell: (a) => {
         const p = partnerOf(a);
         return p ? (
-          <TableSubcontent subcopy={p.sub}>
-            <TableLink onClick={() => navigate(p.href)}>{p.label}</TableLink>
-          </TableSubcontent>
+          <TableContent href={`/#${p.href}`} subcopy={p.sub}>{p.label}</TableContent>
         ) : (
           '—'
         );
@@ -142,9 +136,7 @@ export function ActivityList() {
         return shown.length ? (
           <div className="flex flex-col">
             {shown.map((s) => (
-              <TableSubcontent key={s.href} subcopy={s.sub}>
-                <TableLink onClick={() => navigate(s.href)}>{s.label}</TableLink>
-              </TableSubcontent>
+              <TableContent key={s.href} onClick={() => navigate(s.href)} subcopy={s.sub}>{s.label}</TableContent>
             ))}
           </div>
         ) : (
@@ -159,9 +151,9 @@ export function ActivityList() {
       sortable: true,
       cell: (a) =>
         a.kind === 'task' && a.dueDate ? (
-          <TableSubcontent subcopy={`From ${formatDate(a.date)}`}>Due {formatDate(a.dueDate)}</TableSubcontent>
+          <TableContent subcopy={`From ${formatDate(a.date)}`}>Due {formatDate(a.dueDate)}</TableContent>
         ) : (
-          <TableSubcontent subcopy={a.time || undefined}>{formatDate(a.date)}</TableSubcontent>
+          <TableContent subcopy={a.time || undefined}>{formatDate(a.date)}</TableContent>
         ),
     },
     {
@@ -174,7 +166,7 @@ export function ActivityList() {
     },
   ];
 
-  const onPage = filtered.slice((page - 1) * pageSize, page * pageSize);
+  const { visible: onPage, pagination } = paginate(filtered);
 
   return (
     <Panel className="flex-1">
@@ -185,7 +177,7 @@ export function ActivityList() {
         searchValue={query}
         onSearchChange={(value) => {
           setQuery(value);
-          setPage(1);
+          resetPage();
         }}
         icon="event"
         iconIntent="default"
@@ -201,7 +193,7 @@ export function ActivityList() {
             value={filter}
             onValueChange={(v) => {
               setFilter(v as Filter);
-              setPage(1);
+              resetPage();
             }}
             items={[
               { value: 'all', label: 'All', badge: String(counts.all) },
@@ -217,7 +209,7 @@ export function ActivityList() {
                 value={kind}
                 onValueChange={(v) => {
                   setKind(v ?? '');
-                  setPage(1);
+                  resetPage();
                 }}
               />
             </div>
@@ -228,7 +220,7 @@ export function ActivityList() {
                 value={owner}
                 onValueChange={(v) => {
                   setOwner(v ?? '');
-                  setPage(1);
+                  resetPage();
                 }}
               />
             </div>
@@ -246,18 +238,7 @@ export function ActivityList() {
               sort={sort}
               onSortChange={setSort}
               layout="fill"
-              onRowAction={(a) => setEditing({ value: a, isNew: false })}
-              pagination={{
-                page,
-                pageSize,
-                total: filtered.length,
-                pageSizes: PAGE_SIZES,
-                onPageChange: setPage,
-                onPageSizeChange: (size) => {
-                  setPageSize(size);
-                  setPage(1);
-                },
-              }}
+              pagination={pagination}
             />
           ) : (
             <Text tone="muted" className="p-4">

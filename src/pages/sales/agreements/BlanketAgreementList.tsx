@@ -8,15 +8,14 @@ import {
   Panel,
   PanelHeader,
   Table,
-  TableLink,
+  TableContent,
   TableStatus,
-  TableSubcontent,
   Text,
   type TableColumn,
 } from '@jasperlepardo/sikat-design-system';
 import { dateField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
-import { DEFAULT_PAGE_SIZE, PAGE_SIZES, fillCardClass } from '../../../components/form/DataTable';
+import { fillCardClass, useListPage } from '../../../components/form/DataTable';
 import { BA_STATUSES, type BlanketAgreement, type BaStatus } from '../../../mocks/blanketAgreements';
 import { formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
@@ -39,8 +38,7 @@ export function BlanketAgreementList() {
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const agreements = useAsync(listBlanketAgreements, []);
   const [query, setQuery] = useState('');
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const { resetPage, paginate } = useListPage();
   useDocTitle('Blanket Agreements');
 
   const totalOf = (ba: BlanketAgreement) => baTotals(ba).plannedTotal;
@@ -60,7 +58,7 @@ export function BlanketAgreementList() {
     builtIns: statusViews('agreements', BA_STATUSES),
     defaultSort: { key: 'startDate', direction: 'desc' },
     rows: agreements,
-    onChange: () => setPage(1),
+    onChange: resetPage,
   });
   const { sort, setSort } = presets;
 
@@ -83,9 +81,7 @@ export function BlanketAgreementList() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [agreements, presets.filter, query, sort]);
 
-  const open = (ba: BlanketAgreement) => navigate(`${BA_LIST_PATH}/${ba.docNum ? baNumber(ba) : ba.id}`);
-
-  const paginated = rows.slice((page - 1) * pageSize, page * pageSize);
+  const { visible: paginated, pagination } = paginate(rows);
 
   const columns: TableColumn<BlanketAgreement>[] = [
     {
@@ -93,9 +89,9 @@ export function BlanketAgreementList() {
       header: 'No.',
       sortable: true,
       cell: (ba) => (
-        <TableLink onClick={() => open(ba)}>
+        <TableContent href={`/#${BA_LIST_PATH}/${ba.docNum ? baNumber(ba) : ba.id}`}>
           {ba.docNum ? baNumber(ba) : <Text tone="muted">Draft</Text>}
-        </TableLink>
+        </TableContent>
       ),
     },
     {
@@ -110,7 +106,7 @@ export function BlanketAgreementList() {
       key: 'customer',
       header: 'Customer',
       sortable: true,
-      cell: (ba) => <TableSubcontent subcopy={ba.customerCode}>{ba.customerName || '—'}</TableSubcontent>,
+      cell: (ba) => <TableContent subcopy={ba.customerCode}>{ba.customerName || '—'}</TableContent>,
     },
     {
       key: 'description',
@@ -148,7 +144,7 @@ export function BlanketAgreementList() {
         searchLabel="Search agreements"
         searchPlaceholder="Search by no., customer, or description"
         searchValue={query}
-        onSearchChange={(value) => { setQuery(value); setPage(1); }}
+        onSearchChange={(value) => { setQuery(value); resetPage(); }}
         icon="description"
         iconIntent="default"
         iconShape="rounded"
@@ -174,8 +170,7 @@ export function BlanketAgreementList() {
               sort={sort}
               onSortChange={setSort}
               layout="fill"
-              onRowAction={open}
-              pagination={{ page, pageSize, total: rows.length, pageSizes: PAGE_SIZES, onPageChange: setPage, onPageSizeChange: (s) => { setPageSize(s); setPage(1); } }}
+              pagination={pagination}
             />
           ) : (
             <Text tone="muted" className="p-4">Loading agreements…</Text>

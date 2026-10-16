@@ -5,9 +5,8 @@ import {
   Panel,
   Table,
   TableAmount,
-  TableLink,
+  TableContent,
   TableStatus,
-  TableSubcontent,
   Text,
   type TableColumn,
 } from '@jasperlepardo/sikat-design-system';
@@ -43,12 +42,12 @@ export function SalesDashboard() {
     {
       key: 'docNum',
       header: 'No.',
-      cell: (so) => <TableLink onClick={() => navigate(`${SO_LIST_PATH}/${so.docNum ? soNumber(so) : so.id}`)}>{soNumber(so)}</TableLink>,
+      cell: (so) => <TableContent href={`/#${SO_LIST_PATH}/${so.docNum ? soNumber(so) : so.id}`}>{soNumber(so)}</TableContent>,
     },
     {
       key: 'customerName',
       header: 'Customer',
-      cell: (so) => <TableSubcontent subcopy={so.customerCode}>{so.customerName || '—'}</TableSubcontent>,
+      cell: (so) => <TableContent subcopy={so.customerCode}>{so.customerName || '—'}</TableContent>,
     },
     { key: 'postingDate', header: 'Date', cell: (so) => formatDate(so.postingDate) },
     { key: 'total', header: 'Total', cell: (so) => <TableAmount currency={so.currency}>{formatAmount(soTotal(so, codes))}</TableAmount> },
@@ -59,12 +58,12 @@ export function SalesDashboard() {
     {
       key: 'docNum',
       header: 'No.',
-      cell: (a) => <TableLink onClick={() => navigate(`${AR_LIST_PATH}/${a.docNum ? arNumber(a) : a.id}`)}>{arNumber(a)}</TableLink>,
+      cell: (a) => <TableContent href={`/#${AR_LIST_PATH}/${a.docNum ? arNumber(a) : a.id}`}>{arNumber(a)}</TableContent>,
     },
     {
       key: 'customerName',
       header: 'Customer',
-      cell: (a) => <TableSubcontent subcopy={a.customerCode}>{a.customerName || '—'}</TableSubcontent>,
+      cell: (a) => <TableContent subcopy={a.customerCode}>{a.customerName || '—'}</TableContent>,
     },
     { key: 'dueDate', header: 'Due date', cell: (a) => formatDate(a.dueDate) },
     { key: 'total', header: 'Total', cell: (a) => <TableAmount currency={a.currency}>{formatAmount(arTotal(a, codes))}</TableAmount> },

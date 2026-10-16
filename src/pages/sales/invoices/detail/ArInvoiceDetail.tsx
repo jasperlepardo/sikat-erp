@@ -104,7 +104,7 @@ export function ArInvoiceDetail() {
 }
 
 function ArInvoiceForm() {
-  const { id } = useParams();
+  const { id, tab: tabParam } = useParams();
   const isNew = id === 'new';
   const navigate = useNavigate();
   const from = useLocation().state as { fromDelivery?: string; fromOrder?: string; lineFilter?: 'goods' | 'services' } | null;
@@ -112,7 +112,9 @@ function ArInvoiceForm() {
   const arApproved = !getSalesSettings().requireArInvoiceApproval;
   const [draft, setDraft] = useState<ArDraft | null | undefined>(isNew ? { ...blankArInvoice(todayISO(), CURRENT_USER_ID), approved: arApproved } : undefined);
   const [m, setM] = useState<ArMasters>();
-  const [page, setPage] = useState<PageId>('details');
+  const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
+  const setPage = (v: PageId) => navigate(`${AR_LIST_PATH}/${id}/${v}`, { replace: true });
+  useEffect(() => { if (!tabParam) navigate(`${AR_LIST_PATH}/${id}/details`, { replace: true }); }, []);
   const [customerDetailsOpen, setCustomerDetailsOpen] = useState(false);
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);

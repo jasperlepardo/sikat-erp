@@ -87,14 +87,16 @@ export function QuotationDetail() {
 }
 
 function QuotationForm() {
-  const { id } = useParams();
+  const { id, tab: tabParam } = useParams();
   const isNew = id === 'new';
   const navigate = useNavigate();
 
   const qtApproved = !getSalesSettings().requireQuotationApproval;
   const [draft, setDraft] = useState<Draft | null | undefined>(isNew ? { ...blankQuotation(CURRENT_USER_ID), approved: qtApproved } : undefined);
   const [m, setM] = useState<QtMasters>();
-  const [page, setPage] = useState<PageId>('details');
+  const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
+  const setPage = (v: PageId) => navigate(`${QT_LIST_PATH}/${id}/${v}`, { replace: true });
+  useEffect(() => { if (!tabParam) navigate(`${QT_LIST_PATH}/${id}/details`, { replace: true }); }, []);
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);
@@ -332,7 +334,7 @@ function QuotationForm() {
               ) : null}
 
               <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
-                <div className="flex flex-col gap-2 lg:col-span-9">
+                <div className="flex flex-col gap-2 lg:col-span-8">
                   <CustomerCard
                     customers={m.customers}
                     customerId={draft.customerId}
@@ -349,7 +351,7 @@ function QuotationForm() {
                   />
                 </div>
 
-                <aside className="flex flex-col gap-2 lg:col-span-3">
+                <aside className="flex flex-col gap-2 lg:col-span-4">
                   <QtDetailsCard {...tabProps} />
                   <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach the RFQ, specs sheet, or supporting documents." />
                 </aside>

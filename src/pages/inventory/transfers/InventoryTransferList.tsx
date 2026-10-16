@@ -9,9 +9,8 @@ import {
   PanelHeader,
   Table,
   TableAmount,
-  TableLink,
+  TableContent,
   TableStatus,
-  TableSubcontent,
   type TableColumn,
   Text,
 } from '@jasperlepardo/sikat-design-system';
@@ -23,7 +22,7 @@ import { useAsync } from '../../../services/useAsync';
 import { dateField, linesField, masterField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { salesEmployeeDef } from '../../settings/masterDefs';
-import { DEFAULT_PAGE_SIZE, PAGE_SIZES, fillCardClass } from '../../../components/form/DataTable';
+import { fillCardClass, useListPage } from '../../../components/form/DataTable';
 import { TRANSFER_LIST_PATH, TRANSFER_STATUS_INTENT } from './InventoryTransferDetail';
 
 export function InventoryTransferList() {
@@ -42,18 +41,17 @@ export function InventoryTransferList() {
     textField<InventoryTransfer>('remarks', 'Remarks', (d) => d.remarks),
     linesField<InventoryTransfer>(),
   ];
+  const [query, setQuery] = useState('');
+  const { resetPage, paginate } = useListPage();
   const presets = useListPresets({
     list: 'inventory-transfers',
     fields,
     builtIns: statusViews('stock movements', TRANSFER_STATUSES),
     defaultSort: { key: 'postingDate', direction: 'desc' },
     rows: transfers,
-    onChange: () => setPage(1),
+    onChange: resetPage,
   });
   const { sort, setSort } = presets;
-  const [query, setQuery] = useState('');
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -76,24 +74,23 @@ export function InventoryTransferList() {
     });
   }, [transfers, presets.filter, query, sort]);
 
-  const open = (t: InventoryTransfer) => navigate(`${TRANSFER_LIST_PATH}/${t.id}`);
-  const onPage = rows.slice((page - 1) * pageSize, page * pageSize);
+  const { visible: onPage, pagination } = paginate(rows);
 
   const columns: TableColumn<InventoryTransfer>[] = [
     {
       key: 'docNum',
       header: 'No.',
       sortable: true,
-      cell: (t) => <TableLink onClick={() => open(t)}>{transferNumber(t)}</TableLink>,
+      cell: (t) => <TableContent href={`/#${TRANSFER_LIST_PATH}/${t.id}`}>{transferNumber(t)}</TableContent>,
     },
     {
       key: 'fromWarehouse',
       header: 'From → To',
       sortable: true,
       cell: (t) => (
-        <TableSubcontent subcopy={t.remarks || undefined}>
+        <TableContent subcopy={t.remarks || undefined}>
           {t.fromWarehouse} → {destinations(t).join(', ') || '—'}
-        </TableSubcontent>
+        </TableContent>
       ),
     },
     { key: 'postingDate', header: 'Posting date', sortable: true, cell: (t) => formatDate(t.postingDate) },
@@ -101,9 +98,9 @@ export function InventoryTransferList() {
       key: 'qty',
       header: 'Quantity',
       cell: (t) => (
-        <TableSubcontent subcopy={`${t.lines.length} line${t.lines.length === 1 ? '' : 's'}`}>
+        <TableContent subcopy={`${t.lines.length} line${t.lines.length === 1 ? '' : 's'}`}>
           {transferQty(t).toLocaleString('en-PH')}
-        </TableSubcontent>
+        </TableContent>
       ),
     },
     {
@@ -129,7 +126,7 @@ export function InventoryTransferList() {
         searchValue={query}
         onSearchChange={(value) => {
           setQuery(value);
-          setPage(1);
+          resetPage();
         }}
         icon="move_down"
         iconIntent="default"
@@ -166,18 +163,7 @@ export function InventoryTransferList() {
               sort={sort}
               onSortChange={setSort}
               layout="fill"
-              onRowAction={open}
-              pagination={{
-                page,
-                pageSize,
-                total: rows.length,
-                pageSizes: PAGE_SIZES,
-                onPageChange: setPage,
-                onPageSizeChange: (size) => {
-                  setPageSize(size);
-                  setPage(1);
-                },
-              }}
+              pagination={pagination}
             />
           ) : (
             <Text tone="muted" className="p-4">Loading transfers…</Text>

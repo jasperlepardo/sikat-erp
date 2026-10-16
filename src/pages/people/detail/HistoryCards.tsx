@@ -223,7 +223,6 @@ function HistoryCard<T extends Row>({
         getRowId={(r) => r.id}
         sortValue={(r, key) => String((r as Record<string, unknown>)[key] ?? '')}
         noPagination
-        onRowAction={(r) => open(r, false)}
         onRemove={(picked) => save(rows.filter((r) => !picked.includes(r)))}
         empty={<Text variant="small" tone="muted">None recorded.</Text>}
       />

@@ -1,4 +1,4 @@
-import { CardField, FormLabel, Icon, IconButton, List, Text, type CardFieldOption } from '@jasperlepardo/sikat-design-system';
+import { CardField, FormLabel, Icon, IconButton, Link, List, Text, type CardFieldOption } from '@jasperlepardo/sikat-design-system';
 import { Section } from '../../../components/form/fields';
 import type { Partner } from '../../../mocks/partners';
 
@@ -27,25 +27,31 @@ const option = (c: Partner): CardFieldOption => ({
 });
 
 /** A sales document's customer: picked as a card with code and TIN; the card's pencil opens the details panel. */
-export function CustomerCard({ customers, customerId, customer, onPickCustomer, onOpenDetails, locked, error, hint, overCredit }: CustomerCardProps) {
+export function CustomerCard({ customers, customer, onPickCustomer, onOpenDetails, locked, error, hint, overCredit }: CustomerCardProps) {
   return (
     <Section icon="person" title="Customer">
       <div>
-        {customer && locked ? (
-          // CardField drops its actions when read-only; a locked customer still opens the panel.
+        {customer ? (
           <div className="sikat-field-group" data-orientation="horizontal">
             <FormLabel required>Customer</FormLabel>
             <List.Group>
               <List.Card
-                title={customer.name}
+                title={<Link onClick={onOpenDetails}>{customer.name}</Link>}
                 icon={option(customer).icon}
                 fields={option(customer).fields}
                 badge={<Icon size={12}>check</Icon>}
                 data-selected
                 actions={
-                  <IconButton type="button" label="Customer details" intent="default" variant="link" size="extra-small" onClick={onOpenDetails}>
-                    <Icon size={16}>edit</Icon>
-                  </IconButton>
+                  <div style={{ display: 'flex', gap: 'var(--spacing-1, 4px)' }}>
+                    <IconButton type="button" label="Customer details" intent="default" variant="link" size="extra-small" onClick={onOpenDetails}>
+                      <Icon size={16}>edit</Icon>
+                    </IconButton>
+                    {!locked && (
+                      <IconButton type="button" label="Clear selection" intent="default" variant="link" size="extra-small" onClick={() => onPickCustomer(null)}>
+                        <Icon size={16}>close</Icon>
+                      </IconButton>
+                    )}
+                  </div>
                 }
               />
             </List.Group>
@@ -55,10 +61,9 @@ export function CustomerCard({ customers, customerId, customer, onPickCustomer, 
             label="Customer"
             required
             placeholder="Search customers"
-            options={customers.filter((c) => c.status !== 'Inactive' || c.id === customerId).map(option)}
-            value={customerId}
+            options={customers.filter((c) => c.status !== 'Inactive').map(option)}
+            value=""
             onValueChange={(id) => onPickCustomer(id || null)}
-            onEdit={customer ? onOpenDetails : undefined}
           />
         )}
         {error ? <Text variant="small" tone="danger">{error}</Text> : null}

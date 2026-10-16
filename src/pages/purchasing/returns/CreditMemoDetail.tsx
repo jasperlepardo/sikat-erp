@@ -138,7 +138,7 @@ export function CreditMemoDetail() {
 }
 
 function CreditMemoForm() {
-  const { id } = useParams();
+  const { id, tab: tabParam } = useParams();
   const isNew = id === 'new';
   const navigate = useNavigate();
   const state = useLocation().state as { fromInvoice?: string; fromReturn?: string } | null;
@@ -146,7 +146,9 @@ function CreditMemoForm() {
   const cmApproved = !getPurchasingSettings().requireApCreditMemoApproval;
   const [draft, setDraft] = useState<Draft | null | undefined>(isNew ? { ...blankCreditMemo(todayISO(), CURRENT_USER_ID), approved: cmApproved } : undefined);
   const [m, setM] = useState<RetMasters>();
-  const [page, setPage] = useState<PageId>('details');
+  const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
+  const setPage = (v: PageId) => navigate(`${MEMO_LIST_PATH}/${id}/${v}`, { replace: true });
+  useEffect(() => { if (!tabParam) navigate(`${MEMO_LIST_PATH}/${id}/details`, { replace: true }); }, []);
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);

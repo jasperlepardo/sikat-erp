@@ -1,15 +1,14 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router';
 import {
   Card,
   Combobox,
   Icon,
   Table,
-  TableLink,
+  TableContent,
   TableStatus,
-  TableSubcontent,
   Tabs,
   Text,
+  type TableActionItem,
   type TableColumn,
 } from '@jasperlepardo/sikat-design-system';
 import { CtxFormField, FieldStack, ReadOnly, Section, type Errors } from '../../../../components/form/fields';
@@ -158,9 +157,9 @@ const EFFECT_LABEL: Record<WarehouseDocument['effect'], string> = { in: 'in', ou
  * Ordered) and movements (receipts, returns, deliveries, transfers). Open shows what's live now.
  */
 function WarehouseTransactions({ itemId, warehouse, uom }: { itemId: string; warehouse: string; uom: string }) {
-  const navigate = useNavigate();
   const docs = useAsync(() => listWarehouseDocuments(itemId, warehouse), [itemId, warehouse]);
   const [filter, setFilter] = useState<'open' | 'all'>('open');
+  const [expandedIds, setExpanded] = useState<string[]>([]);
   if (!docs) return <Text tone="muted">Loading transactions…</Text>;
 
   // Open: orders still reserving stock. Movements are history, so they show under All.
@@ -181,9 +180,9 @@ function WarehouseTransactions({ itemId, warehouse, uom }: { itemId: string; war
       key: 'number',
       header: 'Document',
       cell: (d) => (
-        <TableSubcontent subcopy={[d.type, d.subcopy].filter(Boolean).join(' · ')}>
-          {d.href ? <TableLink onClick={() => navigate(d.href)}>{d.number}</TableLink> : d.number}
-        </TableSubcontent>
+        <TableContent subcopy={[d.type, d.subcopy].filter(Boolean).join(' · ')}>
+          {d.href ? <TableContent href={`/#${d.href}`}>{d.number}</TableContent> : d.number}
+        </TableContent>
       ),
     },
     { key: 'date', header: 'Date', cell: (d) => <span className="whitespace-nowrap">{d.date}</span> },
@@ -206,7 +205,14 @@ function WarehouseTransactions({ itemId, warehouse, uom }: { itemId: string; war
       </Card.Content>
       {rows.length ? (
         // FIFO deliveries and returns expand to the batches their units came out of.
-        <Table caption={`Transactions in ${warehouse}`} columns={columns} rows={rows} getRowId={(d) => d.id} getSubRows={(d) => d.batches} layout="scroll" />
+        (() => {
+          const expandableIds = rows.filter((d) => d.batches?.length).map((d) => d.id);
+          const allExpanded = expandableIds.length > 0 && expandableIds.every((id) => expandedIds.includes(id));
+          const txHeaderActions: TableActionItem[] = [{ type: 'expand', expanded: allExpanded, onToggle: () => setExpanded(allExpanded ? [] : expandableIds) }];
+          return (
+            <Table caption={`Transactions in ${warehouse}`} columns={columns} rows={rows} getRowId={(d) => d.id} getSubRows={(d) => d.batches} expandedIds={expandedIds} onExpandedChange={setExpanded} headerActions={txHeaderActions} layout="scroll" />
+          );
+        })()
       ) : (
         <Card.Content>
           <Text variant="small" tone="muted">
@@ -224,7 +230,6 @@ function WarehouseTransactions({ itemId, warehouse, uom }: { itemId: string; war
  * so a store shows the batch its stock was bought in.
  */
 function CostLayers({ itemId, warehouse, uom }: { itemId: string; warehouse: string; uom: string }) {
-  const navigate = useNavigate();
   const data = useAsync(async () => ({ layers: await layerHistory(itemId, warehouse), receipts: await listGoodsReceipts() }), [itemId, warehouse]);
   if (!data) return <Text tone="muted">Loading cost layers…</Text>;
   const { layers, receipts } = data;
@@ -234,7 +239,7 @@ function CostLayers({ itemId, warehouse, uom }: { itemId: string; warehouse: str
   const next = open[0];
   const batch = (l: CostLayer) => {
     const gr = receipts.find((r) => r.id === l.receiptId);
-    if (gr) return <TableLink onClick={() => navigate(`${GR_LIST_PATH}/${gr.id}`)}>{grNumber(gr)}</TableLink>;
+    if (gr) return <TableContent href={`/#${GR_LIST_PATH}/${gr.id}`}>{grNumber(gr)}</TableContent>;
     return l.receiptId === 'opening' ? 'Opening stock' : 'Stock count';
   };
   const columns: TableColumn<CostLayer>[] = [
@@ -242,9 +247,9 @@ function CostLayers({ itemId, warehouse, uom }: { itemId: string; warehouse: str
       key: 'receivedOn',
       header: 'Batch',
       cell: (l) => (
-        <TableSubcontent subcopy={l.sourceId.startsWith('tr-') ? `Received ${l.receivedOn} · transferred in` : `Received ${l.receivedOn}`}>
+        <TableContent subcopy={l.sourceId.startsWith('tr-') ? `Received ${l.receivedOn} · transferred in` : `Received ${l.receivedOn}`}>
           {batch(l)}
-        </TableSubcontent>
+        </TableContent>
       ),
     },
     { key: 'unitCost', header: 'Unit cost', cell: (l) => <span className="whitespace-nowrap tabular-nums">₱{formatAmount(l.unitCost)}</span> },

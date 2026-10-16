@@ -1,5 +1,4 @@
-import { useNavigate } from 'react-router';
-import { Badge, Card, Icon, Panel, Table, TableLink, Text, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { Badge, Card, Icon, Panel, Table, TableContent, Text, type TableColumn } from '@jasperlepardo/sikat-design-system';
 import { DOC_TYPE_LABEL, type DocType } from '../../mocks/approvalRules';
 import { useAsync } from '../../services/useAsync';
 import { approverName } from '../../services/approvalRules';
@@ -47,8 +46,6 @@ const PURCHASING_TYPES: DocType[] = ['RFQ', 'PO', 'GRPO', 'APINV', 'GRET', 'CM',
 const SALES_TYPES: DocType[] = ['QT', 'SO', 'DN', 'ARINV', 'SR', 'ARCM', 'RC'];
 
 export function ApprovalsPage() {
-  const navigate = useNavigate();
-
   const data = useAsync(() => Promise.all([
     listRfqs(), listPurchaseOrders(), listGoodsReceipts(), listApInvoices(),
     listGoodsReturns(), listCreditMemos(), listDownPayments(), listPayments(),
@@ -109,7 +106,7 @@ export function ApprovalsPage() {
         </div>
       ),
     },
-    { key: 'partner', header: 'Partner', cell: (p) => <TableLink onClick={() => navigate(p.path)}>{p.partnerName}</TableLink> },
+    { key: 'partner', header: 'Partner', cell: (p) => <TableContent href={`/#${p.path}`}>{p.partnerName}</TableContent> },
     { key: 'date', header: 'Date', cell: (p) => formatDate(p.postingDate) },
     {
       key: 'approver',
@@ -123,11 +120,11 @@ export function ApprovalsPage() {
       key: 'action',
       header: '',
       cell: (p) => (
-        <TableLink onClick={() => navigate(p.path)}>
+        <TableContent href={`/#${p.path}`}>
           <span className="flex items-center gap-1">
             <Icon size={14}>open_in_new</Icon> Open
           </span>
-        </TableLink>
+        </TableContent>
       ),
     },
   ];

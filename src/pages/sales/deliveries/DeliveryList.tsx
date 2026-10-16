@@ -8,9 +8,8 @@ import {
   Panel,
   PanelHeader,
   Table,
-  TableLink,
+  TableContent,
   TableStatus,
-  TableSubcontent,
   Text,
   Tooltip,
   type TableColumn,
@@ -18,7 +17,7 @@ import {
 import { dateField, linesField, masterField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { currencyDef, salesEmployeeDef } from '../../settings/masterDefs';
-import { DEFAULT_PAGE_SIZE, PAGE_SIZES, fillCardClass } from '../../../components/form/DataTable';
+import { fillCardClass, useListPage } from '../../../components/form/DataTable';
 import { DN_STATUSES, type Delivery } from '../../../mocks/deliveries';
 import { formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
@@ -34,8 +33,7 @@ export function DeliveryList() {
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const data = useAsync(() => Promise.all([listDeliveries(), taxCodes.list(), listSalesOrders()]), []);
   const [query, setQuery] = useState('');
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const { resetPage, paginate } = useListPage();
   const [orders, codes, salesOrders] = data ?? [undefined, [], []];
   /** The sales orders a delivery was copied from, by number ("SO-2026-0021"). */
   const baseOrders = (d: Delivery) => {
@@ -64,7 +62,7 @@ export function DeliveryList() {
     builtIns: statusViews('deliveries', DN_STATUSES),
     defaultSort: { key: 'postingDate', direction: 'desc' },
     rows: orders,
-    onChange: () => setPage(1),
+    onChange: resetPage,
   });
   const { sort, setSort } = presets;
 
@@ -85,8 +83,7 @@ export function DeliveryList() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orders, presets.filter, query, sort, codes]);
 
-  const open = (so: Delivery) => navigate(`${DN_LIST_PATH}/${so.docNum ? dnNumber(so) : so.id}`);
-  const onPage = rows.slice((page - 1) * pageSize, page * pageSize);
+  const { visible: onPage, pagination } = paginate(rows);
 
   const columns: TableColumn<Delivery>[] = [
     {
@@ -94,12 +91,10 @@ export function DeliveryList() {
       header: 'No.',
       sortable: true,
       cell: (so) => (
-        <TableSubcontent subcopy={so.customerRef ? `Customer ref. ${so.customerRef}` : undefined}>
-          <TableLink onClick={() => open(so)}>{dnNumber(so)}</TableLink>
-        </TableSubcontent>
+        <TableContent href={`/#${DN_LIST_PATH}/${so.docNum ? dnNumber(so) : so.id}`} subcopy={so.customerRef ? `Customer ref. ${so.customerRef}` : undefined}>{dnNumber(so)}</TableContent>
       ),
     },
-    { key: 'customerName', header: 'Customer', sortable: true, cell: (so) => <TableSubcontent subcopy={so.customerCode}>{so.customerName || '—'}</TableSubcontent> },
+    { key: 'customerName', header: 'Customer', sortable: true, cell: (so) => <TableContent subcopy={so.customerCode}>{so.customerName || '—'}</TableContent> },
     { key: 'postingDate', header: 'Posting date', align: 'end', cell: (so) => formatDate(so.postingDate) },
     { key: 'trackingNo', header: 'Tracking no.', cell: (so) => so.trackingNo || '—' },
     {
@@ -144,7 +139,7 @@ export function DeliveryList() {
         searchValue={query}
         onSearchChange={(value) => {
           setQuery(value);
-          setPage(1);
+          resetPage();
         }}
         icon="local_shipping"
         iconIntent="default"
@@ -174,18 +169,7 @@ export function DeliveryList() {
               sort={sort}
               onSortChange={setSort}
               layout="fill"
-              onRowAction={open}
-              pagination={{
-                page,
-                pageSize,
-                total: rows.length,
-                pageSizes: PAGE_SIZES,
-                onPageChange: setPage,
-                onPageSizeChange: (size) => {
-                  setPageSize(size);
-                  setPage(1);
-                },
-              }}
+              pagination={pagination}
             />
           ) : (
             <Text tone="muted" className="p-4">Loading deliveries…</Text>

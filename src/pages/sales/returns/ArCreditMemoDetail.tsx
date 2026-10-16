@@ -127,7 +127,7 @@ export function ArCreditMemoDetail() {
 }
 
 function ArCreditMemoForm() {
-  const { id } = useParams();
+  const { id, tab: tabParam } = useParams();
   const isNew = id === 'new';
   const navigate = useNavigate();
   const state = useLocation().state as { fromInvoice?: string; fromReturn?: string } | null;
@@ -135,7 +135,9 @@ function ArCreditMemoForm() {
   const arcmApproved = !getSalesSettings().requireArCreditMemoApproval;
   const [draft, setDraft] = useState<ArCmInput | null | undefined>(isNew ? { ...blankArCreditMemo(todayISO(), CURRENT_USER_ID), approved: arcmApproved } : undefined);
   const [m, setM] = useState<ArCmMasters>();
-  const [page, setPage] = useState<PageId>('details');
+  const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
+  const setPage = (v: PageId) => navigate(`${AR_CM_LIST_PATH}/${id}/${v}`, { replace: true });
+  useEffect(() => { if (!tabParam) navigate(`${AR_CM_LIST_PATH}/${id}/details`, { replace: true }); }, []);
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);

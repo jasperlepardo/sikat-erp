@@ -1,6 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { binCodeOf, binLocations } from '../../services/binLocations';
-import { useNavigate } from 'react-router';
 import {
   Card,
   Combobox,
@@ -8,6 +7,7 @@ import {
   PanelHeader,
   Select,
   Table,
+  TableContent,
   TableStatus,
   Text,
   type TableColumn,
@@ -18,7 +18,7 @@ import { itemGroupName, loadInventoryMasters } from '../../services/inventoryMas
 import { isLowStock, listItems, stockTotals } from '../../services/items';
 import { useAsync } from '../../services/useAsync';
 import { Stat } from '../../components/Stat';
-import { DEFAULT_PAGE_SIZE, PAGE_SIZES, fillCardClass } from '../../components/form/DataTable';
+import { fillCardClass, useListPage } from '../../components/form/DataTable';
 import { EMPTY_FILTER, oneRule } from '../../components/filter/engine';
 import { choiceField, numberField, textField } from '../../components/filter/fieldKit';
 import { useListPresets } from '../../components/filter/useListPresets';
@@ -92,21 +92,16 @@ const STOCK_VIEWS: BuiltInView[] = [
 ];
 
 export function StockOnHandPage() {
-  const navigate = useNavigate();
   const data = useAsync(() => Promise.all([listItems(), loadInventoryMasters()]), []);
   const [warehouse, setWarehouse] = useState('');
   const [group, setGroup] = useState(ALL_GROUPS);
   const [query, setQuery] = useState('');
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   /** Selected warehouse rows; the Table checks an item row when all its warehouses are. */
   const [selected, setSelected] = useState<string[]>([]);
+  const [expandedIds, setExpanded] = useState<string[]>([]);
+  const { resetPage, paginate } = useListPage();
 
   const [items, inv] = data ?? [undefined, undefined];
-  const resetPage = <T,>(set: (v: T) => void) => (v: T) => {
-    set(v);
-    setPage(1);
-  };
 
   /** One row per item (totals over the shown warehouses), before the tab and search filters. */
   const base = useMemo<Row[]>(() => {
@@ -148,7 +143,7 @@ export function StockOnHandPage() {
     builtIns: STOCK_VIEWS,
     defaultSort: { key: 'item', direction: 'asc' },
     rows: items ? base : undefined,
-    onChange: () => setPage(1),
+    onChange: resetPage,
   });
   const { sort, setSort } = presets;
 
@@ -179,7 +174,7 @@ export function StockOnHandPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [base, presets.filter, query, sort, inv]);
 
-  const onPage = rows.slice((page - 1) * pageSize, page * pageSize);
+  const { visible: onPage, pagination } = paginate(rows);
   const totals = rows.reduce(
     (t, r) => ({
       inStock: t.inStock + r.inStock,
@@ -194,16 +189,16 @@ export function StockOnHandPage() {
   const picked = selected.filter((id) => id.split(':').length === 2).length;
   const qty = (n: number) => n.toLocaleString('en-PH');
   const cellQty = (n: number) => (n ? qty(n) : DASH);
-  const open = (r: Row) => navigate(`${ITEMS_PATH}/${r.item.id}`);
 
   const columns: TableColumn<Row>[] = [
     {
       key: 'item',
       header: 'Item / Warehouse / Bin',
+      expandToggle: true,
       sortable: true,
       // Cells don't wrap, so a long name would widen the column and push Status off the card:
       // let the name wrap, so it stays on one line while the card has room and wraps when it doesn't.
-      cell: (r) => <span className="block whitespace-normal">{rowLabel(r)}</span>,
+      cell: (r) => <TableContent href={`/#${ITEMS_PATH}/${r.item.id}`}>{rowLabel(r)}</TableContent>,
     },
     { key: 'inStock', header: numHeader('In stock'), sortable: true, cell: (r) => num(r.inStock ? <>{qty(r.inStock)}{affix(r.item.inventoryUom)}</> : DASH) },
     { key: 'committed', header: numHeader('Committed'), sortable: true, cell: (r) => (r.bin ? null : num(cellQty(r.committed))) },
@@ -237,6 +232,7 @@ export function StockOnHandPage() {
     },
   ];
 
+
   return (
     <Panel className="flex-1">
       <PanelHeader
@@ -249,7 +245,7 @@ export function StockOnHandPage() {
         searchLabel="Search stock"
         searchPlaceholder="Search by item no., name, warehouse or bin"
         searchValue={query}
-        onSearchChange={resetPage(setQuery)}
+        onSearchChange={(v) => { setQuery(v); resetPage(); }}
       />
       <Panel.Body className="flex flex-col gap-2">
         {presets.bar(
@@ -261,7 +257,7 @@ export function StockOnHandPage() {
                 clearable
                 options={inv ? warehouseOptions(inv.warehouses, warehouse) : []}
                 value={warehouse || null}
-                onValueChange={(v) => resetPage(setWarehouse)(v ?? '')}
+                onValueChange={(v) => { setWarehouse(v ?? ''); resetPage(); }}
               />
             </div>
             <Select
@@ -269,7 +265,7 @@ export function StockOnHandPage() {
               className="w-44"
               options={[{ value: ALL_GROUPS, label: 'All item groups' }, ...(inv?.groups ?? []).map((g) => ({ value: g.id, label: g.name }))]}
               value={group}
-              onValueChange={resetPage(setGroup)}
+              onValueChange={(v) => { setGroup(v); resetPage(); }}
             />
           </div>,
         )}
@@ -294,24 +290,15 @@ export function StockOnHandPage() {
               rows={onPage}
               getRowId={(r) => r.id}
               getSubRows={(r) => r.children}
+              expandedIds={expandedIds}
+              onExpandedChange={setExpanded}
               selectable
               selectedIds={selected}
               onSelectionChange={setSelected}
               sort={sort}
               onSortChange={setSort}
               layout="fill"
-              onRowAction={open}
-              pagination={{
-                page,
-                pageSize,
-                total: rows.length,
-                pageSizes: PAGE_SIZES,
-                onPageChange: setPage,
-                onPageSizeChange: (size) => {
-                  setPageSize(size);
-                  setPage(1);
-                },
-              }}
+              pagination={pagination}
             />
           ) : (
             <Text tone="muted" className="p-4">Loading stock…</Text>

@@ -134,7 +134,7 @@ export function SalesReturnDetail() {
 }
 
 function SalesReturnForm() {
-  const { id } = useParams();
+  const { id, tab: tabParam } = useParams();
   const isNew = id === 'new';
   const navigate = useNavigate();
   const state = useLocation().state as { fromDelivery?: string } | null;
@@ -142,7 +142,9 @@ function SalesReturnForm() {
   const srApproved = !getSalesSettings().requireSalesReturnApproval;
   const [draft, setDraft] = useState<Draft | null | undefined>(isNew ? { ...blankSalesReturn(todayISO(), CURRENT_USER_ID), approved: srApproved } : undefined);
   const [m, setM] = useState<SrMasters>();
-  const [page, setPage] = useState<PageId>('details');
+  const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
+  const setPage = (v: PageId) => navigate(`${SR_LIST_PATH}/${id}/${v}`, { replace: true });
+  useEffect(() => { if (!tabParam) navigate(`${SR_LIST_PATH}/${id}/details`, { replace: true }); }, []);
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);

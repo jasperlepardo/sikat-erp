@@ -119,7 +119,7 @@ export function DprDetail() {
 }
 
 function DprForm() {
-  const { id } = useParams();
+  const { id, tab: tabParam } = useParams();
   const isNew = id === 'new';
   const navigate = useNavigate();
   const state = useLocation().state as { fromPo?: string } | null;
@@ -127,7 +127,9 @@ function DprForm() {
   const dprApproved = !getPurchasingSettings().requireDprApproval;
   const [draft, setDraft] = useState<Draft | null | undefined>(isNew ? { ...blankDownPaymentRequest(todayISO(), CURRENT_USER_ID), approved: dprApproved } : undefined);
   const [m, setM] = useState<Masters>();
-  const [page, setPage] = useState<PageId>('details');
+  const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
+  const setPage = (v: PageId) => navigate(`${DPR_LIST_PATH}/${id}/${v}`, { replace: true });
+  useEffect(() => { if (!tabParam) navigate(`${DPR_LIST_PATH}/${id}/details`, { replace: true }); }, []);
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);

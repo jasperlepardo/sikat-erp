@@ -8,15 +8,14 @@ import {
   Panel,
   PanelHeader,
   Table,
-  TableLink,
+  TableContent,
   TableStatus,
-  TableSubcontent,
   Text,
   type TableColumn,
 } from '@jasperlepardo/sikat-design-system';
 import { dateField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
-import { DEFAULT_PAGE_SIZE, PAGE_SIZES, fillCardClass } from '../../../components/form/DataTable';
+import { fillCardClass, useListPage } from '../../../components/form/DataTable';
 import { PBA_STATUSES, type PurchaseBlanketAgreement, type PbaStatus } from '../../../mocks/purchaseBlanketAgreements';
 import { formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
@@ -39,8 +38,7 @@ export function PurchaseBlanketAgreementList() {
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const agreements = useAsync(listPurchaseBlanketAgreements, []);
   const [query, setQuery] = useState('');
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const { resetPage, paginate } = useListPage();
   useDocTitle('Purchase Blanket Agreements');
 
   const totalOf = (pba: PurchaseBlanketAgreement) => pbaTotals(pba).plannedTotal;
@@ -60,7 +58,7 @@ export function PurchaseBlanketAgreementList() {
     builtIns: statusViews('agreements', PBA_STATUSES),
     defaultSort: { key: 'startDate', direction: 'desc' },
     rows: agreements,
-    onChange: () => setPage(1),
+    onChange: resetPage,
   });
   const { sort, setSort } = presets;
 
@@ -83,9 +81,7 @@ export function PurchaseBlanketAgreementList() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [agreements, presets.filter, query, sort]);
 
-  const open = (pba: PurchaseBlanketAgreement) => navigate(`${PBA_LIST_PATH}/${pba.docNum ? pbaNumber(pba) : pba.id}`);
-
-  const paginated = rows.slice((page - 1) * pageSize, page * pageSize);
+  const { visible: paginated, pagination } = paginate(rows);
 
   const columns: TableColumn<PurchaseBlanketAgreement>[] = [
     {
@@ -93,9 +89,9 @@ export function PurchaseBlanketAgreementList() {
       header: 'No.',
       sortable: true,
       cell: (pba) => (
-        <TableLink onClick={() => open(pba)}>
+        <TableContent href={`/#${PBA_LIST_PATH}/${pba.docNum ? pbaNumber(pba) : pba.id}`}>
           {pba.docNum ? pbaNumber(pba) : <Text tone="muted">Draft</Text>}
-        </TableLink>
+        </TableContent>
       ),
     },
     {
@@ -110,7 +106,7 @@ export function PurchaseBlanketAgreementList() {
       key: 'vendor',
       header: 'Vendor',
       sortable: true,
-      cell: (pba) => <TableSubcontent subcopy={pba.vendorCode}>{pba.vendorName || '—'}</TableSubcontent>,
+      cell: (pba) => <TableContent subcopy={pba.vendorCode}>{pba.vendorName || '—'}</TableContent>,
     },
     {
       key: 'description',
@@ -147,7 +143,7 @@ export function PurchaseBlanketAgreementList() {
         searchLabel="Search agreements"
         searchPlaceholder="Search by no., vendor, or description"
         searchValue={query}
-        onSearchChange={(value) => { setQuery(value); setPage(1); }}
+        onSearchChange={(value) => { setQuery(value); resetPage(); }}
         icon="handshake"
         iconIntent="default"
         iconShape="rounded"
@@ -173,8 +169,7 @@ export function PurchaseBlanketAgreementList() {
               sort={sort}
               onSortChange={setSort}
               layout="fill"
-              onRowAction={open}
-              pagination={{ page, pageSize, total: rows.length, pageSizes: PAGE_SIZES, onPageChange: setPage, onPageSizeChange: (s) => { setPageSize(s); setPage(1); } }}
+              pagination={pagination}
             />
           ) : (
             <Text tone="muted" className="p-4">Loading agreements…</Text>

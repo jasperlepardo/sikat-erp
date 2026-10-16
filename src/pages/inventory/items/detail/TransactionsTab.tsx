@@ -1,21 +1,19 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router';
 import {
   Card,
   Icon,
   Select,
   Table,
   TableAmount,
-  TableLink,
+  TableContent,
   TableStatus,
-  TableSubcontent,
   Tabs,
   Text,
   TextField,
   type TableColumn,
   type TableSort,
 } from '@jasperlepardo/sikat-design-system';
-import { DEFAULT_PAGE_SIZE, PAGE_SIZES } from '../../../../components/form/DataTable';
+import { useListPage } from '../../../../components/form/DataTable';
 import { Stat } from '../../../../components/Stat';
 import { formatAmount } from '../../../../services/format';
 import { useAsync } from '../../../../services/useAsync';
@@ -37,7 +35,6 @@ const rowsLabel = (n: number) => `${n} document row${n === 1 ? '' : 's'}`;
  * in one list. Types without a module yet show as "not built".
  */
 export function TransactionsTab({ draft }: { draft: Draft }) {
-  const navigate = useNavigate();
   const isParent = draft.variantAxes.length > 0;
   // For parent items: load all variants and aggregate their transactions across all doc types.
   // For regular items: use just the item's own id filtered by its purchase/sales roles.
@@ -59,8 +56,7 @@ export function TransactionsTab({ draft }: { draft: Draft }) {
   const [type, setType] = useState<DocType | 'all'>('all');
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<TableSort | null>({ key: 'date', direction: 'desc' });
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const { resetPage, paginate } = useListPage();
 
   if (!docs || (isParent && !variants)) return <Text tone="muted" className="p-4">Loading transactions…</Text>;
   const variantLabel = (itemId: string) => {
@@ -100,9 +96,7 @@ export function TransactionsTab({ draft }: { draft: Draft }) {
       key: 'number',
       header: 'Document',
       cell: (d) => (
-        <TableSubcontent subcopy={[DOC_SOURCES[d.type].label, d.subcopy].filter(Boolean).join(' · ')}>
-          <TableLink onClick={() => navigate(d.href)}>{d.number}</TableLink>
-        </TableSubcontent>
+        <TableContent href={`/#${d.href}`} subcopy={[DOC_SOURCES[d.type].label, d.subcopy].filter(Boolean).join(' · ')}>{d.number}</TableContent>
       ),
     },
     { key: 'date', header: 'Date', cell: (d) => d.date },
@@ -112,14 +106,15 @@ export function TransactionsTab({ draft }: { draft: Draft }) {
       key: 'quantity',
       header: 'Quantity',
       cell: (d) => (
-        <TableSubcontent subcopy={`${qty(d.openQty)} open`}>
+        <TableContent subcopy={`${qty(d.openQty)} open`}>
           {qty(d.quantity)} {d.uom}
-        </TableSubcontent>
+        </TableContent>
       ),
     },
     { key: 'unitPrice', header: 'Unit price', cell: (d) => <TableAmount currency={d.currency}>{formatAmount(d.unitPrice)}</TableAmount> },
     { key: 'total', header: 'Total', cell: (d) => <TableAmount currency={d.currency}>{formatAmount(d.total)}</TableAmount> },
   ];
+  const { visible, pagination } = paginate(sorted);
 
   return (
     <div className="flex flex-col gap-2">
@@ -146,7 +141,7 @@ export function TransactionsTab({ draft }: { draft: Draft }) {
                 value={type}
                 onValueChange={(v) => {
                   setType((v || 'all') as DocType | 'all');
-                  setPage(1);
+                  resetPage();
                 }}
               />
             </div>
@@ -159,7 +154,7 @@ export function TransactionsTab({ draft }: { draft: Draft }) {
             value={filter}
             onValueChange={(v) => {
               setFilter(v as Filter);
-              setPage(1);
+              resetPage();
             }}
             items={[
               { value: 'open', label: 'Open', badge: String(open.length) },
@@ -174,7 +169,7 @@ export function TransactionsTab({ draft }: { draft: Draft }) {
             value={query}
             onChange={(e) => {
               setQuery(e.currentTarget.value);
-              setPage(1);
+              resetPage();
             }}
           />
           <Card>
@@ -182,23 +177,12 @@ export function TransactionsTab({ draft }: { draft: Draft }) {
               <Table
                 caption="Transactions"
                 columns={columns.map((c) => ({ sortable: true, ...c }))}
-                rows={sorted.slice((page - 1) * pageSize, page * pageSize)}
+                rows={visible}
                 getRowId={(d) => d.id}
                 sort={sort}
                 onSortChange={setSort}
                 layout="scroll"
-                onRowAction={(d) => navigate(d.href)}
-                pagination={{
-                  page,
-                  pageSize,
-                  total: sorted.length,
-                  pageSizes: PAGE_SIZES,
-                  onPageChange: setPage,
-                  onPageSizeChange: (size) => {
-                    setPageSize(size);
-                    setPage(1);
-                  },
-                }}
+                pagination={pagination}
               />
             ) : (
               <Text variant="small" tone="muted" className="p-4">

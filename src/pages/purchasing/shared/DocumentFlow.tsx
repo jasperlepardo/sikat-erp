@@ -1,5 +1,4 @@
-import { useNavigate } from 'react-router';
-import { TableAmount, TableLink, TableStatus, TableSubcontent, Text, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { TableAmount, TableContent, TableStatus, Text, type TableColumn } from '@jasperlepardo/sikat-design-system';
 import { DataTable } from '../../../components/form/DataTable';
 import { formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
@@ -17,7 +16,6 @@ const coversText = (lines: CoveredLine[]) => lines.map((l) => `${l.quantity.toLo
  * document, then its targets.
  */
 export function DocumentFlow({ kind, id, notes }: { kind: DocKind; id: string; notes: string }) {
-  const navigate = useNavigate();
   const rows = useAsync(() => linkedDocuments(kind, id), [kind, id]);
 
   const columns: TableColumn<LinkedDocument>[] = [
@@ -25,18 +23,18 @@ export function DocumentFlow({ kind, id, notes }: { kind: DocKind; id: string; n
       key: 'relation',
       header: 'Relation',
       cell: (d) => (
-        <TableSubcontent subcopy={d.via ? `via ${d.via}` : d.relation === 'Base' ? 'Copied from' : d.relation === 'Target' ? 'Copied to' : undefined}>
+        <TableContent subcopy={d.via ? `via ${d.via}` : d.relation === 'Base' ? 'Copied from' : d.relation === 'Target' ? 'Copied to' : undefined}>
           {RELATION_LABEL[d.relation]}
-        </TableSubcontent>
+        </TableContent>
       ),
     },
     {
       key: 'number',
       header: 'Document',
       cell: (d) => (
-        <TableSubcontent subcopy={d.type}>
-          {d.relation === 'This' ? d.number : <TableLink onClick={() => navigate(d.href)}>{d.number}</TableLink>}
-        </TableSubcontent>
+        <TableContent subcopy={d.type}>
+          {d.relation === 'This' ? d.number : <TableContent href={`/#${d.href}`}>{d.number}</TableContent>}
+        </TableContent>
       ),
     },
     { key: 'date', header: 'Posting date', cell: (d) => formatDate(d.date) },
@@ -57,7 +55,6 @@ export function DocumentFlow({ kind, id, notes }: { kind: DocKind; id: string; n
       getRowId={(d) => `${d.kind}:${d.id}`}
       columns={columns}
       unsortable={columns.map((c) => c.key)}
-      onRowAction={(d) => d.relation !== 'This' && navigate(d.href)}
       empty={
         <Text variant="small" tone="muted">
           {rows ? 'Not linked to any other document yet.' : 'Loading…'}

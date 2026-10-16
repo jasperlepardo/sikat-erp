@@ -303,6 +303,7 @@ function PbaForm() {
                           { label: 'Code', value: v.code },
                           ...(v.tin ? [{ label: 'TIN', value: v.tin }] : []),
                         ],
+                        href: `/#/purchasing/vendors/${v.id}`,
                       }))}
                     value={draft.vendorId}
                     onValueChange={(id) => pickVendor(id || null)}

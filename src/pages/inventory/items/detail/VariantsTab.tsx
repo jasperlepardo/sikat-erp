@@ -8,9 +8,8 @@ import {
   Icon,
   Table,
   TableAmount,
-  TableLink,
+  TableContent,
   TableStatus,
-  TableSubcontent,
   Text,
   TextField,
   type TableColumn,
@@ -137,11 +136,9 @@ export function VariantsTab({ draft, update }: TabProps) {
       key: 'itemNo',
       header: 'Item No.',
       cell: (v) => (
-        <TableSubcontent subcopy={v.description !== v.itemNo ? v.description : undefined}>
-          <TableLink onClick={() => setEditing(v)}>
-            {v.itemNo || <span className="text-muted">No SKU yet</span>}
-          </TableLink>
-        </TableSubcontent>
+        <TableContent onClick={() => setEditing(v)} subcopy={v.description !== v.itemNo ? v.description : undefined}>
+          {v.itemNo || <span className="text-muted">No SKU yet</span>}
+        </TableContent>
       ),
     },
     {
@@ -345,7 +342,6 @@ export function VariantsTab({ draft, update }: TabProps) {
             rows={variants}
             getRowId={(v) => v.id ?? v.itemNo}
             layout="fill"
-            onRowAction={(v) => setEditing(v)}
           />
         )}
       </Card>

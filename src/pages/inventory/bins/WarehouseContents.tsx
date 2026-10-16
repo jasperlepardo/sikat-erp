@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router';
 import { Badge, Tabs, Text } from '@jasperlepardo/sikat-design-system';
 import { DataTable } from '../../../components/form/DataTable';
 import type { Warehouse } from '../../../mocks/itemMasters';
@@ -13,7 +12,6 @@ import { WarehouseBins, type BinScope } from './WarehouseBins';
  * locations. Picking an aisle or shelf on Bin locations lists its items.
  */
 export function WarehouseContents({ warehouse, isNew, base }: { warehouse: Warehouse; isNew: boolean; base: string }) {
-  const navigate = useNavigate();
   const items = useAsync(listItems, []);
   const usesBins = warehouse.type === 'warehouse';
   const [tab, setTab] = useState<'items' | 'bins'>('items');
@@ -55,7 +53,7 @@ export function WarehouseContents({ warehouse, isNew, base }: { warehouse: Wareh
             ) : undefined
           }
           rows={rows}
-          columns={stockColumns((r) => navigate(`/inventory/items/${encodeURIComponent(r.id)}`), usesBins)}
+          columns={stockColumns((r) => `/#/inventory/items/${encodeURIComponent(r.id)}`, usesBins)}
           getRowId={(r) => r.id}
           empty={
             <Text variant="small" tone="muted">

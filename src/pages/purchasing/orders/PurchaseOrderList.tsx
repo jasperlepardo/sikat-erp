@@ -9,9 +9,8 @@ import {
   PanelHeader,
   Table,
   TableAmount,
-  TableLink,
+  TableContent,
   TableStatus,
-  TableSubcontent,
   type TableColumn,
   Text,
 } from '@jasperlepardo/sikat-design-system';
@@ -24,15 +23,14 @@ import { PO_LIST_PATH, STATUS_INTENT } from './detail/PurchaseOrderDetail';
 import { dateField, linesField, masterField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { currencyDef, salesEmployeeDef } from '../../settings/masterDefs';
-import { DEFAULT_PAGE_SIZE, PAGE_SIZES, fillCardClass } from '../../../components/form/DataTable';
+import { fillCardClass, useListPage } from '../../../components/form/DataTable';
 
 export function PurchaseOrderList() {
   const navigate = useNavigate();
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const data = useAsync(() => Promise.all([listPurchaseOrders(), taxCodes.list()]), []);
   const [query, setQuery] = useState('');
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const { resetPage, paginate } = useListPage();
 
   const [orders, codes] = data ?? [undefined, []];
   const totalOf = (po: PurchaseOrder) => poTotal(po, codes);
@@ -55,7 +53,7 @@ export function PurchaseOrderList() {
     builtIns: statusViews('purchase orders', PO_STATUSES),
     defaultSort: { key: 'postingDate', direction: 'desc' },
     rows: orders,
-    onChange: () => setPage(1),
+    onChange: resetPage,
   });
   const { sort, setSort } = presets;
 
@@ -81,24 +79,20 @@ export function PurchaseOrderList() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orders, presets.filter, query, sort, codes]);
 
-  const open = (po: PurchaseOrder) => navigate(`${PO_LIST_PATH}/${po.docNum ? poNumber(po) : po.id}`);
-
   const columns: TableColumn<PurchaseOrder>[] = [
     {
       key: 'docNum',
       header: 'No.',
       sortable: true,
       cell: (po) => (
-        <TableSubcontent subcopy={po.vendorRef ? `Vendor ref. ${po.vendorRef}` : undefined}>
-          <TableLink onClick={() => open(po)}>{poNumber(po)}</TableLink>
-        </TableSubcontent>
+        <TableContent href={`/#${PO_LIST_PATH}/${po.docNum ? poNumber(po) : po.id}`} subcopy={po.vendorRef ? `Vendor ref. ${po.vendorRef}` : undefined}>{poNumber(po)}</TableContent>
       ),
     },
     {
       key: 'vendorName',
       header: 'Vendor',
       sortable: true,
-      cell: (po) => <TableSubcontent subcopy={po.vendorCode}>{po.vendorName || '—'}</TableSubcontent>,
+      cell: (po) => <TableContent subcopy={po.vendorCode}>{po.vendorName || '—'}</TableContent>,
     },
     { key: 'postingDate', header: 'Posting date', sortable: true, cell: (po) => po.postingDate },
     { key: 'deliveryDate', header: 'Delivery date', sortable: true, cell: (po) => po.deliveryDate || '—' },
@@ -109,9 +103,9 @@ export function PurchaseOrderList() {
         const ordered = po.lines.reduce((n, l) => n + l.quantity, 0);
         const left = po.lines.reduce((n, l) => n + openQty(l), 0);
         return (
-          <TableSubcontent subcopy={`${po.lines.length} line${po.lines.length === 1 ? '' : 's'}`}>
+          <TableContent subcopy={`${po.lines.length} line${po.lines.length === 1 ? '' : 's'}`}>
             {ordered - left} of {ordered}
-          </TableSubcontent>
+          </TableContent>
         );
       },
     },
@@ -124,6 +118,8 @@ export function PurchaseOrderList() {
     { key: 'status', header: 'Status', sortable: true, cell: (po) => <TableStatus intent={STATUS_INTENT[po.status]}>{po.status}</TableStatus> },
   ];
 
+  const { visible, pagination } = paginate(rows);
+
   return (
     <Panel className="flex-1">
       <PanelHeader
@@ -133,7 +129,7 @@ export function PurchaseOrderList() {
         searchValue={query}
         onSearchChange={(value) => {
           setQuery(value);
-          setPage(1);
+          resetPage();
         }}
         icon="receipt_long"
         iconIntent="default"
@@ -160,28 +156,17 @@ export function PurchaseOrderList() {
           </Alert>
         ) : null}
         {presets.bar(null)}
-        <Card className={fillCardClass(rows.slice((page - 1) * pageSize, page * pageSize).length)}>
+        <Card className={fillCardClass(visible.length)}>
           {orders ? (
             <Table
               caption="Purchase orders"
               columns={columns}
-              rows={rows.slice((page - 1) * pageSize, page * pageSize)}
+              rows={visible}
               getRowId={(po) => po.id}
               sort={sort}
               onSortChange={setSort}
               layout="fill"
-              onRowAction={open}
-              pagination={{
-                page,
-                pageSize,
-                total: rows.length,
-                pageSizes: PAGE_SIZES,
-                onPageChange: setPage,
-                onPageSizeChange: (size) => {
-                  setPageSize(size);
-                  setPage(1);
-                },
-              }}
+              pagination={pagination}
             />
           ) : (
             <Text tone="muted" className="p-4">Loading purchase orders…</Text>

@@ -10,16 +10,15 @@ import {
   PanelHeader,
   Table,
   TableAmount,
-  TableLink,
+  TableContent,
   TableStatus,
-  TableSubcontent,
   Tabs,
   Text,
   type PanelHeaderProps,
   type TableColumn,
   type TableSort,
 } from '@jasperlepardo/sikat-design-system';
-import { DEFAULT_PAGE_SIZE, PAGE_SIZES, fillCardClass } from '../../../components/form/DataTable';
+import { fillCardClass, useListPage } from '../../../components/form/DataTable';
 import { EMPTY_FILTER } from '../../../components/filter/engine';
 import { dateField, linesField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
@@ -110,8 +109,7 @@ function CountsShell({
 /** Search box + sortable, paginated table, shared by both lists. Sort comes from the list's presets. */
 function useListState<T>({ sort, setSort }: { sort: TableSort | null; setSort: (sort: TableSort | null) => void }) {
   const [query, setQuery] = useState('');
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const { resetPage, paginate } = useListPage();
   const sortRows = (rows: T[], value: (row: T, key: string) => string | number) => {
     if (!sort) return rows;
     const dir = sort.direction === 'asc' ? 1 : -1;
@@ -121,35 +119,21 @@ function useListState<T>({ sort, setSort }: { sort: TableSort | null; setSort: (
       return (x < y ? -1 : x > y ? 1 : 0) * dir;
     });
   };
-  const table = (caption: string, columns: TableColumn<T>[], rows: T[] | undefined, getRowId: (r: T) => string, onOpen: (r: T) => void) => {
-    const onPage = (rows ?? []).slice((page - 1) * pageSize, page * pageSize);
+  const table = (caption: string, columns: TableColumn<T>[], rows: T[] | undefined, getRowId: (r: T) => string) => {
+    if (!rows) return <Card><Text tone="muted" className="p-4">Loading…</Text></Card>;
+    const { visible, pagination } = paginate(rows);
     return (
-      <Card className={fillCardClass(onPage.length)}>
-        {rows ? (
-          <Table
-            caption={caption}
-            columns={columns}
-            rows={onPage}
-            getRowId={getRowId}
-            sort={sort}
-            onSortChange={setSort}
-            layout="fill"
-            onRowAction={onOpen}
-            pagination={{
-              page,
-              pageSize,
-              total: rows.length,
-              pageSizes: PAGE_SIZES,
-              onPageChange: setPage,
-              onPageSizeChange: (size) => {
-                setPageSize(size);
-                setPage(1);
-              },
-            }}
-          />
-        ) : (
-          <Text tone="muted" className="p-4">Loading…</Text>
-        )}
+      <Card className={fillCardClass(visible.length)}>
+        <Table
+          caption={caption}
+          columns={columns}
+          rows={visible}
+          getRowId={getRowId}
+          sort={sort}
+          onSortChange={setSort}
+          layout="fill"
+          pagination={pagination}
+        />
       </Card>
     );
   };
@@ -159,10 +143,10 @@ function useListState<T>({ sort, setSort }: { sort: TableSort | null; setSort: (
     searchValue: query,
     onSearchChange: (value) => {
       setQuery(value);
-      setPage(1);
+      resetPage();
     },
   });
-  return { query: query.trim().toLowerCase(), sortRows, table, search, resetPage: () => setPage(1) };
+  return { query: query.trim().toLowerCase(), sortRows, table, search, resetPage };
 }
 
 const COUNT_FIELDS = [
@@ -178,7 +162,6 @@ const COUNT_FIELDS = [
 ];
 
 export function StockCountList() {
-  const navigate = useNavigate();
   const data = useAsync(() => Promise.all([listCountings(), listPostings()]), []);
   const counts = data?.[0];
   const presets = useListPresets({
@@ -207,16 +190,15 @@ export function StockCountList() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [counts, presets.filter, list.query, list.sortRows]);
 
-  const open = (c: InventoryCounting) => navigate(`${COUNT_LIST_PATH}/${c.id}`);
   const columns: TableColumn<InventoryCounting>[] = [
-    { key: 'docNum', header: 'No.', sortable: true, cell: (c) => <TableLink onClick={() => open(c)}>{countNumber(c)}</TableLink> },
-    { key: 'warehouses', header: 'Warehouse', cell: (c) => <TableSubcontent subcopy={c.remarks || undefined}>{countWarehouses(c).join(', ') || '—'}</TableSubcontent> },
+    { key: 'docNum', header: 'No.', sortable: true, cell: (c) => <TableContent href={`/#${COUNT_LIST_PATH}/${c.id}`}>{countNumber(c)}</TableContent> },
+    { key: 'warehouses', header: 'Warehouse', cell: (c) => <TableContent subcopy={c.remarks || undefined}>{countWarehouses(c).join(', ') || '—'}</TableContent> },
     { key: 'countDate', header: 'Count date', sortable: true, cell: (c) => `${formatDate(c.countDate)} ${c.countTime}` },
     {
       key: 'counters',
       header: 'Counted by',
       cell: (c) => (
-        <TableSubcontent subcopy={c.countingType === 'multiple' ? 'Multiple counters' : undefined}>{c.counters.map((x) => nameIn(salesEmployees, x.employeeId)).join(', ')}</TableSubcontent>
+        <TableContent subcopy={c.countingType === 'multiple' ? 'Multiple counters' : undefined}>{c.counters.map((x) => nameIn(salesEmployees, x.employeeId)).join(', ')}</TableContent>
       ),
     },
     {
@@ -226,9 +208,9 @@ export function StockCountList() {
         const s = countSummary(c);
         const notes = [s.withVariance ? `${s.withVariance} with variance` : '', s.disagreements ? `${s.disagreements} counters differ` : ''].filter(Boolean).join(' · ');
         return (
-          <TableSubcontent subcopy={notes || undefined}>
+          <TableContent subcopy={notes || undefined}>
             {s.counted} of {s.lines}
-          </TableSubcontent>
+          </TableContent>
         );
       },
     },
@@ -244,13 +226,12 @@ export function StockCountList() {
       filters={presets.bar(null)}
       panel={presets.panel}
     >
-      {list.table('Inventory countings', columns, rows, (c) => c.id, open)}
+      {list.table('Inventory countings', columns, rows, (c) => c.id)}
     </CountsShell>
   );
 }
 
 export function InventoryPostingList() {
-  const navigate = useNavigate();
   const data = useAsync(() => Promise.all([listCountings(), listPostings()]), []);
   const [counts, postings] = data ?? [];
   const countOf = (p: InventoryPosting) => counts?.find((c) => c.id === p.countingId);
@@ -292,10 +273,9 @@ export function InventoryPostingList() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [postings, presets.filter, list.query, list.sortRows]);
 
-  const open = (p: InventoryPosting) => navigate(`${POSTING_LIST_PATH}/${p.id}`);
   const columns: TableColumn<InventoryPosting>[] = [
-    { key: 'docNum', header: 'No.', sortable: true, cell: (p) => <TableLink onClick={() => open(p)}>{postingNumber(p)}</TableLink> },
-    { key: 'warehouses', header: 'Warehouse', cell: (p) => <TableSubcontent subcopy={p.remarks || undefined}>{countWarehouses(p).join(', ') || '—'}</TableSubcontent> },
+    { key: 'docNum', header: 'No.', sortable: true, cell: (p) => <TableContent href={`/#${POSTING_LIST_PATH}/${p.id}`}>{postingNumber(p)}</TableContent> },
+    { key: 'warehouses', header: 'Warehouse', cell: (p) => <TableContent subcopy={p.remarks || undefined}>{countWarehouses(p).join(', ') || '—'}</TableContent> },
     { key: 'postingDate', header: 'Posting date', sortable: true, cell: (p) => formatDate(p.postingDate) },
     { key: 'count', header: 'From count', cell: (p) => (countOf(p) ? countNumber(countOf(p)!) : '— Direct') },
     { key: 'lines', header: 'Lines', cell: (p) => String(p.lines.length) },
@@ -311,7 +291,7 @@ export function InventoryPostingList() {
       filters={presets.bar(null)}
       panel={presets.panel}
     >
-      {list.table('Inventory postings', columns, rows, (p) => p.id, open)}
+      {list.table('Inventory postings', columns, rows, (p) => p.id)}
     </CountsShell>
   );
 }
