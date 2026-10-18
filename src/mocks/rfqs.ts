@@ -9,7 +9,7 @@
  * - Valid Until dates track whether the quote is still usable.
  * - No warehouse on lines — that is decided when the PO is created.
  */
-import type { DocumentSeries } from './common';
+import type { Attachment, DocumentSeries } from './common';
 import type { PoReference } from './purchaseOrders';
 import { employeeId, plId, termId } from './masters';
 import { SEED_PARTNERS } from './partners';
@@ -99,6 +99,7 @@ export interface Rfq {
   freightTaxCode: string;
   rounding: boolean;
   remarks: string;
+  attachments: Attachment[];
 
   /** Id of the purchase request this RFQ was raised from, if any. */
   basePrId: string;
@@ -185,6 +186,7 @@ export function blankRfq(ownerId: string): Omit<Rfq, 'id'> {
     freightTaxCode: '44',
     rounding: false,
     remarks: '',
+    attachments: [],
     basePrId: '',
     convertedToPoId: '',
     approved: true,

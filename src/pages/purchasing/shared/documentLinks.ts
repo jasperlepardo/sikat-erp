@@ -4,26 +4,28 @@ import { taxCodes } from '../../../services/masterData';
 import { listPurchaseOrders, poNumber, poTotal } from '../../../services/purchaseOrders';
 import { listPurchaseRequests, prNumber } from '../../../services/purchaseRequests';
 import { listRfqs, rfqNumber, rfqTotal } from '../../../services/rfqs';
-import { PO_LIST_PATH, STATUS_INTENT } from '../orders/detail/PurchaseOrderDetail';
-import { PR_LIST_PATH, STATUS_INTENT as PR_STATUS_INTENT } from '../requests/detail/PurchaseRequestDetail';
-import { RFQ_LIST_PATH, STATUS_INTENT as RFQ_STATUS_INTENT } from '../rfqs/detail/RfqDetail';
-import { GR_LIST_PATH, GR_STATUS_INTENT } from '../receipts/detail/GoodsReceiptDetail';
-import { AP_LIST_PATH, AP_STATUS_INTENT } from '../invoices/detail/ApInvoiceDetail';
+import { PO_LIST_PATH, STATUS_INTENT } from '../purchase-orders/detail/PurchaseOrderDetail';
+import { PR_LIST_PATH, STATUS_INTENT as PR_STATUS_INTENT } from '../purchase-requests/detail/PurchaseRequestDetail';
+import { RFQ_LIST_PATH, STATUS_INTENT as RFQ_STATUS_INTENT } from '../purchase-quotations/detail/PurchaseQuotationDetail';
+import { GR_LIST_PATH, GR_STATUS_INTENT } from '../goods-receipts/detail/GoodsReceiptDetail';
+import { AP_LIST_PATH, AP_STATUS_INTENT } from '../bills/ap-invoices/detail/ApInvoiceDetail';
 import { apNumber, apTotal, listApInvoices } from '../../../services/apInvoices';
 import { listPayments, overallAmount, paymentNumber, rowSettled } from '../../../services/outgoingPayments';
-import { PAYMENT_LIST_PATH, PAYMENT_STATUS_INTENT } from '../payments/detail/PaymentDetail';
+import { PAYMENT_LIST_PATH, PAYMENT_STATUS_INTENT } from '../payments-made/detail/PaymentDetail';
 import { formatAmount } from '../../../services/format';
 import { listGoodsReturns, returnNumber, returnTotal } from '../../../services/goodsReturns';
 import { listCreditMemos, memoNumber, memoTotal } from '../../../services/apCreditMemos';
-import { RETURN_STATUS_INTENT } from '../returns/GoodsReturnDetail';
-import { MEMO_LIST_PATH, MEMO_STATUS_INTENT, RETURN_LIST_PATH } from '../returns/types';
+import { RETURN_STATUS_INTENT } from '../returns-and-debits/types';
+import { MEMO_LIST_PATH, MEMO_STATUS_INTENT, RETURN_LIST_PATH } from '../returns-and-debits/types';
 import { dprNumber, dprTotal, listDownPayments } from '../../../services/apDownPayments';
-import { DPR_LIST_PATH, DPR_STATUS_INTENT } from '../down-payments/DprDetail';
+import { DPR_LIST_PATH, DPR_STATUS_INTENT } from '../bills/down-payment-requests/detail/DprDetail';
+import { listPurchaseBlanketAgreements, pbaNumber, pbaTotals } from '../../../services/purchaseBlanketAgreements';
+import { PBA_LIST_PATH, PBA_STATUS_INTENT } from '../purchase-agreements/PurchaseBlanketAgreementList';
 import { lineage, type LinkedDocument } from './lineage';
 
 export type { LinkedDocument, Relation } from './lineage';
 
-export type DocKind = 'PR' | 'RFQ' | 'PO' | 'GRPO' | 'APINV' | 'PAY' | 'GRET' | 'APCM' | 'DPR';
+export type DocKind = 'PR' | 'RFQ' | 'PO' | 'GRPO' | 'APINV' | 'PAY' | 'GRET' | 'APCM' | 'DPR' | 'PBA';
 
 /** Lines of a document copied from one base document. */
 export interface CoveredLine {
@@ -115,7 +117,14 @@ const SOURCES: Record<DocKind, () => Promise<DocNode[]>> = {
       total: poTotal(po, codes),
       partnerId: po.vendorId,
       items: coveredLines(po.lines),
-      bases: po.baseRfqId ? [{ kind: 'RFQ' as const, id: po.baseRfqId, lines: [] }] : [],
+      bases: [
+        ...(po.baseRfqId ? [{ kind: 'RFQ' as const, id: po.baseRfqId, lines: [] }] : []),
+        ...[...new Set(po.lines.map((l) => l.agreementId).filter(Boolean))].map((id) => ({
+          kind: 'PBA' as const,
+          id,
+          lines: [] as CoveredLine[],
+        })),
+      ],
     }));
   },
   // Receipt lines are copied from PO lines only.
@@ -254,6 +263,25 @@ const SOURCES: Record<DocKind, () => Promise<DocNode[]>> = {
         id: poId,
         lines: d.lines.filter((l) => l.baseId === poId),
       })),
+    }));
+  },
+
+  PBA: async () => {
+    const pbas = await listPurchaseBlanketAgreements();
+    return pbas.map((pba) => ({
+      kind: 'PBA' as const,
+      id: pba.id,
+      type: 'Purchase blanket agreement',
+      number: pba.docNum ? pbaNumber(pba) : pba.id,
+      href: `${PBA_LIST_PATH}/${pba.docNum ? pbaNumber(pba) : pba.id}`,
+      date: pba.startDate,
+      status: pba.status,
+      intent: PBA_STATUS_INTENT[pba.status],
+      currency: pba.currency,
+      total: pbaTotals(pba).plannedTotal,
+      partnerId: pba.vendorId,
+      items: [],
+      bases: [],
     }));
   },
 };

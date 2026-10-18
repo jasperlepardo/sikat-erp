@@ -6,12 +6,12 @@ import { listTransfers, transferNumber } from '../../../../services/inventoryTra
 import { listPurchaseOrders, openQty as poOpenQty, poNumber } from '../../../../services/purchaseOrders';
 import { listSalesOrders, openQty as soOpenQty, soNumber } from '../../../../services/salesOrders';
 import type { StatusIntent } from '../../../partners/detail/partnerDocuments';
-import { PO_LIST_PATH, STATUS_INTENT } from '../../../purchasing/orders/detail/PurchaseOrderDetail';
-import { GR_LIST_PATH, GR_STATUS_INTENT } from '../../../purchasing/receipts/detail/GoodsReceiptDetail';
-import { RETURN_STATUS_INTENT } from '../../../purchasing/returns/GoodsReturnDetail';
-import { RETURN_LIST_PATH } from '../../../purchasing/returns/types';
-import { SO_STATUS_INTENT } from '../../../sales/orders/detail/SalesOrderDetail';
-import { SO_LIST_PATH } from '../../../sales/orders/detail/types';
+import { PO_LIST_PATH, STATUS_INTENT } from '../../../purchasing/purchase-orders/detail/PurchaseOrderDetail';
+import { GR_LIST_PATH, GR_STATUS_INTENT } from '../../../purchasing/goods-receipts/detail/GoodsReceiptDetail';
+import { RETURN_STATUS_INTENT } from '../../../purchasing/returns-and-debits/types';
+import { RETURN_LIST_PATH } from '../../../purchasing/returns-and-debits/types';
+import { SO_STATUS_INTENT } from '../../../sales/sales-orders/detail/SalesOrderDetail';
+import { SO_LIST_PATH } from '../../../sales/sales-orders/detail/types';
 import { DN_STATUS_INTENT } from '../../../sales/deliveries/detail/DeliveryDetail';
 import { DN_LIST_PATH } from '../../../sales/deliveries/detail/types';
 import { TRANSFER_LIST_PATH, TRANSFER_STATUS_INTENT } from '../../transfers/InventoryTransferDetail';

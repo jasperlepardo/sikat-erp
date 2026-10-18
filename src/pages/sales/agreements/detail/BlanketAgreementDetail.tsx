@@ -4,50 +4,49 @@ import {
   Alert,
   Badge,
   Button,
-  CardField,
   Form,
-  Icon,
   Panel,
   PanelHeader,
   Tabs,
   Text,
-  type CardFieldOption,
 } from '@jasperlepardo/sikat-design-system';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
-import { Fields, FieldStack, ReadOnly, Section, bind, type Errors } from '../../../../components/form/fields';
+import { type Errors } from '../../../../components/form/fields';
 import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
+import { ActivityTab } from '../../../../components/activity/ActivityTab';
 import { CURRENT_USER_ID } from '../../../../mocks/common';
-import { contactName } from '../../../../mocks/partners';
 import { blankBlanketAgreement, newBaLine, type BlanketAgreement } from '../../../../mocks/blanketAgreements';
 import { blankSalesOrder, newSoLine } from '../../../../mocks/salesOrders';
 import { getSalesSettings } from '../../../../services/salesOrders';
-import { SO_LIST_PATH } from '../../orders/detail/types';
+import { SO_LIST_PATH } from '../../sales-orders/detail/types';
 import { formatDate, todayISO } from '../../../../services/dates';
-import { formatAmount } from '../../../../services/format';
 import { loadInventoryMasters } from '../../../../services/inventoryMasters';
 import { listItems } from '../../../../services/items';
 import { listPartnersByRole } from '../../../../services/partners';
 import { baSeries } from '../../../../services/allSeries';
 import { baNumber, baTotals, openQty, getBlanketAgreement, listBlanketAgreements, saveBlanketAgreement, type BaInput } from '../../../../services/blanketAgreements';
-import { projectDef } from '../../../settings/masterDefs';
 import { useDocTitle } from '../../../../services/useDocTitle';
-import { GeneralTab } from './GeneralTab';
-import { DetailsTab } from './DetailsTab';
-import { DocumentsTab } from './DocumentsTab';
+import { CustomerCard } from '../../shared/CustomerCard';
+import { SalesDocumentFlow } from '../../shared/SalesDocumentFlow';
+import { BaCustomerPanel } from './BaCustomerPanel';
+import { BaAgreementCard } from './BaAgreementCard';
+import { GeneralTab } from './general';
+import { LinesTab } from './lines';
+import { BaSummaryCard } from './BaSummaryCard';
 import { BA_LIST_PATH, BA_STATUS_INTENT } from '../BlanketAgreementList';
 import type { BaDraft, BaMasters } from './types';
 import { NotFound, PrevNext, neighbours } from '../../../../components/form/DetailNav';
 
-type TabId = 'general' | 'details' | 'documents' | 'attachments' | 'recurring';
-const TABS: { value: TabId; label: string }[] = [
-  { value: 'general', label: 'General' },
+const PAGES = [
   { value: 'details', label: 'Details' },
-  { value: 'documents', label: 'Documents' },
-  { value: 'attachments', label: 'Attachments' },
-  { value: 'recurring', label: 'Recurring Transactions' },
-];
+  { value: 'transactions', label: 'Transactions' },
+  { value: 'activity', label: 'Activity' },
+] as const;
+type PageId = (typeof PAGES)[number]['value'];
 
+type TabId = 'general' | 'lines';
+const TAB_LABEL: Record<string, string> = { general: 'General', lines: 'Lines', header: 'Agreement' };
 
 function validate(d: BaDraft): Problem<TabId>[] {
   const { problems, need } = problemCollector<TabId>();
@@ -59,9 +58,9 @@ function validate(d: BaDraft): Problem<TabId>[] {
   if (d.agreementMethod === 'Items') {
     for (const [i, l] of d.lines.entries()) {
       const n = `Line ${i + 1}`;
-      need(l.itemId, 'details', `line:${l.id}:item`, `${n}: pick an item.`);
-      need(l.plannedQty > 0, 'details', `line:${l.id}:plannedQty`, `${n}: planned quantity must be more than 0.`);
-      need(l.unitPrice >= 0, 'details', `line:${l.id}:unitPrice`, `${n}: unit price can't be negative.`);
+      need(l.itemId, 'lines', `line:${l.id}:item`, `${n}: pick an item.`);
+      need(l.plannedQty > 0, 'lines', `line:${l.id}:plannedQty`, `${n}: planned quantity must be more than 0.`);
+      need(l.unitPrice >= 0, 'lines', `line:${l.id}:unitPrice`, `${n}: unit price can't be negative.`);
     }
   }
   return problems;
@@ -74,18 +73,22 @@ export function BlanketAgreementDetail() {
 }
 
 function BaForm() {
-  const { id } = useParams();
+  const { id, tab: tabParam } = useParams();
   const isNew = id === 'new';
   const navigate = useNavigate();
+  const copyFrom = (useLocation().state as { copyFrom?: BaDraft } | null)?.copyFrom;
 
   const [draft, setDraft] = useState<BaDraft | null | undefined>(
-    isNew ? { ...blankBlanketAgreement(CURRENT_USER_ID), lines: [] } : undefined,
+    isNew ? { ...(copyFrom ?? { ...blankBlanketAgreement(CURRENT_USER_ID), lines: [] }) } : undefined,
   );
   const [m, setM] = useState<BaMasters>();
-  const [tab, setTab] = useState<TabId>('general');
+  const page = (PAGES.some((p) => p.value === tabParam) ? tabParam : 'details') as PageId;
+  const setPage = (v: PageId) => navigate(`${BA_LIST_PATH}/${id}/${v}`, { replace: true });
+  useEffect(() => { if (!tabParam) navigate(`${BA_LIST_PATH}/${id}/details`, { replace: true }); }, []);
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);
+  const [customerDetailsOpen, setCustomerDetailsOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -131,10 +134,10 @@ function BaForm() {
   const { prevId, nextId } = neighbours(siblings, draft.id && (draft.docNum ? baNumber(draft as BlanketAgreement) : draft.id));
 
   const totals = baTotals(draft);
-  const customer = m.customers.find((c) => c.id === draft.customerId);
 
   const update = (patch: Partial<BaDraft>) => setDraft({ ...draft, ...patch });
-  const f = bind(draft, update);
+
+  const customer = m.customers.find((c) => c.id === draft.customerId);
 
   const pickCustomer = (customerId: string | null) => {
     const c = m.customers.find((x) => x.id === customerId);
@@ -242,208 +245,108 @@ function BaForm() {
       : baNumber(draft as BlanketAgreement);
 
   return (
-    <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
-      <Panel className="flex-1">
-        <PanelHeader
-          type="details"
-          icon="description"
-          iconIntent="primary"
-          iconShape="rounded"
-          iconSize={32}
-          iconVariant="outline"
-          breadcrumbs={[{ label: 'Agreements', href: BA_LIST_PATH }, { label: title }]}
-          onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
-          onBack={() => navigate(BA_LIST_PATH)}
-          trailing={
-            isNew ? undefined : <PrevNext path={BA_LIST_PATH} prevId={prevId} nextId={nextId} />
-          }
-          status={isNew ? undefined : <Badge size="small" intent={BA_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
-          actions={
-            <>
-              {readOnly ? null : <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(BA_LIST_PATH)}>Cancel</Button>}
-              {menu.length ? <MoreMenu items={menu} /> : null}
-              {!readOnly && (
-                <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
-                  {saving ? 'Saving…' : added ? 'Update' : 'Add'}
-                </Button>
-              )}
-            </>
-          }
-        />
-
-        <Panel.Body className="flex flex-col gap-2">
-          <ProblemsAlert problems={problems} tabLabel={(t) => TABS.find((x) => x.value === t)?.label ?? t} />
-
-          {readOnly ? (
-            <Alert intent="default" variant="outline" title={`This agreement is ${draft.status.toLowerCase()}`}>
-              {draft.status === 'Terminated' && draft.terminationDate
-                ? `Terminated on ${formatDate(draft.terminationDate)}. `
-                : ''}
-              Only remarks and attachments can be changed.
-            </Alert>
-          ) : null}
-
-          {/* ── Header fields ─────────────────────────────────────────────── */}
-          <fieldset disabled={readOnly} className="contents">
-            <Section icon="person" title="Customer">
-              <Fields cols={2}>
-                <div className="md:col-span-2">
-                  <CardField
-                    label="Customer"
-                    required
-                    placeholder="Search customers"
-                    options={m.customers
-                      .filter((c) => c.status !== 'Inactive' || c.id === draft.customerId)
-                      .map((c): CardFieldOption => ({
-                        value: c.id,
-                        label: c.name,
-                        icon: <Icon size={16}>person</Icon>,
-                        fields: [
-                          { label: 'Code', value: c.code },
-                          ...(c.tin ? [{ label: 'TIN', value: c.tin }] : []),
-                        ],
-                        href: `/#/sales/customers/${c.id}`,
-                      }))}
-                    value={draft.customerId}
-                    onValueChange={(id) => pickCustomer(id || null)}
-                    readOnly={!!(customer && added)}
-                  />
-                  {errors.customerId && <Text variant="small" tone="danger">{errors.customerId}</Text>}
-                </div>
-
-                <CardField
-                  label="Contact person"
-                  options={(customer?.contacts ?? [])
-                    .filter((c) => c.active || c.id === draft.contactId)
-                    .map((c) => ({
-                      value: c.id,
-                      label: contactName(c),
-                      icon: <Icon size={16}>person</Icon>,
-                      fields: [
-                        ...(c.position ? [{ label: 'Position', value: c.position }] : []),
-                        ...(c.mobile || c.tel1 ? [{ label: 'Phone', value: c.mobile || c.tel1 }] : []),
-                        ...(c.email ? [{ label: 'Email', value: c.email }] : []),
-                      ],
-                    }))}
-                  value={draft.contactId}
-                  onValueChange={(contactId) => update({ contactId: contactId ?? '' })}
-                  placeholder={customer ? 'Select a contact person' : 'Pick a customer first'}
-                  readOnly={readOnly || !customer}
-                />
-
-                {f.text('customerRef', 'Customer ref. no.', { hint: "The customer's own reference for this agreement." })}
-                <ReadOnly label="BP currency" value={draft.currency} hint="Set by the customer." />
-                <ReadOnly label="Telephone no." value={draft.phone || '—'} hint="From the customer record." />
-                <ReadOnly label="E-mail" value={draft.email || '—'} hint="From the customer record." />
-              </Fields>
-            </Section>
-
-            <Section icon="event_note" title="Agreement">
-              <Fields cols={2}>
-                <FieldStack>
-                  {f.lookup(
-                    'seriesId',
-                    'No. (series)',
-                    m.baSeries
-                      .filter((s) => s.active || s.id === draft.seriesId)
-                      .map((s) => ({ value: s.id, label: s.name })),
-                    { required: true, readOnly: added },
-                  )}
-                </FieldStack>
-                <ReadOnly label="Document no." value={draft.docNum ? baNumber(draft as BlanketAgreement) : 'Assigned on Add'} />
-
-                {f.choose(
-                  'agreementMethod',
-                  'Agreement method',
-                  [
-                    { value: 'Items', label: 'Items method' },
-                    { value: 'Money', label: 'Money method' },
-                  ],
-                  { required: true, readOnly: added, hint: 'Items method tracks quantities per line; Money method tracks a total value.' },
+    <>
+      <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
+        <Panel className="flex-1">
+          <PanelHeader
+            type="details"
+            icon="description"
+            iconIntent="primary"
+            iconShape="rounded"
+            iconSize={32}
+            iconVariant="outline"
+            breadcrumbs={[{ label: 'Agreements', href: BA_LIST_PATH }, { label: title }]}
+            onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
+            onBack={() => navigate(BA_LIST_PATH)}
+            trailing={isNew ? undefined : <PrevNext path={BA_LIST_PATH} prevId={prevId} nextId={nextId} />}
+            tabs={isNew ? undefined : <Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={[...PAGES]} />}
+            status={isNew ? undefined : <Badge size="small" intent={BA_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
+            actions={
+              <>
+                {readOnly ? null : <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(BA_LIST_PATH)}>Cancel</Button>}
+                {menu.length ? <MoreMenu items={menu} /> : null}
+                {!readOnly && (
+                  <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
+                    {saving ? 'Saving…' : added ? 'Update' : 'Add'}
+                  </Button>
                 )}
+              </>
+            }
+          />
 
-                {f.date('startDate', 'Start date', { required: true })}
-                {f.date('endDate', 'End date')}
-                {f.master('projectId', 'Business partner project', projectDef, { clearable: true })}
-                <ReadOnly
-                  label="Termination date"
-                  value={draft.terminationDate ? formatDate(draft.terminationDate) : '—'}
-                  hint="Set automatically when the agreement is terminated."
+          {page === 'transactions' ? (
+            <Panel.Body>
+              {added && draft.id ? (
+                <SalesDocumentFlow
+                  kind="BA"
+                  id={draft.id}
+                  notes="Sales orders and their downstream documents drawn from this agreement."
                 />
-                {f.date('signingDate', 'Signing date')}
-                {f.text('description', 'Description', { hint: 'Free-text description of the agreement.' })}
-              </Fields>
-            </Section>
-          </fieldset>
-
-          {/* ── Tabs ───────────────────────────────────────────────────────── */}
-          <div>
-            <Tabs
-              variant="outline"
-              value={tab}
-              onValueChange={(v) => setTab(v as TabId)}
-              items={TABS}
-            />
-          </div>
-
-          <fieldset disabled={readOnly} className="contents">
-            {tab === 'general' && (
-              <GeneralTab draft={draft} update={update} errors={errors} m={m} readOnly={readOnly} />
-            )}
-            {tab === 'details' && (
-              <DetailsTab draft={draft} update={update} m={m} readOnly={readOnly} />
-            )}
-            {tab === 'documents' && <DocumentsTab baId={draft.id} />}
-            {tab === 'recurring' && (
-              <Section icon="repeat" title="Recurring Transactions">
-                <Text tone="muted" variant="small">
-                  Recurring transaction templates linked to this agreement will appear here.
-                </Text>
-              </Section>
-            )}
-          </fieldset>
-
-          {tab === 'attachments' && (
-            <AttachmentsCard
-              attachments={draft.attachments}
-              onChange={(attachments) => update({ attachments })}
-              emptyHint="Signed agreement, customer's approval, or supporting documents."
-              withDescription
-            />
-          )}
-
-          {/* ── Totals footer ─────────────────────────────────────────────── */}
-          {draft.lines.length > 0 && tab !== 'documents' && tab !== 'recurring' && (
-            <Section icon="functions" title="Summary">
-              <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-                <div>
-                  <Text variant="small" tone="muted">Planned total</Text>
-                  <Text weight="semibold" tone="heading">{draft.currency} {formatAmount(totals.plannedTotal)}</Text>
-                </div>
-                <div>
-                  <Text variant="small" tone="muted">Committed</Text>
-                  <Text weight="semibold">{draft.currency} {formatAmount(totals.committedTotal)}</Text>
-                </div>
-                <div>
-                  <Text variant="small" tone="muted">Fulfilled</Text>
-                  <Text weight="semibold">{draft.currency} {formatAmount(totals.cumulativeTotal)}</Text>
-                </div>
-                <div>
-                  <Text variant="small" tone="muted">Open</Text>
-                  <Text weight="semibold" tone={totals.openTotal === 0 ? 'muted' : 'default'}>
-                    {draft.currency} {formatAmount(totals.openTotal)}
-                  </Text>
-                </div>
-              </div>
-              {draft.settlementProbability > 0 && (
-                <Text variant="small" tone="muted" className="mt-2">
-                  Settlement probability: {draft.settlementProbability}%
-                </Text>
+              ) : (
+                <Text variant="small" tone="muted" className="p-4">Transactions will show here once the agreement is added.</Text>
               )}
-            </Section>
+            </Panel.Body>
+          ) : page === 'activity' ? (
+            <Panel.Body>
+              <ActivityTab target={{ kind: 'BA', id: draft.id ?? '' }} partnerId={draft.customerId} />
+            </Panel.Body>
+          ) : (
+            <Panel.Body className="flex flex-col gap-2">
+              <ProblemsAlert problems={problems} tabLabel={(t) => TAB_LABEL[t as TabId] ?? t} />
+
+              {readOnly ? (
+                <Alert intent="default" variant="outline" title={`This agreement is ${draft.status.toLowerCase()}`}>
+                  {draft.status === 'Terminated' && draft.terminationDate
+                    ? `Terminated on ${formatDate(draft.terminationDate)}. `
+                    : ''}
+                  Only remarks and attachments can be changed.
+                </Alert>
+              ) : null}
+
+              <fieldset disabled={readOnly} className="contents">
+                {draft.lines.length > 0 && (
+                  <BaSummaryCard currency={draft.currency} totals={totals} settlementProbability={draft.settlementProbability} />
+                )}
+                <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
+                  <div className="flex flex-col gap-2 lg:col-span-8">
+                    <CustomerCard
+                      customers={m.customers}
+                      customerId={draft.customerId}
+                      customer={customer}
+                      onPickCustomer={pickCustomer}
+                      onOpenDetails={() => setCustomerDetailsOpen(true)}
+                      locked={!!(customer && added)}
+                      error={errors.customerId}
+                    />
+                    <LinesTab draft={draft} update={update} m={m} readOnly={readOnly} />
+                    <AttachmentsCard
+                      attachments={draft.attachments}
+                      onChange={(attachments) => update({ attachments })}
+                      emptyHint="Signed agreement, customer's approval, or supporting documents."
+                      withDescription
+                    />
+                  </div>
+
+                  <aside className="flex flex-col gap-2 lg:col-span-4">
+                    <BaAgreementCard draft={draft} update={update} m={m} added={added} />
+                    <GeneralTab draft={draft} update={update} errors={errors} m={m} readOnly={readOnly} />
+                  </aside>
+                </div>
+              </fieldset>
+            </Panel.Body>
           )}
-        </Panel.Body>
-      </Panel>
-    </Form>
+        </Panel>
+      </Form>
+      {customer && (
+        <BaCustomerPanel
+          customer={customer}
+          draft={draft}
+          update={update}
+          readOnly={readOnly}
+          open={customerDetailsOpen}
+          onClose={() => setCustomerDetailsOpen(false)}
+        />
+      )}
+    </>
   );
 }

@@ -19,19 +19,19 @@ import { listSalesReturns, srNumber } from '../../services/salesReturns';
 import { listArCreditMemos, arCmNumber } from '../../services/arCreditMemos';
 import { listIncomingPayments, incomingNumber } from '../../services/incomingPayments';
 
-import { PO_LIST_PATH } from '../purchasing/orders/detail/PurchaseOrderDetail';
-import { RFQ_LIST_PATH } from '../purchasing/rfqs/detail/RfqDetail';
-import { GR_LIST_PATH } from '../purchasing/receipts/detail/GoodsReceiptDetail';
-import { AP_LIST_PATH } from '../purchasing/invoices/detail/ApInvoiceDetail';
-import { RETURN_LIST_PATH, MEMO_LIST_PATH } from '../purchasing/returns/types';
-import { DPR_LIST_PATH } from '../purchasing/down-payments/DprDetail';
-import { PAYMENT_LIST_PATH } from '../purchasing/payments/detail/PaymentDetail';
+import { PO_LIST_PATH } from '../purchasing/purchase-orders/detail/PurchaseOrderDetail';
+import { RFQ_LIST_PATH } from '../purchasing/purchase-quotations/detail/PurchaseQuotationDetail';
+import { GR_LIST_PATH } from '../purchasing/goods-receipts/detail/GoodsReceiptDetail';
+import { AP_LIST_PATH } from '../purchasing/bills/ap-invoices/detail/ApInvoiceDetail';
+import { RETURN_LIST_PATH, MEMO_LIST_PATH } from '../purchasing/returns-and-debits/types';
+import { DPR_LIST_PATH } from '../purchasing/bills/down-payment-requests/detail/DprDetail';
+import { PAYMENT_LIST_PATH } from '../purchasing/payments-made/detail/PaymentDetail';
 import { QT_LIST_PATH } from '../sales/quotations/QuotationList';
-import { SO_LIST_PATH } from '../sales/orders/detail/types';
+import { SO_LIST_PATH } from '../sales/sales-orders/detail/types';
 import { DN_LIST_PATH } from '../sales/deliveries/detail/types';
 import { AR_LIST_PATH } from '../sales/invoices/detail/types';
-import { SR_LIST_PATH, AR_CM_LIST_PATH } from '../sales/returns/types';
-import { RC_LIST_PATH } from '../sales/payments/detail/IncomingPaymentDetail';
+import { SR_LIST_PATH, AR_CM_LIST_PATH } from '../sales/returns-and-credits/types';
+import { RC_LIST_PATH } from '../sales/payments-received/detail/IncomingPaymentDetail';
 
 interface PendingItem {
   id: string;

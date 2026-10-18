@@ -16,7 +16,7 @@
  * - Return Reason belongs to returns, and Central Bank Ind. to other countries' localizations.
  *   Both are left out.
  */
-import type { DocumentSeries } from './common';
+import type { Attachment, DocumentSeries } from './common';
 import { seedBinCode } from './binLocations';
 import { plId } from './masters';
 import { SEED_ITEMS } from './items';
@@ -116,6 +116,7 @@ export interface GoodsReceipt {
   buyerId: string;
   ownerId: string;
   remarks: string;
+  attachments: Attachment[];
   discountPct: number;
   freight: number;
   freightTaxCode: string;
@@ -197,6 +198,7 @@ export function blankGoodsReceipt(today: string, buyerId: string): Omit<GoodsRec
     buyerId: buyerId,
     ownerId: buyerId,
     remarks: '',
+    attachments: [],
     discountPct: 0,
     freight: 0,
     freightTaxCode: '',

@@ -488,7 +488,7 @@ const HAND_ORDERS: SalesOrder[] = [
     deliveryDate: '2026-10-06',
     customerRef: 'SO-2026-0412',
     remarks: 'DepEd Pasig — 40 iPads for teachers (PhilGEPS award). First 24 delivered 6 Oct; the rest on PO-2026-0006.',
-    lines: [line('so-012-1', 'apl-0080', 40, { priceListId: plId('Government'), priceSource: 'Government', deliveredQty: 24 })],
+    lines: [line('so-012-1', 'apl-0080', 40, { priceListId: plId('Government'), unitPrice: round2(75041 / 1.12), priceSource: 'Government', deliveredQty: 24 })],
   }),
   header('so-013', 8, 'bp-002', {
     postingDate: '2026-09-02',

@@ -23,7 +23,7 @@ import { SALES_SETTINGS, blankSalesOrder, newSoLine } from '../../../../mocks/sa
 import { logRejection } from '../../../../services/approvalRules';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { QT_LIST_PATH, QT_STATUS_INTENT } from '../QuotationList';
-import { SO_LIST_PATH } from '../../orders/detail/types';
+import { SO_LIST_PATH } from '../../sales-orders/detail/types';
 import { SalesDocumentFlow } from '../../shared/SalesDocumentFlow';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
 import { NotFound, PrevNext, neighbours } from '../../../../components/form/DetailNav';
@@ -33,7 +33,8 @@ import { QtDetailsCard } from './QtDetailsCard';
 import { CustomerCard } from '../../shared/CustomerCard';
 import { CustomerDetailsPanel } from '../../shared/CustomerDetailsPanel';
 import { QtContentsTable } from './QtContentsTable';
-import { TotalsFooter } from '../../shared/TotalsFooter';
+import { SalesTotalsFooter } from '../../shared/TotalsFooter';
+import { ReferencesTable } from '../../../purchasing/shared/ReferencesTable';
 
 type TabId = 'contents';
 const TAB_LABEL: Record<TabId, string> = { contents: 'Contents' };
@@ -347,13 +348,19 @@ function QuotationForm() {
                   />
                   <QtContentsTable
                     {...tabProps}
-                    cardFooter={<TotalsFooter {...tabProps} ctx={{ ...ctx, readOnly: readOnly || added }} withholding={[]} />}
+                    cardFooter={<SalesTotalsFooter {...tabProps} ctx={{ ...ctx, readOnly: readOnly || added }} withholding={[]} />}
                   />
+                  <ReferencesTable
+                    refs={draft.references}
+                    onChange={(references) => update({ references })}
+                    readOnly={readOnly}
+                    description="Link the customer's RFQ, a contract, or other source documents."
+                  />
+                  <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach the RFQ, specs sheet, or supporting documents." />
                 </div>
 
                 <aside className="flex flex-col gap-2 lg:col-span-4">
                   <QtDetailsCard {...tabProps} />
-                  <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach the RFQ, specs sheet, or supporting documents." />
                 </aside>
               </div>
             </Panel.Body>

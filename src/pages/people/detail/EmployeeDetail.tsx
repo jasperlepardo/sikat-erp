@@ -12,11 +12,11 @@ import { listPartnersByRole } from '../../../services/partners';
 import { useAsync } from '../../../services/useAsync';
 import { branchDef, costCenterDef, departmentDef, positionDef, salesEmployeeDef, userDef } from '../../settings/masterDefs';
 import { EMPLOYEES_PATH } from '../EmployeeList';
-import { AddressTab } from './AddressTab';
-import { AdministrationTab } from './AdministrationTab';
-import { FinanceTab } from './FinanceTab';
-import { MembershipTab } from './MembershipTab';
-import { PersonalTab } from './PersonalTab';
+import { AddressTab } from './address';
+import { AdministrationTab } from './administration';
+import { FinanceTab } from './finance';
+import { MembershipTab } from './membership';
+import { PersonalTab } from './personal';
 import { TABS, type Draft, type TabId } from './types';
 
 type Problem = ProblemBase<TabId>;

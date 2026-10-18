@@ -6,7 +6,7 @@ import { blankJournalEntry, newJeLine } from '../mocks/journalEntries';
 import type { Item } from '../mocks/items';
 import type { Partner } from '../mocks/partners';
 import { FX_GAIN_ACCOUNT, FX_LOSS_ACCOUNT } from '../mocks/outgoingPayments';
-import { invoiceBalance } from '../pages/purchasing/payments/detail/types';
+import { invoiceBalance } from '../pages/purchasing/payments-made/detail/types';
 import { apNumber } from './apInvoices';
 import { arAmounts, arNumber } from './arInvoices';
 import { formatDate } from './dates';

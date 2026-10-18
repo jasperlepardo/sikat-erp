@@ -2,7 +2,7 @@
  * Purchase requests. The earliest document in the purchasing workflow — an internal
  * request for goods or services before a vendor is chosen. Workflow: Open → Closed.
  */
-import type { DocumentSeries } from './common';
+import type { Attachment, DocumentSeries } from './common';
 import { employeeId, plId } from './masters';
 import { SEED_ITEMS } from './items';
 
@@ -78,6 +78,7 @@ export interface PurchaseRequest {
   ownerId: string;
   freight: number;
   remarks: string;
+  attachments: Attachment[];
 }
 
 export const PR_SERIES: DocumentSeries[] = [
@@ -142,6 +143,7 @@ export function blankPurchaseRequest(requesterId: string, requesterName: string)
     ownerId: requesterId,
     freight: 0,
     remarks: '',
+    attachments: [],
   };
 }
 

@@ -15,7 +15,7 @@
  *   change it.
  * - Return Reason is left out — it belongs to returns, not purchase orders.
  */
-import type { DocumentSeries } from './common';
+import type { Attachment, DocumentSeries } from './common';
 import { employeeId, plId, termId } from './masters';
 import { SEED_COMPANIES } from './companies';
 import { SEED_WAREHOUSES } from './itemMasters';
@@ -132,6 +132,7 @@ export interface PurchaseOrder {
   buyerId: string;
   ownerId: string;
   remarks: string;
+  attachments: Attachment[];
   discountPct: number;
   /** Freight, net, in the document currency (when freight is managed on documents). */
   freight: number;
@@ -295,6 +296,7 @@ export function blankPurchaseOrder(buyerId: string): Omit<PurchaseOrder, 'id'> {
     buyerId: buyerId,
     ownerId: buyerId,
     remarks: '',
+    attachments: [],
     discountPct: 0,
     freight: 0,
     freightTaxCode: '44',

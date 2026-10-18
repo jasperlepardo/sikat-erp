@@ -10,19 +10,21 @@ import { taxCodes } from '../../../services/masterData';
 import { formatAmount } from '../../../services/format';
 import { lineage, type LinkedDocument } from '../../purchasing/shared/lineage';
 import { coveredLines, type CoveredLine, type DocNode } from '../../purchasing/shared/documentLinks';
-import { SO_LIST_PATH } from '../orders/detail/types';
+import { SO_LIST_PATH } from '../sales-orders/detail/types';
 import { AR_LIST_PATH } from '../invoices/detail/types';
 import { AR_STATUS_INTENT } from '../invoices/detail/ArInvoiceDetail';
 import { DN_LIST_PATH } from '../deliveries/detail/types';
 import { DN_STATUS_INTENT } from '../deliveries/detail/DeliveryDetail';
-import { RC_LIST_PATH, RC_STATUS_INTENT } from '../payments/detail/IncomingPaymentDetail';
-import { SO_STATUS_INTENT } from '../orders/detail/SalesOrderDetail';
-import { AR_CM_LIST_PATH, ARCM_STATUS_INTENT, SR_LIST_PATH, SR_STATUS_INTENT } from '../returns/types';
+import { RC_LIST_PATH, RC_STATUS_INTENT } from '../payments-received/detail/IncomingPaymentDetail';
+import { SO_STATUS_INTENT } from '../sales-orders/detail/SalesOrderDetail';
+import { AR_CM_LIST_PATH, ARCM_STATUS_INTENT, SR_LIST_PATH, SR_STATUS_INTENT } from '../returns-and-credits/types';
 import { QT_LIST_PATH, QT_STATUS_INTENT } from '../quotations/QuotationList';
 import { listJournalEntries, jeNumber, jeTotals } from '../../../services/journalEntries';
 import { JE_LIST_PATH, JE_STATUS_INTENT } from '../../accounting/journal/JournalEntryDetail';
+import { listBlanketAgreements, baNumber, baTotals } from '../../../services/blanketAgreements';
+import { BA_LIST_PATH, BA_STATUS_INTENT } from '../agreements/BlanketAgreementList';
 
-export type SalesDocKind = 'QT' | 'SO' | 'DN' | 'ARINV' | 'RCV' | 'ARCM' | 'SRT' | 'JE';
+export type SalesDocKind = 'QT' | 'SO' | 'DN' | 'ARINV' | 'RCV' | 'ARCM' | 'SRT' | 'JE' | 'BA';
 
 export type { LinkedDocument, CoveredLine };
 
@@ -69,7 +71,14 @@ const SOURCES: Record<SalesDocKind, () => Promise<DocNode[]>> = {
       total: soTotal(so, codes),
       partnerId: so.customerId,
       items: coveredLines(so.lines),
-      bases: so.baseQuotationId ? [{ kind: 'QT' as const, id: so.baseQuotationId, lines: [] }] : [],
+      bases: [
+        ...(so.baseQuotationId ? [{ kind: 'QT' as const, id: so.baseQuotationId, lines: [] }] : []),
+        ...[...new Set(so.lines.map((l) => l.agreementId).filter(Boolean))].map((id) => ({
+          kind: 'BA' as const,
+          id,
+          lines: [] as CoveredLine[],
+        })),
+      ],
     }));
   },
 
@@ -214,6 +223,25 @@ const SOURCES: Record<SalesDocKind, () => Promise<DocNode[]>> = {
         items: [],
         bases: [{ kind: SALES_ORIGIN[je.origin]!, id: je.originId, lines: [] }],
       }));
+  },
+
+  BA: async () => {
+    const bas = await listBlanketAgreements();
+    return bas.map((ba) => ({
+      kind: 'BA' as const,
+      id: ba.id,
+      type: 'Blanket agreement',
+      number: ba.docNum ? baNumber(ba) : ba.id,
+      href: `${BA_LIST_PATH}/${ba.docNum ? baNumber(ba) : ba.id}`,
+      date: ba.startDate,
+      status: ba.status,
+      intent: BA_STATUS_INTENT[ba.status],
+      currency: ba.currency,
+      total: baTotals(ba).plannedTotal,
+      partnerId: ba.customerId,
+      items: [],
+      bases: [],
+    }));
   },
 };
 

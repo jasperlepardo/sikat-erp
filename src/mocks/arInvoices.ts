@@ -350,7 +350,8 @@ const invoices: ArInvoice[] = [
   }),
   fromDelivery('ar-006', 5, 'dn-006', {
     postingDate: '2026-10-06', documentDate: '2026-10-06', dueDate: '2026-11-05',
-    remarks: 'First 24 of 40 iPads for DepEd Pasig. Not yet paid.',
+    wtaxLiable: true,
+    remarks: 'First 24 of 40 iPads for DepEd Pasig. Government withholds 1% EWT and 5% VAT. Not yet paid.',
   }),
   fromDelivery('ar-007', 6, 'dn-007', {
     postingDate: '2026-09-04', documentDate: '2026-09-04', dueDate: '2026-10-04', wtaxLiable: true,

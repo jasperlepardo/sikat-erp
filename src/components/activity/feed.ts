@@ -47,6 +47,7 @@ const STEP: Record<string, { verb: string; icon: string }> = {
   GRET: { verb: 'Returned to vendor', icon: 'assignment_return' },
   APCM: { verb: 'Credited by vendor', icon: 'assignment_return' },
   QT: { verb: 'Quoted', icon: 'request_quote' },
+  BA: { verb: 'Agreement signed', icon: 'handshake' },
   SO: { verb: 'Ordered', icon: 'shopping_bag' },
   DN: { verb: 'Delivered', icon: 'local_shipping' },
   ARINV: { verb: 'Invoiced', icon: 'receipt' },
@@ -55,7 +56,7 @@ const STEP: Record<string, { verb: string; icon: string }> = {
   ARCM: { verb: 'Credited', icon: 'assignment_return' },
 };
 
-const SALES_KINDS = new Set(['QT', 'SO', 'DN', 'ARINV', 'RCV', 'ARCM', 'SRT']);
+const SALES_KINDS = new Set(['QT', 'BA', 'SO', 'DN', 'ARINV', 'RCV', 'ARCM', 'SRT']);
 
 const verbOf = (d: DocNode) => (d.status === 'Draft' ? 'Draft saved' : STEP[d.kind]?.verb ?? 'Posted');
 const amount = (d: DocNode) => (d.total ? `${d.currency} ${formatAmount(d.total)}` : undefined);

@@ -22,7 +22,7 @@ import { useAsync } from '../../../../services/useAsync';
 import { layerHistory, type CostLayer } from '../../../../services/costLayers';
 import { formatAmount } from '../../../../services/format';
 import { grNumber, listGoodsReceipts } from '../../../../services/goodsReceipts';
-import { GR_LIST_PATH } from '../../../purchasing/receipts/detail/GoodsReceiptDetail';
+import { GR_LIST_PATH } from '../../../purchasing/goods-receipts/detail/GoodsReceiptDetail';
 import { EditPanel } from '../../../partners/detail/EditPanel';
 import { vendorOptions, type Draft } from './types';
 import { listWarehouseDocuments, type WarehouseDocument } from './warehouseDocuments';

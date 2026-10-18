@@ -1,14 +1,14 @@
 import { lineNet, listPurchaseOrders, openQty, poNumber } from '../../../../services/purchaseOrders';
 import { DOC_SOURCES, type DocType, type StatusIntent } from '../../../partners/detail/partnerDocuments';
-import { PO_LIST_PATH, STATUS_INTENT } from '../../../purchasing/orders/detail/PurchaseOrderDetail';
+import { PO_LIST_PATH, STATUS_INTENT } from '../../../purchasing/purchase-orders/detail/PurchaseOrderDetail';
 import { grNumber, listGoodsReceipts } from '../../../../services/goodsReceipts';
-import { GR_LIST_PATH, GR_STATUS_INTENT } from '../../../purchasing/receipts/detail/GoodsReceiptDetail';
+import { GR_LIST_PATH, GR_STATUS_INTENT } from '../../../purchasing/goods-receipts/detail/GoodsReceiptDetail';
 import { apNumber, listApInvoices } from '../../../../services/apInvoices';
-import { AP_LIST_PATH, AP_STATUS_INTENT } from '../../../purchasing/invoices/detail/ApInvoiceDetail';
+import { AP_LIST_PATH, AP_STATUS_INTENT } from '../../../purchasing/bills/ap-invoices/detail/ApInvoiceDetail';
 import { listGoodsReturns, returnNumber } from '../../../../services/goodsReturns';
 import { listCreditMemos, memoNumber } from '../../../../services/apCreditMemos';
-import { RETURN_STATUS_INTENT } from '../../../purchasing/returns/GoodsReturnDetail';
-import { MEMO_LIST_PATH, MEMO_STATUS_INTENT, RETURN_LIST_PATH } from '../../../purchasing/returns/types';
+import { RETURN_STATUS_INTENT } from '../../../purchasing/returns-and-debits/types';
+import { MEMO_LIST_PATH, MEMO_STATUS_INTENT, RETURN_LIST_PATH } from '../../../purchasing/returns-and-debits/types';
 import type { Draft } from './types';
 
 /**

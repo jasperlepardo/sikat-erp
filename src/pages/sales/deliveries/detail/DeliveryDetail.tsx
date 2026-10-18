@@ -21,12 +21,12 @@ import { termDays } from '../../../../services/purchaseOrders';
 import { logRejection } from '../../../../services/approvalRules';
 import { getSalesSettings, listSalesOrders, openQty, soDueDate, soNumber } from '../../../../services/salesOrders';
 import { soSeries } from '../../../../services/allSeries';
-import { ALL_CURRENCIES, SO_LIST_PATH, proposedTaxCode } from '../../orders/detail/types';
-import { DnContents } from './DnContents';
+import { ALL_CURRENCIES, SO_LIST_PATH, proposedTaxCode } from '../../sales-orders/detail/types';
+import { DnContentsCard } from './DnContentsCard';
 import { DN_LIST_PATH, buildDnContext, dnLineFromOrder, type DnContext, type DnDraft, type DnMasters } from './types';
 import { SalesDocumentFlow } from '../../shared/SalesDocumentFlow';
 import { useDocTitle } from '../../../../services/useDocTitle';
-import { SR_LIST_PATH } from '../../returns/types';
+import { SR_LIST_PATH } from '../../returns-and-credits/types';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
 import { NotFound, PrevNext, neighbours } from '../../../../components/form/DetailNav';
 import { DnDatesCard } from './DnDatesCard';
@@ -36,6 +36,7 @@ import { DnShipmentCard } from './DnShipmentCard';
 import { DnAssignmentCard } from './DnAssignmentCard';
 import { CustomerCard } from '../../shared/CustomerCard';
 import { DnCustomerDetailsPanel } from './DnCustomerDetailsPanel';
+import { ReferencesTable } from '../../../purchasing/shared/ReferencesTable';
 
 
 
@@ -296,21 +297,7 @@ function DeliveryForm() {
               ) : null}
 
               <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
-                <aside className="flex flex-col gap-2 lg:col-span-3">
-                  <DnDatesCard {...tabProps} />
-                  <DnSettingsCard {...tabProps} />
-                  <DnBpChannelCard {...tabProps} />
-                  <DnShipmentCard {...tabProps} />
-                  <DnAssignmentCard {...tabProps} />
-                  <AttachmentsCard
-                    attachments={draft.attachments}
-                    onChange={(attachments) => update({ attachments })}
-                    emptyHint="Signed delivery receipt, courier waybill, photos."
-                    withDescription
-                  />
-                </aside>
-
-                <div className="flex flex-col gap-2 lg:col-span-9">
+                <div className="flex flex-col gap-2 lg:col-span-8">
                   <CustomerCard
                     customers={m.customers}
                     customerId={draft.customerId}
@@ -322,12 +309,31 @@ function DeliveryForm() {
                     onOpenDetails={() => setCustomerDetailsOpen(true)}
                   />
                   {/* Not in a disabled fieldset: the table locks its own inputs and keeps its column settings. */}
-                  <DnContents
+                  <DnContentsCard
                     {...tabProps}
                     onCopy={(so, picks) => setDraft(copyLines(draft, so, picks))}
                   />
-
+                  <ReferencesTable
+                    refs={draft.references}
+                    onChange={(references) => update({ references })}
+                    readOnly={ro}
+                    description="Link the sales order, customer PO, or other source documents."
+                  />
+                  <AttachmentsCard
+                    attachments={draft.attachments}
+                    onChange={(attachments) => update({ attachments })}
+                    emptyHint="Signed delivery receipt, courier waybill, photos."
+                    withDescription
+                  />
                 </div>
+
+                <aside className="flex flex-col gap-2 lg:col-span-4">
+                  <DnDatesCard {...tabProps} />
+                  <DnSettingsCard {...tabProps} />
+                  <DnBpChannelCard {...tabProps} />
+                  <DnShipmentCard {...tabProps} />
+                  <DnAssignmentCard {...tabProps} />
+                </aside>
               </div>
             </Panel.Body>
           ) : null}

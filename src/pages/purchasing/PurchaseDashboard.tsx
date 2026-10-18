@@ -19,8 +19,8 @@ import { listPurchaseOrders, poNumber, poTotal } from '../../services/purchaseOr
 import { apNumber, apTotal, listApInvoices } from '../../services/apInvoices';
 import { useAsync } from '../../services/useAsync';
 import { Stat } from '../../components/Stat';
-import { STATUS_INTENT as PO_STATUS_INTENT, PO_LIST_PATH } from './orders/detail/PurchaseOrderDetail';
-import { AP_LIST_PATH, AP_STATUS_INTENT } from './invoices/detail/ApInvoiceDetail';
+import { STATUS_INTENT as PO_STATUS_INTENT, PO_LIST_PATH } from './purchase-orders/detail/PurchaseOrderDetail';
+import { AP_LIST_PATH, AP_STATUS_INTENT } from './bills/ap-invoices/detail/ApInvoiceDetail';
 
 export function PurchaseDashboard() {
   const navigate = useNavigate();

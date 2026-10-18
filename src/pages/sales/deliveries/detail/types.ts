@@ -3,7 +3,7 @@ import { newDnLine, type DnLine } from '../../../../mocks/deliveries';
 import type { SalesOrder, SoLine } from '../../../../mocks/salesOrders';
 import type { DnInput } from '../../../../services/deliveries';
 import { soNumber } from '../../../../services/salesOrders';
-import { buildContext, type SoContext, type SoDraft, type SoMasters } from '../../orders/detail/types';
+import { buildContext, type SoContext, type SoDraft, type SoMasters } from '../../sales-orders/detail/types';
 
 export const DN_LIST_PATH = '/sales/deliveries';
 

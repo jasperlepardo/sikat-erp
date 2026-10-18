@@ -143,6 +143,7 @@ export function blankApInvoice(today: string, buyerId: string): Omit<ApInvoice, 
     paymentOrderRun: true,
     appliedAmount: 0,
     approved: true,
+    attachments: [],
   };
 }
 

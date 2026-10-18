@@ -4,20 +4,17 @@
 
 **Sikat ERP** is a frontend-only UI prototype of an ERP system for Philippine businesses. No backend — screens read/write mock data via service functions backed by `localStorage`. Designed so real `fetch` calls can replace the mock services later.
 
-Demo scenario: an Apple Premium Reseller in the Philippines, with seed data covering every BIR VAT and withholding tax combination.
-
-**Purpose:** Proof-of-concept / design prototype for the `@jasperlepardo/sikat-design-system` package.
+Demo scenario: an Apple Premium Reseller in the Philippines, with seed data covering every BIR VAT and withholding tax combination. **Purpose:** Proof-of-concept / design prototype for the `@jasperlepardo/sikat-design-system` package.
 
 ---
 
 ## Stack
 
 - **Vite + React 19 + TypeScript** — standard Vite SPA
-- **React Router 7** — hash routing (`/#/inventory/items`)
+- **React Router 7** — hash routing (`/#/inventory/items`); intentional for static hosting
 - **Tailwind CSS v4** — tokens come from the design system
 - **`@jasperlepardo/sikat-design-system`** — published to GitHub Packages; current version ~0.32.x
-- No backend, no real auth
-- **Playwright** smoke tests in `e2e/` (`npm run test:e2e`)
+- **Playwright** smoke tests in `e2e/` — every screen loads with no errors or raw ids
 
 ## Commands
 
@@ -25,7 +22,6 @@ Demo scenario: an Apple Premium Reseller in the Philippines, with seed data cove
 npm run dev        # Start dev server
 npm run typecheck  # TypeScript check only
 npm run build      # tsc -b && vite build
-npm run preview    # Serve dist/ locally
 npm run test:e2e   # Playwright smoke tests (starts its own dev server on :5199)
 ```
 
@@ -34,214 +30,86 @@ npm run test:e2e   # Playwright smoke tests (starts its own dev server on :5199)
 ## Directory layout
 
 ```
-e2e/            Playwright smoke tests: every screen loads with no errors or raw ids;
-                rename / bin-snapshot / counter / house-bank behaviour; Activity tabs
 src/
-  app/          AppShell, router, sidebar nav definition
-  components/   Shared UI components (form helpers)
-    activity/
-      ActivityTab.tsx     A record's Activity timeline + "Log activity" menu
-      ActivityPanel.tsx   SidePanel editor for one activity
-      feed.ts             Builds timeline entries: document chain, audit log, activities
-    form/
-      fields.tsx          bind() field builder + layout helpers
-      MasterLookup.tsx    Searchable master-data picker + inline "+ Add"
-      MasterList.tsx      Editable settings list (ListView + RecordPage)
-      TabbedPage.tsx      Settings page pattern (tabs in URL)
-      DataTable.tsx       Card+Table for smaller lists
-      AttachmentsCard.tsx File upload & display
-      AccountField.tsx    G/L account picker
-      AddressFields.tsx   Postal address composer
-      PhLocationFields.tsx Province → City → Barangay (PSGC)
-      ProblemsAlert.tsx   Validation error alert with tab links
-      MoreMenu.tsx        "You can also" actions dropdown
-      RowMenu.tsx         Row "⋯" actions dropdown
-      DetailNav.tsx       PrevNext, neighbours(), NotFound for detail pages
-  data/psgc/    Philippine Standard Geographic Code data
-  mocks/        Type definitions + seed data (items, partners, taxes, POs, etc.)
-  pages/        Feature pages
-    Home.tsx
-    Placeholder.tsx
-    accounting/   ChartOfAccountsPage
-    inventory/    WarehousesPage, ItemList, ItemDetail (11 tabs)
-    partners/     PartnerList, PartnerDetail (8 tabs)
-    purchasing/   PurchaseOrderList, PurchaseOrderDetail (3 tabs)
-    crm/          ActivityList (CRM › Activities)
-    settings/     MasterSettingsPages, masterDefs, accounting-tax/, inventory/
+  app/          AppShell, router, sidebar nav
+  components/   Shared UI — filter/, form/, activity/
+  data/psgc/    Philippine Standard Geographic Code
+  mocks/        Seed data (one file per entity); masters.ts — typed ID helpers
+  pages/        Feature pages — accounting/, crm/, inventory/, partners/, people/, purchasing/, sales/, settings/
   services/     Fake async API + domain logic
-    store.ts            createCollection() — localStorage-backed collections; auditLog
-    activities.ts       CRM activities collection + helpers
-    items.ts            Item CRUD + business rules
-    partners.ts         Partner CRUD + business rules
-    purchaseOrders.ts   PO CRUD + line calculations
-    masterData.ts       All accounting/tax collections
-    inventoryMasters.ts Inventory master collections + loader
-    partnerMasters.ts   Partner-related collections
-    companies.ts        Company collection + current company
-    taxDetermination.ts BIR VAT/EWT/FWT line tax logic
-    format.ts           formatAmount() for PHP locale
-    locations.ts        PSGC geography (provinces, cities, barangays)
-    accountUsage.ts     Chart-of-accounts usage tracking
-    useAsync.ts         useAsync<T>() hook
-    useCollectionRows.ts useCollectionRows() hook
 ```
 
----
-
-## Routes
-
-All routes use hash routing (`/#/…`). Defined in `src/app/router.tsx`; pages other than Home load on first visit (`page()` → `React.lazy`, Suspense in AppShell).
-
-| Route | Page |
-|---|---|
-| `/` | Home (dashboard) |
-| `/inventory/items` | ItemList |
-| `/inventory/items/:id` | ItemDetail (11 tabs) |
-| `/inventory/warehouses-and-bins/:recordId?` | WarehousesPage |
-| `/purchasing/purchase-orders` | PurchaseOrderList |
-| `/purchasing/purchase-orders/:id` | PurchaseOrderDetail (3 tabs) |
-| `/accounting/chart-of-accounts/:recordId?` | ChartOfAccountsPage |
-| `/crm/business-partners`, `/crm/leads`, `/sales/customers`, `/purchasing/vendors` | PartnerList (role-scoped) |
-| `/crm/activities` | ActivityList (all calls, meetings, tasks, notes, emails) |
-| `…/:id` under each | PartnerDetail |
-| `/settings/accounting-and-tax/:tab?/:recordId?` | AccountingTaxPage (11 master tabs) |
-| `/settings/inventory/:tab?/:recordId?` | InventorySettingsPage |
-| `/settings/sales-and-crm/:tab?/:recordId?` | SalesCrmSettingsPage (partner groups, industries, employees, …) |
-| `/settings/banking/:tab?/:recordId?` | BankingSettingsPage (payment terms, banks, house bank accounts, …) |
-| `/settings/company/:tab?/:recordId?` | CompanySettingsPage (companies, projects, countries, …) |
+Routes are defined in `src/app/router.tsx`. All use hash routing (`/#/…`). Detail pages use `:tab?` for top-level page switching.
 
 ---
 
-## Core data layer — `createCollection<T>`
+## Core data layer
 
-`src/services/store.ts`
+`src/services/store.ts` — `createCollection<T>(storageKey, seed, idPrefix, { audit? })`
 
-```ts
-createCollection<T>(storageKey, seed, idPrefix, { audit?: kind })
-→ {
-    list(): Promise<T[]>,
-    get(id): Promise<T | undefined>,
-    save(input): Promise<T>,
-    remove(id): Promise<void>,
-    snapshot(): readonly T[],     // Sync read (no await)
-    subscribe(fn): () => void,    // Called after any save
-    reset(): Promise<void>
-  }
-```
+Key rules:
+- **Bump `SEED_VERSION`** in `store.ts` whenever any file in `src/mocks/` changes. A browser on an older version drops all saved data and reloads the seed.
+- Never mutate rows from `useCollection()` or `snapshot()` — they are shared references. Copy before editing.
+- Seeds that depend on other seeds must be lazy functions `() => seed` to avoid circular module init.
+- After changing any seed: `npx tsx scripts/check-seeds.ts` — exits non-zero on stock/ledger tie-out failures.
 
-- Reads/writes `localStorage`; fake 250ms latency on async calls
-- `subscribe()` fires when any screen saves → other screens' pickers reload live
-- `useCollection(collection)` hook returns the store's live `readonly T[]` (via `useSyncExternalStore`): shared by every picker, no fetch or clone. Don't mutate it; copy before editing
-- `useAsync<T>(load, deps)` runs async on mount/deps change; returns `undefined` while loading
-- `useCollectionRows(collection)` returns `{ rows, save, setActive }`; rows are live, so no reload after a save
-- `cachedUntilChange(build)` shares a value derived from many collections until any collection is written (the document link graph uses it)
-- **`SEED_VERSION`** (top of `store.ts`): a saved collection overrides its seed forever, so **bump it whenever a file in `src/mocks` changes**. A browser on an older version drops every `sikat-erp:` key once and reloads the seed.
-- Storage keeps only what changed from the seed (saved records and removed ids), so seeds can be large.
-- `{ audit: 'PO' }` logs every save and removal to `auditLog` (who, when, `describeChanges()`: status, posting, changed fields). On for items (`ITEM`), partners (`BP`) and every sales and purchasing document collection. The log holds only changes made in the app; seeded history is derived from the documents.
-- The seed may be a function (`createCollection(key, () => seed, prefix)`): it's built on first use. Seeds built from other seeds (the histories below) must be lazy, or modules that import each other read one another before they're ready.
+Hooks: `useCollection(collection)` → live `readonly T[]`; `useAsync<T>(load, deps)` → undefined while loading; `useCollectionRows(collection)` → `{ rows, save, setActive }`.
 
 ---
 
-## The seeded year — books from 1 Jan 2026
+## The seeded year
 
-The company runs on Sikat from 1 Jan 2026; the seed is its year to the as-of day, **9 Oct 2026** (`SEED_AS_OF`, `mocks/supplyPlan.ts`). Everything ties out — run the checks after changing any seed:
+Books from 1 Jan 2026 to **9 Oct 2026** (`SEED_AS_OF`). Store POS sales, supply plan POs, corporate sales chains, purchasing history, stock/FIFO layers, and ledger all tie out. Document numbers are computed positionally (`seedPoNo`, `seedSoNo`, `seedDnNo`, `seedArNo`) — text naming a number must use these helpers.
 
-```sh
-npx tsx scripts/check-seeds.ts   # documents, stock and ledger tie-outs; exits non-zero on a failure
-```
-
-| Piece | Where |
-|---|---|
-| Stores' monthly POS sales (one A/R invoice per store per month, POS series, walk-in customer `bp-045`), monthly POS collections, Pasig → store restocks and release-day allocations | `mocks/storeSales.ts` → `arInvoices`, `incomingPayments`, `inventoryTransfers` |
-| Pasig's January–June replenishment and release orders | `mocks/supplyPlan.ts` → `purchaseOrders` |
-| January–June monthly service orders, corporate sales (quotation → order → delivery → invoice → payment) | `mocks/purchaseOrders.ts`, `mocks/salesOrders.ts` (+ quotations, deliveries, invoices, payments) |
-| Receipts, bills, payments, returns, credit memos, down payments | `services/purchasingHistory.ts` (`purchasingHistory()`) |
-| Stock and cost replayed from the opening: line costs, item costs, FIFO layers, Pasig's stock | `services/stockHistory.ts` (`stockHistory()`) |
-| The ledger: opening balances, every document's entry (the live journal functions), monthly finance entries | `services/ledgerHistory.ts` (`seededLedger()`) |
-
-- Documents are numbered per series in date order; text that names a number computes it (`seedPoNo`, `seedSoNo`, `seedDnNo`, `seedArNo`).
-- Pasig (`WH-MNL`) is the balancing warehouse: its opening and today's In stock follow from the documents. Stores open with today's stock; items released during the year open at nil.
-- January–June USD rates are **illustrative** (`mocks/currencies.ts`), not from BSP bulletins.
-- Journals and costing read items merged with their parent (`mergedItems`): a variant's group, accounts and valuation method are its parent's.
+**`mergedItems(items)`** — variants inherit parent's item group, G/L accounts, valuation method, UoMs, and tax setup. Use `mergedItems()` whenever logic depends on those fields (tax, costing, posting). Use raw item data only for variant-specific fields (price, SKU, barcodes, stock).
 
 ---
 
-## Data conventions — ids link, codes display
+## Data conventions
 
-Shaped so collections map to SQL tables later. Follow these when adding fields or master lists.
-
-- **References are ids, never names.** A field pointing at another record is named `…Id` (`paymentTermId`, `priceListId`, `bpGroupId`, `salesEmployeeId`, `projectId`, `binId`) or, for code-keyed lists, `…Code` (`countryCode`). Screens show the name by looking it up: `nameIn(collection, id)`, `paymentTermName()`, `priceListName()`, `bpGroupName()`, `itemGroupName()`, `projectLabel()`, `countryName()`, `binCodeOf()`. A raw id on screen is a bug (the e2e sweep fails on one).
-- **Generated ids** (`pt-004`, `emp-3f9a2c1b`) for anything that can be renamed. Names and codes stay editable.
-- **Code as the id** only where the code is locked once saved: countries (ISO 3166-1 alpha-2, `PH`), units of measure and UoM groups, manufacturers, warehouses/offices, tax codes, tax groups, withholding groups, excise categories, G/L accounts. There `id === code`; a new record's id is set from its code on save.
-- **Snapshots on posted documents.** Posting stamps what must read as it was: bin codes (`binCode`, `fromBinCode`/`toBinCode`, via `withBinCodes()`), alongside the item numbers, descriptions and address text documents already keep. Drafts show the current value; posted lines show the snapshot.
-- **Child rows, not maps.** Nested lists are arrays of rows keyed by parent + their own key (`discounts: { itemGroupId, discountPct }[]`, `counts: { counterId, qty }[]`), never objects keyed by a name.
-- **"None" is `''`.** Never store a placeholder like `'— None —'` or a fake "-No Sales Employee-" record; make the picker clearable with a placeholder, or offer `{ value: '', label: '— None —' }`.
-- **Seeds stay readable** with typed helpers in `src/mocks/masters.ts` (`termId('Net 30')`, `plId('Wholesale')`, `bpgId(…)`, `employeeId(…)`, built on `idIn(prefix, LIST)`): they resolve to the seed id at build time and a misspelt name fails the typecheck. Lists are `as const`; append to them, never reorder (ids are positional).
+- **Foreign keys are ids, never names.** Field named `…Id` (`paymentTermId`) or `…Code` (`countryCode`). Look up display names at render time: `nameIn()`, `paymentTermName()`, `binCodeOf()`, etc. A raw id visible on screen is a bug — the e2e sweep catches it.
+- **Generated ids** (`pt-004`) for anything renameable. `id === code` only where the code is locked on save: countries, UoMs, UoM groups, manufacturers, warehouses, tax codes, tax groups, withholding groups, excise categories, G/L accounts.
+- **`''` for "no selection"** — never a placeholder string like `'— None —'` or a fake record.
+- **Child rows, not maps.** Nested lists are `{ itemGroupId, discountPct }[]`, never objects keyed by a name.
+- **Snapshots on posted documents.** Posting stamps bin codes (`withBinCodes()`), item numbers, descriptions, addresses. Drafts show live values; posted lines show the snapshot.
+- **Seed id lists** in `src/mocks/masters.ts` are `as const` and positional — append only, never reorder.
 
 ---
 
 ## Master-data pattern — `MasterDef<T>`
 
-Every master list (tax codes, UoMs, warehouses, etc.) defines a `MasterDef<T>` once. The same definition drives:
-1. The settings list page (`MasterList` / `MasterDefList`)
-2. The inline "+ Add" picker in any form (`MasterLookup`)
-
-### MasterDef shape
+One `MasterDef<T>` drives both the settings list page (`MasterList`) and the inline `MasterLookup` picker in any form. All defs live in `src/pages/settings/masterDefs.tsx`.
 
 ```ts
 interface MasterDef<T> {
   collection: Collection<T>;
-  icon: string;                           // Material Symbol
-  title: string;                          // e.g., "Units of Measure"
-  noun: string;                           // Singular lower-case: "unit"
-  description?: ReactNode;
-  home: string;                           // e.g., "Settings › Inventory"
-  blank: (name: string) => T;             // Fresh row with name pre-filled
-  value: (row: T) => string;              // What to store — the id (see Data conventions)
-  label: (row: T) => string;              // What to display
+  icon: string; title: string; noun: string; home: string;
+  blank: (name: string) => T;
+  value: (row: T) => string;   // what to store — the id
+  label: (row: T) => string;   // what to display
   columns: TableColumn<T>[];
   searchText: (row: T) => string;
   editor: (row, update, errors, isNew) => ReactNode;
   validate: (row, all) => Errors;
-  normalize?: (row: T) => T;              // Trim, uppercase, etc.
+  normalize?: (row: T) => T;
 }
 ```
 
-All master defs live in `src/pages/settings/masterDefs.tsx`.
-
-### MasterLookup component
-
 ```tsx
-<MasterLookup
-  def={uomDef}
-  value={draft.uomId}
-  onChange={(id) => update({ uomId: id })}
-  where={(row) => row.active}             // Optional filter
-  seed={{ type: 'each' }}                 // Pre-fill on quick-add
-  clearable
-  disabled={saving}
-/>
+<MasterLookup def={uomDef} value={draft.uomId} onChange={(id) => update({ uomId: id })}
+  where={(row) => row.active} clearable disabled={saving} />
 ```
 
-- Combobox over active rows; stale saved value always stays selectable
-- No matches while typing → "+ Add '[text]'" creates and opens QuickAddPanel
-- QuickAddPanel is a portaled SidePanel; Escape closes without submitting
-
-### MasterList component (settings pages)
-
-- `recordId` prop absent → ListView (table + search + "New" button)
-- `recordId` present → RecordPage (form with save/cancel + prev/next)
-- Row click navigates to `${basePath}/${id}`; "New" navigates to `${basePath}/new`
+Always use `activeOptions(rows, keyFn, labelFn, currentValue)` when building picker options — pass `currentValue` so a stale saved value stays selectable.
 
 ---
 
 ## `bind()` field builder
 
-`src/components/form/fields.tsx` re-exports the design system's `bind()` and adds `f.master()`.
+`src/components/form/fields.tsx` re-exports `bind()` from the design system and adds `f.master()`.
 
 ```ts
 const f = bind(draft, update);
-
 f.text('name', 'Item Name', { required: true })
 f.pick('type', 'Type', typeOptions)
 f.choose('vatType', 'VAT Type', vatOptions)
@@ -249,285 +117,164 @@ f.check('active', 'Active')
 f.master('uomId', 'Unit', uomDef, { required: true })
 ```
 
-**Field options** (`FieldOptions`): `required`, `disabled`, `readOnly`, `error`, `hint`, `placeholder`, `clearable`
+Layout helpers: `<Fields cols={2}>`, `<FieldStack>`, `<Flags>`, `<ReadOnly label value />`.
 
-**Layout helpers:**
-
-```tsx
-<Fields cols={2}>            // Responsive grid; default 2 cols
-  {f.text(…)}
-  {f.pick(…)}
-</Fields>
-
-<FieldStack>                 // Side-label stack (responsive)
-  {f.text(…)}
-</FieldStack>
-
-<Flags>                      // Flex row for checkboxes
-  {f.check(…)}
-</Flags>
-```
-
-`ReadOnly({ label, value, hint, error })` — for system-calculated values.
+Use the **local `Section`** from `fields.tsx` (Card + Card.Header + Card.Content) — not the one exported by the design system.
 
 ---
 
 ## Detail page structure
 
-Items, Partners, and Purchase Orders all follow this layout:
+### Form state and validation
 
-```
-<Form onSubmit={submit}>
-  <Panel>
-    <PanelHeader
-      type="details"
-      icon="…"  title="…"  subcopy="…"
-      leading={<Prev/Next>}
-      tabs={<Tabs value={page} />}
-      status={<Badges />}
-      actions={<Cancel> <Save>}
-    />
-    <Panel.Body className="lg:grid-cols-12 gap-2">
-      {problems && <ProblemsAlert … />}
-
-      {/* Side column — lg:col-span-3 */}
-      <aside>
-        <Section icon="…" title="Identity">
-          <FieldStack>…key fields…</FieldStack>
-        </Section>
-        {/* Subsidiary cards (e.g., WarehousesCard, VendorsCard) */}
-      </aside>
-
-      {/* Main content — lg:col-span-9 */}
-      <div>
-        <Tabs />
-        <ActiveTabComponent draft={draft} update={update} errors={errors} … />
-      </div>
-    </Panel.Body>
-  </Panel>
-</Form>
-
-{/* Portaled SidePanel editors for nested records */}
-{editing && <AddressPanel … />}
-```
-
-**Side column** contains header/identity fields + "subsidiary cards" (e.g., Vendors, Warehouses, Manufacturers on Item). Each card shows an inline list of rows + "Add ▾" button; clicking a row opens a portaled SidePanel editor.
-
-**Form state:**
 ```ts
 const [draft, setDraft] = useState<Draft>(initial);
 const update = (patch: Partial<Draft>) => setDraft(d => ({ ...d, ...patch }));
 const [errors, setErrors] = useState<Errors>({});
 ```
 
-**Validation + save:**
-1. `validate(draft, …)` → `Problem[]`
-2. If problems: show `ProblemsAlert`, jump to first problem's tab
-3. If clean: call service `save(draft)` → navigate back to list
+- Remount when record id changes: `<MyForm key={id === 'new' ? location.key : id} />`.
+- Validation: `problemCollector<Tab>()` → `need(ok, tab, key, message)` → show `ProblemsAlert` + jump to first failing tab.
+- Editing state for nested SidePanel editors: discriminated union `| { kind: 'contact'; value: …; isNew: boolean } | null`.
 
-`problemCollector<Tab>()` returns `{ problems, need(ok, tab, key, message) }`.
+### Layout
+
+**Master records (Items, Partners):** `lg:col-span-3` aside (identity + subsidiary cards) + `lg:col-span-9` main (tabs).
+
+**Quotation / invoice:** `lg:col-span-8` (CustomerCard + ContentsTable) + `lg:col-span-4` (DetailsCard + AttachmentsCard).
+
+**Sales order:** `lg:col-span-3` aside (DatesCard, SettingsCard, etc.) + `lg:col-span-9` (CustomerCard + tabbed contents).
+
+### Document pages — `TabProps` / `DocContext`
+
+All tab components receive the same spread:
+
+```ts
+interface TabProps { draft: Draft; update: (patch: Partial<Draft>) => void; errors: Errors; m: Masters; ctx: DocContext; }
+interface DocContext {
+  customer?: Partner; fx: number; rateOf: (code: string) => number;
+  vatRegistered: boolean; readOnly: boolean; added: boolean;
+}
+const tabProps = { draft, update, errors, m, ctx };
+```
+
+### File structure
+
+Every detail page lives in a `detail/` folder.
+
+**Flat layout** (purchasing docs — PO, GR, AP invoice, etc.): all card files at `detail/` level, no subfolders. Card file prefix matches doc abbreviation (`Po`, `Gr`, `Ap`, `Dpr`, `Rfq`, `Pr`, `Pay`, `Cm`, `Gret`).
+
+**Tab subfolder layout** (docs with real UI tabs): one subfolder per tab. `index.tsx` is a one-line re-export or multi-card orchestrator.
+
+```
+detail/
+  MyDocDetail.tsx     ← orchestrator: state, data loading, layout, PanelHeader
+  types.ts            ← Draft, Masters, SectionProps, DocContext types
+  PfxNounCard.tsx     ← cards always visible above tabs
+  tab-name/
+    index.tsx          ← export { XCard as TabNameTab } from './XCard'
+    XCard.tsx
+```
+
+**Rule:** only create a tab subfolder when there is a real `<Tabs>` switching view. Sequential cards that all render at once stay flat at `detail/` level.
+
+| File | Convention | What it is |
+|---|---|---|
+| `detail/PfxNounCard.tsx` | `[Prefix][Noun]Card` | Card in the layout |
+| `detail/NounPanel.tsx` | `[Noun]Panel` | SidePanel editor launched from this page |
+| `tab/index.tsx` | re-export or orchestrator | Entry point for a real UI tab |
+| `tab/NounCard.tsx` | `[Noun]Card` | Card inside a real UI tab |
+
+Shared purchasing components used across multiple document types live in `purchasing/shared/` (`ReferencesTable`, `TotalRow`, `CopyPanel`, `DocumentFlow`).
 
 ---
 
-## Validation helpers
+## Document status pattern
 
-```ts
-// ProblemsAlert
-interface Problem<Tab = string> { tab: Tab | 'header'; key: string; message: string; }
-problemCollector<Tab>()  →  { problems: Problem<Tab>[], need(ok, tab, key, message): void }
+Five statuses: `Draft` (default) → `Not Confirmed` (warning) → `Open` (primary) → `Closed` (success) or `Cancelled` (danger). Closed and Cancelled have no outgoing transitions.
 
-// MasterList uniqueness helper
-uniqueRequired<T>(errors, row, all, key, label)
-// Checks required + unique; writes into errors object
+```tsx
+const moves: Partial<Record<MyStatus, () => void>> =
+  draft.status === 'Draft'  ? { Open: () => submit() }           // or 'Not Confirmed' with approvals
+  : draft.status === 'Open' ? { Closed: closeIt, Cancelled: cancelIt }
+  : {};
 
-// MasterList status column helper
-statusColumn<T>()  →  TableColumn<T>   // "Active" / "Inactive" badge
+<StatusField statuses={MY_STATUSES} intents={STATUS_INTENT}
+  value={draft.status} moves={moves} hint={STATUS_HINT[draft.status]} error={errors.status} />
 ```
 
 ---
 
-## Services overview
+## Filter system
 
-### activities.ts
-```ts
-activities (collection), saveActivity(input), removeActivity(id)
-isLinkedTo(activity, kind, ids), isOpenTask(activity), isOverdue(activity, today)
+List pages use `useListPresets()` from `src/components/filter/useListPresets.tsx`. Add filtering to a new list page:
+
+```tsx
+const fields = [
+  textField<D>('no', 'No.', (d) => d.no),
+  dateField<D>('postingDate', 'Date', (d) => d.postingDate),
+  statusField<D>(MY_STATUSES),
+  masterField<D>('currency', 'Currency', currencyDef, (d) => d.currency),
+];
+const presets = useListPresets({
+  list: 'my-docs',
+  fields,
+  builtIns: statusViews('My docs', MY_STATUSES),
+  defaultSort: { key: 'postingDate', direction: 'desc' },
+  rows: allRows,
+  onChange: resetPage,
+});
+
+// In JSX:
+<PanelHeader title={presets.menu} … />
+{presets.bar(null)}
+<Table rows={presets.apply(allRows)} sort={presets.sort} onSortChange={presets.setSort} … />
+{presets.panel}
 ```
 
-### items.ts
-```ts
-listItems(), getItem(id), saveItem(input), resetItems()
-class ItemSaveError(field, message)   // field: 'itemNo' | 'barcodes'
-stockTotals(item), isLowStock(item), isValidToday(item, today?)
-```
-
-### partners.ts
-```ts
-listPartners(), getPartner(id), savePartner(input), resetPartners()
-listPartnersByRole(role), convertLeadToCustomer(id)
-isActive(partner, today?), defaultContact(partner), defaultContactName(partner), defaultBillTo(partner)
-```
-
-### purchaseOrders.ts
-```ts
-listPurchaseOrders(), getPurchaseOrder(id), savePurchaseOrder(input), resetPurchaseOrders()
-class PoSaveError(field, message)
-poNumber(po), openQty(line), inventoryQty(line), priceAfterDiscount(line), lineNet(line)
-poTotals(po, codes), poTotal(po, codes), poWithholding(po, codes)
-termDays(terms), dueDateFor(postingDate, terms), findDuplicateVendorRef(po)
-```
-
-### masterData.ts
-Key collections: `taxCodes`, `taxGroups`, `companyTax`, `accounts`, `withholdingTaxes`, `withholdingGroups`, `exciseCategories`, `currencies`, `exchangeRates`
-
-Also: `rateOn(rates, currency, date)`, `parseBspBulletin(text, known)`
-
-### inventoryMasters.ts
-Key collections: `itemGroups`, `unitsOfMeasure`, `uomGroups`, `warehouses`, `manufacturers`, `customsGroups`, `inventorySettings`
-
-`loadInventoryMasters()` — loads all at once; `EMPTY_INVENTORY_MASTERS` for initial state.
-
-`activeOptions<T>(rows, keyFn, labelFn, currentValue)` — builds `Option[]` from active rows + keeps the current value even if inactive.
-
-### partnerMasters.ts
-Collections: `bpGroups`, `paymentTerms`, `banks`, `priceLists`, `territories`, `channels`, `countries`, and many more named lists.
-
-### companies.ts
-`currentCompanyId()`, `setCurrentCompanyId(id)`, `useCurrentCompany()`, `loadCurrentCompany()`
-
-### taxDetermination.ts
-```ts
-determineTax(item, partner, company, masters)      → Determination
-determineWithholding(vendor, item, company, masters) → Determination
-// Determination includes: taxCode, rate, trace (TraceStep[])
-```
-
-### format.ts
-`formatAmount(value)` → `"1,234.56"` (Intl.NumberFormat, en-PH, 2 decimals)
-
-### locations.ts
-`loadLocations()`, `loadBarangays(city)`, `useLocations()`, `useBarangays(city)`
-`findProvince(data, code, name)`, `findCity(data, province, code, name)`, `findBarangay(rows, code, name)`
+List pages use `useListPage()` from `DataTable.tsx` — never declare `page`/`pageSize` state manually.
 
 ---
 
-## Activity tabs
+## Activity tab
 
-Items, partners and every sales and purchasing document (PR, RFQ, PO, DPR, GRPO, A/P invoice, outgoing payment, goods return, A/P credit memo, quotation, SO, delivery, A/R invoice, incoming payment, sales return, A/R credit memo) have an **Activity** tab: `<ActivityTab target={{ kind, id }} partnerId={…} />`. It shows one timeline, newest first, grouped by month:
+Every document and master record has an Activity tab. Timeline shows the document chain, audit log changes, and logged CRM activities.
 
-- **Documents**, from the link graph (`purchaseDocNodes()` / `salesDocNodes()`, each node carrying its `partnerId` and item lines). A document shows its whole chain, from quotation to payment or from request to payment. A partner shows every document with it on, and an item every document with it (or, for a parent, its variants) on a line.
-- **Changes** saved in the app, from `auditLog`.
-- **Activities** (`mocks/activities.ts`, `services/activities.ts`): call, meeting, task, note or email, with owner (employee id), partner, contact, and `links: { kind, id }[]` to the records it shows on. One logged on a document is linked to the document and shows on its partner too. Tasks have a due date and can be ticked done. CRM › Activities lists them all.
-
-## Design system components used
-
-Key imports from `@jasperlepardo/sikat-design-system`:
-
-| Component | Usage |
-|---|---|
-| `Page`, `Navbar`, `SideNav` | App shell |
-| `Panel`, `Panel.Header`, `Panel.Body` | Page container |
-| `PanelHeader` | Title + tabs + actions bar |
-| `Card`, `Card.Header`, `Card.Content` | Content sections |
-| `Form`, `FormField` | Form wrapper & field layout |
-| `TextField`, `Select`, `Combobox` | Input controls |
-| `MultiSelect`, `Checkbox`, `Radio` | Choice controls |
-| `Button`, `IconButton` | Actions |
-| `Table` | Data table (sort, select, paginate) |
-| `Tabs` | Tab navigation |
-| `Text`, `Link`, `Icon`, `Badge` | Typography & display |
-| `Alert` | Inline alert (danger/warning/info/success) |
-| `Dropdown`, `DropdownItem` | Floating menu |
-| `SidePanel` | Portaled right slide-in panel |
-| `bind()` | Base field builder (extended by sikat-erp) |
-| `initTheme()`, `useTheme()` | Theme init & hook |
-| `useDropdown()` | Dropdown state/positioning |
+```tsx
+<ActivityTab target={{ kind: 'PO', id }} partnerId={doc.vendorId} />
+```
 
 ---
 
 ## Philippines-specific
 
-- **BIR taxes:** VAT (12% or 0%), Expanded Withholding Tax (EWT), Final Withholding Tax (FWT), Excise Tax — see `taxDetermination.ts`
-- **Tax scenarios in seed data:** VAT-registered, zero-rated (PEZA, export), senior citizen, cooperative, government, non-resident digital services, treaty relief, etc.
-- **PSGC:** Philippine Standard Geographic Code — provinces → cities → barangays in `src/data/psgc/`; used by `PhLocationFields` for cascading address pickers
-- **Currency:** PHP (Philippine Peso); `formatAmount()` uses `en-PH` locale
-- **BSP exchange rates:** `parseBspBulletin()` parses Bangko Sentral ng Pilipinas forex bulletin
-
----
-
-## TypeScript patterns
-
-```ts
-// Generic collection constraint
-type Collection<T extends { id: string }> = …
-
-// Type-safe field builder
-bind<T>(obj: T, update: (patch: Partial<T>) => void): FieldBuilder<T>
-
-// Problem type generic over tab names
-interface Problem<Tab extends string = string> { tab: Tab | 'header'; … }
-
-// Service save accepts optional id (new record)
-saveItem(input: Omit<Item, 'id'> & { id?: string }): Promise<Item>
-
-// Discriminated union for editing state
-type Editing =
-  | { kind: 'contact'; value: ContactPerson; isNew: boolean }
-  | { kind: 'address'; value: PartnerAddress; isNew: boolean }
-  | null;
-
-// Remount form when record ID changes
-<ItemForm key={id === 'new' ? location.key : id} />
-```
+- **BIR taxes:** VAT (12%/0%), EWT, FWT, Excise — `taxDetermination.ts`
+- **PSGC:** cascading province → city → barangay via `PhLocationFields`
+- **Currency:** PHP; `formatAmount()` uses `en-PH` locale; `parseBspBulletin()` parses BSP forex bulletins
 
 ---
 
 ## Coding standards
 
-Rules to follow when writing or editing any code in this repo. Details live in the sections referenced.
-
 ### Naming
-- Foreign-key fields: `…Id` suffix (`paymentTermId`) or `…Code` for code-keyed lists (`countryCode`). Never store a name — look it up at render time with `nameIn()` / the named helpers. A raw id visible on screen is a bug.
-- `''` for "no selection" — never a placeholder string like `'— None —'` or a fake record.
-- New master lists: generated id (`pt-004`) for anything renameable; `id === code` only for records whose code is locked on save.
+- Foreign-key fields: `…Id` or `…Code`. Never store a name; look it up at render time.
+- `''` for "no selection" — never a placeholder string or fake record.
+- Generated id for anything renameable; `id === code` only for code-locked records.
 
-### Collections and data
-- Never mutate rows from `useCollection()` or `snapshot()` — they are shared references. Copy before editing.
-- Use `activeOptions(rows, keyFn, labelFn, currentValue)` when building picker options — always pass `currentValue` so a stale saved value stays selectable.
-- Nested lists are arrays of rows (`{ itemGroupId, discountPct }[]`), never objects keyed by a name.
-- Posted documents snapshot the values that must read as they were (bin codes via `withBinCodes()`, item numbers, descriptions, addresses). Drafts show live values; posted lines show the snapshot.
-
-### Seeds
-- Bump `SEED_VERSION` in `src/services/store.ts` whenever any file in `src/mocks/` changes.
-- Seed id lists in `src/mocks/masters.ts` are `as const` and positional — **append only, never reorder**.
-- Seeds that depend on other seeds must be functions `() => seed` (lazy) to avoid circular module initialisation.
-- After changing any seed, run `npx tsx scripts/check-seeds.ts` to verify documents, stock and ledger tie out.
+### Data
+- Never mutate `useCollection()` / `snapshot()` rows — copy before editing.
+- `activeOptions(rows, keyFn, labelFn, currentValue)` for all picker options; always pass `currentValue`.
+- Nested lists are row arrays, never objects keyed by a name.
+- Bump `SEED_VERSION` whenever any `src/mocks/` file changes.
+- Seed id lists in `masters.ts` are append-only (positional — never reorder).
 
 ### Forms and UI
-- Form state: `const [draft, setDraft] = useState(initial)` + `const update = (patch) => setDraft(d => ({ ...d, ...patch }))`.
-- Remount a detail form when the record id changes: `<MyForm key={id === 'new' ? location.key : id} />`.
-- Editing state for nested SidePanel editors: discriminated union `| { kind: 'contact'; value: …; isNew: boolean } | null`.
-- Use `bind()` + layout helpers (`Fields`, `FieldStack`, `Flags`) — never raw input elements in a form.
-- Validation: `problemCollector<Tab>()` → `need(ok, tab, key, message)` → `ProblemsAlert` + jump to first failing tab.
+- `bind()` + layout helpers — never raw input elements in a form.
+- Discriminated union for SidePanel editing state.
+- `problemCollector` → `ProblemsAlert` + tab jump for validation.
+- Use straight double quotes (`"it's"`) in JSX string props — smart/curly quotes break the TS/Babel parser.
 
-### JSX / TypeScript
-- Use straight double quotes (`"it's"`) for JSX string props and literals that contain apostrophes. Curly/smart quotes break the TypeScript/Babel parser.
-- `activeOptions`, `MasterLookup`, and `MasterDef` are the standard pipeline for any picker over a master list — do not build a one-off `<Select>` with a hand-rolled options array.
-
----
-
-## Key architectural notes
-
-1. **No server** — everything is `localStorage` + seed data. Service functions are intentionally shaped like real async APIs so they can be replaced with `fetch` calls.
-
-2. **MasterDef is the single source of truth** for any master list — drives both the settings page editor and the inline picker in any form.
-
-3. **`subscribe()` keeps pickers live** — after any `collection.save()`, all open `useCollection()` hooks reload. No manual cache invalidation needed.
-
-4. **Side column + tabbed main content** is the standard detail-page layout. Side column is always visible; tabs hold grouped fields.
-
-5. **Hash routing** is intentional for static hosting (GitHub Pages, Netlify, etc.) without server-side routing.
-
-6. **Design system `bind()` extended** — sikat-erp adds `f.master()` for `MasterLookup`, and layout helpers (`Section`, `Fields`, `FieldStack`, `Flags`, `ReadOnly`).
-
-7. **Records link by id, show by lookup** — see Data conventions. Master lists load whole into memory at startup, so lookups are in-memory and a rename in Settings shows everywhere at once.
+### Architecture
+- `MasterDef` + `MasterLookup` + `activeOptions` for all master-data pickers — no one-off hand-rolled `<Select>`.
+- Use the local `Section` from `fields.tsx`, not the one exported by the design system.
+- Use `mergedItems()` whenever logic depends on item group, G/L accounts, valuation method, UoMs, or tax setup.

@@ -26,7 +26,7 @@ interface TotalsFooterProps {
 }
 
 /** Subtotal, discount, freight, tax, total and withholding under a sales document's lines. */
-export function TotalsFooter({ draft, update, ctx, m, withRounding, withholding, extraRows }: TotalsFooterProps) {
+export function SalesTotalsFooter({ draft, update, ctx, m, withRounding, withholding, extraRows }: TotalsFooterProps) {
   const doc = draft as unknown as SoTotalsInput;
 
 

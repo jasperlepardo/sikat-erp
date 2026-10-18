@@ -38,36 +38,36 @@ const StockCountList = page(() => import('../pages/inventory/counts/StockCountLi
 const InventoryPostingDetail = page(() => import('../pages/inventory/counts/InventoryPostingDetail'), 'InventoryPostingDetail');
 const StockCountDetail = page(() => import('../pages/inventory/counts/StockCountDetail'), 'StockCountDetail');
 const PurchaseDashboard = page(() => import('../pages/purchasing/PurchaseDashboard'), 'PurchaseDashboard');
-const PurchaseRequestList = page(() => import('../pages/purchasing/requests/PurchaseRequestList'), 'PurchaseRequestList');
-const PurchaseRequestDetail = page(() => import('../pages/purchasing/requests/detail/PurchaseRequestDetail'), 'PurchaseRequestDetail');
-const PurchaseOrderList = page(() => import('../pages/purchasing/orders/PurchaseOrderList'), 'PurchaseOrderList');
-const SalesOrderList = page(() => import('../pages/sales/orders/SalesOrderList'), 'SalesOrderList');
-const SalesOrderDetail = page(() => import('../pages/sales/orders/detail/SalesOrderDetail'), 'SalesOrderDetail');
+const PurchaseRequestList = page(() => import('../pages/purchasing/purchase-requests/PurchaseRequestList'), 'PurchaseRequestList');
+const PurchaseRequestDetail = page(() => import('../pages/purchasing/purchase-requests/detail/PurchaseRequestDetail'), 'PurchaseRequestDetail');
+const PurchaseOrderList = page(() => import('../pages/purchasing/purchase-orders/PurchaseOrderList'), 'PurchaseOrderList');
+const SalesOrderList = page(() => import('../pages/sales/sales-orders/SalesOrderList'), 'SalesOrderList');
+const SalesOrderDetail = page(() => import('../pages/sales/sales-orders/detail/SalesOrderDetail'), 'SalesOrderDetail');
 const DeliveryList = page(() => import('../pages/sales/deliveries/DeliveryList'), 'DeliveryList');
 const DeliveryDetail = page(() => import('../pages/sales/deliveries/detail/DeliveryDetail'), 'DeliveryDetail');
 const QuotationList = page(() => import('../pages/sales/quotations/QuotationList'), 'QuotationList');
 const QuotationDetail = page(() => import('../pages/sales/quotations/detail/QuotationDetail'), 'QuotationDetail');
 const ArInvoiceList = page(() => import('../pages/sales/invoices/ArInvoiceList'), 'ArInvoiceList');
 const ArInvoiceDetail = page(() => import('../pages/sales/invoices/detail/ArInvoiceDetail'), 'ArInvoiceDetail');
-const IncomingPaymentList = page(() => import('../pages/sales/payments/IncomingPaymentList'), 'IncomingPaymentList');
-const IncomingPaymentDetail = page(() => import('../pages/sales/payments/detail/IncomingPaymentDetail'), 'IncomingPaymentDetail');
-const ArCreditMemoDetail = page(() => import('../pages/sales/returns/ArCreditMemoDetail'), 'ArCreditMemoDetail');
-const SalesReturnsList = page(() => import('../pages/sales/returns/SalesReturnsList'), 'SalesReturnsList');
-const SalesReturnDetail = page(() => import('../pages/sales/returns/SalesReturnDetail'), 'SalesReturnDetail');
-const RfqList = page(() => import('../pages/purchasing/rfqs/RfqList'), 'RfqList');
-const RfqDetail = page(() => import('../pages/purchasing/rfqs/detail/RfqDetail'), 'RfqDetail');
-const PurchaseOrderDetail = page(() => import('../pages/purchasing/orders/detail/PurchaseOrderDetail'), 'PurchaseOrderDetail');
-const GoodsReceiptList = page(() => import('../pages/purchasing/receipts/GoodsReceiptList'), 'GoodsReceiptList');
-const GoodsReceiptDetail = page(() => import('../pages/purchasing/receipts/detail/GoodsReceiptDetail'), 'GoodsReceiptDetail');
-const ApInvoiceList = page(() => import('../pages/purchasing/invoices/ApInvoiceList'), 'ApInvoiceList');
-const ApInvoiceDetail = page(() => import('../pages/purchasing/invoices/detail/ApInvoiceDetail'), 'ApInvoiceDetail');
-const DprList = page(() => import('../pages/purchasing/down-payments/DprList'), 'DprList');
-const DprDetail = page(() => import('../pages/purchasing/down-payments/DprDetail'), 'DprDetail');
-const PaymentList = page(() => import('../pages/purchasing/payments/PaymentList'), 'PaymentList');
-const PaymentDetail = page(() => import('../pages/purchasing/payments/detail/PaymentDetail'), 'PaymentDetail');
-const ReturnsList = page(() => import('../pages/purchasing/returns/ReturnsList'), 'ReturnsList');
-const GoodsReturnDetail = page(() => import('../pages/purchasing/returns/GoodsReturnDetail'), 'GoodsReturnDetail');
-const CreditMemoDetail = page(() => import('../pages/purchasing/returns/CreditMemoDetail'), 'CreditMemoDetail');
+const IncomingPaymentList = page(() => import('../pages/sales/payments-received/IncomingPaymentList'), 'IncomingPaymentList');
+const IncomingPaymentDetail = page(() => import('../pages/sales/payments-received/detail/IncomingPaymentDetail'), 'IncomingPaymentDetail');
+const ArCreditMemoDetail = page(() => import('../pages/sales/returns-and-credits/credit-memos/detail/ArCreditMemoDetail'), 'ArCreditMemoDetail');
+const SalesReturnsList = page(() => import('../pages/sales/returns-and-credits/SalesReturnsList'), 'SalesReturnsList');
+const SalesReturnDetail = page(() => import('../pages/sales/returns-and-credits/returns/detail/SalesReturnDetail'), 'SalesReturnDetail');
+const RfqList = page(() => import('../pages/purchasing/purchase-quotations/RfqList'), 'RfqList');
+const RfqDetail = page(() => import('../pages/purchasing/purchase-quotations/detail/PurchaseQuotationDetail'), 'RfqDetail');
+const PurchaseOrderDetail = page(() => import('../pages/purchasing/purchase-orders/detail/PurchaseOrderDetail'), 'PurchaseOrderDetail');
+const GoodsReceiptList = page(() => import('../pages/purchasing/goods-receipts/GoodsReceiptList'), 'GoodsReceiptList');
+const GoodsReceiptDetail = page(() => import('../pages/purchasing/goods-receipts/detail/GoodsReceiptDetail'), 'GoodsReceiptDetail');
+const ApInvoiceList = page(() => import('../pages/purchasing/bills/ap-invoices/ApInvoiceList'), 'ApInvoiceList');
+const ApInvoiceDetail = page(() => import('../pages/purchasing/bills/ap-invoices/detail/ApInvoiceDetail'), 'ApInvoiceDetail');
+const DprList = page(() => import('../pages/purchasing/bills/down-payment-requests/DprList'), 'DprList');
+const DprDetail = page(() => import('../pages/purchasing/bills/down-payment-requests/detail/DprDetail'), 'DprDetail');
+const PaymentList = page(() => import('../pages/purchasing/payments-made/PaymentList'), 'PaymentList');
+const PaymentDetail = page(() => import('../pages/purchasing/payments-made/detail/PaymentDetail'), 'PaymentDetail');
+const ReturnsList = page(() => import('../pages/purchasing/returns-and-debits/ReturnsList'), 'ReturnsList');
+const GoodsReturnDetail = page(() => import('../pages/purchasing/returns-and-debits/goods-return/GoodsReturnDetail'), 'GoodsReturnDetail');
+const CreditMemoDetail = page(() => import('../pages/purchasing/returns-and-debits/credit-memo/CreditMemoDetail'), 'CreditMemoDetail');
 const AccountingDashboard = page(() => import('../pages/accounting/AccountingDashboard'), 'AccountingDashboard');
 const ChartOfAccountsPage = page(() => import('../pages/accounting/ChartOfAccountsPage'), 'ChartOfAccountsPage');
 const JournalEntryList = page(() => import('../pages/accounting/journal/JournalEntryList'), 'JournalEntryList');
@@ -79,8 +79,8 @@ const VoucherEntryDetail = page(() => import('../pages/accounting/vouchers/Vouch
 const SalesDashboard = page(() => import('../pages/sales/SalesDashboard'), 'SalesDashboard');
 const BlanketAgreementList = page(() => import('../pages/sales/agreements/BlanketAgreementList'), 'BlanketAgreementList');
 const BlanketAgreementDetail = page(() => import('../pages/sales/agreements/detail/BlanketAgreementDetail'), 'BlanketAgreementDetail');
-const PurchaseBlanketAgreementList = page(() => import('../pages/purchasing/agreements/PurchaseBlanketAgreementList'), 'PurchaseBlanketAgreementList');
-const PurchaseBlanketAgreementDetail = page(() => import('../pages/purchasing/agreements/detail/PurchaseBlanketAgreementDetail'), 'PurchaseBlanketAgreementDetail');
+const PurchaseBlanketAgreementList = page(() => import('../pages/purchasing/purchase-agreements/PurchaseBlanketAgreementList'), 'PurchaseBlanketAgreementList');
+const PurchaseBlanketAgreementDetail = page(() => import('../pages/purchasing/purchase-agreements/detail/PurchaseBlanketAgreementDetail'), 'PurchaseBlanketAgreementDetail');
 const ApprovalsPage = page(() => import('../pages/approvals/ApprovalsPage'), 'ApprovalsPage');
 const PartnerList = page(() => import('../pages/partners/PartnerList'), 'PartnerList');
 const PartnerDetail = page(() => import('../pages/partners/detail/PartnerDetail'), 'PartnerDetail');
@@ -138,10 +138,10 @@ export const router = createHashRouter([
           { path: 'sales/returns-and-credits/credit-memos', element: <SalesReturnsList kind="memos" /> },
           { path: 'sales/returns-and-credits/credit-memos/:id/:tab?', element: <ArCreditMemoDetail /> },
           { path: 'sales/agreements', element: <BlanketAgreementList /> },
-          { path: 'sales/agreements/:id', element: <BlanketAgreementDetail /> },
+          { path: 'sales/agreements/:id/:tab?', element: <BlanketAgreementDetail /> },
           { path: 'purchasing/dashboard', element: <PurchaseDashboard /> },
-          { path: 'purchasing/requests', element: <PurchaseRequestList /> },
-          { path: 'purchasing/requests/:id/:tab?', element: <PurchaseRequestDetail /> },
+          { path: 'purchasing/purchase-requests', element: <PurchaseRequestList /> },
+          { path: 'purchasing/purchase-requests/:id/:tab?', element: <PurchaseRequestDetail /> },
           { path: 'purchasing/quotations', element: <RfqList /> },
           { path: 'purchasing/quotations/:id/:tab?', element: <RfqDetail /> },
           { path: 'purchasing/purchase-orders', element: <PurchaseOrderList /> },
@@ -152,15 +152,15 @@ export const router = createHashRouter([
           { path: 'purchasing/bills/down-payment-requests', element: <DprList /> },
           { path: 'purchasing/bills/down-payment-requests/:id/:tab?', element: <DprDetail /> },
           { path: 'purchasing/bills/:id/:tab?', element: <ApInvoiceDetail /> },
-          { path: 'purchasing/payments-made', element: <PaymentList /> },
-          { path: 'purchasing/payments-made/:id/:tab?', element: <PaymentDetail /> },
-          { path: 'purchasing/returns-and-debits', element: <ReturnsList key="returns" kind="returns" /> },
-          { path: 'purchasing/returns-and-debits/returns', element: <ReturnsList key="returns" kind="returns" /> },
-          { path: 'purchasing/returns-and-debits/returns/:id/:tab?', element: <GoodsReturnDetail /> },
-          { path: 'purchasing/returns-and-debits/credit-memos', element: <ReturnsList key="memos" kind="memos" /> },
-          { path: 'purchasing/returns-and-debits/credit-memos/:id/:tab?', element: <CreditMemoDetail /> },
-          { path: 'purchasing/agreements', element: <PurchaseBlanketAgreementList /> },
-          { path: 'purchasing/agreements/:id', element: <PurchaseBlanketAgreementDetail /> },
+          { path: 'purchasing/payments-made-made', element: <PaymentList /> },
+          { path: 'purchasing/payments-made-made/:id/:tab?', element: <PaymentDetail /> },
+          { path: 'purchasing/returns-and-debits-and-debits', element: <ReturnsList key="returns" kind="returns" /> },
+          { path: 'purchasing/returns-and-debits-and-debits/returns', element: <ReturnsList key="returns" kind="returns" /> },
+          { path: 'purchasing/returns-and-debits-and-debits/returns/:id/:tab?', element: <GoodsReturnDetail /> },
+          { path: 'purchasing/returns-and-debits-and-debits/credit-memos', element: <ReturnsList key="memos" kind="memos" /> },
+          { path: 'purchasing/returns-and-debits-and-debits/credit-memos/:id/:tab?', element: <CreditMemoDetail /> },
+          { path: 'purchasing/purchase-agreements', element: <PurchaseBlanketAgreementList /> },
+          { path: 'purchasing/purchase-agreements/:id', element: <PurchaseBlanketAgreementDetail /> },
           // Settings shell: redirect bare /settings to the first settings module.
           { path: 'settings', element: <Navigate to="/settings/company" replace /> },
           // Settings pages keep the tab and an opened record in the URL.

@@ -39,16 +39,22 @@ import { logRejection } from '../../../../services/approvalRules';
 import { getSalesSettings, listSalesOrders, openQty, soDueDate, soNumber } from '../../../../services/salesOrders';
 import { soSeries } from '../../../../services/allSeries';
 import { DN_LIST_PATH } from '../../deliveries/detail/types';
-import { ALL_CURRENCIES, SO_LIST_PATH, proposedTaxCode } from '../../orders/detail/types';
-import { ArContents, type CopyPick } from './ArContents';
-import { ArAssignmentCard, ArBpChannelCard, ArDatesCard, ArInstallmentsCard, ArSettingsCard, ArShipmentCard } from './ArSideCards';
+import { ALL_CURRENCIES, SO_LIST_PATH, proposedTaxCode } from '../../sales-orders/detail/types';
+import { ArContentsCard, type CopyPick } from './ArContentsCard';
+import { ArDatesCard } from './ArDatesCard';
+import { ArSettingsCard } from './ArSettingsCard';
+import { ArBpChannelCard } from './ArBpChannelCard';
+import { ArShipmentCard } from './ArShipmentCard';
+import { ArAssignmentCard } from './ArAssignmentCard';
+import { ArInstallmentsCard } from './ArInstallmentsCard';
 import { ArCustomerDetailsPanel } from './ArCustomerDetailsPanel';
 import { CustomerCard } from '../../shared/CustomerCard';
-import { TotalsFooter } from '../../shared/TotalsFooter';
+import { SalesTotalsFooter } from '../../shared/TotalsFooter';
+import { ReferencesTable } from '../../../purchasing/shared/ReferencesTable';
 import { AR_LIST_PATH, arLineFromDelivery, arLineFromOrder, buildArContext, type ArContext, type ArDraft, type ArMasters } from './types';
 import { SalesDocumentFlow } from '../../shared/SalesDocumentFlow';
 import { useDocTitle } from '../../../../services/useDocTitle';
-import { AR_CM_LIST_PATH } from '../../returns/types';
+import { AR_CM_LIST_PATH } from '../../returns-and-credits/types';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
 import { NotFound, PrevNext, neighbours } from '../../../../components/form/DetailNav';
 
@@ -381,16 +387,7 @@ function ArInvoiceForm() {
             ) : null}
 
             <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
-              <aside className="flex flex-col gap-2 lg:col-span-3">
-                <ArDatesCard {...tabProps} />
-                <ArSettingsCard {...tabProps} />
-                <ArBpChannelCard {...tabProps} />
-                <ArShipmentCard {...tabProps} />
-                <ArAssignmentCard {...tabProps} />
-                <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} emptyHint="The signed invoice, the customer's PO, Form 2307 when it arrives." withDescription />
-              </aside>
-
-              <div className="flex flex-col gap-2 lg:col-span-9">
+              <div className="flex flex-col gap-2 lg:col-span-8">
                 <CustomerCard
                   customers={m.customers}
                   customerId={draft.customerId}
@@ -402,11 +399,11 @@ function ArInvoiceForm() {
                   onOpenDetails={() => setCustomerDetailsOpen(true)}
                 />
                 {/* Not in a disabled fieldset: the table locks its own inputs and keeps its column settings. */}
-                <ArContents
+                <ArContentsCard
                   {...tabProps}
                   onCopy={(src, picks) => setDraft(copyLines(draft, src, picks, m))}
                   cardFooter={
-                    <TotalsFooter
+                    <SalesTotalsFooter
                       {...tabProps}
                       withRounding
                       withholding={withholding.map((w) => ({ label: `${w.kind === 'Withholding VAT' ? 'VAT' : 'EWT'} withheld — ${w.atc} (${w.rate}%)`, amount: w.amount }))}
@@ -429,8 +426,22 @@ function ArInvoiceForm() {
                   }
                 />
                 <ArInstallmentsCard draft={draft} balance={balance} />
-
+                <ReferencesTable
+                  refs={draft.references}
+                  onChange={(references) => update({ references })}
+                  readOnly={ro}
+                  description="Link the delivery note, sales order, customer PO, or other source documents."
+                />
+                <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} emptyHint="The signed invoice, the customer's PO, Form 2307 when it arrives." withDescription />
               </div>
+
+              <aside className="flex flex-col gap-2 lg:col-span-4">
+                <ArDatesCard {...tabProps} />
+                <ArSettingsCard {...tabProps} />
+                <ArBpChannelCard {...tabProps} />
+                <ArShipmentCard {...tabProps} />
+                <ArAssignmentCard {...tabProps} />
+              </aside>
             </div>
           </Panel.Body>
         ) : null}

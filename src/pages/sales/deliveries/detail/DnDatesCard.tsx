@@ -1,4 +1,4 @@
-import { ReadOnly, Section, bind } from '../../../../components/form/fields';
+import { FieldStack, ReadOnly, Section, bind } from '../../../../components/form/fields';
 import { formatDate } from '../../../../services/dates';
 import type { DnSectionProps } from './types';
 
@@ -7,7 +7,7 @@ export function DnDatesCard({ draft, update, errors, ctx }: DnSectionProps) {
   return (
     <fieldset disabled={ctx.readOnly} className="contents">
       <Section icon="calendar_today" title="Dates">
-        <div className="flex flex-col gap-2">
+        <FieldStack>
           {h.date('postingDate', 'Posting date', {
             required: true,
             error: errors.postingDate,
@@ -23,7 +23,7 @@ export function DnDatesCard({ draft, update, errors, ctx }: DnSectionProps) {
             disabled: ctx.added,
           })}
           <ReadOnly label="Close date" value={draft.closeDate ? formatDate(draft.closeDate) : '—'} />
-        </div>
+        </FieldStack>
       </Section>
     </fieldset>
   );
