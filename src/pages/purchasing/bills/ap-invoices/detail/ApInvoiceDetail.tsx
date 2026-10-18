@@ -147,14 +147,15 @@ function ApInvoiceForm() {
   const { id, tab: tabParam } = useParams();
   const isNew = id === 'new';
   const navigate = useNavigate();
-  const state = useLocation().state as { copyFrom?: ApDraft; fromReceipt?: string; fromPo?: string } | null;
+  const location = useLocation();
+  const state = location.state as { copyFrom?: ApDraft; fromReceipt?: string; fromPo?: string } | null;
 
   const apApproved = !getPurchasingSettings().requireApInvoiceApproval;
   const [draft, setDraft] = useState<ApDraft | null | undefined>(isNew ? { ...(state?.copyFrom ?? { ...blankApInvoice(todayISO(), CURRENT_USER_ID), lines: [] }), approved: apApproved } : undefined);
   const [m, setM] = useState<ApMasters>();
   const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
   const setPage = (v: PageId) => navigate(`${AP_LIST_PATH}/${id}/${v}`, { replace: true });
-  useEffect(() => { if (!tabParam) navigate(`${AP_LIST_PATH}/${id}/details`, { replace: true }); }, []);
+  useEffect(() => { if (!tabParam) navigate(`${AP_LIST_PATH}/${id}/details`, { replace: true, state: location.state }); }, []);
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [dupWarning, setDupWarning] = useState<string>();

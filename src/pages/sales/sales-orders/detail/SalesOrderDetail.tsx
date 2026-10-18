@@ -98,14 +98,15 @@ function SalesOrderForm() {
   const { id, tab: tabParam } = useParams();
   const isNew = id === 'new';
   const navigate = useNavigate();
-  const copyFrom = (useLocation().state as { copyFrom?: SoDraft } | null)?.copyFrom;
+  const location = useLocation();
+  const copyFrom = (location.state as { copyFrom?: SoDraft } | null)?.copyFrom;
 
   const approved = !getSalesSettings().requireSoApproval;
   const [draft, setDraft] = useState<SoDraft | null | undefined>(isNew ? { ...(copyFrom ?? { ...blankSalesOrder(CURRENT_USER_ID), lines: [newSoLine({ warehouse: '' })] }), approved } : undefined);
   const [m, setM] = useState<SoMasters>();
   const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
   const setPage = (v: PageId) => navigate(`${SO_LIST_PATH}/${id}/${v}`, { replace: true });
-  useEffect(() => { if (!tabParam) navigate(`${SO_LIST_PATH}/${id}/details`, { replace: true }); }, []);
+  useEffect(() => { if (!tabParam) navigate(`${SO_LIST_PATH}/${id}/details`, { replace: true, state: location.state }); }, []);
   const [contentTab, setContentTab] = useState<'item' | 'delivery'>('item');
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);

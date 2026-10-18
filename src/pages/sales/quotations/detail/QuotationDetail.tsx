@@ -92,12 +92,13 @@ function QuotationForm() {
   const isNew = id === 'new';
   const navigate = useNavigate();
 
+  const location = useLocation();
   const qtApproved = !getSalesSettings().requireQuotationApproval;
   const [draft, setDraft] = useState<Draft | null | undefined>(isNew ? { ...blankQuotation(CURRENT_USER_ID), approved: qtApproved } : undefined);
   const [m, setM] = useState<QtMasters>();
   const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
   const setPage = (v: PageId) => navigate(`${QT_LIST_PATH}/${id}/${v}`, { replace: true });
-  useEffect(() => { if (!tabParam) navigate(`${QT_LIST_PATH}/${id}/details`, { replace: true }); }, []);
+  useEffect(() => { if (!tabParam) navigate(`${QT_LIST_PATH}/${id}/details`, { replace: true, state: location.state }); }, []);
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);

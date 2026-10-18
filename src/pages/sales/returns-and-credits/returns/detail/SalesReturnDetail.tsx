@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { Alert, Badge, Button, Form, Panel, PanelHeader, Tabs, Text, TextField } from '@jasperlepardo/sikat-design-system';
+import { Alert, Badge, Button, Form, Panel, PanelHeader, Select, Tabs, Text, TextField } from '@jasperlepardo/sikat-design-system';
 import { AttachmentsCard } from '../../../../../components/form/AttachmentsCard';
 import { type Errors } from '../../../../../components/form/fields';
 import { MoreMenu, type MoreMenuItem } from '../../../../../components/form/MoreMenu';
@@ -26,6 +26,7 @@ import { dueDateFor } from '../../../../../services/purchaseOrders';
 import {
   SrPostError,
   addSalesReturn,
+  closeWithReplacementDelivery,
   recallSalesReturn,
   cancelSalesReturn,
   getSalesReturn,
@@ -136,19 +137,22 @@ function SalesReturnForm() {
   const { id, tab: tabParam } = useParams();
   const isNew = id === 'new';
   const navigate = useNavigate();
-  const state = useLocation().state as { fromDelivery?: string } | null;
+  const location = useLocation();
+  const state = location.state as { fromDelivery?: string } | null;
 
   const srApproved = !getSalesSettings().requireSalesReturnApproval;
   const [draft, setDraft] = useState<Draft | null | undefined>(isNew ? { ...blankSalesReturn(todayISO(), CURRENT_USER_ID), approved: srApproved } : undefined);
   const [m, setM] = useState<SrMasters>();
   const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
   const setPage = (v: PageId) => navigate(`${SR_LIST_PATH}/${id}/${v}`, { replace: true });
-  useEffect(() => { if (!tabParam) navigate(`${SR_LIST_PATH}/${id}/details`, { replace: true }); }, []);
+  useEffect(() => { if (!tabParam) navigate(`${SR_LIST_PATH}/${id}/details`, { replace: true, state: location.state }); }, []);
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);
   const [rejecting, setRejecting] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
+  const [linkingReplacement, setLinkingReplacement] = useState(false);
+  const [replacementDnId, setReplacementDnId] = useState('');
   const [customerDetailsOpen, setCustomerDetailsOpen] = useState(false);
 
   useEffect(() => {
@@ -287,6 +291,9 @@ function SalesReturnForm() {
   const saved = draft as SalesReturn;
   const bases = [...new Map(draft.lines.filter((l) => l.baseType).map((l) => [l.baseId, l])).values()];
   const creditable = draft.status === 'Open' && draft.lines.some((l) => srOpenQty(l, draft) > 0);
+  const replacementDeliveries = draft.customerId
+    ? m.deliveries.filter((dn) => dn.customerId === draft.customerId && (dn.status === 'Open' || dn.status === 'Closed'))
+    : [];
 
   const cancelIt = async () => {
     try {
@@ -299,6 +306,12 @@ function SalesReturnForm() {
   };
 
   const recallIt = async () => { const r = await recallSalesReturn(saved); navigate(SR_LIST_PATH, { state: { notice: `Sales return ${srNumber(r)} recalled to draft.` } }); };
+
+  const confirmReplacement = async () => {
+    if (!replacementDnId) return;
+    const r = await closeWithReplacementDelivery(saved, replacementDnId);
+    navigate(SR_LIST_PATH, { state: { notice: `Sales return ${srNumber(r)} closed — replacement delivery linked.` } });
+  };
   const rejectIt = async () => { await logRejection('SRT', saved.id, saved.customerId, rejectionReason); await recallSalesReturn(saved); navigate(SR_LIST_PATH, { state: { notice: `Sales return ${srNumber(saved)} rejected and returned to draft.` } }); };
 
   const menu: MoreMenuItem[] = [
@@ -306,6 +319,9 @@ function SalesReturnForm() {
     ...(draft.status === 'Draft' && !draft.approved ? [{ label: 'Submit for approval', icon: 'upload', onSelect: () => submit(null, false) }] : []),
     ...(draft.status === 'Not Confirmed' ? [{ label: 'Approve', icon: 'verified', onSelect: () => submit(null, false, { approved: true }) }, { label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => setRejecting(true) }] : []),
     ...(creditable ? [{ label: 'Copy to A/R credit memo', icon: 'undo', onSelect: () => navigate(`${AR_CM_LIST_PATH}/new`, { state: { fromReturn: saved.id } }) }] : []),
+    ...(draft.status === 'Open' && replacementDeliveries.length
+      ? [{ label: 'Close with replacement delivery', icon: 'local_shipping', onSelect: () => { setReplacementDnId(''); setLinkingReplacement(true); } }]
+      : []),
     ...(draft.status === 'Open' && !draft.lines.some((l) => l.creditedQty > 0)
       ? [{ label: 'Cancel sales return', icon: 'cancel', onSelect: cancelIt }]
       : []),
@@ -392,6 +408,23 @@ function SalesReturnForm() {
             <Panel.Body className="flex flex-col gap-2">
               <ProblemsAlert problems={problems} tabLabel={(t) => TAB_LABEL[t as TabId]} />
               {rejecting ? (<Alert intent="danger" variant="outline" title="Reject sales return"><div className="flex flex-col gap-2"><TextField aria-label="Rejection reason" value={rejectionReason} onChange={(e) => setRejectionReason(e.currentTarget.value)} placeholder="Explain why…" /><div className="flex gap-2"><Button type="button" intent="danger" variant="solid" size="small" onClick={rejectIt}>Confirm reject</Button><Button type="button" intent="white" variant="solid" size="small" onClick={() => { setRejecting(false); setRejectionReason(''); }}>Cancel</Button></div></div></Alert>) : null}
+              {linkingReplacement ? (
+                <Alert intent="default" variant="outline" title="Close with replacement delivery">
+                  <div className="flex flex-col gap-2">
+                    <Text variant="small" tone="muted">Pick the delivery that replaced the returned goods. The return will close without a credit memo.</Text>
+                    <Select
+                      value={replacementDnId}
+                      onValueChange={setReplacementDnId}
+                      placeholder="Pick a delivery…"
+                      options={replacementDeliveries.map((dn) => ({ value: dn.id, label: `${dnNumber(dn)} · ${dn.postingDate} · ${dn.status}` }))}
+                    />
+                    <div className="flex gap-2">
+                      <Button type="button" intent="primary" variant="solid" size="small" disabled={!replacementDnId} onClick={confirmReplacement}>Confirm</Button>
+                      <Button type="button" intent="white" variant="solid" size="small" onClick={() => setLinkingReplacement(false)}>Cancel</Button>
+                    </div>
+                  </div>
+                </Alert>
+              ) : null}
               {added ? (
                 <Alert intent="default" variant="outline" title={draft.status === 'Open' ? 'Waiting for the customer credit' : `This sales return is ${draft.status.toLowerCase()}`}>
                   {draft.status === 'Open'

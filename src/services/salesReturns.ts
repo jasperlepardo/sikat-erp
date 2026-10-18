@@ -275,3 +275,9 @@ export async function cancelSalesReturn(r: SalesReturn) {
 export async function recallSalesReturn(r: SalesReturn): Promise<SalesReturn> {
   return salesReturns.save({ ...r, status: 'Draft', approved: false });
 }
+
+/** Close an Open return by linking a replacement delivery instead of issuing a credit memo. */
+export async function closeWithReplacementDelivery(r: SalesReturn, dnId: string): Promise<SalesReturn> {
+  if (r.status !== 'Open') throw new Error('Only Open returns can be closed this way.');
+  return salesReturns.save({ ...r, replacementDnId: dnId, status: 'Closed', closeDate: todayISO() });
+}

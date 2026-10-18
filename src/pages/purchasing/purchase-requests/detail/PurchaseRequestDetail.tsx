@@ -106,9 +106,10 @@ function PurchaseRequestForm() {
   }, [isNew]);
 
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
+  const location = useLocation();
   const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
   const setPage = (v: PageId) => navigate(`${PR_LIST_PATH}/${id}/${v}`, { replace: true });
-  useEffect(() => { if (!tabParam) navigate(`${PR_LIST_PATH}/${id}/details`, { replace: true }); }, []);
+  useEffect(() => { if (!tabParam) navigate(`${PR_LIST_PATH}/${id}/details`, { replace: true, state: location.state }); }, []);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {

@@ -76,7 +76,8 @@ function BaForm() {
   const { id, tab: tabParam } = useParams();
   const isNew = id === 'new';
   const navigate = useNavigate();
-  const copyFrom = (useLocation().state as { copyFrom?: BaDraft } | null)?.copyFrom;
+  const location = useLocation();
+  const copyFrom = (location.state as { copyFrom?: BaDraft } | null)?.copyFrom;
 
   const [draft, setDraft] = useState<BaDraft | null | undefined>(
     isNew ? { ...(copyFrom ?? { ...blankBlanketAgreement(CURRENT_USER_ID), lines: [] }) } : undefined,
@@ -84,7 +85,7 @@ function BaForm() {
   const [m, setM] = useState<BaMasters>();
   const page = (PAGES.some((p) => p.value === tabParam) ? tabParam : 'details') as PageId;
   const setPage = (v: PageId) => navigate(`${BA_LIST_PATH}/${id}/${v}`, { replace: true });
-  useEffect(() => { if (!tabParam) navigate(`${BA_LIST_PATH}/${id}/details`, { replace: true }); }, []);
+  useEffect(() => { if (!tabParam) navigate(`${BA_LIST_PATH}/${id}/details`, { replace: true, state: location.state }); }, []);
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);

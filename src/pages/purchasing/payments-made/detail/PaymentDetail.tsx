@@ -126,14 +126,15 @@ function PaymentForm() {
   const { id, tab: tabParam } = useParams();
   const isNew = id === 'new';
   const navigate = useNavigate();
-  const state = useLocation().state as { vendorId?: string; invoiceIds?: string[] } | null;
+  const location = useLocation();
+  const state = location.state as { vendorId?: string; invoiceIds?: string[] } | null;
 
   const payApproved = !getPurchasingSettings().requireOutgoingPaymentApproval;
   const [draft, setDraft] = useState<PaymentDraft | null | undefined>(isNew ? { ...blankPayment(todayISO()), approved: payApproved } : undefined);
   const [m, setM] = useState<PayMasters>();
   const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
   const setPage = (v: PageId) => navigate(`${PAYMENT_LIST_PATH}/${id}/${v}`, { replace: true });
-  useEffect(() => { if (!tabParam) navigate(`${PAYMENT_LIST_PATH}/${id}/details`, { replace: true }); }, []);
+  useEffect(() => { if (!tabParam) navigate(`${PAYMENT_LIST_PATH}/${id}/details`, { replace: true, state: location.state }); }, []);
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);

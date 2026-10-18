@@ -131,7 +131,8 @@ function GoodsReceiptForm() {
   const { id, tab: tabParam } = useParams();
   const isNew = id === 'new';
   const navigate = useNavigate();
-  const state = useLocation().state as { copyFrom?: GrDraft; fromPo?: string } | null;
+  const location = useLocation();
+  const state = location.state as { copyFrom?: GrDraft; fromPo?: string } | null;
 
   const grApproved = !getPurchasingSettings().requireGrpoApproval;
   const [draft, setDraft] = useState<GrDraft | null | undefined>(
@@ -140,7 +141,7 @@ function GoodsReceiptForm() {
   const [m, setM] = useState<GrMasters>();
   const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
   const setPage = (v: PageId) => navigate(`${GR_LIST_PATH}/${id}/${v}`, { replace: true });
-  useEffect(() => { if (!tabParam) navigate(`${GR_LIST_PATH}/${id}/details`, { replace: true }); }, []);
+  useEffect(() => { if (!tabParam) navigate(`${GR_LIST_PATH}/${id}/details`, { replace: true, state: location.state }); }, []);
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);

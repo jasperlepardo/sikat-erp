@@ -201,6 +201,7 @@ const SOURCES: Record<SalesDocKind, () => Promise<DocNode[]>> = {
         id,
         lines: r.lines.filter((l) => l.baseId === id) as CoveredLine[],
       })),
+      targets: r.replacementDnId ? [{ kind: 'DN' as const, id: r.replacementDnId, lines: [] as CoveredLine[], via: 'replacement' }] : [],
     }));
   },
 

@@ -31,6 +31,8 @@ export interface SrLine extends Omit<DnLine, 'invoicedQty' | 'baseType'> {
 export interface SalesReturn extends Omit<Delivery, 'lines' | 'status'> {
   status: SrStatus;
   lines: SrLine[];
+  /** Delivery that replaced the returned goods. Set closes the return without a credit memo. */
+  replacementDnId: string;
 }
 
 export const SR_SERIES: DocumentSeries[] = [
@@ -71,6 +73,7 @@ export function blankSalesReturn(today: string, ownerId: string): Omit<SalesRetu
     status: 'Draft',
     lines: [],
     journalRemark: '',
+    replacementDnId: '',
   };
 }
 
@@ -127,6 +130,7 @@ function fromDelivery(
     journalRemark: `Sales Returns – ${customer.code}`,
     orderNumber: delivery.orderNumber,
     seriesId: SR_SERIES[0].id,
+    replacementDnId: '',
     ...patch,
     id,
     docNum,

@@ -96,7 +96,8 @@ function RfqForm() {
   const { id, tab: tabParam } = useParams();
   const isNew = id === 'new';
   const navigate = useNavigate();
-  const copyFrom = (useLocation().state as { copyFrom?: RfqDraft } | null)?.copyFrom;
+  const location = useLocation();
+  const copyFrom = (location.state as { copyFrom?: RfqDraft } | null)?.copyFrom;
 
   const blank = blankRfq(CURRENT_USER_ID);
   const rfqApproved = !getPurchasingSettings().requireRfqApproval;
@@ -106,7 +107,7 @@ function RfqForm() {
   const [m, setM] = useState<RfqMasters>();
   const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
   const setPage = (v: PageId) => navigate(`${RFQ_LIST_PATH}/${id}/${v}`, { replace: true });
-  useEffect(() => { if (!tabParam) navigate(`${RFQ_LIST_PATH}/${id}/details`, { replace: true }); }, []);
+  useEffect(() => { if (!tabParam) navigate(`${RFQ_LIST_PATH}/${id}/details`, { replace: true, state: location.state }); }, []);
   const [siblings, setSiblings] = useState<string[]>([]);
   useEffect(() => {
     if (!isNew)

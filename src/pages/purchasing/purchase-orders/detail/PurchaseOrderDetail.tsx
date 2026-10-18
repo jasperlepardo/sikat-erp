@@ -167,7 +167,8 @@ function PurchaseOrderForm() {
   const { id, tab: tabParam } = useParams();
   const isNew = id === 'new';
   const navigate = useNavigate();
-  const { copyFrom, suggest } = (useLocation().state as { copyFrom?: PoDraft; suggest?: PoSuggestion } | null) ?? {};
+  const location = useLocation();
+  const { copyFrom, suggest } = (location.state as { copyFrom?: PoDraft; suggest?: PoSuggestion } | null) ?? {};
 
   const blank = blankPurchaseOrder(CURRENT_USER_ID);
   const approved = !getPurchasingSettings().requirePoApproval;
@@ -175,7 +176,7 @@ function PurchaseOrderForm() {
   const [m, setM] = useState<PoMasters>();
   const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
   const setPage = (v: PageId) => navigate(`${PO_LIST_PATH}/${id}/${v}`, { replace: true });
-  useEffect(() => { if (!tabParam) navigate(`${PO_LIST_PATH}/${id}/details`, { replace: true }); }, []);
+  useEffect(() => { if (!tabParam) navigate(`${PO_LIST_PATH}/${id}/details`, { replace: true, state: location.state }); }, []);
   const [siblings, setSiblings] = useState<string[]>([]);
   useEffect(() => {
     if (!isNew)
