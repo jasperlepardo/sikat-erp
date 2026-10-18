@@ -13,6 +13,8 @@ import { AP_SERIES } from '../mocks/apInvoices';
 import { MEMO_SERIES } from '../mocks/apCreditMemos';
 import { DPR_SERIES } from '../mocks/apDownPayments';
 import { AR_SERIES } from '../mocks/arInvoices';
+import { RI_SERIES } from '../mocks/reserveInvoices';
+import { LC_SERIES } from '../mocks/landedCosts';
 import { AR_CREDIT_SERIES } from '../mocks/arCreditMemos';
 import { DN_SERIES } from '../mocks/deliveries';
 import { RETURN_SERIES } from '../mocks/goodsReturns';
@@ -41,6 +43,7 @@ export const memoSeries = createCollection<DocumentSeries>('sikat-erp:memo-serie
 export const dprSeries = createCollection<DocumentSeries>('sikat-erp:dpr-series', DPR_SERIES, 'dps');
 export const outgoingPaymentSeries = createCollection<DocumentSeries>('sikat-erp:payment-series', PAYMENT_SERIES, 'ops');
 export const returnSeries = createCollection<DocumentSeries>('sikat-erp:return-series', RETURN_SERIES, 'rts');
+export const lcSeries = createCollection<DocumentSeries>('sikat-erp:lc-series', LC_SERIES, 'lcs');
 
 // Sales Returns
 export const srSeries = createCollection<DocumentSeries>('sikat-erp:sr-series', SR_SERIES, 'srs');
@@ -50,6 +53,7 @@ export const qtSeries = createCollection<DocumentSeries>('sikat-erp:qt-series', 
 export const soSeries = createCollection<DocumentSeries>('sikat-erp:so-series', SO_SERIES, 'sos');
 export const dnSeries = createCollection<DocumentSeries>('sikat-erp:dn-series', DN_SERIES, 'dns');
 export const arSeries = createCollection<DocumentSeries>('sikat-erp:ar-series', AR_SERIES, 'ars');
+export const riSeries = createCollection<DocumentSeries>('sikat-erp:ri-series', RI_SERIES, 'ris');
 export const arCreditSeries = createCollection<DocumentSeries>('sikat-erp:ar-credit-series', AR_CREDIT_SERIES, 'acms');
 export const incomingPaymentSeries = createCollection<DocumentSeries>('sikat-erp:incoming-series', INCOMING_SERIES, 'rcs');
 
@@ -196,6 +200,7 @@ export const DOC_TYPES: DocTypeConfig[] = [
   { key: 'sales-orders', label: 'Sales Orders', icon: 'storefront', collection: soSeries, fallback: SO_SERIES, conditionFields: SO_FIELDS },
   { key: 'deliveries', label: 'Deliveries', icon: 'local_shipping', collection: dnSeries, fallback: DN_SERIES, conditionFields: AR_FIELDS },
   { key: 'ar-invoices', label: 'AR Invoices', icon: 'request_quote', collection: arSeries, fallback: AR_SERIES, conditionFields: AR_FIELDS },
+  { key: 'reserve-invoices', label: 'Reserve Invoices', icon: 'receipt_long', collection: riSeries, fallback: RI_SERIES, conditionFields: AR_FIELDS },
   { key: 'ar-credit-memos', label: 'A/R Credit Memos', icon: 'undo', collection: arCreditSeries, fallback: AR_CREDIT_SERIES, conditionFields: AR_FIELDS },
   { key: 'incoming-payments', label: 'Incoming Payments', icon: 'arrow_circle_down', collection: incomingPaymentSeries, fallback: INCOMING_SERIES, conditionFields: PAYMENT_FIELDS },
   { key: 'inventory-transfers', label: 'Inventory Transfers', icon: 'swap_horiz', collection: transferSeries, fallback: TRANSFER_SERIES },
@@ -203,4 +208,5 @@ export const DOC_TYPES: DocTypeConfig[] = [
   { key: 'inventory-postings', label: 'Inventory Postings', icon: 'post_add', collection: postingSeries, fallback: POSTING_SERIES },
   { key: 'blanket-agreements', label: 'Blanket Agreements', icon: 'description', collection: baSeries, fallback: BA_SERIES, conditionFields: SO_FIELDS },
   { key: 'journal-entries', label: 'Journal Entries', icon: 'menu_book', collection: jeSeries, fallback: JE_SERIES },
+  { key: 'landed-costs', label: 'Landed Costs', icon: 'calculate', collection: lcSeries, fallback: LC_SERIES },
 ];

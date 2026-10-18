@@ -21,11 +21,13 @@ import { dprNumber, dprTotal, listDownPayments } from '../../../services/apDownP
 import { DPR_LIST_PATH, DPR_STATUS_INTENT } from '../bills/down-payment-requests/detail/DprDetail';
 import { listPurchaseBlanketAgreements, pbaNumber, pbaTotals } from '../../../services/purchaseBlanketAgreements';
 import { PBA_LIST_PATH, PBA_STATUS_INTENT } from '../purchase-agreements/PurchaseBlanketAgreementList';
+import { listLandedCosts, lcNumber, lcTotals } from '../../../services/landedCosts';
+import { LC_LIST_PATH, LC_STATUS_INTENT } from '../landed-costs/detail/types';
 import { lineage, type LinkedDocument } from './lineage';
 
 export type { LinkedDocument, Relation } from './lineage';
 
-export type DocKind = 'PR' | 'RFQ' | 'PO' | 'GRPO' | 'APINV' | 'PAY' | 'GRET' | 'APCM' | 'DPR' | 'PBA';
+export type DocKind = 'PR' | 'RFQ' | 'PO' | 'GRPO' | 'APINV' | 'PAY' | 'GRET' | 'APCM' | 'DPR' | 'PBA' | 'LC';
 
 /** Lines of a document copied from one base document. */
 export interface CoveredLine {
@@ -282,6 +284,29 @@ const SOURCES: Record<DocKind, () => Promise<DocNode[]>> = {
       partnerId: pba.vendorId,
       items: [],
       bases: [],
+    }));
+  },
+
+  LC: async () => {
+    const docs = await listLandedCosts();
+    return docs.map((lc) => ({
+      kind: 'LC' as const,
+      id: lc.id,
+      type: 'Landed costs',
+      number: lc.docNum ? lcNumber(lc) : lc.id,
+      href: `${LC_LIST_PATH}/${lc.docNum ? lcNumber(lc) : lc.id}`,
+      date: lc.postingDate,
+      status: lc.status,
+      intent: LC_STATUS_INTENT[lc.status],
+      currency: lc.currency,
+      total: lcTotals(lc.costs),
+      partnerId: lc.vendorId,
+      items: coveredLines(lc.lines),
+      bases: [...new Set(lc.lines.map((l) => l.baseId))].map((grId) => ({
+        kind: 'GRPO' as const,
+        id: grId,
+        lines: coveredLines(lc.lines.filter((l) => l.baseId === grId)),
+      })),
     }));
   },
 };

@@ -14,8 +14,8 @@ import type { TaxMasterData } from '../../../services/taxDetermination';
 import type { DnContext } from '../deliveries/detail/types';
 
 export const AC_LIST_PATH = '/sales/returns-and-credits';
-export const AR_CM_LIST_PATH = '/sales/returns-and-credits/credit-memos';
-export const SR_LIST_PATH = '/sales/returns-and-credits/returns';
+export const AR_CM_LIST_PATH = '/sales/credit-memos';
+export const SR_LIST_PATH = '/sales/sales-returns';
 
 export type ArCmDraft = ArCmInput;
 

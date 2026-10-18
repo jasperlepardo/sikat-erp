@@ -7,7 +7,7 @@ import { dnNumber } from '../../../../services/deliveries';
 import { soNumber } from '../../../../services/salesOrders';
 import { buildDnContext, type DnContext, type DnDraft, type DnMasters } from '../../deliveries/detail/types';
 
-export const AR_LIST_PATH = '/sales/invoices';
+export const AR_LIST_PATH = '/sales/customer-invoices';
 
 export type ArDraft = ArInput;
 

@@ -26,17 +26,15 @@ import { statusViews, useListPresets } from '../../../../components/filter/useLi
 import { currencyDef, salesEmployeeDef } from '../../../settings/masterDefs';
 import { fillCardClass, useListPage } from '../../../../components/form/DataTable';
 import { AP_LIST_PATH, AP_STATUS_INTENT } from './detail/ApInvoiceDetail';
-import { BillsTabs } from '../BillsTabs';
-import { listDownPayments } from '../../../../services/apDownPayments';
 
 export function ApInvoiceList() {
   const navigate = useNavigate();
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
-  const data = useAsync(() => Promise.all([listApInvoices(), taxCodes.list(), listDownPayments()]), []);
+  const data = useAsync(() => Promise.all([listApInvoices(), taxCodes.list()]), []);
   const [query, setQuery] = useState('');
   const { resetPage, paginate } = useListPage();
 
-  const [invoices, codes, requests] = data ?? [undefined, [], undefined];
+  const [invoices, codes] = data ?? [undefined, []];
   const totalOf = (inv: ApInvoice) => apTotal(inv, codes);
   const fields = [
     textField<ApInvoice>('no', 'No.', apNumber),
@@ -139,7 +137,7 @@ export function ApInvoiceList() {
             New A/P invoice
           </Button>
         }
-        tabs={<BillsTabs value="invoices" counts={invoices && requests ? { invoices: invoices.length, requests: requests.length } : undefined} />}
+
       />
       <Panel.Body className="flex flex-col gap-2">
         {notice ? (

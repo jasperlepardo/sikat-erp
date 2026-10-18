@@ -20,22 +20,20 @@ import { currencyDef, salesEmployeeDef } from '../../../settings/masterDefs';
 import { fillCardClass, useListPage } from '../../../../components/form/DataTable';
 import { DPR_STATUSES, type DownPaymentRequest } from '../../../../mocks/apDownPayments';
 import { dprNumber, dprTotal, listDownPayments } from '../../../../services/apDownPayments';
-import { listApInvoices } from '../../../../services/apInvoices';
 import { formatDate } from '../../../../services/dates';
 import { formatAmount } from '../../../../services/format';
 import { taxCodes } from '../../../../services/masterData';
 import { useAsync } from '../../../../services/useAsync';
-import { BillsTabs } from '../BillsTabs';
 import { DPR_LIST_PATH, DPR_STATUS_INTENT } from './detail/DprDetail';
 
 /** Purchasing › Bills › Down payment requests: advances vendors asked for, paid and drawn. */
 export function DprList() {
   const navigate = useNavigate();
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
-  const data = useAsync(() => Promise.all([listDownPayments(), taxCodes.list(), listApInvoices()]), []);
+  const data = useAsync(() => Promise.all([listDownPayments(), taxCodes.list()]), []);
   const [query, setQuery] = useState('');
   const { resetPage, paginate } = useListPage();
-  const [requests, codes, invoices] = data ?? [undefined, [], undefined];
+  const [requests, codes] = data ?? [undefined, []];
   const totalOf = (d: DownPaymentRequest) => dprTotal(d, codes);
   const fields = [
     textField<DownPaymentRequest>('no', 'No.', dprNumber),
@@ -116,7 +114,7 @@ export function DprList() {
             New down payment request
           </Button>
         }
-        tabs={<BillsTabs value="requests" counts={requests && invoices ? { invoices: invoices.length, requests: requests.length } : undefined} />}
+
       />
       <Panel.Body className="flex flex-col gap-2">
         {notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : null}

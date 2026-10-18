@@ -66,3 +66,5 @@ export const IT_PATTERNS: JournalPattern[] = [{ id: 'jp-it-1', name: 'Default', 
 export const SC_PATTERNS: JournalPattern[] = [{ id: 'jp-sc-1', name: 'Default', template: 'Inventory Posting', isDefault: true, active: true }];
 export const ISP_PATTERNS: JournalPattern[] = [{ id: 'jp-isp-1', name: 'Default', template: 'Inventory Posting – {reference}', isDefault: true, active: true }];
 export const JE_PATTERNS: JournalPattern[] = [{ id: 'jp-je-1', name: 'Default', template: 'Journal Entry', isDefault: true, active: true }];
+export const RI_PATTERNS: JournalPattern[] = [{ id: 'jp-ri-1', name: 'Default', template: 'Reserve Invoice – {entityCode}', isDefault: true, active: true }];
+export const LC_PATTERNS: JournalPattern[] = [{ id: 'jp-lc-1', name: 'Default', template: 'Landed Costs – {entityCode}', isDefault: true, active: true }];

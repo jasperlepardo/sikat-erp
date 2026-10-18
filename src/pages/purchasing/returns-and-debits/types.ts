@@ -18,9 +18,9 @@ import { listPartnersByRole } from '../../../services/partners';
 import { listPurchaseOrders } from '../../../services/purchaseOrders';
 import type { GrContext, GrMasters } from '../goods-receipts/detail/types';
 
-export const RETURNS_PATH = '/purchasing/returns-and-debits-and-debits';
-export const RETURN_LIST_PATH = `${RETURNS_PATH}/returns`;
-export const MEMO_LIST_PATH = `${RETURNS_PATH}/credit-memos`;
+
+export const RETURN_LIST_PATH = '/purchasing/goods-returns';
+export const MEMO_LIST_PATH = '/purchasing/debit-memos';
 
 export const MEMO_STATUS_INTENT: Record<MemoStatus, 'default' | 'primary' | 'success' | 'danger' | 'warning'> = {
   Draft: 'default',

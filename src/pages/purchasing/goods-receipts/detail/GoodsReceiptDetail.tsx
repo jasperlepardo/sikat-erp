@@ -59,6 +59,7 @@ import { GrJournalCard } from './GrJournalCard';
 import { GR_STATUS_INTENT } from './types';
 import { ReferencesTable } from '../../shared/ReferencesTable';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
+import { AP_LIST_PATH } from '../../bills/ap-invoices/detail/ApInvoiceDetail';
 export { GR_STATUS_INTENT };
 
 export const GR_LIST_PATH = '/purchasing/goods-receipts';
@@ -305,7 +306,7 @@ function GoodsReceiptForm() {
     ...(draft.status === 'Not Confirmed' ? [{ label: 'Approve', icon: 'check_circle', onSelect: () => submit(null, false, { approved: true }) }, { label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => setRejecting(true) }] : []),
     ...(draft.status === 'Open' && draft.lines.some((l) => grOpenQty(l, draft) > 0)
       ? [
-          { label: 'Copy to A/P invoice', icon: 'request_quote', onSelect: () => navigate('/purchasing/bills/new', { state: { fromReceipt: saved.id } }) },
+          { label: 'Copy to A/P invoice', icon: 'request_quote', onSelect: () => navigate(`${AP_LIST_PATH}/new`, { state: { fromReceipt: saved.id } }) },
           { label: 'Copy to goods return', icon: 'assignment_return', onSelect: () => navigate('/purchasing/returns-and-debits-and-debits/returns/new', { state: { fromReceipt: saved.id } }) },
         ]
       : []),

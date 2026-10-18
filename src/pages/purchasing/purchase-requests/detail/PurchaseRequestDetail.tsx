@@ -270,15 +270,21 @@ function PurchaseRequestForm() {
               </Alert>
             ) : null}
 
-            <fieldset disabled={ctx.readOnly} className="contents">
-              <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
-                <PrRequesterCard {...sectionProps} />
-                <PrDocumentCard {...sectionProps} transitions={transitions} />
+            <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
+              <div className="flex flex-col gap-2 lg:col-span-8">
+                <fieldset disabled={ctx.readOnly} className="contents">
+                  <PrRequesterCard {...sectionProps} />
+                  <PrLinesCard {...sectionProps} />
+                </fieldset>
+                <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach supporting documents, e.g. specs, approvals or quotes." />
               </div>
-              <PrLinesCard {...sectionProps} />
-              <PrTotalsCard {...sectionProps} />
-            </fieldset>
-            <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach supporting documents, e.g. specs, approvals or quotes." />
+              <div className="flex flex-col gap-2 lg:col-span-4">
+                <fieldset disabled={ctx.readOnly} className="contents">
+                  <PrDocumentCard {...sectionProps} transitions={transitions} />
+                  <PrTotalsCard {...sectionProps} />
+                </fieldset>
+              </div>
+            </div>
           </Panel.Body>
         )}
       </Panel>

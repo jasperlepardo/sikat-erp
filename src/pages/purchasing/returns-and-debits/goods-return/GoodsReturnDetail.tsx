@@ -266,7 +266,7 @@ function GoodsReturnForm() {
     ...bases.map((l) => ({
       label: `Open ${l.baseType === 'GRPO' ? 'receipt' : 'A/P invoice'} ${l.baseDocNo}`,
       icon: l.baseType === 'GRPO' ? 'inventory' : 'request_quote',
-      onSelect: () => navigate(l.baseType === 'GRPO' ? `/purchasing/goods-receipts/${l.baseId}` : `/purchasing/bills/${l.baseId}`),
+      onSelect: () => navigate(l.baseType === 'GRPO' ? `/purchasing/goods-receipts/${l.baseId}` : `/purchasing/vendor-invoices/${l.baseId}`),
     })),
     ...(vendor ? [{ label: `Open vendor ${vendor.code}`, icon: 'local_shipping', onSelect: () => navigate(`/purchasing/vendors/${vendor.id}`) }] : []),
   ];

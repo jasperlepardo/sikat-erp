@@ -33,6 +33,8 @@ import {
 import { accounts as glAccounts, currencies } from '../../services/masterData';
 import { manufacturers, shippingTypes, unitsOfMeasure, variantAttributes, warehouses, warrantyTemplates } from '../../services/inventoryMasters';
 import { blankCurrency, validateCurrency } from './accounting-tax/CurrenciesTab';
+import type { LandedCostType } from '../../mocks/landedCostTypes';
+import { landedCostTypes } from '../../services/landedCosts';
 import type { Company } from '../../mocks/companies';
 import { addressSummary, blankPostalAddress } from '../../mocks/address';
 import { companies, registeredOfficeOf, withRegisteredAddress } from '../../services/companies';
@@ -908,3 +910,43 @@ export const userDef = namedDef({
   collection: people.users, idPrefix: 'usr', icon: 'person', title: 'Users', noun: 'user', home: COMPANY,
   description: 'System user accounts (login names). An employee can be linked to one.', placeholder: 'e.g. jdelacruz',
 });
+
+export const landedCostTypeDef: MasterDef<LandedCostType> = {
+  collection: landedCostTypes,
+  icon: 'calculate',
+  title: 'Landed cost types',
+  noun: 'landed cost type',
+  home: 'Settings › Purchasing',
+  blank: (name) => ({ id: newId('lct'), name, expenseAccount: '', active: true }),
+  value: (r) => r.id,
+  label: (r) => r.name,
+  columns: [
+    { key: 'name', header: 'Name', cell: (r) => r.name },
+    { key: 'expenseAccount', header: 'Expense account', cell: (r) => r.expenseAccount || '—' },
+    statusColumn<LandedCostType>(),
+  ],
+  searchText: (r) => `${r.name} ${r.expenseAccount}`,
+  normalize: (r) => ({ ...r, name: r.name.trim() }),
+  validate: (r, all) => {
+    const e: Errors = {};
+    uniqueRequired(e, r, all, 'name', 'Name');
+    return e;
+  },
+  editor: (r, update, errors) => {
+    const f = bind(r, update);
+    return (
+      <FieldStack>
+        {f.text('name', 'Name', { required: true, error: errors.name, placeholder: 'e.g. Freight' })}
+        <AccountField
+          label="Expense account"
+          role="general"
+          accounts={[...glAccounts.snapshot()]}
+          value={r.expenseAccount}
+          onChange={(expenseAccount) => update({ expenseAccount })}
+          hint="The G/L account this cost type posts to."
+        />
+        {f.status('active', 'Status')}
+      </FieldStack>
+    );
+  },
+};

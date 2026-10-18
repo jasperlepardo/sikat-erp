@@ -68,6 +68,10 @@ const PaymentDetail = page(() => import('../pages/purchasing/payments-made/detai
 const ReturnsList = page(() => import('../pages/purchasing/returns-and-debits/ReturnsList'), 'ReturnsList');
 const GoodsReturnDetail = page(() => import('../pages/purchasing/returns-and-debits/goods-return/GoodsReturnDetail'), 'GoodsReturnDetail');
 const CreditMemoDetail = page(() => import('../pages/purchasing/returns-and-debits/credit-memo/CreditMemoDetail'), 'CreditMemoDetail');
+const LandedCostsList = page(() => import('../pages/purchasing/landed-costs/LandedCostsList'), 'LandedCostsList');
+const LandedCostDetail = page(() => import('../pages/purchasing/landed-costs/detail/LandedCostDetail'), 'LandedCostDetail');
+const ReserveInvoiceList = page(() => import('../pages/sales/reserve-invoices/ReserveInvoiceList'), 'ReserveInvoiceList');
+const ReserveInvoiceDetail = page(() => import('../pages/sales/reserve-invoices/detail/ReserveInvoiceDetail'), 'ReserveInvoiceDetail');
 const AccountingDashboard = page(() => import('../pages/accounting/AccountingDashboard'), 'AccountingDashboard');
 const ChartOfAccountsPage = page(() => import('../pages/accounting/ChartOfAccountsPage'), 'ChartOfAccountsPage');
 const JournalEntryList = page(() => import('../pages/accounting/journal/JournalEntryList'), 'JournalEntryList');
@@ -128,39 +132,48 @@ export const router = createHashRouter([
           { path: 'sales/sales-orders/:id/:tab?', element: <SalesOrderDetail /> },
           { path: 'sales/deliveries', element: <DeliveryList /> },
           { path: 'sales/deliveries/:id/:tab?', element: <DeliveryDetail /> },
-          { path: 'sales/invoices', element: <ArInvoiceList /> },
-          { path: 'sales/invoices/:id/:tab?', element: <ArInvoiceDetail /> },
-          { path: 'sales/payments-received', element: <IncomingPaymentList /> },
-          { path: 'sales/payments-received/:id/:tab?', element: <IncomingPaymentDetail /> },
-          { path: 'sales/returns-and-credits', element: <SalesReturnsList kind="returns" /> },
-          { path: 'sales/returns-and-credits/returns', element: <SalesReturnsList kind="returns" /> },
-          { path: 'sales/returns-and-credits/returns/:id/:tab?', element: <SalesReturnDetail /> },
-          { path: 'sales/returns-and-credits/credit-memos', element: <SalesReturnsList kind="memos" /> },
-          { path: 'sales/returns-and-credits/credit-memos/:id/:tab?', element: <ArCreditMemoDetail /> },
+          { path: 'sales/customer-invoices', element: <ArInvoiceList /> },
+          { path: 'sales/customer-invoices/:id/:tab?', element: <ArInvoiceDetail /> },
+          { path: 'sales/reserve-invoices', element: <ReserveInvoiceList /> },
+          { path: 'sales/reserve-invoices/:id/:tab?', element: <ReserveInvoiceDetail /> },
+          { path: 'sales/incoming-payments', element: <IncomingPaymentList /> },
+          { path: 'sales/incoming-payments/:id/:tab?', element: <IncomingPaymentDetail /> },
+          { path: 'sales/sales-returns', element: <SalesReturnsList kind="returns" /> },
+          { path: 'sales/sales-returns/:id/:tab?', element: <SalesReturnDetail /> },
+          { path: 'sales/credit-memos', element: <SalesReturnsList kind="memos" /> },
+          { path: 'sales/credit-memos/:id/:tab?', element: <ArCreditMemoDetail /> },
           { path: 'sales/agreements', element: <BlanketAgreementList /> },
           { path: 'sales/agreements/:id/:tab?', element: <BlanketAgreementDetail /> },
           { path: 'purchasing/dashboard', element: <PurchaseDashboard /> },
           { path: 'purchasing/purchase-requests', element: <PurchaseRequestList /> },
           { path: 'purchasing/purchase-requests/:id/:tab?', element: <PurchaseRequestDetail /> },
-          { path: 'purchasing/quotations', element: <RfqList /> },
-          { path: 'purchasing/quotations/:id/:tab?', element: <RfqDetail /> },
+          { path: 'purchasing/purchase-quotations', element: <RfqList /> },
+          { path: 'purchasing/purchase-quotations/:id/:tab?', element: <RfqDetail /> },
           { path: 'purchasing/purchase-orders', element: <PurchaseOrderList /> },
           { path: 'purchasing/purchase-orders/:id/:tab?', element: <PurchaseOrderDetail /> },
           { path: 'purchasing/goods-receipts', element: <GoodsReceiptList /> },
           { path: 'purchasing/goods-receipts/:id/:tab?', element: <GoodsReceiptDetail /> },
-          { path: 'purchasing/bills', element: <ApInvoiceList /> },
-          { path: 'purchasing/bills/down-payment-requests', element: <DprList /> },
-          { path: 'purchasing/bills/down-payment-requests/:id/:tab?', element: <DprDetail /> },
-          { path: 'purchasing/bills/:id/:tab?', element: <ApInvoiceDetail /> },
-          { path: 'purchasing/payments-made-made', element: <PaymentList /> },
-          { path: 'purchasing/payments-made-made/:id/:tab?', element: <PaymentDetail /> },
-          { path: 'purchasing/returns-and-debits-and-debits', element: <ReturnsList key="returns" kind="returns" /> },
-          { path: 'purchasing/returns-and-debits-and-debits/returns', element: <ReturnsList key="returns" kind="returns" /> },
-          { path: 'purchasing/returns-and-debits-and-debits/returns/:id/:tab?', element: <GoodsReturnDetail /> },
-          { path: 'purchasing/returns-and-debits-and-debits/credit-memos', element: <ReturnsList key="memos" kind="memos" /> },
-          { path: 'purchasing/returns-and-debits-and-debits/credit-memos/:id/:tab?', element: <CreditMemoDetail /> },
+
+
+
+          { path: 'purchasing/vendor-invoices', element: <ApInvoiceList /> },
+          { path: 'purchasing/vendor-invoices/:id/:tab?', element: <ApInvoiceDetail /> },
+          { path: 'purchasing/down-payment-requests', element: <DprList /> },
+          { path: 'purchasing/down-payment-requests/:id/:tab?', element: <DprDetail /> },
+          { path: 'purchasing/outgoing-payments', element: <PaymentList /> },
+          { path: 'purchasing/outgoing-payments/:id/:tab?', element: <PaymentDetail /> },
+
+
+
+
+          { path: 'purchasing/goods-returns', element: <ReturnsList kind="returns" /> },
+          { path: 'purchasing/goods-returns/:id/:tab?', element: <GoodsReturnDetail /> },
+          { path: 'purchasing/debit-memos', element: <ReturnsList kind="memos" /> },
+          { path: 'purchasing/debit-memos/:id/:tab?', element: <CreditMemoDetail /> },
           { path: 'purchasing/purchase-agreements', element: <PurchaseBlanketAgreementList /> },
           { path: 'purchasing/purchase-agreements/:id', element: <PurchaseBlanketAgreementDetail /> },
+          { path: 'purchasing/landed-costs', element: <LandedCostsList /> },
+          { path: 'purchasing/landed-costs/:id/:tab?', element: <LandedCostDetail /> },
           // Settings shell: redirect bare /settings to the first settings module.
           { path: 'settings', element: <Navigate to="/settings/company" replace /> },
           // Settings pages keep the tab and an opened record in the URL.

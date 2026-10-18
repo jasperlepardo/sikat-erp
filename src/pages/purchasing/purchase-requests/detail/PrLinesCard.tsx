@@ -21,7 +21,8 @@ import { itemsPerUom } from '../../../../mocks/items';
 import { formatAmount } from '../../../../services/format';
 import { activeOptions } from '../../../../services/inventoryMasters';
 import { isValidToday, stockTotals } from '../../../../services/items';
-import { lineNet, openQty, priceAfterDiscount, inventoryQty } from '../../../../services/purchaseRequests';
+import { lineNet, openQty, priceAfterDiscount, inventoryQty, prTotals } from '../../../../services/purchaseRequests';
+import { PurchTotalsFooter } from '../../shared/PurchTotalsFooter';
 import { lineFromItem, type PrTabProps } from './types';
 
 const GROUPS = {
@@ -41,6 +42,7 @@ export function PrLinesCard({ draft, update, errors, m, ctx }: PrTabProps) {
   const [editing, setEditing] = useState<Set<string>>(new Set());
   const [addKey, setAddKey] = useState(0);
   const lines = draft.lines;
+  const totals = prTotals(draft, ctx.rateOf);
   const itemOf = (l: PrLine) => m.items.find((i) => i.id === l.itemId);
   const patch = (id: string, p: Partial<PrLine>) =>
     update({ lines: lines.map((l) => (l.id === id ? { ...l, ...p } : l)) });
@@ -217,6 +219,27 @@ export function PrLinesCard({ draft, update, errors, m, ctx }: PrTabProps) {
           />
         )}
         empty={<Text variant="small" tone={errors.lines ? 'danger' : 'muted'}>No lines yet — search above to add one.</Text>}
+        cardFooter={
+          <PurchTotalsFooter
+            totals={{ ...totals, rounding: 0 }}
+            currency="PHP"
+            readOnly={ctx.readOnly}
+            discountPct={0}
+            onDiscountChange={() => {}}
+            freightInput={
+              <TextField
+                aria-label="Freight estimate"
+                type="number"
+                min={0}
+                className="w-32"
+                prefix="PHP"
+                value={String(draft.freight)}
+                onChange={(e) => update({ freight: Number(e.currentTarget.value) })}
+              />
+            }
+            totalLabel="Total payment due (estimate)"
+          />
+        }
       />
     </div>
   );

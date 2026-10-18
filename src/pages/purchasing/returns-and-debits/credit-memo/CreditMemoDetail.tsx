@@ -287,7 +287,7 @@ function CreditMemoForm() {
     ...bases.map((l) => ({
       label: `Open ${l.baseType === 'GRET' ? 'goods return' : 'A/P invoice'} ${l.baseDocNo}`,
       icon: l.baseType === 'GRET' ? 'assignment_return' : 'request_quote',
-      onSelect: () => navigate(l.baseType === 'GRET' ? `/purchasing/returns-and-debits-and-debits/returns/${l.baseId}` : `/purchasing/bills/${l.baseId}`),
+      onSelect: () => navigate(l.baseType === 'GRET' ? `/purchasing/returns-and-debits-and-debits/returns/${l.baseId}` : `/purchasing/vendor-invoices/${l.baseId}`),
     })),
     ...(vendor ? [{ label: `Open vendor ${vendor.code}`, icon: 'local_shipping', onSelect: () => navigate(`/purchasing/vendors/${vendor.id}`) }] : []),
   ];

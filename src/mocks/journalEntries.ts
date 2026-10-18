@@ -26,7 +26,7 @@ import type { Attachment, DocumentSeries } from './common';
 
 export type JeStatus = 'Posted' | 'Reversed';
 
-export type OriginType = 'JE' | 'IM' | 'IQ' | 'PD' | 'PU' | 'PS' | 'RD' | 'PC' | 'DN' | 'IN' | 'RC' | 'AC' | 'SR';
+export type OriginType = 'JE' | 'IM' | 'IQ' | 'PD' | 'PU' | 'PS' | 'RD' | 'PC' | 'DN' | 'IN' | 'RC' | 'AC' | 'SR' | 'LC' | 'RI';
 export const ORIGIN_LABEL: Record<OriginType, string> = {
   JE: 'Journal Entry',
   IM: 'Inventory Transfer',
@@ -35,27 +35,31 @@ export const ORIGIN_LABEL: Record<OriginType, string> = {
   PU: 'A/P Invoice',
   PS: 'Outgoing Payment',
   RD: 'Goods Return',
-  PC: 'A/P Credit Memo',
+  PC: 'Debit Memo',
   DN: 'Delivery',
   IN: 'A/R Invoice',
   RC: 'Incoming Payment',
-  AC: 'A/R Credit Memo',
+  AC: 'Credit Memo',
   SR: 'Sales Return',
+  LC: 'Landed Costs',
+  RI: 'Reserve Invoice',
 };
 /** Where each origin document opens (once its screens exist). */
 export const ORIGIN_PATH: Partial<Record<OriginType, string>> = {
   IM: '/inventory/stock-movements',
   IQ: '/inventory/stock-counts/postings',
   PD: '/purchasing/goods-receipts',
-  PU: '/purchasing/bills',
-  PS: '/purchasing/payments-made-made',
+  PU: '/purchasing/vendor-invoices',
+  PS: '/purchasing/outgoing-payments',
   DN: '/sales/deliveries',
-  RD: '/purchasing/returns-and-debits-and-debits/returns',
-  PC: '/purchasing/returns-and-debits-and-debits/credit-memos',
-  IN: '/sales/invoices',
-  AC: '/sales/returns-and-credits/credit-memos',
-  RC: '/sales/payments-received',
-  SR: '/sales/returns-and-credits/returns',
+  RD: '/purchasing/goods-returns',
+  PC: '/purchasing/debit-memos',
+  IN: '/sales/customer-invoices',
+  AC: '/sales/credit-memos',
+  RC: '/sales/incoming-payments',
+  SR: '/sales/sales-returns',
+  LC: '/purchasing/landed-costs',
+  RI: '/sales/reserve-invoices',
 };
 
 export const TRANS_CODES = ['', 'ACCR', 'DEPR', 'RECL', 'CORR', 'YEND', 'FXRV'];

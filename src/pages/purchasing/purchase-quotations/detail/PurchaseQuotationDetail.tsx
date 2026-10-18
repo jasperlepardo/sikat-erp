@@ -53,7 +53,7 @@ import { RfqDatesCard } from './RfqDatesCard';
 import { STATUS_INTENT } from './types';
 export { STATUS_INTENT };
 
-export const RFQ_LIST_PATH = '/purchasing/quotations';
+export const RFQ_LIST_PATH = '/purchasing/purchase-quotations';
 
 type TabId = 'contents' | 'logistics' | 'accounting';
 

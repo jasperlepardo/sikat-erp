@@ -55,7 +55,7 @@ import { useDocTitle } from '../../../../services/useDocTitle';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
 import { NotFound, PrevNext, neighbours } from '../../../../components/form/DetailNav';
 
-export const RC_LIST_PATH = '/sales/payments-received';
+export const RC_LIST_PATH = '/sales/incoming-payments';
 export const RC_STATUS_INTENT: Record<IncomingStatus, 'default' | 'success' | 'danger' | 'warning'> = { Draft: 'default', 'Not Confirmed': 'warning', Posted: 'success', Cancelled: 'danger' };
 
 type TabId = 'contents' | 'means';

@@ -65,8 +65,10 @@ import { getPurchasingSettings } from '../../../../services/purchaseOrders';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
 import { NotFound, PrevNext, neighbours } from '../../../../components/form/DetailNav';
+import { AP_LIST_PATH } from '../../bills/ap-invoices/detail/ApInvoiceDetail';
+import { DPR_LIST_PATH } from '../../bills/down-payment-requests/detail/DprDetail';
 
-export const PAYMENT_LIST_PATH = '/purchasing/payments-made-made';
+export const PAYMENT_LIST_PATH = '/purchasing/outgoing-payments';
 
 type TabId = 'contents' | 'means';
 
@@ -282,8 +284,8 @@ function PaymentForm() {
       : []),
     ...paidInvoices.map((r) =>
       r.docType === 'DPR'
-        ? { label: `Open down payment request ${r.docNo}`, icon: 'savings', onSelect: () => navigate(`/purchasing/bills/down-payment-requests/${r.invoiceId}`) }
-        : { label: `Open A/P invoice ${r.docNo}`, icon: 'request_quote', onSelect: () => navigate(`/purchasing/bills/${r.invoiceId}`) },
+        ? { label: `Open down payment request ${r.docNo}`, icon: 'savings', onSelect: () => navigate(`${DPR_LIST_PATH}/${r.invoiceId}`) }
+        : { label: `Open A/P invoice ${r.docNo}`, icon: 'request_quote', onSelect: () => navigate(`${AP_LIST_PATH}/${r.invoiceId}`) },
     ),
     ...(vendor ? [{ label: `Open vendor ${vendor.code}`, icon: 'local_shipping', onSelect: () => navigate(`/purchasing/vendors/${vendor.id}`) }] : []),
   ];

@@ -69,7 +69,7 @@ import { ApJournalCard } from './ApJournalCard';
 import { AP_STATUS_INTENT } from './types';
 export { AP_STATUS_INTENT };
 
-export const AP_LIST_PATH = '/purchasing/bills';
+export const AP_LIST_PATH = '/purchasing/vendor-invoices';
 
 type TabId = 'contents' | 'logistics' | 'accounting';
 

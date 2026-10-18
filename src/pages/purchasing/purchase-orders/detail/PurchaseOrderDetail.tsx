@@ -73,6 +73,8 @@ import { PoDocumentCard } from './PoDocumentCard';
 import { PoAssignmentCard } from './PoTotalsCard';
 
 import { STATUS_INTENT } from './types';
+import { AP_LIST_PATH } from '../../bills/ap-invoices/detail/ApInvoiceDetail';
+import { DPR_LIST_PATH } from '../../bills/down-payment-requests/detail/DprDetail';
 export { STATUS_INTENT };
 export const PO_LIST_PATH = '/purchasing/purchase-orders';
 
@@ -343,8 +345,8 @@ function PurchaseOrderForm() {
     ...(draft.status === 'Open' && draft.lines.some((l) => l.status === 'Open' && l.receivedQty < l.quantity)
       ? [
           { label: 'Copy to goods receipt', icon: 'inventory', onSelect: () => navigate('/purchasing/goods-receipts/new', { state: { fromPo: saved.id } }) },
-          { label: 'Copy to A/P invoice', icon: 'request_quote', onSelect: () => navigate('/purchasing/bills/new', { state: { fromPo: saved.id } }) },
-          { label: 'Copy to A/P down payment request', icon: 'savings', onSelect: () => navigate('/purchasing/bills/down-payment-requests/new', { state: { fromPo: saved.id } }) },
+          { label: 'Copy to A/P invoice', icon: 'request_quote', onSelect: () => navigate(`${AP_LIST_PATH}/new`, { state: { fromPo: saved.id } }) },
+          { label: 'Copy to A/P down payment request', icon: 'savings', onSelect: () => navigate(`${DPR_LIST_PATH}/new`, { state: { fromPo: saved.id } }) },
         ]
       : []),
     ...(!isNew ? [{ label: 'Duplicate', icon: 'content_copy', onSelect: duplicate }] : []),

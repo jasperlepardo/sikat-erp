@@ -3,7 +3,7 @@ import {
   type PatternVariable,
   DOC_VARS, PARTNER_VARS, ACCOUNTING_VARS, SALES_VARS, INVENTORY_VARS, REFERENCE_VARS, PAYMENT_VARS,
   PO_PATTERNS, GR_PATTERNS, AP_PATTERNS, APCM_PATTERNS, DPR_PATTERNS, OP_PATTERNS, GRTN_PATTERNS,
-  SO_PATTERNS, DN_PATTERNS, AR_PATTERNS, IP_PATTERNS, IT_PATTERNS, SC_PATTERNS, ISP_PATTERNS, JE_PATTERNS,
+  SO_PATTERNS, DN_PATTERNS, AR_PATTERNS, IP_PATTERNS, IT_PATTERNS, SC_PATTERNS, ISP_PATTERNS, JE_PATTERNS, LC_PATTERNS, RI_PATTERNS,
 } from '../mocks/journalPatterns';
 import { createCollection, type Collection } from './store';
 
@@ -54,6 +54,8 @@ export const itPatterns = createCollection<JournalPattern>('sikat-erp:it-pattern
 export const scPatterns = createCollection<JournalPattern>('sikat-erp:sc-patterns', SC_PATTERNS, 'jp');
 export const ispPatterns = createCollection<JournalPattern>('sikat-erp:isp-patterns', ISP_PATTERNS, 'jp');
 export const jePatterns = createCollection<JournalPattern>('sikat-erp:je-patterns', JE_PATTERNS, 'jp');
+export const lcPatterns = createCollection<JournalPattern>('sikat-erp:lc-patterns', LC_PATTERNS, 'jp');
+export const riPatterns = createCollection<JournalPattern>('sikat-erp:ri-patterns', RI_PATTERNS, 'jp');
 
 const PURCHASING = [...DOC_VARS, ...PARTNER_VARS, ...ACCOUNTING_VARS];
 const SALES = [...DOC_VARS, ...PARTNER_VARS, ...ACCOUNTING_VARS, ...SALES_VARS];
@@ -74,11 +76,13 @@ export const DOC_PATTERN_TYPES: DocPatternConfig[] = [
   { key: 'sales-orders',          label: 'Sales Orders',          icon: 'storefront',       collection: soPatterns,   variables: SALES,             sample: { ...CUSTOMER, docNo: 'SO-2026-00015' } },
   { key: 'deliveries',            label: 'Deliveries',            icon: 'local_shipping',   collection: dnPatterns,   variables: SALES,             sample: { ...CUSTOMER, docNo: 'DN-2026-00015' } },
   { key: 'ar-invoices',           label: 'AR Invoices',           icon: 'request_quote',    collection: arPatterns,   variables: SALES,             sample: { ...CUSTOMER, docNo: 'SI-2026-00015' } },
+  { key: 'reserve-invoices',      label: 'Reserve Invoices',      icon: 'receipt_long',     collection: riPatterns,   variables: SALES,             sample: { ...CUSTOMER, docNo: 'RI-2026-00001' } },
   { key: 'incoming-payments',     label: 'Incoming Payments',     icon: 'arrow_circle_down', collection: ipPatterns,  variables: PAYMENTS_SALES,    sample: { ...CUSTOMER, docNo: 'RC-2026-00015' } },
   { key: 'inventory-transfers',   label: 'Inventory Transfers',   icon: 'swap_horiz',       collection: itPatterns,   variables: [...DOC_VARS, ...INVENTORY_VARS], sample: { docNo: 'IT-2026-00015', fromWarehouse: 'WH-MNL', toWarehouse: 'WH-CEB' } },
   { key: 'stock-counts',          label: 'Stock Counts',          icon: 'fact_check',       collection: scPatterns,   variables: [...DOC_VARS, ...REFERENCE_VARS], sample: { docNo: 'SC-2026-00015', reference: 'Month-end count' } },
   { key: 'inventory-postings',    label: 'Inventory Postings',    icon: 'post_add',         collection: ispPatterns,  variables: [...DOC_VARS, ...REFERENCE_VARS], sample: { docNo: 'IP-2026-00015', reference: 'Opening stock adjustment' } },
   { key: 'journal-entries',       label: 'Journal Entries',       icon: 'menu_book',        collection: jePatterns,   variables: [...DOC_VARS],     sample: { docNo: 'JE-2026-00015' } },
+  { key: 'landed-costs',          label: 'Landed Costs',          icon: 'calculate',        collection: lcPatterns,   variables: PURCHASING,        sample: { ...VENDOR, docNo: 'LC-2026-00001' } },
 ];
 
 export function defaultJournalRemark(docTypeKey: string, context: JournalContext): string {

@@ -60,7 +60,7 @@ import { DprTotalsCard } from './DprTotalsCard';
 import { DPR_STATUS_INTENT, type DprDraft as Draft, type DprMasters as Masters } from './types';
 export { DPR_STATUS_INTENT };
 
-export const DPR_LIST_PATH = '/purchasing/bills/down-payment-requests';
+export const DPR_LIST_PATH = '/purchasing/down-payment-requests';
 
 type TabId = 'contents' | 'logistics' | 'accounting';
 
