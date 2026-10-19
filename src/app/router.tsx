@@ -61,6 +61,8 @@ const GoodsReceiptList = page(() => import('../pages/purchasing/goods-receipts/G
 const GoodsReceiptDetail = page(() => import('../pages/purchasing/goods-receipts/detail/GoodsReceiptDetail'), 'GoodsReceiptDetail');
 const ApInvoiceList = page(() => import('../pages/purchasing/vendor-invoices/ApInvoiceList'), 'ApInvoiceList');
 const ApInvoiceDetail = page(() => import('../pages/purchasing/vendor-invoices/detail/ApInvoiceDetail'), 'ApInvoiceDetail');
+const ApReserveInvoiceList = page(() => import('../pages/purchasing/reserve-invoices/ApReserveInvoiceList'), 'ApReserveInvoiceList');
+const ApReserveInvoiceDetail = page(() => import('../pages/purchasing/reserve-invoices/detail/ApReserveInvoiceDetail'), 'ApReserveInvoiceDetail');
 const DprList = page(() => import('../pages/purchasing/down-payment-requests/DprList'), 'DprList');
 const DprDetail = page(() => import('../pages/purchasing/down-payment-requests/detail/DprDetail'), 'DprDetail');
 const PaymentList = page(() => import('../pages/purchasing/payments-made/PaymentList'), 'PaymentList');
@@ -159,6 +161,8 @@ export const router = createHashRouter([
 
           { path: 'purchasing/vendor-invoices', element: <ApInvoiceList /> },
           { path: 'purchasing/vendor-invoices/:id/:tab?', element: <ApInvoiceDetail /> },
+          { path: 'purchasing/reserve-invoices', element: <ApReserveInvoiceList /> },
+          { path: 'purchasing/reserve-invoices/:id/:tab?', element: <ApReserveInvoiceDetail /> },
           { path: 'purchasing/down-payment-requests', element: <DprList /> },
           { path: 'purchasing/down-payment-requests/:id/:tab?', element: <DprDetail /> },
           { path: 'purchasing/outgoing-payments', element: <PaymentList /> },
@@ -171,8 +175,8 @@ export const router = createHashRouter([
           { path: 'purchasing/goods-returns/:id/:tab?', element: <GoodsReturnDetail /> },
           { path: 'purchasing/debit-memos', element: <DebitMemosList /> },
           { path: 'purchasing/debit-memos/:id/:tab?', element: <CreditMemoDetail /> },
-          { path: 'purchasing/purchase-agreements', element: <PurchaseBlanketAgreementList /> },
-          { path: 'purchasing/purchase-agreements/:id', element: <PurchaseBlanketAgreementDetail /> },
+          { path: 'purchasing/agreements', element: <PurchaseBlanketAgreementList /> },
+          { path: 'purchasing/agreements/:id', element: <PurchaseBlanketAgreementDetail /> },
           { path: 'purchasing/landed-costs', element: <LandedCostsList /> },
           { path: 'purchasing/landed-costs/:id/:tab?', element: <LandedCostDetail /> },
           // Settings shell: redirect bare /settings to the first settings module.

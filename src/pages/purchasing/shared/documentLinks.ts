@@ -10,6 +10,8 @@ import { RFQ_LIST_PATH, STATUS_INTENT as RFQ_STATUS_INTENT } from '../purchase-q
 import { GR_LIST_PATH, GR_STATUS_INTENT } from '../goods-receipts/detail/GoodsReceiptDetail';
 import { AP_LIST_PATH, AP_STATUS_INTENT } from '../vendor-invoices/detail/ApInvoiceDetail';
 import { apNumber, apTotal, listApInvoices } from '../../../services/apInvoices';
+import { APRI_LIST_PATH, AP_RI_STATUS_INTENT } from '../reserve-invoices/detail/ApReserveInvoiceDetail';
+import { apRiNumber, apRiTotals, listApReserveInvoices } from '../../../services/apReserveInvoices';
 import { listPayments, overallAmount, paymentNumber, rowSettled } from '../../../services/outgoingPayments';
 import { PAYMENT_LIST_PATH, PAYMENT_STATUS_INTENT } from '../payments-made/detail/PaymentDetail';
 import { formatAmount } from '../../../services/format';
@@ -27,7 +29,7 @@ import { lineage, type LinkedDocument } from './lineage';
 
 export type { LinkedDocument, Relation } from './lineage';
 
-export type DocKind = 'PR' | 'RFQ' | 'PO' | 'GRPO' | 'APINV' | 'PAY' | 'GRET' | 'APCM' | 'DPR' | 'PBA' | 'LC';
+export type DocKind = 'PR' | 'RFQ' | 'PO' | 'GRPO' | 'APINV' | 'APRI' | 'PAY' | 'GRET' | 'APCM' | 'DPR' | 'PBA' | 'LC';
 
 /** Lines of a document copied from one base document. */
 export interface CoveredLine {
@@ -177,6 +179,28 @@ const SOURCES: Record<DocKind, () => Promise<DocNode[]>> = {
         // Down payments it drew count as bases too: the advance came before the bill.
         ...(inv.drawnDownPayments ?? []).map((d) => ({ kind: 'DPR' as const, id: d.requestId, lines: [], note: `Drew ${inv.currency} ${formatAmount(d.amount)}` })),
       ],
+    }));
+  },
+  APRI: async () => {
+    const [invoices, codes] = await Promise.all([listApReserveInvoices(), taxCodes.list()]);
+    return invoices.map((inv) => ({
+      kind: 'APRI' as const,
+      id: inv.id,
+      type: 'A/P reserve invoice',
+      number: apRiNumber(inv),
+      href: `${APRI_LIST_PATH}/${inv.id}`,
+      date: inv.postingDate,
+      status: inv.status,
+      intent: AP_RI_STATUS_INTENT[inv.status],
+      currency: inv.currency,
+      total: apRiTotals(inv, (code) => { const c = codes.find((x) => x.code === code); return c?.rates?.[0]?.rate ?? 0; }).total,
+      partnerId: inv.vendorId,
+      items: coveredLines(inv.lines),
+      bases: [...new Map(inv.lines.filter((l) => l.baseType).map((l) => [`${l.baseType}:${l.baseId}`, l])).values()].map((b) => ({
+        kind: 'PO' as DocKind,
+        id: b.baseId,
+        lines: inv.lines.filter((l) => l.baseId === b.baseId),
+      })),
     }));
   },
   // A payment's bases are the invoices it paid; an Account payment has none.

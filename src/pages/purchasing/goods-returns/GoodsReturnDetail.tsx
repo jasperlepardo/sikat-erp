@@ -331,54 +331,53 @@ function GoodsReturnForm() {
                 </Alert>
               ) : null}
 
-              <fieldset disabled={added} className="contents">
-                <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
-                  <GrVendorCard {...sectionProps} pickVendor={pickVendor} locked={added} />
-                  <GrDocumentCard {...sectionProps} statusMoves={statusMoves} locked={added} />
+              <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
+                <div className="flex flex-col gap-2 lg:col-span-8">
+                  <fieldset disabled={added} className="contents">
+                    <GrVendorCard {...sectionProps} pickVendor={pickVendor} locked={added} />
+                    <ReturnLines<ReturnLine>
+                      lines={draft.lines}
+                      onChange={(lines) => update({ lines })}
+                      errors={errors}
+                      m={m}
+                      ctx={ctx}
+                      currency={code}
+                      postingDate={draft.postingDate}
+                      vendorId={draft.vendorId}
+                      title="Contents"
+                      description={`What goes back, in the line's unit. Stock leaves at the cost it came in at; prices are in ${code} for the vendor's credit.`}
+                      empty={draft.vendorId ? 'Copy from a goods receipt (goods not yet billed) or an A/P invoice (goods already billed), or add lines.' : 'Pick a vendor first.'}
+                      newLine={() => newReturnLine()}
+                      sendsStock={(l) => Boolean(m.items.find((i) => i.id === l.itemId)?.inventoryItem)}
+                      openHint={(l) => {
+                        if (l.baseType === 'GRPO') {
+                          const gr = m.receipts.find((r) => r.id === l.baseId);
+                          const gl = gr?.lines.find((x) => x.id === l.baseLineId);
+                          return gr && gl ? `${grOpenQty(gl, gr)} of ${gl.quantity} left on the receipt` : undefined;
+                        }
+                        if (l.baseType === 'APINV') {
+                          const il = m.invoices.find((i) => i.id === l.baseId)?.lines.find((x) => x.id === l.baseLineId);
+                          return il ? `${returnableQty(il)} of ${il.quantity} billed left to return` : undefined;
+                        }
+                        return needsCredit(l) && added ? `${l.creditedQty} credited` : undefined;
+                      }}
+                      onCopy={() => setCopying(true)}
+                      canCopy={sameCurrency(receipts).length + sameCurrency(invoices).length > 0}
+                    />
+                    <ReferencesTable refs={draft.references} onChange={(references) => update({ references })} readOnly={added} description="Other documents this return refers to, e.g. the vendor's RMA or the original receipt." />
+                  </fieldset>
+                  <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach the RMA, photos of the damage, or the courier waybill." />
                 </div>
-
-                <ReturnLines<ReturnLine>
-                  lines={draft.lines}
-                  onChange={(lines) => update({ lines })}
-                  errors={errors}
-                  m={m}
-                  ctx={ctx}
-                  currency={code}
-                  postingDate={draft.postingDate}
-                  vendorId={draft.vendorId}
-                  title="Contents"
-                  description={`What goes back, in the line's unit. Stock leaves at the cost it came in at; prices are in ${code} for the vendor's credit.`}
-                  empty={draft.vendorId ? 'Copy from a goods receipt (goods not yet billed) or an A/P invoice (goods already billed), or add lines.' : 'Pick a vendor first.'}
-                  newLine={() => newReturnLine()}
-                  sendsStock={(l) => Boolean(m.items.find((i) => i.id === l.itemId)?.inventoryItem)}
-                  openHint={(l) => {
-                    if (l.baseType === 'GRPO') {
-                      const gr = m.receipts.find((r) => r.id === l.baseId);
-                      const gl = gr?.lines.find((x) => x.id === l.baseLineId);
-                      return gr && gl ? `${grOpenQty(gl, gr)} of ${gl.quantity} left on the receipt` : undefined;
-                    }
-                    if (l.baseType === 'APINV') {
-                      const il = m.invoices.find((i) => i.id === l.baseId)?.lines.find((x) => x.id === l.baseLineId);
-                      return il ? `${returnableQty(il)} of ${il.quantity} billed left to return` : undefined;
-                    }
-                    return needsCredit(l) && added ? `${l.creditedQty} credited` : undefined;
-                  }}
-                  onCopy={() => setCopying(true)}
-                  canCopy={sameCurrency(receipts).length + sameCurrency(invoices).length > 0}
-                />
-
-                <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
-                  <GrLogisticsCard {...sectionProps} addressOptions={addressOptions} />
-                  <GrAccountingCard {...sectionProps} readOnly={added} />
+                <div className="flex flex-col gap-2 lg:col-span-4">
+                  <fieldset disabled={added} className="contents">
+                    <GrDocumentCard {...sectionProps} statusMoves={statusMoves} locked={added} />
+                    <GrLogisticsCard {...sectionProps} addressOptions={addressOptions} />
+                    <GrAccountingCard {...sectionProps} readOnly={added} />
+                  </fieldset>
+                  <GrTotalsCard {...sectionProps} locked={added} />
+                  <GrJournalCard journal={journal} accounts={m.accounts} />
                 </div>
-                <ReferencesTable refs={draft.references} onChange={(references) => update({ references })} readOnly={added} description="Other documents this return refers to, e.g. the vendor's RMA or the original receipt." />
-              </fieldset>
-
-              <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
-                <GrTotalsCard {...sectionProps} locked={added} />
-                <GrJournalCard journal={journal} accounts={m.accounts} />
               </div>
-              <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach the RMA, photos of the damage, or the courier waybill." />
             </Panel.Body>
           )}
         </Panel>

@@ -40,6 +40,7 @@ export const rfqSeries = createCollection<DocumentSeries>('sikat-erp:rfq-series'
 export const poSeries = createCollection<DocumentSeries>('sikat-erp:po-series:v2', PO_SERIES, 'ser');
 export const grSeries = createCollection<DocumentSeries>('sikat-erp:gr-series', GR_SERIES, 'grs');
 export const apSeries = createCollection<DocumentSeries>('sikat-erp:ap-series', AP_SERIES, 'aps');
+export const apRiSeries = createCollection<DocumentSeries>('sikat-erp:ap-ri-series', AP_RI_SERIES, 'apris');
 export const memoSeries = createCollection<DocumentSeries>('sikat-erp:memo-series', MEMO_SERIES, 'cms');
 export const dprSeries = createCollection<DocumentSeries>('sikat-erp:dpr-series', DPR_SERIES, 'dps');
 export const outgoingPaymentSeries = createCollection<DocumentSeries>('sikat-erp:payment-series', PAYMENT_SERIES, 'ops');
@@ -193,6 +194,7 @@ export const DOC_TYPES: DocTypeConfig[] = [
   { key: 'purchase-orders', label: 'Purchase Orders', icon: 'shopping_cart', collection: poSeries, fallback: PO_SERIES, conditionFields: PO_FIELDS },
   { key: 'goods-receipts', label: 'Goods Receipts', icon: 'inventory', collection: grSeries, fallback: GR_SERIES },
   { key: 'ap-invoices', label: 'AP Invoices (Bills)', icon: 'receipt_long', collection: apSeries, fallback: AP_SERIES, conditionFields: PO_FIELDS },
+  { key: 'ap-reserve-invoices', label: 'A/P Reserve Invoices', icon: 'receipt_long', collection: apRiSeries, fallback: AP_RI_SERIES, conditionFields: PO_FIELDS },
   { key: 'ap-credit-memos', label: 'AP Credit Memos', icon: 'undo', collection: memoSeries, fallback: MEMO_SERIES },
   { key: 'down-payment-requests', label: 'Down Payment Requests', icon: 'payments', collection: dprSeries, fallback: DPR_SERIES },
   { key: 'outgoing-payments', label: 'Outgoing Payments', icon: 'arrow_circle_up', collection: outgoingPaymentSeries, fallback: PAYMENT_SERIES, conditionFields: PAYMENT_FIELDS },

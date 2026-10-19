@@ -71,6 +71,7 @@ const APP_MODULES: SideNavItem[] = [
     ['Purchase Orders', 'receipt_long'],
     ['Goods Receipts', 'inventory'],
     ['Vendor Invoices', 'request_quote'],
+    ['Reserve Invoices', 'receipt_long'],
     ['Down Payment Requests', 'savings'],
     ['Goods Returns', 'assignment_return'],
     ['Debit Memos', 'receipt'],

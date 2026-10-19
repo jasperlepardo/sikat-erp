@@ -43,6 +43,7 @@ const STEP: Record<string, { verb: string; icon: string }> = {
   DPR: { verb: 'Down payment requested', icon: 'request_quote' },
   GRPO: { verb: 'Received', icon: 'inventory' },
   APINV: { verb: 'Billed', icon: 'request_quote' },
+  APRI: { verb: 'Reserve invoiced', icon: 'receipt_long' },
   PAY: { verb: 'Paid', icon: 'payments' },
   GRET: { verb: 'Returned to vendor', icon: 'assignment_return' },
   APCM: { verb: 'Credited by vendor', icon: 'assignment_return' },

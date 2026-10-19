@@ -23,7 +23,7 @@ import { listPurchaseBlanketAgreements, pbaNumber, pbaTotals } from '../../../se
 import { useAsync } from '../../../services/useAsync';
 import { useDocTitle } from '../../../services/useDocTitle';
 
-export const PBA_LIST_PATH = '/purchasing/purchase-agreements';
+export const PBA_LIST_PATH = '/purchasing/agreements';
 
 export const PBA_STATUS_INTENT: Record<PbaStatus, 'default' | 'primary' | 'success' | 'danger' | 'warning'> = {
   Draft: 'default',
