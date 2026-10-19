@@ -65,9 +65,10 @@ const DprList = page(() => import('../pages/purchasing/down-payment-requests/Dpr
 const DprDetail = page(() => import('../pages/purchasing/down-payment-requests/detail/DprDetail'), 'DprDetail');
 const PaymentList = page(() => import('../pages/purchasing/payments-made/PaymentList'), 'PaymentList');
 const PaymentDetail = page(() => import('../pages/purchasing/payments-made/detail/PaymentDetail'), 'PaymentDetail');
-const ReturnsList = page(() => import('../pages/purchasing/returns-and-debits/ReturnsList'), 'ReturnsList');
-const GoodsReturnDetail = page(() => import('../pages/purchasing/returns-and-debits/goods-return/GoodsReturnDetail'), 'GoodsReturnDetail');
-const CreditMemoDetail = page(() => import('../pages/purchasing/returns-and-debits/credit-memo/CreditMemoDetail'), 'CreditMemoDetail');
+const GoodsReturnsList = page(() => import('../pages/purchasing/goods-returns/GoodsReturnsList'), 'GoodsReturnsList');
+const DebitMemosList = page(() => import('../pages/purchasing/debit-memos/DebitMemosList'), 'DebitMemosList');
+const GoodsReturnDetail = page(() => import('../pages/purchasing/goods-returns/GoodsReturnDetail'), 'GoodsReturnDetail');
+const CreditMemoDetail = page(() => import('../pages/purchasing/debit-memos/CreditMemoDetail'), 'CreditMemoDetail');
 const LandedCostsList = page(() => import('../pages/purchasing/landed-costs/LandedCostsList'), 'LandedCostsList');
 const LandedCostDetail = page(() => import('../pages/purchasing/landed-costs/detail/LandedCostDetail'), 'LandedCostDetail');
 const ReserveInvoiceList = page(() => import('../pages/sales/reserve-invoices/ReserveInvoiceList'), 'ReserveInvoiceList');
@@ -166,9 +167,9 @@ export const router = createHashRouter([
 
 
 
-          { path: 'purchasing/goods-returns', element: <ReturnsList kind="returns" /> },
+          { path: 'purchasing/goods-returns', element: <GoodsReturnsList /> },
           { path: 'purchasing/goods-returns/:id/:tab?', element: <GoodsReturnDetail /> },
-          { path: 'purchasing/debit-memos', element: <ReturnsList kind="memos" /> },
+          { path: 'purchasing/debit-memos', element: <DebitMemosList /> },
           { path: 'purchasing/debit-memos/:id/:tab?', element: <CreditMemoDetail /> },
           { path: 'purchasing/purchase-agreements', element: <PurchaseBlanketAgreementList /> },
           { path: 'purchasing/purchase-agreements/:id', element: <PurchaseBlanketAgreementDetail /> },

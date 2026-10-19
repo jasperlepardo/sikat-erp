@@ -7,8 +7,8 @@ import { apNumber, listApInvoices } from '../../../../services/apInvoices';
 import { AP_LIST_PATH, AP_STATUS_INTENT } from '../../../purchasing/vendor-invoices/detail/ApInvoiceDetail';
 import { listGoodsReturns, returnNumber } from '../../../../services/goodsReturns';
 import { listCreditMemos, memoNumber } from '../../../../services/apCreditMemos';
-import { RETURN_STATUS_INTENT } from '../../../purchasing/returns-and-debits/types';
-import { MEMO_LIST_PATH, MEMO_STATUS_INTENT, RETURN_LIST_PATH } from '../../../purchasing/returns-and-debits/types';
+import { RETURN_STATUS_INTENT } from '../../../purchasing/shared/returnsTypes';
+import { MEMO_LIST_PATH, MEMO_STATUS_INTENT, RETURN_LIST_PATH } from '../../../purchasing/shared/returnsTypes';
 import type { Draft } from './types';
 
 /**

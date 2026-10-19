@@ -15,8 +15,8 @@ import { PAYMENT_LIST_PATH, PAYMENT_STATUS_INTENT } from '../payments-made/detai
 import { formatAmount } from '../../../services/format';
 import { listGoodsReturns, returnNumber, returnTotal } from '../../../services/goodsReturns';
 import { listCreditMemos, memoNumber, memoTotal } from '../../../services/apCreditMemos';
-import { RETURN_STATUS_INTENT } from '../returns-and-debits/types';
-import { MEMO_LIST_PATH, MEMO_STATUS_INTENT, RETURN_LIST_PATH } from '../returns-and-debits/types';
+import { RETURN_STATUS_INTENT } from './returnsTypes';
+import { MEMO_LIST_PATH, MEMO_STATUS_INTENT, RETURN_LIST_PATH } from './returnsTypes';
 import { dprNumber, dprTotal, listDownPayments } from '../../../services/apDownPayments';
 import { DPR_LIST_PATH, DPR_STATUS_INTENT } from '../down-payment-requests/detail/DprDetail';
 import { listPurchaseBlanketAgreements, pbaNumber, pbaTotals } from '../../../services/purchaseBlanketAgreements';

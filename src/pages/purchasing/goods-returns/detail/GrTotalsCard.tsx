@@ -1,7 +1,7 @@
-import { Fields, Section, bind } from '../../../../../components/form/fields';
-import { returnTotals } from '../../../../../services/goodsReturns';
-import { salesEmployeeDef } from '../../../../settings/masterDefs';
-import { PurchTotalsFooter } from '../../../shared/PurchTotalsFooter';
+import { Fields, Section, bind } from '../../../../components/form/fields';
+import { returnTotals } from '../../../../services/goodsReturns';
+import { salesEmployeeDef } from '../../../settings/masterDefs';
+import { PurchTotalsFooter } from '../../shared/PurchTotalsFooter';
 import type { GrSectionProps } from './types';
 
 interface GrTotalsCardProps extends GrSectionProps {

@@ -1,37 +1,41 @@
 import { Combobox, FormField } from '@jasperlepardo/sikat-design-system';
-import { Fields, ReadOnly, Section, bind } from '../../../../../components/form/fields';
-import { PAYMENT_METHODS } from '../../../../../mocks/masters';
-import { INDICATORS } from '../../../../../mocks/purchaseOrders';
-import { paymentTermDef, projectDef } from '../../../../settings/masterDefs';
-import type { GrSectionProps } from './types';
+import { AccountField } from '../../../../components/form/AccountField';
+import { Fields, Flags, ReadOnly, Section, bind } from '../../../../components/form/fields';
+import { PAYMENT_METHODS } from '../../../../mocks/masters';
+import { INDICATORS } from '../../../../mocks/purchaseOrders';
+import { paymentTermDef, projectDef } from '../../../settings/masterDefs';
+import type { CmSectionProps } from './types';
 
 const asOptions = (values: readonly string[]) => values.map((v) => ({ value: v, label: v }));
 
-interface GrAccountingCardProps extends GrSectionProps {
+interface CmAccountingCardProps extends CmSectionProps {
   readOnly: boolean;
 }
 
-export function GrAccountingCard({ draft, update, errors: _errors, m, ctx, readOnly: _readOnly }: GrAccountingCardProps) {
+export function CmAccountingCard({ draft, update, errors, m, ctx, readOnly }: CmAccountingCardProps) {
   const h = bind(draft, update);
   const { vendor } = ctx;
 
   return (
     <Section icon="account_balance" title="Accounting">
       <Fields>
-        {h.text('journalRemark', 'Journal remark', { hint: 'Defaults to "Goods Returns – vendor code".' })}
-        {h.master('paymentTermId', 'Payment terms', paymentTermDef, { hint: 'Defaults from the vendor or the base document.' })}
+        {h.text('journalRemark', 'Journal remark', { hint: 'Defaults to "A/P Credit Memo – vendor code".' })}
+        <AccountField label="Control account" role="payable" value={draft.controlAccount} onChange={(controlAccount) => update({ controlAccount })} accounts={m.accounts} required error={errors.controlAccount} disabled={readOnly} hint="The vendor's payable account by default." />
+        {h.master('paymentTermId', 'Payment terms', paymentTermDef)}
         {h.lookup('paymentMethod', 'Payment method', PAYMENT_METHODS.map((p) => ({ value: p.code, label: `${p.code} · ${p.description}` })))}
+        <ReadOnly label="Installments" value={String(draft.installments)} />
         {h.num('cashDiscountDays', 'Cash discount date offset', { suffix: 'days' })}
         {h.master('projectId', 'BP project', projectDef, { clearable: true })}
         {h.choose('indicator', 'Indicator', [{ value: '', label: '— None —' }, ...asOptions(INDICATORS)])}
         <ReadOnly label="Federal tax ID" value={vendor?.tin || '—'} hint="The vendor's TIN." />
-        <ReadOnly label="Order number" value={draft.orderNumber || '—'} hint="The PO behind the lines." />
-        <FormField label="Consolidating BP" tooltip="Settle this return's credit through another partner.">
+        <ReadOnly label="Order number" value={draft.orderNumber || '—'} />
+        <FormField label="Consolidating BP">
           {(p) => (
             <Combobox {...p} placeholder="— None —" options={m.vendors.filter((v) => v.id !== draft.vendorId).map((v) => ({ value: v.id, label: v.name, subLabel: v.code, subLabelPlacement: 'top' as const, text: `${v.code} ${v.name}` }))} value={draft.consolidatingBpId || null} onValueChange={(consolidatingBpId) => update({ consolidatingBpId: consolidatingBpId ?? '' })} />
           )}
         </FormField>
       </Fields>
+      <Flags>{h.check('maxCashDiscount', 'Max. cash discount')}</Flags>
     </Section>
   );
 }

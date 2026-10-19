@@ -25,8 +25,8 @@ import { listCreditMemos, memoNumber, memoTotal } from '../../../services/apCred
 import { listGoodsReturns, returnNumber, returnTotal } from '../../../services/goodsReturns';
 import { taxCodes } from '../../../services/masterData';
 import { useAsync } from '../../../services/useAsync';
-import { RETURN_STATUS_INTENT } from './types';
-import { MEMO_LIST_PATH, MEMO_STATUS_INTENT, RETURN_LIST_PATH } from './types';
+import { RETURN_STATUS_INTENT } from '../shared/returnsTypes';
+import { MEMO_LIST_PATH, MEMO_STATUS_INTENT, RETURN_LIST_PATH } from '../shared/returnsTypes';
 
 type Kind = 'returns' | 'memos';
 type Status = 'Draft' | 'Not Confirmed' | 'Open' | 'Closed' | 'Cancelled';
@@ -53,18 +53,19 @@ interface Row {
  * Purchasing › Returns & Debits: goods sent back to vendors, and the vendors' credit notes.
  * One page, a tab for each document.
  */
-export function ReturnsList({ kind }: { kind: Kind }) {
+export function DebitMemosList() {
   const navigate = useNavigate();
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const data = useAsync(() => Promise.all([listGoodsReturns(), listCreditMemos(), taxCodes.list()]), []);
   const [query, setQuery] = useState('');
   const { resetPage, paginate } = useListPage();
-  const path = kind === 'returns' ? RETURN_LIST_PATH : MEMO_LIST_PATH;
+  const kind: Kind = 'memos';
+  const path = MEMO_LIST_PATH;
 
   const all: Row[] | undefined = useMemo(() => {
     if (!data) return undefined;
     const [returns, memos, codes] = data;
-    return kind === 'returns'
+    return false
       ? returns.map((r) => ({
           id: r.id, docNum: r.docNum, number: returnNumber(r), ref: r.vendorRef ? `RMA ${r.vendorRef}` : '', vendorCode: r.vendorCode, vendorName: r.vendorName, postingDate: r.postingDate,
           base: [...new Set(r.lines.map((l) => l.baseDocNo && `${l.baseType === 'GRPO' ? 'Receipt' : 'A/P invoice'} ${l.baseDocNo}`).filter(Boolean))].join(', '),
@@ -94,9 +95,9 @@ export function ReturnsList({ kind }: { kind: Kind }) {
     masterField<Row>('currency', 'Currency', currencyDef, (r) => r.currency),
   ];
   const presets = useListPresets({
-    list: kind === 'returns' ? 'goods-returns' : 'ap-credit-memos',
+    list: false ? 'goods-returns' : 'ap-credit-memos',
     fields,
-    builtIns: statusViews(kind === 'returns' ? 'goods returns' : 'A/P credit memos', STATUSES),
+    builtIns: statusViews(false ? 'goods returns' : 'A/P credit memos', STATUSES),
     defaultSort: { key: 'postingDate', direction: 'desc' },
     rows: all,
     onChange: resetPage,
@@ -112,7 +113,7 @@ export function ReturnsList({ kind }: { kind: Kind }) {
     return [...filtered].sort((a, b) => (value(a) < value(b) ? -1 : value(a) > value(b) ? 1 : 0) * dir);
   }, [all, presets.filter, query, sort]);
 
-  const intent = kind === 'returns' ? RETURN_STATUS_INTENT : MEMO_STATUS_INTENT;
+  const intent = false ? RETURN_STATUS_INTENT : MEMO_STATUS_INTENT;
 
   const columns: TableColumn<Row>[] = [
     { key: 'docNum', header: 'No.', sortable: true, cell: (r) => <TableContent href={`/#${path}/${r.docNum ? r.number : r.id}`} subcopy={r.ref || undefined}>{r.number}</TableContent> },
@@ -144,7 +145,7 @@ export function ReturnsList({ kind }: { kind: Kind }) {
         title={presets.menu}
         actions={
           <Button intent="primary" variant="solid" size="medium" shape="pill" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${path}/new`)}>
-            {kind === 'returns' ? 'New goods return' : 'New A/P credit memo'}
+            {false ? 'New goods return' : 'New A/P credit memo'}
           </Button>
         }
         tabs={
@@ -171,7 +172,7 @@ export function ReturnsList({ kind }: { kind: Kind }) {
             <Text tone="muted" className="p-4">Loading…</Text>
           ) : all.length ? (
             <Table
-              caption={kind === 'returns' ? 'Goods returns' : 'A/P credit memos'}
+              caption={false ? 'Goods returns' : 'A/P credit memos'}
               columns={columns}
               rows={visible}
               getRowId={(r) => r.id}
@@ -182,7 +183,7 @@ export function ReturnsList({ kind }: { kind: Kind }) {
             />
           ) : (
             <Text tone="muted" className="p-4">
-              {kind === 'returns'
+              {false
                 ? 'No goods returns yet. Start one from a goods receipt or A/P invoice (You can also › Copy to goods return), or with New goods return.'
                 : 'No credit memos yet. Start one from an A/P invoice or goods return (You can also › Copy to A/P credit memo), or with New A/P credit memo.'}
             </Text>

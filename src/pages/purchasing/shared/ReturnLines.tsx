@@ -16,7 +16,7 @@ import { determineWithholding } from '../../../services/taxDetermination';
 import { binOptions } from '../../inventory/transfers/TransferLines';
 import { countryDef } from '../../settings/masterDefs';
 import { defaultBin, lineFromItem, linePricing } from '../goods-receipts/detail/types';
-import { baseLink, type AnyReturnLine, type RetContext, type RetMasters } from './types';
+import { baseLink, type AnyReturnLine, type RetContext, type RetMasters } from './returnsTypes';
 
 const GROUPS = { details: 'Item details', withholding: 'Withholding', references: 'References' } as const;
 type Group = keyof typeof GROUPS;

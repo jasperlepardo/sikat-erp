@@ -1,10 +1,10 @@
 import { FormField, Select } from '@jasperlepardo/sikat-design-system';
-import { Fields, ReadOnly, Section, bind } from '../../../../../components/form/fields';
-import { StatusField } from '../../../../../components/form/StatusField';
-import { RETURN_SERIES, RETURN_STATUSES, type ReturnStatus } from '../../../../../mocks/goodsReturns';
-import { formatDate } from '../../../../../services/dates';
-import { returnNumber } from '../../../../../services/goodsReturns';
-import { RETURN_STATUS_INTENT } from '../../types';
+import { Fields, ReadOnly, Section, bind } from '../../../../components/form/fields';
+import { StatusField } from '../../../../components/form/StatusField';
+import { RETURN_SERIES, RETURN_STATUSES, type ReturnStatus } from '../../../../mocks/goodsReturns';
+import { formatDate } from '../../../../services/dates';
+import { returnNumber } from '../../../../services/goodsReturns';
+import { RETURN_STATUS_INTENT } from '../../shared/returnsTypes';
 import type { GrSectionProps } from './types';
 
 interface GrDocumentCardProps extends GrSectionProps {

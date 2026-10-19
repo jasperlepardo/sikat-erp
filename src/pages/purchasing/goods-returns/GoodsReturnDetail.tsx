@@ -12,20 +12,20 @@ import {
   Text,
   TextField,
 } from '@jasperlepardo/sikat-design-system';
-import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
-import { type Errors } from '../../../../components/form/fields';
-import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
-import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
-import { CURRENT_USER_ID } from '../../../../mocks/common';
-import { blankGoodsReturn, needsCredit, newReturnLine, type GoodsReturn, type ReturnLine, type ReturnStatus } from '../../../../mocks/goodsReturns';
-import type { Partner } from '../../../../mocks/partners';
-import { logRejection } from '../../../../services/approvalRules';
-import { apNumber, returnableQty } from '../../../../services/apInvoices';
-import { transferBlock } from '../../../../services/binLocations';
-import { formatDate, todayISO } from '../../../../services/dates';
-import { defaultJournalRemark } from '../../../../services/journalPatterns';
-import { formatAddress } from '../../../../mocks/address';
-import { grNumber, grOpenQty } from '../../../../services/goodsReceipts';
+import { AttachmentsCard } from '../../../components/form/AttachmentsCard';
+import { type Errors } from '../../../components/form/fields';
+import { MoreMenu, type MoreMenuItem } from '../../../components/form/MoreMenu';
+import { ProblemsAlert, problemCollector, type Problem } from '../../../components/form/ProblemsAlert';
+import { CURRENT_USER_ID } from '../../../mocks/common';
+import { blankGoodsReturn, needsCredit, newReturnLine, type GoodsReturn, type ReturnLine, type ReturnStatus } from '../../../mocks/goodsReturns';
+import type { Partner } from '../../../mocks/partners';
+import { logRejection } from '../../../services/approvalRules';
+import { apNumber, returnableQty } from '../../../services/apInvoices';
+import { transferBlock } from '../../../services/binLocations';
+import { formatDate, todayISO } from '../../../services/dates';
+import { defaultJournalRemark } from '../../../services/journalPatterns';
+import { formatAddress } from '../../../mocks/address';
+import { grNumber, grOpenQty } from '../../../services/goodsReceipts';
 import {
   ReturnPostError,
   addGoodsReturn,
@@ -38,25 +38,25 @@ import {
   recallGoodsReturn,
   saveReturnDraft,
   saveReturnRemarks,
-} from '../../../../services/goodsReturns';
-import { isValidToday } from '../../../../services/items';
-import { postDocumentEntry, reverseDocumentEntry } from '../../../../services/journalEntries';
-import { dueDateFor, getPurchasingSettings } from '../../../../services/purchaseOrders';
-import { buildGrContext } from '../../goods-receipts/detail/types';
-import { CopyPanel } from '../../shared/CopyPanel';
-import { DocumentFlow } from '../../shared/DocumentFlow';
-import { loadRetMasters, vendorAddressOptions, RETURN_STATUS_INTENT, returnFromInvoice, returnFromReceipt, MEMO_LIST_PATH, RETURN_LIST_PATH, type RetMasters, type RetContext } from '../types';
-import { ReturnLines } from '../ReturnLines';
-import { ActivityTab } from '../../../../components/activity/ActivityTab';
-import { NotFound, PrevNext, neighbours } from '../../../../components/form/DetailNav';
-import { useDocTitle } from '../../../../services/useDocTitle';
+} from '../../../services/goodsReturns';
+import { isValidToday } from '../../../services/items';
+import { postDocumentEntry, reverseDocumentEntry } from '../../../services/journalEntries';
+import { dueDateFor, getPurchasingSettings } from '../../../services/purchaseOrders';
+import { buildGrContext } from '../goods-receipts/detail/types';
+import { CopyPanel } from '../shared/CopyPanel';
+import { DocumentFlow } from '../shared/DocumentFlow';
+import { loadRetMasters, vendorAddressOptions, RETURN_STATUS_INTENT, returnFromInvoice, returnFromReceipt, MEMO_LIST_PATH, RETURN_LIST_PATH, type RetMasters, type RetContext } from '../shared/returnsTypes';
+import { ReturnLines } from '../shared/ReturnLines';
+import { ActivityTab } from '../../../components/activity/ActivityTab';
+import { NotFound, PrevNext, neighbours } from '../../../components/form/DetailNav';
+import { useDocTitle } from '../../../services/useDocTitle';
 import { GrVendorCard } from './detail/GrVendorCard';
 import { GrDocumentCard } from './detail/GrDocumentCard';
 import { GrTotalsCard } from './detail/GrTotalsCard';
 import { GrJournalCard } from './detail/GrJournalCard';
 import { GrLogisticsCard } from './detail/GrLogisticsCard';
 import { GrAccountingCard } from './detail/GrAccountingCard';
-import { ReferencesTable } from '../../shared/ReferencesTable';
+import { ReferencesTable } from '../shared/ReferencesTable';
 
 type Draft = Omit<GoodsReturn, 'id'> & { id?: string };
 type TabId = 'contents' | 'logistics' | 'accounting';

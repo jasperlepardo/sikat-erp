@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { Text, TextField, type TableColumn } from '@jasperlepardo/sikat-design-system';
-import { DataTable } from '../../../../../components/form/DataTable';
-import { Section } from '../../../../../components/form/fields';
-import { formatAmount } from '../../../../../services/format';
-import { formatDate } from '../../../../../services/dates';
-import { EditPanel } from '../../../../partners/detail/EditPanel';
+import { DataTable } from '../../../../components/form/DataTable';
+import { Section } from '../../../../components/form/fields';
+import { formatAmount } from '../../../../services/format';
+import { formatDate } from '../../../../services/dates';
+import { EditPanel } from '../../../partners/detail/EditPanel';
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 

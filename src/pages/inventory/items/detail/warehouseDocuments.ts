@@ -8,8 +8,8 @@ import { listSalesOrders, openQty as soOpenQty, soNumber } from '../../../../ser
 import type { StatusIntent } from '../../../partners/detail/partnerDocuments';
 import { PO_LIST_PATH, STATUS_INTENT } from '../../../purchasing/purchase-orders/detail/PurchaseOrderDetail';
 import { GR_LIST_PATH, GR_STATUS_INTENT } from '../../../purchasing/goods-receipts/detail/GoodsReceiptDetail';
-import { RETURN_STATUS_INTENT } from '../../../purchasing/returns-and-debits/types';
-import { RETURN_LIST_PATH } from '../../../purchasing/returns-and-debits/types';
+import { RETURN_STATUS_INTENT } from '../../../purchasing/shared/returnsTypes';
+import { RETURN_LIST_PATH } from '../../../purchasing/shared/returnsTypes';
 import { SO_STATUS_INTENT } from '../../../sales/sales-orders/detail/SalesOrderDetail';
 import { SO_LIST_PATH } from '../../../sales/sales-orders/detail/types';
 import { DN_STATUS_INTENT } from '../../../sales/deliveries/detail/DeliveryDetail';

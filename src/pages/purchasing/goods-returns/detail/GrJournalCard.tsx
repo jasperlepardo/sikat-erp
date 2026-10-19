@@ -1,11 +1,11 @@
 import { List, Text } from '@jasperlepardo/sikat-design-system';
-import { Section } from '../../../../../components/form/fields';
-import { accountText, type Account } from '../../../../../mocks/chartOfAccounts';
-import { formatAmount } from '../../../../../services/format';
+import { Section } from '../../../../components/form/fields';
+import { accountText, type Account } from '../../../../mocks/chartOfAccounts';
+import { formatAmount } from '../../../../services/format';
 
 interface JournalLine { account: string; debit?: number; credit?: number; }
 
-export function CmJournalCard({ journal, accounts, code, fx }: { journal: JournalLine[]; accounts: Account[]; code: string; fx: number }) {
+export function GrJournalCard({ journal, accounts }: { journal: JournalLine[]; accounts: Account[] }) {
   return (
     <Section icon="account_balance" title="Journal entry">
       {journal.length ? (
@@ -16,7 +16,7 @@ export function CmJournalCard({ journal, accounts, code, fx }: { journal: Journa
         </List.Group>
       ) : null}
       <Text variant="small" tone="muted">
-        In PHP{code === 'PHP' ? '' : ` at ${fx}`}. Dr the vendor (what they owe back) and the withholding reversed / Cr Inventory for goods sent back (or price adjustments on stock), Goods Received Not Invoiced for lines from a goods return, and input VAT.
+        In PHP, at the cost the goods came in at. Goods Received Not Invoiced is cleared by the vendor's A/P credit memo (for billed goods) or by billing less (for goods not yet billed). Total credit is what the vendor owes back, VAT included.
       </Text>
     </Section>
   );

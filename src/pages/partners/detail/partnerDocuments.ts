@@ -10,8 +10,8 @@ import { listPayments, overallAmount, paymentNumber } from '../../../services/ou
 import { PAYMENT_LIST_PATH, PAYMENT_STATUS_INTENT } from '../../purchasing/payments-made/detail/PaymentDetail';
 import { listGoodsReturns, returnNumber, returnTotal } from '../../../services/goodsReturns';
 import { listCreditMemos, memoNumber, memoTotal } from '../../../services/apCreditMemos';
-import { RETURN_STATUS_INTENT } from '../../purchasing/returns-and-debits/types';
-import { MEMO_LIST_PATH, MEMO_STATUS_INTENT, RETURN_LIST_PATH } from '../../purchasing/returns-and-debits/types';
+import { RETURN_STATUS_INTENT } from '../../purchasing/shared/returnsTypes';
+import { MEMO_LIST_PATH, MEMO_STATUS_INTENT, RETURN_LIST_PATH } from '../../purchasing/shared/returnsTypes';
 import { dprNumber, dprTotal, listDownPayments } from '../../../services/apDownPayments';
 import { DPR_LIST_PATH, DPR_STATUS_INTENT } from '../../purchasing/down-payment-requests/detail/DprDetail';
 

@@ -14,17 +14,17 @@ import {
   TextField,
   type TableColumn,
 } from '@jasperlepardo/sikat-design-system';
-import { type Errors } from '../../../../components/form/fields';
-import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
-import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
-import { formatAddress } from '../../../../mocks/address';
-import { blankCreditMemo, newMemoLine, type ApCreditMemo, type MemoLine, type MemoStatus } from '../../../../mocks/apCreditMemos';
-import type { ApInvoice } from '../../../../mocks/apInvoices';
-import type { GoodsReturn } from '../../../../mocks/goodsReturns';
-import { CURRENT_USER_ID } from '../../../../mocks/common';
-import type { Partner } from '../../../../mocks/partners';
-import { logRejection } from '../../../../services/approvalRules';
-import { apNumber, returnableQty } from '../../../../services/apInvoices';
+import { type Errors } from '../../../components/form/fields';
+import { MoreMenu, type MoreMenuItem } from '../../../components/form/MoreMenu';
+import { ProblemsAlert, problemCollector, type Problem } from '../../../components/form/ProblemsAlert';
+import { formatAddress } from '../../../mocks/address';
+import { blankCreditMemo, newMemoLine, type ApCreditMemo, type MemoLine, type MemoStatus } from '../../../mocks/apCreditMemos';
+import type { ApInvoice } from '../../../mocks/apInvoices';
+import type { GoodsReturn } from '../../../mocks/goodsReturns';
+import { CURRENT_USER_ID } from '../../../mocks/common';
+import type { Partner } from '../../../mocks/partners';
+import { logRejection } from '../../../services/approvalRules';
+import { apNumber, returnableQty } from '../../../services/apInvoices';
 import {
   MemoPostError,
   addCreditMemo,
@@ -42,24 +42,24 @@ import {
   saveMemoRemarks,
   sendsStock,
   type InvoiceBalances,
-} from '../../../../services/apCreditMemos';
-import { formatDate, todayISO } from '../../../../services/dates';
-import { defaultJournalRemark } from '../../../../services/journalPatterns';
-import { formatAmount } from '../../../../services/format';
-import { creditableReturns, returnNumber, returnOpenQty } from '../../../../services/goodsReturns';
-import { isValidToday } from '../../../../services/items';
-import { postDocumentEntry, reverseDocumentEntry } from '../../../../services/journalEntries';
-import { dueDateFor, getPurchasingSettings, poWithholding } from '../../../../services/purchaseOrders';
-import { buildGrContext } from '../../goods-receipts/detail/types';
-import { CopyPanel } from '../../shared/CopyPanel';
-import { DocumentFlow } from '../../shared/DocumentFlow';
-import { invoiceBalance } from '../../payments-made/detail/types';
-import { loadRetMasters, vendorAddressOptions, MEMO_LIST_PATH, type RetMasters, memoFromInvoice, memoFromReturn } from '../types';
-import { ReturnLines } from '../ReturnLines';
-import { ActivityTab } from '../../../../components/activity/ActivityTab';
-import { NotFound, PrevNext, neighbours } from '../../../../components/form/DetailNav';
-import { useDocTitle } from '../../../../services/useDocTitle';
-import { MEMO_STATUS_INTENT } from '../types';
+} from '../../../services/apCreditMemos';
+import { formatDate, todayISO } from '../../../services/dates';
+import { defaultJournalRemark } from '../../../services/journalPatterns';
+import { formatAmount } from '../../../services/format';
+import { creditableReturns, returnNumber, returnOpenQty } from '../../../services/goodsReturns';
+import { isValidToday } from '../../../services/items';
+import { postDocumentEntry, reverseDocumentEntry } from '../../../services/journalEntries';
+import { dueDateFor, getPurchasingSettings, poWithholding } from '../../../services/purchaseOrders';
+import { buildGrContext } from '../goods-receipts/detail/types';
+import { CopyPanel } from '../shared/CopyPanel';
+import { DocumentFlow } from '../shared/DocumentFlow';
+import { invoiceBalance } from '../payments-made/detail/types';
+import { loadRetMasters, vendorAddressOptions, MEMO_LIST_PATH, type RetMasters, memoFromInvoice, memoFromReturn } from '../shared/returnsTypes';
+import { ReturnLines } from '../shared/ReturnLines';
+import { ActivityTab } from '../../../components/activity/ActivityTab';
+import { NotFound, PrevNext, neighbours } from '../../../components/form/DetailNav';
+import { useDocTitle } from '../../../services/useDocTitle';
+import { MEMO_STATUS_INTENT } from '../shared/returnsTypes';
 import { CmVendorCard } from './detail/CmVendorCard';
 import { CmDocumentCard } from './detail/CmDocumentCard';
 import { CmTotalsCard } from './detail/CmTotalsCard';
@@ -67,8 +67,8 @@ import { CmJournalCard } from './detail/CmJournalCard';
 import { ApplyCreditPanel } from './detail/ApplyCreditPanel';
 import { CmLogisticsCard } from './detail/CmLogisticsCard';
 import { CmAccountingCard } from './detail/CmAccountingCard';
-import { ReferencesTable } from '../../shared/ReferencesTable';
-import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
+import { ReferencesTable } from '../shared/ReferencesTable';
+import { AttachmentsCard } from '../../../components/form/AttachmentsCard';
 
 type Draft = Omit<ApCreditMemo, 'id'> & { id?: string };
 type TabId = 'contents' | 'logistics' | 'accounting';

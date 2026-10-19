@@ -23,7 +23,7 @@ import { PO_LIST_PATH } from '../purchasing/purchase-orders/detail/PurchaseOrder
 import { RFQ_LIST_PATH } from '../purchasing/purchase-quotations/detail/PurchaseQuotationDetail';
 import { GR_LIST_PATH } from '../purchasing/goods-receipts/detail/GoodsReceiptDetail';
 import { AP_LIST_PATH } from '../purchasing/vendor-invoices/detail/ApInvoiceDetail';
-import { RETURN_LIST_PATH, MEMO_LIST_PATH } from '../purchasing/returns-and-debits/types';
+import { RETURN_LIST_PATH, MEMO_LIST_PATH } from '../purchasing/shared/returnsTypes';
 import { DPR_LIST_PATH } from '../purchasing/down-payment-requests/detail/DprDetail';
 import { PAYMENT_LIST_PATH } from '../purchasing/payments-made/detail/PaymentDetail';
 import { QT_LIST_PATH } from '../sales/quotations/QuotationList';

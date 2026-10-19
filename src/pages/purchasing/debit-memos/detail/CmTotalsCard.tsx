@@ -1,9 +1,9 @@
 import { Text } from '@jasperlepardo/sikat-design-system';
-import { Fields, Flags, Section, bind } from '../../../../../components/form/fields';
-import { formatAmount } from '../../../../../services/format';
-import { formatDate } from '../../../../../services/dates';
-import { salesEmployeeDef } from '../../../../settings/masterDefs';
-import { PurchTotalsFooter, PurchTotalRow } from '../../../shared/PurchTotalsFooter';
+import { Fields, Flags, Section, bind } from '../../../../components/form/fields';
+import { formatAmount } from '../../../../services/format';
+import { formatDate } from '../../../../services/dates';
+import { salesEmployeeDef } from '../../../settings/masterDefs';
+import { PurchTotalsFooter, PurchTotalRow } from '../../shared/PurchTotalsFooter';
 import type { CmSectionProps } from './types';
 
 const WITHHELD_LABEL: Record<string, string> = { 'Expanded (EWT)': 'EWT', 'Final (FWT)': 'Final tax', 'Withholding VAT': 'VAT', 'Percentage tax': 'Percentage tax' };
