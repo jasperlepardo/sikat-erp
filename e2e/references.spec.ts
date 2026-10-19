@@ -69,11 +69,11 @@ test('renaming a bin: drafts show the new code, posted documents keep the code t
   expect(receiptId).toBeTruthy();
   await open(page, `purchasing/goods-receipts/${receiptId}`);
   await expect.poll(() => screenText(page)).toContain('WH-001-A-01-01');
-  await open(page, 'inventory/stock-movements/it-001');
+  await open(page, 'inventory/inventory-transfers/it-001');
   await expect.poll(() => screenText(page)).toContain('WH-001-A-01-01');
 
   // Draft: the bin's current code, with nothing to fix.
-  await open(page, 'inventory/stock-movements/it-004');
+  await open(page, 'inventory/inventory-transfers/it-004');
   await expect.poll(() => screenText(page)).toContain('WH-001-A-01-09');
   const draft = await screenText(page);
   expect(draft).not.toContain('WH-001-A-01-01');

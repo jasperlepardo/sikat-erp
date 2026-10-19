@@ -18,6 +18,7 @@ const ItemList = page(() => import('../pages/inventory/items/ItemList'), 'ItemLi
 const ItemDetail = page(() => import('../pages/inventory/items/detail/ItemDetail'), 'ItemDetail');
 const Placeholder = page(() => import('../pages/Placeholder'), 'Placeholder');
 const AccountingTaxPage = page(() => import('../pages/settings/accounting-tax/AccountingTaxPage'), 'AccountingTaxPage');
+const PreferencesPage = page(() => import('../pages/settings/PreferencesPage'), 'PreferencesPage');
 const InventorySettingsPage = page(() => import('../pages/settings/inventory/InventorySettingsPage'), 'InventorySettingsPage');
 const BankingSettingsPage = page(() => import('../pages/settings/MasterSettingsPages'), 'BankingSettingsPage');
 const CompanySettingsPage = page(() => import('../pages/settings/MasterSettingsPages'), 'CompanySettingsPage');
@@ -32,6 +33,8 @@ const WarehousesPage = page(() => import('../pages/inventory/WarehousesPage'), '
 const StockOnHandPage = page(() => import('../pages/inventory/StockOnHandPage'), 'StockOnHandPage');
 const InventoryTransferList = page(() => import('../pages/inventory/transfers/InventoryTransferList'), 'InventoryTransferList');
 const InventoryTransferDetail = page(() => import('../pages/inventory/transfers/InventoryTransferDetail'), 'InventoryTransferDetail');
+const TransferRequestList = page(() => import('../pages/inventory/transfer-requests/TransferRequestList'), 'TransferRequestList');
+const TransferRequestDetail = page(() => import('../pages/inventory/transfer-requests/detail/TransferRequestDetail'), 'TransferRequestDetail');
 const PriceListsPage = page(() => import('../pages/inventory/pricing/PriceListsPage'), 'PriceListsPage');
 const InventoryPostingList = page(() => import('../pages/inventory/counts/StockCountList'), 'InventoryPostingList');
 const StockCountList = page(() => import('../pages/inventory/counts/StockCountList'), 'StockCountList');
@@ -121,8 +124,10 @@ export const router = createHashRouter([
           { path: 'inventory/items', element: <ItemList /> },
           { path: 'inventory/items/:id/:tab?', element: <ItemDetail /> },
           { path: 'inventory/stock-on-hand', element: <StockOnHandPage /> },
-          { path: 'inventory/stock-movements', element: <InventoryTransferList /> },
-          { path: 'inventory/stock-movements/:id', element: <InventoryTransferDetail /> },
+          { path: 'inventory/inventory-transfers', element: <InventoryTransferList /> },
+          { path: 'inventory/inventory-transfers/:id', element: <InventoryTransferDetail /> },
+          { path: 'inventory/transfer-requests', element: <TransferRequestList /> },
+          { path: 'inventory/transfer-requests/:id', element: <TransferRequestDetail /> },
           { path: 'inventory/stock-counts', element: <StockCountList /> },
           { path: 'inventory/stock-counts/postings', element: <InventoryPostingList /> },
           { path: 'inventory/stock-counts/postings/:id', element: <InventoryPostingDetail /> },
@@ -183,6 +188,7 @@ export const router = createHashRouter([
           { path: 'settings', element: <Navigate to="/settings/company" replace /> },
           // Settings pages keep the tab and an opened record in the URL.
           { path: 'settings/accounting-and-tax/:tab?/:recordId?', element: <AccountingTaxPage /> },
+          { path: 'settings/preferences', element: <PreferencesPage /> },
           { path: 'settings/inventory/:tab?/:recordId?', element: <InventorySettingsPage /> },
           { path: 'settings/document-numbering/:tab?/:recordId?', element: <DocumentNumberingPage /> },
           { path: 'settings/journal-patterns/:tab?/:recordId?', element: <JournalPatternsPage /> },

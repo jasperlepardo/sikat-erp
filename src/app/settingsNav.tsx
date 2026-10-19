@@ -164,6 +164,7 @@ export const SETTINGS_NAV: SideNavSection[] = [
     id: 'settings-admin',
     items: [
       { id: 'settings/setup-guide', label: 'Setup guide', icon: icon('checklist') },
+      { id: 'settings/preferences', label: 'Preferences', icon: icon('tune') },
       { id: 'settings/users-and-access', label: 'Users & access', icon: icon('manage_accounts') },
       { id: 'settings/documents-and-templates', label: 'Documents & templates', icon: icon('description') },
       { id: 'settings/automation', label: 'Automation', icon: icon('smart_toy') },

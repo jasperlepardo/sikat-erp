@@ -89,7 +89,7 @@ function PurchaseRequestForm() {
 
   // New requests default to the employee the current user buys as.
   const currentUser = employees.snapshot().find((e) => e.active && e.salesEmployeeId === CURRENT_USER_ID);
-  const blank = blankPurchaseRequest(currentUser, currentUser ? employeeName(currentUser) : '');
+  const blank = blankPurchaseRequest(todayISO(), currentUser, currentUser ? employeeName(currentUser) : '');
 
   const [draft, setDraft] = useState<PrDraft | null | undefined>(
     isNew ? { ...blank, lines: [] } : undefined,

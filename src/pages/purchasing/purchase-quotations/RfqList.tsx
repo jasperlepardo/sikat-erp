@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
+import { todayISO, formatDate } from '../../../services/dates';
 import {
   Alert,
-  Badge,
   Button,
   Card,
   Icon,
@@ -82,7 +82,7 @@ export function RfqList() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rfqs, presets.filter, query, sort, codes]);
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayISO();
 
   const columns: TableColumn<Rfq>[] = [
     {
@@ -99,18 +99,21 @@ export function RfqList() {
       sortable: true,
       cell: (rfq) => <TableContent subcopy={rfq.vendorCode}>{rfq.vendorName || '—'}</TableContent>,
     },
-    { key: 'postingDate', header: 'Posting date', sortable: true, cell: (rfq) => rfq.postingDate },
+    { key: 'postingDate', header: 'Posting date', sortable: true, cell: (rfq) => formatDate(rfq.postingDate) },
     {
       key: 'validUntil',
       header: 'Valid until',
       sortable: true,
+      // An open RFQ past its date is still open — the vendor's quote has lapsed, so say so here.
       cell: (rfq) =>
-        rfq.validUntil ? (
-          <span className={rfq.status === 'Open' && rfq.validUntil < today ? 'text-danger' : undefined}>
-            {rfq.validUntil}
-          </span>
-        ) : (
+        !rfq.validUntil ? (
           '—'
+        ) : rfq.status === 'Open' && rfq.validUntil < today ? (
+          <TableContent subcopy="Expired">
+            <span className="text-danger">{formatDate(rfq.validUntil)}</span>
+          </TableContent>
+        ) : (
+          formatDate(rfq.validUntil)
         ),
     },
     {
@@ -136,14 +139,7 @@ export function RfqList() {
       key: 'status',
       header: 'Status',
       sortable: true,
-      cell: (rfq) => (
-        <div className="flex flex-col gap-0.5">
-          <TableStatus intent={STATUS_INTENT[rfq.status]}>{rfq.status}</TableStatus>
-          {rfq.status === 'Open' && rfq.validUntil && rfq.validUntil < today ? (
-            <Badge size="small" intent="warning">Expired</Badge>
-          ) : null}
-        </div>
-      ),
+      cell: (rfq) => <TableStatus intent={STATUS_INTENT[rfq.status]}>{rfq.status}</TableStatus>,
     },
   ];
 

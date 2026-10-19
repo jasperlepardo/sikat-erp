@@ -73,6 +73,7 @@ Books from 1 Jan 2026 to **9 Oct 2026** (`SEED_AS_OF`). Store POS sales, supply 
 - **Child rows, not maps.** Nested lists are `{ itemGroupId, discountPct }[]`, never objects keyed by a name.
 - **Snapshots on posted documents.** Posting stamps bin codes (`withBinCodes()`), item numbers, descriptions, addresses. Drafts show live values; posted lines show the snapshot.
 - **Seed id lists** in `src/mocks/masters.ts` are `as const` and positional — append only, never reorder.
+- **Dates are ISO 8601, never formatted in storage.** Calendar dates (posting, due…) are `YYYY-MM-DD` with no zone; timestamps are UTC ending in `Z`; time zones are IANA names. Show them only through `formatDate` / `formatDateTime` (user's format and zone, Settings › Preferences). "Today" is `todayISO()` — the company's time zone — never `new Date().toISOString().slice(0, 10)`.
 
 ---
 

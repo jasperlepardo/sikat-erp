@@ -16,7 +16,7 @@ export interface CountMasters {
 export const num = (v: string) => (v === '' ? 0 : Number(v));
 
 /** Current time as HH:MM in Manila, for Time fields that default to now. */
-export const nowHHMM = () => new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date());
+export { nowHHMM } from '../../../services/dates';
 
 /** The units an item can be counted in: inventory unit first, then its other units. */
 export const uomOptions = (item: Item | undefined) =>

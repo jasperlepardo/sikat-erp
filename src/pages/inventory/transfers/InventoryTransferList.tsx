@@ -46,7 +46,7 @@ export function InventoryTransferList() {
   const presets = useListPresets({
     list: 'inventory-transfers',
     fields,
-    builtIns: statusViews('stock movements', TRANSFER_STATUSES),
+    builtIns: statusViews('inventory transfers', TRANSFER_STATUSES),
     defaultSort: { key: 'postingDate', direction: 'desc' },
     rows: transfers,
     onChange: resetPage,

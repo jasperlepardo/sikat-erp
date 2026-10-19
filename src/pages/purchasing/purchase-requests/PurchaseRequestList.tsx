@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
+import { formatDate } from '../../../services/dates';
 import {
   Alert,
   Button,
@@ -106,13 +107,13 @@ export function PurchaseRequestList() {
       key: 'postingDate',
       header: 'Posting date',
       sortable: true,
-      cell: (r) => r.postingDate,
+      cell: (r) => formatDate(r.postingDate),
     },
     {
       key: 'requiredDate',
       header: 'Required by',
       sortable: true,
-      cell: (r) => r.requiredDate || '—',
+      cell: (r) => (r.requiredDate ? formatDate(r.requiredDate) : '—'),
     },
     {
       key: 'lines',

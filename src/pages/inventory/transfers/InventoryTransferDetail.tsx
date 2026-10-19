@@ -7,6 +7,7 @@ import {
   Combobox,
   Form,
   FormField,
+  Link,
   List,
   Panel,
   PanelHeader,
@@ -51,9 +52,12 @@ import { salesEmployeeDef } from '../../settings/masterDefs';
 import { binsOf, receivingBin, transferBlock } from '../../../services/binLocations';
 import { TransferLines, binFor, binOptions, warehouseOptions, type TransferDraft, type TransferMasters } from './TransferLines';
 import { useDocTitle } from '../../../services/useDocTitle';
+import { useAsync } from '../../../services/useAsync';
+import { getTransferRequest, transferRequestNumber } from '../../../services/inventoryTransferRequests';
+import { TRANSFER_REQUEST_LIST_PATH } from '../transfer-requests/detail/TransferRequestDetail';
 import { NotFound, PrevNext, neighbours } from '../../../components/form/DetailNav';
 
-export const TRANSFER_LIST_PATH = '/inventory/stock-movements';
+export const TRANSFER_LIST_PATH = '/inventory/inventory-transfers';
 
 export const TRANSFER_STATUS_INTENT: Record<TransferStatus, 'default' | 'success'> = {
   Draft: 'default',
@@ -130,6 +134,8 @@ function TransferForm() {
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);
+  const baseRequestId = draft?.baseRequestId ?? '';
+  const baseRequest = useAsync(() => (baseRequestId ? getTransferRequest(baseRequestId) : Promise.resolve(undefined)), [baseRequestId]);
 
   useEffect(() => {
     Promise.all([listItems(), loadInventoryMasters()]).then(([items, inv]) =>
@@ -146,7 +152,7 @@ function TransferForm() {
 
   useDocTitle(draft?.docNum ? (isNew ? 'New inventory transfer' : transferNumber(draft)) : undefined);
   if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading transfer…</Text>;
-  if (draft === null) return <NotFound icon="move_down" title="Transfer not found" backTo={TRANSFER_LIST_PATH} backLabel="Back to stock movements" />;
+  if (draft === null) return <NotFound icon="move_down" title="Transfer not found" backTo={TRANSFER_LIST_PATH} backLabel="Back to inventory transfers" />;
 
   const posted = draft.status === 'Posted';
   const errors: Errors = Object.fromEntries(problems.map((p) => [p.key, p.message]));
@@ -283,7 +289,7 @@ function TransferForm() {
           iconShape="rounded"
           iconSize={32}
           iconVariant="outline"
-          breadcrumbs={[{ label: 'Stock Movements', href: TRANSFER_LIST_PATH }, { label: title }]}
+          breadcrumbs={[{ label: 'Inventory Transfers', href: TRANSFER_LIST_PATH }, { label: title }]}
           onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
           onBack={() => navigate(TRANSFER_LIST_PATH)}
           trailing={
@@ -369,6 +375,13 @@ function TransferForm() {
                     hint={posted ? undefined : 'Assigned from the series when the transfer is posted.'}
                   />
                   <StatusField statuses={TRANSFER_STATUSES} intents={TRANSFER_STATUS_INTENT} value={draft.status} moves={statusMoves} hint="Draft until posted. Posting moves the stock and can't be undone." />
+                  {baseRequest ? (
+                    <ReadOnly
+                      label="Copied from"
+                      value={<Link href={`#${TRANSFER_REQUEST_LIST_PATH}/${baseRequest.id}`}>{transferRequestNumber(baseRequest)}</Link>}
+                      hint={posted ? 'The transfer request this fulfilled.' : "Posting lowers the request's open quantities."}
+                    />
+                  ) : null}
                   {h.date('postingDate', 'Posting date', {
                     required: true,
                     error: errors.postingDate,

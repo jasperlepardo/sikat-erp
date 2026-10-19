@@ -48,7 +48,7 @@ export const ORIGIN_LABEL: Record<OriginType, string> = {
 };
 /** Where each origin document opens (once its screens exist). */
 export const ORIGIN_PATH: Partial<Record<OriginType, string>> = {
-  IM: '/inventory/stock-movements',
+  IM: '/inventory/inventory-transfers',
   IQ: '/inventory/stock-counts/postings',
   PD: '/purchasing/goods-receipts',
   PU: '/purchasing/vendor-invoices',

@@ -135,7 +135,8 @@ export const blankBin = (patch: Partial<BinLocation> = {}): BinLocation => {
 // Shelves 01–02, levels 01 (floor) to 03 (top). C-02-03 is the quarantine bin.
 
 const WH = 'WH-001';
-const SEEDED_AT = '2026-09-01T08:00:00+08:00';
+// 08:00 Manila, stored in UTC like every timestamp.
+const SEEDED_AT = '2026-09-01T00:00:00.000Z';
 
 const sub = (tier: SublevelTier, code: string, description: string): BinSublevel => ({
   id: `bsl-${WH}-${tier}-${code}`,

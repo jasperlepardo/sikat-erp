@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
+import { formatDate } from '../../../services/dates';
 import {
   Alert,
   Button,
@@ -94,8 +95,8 @@ export function PurchaseOrderList() {
       sortable: true,
       cell: (po) => <TableContent subcopy={po.vendorCode}>{po.vendorName || '—'}</TableContent>,
     },
-    { key: 'postingDate', header: 'Posting date', sortable: true, cell: (po) => po.postingDate },
-    { key: 'deliveryDate', header: 'Delivery date', sortable: true, cell: (po) => po.deliveryDate || '—' },
+    { key: 'postingDate', header: 'Posting date', sortable: true, cell: (po) => formatDate(po.postingDate) },
+    { key: 'deliveryDate', header: 'Delivery date', sortable: true, cell: (po) => (po.deliveryDate ? formatDate(po.deliveryDate) : '—') },
     {
       key: 'received',
       header: 'Received',

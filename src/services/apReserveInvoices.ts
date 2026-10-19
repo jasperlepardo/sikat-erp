@@ -1,5 +1,6 @@
 import { AP_RI_SERIES, SEED_AP_RESERVE_INVOICES, type ApReserveInvoice } from '../mocks/apReserveInvoices';
 import { apRiSeries, seriesLookup, formatDocNum } from './allSeries';
+import { todayISO } from './dates';
 import { createCollection } from './store';
 import { poTotals } from './purchaseOrders';
 import type { RoundingRule } from '../mocks/currencies';
@@ -46,7 +47,7 @@ export async function addApReserveInvoice(doc: ApRiInput): Promise<ApReserveInvo
 
 export async function cancelApReserveInvoice(inv: ApReserveInvoice): Promise<ApReserveInvoice> {
   if (inv.status !== 'Open') throw new Error('Only open reserve invoices can be cancelled.');
-  return invoices.save({ ...inv, status: 'Cancelled', closeDate: new Date().toISOString().slice(0, 10) });
+  return invoices.save({ ...inv, status: 'Cancelled', closeDate: todayISO() });
 }
 
 export async function recallApReserveInvoice(inv: ApReserveInvoice): Promise<ApReserveInvoice> {

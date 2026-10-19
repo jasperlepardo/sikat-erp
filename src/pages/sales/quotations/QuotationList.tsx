@@ -18,7 +18,7 @@ import { dateField, numberField, statusField, textField } from '../../../compone
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { fillCardClass, useListPage } from '../../../components/form/DataTable';
 import { QUOTATION_STATUSES, type Quotation } from '../../../mocks/quotations';
-import { formatDate } from '../../../services/dates';
+import { formatDate, todayISO } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
 import { taxCodes } from '../../../services/masterData';
 import { listQuotations, qtNumber, qtTotal } from '../../../services/quotations';
@@ -43,7 +43,7 @@ export function QuotationList() {
   const [quotes, codes] = data ?? [undefined, []];
   const totalOf = (q: Quotation) => qtTotal(q, codes);
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayISO();
 
   const fields = [
     textField<Quotation>('no', 'No.', qtNumber),

@@ -21,7 +21,7 @@ import { formatAmount } from '../../../../services/format';
 import { useAsync } from '../../../../services/useAsync';
 import { DOC_SOURCES, docTypesFor, listPartnerDocuments, type DocType, type PartnerDocument } from '../partnerDocuments';
 import type { Draft } from '../fields';
-import { todayISO } from '../../../../services/dates';
+import { todayISO, formatDate } from '../../../../services/dates';
 
 type Filter = 'open' | 'overdue' | 'all';
 
@@ -82,7 +82,7 @@ export function TransactionsTab({ draft }: { draft: Draft }) {
         <TableContent href={`#${d.href}`} subcopy={[DOC_SOURCES[d.type].label, d.subcopy].filter(Boolean).join(' · ')}>{d.number}</TableContent>
       ),
     },
-    { key: 'date', header: 'Date', cell: (d) => d.date },
+    { key: 'date', header: 'Date', cell: (d) => formatDate(d.date) },
     { key: 'dueDate', header: 'Due date', cell: (d) => (isOverdue(d) ? <TableStatus intent="danger">{d.dueDate}</TableStatus> : d.dueDate || '—') },
     { key: 'status', header: 'Status', cell: (d) => <TableStatus intent={d.intent}>{d.status}</TableStatus> },
     { key: 'total', header: 'Total', cell: (d) => <TableAmount currency={d.currency}>{formatAmount(d.total)}</TableAmount> },

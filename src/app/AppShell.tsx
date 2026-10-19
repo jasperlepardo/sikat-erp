@@ -5,6 +5,7 @@ import { APPS, appNav, firstPageOf, leafForPath, moduleOf, pathOf } from './nav'
 import { SETTINGS_NAV, settingsLeafForPath, settingsModuleOf } from './settingsNav';
 import { useCollection } from '../components/form/MasterLookup';
 import { companies, setCurrentCompanyId, useCurrentCompany } from '../services/companies';
+import { DateSettings } from './DateSettings';
 
 
 /** Navbar on top, SideNav on the left, the routed screen on the right. */
@@ -53,6 +54,7 @@ export function AppShell() {
       onSelect: () => setTheme(resolved === 'dark' ? 'light' : 'dark'),
     },
     { id: 'system', label: 'Use system theme', onSelect: () => setTheme('system') },
+    { id: 'preferences', label: 'Preferences', onSelect: () => navigate('/settings/preferences') },
     { id: 'sign-out', label: 'Sign out', onSelect: () => navigate('/') },
   ];
 
@@ -120,7 +122,9 @@ export function AppShell() {
         <main className="flex h-[calc(100dvh-64px)] min-w-0 flex-1 flex-col gap-2 overflow-y-auto p-2 *:min-h-0">
           {/* Pages load on first visit (see router.tsx). */}
           <Suspense fallback={<Text tone="muted" className="p-4">Loading…</Text>}>
-            <Outlet />
+            <DateSettings>
+              <Outlet />
+            </DateSettings>
           </Suspense>
         </main>
       </div>

@@ -119,8 +119,7 @@ export const newPrLine = (patch: Partial<PrLine> = {}): PrLine => ({
 });
 
 /** A new request for `requester`: branch, department and owner come from the employee. */
-export function blankPurchaseRequest(requester: Employee | undefined, requesterName: string): Omit<PurchaseRequest, 'id'> {
-  const today = new Date().toISOString().slice(0, 10);
+export function blankPurchaseRequest(today: string, requester: Employee | undefined, requesterName: string): Omit<PurchaseRequest, 'id'> {
   return {
     requesterId: requester?.id ?? '',
     requesterName,
@@ -176,7 +175,7 @@ const pr = (
   docNum: number,
   patch: Partial<Omit<PurchaseRequest, 'id'>>,
 ): PurchaseRequest => ({
-  ...blankPurchaseRequest(undefined, ''),
+  ...blankPurchaseRequest('2026-09-01', undefined, ''),
   id,
   docNum,
   ...patch,
@@ -204,25 +203,27 @@ export const SEED_PURCHASE_REQUESTS: PurchaseRequest[] = [
     ],
     remarks: 'Holiday season iPhone 18 Pro stock for the stores. Sent to Luzon for a quotation on 18 Sep.',
   }),
+  // Head-office buying: Purchasing restocks the central warehouse. Stores ask WH-001 for stock
+  // with a transfer request instead (Cebu's MacBooks: mocks/inventoryTransferRequests.ts).
   pr('prq-002', 2, {
-    requesterId: hemId('Ben Salazar'),
-    requesterName: 'Ben Salazar',
-    ownerId: employeeId('Ben Salazar'),
-    branchId: branchId('Cebu (Robinsons Galleria)'),
-    departmentId: departmentId('Sales'),
-    notifyOnPo: false,
-    notifyEmail: '',
+    requesterId: hemId('Carla Uy'),
+    requesterName: 'Carla Uy',
+    ownerId: employeeId('Carla Uy'),
+    branchId: branchId('Head office (Pasig)'),
+    departmentId: departmentId('Purchasing'),
+    notifyOnPo: true,
+    notifyEmail: 'carla.uy@sikat.ph',
     postingDate: '2026-10-03',
     documentDate: '2026-10-03',
-    requiredDate: '2026-11-01',
+    requiredDate: '2026-10-24',
     validUntil: '2026-10-31',
     status: 'Open',
     itemType: 'Item',
     lines: [
-      prLine('prq-002-1', 'MAC-MBA13-M5-8G-16-512-MDN', 4, { warehouse: 'WH-002' }),
-      prLine('prq-002-2', 'MAC-MBA13-M5-8G-16-512-SKB', 2, { warehouse: 'WH-002' }),
+      prLine('prq-002-1', 'MAC-MBA13-M5-8G-16-512-MDN', 24),
+      prLine('prq-002-2', 'MAC-MBA13-M5-8G-16-512-SKB', 12),
     ],
-    remarks: 'Back-to-school season restock for the Cebu store.',
+    remarks: 'Back-to-school MacBook Air for the central warehouse; stores draw on it by transfer request.',
   }),
   pr('prq-003', 3, {
     requesterId: hemId('Jasper L.'),

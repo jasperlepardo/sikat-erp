@@ -99,7 +99,7 @@ export function InventoryDashboard() {
           />
           <Stat
             icon="swap_horiz"
-            label="Stock movements"
+            label="Inventory transfers"
             value={transfers ? String(transfers.length) : '—'}
             sub="total transfers"
           />
@@ -108,13 +108,13 @@ export function InventoryDashboard() {
         <div className="grid gap-2 lg:grid-cols-2">
           <Card>
             <Card.Header icon={<Icon size={24}>swap_horiz</Icon>} actions={<Text variant="small" tone="muted" as="button" onClick={() => navigate(TRANSFER_LIST_PATH)}>See all</Text>}>
-              Recent stock movements
+              Recent inventory transfers
             </Card.Header>
             <Card.Content>
               {recentTransfers.length ? (
                 <Table columns={transferColumns} rows={recentTransfers} getRowId={(t) => t.id} layout="scroll" />
               ) : (
-                <Text tone="muted" variant="small">No stock movements yet.</Text>
+                <Text tone="muted" variant="small">No inventory transfers yet.</Text>
               )}
             </Card.Content>
           </Card>

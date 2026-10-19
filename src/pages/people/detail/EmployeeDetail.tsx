@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
+import { todayISO } from '../../../services/dates';
 import { Badge, Button, Form, FormField, Panel, PanelHeader, Select, Tabs, Text, type Option } from '@jasperlepardo/sikat-design-system';
 import { FieldStack, ReadOnly, Section, bind, type Errors } from '../../../components/form/fields';
 import { useCollection } from '../../../components/form/MasterLookup';
@@ -112,7 +113,7 @@ function EmployeeForm() {
     .map((v) => ({ value: v.id, label: `${v.code} · ${v.name}`, text: `${v.code} ${v.name}` }));
 
   const check = () => {
-    const found = validate(draft, new Date().toISOString().slice(0, 10));
+    const found = validate(draft, todayISO());
     setProblems(found);
     const first = found.find((p) => p.tab !== 'header');
     if (first && first.tab !== 'header') setTab(first.tab);

@@ -18,6 +18,8 @@ import type { Collection } from '../../services/store';
 import { newId } from '../../services/useCollectionRows';
 import * as lists from '../../services/partnerMasters';
 import * as people from '../../services/peopleMasters';
+import { DEFAULT_TIME_ZONE } from '../../services/dates';
+import { TIME_ZONES } from '../../services/preferences';
 import type { Branch } from '../../mocks/peopleMasters';
 import { ROLE_CONFIG, ROLE_ORDER } from '../partners/roles';
 import type { Currency } from '../../mocks/currencies';
@@ -470,7 +472,7 @@ export const companyDef: MasterDef<Company> = {
   noun: 'company',
   home: COMPANY,
   description: "Our own companies, switched in the top bar. Documents use the current company's address as ours, e.g. a service-only purchase order's Ship To.",
-  blank: (name) => ({ id: newId('co'), name, registeredOffice: '', address: blankPostalAddress(), active: true }),
+  blank: (name) => ({ id: newId('co'), name, registeredOffice: '', address: blankPostalAddress(), timeZone: DEFAULT_TIME_ZONE, active: true }),
   value: (c) => c.id,
   label: (c) => c.name,
   columns: [
@@ -488,6 +490,7 @@ export const companyDef: MasterDef<Company> = {
   validate: (c, all) => {
     const e: Errors = {};
     uniqueRequired(e, c, all, 'name', 'Name');
+    if (!c.timeZone) e.timeZone = 'Pick the time zone the books are kept in.';
     return e;
   },
   editor: (c, update, errors, isNew) => {
@@ -505,6 +508,11 @@ export const companyDef: MasterDef<Company> = {
             error={errors.registeredOffice}
             hint={isNew ? 'Save the company, then pick the office under Office addresses.' : 'The office marked Registered under Office addresses.'}
           />
+          {f.lookup('timeZone', 'Time zone', TIME_ZONES.map((z) => ({ value: z, label: z })), {
+            required: true,
+            error: errors.timeZone,
+            hint: "The books' time zone: decides today's date for posting dates, exchange rates and tax rates. Users can show times in their own (Preferences).",
+          })}
           {f.status('active', 'Status')}
         </FieldStack>
       </>

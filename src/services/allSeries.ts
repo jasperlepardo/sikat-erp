@@ -22,6 +22,7 @@ import { RETURN_SERIES } from '../mocks/goodsReturns';
 import { SR_SERIES } from '../mocks/salesReturns';
 import { QT_SERIES } from '../mocks/quotations';
 import { TRANSFER_SERIES } from '../mocks/inventoryTransfers';
+import { TRANSFER_REQUEST_SERIES } from '../mocks/inventoryTransferRequests';
 import { COUNT_SERIES, POSTING_SERIES } from '../mocks/inventoryCountings';
 import { INCOMING_SERIES } from '../mocks/incomingPayments';
 import { PAYMENT_SERIES } from '../mocks/outgoingPayments';
@@ -61,6 +62,7 @@ export const incomingPaymentSeries = createCollection<DocumentSeries>('sikat-erp
 
 // Inventory
 export const transferSeries = createCollection<DocumentSeries>('sikat-erp:transfer-series', TRANSFER_SERIES, 'its');
+export const transferRequestSeries = createCollection<DocumentSeries>('sikat-erp:transfer-request-series', TRANSFER_REQUEST_SERIES, 'itq');
 export const countSeries = createCollection<DocumentSeries>('sikat-erp:count-series', COUNT_SERIES, 'ics');
 export const postingSeries = createCollection<DocumentSeries>('sikat-erp:posting-series', POSTING_SERIES, 'ips');
 
@@ -206,6 +208,7 @@ export const DOC_TYPES: DocTypeConfig[] = [
   { key: 'reserve-invoices', label: 'Reserve Invoices', icon: 'receipt_long', collection: riSeries, fallback: RI_SERIES, conditionFields: AR_FIELDS },
   { key: 'ar-credit-memos', label: 'A/R Credit Memos', icon: 'undo', collection: arCreditSeries, fallback: AR_CREDIT_SERIES, conditionFields: AR_FIELDS },
   { key: 'incoming-payments', label: 'Incoming Payments', icon: 'arrow_circle_down', collection: incomingPaymentSeries, fallback: INCOMING_SERIES, conditionFields: PAYMENT_FIELDS },
+  { key: 'inventory-transfer-requests', label: 'Inventory Transfer Requests', icon: 'move_up', collection: transferRequestSeries, fallback: TRANSFER_REQUEST_SERIES },
   { key: 'inventory-transfers', label: 'Inventory Transfers', icon: 'swap_horiz', collection: transferSeries, fallback: TRANSFER_SERIES },
   { key: 'stock-counts', label: 'Stock Counts', icon: 'fact_check', collection: countSeries, fallback: COUNT_SERIES },
   { key: 'inventory-postings', label: 'Inventory Postings', icon: 'post_add', collection: postingSeries, fallback: POSTING_SERIES },

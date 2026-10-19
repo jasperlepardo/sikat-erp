@@ -81,7 +81,10 @@ export interface InventoryCounting {
   docNum: number;
   status: CountStatus;
   countDate: string;
-  /** HH:MM, local — for movements on the same day. */
+  /**
+   * Wall-clock HH:mm in the company's time zone, with `countDate` — SAP's Count Date + Time, not a
+   * timestamp. Orders it against movements on the same day.
+   */
   countTime: string;
   countingType: CountingType;
   /** One for a single counter; two or more for multiple counters. */
@@ -128,6 +131,7 @@ export interface InventoryPosting {
   docNum: number;
   postingDate: string;
   countDate: string;
+  /** Wall-clock HH:mm in the company's time zone, with `countDate` — SAP's Count Date + Time, not a timestamp. */
   countTime: string;
   priceSource: PriceSource;
   /** When the price source is a price list. */

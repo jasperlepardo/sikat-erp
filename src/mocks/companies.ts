@@ -13,6 +13,8 @@ export interface Company {
    */
   registeredOffice: string;
   address: PostalAddress;
+  /** The books' time zone (IANA name): decides "today" for posting dates, exchange and tax rates. */
+  timeZone: string;
   active: boolean;
 }
 
@@ -27,6 +29,7 @@ export const SEED_COMPANIES: Company[] = [
       addressLine: 'Kapitolyo Bldg., 7A 2nd St.', block: 'Kapitolyo', city: 'City of Pasig', zip: '1600',
       province: 'Metro Manila', provinceCode: '1300', cityCode: '137403', barangayCode: '137403009',
     }),
+    timeZone: 'Asia/Manila',
     active: true,
   },
 ];

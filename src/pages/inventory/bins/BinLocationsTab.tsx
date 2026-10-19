@@ -1,5 +1,6 @@
 import { Fragment } from 'react';
 import { useSearchParams } from 'react-router';
+import { formatDateTime } from '../../../services/dates';
 import { Badge, Text } from '@jasperlepardo/sikat-design-system';
 import { FieldStack, Flags, ReadOnly, bind, type Errors } from '../../../components/form/fields';
 import { MasterList, statusColumn, type ListRoute } from '../../../components/form/MasterList';
@@ -27,8 +28,6 @@ import { DataTable } from '../../../components/form/DataTable';
 
 const label = <T extends string>(list: { value: T; label: string }[], v: T) => list.find((o) => o.value === v)?.label ?? v;
 export const qty = (n: number) => n.toLocaleString('en-PH');
-
-const UPDATED = new Intl.DateTimeFormat('en-PH', { timeZone: 'Asia/Manila', dateStyle: 'medium', timeStyle: 'short' });
 
 /** The bin's restrictions in a few words, for the list. */
 export function restrictionSummary(b: BinLocation) {
@@ -310,7 +309,7 @@ function BinEditor({
 
       <Heading>Audit trail</Heading>
       <FieldStack>
-        <ReadOnly label="Last updated on" value={b.updatedAt ? UPDATED.format(new Date(b.updatedAt)) : '—'} hint="Set on every save." />
+        <ReadOnly label="Last updated on" value={b.updatedAt ? formatDateTime(b.updatedAt) : '—'} hint="Set on every save." />
         {f.text('reason', 'Reason', { placeholder: 'Why this change, e.g. Deactivated — rack inspection', hint: 'Kept for the latest change only.' })}
       </FieldStack>
     </>

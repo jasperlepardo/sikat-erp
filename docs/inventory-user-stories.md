@@ -320,7 +320,7 @@ As an inventory manager, I want to see current stock levels — in stock, commit
 
 ---
 
-## 5. Stock Movements (Inventory Transfers)
+## 5. Inventory Transfers
 
 **US-INV-060**
 As a warehouse supervisor, I want to create an inventory transfer document to move stock between warehouses so that the movement is traceable and both warehouse balances are updated immediately upon posting.

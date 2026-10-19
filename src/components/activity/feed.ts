@@ -1,6 +1,6 @@
 import { ACTIVITY_ICON, type Activity, type ActivityTargetKind } from '../../mocks/activities';
 import { isLinkedTo } from '../../services/activities';
-import { manilaDateTime } from '../../services/dates';
+import { localDateTime } from '../../services/dates';
 import { formatAmount } from '../../services/format';
 import { listPartners } from '../../services/partners';
 import type { AuditEvent } from '../../services/store';
@@ -136,7 +136,7 @@ export const auditEntries = (target: FeedTarget, log: readonly AuditEvent[]): Fe
     .filter((e) => e.kind === target.kind && ids.includes(e.recordId))
     .map((e) => ({
       id: `audit:${e.id}`,
-      at: manilaDateTime(e.at),
+      at: localDateTime(e.at),
       source: 'system' as const,
       icon: AUDIT_ICON[e.action],
       title: e.action === 'created' ? 'Created' : e.action === 'removed' ? 'Removed' : e.changes[0] ?? 'Edited',

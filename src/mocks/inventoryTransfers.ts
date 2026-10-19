@@ -10,7 +10,8 @@
  * - Serial and batch selection isn't built: serial-managed items transfer by quantity only.
  * - Posting is final: a posted transfer can't be edited or cancelled, only its remarks change.
  *   Reversing one is another transfer the other way.
- * - Copy from an Inventory Transfer Request isn't built yet (there are no requests).
+ * - A transfer copied from an Inventory Transfer Request names it (`baseRequestId`, and each
+ *   line its request line); posting it lowers the request's open quantities.
  */
 import type { DocumentSeries } from './common';
 import { seedBinCode } from './binLocations';
@@ -44,6 +45,8 @@ export interface TransferLine {
   toBinCode: string;
   /** Item cost per inventory unit, fixed when the transfer is posted (PHP). */
   unitCost: number;
+  /** The transfer request line this fulfils; '' when not copied from a request. */
+  baseLineId: string;
 }
 
 export interface InventoryTransfer {
@@ -61,6 +64,8 @@ export interface InventoryTransfer {
   salesEmployeeId: string;
   journalRemark: string;
   remarks: string;
+  /** The Inventory Transfer Request this was copied from; '' when none. */
+  baseRequestId: string;
   lines: TransferLine[];
 }
 
@@ -84,6 +89,7 @@ export const newTransferLine = (patch: Partial<TransferLine> = {}): TransferLine
   toBinId: '',
   toBinCode: '',
   unitCost: 0,
+  baseLineId: '',
   ...patch,
 });
 
@@ -100,6 +106,7 @@ export function blankTransfer(today: string, ownerId: string): Omit<InventoryTra
     salesEmployeeId: ownerId,
     journalRemark: DEFAULT_JOURNAL_REMARK,
     remarks: '',
+    baseRequestId: '',
     lines: [],
   };
 }
@@ -140,7 +147,9 @@ const REPLENISHMENTS: InventoryTransfer[] = [
     toWarehouse: 'WH-002',
     journalRemark: 'Inventory Transfers – WH-001 to WH-002',
     remarks: 'Monthly replenishment of the Cebu store — stock below reorder point as at 2 Sep 2026.',
-    lines: HAND_TRANSFER_LINES['it-001'].map(([n, q, to]) => line(n, q, to)),
+    // Copied from transfer request itr-001 (mocks/inventoryTransferRequests.ts).
+    baseRequestId: 'itr-001',
+    lines: HAND_TRANSFER_LINES['it-001'].map(([n, q, to], k) => line(n, q, to, { baseLineId: `itr-001-${k + 1}` })),
   }),
   transfer('it-002', 2, {
     postingDate: '2026-09-10',

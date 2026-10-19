@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Alert, Button, Combobox, DatePicker, Icon, Text, TextField } from '@jasperlepardo/sikat-design-system';
+import { todayISO } from '../../../services/dates';
 import { DataTable } from '../../../components/form/DataTable';
 import { Fields, ReadOnly, bind, type Errors } from '../../../components/form/fields';
 import { MasterList, statusColumn, type ListRoute } from '../../../components/form/MasterList';
@@ -71,7 +72,7 @@ export function SpecialPricesTab(route: ListRoute) {
   const items = useAsync(listItems, []) ?? [];
   const partnerOf = (id: string) => partners.find((p) => p.id === id);
   const name = (s: SpecialPriceSet) => partnerOf(s.partnerId)?.name ?? s.partnerId;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayISO();
   const current = (s: SpecialPriceSet) => s.rows.filter((r) => (!r.validFrom || r.validFrom <= today) && (!r.validTo || today <= r.validTo)).length;
 
   return (

@@ -2,7 +2,7 @@ import { Select, TextField } from '@jasperlepardo/sikat-design-system';
 import { CtxFormField, FieldStack, ReadOnly, Section, bind } from '../../../../components/form/fields';
 import { StatusField } from '../../../../components/form/StatusField';
 import { PO_STATUSES, type PoStatus } from '../../../../mocks/purchaseOrders';
-import { todayISO } from '../../../../services/dates';
+import { todayISO, formatDate } from '../../../../services/dates';
 import { poNumber, poSeries, seriesOf } from '../../../../services/purchaseOrders';
 import type { PoDraft, PoSectionProps } from './types';
 import { STATUS_INTENT } from './types';
@@ -70,7 +70,7 @@ export function PoDocumentCard({ draft, update, errors, ctx, transitions }: Docu
           error: errors.documentDate,
           hint: 'The date for tax purposes. Defaults to today.',
         })}
-        <ReadOnly label="Close date" value={draft.closeDate || '—'} hint="Set when the PO is closed or cancelled." />
+        <ReadOnly label="Close date" value={draft.closeDate ? formatDate(draft.closeDate) : '—'} hint="Set when the PO is closed or cancelled." />
       </FieldStack>
     </Section>
   );

@@ -20,7 +20,7 @@ import { currencies, exchangeRates, parseBspBulletin } from '../../../services/m
 import { useAsync } from '../../../services/useAsync';
 import { readXlsxText } from '../../../services/xlsx';
 import { newId, useCollectionRows } from '../../../services/useCollectionRows';
-import { todayISO } from '../../../services/dates';
+import { todayISO, formatDate } from '../../../services/dates';
 
 const today = () => todayISO();
 const fmt = (n: number) => n.toLocaleString('en-PH', { maximumFractionDigits: 6 });
@@ -79,7 +79,7 @@ export function ExchangeRatesTab(route: ListRoute) {
           </Button>
         }
         columns={[
-          { key: 'date', header: 'Date', cell: (r) => r.date },
+          { key: 'date', header: 'Date', cell: (r) => formatDate(r.date) },
           ...shown.map((c) => ({
             key: c.code,
             header: `${c.code} (PHP)`,

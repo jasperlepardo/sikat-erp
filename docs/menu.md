@@ -88,7 +88,8 @@ The sidebar is defined in [`src/app/nav.tsx`](../src/app/nav.tsx) as `NAV`. It c
 |---|---|---|---|
 | Items | `/inventory/items` | ✅ | "The item master: products, materials and services you buy, sell and stock." See [Item record](#item-record). |
 | Stock on Hand | `/inventory/stock-on-hand` | ✅ | "In stock, committed, ordered and available — per warehouse or per item." Read-only. |
-| Stock Movements | `/inventory/stock-movements` | ✅ | "Inventory transfers between warehouses." Company-wide stock doesn't change, only where it sits. See [Inventory transfer record](#inventory-transfer-record). |
+| Transfer Requests | `/inventory/transfer-requests` | ✅ | A warehouse asks another for stock (SAP Inventory Transfer Request). No stock or journal effect; Copy To → Inventory Transfer executes it, lowering the request's open quantities. |
+| Inventory Transfers | `/inventory/inventory-transfers` | ✅ | "Inventory transfers between warehouses." Company-wide stock doesn't change, only where it sits. See [Inventory transfer record](#inventory-transfer-record). |
 | Stock Counts | `/inventory/stock-counts` | ✅ | Two steps, as in SAP: an Inventory Counting records what was found against the book quantity (no stock change); an Inventory Posting copied from it adjusts stock by the variance and books it. Single or multiple counters; Freeze blocks stock movements while the count is open. See [Stock count record](#stock-count-record). |
 | Pick & Pack | `/inventory/pick-and-pack` | ⬜ | Pick lists and packing for open sales orders. |
 | Price Lists | `/inventory/price-lists` | ✅ | Price tiers assigned to partners, and the rules on top of them. A document line takes the first match: a special price, then a period or volume discount, then a discount group. |
@@ -103,7 +104,7 @@ The sidebar is defined in [`src/app/nav.tsx`](../src/app/nav.tsx) as `NAV`. It c
 - It can also be narrowed by warehouse and item group, and searched.
 - Each row shows a status badge: In stock, Below minimum or Out of stock.
 
-**Stock Movements list:** filters are All · Draft · Posted. Columns are No., From → To, Posting date, Quantity, Value at cost and Status.
+**Inventory Transfers list:** filters are All · Draft · Posted. Columns are No., From → To, Posting date, Quantity, Value at cost and Status.
 
 **Stock Counts list:** tabs are All counts · Open · Closed · Inventory postings. Counts show No., Warehouse, Count date and time, Counted by, Counted (with variances and counter disagreements) and Status; postings show No., Warehouse, Posting date, From count, Lines and Total.
 
@@ -533,7 +534,7 @@ Adding the payment re-checks each bill's balance, numbers automatic checks per b
 
 ### Inventory transfer record
 
-`/inventory/stock-movements/:id`.
+`/inventory/inventory-transfers/:id`.
 
 **You can also:**
 - **Save as draft** (unposted)

@@ -179,6 +179,10 @@ export async function postTransfer(input: TransferInput): Promise<InventoryTrans
   }
   await updateFifoCosts([...fifoItemIds]);
 
+  // Copied from a transfer request: what moved is no longer open there.
+  const { fulfilTransferRequest } = await import('./inventoryTransferRequests');
+  await fulfilTransferRequest(posted);
+
   // A journal entry only when the two warehouses use different inventory accounts.
   const { itemGroups } = await import('./inventoryMasters');
   const { postDocumentEntry } = await import('./journalEntries');
