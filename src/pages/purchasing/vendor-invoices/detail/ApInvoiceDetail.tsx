@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { postDocumentEntry, reverseDocumentEntry } from '../../../../../services/journalEntries';
+import { postDocumentEntry, reverseDocumentEntry } from '../../../../services/journalEntries';
 import {
   Alert,
   Badge,
@@ -12,14 +12,14 @@ import {
   Text,
   TextField,
 } from '@jasperlepardo/sikat-design-system';
-import { type Errors } from '../../../../../components/form/fields';
-import { MoreMenu, type MoreMenuItem } from '../../../../../components/form/MoreMenu';
-import { ProblemsAlert, problemCollector, type Problem } from '../../../../../components/form/ProblemsAlert';
-import { blankApInvoice, newApLine, type ApInvoice, type ApLine, type ApStatus } from '../../../../../mocks/apInvoices';
-import { CURRENT_USER_ID } from '../../../../../mocks/common';
-import type { GoodsReceipt } from '../../../../../mocks/goodsReceipts';
-import { type Partner } from '../../../../../mocks/partners';
-import { type PurchaseOrder } from '../../../../../mocks/purchaseOrders';
+import { type Errors } from '../../../../components/form/fields';
+import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
+import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
+import { blankApInvoice, newApLine, type ApInvoice, type ApLine, type ApStatus } from '../../../../mocks/apInvoices';
+import { CURRENT_USER_ID } from '../../../../mocks/common';
+import type { GoodsReceipt } from '../../../../mocks/goodsReceipts';
+import { type Partner } from '../../../../mocks/partners';
+import { type PurchaseOrder } from '../../../../mocks/purchaseOrders';
 import {
   ApPostError,
   addApInvoice,
@@ -36,32 +36,32 @@ import {
   recallApInvoice,
   saveApDraft,
   saveApRemarks,
-} from '../../../../../services/apInvoices';
-import { logRejection } from '../../../../../services/approvalRules';
-import { transferBlock } from '../../../../../services/binLocations';
-import { loadCurrentCompany } from '../../../../../services/companies';
-import { formatDate, todayISO } from '../../../../../services/dates';
-import { defaultJournalRemark } from '../../../../../services/journalPatterns';
-import { formatAmount } from '../../../../../services/format';
-import { grOpenQty, listGoodsReceipts } from '../../../../../services/goodsReceipts';
-import { loadInventoryMasters } from '../../../../../services/inventoryMasters';
-import { isValidToday, listItems } from '../../../../../services/items';
-import { companyTax, currencies, exchangeRates, taxCodes, taxGroups, withholdingGroups, withholdingTaxes } from '../../../../../services/masterData';
-import { listPartnersByRole } from '../../../../../services/partners';
-import { dueDateFor, getPurchasingSettings, listPurchaseOrders, openQty, poWithholding } from '../../../../../services/purchaseOrders';
-import { proposedTaxCode } from '../../../purchase-orders/detail/types';
-import { GrLogistics } from '../../../goods-receipts/detail/GrLogisticsCard';
-import { buildGrContext, defaultPayTo, defaultShipTo, linesFromPo } from '../../../goods-receipts/detail/types';
-import { DocumentFlow } from '../../../shared/DocumentFlow';
-import { listDownPayments } from '../../../../../services/apDownPayments';
+} from '../../../../services/apInvoices';
+import { logRejection } from '../../../../services/approvalRules';
+import { transferBlock } from '../../../../services/binLocations';
+import { loadCurrentCompany } from '../../../../services/companies';
+import { formatDate, todayISO } from '../../../../services/dates';
+import { defaultJournalRemark } from '../../../../services/journalPatterns';
+import { formatAmount } from '../../../../services/format';
+import { grOpenQty, listGoodsReceipts } from '../../../../services/goodsReceipts';
+import { loadInventoryMasters } from '../../../../services/inventoryMasters';
+import { isValidToday, listItems } from '../../../../services/items';
+import { companyTax, currencies, exchangeRates, taxCodes, taxGroups, withholdingGroups, withholdingTaxes } from '../../../../services/masterData';
+import { listPartnersByRole } from '../../../../services/partners';
+import { dueDateFor, getPurchasingSettings, listPurchaseOrders, openQty, poWithholding } from '../../../../services/purchaseOrders';
+import { proposedTaxCode } from '../../purchase-orders/detail/types';
+import { GrLogistics } from '../../goods-receipts/detail/GrLogisticsCard';
+import { buildGrContext, defaultPayTo, defaultShipTo, linesFromPo } from '../../goods-receipts/detail/types';
+import { DocumentFlow } from '../../shared/DocumentFlow';
+import { listDownPayments } from '../../../../services/apDownPayments';
 import { ApAccountingCard as ApAccounting } from './ApAccountingCard';
-import { ReferencesTable } from '../../../shared/ReferencesTable';
-import { AttachmentsCard } from '../../../../../components/form/AttachmentsCard';
+import { ReferencesTable } from '../../shared/ReferencesTable';
+import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { ApContentsCard as ApContents } from './ApContentsCard';
 import { linesFromReceipt, orderNumbersOf, toApLine, type ApContext, type ApDraft, type ApMasters } from './types';
-import { useDocTitle } from '../../../../../services/useDocTitle';
-import { ActivityTab } from '../../../../../components/activity/ActivityTab';
-import { NotFound, PrevNext, neighbours } from '../../../../../components/form/DetailNav';
+import { useDocTitle } from '../../../../services/useDocTitle';
+import { ActivityTab } from '../../../../components/activity/ActivityTab';
+import { NotFound, PrevNext, neighbours } from '../../../../components/form/DetailNav';
 import { ApVendorCard } from './ApVendorCard';
 import { ApDocumentCard } from './ApDocumentCard';
 import { ApTotalsCard } from './ApTotalsCard';

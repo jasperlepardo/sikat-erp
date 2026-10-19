@@ -14,16 +14,16 @@ import {
   Text,
   type TableColumn,
 } from '@jasperlepardo/sikat-design-system';
-import { dateField, linesField, masterField, numberField, statusField, textField } from '../../../../components/filter/fieldKit';
-import { statusViews, useListPresets } from '../../../../components/filter/useListPresets';
-import { currencyDef, salesEmployeeDef } from '../../../settings/masterDefs';
-import { fillCardClass, useListPage } from '../../../../components/form/DataTable';
-import { DPR_STATUSES, type DownPaymentRequest } from '../../../../mocks/apDownPayments';
-import { dprNumber, dprTotal, listDownPayments } from '../../../../services/apDownPayments';
-import { formatDate } from '../../../../services/dates';
-import { formatAmount } from '../../../../services/format';
-import { taxCodes } from '../../../../services/masterData';
-import { useAsync } from '../../../../services/useAsync';
+import { dateField, linesField, masterField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
+import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
+import { currencyDef, salesEmployeeDef } from '../../settings/masterDefs';
+import { fillCardClass, useListPage } from '../../../components/form/DataTable';
+import { DPR_STATUSES, type DownPaymentRequest } from '../../../mocks/apDownPayments';
+import { dprNumber, dprTotal, listDownPayments } from '../../../services/apDownPayments';
+import { formatDate } from '../../../services/dates';
+import { formatAmount } from '../../../services/format';
+import { taxCodes } from '../../../services/masterData';
+import { useAsync } from '../../../services/useAsync';
 import { DPR_LIST_PATH, DPR_STATUS_INTENT } from './detail/DprDetail';
 
 /** Purchasing › Bills › Down payment requests: advances vendors asked for, paid and drawn. */

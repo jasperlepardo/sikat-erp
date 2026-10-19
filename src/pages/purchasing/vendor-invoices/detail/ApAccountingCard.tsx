@@ -1,9 +1,9 @@
 import { Combobox } from '@jasperlepardo/sikat-design-system';
-import { AccountField } from '../../../../../components/form/AccountField';
-import { CtxFormField, FieldStack, Flags, ReadOnly, Section, bind } from '../../../../../components/form/fields';
-import { PAYMENT_METHODS } from '../../../../../mocks/masters';
-import { INDICATORS } from '../../../../../mocks/purchaseOrders';
-import { paymentTermDef, projectDef } from '../../../../settings/masterDefs';
+import { AccountField } from '../../../../components/form/AccountField';
+import { CtxFormField, FieldStack, Flags, ReadOnly, Section, bind } from '../../../../components/form/fields';
+import { PAYMENT_METHODS } from '../../../../mocks/masters';
+import { INDICATORS } from '../../../../mocks/purchaseOrders';
+import { paymentTermDef, projectDef } from '../../../settings/masterDefs';
 import type { ApSectionProps } from './types';
 
 const asOptions = (values: readonly string[]) => values.map((v) => ({ value: v, label: v }));

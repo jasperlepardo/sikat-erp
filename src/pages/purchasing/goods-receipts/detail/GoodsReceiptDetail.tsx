@@ -59,7 +59,7 @@ import { GrJournalCard } from './GrJournalCard';
 import { GR_STATUS_INTENT } from './types';
 import { ReferencesTable } from '../../shared/ReferencesTable';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
-import { AP_LIST_PATH } from '../../bills/ap-invoices/detail/ApInvoiceDetail';
+import { AP_LIST_PATH } from '../../vendor-invoices/detail/ApInvoiceDetail';
 export { GR_STATUS_INTENT };
 
 export const GR_LIST_PATH = '/purchasing/goods-receipts';

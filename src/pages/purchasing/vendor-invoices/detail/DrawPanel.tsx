@@ -1,13 +1,13 @@
 import { useState } from 'react';
-import { Section } from '../../../../../components/form/fields';
+import { Section } from '../../../../components/form/fields';
 import { Text, TextField, type TableColumn } from '@jasperlepardo/sikat-design-system';
-import { DataTable } from '../../../../../components/form/DataTable';
-import { ADVANCES_TO_SUPPLIERS, type DownPaymentRequest } from '../../../../../mocks/apDownPayments';
-import type { DownPaymentDraw } from '../../../../../mocks/apInvoices';
-import { dprNumber, drawableAmount, paidRate } from '../../../../../services/apDownPayments';
-import { formatDate } from '../../../../../services/dates';
-import { formatAmount } from '../../../../../services/format';
-import { EditPanel } from '../../../../partners/detail/EditPanel';
+import { DataTable } from '../../../../components/form/DataTable';
+import { ADVANCES_TO_SUPPLIERS, type DownPaymentRequest } from '../../../../mocks/apDownPayments';
+import type { DownPaymentDraw } from '../../../../mocks/apInvoices';
+import { dprNumber, drawableAmount, paidRate } from '../../../../services/apDownPayments';
+import { formatDate } from '../../../../services/dates';
+import { formatAmount } from '../../../../services/format';
+import { EditPanel } from '../../../partners/detail/EditPanel';
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 

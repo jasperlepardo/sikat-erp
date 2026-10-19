@@ -1,5 +1,5 @@
-import { FieldStack, Flags, Section, bind } from '../../../../../components/form/fields';
-import { salesEmployeeDef } from '../../../../settings/masterDefs';
+import { FieldStack, Flags, Section, bind } from '../../../../components/form/fields';
+import { salesEmployeeDef } from '../../../settings/masterDefs';
 import type { DprSectionProps } from './types';
 
 export function DprTotalsCard({ draft, update, ctx }: DprSectionProps) {

@@ -10,6 +10,7 @@ import { PR_SERIES } from '../mocks/purchaseRequests';
 import { SO_SERIES } from '../mocks/salesOrders';
 import { GR_SERIES } from '../mocks/goodsReceipts';
 import { AP_SERIES } from '../mocks/apInvoices';
+import { AP_RI_SERIES } from '../mocks/apReserveInvoices';
 import { MEMO_SERIES } from '../mocks/apCreditMemos';
 import { DPR_SERIES } from '../mocks/apDownPayments';
 import { AR_SERIES } from '../mocks/arInvoices';

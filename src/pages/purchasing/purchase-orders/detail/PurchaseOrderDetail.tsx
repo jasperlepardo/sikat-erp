@@ -73,8 +73,8 @@ import { PoDocumentCard } from './PoDocumentCard';
 import { PoAssignmentCard } from './PoTotalsCard';
 
 import { STATUS_INTENT } from './types';
-import { AP_LIST_PATH } from '../../bills/ap-invoices/detail/ApInvoiceDetail';
-import { DPR_LIST_PATH } from '../../bills/down-payment-requests/detail/DprDetail';
+import { AP_LIST_PATH } from '../../vendor-invoices/detail/ApInvoiceDetail';
+import { DPR_LIST_PATH } from '../../down-payment-requests/detail/DprDetail';
 export { STATUS_INTENT };
 export const PO_LIST_PATH = '/purchasing/purchase-orders';
 

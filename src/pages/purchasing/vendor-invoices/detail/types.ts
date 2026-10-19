@@ -1,14 +1,14 @@
-import type { Errors } from '../../../../../components/form/fields';
-import { newApLine, type ApLine } from '../../../../../mocks/apInvoices';
-import type { GoodsReceipt, GrLine } from '../../../../../mocks/goodsReceipts';
-import type { Item } from '../../../../../mocks/items';
-import type { Account } from '../../../../../mocks/chartOfAccounts';
-import type { DownPaymentRequest } from '../../../../../mocks/apDownPayments';
-import type { PurchaseOrder } from '../../../../../mocks/purchaseOrders';
-import type { ApInput } from '../../../../../services/apInvoices';
-import { grNumber, grOpenQty } from '../../../../../services/goodsReceipts';
-import type { ApStatus } from '../../../../../mocks/apInvoices';
-import type { GrContext, GrMasters } from '../../../goods-receipts/detail/types';
+import type { Errors } from '../../../../components/form/fields';
+import { newApLine, type ApLine } from '../../../../mocks/apInvoices';
+import type { GoodsReceipt, GrLine } from '../../../../mocks/goodsReceipts';
+import type { Item } from '../../../../mocks/items';
+import type { Account } from '../../../../mocks/chartOfAccounts';
+import type { DownPaymentRequest } from '../../../../mocks/apDownPayments';
+import type { PurchaseOrder } from '../../../../mocks/purchaseOrders';
+import type { ApInput } from '../../../../services/apInvoices';
+import { grNumber, grOpenQty } from '../../../../services/goodsReceipts';
+import type { ApStatus } from '../../../../mocks/apInvoices';
+import type { GrContext, GrMasters } from '../../goods-receipts/detail/types';
 
 export type ApDraft = ApInput;
 

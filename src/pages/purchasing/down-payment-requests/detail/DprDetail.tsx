@@ -12,15 +12,15 @@ import {
   Text,
   TextField,
 } from '@jasperlepardo/sikat-design-system';
-import { AttachmentsCard } from '../../../../../components/form/AttachmentsCard';
-import { type Errors } from '../../../../../components/form/fields';
-import { MoreMenu, type MoreMenuItem } from '../../../../../components/form/MoreMenu';
-import { ProblemsAlert, problemCollector, type Problem } from '../../../../../components/form/ProblemsAlert';
-import { formatAddress } from '../../../../../mocks/address';
-import { ADVANCES_TO_SUPPLIERS, blankDownPaymentRequest, newDprLine, type DownPaymentRequest, type DprLine, type DprStatus } from '../../../../../mocks/apDownPayments';
-import { CURRENT_USER_ID } from '../../../../../mocks/common';
-import { type Partner } from '../../../../../mocks/partners';
-import { type PurchaseOrder } from '../../../../../mocks/purchaseOrders';
+import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
+import { type Errors } from '../../../../components/form/fields';
+import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
+import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
+import { formatAddress } from '../../../../mocks/address';
+import { ADVANCES_TO_SUPPLIERS, blankDownPaymentRequest, newDprLine, type DownPaymentRequest, type DprLine, type DprStatus } from '../../../../mocks/apDownPayments';
+import { CURRENT_USER_ID } from '../../../../mocks/common';
+import { type Partner } from '../../../../mocks/partners';
+import { type PurchaseOrder } from '../../../../mocks/purchaseOrders';
 import {
   addDownPayment,
   cancelDownPayment,
@@ -33,29 +33,29 @@ import {
   recallDownPayment,
   saveDprDraft,
   saveDprRemarks,
-} from '../../../../../services/apDownPayments';
-import { logRejection } from '../../../../../services/approvalRules';
-import { loadCurrentCompany } from '../../../../../services/companies';
-import { formatDate, todayISO } from '../../../../../services/dates';
-import { defaultJournalRemark } from '../../../../../services/journalPatterns';
-import { formatAmount } from '../../../../../services/format';
-import { receivablePos } from '../../../../../services/goodsReceipts';
-import { loadInventoryMasters } from '../../../../../services/inventoryMasters';
-import { isValidToday, listItems } from '../../../../../services/items';
-import { companyTax, currencies, exchangeRates, taxCodes, taxGroups, withholdingGroups, withholdingTaxes } from '../../../../../services/masterData';
-import { listPartnersByRole } from '../../../../../services/partners';
-import { dueDateFor, getPurchasingSettings, listPurchaseOrders, openQty, poNumber } from '../../../../../services/purchaseOrders';
-import { buildGrContext, linesFromPo } from '../../../goods-receipts/detail/types';
-import { CopyPanel } from '../../../shared/CopyPanel';
-import { DocumentFlow } from '../../../shared/DocumentFlow';
+} from '../../../../services/apDownPayments';
+import { logRejection } from '../../../../services/approvalRules';
+import { loadCurrentCompany } from '../../../../services/companies';
+import { formatDate, todayISO } from '../../../../services/dates';
+import { defaultJournalRemark } from '../../../../services/journalPatterns';
+import { formatAmount } from '../../../../services/format';
+import { receivablePos } from '../../../../services/goodsReceipts';
+import { loadInventoryMasters } from '../../../../services/inventoryMasters';
+import { isValidToday, listItems } from '../../../../services/items';
+import { companyTax, currencies, exchangeRates, taxCodes, taxGroups, withholdingGroups, withholdingTaxes } from '../../../../services/masterData';
+import { listPartnersByRole } from '../../../../services/partners';
+import { dueDateFor, getPurchasingSettings, listPurchaseOrders, openQty, poNumber } from '../../../../services/purchaseOrders';
+import { buildGrContext, linesFromPo } from '../../goods-receipts/detail/types';
+import { CopyPanel } from '../../shared/CopyPanel';
+import { DocumentFlow } from '../../shared/DocumentFlow';
 import { DprLinesCard } from './DprLinesCard';
-import { useDocTitle } from '../../../../../services/useDocTitle';
-import { ActivityTab } from '../../../../../components/activity/ActivityTab';
-import { NotFound, PrevNext, neighbours } from '../../../../../components/form/DetailNav';
+import { useDocTitle } from '../../../../services/useDocTitle';
+import { ActivityTab } from '../../../../components/activity/ActivityTab';
+import { NotFound, PrevNext, neighbours } from '../../../../components/form/DetailNav';
 import { DprVendorCard } from './DprVendorCard';
 import { DprDocumentCard } from './DprDocumentCard';
 import { DprAccountingCard } from './DprAccountingCard';
-import { ReferencesTable } from '../../../shared/ReferencesTable';
+import { ReferencesTable } from '../../shared/ReferencesTable';
 import { DprTotalsCard } from './DprTotalsCard';
 import { DPR_STATUS_INTENT, type DprDraft as Draft, type DprMasters as Masters } from './types';
 export { DPR_STATUS_INTENT };

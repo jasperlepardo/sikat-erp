@@ -5,7 +5,7 @@ import { PO_LIST_PATH, STATUS_INTENT } from '../../purchasing/purchase-orders/de
 import { grNumber, grTotal, listGoodsReceipts } from '../../../services/goodsReceipts';
 import { GR_LIST_PATH, GR_STATUS_INTENT } from '../../purchasing/goods-receipts/detail/GoodsReceiptDetail';
 import { apNumber, apTotal, listApInvoices } from '../../../services/apInvoices';
-import { AP_LIST_PATH, AP_STATUS_INTENT } from '../../purchasing/bills/ap-invoices/detail/ApInvoiceDetail';
+import { AP_LIST_PATH, AP_STATUS_INTENT } from '../../purchasing/vendor-invoices/detail/ApInvoiceDetail';
 import { listPayments, overallAmount, paymentNumber } from '../../../services/outgoingPayments';
 import { PAYMENT_LIST_PATH, PAYMENT_STATUS_INTENT } from '../../purchasing/payments-made/detail/PaymentDetail';
 import { listGoodsReturns, returnNumber, returnTotal } from '../../../services/goodsReturns';
@@ -13,7 +13,7 @@ import { listCreditMemos, memoNumber, memoTotal } from '../../../services/apCred
 import { RETURN_STATUS_INTENT } from '../../purchasing/returns-and-debits/types';
 import { MEMO_LIST_PATH, MEMO_STATUS_INTENT, RETURN_LIST_PATH } from '../../purchasing/returns-and-debits/types';
 import { dprNumber, dprTotal, listDownPayments } from '../../../services/apDownPayments';
-import { DPR_LIST_PATH, DPR_STATUS_INTENT } from '../../purchasing/bills/down-payment-requests/detail/DprDetail';
+import { DPR_LIST_PATH, DPR_STATUS_INTENT } from '../../purchasing/down-payment-requests/detail/DprDetail';
 
 export type DocType = 'PR' | 'RFQ' | 'PO' | 'DPR' | 'GRPO' | 'APINV' | 'PAY' | 'GRET' | 'APCM' | 'SQ' | 'SO';
 export type StatusIntent = 'default' | 'primary' | 'warning' | 'success' | 'danger';

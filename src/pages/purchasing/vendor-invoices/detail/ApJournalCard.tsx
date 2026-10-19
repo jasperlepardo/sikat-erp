@@ -1,10 +1,10 @@
 import { Alert, List, Text } from '@jasperlepardo/sikat-design-system';
-import { Section } from '../../../../../components/form/fields';
-import { accountText } from '../../../../../mocks/chartOfAccounts';
-import type { Item } from '../../../../../mocks/items';
-import { apJournal, lineValueLc, receiptValueLc } from '../../../../../services/apInvoices';
-import { formatAmount } from '../../../../../services/format';
-import { poWithholding } from '../../../../../services/purchaseOrders';
+import { Section } from '../../../../components/form/fields';
+import { accountText } from '../../../../mocks/chartOfAccounts';
+import type { Item } from '../../../../mocks/items';
+import { apJournal, lineValueLc, receiptValueLc } from '../../../../services/apInvoices';
+import { formatAmount } from '../../../../services/format';
+import { poWithholding } from '../../../../services/purchaseOrders';
 import type { ApSectionProps } from './types';
 
 function differenceTarget(item: Item | undefined) {

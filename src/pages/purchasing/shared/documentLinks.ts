@@ -8,7 +8,7 @@ import { PO_LIST_PATH, STATUS_INTENT } from '../purchase-orders/detail/PurchaseO
 import { PR_LIST_PATH, STATUS_INTENT as PR_STATUS_INTENT } from '../purchase-requests/detail/PurchaseRequestDetail';
 import { RFQ_LIST_PATH, STATUS_INTENT as RFQ_STATUS_INTENT } from '../purchase-quotations/detail/PurchaseQuotationDetail';
 import { GR_LIST_PATH, GR_STATUS_INTENT } from '../goods-receipts/detail/GoodsReceiptDetail';
-import { AP_LIST_PATH, AP_STATUS_INTENT } from '../bills/ap-invoices/detail/ApInvoiceDetail';
+import { AP_LIST_PATH, AP_STATUS_INTENT } from '../vendor-invoices/detail/ApInvoiceDetail';
 import { apNumber, apTotal, listApInvoices } from '../../../services/apInvoices';
 import { listPayments, overallAmount, paymentNumber, rowSettled } from '../../../services/outgoingPayments';
 import { PAYMENT_LIST_PATH, PAYMENT_STATUS_INTENT } from '../payments-made/detail/PaymentDetail';
@@ -18,7 +18,7 @@ import { listCreditMemos, memoNumber, memoTotal } from '../../../services/apCred
 import { RETURN_STATUS_INTENT } from '../returns-and-debits/types';
 import { MEMO_LIST_PATH, MEMO_STATUS_INTENT, RETURN_LIST_PATH } from '../returns-and-debits/types';
 import { dprNumber, dprTotal, listDownPayments } from '../../../services/apDownPayments';
-import { DPR_LIST_PATH, DPR_STATUS_INTENT } from '../bills/down-payment-requests/detail/DprDetail';
+import { DPR_LIST_PATH, DPR_STATUS_INTENT } from '../down-payment-requests/detail/DprDetail';
 import { listPurchaseBlanketAgreements, pbaNumber, pbaTotals } from '../../../services/purchaseBlanketAgreements';
 import { PBA_LIST_PATH, PBA_STATUS_INTENT } from '../purchase-agreements/PurchaseBlanketAgreementList';
 import { listLandedCosts, lcNumber, lcTotals } from '../../../services/landedCosts';

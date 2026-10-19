@@ -1,10 +1,10 @@
 import { Select } from '@jasperlepardo/sikat-design-system';
-import { CtxFormField, FieldStack, ReadOnly, Section, bind } from '../../../../../components/form/fields';
-import { StatusField } from '../../../../../components/form/StatusField';
-import { AP_SERIES, AP_STATUSES, type ApStatus } from '../../../../../mocks/apInvoices';
-import { formatDate } from '../../../../../services/dates';
-import { apNumber } from '../../../../../services/apInvoices';
-import { paymentTermName } from '../../../../../services/purchaseOrders';
+import { CtxFormField, FieldStack, ReadOnly, Section, bind } from '../../../../components/form/fields';
+import { StatusField } from '../../../../components/form/StatusField';
+import { AP_SERIES, AP_STATUSES, type ApStatus } from '../../../../mocks/apInvoices';
+import { formatDate } from '../../../../services/dates';
+import { apNumber } from '../../../../services/apInvoices';
+import { paymentTermName } from '../../../../services/purchaseOrders';
 import { AP_STATUS_INTENT, type ApSectionProps } from './types';
 
 interface ApDocumentCardProps extends ApSectionProps {

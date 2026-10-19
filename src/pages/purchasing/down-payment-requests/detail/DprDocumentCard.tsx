@@ -1,9 +1,9 @@
 import { Select } from '@jasperlepardo/sikat-design-system';
-import { CtxFormField, FieldStack, ReadOnly, Section, bind } from '../../../../../components/form/fields';
-import { StatusField } from '../../../../../components/form/StatusField';
-import { DPR_SERIES, DPR_STATUSES, type DprStatus } from '../../../../../mocks/apDownPayments';
-import { formatDate } from '../../../../../services/dates';
-import { dprNumber } from '../../../../../services/apDownPayments';
+import { CtxFormField, FieldStack, ReadOnly, Section, bind } from '../../../../components/form/fields';
+import { StatusField } from '../../../../components/form/StatusField';
+import { DPR_SERIES, DPR_STATUSES, type DprStatus } from '../../../../mocks/apDownPayments';
+import { formatDate } from '../../../../services/dates';
+import { dprNumber } from '../../../../services/apDownPayments';
 import { DPR_STATUS_INTENT, type DprSectionProps } from './types';
 
 interface DprDocumentCardProps extends DprSectionProps {

@@ -4,7 +4,7 @@ import { PO_LIST_PATH, STATUS_INTENT } from '../../../purchasing/purchase-orders
 import { grNumber, listGoodsReceipts } from '../../../../services/goodsReceipts';
 import { GR_LIST_PATH, GR_STATUS_INTENT } from '../../../purchasing/goods-receipts/detail/GoodsReceiptDetail';
 import { apNumber, listApInvoices } from '../../../../services/apInvoices';
-import { AP_LIST_PATH, AP_STATUS_INTENT } from '../../../purchasing/bills/ap-invoices/detail/ApInvoiceDetail';
+import { AP_LIST_PATH, AP_STATUS_INTENT } from '../../../purchasing/vendor-invoices/detail/ApInvoiceDetail';
 import { listGoodsReturns, returnNumber } from '../../../../services/goodsReturns';
 import { listCreditMemos, memoNumber } from '../../../../services/apCreditMemos';
 import { RETURN_STATUS_INTENT } from '../../../purchasing/returns-and-debits/types';

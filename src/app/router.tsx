@@ -59,10 +59,10 @@ const RfqDetail = page(() => import('../pages/purchasing/purchase-quotations/det
 const PurchaseOrderDetail = page(() => import('../pages/purchasing/purchase-orders/detail/PurchaseOrderDetail'), 'PurchaseOrderDetail');
 const GoodsReceiptList = page(() => import('../pages/purchasing/goods-receipts/GoodsReceiptList'), 'GoodsReceiptList');
 const GoodsReceiptDetail = page(() => import('../pages/purchasing/goods-receipts/detail/GoodsReceiptDetail'), 'GoodsReceiptDetail');
-const ApInvoiceList = page(() => import('../pages/purchasing/bills/ap-invoices/ApInvoiceList'), 'ApInvoiceList');
-const ApInvoiceDetail = page(() => import('../pages/purchasing/bills/ap-invoices/detail/ApInvoiceDetail'), 'ApInvoiceDetail');
-const DprList = page(() => import('../pages/purchasing/bills/down-payment-requests/DprList'), 'DprList');
-const DprDetail = page(() => import('../pages/purchasing/bills/down-payment-requests/detail/DprDetail'), 'DprDetail');
+const ApInvoiceList = page(() => import('../pages/purchasing/vendor-invoices/ApInvoiceList'), 'ApInvoiceList');
+const ApInvoiceDetail = page(() => import('../pages/purchasing/vendor-invoices/detail/ApInvoiceDetail'), 'ApInvoiceDetail');
+const DprList = page(() => import('../pages/purchasing/down-payment-requests/DprList'), 'DprList');
+const DprDetail = page(() => import('../pages/purchasing/down-payment-requests/detail/DprDetail'), 'DprDetail');
 const PaymentList = page(() => import('../pages/purchasing/payments-made/PaymentList'), 'PaymentList');
 const PaymentDetail = page(() => import('../pages/purchasing/payments-made/detail/PaymentDetail'), 'PaymentDetail');
 const ReturnsList = page(() => import('../pages/purchasing/returns-and-debits/ReturnsList'), 'ReturnsList');

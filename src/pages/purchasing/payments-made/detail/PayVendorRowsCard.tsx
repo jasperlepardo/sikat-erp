@@ -8,7 +8,7 @@ import { formatDate } from '../../../../services/dates';
 import { formatAmount } from '../../../../services/format';
 import { overallAmount, rowDiscount, rowFxDifference } from '../../../../services/outgoingPayments';
 import { projectDef } from '../../../settings/masterDefs';
-import { AP_LIST_PATH } from '../../bills/ap-invoices/detail/ApInvoiceDetail';
+import { AP_LIST_PATH } from '../../vendor-invoices/detail/ApInvoiceDetail';
 import { overdueDays, type PaySectionProps } from './types';
 
 const num = (v: string) => (v === '' ? 0 : Number(v));

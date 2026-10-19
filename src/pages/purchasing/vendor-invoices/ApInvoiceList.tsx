@@ -14,17 +14,17 @@ import {
   type TableColumn,
   Text,
 } from '@jasperlepardo/sikat-design-system';
-import { AP_STATUSES, type ApInvoice } from '../../../../mocks/apInvoices';
-import { formatDate } from '../../../../services/dates';
-import { formatAmount } from '../../../../services/format';
-import { apNumber, apTotal, listApInvoices } from '../../../../services/apInvoices';
-import { todayISO } from '../../../../services/dates';
-import { taxCodes } from '../../../../services/masterData';
-import { useAsync } from '../../../../services/useAsync';
-import { dateField, linesField, masterField, numberField, statusField, textField } from '../../../../components/filter/fieldKit';
-import { statusViews, useListPresets } from '../../../../components/filter/useListPresets';
-import { currencyDef, salesEmployeeDef } from '../../../settings/masterDefs';
-import { fillCardClass, useListPage } from '../../../../components/form/DataTable';
+import { AP_STATUSES, type ApInvoice } from '../../../mocks/apInvoices';
+import { formatDate } from '../../../services/dates';
+import { formatAmount } from '../../../services/format';
+import { apNumber, apTotal, listApInvoices } from '../../../services/apInvoices';
+import { todayISO } from '../../../services/dates';
+import { taxCodes } from '../../../services/masterData';
+import { useAsync } from '../../../services/useAsync';
+import { dateField, linesField, masterField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
+import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
+import { currencyDef, salesEmployeeDef } from '../../settings/masterDefs';
+import { fillCardClass, useListPage } from '../../../components/form/DataTable';
 import { AP_LIST_PATH, AP_STATUS_INTENT } from './detail/ApInvoiceDetail';
 
 export function ApInvoiceList() {

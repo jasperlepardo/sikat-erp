@@ -65,8 +65,8 @@ import { getPurchasingSettings } from '../../../../services/purchaseOrders';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
 import { NotFound, PrevNext, neighbours } from '../../../../components/form/DetailNav';
-import { AP_LIST_PATH } from '../../bills/ap-invoices/detail/ApInvoiceDetail';
-import { DPR_LIST_PATH } from '../../bills/down-payment-requests/detail/DprDetail';
+import { AP_LIST_PATH } from '../../vendor-invoices/detail/ApInvoiceDetail';
+import { DPR_LIST_PATH } from '../../down-payment-requests/detail/DprDetail';
 
 export const PAYMENT_LIST_PATH = '/purchasing/outgoing-payments';
 

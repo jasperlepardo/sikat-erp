@@ -1,9 +1,9 @@
 import { CardField, Combobox, FormField, Icon, Select, type CardFieldOption } from '@jasperlepardo/sikat-design-system';
-import { Fields, ReadOnly, Section, bind } from '../../../../../components/form/fields';
-import { contactName } from '../../../../../mocks/partners';
-import { formatAddress, type PostalAddress } from '../../../../../mocks/address';
-import { countryName } from '../../../../../services/partnerMasters';
-import { receivesFromVendors } from '../../../../../mocks/itemMasters';
+import { Fields, ReadOnly, Section, bind } from '../../../../components/form/fields';
+import { contactName } from '../../../../mocks/partners';
+import { formatAddress, type PostalAddress } from '../../../../mocks/address';
+import { countryName } from '../../../../services/partnerMasters';
+import { receivesFromVendors } from '../../../../mocks/itemMasters';
 import type { ApSectionProps } from './types';
 
 interface ApVendorCardProps extends ApSectionProps {
