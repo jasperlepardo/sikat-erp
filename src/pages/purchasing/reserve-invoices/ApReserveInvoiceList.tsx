@@ -94,7 +94,7 @@ export function ApReserveInvoiceList() {
       header: 'No.',
       sortable: true,
       cell: (inv) => (
-        <TableContent href={`/#${APRI_LIST_PATH}/${inv.docNum ? apRiNumber(inv) : inv.id}`} subcopy={inv.vendorRef ? `Vendor ref. ${inv.vendorRef}` : undefined}>
+        <TableContent href={`#${APRI_LIST_PATH}/${inv.docNum ? apRiNumber(inv) : inv.id}`} subcopy={inv.vendorRef ? `Vendor ref. ${inv.vendorRef}` : undefined}>
           {apRiNumber(inv)}
         </TableContent>
       ),

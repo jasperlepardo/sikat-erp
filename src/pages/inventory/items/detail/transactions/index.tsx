@@ -96,7 +96,7 @@ export function TransactionsTab({ draft }: { draft: Draft }) {
       key: 'number',
       header: 'Document',
       cell: (d) => (
-        <TableContent href={`/#${d.href}`} subcopy={[DOC_SOURCES[d.type].label, d.subcopy].filter(Boolean).join(' · ')}>{d.number}</TableContent>
+        <TableContent href={`#${d.href}`} subcopy={[DOC_SOURCES[d.type].label, d.subcopy].filter(Boolean).join(' · ')}>{d.number}</TableContent>
       ),
     },
     { key: 'date', header: 'Date', cell: (d) => d.date },

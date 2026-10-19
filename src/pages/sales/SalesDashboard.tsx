@@ -42,7 +42,7 @@ export function SalesDashboard() {
     {
       key: 'docNum',
       header: 'No.',
-      cell: (so) => <TableContent href={`/#${SO_LIST_PATH}/${so.docNum ? soNumber(so) : so.id}`}>{soNumber(so)}</TableContent>,
+      cell: (so) => <TableContent href={`#${SO_LIST_PATH}/${so.docNum ? soNumber(so) : so.id}`}>{soNumber(so)}</TableContent>,
     },
     {
       key: 'customerName',
@@ -58,7 +58,7 @@ export function SalesDashboard() {
     {
       key: 'docNum',
       header: 'No.',
-      cell: (a) => <TableContent href={`/#${AR_LIST_PATH}/${a.docNum ? arNumber(a) : a.id}`}>{arNumber(a)}</TableContent>,
+      cell: (a) => <TableContent href={`#${AR_LIST_PATH}/${a.docNum ? arNumber(a) : a.id}`}>{arNumber(a)}</TableContent>,
     },
     {
       key: 'customerName',

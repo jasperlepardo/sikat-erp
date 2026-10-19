@@ -198,7 +198,7 @@ export function StockOnHandPage() {
       sortable: true,
       // Cells don't wrap, so a long name would widen the column and push Status off the card:
       // let the name wrap, so it stays on one line while the card has room and wraps when it doesn't.
-      cell: (r) => <TableContent href={`/#${ITEMS_PATH}/${r.item.id}`}>{rowLabel(r)}</TableContent>,
+      cell: (r) => <TableContent href={`#${ITEMS_PATH}/${r.item.id}`}>{rowLabel(r)}</TableContent>,
     },
     { key: 'inStock', header: numHeader('In stock'), sortable: true, cell: (r) => num(r.inStock ? <>{qty(r.inStock)}{affix(r.item.inventoryUom)}</> : DASH) },
     { key: 'committed', header: numHeader('Committed'), sortable: true, cell: (r) => (r.bin ? null : num(cellQty(r.committed))) },

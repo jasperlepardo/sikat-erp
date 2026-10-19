@@ -82,7 +82,7 @@ export function VendorItemsTab({ draft }: { draft: Draft }) {
       key: 'name',
       header: '',
       sortable: false,
-      cell: (r) => <TableContent href={`/#${ITEM_PATH}/${r.id}`}>{r.name}</TableContent>,
+      cell: (r) => <TableContent href={`#${ITEM_PATH}/${r.id}`}>{r.name}</TableContent>,
     },
     { key: 'itemGroup', header: 'Item group', cell: (r) => muted(r.itemGroup) },
     { key: 'catalogNo', header: 'Vendor catalog no.', cell: (r) => muted(r.catalogNo) },

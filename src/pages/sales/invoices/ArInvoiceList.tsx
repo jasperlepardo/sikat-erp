@@ -98,7 +98,7 @@ export function ArInvoiceList() {
       header: 'No.',
       sortable: true,
       cell: (so) => (
-        <TableContent href={`/#${AR_LIST_PATH}/${so.docNum ? arNumber(so) : so.id}`} subcopy={so.customerRef ? `Customer ref. ${so.customerRef}` : undefined}>{arNumber(so)}</TableContent>
+        <TableContent href={`#${AR_LIST_PATH}/${so.docNum ? arNumber(so) : so.id}`} subcopy={so.customerRef ? `Customer ref. ${so.customerRef}` : undefined}>{arNumber(so)}</TableContent>
       ),
     },
     { key: 'customerName', header: 'Customer', sortable: true, cell: (so) => <TableContent subcopy={so.customerCode}>{so.customerName || '—'}</TableContent> },

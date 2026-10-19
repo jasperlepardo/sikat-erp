@@ -83,7 +83,7 @@ export function SalesOrderList() {
       header: 'No.',
       sortable: true,
       cell: (so) => (
-        <TableContent href={`/#${SO_LIST_PATH}/${so.docNum ? soNumber(so) : so.id}`} subcopy={so.customerRef ? `Customer ref. ${so.customerRef}` : undefined}>{soNumber(so)}</TableContent>
+        <TableContent href={`#${SO_LIST_PATH}/${so.docNum ? soNumber(so) : so.id}`} subcopy={so.customerRef ? `Customer ref. ${so.customerRef}` : undefined}>{soNumber(so)}</TableContent>
       ),
     },
     { key: 'customerName', header: 'Customer', sortable: true, cell: (so) => <TableContent subcopy={so.customerCode}>{so.customerName || '—'}</TableContent> },

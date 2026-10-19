@@ -102,7 +102,7 @@ export function PartnerList({ scope }: { scope: PartnerScope }) {
       header: config.singular,
       sortable: true,
       cell: (p) => (
-        <TableContent href={`/#${config.basePath}/${p.id}`} subcopy={p.code}>{p.name}</TableContent>
+        <TableContent href={`#${config.basePath}/${p.id}`} subcopy={p.code}>{p.name}</TableContent>
       ),
     },
     {

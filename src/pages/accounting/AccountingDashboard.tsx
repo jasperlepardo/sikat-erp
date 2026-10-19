@@ -41,7 +41,7 @@ export function AccountingDashboard() {
       key: 'transNo',
       header: 'No.',
       cell: (e) => (
-        <TableContent href={`/#${JE_LIST_PATH}/${e.id}`} subcopy={`Trans. ${e.transNo}`}>{jeNumber(e)}</TableContent>
+        <TableContent href={`#${JE_LIST_PATH}/${e.id}`} subcopy={`Trans. ${e.transNo}`}>{jeNumber(e)}</TableContent>
       ),
     },
     { key: 'postingDate', header: 'Date', cell: (e) => formatDate(e.postingDate) },
@@ -62,7 +62,7 @@ export function AccountingDashboard() {
     {
       key: 'voucherNo',
       header: 'Voucher No.',
-      cell: (v) => <TableContent href={`/#${JV_LIST_PATH}/${v.id}`}>{v.voucherNo}</TableContent>,
+      cell: (v) => <TableContent href={`#${JV_LIST_PATH}/${v.id}`}>{v.voucherNo}</TableContent>,
     },
     {
       key: 'entries',

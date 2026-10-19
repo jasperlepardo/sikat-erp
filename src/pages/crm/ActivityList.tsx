@@ -122,7 +122,7 @@ export function ActivityList() {
       cell: (a) => {
         const p = partnerOf(a);
         return p ? (
-          <TableContent href={`/#${p.href}`} subcopy={p.sub}>{p.label}</TableContent>
+          <TableContent href={`#${p.href}`} subcopy={p.sub}>{p.label}</TableContent>
         ) : (
           '—'
         );

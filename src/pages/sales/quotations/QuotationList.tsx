@@ -87,7 +87,7 @@ export function QuotationList() {
       header: 'No.',
       sortable: true,
       cell: (q) => (
-        <TableContent href={`/#${QT_LIST_PATH}/${q.docNum ? qtNumber(q) : q.id}`} subcopy={q.customerRef || undefined}>{qtNumber(q)}</TableContent>
+        <TableContent href={`#${QT_LIST_PATH}/${q.docNum ? qtNumber(q) : q.id}`} subcopy={q.customerRef || undefined}>{qtNumber(q)}</TableContent>
       ),
     },
     { key: 'customerName', header: 'Customer', sortable: true, cell: (q) => <TableContent subcopy={q.customerCode}>{q.customerName || '—'}</TableContent> },

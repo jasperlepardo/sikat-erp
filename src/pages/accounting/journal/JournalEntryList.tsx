@@ -90,7 +90,7 @@ export function JournalEntryList() {
       header: 'No.',
       sortable: true,
       cell: (e) => (
-        <TableContent href={`/#${JE_LIST_PATH}/${e.id}`} subcopy={`Trans. ${e.transNo}`}>{jeNumber(e)}</TableContent>
+        <TableContent href={`#${JE_LIST_PATH}/${e.id}`} subcopy={`Trans. ${e.transNo}`}>{jeNumber(e)}</TableContent>
       ),
     },
     { key: 'postingDate', header: 'Posting date', sortable: true, cell: (e) => formatDate(e.postingDate) },

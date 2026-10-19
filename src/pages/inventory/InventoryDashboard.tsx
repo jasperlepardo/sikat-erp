@@ -37,7 +37,7 @@ export function InventoryDashboard() {
     {
       key: 'docNum',
       header: 'No.',
-      cell: (t) => <TableContent href={`/#${TRANSFER_LIST_PATH}/${t.id}`}>{transferNumber(t)}</TableContent>,
+      cell: (t) => <TableContent href={`#${TRANSFER_LIST_PATH}/${t.id}`}>{transferNumber(t)}</TableContent>,
     },
     {
       key: 'fromWarehouse',
@@ -58,7 +58,7 @@ export function InventoryDashboard() {
       key: 'itemNo',
       header: 'Item',
       cell: (i) => (
-        <TableContent href={`/#${ITEM_LIST_PATH}/${i.id}`} subcopy={i.itemNo}>{i.name}</TableContent>
+        <TableContent href={`#${ITEM_LIST_PATH}/${i.id}`} subcopy={i.itemNo}>{i.name}</TableContent>
       ),
     },
     { key: 'inStock', header: 'In stock', cell: (i) => stockTotals(i).inStock.toLocaleString('en-PH') },

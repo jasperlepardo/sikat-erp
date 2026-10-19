@@ -131,7 +131,7 @@ export function ItemList({ basePath = '/inventory/items' }: { basePath?: string 
       header: 'Item',
       sortable: true,
       cell: (i) => (
-        <TableContent href={`/#${basePath}/${i.id}`} subcopy={i.itemNo}>{i.description}</TableContent>
+        <TableContent href={`#${basePath}/${i.id}`} subcopy={i.itemNo}>{i.description}</TableContent>
       ),
     },
     {

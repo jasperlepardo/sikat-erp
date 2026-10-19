@@ -85,7 +85,7 @@ export function PurchaseOrderList() {
       header: 'No.',
       sortable: true,
       cell: (po) => (
-        <TableContent href={`/#${PO_LIST_PATH}/${po.docNum ? poNumber(po) : po.id}`} subcopy={po.vendorRef ? `Vendor ref. ${po.vendorRef}` : undefined}>{poNumber(po)}</TableContent>
+        <TableContent href={`#${PO_LIST_PATH}/${po.docNum ? poNumber(po) : po.id}`} subcopy={po.vendorRef ? `Vendor ref. ${po.vendorRef}` : undefined}>{poNumber(po)}</TableContent>
       ),
     },
     {

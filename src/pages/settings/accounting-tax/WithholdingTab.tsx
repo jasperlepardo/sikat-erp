@@ -284,7 +284,7 @@ function WithholdingListView({
                     cell: (r) => {
                       if (r.type !== 'tier' || !r.ind || r.ind === r.corp) return null;
                       return (
-                        <TableContent href={`/#${basePath}/${encodeURIComponent(r.ind!.id)}`}>
+                        <TableContent href={`#${basePath}/${encodeURIComponent(r.ind!.id)}`}>
                           <span className="font-mono">{r.ind.atc || <span className="text-warning">No ATC</span>}</span>
                         </TableContent>
                       );
@@ -297,7 +297,7 @@ function WithholdingListView({
                     cell: (r) => {
                       if (r.type !== 'tier' || !r.corp || r.ind === r.corp) return null;
                       return (
-                        <TableContent href={`/#${basePath}/${encodeURIComponent(r.corp!.id)}`}>
+                        <TableContent href={`#${basePath}/${encodeURIComponent(r.corp!.id)}`}>
                           <span className="font-mono">{r.corp.atc || <span className="text-warning">No ATC</span>}</span>
                         </TableContent>
                       );
@@ -310,7 +310,7 @@ function WithholdingListView({
                     cell: (r) => {
                       if (r.type !== 'tier' || !r.ind || r.ind !== r.corp) return null;
                       return (
-                        <TableContent href={`/#${basePath}/${encodeURIComponent(r.ind!.id)}`}>
+                        <TableContent href={`#${basePath}/${encodeURIComponent(r.ind!.id)}`}>
                           <span className="font-mono">{r.ind.atc || <span className="text-warning">No ATC</span>}</span>
                         </TableContent>
                       );

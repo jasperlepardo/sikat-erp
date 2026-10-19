@@ -116,7 +116,7 @@ export function DebitMemosList() {
   const intent = false ? RETURN_STATUS_INTENT : MEMO_STATUS_INTENT;
 
   const columns: TableColumn<Row>[] = [
-    { key: 'docNum', header: 'No.', sortable: true, cell: (r) => <TableContent href={`/#${path}/${r.docNum ? r.number : r.id}`} subcopy={r.ref || undefined}>{r.number}</TableContent> },
+    { key: 'docNum', header: 'No.', sortable: true, cell: (r) => <TableContent href={`#${path}/${r.docNum ? r.number : r.id}`} subcopy={r.ref || undefined}>{r.number}</TableContent> },
     { key: 'vendorName', header: 'Vendor', sortable: true, cell: (r) => <TableContent subcopy={r.vendorCode}>{r.vendorName || '—'}</TableContent> },
     { key: 'postingDate', header: 'Posting date', sortable: true, cell: (r) => formatDate(r.postingDate) },
     { key: 'base', header: 'Based on', cell: (r) => r.base || <span className="text-muted">Entered by hand</span> },

@@ -28,7 +28,7 @@ export function SalesDocumentFlow({ kind, id, notes }: { kind: SalesDocKind; id:
       header: 'Document',
       cell: (d) => (
         <TableContent subcopy={d.type}>
-          {d.relation === 'This' ? d.number : <TableContent href={`/#${d.href}`}>{d.number}</TableContent>}
+          {d.relation === 'This' ? d.number : <TableContent href={`#${d.href}`}>{d.number}</TableContent>}
         </TableContent>
       ),
     },

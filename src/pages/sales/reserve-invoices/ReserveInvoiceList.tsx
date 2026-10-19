@@ -93,7 +93,7 @@ export function ReserveInvoiceList() {
       header: 'No.',
       sortable: true,
       cell: (r) => (
-        <TableContent href={`/#${RI_LIST_PATH}/${r.docNum ? riNumber(r) : r.id}`} subcopy={r.customerRef ? `Customer ref. ${r.customerRef}` : undefined}>
+        <TableContent href={`#${RI_LIST_PATH}/${r.docNum ? riNumber(r) : r.id}`} subcopy={r.customerRef ? `Customer ref. ${r.customerRef}` : undefined}>
           {riNumber(r)}
         </TableContent>
       ),

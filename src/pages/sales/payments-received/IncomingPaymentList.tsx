@@ -82,7 +82,7 @@ export function IncomingPaymentList() {
       header: 'No.',
       sortable: true,
       cell: (so) => (
-        <TableContent href={`/#${RC_LIST_PATH}/${so.docNum ? incomingNumber(so) : so.id}`} subcopy={so.reference ? `Ref. ${so.reference}` : undefined}>{incomingNumber(so)}</TableContent>
+        <TableContent href={`#${RC_LIST_PATH}/${so.docNum ? incomingNumber(so) : so.id}`} subcopy={so.reference ? `Ref. ${so.reference}` : undefined}>{incomingNumber(so)}</TableContent>
       ),
     },
     { key: 'customerName', header: 'Customer', sortable: true, cell: (so) => <TableContent subcopy={so.type === 'Account' ? 'Account' : so.customerCode}>{so.customerName || (so.type === 'Account' ? so.accountRows.map((r) => r.account).join(', ') || '—' : '—')}</TableContent> },

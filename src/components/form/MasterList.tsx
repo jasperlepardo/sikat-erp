@@ -237,7 +237,7 @@ function ListView<T extends { id: string }>({
     ...(i === 0
       ? {
           cell: (r: T) => (
-            <TableContent href={`/#${basePath}/${encodeURIComponent(r.id)}`}>
+            <TableContent href={`#${basePath}/${encodeURIComponent(r.id)}`}>
               {c.cell ? c.cell(r) : String((r as Record<string, unknown>)[c.key])}
             </TableContent>
           ),

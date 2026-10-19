@@ -99,7 +99,7 @@ export function LandedCostsList() {
       header: 'No.',
       sortable: true,
       cell: (r) => (
-        <TableContent href={`/#${LC_LIST_PATH}/${r.docNum ? r.number : r.id}`} subcopy={r.reference || undefined}>
+        <TableContent href={`#${LC_LIST_PATH}/${r.docNum ? r.number : r.id}`} subcopy={r.reference || undefined}>
           {r.number}
         </TableContent>
       ),

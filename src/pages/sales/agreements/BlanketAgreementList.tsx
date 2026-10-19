@@ -89,7 +89,7 @@ export function BlanketAgreementList() {
       header: 'No.',
       sortable: true,
       cell: (ba) => (
-        <TableContent href={`/#${BA_LIST_PATH}/${ba.docNum ? baNumber(ba) : ba.id}`}>
+        <TableContent href={`#${BA_LIST_PATH}/${ba.docNum ? baNumber(ba) : ba.id}`}>
           {ba.docNum ? baNumber(ba) : <Text tone="muted">Draft</Text>}
         </TableContent>
       ),

@@ -33,7 +33,7 @@ export function DocumentFlow({ kind, id, notes }: { kind: DocKind; id: string; n
       header: 'Document',
       cell: (d) => (
         <TableContent subcopy={d.type}>
-          {d.relation === 'This' ? d.number : <TableContent href={`/#${d.href}`}>{d.number}</TableContent>}
+          {d.relation === 'This' ? d.number : <TableContent href={`#${d.href}`}>{d.number}</TableContent>}
         </TableContent>
       ),
     },

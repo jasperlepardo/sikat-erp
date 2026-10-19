@@ -94,7 +94,7 @@ export function EmployeeList() {
       header: 'Employee',
       sortable: true,
       cell: (e) => (
-        <TableContent href={`/#${EMPLOYEES_PATH}/${e.id}`} subcopy={e.code}>{employeeName(e)}</TableContent>
+        <TableContent href={`#${EMPLOYEES_PATH}/${e.id}`} subcopy={e.code}>{employeeName(e)}</TableContent>
       ),
     },
     {

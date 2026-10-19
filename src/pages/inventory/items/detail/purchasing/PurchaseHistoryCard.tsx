@@ -85,7 +85,7 @@ export function PurchaseHistoryCard({ draft }: { draft: Draft }) {
       key: 'receiptNo',
       header: 'Batch',
       cell: (b) => (
-        <TableContent href={`/#${GR_LIST_PATH}/${b.receiptId}`} subcopy={`${b.date} · ${b.orderNo || 'No PO'}`}>{b.receiptNo}</TableContent>
+        <TableContent href={`#${GR_LIST_PATH}/${b.receiptId}`} subcopy={`${b.date} · ${b.orderNo || 'No PO'}`}>{b.receiptNo}</TableContent>
       ),
     },
     { key: 'vendor', header: 'Vendor', cell: (b) => b.vendor },

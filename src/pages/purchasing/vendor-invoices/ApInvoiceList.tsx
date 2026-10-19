@@ -89,7 +89,7 @@ export function ApInvoiceList() {
       header: 'No.',
       sortable: true,
       cell: (inv) => (
-        <TableContent href={`/#${AP_LIST_PATH}/${inv.docNum ? apNumber(inv) : inv.id}`} subcopy={inv.vendorRef ? `Vendor ref. ${inv.vendorRef}` : undefined}>{apNumber(inv)}</TableContent>
+        <TableContent href={`#${AP_LIST_PATH}/${inv.docNum ? apNumber(inv) : inv.id}`} subcopy={inv.vendorRef ? `Vendor ref. ${inv.vendorRef}` : undefined}>{apNumber(inv)}</TableContent>
       ),
     },
     {

@@ -86,7 +86,7 @@ export function GoodsReceiptList() {
       header: 'No.',
       sortable: true,
       cell: (gr) => (
-        <TableContent href={`/#${GR_LIST_PATH}/${gr.docNum ? grNumber(gr) : gr.id}`} subcopy={gr.vendorRef ? `Vendor ref. ${gr.vendorRef}` : undefined}>{grNumber(gr)}</TableContent>
+        <TableContent href={`#${GR_LIST_PATH}/${gr.docNum ? grNumber(gr) : gr.id}`} subcopy={gr.vendorRef ? `Vendor ref. ${gr.vendorRef}` : undefined}>{grNumber(gr)}</TableContent>
       ),
     },
     {

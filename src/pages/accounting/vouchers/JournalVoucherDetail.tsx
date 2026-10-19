@@ -111,7 +111,7 @@ export function JournalVoucherDetail() {
     {
       key: 'transNo',
       header: 'Trans. No.',
-      cell: (e) => <TableContent href={`/#${entryPath(voucher.id, e.id)}`}>{e.transNo}</TableContent>,
+      cell: (e) => <TableContent href={`#${entryPath(voucher.id, e.id)}`}>{e.transNo}</TableContent>,
     },
     { key: 'postingDate', header: 'Posting date', cell: (e) => formatDate(e.postingDate) },
     {
@@ -127,7 +127,7 @@ export function JournalVoucherDetail() {
       cell: (e) => {
         if (e.entryStatus === 'Closed')
           return (
-            <TableContent href={`/#${JE_LIST_PATH}/${e.journalEntryId}`}>
+            <TableContent href={`#${JE_LIST_PATH}/${e.journalEntryId}`}>
               {`Journal entry ${e.number}`}
             </TableContent>
           );

@@ -191,7 +191,7 @@ export function StockCountList() {
   }, [counts, presets.filter, list.query, list.sortRows]);
 
   const columns: TableColumn<InventoryCounting>[] = [
-    { key: 'docNum', header: 'No.', sortable: true, cell: (c) => <TableContent href={`/#${COUNT_LIST_PATH}/${c.id}`}>{countNumber(c)}</TableContent> },
+    { key: 'docNum', header: 'No.', sortable: true, cell: (c) => <TableContent href={`#${COUNT_LIST_PATH}/${c.id}`}>{countNumber(c)}</TableContent> },
     { key: 'warehouses', header: 'Warehouse', cell: (c) => <TableContent subcopy={c.remarks || undefined}>{countWarehouses(c).join(', ') || '—'}</TableContent> },
     { key: 'countDate', header: 'Count date', sortable: true, cell: (c) => `${formatDate(c.countDate)} ${c.countTime}` },
     {
@@ -274,7 +274,7 @@ export function InventoryPostingList() {
   }, [postings, presets.filter, list.query, list.sortRows]);
 
   const columns: TableColumn<InventoryPosting>[] = [
-    { key: 'docNum', header: 'No.', sortable: true, cell: (p) => <TableContent href={`/#${POSTING_LIST_PATH}/${p.id}`}>{postingNumber(p)}</TableContent> },
+    { key: 'docNum', header: 'No.', sortable: true, cell: (p) => <TableContent href={`#${POSTING_LIST_PATH}/${p.id}`}>{postingNumber(p)}</TableContent> },
     { key: 'warehouses', header: 'Warehouse', cell: (p) => <TableContent subcopy={p.remarks || undefined}>{countWarehouses(p).join(', ') || '—'}</TableContent> },
     { key: 'postingDate', header: 'Posting date', sortable: true, cell: (p) => formatDate(p.postingDate) },
     { key: 'count', header: 'From count', cell: (p) => (countOf(p) ? countNumber(countOf(p)!) : '— Direct') },

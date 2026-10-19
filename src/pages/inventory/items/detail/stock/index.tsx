@@ -150,7 +150,7 @@ export function StockTab({
       cell: (r) => (
         <span className="whitespace-nowrap">
           {r.recordId
-            ? <TableContent href={`/#/inventory/warehouses-and-bins/${r.kind === 'bin' ? 'bin-locations' : 'warehouses'}/${r.recordId}`}>{r.name}</TableContent>
+            ? <TableContent href={`#/inventory/warehouses-and-bins/${r.kind === 'bin' ? 'bin-locations' : 'warehouses'}/${r.recordId}`}>{r.name}</TableContent>
             : r.name}
         </span>
       ),

@@ -119,7 +119,7 @@ export function SalesReturnsList({ kind }: { kind: Kind }) {
   const { visible: onPage, pagination } = paginate(rows);
 
   const srColumns: TableColumn<Row>[] = [
-    { key: 'docNum', header: 'No.', sortable: true, cell: (r) => <TableContent href={`/#${path}/${r.docNum ? r.number : r.id}`}>{r.number}</TableContent> },
+    { key: 'docNum', header: 'No.', sortable: true, cell: (r) => <TableContent href={`#${path}/${r.docNum ? r.number : r.id}`}>{r.number}</TableContent> },
     { key: 'customerName', header: 'Customer', sortable: true, cell: (r) => <TableContent subcopy={r.customerCode}>{r.customerName || '—'}</TableContent> },
     { key: 'postingDate', header: 'Posting date', align: 'end', cell: (r) => formatDate(r.postingDate) },
     { key: 'basedOn', header: 'Based on', cell: (r) => r.basedOn || <span className="text-muted">Entered by hand</span> },
@@ -128,7 +128,7 @@ export function SalesReturnsList({ kind }: { kind: Kind }) {
   ];
 
   const cmColumns: TableColumn<Row>[] = [
-    { key: 'docNum', header: 'No.', sortable: true, cell: (r) => <TableContent href={`/#${path}/${r.docNum ? r.number : r.id}`}>{r.number}</TableContent> },
+    { key: 'docNum', header: 'No.', sortable: true, cell: (r) => <TableContent href={`#${path}/${r.docNum ? r.number : r.id}`}>{r.number}</TableContent> },
     { key: 'customerName', header: 'Customer', sortable: true, cell: (r) => <TableContent subcopy={r.customerCode}>{r.customerName || '—'}</TableContent> },
     { key: 'postingDate', header: 'Posting date', align: 'end', cell: (r) => formatDate(r.postingDate) },
     { key: 'basedOn', header: 'Based on', cell: (r) => r.basedOn || '—' },

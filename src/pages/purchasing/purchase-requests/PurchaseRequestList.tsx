@@ -84,7 +84,7 @@ export function PurchaseRequestList() {
       header: 'No.',
       sortable: true,
       cell: (r) => (
-        <TableContent href={`/#${PR_LIST_PATH}/${r.docNum ? prNumber(r) : r.id}`}>{prNumber(r)}</TableContent>
+        <TableContent href={`#${PR_LIST_PATH}/${r.docNum ? prNumber(r) : r.id}`}>{prNumber(r)}</TableContent>
       ),
     },
     {

@@ -53,7 +53,7 @@ export function WarehouseContents({ warehouse, isNew, base }: { warehouse: Wareh
             ) : undefined
           }
           rows={rows}
-          columns={stockColumns((r) => `/#/inventory/items/${encodeURIComponent(r.id)}`, usesBins)}
+          columns={stockColumns((r) => `#/inventory/items/${encodeURIComponent(r.id)}`, usesBins)}
           getRowId={(r) => r.id}
           empty={
             <Text variant="small" tone="muted">

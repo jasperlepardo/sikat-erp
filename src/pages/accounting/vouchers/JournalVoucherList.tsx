@@ -87,7 +87,7 @@ export function JournalVoucherList() {
   const { visible: onPage, pagination } = paginate(rows);
 
   const columns: TableColumn<JournalVoucher>[] = [
-    { key: 'voucherNo', header: 'Voucher No.', sortable: true, cell: (v) => <TableContent href={`/#${JV_LIST_PATH}/${v.id}`}>{v.voucherNo}</TableContent> },
+    { key: 'voucherNo', header: 'Voucher No.', sortable: true, cell: (v) => <TableContent href={`#${JV_LIST_PATH}/${v.id}`}>{v.voucherNo}</TableContent> },
     {
       key: 'entries',
       header: 'Entries',

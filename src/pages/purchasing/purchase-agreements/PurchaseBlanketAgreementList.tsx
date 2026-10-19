@@ -89,7 +89,7 @@ export function PurchaseBlanketAgreementList() {
       header: 'No.',
       sortable: true,
       cell: (pba) => (
-        <TableContent href={`/#${PBA_LIST_PATH}/${pba.docNum ? pbaNumber(pba) : pba.id}`}>
+        <TableContent href={`#${PBA_LIST_PATH}/${pba.docNum ? pbaNumber(pba) : pba.id}`}>
           {pba.docNum ? pbaNumber(pba) : <Text tone="muted">Draft</Text>}
         </TableContent>
       ),

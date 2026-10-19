@@ -72,7 +72,7 @@ export function DprList() {
   }, [requests, presets.filter, query, sort, codes]);
 
   const columns: TableColumn<DownPaymentRequest>[] = [
-    { key: 'docNum', header: 'No.', sortable: true, cell: (d) => <TableContent href={`/#${DPR_LIST_PATH}/${d.docNum ? dprNumber(d) : d.id}`} subcopy={d.vendorRef || undefined}>{dprNumber(d)}</TableContent> },
+    { key: 'docNum', header: 'No.', sortable: true, cell: (d) => <TableContent href={`#${DPR_LIST_PATH}/${d.docNum ? dprNumber(d) : d.id}`} subcopy={d.vendorRef || undefined}>{dprNumber(d)}</TableContent> },
     { key: 'vendorName', header: 'Vendor', sortable: true, cell: (d) => <TableContent subcopy={d.vendorCode}>{d.vendorName || '—'}</TableContent> },
     { key: 'postingDate', header: 'Posting date', sortable: true, cell: (d) => formatDate(d.postingDate) },
     { key: 'dueDate', header: 'Due date', sortable: true, cell: (d) => (d.dueDate ? formatDate(d.dueDate) : '—') },

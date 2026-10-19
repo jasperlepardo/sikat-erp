@@ -54,7 +54,7 @@ export function VendorCard({ draft, update, errors, m, added, readOnly }: Props)
                   { label: 'Code', value: v.code },
                   ...(v.tin ? [{ label: 'TIN', value: v.tin }] : []),
                 ],
-                href: `/#/purchasing/vendors/${v.id}`,
+                href: `#/purchasing/vendors/${v.id}`,
               }))}
             value={draft.vendorId}
             onValueChange={(id) => pickVendor(id || null)}

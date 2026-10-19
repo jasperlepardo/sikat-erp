@@ -91,7 +91,7 @@ export function DeliveryList() {
       header: 'No.',
       sortable: true,
       cell: (so) => (
-        <TableContent href={`/#${DN_LIST_PATH}/${so.docNum ? dnNumber(so) : so.id}`} subcopy={so.customerRef ? `Customer ref. ${so.customerRef}` : undefined}>{dnNumber(so)}</TableContent>
+        <TableContent href={`#${DN_LIST_PATH}/${so.docNum ? dnNumber(so) : so.id}`} subcopy={so.customerRef ? `Customer ref. ${so.customerRef}` : undefined}>{dnNumber(so)}</TableContent>
       ),
     },
     { key: 'customerName', header: 'Customer', sortable: true, cell: (so) => <TableContent subcopy={so.customerCode}>{so.customerName || '—'}</TableContent> },

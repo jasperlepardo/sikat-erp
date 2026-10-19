@@ -90,7 +90,7 @@ export function RfqList() {
       header: 'No.',
       sortable: true,
       cell: (rfq) => (
-        <TableContent href={`/#${RFQ_LIST_PATH}/${rfq.docNum ? rfqNumber(rfq) : rfq.id}`} subcopy={rfq.vendorRef ? `Vendor ref. ${rfq.vendorRef}` : undefined}>{rfqNumber(rfq)}</TableContent>
+        <TableContent href={`#${RFQ_LIST_PATH}/${rfq.docNum ? rfqNumber(rfq) : rfq.id}`} subcopy={rfq.vendorRef ? `Vendor ref. ${rfq.vendorRef}` : undefined}>{rfqNumber(rfq)}</TableContent>
       ),
     },
     {

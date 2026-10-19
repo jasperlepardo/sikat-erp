@@ -245,7 +245,7 @@ function BinEditor({
           icon="inventory_2"
           title={`Items with this default bin${binItems.length ? ` (${binItems.length})` : ''}`}
           rows={binItems}
-          columns={stockColumns((r) => `/#/inventory/items/${encodeURIComponent(r.id)}`, false)}
+          columns={stockColumns((r) => `#/inventory/items/${encodeURIComponent(r.id)}`, false)}
           getRowId={(r) => r.id}
           noPagination
           empty={

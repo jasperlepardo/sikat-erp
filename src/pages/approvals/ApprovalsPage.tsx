@@ -106,7 +106,7 @@ export function ApprovalsPage() {
         </div>
       ),
     },
-    { key: 'partner', header: 'Partner', cell: (p) => <TableContent href={`/#${p.path}`}>{p.partnerName}</TableContent> },
+    { key: 'partner', header: 'Partner', cell: (p) => <TableContent href={`#${p.path}`}>{p.partnerName}</TableContent> },
     { key: 'date', header: 'Date', cell: (p) => formatDate(p.postingDate) },
     {
       key: 'approver',
@@ -120,7 +120,7 @@ export function ApprovalsPage() {
       key: 'action',
       header: '',
       cell: (p) => (
-        <TableContent href={`/#${p.path}`}>
+        <TableContent href={`#${p.path}`}>
           <span className="flex items-center gap-1">
             <Icon size={14}>open_in_new</Icon> Open
           </span>

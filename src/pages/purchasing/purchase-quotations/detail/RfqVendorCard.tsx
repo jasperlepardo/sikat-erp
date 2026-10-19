@@ -149,7 +149,7 @@ export function RfqVendorCard({ draft, update, errors, m, ctx, pickVendor, onNew
                       ...(v.currency && v.currency !== ALL_CURRENCIES ? [{ label: 'Currency', value: v.currency }] : []),
                       ...(v.tin ? [{ label: 'TIN', value: v.tin }] : []),
                     ],
-                    href: `/#/purchasing/vendors/${v.id}`,
+                    href: `#/purchasing/vendors/${v.id}`,
                   }))}
                 value={draft.vendorId}
                 onValueChange={(id) => pickVendor(id || null)}

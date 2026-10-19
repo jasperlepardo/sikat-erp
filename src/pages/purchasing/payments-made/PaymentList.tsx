@@ -88,7 +88,7 @@ export function PaymentList() {
       header: 'No.',
       sortable: true,
       cell: (p) => (
-        <TableContent href={`/#${PAYMENT_LIST_PATH}/${p.docNum ? paymentNumber(p) : p.id}`} subcopy={p.reference || undefined}>{paymentNumber(p)}</TableContent>
+        <TableContent href={`#${PAYMENT_LIST_PATH}/${p.docNum ? paymentNumber(p) : p.id}`} subcopy={p.reference || undefined}>{paymentNumber(p)}</TableContent>
       ),
     },
     { key: 'payeeName', header: 'Paid to', sortable: true, cell: (p) => <TableContent subcopy={p.type === 'Vendor' ? p.vendorCode : 'G/L accounts'}>{p.payeeName || '—'}</TableContent> },

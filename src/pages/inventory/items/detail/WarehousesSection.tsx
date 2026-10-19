@@ -181,7 +181,7 @@ function WarehouseTransactions({ itemId, warehouse, uom }: { itemId: string; war
       header: 'Document',
       cell: (d) => (
         <TableContent subcopy={[d.type, d.subcopy].filter(Boolean).join(' · ')}>
-          {d.href ? <TableContent href={`/#${d.href}`}>{d.number}</TableContent> : d.number}
+          {d.href ? <TableContent href={`#${d.href}`}>{d.number}</TableContent> : d.number}
         </TableContent>
       ),
     },
@@ -239,7 +239,7 @@ function CostLayers({ itemId, warehouse, uom }: { itemId: string; warehouse: str
   const next = open[0];
   const batch = (l: CostLayer) => {
     const gr = receipts.find((r) => r.id === l.receiptId);
-    if (gr) return <TableContent href={`/#${GR_LIST_PATH}/${gr.id}`}>{grNumber(gr)}</TableContent>;
+    if (gr) return <TableContent href={`#${GR_LIST_PATH}/${gr.id}`}>{grNumber(gr)}</TableContent>;
     return l.receiptId === 'opening' ? 'Opening stock' : 'Stock count';
   };
   const columns: TableColumn<CostLayer>[] = [

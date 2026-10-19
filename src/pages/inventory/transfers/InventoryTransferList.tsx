@@ -81,7 +81,7 @@ export function InventoryTransferList() {
       key: 'docNum',
       header: 'No.',
       sortable: true,
-      cell: (t) => <TableContent href={`/#${TRANSFER_LIST_PATH}/${t.id}`}>{transferNumber(t)}</TableContent>,
+      cell: (t) => <TableContent href={`#${TRANSFER_LIST_PATH}/${t.id}`}>{transferNumber(t)}</TableContent>,
     },
     {
       key: 'fromWarehouse',
