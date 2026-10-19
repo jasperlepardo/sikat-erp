@@ -45,6 +45,7 @@ import {
 import { logRejection } from '../../../../services/approvalRules';
 import { PoLinesCard } from './PoLinesCard';
 import { PoDeliveryCard } from './PoDeliveryCard';
+import { PoReceiptsTab } from './PoReceiptsTab';
 import { PoJournalPaymentCard } from './PoJournalPaymentCard';
 import { PoDatesCard } from './PoDatesCard';
 import { ReferencesTable } from '../../shared/ReferencesTable';
@@ -176,6 +177,7 @@ function PurchaseOrderForm() {
   const approved = !getPurchasingSettings().requirePoApproval;
   const [draft, setDraft] = useState<PoDraft | null | undefined>(isNew ? { ...(copyFrom ?? { ...blank, lines: [newPoLine()] }), approved } : undefined);
   const [m, setM] = useState<PoMasters>();
+  const [contentTab, setContentTab] = useState<'item' | 'receipts'>('item');
   const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
   const setPage = (v: PageId) => navigate(`${PO_LIST_PATH}/${id}/${v}`, { replace: true });
   useEffect(() => { if (!tabParam) navigate(`${PO_LIST_PATH}/${id}/details`, { replace: true, state: location.state }); }, []);
@@ -454,7 +456,16 @@ function PurchaseOrderForm() {
             <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
               <div className="flex flex-col gap-2 lg:col-span-8">
                 <PoVendorCard {...sectionProps} pickVendor={pickVendor} onNewVendor={() => setShowVendorCreate(true)} onVendorSaved={(v) => setM((prev) => prev && { ...prev, vendors: prev.vendors.map((x) => (x.id === v.id ? v : x)) })} />
-                <PoLinesCard {...sectionProps} />
+                <Tabs
+                  variant="primary"
+                  value={contentTab}
+                  onValueChange={(v) => setContentTab(v as 'item' | 'receipts')}
+                  items={[
+                    { value: 'item', label: 'Item' },
+                    { value: 'receipts', label: 'Receipts' },
+                  ]}
+                />
+                {contentTab === 'item' ? <PoLinesCard {...sectionProps} /> : <PoReceiptsTab draft={draft} />}
                 <ReferencesTable refs={draft.references} onChange={(references) => update({ references })} readOnly={ctx.readOnly} description="Other documents this PO refers to, or that refer to it." />
                 <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach the vendor's quotation, signed PO acknowledgement or order confirmation." />
               </div>
