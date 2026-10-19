@@ -3,7 +3,7 @@ import { expect, type Locator, type Page } from '@playwright/test';
 /**
  * Ids are for linking, never for reading: a screen showing one means a lookup is missing. These
  * are the generated-id prefixes (seed ids are `prefix-001`, new ones `prefix-1a2b3c4d`). Codes that
- * double as ids (PH, pc, WH-MNL, 1310…) are meant to be read, so they're not listed. Item group seed
+ * double as ids (PH, pc, WH-001, 1310…) are meant to be read, so they're not listed. Item group seed
  * ids (ig-MAC) carry no digit, so they get a pattern of their own.
  */
 const ID_PREFIXES = [

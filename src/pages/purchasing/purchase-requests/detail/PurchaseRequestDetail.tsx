@@ -23,11 +23,12 @@ import {
 import { loadInventoryMasters } from '../../../../services/inventoryMasters';
 import { listItems } from '../../../../services/items';
 import { taxCodes, taxGroups } from '../../../../services/masterData';
-import { salesEmployees } from '../../../../services/partnerMasters';
+import { employeeName, employees } from '../../../../services/employees';
 import {
   closePurchaseRequest,
   getPurchaseRequest,
   listPurchaseRequests,
+  copiedQty,
   prNumber,
   savePurchaseRequest,
   type PrInput,
@@ -69,6 +70,7 @@ function validate(d: PrDraft, asDraft: boolean): Problem<TabId>[] {
     const n = `Line ${i + 1}`;
     need(l.itemId, 'contents', `line:${l.id}:item`, `${n}: pick an item.`);
     need(l.requiredQty > 0, 'contents', `line:${l.id}:quantity`, `${n}: quantity must be more than 0.`);
+    need(l.requiredQty >= copiedQty(l), 'contents', `line:${l.id}:quantity`, `${n}: ${copiedQty(l)} already copied to an RFQ or PO; quantity can't go below that.`);
     need(l.taxCode, 'contents', `line:${l.id}:taxCode`, `${n}: pick a tax code.`);
   }
   return problems;
@@ -85,8 +87,9 @@ function PurchaseRequestForm() {
   const isNew = id === 'new';
   const navigate = useNavigate();
 
-  const currentUser = salesEmployees.snapshot().find((e) => e.id === CURRENT_USER_ID);
-  const blank = blankPurchaseRequest(CURRENT_USER_ID, currentUser?.name ?? '');
+  // New requests default to the employee the current user buys as.
+  const currentUser = employees.snapshot().find((e) => e.active && e.salesEmployeeId === CURRENT_USER_ID);
+  const blank = blankPurchaseRequest(currentUser, currentUser ? employeeName(currentUser) : '');
 
   const [draft, setDraft] = useState<PrDraft | null | undefined>(
     isNew ? { ...blank, lines: [] } : undefined,
@@ -114,7 +117,7 @@ function PurchaseRequestForm() {
 
   useEffect(() => {
     Promise.all([
-      salesEmployees.list(),
+      employees.list(),
       listItems(),
       loadInventoryMasters(),
       taxCodes.list(),

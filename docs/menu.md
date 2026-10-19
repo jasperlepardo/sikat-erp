@@ -122,7 +122,7 @@ The sidebar is defined in [`src/app/nav.tsx`](../src/app/nav.tsx) as `NAV`. It c
 |---|---|
 | Warehouses | Warehouse code, name, address, the bin-enabled flag and active status. |
 | Bin locations | Storage positions in bin-enabled warehouses, coded Warehouse-Aisle-Shelf-Level. Shows each bin's item quantity, number of items and weight. Tools: **Generate bins** (bulk-create from sublevel ranges) and **Modify bin codes** (rename in bulk, with a preview and a list of affected draft transfers). |
-| Sublevel codes | The aisle, shelf and level codes that bins are addressed by, e.g. `WH-MNL-A-01-02`. |
+| Sublevel codes | The aisle, shelf and level codes that bins are addressed by, e.g. `WH-001-A-01-02`. |
 
 ### Manufacturing
 

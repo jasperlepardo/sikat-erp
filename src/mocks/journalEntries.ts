@@ -23,6 +23,8 @@
  *   posted, with the opening balances and the monthly finance entries (services/ledgerHistory.ts).
  */
 import type { Attachment, DocumentSeries } from './common';
+import type { Account } from './chartOfAccounts';
+import { ruleOf, withRule, type DimensionRule } from './costAccounting';
 
 export type JeStatus = 'Posted' | 'Reversed';
 
@@ -92,6 +94,8 @@ export interface JeLine {
   taxOf?: string;
   dueDate: string;
   projectId: string;
+  /** Cost accounting: the distribution rule per dimension. */
+  dims: DimensionRule[];
   remarks: string;
 }
 
@@ -145,11 +149,20 @@ export const newJeLine = (patch: Partial<JeLine> = {}): JeLine => ({
   taxCode: '',
   dueDate: '',
   projectId: '',
+  dims: [],
   remarks: '',
   ...patch,
   // A copied line passes id: undefined; it still needs an id of its own.
   id: patch.id ?? `jl-${crypto.randomUUID().slice(0, 8)}`,
 });
+
+/** Fill a row's empty dimensions and project from its account's defaults. */
+export function withAccountDefaults(l: JeLine, a: Account | undefined): JeLine {
+  if (!a) return l;
+  let dims = l.dims ?? [];
+  for (const d of a.dimensions) if (d.defaultRuleId && !ruleOf(dims, d.dimension)) dims = withRule(dims, d.dimension, d.defaultRuleId);
+  return { ...l, dims, projectId: l.projectId || a.defaultProjectId };
+}
 
 export function blankJournalEntry(today: string): Omit<JournalEntry, 'id'> {
   return {

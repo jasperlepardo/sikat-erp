@@ -7,8 +7,25 @@ import {
 import { createCollection } from './store';
 import { prSeries, seriesLookup, formatDocNum } from './allSeries';
 import { todayISO } from './dates';
+import { snapshotItems } from './items';
+import { LAST_PURCHASE_PRICE_LIST_ID, listPrice } from './priceLists';
 
-const requests = createCollection<PurchaseRequest>('sikat-erp:purchase-requests', SEED_PURCHASE_REQUESTS, 'prq', { audit: 'PR' });
+/**
+ * Seeded lines take their info price from the last-purchase list, as a new line does: item
+ * cost comes from the replayed purchase history, so it can't be typed into the seed.
+ */
+const seedRequests = () => {
+  const items = new Map(snapshotItems().map((i) => [i.id, i]));
+  return SEED_PURCHASE_REQUESTS.map((pr) => ({
+    ...pr,
+    lines: pr.lines.map((l) => {
+      const item = items.get(l.itemId);
+      return item ? { ...l, infoPrice: listPrice(item, LAST_PURCHASE_PRICE_LIST_ID, l.uomCode) } : l;
+    }),
+  }));
+};
+
+const requests = createCollection<PurchaseRequest>('sikat-erp:purchase-requests', seedRequests, 'prq', { audit: 'PR' });
 
 export { prSeries };
 
@@ -31,6 +48,8 @@ export const prNumber = (pr: Pick<PurchaseRequest, 'seriesId' | 'docNum' | 'post
 // ── Line math ────────────────────────────────────────────────────────────────
 
 export const openQty = (l: PrLine) => Math.max(0, l.openQty);
+/** Quantity already copied to an RFQ or PO. A copied line keeps its item, UoM and warehouse. */
+export const copiedQty = (l: Pick<PrLine, 'requiredQty' | 'openQty'>) => Math.max(0, l.requiredQty - l.openQty);
 export const priceAfterDiscount = (l: Pick<PrLine, 'infoPrice' | 'discountPct'>) =>
   l.infoPrice * (1 - l.discountPct / 100);
 export const lineNet = (l: Pick<PrLine, 'requiredQty' | 'infoPrice' | 'discountPct'>) =>

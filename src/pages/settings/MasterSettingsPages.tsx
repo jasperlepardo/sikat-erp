@@ -46,6 +46,7 @@ const COMPANY_TABS = [
   tab('countries', d.countryDef),
   tab('branches', d.branchDef),
   tab('cost-centers', d.costCenterDef),
+  tab('distribution-rules', d.distributionRuleDef),
   tab('users', d.userDef),
 ];
 

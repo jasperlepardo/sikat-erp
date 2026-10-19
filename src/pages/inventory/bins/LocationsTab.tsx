@@ -61,12 +61,15 @@ export function locationTree(whs: readonly Warehouse[], bins: readonly BinLocati
 
 /** The Locations tree's columns, shared with a warehouse's own bin list (which drops Type). */
 export function locationColumns({
+  hrefOf,
   open,
   query,
   sublevels,
   items,
   showType,
 }: {
+  /** Rows that open a record page are links; the rest (aisles, shelves) call `open`. */
+  hrefOf: (n: Node) => string | undefined;
   open: (n: Node) => void;
   query: string;
   sublevels: readonly BinSublevel[];
@@ -79,7 +82,7 @@ export function locationColumns({
       header: 'Location',
       expandToggle: true,
       cell: (n) => (
-        <TableContent onClick={() => open(n)}>
+        <TableContent {...(hrefOf(n) ? { href: hrefOf(n) } : { onClick: () => open(n) })}>
           {n.kind === 'warehouse'
             ? `${n.warehouse.code} · ${n.warehouse.name}`
             : n.kind === 'bin'
@@ -108,7 +111,7 @@ export function locationColumns({
       cell: (n) =>
         n.kind === 'bin' ? (
           n.bin.code
-        ) : n.kind === 'warehouse' && n.warehouse.type !== 'warehouse' ? (
+        ) : n.kind === 'warehouse' && !n.warehouse.binEnabled ? (
           <Text variant="small" tone="muted">
             No bins
             {n.bins.length ? ` (${plural(n.bins.length, 'bin')} kept)` : ''}
@@ -204,12 +207,13 @@ export function LocationsTab({ basePath }: ListRoute) {
   const allExpanded = expandableIds.length > 0 && expandableIds.every((id) => expandedIds.includes(id));
   const headerActions: TableActionItem[] = [{ type: 'expand', expanded: allExpanded, onToggle: () => setExpanded(allExpanded ? [] : expandableIds) }];
 
-  const open = (n: Node) =>
+  const hrefOf = (n: Node) =>
     n.kind === 'warehouse'
-      ? navigate(`${base}/warehouses/${encodeURIComponent(n.id)}`)
+      ? `#${base}/warehouses/${encodeURIComponent(n.id)}`
       : n.kind === 'bin'
-        ? navigate(`${base}/bin-locations/${encodeURIComponent(n.id)}`)
-        : toggle(n.id);
+        ? `#${base}/bin-locations/${encodeURIComponent(n.id)}`
+        : undefined;
+  const open = (n: Node) => toggle(n.id);
 
   // Picking a group picks the records under it; the Table adds the group's own id too.
   const pickedWhs = (whs ?? []).filter((w) => selected.includes(w.id));
@@ -221,7 +225,7 @@ export function LocationsTab({ basePath }: ListRoute) {
     setSelected([]);
   };
 
-  const columns = locationColumns({ open, query, sublevels, items, showType: true });
+  const columns = locationColumns({ hrefOf, open, query, sublevels, items, showType: true });
 
   return (
     <>
@@ -263,7 +267,6 @@ export function LocationsTab({ basePath }: ListRoute) {
             button={{ intent: 'primary', size: 'small', leadingIcon: <Icon size={16}>add</Icon> }}
             items={[
               { label: 'Warehouse', icon: 'warehouse', onSelect: () => navigate(`${base}/warehouses/new?type=warehouse`) },
-              { label: 'Store', icon: 'storefront', onSelect: () => navigate(`${base}/warehouses/new?type=store`) },
               { label: 'Bin location', icon: 'grid_view', onSelect: () => navigate(`${base}/bin-locations/new`) },
             ]}
           />

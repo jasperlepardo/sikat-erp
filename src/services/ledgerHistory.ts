@@ -29,7 +29,8 @@ import { SEED_INCOMING_PAYMENTS } from '../mocks/incomingPayments';
 import { SEED_POSTINGS } from '../mocks/inventoryCountings';
 import { SEED_ITEM_GROUPS } from '../mocks/itemMasters';
 import { SEED_ITEMS, mergedItems } from '../mocks/items';
-import { SEED_JOURNAL_ENTRIES, blankJournalEntry, newJeLine, type JournalEntry, type OriginType } from '../mocks/journalEntries';
+import { SEED_ACCOUNTS } from '../mocks/chartOfAccounts';
+import { SEED_JOURNAL_ENTRIES, blankJournalEntry, newJeLine, withAccountDefaults, type JournalEntry, type OriginType } from '../mocks/journalEntries';
 import { SEED_PARTNERS } from '../mocks/partners';
 import { SEED_SALES_RETURNS } from '../mocks/salesReturns';
 import { SALES_MONTHS } from '../mocks/storeSales';
@@ -286,7 +287,10 @@ function build(): Ledger {
       ref2: e.ref2 ?? '',
       transCode: e.transCode ?? '',
       lines: e.lines.map((l, i) =>
-        newJeLine({ id: `${e.id}-${i + 1}`, account: l.account, debit: l.debit, credit: l.credit, partnerId: e.partnerId && l.account === e.controlAccount ? e.partnerId : '' }),
+        withAccountDefaults(
+          newJeLine({ id: `${e.id}-${i + 1}`, account: l.account, debit: l.debit, credit: l.credit, partnerId: e.partnerId && l.account === e.controlAccount ? e.partnerId : '' }),
+          SEED_ACCOUNTS.find((a) => a.code === l.account),
+        ),
       ),
     }));
   const seeded = [...entries, ...hand.map((e) => ({ ...e, order: 1 }))]

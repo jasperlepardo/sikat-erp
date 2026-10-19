@@ -18,6 +18,8 @@ import { formatAmount } from '../../../services/format';
 import { taxCodes } from '../../../services/masterData';
 import { listPurchaseRequests, prNumber, prTotals } from '../../../services/purchaseRequests';
 import { useAsync } from '../../../services/useAsync';
+import { nameIn } from '../../../services/partnerMasters';
+import { branches, departments } from '../../../services/peopleMasters';
 import { PR_LIST_PATH, STATUS_INTENT } from './detail/PurchaseRequestDetail';
 import { dateField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
@@ -26,7 +28,7 @@ import { fillCardClass, useListPage } from '../../../components/form/DataTable';
 export function PurchaseRequestList() {
   const navigate = useNavigate();
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
-  const data = useAsync(() => Promise.all([listPurchaseRequests(), taxCodes.list()]), []);
+  const data = useAsync(() => Promise.all([listPurchaseRequests(), taxCodes.list(), branches.list(), departments.list()]), []);
   const [query, setQuery] = useState('');
   const { resetPage, paginate } = useListPage();
 
@@ -38,10 +40,12 @@ export function PurchaseRequestList() {
       return c ? 0 : 0; // tax codes loaded separately; totals here are info price only
     }).total;
 
+  const branchOf = (r: PurchaseRequest) => (r.branchId ? nameIn(branches, r.branchId) : '');
+
   const fields = [
     textField<PurchaseRequest>('no', 'No.', prNumber),
     textField<PurchaseRequest>('requester', 'Requester', (r) => r.requesterName),
-    textField<PurchaseRequest>('branch', 'Branch', (r) => r.branch),
+    textField<PurchaseRequest>('branch', 'Branch', branchOf),
     dateField<PurchaseRequest>('postingDate', 'Posting date', (r) => r.postingDate),
     dateField<PurchaseRequest>('requiredDate', 'Required date', (r) => r.requiredDate),
     numberField<PurchaseRequest>('total', 'Total', totalOf),
@@ -61,7 +65,7 @@ export function PurchaseRequestList() {
     const q = query.trim().toLowerCase();
     const filtered = presets.apply(requests ?? []).filter((r) =>
       !q ||
-      [prNumber(r), r.requesterName, r.branch, ...r.lines.map((l) => `${l.itemNo} ${l.itemDescription}`)]
+      [prNumber(r), r.requesterName, branchOf(r), ...r.lines.map((l) => `${l.itemNo} ${l.itemDescription}`)]
         .join(' ')
         .toLowerCase()
         .includes(q),
@@ -91,12 +95,12 @@ export function PurchaseRequestList() {
       key: 'requesterName',
       header: 'Requester',
       sortable: true,
-      cell: (r) => <TableContent subcopy={r.branch}>{r.requesterName || '—'}</TableContent>,
+      cell: (r) => <TableContent subcopy={branchOf(r)}>{r.requesterName || '—'}</TableContent>,
     },
     {
-      key: 'department',
+      key: 'departmentId',
       header: 'Department',
-      cell: (r) => r.department || '—',
+      cell: (r) => (r.departmentId ? nameIn(departments, r.departmentId) : '—'),
     },
     {
       key: 'postingDate',

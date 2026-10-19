@@ -1,4 +1,4 @@
-import { SEED_ITEMS, mergeVariant, toVariantRecord, newItemWarehouse, type Item } from '../mocks/items';
+import { SEED_ITEMS, mergeVariant, mergedItems, toVariantRecord, newItemWarehouse, type Item } from '../mocks/items';
 import { SEED_PURCHASE_ORDERS, openOrdered } from '../mocks/purchaseOrders';
 import { SEED_SALES_ORDERS, openCommitted } from '../mocks/salesOrders';
 import { itemGroups } from './inventoryMasters';
@@ -35,7 +35,7 @@ function withCommitted(seed: Item[]): Item[] {
   return seed.map((item) => ({ ...item, warehouses: item.warehouses.map((w) => ({ ...w, committed: committed.get(`${item.id}@${w.code}`) ?? 0 })) }));
 }
 
-// v8: G/L accounts are stored as chart-of-accounts codes. v16: default bins are full bin codes (WH-MNL-A-01-01).
+// v8: G/L accounts are stored as chart-of-accounts codes. v16: default bins are full bin codes (WH-001-A-01-01).
 // v17: Ordered comes from the open POs. v18: Committed comes from the open sales orders. v19: backorder POs. v20: more seeded sales orders.
 // v21: variant system — parentItemId, variantAttributes, variantAxes fields; parent (template) items added to seed.
 // v22: merge-at-read — variant items inherit global fields from their parent at runtime.
@@ -72,6 +72,9 @@ export async function getItem(id: string): Promise<Item | undefined> {
 }
 
 export const resetItems = items.reset;
+
+/** All items as they are now, variants merged — for sync lookups such as a lazy seed. */
+export const snapshotItems = () => mergedItems(items.snapshot());
 
 /**
  * Item No. is unique. Auto-numbered items get the next number in their group's

@@ -98,7 +98,7 @@ export function linePricing(item: Item, l: Pick<SoLine, 'priceListId' | 'uomCode
 }
 
 /** The warehouse a line ships from: the first of the item's warehouses with stock, else its first. */
-const defaultWarehouse = (item: Item) => (item.warehouses.find((w) => w.inStock - w.committed > 0) ?? item.warehouses[0])?.code ?? 'WH-MNL';
+const defaultWarehouse = (item: Item) => (item.warehouses.find((w) => w.inStock - w.committed > 0) ?? item.warehouses[0])?.code ?? 'WH-001';
 
 /** A line with every default taken from the item, customer and header. */
 export function lineFromItem(item: Item, draft: SoDraft, ctx: SoContext, m: SoMasters, base: Partial<SoLine> = {}): SoLine {

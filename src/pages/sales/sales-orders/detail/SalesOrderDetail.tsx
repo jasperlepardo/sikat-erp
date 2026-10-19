@@ -502,7 +502,7 @@ function SalesOrderForm() {
   );
 }
 
-/** "iPad Air: needs 20 pc in WH-MNL, 12 available, 5 on order — 3 to buy." */
+/** "iPad Air: needs 20 pc in WH-001, 12 available, 5 on order — 3 to buy." */
 function shortageText(s: Shortage) {
   const uom = s.item.inventoryUom;
   const incoming = s.ordered ? `, ${s.ordered} on order` : '';

@@ -95,7 +95,7 @@ export function lineFromItem(item: Item, draft: Draft, ctx: QtContext, m: QtMast
     uomCode: item.salesUom,
     uomName: uom?.name ?? item.salesUom,
     itemsPerUnit: itemsPerUnit(item),
-    warehouse: item.inventoryItem ? (item.warehouses[0]?.code ?? 'WH-MNL') : '',
+    warehouse: item.inventoryItem ? (item.warehouses[0]?.code ?? 'WH-001') : '',
     priceListId: ctx.customer?.priceListId || BASE_PRICE_LIST_ID,
     taxCode: proposedTaxCode(item, ctx.customer, m, draft.postingDate),
   });

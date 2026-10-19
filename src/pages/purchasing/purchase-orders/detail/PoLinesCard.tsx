@@ -6,7 +6,6 @@ import {
   Icon,
   Link,
   Radio,
-  Select,
   TableStatus,
   Text,
   TextField,
@@ -15,11 +14,12 @@ import {
 } from '@jasperlepardo/sikat-design-system';
 import { DataTable } from '../../../../components/form/DataTable';
 import { MasterLookup } from '../../../../components/form/MasterLookup';
-import { priceListDef } from '../../../settings/masterDefs';
+import { departmentDef, priceListDef } from '../../../settings/masterDefs';
+import { nameIn } from '../../../../services/partnerMasters';
+import { departments } from '../../../../services/peopleMasters';
 import { isPriceListValid } from '../../../../services/priceLists';
 import {
   BLANKET_AGREEMENTS,
-  DEPARTMENTS,
   PRICE_MODES,
   newPoLine,
   type PoLine,
@@ -47,7 +47,6 @@ const GROUPS = {
 } as const;
 type Group = keyof typeof GROUPS;
 
-const asOptions = (values: readonly string[]) => values.map((v) => ({ value: v, label: v }));
 const num = (v: string) => (v === '' ? 0 : Number(v));
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
@@ -322,8 +321,8 @@ export function PoLinesCard({ draft, update, errors, m, ctx }: PoTabProps) {
     }, 'references'),
     col('department', 'Department', (l) => {
       if (!l.itemId) return null;
-      if (linesLocked) return <Text variant="small">{l.department || '—'}</Text>;
-      return <Select aria-label="Department" className="w-40" options={[{ value: '', label: '— None —' }, ...asOptions(DEPARTMENTS)]} value={l.department} onValueChange={(department) => patch(l.id, { department })} />;
+      if (linesLocked) return <Text variant="small">{l.departmentId ? nameIn(departments, l.departmentId) : '—'}</Text>;
+      return <MasterLookup def={departmentDef} fieldProps={{ 'aria-label': 'Department', className: 'w-40' }} value={l.departmentId} onChange={(departmentId) => patch(l.id, { departmentId })} placeholder="None" clearable />;
     }, 'references'),
     col('freeText', 'Free text', (l) => {
       if (!l.itemId) return null;

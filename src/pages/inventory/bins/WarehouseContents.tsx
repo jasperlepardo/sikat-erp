@@ -13,7 +13,7 @@ import { WarehouseBins, type BinScope } from './WarehouseBins';
  */
 export function WarehouseContents({ warehouse, isNew, base }: { warehouse: Warehouse; isNew: boolean; base: string }) {
   const items = useAsync(listItems, []);
-  const usesBins = warehouse.type === 'warehouse';
+  const usesBins = warehouse.binEnabled;
   const [tab, setTab] = useState<'items' | 'bins'>('items');
   const [scope, setScope] = useState<BinScope | null>(null);
 

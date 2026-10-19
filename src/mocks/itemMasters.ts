@@ -7,6 +7,7 @@
  */
 import { blankPostalAddress, type PostalAddress } from './address';
 import { SEED_STORE_WAREHOUSES } from './storeWarehouses';
+import { branchId } from './peopleMasters';
 import { CATALOG_ATTRIBUTES } from './appleCatalog';
 
 export type ValuationMethod = 'Moving Average' | 'FIFO' | 'Standard Price' | 'Serial/Batch';
@@ -126,19 +127,18 @@ export const blankUom = (code = ''): UnitOfMeasure => ({
 
 /**
  * What a location is for. Offices bill: purchase orders can use them as Bill To and they
- * hold no stock. Warehouses receive vendor shipments (Ship To) and keep stock in bins.
- * Stores hold stock without bins and get it by inventory transfer.
+ * hold no stock. Warehouses hold stock; each one says whether it uses bins and whether
+ * vendors deliver to it. A store is a branch (People › Branches) with its own warehouse.
  */
-export type LocationType = 'office' | 'warehouse' | 'store';
+export type LocationType = 'office' | 'warehouse';
 
 export const LOCATION_TYPES: { value: LocationType; label: string; hint: string }[] = [
   { value: 'office', label: 'Office', hint: 'For billing: a Bill To on purchase orders. Holds no stock.' },
-  { value: 'warehouse', label: 'Warehouse', hint: 'Receives vendor shipments (Ship To) and keeps stock in bin locations.' },
-  { value: 'store', label: 'Store', hint: 'Holds and sells stock without bins; restocked by inventory transfer.' },
+  { value: 'warehouse', label: 'Warehouse', hint: 'Holds stock, with or without bin locations.' },
 ];
 
 /** A location: an office, warehouse or store. Documents refer to it by `code`. */
-/** A location (warehouse, store or office), keyed by its code: `id` is always `code` (WH-MNL, HQ…), which items, lines, bins and companies store. */
+/** A location (warehouse or office), keyed by its code: `id` is always `code` (WH-001, HQ…), which items, lines, bins and companies store. */
 export interface Warehouse {
   id: string;
   code: string;
@@ -146,17 +146,26 @@ export interface Warehouse {
   type: LocationType;
   /** The location's address: Ship To for a warehouse, Bill To for an office. */
   address: PostalAddress;
-  /** Stock is kept in bin locations. Follows the type: only warehouses use bins. */
+  /** Stock is kept in bin locations. Set when the warehouse is added; offices never. */
   binEnabled: boolean;
+  /** Vendors deliver here (Ship To, purchase and goods receipt lines); else it's restocked by transfer. */
+  vendorDeliveries: boolean;
+  /** Company branch the location belongs to (People › Branches); '' = none. */
+  branchId: string;
   active: boolean;
 }
 
 /** Whether items can be stocked here (warehouses and stores). */
 export const holdsStock = (w: Pick<Warehouse, 'type'>) => w.type !== 'office';
 /** Whether vendors deliver here: purchase and goods receipt lines, and Ship To. */
-export const receivesFromVendors = (w: Pick<Warehouse, 'type'>) => w.type === 'warehouse';
+export const receivesFromVendors = (w: Pick<Warehouse, 'type' | 'vendorDeliveries'>) => w.type === 'warehouse' && w.vendorDeliveries;
+/** Where a branch's new lines go: its default warehouse, else the one vendors deliver to, else its first. */
+export const branchWarehouse = (branch: { id: string; defaultWarehouseCode: string } | undefined, all: readonly Warehouse[]) => {
+  const own = all.filter((w) => branch && w.branchId === branch.id && w.active && holdsStock(w));
+  return (own.find((w) => w.code === branch?.defaultWarehouseCode) ?? own.find(receivesFromVendors) ?? own[0])?.code ?? '';
+};
 /** Where vendors deliver an item by default: the first of its locations that receives shipments. */
-export const vendorDeliveryLocation = (codes: string[], all: readonly Warehouse[], fallback = 'WH-MNL') =>
+export const vendorDeliveryLocation = (codes: string[], all: readonly Warehouse[], fallback = 'WH-001') =>
   codes.find((c) => all.some((w) => w.code === c && receivesFromVendors(w))) ?? fallback;
 
 /** A manufacturer, keyed by its code: `id` is always `code` (MFR-APL…), which items store. */
@@ -285,18 +294,21 @@ const ph = (
     province: PH_PROVINCE[provinceCode], provinceCode, cityCode, barangayCode,
   });
 
-// HQ: the company's registered address (mocks/companies.ts). Store addresses per powermaccenter.com/pages/store-list (Oct 2026). WH-MNL: the warehouse address the
+// HQ: the company's registered address (mocks/companies.ts). Store addresses per powermaccenter.com/pages/store-list (Oct 2026). WH-001: the warehouse address the
 // user supplied; its barangay isn't confirmed, so it's left blank (1600 is Pasig's general ZIP).
 const CORE_WAREHOUSES: Warehouse[] = [
-  { id: 'HQ', code: 'HQ', name: 'Head office (Kapitolyo)', type: 'office', address: ph('Pasig', 'Kapitolyo', 'Kapitolyo Bldg., 7A 2nd St.', '1600', '1300', '137403', '137403009'), binEnabled: false, active: true },
-  { id: 'WH-MNL', code: 'WH-MNL', name: 'Pasig warehouse', type: 'warehouse', address: ph('Pasig', '', '155 Dr. Sixto Antonio Ave.', '1600', '1300', '137403', ''), binEnabled: true, active: true },
-  { id: 'WH-CEB', code: 'WH-CEB', name: 'Cebu store (Robinsons Galleria)', type: 'store', address: ph('Cebu', 'Tejero', '1/L Robinsons Galleria Cebu, Maxilom-Osmeña Blvd., 13th Ave. cor. Benedict St.', '6000', '0722', '072217', '072217083'), binEnabled: false, active: true },
-  { id: 'WH-DVO', code: 'WH-DVO', name: 'Davao store (Abreeza)', type: 'store', address: ph('Davao', 'Barangay 20-B', '2nd Flr., Abreeza Mall, J.P. Laurel Ave., Bajada', '8000', '1124', '112402', '112402153'), binEnabled: false, active: true },
-  { id: 'WH-PRD', code: 'WH-PRD', name: 'Mobile Care (Greenbelt 3)', type: 'store', address: ph('Makati', 'San Lorenzo', '2/F Greenbelt 3, Greenbelt Complex, Ayala Center', '1223', '1300', '137602', '137602025'), binEnabled: false, active: true },
+  { id: 'HQ', code: 'HQ', name: 'Head office (Kapitolyo)', type: 'office', address: ph('Pasig', 'Kapitolyo', 'Kapitolyo Bldg., 7A 2nd St.', '1600', '1300', '137403', '137403009'), binEnabled: false, vendorDeliveries: false, branchId: branchId('Head office (Pasig)'), active: true },
+  { id: 'WH-001', code: 'WH-001', name: 'Pasig warehouse', type: 'warehouse', address: ph('Pasig', '', '155 Dr. Sixto Antonio Ave.', '1600', '1300', '137403', ''), binEnabled: true, vendorDeliveries: true, branchId: branchId('Head office (Pasig)'), active: true },
+  { id: 'WH-002', code: 'WH-002', name: 'Cebu (Robinsons Galleria)', type: 'warehouse', address: ph('Cebu', 'Tejero', '1/L Robinsons Galleria Cebu, Maxilom-Osmeña Blvd., 13th Ave. cor. Benedict St.', '6000', '0722', '072217', '072217083'), binEnabled: false, vendorDeliveries: false, branchId: branchId('Cebu (Robinsons Galleria)'), active: true },
+  { id: 'WH-003', code: 'WH-003', name: 'Davao (Abreeza)', type: 'warehouse', address: ph('Davao', 'Barangay 20-B', '2nd Flr., Abreeza Mall, J.P. Laurel Ave., Bajada', '8000', '1124', '112402', '112402153'), binEnabled: false, vendorDeliveries: false, branchId: branchId('Davao (Abreeza)'), active: true },
+  { id: 'WH-004', code: 'WH-004', name: 'Mobile Care (Greenbelt 3)', type: 'warehouse', address: ph('Makati', 'San Lorenzo', '2/F Greenbelt 3, Greenbelt Complex, Ayala Center', '1223', '1300', '137602', '137602025'), binEnabled: false, vendorDeliveries: false, branchId: branchId('Greenbelt 3'), active: true },
 ];
 
 /** The head office and core locations, then every store (mocks/storeWarehouses.ts). */
-export const SEED_WAREHOUSES: Warehouse[] = [...CORE_WAREHOUSES, ...SEED_STORE_WAREHOUSES];
+export const SEED_WAREHOUSES: Warehouse[] = [
+  ...CORE_WAREHOUSES,
+  ...SEED_STORE_WAREHOUSES.map((w) => ({ ...w, branchId: branchId(w.name) })),
+];
 
 const mfr = (code: string, name: string, country: string, contactPerson = '', email = '', phone = ''): Manufacturer => ({
   id: code, code, name, countryCode: country, contactPerson, email, phone, active: true,

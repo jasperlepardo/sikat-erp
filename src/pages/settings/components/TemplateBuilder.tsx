@@ -14,7 +14,7 @@ const SAMPLE: Record<string, string> = {
   projectCode: 'PROJ-001',
   salesEmployee: 'Juan dela Cruz',
   contactName: 'Maria Santos',
-  fromWarehouse: 'WH-MNL',
+  fromWarehouse: 'WH-001',
   toWarehouse: 'WH-CGK',
   reference: 'REF-001',
   paymentMethod: 'BANK',

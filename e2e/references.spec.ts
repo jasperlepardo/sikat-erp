@@ -43,13 +43,13 @@ test('renaming a payment term shows the new name on the partner, which still sto
 test('renaming a bin: drafts show the new code, posted documents keep the code they posted with', async ({ page }) => {
   const errors = watchErrors(page);
   await open(page, 'inventory/warehouses-and-bins');
-  // Rename WH-MNL-A-01-01 → WH-MNL-A-01-09 through the app's own rename service (what Modify bin codes calls).
+  // Rename WH-001-A-01-01 → WH-001-A-01-09 through the app's own rename service (what Modify bin codes calls).
   const result = await page.evaluate(async () => {
     const svc = await import('/src/services/binLocations.ts');
     const { binLocations } = await import('/src/services/inventoryMasters.ts');
     const rows = svc.planRename(
       {
-        warehouse: 'WH-MNL',
+        warehouse: 'WH-001',
         ranges: { aisle: { from: 'A', to: 'A' }, shelf: { from: '01', to: '01' }, level: { from: '01', to: '01' } },
         changes: { level: '09' },
         reason: 'e2e',
@@ -64,19 +64,19 @@ test('renaming a bin: drafts show the new code, posted documents keep the code t
   // The first posted receipt into that bin (receipts are numbered in date order, so look it up).
   const receiptId = await page.evaluate(async () => {
     const { listGoodsReceipts } = await import('/src/services/goodsReceipts.ts');
-    return (await listGoodsReceipts()).find((g) => g.status !== 'Draft' && g.lines.some((l) => l.binCode === 'WH-MNL-A-01-01'))?.id;
+    return (await listGoodsReceipts()).find((g) => g.status !== 'Draft' && g.lines.some((l) => l.binCode === 'WH-001-A-01-01'))?.id;
   });
   expect(receiptId).toBeTruthy();
   await open(page, `purchasing/goods-receipts/${receiptId}`);
-  await expect.poll(() => screenText(page)).toContain('WH-MNL-A-01-01');
+  await expect.poll(() => screenText(page)).toContain('WH-001-A-01-01');
   await open(page, 'inventory/stock-movements/it-001');
-  await expect.poll(() => screenText(page)).toContain('WH-MNL-A-01-01');
+  await expect.poll(() => screenText(page)).toContain('WH-001-A-01-01');
 
   // Draft: the bin's current code, with nothing to fix.
   await open(page, 'inventory/stock-movements/it-004');
-  await expect.poll(() => screenText(page)).toContain('WH-MNL-A-01-09');
+  await expect.poll(() => screenText(page)).toContain('WH-001-A-01-09');
   const draft = await screenText(page);
-  expect(draft).not.toContain('WH-MNL-A-01-01');
+  expect(draft).not.toContain('WH-001-A-01-01');
   expect(draft).not.toContain('no longer exists');
   expect(await rawIds(page)).toEqual([]);
   expect(errors).toEqual([]);

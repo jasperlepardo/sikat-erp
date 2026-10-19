@@ -4,16 +4,19 @@ import type { PrLine, PurchaseRequest } from '../../../../mocks/purchaseRequests
 import { newPrLine } from '../../../../mocks/purchaseRequests';
 import type { InventoryMasters } from '../../../../services/inventoryMasters';
 import { LAST_PURCHASE_PRICE_LIST_ID, determinePrice } from '../../../../services/priceLists';
+import { copiedQty } from '../../../../services/purchaseRequests';
 import { itemsPerUom } from '../../../../mocks/items';
+import { branchWarehouse } from '../../../../mocks/itemMasters';
+import { branches } from '../../../../services/peopleMasters';
 import { todayISO } from '../../../../services/dates';
 import { rateAt } from '../../../../mocks/taxes';
 import type { TaxMasterData } from '../../../../services/taxDetermination';
-import type { NamedEntry } from '../../../../mocks/partnerMasters';
+import type { Employee } from '../../../../mocks/employees';
 
 export type PrDraft = Omit<PurchaseRequest, 'id'> & { id?: string };
 
 export interface PrMasters {
-  employees: NamedEntry[];
+  employees: Employee[];
   items: Item[];
   inv: InventoryMasters;
   tax: TaxMasterData;
@@ -33,6 +36,8 @@ export interface PrContext {
   rateOf: (taxCode: string) => number;
   readOnly: boolean;
   added: boolean;
+  /** Some line was copied to an RFQ or PO, so the requester is locked. */
+  copied: boolean;
 }
 
 export function buildContext(draft: PrDraft, m: PrMasters): PrContext {
@@ -44,6 +49,7 @@ export function buildContext(draft: PrDraft, m: PrMasters): PrContext {
     },
     readOnly: draft.status === 'Closed',
     added: draft.docNum > 0,
+    copied: draft.lines.some((l) => copiedQty(l) > 0),
   };
 }
 
@@ -75,7 +81,7 @@ export function lineFromItem(item: Item, draft: PrDraft, m: PrMasters, base: Par
     uomCode,
     uomName: uom?.name ?? uomCode,
     itemsPerUnit: itemsPerUom(item, uomCode) ?? 1,
-    warehouse: item.inventoryItem ? (m.inv.warehouses[0]?.code ?? '') : '',
+    warehouse: item.inventoryItem ? branchWarehouse(branches.snapshot().find((b) => b.id === draft.branchId), m.inv.warehouses) : '',
     infoPrice: price,
     taxCode,
     requiredQty: qty,

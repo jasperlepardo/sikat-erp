@@ -265,11 +265,11 @@ function line(wh: string, n: number, delta: number | undefined, history = false,
   });
 }
 
-const sept = [0, -1, 0, 0].map((d, n) => line('WH-MNL', n, d, true));
+const sept = [0, -1, 0, 0].map((d, n) => line('WH-001', n, d, true));
 
 /** Two counters on the Davao count: they agree on the first two lines and not on the third. */
 const dvo = (n: number, a: number, b: number) => {
-  const base = line('WH-DVO', n, undefined, false, { freeze: true });
+  const base = line('WH-003', n, undefined, false, { freeze: true });
   const agree = a === b;
   return {
     ...base,
@@ -302,7 +302,7 @@ export const SEED_COUNTINGS: InventoryCounting[] = [
     counters: [newCounter({ id: 'cnt-ceb-1', employeeId: employeeId('Dino Pascual') })],
     reference: 'CS-CEB-2026-10',
     remarks: 'Cebu store opening count before trading hours. Two lines still to count.',
-    lines: [line('WH-CEB', 0, 0), line('WH-CEB', 1, -1), line('WH-CEB', 2, 1), line('WH-CEB', 3, undefined), line('WH-CEB', 4, undefined)],
+    lines: [line('WH-002', 0, 0), line('WH-002', 1, -1), line('WH-002', 2, 1), line('WH-002', 3, undefined), line('WH-002', 4, undefined)],
   },
   {
     ...blankCounting('2026-10-04', '20:00', employeeId('Ben Salazar')),
@@ -361,7 +361,7 @@ export const SEED_POSTINGS: InventoryPosting[] = [
     countTime: '18:00',
     reference: 'CS-MNL-2026-09',
     countingId: 'ic-001',
-    journalRemark: 'Inventory Posting – WH-MNL month-end count',
+    journalRemark: 'Inventory Posting – WH-001 month-end count',
     remarks: 'Approved by Andrea Ramos (store operations), 30 Sep 2026.',
     lines: sept.map((l) =>
       newPostingLine({
@@ -384,19 +384,19 @@ export const SEED_POSTINGS: InventoryPosting[] = [
   // Counts posted straight to stock (no count sheet), where the item had no other movement after
   // the count: what the system held then is today's In stock less the variance (counted = In stock).
   directPosting('ip-002', 2, '2026-08-31', 'CS-STORES-2026-08', 'August spot checks at two stores. Approved by the area manager.', [
-    ['ACC-PWR20', 'ST-050', -1],
-    ['ACC-CBL1M', 'ST-012', 1],
+    ['ACC-PWR20', 'WH-054', -1],
+    ['ACC-CBL1M', 'WH-016', 1],
   ]),
-  directPosting('ip-003', 3, '2026-10-07', 'CS-MNL-2026-10-07', 'MagSafe chargers crushed on the shelf in Pasig, written off; one Lightning adapter missing at ST-008.', [
-    ['ACC-MAGSF1', 'WH-MNL', -2],
-    ['ACC-USBCL', 'ST-008', -1],
+  directPosting('ip-003', 3, '2026-10-07', 'CS-MNL-2026-10-07', 'MagSafe chargers crushed on the shelf in Pasig, written off; one Lightning adapter missing at WH-012.', [
+    ['ACC-MAGSF1', 'WH-001', -2],
+    ['ACC-USBCL', 'WH-012', -1],
   ]),
   directPosting('ip-004', 4, '2026-09-20', 'CS-CEB-2026-09', 'September cycle count, Cebu store. Stock confirmed by Dino Pascual.', [
-    ['ACC-MAGSF1', 'WH-CEB', 0],
-    ['ACC-PWR20', 'WH-CEB', 0],
-    ['ACC-CBL1M', 'WH-CEB', 0],
+    ['ACC-MAGSF1', 'WH-002', 0],
+    ['ACC-PWR20', 'WH-002', 0],
+    ['ACC-CBL1M', 'WH-002', 0],
   ]),
   directPosting('ip-005', 5, '2026-09-20', 'CS-DVO-2026-09', 'September cycle count, Davao store. Stock confirmed.', [
-    ['ACC-CBL1M', 'WH-DVO', 0],
+    ['ACC-CBL1M', 'WH-003', 0],
   ]),
 ];

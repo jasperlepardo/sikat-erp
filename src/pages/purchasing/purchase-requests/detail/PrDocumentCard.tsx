@@ -1,5 +1,5 @@
-import { FormField, Select, TextField } from '@jasperlepardo/sikat-design-system';
-import { Fields, ReadOnly, Section, bind } from '../../../../components/form/fields';
+import { Select, TextField } from '@jasperlepardo/sikat-design-system';
+import { CtxFormField, FieldStack, ReadOnly, Section, bind } from '../../../../components/form/fields';
 import { StatusField } from '../../../../components/form/StatusField';
 import { PR_STATUSES, type PrStatus, type PurchaseRequest } from '../../../../mocks/purchaseRequests';
 import { prNumber, prSeries, seriesOf } from '../../../../services/purchaseRequests';
@@ -25,8 +25,8 @@ export function PrDocumentCard({ draft, update, errors, ctx, transitions }: PrDo
 
   return (
     <Section icon="tag" title="Document">
-      <Fields>
-        <FormField
+      <FieldStack>
+        <CtxFormField
           label="No."
           required
           error={errors.docNum}
@@ -51,14 +51,14 @@ export function PrDocumentCard({ draft, update, errors, ctx, transitions }: PrDo
               )}
             </div>
           )}
-        </FormField>
+        </CtxFormField>
         <StatusField statuses={PR_STATUSES} intents={PR_STATUS_INTENT} value={draft.status} moves={transitions} hint={STATUS_HINT[draft.status]} error={errors.status} />
         {h.date('postingDate', 'Posting date', { required: true, error: errors.postingDate, hint: 'Defaults to today.' })}
         {h.date('documentDate', 'Document date', { required: true, error: errors.documentDate, hint: 'The date for records. Defaults to today.' })}
         {h.date('requiredDate', 'Required date', { hint: 'When the items or services are needed. Cascades to new lines.' })}
         {h.date('validUntil', 'Valid until', { hint: 'Date the request lapses if unfulfilled.' })}
         <ReadOnly label="Close date" value={draft.closeDate || '—'} hint="Set when the request is closed." />
-      </Fields>
+      </FieldStack>
     </Section>
   );
 }

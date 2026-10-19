@@ -20,7 +20,7 @@ import type { PurchaseOrder } from './purchaseOrders';
 import { VENDOR_RETURNS } from './retailHistory';
 import { SALES_MONTHS, STORE_SALES, isLaunchItem } from './storeSales';
 
-export const CENTRAL = 'WH-MNL';
+export const CENTRAL = 'WH-001';
 /** The day the seeded history runs to. Receipts not yet complete are dated no later than this. */
 export const SEED_AS_OF = '2026-10-09';
 

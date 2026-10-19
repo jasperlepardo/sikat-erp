@@ -6,16 +6,20 @@ import {
   ORIGIN_LABEL,
   blankJournalEntry,
   newJeLine,
+  withAccountDefaults,
   type JeLine,
   type JournalEntry,
   type OriginType,
 } from '../mocks/journalEntries';
 import type { Partner } from '../mocks/partners';
+import { DIMENSION_NAMES, DIMENSION_NOS, ruleOf } from '../mocks/costAccounting';
 import { jeSeries, seriesLookup, formatDocNum } from './allSeries';
 import { rateAt, type TaxCode } from '../mocks/taxes';
 import { formatDate, todayISO } from './dates';
 import { createCollection } from './store';
 import { seededLedger } from './ledgerHistory';
+import { accounts as accountsCollection } from './masterData';
+import { listPartners } from './partners';
 
 // The seeded ledger: opening balances, every seeded document's entry and the month's finance entries.
 const entries = createCollection<JournalEntry>('sikat-erp:journal-entries:v4', () => seededLedger().entries, 'je');
@@ -56,6 +60,38 @@ export const rowAccount = (l: JeLine, partners: readonly Partner[]) => {
   const p = partners.find((x) => x.id === l.partnerId);
   return p ? controlAccountOf(p) : '';
 };
+
+/** Each account's balance over every posted entry, debit positive. A BP row counts on its control account. */
+export function balancesOf(list: readonly JournalEntry[], partners: readonly Partner[]) {
+  const out = new Map<string, number>();
+  for (const je of list)
+    for (const l of je.lines) {
+      const code = rowAccount(l, partners);
+      if (code) out.set(code, round2((out.get(code) ?? 0) + (l.debit || 0) - (l.credit || 0)));
+    }
+  return out;
+}
+
+export async function loadAccountBalances() {
+  const [list, partners] = await Promise.all([listJournalEntries(), listPartners()]);
+  return balancesOf(list, partners);
+}
+
+/** Accounts whose allowed balance range `lines` would break, as messages. */
+async function balanceRangeProblems(lines: JeLine[]) {
+  const [list, partners, all] = await Promise.all([listJournalEntries(), listPartners(), accountsCollection.list()]);
+  const after = balancesOf([...list, { lines } as JournalEntry], partners);
+  const touched = new Set(lines.map((l) => rowAccount(l, partners)));
+  return all
+    .filter((a) => a.balanceRange && touched.has(a.code))
+    .flatMap((a) => {
+      const b = after.get(a.code) ?? 0;
+      const fmt = (n: number) => n.toLocaleString('en-PH', { minimumFractionDigits: 2 });
+      return b < a.minBalance || b > a.maxBalance
+        ? [`${a.code} ${a.name} would stand at ${fmt(b)} — allowed ${fmt(a.minBalance)} to ${fmt(a.maxBalance)}.`]
+        : [];
+    });
+}
 
 /** Why `date` can't be posted to, or undefined. */
 export function postingPeriodProblem(date: string, period13 = false) {
@@ -108,6 +144,12 @@ export function lineProblems(lines: JeLine[], accounts: readonly Account[], part
     if ((a.validFrom && date < a.validFrom) || (a.validTo && date > a.validTo)) out.push({ key: `line:${l.id}:account`, message: `${n}: ${a.code} isn't valid on ${formatDate(date)}.` });
     if (manual && a.control) out.push({ key: `line:${l.id}:account`, message: `${n}: ${a.code} ${a.name} is a control account — post to the business partner instead.` });
     else if (manual && a.blockManualPosting) out.push({ key: `line:${l.id}:account`, message: `${n}: ${a.code} ${a.name} only takes postings from documents.` });
+    // Documents don't carry dimensions yet: they take the account's defaults, so only manual rows are held to it.
+    if (!manual) return;
+    for (const no of DIMENSION_NOS)
+      if (a.dimensions.some((d) => d.dimension === no && d.required) && !ruleOf(l.dims, no))
+        out.push({ key: `line:${l.id}:dim${no}`, message: `${n}: ${a.code} ${a.name} needs a ${DIMENSION_NAMES[no]}.` });
+    if (a.projectRequired && !l.projectId) out.push({ key: `line:${l.id}:project`, message: `${n}: ${a.code} ${a.name} needs a project.` });
   });
   return out;
 }
@@ -156,6 +198,8 @@ export async function addJournalEntry(input: JeInput): Promise<JournalEntry> {
     if (!input.reversalDate || input.reversalDate <= input.postingDate) throw new JePostError('Reversal date must be after the posting date.');
     if (rev) throw new JePostError(`Reversal: ${rev}`);
   }
+  const range = await balanceRangeProblems(input.lines);
+  if (range.length) throw new JePostError(range.join(' '));
   const posted = await entries.save({ ...input, ...(await nextNumbers(input.seriesId)), status: 'Posted' });
   if (!input.reverse) return posted;
   const reversal = await entries.save(reversalOf(posted, input.reversalDate, await nextNumbers(input.seriesId)));
@@ -200,9 +244,15 @@ export async function postDocumentEntry(o: {
   controlAccount?: string;
   lines: { account: string; debit: number; credit: number }[];
 }) {
+  const chart = await accountsCollection.list();
   const lines = o.lines
     .filter((l) => l.debit || l.credit)
-    .map((l) => newJeLine({ account: l.account, debit: l.debit, credit: l.credit, partnerId: o.partnerId && l.account === o.controlAccount ? o.partnerId : '' }));
+    .map((l) =>
+      withAccountDefaults(
+        newJeLine({ account: l.account, debit: l.debit, credit: l.credit, partnerId: o.partnerId && l.account === o.controlAccount ? o.partnerId : '' }),
+        chart.find((a) => a.code === l.account),
+      ),
+    );
   if (!lines.length) return undefined;
   const base = blankJournalEntry(o.postingDate);
   return entries.save({

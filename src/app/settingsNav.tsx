@@ -23,6 +23,7 @@ export const SETTINGS_NAV: SideNavSection[] = [
           { id: 'settings/company/countries', label: 'Countries', icon: icon('public') },
           { id: 'settings/company/branches', label: 'Branches', icon: icon('store') },
           { id: 'settings/company/cost-centers', label: 'Cost centers', icon: icon('account_tree') },
+          { id: 'settings/company/distribution-rules', label: 'Distribution rules', icon: icon('call_split') },
           { id: 'settings/company/users', label: 'Users', icon: icon('person') },
         ],
       },

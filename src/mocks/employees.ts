@@ -218,7 +218,7 @@ export const EMPLOYEE_NAMES = [
   'Ramon Villanueva', 'Jasper L.', 'Andrea Ramos', 'Ben Salazar', 'Carla Uy', 'Dino Pascual',
   'Edgar Bautista', 'Fe Lopez', 'Grace Tan', 'Hector Dizon', 'Isabel Reyes', 'Jun Mercado',
 ] as const;
-const hemId = (name: (typeof EMPLOYEE_NAMES)[number]) => `hem-${String(EMPLOYEE_NAMES.indexOf(name) + 1).padStart(3, '0')}`;
+export const hemId = (name: (typeof EMPLOYEE_NAMES)[number]) => `hem-${String(EMPLOYEE_NAMES.indexOf(name) + 1).padStart(3, '0')}`;
 
 type Seed = Partial<Employee> & Pick<Employee, 'firstName' | 'lastName'>;
 const seed = (n: number, name: (typeof EMPLOYEE_NAMES)[number], s: Seed): Employee => {
@@ -288,14 +288,14 @@ export const SEED_EMPLOYEES: Employee[] = [
   }),
   seed(7, 'Edgar Bautista', {
     firstName: 'Edgar', lastName: 'Bautista', jobTitle: 'Senior Service Technician', positionId: positionId('Technician'),
-    departmentId: departmentId('Service'), branchId: branchId('Makati (Greenbelt 3)'), managerId: hemId('Ramon Villanueva'), costCenterId: costCenterId('After-sales service'),
+    departmentId: departmentId('Service'), branchId: branchId('Greenbelt 3'), managerId: hemId('Ramon Villanueva'), costCenterId: costCenterId('After-sales service'),
     officePhone: '(02) 8757 3300', mobilePhone: '0917 555 0170', workAddress: GREENBELT, roles: [{ roleId: employeeRoleId('Technician') }],
     startDate: '2026-01-01', gender: 'Male', maritalStatus: 'Married', children: 2, salary: 42000, employeeCost: 52000, bankId: bankId('UnionBank'), bankAccountNo: '1092 3344 5566', bankBranch: 'Makati Ayala',
     education: [{ id: 'edu-1', fromDate: '2024-03-01', toDate: '2024-03-31', type: 'Certification', institution: 'Apple', major: 'Mac Service', diploma: 'Apple Certified Mac Technician' }],
   }),
   seed(8, 'Fe Lopez', {
     firstName: 'Fe', lastName: 'Lopez', jobTitle: 'Service Technician', positionId: positionId('Technician'),
-    departmentId: departmentId('Service'), branchId: branchId('Makati (Greenbelt 3)'), managerId: hemId('Edgar Bautista'), costCenterId: costCenterId('After-sales service'),
+    departmentId: departmentId('Service'), branchId: branchId('Greenbelt 3'), managerId: hemId('Edgar Bautista'), costCenterId: costCenterId('After-sales service'),
     officePhone: '(02) 8757 3300', mobilePhone: '0917 555 0180', workAddress: GREENBELT, roles: [{ roleId: employeeRoleId('Technician') }],
     startDate: '2026-03-02', statusId: employeeStatusId('Probationary'), gender: 'Female', maritalStatus: 'Single', salary: 30000, employeeCost: 38000,
     bankId: bankId('BPI'), bankAccountNo: '4410 2299 01', bankBranch: 'Greenbelt',

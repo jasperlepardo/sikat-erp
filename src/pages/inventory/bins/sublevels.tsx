@@ -27,7 +27,7 @@ export const sublevelDef: MasterDef<BinSublevel> = {
   title: 'Sublevel codes',
   noun: 'sublevel code',
   home: HOME,
-  description: 'The aisle, shelf and level codes each warehouse’s bins are addressed by. A bin code joins one of each: WH-MNL-A-01-02.',
+  description: 'The aisle, shelf and level codes each warehouse’s bins are addressed by. A bin code joins one of each: WH-001-A-01-02.',
   blank: (code) => ({
     id: newId('bsl'),
     warehouse: binWarehouseOptions()[0]?.value ?? '',

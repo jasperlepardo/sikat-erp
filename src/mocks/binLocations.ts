@@ -1,7 +1,7 @@
 /**
  * Bin locations: storage positions inside a bin-enabled warehouse, addressed by
  * Aisle › Shelf › Level. Each tier's codes are a per-warehouse list (sublevel codes),
- * and a bin's code is the warehouse plus its three segments: WH-MNL-A-01-02.
+ * and a bin's code is the warehouse plus its three segments: WH-001-A-01-02.
  * Items' default bins and transfer lines store that code.
  */
 
@@ -134,7 +134,7 @@ export const blankBin = (patch: Partial<BinLocation> = {}): BinLocation => {
 // Aisle A holds iPhone and iPad, B Mac, C accessories; R is the receiving dock.
 // Shelves 01–02, levels 01 (floor) to 03 (top). C-02-03 is the quarantine bin.
 
-const WH = 'WH-MNL';
+const WH = 'WH-001';
 const SEEDED_AT = '2026-09-01T08:00:00+08:00';
 
 const sub = (tier: SublevelTier, code: string, description: string): BinSublevel => ({

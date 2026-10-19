@@ -14,7 +14,7 @@
  * - Documents run January–September; October's sales are still in the POS.
  */
 import { SEED_ITEMS, type Item } from './items';
-import { SEED_WAREHOUSES } from './itemMasters';
+import { SEED_STORE_WAREHOUSES } from './storeWarehouses';
 
 export const POS_CUSTOMER_ID = 'bp-045';
 
@@ -37,7 +37,8 @@ export const SALES_MONTHS = [
 const RATE: Record<string, number> = { ACC: 0.45, APD: 0.4, AW: 0.3, IPH: 0.35, IPD: 0.25, MAC: 0.2, HOM: 0.2 };
 
 /** Stores that sell to walk-in customers: every store but Mobile Care, which holds demo units. */
-export const POS_STORES = SEED_WAREHOUSES.filter((w) => w.type === 'store' && w.code !== 'WH-PRD').map((w) => w.code);
+/** Locations that ring up POS sales: the Cebu and Davao stores, then every store warehouse (WH-005…). */
+export const POS_STORES = ['WH-002', 'WH-003', ...SEED_STORE_WAREHOUSES.map((w) => w.code)];
 
 export interface StoreSaleLine {
   itemId: string;
@@ -91,17 +92,17 @@ export const isLaunchItem = (item: Pick<Item, 'validFrom'>) => Boolean(item.vali
  * stocked in Pasig that the destination holds at least that many of now (its stock came from
  * Pasig). Listed here so a store's sales leave room for what they brought in.
  */
-const handStocked = SEED_ITEMS.filter((i) => i.inventoryItem && !i.validFrom && (i.warehouses.find((w) => w.code === 'WH-MNL')?.inStock ?? 0) >= 2);
+const handStocked = SEED_ITEMS.filter((i) => i.inventoryItem && !i.validFrom && (i.warehouses.find((w) => w.code === 'WH-001')?.inStock ?? 0) >= 2);
 export function handTransferItem(n: number, quantity: number, toWarehouse: string) {
   const held = handStocked.filter((i) => (i.warehouses.find((w) => w.code === toWarehouse)?.inStock ?? 0) >= quantity);
   return held.length ? held[n % held.length] : handStocked[n % handStocked.length];
 }
 /** [n, quantity, to] per hand-written transfer, posted ones first. */
 export const HAND_TRANSFER_LINES = {
-  'it-001': [[0, 2, 'WH-CEB'], [3, 1, 'WH-CEB'], [7, 4, 'WH-CEB']],
-  'it-002': [[1, 2, 'WH-DVO'], [5, 1, 'WH-DVO']],
-  'it-003': [[2, 2, 'ST-001'], [4, 2, 'ST-001'], [6, 1, 'ST-005']],
-  'it-004': [[8, 1, 'WH-PRD']],
+  'it-001': [[0, 2, 'WH-002'], [3, 1, 'WH-002'], [7, 4, 'WH-002']],
+  'it-002': [[1, 2, 'WH-003'], [5, 1, 'WH-003']],
+  'it-003': [[2, 2, 'WH-005'], [4, 2, 'WH-005'], [6, 1, 'WH-009']],
+  'it-004': [[8, 1, 'WH-004']],
 } as const satisfies Record<string, readonly (readonly [number, number, string])[]>;
 /** Units the posted hand-written transfers bring a store, by item@store. */
 const handIns = new Map<string, number>();

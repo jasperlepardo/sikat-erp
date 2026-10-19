@@ -94,7 +94,7 @@ export function blankTransfer(today: string, ownerId: string): Omit<InventoryTra
     status: 'Draft',
     postingDate: today,
     documentDate: today,
-    fromWarehouse: 'WH-MNL',
+    fromWarehouse: 'WH-001',
     toWarehouse: '',
     toBinId: '',
     salesEmployeeId: ownerId,
@@ -118,7 +118,7 @@ const line = (n: number, quantity: number, toWarehouse: string, patch: Partial<T
     description: item.description,
     quantity,
     uom: item.inventoryUom,
-    fromBinId: item.warehouses.find((w) => w.code === 'WH-MNL')?.defaultBinId || 'bin-WH-MNL-A-01-01',
+    fromBinId: item.warehouses.find((w) => w.code === 'WH-001')?.defaultBinId || 'bin-WH-001-A-01-01',
     toWarehouse,
     unitCost: item.itemCost,
     ...patch,
@@ -137,24 +137,24 @@ const REPLENISHMENTS: InventoryTransfer[] = [
   transfer('it-001', 1, {
     postingDate: '2026-09-03',
     documentDate: '2026-09-03',
-    toWarehouse: 'WH-CEB',
-    journalRemark: 'Inventory Transfers – WH-MNL to WH-CEB',
+    toWarehouse: 'WH-002',
+    journalRemark: 'Inventory Transfers – WH-001 to WH-002',
     remarks: 'Monthly replenishment of the Cebu store — stock below reorder point as at 2 Sep 2026.',
     lines: HAND_TRANSFER_LINES['it-001'].map(([n, q, to]) => line(n, q, to)),
   }),
   transfer('it-002', 2, {
     postingDate: '2026-09-10',
     documentDate: '2026-09-10',
-    toWarehouse: 'WH-DVO',
-    journalRemark: 'Inventory Transfers – WH-MNL to WH-DVO',
+    toWarehouse: 'WH-003',
+    journalRemark: 'Inventory Transfers – WH-001 to WH-003',
     remarks: 'Monthly replenishment of the Davao store.',
     lines: HAND_TRANSFER_LINES['it-002'].map(([n, q, to]) => line(n, q, to)),
   }),
   transfer('it-003', 3, {
     postingDate: '2026-09-18',
     documentDate: '2026-09-18',
-    toWarehouse: 'ST-001',
-    journalRemark: 'Inventory Transfers – WH-MNL to ST-001',
+    toWarehouse: 'WH-005',
+    journalRemark: 'Inventory Transfers – WH-001 to WH-005',
     remarks: 'Launch-week stock for Greenbelt 3.',
     lines: HAND_TRANSFER_LINES['it-003'].map(([n, q, to]) => line(n, q, to)),
   }),
@@ -162,7 +162,7 @@ const REPLENISHMENTS: InventoryTransfer[] = [
     status: 'Draft',
     postingDate: '2026-10-05',
     documentDate: '2026-10-05',
-    toWarehouse: 'WH-PRD',
+    toWarehouse: 'WH-004',
     remarks: 'Demo units for Mobile Care — waiting on the store manager to confirm.',
     lines: HAND_TRANSFER_LINES['it-004'].map(([n, q, to]) => line(n, q, to)),
   }),
@@ -173,7 +173,7 @@ const REPLENISHMENTS: InventoryTransfer[] = [
 // new items (mocks/storeSales.ts): one transfer per store each time.
 
 const itemById = new Map(SEED_ITEMS.map((i) => [i.id, i]));
-const MNL_BIN = (itemId: string) => itemById.get(itemId)!.warehouses.find((w) => w.code === 'WH-MNL')?.defaultBinId || 'bin-WH-MNL-A-01-01';
+const MNL_BIN = (itemId: string) => itemById.get(itemId)!.warehouses.find((w) => w.code === 'WH-001')?.defaultBinId || 'bin-WH-001-A-01-01';
 const storeName = (code: string) => SEED_WAREHOUSES.find((w) => w.code === code)?.name ?? code;
 const MONTH_NAME = (month: string) => MONTH_NAMES[Number(month.slice(5)) - 1];
 
@@ -182,7 +182,7 @@ const toStore = (id: string, date: string, store: string, remarks: string, lines
     postingDate: date,
     documentDate: date,
     toWarehouse: store,
-    journalRemark: `Inventory Transfers – WH-MNL to ${store}`,
+    journalRemark: `Inventory Transfers – WH-001 to ${store}`,
     remarks,
     lines: lines.map((l, k) => {
       const item = itemById.get(l.itemId)!;

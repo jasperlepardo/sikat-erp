@@ -214,7 +214,7 @@ const rl = (id: string, itemNo: string, requiredQty: number, patch: Partial<RfqL
   });
 };
 
-const mnl = SEED_WAREHOUSES.find((w) => w.code === 'WH-MNL')!;
+const mnl = SEED_WAREHOUSES.find((w) => w.code === 'WH-001')!;
 const MNL_SHIP_TO = formatAddress(mnl.address, mnl.name);
 const COMPANY_ADDRESS = formatAddress(SEED_COMPANIES[0].address, SEED_COMPANIES[0].name);
 

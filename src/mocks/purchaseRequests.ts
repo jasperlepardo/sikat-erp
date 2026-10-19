@@ -4,22 +4,16 @@
  */
 import type { Attachment, DocumentSeries } from './common';
 import { employeeId, plId } from './masters';
-import { SEED_ITEMS } from './items';
+import { SEED_ITEMS, mergedItems } from './items';
+import { SEED_TAX_GROUPS } from './taxes';
+import { hemId, type Employee } from './employees';
+import { branchId, departmentId } from './peopleMasters';
 
 export type PrStatus = 'Open' | 'Closed';
 export const PR_STATUSES: PrStatus[] = ['Open', 'Closed'];
 
 export type PrItemType = 'Item' | 'Service';
 export const PR_ITEM_TYPES: PrItemType[] = ['Item', 'Service'];
-
-/** Company branches/locations. */
-export const BRANCHES = [
-  'Main – Quezon City',
-  'Makati',
-  'Cebu',
-  'Davao',
-] as const;
-export type Branch = (typeof BRANCHES)[number];
 
 export interface PrLine {
   id: string;
@@ -36,13 +30,13 @@ export interface PrLine {
   uomName: string;
   /** Inventory units in one purchasing unit. */
   itemsPerUnit: number;
-  /** Reference / last known price — informational estimate, not binding. */
+  /** Reference / last known price — informational estimate, not binding. Seeded lines get it from the last-purchase list (services). */
   infoPrice: number;
   discountPct: number;
   warehouse: string;
   taxCode: string;
-  /** Cost center / department for budget tracking. */
-  department: string;
+  /** Department the line's cost is charged to (People › Departments); '' = none. */
+  departmentId: string;
   freeText: string;
   priceListId: string;
   status: 'Open' | 'Closed';
@@ -52,11 +46,14 @@ export interface PurchaseRequest {
   id: string;
 
   // Header
+  /** Employee (People › Employees) who needs the items. */
   requesterId: string;
   /** Snapshot of the requester's name; survives employee renames. */
   requesterName: string;
-  branch: string;
-  department: string;
+  /** The requester's branch, stamped when the requester is picked. */
+  branchId: string;
+  /** The requester's department, stamped when the requester is picked. */
+  departmentId: string;
   notifyOnPo: boolean;
   notifyEmail: string;
 
@@ -114,20 +111,21 @@ export const newPrLine = (patch: Partial<PrLine> = {}): PrLine => ({
   discountPct: 0,
   warehouse: '',
   taxCode: '',
-  department: '',
+  departmentId: '',
   freeText: '',
   priceListId: plId('Last purchase price'),
   status: 'Open',
   ...patch,
 });
 
-export function blankPurchaseRequest(requesterId: string, requesterName: string): Omit<PurchaseRequest, 'id'> {
+/** A new request for `requester`: branch, department and owner come from the employee. */
+export function blankPurchaseRequest(requester: Employee | undefined, requesterName: string): Omit<PurchaseRequest, 'id'> {
   const today = new Date().toISOString().slice(0, 10);
   return {
-    requesterId,
+    requesterId: requester?.id ?? '',
     requesterName,
-    branch: BRANCHES[0],
-    department: '',
+    branchId: requester?.branchId ?? '',
+    departmentId: requester?.departmentId ?? '',
     notifyOnPo: false,
     notifyEmail: '',
     seriesId: 'ser-pr-primary',
@@ -140,7 +138,7 @@ export function blankPurchaseRequest(requesterId: string, requesterName: string)
     closeDate: '',
     itemType: 'Item',
     lines: [],
-    ownerId: requesterId,
+    ownerId: requester?.salesEmployeeId ?? '',
     freight: 0,
     remarks: '',
     attachments: [],
@@ -149,7 +147,11 @@ export function blankPurchaseRequest(requesterId: string, requesterName: string)
 
 // ── Seed ─────────────────────────────────────────────────────────────────────
 
-const byNo = (itemNo: string) => SEED_ITEMS.find((i) => i.itemNo === itemNo)!;
+// Merged, so variants carry their parent's purchase tax group.
+const byNo = (itemNo: string) => mergedItems(SEED_ITEMS).find((i) => i.itemNo === itemNo)!;
+/** The tax code a new line proposes: the item's fixed code, else its purchase tax group's. */
+const taxCodeOf = (item: ReturnType<typeof byNo>) =>
+  item.purchaseTaxCode || (SEED_TAX_GROUPS.find((g) => g.code === item.purchaseTaxGroup)?.taxCode ?? '');
 
 const prLine = (id: string, itemNo: string, qty: number, patch: Partial<PrLine> = {}): PrLine => {
   const item = byNo(itemNo);
@@ -163,7 +165,8 @@ const prLine = (id: string, itemNo: string, qty: number, patch: Partial<PrLine> 
     uomName: base,
     requiredQty: qty,
     openQty: qty,
-    warehouse: item.inventoryItem ? 'WH-MNL' : '',
+    warehouse: item.inventoryItem ? 'WH-001' : '',
+    taxCode: taxCodeOf(item),
     ...patch,
   });
 };
@@ -173,7 +176,7 @@ const pr = (
   docNum: number,
   patch: Partial<Omit<PurchaseRequest, 'id'>>,
 ): PurchaseRequest => ({
-  ...blankPurchaseRequest(employeeId('Jasper L.'), 'Jasper L.'),
+  ...blankPurchaseRequest(undefined, ''),
   id,
   docNum,
   ...patch,
@@ -181,11 +184,11 @@ const pr = (
 
 export const SEED_PURCHASE_REQUESTS: PurchaseRequest[] = [
   pr('prq-001', 1, {
-    requesterId: employeeId('Andrea Ramos'),
+    requesterId: hemId('Andrea Ramos'),
     requesterName: 'Andrea Ramos',
     ownerId: employeeId('Andrea Ramos'),
-    branch: 'Main – Quezon City',
-    department: 'Store operations',
+    branchId: branchId('Head office (Pasig)'),
+    departmentId: departmentId('Sales'),
     notifyOnPo: true,
     notifyEmail: 'andrea.ramos@sikat.ph',
     postingDate: '2026-09-16',
@@ -195,18 +198,18 @@ export const SEED_PURCHASE_REQUESTS: PurchaseRequest[] = [
     status: 'Open',
     itemType: 'Item',
     lines: [
-      prLine('prq-001-1', 'IPH-18P-256-BLK', 20, { requiredDate: '2026-10-15', infoPrice: 68_200, taxCode: 'P1' }),
-      prLine('prq-001-2', 'IPH-18P-256-SLV', 20, { requiredDate: '2026-10-15', infoPrice: 68_200, taxCode: 'P1' }),
-      prLine('prq-001-3', 'IPH-18PM-512-GLC', 10, { requiredDate: '2026-10-15', infoPrice: 89_500, taxCode: 'P1' }),
+      prLine('prq-001-1', 'IPH-18P-256-BLK', 20, { requiredDate: '2026-10-15', openQty: 0 }),
+      prLine('prq-001-2', 'IPH-18P-256-SLV', 20, { requiredDate: '2026-10-15', openQty: 0 }),
+      prLine('prq-001-3', 'IPH-18PM-512-GLC', 10, { requiredDate: '2026-10-15', openQty: 0 }),
     ],
     remarks: 'Holiday season iPhone 18 Pro stock for the stores. Sent to Luzon for a quotation on 18 Sep.',
   }),
   pr('prq-002', 2, {
-    requesterId: employeeId('Ben Salazar'),
+    requesterId: hemId('Ben Salazar'),
     requesterName: 'Ben Salazar',
     ownerId: employeeId('Ben Salazar'),
-    branch: 'Makati',
-    department: 'IT',
+    branchId: branchId('Cebu (Robinsons Galleria)'),
+    departmentId: departmentId('Sales'),
     notifyOnPo: false,
     notifyEmail: '',
     postingDate: '2026-10-03',
@@ -216,17 +219,17 @@ export const SEED_PURCHASE_REQUESTS: PurchaseRequest[] = [
     status: 'Open',
     itemType: 'Item',
     lines: [
-      prLine('prq-002-1', 'MAC-MBA13-M5-8G-16-512-MDN', 4, { infoPrice: 72_900, taxCode: 'P1', warehouse: 'WH-MKT' }),
-      prLine('prq-002-2', 'MAC-MBA13-M5-8G-16-512-SKB', 2, { infoPrice: 72_900, taxCode: 'P1', warehouse: 'WH-MKT' }),
+      prLine('prq-002-1', 'MAC-MBA13-M5-8G-16-512-MDN', 4, { warehouse: 'WH-002' }),
+      prLine('prq-002-2', 'MAC-MBA13-M5-8G-16-512-SKB', 2, { warehouse: 'WH-002' }),
     ],
-    remarks: 'Back-to-school season restock for Makati branch.',
+    remarks: 'Back-to-school season restock for the Cebu store.',
   }),
   pr('prq-003', 3, {
-    requesterId: employeeId('Jasper L.'),
+    requesterId: hemId('Jasper L.'),
     requesterName: 'Jasper L.',
     ownerId: employeeId('Jasper L.'),
-    branch: 'Main – Quezon City',
-    department: 'Store operations',
+    branchId: branchId('Head office (Pasig)'),
+    departmentId: departmentId('Sales'),
     notifyOnPo: true,
     notifyEmail: 'jasper@sikat.ph',
     postingDate: '2026-09-22',
@@ -237,8 +240,8 @@ export const SEED_PURCHASE_REQUESTS: PurchaseRequest[] = [
     status: 'Closed',
     itemType: 'Item',
     lines: [
-      prLine('prq-003-1', 'ACC-PWR20', 100, { requiredDate: '2026-10-03', infoPrice: 1_600, taxCode: 'P1', openQty: 0, status: 'Closed' }),
-      prLine('prq-003-2', 'ACC-MAGSF1', 2, { requiredDate: '2026-10-03', infoPrice: 24 * 2_280, taxCode: 'P1', openQty: 0, status: 'Closed' }),
+      prLine('prq-003-1', 'ACC-PWR20', 100, { requiredDate: '2026-10-03', openQty: 0, status: 'Closed' }),
+      prLine('prq-003-2', 'ACC-MAGSF1', 2, { requiredDate: '2026-10-03', openQty: 0, status: 'Closed' }),
     ],
     remarks: 'October charger and MagSafe restock. Techzone quoted on 26 Sep; ordered on 1 Oct.',
   }),

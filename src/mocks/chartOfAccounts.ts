@@ -7,6 +7,8 @@
  * groups, tax codes, business partners), so those dropdowns read from here.
  */
 
+import { ruleId, type AccountDimension } from './costAccounting';
+
 export type Drawer =
   | 'Assets'
   | 'Liabilities'
@@ -48,6 +50,12 @@ export interface Account {
   currency: string;
   active: boolean;
   remarks: string;
+  /** Alternate code for external reporting and consolidation. */
+  externalCode: string;
+  /** Name in a second language, for translated reports. */
+  foreignName: string;
+  /** Code used in official electronic exports (e.g. BIR alphalists). */
+  exportCode: string;
 
   // Reporting
   /** SAP account type: Sales (revenue), Expenditure (costs), Other (balance sheet). */
@@ -58,6 +66,10 @@ export interface Account {
   cashFlow: CashFlowCategory;
   /** Line the account rolls up to on the financial statements. */
   statementLine: string;
+  /** Postings must name a cash flow line item. */
+  cashFlowRelevant: boolean;
+  /** Cash flow forecasting group ('' = none). */
+  planningLevel: PlanningLevel;
 
   // Posting controls
   /** Only documents post here (e.g. inventory, AR/AP, VAT) — no manual journal entries. */
@@ -65,14 +77,25 @@ export interface Account {
   /** Postings dated outside this window are refused ('' = open-ended). */
   validFrom: string;
   validTo: string;
-  /** Dimensions a posting must fill in. */
-  requiredDimensions: Dimension[];
+  /** Cost accounting dimensions: which a posting must fill in, and the rule proposed for each. */
+  dimensions: AccountDimension[];
+  /** Postings must name a project; `defaultProjectId` is proposed ('' = none). */
+  projectRequired: boolean;
+  defaultProjectId: string;
+  /** Refuse postings that take the balance outside minBalance…maxBalance (debit positive). */
+  balanceRange: boolean;
+  minBalance: number;
+  maxBalance: number;
+  /** Only cost accounting adjustments post here — no documents or ordinary journal entries. */
+  costAccountingOnly: boolean;
   /** Only users with access to confidential accounts see balances and postings. */
   confidential: boolean;
 
   // Period-end and tax
   /** Revalued at period-end for exchange rate changes (foreign currency accounts). */
   revalue: boolean;
+  /** Balances are adjusted for inflation indexing. */
+  indexed: boolean;
   /** Reconciled against bank statements. */
   reconcile: boolean;
   /** Tax code proposed on manual postings ('' = not VAT-relevant). */
@@ -84,8 +107,8 @@ export const ACCOUNT_TYPES: AccountType[] = ['Sales', 'Expenditure', 'Other'];
 export type Classification = '' | 'Current' | 'Non-current';
 export type CashFlowCategory = '' | 'Operating' | 'Investing' | 'Financing';
 export const CASH_FLOW_CATEGORIES: CashFlowCategory[] = ['', 'Operating', 'Investing', 'Financing'];
-export type Dimension = 'Branch' | 'Cost center' | 'Project';
-export const DIMENSIONS: Dimension[] = ['Branch', 'Cost center', 'Project'];
+export type PlanningLevel = '' | 'Cash and bank' | 'Receivables' | 'Payables' | 'Expenses' | 'Other';
+export const PLANNING_LEVELS: PlanningLevel[] = ['', 'Cash and bank', 'Receivables', 'Payables', 'Expenses', 'Other'];
 
 /**
  * Financial statement lines, in statement order — a PFRS for SMEs-style layout
@@ -143,16 +166,28 @@ function drawer(drawerName: Drawer, root: Node): Account[] {
       currency: flags.includes('usd') ? 'USD' : title ? 'All currencies' : 'PHP',
       active: true,
       remarks: '',
+      externalCode: '',
+      foreignName: '',
+      exportCode: '',
       accountType: defaultAccountType(drawerName),
       classification: '',
       cashFlow: '',
       statementLine: '',
+      cashFlowRelevant: false,
+      planningLevel: '',
       blockManualPosting: false,
       validFrom: '',
       validTo: '',
-      requiredDimensions: [],
+      dimensions: [],
+      projectRequired: false,
+      defaultProjectId: '',
+      balanceRange: false,
+      minBalance: 0,
+      maxBalance: 0,
+      costAccountingOnly: false,
       confidential: false,
       revalue: false,
+      indexed: false,
       reconcile: false,
       defaultTaxCode: '',
     });
@@ -355,6 +390,21 @@ const DEFAULT_TAX: Rule<string> = [
   ['6250', '44'], ['6260', '44'], ['6270', '44'],
 ];
 
+/**
+ * Sales and cost of sales are tagged by business unit (retail unless picked) and product;
+ * operating expenses by office (head office unless picked) and department.
+ */
+const DIMENSIONS_BY_DRAWER: Partial<Record<Drawer, AccountDimension[]>> = {
+  Revenue: [{ dimension: 1, required: true, defaultRuleId: ruleId('RETAIL') }, { dimension: 2, required: true, defaultRuleId: '' }],
+  'Cost of sales': [{ dimension: 1, required: true, defaultRuleId: ruleId('RETAIL') }, { dimension: 2, required: true, defaultRuleId: '' }],
+  'Operating expenses': [{ dimension: 3, required: true, defaultRuleId: ruleId('HO') }, { dimension: 4, required: true, defaultRuleId: '' }],
+};
+/** Store fit-outs are capitalised project by project. */
+const PROJECT_REQUIRED = ['1520'];
+/** Petty cash is a store float: never overdrawn, never above ₱100,000. */
+const balanceRangeOf = (code: string): Pick<Account, 'balanceRange' | 'minBalance' | 'maxBalance'> =>
+  code === '1011' ? { balanceRange: true, minBalance: 0, maxBalance: 100000 } : { balanceRange: false, minBalance: 0, maxBalance: 0 };
+
 /** The chart with reporting, posting and period-end settings filled in by rule. */
 export const SEED_ACCOUNTS: Account[] = CHART.map((a) => {
   const within = (code: string) => a.code === code || isUnder(a, code, CHART);
@@ -366,8 +416,12 @@ export const SEED_ACCOUNTS: Account[] = CHART.map((a) => {
     classification: balanceSheet ? (NON_CURRENT.some(within) ? 'Non-current' : 'Current') : '',
     cashFlow: a.cash ? '' : pick(CASH_FLOW_RULES, ''),
     statementLine: pick(STATEMENT_LINE_RULES, ''),
+    cashFlowRelevant: a.cash,
+    planningLevel: a.cash ? 'Cash and bank' : a.control ? (a.drawer === 'Assets' ? 'Receivables' : 'Payables') : a.drawer === 'Operating expenses' ? 'Expenses' : '',
     blockManualPosting: a.control || DOCUMENT_ONLY.some(within),
-    requiredDimensions: ['Revenue', 'Cost of sales', 'Operating expenses'].includes(a.drawer) ? ['Branch'] : [],
+    dimensions: DIMENSIONS_BY_DRAWER[a.drawer] ?? [],
+    projectRequired: PROJECT_REQUIRED.includes(a.code),
+    ...balanceRangeOf(a.code),
     confidential: CONFIDENTIAL.some(within),
     revalue: a.currency !== 'PHP' && a.currency !== 'All currencies',
     reconcile: a.cash && a.name.startsWith('Cash in Bank'),

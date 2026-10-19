@@ -2,7 +2,9 @@
  * The master-data lists the business partner form picks from. Each definition drives its
  * Settings tab and the "+ Add" panel of every field that uses it (components/form/MasterLookup).
  */
-import { Button, Checkbox, Icon, Text, TextField } from '@jasperlepardo/sikat-design-system';
+import { Button, Checkbox, Icon, Select, Text, TextField } from '@jasperlepardo/sikat-design-system';
+import { DIMENSION_NAMES, DIMENSION_NOS, type DimensionNo, type DistributionRule } from '../../mocks/costAccounting';
+import { distributionRules } from '../../services/costAccounting';
 import { FieldStack, ReadOnly, bind, type Errors } from '../../components/form/fields';
 import { statusColumn, uniqueRequired } from '../../components/form/MasterList';
 import { AccountField } from '../../components/form/AccountField';
@@ -16,6 +18,7 @@ import type { Collection } from '../../services/store';
 import { newId } from '../../services/useCollectionRows';
 import * as lists from '../../services/partnerMasters';
 import * as people from '../../services/peopleMasters';
+import type { Branch } from '../../mocks/peopleMasters';
 import { ROLE_CONFIG, ROLE_ORDER } from '../partners/roles';
 import type { Currency } from '../../mocks/currencies';
 import {
@@ -898,14 +901,101 @@ export const terminationReasonDef = namedDef({
 
 // ── Company: branches, cost centers, users ──────────────────────────────────
 
-export const branchDef = namedDef({
-  collection: people.branches, idPrefix: 'brn', icon: 'store', title: 'Branches', noun: 'branch', home: COMPANY,
-  description: 'Company branches: the head office and stores.', placeholder: 'e.g. Cebu (Robinsons Galleria)',
-});
+/** The branch's locations: each warehouse names its branch (Inventory › Warehouses & Bins). */
+const branchWarehouses = (branchId: string) => warehouses.snapshot().filter((w) => branchId && w.branchId === branchId);
+export const branchDef: MasterDef<Branch> = {
+  collection: people.branches,
+  icon: 'store',
+  title: 'Branches',
+  noun: 'branch',
+  home: COMPANY,
+  description: 'Company branches: the head office and stores, each with its own warehouses.',
+  blank: (name) => ({ id: newId('brn'), name, defaultWarehouseCode: '', active: true }),
+  value: (r) => r.id,
+  label: (r) => r.name,
+  columns: [
+    { key: 'name', header: 'Name', cell: (r) => r.name },
+    {
+      key: 'warehouses',
+      header: 'Warehouses',
+      cell: (r) => branchWarehouses(r.id).map((w) => (w.code === r.defaultWarehouseCode ? `${w.code} (default)` : w.code)).join(', ') || '—',
+    },
+    statusColumn<Branch>(),
+  ],
+  searchText: (r) => `${r.name} ${branchWarehouses(r.id).map((w) => w.code).join(' ')}`,
+  normalize: (r) => ({ ...r, name: r.name.trim() }),
+  validate: (r, all) => {
+    const e: Errors = {};
+    uniqueRequired(e, r, all, 'name', 'Name');
+    return e;
+  },
+  editor: (r, update, errors) => {
+    const f = bind(r, update);
+    const own = branchWarehouses(r.id);
+    return (
+      <FieldStack>
+        {f.text('name', 'Name', { required: true, error: errors.name, placeholder: 'e.g. Cebu (Robinsons Galleria)' })}
+        {f.choose('defaultWarehouseCode', 'Default warehouse', own.filter((w) => w.active || w.code === r.defaultWarehouseCode).map((w) => ({ value: w.code, label: `${w.code} · ${w.name}` })), {
+          clearable: true,
+          hint: own.length ? "New purchase request lines from this branch go here." : 'Give a warehouse this branch first, in Inventory › Warehouses & Bins.',
+        })}
+        <ReadOnly
+          label="Warehouses"
+          value={own.length ? <span className="flex flex-col">{own.map((w) => <span key={w.code}>{w.code} · {w.name}</span>)}</span> : '—'}
+          hint="Set the branch on each warehouse in Inventory › Warehouses & Bins."
+        />
+        {f.status('active', 'Status')}
+      </FieldStack>
+    );
+  },
+};
 export const costCenterDef = namedDef({
   collection: people.costCenters, idPrefix: 'cc', icon: 'account_tree', title: 'Cost centers', noun: 'cost center', home: COMPANY,
   description: 'Cost centers employee and operating costs are allocated to.', placeholder: 'e.g. Store operations',
 });
+export const distributionRuleDef: MasterDef<DistributionRule> = {
+  collection: distributionRules,
+  icon: 'call_split',
+  title: 'Distribution rules',
+  noun: 'distribution rule',
+  home: COMPANY,
+  description: 'Cost accounting: what a posting row is tagged with in each dimension — business unit, product, office location, department. G/L accounts can require one and propose a default.',
+  blank: (name) => ({ id: newId('ocr'), code: '', name, dimension: 1, active: true }),
+  value: (r) => r.id,
+  label: (r) => `${r.code} · ${r.name}`,
+  columns: [
+    { key: 'code', header: 'Code', cell: (r) => r.code },
+    { key: 'name', header: 'Name', cell: (r) => r.name },
+    { key: 'dimension', header: 'Dimension', cell: (r) => `${r.dimension} · ${DIMENSION_NAMES[r.dimension]}` },
+    statusColumn<DistributionRule>(),
+  ],
+  searchText: (r) => `${r.code} ${r.name} ${DIMENSION_NAMES[r.dimension]}`,
+  normalize: (r) => ({ ...r, code: r.code.trim().toUpperCase(), name: r.name.trim() }),
+  validate: (r, all) => {
+    const e: Errors = {};
+    uniqueRequired(e, r, all, 'code', 'Code');
+    if (!r.name.trim()) e.name = 'Name is required.';
+    return e;
+  },
+  editor: (r, update, errors) => {
+    const f = bind(r, update);
+    return (
+      <FieldStack>
+        {f.text('code', 'Code', { required: true, error: errors.code, placeholder: 'e.g. CEBU' })}
+        {f.text('name', 'Name', { required: true, error: errors.name, placeholder: 'e.g. Cebu (Robinsons Galleria)' })}
+        {f.field('dimension', 'Dimension', { required: true, hint: 'Which dimension the rule belongs to.' }, (p) => (
+          <Select
+            {...(p as object)}
+            value={String(r.dimension)}
+            onValueChange={(v) => v && update({ dimension: Number(v) as DimensionNo })}
+            options={DIMENSION_NOS.map((n) => ({ value: String(n), label: `${n} · ${DIMENSION_NAMES[n]}` }))}
+          />
+        ))}
+        {f.status('active', 'Status')}
+      </FieldStack>
+    );
+  },
+};
 export const userDef = namedDef({
   collection: people.users, idPrefix: 'usr', icon: 'person', title: 'Users', noun: 'user', home: COMPANY,
   description: 'System user accounts (login names). An employee can be linked to one.', placeholder: 'e.g. jdelacruz',

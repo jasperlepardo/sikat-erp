@@ -36,7 +36,7 @@ import { lineNet } from './purchaseOrders';
  * stock follows from the documents. It opens with the least stock that never runs out (none for
  * items released during the year), and its In stock today is what the documents leave.
  */
-export const CENTRAL_WAREHOUSE = 'WH-MNL';
+export const CENTRAL_WAREHOUSE = 'WH-001';
 
 /** The books open on 1 Jan 2026; opening stock is dated the day before. */
 export const BOOKS_OPEN = '2026-01-01';
@@ -319,7 +319,7 @@ export function withStockHistory(items: Item[]): Item[] {
     const warehouses = has
       ? item.warehouses.map((w) => (w.code === CENTRAL_WAREHOUSE ? { ...w, inStock: qty } : w))
       : qty
-        ? [...item.warehouses, newItemWarehouse(CENTRAL_WAREHOUSE, { inStock: qty, defaultBinId: 'bin-WH-MNL-A-01-01' })]
+        ? [...item.warehouses, newItemWarehouse(CENTRAL_WAREHOUSE, { inStock: qty, defaultBinId: 'bin-WH-001-A-01-01' })]
         : item.warehouses;
     return { ...item, itemCost: itemCosts.get(item.id) ?? item.itemCost, warehouses };
   });

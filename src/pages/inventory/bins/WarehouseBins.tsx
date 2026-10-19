@@ -47,13 +47,9 @@ export function WarehouseBins({
 
   // Aisles start open; shelves start closed.
   const expandedIds = expanded ?? aisles.map((n) => n.id);
-  const open = (n: Node) =>
-    n.kind === 'bin'
-      ? navigate(`${base}/bin-locations/${encodeURIComponent(n.id)}`)
-      : n.kind === 'aisle' || n.kind === 'shelf'
-        ? onShowItems({ label: n.label, bins: n.bins.map((b) => b.id) })
-        : undefined;
-  const columns = locationColumns({ open, query: '', sublevels, items, showType: false });
+  const hrefOf = (n: Node) => (n.kind === 'bin' ? `#${base}/bin-locations/${encodeURIComponent(n.id)}` : undefined);
+  const open = (n: Node) => (n.kind === 'aisle' || n.kind === 'shelf' ? onShowItems({ label: n.label, bins: n.bins.map((b) => b.id) }) : undefined);
+  const columns = locationColumns({ hrefOf, open, query: '', sublevels, items, showType: false });
 
   const picked = own.filter((b) => selected.includes(b.id));
   const setActive = async (active: boolean) => {
@@ -61,7 +57,7 @@ export function WarehouseBins({
     setSelected([]);
   };
 
-  const usesBins = warehouse.type === 'warehouse';
+  const usesBins = warehouse.binEnabled;
   const title = `Bin locations${own.length ? ` (${own.length})` : ''}`;
 
   if (isNew || !usesBins) {

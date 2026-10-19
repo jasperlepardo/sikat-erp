@@ -39,6 +39,9 @@ export interface MasterListProps<T extends { id: string }> {
    * box switches to a flat view so every match is reachable.
    */
   getSubRows?: (row: T) => T[] | undefined;
+  /** Controlled tree expansion (e.g. a "show to level" picker); uncontrolled when left out. */
+  expandedIds?: string[];
+  onExpandedChange?: (ids: string[]) => void;
   /** Value a column sorts by (defaults to the row field named by the column key). */
   sortValue?: (row: T, key: string) => string | number;
   /** Initial sort. Defaults to the first column, ascending. */
@@ -140,6 +143,8 @@ function ListView<T extends { id: string }>({
   noun,
   basePath,
   getSubRows,
+  expandedIds: controlledExpanded,
+  onExpandedChange,
   hideHeader,
   sidePanelEdit,
   recordId,
@@ -188,7 +193,9 @@ function ListView<T extends { id: string }>({
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [selected, setSelected] = useState<string[]>([]);
-  const [expandedIds, setExpanded] = useState<string[]>([]);
+  const [ownExpanded, setOwnExpanded] = useState<string[]>([]);
+  const expandedIds = controlledExpanded ?? ownExpanded;
+  const setExpanded = onExpandedChange ?? setOwnExpanded;
   // A new search starts from the first page.
   useEffect(() => setPage(1), [query]);
 

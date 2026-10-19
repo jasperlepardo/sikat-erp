@@ -421,7 +421,7 @@ export function blankItem(groupOrName: ItemGroup | string = SEED_ITEM_GROUPS[0])
     minOrderQty: 0,
     itemCost: 0,
     cycleCountDays: 90,
-    warehouses: [newItemWarehouse('WH-MNL')],
+    warehouses: [newItemWarehouse('WH-001')],
     planningMethod: 'None',
     procurementMethod: 'Buy',
     leadTimeDays: 0,
@@ -471,7 +471,7 @@ function seed(
     uoms,
     warehouses: Object.entries(stock).map(([code, [inStock, committed = 0, ordered = 0]]) =>
       // Manila main uses bins, so stocked items there need a default bin.
-      newItemWarehouse(code, { inStock, committed, ordered, defaultBinId: code === 'WH-MNL' ? 'bin-WH-MNL-A-01-01' : '' }),
+      newItemWarehouse(code, { inStock, committed, ordered, defaultBinId: code === 'WH-001' ? 'bin-WH-001-A-01-01' : '' }),
     ),
     ...rest,
     // The default vendor and main manufacturer are always among the item's vendors / manufacturers.
@@ -609,9 +609,9 @@ const APPLE_ITEMS: Item[] = catalog.entries.map((e, n) => {
       e.estimated ? 'Price estimated from the US price — confirm against the Apple PH SRP.' : 'Price: Apple PH SRP (VAT inclusive).',
     ].filter(Boolean).join('\n'),
   }, {
-    'WH-MNL': [mnl, mnl > 2 ? h % 2 : 0, preOrder ? 20 : (h >>> 12) % 2 ? 5 * scale : 0],
-    'WH-CEB': [ceb],
-    'WH-DVO': [dvo],
+    'WH-001': [mnl, mnl > 2 ? h % 2 : 0, preOrder ? 20 : (h >>> 12) % 2 ? 5 * scale : 0],
+    'WH-002': [ceb],
+    'WH-003': [dvo],
   });
   // Strip global fields — only own fields are stored; parent provides the rest at read time.
   return e.familyId ? toVariantRecord(full) : full;
@@ -620,12 +620,12 @@ const APPLE_ITEMS: Item[] = catalog.entries.map((e, n) => {
 // ── Store stock ──────────────────────────────────────────────────────────────
 // Stocking every item at all 125 stores would overrun localStorage, so the flagship stores carry
 // the range and the rest a core set of best-sellers, a few units each. Only rows with stock are
-// added. Pre-order items (nothing at WH-MNL yet) aren't in the stores either.
+// added. Pre-order items (nothing at WH-001 yet) aren't in the stores either.
 
 /** Big malls that carry the full range (display-level quantities). */
 const FLAGSHIP_STORES = [
-  'ST-001', 'ST-002', 'ST-003', 'ST-005', 'ST-007', 'ST-024', 'ST-026', 'ST-029', 'ST-031', 'ST-041', // Metro Manila
-  'ST-063', 'ST-067', 'ST-095', 'ST-110', 'ST-112', // Pampanga, Laguna, Cebu, Davao, Cagayan de Oro
+  'WH-005', 'WH-006', 'WH-007', 'WH-009', 'WH-011', 'WH-028', 'WH-030', 'WH-033', 'WH-035', 'WH-045', // Metro Manila
+  'WH-067', 'WH-071', 'WH-099', 'WH-114', 'WH-116', // Pampanga, Laguna, Cebu, Davao, Cagayan de Oro
 ];
 
 /** Families whose first in-stock configuration every store carries. */
@@ -638,7 +638,7 @@ const CORE_FAMILIES = [
 ];
 
 const familyName = (i: Item) => APPLE_PARENT_ITEMS.find((p) => p.id === i.parentItemId)?.name ?? i.name;
-const mnlStock = (i: Item) => i.warehouses.find((w) => w.code === 'WH-MNL')?.inStock ?? 0;
+const mnlStock = (i: Item) => i.warehouses.find((w) => w.code === 'WH-001')?.inStock ?? 0;
 const isAccessory = (i: Item) => (APPLE_PARENT_ITEMS.find((p) => p.id === i.parentItemId)?.itemGroupId ?? i.itemGroupId) === 'ig-ACC';
 
 const CORE_ITEMS = new Set(
@@ -647,12 +647,12 @@ const CORE_ITEMS = new Set(
 
 /**
  * What the posted seed transfers moved into stores (mocks/inventoryTransfers.ts picks the nth item
- * with 2+ units at WH-MNL), so the stores hold at least that much.
+ * with 2+ units at WH-001), so the stores hold at least that much.
  */
 const TRANSFERRED: [n: number, store: string, qty: number][] = [
-  [2, 'ST-001', 2],
-  [4, 'ST-001', 2],
-  [6, 'ST-005', 1],
+  [2, 'WH-005', 2],
+  [4, 'WH-005', 2],
+  [6, 'WH-009', 1],
 ];
 const transferable = APPLE_ITEMS.filter((i) => i.inventoryItem && mnlStock(i) >= 2);
 

@@ -196,7 +196,7 @@ export const router = createHashRouter([
           { path: 'inventory/warehouses-and-bins/:tab?/:recordId?', element: <WarehousesPage /> },
           { path: 'inventory/price-lists/:tab?/:recordId?', element: <PriceListsPage /> },
           { path: 'accounting/dashboard', element: <AccountingDashboard /> },
-          { path: 'accounting/chart-of-accounts/:recordId?', element: <ChartOfAccountsPage /> },
+          { path: 'accounting/chart-of-accounts/:recordId?/:view?', element: <ChartOfAccountsPage /> },
           { path: 'accounting/journal-entries', element: <JournalEntryList /> },
           { path: 'accounting/journal-entries/:id/:tab?', element: <JournalEntryDetail /> },
           { path: 'accounting/exchange-rate-differences', element: <ExchangeRateDifferencesPage /> },

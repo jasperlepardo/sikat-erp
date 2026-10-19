@@ -1,6 +1,6 @@
 import { useSearchParams } from 'react-router';
 import { Text } from '@jasperlepardo/sikat-design-system';
-import { FieldStack, bind } from '../../components/form/fields';
+import { FieldStack, Flags, bind } from '../../components/form/fields';
 import { MasterList, type ListRoute } from '../../components/form/MasterList';
 import { TabbedPage, type PageTab } from '../../components/form/TabbedPage';
 import { AddressFields } from '../../components/form/AddressFields';
@@ -11,6 +11,7 @@ import { listItems } from '../../services/items';
 import { useAsync } from '../../services/useAsync';
 import { useCollectionRows } from '../../services/useCollectionRows';
 import { statusColumn, uniqueRequired } from '../settings/inventory/lists';
+import { branchDef } from '../settings/masterDefs';
 import { BinLocationsTab } from './bins/BinLocationsTab';
 import { LocationsTab } from './bins/LocationsTab';
 import { WarehouseContents } from './bins/WarehouseContents';
@@ -79,6 +80,8 @@ function WarehousesTab(route: ListRoute) {
         type: newType,
         address: blankPostalAddress(),
         binEnabled: newType === 'warehouse',
+        vendorDeliveries: newType === 'warehouse',
+        branchId: '',
         active: true,
       })}
       label={(w) => `${w.code} · ${w.name}`}
@@ -93,7 +96,8 @@ function WarehousesTab(route: ListRoute) {
       }}
       onSave={(w) => {
         const code = w.code.trim().toUpperCase();
-        return save({ ...w, id: w.id || code, code, binEnabled: w.type === 'warehouse' });
+        const stock = w.type === 'warehouse';
+        return save({ ...w, id: w.id || code, code, binEnabled: stock && w.binEnabled, vendorDeliveries: stock && w.vendorDeliveries });
       }}
       editor={(w, update, errors, isNew) => {
         const f = bind(w, update);
@@ -103,7 +107,7 @@ function WarehousesTab(route: ListRoute) {
               {f.text('code', 'Code', {
                 required: true,
                 error: errors.code,
-                placeholder: 'e.g. WH-CDO',
+                placeholder: 'e.g. WH-130',
                 disabled: !isNew,
                 hint: !isNew ? "Can't change once saved — documents refer to it. Deactivate instead." : undefined,
               })}
@@ -113,19 +117,26 @@ function WarehousesTab(route: ListRoute) {
                 error: errors.type,
                 hint: LOCATION_TYPES.find((t) => t.value === w.type)?.hint,
               })}
+              {w.type === 'warehouse' ? (
+                <Flags>
+                  {f.check('binEnabled', 'Uses bin locations', { disabled: !isNew })}
+                  {f.check('vendorDeliveries', 'Receives vendor deliveries')}
+                </Flags>
+              ) : null}
+              {f.master('branchId', 'Branch', branchDef, { clearable: true, hint: "The branch this location belongs to. Pick the branch's default warehouse on the branch." })}
               <AddressFields value={w.address} onChange={(p) => update({ address: { ...w.address, ...p } })} unwrapped />
               {f.status('active', 'Status')}
             </FieldStack>
             <Text variant="small" tone="muted">
               {w.type === 'office'
                 ? 'Address: purchase orders can print it as Bill To.'
-                : w.type === 'warehouse'
+                : w.vendorDeliveries
                   ? 'Address: where vendors deliver. Purchase orders for this warehouse print it as Ship To.'
-                  : 'Address: where the store is. Stock arrives by inventory transfer.'}
+                  : 'Address: where the stock is. It arrives by inventory transfer, not from vendors.'}
             </Text>
-            {w.type === 'warehouse' ? (
+            {w.type === 'warehouse' && w.binEnabled ? (
               <Text variant="small" tone="muted">
-                Warehouses keep stock in bin locations, so items stocked here need a default bin.
+                {isNew ? 'Bin locations are fixed once the warehouse is added. ' : ''}Items stocked here need a default bin.
               </Text>
             ) : null}
           </>

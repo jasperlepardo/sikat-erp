@@ -15,6 +15,10 @@ import {
   type TableColumn,
 } from '@jasperlepardo/sikat-design-system';
 import { DataTable } from '../../../components/form/DataTable';
+import { useCollection } from '../../../components/form/MasterLookup';
+import { DIMENSION_NAMES, DIMENSION_NOS, ruleOf, withRule, type DimensionNo } from '../../../mocks/costAccounting';
+import { distributionRules } from '../../../services/costAccounting';
+import { projects } from '../../../services/partnerMasters';
 import { problemCollector, type Problem } from '../../../components/form/ProblemsAlert';
 import { Fields, Flags, ReadOnly, Section, bind, type Errors } from '../../../components/form/fields';
 import { accountLabel, type Account } from '../../../mocks/chartOfAccounts';
@@ -26,6 +30,7 @@ import {
   TRANS_CODES,
   TRANS_CODE_LABEL,
   newJeLine,
+  withAccountDefaults,
   type JeLine,
   type JournalEntry,
 } from '../../../mocks/journalEntries';
@@ -192,6 +197,8 @@ export function JeRowsTable({
   balanceRule?: string;
 }) {
   const file = useRef<HTMLInputElement>(null);
+  const rules = useCollection(distributionRules) ?? [];
+  const projectRows = useCollection(projects) ?? [];
   const totals = jeTotals(lines);
   const patchLine = (lid: string, p: Partial<JeLine>) => update({ lines: draft.lines.map((l) => (l.id === lid ? { ...l, ...p } : l)) });
 
@@ -222,8 +229,17 @@ export function JeRowsTable({
   const setTarget = (l: JeLine, v: string | null) => {
     if (!v) return patchLine(l.id, { account: '', partnerId: '' });
     if (v.startsWith('bp:')) return patchLine(l.id, { account: '', partnerId: v.slice(3), dueDate: l.dueDate || draft.dueDate });
-    patchLine(l.id, { account: v.slice(5), partnerId: '' });
+    const code = v.slice(5);
+    // The account's default dimensions and project fill in what the row leaves empty.
+    patchLine(l.id, withAccountDefaults({ ...l, account: code, partnerId: '' }, m.accounts.find((a) => a.code === code)));
   };
+  // Rows post to the accounts' dimensions; BP rows post to a control account, which has none.
+  const ruleOptions = (n: DimensionNo, current: string) =>
+    rules.filter((r) => r.dimension === n && (r.active || r.id === current)).map((r) => ({ value: r.id, label: r.code, subLabel: r.name, text: `${r.code} ${r.name}` }));
+  const ruleCode = (id: string) => rules.find((r) => r.id === id)?.code ?? '';
+  const projectOptions = (current: string) =>
+    projectRows.filter((p) => p.active || p.id === current).map((p) => ({ value: p.id, label: p.code, subLabel: p.name, text: `${p.code} ${p.name}` }));
+  const projectCode = (id: string) => projectRows.find((p) => p.id === id)?.code ?? '';
   const nameOf = (l: JeLine) => {
     if (l.partnerId) return m.partners.find((p) => p.id === l.partnerId)?.name ?? l.partnerId;
     return m.accounts.find((a) => a.code === l.account)?.name ?? '';
@@ -305,6 +321,39 @@ export function JeRowsTable({
           )
         ) : null,
     },
+    {
+      key: 'project',
+      header: 'Project',
+      cell: (l) =>
+        editable(l) ? (
+          <div className="w-32">
+            <Combobox aria-label="Project" clearable options={projectOptions(l.projectId)} value={l.projectId || null} invalid={Boolean(err(l, 'project'))} onValueChange={(v) => patchLine(l.id, { projectId: v ?? '' })} />
+          </div>
+        ) : (
+          <Text variant="small">{projectCode(l.projectId)}</Text>
+        ),
+    },
+    ...DIMENSION_NOS.map(
+      (n): TableColumn<JeLine> => ({
+        key: `dim${n}`,
+        header: DIMENSION_NAMES[n],
+        cell: (l) =>
+          editable(l) ? (
+            <div className="w-32">
+              <Combobox
+                aria-label={DIMENSION_NAMES[n]}
+                clearable
+                options={ruleOptions(n, ruleOf(l.dims, n))}
+                value={ruleOf(l.dims, n) || null}
+                invalid={Boolean(err(l, `dim${n}`))}
+                onValueChange={(v) => patchLine(l.id, { dims: withRule(l.dims, n, v ?? '') })}
+              />
+            </div>
+          ) : (
+            <Text variant="small">{ruleCode(ruleOf(l.dims, n))}</Text>
+          ),
+      }),
+    ),
     {
       key: 'remarks',
       header: 'Remarks',

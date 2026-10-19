@@ -18,6 +18,8 @@ const blankOffice = (): Warehouse => ({
   type: 'office',
   address: blankPostalAddress(),
   binEnabled: false,
+  vendorDeliveries: false,
+  branchId: '',
   active: true,
 });
 

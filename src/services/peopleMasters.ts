@@ -9,6 +9,7 @@ import {
   SEED_TEAMS,
   SEED_TERMINATION_REASONS,
   SEED_USERS,
+  type Branch,
 } from '../mocks/peopleMasters';
 import { createCollection } from './store';
 
@@ -21,6 +22,6 @@ export const employeeStatuses = createCollection<NamedEntry>('sikat-erp:employee
 export const terminationReasons = createCollection<NamedEntry>('sikat-erp:termination-reasons', SEED_TERMINATION_REASONS, 'trm');
 
 // Company (Settings › Company)
-export const branches = createCollection<NamedEntry>('sikat-erp:branches', SEED_BRANCHES, 'brn');
+export const branches = createCollection<Branch>('sikat-erp:branches', SEED_BRANCHES, 'brn');
 export const costCenters = createCollection<NamedEntry>('sikat-erp:cost-centers', SEED_COST_CENTERS, 'cc');
 export const users = createCollection<NamedEntry>('sikat-erp:users', SEED_USERS, 'usr');
