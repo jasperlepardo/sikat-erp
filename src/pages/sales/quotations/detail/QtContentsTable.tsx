@@ -117,25 +117,26 @@ export function QtContentsTable({ draft, update, errors, ctx, m, cardFooter }: Q
         </Text>
       );
       return (
-        <div className="flex w-40 shrink-0 flex-col gap-1 whitespace-normal">
-          <TextField
-            aria-label="Quantity"
-            type="number"
-            min={0}
-            invalid={Boolean(err(l, 'quantity'))}
-            value={String(l.quantity)}
-            onChange={(e) => reprice(l, { quantity: num(e.currentTarget.value) })}
-          />
-          <Select
-            aria-label="UoM code"
-            options={itemUnits(item, 'sales').map((u) => ({ value: u.uom, label: u.uom }))}
-            value={l.uomCode}
-            onValueChange={(v) => v && changeUom(l, v)}
-          />
-          <Text variant="small" tone="muted">
-            {l.uomCode}
-            {l.uomCode === item.inventoryUom ? ' · inventory UoM' : ` · ${l.itemsPerUnit} ${item.inventoryUom} each`}
-          </Text>
+        <div className="ml-auto flex w-24 flex-col gap-1 whitespace-normal">
+          <div className="flex items-stretch">
+            <TextField
+              aria-label="Quantity"
+              type="number"
+              min={0}
+              invalid={Boolean(err(l, 'quantity'))}
+              value={String(l.quantity)}
+              onChange={(e) => reprice(l, { quantity: num(e.currentTarget.value) })}
+              className="rounded-r-none! -mr-px z-10 [&_input]:text-right"
+            />
+            <Select
+              aria-label="UoM"
+              options={itemUnits(item, 'sales').map((u) => ({ value: u.uom, label: u.uom }))}
+              value={l.uomCode}
+              onValueChange={(v) => v && changeUom(l, v)}
+              className="rounded-l-none! z-20"
+            />
+          </div>
+
         </div>
       );
     }, undefined, 'end'),
@@ -159,7 +160,7 @@ export function QtContentsTable({ draft, update, errors, ctx, m, cardFooter }: Q
         />
       );
     }, 'priceListId'),
-    col('pricing', 'Unit price / Discount', (l) => {
+    col('unitPrice', 'Unit price', (l) => {
       if (!itemOf(l)) return null;
       if (linesLocked) return (
         <div className="flex flex-col whitespace-nowrap tabular-nums">
@@ -168,41 +169,47 @@ export function QtContentsTable({ draft, update, errors, ctx, m, cardFooter }: Q
         </div>
       );
       return (
-        <div className="flex w-44 shrink-0 flex-col gap-1 whitespace-normal">
-          <TextField
-            aria-label="Unit price"
-            type="number"
-            min={0}
-            prefix={draft.currency}
-            invalid={Boolean(err(l, 'unitPrice'))}
-            value={String(l.unitPrice)}
-            onChange={(e) => patch(l.id, { unitPrice: num(e.currentTarget.value), priceSource: 'Manual' })}
-          />
+        <TextField
+          aria-label="Unit price"
+          type="number"
+          min={0}
+          prefix={draft.currency}
+          invalid={Boolean(err(l, 'unitPrice'))}
+          value={String(l.unitPrice)}
+          className="ml-auto! w-24! hover:w-fit! transition-[width] duration-150 [&_input]:text-right"
+          onChange={(e) => patch(l.id, { unitPrice: num(e.currentTarget.value), priceSource: 'Manual' })}
+        />
+      );
+    }, undefined, 'end'),
+    col('discount', 'Discount', (l) => {
+      if (!itemOf(l)) return null;
+      if (linesLocked) return (
+        l.discountPct
+          ? <Text variant="small" className="whitespace-nowrap tabular-nums">{l.discountPct}%</Text>
+          : null
+      );
+      return (
+        <div className="ml-auto">
           <TextField
             aria-label="Discount %"
             type="number"
             min={0}
             suffix="%"
             value={String(l.discountPct)}
+            className="ml-auto! w-16! hover:w-fit! transition-[width] duration-150 [&_input]:text-right"
             onChange={(e) => patch(l.id, { discountPct: Math.min(100, num(e.currentTarget.value)), priceSource: 'Manual' })}
           />
-          <Text variant="small" tone="muted">
-            {l.priceSource || '—'}
-            {l.priceSource === 'Manual' ? (
-              <>
-                {' · '}
-                <Link intent="primary" onClick={() => reprice({ ...l, priceSource: '' }, {})}>
-                  Reprice
-                </Link>
-              </>
-            ) : null}
-          </Text>
+          {l.priceSource === 'Manual' ? (
+            <Link intent="primary" onClick={() => reprice({ ...l, priceSource: '' }, {})}>
+              Reprice
+            </Link>
+          ) : null}
         </div>
       );
     }, undefined, 'end'),
     col('totals', 'Total (LC)', (l) =>
       itemOf(l) ? (
-        <Text variant="small" className="whitespace-nowrap tabular-nums">
+        <Text variant="small" className="block w-24 whitespace-nowrap tabular-nums">
           PHP {lc(lineNet(l))}
         </Text>
       ) : null,

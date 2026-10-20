@@ -522,10 +522,10 @@ const APPLE_PARENT_ITEMS: Item[] = catalog.families.map((f) => {
     ? [baseUom, ...unitsFromGroup({ inventoryUom: 'pc', uoms: [baseUom] }, pieceGroup).map((u, n) => ({ ...u, id: `${f.id}-u${n + 1}` }))]
     : [baseUom];
   // Devices: only pc is purchasable/saleable — distributors count by piece, not by box.
-  // Accessories: box is also purchasable (bought in bulk); pack and carton are unused.
+  // Accessories: box is also purchasable and saleable (bought/sold in bulk).
   const uoms = rawUoms.map((u) => {
     if (u.uom === 'pc') return u; // always on
-    if (u.uom === 'box') return { ...u, purchase: isAccessory, sales: false };
+    if (u.uom === 'box') return { ...u, purchase: isAccessory, sales: isAccessory };
     return { ...u, purchase: false, sales: false }; // pack, carton — off
   });
   const purchasingUom = BOUGHT_BY_THE_BOX.test(f.itemNo) ? 'box' : 'pc';
