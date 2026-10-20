@@ -13,7 +13,7 @@ Demo scenario: an Apple Premium Reseller in the Philippines, with seed data cove
 - **Vite + React 19 + TypeScript** — standard Vite SPA
 - **React Router 7** — hash routing (`/#/inventory/items`); intentional for static hosting
 - **Tailwind CSS v4** — tokens come from the design system
-- **`@jasperlepardo/sikat-design-system`** — published to GitHub Packages; current version ~0.32.x
+- **`@jasperlepardo/sikat-design-system`** — published to GitHub Packages; current version ~0.39.x
 - **Playwright** smoke tests in `e2e/` — every screen loads with no errors or raw ids
 
 ## Commands
@@ -23,6 +23,7 @@ npm run dev        # Start dev server
 npm run typecheck  # TypeScript check only
 npm run build      # tsc -b && vite build
 npm run test:e2e   # Playwright smoke tests (starts its own dev server on :5199)
+npx tsx scripts/check-seeds.ts  # Seed tie-out check (stock, ledger) — run after any mock change
 ```
 
 ---
@@ -35,8 +36,10 @@ src/
   components/   Shared UI — filter/, form/, activity/
   data/psgc/    Philippine Standard Geographic Code
   mocks/        Seed data (one file per entity); masters.ts — typed ID helpers
-  pages/        Feature pages — accounting/, crm/, inventory/, partners/, people/, purchasing/, sales/, settings/
+  pages/        Feature pages — accounting/, approvals/, banking/, crm/, inventory/, partners/, people/, purchasing/, sales/, settings/
   services/     Fake async API + domain logic
+e2e/            Playwright specs — screens.spec.ts sweeps every route
+scripts/        check-seeds.ts (tie-out check), build-psgc.mjs
 ```
 
 Routes are defined in `src/app/router.tsx`. All use hash routing (`/#/…`). Detail pages use `:tab?` for top-level page switching.
@@ -46,6 +49,8 @@ Routes are defined in `src/app/router.tsx`. All use hash routing (`/#/…`). Det
 ## Core data layer
 
 `src/services/store.ts` — `createCollection<T>(storageKey, seed, idPrefix, { audit? })`
+
+localStorage holds only the changes since the seed (`{ saved, removed }`), not the whole list. Every write bumps a global store version; `cachedUntilChange(build)` caches values derived from several collections (e.g. the document link graph) until the next write. Pass `{ audit: 'PO' }` to log saves to the audit log the Activity tab reads.
 
 Key rules:
 - **Bump `SEED_VERSION`** in `store.ts` whenever any file in `src/mocks/` changes. A browser on an older version drops all saved data and reloads the seed.

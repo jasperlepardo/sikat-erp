@@ -127,14 +127,13 @@ export function PoReceiptsTab({ draft }: { draft: PoDraft }) {
     .filter((l) => !!l.itemId)
     .map((l) => ({ kind: 'line', id: l.id, line: l, docs: draft.id ? docsFor(l) : [] }));
   const children = (r: Row) => (r.kind === 'line' ? r.docs : r.returns);
-  // Returned on a line, or on one receipt, in that row's unit.
+  // Each document row shows its own quantity; only the line totals its returns. A receipt's
+  // returns are its child rows, so a subtotal there would repeat them.
   const returned = (r: Row): [number, string] | undefined => {
     if (r.kind === 'return') return [r.quantity, r.uomCode];
-    const returns = r.kind === 'line' ? r.docs.flatMap((d) => d.returns) : r.returns;
-    if (!returns.length) return undefined;
-    return r.kind === 'line'
-      ? [returnedIn(returns, r.line.itemsPerUnit), r.line.uomCode]
-      : [returnedIn(returns, r.itemsPerUnit), r.uomCode];
+    if (r.kind !== 'line') return undefined;
+    const returns = r.docs.flatMap((d) => d.returns);
+    return returns.length ? [returnedIn(returns, r.line.itemsPerUnit), r.line.uomCode] : undefined;
   };
 
   return (
@@ -203,10 +202,11 @@ export function PoReceiptsTab({ draft }: { draft: PoDraft }) {
           header: 'Returned',
           align: 'end' as const,
           cell: (r) => {
+            if (r.kind === 'receipt') return null;
             const ret = returned(r);
             return (
               <Text variant="small" className="whitespace-nowrap tabular-nums">
-                {ret && ret[0] ? qty(-ret[0], ret[1]) : '—'}
+                {ret && ret[0] ? qty(ret[0], ret[1]) : '—'}
               </Text>
             );
           },
