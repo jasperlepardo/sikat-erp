@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from 'react-router';
 import {
   Alert,
   Button,
-  Card,
   Icon,
   Panel,
   PanelHeader,
@@ -16,7 +15,7 @@ import {
 import { dateField, linesField, masterField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { currencyDef, salesEmployeeDef } from '../../settings/masterDefs';
-import { fillCardClass, useListPage } from '../../../components/form/DataTable';
+import { useListPage } from '../../../components/form/DataTable';
 import { AR_STATUSES, type ArInvoice } from '../../../mocks/arInvoices';
 import { formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
@@ -138,22 +137,20 @@ export function ArInvoiceList() {
           </Alert>
         ) : null}
         {presets.bar(null)}
-        <Card className={fillCardClass(onPage.length)}>
-          {orders ? (
-            <Table
-              caption="A/R invoices"
-              columns={columns}
-              rows={onPage}
-              getRowId={(so) => so.id}
-              sort={sort}
-              onSortChange={setSort}
-              layout="fill"
-              pagination={pagination}
-            />
-          ) : (
-            <Text tone="muted" className="p-4">Loading invoices…</Text>
-          )}
-        </Card>
+        {orders ? (
+          <Table
+            caption="A/R invoices"
+            columns={columns}
+            rows={onPage}
+            getRowId={(so) => so.id}
+            sort={sort}
+            onSortChange={setSort}
+            layout="fill"
+            pagination={pagination}
+          />
+        ) : (
+          <Text tone="muted" className="p-4">Loading invoices…</Text>
+        )}
       </Panel.Body>
       {presets.panel}
     </Panel>

@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { Card, Checkbox, Combobox, Icon, IconButton, Link, Select, TableStatus, Text, TextField, Tooltip, type TableColumn } from '@jasperlepardo/sikat-design-system';
-import { DataTable } from '../../../../components/form/DataTable';
+import { Button, Card, Checkbox, Combobox, Icon, IconButton, Link, Select, Table, TableStatus, Text, TextField, Tooltip, type TableColumn } from '@jasperlepardo/sikat-design-system';
 import { MasterLookup } from '../../../../components/form/MasterLookup';
 import { itemUnits, itemsPerUom } from '../../../../mocks/items';
 import type { SoLine } from '../../../../mocks/salesOrders';
@@ -21,16 +20,16 @@ const num = (v: string) => (v === '' ? 0 : Number(v));
 const GROUPS = { warehouse: 'Warehouse', priceListId: 'Price list', tax: 'Tax', delivery: 'Delivered / Open' } as const;
 type Group = keyof typeof GROUPS;
 
-export function SoLinesCard({ draft, update, errors, m, ctx, hideDeliveries, spanRow, cardFooter }: SoTabProps & { hideDeliveries?: boolean; spanRow?: React.ReactNode; cardFooter?: React.ReactNode }) {
+export function SoLinesCard({ draft, update, errors, m, ctx, tabs, contentTab, spanRow, cardFooter }: SoTabProps & { tabs?: React.ReactNode; contentTab?: 'item' | 'delivery'; spanRow?: React.ReactNode; cardFooter?: React.ReactNode }) {
   const [editing, setEditing] = useState<Set<string>>(new Set());
   const [addKey, setAddKey] = useState(0);
   const [shown, setShown] = useState<Group[]>([]);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [selected, setSelected] = useState<string[]>([]);
   const is = (g: Group) => shown.includes(g);
   const lines = draft.lines;
   const itemLines = lines.filter((l) => !!l.itemId);
   const allAgreements = useAsync(listBlanketAgreements, []);
-  // Agreements for the current customer that are not Closed or Terminated.
   const customerAgreements = (allAgreements ?? []).filter(
     (ba) => ba.customerId === draft.customerId && ba.status !== 'Closed' && ba.status !== 'Terminated',
   );
@@ -41,11 +40,10 @@ export function SoLinesCard({ draft, update, errors, m, ctx, hideDeliveries, spa
   const taxOf = (l: SoLine) => lineTax(l, ctx.rateOf(l.taxCode), 0);
   const linesLocked = ctx.readOnly || draft.status !== 'Draft';
   const locked = (l: SoLine) => linesLocked || l.status === 'Closed';
-  // Item@warehouse pairs the open lines (added up) need more of than is free.
   const shortSet = new Set(shortages(draft, m, ctx.ownCommitted).map((s) => `${s.item.id}@${s.warehouse}`));
   const short = new Set(linesLocked ? [] : shortSet);
+  const liveSelection = selected.filter((id) => itemLines.some((l) => l.id === id));
 
-  // Sales items valid on the posting date.
   const itemOptions = (current: string) =>
     m.items
       .filter((i) => i.id === current || (i.salesItem && isValidToday(i, draft.postingDate)))
@@ -65,7 +63,6 @@ export function SoLinesCard({ draft, update, errors, m, ctx, hideDeliveries, spa
     const item = m.items.find((i) => i.id === itemId);
     patch(l.id, item ? lineFromItem(item, draft, ctx, m, { id: l.id, quantity: l.quantity }) : { itemId: '' });
   };
-  /** Re-run pricing after a change, unless the price was typed over. */
   const reprice = (l: SoLine, change: Partial<SoLine>) => {
     const item = itemOf(l);
     const next = { ...l, ...change };
@@ -100,7 +97,6 @@ export function SoLinesCard({ draft, update, errors, m, ctx, hideDeliveries, spa
           </div>
         );
       }
-      // Build agreement line options for this SO line's item.
       const matchingBaLines: Array<{ ba: BlanketAgreement; baLine: BaLine; n: number }> = [];
       for (const ba of customerAgreements) {
         ba.lines.forEach((baLine, idx) => {
@@ -146,7 +142,6 @@ export function SoLinesCard({ draft, update, errors, m, ctx, hideDeliveries, spa
               </Link>
             </div>
           )}
-          {/* Agreement picker — only shown when there are matching open BA lines or one is already linked. */}
           {(matchingBaLines.length > 0 || l.agreementId) && (
             <div className="flex items-center gap-1">
               {l.agreementId && linkedBa ? (
@@ -225,7 +220,6 @@ export function SoLinesCard({ draft, update, errors, m, ctx, hideDeliveries, spa
       if (!item) return null;
       if (!item.inventoryItem) return <span className="text-muted">Not stocked</span>;
       if (linesLocked) return <Text variant="small">{l.warehouse || '—'}</Text>;
-      // What's free to promise, giving back what this order already commits as saved.
       const avail = availableIn(item, l.warehouse, ctx.ownCommitted);
       return (
         <div className="flex w-44 shrink-0 flex-col gap-1 whitespace-normal">
@@ -345,100 +339,143 @@ export function SoLinesCard({ draft, update, errors, m, ctx, hideDeliveries, spa
     'delivery', 'end'),
   ].filter((c) => !c.group || is(c.group));
 
+  const deliveryColumns: TableColumn<SoLine>[] = [
+    {
+      key: 'item',
+      header: 'Item / Description',
+      cell: (l) => (
+        <div className="flex flex-col">
+          <Text variant="caption">{l.itemNo}</Text>
+          <Text variant="small">{l.description}</Text>
+        </div>
+      ),
+    },
+    {
+      key: 'ordered',
+      header: 'Ordered',
+      align: 'end' as const,
+      cell: (l) => (
+        <Text variant="small" className="whitespace-nowrap tabular-nums">
+          {l.quantity.toLocaleString('en-PH')} {l.uomCode}
+        </Text>
+      ),
+    },
+    {
+      key: 'delivered',
+      header: 'Delivered',
+      align: 'end' as const,
+      cell: (l) => (
+        <Text variant="small" className="whitespace-nowrap tabular-nums">
+          {l.deliveredQty ? `${l.deliveredQty.toLocaleString('en-PH')} ${l.uomCode}` : '—'}
+        </Text>
+      ),
+    },
+  ];
+
+  const showHeader = !!tabs || (liveSelection.length > 0 && !linesLocked);
+
   return (
     <div className="flex flex-col gap-2">
-    {settingsOpen ? (
+      {settingsOpen ? (
+        <Card>
+          <Card.Header icon={<Icon size={24}>tune</Icon>}>Columns</Card.Header>
+          <Card.Content>
+            <div className="flex flex-wrap gap-x-6 gap-y-3">
+              {(Object.keys(GROUPS) as Group[]).map((g) => (
+                <Checkbox
+                  key={g}
+                  checked={is(g)}
+                  onChange={(e) => setShown(e.currentTarget.checked ? [...shown, g] : shown.filter((x) => x !== g))}
+                >
+                  {GROUPS[g]}
+                </Checkbox>
+              ))}
+            </div>
+          </Card.Content>
+        </Card>
+      ) : null}
       <Card>
-        <Card.Header icon={<Icon size={24}>tune</Icon>}>Columns</Card.Header>
-        <Card.Content>
-          <div className="flex flex-wrap gap-x-6 gap-y-3">
-            {(Object.keys(GROUPS) as Group[]).map((g) => (
-              <Checkbox
-                key={g}
-                checked={is(g)}
-                onChange={(e) => setShown(e.currentTarget.checked ? [...shown, g] : shown.filter((x) => x !== g))}
-              >
-                {GROUPS[g]}
-              </Checkbox>
-            ))}
-          </div>
-        </Card.Content>
+        {showHeader ? (
+          <Card.Header
+            actions={
+              !linesLocked && liveSelection.length > 0 ? (
+                <div className="flex items-center gap-2">
+                  <Text variant="small" tone="muted">{liveSelection.length} selected</Text>
+                  <Button
+                    type="button"
+                    size="small"
+                    variant="ghost"
+                    intent="danger"
+                    onClick={() => {
+                      update({ lines: lines.filter((l) => !liveSelection.includes(l.id) || l.deliveredQty > 0) });
+                      setSelected([]);
+                    }}
+                  >
+                    Remove selected
+                  </Button>
+                </div>
+              ) : undefined
+            }
+          >
+            {tabs}
+          </Card.Header>
+        ) : null}
+        {contentTab === 'delivery' ? (
+          itemLines.length > 0 ? (
+            <Table
+              caption="Deliveries"
+              rows={itemLines}
+              getRowId={(l) => l.id}
+              columns={deliveryColumns.map((c) => ({ sortable: false, ...c }))}
+              layout="scroll"
+            />
+          ) : (
+            <div className="px-2 py-4"><Text variant="small" tone="muted">No deliveries yet.</Text></div>
+          )
+        ) : (
+          <>
+            <div className={linesLocked ? '[&_.sikat-table__row:hover>.sikat-table__td]:[box-shadow:none]' : undefined}>
+              {itemLines.length > 0 || !linesLocked ? (
+                <Table
+                  caption="Lines"
+                  columns={itemColumns.map((c) => ({ sortable: false, ...c }))}
+                  rows={itemLines}
+                  getRowId={(l) => l.id}
+                  layout="scroll"
+                  {...(!linesLocked ? {
+                    selectable: true,
+                    selectedIds: liveSelection,
+                    onSelectionChange: setSelected,
+                    onColumnSettings: () => setSettingsOpen(!settingsOpen),
+                  } : {})}
+                  footerRow={
+                    linesLocked ? undefined : (
+                      <Combobox
+                        key={addKey}
+                        aria-label="Search items to add a line"
+                        placeholder="Search items to add a line…"
+                        options={itemOptions('')}
+                        value={null}
+                        onValueChange={(id) => {
+                          if (!id) return;
+                          const item = m.items.find((i) => i.id === id);
+                          if (!item) return;
+                          update({ lines: [...itemLines, lineFromItem(item, draft, ctx, m, {})] });
+                          setAddKey((k) => k + 1);
+                        }}
+                      />
+                    )
+                  }
+                />
+              ) : (
+                <div className="px-2 py-4"><Text variant="small" tone="muted">No lines yet.</Text></div>
+              )}
+            </div>
+            {cardFooter}
+          </>
+        )}
       </Card>
-    ) : null}
-    <div className={linesLocked ? '[&_.sikat-table__row:hover>.sikat-table__td]:[box-shadow:none]' : undefined}>
-    <DataTable
-     
-      noPagination
-      rows={itemLines}
-      getRowId={(l) => l.id}
-      columns={itemColumns}
-      unsortable={itemColumns.map((c) => c.key)}
-      onRemove={linesLocked ? undefined : (picked) => update({ lines: lines.filter((l) => !picked.includes(l) || l.deliveredQty > 0) })}
-      onColumnSettings={() => setSettingsOpen(!settingsOpen)}
-      empty={<Text variant="small" tone="muted">No lines yet.</Text>}
-      spanRow={
-        linesLocked ? undefined : (
-          <Combobox
-            key={addKey}
-            aria-label="Search items to add a line"
-            placeholder="Search items to add a line…"
-            options={itemOptions('')}
-            value={null}
-            onValueChange={(id) => {
-              if (!id) return;
-              const item = m.items.find((i) => i.id === id);
-              if (!item) return;
-              update({ lines: [...itemLines, lineFromItem(item, draft, ctx, m, {})] });
-              setAddKey((k) => k + 1);
-            }}
-          />
-        )
-      }
-      cardFooter={cardFooter}
-    />
-    </div>
-    {spanRow}
-    {!hideDeliveries && itemLines.length > 0 && (
-      <DataTable
-       
-        noPagination
-        rows={itemLines}
-        getRowId={(l) => l.id}
-        empty={<Text variant="small" tone="muted">No deliveries yet.</Text>}
-        columns={[
-          {
-            key: 'item',
-            header: 'Item / Description',
-            cell: (l) => (
-              <div className="flex flex-col">
-                <Text variant="caption">{l.itemNo}</Text>
-                <Text variant="small">{l.description}</Text>
-              </div>
-            ),
-          },
-          {
-            key: 'ordered',
-            header: 'Ordered',
-            align: 'end' as const,
-            cell: (l) => (
-              <Text variant="small" className="whitespace-nowrap tabular-nums">
-                {l.quantity.toLocaleString('en-PH')} {l.uomCode}
-              </Text>
-            ),
-          },
-          {
-            key: 'delivered',
-            header: 'Delivered',
-            align: 'end' as const,
-            cell: (l) => (
-              <Text variant="small" className="whitespace-nowrap tabular-nums">
-                {l.deliveredQty ? `${l.deliveredQty.toLocaleString('en-PH')} ${l.uomCode}` : '—'}
-              </Text>
-            ),
-          },
-        ]}
-      />
-    )}
+      {spanRow}
     </div>
   );
 }

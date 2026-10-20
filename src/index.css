@@ -37,6 +37,16 @@
 }
 
 
+/* Remove number input spinners globally. */
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type='number'] {
+  -moz-appearance: textfield;
+}
+
 /* Design system fields are width: 100% and that rule is unlayered, so it beats Tailwind's
    layered w-* utilities: a width given to a field was ignored, and in a shrink-to-fit spot
    (a table cell, a totals row) the field collapsed to its suffix. Re-apply the widths the

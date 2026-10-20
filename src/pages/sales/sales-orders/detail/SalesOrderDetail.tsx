@@ -37,7 +37,6 @@ import { SoAssignmentCard } from './SoAssignmentCard';
 import { SoAttachmentsCard } from './SoAttachmentsCard';
 import { CustomerCard } from '../../shared/CustomerCard';
 import { SalesTotalsFooter } from '../../shared/TotalsFooter';
-import { SoDeliveryTab } from './SoDeliveryTab';
 import { CustomerDetailsPanel } from '../../shared/CustomerDetailsPanel';
 import { ReferencesTable } from '../../../purchasing/shared/ReferencesTable';
 
@@ -450,24 +449,22 @@ function SalesOrderForm() {
                     onPickCustomer={pickCustomer}
                     onOpenDetails={() => setCustomerDetailsOpen(true)}
                   />
-                  <Tabs
-                    variant="primary"
-                    value={contentTab}
-                    onValueChange={(v) => setContentTab(v as 'item' | 'delivery')}
-                    items={[
-                      { value: 'item', label: 'Item' },
-                      { value: 'delivery', label: 'Delivery' },
-                    ]}
+                  <SoLinesCard
+                    {...tabProps}
+                    tabs={
+                      <Tabs
+                        variant="primary"
+                        value={contentTab}
+                        onValueChange={(v) => setContentTab(v as 'item' | 'delivery')}
+                        items={[
+                          { value: 'item', label: 'Item' },
+                          { value: 'delivery', label: 'Delivery' },
+                        ]}
+                      />
+                    }
+                    contentTab={contentTab}
+                    cardFooter={<SalesTotalsFooter {...tabProps} />}
                   />
-                  {contentTab === 'item' ? (
-                    <SoLinesCard
-                      {...tabProps}
-                      hideDeliveries
-                      cardFooter={<SalesTotalsFooter {...tabProps} />}
-                    />
-                  ) : (
-                    <SoDeliveryTab draft={draft} />
-                  )}
                   <ReferencesTable
                     refs={draft.references}
                     onChange={(references) => update({ references })}

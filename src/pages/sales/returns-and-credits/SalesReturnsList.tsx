@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from 'react-router';
 import {
   Alert,
   Button,
-  Card,
   Icon,
   Panel,
   PanelHeader,
@@ -16,7 +15,7 @@ import {
 } from '@jasperlepardo/sikat-design-system';
 import { dateField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
-import { fillCardClass, useListPage } from '../../../components/form/DataTable';
+import { useListPage } from '../../../components/form/DataTable';
 import { formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
 import { arCmNumber, arCmTotal, listArCreditMemos } from '../../../services/arCreditMemos';
@@ -180,28 +179,26 @@ export function SalesReturnsList({ kind }: { kind: Kind }) {
       <Panel.Body className="flex flex-col gap-2">
         {notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : null}
         {presets.bar(null)}
-        <Card className={fillCardClass(onPage.length)}>
-          {!all ? (
-            <Text tone="muted" className="p-4">Loading…</Text>
-          ) : all.length ? (
-            <Table
-              caption={kind === 'returns' ? 'Sales returns' : 'A/R credit memos'}
-              columns={columns}
-              rows={onPage}
-              getRowId={(r) => r.id}
-              sort={sort}
-              onSortChange={setSort}
-              layout="fill"
-              pagination={pagination}
-            />
-          ) : (
-            <Text tone="muted" className="p-4">
-              {kind === 'returns'
-                ? 'No sales returns yet. Start one from a delivery (You can also › Copy to sales return), or with New sales return.'
-                : 'No credit memos yet. Start one from a sales return (You can also › Copy to A/R credit memo), or with New credit memo.'}
-            </Text>
-          )}
-        </Card>
+        {!all ? (
+          <Text tone="muted" className="p-4">Loading…</Text>
+        ) : all.length ? (
+          <Table
+            caption={kind === 'returns' ? 'Sales returns' : 'A/R credit memos'}
+            columns={columns}
+            rows={onPage}
+            getRowId={(r) => r.id}
+            sort={sort}
+            onSortChange={setSort}
+            layout="fill"
+            pagination={pagination}
+          />
+        ) : (
+          <Text tone="muted" className="p-4">
+            {kind === 'returns'
+              ? 'No sales returns yet. Start one from a delivery (You can also › Copy to sales return), or with New sales return.'
+              : 'No credit memos yet. Start one from a sales return (You can also › Copy to A/R credit memo), or with New credit memo.'}
+          </Text>
+        )}
       </Panel.Body>
       {presets.panel}
     </Panel>

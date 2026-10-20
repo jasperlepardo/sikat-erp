@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router';
 import {
   Badge,
   Button,
-  Card,
   Icon,
   Panel,
   PanelHeader,
@@ -27,7 +26,7 @@ import { useAsync } from '../../services/useAsync';
 import { formatAmount } from '../../services/format';
 import { bpGroupName, leadSources, nameIn } from '../../services/partnerMasters';
 import { paymentTermName } from '../../services/purchaseOrders';
-import { fillCardClass, useListPage } from '../../components/form/DataTable';
+import { useListPage } from '../../components/form/DataTable';
 import { useListPresets } from '../../components/filter/useListPresets';
 import { ROLE_CONFIG, ROLE_ORDER, STAGE_INTENT, scopeConfig, type PartnerScope } from './roles';
 import { partnerFilterFields, partnerViews } from './filterFields';
@@ -179,22 +178,20 @@ export function PartnerList({ scope }: { scope: PartnerScope }) {
       />
       <Panel.Body className="flex flex-col gap-2">
         {presets.bar(null)}
-        <Card className={fillCardClass(visible.length)}>
-          {partners ? (
-            <Table
-              caption={config.title}
-              columns={columns}
-              rows={visible}
-              getRowId={(p) => p.id}
-              sort={sort}
-              onSortChange={setSort}
-              layout="fill"
-              pagination={pagination}
-            />
-          ) : (
-            <Text tone="muted" className="p-4">Loading {config.title.toLowerCase()}…</Text>
-          )}
-        </Card>
+        {partners ? (
+          <Table
+            caption={config.title}
+            columns={columns}
+            rows={visible}
+            getRowId={(p) => p.id}
+            sort={sort}
+            onSortChange={setSort}
+            layout="fill"
+            pagination={pagination}
+          />
+        ) : (
+          <Text tone="muted" className="p-4">Loading {config.title.toLowerCase()}…</Text>
+        )}
       </Panel.Body>
       {presets.panel}
     </Panel>

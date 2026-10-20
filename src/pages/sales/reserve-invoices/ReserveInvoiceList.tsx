@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from 'react-router';
 import {
   Alert,
   Button,
-  Card,
   Icon,
   Panel,
   PanelHeader,
@@ -16,7 +15,7 @@ import {
 import { dateField, linesField, masterField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { currencyDef, salesEmployeeDef } from '../../settings/masterDefs';
-import { fillCardClass, useListPage } from '../../../components/form/DataTable';
+import { useListPage } from '../../../components/form/DataTable';
 import { RI_STATUSES, type ReserveInvoice } from '../../../mocks/reserveInvoices';
 import { rateAt, type TaxCode } from '../../../mocks/taxes';
 import { formatDate } from '../../../services/dates';
@@ -136,22 +135,20 @@ export function ReserveInvoiceList() {
           </Alert>
         ) : null}
         {presets.bar(null)}
-        <Card className={fillCardClass(onPage.length)}>
-          {rows_ ? (
-            <Table
-              caption="Reserve invoices"
-              columns={columns}
-              rows={onPage}
-              getRowId={(r) => r.id}
-              sort={sort}
-              onSortChange={setSort}
-              layout="fill"
-              pagination={pagination}
-            />
-          ) : (
-            <Text tone="muted" className="p-4">Loading reserve invoices…</Text>
-          )}
-        </Card>
+        {rows_ ? (
+          <Table
+            caption="Reserve invoices"
+            columns={columns}
+            rows={onPage}
+            getRowId={(r) => r.id}
+            sort={sort}
+            onSortChange={setSort}
+            layout="fill"
+            pagination={pagination}
+          />
+        ) : (
+          <Text tone="muted" className="p-4">Loading reserve invoices…</Text>
+        )}
       </Panel.Body>
       {presets.panel}
     </Panel>

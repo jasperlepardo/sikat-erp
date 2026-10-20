@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from 'react-router';
 import {
   Alert,
   Button,
-  Card,
   Icon,
   Panel,
   PanelHeader,
@@ -17,7 +16,7 @@ import {
 import { dateField, linesField, masterField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { currencyDef, salesEmployeeDef } from '../../settings/masterDefs';
-import { fillCardClass, useListPage } from '../../../components/form/DataTable';
+import { useListPage } from '../../../components/form/DataTable';
 import { DPR_STATUSES, type DownPaymentRequest } from '../../../mocks/apDownPayments';
 import { dprNumber, dprTotal, listDownPayments } from '../../../services/apDownPayments';
 import { formatDate } from '../../../services/dates';
@@ -119,24 +118,22 @@ export function DprList() {
       <Panel.Body className="flex flex-col gap-2">
         {notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : null}
         {presets.bar(null)}
-        <Card className={fillCardClass(visible.length)}>
-          {!requests ? (
-            <Text tone="muted" className="p-4">Loading down payment requests…</Text>
-          ) : requests.length ? (
-            <Table
-              caption="A/P down payment requests"
-              columns={columns}
-              rows={visible}
-              getRowId={(d) => d.id}
-              sort={sort}
-              onSortChange={setSort}
-              layout="fill"
-              pagination={pagination}
-            />
-          ) : (
-            <Text tone="muted" className="p-4">No down payment requests yet. Start one from a purchase order (You can also › Copy to A/P down payment request), or with New down payment request.</Text>
-          )}
-        </Card>
+        {!requests ? (
+          <Text tone="muted" className="p-4">Loading down payment requests…</Text>
+        ) : requests.length ? (
+          <Table
+            caption="A/P down payment requests"
+            columns={columns}
+            rows={visible}
+            getRowId={(d) => d.id}
+            sort={sort}
+            onSortChange={setSort}
+            layout="fill"
+            pagination={pagination}
+          />
+        ) : (
+          <Text tone="muted" className="p-4">No down payment requests yet. Start one from a purchase order (You can also › Copy to A/P down payment request), or with New down payment request.</Text>
+        )}
       </Panel.Body>
       {presets.panel}
     </Panel>

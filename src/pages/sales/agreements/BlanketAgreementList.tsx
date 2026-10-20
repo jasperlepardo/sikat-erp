@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from 'react-router';
 import {
   Alert,
   Button,
-  Card,
   Icon,
   Panel,
   PanelHeader,
@@ -15,7 +14,7 @@ import {
 } from '@jasperlepardo/sikat-design-system';
 import { dateField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
-import { fillCardClass, useListPage } from '../../../components/form/DataTable';
+import { useListPage } from '../../../components/form/DataTable';
 import { BA_STATUSES, type BlanketAgreement, type BaStatus } from '../../../mocks/blanketAgreements';
 import { formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
@@ -160,22 +159,20 @@ export function BlanketAgreementList() {
       <Panel.Body className="flex flex-col gap-2">
         {notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : null}
         {presets.bar(null)}
-        <Card className={fillCardClass(paginated.length)}>
-          {agreements ? (
-            <Table
-              caption="Blanket agreements"
-              columns={columns}
-              rows={paginated}
-              getRowId={(ba) => ba.id}
-              sort={sort}
-              onSortChange={setSort}
-              layout="fill"
-              pagination={pagination}
-            />
-          ) : (
-            <Text tone="muted" className="p-4">Loading agreements…</Text>
-          )}
-        </Card>
+        {agreements ? (
+          <Table
+            caption="Blanket agreements"
+            columns={columns}
+            rows={paginated}
+            getRowId={(ba) => ba.id}
+            sort={sort}
+            onSortChange={setSort}
+            layout="fill"
+            pagination={pagination}
+          />
+        ) : (
+          <Text tone="muted" className="p-4">Loading agreements…</Text>
+        )}
       </Panel.Body>
       {presets.panel}
     </Panel>

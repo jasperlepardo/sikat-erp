@@ -4,7 +4,6 @@ import {
   Alert,
   Badge,
   Button,
-  Card,
   Icon,
   Panel,
   PanelHeader,
@@ -16,7 +15,7 @@ import {
 } from '@jasperlepardo/sikat-design-system';
 import { dateField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
-import { fillCardClass, useListPage } from '../../../components/form/DataTable';
+import { useListPage } from '../../../components/form/DataTable';
 import { QUOTATION_STATUSES, type Quotation } from '../../../mocks/quotations';
 import { formatDate, todayISO } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
@@ -134,22 +133,20 @@ export function QuotationList() {
       <Panel.Body className="flex flex-col gap-2">
         {notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : null}
         {presets.bar(null)}
-        <Card className={fillCardClass(onPage.length)}>
-          {quotes ? (
-            <Table
-              caption="Quotations"
-              columns={columns}
-              rows={onPage}
-              getRowId={(q) => q.id}
-              sort={sort}
-              onSortChange={setSort}
-              layout="fill"
-              pagination={pagination}
-            />
-          ) : (
-            <Text tone="muted" className="p-4">Loading quotations…</Text>
-          )}
-        </Card>
+        {quotes ? (
+          <Table
+            caption="Quotations"
+            columns={columns}
+            rows={onPage}
+            getRowId={(q) => q.id}
+            sort={sort}
+            onSortChange={setSort}
+            layout="fill"
+            pagination={pagination}
+          />
+        ) : (
+          <Text tone="muted" className="p-4">Loading quotations…</Text>
+        )}
       </Panel.Body>
       {presets.panel}
     </Panel>

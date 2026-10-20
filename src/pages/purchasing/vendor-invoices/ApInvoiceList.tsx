@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from 'react-router';
 import {
   Alert,
   Button,
-  Card,
   Icon,
   Panel,
   PanelHeader,
@@ -24,7 +23,7 @@ import { useAsync } from '../../../services/useAsync';
 import { dateField, linesField, masterField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { currencyDef, salesEmployeeDef } from '../../settings/masterDefs';
-import { fillCardClass, useListPage } from '../../../components/form/DataTable';
+import { useListPage } from '../../../components/form/DataTable';
 import { AP_LIST_PATH, AP_STATUS_INTENT } from './detail/ApInvoiceDetail';
 
 export function ApInvoiceList() {
@@ -146,22 +145,20 @@ export function ApInvoiceList() {
           </Alert>
         ) : null}
         {presets.bar(null)}
-        <Card className={fillCardClass(visible.length)}>
-          {invoices ? (
-            <Table
-              caption="A/P invoices"
-              columns={columns}
-              rows={visible}
-              getRowId={(inv) => inv.id}
-              sort={sort}
-              onSortChange={setSort}
-              layout="fill"
-              pagination={pagination}
-            />
-          ) : (
-            <Text tone="muted" className="p-4">Loading bills…</Text>
-          )}
-        </Card>
+        {invoices ? (
+          <Table
+            caption="A/P invoices"
+            columns={columns}
+            rows={visible}
+            getRowId={(inv) => inv.id}
+            sort={sort}
+            onSortChange={setSort}
+            layout="fill"
+            pagination={pagination}
+          />
+        ) : (
+          <Text tone="muted" className="p-4">Loading bills…</Text>
+        )}
       </Panel.Body>
       {presets.panel}
     </Panel>

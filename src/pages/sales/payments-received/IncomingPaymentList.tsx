@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from 'react-router';
 import {
   Alert,
   Button,
-  Card,
   Icon,
   Panel,
   PanelHeader,
@@ -16,7 +15,7 @@ import {
 import { choiceField, dateField, masterField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { currencyDef } from '../../settings/masterDefs';
-import { fillCardClass, useListPage } from '../../../components/form/DataTable';
+import { useListPage } from '../../../components/form/DataTable';
 import { INCOMING_STATUSES, type IncomingPayment } from '../../../mocks/incomingPayments';
 import { formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
@@ -127,22 +126,20 @@ export function IncomingPaymentList() {
           </Alert>
         ) : null}
         {presets.bar(null)}
-        <Card className={fillCardClass(onPage.length)}>
-          {orders ? (
-            <Table
-              caption="Incoming payments"
-              columns={columns}
-              rows={onPage}
-              getRowId={(so) => so.id}
-              sort={sort}
-              onSortChange={setSort}
-              layout="fill"
-              pagination={pagination}
-            />
-          ) : (
-            <Text tone="muted" className="p-4">Loading payments…</Text>
-          )}
-        </Card>
+        {orders ? (
+          <Table
+            caption="Incoming payments"
+            columns={columns}
+            rows={onPage}
+            getRowId={(so) => so.id}
+            sort={sort}
+            onSortChange={setSort}
+            layout="fill"
+            pagination={pagination}
+          />
+        ) : (
+          <Text tone="muted" className="p-4">Loading payments…</Text>
+        )}
       </Panel.Body>
       {presets.panel}
     </Panel>

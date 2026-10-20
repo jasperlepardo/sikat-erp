@@ -4,7 +4,6 @@ import { formatDate } from '../../../services/dates';
 import {
   Alert,
   Button,
-  Card,
   Icon,
   Panel,
   PanelHeader,
@@ -24,7 +23,7 @@ import { branches, departments } from '../../../services/peopleMasters';
 import { PR_LIST_PATH, STATUS_INTENT } from './detail/PurchaseRequestDetail';
 import { dateField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
-import { fillCardClass, useListPage } from '../../../components/form/DataTable';
+import { useListPage } from '../../../components/form/DataTable';
 
 export function PurchaseRequestList() {
   const navigate = useNavigate();
@@ -177,22 +176,20 @@ export function PurchaseRequestList() {
           </Alert>
         ) : null}
         {presets.bar(null)}
-        <Card className={fillCardClass(visible.length)}>
-          {requests ? (
-            <Table
-              caption="Purchase requests"
-              columns={columns}
-              rows={visible}
-              getRowId={(r) => r.id}
-              sort={sort}
-              onSortChange={setSort}
-              layout="fill"
-              pagination={pagination}
-            />
-          ) : (
-            <Text tone="muted" className="p-4">Loading purchase requests…</Text>
-          )}
-        </Card>
+        {requests ? (
+          <Table
+            caption="Purchase requests"
+            columns={columns}
+            rows={visible}
+            getRowId={(r) => r.id}
+            sort={sort}
+            onSortChange={setSort}
+            layout="fill"
+            pagination={pagination}
+          />
+        ) : (
+          <Text tone="muted" className="p-4">Loading purchase requests…</Text>
+        )}
       </Panel.Body>
       {presets.panel}
     </Panel>
