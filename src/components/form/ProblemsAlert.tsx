@@ -12,11 +12,8 @@ export function ProblemsAlert<Tab extends string>({
   problems,
   tabLabel,
   onOpenTab,
-  title,
 }: {
   problems: Problem<Tab>[];
-  /** Overrides "Fix N fields to save". */
-  title?: (count: number) => string;
   tabLabel: (tab: Tab) => string | undefined;
   onOpenTab?: (tab: Tab) => void;
 }) {
@@ -25,7 +22,7 @@ export function ProblemsAlert<Tab extends string>({
     <Alert
       intent="danger"
       variant="outline"
-      title={title ? title(problems.length) : `Fix ${problems.length} field${problems.length === 1 ? '' : 's'} to save`}
+      title={`Fix ${problems.length} field${problems.length === 1 ? '' : 's'} to save`}
     >
       <ul className="list-disc pl-5">
         {problems.map((p) => (

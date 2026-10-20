@@ -117,7 +117,6 @@ const APP_MODULES: SideNavItem[] = [
     ['Dashboard', 'dashboard'],
     ['Accounts', 'account_balance'],
     ['Reconciliation', 'check_box'],
-    ['Outgoing Payments', 'payments'],
     ['Deposits', 'savings'],
     ['Checks', 'receipt'],
     ['Cards', 'credit_card'],

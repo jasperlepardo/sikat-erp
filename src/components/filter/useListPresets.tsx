@@ -116,7 +116,6 @@ export function useListPresets<T>({
     bar,
     panel: panelEl,
     filter: views.filter,
-    setFilter,
     sort: views.sort,
     setSort: views.setSort,
     query,
