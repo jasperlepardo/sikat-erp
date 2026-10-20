@@ -70,6 +70,9 @@ const DprList = page(() => import('../pages/purchasing/down-payment-requests/Dpr
 const DprDetail = page(() => import('../pages/purchasing/down-payment-requests/detail/DprDetail'), 'DprDetail');
 const PaymentList = page(() => import('../pages/purchasing/payments-made/PaymentList'), 'PaymentList');
 const PaymentDetail = page(() => import('../pages/purchasing/payments-made/detail/PaymentDetail'), 'PaymentDetail');
+const PayablesPage = page(() => import('../pages/banking/outgoing-payments/PayablesPage'), 'PayablesPage');
+const BankPaymentsList = page(() => import('../pages/banking/outgoing-payments/PaymentsList'), 'PaymentsList');
+const OutgoingPaymentDetail = page(() => import('../pages/banking/outgoing-payments/detail/OutgoingPaymentDetail'), 'OutgoingPaymentDetail');
 const GoodsReturnsList = page(() => import('../pages/purchasing/goods-returns/GoodsReturnsList'), 'GoodsReturnsList');
 const DebitMemosList = page(() => import('../pages/purchasing/debit-memos/DebitMemosList'), 'DebitMemosList');
 const GoodsReturnDetail = page(() => import('../pages/purchasing/goods-returns/GoodsReturnDetail'), 'GoodsReturnDetail');
@@ -172,6 +175,9 @@ export const router = createHashRouter([
           { path: 'purchasing/down-payment-requests/:id/:tab?', element: <DprDetail /> },
           { path: 'purchasing/outgoing-payments', element: <PaymentList /> },
           { path: 'purchasing/outgoing-payments/:id/:tab?', element: <PaymentDetail /> },
+          { path: 'banking/outgoing-payments', element: <PayablesPage /> },
+          { path: 'banking/outgoing-payments/payments', element: <BankPaymentsList /> },
+          { path: 'banking/outgoing-payments/:id/:tab?', element: <OutgoingPaymentDetail /> },
 
 
 

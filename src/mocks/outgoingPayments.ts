@@ -84,6 +84,8 @@ export interface CardRow {
   cardBrandId: string;
   account: string;
   voucherNo: string;
+  /** Last 4 digits of the card, never the full number. */
+  last4?: string;
   payments: number;
   amount: number;
 }
@@ -138,6 +140,9 @@ export interface OutgoingPayment {
 
   means: PaymentMeans;
   cancelDate: string;
+  /** Why it was cancelled, and by whom (Banking › Outgoing Payments asks for both). */
+  cancelReason?: string;
+  cancelledBy?: string;
 }
 
 export const PAYMENT_SERIES: DocumentSeries[] = [

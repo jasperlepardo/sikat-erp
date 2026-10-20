@@ -59,9 +59,9 @@ export const defaultSortValue = (row: unknown, key: string): string | number => 
 };
 
 /** Manages pagination state for a list page. Returns `resetPage` and `paginate(rows)`. */
-export function useListPage() {
+export function useListPage(initialPageSize = DEFAULT_PAGE_SIZE) {
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const [pageSize, setPageSize] = useState(initialPageSize);
 
   const resetPage = useCallback(() => setPage(1), []);
 

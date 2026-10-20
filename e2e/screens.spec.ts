@@ -76,6 +76,10 @@ const ROUTES = [
   'inventory/stock-counts/postings/ip-001',
   'inventory/warehouses-and-bins',
   'inventory/price-lists',
+  // Banking.
+  'banking/outgoing-payments',
+  'banking/outgoing-payments/payments',
+  'banking/outgoing-payments/new',
   // Accounting.
   'accounting/chart-of-accounts',
   'accounting/journal-entries',
