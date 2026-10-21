@@ -15,10 +15,14 @@ export const PR_STATUSES: PrStatus[] = ['Open', 'Closed'];
 export type PrItemType = 'Item' | 'Service';
 export const PR_ITEM_TYPES: PrItemType[] = ['Item', 'Service'];
 
+/** How the Contents grid is shown: line by line, or collapsed to one row per item. */
+export type PrSummaryType = 'No Summary' | 'By Item';
+export const PR_SUMMARY_TYPES: PrSummaryType[] = ['No Summary', 'By Item'];
+
 export interface PrLine {
   id: string;
-  /** Preferred or suggested vendor — informational only, carries forward to PO/RFQ. */
-  vendorName: string;
+  /** Preferred or suggested vendor (Business Partner id, vendor role) — informational, carries forward to PO/RFQ. '' = none. */
+  vendorId: string;
   itemId: string;
   itemNo: string;
   itemDescription: string;
@@ -39,6 +43,8 @@ export interface PrLine {
   departmentId: string;
   freeText: string;
   priceListId: string;
+  /** Linked requisition reference — traceability only. */
+  requisitionSlipNo: string;
   status: 'Open' | 'Closed';
 }
 
@@ -69,6 +75,8 @@ export interface PurchaseRequest {
 
   // Contents
   itemType: PrItemType;
+  /** Display mode for the Contents grid: line by line, or grouped by item. */
+  summaryType: PrSummaryType;
   lines: PrLine[];
 
   // Footer
@@ -97,7 +105,7 @@ export const PR_SERIES: DocumentSeries[] = [
 
 export const newPrLine = (patch: Partial<PrLine> = {}): PrLine => ({
   id: `ln-${crypto.randomUUID().slice(0, 8)}`,
-  vendorName: '',
+  vendorId: '',
   itemId: '',
   itemNo: '',
   itemDescription: '',
@@ -114,6 +122,7 @@ export const newPrLine = (patch: Partial<PrLine> = {}): PrLine => ({
   departmentId: '',
   freeText: '',
   priceListId: plId('Last purchase price'),
+  requisitionSlipNo: '',
   status: 'Open',
   ...patch,
 });
@@ -136,6 +145,7 @@ export function blankPurchaseRequest(today: string, requester: Employee | undefi
     requiredDate: '',
     closeDate: '',
     itemType: 'Item',
+    summaryType: 'No Summary',
     lines: [],
     ownerId: requester?.salesEmployeeId ?? '',
     freight: 0,
@@ -174,12 +184,16 @@ const pr = (
   id: string,
   docNum: number,
   patch: Partial<Omit<PurchaseRequest, 'id'>>,
-): PurchaseRequest => ({
-  ...blankPurchaseRequest('2026-09-01', undefined, ''),
-  id,
-  docNum,
-  ...patch,
-} as PurchaseRequest);
+): PurchaseRequest => {
+  const doc = {
+    ...blankPurchaseRequest('2026-09-01', undefined, ''),
+    id,
+    docNum,
+    ...patch,
+  } as PurchaseRequest;
+  // Seeded lines inherit the header's required date (as UI-added lines do) unless they set their own.
+  return { ...doc, lines: doc.lines.map((l) => (l.requiredDate ? l : { ...l, requiredDate: doc.requiredDate })) };
+};
 
 export const SEED_PURCHASE_REQUESTS: PurchaseRequest[] = [
   pr('prq-001', 1, {

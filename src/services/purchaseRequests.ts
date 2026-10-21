@@ -56,6 +56,37 @@ export const lineNet = (l: Pick<PrLine, 'requiredQty' | 'infoPrice' | 'discountP
   Math.round(l.requiredQty * priceAfterDiscount(l) * 100) / 100;
 export const inventoryQty = (l: PrLine) => l.requiredQty * (l.itemsPerUnit || 1);
 
+/**
+ * Display-only: collapse the Contents grid to one row per item, summing quantities
+ * and nets. Grouped rows carry a synthetic `sum-…` id and an averaged `infoPrice`
+ * so `lineNet` still ties to the summed net. The footer totals keep using the real
+ * lines, so this never affects amounts — only how the grid is shown.
+ */
+export function summarizeLines(lines: PrLine[]): PrLine[] {
+  const groups = new Map<string, PrLine[]>();
+  for (const l of lines) {
+    const key = l.itemId || l.id; // un-itemed rows stay separate
+    const g = groups.get(key);
+    if (g) g.push(l);
+    else groups.set(key, [l]);
+  }
+  return [...groups.values()].map((g) => {
+    if (g.length === 1) return g[0];
+    const requiredQty = g.reduce((s, l) => s + l.requiredQty, 0);
+    const openQty = g.reduce((s, l) => s + Math.max(0, l.openQty), 0);
+    const net = g.reduce((s, l) => s + lineNet(l), 0);
+    const first = g[0];
+    return {
+      ...first,
+      id: `sum-${first.itemId || first.id}`,
+      requiredQty,
+      openQty,
+      discountPct: 0,
+      infoPrice: requiredQty ? net / requiredQty : 0,
+    };
+  });
+}
+
 // ── Totals ────────────────────────────────────────────────────────────────────
 
 export interface PrTotals {

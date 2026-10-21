@@ -24,6 +24,7 @@ import { loadInventoryMasters } from '../../../../services/inventoryMasters';
 import { listItems } from '../../../../services/items';
 import { taxCodes, taxGroups } from '../../../../services/masterData';
 import { employeeName, employees } from '../../../../services/employees';
+import { listPartnersByRole } from '../../../../services/partners';
 import {
   closePurchaseRequest,
   getPurchaseRequest,
@@ -122,8 +123,9 @@ function PurchaseRequestForm() {
       loadInventoryMasters(),
       taxCodes.list(),
       taxGroups.list(),
-    ]).then(([emps, items, inv, codes, groups]) => {
-      setM({ employees: emps, items, inv, tax: { codes, groups, company: undefined as never, withholding: [], withholdingGroups: [] } });
+      listPartnersByRole('vendor'),
+    ]).then(([emps, items, inv, codes, groups, vendors]) => {
+      setM({ employees: emps, items, inv, tax: { codes, groups, company: undefined as never, withholding: [], withholdingGroups: [] }, vendors });
     });
     if (isNew || !id) return;
     let cancelled = false;

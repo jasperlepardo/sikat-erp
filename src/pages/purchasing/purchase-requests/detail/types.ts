@@ -1,5 +1,6 @@
 import type { Errors } from '../../../../components/form/fields';
 import type { Item } from '../../../../mocks/items';
+import type { Partner } from '../../../../mocks/partners';
 import type { PrLine, PurchaseRequest } from '../../../../mocks/purchaseRequests';
 import { newPrLine } from '../../../../mocks/purchaseRequests';
 import type { InventoryMasters } from '../../../../services/inventoryMasters';
@@ -20,6 +21,8 @@ export interface PrMasters {
   items: Item[];
   inv: InventoryMasters;
   tax: TaxMasterData;
+  /** Vendors (Business Partners, vendor role) — for the line's preferred-vendor lookup. */
+  vendors: Partner[];
 }
 
 export type PrSectionProps = {
@@ -82,6 +85,8 @@ export function lineFromItem(item: Item, draft: PrDraft, m: PrMasters, base: Par
     uomName: uom?.name ?? uomCode,
     itemsPerUnit: itemsPerUom(item, uomCode) ?? 1,
     warehouse: item.inventoryItem ? branchWarehouse(branches.snapshot().find((b) => b.id === draft.branchId), m.inv.warehouses) : '',
+    // Charge the line to the requester's department by default (overridable per line), like warehouse from the branch.
+    departmentId: base.departmentId ?? draft.departmentId,
     infoPrice: price,
     taxCode,
     requiredQty: qty,
