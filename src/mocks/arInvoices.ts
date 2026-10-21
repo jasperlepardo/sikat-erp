@@ -237,19 +237,26 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 const RATE: Record<string, number> = { '31': 12, '32': 0, '33': 0 };
 
 /**
- * What a seeded invoice asks the customer to pay: total (net + VAT) less the 1% / 2% creditable
- * withholding on WTax Liable lines — the same arithmetic as services/arInvoices.
+ * What a seeded invoice asks the customer to pay: total (net + VAT) less the creditable withholding
+ * on WTax Liable lines — 1% goods / 2% services EWT, plus the final 5% VAT a government buyer withholds.
+ * The same arithmetic as arWithholding in services/arInvoices.
  */
-export function seedNetDue(a: Pick<ArInvoice, 'lines' | 'docType'>) {
+export function seedNetDue(a: Pick<ArInvoice, 'lines' | 'docType' | 'customerId'>) {
   let total = 0;
   let goods = 0;
   let services = 0;
+  let vatable = 0;
   for (const l of a.lines) {
     const net = round2(l.quantity * l.unitPrice * (1 - l.discountPct / 100));
     total += net + round2((net * (RATE[l.taxCode] ?? 0)) / 100);
-    if (l.wtaxLiable) (a.docType === 'Service' ? (services += net) : (goods += net));
+    if (l.wtaxLiable) {
+      a.docType === 'Service' ? (services += net) : (goods += net);
+      if ((RATE[l.taxCode] ?? 0) > 0) vatable += net;
+    }
   }
-  const wtax = round2(goods * 0.01) + round2(services * 0.02);
+  // Government buyers also withhold a final 5% of the VAT on top of the EWT.
+  const gov = SEED_PARTNERS.find((p) => p.id === a.customerId)?.businessType === 'Government';
+  const wtax = round2(goods * 0.01) + round2(services * 0.02) + (gov ? round2(vatable * 0.05) : 0);
   return round2(round2(total) - wtax);
 }
 
