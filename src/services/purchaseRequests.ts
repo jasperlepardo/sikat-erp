@@ -20,7 +20,7 @@ const seedRequests = () => {
     ...pr,
     lines: pr.lines.map((l) => {
       const item = items.get(l.itemId);
-      return item ? { ...l, infoPrice: listPrice(item, LAST_PURCHASE_PRICE_LIST_ID, l.uomCode) } : l;
+      return item ? { ...l, unitPrice: listPrice(item, LAST_PURCHASE_PRICE_LIST_ID, l.uomCode) } : l;
     }),
   }));
 };
@@ -49,16 +49,16 @@ export const prNumber = (pr: Pick<PurchaseRequest, 'seriesId' | 'docNum' | 'post
 
 export const openQty = (l: PrLine) => Math.max(0, l.openQty);
 /** Quantity already copied to an RFQ or PO. A copied line keeps its item, UoM and warehouse. */
-export const copiedQty = (l: Pick<PrLine, 'requiredQty' | 'openQty'>) => Math.max(0, l.requiredQty - l.openQty);
-export const priceAfterDiscount = (l: Pick<PrLine, 'infoPrice' | 'discountPct'>) =>
-  l.infoPrice * (1 - l.discountPct / 100);
-export const lineNet = (l: Pick<PrLine, 'requiredQty' | 'infoPrice' | 'discountPct'>) =>
-  Math.round(l.requiredQty * priceAfterDiscount(l) * 100) / 100;
-export const inventoryQty = (l: PrLine) => l.requiredQty * (l.itemsPerUnit || 1);
+export const copiedQty = (l: Pick<PrLine, 'quantity' | 'openQty'>) => Math.max(0, l.quantity - l.openQty);
+export const priceAfterDiscount = (l: Pick<PrLine, 'unitPrice' | 'discountPct'>) =>
+  l.unitPrice * (1 - l.discountPct / 100);
+export const lineNet = (l: Pick<PrLine, 'quantity' | 'unitPrice' | 'discountPct'>) =>
+  Math.round(l.quantity * priceAfterDiscount(l) * 100) / 100;
+export const inventoryQty = (l: PrLine) => l.quantity * (l.itemsPerUnit || 1);
 
 /**
  * Display-only: collapse the Contents grid to one row per item, summing quantities
- * and nets. Grouped rows carry a synthetic `sum-…` id and an averaged `infoPrice`
+ * and nets. Grouped rows carry a synthetic `sum-…` id and an averaged `unitPrice`
  * so `lineNet` still ties to the summed net. The footer totals keep using the real
  * lines, so this never affects amounts — only how the grid is shown.
  */
@@ -72,17 +72,17 @@ export function summarizeLines(lines: PrLine[]): PrLine[] {
   }
   return [...groups.values()].map((g) => {
     if (g.length === 1) return g[0];
-    const requiredQty = g.reduce((s, l) => s + l.requiredQty, 0);
+    const quantity = g.reduce((s, l) => s + l.quantity, 0);
     const openQty = g.reduce((s, l) => s + Math.max(0, l.openQty), 0);
     const net = g.reduce((s, l) => s + lineNet(l), 0);
     const first = g[0];
     return {
       ...first,
       id: `sum-${first.itemId || first.id}`,
-      requiredQty,
+      quantity,
       openQty,
       discountPct: 0,
-      infoPrice: requiredQty ? net / requiredQty : 0,
+      unitPrice: quantity ? net / quantity : 0,
     };
   });
 }
@@ -102,8 +102,8 @@ export function prTotals(
   rateOf: (taxCode: string) => number,
 ): PrTotals {
   const round2 = (n: number) => Math.round(n * 100) / 100;
-  const beforeDiscount = round2(pr.lines.reduce((n, l) => n + l.requiredQty * l.infoPrice, 0));
-  const discount = round2(pr.lines.reduce((n, l) => n + l.requiredQty * l.infoPrice * (l.discountPct / 100), 0));
+  const beforeDiscount = round2(pr.lines.reduce((n, l) => n + l.quantity * l.unitPrice, 0));
+  const discount = round2(pr.lines.reduce((n, l) => n + l.quantity * l.unitPrice * (l.discountPct / 100), 0));
   const net = round2(beforeDiscount - discount);
   const tax = round2(
     pr.lines.reduce((n, l) => {

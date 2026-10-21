@@ -43,8 +43,6 @@ export function LcDocumentCard({ draft, update, errors, statusMoves, readOnly }:
         />
         {h.date('postingDate', 'Posting date', { required: true, error: errors.postingDate, disabled: readOnly })}
         {h.date('dueDate', 'Due date', { disabled: readOnly })}
-        {h.text('journalRemark', 'Journal remark', { disabled: readOnly })}
-        {h.text('remarks', 'Remarks', { disabled: readOnly })}
       </Fields>
     </Section>
   );

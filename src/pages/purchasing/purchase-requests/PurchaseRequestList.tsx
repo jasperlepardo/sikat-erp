@@ -65,7 +65,7 @@ export function PurchaseRequestList() {
     const q = query.trim().toLowerCase();
     const filtered = presets.apply(requests ?? []).filter((r) =>
       !q ||
-      [prNumber(r), r.requesterName, branchOf(r), ...r.lines.map((l) => `${l.itemNo} ${l.itemDescription}`)]
+      [prNumber(r), r.requesterName, branchOf(r), ...r.lines.map((l) => `${l.itemNo} ${l.description}`)]
         .join(' ')
         .toLowerCase()
         .includes(q),

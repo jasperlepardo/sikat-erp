@@ -27,20 +27,20 @@ export const rfqNumber = (q: Pick<Rfq, 'seriesId' | 'docNum' | 'postingDate'>) =
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
-export const lineNet = (l: Pick<RfqLine, 'requiredQty' | 'unitPrice' | 'discountPct'>) =>
-  round2(l.requiredQty * l.unitPrice * (1 - l.discountPct / 100));
+export const lineNet = (l: Pick<RfqLine, 'quantity' | 'unitPrice' | 'discountPct'>) =>
+  round2(l.quantity * l.unitPrice * (1 - l.discountPct / 100));
 
-/** Footer totals in the document currency, using requiredQty as the volume basis. */
+/** Footer totals in the document currency, using quantity as the volume basis. */
 export function rfqTotals(
   q: Pick<Rfq, 'discountPct' | 'freight' | 'freightTaxCode'> & { lines: RfqLine[] },
   rateOf: (taxCode: string) => number,
   rounding: RoundingRule = 'No rounding',
   isReverseCharge: (taxCode: string) => boolean = () => false,
 ): PoTotals {
-  // Map RfqLine → the shape poTotals expects, using requiredQty as quantity.
+  // Map RfqLine → the shape poTotals expects, using quantity as quantity.
   const mapped = q.lines.map((l) => ({
     itemId: l.itemId,
-    quantity: l.requiredQty,
+    quantity: l.quantity,
     unitPrice: l.unitPrice,
     discountPct: l.discountPct,
     taxCode: l.taxCode,

@@ -10,7 +10,8 @@ import type { Company } from '../../../../mocks/companies';
 import type { Item } from '../../../../mocks/items';
 import type { RfqInput } from '../../../../services/rfqs';
 import { itemsPerUom } from '../../../../mocks/items';
-import { vendorDeliveryLocation } from '../../../../mocks/itemMasters';
+import { receivesFromVendors, vendorDeliveryLocation } from '../../../../mocks/itemMasters';
+import { companyOption, vendorAddressOption, warehouseOption, type VendorAddressField } from '../../shared/vendorAddresses';
 
 import { BLANKET_AGREEMENTS } from '../../../../mocks/purchaseOrders';
 import { newRfqLine, type RfqLine } from '../../../../mocks/rfqs';
@@ -85,6 +86,31 @@ export function buildContext(draft: RfqDraft, m: RfqMasters): RfqContext {
 export const proposedTaxCode = (item: Item, vendor: Partner | undefined, m: RfqMasters, date: string) =>
   vendor ? (determineTax('Purchase', item, vendor, m.tax, date).taxCode?.code ?? '') : '';
 
+/** The ship-to / pay-to pickers for the RFQ vendor details panel. */
+export function vendorAddressFields(m: RfqMasters, vendor: Partner): VendorAddressField[] {
+  const vendorAddrs = vendor.addresses ?? [];
+  return [
+    {
+      key: 'shipTo',
+      label: 'Ship to',
+      placeholder: 'Select a delivery address',
+      allowNew: true,
+      options: () => [
+        companyOption(m.company),
+        ...m.inv.warehouses.filter((w) => w.active && receivesFromVendors(w)).map((w) => warehouseOption(w)),
+        ...vendorAddrs.map((a) => vendorAddressOption(a, vendor.name)),
+      ],
+    },
+    {
+      key: 'payTo',
+      label: 'Pay to',
+      placeholder: 'Select vendor payment address',
+      allowNew: true,
+      options: () => vendorAddrs.map((a) => vendorAddressOption(a, vendor.name)),
+    },
+  ];
+}
+
 /** Default ship-to: warehouse of first inventory line, or company address for service-only. */
 export function defaultShipTo(lines: RfqLine[], m: RfqMasters) {
   const stocked = lines.find((l) => l.itemId && m.items.find((i) => i.id === l.itemId)?.inventoryItem);
@@ -94,13 +120,13 @@ export function defaultShipTo(lines: RfqLine[], m: RfqMasters) {
   return lines.length ? formatAddress(m.company.address, m.company.name) : '';
 }
 
-export function linePricing(item: Item, l: Pick<RfqLine, 'priceListId' | 'uomCode' | 'requiredQty'>, draft: RfqDraft, ctx: RfqContext) {
+export function linePricing(item: Item, l: Pick<RfqLine, 'priceListId' | 'uomCode' | 'quantity'>, draft: RfqDraft, ctx: RfqContext) {
   const p = determinePrice({
     item,
     partner: ctx.vendor,
     priceListId: l.priceListId,
     uom: l.uomCode,
-    quantity: l.requiredQty,
+    quantity: l.quantity,
     date: draft.postingDate,
   });
   return { unitPrice: ctx.fx ? Math.round((p.price / ctx.fx) * 100) / 100 : 0, discountPct: p.discountPct, source: p.source };

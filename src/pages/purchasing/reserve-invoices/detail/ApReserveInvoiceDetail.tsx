@@ -46,7 +46,9 @@ import { useDocTitle } from '../../../../services/useDocTitle';
 import { NotFound, PrevNext, neighbours } from '../../../../components/form/DetailNav';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
 import { buildApriContext, orderNumbersOf, riLinesFromPo, type ApriDraft, type ApriMasters } from './types';
-import { ApriVendorCard } from './ApriVendorCard';
+import { VendorCard } from '../../shared/VendorCard';
+import { VendorDetailsPanel } from '../../shared/VendorDetailsPanel';
+import { receivingVendorAddressFields } from '../../shared/vendorAddresses';
 import { ApriDocumentCard, AP_RI_STATUS_INTENT } from './ApriDocumentCard';
 import { ApriContentsCard } from './ApriContentsCard';
 import { ApriAccountingCard } from './ApriAccountingCard';
@@ -112,6 +114,7 @@ function ApReserveInvoiceForm() {
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);
+  const [vendorDetailsOpen, setVendorDetailsOpen] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -270,6 +273,7 @@ function ApReserveInvoiceForm() {
   const sectionProps = { draft, update, errors, m, ctx };
 
   return (
+    <>
     <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
       <Panel className="flex-1">
         <PanelHeader
@@ -283,7 +287,7 @@ function ApReserveInvoiceForm() {
           onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
           onBack={() => navigate(APRI_LIST_PATH)}
           trailing={isNew ? undefined : <PrevNext path={APRI_LIST_PATH} prevId={prevId} nextId={nextId} />}
-          tabs={<Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={PAGES.map((p) => ({ ...p, disabled: isNew && p.value !== 'details' }))} />}
+          tabs={isNew ? undefined : <Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={PAGES.map((p) => ({ ...p }))} />}
           status={
             isNew ? undefined : (
               <div className="flex gap-1">
@@ -322,7 +326,18 @@ function ApReserveInvoiceForm() {
             ) : null}
             <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
               <div className="flex flex-col gap-2 lg:col-span-8">
-                <ApriVendorCard {...sectionProps} pickVendor={pickVendor} />
+                <VendorCard
+                  vendors={m.vendors}
+                  vendorId={draft.vendorId}
+                  vendor={ctx.vendor}
+                  readOnly={ctx.readOnly}
+                  locked={!!ctx.vendor && (ctx.readOnly || ctx.based)}
+                  error={errors.vendorId}
+                  tooltip="Only vendors are listed. Picking one fills the name, contact, currency, terms and control account."
+                  hint={!!ctx.vendor && !ctx.readOnly && ctx.based ? 'Locked while lines copied from its POs are on the invoice.' : undefined}
+                  pickVendor={pickVendor}
+                  onOpenDetails={() => setVendorDetailsOpen(true)}
+                />
                 <ApriContentsCard {...sectionProps} onCopy={copyLines} />
                 <ReferencesTable refs={draft.references} onChange={(references) => update({ references })} readOnly={ctx.readOnly} description="Other documents this invoice refers to." />
                 <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach the vendor's invoice or supporting documents." />
@@ -339,6 +354,28 @@ function ApReserveInvoiceForm() {
         )}
       </Panel>
     </Form>
+    <VendorDetailsPanel
+      draft={draft}
+      update={update}
+      vendor={ctx.vendor}
+      currencies={m.currencies}
+      readOnly={ctx.readOnly}
+      open={vendorDetailsOpen}
+      onClose={() => setVendorDetailsOpen(false)}
+      vendorRefHint="The vendor's invoice no."
+      vendorRefError={errors.vendorRef}
+      currency={{
+        disabled: ctx.readOnly || ctx.based,
+        tooltip: ctx.based
+          ? 'Locked to the currency of the POs the lines came from.'
+          : ctx.vendor?.currency === ALL_CURRENCIES
+          ? 'This vendor takes all currencies — pick the document currency.'
+          : `Defaults to the vendor's currency (${ctx.vendor?.currency ?? '—'}).`,
+        error: errors.currency,
+      }}
+      addresses={ctx.vendor ? receivingVendorAddressFields(m, ctx.vendor, { includeWarehouses: false, shipPlaceholder: 'Delivery address when goods arrive' }) : []}
+    />
+    </>
   );
 }
 

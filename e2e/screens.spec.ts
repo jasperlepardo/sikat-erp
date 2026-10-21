@@ -24,7 +24,8 @@ const ROUTES = [
   // Purchasing documents.
   'purchasing/requests',
   'purchasing/requests/prq-001',
-  'purchasing/quotations',
+  'purchasing/purchase-quotations',
+  'purchasing/purchase-quotations/RFQ-2026-0001',
   'purchasing/purchase-orders',
   'purchasing/purchase-orders/po-001',
   'purchasing/goods-receipts',

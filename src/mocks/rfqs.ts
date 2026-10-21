@@ -3,13 +3,14 @@
  * a vendor asking for pricing on items we intend to buy. No stock committed.
  *
  * Settled here:
- * - Lines track requiredQty (what we need) and quotedQty (vendor's offered amount).
+ * - Lines track quantity (what we need) and quotedQty (vendor's offered amount).
  * - Adding assigns a number and sets status to Open. No stock moves.
  * - Copy to Purchase Order carries quoted prices forward to a new PO draft.
  * - Valid Until dates track whether the quote is still usable.
  * - No warehouse on lines — that is decided when the PO is created.
  */
 import type { Attachment, DocumentSeries } from './common';
+import type { PurchLine } from './purchLine';
 import type { PoReference } from './purchaseOrders';
 import { employeeId, plId, termId } from './masters';
 import { SEED_PARTNERS } from './partners';
@@ -24,7 +25,7 @@ export const RFQ_STATUSES: RfqStatus[] = ['Draft', 'Not Confirmed', 'Open', 'Clo
 
 export type { DocumentSeries };
 
-export interface RfqLine {
+export interface RfqLine extends PurchLine {
   id: string;
   itemId: string;
   itemNo: string;
@@ -34,8 +35,8 @@ export interface RfqLine {
   requiredDate: string;
   /** Date the vendor provided pricing for this line. */
   quotedDate: string;
-  requiredQty: number;
-  /** Vendor's quoted quantity; may differ from requiredQty. 0 = no response yet. */
+  quantity: number;
+  /** Vendor's quoted quantity; may differ from quantity. 0 = no response yet. */
   quotedQty: number;
   uomCode: string;
   uomName: string;
@@ -134,7 +135,7 @@ export const newRfqLine = (patch: Partial<RfqLine> = {}): RfqLine => ({
   description: '',
   requiredDate: '',
   quotedDate: '',
-  requiredQty: 1,
+  quantity: 1,
   quotedQty: 0,
   uomCode: 'pc',
   uomName: 'Piece',
@@ -198,14 +199,14 @@ export function blankRfq(ownerId: string): Omit<Rfq, 'id'> {
 const byItemNo = (itemNo: string) => SEED_ITEMS.find((i) => i.itemNo === itemNo)!;
 const vend = (id: string) => SEED_PARTNERS.find((p) => p.id === id)!;
 
-const rl = (id: string, itemNo: string, requiredQty: number, patch: Partial<RfqLine> = {}): RfqLine => {
+const rl = (id: string, itemNo: string, quantity: number, patch: Partial<RfqLine> = {}): RfqLine => {
   const item = byItemNo(itemNo);
   return newRfqLine({
     id,
     itemId: item.id,
     itemNo: item.itemNo,
     description: item.description || item.name,
-    requiredQty,
+    quantity,
     uomCode: item.purchasingUom,
     uomName: item.purchasingUom === 'pc' ? 'Piece' : item.purchasingUom,
     itemsPerUnit: itemsPerUom(item, item.purchasingUom) ?? 1,

@@ -17,6 +17,7 @@
  *   Both are left out.
  */
 import type { Attachment, DocumentSeries } from './common';
+import type { PurchLine } from './purchLine';
 import { seedBinCode } from './binLocations';
 import { plId } from './masters';
 import { SEED_ITEMS } from './items';
@@ -29,7 +30,7 @@ import { receiptDate } from './supplyPlan';
 export type GrStatus = 'Draft' | 'Not Confirmed' | 'Open' | 'Closed' | 'Cancelled';
 export const GR_STATUSES: GrStatus[] = ['Draft', 'Not Confirmed', 'Open', 'Closed', 'Cancelled'];
 
-export interface GrLine {
+export interface GrLine extends PurchLine {
   id: string;
   itemId: string;
   itemNo: string;

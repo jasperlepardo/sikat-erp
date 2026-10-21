@@ -1,7 +1,8 @@
 import type { Errors } from '../../../../components/form/fields';
 import type { Currency, ExchangeRate } from '../../../../mocks/currencies';
 import { BASE_PRICE_LIST_ID, LAST_PURCHASE_PRICE_LIST_ID, determinePrice } from '../../../../services/priceLists';
-import { vendorDeliveryLocation } from '../../../../mocks/itemMasters';
+import { receivesFromVendors, vendorDeliveryLocation } from '../../../../mocks/itemMasters';
+import { companyOption, vendorAddressOption, warehouseOption, type VendorAddressField } from '../../shared/vendorAddresses';
 import { itemsPerUom, type Item } from '../../../../mocks/items';
 import type { Partner } from '../../../../mocks/partners';
 import type { Company } from '../../../../mocks/companies';
@@ -107,6 +108,43 @@ export function defaultShipTo(lines: PoLine[], m: PoMasters) {
   const stocked = lines.find((l) => l.warehouse && m.items.find((i) => i.id === l.itemId)?.inventoryItem);
   const wh = stocked && m.inv.warehouses.find((w) => w.code === stocked.warehouse);
   return wh ? formatAddress(wh.address, wh.name) : lines.length ? formatAddress(m.company.address, m.company.name) : '';
+}
+
+/** The ship-to / bill-to pickers for the PO vendor details panel. */
+export function vendorAddressFields(draft: PoDraft, m: PoMasters, vendor: Partner): VendorAddressField[] {
+  const ours = defaultShipTo(draft.lines, m);
+  const companyText = formatAddress(m.company.address, m.company.name);
+  const whText = (code: string) => {
+    const wh = m.inv.warehouses.find((w) => w.code === code);
+    return wh ? formatAddress(wh.address, wh.name) : '';
+  };
+  const vendorAddrs = vendor.addresses ?? [];
+  return [
+    {
+      key: 'shipTo',
+      label: 'Ship to',
+      placeholder: 'Select a delivery address',
+      allowNew: true,
+      options: (current) => [
+        companyOption(m.company, ours === companyText ? 'default' : undefined),
+        ...m.inv.warehouses
+          .filter((w) => (w.active && receivesFromVendors(w)) || whText(w.code) === current)
+          .map((w) => warehouseOption(w, ours === formatAddress(w.address, w.name) ? 'default' : undefined)),
+        ...vendorAddrs.map((a) => vendorAddressOption(a, vendor.name, a.id === vendor.defaultShipToId ? "vendor's ship-to" : undefined)),
+      ],
+    },
+    {
+      key: 'billTo',
+      label: 'Bill to',
+      placeholder: 'Select a billing address',
+      options: (current) => [
+        companyOption(m.company, 'default'),
+        ...m.inv.warehouses
+          .filter((w) => w.type === 'office' && (w.active || whText(w.code) === current))
+          .map((w) => warehouseOption(w)),
+      ],
+    },
+  ];
 }
 
 /**

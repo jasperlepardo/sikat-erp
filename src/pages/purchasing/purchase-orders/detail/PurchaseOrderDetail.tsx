@@ -43,7 +43,8 @@ import {
   seriesOf,
 } from '../../../../services/purchaseOrders';
 import { logRejection } from '../../../../services/approvalRules';
-import { PoLinesCard } from './PoLinesCard';
+import { PurchDoc } from '../../shared/PurchDoc';
+import { poDoc } from './poDoc';
 import { PoDeliveryCard } from './PoDeliveryCard';
 import { PoReceiptsTab } from './PoReceiptsTab';
 import { PoJournalPaymentCard } from './PoJournalPaymentCard';
@@ -58,6 +59,7 @@ import {
   formatAddress,
   lineFromItem,
   proposedTaxCode,
+  vendorAddressFields,
   type PoContext,
   type PoDraft,
   type PoMasters,
@@ -69,7 +71,8 @@ import { listGoodsReceipts } from '../../../../services/goodsReceipts';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
 import { NotFound, PrevNext, neighbours } from '../../../../components/form/DetailNav';
-import { PoVendorCard } from './PoVendorCard';
+import { VendorCard } from '../../shared/VendorCard';
+import { VendorDetailsPanel } from '../../shared/VendorDetailsPanel';
 import { PoDocumentCard } from './PoDocumentCard';
 import { PoAssignmentCard } from './PoTotalsCard';
 
@@ -175,7 +178,7 @@ function PurchaseOrderForm() {
 
   const blank = blankPurchaseOrder(CURRENT_USER_ID);
   const approved = !getPurchasingSettings().requirePoApproval;
-  const [draft, setDraft] = useState<PoDraft | null | undefined>(isNew ? { ...(copyFrom ?? { ...blank, lines: [newPoLine()] }), approved } : undefined);
+  const [draft, setDraft] = useState<PoDraft | null | undefined>(isNew ? { ...(copyFrom ?? blank), approved } : undefined);
   const [m, setM] = useState<PoMasters>();
   const [contentTab, setContentTab] = useState<'item' | 'receipts'>('item');
   const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
@@ -191,6 +194,7 @@ function PurchaseOrderForm() {
   const [closeWarning, setCloseWarning] = useState<string>();
   const [saving, setSaving] = useState(false);
   const [showVendorCreate, setShowVendorCreate] = useState(false);
+  const [vendorDetailsOpen, setVendorDetailsOpen] = useState(false);
   const [rejecting, setRejecting] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
 
@@ -386,12 +390,14 @@ function PurchaseOrderForm() {
           onBack={() => navigate(PO_LIST_PATH)}
           trailing={isNew ? undefined : <PrevNext path={PO_LIST_PATH} prevId={prevId} nextId={nextId} />}
           tabs={
-            <Tabs
-              variant="outline"
-              value={page}
-              onValueChange={(v) => setPage(v as PageId)}
-              items={PAGES.map((p) => ({ ...p, disabled: isNew && p.value !== 'details' }))}
-            />
+            isNew ? undefined : (
+              <Tabs
+                variant="outline"
+                value={page}
+                onValueChange={(v) => setPage(v as PageId)}
+                items={PAGES.map((p) => ({ ...p }))}
+              />
+            )
           }
           status={
             isNew ? undefined : (
@@ -455,7 +461,7 @@ function PurchaseOrderForm() {
 
             <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
               <div className="flex flex-col gap-2 lg:col-span-8">
-                <PoVendorCard {...sectionProps} pickVendor={pickVendor} onNewVendor={() => setShowVendorCreate(true)} onVendorSaved={(v) => setM((prev) => prev && { ...prev, vendors: prev.vendors.map((x) => (x.id === v.id ? v : x)) })} />
+                <VendorCard vendors={m.vendors} vendorId={draft.vendorId} vendor={ctx.vendor} readOnly={ctx.readOnly} added={ctx.added} error={errors.vendorId} pickVendor={pickVendor} onNewVendor={() => setShowVendorCreate(true)} onOpenDetails={() => setVendorDetailsOpen(true)} />
                 <Tabs
                   variant="primary"
                   value={contentTab}
@@ -465,7 +471,7 @@ function PurchaseOrderForm() {
                     { value: 'receipts', label: 'Receipts' },
                   ]}
                 />
-                {contentTab === 'item' ? <PoLinesCard {...sectionProps} /> : <PoReceiptsTab draft={draft} />}
+                {contentTab === 'item' ? <PurchDoc {...poDoc(sectionProps)} /> : <PoReceiptsTab draft={draft} />}
                 <ReferencesTable refs={draft.references} onChange={(references) => update({ references })} readOnly={ctx.readOnly} description="Other documents this PO refers to, or that refer to it." />
                 <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach the vendor's quotation, signed PO acknowledgement or order confirmation." />
               </div>
@@ -481,6 +487,29 @@ function PurchaseOrderForm() {
         )}
       </Panel>
     </Form>
+    <VendorDetailsPanel
+      draft={draft}
+      update={update}
+      vendor={ctx.vendor}
+      currencies={m.currencies}
+      readOnly={ctx.readOnly}
+      open={vendorDetailsOpen}
+      onClose={() => setVendorDetailsOpen(false)}
+      onVendorSaved={(v) => setM((prev) => prev && { ...prev, vendors: prev.vendors.map((x) => (x.id === v.id ? v : x)) })}
+      vendorRefHint="The vendor's own reference, e.g. their sales order no."
+      vendorRefError={errors.vendorRef}
+      currency={{
+        disabled: ctx.readOnly || draft.lines.some((l) => l.receivedQty > 0),
+        tooltip: draft.lines.some((l) => l.receivedQty > 0)
+          ? 'Locked: goods were already received on this PO.'
+          : ctx.vendor && ctx.vendor.currency !== ALL_CURRENCIES
+          ? "Defaults to the vendor's currency. You can override it before receiving goods."
+          : 'Pick the document currency for this order.',
+        error: errors.currency,
+        onChange: (currency) => ({ currency, currencyView: 'BP' as const }),
+      }}
+      addresses={ctx.vendor ? vendorAddressFields(draft, m, ctx.vendor) : []}
+    />
     {showVendorCreate && (
       <PoVendorQuickCreate
         initialName=""

@@ -62,7 +62,9 @@ import { linesFromReceipt, orderNumbersOf, toApLine, type ApContext, type ApDraf
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
 import { NotFound, PrevNext, neighbours } from '../../../../components/form/DetailNav';
-import { ApVendorCard } from './ApVendorCard';
+import { VendorCard } from '../../shared/VendorCard';
+import { VendorDetailsPanel } from '../../shared/VendorDetailsPanel';
+import { receivingVendorAddressFields } from '../../shared/vendorAddresses';
 import { ApDocumentCard } from './ApDocumentCard';
 import { ApTotalsCard } from './ApTotalsCard';
 import { ApJournalCard } from './ApJournalCard';
@@ -162,6 +164,7 @@ function ApInvoiceForm() {
   const [saving, setSaving] = useState(false);
   const [rejecting, setRejecting] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
+  const [vendorDetailsOpen, setVendorDetailsOpen] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -391,7 +394,7 @@ function ApInvoiceForm() {
           trailing={
             isNew ? undefined : <PrevNext path={AP_LIST_PATH} prevId={prevId} nextId={nextId} />
           }
-          tabs={<Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={PAGES.map((p) => ({ ...p, disabled: isNew && p.value !== 'details' }))} />}
+          tabs={isNew ? undefined : <Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={PAGES.map((p) => ({ ...p }))} />}
           status={
             isNew ? undefined : (
               <div className="flex gap-1">
@@ -441,7 +444,18 @@ function ApInvoiceForm() {
 
             <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
               <div className="flex flex-col gap-2 lg:col-span-8">
-                <ApVendorCard {...sectionProps} pickVendor={pickVendor} />
+                <VendorCard
+                  vendors={m.vendors}
+                  vendorId={draft.vendorId}
+                  vendor={ctx.vendor}
+                  readOnly={ctx.readOnly}
+                  locked={!!ctx.vendor && (ctx.readOnly || ctx.based)}
+                  error={errors.vendorId}
+                  tooltip="Only vendors are listed. Picking one fills the name, contact, currency, terms and control account."
+                  hint={!!ctx.vendor && !ctx.readOnly && ctx.based ? 'Locked while lines copied from its documents are on the invoice.' : undefined}
+                  pickVendor={pickVendor}
+                  onOpenDetails={() => setVendorDetailsOpen(true)}
+                />
                 <ApContents {...sectionProps} onCopy={copyLines} />
                 <ReferencesTable refs={draft.references} onChange={(references) => update({ references })} readOnly={ctx.readOnly} description="Other documents this invoice refers to, e.g. the vendor's official receipt or statement of account." />
                 <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach the vendor's invoice, delivery receipt or statement of account." />
@@ -458,6 +472,27 @@ function ApInvoiceForm() {
         )}
       </Panel>
     </Form>
+    <VendorDetailsPanel
+      draft={draft}
+      update={update}
+      vendor={ctx.vendor}
+      currencies={m.currencies}
+      readOnly={ctx.readOnly}
+      open={vendorDetailsOpen}
+      onClose={() => setVendorDetailsOpen(false)}
+      vendorRefHint="The vendor's invoice no. — checked against their other bills so it isn't entered twice."
+      vendorRefError={errors.vendorRef}
+      currency={{
+        disabled: ctx.readOnly || ctx.based,
+        tooltip: ctx.based
+          ? 'Locked to the currency of the documents the lines came from.'
+          : ctx.vendor?.currency === ALL_CURRENCIES
+          ? 'This vendor takes all currencies — pick the document currency.'
+          : `Defaults to the vendor's currency (${ctx.vendor?.currency ?? '—'}).`,
+        error: errors.currency,
+      }}
+      addresses={ctx.vendor ? receivingVendorAddressFields(m, ctx.vendor) : []}
+    />
     </>
   );
 }

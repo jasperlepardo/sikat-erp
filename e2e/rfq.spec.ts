@@ -3,7 +3,7 @@ import { open, rawIds, watchErrors } from './helpers';
 
 test('RFQ list loads with seed data', async ({ page }) => {
   const errors = watchErrors(page);
-  await open(page, 'purchasing/quotations');
+  await open(page, 'purchasing/purchase-quotations');
   const text = await page.innerText('body');
   expect(text).toContain('RFQ-2026');
   expect(errors).toHaveLength(0);
@@ -13,7 +13,7 @@ test('RFQ list loads with seed data', async ({ page }) => {
 
 test('RFQ-2026-0001 detail loads without errors', async ({ page }) => {
   const errors = watchErrors(page);
-  await open(page, 'purchasing/quotations/RFQ-2026-0001');
+  await open(page, 'purchasing/purchase-quotations/RFQ-2026-0001');
   const text = await page.innerText('body');
   expect(text).toContain('Luzon iDistribution');
   expect(text).toContain('Open');
@@ -24,7 +24,7 @@ test('RFQ-2026-0001 detail loads without errors', async ({ page }) => {
 
 test('RFQ-2026-0003 (Closed/Converted) loads', async ({ page }) => {
   const errors = watchErrors(page);
-  await open(page, 'purchasing/quotations/RFQ-2026-0003');
+  await open(page, 'purchasing/purchase-quotations/RFQ-2026-0003');
   const text = await page.innerText('body');
   expect(text).toContain('Apple South Asia');
   expect(errors).toHaveLength(0);
@@ -32,7 +32,7 @@ test('RFQ-2026-0003 (Closed/Converted) loads', async ({ page }) => {
 
 test('New RFQ page loads', async ({ page }) => {
   const errors = watchErrors(page);
-  await open(page, 'purchasing/quotations/new');
+  await open(page, 'purchasing/purchase-quotations/new');
   const text = await page.innerText('body');
   expect(text).toContain('New purchase quotation');
   expect(errors).toHaveLength(0);

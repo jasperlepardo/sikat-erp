@@ -18,7 +18,7 @@ import {
   TextField,
 } from '@jasperlepardo/sikat-design-system';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
-import { Fields, ReadOnly, Section, bind, type Errors } from '../../../../components/form/fields';
+import { Fields, FieldStack, ReadOnly, Section, bind, type Errors } from '../../../../components/form/fields';
 import { StatusField } from '../../../../components/form/StatusField';
 import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
@@ -309,7 +309,7 @@ function PaymentForm() {
           trailing={
             isNew ? undefined : <PrevNext path={PAYMENT_LIST_PATH} prevId={prevId} nextId={nextId} />
           }
-          tabs={<Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={PAGES.map((p) => ({ ...p, disabled: isNew && p.value !== 'details' }))} />}
+          tabs={isNew ? undefined : <Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={PAGES.map((p) => ({ ...p }))} />}
           status={isNew ? undefined : <Badge size="small" intent={PAYMENT_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
           actions={
             <>
@@ -341,142 +341,154 @@ function PaymentForm() {
               </Alert>
             ) : null}
 
-            <fieldset disabled={added} className="contents">
-              <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
-                <Section icon={draft.type === 'Vendor' ? 'storefront' : 'account_tree'} title="Payee">
-                  <div className="flex gap-6" role="radiogroup" aria-label="Payment type">
-                    {(['Vendor', 'Account'] as PaymentType[]).map((t) => (
-                      <Radio key={t} name="payment-type" checked={draft.type === t} onChange={() => switchType(t)}>
-                        {t}
-                      </Radio>
-                    ))}
-                  </div>
-                  <Fields>
-                    {draft.type === 'Vendor' ? (
-                      <>
-                        <div className="md:col-span-2">
-                          {added ? (
-                            <ReadOnly label="Vendor" value={draft.payeeName} description={`${draft.vendorCode} · ${code}`} />
-                          ) : (
-                            <FormField label="Vendor" required error={errors.vendorId} tooltip="Picking one lists its open A/P invoices in its currency.">
+            <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
+              <div className="flex flex-col gap-2 lg:col-span-8">
+                <fieldset disabled={added} className="contents">
+                  <Section icon={draft.type === 'Vendor' ? 'storefront' : 'account_tree'} title="Payee">
+                    <Fields>
+                      {draft.type === 'Vendor' ? (
+                        <>
+                          <div className="md:col-span-2">
+                            {added ? (
+                              <ReadOnly label="Vendor" value={draft.payeeName} description={`${draft.vendorCode} · ${code}`} />
+                            ) : (
+                              <FormField label="Vendor" required error={errors.vendorId} tooltip="Picking one lists its open A/P invoices in its currency.">
+                                {(p) => (
+                                  <Combobox
+                                    {...p}
+                                    placeholder="Search vendors"
+                                    options={m.vendors
+                                      .filter((v) => v.status !== 'Inactive' || v.id === draft.vendorId)
+                                      .map((v) => ({ value: v.id, label: v.name, subLabel: v.code, subLabelPlacement: 'top' as const, description: v.currency, text: `${v.code} ${v.name}` }))}
+                                    value={draft.vendorId || null}
+                                    onValueChange={pickVendor}
+                                  />
+                                )}
+                              </FormField>
+                            )}
+                          </div>
+                          {h.lookup('payTo', 'Pay to', payToOptions.length ? payToOptions : [{ value: draft.payTo, label: draft.payTo || '—' }], { hint: "The vendor's address the payment goes to." })}
+                          {h.lookup(
+                            'contactId',
+                            'Contact person',
+                            [{ value: '', label: '— None —' }, ...(vendor?.contacts ?? []).filter((c) => c.active || c.id === draft.contactId).map((c) => ({ value: c.id, label: contactName(c) }))],
+                            { disabled: !vendor },
+                          )}
+                          {vendor?.currency === ALL_CURRENCIES ? (
+                            <FormField label="Currency" tooltip="This vendor takes all currencies — open invoices in the currency picked are listed.">
                               {(p) => (
-                                <Combobox
+                                <Select
                                   {...p}
-                                  placeholder="Search vendors"
-                                  options={m.vendors
-                                    .filter((v) => v.status !== 'Inactive' || v.id === draft.vendorId)
-                                    .map((v) => ({ value: v.id, label: v.name, subLabel: v.code, subLabelPlacement: 'top' as const, description: v.currency, text: `${v.code} ${v.name}` }))}
-                                  value={draft.vendorId || null}
-                                  onValueChange={pickVendor}
+                                  options={m.currencies.map((c) => ({ value: c.code, label: `${c.code} — ${c.name}` }))}
+                                  value={draft.currency}
+                                  onValueChange={(currency) => update({ currency, rows: openRows(m, draft.vendorId, currency) })}
                                 />
                               )}
                             </FormField>
+                          ) : (
+                            <ReadOnly label="Currency" value={code} hint="The vendor's currency." />
                           )}
-                        </div>
-                        {h.lookup('payTo', 'Pay to', payToOptions.length ? payToOptions : [{ value: draft.payTo, label: draft.payTo || '—' }], { hint: "The vendor's address the payment goes to." })}
-                        {h.lookup(
-                          'contactId',
-                          'Contact person',
-                          [{ value: '', label: '— None —' }, ...(vendor?.contacts ?? []).filter((c) => c.active || c.id === draft.contactId).map((c) => ({ value: c.id, label: contactName(c) }))],
-                          { disabled: !vendor },
-                        )}
-                        {vendor?.currency === ALL_CURRENCIES ? (
-                          <FormField label="Currency" tooltip="This vendor takes all currencies — open invoices in the currency picked are listed.">
-                            {(p) => (
-                              <Select
-                                {...p}
-                                options={m.currencies.map((c) => ({ value: c.code, label: `${c.code} — ${c.name}` }))}
-                                value={draft.currency}
-                                onValueChange={(currency) => update({ currency, rows: openRows(m, draft.vendorId, currency) })}
-                              />
-                            )}
+                        </>
+                      ) : (
+                        <>
+                          {h.text('payeeName', 'To order of', { required: true, error: errors.payeeName, hint: 'Who the payment is to, e.g. Meralco.' })}
+                          {h.text('payTo', 'Pay to', { hint: 'Their address, for the check or transfer.' })}
+                          <FormField label="Doc. currency">
+                            {(p) => <Select {...p} options={m.currencies.map((c) => ({ value: c.code, label: `${c.code} — ${c.name}` }))} value={draft.currency} onValueChange={(currency) => update({ currency })} />}
                           </FormField>
-                        ) : (
-                          <ReadOnly label="Currency" value={code} hint="The vendor's currency." />
-                        )}
-                      </>
-                    ) : (
-                      <>
-                        {h.text('payeeName', 'To order of', { required: true, error: errors.payeeName, hint: 'Who the payment is to, e.g. Meralco.' })}
-                        {h.text('payTo', 'Pay to', { hint: 'Their address, for the check or transfer.' })}
-                        <FormField label="Doc. currency">
-                          {(p) => <Select {...p} options={m.currencies.map((c) => ({ value: c.code, label: `${c.code} — ${c.name}` }))} value={draft.currency} onValueChange={(currency) => update({ currency })} />}
-                        </FormField>
-                      </>
-                    )}
-                    {h.master('projectId', 'Project', projectDef, { clearable: true })}
-                  </Fields>
+                        </>
+                      )}
+                    </Fields>
+                    {errors.currency ? <Text variant="small" tone="danger">{errors.currency}</Text> : null}
+                  </Section>
+                </fieldset>
+
+                {draft.type === 'Vendor' ? <PayVendorRows {...sectionProps} /> : <PayAccountRows {...sectionProps} />}
+                <PayMeansCard {...sectionProps} />
+
+                <Section icon="account_balance" title="Journal entry">
+                  {journal.length ? (
+                    <List.Group divider>
+                      {journal.map((j) => (
+                        <List.Item
+                          key={j.account}
+                          title={accountText(j.account, m.accounts)}
+                          content={<span className="whitespace-nowrap tabular-nums">{j.debit ? `Dr ${formatAmount(j.debit)}` : `Cr ${formatAmount(j.credit)}`}</span>}
+                        />
+                      ))}
+                    </List.Group>
+                  ) : null}
+                  {fxLine ? (
+                    <Alert intent={fxLine.debit ? 'warning' : 'success'} variant="outline" title={`Realized exchange ${fxLine.debit ? 'loss' : 'gain'}: PHP ${formatAmount(fxLine.debit || fxLine.credit)}`}>
+                      {paidInvoices.filter((r) => rowFxDifference(r, fx)).map((r) => (
+                        <div key={r.id}>
+                          {r.docNo}: {code} {formatAmount(rowSettled(r))} booked at {r.invoiceFx}, paid at {fx} — PHP {formatAmount(Math.abs(rowFxDifference(r, fx)))} {rowFxDifference(r, fx) > 0 ? 'more' : 'less'}.
+                        </div>
+                      ))}
+                    </Alert>
+                  ) : null}
+                  <Text variant="small" tone="muted">
+                    {journal.length
+                      ? `In PHP${code === 'PHP' ? '' : ` at ${fx}`}. Each invoice clears the vendor at the rate it was booked at; the payment means are credited at today's rate, and the difference is the realized exchange gain or loss.`
+                      : 'Made when the payment is added: Dr the vendor (or the G/L accounts) / Cr the payment means. Tick invoices and fill in the payment means to see it.'}
+                  </Text>
                 </Section>
 
-                <Section icon="tag" title="Document">
-                  <Fields>
-                    <FormField label="No." tooltip={added ? undefined : 'Assigned from the series when the payment is added.'}>
-                      {() => (
-                        <div className="flex gap-1">
-                          <Select aria-label="Series" className="w-40" disabled={added} options={PAYMENT_SERIES.map((s) => ({ value: s.id, label: s.name }))} value={draft.seriesId} onValueChange={(seriesId) => update({ seriesId })} />
-                          <span className="flex-1 self-center text-sm">{draft.docNum ? paymentNumber(draft) : <span className="text-(--color-text-placeholder)">Next number</span>}</span>
-                        </div>
-                      )}
-                    </FormField>
-                    <StatusField statuses={PAYMENT_STATUSES} intents={PAYMENT_STATUS_INTENT} value={draft.status} moves={statusMoves} />
-                    {h.date('postingDate', 'Posting date', {
-                      required: true,
-                      error: errors.postingDate,
-                      hint: code === 'PHP' ? 'The day the payment is booked.' : `Sets the rate the ${code} is paid at: ${fx || '—'}. Invoices are cleared at the rate they were booked at.`,
-                    })}
-                    {h.date('documentDate', 'Document date', { required: true, error: errors.documentDate })}
-                    {h.date('dueDate', 'Due date', { hint: "The vendor row's due date: the payment means' dates, weighted by amount." })}
-                    {h.text('reference', 'Reference', { hint: 'Any extra reference, e.g. the vendor’s statement no.' })}
-                  </Fields>
-                  {errors.currency ? <Text variant="small" tone="danger">{errors.currency}</Text> : null}
-                </Section>
+                <ReferencesTable refs={draft.references} onChange={(references) => update({ references })} readOnly={added} description="Other documents this payment refers to." />
+                <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} emptyHint="Attach the deposit slip, transfer confirmation or the vendor's official receipt." />
               </div>
 
-              {draft.type === 'Vendor' ? <PayVendorRows {...sectionProps} /> : <PayAccountRows {...sectionProps} />}
-              <PayMeansCard {...sectionProps} />
-            </fieldset>
+              <aside className="flex flex-col gap-2 lg:col-span-4">
+                <fieldset disabled={added} className="contents">
+                  <Section icon="tag" title="Document">
+                    <FieldStack>
+                      <FormField label="No." tooltip={added ? undefined : 'Assigned from the series when the payment is added.'}>
+                        {() => (
+                          <div className="flex gap-1">
+                            <Select aria-label="Series" className="w-40" disabled={added} options={PAYMENT_SERIES.map((s) => ({ value: s.id, label: s.name }))} value={draft.seriesId} onValueChange={(seriesId) => update({ seriesId })} />
+                            <span className="flex-1 self-center text-sm">{draft.docNum ? paymentNumber(draft) : <span className="text-(--color-text-placeholder)">Next number</span>}</span>
+                          </div>
+                        )}
+                      </FormField>
+                      <StatusField statuses={PAYMENT_STATUSES} intents={PAYMENT_STATUS_INTENT} value={draft.status} moves={statusMoves} />
+                      {h.date('postingDate', 'Posting date', {
+                        required: true,
+                        error: errors.postingDate,
+                        hint: code === 'PHP' ? 'The day the payment is booked.' : `Sets the rate the ${code} is paid at: ${fx || '—'}. Invoices are cleared at the rate they were booked at.`,
+                      })}
+                      {h.date('documentDate', 'Document date', { required: true, error: errors.documentDate })}
+                      {h.date('dueDate', 'Due date', { hint: "The vendor row's due date: the payment means' dates, weighted by amount." })}
+                    </FieldStack>
+                  </Section>
+                </fieldset>
 
-            <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
-              <Section icon="notes" title="Remarks">
-                <Fields cols={1}>
-                  <fieldset disabled={added} className="contents">
-                    {h.text('journalRemark', 'Journal remarks', { hint: 'Shown on the journal entry. Defaults to “Outgoing – vendor code”.' })}
-                  </fieldset>
-                  {h.area('remarks', 'Remarks', { rows: 3, hint: 'Can be changed after the payment is added.' })}
-                </Fields>
-              </Section>
+                <fieldset disabled={added} className="contents">
+                  <Section icon="settings" title="Settings">
+                    <div className="flex flex-col gap-1" role="radiogroup" aria-label="Payment type">
+                      <Text variant="small" tone="muted">Pay to</Text>
+                      {(['Vendor', 'Account'] as PaymentType[]).map((t) => (
+                        <Radio key={t} name="payment-type" checked={draft.type === t} disabled={added} onChange={() => switchType(t)}>
+                          {t === 'Vendor' ? 'A vendor' : 'An account (no business partner)'}
+                        </Radio>
+                      ))}
+                    </div>
+                    <FieldStack>
+                      {h.master('projectId', 'Project', projectDef, { clearable: true })}
+                      {h.text('reference', 'Reference', { hint: 'Any extra reference, e.g. the vendor’s statement no.' })}
+                    </FieldStack>
+                  </Section>
+                </fieldset>
 
-              <Section icon="account_balance" title="Journal entry">
-                {journal.length ? (
-                  <List.Group divider>
-                    {journal.map((j) => (
-                      <List.Item
-                        key={j.account}
-                        title={accountText(j.account, m.accounts)}
-                        content={<span className="whitespace-nowrap tabular-nums">{j.debit ? `Dr ${formatAmount(j.debit)}` : `Cr ${formatAmount(j.credit)}`}</span>}
-                      />
-                    ))}
-                  </List.Group>
-                ) : null}
-                {fxLine ? (
-                  <Alert intent={fxLine.debit ? 'warning' : 'success'} variant="outline" title={`Realized exchange ${fxLine.debit ? 'loss' : 'gain'}: PHP ${formatAmount(fxLine.debit || fxLine.credit)}`}>
-                    {paidInvoices.filter((r) => rowFxDifference(r, fx)).map((r) => (
-                      <div key={r.id}>
-                        {r.docNo}: {code} {formatAmount(rowSettled(r))} booked at {r.invoiceFx}, paid at {fx} — PHP {formatAmount(Math.abs(rowFxDifference(r, fx)))} {rowFxDifference(r, fx) > 0 ? 'more' : 'less'}.
-                      </div>
-                    ))}
-                  </Alert>
-                ) : null}
-                <Text variant="small" tone="muted">
-                  {journal.length
-                    ? `In PHP${code === 'PHP' ? '' : ` at ${fx}`}. Each invoice clears the vendor at the rate it was booked at; the payment means are credited at today's rate, and the difference is the realized exchange gain or loss.`
-                    : 'Made when the payment is added: Dr the vendor (or the G/L accounts) / Cr the payment means. Tick invoices and fill in the payment means to see it.'}
-                </Text>
-              </Section>
+                <Section icon="notes" title="Remarks">
+                  <FieldStack>
+                    {h.area('remarks', 'Remarks', { rows: 3, hint: 'Can be changed after the payment is added.' })}
+                    <fieldset disabled={added} className="contents">
+                      {h.text('journalRemark', 'Journal remarks', { hint: 'Shown on the journal entry. Defaults to “Outgoing – vendor code”.' })}
+                    </fieldset>
+                  </FieldStack>
+                </Section>
+              </aside>
             </div>
-
-            <ReferencesTable refs={draft.references} onChange={(references) => update({ references })} readOnly={added} description="Other documents this payment refers to." />
-            <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} emptyHint="Attach the deposit slip, transfer confirmation or the vendor's official receipt." />
           </Panel.Body>
         )}
       </Panel>

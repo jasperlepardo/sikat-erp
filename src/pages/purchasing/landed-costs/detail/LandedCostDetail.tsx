@@ -45,6 +45,7 @@ import { LcItemsCard } from './LcItemsCard';
 import { LcCostsCard } from './LcCostsCard';
 import { LcVendorsCard } from './LcVendorsCard';
 import { LcGeneralCard } from './LcGeneralCard';
+import { LcRemarksCard } from './LcRemarksCard';
 
 type TabId = 'items' | 'costs' | 'vendors' | 'general';
 
@@ -209,12 +210,14 @@ function LandedCostForm() {
           onBack={() => navigate(LC_LIST_PATH)}
           trailing={isNew ? undefined : <PrevNext path={LC_LIST_PATH} prevId={prevId} nextId={nextId} />}
           tabs={
-            <Tabs
-              variant="outline"
-              value={page}
-              onValueChange={(v) => setPage(v as PageId)}
-              items={PAGES.map((p) => ({ ...p, disabled: isNew && p.value !== 'details' }))}
-            />
+            isNew ? undefined : (
+              <Tabs
+                variant="outline"
+                value={page}
+                onValueChange={(v) => setPage(v as PageId)}
+                items={PAGES.map((p) => ({ ...p }))}
+              />
+            )
           }
           status={isNew ? undefined : <Badge size="small" intent={LC_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
           actions={
@@ -250,14 +253,11 @@ function LandedCostForm() {
             ) : null}
 
             <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
-              <div className="lg:col-span-4 flex flex-col gap-2">
+              <div className="flex flex-col gap-2 lg:col-span-8">
                 <fieldset disabled={readOnly} className="contents">
                   <LcVendorCard {...sectionProps} pickVendor={pickVendor} />
-                  <LcDocumentCard {...sectionProps} statusMoves={statusMoves} />
                 </fieldset>
-              </div>
 
-              <div className="lg:col-span-8 flex flex-col gap-2">
                 <Tabs
                   variant="outline"
                   value={tab}
@@ -275,14 +275,21 @@ function LandedCostForm() {
                   {tab === 'vendors' && <LcVendorsCard {...sectionProps} />}
                   {tab === 'general' && <LcGeneralCard {...sectionProps} />}
                 </fieldset>
-              </div>
-            </div>
 
-            <AttachmentsCard
-              attachments={draft.attachments}
-              onChange={(attachments) => update({ attachments })}
-              emptyHint="Attach shipping documents, customs declarations or insurance certificates."
-            />
+                <AttachmentsCard
+                  attachments={draft.attachments}
+                  onChange={(attachments) => update({ attachments })}
+                  emptyHint="Attach shipping documents, customs declarations or insurance certificates."
+                />
+              </div>
+
+              <aside className="flex flex-col gap-2 lg:col-span-4">
+                <fieldset disabled={readOnly} className="contents">
+                  <LcDocumentCard {...sectionProps} statusMoves={statusMoves} />
+                  <LcRemarksCard {...sectionProps} />
+                </fieldset>
+              </aside>
+            </div>
           </Panel.Body>
         )}
       </Panel>

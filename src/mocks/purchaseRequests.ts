@@ -3,6 +3,7 @@
  * request for goods or services before a vendor is chosen. Workflow: Open → Closed.
  */
 import type { Attachment, DocumentSeries } from './common';
+import type { PurchLine } from './purchLine';
 import { employeeId, plId } from './masters';
 import { SEED_ITEMS, mergedItems } from './items';
 import { SEED_TAX_GROUPS } from './taxes';
@@ -19,15 +20,15 @@ export const PR_ITEM_TYPES: PrItemType[] = ['Item', 'Service'];
 export type PrSummaryType = 'No Summary' | 'By Item';
 export const PR_SUMMARY_TYPES: PrSummaryType[] = ['No Summary', 'By Item'];
 
-export interface PrLine {
+export interface PrLine extends PurchLine {
   id: string;
   /** Preferred or suggested vendor (Business Partner id, vendor role) — informational, carries forward to PO/RFQ. '' = none. */
-  vendorId: string;
+  lineVendorId: string;
   itemId: string;
   itemNo: string;
-  itemDescription: string;
+  description: string;
   requiredDate: string;
-  requiredQty: number;
+  quantity: number;
   /** Open qty tracks what hasn't yet been converted to a PO or quotation. */
   openQty: number;
   uomCode: string;
@@ -35,7 +36,7 @@ export interface PrLine {
   /** Inventory units in one purchasing unit. */
   itemsPerUnit: number;
   /** Reference / last known price — informational estimate, not binding. Seeded lines get it from the last-purchase list (services). */
-  infoPrice: number;
+  unitPrice: number;
   discountPct: number;
   warehouse: string;
   taxCode: string;
@@ -105,17 +106,17 @@ export const PR_SERIES: DocumentSeries[] = [
 
 export const newPrLine = (patch: Partial<PrLine> = {}): PrLine => ({
   id: `ln-${crypto.randomUUID().slice(0, 8)}`,
-  vendorId: '',
+  lineVendorId: '',
   itemId: '',
   itemNo: '',
-  itemDescription: '',
+  description: '',
   requiredDate: '',
-  requiredQty: 1,
+  quantity: 1,
   openQty: 1,
   uomCode: 'pc',
   uomName: 'Piece',
   itemsPerUnit: 1,
-  infoPrice: 0,
+  unitPrice: 0,
   discountPct: 0,
   warehouse: '',
   taxCode: '',
@@ -169,10 +170,10 @@ const prLine = (id: string, itemNo: string, qty: number, patch: Partial<PrLine> 
     id,
     itemId: item.id,
     itemNo,
-    itemDescription: item.description || item.name,
+    description: item.description || item.name,
     uomCode: base,
     uomName: base,
-    requiredQty: qty,
+    quantity: qty,
     openQty: qty,
     warehouse: item.inventoryItem ? 'WH-001' : '',
     taxCode: taxCodeOf(item),

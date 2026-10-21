@@ -16,6 +16,7 @@
  * - Return Reason is left out — it belongs to returns, not purchase orders.
  */
 import type { Attachment, DocumentSeries } from './common';
+import type { PurchLine } from './purchLine';
 import { departmentId } from './peopleMasters';
 import { employeeId, plId, termId } from './masters';
 import { SEED_COMPANIES } from './companies';
@@ -37,7 +38,7 @@ export type PriceMode = 'Net' | 'Gross' | 'Net and Gross';
 export const PRICE_MODES: PriceMode[] = ['Net', 'Gross', 'Net and Gross'];
 export type RowStatus = 'Open' | 'Closed';
 
-export interface PoLine {
+export interface PoLine extends PurchLine {
   id: string;
   itemId: string;
   itemNo: string;

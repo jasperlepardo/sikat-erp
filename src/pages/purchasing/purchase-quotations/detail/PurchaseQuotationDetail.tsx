@@ -17,7 +17,7 @@ import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { CURRENT_USER_ID } from '../../../../mocks/common';
 import { type Partner } from '../../../../mocks/partners';
-import { blankRfq, newRfqLine, type Rfq, type RfqStatus } from '../../../../mocks/rfqs';
+import { blankRfq, type Rfq, type RfqStatus } from '../../../../mocks/rfqs';
 import { loadInventoryMasters } from '../../../../services/inventoryMasters';
 import { listItems } from '../../../../services/items';
 import { companyTax, currencies, exchangeRates, taxCodes, taxGroups, withholdingGroups, withholdingTaxes } from '../../../../services/masterData';
@@ -35,6 +35,7 @@ import {
   defaultShipTo,
   formatAddress,
   proposedTaxCode,
+  vendorAddressFields,
   type RfqDraft,
   type RfqMasters,
 } from './types';
@@ -43,10 +44,12 @@ import { blankPurchaseOrder, newPoLine } from '../../../../mocks/purchaseOrders'
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
 import { NotFound, PrevNext, neighbours } from '../../../../components/form/DetailNav';
-import { RfqVendorCard } from './RfqVendorCard';
+import { VendorCard } from '../../shared/VendorCard';
+import { VendorDetailsPanel } from '../../shared/VendorDetailsPanel';
 import { RfqDocumentCard } from './RfqDocumentCard';
 import { RfqAssignmentCard } from './RfqTotalsCard';
-import { RfqLinesCard } from './RfqLinesCard';
+import { PurchDoc } from '../../shared/PurchDoc';
+import { rfqDoc } from './rfqDoc';
 import { RfqDeliveryCard } from './RfqDeliveryCard';
 import { RfqJournalPaymentCard } from './RfqJournalPaymentCard';
 import { RfqDatesCard } from './RfqDatesCard';
@@ -79,7 +82,7 @@ function validate(d: RfqDraft, asDraft: boolean): Problem<TabId>[] {
   for (const [i, l] of d.lines.entries()) {
     const n = `Line ${i + 1}`;
     need(l.itemId, 'contents', `line:${l.id}:item`, `${n}: pick an item.`);
-    need(l.requiredQty > 0, 'contents', `line:${l.id}:requiredQty`, `${n}: required quantity must be more than 0.`);
+    need(l.quantity > 0, 'contents', `line:${l.id}:quantity`, `${n}: required quantity must be more than 0.`);
     need(l.taxCode, 'contents', `line:${l.id}:taxCode`, `${n}: pick a tax code.`);
     need(l.unitPrice >= 0, 'contents', `line:${l.id}:unitPrice`, `${n}: price can't be negative.`);
   }
@@ -102,7 +105,7 @@ function RfqForm() {
   const blank = blankRfq(CURRENT_USER_ID);
   const rfqApproved = !getPurchasingSettings().requireRfqApproval;
   const [draft, setDraft] = useState<RfqDraft | null | undefined>(
-    isNew ? { ...(copyFrom ?? { ...blank, lines: [newRfqLine()] }), approved: rfqApproved } : undefined,
+    isNew ? { ...(copyFrom ?? blank), approved: rfqApproved } : undefined,
   );
   const [m, setM] = useState<RfqMasters>();
   const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
@@ -118,6 +121,7 @@ function RfqForm() {
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);
   const [showVendorCreate, setShowVendorCreate] = useState(false);
+  const [vendorDetailsOpen, setVendorDetailsOpen] = useState(false);
   const [rejecting, setRejecting] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
 
@@ -232,7 +236,7 @@ function RfqForm() {
       lines: draft.lines.filter((l) => l.itemId).map((l) =>
         newPoLine({
           itemId: l.itemId, itemNo: l.itemNo, name: l.description, description: l.description,
-          quantity: l.quotedQty || l.requiredQty, uomCode: l.uomCode, uomName: l.uomName,
+          quantity: l.quotedQty || l.quantity, uomCode: l.uomCode, uomName: l.uomName,
           itemsPerUnit: l.itemsPerUnit, priceListId: l.priceListId, unitPrice: l.unitPrice,
           discountPct: l.discountPct, taxCode: l.taxCode,
           blanketAgreement: l.blanketAgreement, requisitionSlipNo: l.requisitionSlipNo,
@@ -302,12 +306,14 @@ function RfqForm() {
             onBack={() => navigate(RFQ_LIST_PATH)}
             trailing={isNew ? undefined : <PrevNext path={RFQ_LIST_PATH} prevId={prevId} nextId={nextId} />}
             tabs={
-              <Tabs
-                variant="outline"
-                value={page}
-                onValueChange={(v) => setPage(v as PageId)}
-                items={PAGES.map((p) => ({ ...p, disabled: isNew && p.value !== 'details' }))}
-              />
+              isNew ? undefined : (
+                <Tabs
+                  variant="outline"
+                  value={page}
+                  onValueChange={(v) => setPage(v as PageId)}
+                  items={PAGES.map((p) => ({ ...p }))}
+                />
+              )
             }
             status={
               isNew ? undefined : (
@@ -365,8 +371,8 @@ function RfqForm() {
 
               <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
                 <div className="flex flex-col gap-2 lg:col-span-8">
-                  <RfqVendorCard {...sectionProps} pickVendor={pickVendor} onNewVendor={() => setShowVendorCreate(true)} onVendorSaved={(v) => setM((prev) => prev && { ...prev, vendors: prev.vendors.map((x) => (x.id === v.id ? v : x)) })} />
-                  <RfqLinesCard {...sectionProps} />
+                  <VendorCard vendors={m.vendors} vendorId={draft.vendorId} vendor={ctx.vendor} readOnly={ctx.readOnly} added={ctx.added} error={errors.vendorId} pickVendor={pickVendor} onNewVendor={() => setShowVendorCreate(true)} onOpenDetails={() => setVendorDetailsOpen(true)} />
+                  <PurchDoc {...rfqDoc(sectionProps)} />
                   <ReferencesTable refs={draft.references} onChange={(references) => update({ references })} readOnly={ctx.readOnly} description="Other documents this RFQ refers to — purchase requests, sales orders, contract references." />
                   <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach the vendor's quotation or price list." />
                 </div>
@@ -382,6 +388,23 @@ function RfqForm() {
           )}
         </Panel>
       </Form>
+      <VendorDetailsPanel
+        draft={draft}
+        update={update}
+        vendor={ctx.vendor}
+        currencies={m.currencies}
+        readOnly={ctx.readOnly}
+        open={vendorDetailsOpen}
+        onClose={() => setVendorDetailsOpen(false)}
+        onVendorSaved={(v) => setM((prev) => prev && { ...prev, vendors: prev.vendors.map((x) => (x.id === v.id ? v : x)) })}
+        vendorRefHint="The vendor's own reference or quote number."
+        currency={{
+          disabled: !!(ctx.vendor && ctx.added),
+          tooltip: ctx.vendor && ctx.vendor.currency !== ALL_CURRENCIES ? "Defaults to the vendor's currency." : 'Pick the document currency.',
+          error: errors.currency,
+        }}
+        addresses={ctx.vendor ? vendorAddressFields(m, ctx.vendor) : []}
+      />
       {showVendorCreate && (
         <PoVendorQuickCreate initialName="" onClose={() => setShowVendorCreate(false)} onCreated={handleVendorCreated} />
       )}

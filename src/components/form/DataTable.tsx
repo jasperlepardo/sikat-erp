@@ -160,6 +160,8 @@ export function DataTable<T>({
       {actions}
     </div>
   );
+  // The span/add row fills the table width even when there are no data rows yet.
+  const spanRowCell = spanRow ? <div className="w-full [&>*]:w-full">{spanRow}</div> : undefined;
   const table = rows.length || spanRow ? (
     <Card>
       <Table
@@ -185,7 +187,7 @@ export function DataTable<T>({
             },
           },
         })}
-        {...(spanRow ? { footerRow: spanRow } : {})}
+        {...(spanRow ? { footerRow: spanRowCell } : {})}
         {...(getSubRows ? { getSubRows } : {})}
       />
       {cardFooter}

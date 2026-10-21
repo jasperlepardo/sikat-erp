@@ -332,7 +332,7 @@ function CreditMemoForm() {
             onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
             onBack={() => navigate(MEMO_LIST_PATH)}
             trailing={isNew ? undefined : <PrevNext path={MEMO_LIST_PATH} prevId={prevId} nextId={nextId} />}
-            tabs={<Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={PAGES.map((p) => ({ ...p, disabled: isNew && p.value !== 'details' }))} />}
+            tabs={isNew ? undefined : <Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={PAGES.map((p) => ({ ...p }))} />}
             status={isNew ? undefined : <Badge size="small" intent={MEMO_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
             actions={
               <>
@@ -374,55 +374,54 @@ function CreditMemoForm() {
                 </Alert>
               ) : null}
 
-              <fieldset disabled={added} className="contents">
-                <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
-                  <CmVendorCard {...sectionProps} pickVendor={pickVendor} locked={added} currencyTooltip={currencyTooltip} />
-                  <CmDocumentCard {...sectionProps} statusMoves={statusMoves} locked={added} />
+              <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
+                <div className="flex flex-col gap-2 lg:col-span-8">
+                  <fieldset disabled={added} className="contents">
+                    <CmVendorCard {...sectionProps} pickVendor={pickVendor} locked={added} currencyTooltip={currencyTooltip} />
+                    <ReturnLines<MemoLine>
+                      lines={draft.lines}
+                      onChange={(lines) => update({ lines })}
+                      errors={errors}
+                      m={m}
+                      ctx={ctx}
+                      currency={code}
+                      postingDate={draft.postingDate}
+                      vendorId={draft.vendorId}
+                      title="Contents"
+                      description={`What the vendor credits, in ${code}. Lines from an invoice send the goods back or adjust the price only; lines from a goods return just credit it.`}
+                      empty={draft.vendorId ? 'Copy from an A/P invoice or a goods return, or add lines.' : 'Pick a vendor first.'}
+                      newLine={() => newMemoLine()}
+                      sendsStock={(l) => sendsStock(l, m.items)}
+                      openHint={(l) => {
+                        if (l.baseType === 'APINV') {
+                          const il = m.invoices.find((i) => i.id === l.baseId)?.lines.find((x) => x.id === l.baseLineId);
+                          return il ? `${il.quantity} billed · ${returnableQty(il)} left to return` : undefined;
+                        }
+                        if (l.baseType === 'GRET') {
+                          const r = m.returns.find((x) => x.id === l.baseId);
+                          const rl = r?.lines.find((x) => x.id === l.baseLineId);
+                          return r && rl ? `${returnOpenQty(rl, r)} of ${rl.quantity} left to credit on the return` : undefined;
+                        }
+                        return undefined;
+                      }}
+                      onCopy={() => setCopying(true)}
+                      canCopy={invoices.length + returns.length > 0}
+                      extraColumns={[returnGoodsColumn]}
+                    />
+                    <ReferencesTable refs={draft.references} onChange={(references) => update({ references })} readOnly={added} description="Other documents this credit memo refers to, e.g. the vendor's credit note." />
+                  </fieldset>
+                  <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach the vendor's credit note or debit memo." />
                 </div>
-
-                <ReturnLines<MemoLine>
-                  lines={draft.lines}
-                  onChange={(lines) => update({ lines })}
-                  errors={errors}
-                  m={m}
-                  ctx={ctx}
-                  currency={code}
-                  postingDate={draft.postingDate}
-                  vendorId={draft.vendorId}
-                  title="Contents"
-                  description={`What the vendor credits, in ${code}. Lines from an invoice send the goods back or adjust the price only; lines from a goods return just credit it.`}
-                  empty={draft.vendorId ? 'Copy from an A/P invoice or a goods return, or add lines.' : 'Pick a vendor first.'}
-                  newLine={() => newMemoLine()}
-                  sendsStock={(l) => sendsStock(l, m.items)}
-                  openHint={(l) => {
-                    if (l.baseType === 'APINV') {
-                      const il = m.invoices.find((i) => i.id === l.baseId)?.lines.find((x) => x.id === l.baseLineId);
-                      return il ? `${il.quantity} billed · ${returnableQty(il)} left to return` : undefined;
-                    }
-                    if (l.baseType === 'GRET') {
-                      const r = m.returns.find((x) => x.id === l.baseId);
-                      const rl = r?.lines.find((x) => x.id === l.baseLineId);
-                      return r && rl ? `${returnOpenQty(rl, r)} of ${rl.quantity} left to credit on the return` : undefined;
-                    }
-                    return undefined;
-                  }}
-                  onCopy={() => setCopying(true)}
-                  canCopy={invoices.length + returns.length > 0}
-                  extraColumns={[returnGoodsColumn]}
-                />
-
-                <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
-                  <CmLogisticsCard {...sectionProps} addressOptions={addressOptions} />
-                  <CmAccountingCard {...sectionProps} readOnly={added} />
+                <div className="flex flex-col gap-2 lg:col-span-4">
+                  <fieldset disabled={added} className="contents">
+                    <CmDocumentCard {...sectionProps} statusMoves={statusMoves} locked={added} />
+                    <CmLogisticsCard {...sectionProps} addressOptions={addressOptions} />
+                    <CmAccountingCard {...sectionProps} readOnly={added} />
+                  </fieldset>
+                  <CmTotalsCard {...sectionProps} locked={added} totals={totals} withholding={withholding} credit={credit} openBalance={openBalance} />
+                  <CmJournalCard journal={journal} accounts={m.accounts} code={code} fx={fx} />
                 </div>
-                <ReferencesTable refs={draft.references} onChange={(references) => update({ references })} readOnly={added} description="Other documents this credit memo refers to, e.g. the vendor's credit note." />
-              </fieldset>
-
-              <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
-                <CmTotalsCard {...sectionProps} locked={added} totals={totals} withholding={withholding} credit={credit} openBalance={openBalance} />
-                <CmJournalCard journal={journal} accounts={m.accounts} code={code} fx={fx} />
               </div>
-              <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach the vendor's credit note or debit memo." />
             </Panel.Body>
           )}
         </Panel>

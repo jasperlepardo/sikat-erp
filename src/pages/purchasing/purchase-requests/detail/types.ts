@@ -75,21 +75,21 @@ export function lineFromItem(item: Item, draft: PrDraft, m: PrMasters, base: Par
   const uom = m.inv.uoms.find((u) => u.code === uomCode);
   const price = infoPrice(item, uomCode, draft.postingDate);
   const taxCode = proposedTaxCode(item, m);
-  const qty = base.requiredQty ?? 1;
+  const qty = base.quantity ?? 1;
   return newPrLine({
     ...base,
     itemId: item.id,
     itemNo: item.itemNo,
-    itemDescription: item.description || item.name,
+    description: item.description || item.name,
     uomCode,
     uomName: uom?.name ?? uomCode,
     itemsPerUnit: itemsPerUom(item, uomCode) ?? 1,
     warehouse: item.inventoryItem ? branchWarehouse(branches.snapshot().find((b) => b.id === draft.branchId), m.inv.warehouses) : '',
     // Charge the line to the requester's department by default (overridable per line), like warehouse from the branch.
     departmentId: base.departmentId ?? draft.departmentId,
-    infoPrice: price,
+    unitPrice: price,
     taxCode,
-    requiredQty: qty,
+    quantity: qty,
     openQty: qty,
     requiredDate: draft.requiredDate,
   });

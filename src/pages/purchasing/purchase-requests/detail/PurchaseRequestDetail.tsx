@@ -34,9 +34,11 @@ import {
   savePurchaseRequest,
   type PrInput,
 } from '../../../../services/purchaseRequests';
-import { PrRequesterCard } from './PrRequesterCard';
+import { RequesterCard } from '../../shared/RequesterCard';
+import { RequesterDetailsPanel } from '../../shared/RequesterDetailsPanel';
 import { PrDocumentCard, PR_STATUS_INTENT } from './PrDocumentCard';
-import { PrLinesCard } from './PrLinesCard';
+import { PurchDoc } from '../../shared/PurchDoc';
+import { prDoc } from './prDoc';
 import { PrTotalsCard } from './PrTotalsCard';
 import { buildContext, type PrDraft, type PrMasters } from './types';
 import { DocumentFlow } from '../../shared/DocumentFlow';
@@ -70,8 +72,8 @@ function validate(d: PrDraft, asDraft: boolean): Problem<TabId>[] {
   for (const [i, l] of d.lines.entries()) {
     const n = `Line ${i + 1}`;
     need(l.itemId, 'contents', `line:${l.id}:item`, `${n}: pick an item.`);
-    need(l.requiredQty > 0, 'contents', `line:${l.id}:quantity`, `${n}: quantity must be more than 0.`);
-    need(l.requiredQty >= copiedQty(l), 'contents', `line:${l.id}:quantity`, `${n}: ${copiedQty(l)} already copied to an RFQ or PO; quantity can't go below that.`);
+    need(l.quantity > 0, 'contents', `line:${l.id}:quantity`, `${n}: quantity must be more than 0.`);
+    need(l.quantity >= copiedQty(l), 'contents', `line:${l.id}:quantity`, `${n}: ${copiedQty(l)} already copied to an RFQ or PO; quantity can't go below that.`);
     need(l.taxCode, 'contents', `line:${l.id}:taxCode`, `${n}: pick a tax code.`);
   }
   return problems;
@@ -115,6 +117,7 @@ function PurchaseRequestForm() {
   const setPage = (v: PageId) => navigate(`${PR_LIST_PATH}/${id}/${v}`, { replace: true });
   useEffect(() => { if (!tabParam) navigate(`${PR_LIST_PATH}/${id}/details`, { replace: true, state: location.state }); }, []);
   const [saving, setSaving] = useState(false);
+  const [requesterDetailsOpen, setRequesterDetailsOpen] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -147,6 +150,19 @@ function PurchaseRequestForm() {
   const saved = draft as PurchaseRequest;
 
   const update = (patch: Partial<PrDraft>) => setDraft((d) => d ? { ...d, ...patch } : d);
+
+  const requester = m.employees.find((e) => e.id === draft.requesterId);
+  // Branch and department describe who asked, so they come from the requester and are stamped on
+  // the request — a later move to another department doesn't rewrite it.
+  const pickRequester = (requesterId: string | null) => {
+    const emp = requesterId ? m.employees.find((e) => e.id === requesterId) : undefined;
+    update({
+      requesterId: requesterId ?? '',
+      requesterName: emp ? employeeName(emp) : '',
+      branchId: emp?.branchId ?? '',
+      departmentId: emp?.departmentId ?? '',
+    });
+  };
 
   const submit = async (e: FormEvent | null, asDraft = false) => {
     e?.preventDefault();
@@ -191,7 +207,7 @@ function PurchaseRequestForm() {
       lines: draft.lines.map((l) => ({
         ...l,
         id: `ln-${crypto.randomUUID().slice(0, 8)}`,
-        openQty: l.requiredQty,
+        openQty: l.quantity,
         status: 'Open' as const,
       })),
     };
@@ -218,6 +234,7 @@ function PurchaseRequestForm() {
       : 'Purchase request';
 
   return (
+    <>
     <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
       <Panel className="flex-1">
         <PanelHeader
@@ -234,13 +251,15 @@ function PurchaseRequestForm() {
             isNew ? undefined : <PrevNext path={PR_LIST_PATH} prevId={prevId} nextId={nextId} />
           }
           tabs={
-            <Tabs
-              variant="outline"
-              value={page}
-              onValueChange={(v) => setPage(v as PageId)}
-              // A request has no transactions or activity until it's added.
-              items={PAGES.map((p) => ({ ...p, disabled: !ctx.added && p.value !== 'details' }))}
-            />
+            // A request has no transactions or activity until it's added.
+            !ctx.added ? undefined : (
+              <Tabs
+                variant="outline"
+                value={page}
+                onValueChange={(v) => setPage(v as PageId)}
+                items={PAGES.map((p) => ({ ...p }))}
+              />
+            )
           }
           status={
             isNew ? undefined : (
@@ -277,10 +296,18 @@ function PurchaseRequestForm() {
 
             <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
               <div className="flex flex-col gap-2 lg:col-span-8">
-                <fieldset disabled={ctx.readOnly} className="contents">
-                  <PrRequesterCard {...sectionProps} />
-                  <PrLinesCard {...sectionProps} />
-                </fieldset>
+                <RequesterCard
+                  employees={m.employees}
+                  requesterId={draft.requesterId}
+                  requester={requester}
+                  readOnly={ctx.added}
+                  locked={ctx.added}
+                  error={errors.requesterId}
+                  hint={ctx.copied && !ctx.readOnly ? 'Locked: lines were already copied to an RFQ or PO.' : undefined}
+                  pickRequester={pickRequester}
+                  onOpenDetails={() => setRequesterDetailsOpen(true)}
+                />
+                <PurchDoc {...prDoc(sectionProps)} />
                 <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach supporting documents, e.g. specs, approvals or quotes." />
               </div>
               <div className="flex flex-col gap-2 lg:col-span-4">
@@ -294,6 +321,15 @@ function PurchaseRequestForm() {
         )}
       </Panel>
     </Form>
+    <RequesterDetailsPanel
+      draft={draft}
+      update={update}
+      requester={requester}
+      readOnly={ctx.added}
+      open={requesterDetailsOpen}
+      onClose={() => setRequesterDetailsOpen(false)}
+    />
+    </>
   );
 }
 

@@ -50,7 +50,8 @@ import { ReturnLines } from '../shared/ReturnLines';
 import { ActivityTab } from '../../../components/activity/ActivityTab';
 import { NotFound, PrevNext, neighbours } from '../../../components/form/DetailNav';
 import { useDocTitle } from '../../../services/useDocTitle';
-import { GrVendorCard } from './detail/GrVendorCard';
+import { VendorCard } from '../shared/VendorCard';
+import { VendorDetailsPanel } from '../shared/VendorDetailsPanel';
 import { GrDocumentCard } from './detail/GrDocumentCard';
 import { GrTotalsCard } from './detail/GrTotalsCard';
 import { GrJournalCard } from './detail/GrJournalCard';
@@ -141,6 +142,7 @@ function GoodsReturnForm() {
   const [rejecting, setRejecting] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [copying, setCopying] = useState(false);
+  const [vendorDetailsOpen, setVendorDetailsOpen] = useState(false);
 
   useEffect(() => {
     loadRetMasters().then((masters) => {
@@ -289,7 +291,7 @@ function GoodsReturnForm() {
             onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
             onBack={() => navigate(RETURN_LIST_PATH)}
             trailing={isNew ? undefined : <PrevNext path={RETURN_LIST_PATH} prevId={prevId} nextId={nextId} />}
-            tabs={<Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={PAGES.map((p) => ({ ...p, disabled: isNew && p.value !== 'details' }))} />}
+            tabs={isNew ? undefined : <Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={PAGES.map((p) => ({ ...p }))} />}
             status={isNew ? undefined : <Badge size="small" intent={RETURN_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
             actions={
               <>
@@ -334,7 +336,17 @@ function GoodsReturnForm() {
               <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
                 <div className="flex flex-col gap-2 lg:col-span-8">
                   <fieldset disabled={added} className="contents">
-                    <GrVendorCard {...sectionProps} pickVendor={pickVendor} locked={added} />
+                    <VendorCard
+                      vendors={m.vendors}
+                      vendorId={draft.vendorId}
+                      vendor={ctx.vendor}
+                      readOnly={added}
+                      locked={!!ctx.vendor && (added || ctx.based)}
+                      error={errors.vendorId}
+                      tooltip="The vendor the goods go back to."
+                      pickVendor={pickVendor}
+                      onOpenDetails={() => setVendorDetailsOpen(true)}
+                    />
                     <ReturnLines<ReturnLine>
                       lines={draft.lines}
                       onChange={(lines) => update({ lines })}
@@ -382,6 +394,22 @@ function GoodsReturnForm() {
           )}
         </Panel>
       </Form>
+      <VendorDetailsPanel
+        draft={draft}
+        update={update}
+        vendor={ctx.vendor}
+        currencies={m.currencies}
+        readOnly={added}
+        open={vendorDetailsOpen}
+        onClose={() => setVendorDetailsOpen(false)}
+        vendorRefHint="The vendor's return authorization (RMA) no."
+        currency={{
+          disabled: added || ctx.based,
+          tooltip: ctx.based ? 'Locked to the currency of the documents the lines came from.' : "Defaults to the vendor's currency.",
+          error: errors.currency,
+        }}
+        addresses={[]}
+      />
       {copying
         ? createPortal(
             <CopyPanel

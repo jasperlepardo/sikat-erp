@@ -52,7 +52,9 @@ import { DprLinesCard } from './DprLinesCard';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
 import { NotFound, PrevNext, neighbours } from '../../../../components/form/DetailNav';
-import { DprVendorCard } from './DprVendorCard';
+import { VendorCard } from '../../shared/VendorCard';
+import { VendorDetailsPanel } from '../../shared/VendorDetailsPanel';
+import { receivingVendorAddressFields } from '../../shared/vendorAddresses';
 import { DprDocumentCard } from './DprDocumentCard';
 import { DprAccountingCard } from './DprAccountingCard';
 import { ReferencesTable } from '../../shared/ReferencesTable';
@@ -122,6 +124,7 @@ function DprForm() {
   const [rejecting, setRejecting] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [copying, setCopying] = useState(false);
+  const [vendorDetailsOpen, setVendorDetailsOpen] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -250,7 +253,7 @@ function DprForm() {
             trailing={
               isNew ? undefined : <PrevNext path={DPR_LIST_PATH} prevId={prevId} nextId={nextId} />
             }
-            tabs={<Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={PAGES.map((p) => ({ ...p, disabled: isNew && p.value !== 'details' }))} />}
+            tabs={isNew ? undefined : <Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={PAGES.map((p) => ({ ...p }))} />}
             status={
               isNew ? undefined : (
                 <div className="flex gap-1">
@@ -289,7 +292,16 @@ function DprForm() {
 
               <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
                 <div className="flex flex-col gap-2 lg:col-span-8">
-                  <DprVendorCard {...sectionProps} pickVendor={pickVendor} />
+                  <VendorCard
+                    vendors={m.vendors}
+                    vendorId={draft.vendorId}
+                    vendor={ctx.vendor}
+                    readOnly={ctx.readOnly}
+                    locked={!!ctx.vendor && (ctx.readOnly || ctx.based)}
+                    error={errors.vendorId}
+                    pickVendor={pickVendor}
+                    onOpenDetails={() => setVendorDetailsOpen(true)}
+                  />
                   <DprLinesCard {...sectionProps} onCopy={() => setCopying(true)} canCopy={orders.length > 0} />
                   <ReferencesTable refs={draft.references} onChange={(references) => update({ references })} readOnly={ctx.readOnly} description="Other documents this request refers to, e.g. the vendor's proforma invoice." />
                   <AttachmentsCard attachments={draft.attachments ?? []} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach the vendor's proforma invoice or quotation." />
@@ -304,6 +316,18 @@ function DprForm() {
           )}
         </Panel>
       </Form>
+      <VendorDetailsPanel
+        draft={draft}
+        update={update}
+        vendor={ctx.vendor}
+        currencies={m.currencies}
+        readOnly={ctx.readOnly}
+        open={vendorDetailsOpen}
+        onClose={() => setVendorDetailsOpen(false)}
+        vendorRefHint="The vendor's proforma or billing no."
+        currency={{ disabled: ctx.readOnly || ctx.based, tooltip: undefined, error: errors.currency }}
+        addresses={ctx.vendor ? receivingVendorAddressFields(m, ctx.vendor, { shipPlaceholder: 'Where the goods will be received', payPlaceholder: 'Vendor address for payment' }) : []}
+      />
       {copying
         ? createPortal(
             <CopyPanel

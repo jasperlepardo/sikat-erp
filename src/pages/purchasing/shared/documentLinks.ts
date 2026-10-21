@@ -42,8 +42,8 @@ export interface CoveredLine {
 }
 
 /** A document's lines as covered lines: what it moves, for item timelines. */
-export const coveredLines = (lines: { itemId: string; itemNo: string; description?: string; uomCode: string; quantity?: number; requiredQty?: number }[]): CoveredLine[] =>
-  lines.filter((l) => l.itemId).map((l) => ({ itemId: l.itemId, itemNo: l.itemNo, description: l.description, uomCode: l.uomCode, quantity: l.quantity ?? l.requiredQty ?? 0 }));
+export const coveredLines = (lines: { itemId: string; itemNo: string; description?: string; uomCode: string; quantity?: number }[]): CoveredLine[] =>
+  lines.filter((l) => l.itemId).map((l) => ({ itemId: l.itemId, itemNo: l.itemNo, description: l.description, uomCode: l.uomCode, quantity: l.quantity ?? 0 }));
 
 /** One document in the link graph. */
 export interface DocNode {
