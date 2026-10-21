@@ -65,8 +65,8 @@ export function GeneralTab({ draft, update, errors, tax, inv }: TabProps) {
                 onChange={(inventoryAccount) => update({ inventoryAccount })}
               />
               <AccountField
-                label="Cost of goods sold account"
-                role="cogs"
+                label={draft.inventoryItem ? 'Cost of goods sold account' : 'Cost / expense account'}
+                role={draft.inventoryItem ? 'cogs' : 'expense'}
                 accounts={inv.accounts}
                 required
                 error={errors.cogsAccount}

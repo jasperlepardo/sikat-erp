@@ -156,7 +156,7 @@ function CopyFromGrpoPanel({
                       />
                       <div className="flex flex-col">
                         <span className="text-sm font-medium">{l.itemNo}</span>
-                        <span className="text-xs text-(--color-text-muted)">{l.name} · {l.quantity} {l.uomCode} · {l.warehouse}</span>
+                        <span className="text-xs text-(--color-text-muted)">{l.description || l.name} · {l.quantity} {l.uomCode} · {l.warehouse}</span>
                       </div>
                     </label>
                   ))}

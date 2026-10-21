@@ -80,3 +80,20 @@ div.table-num {
 div.table-num .sikat-table-cell__stack {
   align-items: flex-end;
 }
+/* The actions column — rows' "⋯" (RowMenu) under a Columns button in the header: cells hug the
+   button. Under auto table layout a 1% width keeps the column at its content, so spare width
+   goes to the other columns instead. */
+.sikat-table__td:has(> .row-actions),
+.sikat-table__th:has(.row-actions) {
+  width: 1%;
+  white-space: nowrap;
+}
+/* The header's 20px Columns button fits the 36px header row: 8px above and below, not the
+   usual 10px around a 16px label. */
+.sikat-table__th:has(.row-actions) {
+  padding-block: var(--spacing-2);
+}
+/* Sits on the line box's top, not its baseline — no descender gap under the button. */
+.row-actions {
+  vertical-align: top;
+}

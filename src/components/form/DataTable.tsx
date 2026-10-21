@@ -21,6 +21,8 @@ export interface DataTableProps<T> {
   pageSize?: number;
   /** Shows the table's column-settings ("tune") button. */
   onColumnSettings?: () => void;
+  /** A ready-made Columns control (`useColumnPrefs().menu`), shown in place of the button. */
+  columnMenu?: ReactNode;
   /** Show all rows with no pagination controls. */
   noPagination?: boolean;
   /**
@@ -101,6 +103,7 @@ export function DataTable<T>({
   empty,
   pageSize: initialPageSize = DEFAULT_PAGE_SIZE,
   onColumnSettings,
+  columnMenu,
   noPagination = false,
   variant = 'plain',
   children,
@@ -149,11 +152,11 @@ export function DataTable<T>({
           </Button>
         </>
       ) : null}
-      {onColumnSettings ? (
+      {columnMenu ?? (onColumnSettings ? (
         <Button type="button" size="small" variant="ghost" leadingIcon={<Icon size={16}>tune</Icon>} onClick={onColumnSettings}>
           Columns
         </Button>
-      ) : null}
+      ) : null)}
       {actions}
     </div>
   );
@@ -212,7 +215,7 @@ export function DataTable<T>({
 
   return (
     <div className="flex flex-col gap-2">
-      {(icon || title || description || actions || onColumnSettings || (onRemove && liveSelection.length)) ? (
+      {(icon || title || description || actions || onColumnSettings || columnMenu || (onRemove && liveSelection.length)) ? (
         <div className="flex flex-wrap items-start justify-between gap-2 px-2 pt-2">
           <div className="flex min-w-0 flex-1 items-start gap-2">
             {icon ? <Icon size={24}>{icon}</Icon> : null}

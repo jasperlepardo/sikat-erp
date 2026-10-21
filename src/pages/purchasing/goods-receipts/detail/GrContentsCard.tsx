@@ -27,6 +27,7 @@ import { CopyPanel, type CopySourceType } from '../../shared/CopyPanel';
 import { priceListDef } from '../../../settings/masterDefs';
 import { PurchTotalsFooter } from '../../shared/PurchTotalsFooter';
 import { defaultBin, lineFromItem, linePricing, linesFromPo, type GrSectionProps } from './types';
+import { LineItemText } from '../../../../components/form/LineItemText';
 
 const num = (v: string) => (v === '' ? 0 : Number(v));
 const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -117,11 +118,7 @@ export function GrContents({ draft, update, errors, m, ctx, onCopy }: GrSectionP
       );
       return (
         <div className="flex w-64 flex-col gap-1 whitespace-normal">
-          <div className="flex flex-col">
-            <Text variant="caption">{item.itemNo}</Text>
-            <Text variant="small">{l.name}</Text>
-            <Text variant="small" tone="muted">{l.description}</Text>
-          </div>
+          <LineItemText itemNo={item.itemNo} description={l.description} name={l.name} />
           {ctx.readOnly ? null : (
             <div className="flex gap-3">
               <Link intent="primary" onClick={() => setEditing((s) => new Set(s).add(l.id))}>Edit</Link>
@@ -242,7 +239,6 @@ export function GrContents({ draft, update, errors, m, ctx, onCopy }: GrSectionP
 
   return (
     <>
-      {prefs.settings}
       <DataTable
         noPagination
         icon="list_alt"
@@ -257,7 +253,7 @@ export function GrContents({ draft, update, errors, m, ctx, onCopy }: GrSectionP
         unsortable={columns.map((c) => c.key).filter((k) => k !== 'item')}
         sortValue={(l, key) => (key === 'item' ? l.itemNo : String(l[key as keyof GrLine] ?? '')).toLowerCase()}
         onRemove={ctx.readOnly ? undefined : (picked) => update({ lines: lines.filter((l) => !picked.includes(l)) })}
-        onColumnSettings={prefs.toggleSettings}
+        columnMenu={prefs.menu}
         spanRow={ctx.readOnly ? undefined : (
           <div className="flex items-center gap-2">
             <div className="flex-1">
@@ -337,7 +333,7 @@ export function GrContents({ draft, update, errors, m, ctx, onCopy }: GrSectionP
                   description: po.postingDate,
                   lines: po.lines
                     .filter((l) => l.status === 'Open' && openQty(l) > 0)
-                    .map((l) => ({ id: l.id, itemNo: l.itemNo, name: l.name, warehouse: l.warehouse, total: `${l.quantity} ${l.uomCode}`, open: openQty(l) })),
+                    .map((l) => ({ id: l.id, itemNo: l.itemNo, name: l.name, description: l.description, warehouse: l.warehouse, total: `${l.quantity} ${l.uomCode}`, open: openQty(l) })),
                 })),
               }] satisfies CopySourceType<'PO'>[]}
               taken={new Set(lines.map((l) => l.baseLineId).filter((id): id is string => !!id))}

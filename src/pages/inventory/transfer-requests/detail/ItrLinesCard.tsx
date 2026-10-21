@@ -7,6 +7,7 @@ import { inStockAt } from '../../../../services/inventoryTransfers';
 import { openQty } from '../../../../services/inventoryTransferRequests';
 import { warehouseOptions } from '../../transfers/TransferLines';
 import { transferredQty, type ItrSectionProps } from './types';
+import { LineItemText } from '../../../../components/form/LineItemText';
 
 const num = (v: string) => (v === '' ? 0 : Number(v));
 
@@ -73,9 +74,7 @@ export function ItrLinesCard({ draft, update, errors, m, readOnly }: ItrSectionP
         }
         return (
           <div className="flex min-w-52 flex-col gap-1 whitespace-normal">
-            <Text variant="caption">{l.itemNo}</Text>
-            <Text variant="small">{l.name}</Text>
-            <Text variant="small" tone="muted">{l.description}</Text>
+            <LineItemText itemNo={l.itemNo} description={l.description} name={l.name} />
             {readOnly || transferredQty(l) ? null : (
               <Link intent="primary" onClick={() => patch(l.id, { itemId: '', itemNo: '', name: '', description: '' })}>Change</Link>
             )}

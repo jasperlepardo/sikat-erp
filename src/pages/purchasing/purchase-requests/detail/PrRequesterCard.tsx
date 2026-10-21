@@ -1,7 +1,8 @@
-import { CardField, Checkbox, Icon, Text, type CardFieldOption } from '@jasperlepardo/sikat-design-system';
+import { Avatar, CardField, Checkbox, Text, type CardFieldOption } from '@jasperlepardo/sikat-design-system';
 import { Fields, Flags, ReadOnly, Section, bind } from '../../../../components/form/fields';
 import type { Employee } from '../../../../mocks/employees';
 import { employeeName } from '../../../../services/employees';
+import { initialsOf } from '../../../../services/format';
 import { nameIn } from '../../../../services/partnerMasters';
 import { branches, departments } from '../../../../services/peopleMasters';
 import type { PrSectionProps } from './types';
@@ -9,7 +10,8 @@ import type { PrSectionProps } from './types';
 const option = (e: Employee): CardFieldOption => ({
   value: e.id,
   label: employeeName(e),
-  icon: <Icon size={16}>badge</Icon>,
+  // First then last, whatever the display order ("Cruz, Juan" is still JC).
+  icon: <Avatar initials={initialsOf(`${e.firstName} ${e.lastName}`)} icon="person" size={36} />,
   fields: [
     { label: 'Code', value: e.code },
     ...(e.jobTitle ? [{ label: 'Job title', value: e.jobTitle }] : []),

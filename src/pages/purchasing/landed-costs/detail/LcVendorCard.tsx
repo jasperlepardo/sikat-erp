@@ -1,4 +1,5 @@
-import { Combobox, FormField, Select } from '@jasperlepardo/sikat-design-system';
+import { CardField, Combobox, FormField, Select } from '@jasperlepardo/sikat-design-system';
+import { vendorOptions, stampedVendorOption } from '../../shared/vendorOptions';
 import { Fields, ReadOnly, Section, bind } from '../../../../components/form/fields';
 import type { LcSectionProps } from './types';
 
@@ -11,27 +12,22 @@ export function LcVendorCard({ draft, update, errors, m, readOnly, pickVendor }:
   const vendor = m.vendors.find((v) => v.id === draft.vendorId);
   const broker = m.vendors.find((v) => v.id === draft.brokerId);
 
+  // Posted: the vendor is fixed.
+  const vendorLocked = !!vendor && readOnly;
   return (
     <Section icon="storefront" title="Vendor">
       <Fields>
         <div className="md:col-span-2">
-          {vendor && readOnly ? (
-            <ReadOnly label="Vendor" value={draft.vendorName} description={draft.vendorCode} />
-          ) : (
-            <FormField label="Vendor" required error={errors.vendorId}>
-              {(p) => (
-                <Combobox
-                  {...p}
-                  placeholder="Search vendors"
-                  options={m.vendors
-                    .filter((v) => v.status !== 'Inactive' || v.id === draft.vendorId)
-                    .map((v) => ({ value: v.id, label: v.name, subLabel: v.code, subLabelPlacement: 'top' as const, text: `${v.code} ${v.name}` }))}
-                  value={draft.vendorId || null}
-                  onValueChange={pickVendor}
-                />
-              )}
-            </FormField>
-          )}
+          <CardField
+            label="Vendor"
+            required
+            placeholder="Search vendors"
+            options={vendorLocked ? [stampedVendorOption(draft, vendor)] : vendorOptions(m.vendors, draft.vendorId)}
+            value={draft.vendorId}
+            onValueChange={(id) => pickVendor(id || null)}
+            readOnly={vendorLocked}
+            error={errors.vendorId}
+          />
         </div>
         <div className="md:col-span-2">
           {broker && readOnly ? (

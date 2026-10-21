@@ -441,7 +441,7 @@ function CreditMemoForm() {
                     id: inv.id,
                     label: `A/P invoice ${apNumber(inv)}`,
                     description: `Billed ${formatDate(inv.postingDate)} · ${inv.currency}${inv.vendorRef ? ` · ${inv.vendorRef}` : ''} · ${inv.status}`,
-                    lines: inv.lines.map((l) => ({ id: l.id, itemNo: l.itemNo, name: l.name, warehouse: l.warehouse, total: `${l.quantity} ${l.uomCode}`, open: l.quantity })),
+                    lines: inv.lines.map((l) => ({ id: l.id, itemNo: l.itemNo, name: l.name, description: l.description, warehouse: l.warehouse, total: `${l.quantity} ${l.uomCode}`, open: l.quantity })),
                   })),
                 },
                 {
@@ -454,7 +454,7 @@ function CreditMemoForm() {
                     id: r.id,
                     label: `Return ${returnNumber(r)}`,
                     description: `Returned ${formatDate(r.postingDate)} · ${r.currency}${r.vendorRef ? ` · RMA ${r.vendorRef}` : ''}`,
-                    lines: r.lines.map((l) => ({ id: l.id, itemNo: l.itemNo, name: l.name, warehouse: l.warehouse, total: `${l.quantity} ${l.uomCode}`, open: returnOpenQty(l, r) })),
+                    lines: r.lines.map((l) => ({ id: l.id, itemNo: l.itemNo, name: l.name, description: l.description, warehouse: l.warehouse, total: `${l.quantity} ${l.uomCode}`, open: returnOpenQty(l, r) })),
                   })),
                 },
               ]}

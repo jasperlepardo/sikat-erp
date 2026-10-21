@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import {
+  AffixSelect,
   Combobox,
   Link,
   Select,
@@ -9,6 +10,7 @@ import {
   DatePicker,
 } from '@jasperlepardo/sikat-design-system';
 import { DataTable } from '../../../../components/form/DataTable';
+import { RowMenu } from '../../../../components/form/RowMenu';
 import { useColumnPrefs, type PrefColumn } from '../../../../components/form/columnPrefs';
 import { textCol, masterCol, amountCol } from '../../shared/purchColumns';
 import { departmentDef, priceListDef } from '../../../settings/masterDefs';
@@ -24,12 +26,19 @@ import { inventoryAccountFor } from '../../../../services/inventoryTransfers';
 import { copiedQty, lineNet, openQty, priceAfterDiscount, inventoryQty, prTotals, summarizeLines } from '../../../../services/purchaseRequests';
 import { PurchTotalsFooter } from '../../shared/PurchTotalsFooter';
 import { infoPrice, lineFromItem, type PrTabProps } from './types';
+import { LineItemText } from '../../../../components/form/LineItemText';
 
 const num = (v: string) => (v === '' ? 0 : Number(v));
+
+const DISCOUNT_MODES = ['%', 'PHP'] as const;
+type DiscountMode = (typeof DISCOUNT_MODES)[number];
 
 export function PrLinesCard({ draft, update, errors, m, ctx }: PrTabProps) {
   const [editing, setEditing] = useState<Set<string>>(new Set());
   const [addKey, setAddKey] = useState(0);
+  // Per line: is the discount typed as a percentage or a PHP amount off the unit price? Only the
+  // percentage is stored; the amount is converted on entry.
+  const [discountMode, setDiscountMode] = useState<Record<string, DiscountMode>>({});
   const lines = draft.lines;
   const totals = prTotals(draft, ctx.rateOf);
   // "By Item" collapses the grid to one read-only row per item; the footer totals stay off the real lines.
@@ -102,6 +111,9 @@ export function PrLinesCard({ draft, update, errors, m, ctx }: PrTabProps) {
     patch(l.id, { uomCode, uomName: m.inv.uoms.find((u) => u.code === uomCode)?.name ?? uomCode, itemsPerUnit: ipu, infoPrice: listed || scaled });
   };
 
+  // The unit's name as the UoM picker shows it (the line's stamped name can be a code such as "pc").
+  const uomLabel = (l: PrLine) => m.inv.uoms.find((u) => u.code === l.uomCode)?.name ?? (l.uomName || l.uomCode);
+
   const uomOptions = (l: PrLine) => {
     const item = itemOf(l);
     if (!item) return [{ value: l.uomCode, label: l.uomName || l.uomCode }];
@@ -128,26 +140,34 @@ export function PrLinesCard({ draft, update, errors, m, ctx }: PrTabProps) {
         </div>
       );
       return (
-        <div className="flex min-w-52 flex-col gap-1 whitespace-normal">
-          <Text variant="caption">{item.itemNo}</Text>
-          <Text variant="small">{item.name}</Text>
-          <Text variant="small" tone="muted">{l.itemDescription}</Text>
-          {ro ? null : (
-            <div className="flex gap-3">
-              <Link intent="primary" onClick={() => setEditing((s) => new Set(s).add(l.id))}>Edit</Link>
-              {copiedQty(l) ? null : <Link intent="primary" onClick={() => patch(l.id, { itemId: '', itemNo: '', itemDescription: '' })}>Change</Link>}
-            </div>
-          )}
+        <div className="min-w-52 whitespace-normal">
+          <LineItemText itemNo={l.itemNo || item.itemNo} description={l.itemDescription} name={item.name} />
         </div>
       );
     }),
     { key: 'lineKind', header: 'Type', optional: true, cell: (l) => { const k = lineKind(l); return k ? <TableStatus intent={k === 'Service' ? 'primary' : 'default'}>{k}</TableStatus> : null; } },
     {
       key: 'qty',
-      header: 'Req. qty',
+      header: 'Required qty',
+      align: 'end' as const,
+      // Quantity and unit as one grouped field, as on quotation lines; the unit locks once lines are copied.
       cell: (l) => (
-        <div className="w-24">
-          <TextField aria-label="Required qty" type="number" min={copiedQty(l)} value={String(l.requiredQty)} invalid={Boolean(err(l, 'quantity'))} onChange={(e) => { const qty = num(e.currentTarget.value); const open = Math.max(0, qty - (l.requiredQty - l.openQty)); patch(l.id, { requiredQty: qty, openQty: open }); }} disabled={ro} />
+        <div className="flex flex-col items-end gap-1">
+          <div className="flex w-44 items-stretch">
+            <TextField
+              aria-label="Required qty"
+              className="z-10 -mr-px min-w-0 flex-1 rounded-r-none! [&_input]:text-right"
+              type="number"
+              min={copiedQty(l)}
+              value={String(l.requiredQty)}
+              invalid={Boolean(err(l, 'quantity'))}
+              onChange={(e) => { const qty = num(e.currentTarget.value); const open = Math.max(0, qty - (l.requiredQty - l.openQty)); patch(l.id, { requiredQty: qty, openQty: open }); }}
+              disabled={ro}
+            />
+            <div className="z-20 w-24 shrink-0">
+              <Select aria-label="UoM" className="rounded-l-none!" options={uomOptions(l)} value={l.uomCode} onValueChange={(v) => v && changeUom(l, v)} disabled={ro || copiedQty(l) > 0} />
+            </div>
+          </div>
           {err(l, 'quantity') && <Text variant="small" tone="danger">{err(l, 'quantity')}</Text>}
         </div>
       ),
@@ -155,28 +175,54 @@ export function PrLinesCard({ draft, update, errors, m, ctx }: PrTabProps) {
     {
       key: 'openQty',
       header: 'Open qty',
+      optional: true,
+      align: 'end' as const,
       cell: (l) => (
-        <div className="flex flex-col">
-          <span className="text-sm tabular-nums">{openQty(l)}</span>
+        <div className="flex flex-col items-end">
+          <span className="whitespace-nowrap text-sm tabular-nums">{openQty(l)} {uomLabel(l)}</span>
           {copiedQty(l) ? <Text variant="caption" tone="muted">{copiedQty(l)} copied</Text> : null}
         </div>
       ),
     },
-    { key: 'uom', header: 'UoM', cell: (l) => <Select aria-label="UoM" className="w-24" options={uomOptions(l)} value={l.uomCode} onValueChange={(v) => v && changeUom(l, v)} disabled={ro || copiedQty(l) > 0} /> },
-    { key: 'infoPrice', header: 'Info price', cell: (l) => <TextField aria-label="Info price" type="number" min={0} className="w-28" prefix="PHP" value={String(l.infoPrice)} onChange={(e) => patch(l.id, { infoPrice: num(e.currentTarget.value) })} disabled={ro} /> },
+    { key: 'inventoryQty', header: 'Inventory qty', ...opt, align: 'end' as const, cell: (l: PrLine) => <span className="text-sm tabular-nums">{formatAmount(inventoryQty(l))}</span> },
+    { key: 'inStock', header: 'In stock', ...opt, align: 'end' as const, cell: (l: PrLine) => { const s = stockAt(l); return <span className="text-sm tabular-nums">{s ? formatAmount(s.inStock) : '—'}</span>; } },
+    { key: 'committed', header: 'Committed', ...opt, align: 'end' as const, cell: (l: PrLine) => { const s = stockAt(l); return <span className="text-sm tabular-nums">{s ? formatAmount(s.committed) : '—'}</span>; } },
+    { key: 'ordered', header: 'On order', ...opt, align: 'end' as const, cell: (l: PrLine) => { const s = stockAt(l); return <span className="text-sm tabular-nums">{s ? formatAmount(s.ordered) : '—'}</span>; } },
+    masterCol({ key: 'priceList', header: 'Price list', def: priceListDef, get: (l: PrLine) => l.priceListId, onChange: (l, v) => patch(l.id, { priceListId: v }), readOnly: ro }),
+    { key: 'infoPrice', header: 'Info price', align: 'end' as const, cell: (l) => <TextField aria-label="Info price" type="number" min={0} className="ml-auto w-28 [&_input]:text-right" value={l.infoPrice ? String(l.infoPrice) : ''} placeholder="0.00" onChange={(e) => patch(l.id, { infoPrice: num(e.currentTarget.value) })} disabled={ro} /> },
     {
-      key: 'warehouse',
-      header: 'Warehouse',
-      cell: (l) => (
-        <div className="min-w-28">
-          <Select aria-label="Warehouse" placeholder="None" clearable options={warehouseOptions(l.warehouse)} value={l.warehouse} onValueChange={(v) => patch(l.id, { warehouse: v ?? '' })} disabled={ro || copiedQty(l) > 0} />
-          {err(l, 'warehouse') && <Text variant="small" tone="danger">{err(l, 'warehouse')}</Text>}
-        </div>
-      ),
+      key: 'discountPct',
+      header: 'Discount',
+      ...opt,
+      align: 'end' as const,
+      cell: (l: PrLine) => {
+        const mode = discountMode[l.id] ?? '%';
+        const shown = mode === '%' ? Math.round(l.discountPct * 1e4) / 1e4 : Math.round(l.infoPrice * l.discountPct) / 100;
+        return (
+          <TextField
+            aria-label="Discount"
+            type="number"
+            min={0}
+            max={mode === '%' ? 100 : l.infoPrice}
+            className="w-32 *:justify-end [&_input]:text-right"
+            // No discount reads as an empty field with a placeholder (0 for %, 0.00 for PHP), not a typed-in 0.
+            value={shown ? String(shown) : ''}
+            placeholder={mode === '%' ? '0' : '0.00'}
+            onChange={(e) => {
+              const v = num(e.currentTarget.value);
+              patch(l.id, { discountPct: mode === '%' ? Math.min(100, v) : l.infoPrice ? Math.min(100, (v / l.infoPrice) * 100) : 0 });
+            }}
+            disabled={ro}
+            suffix={<AffixSelect aria-label="Discount type" options={[...DISCOUNT_MODES]} value={mode} onValueChange={(m) => setDiscountMode((d) => ({ ...d, [l.id]: m as DiscountMode }))} />}
+          />
+        );
+      },
     },
+    amountCol({ key: 'priceAfterDisc', header: 'Price after discount', value: (l: PrLine) => priceAfterDiscount(l), align: 'end' }),
     {
       key: 'taxCode',
       header: 'Tax code',
+      optional: true,
       cell: (l) => (
         <div className="min-w-24">
           <Select aria-label="Tax code" placeholder="None" clearable options={taxOptions(l.taxCode)} value={l.taxCode} onValueChange={(v) => patch(l.id, { taxCode: v ?? '' })} disabled={ro} />
@@ -184,27 +230,54 @@ export function PrLinesCard({ draft, update, errors, m, ctx }: PrTabProps) {
         </div>
       ),
     },
-    { key: 'glAccount', header: 'G/L account', optional: true, cell: (l) => { const code = glAccountOf(l); return code ? <Text variant="small" className="whitespace-normal">{accountText(code, m.inv.accounts)}</Text> : <span className="text-muted">—</span>; } },
-    { key: 'total', header: 'Total (PHP)', cell: (l) => <span className="whitespace-nowrap text-sm tabular-nums">{formatAmount(lineNet(l))}</span> },
-    amountCol({ key: 'grossAfterDisc', header: 'Gross after disc.', value: grossAfterDisc }),
-    { key: 'inStock', header: 'In stock', ...opt, cell: (l: PrLine) => { const s = stockAt(l); return <span className="text-sm tabular-nums">{s ? formatAmount(s.inStock) : '—'}</span>; } },
-    { key: 'committed', header: 'Committed', ...opt, cell: (l: PrLine) => { const s = stockAt(l); return <span className="text-sm tabular-nums">{s ? formatAmount(s.committed) : '—'}</span>; } },
-    { key: 'ordered', header: 'On order', ...opt, cell: (l: PrLine) => { const s = stockAt(l); return <span className="text-sm tabular-nums">{s ? formatAmount(s.ordered) : '—'}</span>; } },
-    { key: 'inventoryQty', header: 'Qty (inv. UoM)', ...opt, cell: (l: PrLine) => <span className="text-sm tabular-nums">{formatAmount(inventoryQty(l))}</span> },
-    { key: 'discountPct', header: 'Disc. %', ...opt, cell: (l: PrLine) => <TextField aria-label="Discount %" type="number" min={0} max={100} className="w-20" suffix="%" value={String(l.discountPct)} onChange={(e) => patch(l.id, { discountPct: Math.min(100, num(e.currentTarget.value)) })} disabled={ro} /> },
-    amountCol({ key: 'priceAfterDisc', header: 'Price after disc.', value: (l: PrLine) => priceAfterDiscount(l) }),
+    { key: 'taxAmount', header: 'Tax amount', ...opt, align: 'end' as const, cell: (l: PrLine) => (itemOf(l) ? <span className="whitespace-nowrap text-sm tabular-nums">{formatAmount(Math.round(lineNet(l) * ctx.rateOf(l.taxCode)) / 100)}</span> : null) },
+    amountCol({ key: 'grossAfterDisc', header: 'Gross price', value: grossAfterDisc, align: 'end' }),
+    { key: 'total', header: 'Net total', align: 'end' as const, cell: (l) => <span className="whitespace-nowrap text-sm tabular-nums">{formatAmount(lineNet(l))}</span> },
     { key: 'requiredDate', header: 'Required date', ...opt, cell: (l: PrLine) => <DatePicker aria-label="Required date" className="w-36" value={l.requiredDate} onValueChange={(v) => patch(l.id, { requiredDate: v ?? '' })} disabled={ro} /> },
     { key: 'vendorId', header: 'Preferred vendor', ...opt, cell: (l: PrLine) => ro
       ? <Text variant="small">{l.vendorId ? (m.vendors.find((v) => v.id === l.vendorId)?.name ?? l.vendorId) : '—'}</Text>
       : <Combobox aria-label="Preferred vendor" className="min-w-44" placeholder="Any vendor" clearable options={vendorOptions(l.vendorId)} value={l.vendorId || null} onValueChange={(v) => patch(l.id, { vendorId: v ?? '' })} /> },
+    {
+      key: 'warehouse',
+      header: 'Warehouse',
+      optional: true,
+      cell: (l) => (
+        <div className="min-w-28">
+          <Select aria-label="Warehouse" placeholder="None" clearable options={warehouseOptions(l.warehouse)} value={l.warehouse} onValueChange={(v) => patch(l.id, { warehouse: v ?? '' })} disabled={ro || copiedQty(l) > 0} />
+          {err(l, 'warehouse') && <Text variant="small" tone="danger">{err(l, 'warehouse')}</Text>}
+        </div>
+      ),
+    },
+    { key: 'glAccount', header: 'G/L account', ...opt, cell: (l) => { const code = glAccountOf(l); return code ? <Text variant="small" className="whitespace-normal">{accountText(code, m.inv.accounts)}</Text> : <span className="text-muted">—</span>; } },
     masterCol({ key: 'department', header: 'Department', def: departmentDef, get: (l: PrLine) => l.departmentId, onChange: (l, v) => patch(l.id, { departmentId: v }), placeholder: 'None', clearable: true, readOnly: ro }),
-    masterCol({ key: 'priceList', header: 'Price list', def: priceListDef, get: (l: PrLine) => l.priceListId, onChange: (l, v) => patch(l.id, { priceListId: v }), readOnly: ro }),
     textCol({ key: 'freeText', header: 'Free text', width: 'min-w-40', readOnly: ro, get: (l: PrLine) => l.freeText, onChange: (l, v) => patch(l.id, { freeText: v }) }),
     textCol({ key: 'requisitionSlipNo', header: 'Requisition slip no.', width: 'w-36', readOnly: ro, get: (l: PrLine) => l.requisitionSlipNo, onChange: (l, v) => patch(l.id, { requisitionSlipNo: v }) }),
-    { key: 'lineStatus', header: 'Status', cell: (l) => <TableStatus intent={l.status === 'Open' ? 'primary' : 'success'}>{l.status}</TableStatus> },
+    { key: 'lineStatus', header: 'Line status', optional: true, cell: (l) => <TableStatus intent={l.status === 'Open' ? 'primary' : 'success'}>{l.status}</TableStatus> },
+    // The line's actions, last: edit the description, swap the item, remove the line. Copied lines keep
+    // their item (an RFQ or PO already points at them), so only the description can change.
+    {
+      key: 'actions',
+      header: '',
+      align: 'end' as const,
+      cell: (l) =>
+        ro || !itemOf(l) ? null : (
+          <RowMenu
+            label={`Actions for ${l.itemNo}`}
+            size="2xs"
+            items={[
+              { label: 'Edit description', icon: 'edit', onSelect: () => setEditing((s) => new Set(s).add(l.id)) },
+              ...(copiedQty(l) ? [] : [
+                { label: 'Change item', icon: 'swap_horiz', onSelect: () => patch(l.id, { itemId: '', itemNo: '', itemDescription: '' }) },
+                { label: 'Remove line', icon: 'delete', onSelect: () => update({ lines: lines.filter((x) => x.id !== l.id) }) },
+              ]),
+            ]}
+          />
+        ),
+    },
   ];
   const prefs = useColumnPrefs('pr', allColumns);
-  const columns = prefs.columns;
+  // Column settings sit in the last column's header, above the rows' ⋯ menus.
+  const columns = prefs.columns.map((c) => (c.key === 'actions' ? { ...c, header: prefs.iconMenu } : c));
 
   return (
     <div className="flex flex-col gap-2">
@@ -220,12 +293,11 @@ export function PrLinesCard({ draft, update, errors, m, ctx }: PrTabProps) {
         />
         {summarized ? <Text variant="small" tone="muted">Grouped by item — read-only view.</Text> : null}
       </div>
-      {prefs.settings}
       <DataTable
         noPagination
         icon="list_alt"
         title="Contents"
-        description={errors.lines ?? 'Items or services requested — informational prices only, not binding.'}
+        description={errors.lines ?? 'Items or services requested — informational prices only, not binding. Amounts in PHP.'}
         rows={viewRows}
         getRowId={(l) => l.id}
         columns={columns}
@@ -233,7 +305,6 @@ export function PrLinesCard({ draft, update, errors, m, ctx }: PrTabProps) {
         sortValue={(l, key) => (key === 'item' ? l.itemNo : String(l[key as keyof PrLine] ?? '')).toLowerCase()}
         // Copied lines stay: an RFQ or PO already points at them.
         onRemove={ro ? undefined : (picked) => update({ lines: lines.filter((l) => !picked.includes(l) || copiedQty(l) > 0) })}
-        onColumnSettings={prefs.toggleSettings}
         spanRow={ro ? undefined : (
           <Combobox
             key={addKey}

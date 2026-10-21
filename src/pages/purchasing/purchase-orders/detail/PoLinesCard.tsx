@@ -29,6 +29,7 @@ import { isValidToday, stockTotals } from '../../../../services/items';
 import { getPurchasingSettings, grossPrice, inventoryQty, lineNet, openQty, poTotals, poWithholding, priceAfterDiscount } from '../../../../services/purchaseOrders';
 import { linePricing, lineFromItem, viewCurrency, type PoTabProps } from './types';
 import { PurchTotalsFooter, PurchTotalNote, PurchTotalRow } from '../../shared/PurchTotalsFooter';
+import { LineItemText } from '../../../../components/form/LineItemText';
 
 const num = (v: string) => (v === '' ? 0 : Number(v));
 const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -155,15 +156,10 @@ export function PoLinesCard({ draft, update, errors, m, ctx }: PoTabProps) {
               {isEditingItem && !linesLocked ? (
                 <>
                   <Text variant="caption">{item.itemNo}</Text>
-                  <TextField aria-label="Item name" placeholder="Item name" value={l.name} onChange={(e) => patch(l.id, { name: e.currentTarget.value })} />
                   <TextField aria-label="Description" placeholder="Description" value={l.description} onChange={(e) => patch(l.id, { description: e.currentTarget.value })} />
                 </>
               ) : (
-                <div className="flex flex-col">
-                  <Text variant="caption">{item.itemNo}</Text>
-                  <Text variant="small">{l.name}</Text>
-                  <Text variant="small" tone="muted">{l.description}</Text>
-                </div>
+                <LineItemText itemNo={item.itemNo} description={l.description} name={l.name} />
               )}
               {linesLocked ? null : (
                 <div className="flex gap-3">
@@ -308,7 +304,6 @@ export function PoLinesCard({ draft, update, errors, m, ctx }: PoTabProps) {
         </div>
       ) : null}
 
-      {prefs.settings}
 
       <DataTable
         noPagination
@@ -324,7 +319,7 @@ export function PoLinesCard({ draft, update, errors, m, ctx }: PoTabProps) {
         unsortable={columns.map((c) => c.key).filter((k) => k !== 'item')}
         sortValue={(l, key) => (key === 'item' ? l.itemNo : String(l[key as keyof PoLine] ?? '')).toLowerCase()}
         onRemove={linesLocked ? undefined : (picked) => update({ lines: lines.filter((l) => !picked.includes(l)) })}
-        onColumnSettings={prefs.toggleSettings}
+        columnMenu={prefs.menu}
         spanRow={linesLocked ? undefined : (
           <Combobox
             key={addKey}

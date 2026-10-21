@@ -17,6 +17,7 @@ import { isValidToday } from '../../../../services/items';
 import { PurchTotalsFooter, PurchTotalNote, PurchTotalRow } from '../../shared/PurchTotalsFooter';
 import { CopyPanel } from '../../shared/CopyPanel';
 import { riLineFromItem, riLinesFromPo, type ApriSectionProps } from './types';
+import { LineItemText } from '../../../../components/form/LineItemText';
 
 const WITHHELD_LABEL: Record<string, string> = {
   'Expanded (EWT)': 'EWT',
@@ -133,11 +134,7 @@ export function ApriContentsCard({
         );
       return (
         <div className="flex w-60 flex-col gap-1 whitespace-normal">
-          <div className="flex flex-col">
-            <Text variant="caption">{item.itemNo}</Text>
-            <Text variant="small">{l.name}</Text>
-            <Text variant="small" tone="muted">{l.description}</Text>
-          </div>
+          <LineItemText itemNo={item.itemNo} description={l.description} name={l.name} />
           {ctx.readOnly ? null : (
             <div className="flex gap-3">
               <Link intent="primary" onClick={() => setEditing((s) => new Set(s).add(l.id))}>Edit</Link>
@@ -214,7 +211,6 @@ export function ApriContentsCard({
 
   return (
     <>
-      {prefs.settings}
       <DataTable
         noPagination
         icon="list_alt"
@@ -229,7 +225,7 @@ export function ApriContentsCard({
         unsortable={columns.map((c) => c.key).filter((k) => k !== 'item')}
         sortValue={(l, key) => (key === 'item' ? l.itemNo : String(l[key as keyof ApRiLine] ?? '')).toLowerCase()}
         onRemove={ctx.readOnly ? undefined : (picked) => update({ lines: lines.filter((l) => !picked.includes(l)) })}
-        onColumnSettings={prefs.toggleSettings}
+        columnMenu={prefs.menu}
         spanRow={
           ctx.readOnly ? undefined : (
             <div className="flex items-center gap-2">
@@ -328,7 +324,7 @@ export function ApriContentsCard({
                     description: `Delivery ${formatDate(po.deliveryDate)} · ${po.currency}`,
                     lines: po.lines
                       .filter((l) => l.status === 'Open')
-                      .map((l) => ({ id: l.id, itemNo: l.itemNo, name: l.name, warehouse: l.warehouse, total: `${l.quantity} ${l.uomCode}`, open: openQty(l) })),
+                      .map((l) => ({ id: l.id, itemNo: l.itemNo, name: l.name, description: l.description, warehouse: l.warehouse, total: `${l.quantity} ${l.uomCode}`, open: openQty(l) })),
                   })),
                 },
               ]}

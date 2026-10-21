@@ -273,7 +273,7 @@ export const SEED_ITEM_GROUPS: ItemGroup[] = [
   group('AppleCare', 'ACP', 'Moving Average', ...NON_STOCK, SERVICE_TAX),
   group('Gift Certificates', 'GC', 'Moving Average', '', '5030', '2160', SERVICE_TAX),
   group('Services', 'SVC', 'Moving Average', ...NON_STOCK, SERVICE_TAX),
-  group('Rent & Leases', 'RNT', 'Moving Average', ...NON_STOCK, RENT_TAX),
+  group('Rent & Leases', 'RNT', 'Moving Average', '', '6100', '4030', RENT_TAX),
 ];
 
 const uom = (code: string, name: string): UnitOfMeasure => ({ ...blankUom(code), name });

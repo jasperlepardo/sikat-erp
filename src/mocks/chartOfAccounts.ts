@@ -321,6 +321,7 @@ const CHART: Account[] = [
       ['6100', 'Rent – Store Space'],
       ['6110', 'Utilities'],
       ['6120', 'Repairs and Maintenance'],
+      ['6130', 'Security Services'],
     ]],
     ['6195', 'Selling and Administrative', [
       ['6200', 'Advertising and Promotions'],
@@ -386,7 +387,7 @@ const CONFIDENTIAL = ['6005', '2410'];
 const DEFAULT_TAX: Rule<string> = [
   ['4010', '31'], ['4030', '31'],
   ['5040', '44'], ['6230', '44'],
-  ['6100', '44'], ['6110', '44'], ['6120', '44'], ['6200', '44'], ['6210', '44'], ['6240', '44'],
+  ['6100', '44'], ['6110', '44'], ['6120', '44'], ['6130', '44'], ['6200', '44'], ['6210', '44'], ['6240', '44'],
   ['6250', '44'], ['6260', '44'], ['6270', '44'],
 ];
 
@@ -443,6 +444,7 @@ export function isUnder(a: Account, titleCode: string, all: Account[]) {
 export type AccountRole =
   | 'inventory'
   | 'cogs'
+  | 'expense'
   | 'revenue'
   | 'receivable'
   | 'payable'
@@ -455,6 +457,12 @@ export type AccountRole =
 export const ACCOUNT_ROLES: Record<AccountRole, { what: string; fits: (a: Account, all: Account[]) => boolean }> = {
   inventory: { what: 'an inventory account (under 1300 Inventories)', fits: (a, all) => isUnder(a, '1300', all) },
   cogs: { what: 'a cost of sales account', fits: (a) => a.drawer === 'Cost of sales' },
+  // What a non-stock purchase costs to: cost of sales when it's resold (setup, delivery), an
+  // operating or other expense when the business uses it (rent, security, audit, interest).
+  expense: {
+    what: 'a cost of sales or expense account',
+    fits: (a) => a.drawer === 'Cost of sales' || a.drawer === 'Operating expenses' || a.drawer === 'Other expenses',
+  },
   revenue: {
     what: 'a revenue account (or unearned revenue under 2100)',
     fits: (a, all) => a.drawer === 'Revenue' || isUnder(a, '2100', all),

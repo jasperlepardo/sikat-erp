@@ -1,6 +1,7 @@
 import { CardField, Icon, Text, type CardFieldOption } from '@jasperlepardo/sikat-design-system';
 import { Section } from '../../../components/form/fields';
 import type { Partner } from '../../../mocks/partners';
+import { PartnerAvatar } from '../../../components/PartnerAvatar';
 
 interface CustomerCardProps {
   customers: Partner[];
@@ -19,7 +20,7 @@ interface CustomerCardProps {
 const option = (c: Partner): CardFieldOption => ({
   value: c.id,
   label: c.name,
-  icon: <Icon size={16}>person</Icon>,
+  icon: <PartnerAvatar partner={c} size={40} />,
   fields: [
     { label: 'Code', value: c.code },
     ...(c.tin ? [{ label: 'TIN', value: c.tin }] : []),

@@ -396,7 +396,7 @@ function GoodsReturnForm() {
                     id: gr.id,
                     label: `Receipt ${grNumber(gr)}`,
                     description: `Received ${formatDate(gr.postingDate)} · ${gr.currency}`,
-                    lines: gr.lines.map((l) => ({ id: l.id, itemNo: l.itemNo, name: l.name, warehouse: l.warehouse, total: `${l.quantity} ${l.uomCode}`, open: grOpenQty(l, gr) })),
+                    lines: gr.lines.map((l) => ({ id: l.id, itemNo: l.itemNo, name: l.name, description: l.description, warehouse: l.warehouse, total: `${l.quantity} ${l.uomCode}`, open: grOpenQty(l, gr) })),
                   })),
                 },
                 {
@@ -409,7 +409,7 @@ function GoodsReturnForm() {
                     id: inv.id,
                     label: `A/P invoice ${apNumber(inv)}`,
                     description: `Billed ${formatDate(inv.postingDate)} · ${inv.currency}${inv.vendorRef ? ` · ${inv.vendorRef}` : ''}`,
-                    lines: inv.lines.filter((l) => m.items.find((i) => i.id === l.itemId)?.inventoryItem).map((l) => ({ id: l.id, itemNo: l.itemNo, name: l.name, warehouse: l.warehouse, total: `${l.quantity} ${l.uomCode}`, open: returnableQty(l) })),
+                    lines: inv.lines.filter((l) => m.items.find((i) => i.id === l.itemId)?.inventoryItem).map((l) => ({ id: l.id, itemNo: l.itemNo, name: l.name, description: l.description, warehouse: l.warehouse, total: `${l.quantity} ${l.uomCode}`, open: returnableQty(l) })),
                   })),
                 },
               ]}

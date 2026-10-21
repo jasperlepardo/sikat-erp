@@ -318,7 +318,7 @@ function DprForm() {
                     id: po.id,
                     label: `PO ${poNumber(po)}`,
                     description: `Delivery ${formatDate(po.deliveryDate)} · ${po.currency}`,
-                    lines: po.lines.filter((l) => l.status === 'Open').map((l) => ({ id: l.id, itemNo: l.itemNo, name: l.name, warehouse: l.warehouse, total: `${l.quantity} ${l.uomCode}`, open: openQty(l) || l.quantity })),
+                    lines: po.lines.filter((l) => l.status === 'Open').map((l) => ({ id: l.id, itemNo: l.itemNo, name: l.name, description: l.description, warehouse: l.warehouse, total: `${l.quantity} ${l.uomCode}`, open: openQty(l) || l.quantity })),
                   })),
                 },
               ]}

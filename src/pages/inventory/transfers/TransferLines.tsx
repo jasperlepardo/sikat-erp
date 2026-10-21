@@ -10,6 +10,7 @@ import { binsOf, receivingBin } from '../../../services/binLocations';
 import { formatAmount } from '../../../services/format';
 import { isValidToday } from '../../../services/items';
 import { inStockAt, qtyByItem } from '../../../services/inventoryTransfers';
+import { LineItemText } from '../../../components/form/LineItemText';
 
 export type TransferDraft = Omit<InventoryTransfer, 'id'> & { id?: string };
 
@@ -141,11 +142,7 @@ export function TransferLines({
         if (item && !changing.has(l.id)) {
           return (
             <div className="flex w-64 flex-col gap-1">
-              <div className="flex flex-col">
-                <Text variant="caption">{l.itemNo}</Text>
-                <Text variant="small">{l.name}</Text>
-                <Text variant="small" tone="muted">{l.description}</Text>
-              </div>
+              <LineItemText itemNo={l.itemNo} description={l.description} name={l.name} />
               {item.manageBy !== 'None' ? (
                 <Text variant="small" tone="muted">
                   {item.manageBy === 'Batches' ? 'Batch' : 'Serial'}-managed: moves by qty

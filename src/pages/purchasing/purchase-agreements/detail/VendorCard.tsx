@@ -2,6 +2,7 @@ import { CardField, Icon, Text, type CardFieldOption } from '@jasperlepardo/sika
 import { Fields, ReadOnly, Section, bind, type Errors } from '../../../../components/form/fields';
 import { contactName } from '../../../../mocks/partners';
 import type { PbaDraft, PbaMasters } from './types';
+import { PartnerAvatar } from '../../../../components/PartnerAvatar';
 
 interface Props {
   draft: PbaDraft;
@@ -49,7 +50,7 @@ export function VendorCard({ draft, update, errors, m, added, readOnly }: Props)
               .map((v): CardFieldOption => ({
                 value: v.id,
                 label: v.name,
-                icon: <Icon size={16}>local_shipping</Icon>,
+                icon: <PartnerAvatar partner={v} size={36} />,
                 fields: [
                   { label: 'Code', value: v.code },
                   ...(v.tin ? [{ label: 'TIN', value: v.tin }] : []),

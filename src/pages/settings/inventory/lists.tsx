@@ -90,7 +90,7 @@ export function ItemGroupsTab(route: ListRoute) {
           e.prefix = `${g.prefix.toUpperCase()} is used by another group.`;
         const accountErrors = {
           inventoryAccount: accountProblem(g.inventoryAccount, 'inventory', chart ?? []),
-          cogsAccount: accountProblem(g.cogsAccount, 'cogs', chart ?? [], true),
+          cogsAccount: accountProblem(g.cogsAccount, g.inventoryAccount ? 'cogs' : 'expense', chart ?? [], true),
           revenueAccount: accountProblem(g.revenueAccount, 'revenue', chart ?? [], true),
         };
         for (const [k, v] of Object.entries(accountErrors)) if (v && chart) e[k] = v;
@@ -124,8 +124,8 @@ export function ItemGroupsTab(route: ListRoute) {
                 onChange={(inventoryAccount) => update({ inventoryAccount })}
               />
               <AccountField
-                label="Cost of goods sold account"
-                role="cogs"
+                label={g.inventoryAccount ? 'Cost of goods sold account' : 'Cost / expense account'}
+                role={g.inventoryAccount ? 'cogs' : 'expense'}
                 accounts={chart}
                 required
                 error={errors.cogsAccount}

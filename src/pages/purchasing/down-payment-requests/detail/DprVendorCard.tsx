@@ -1,5 +1,6 @@
-import { CardField, Combobox, FormField, Icon, Select, type CardFieldOption } from '@jasperlepardo/sikat-design-system';
-import { Fields, ReadOnly, Section, bind } from '../../../../components/form/fields';
+import { CardField, FormField, Icon, Select, type CardFieldOption } from '@jasperlepardo/sikat-design-system';
+import { vendorOptions, stampedVendorOption } from '../../shared/vendorOptions';
+import { Fields, Section, bind } from '../../../../components/form/fields';
 import { contactName } from '../../../../mocks/partners';
 import { formatAddress, type PostalAddress } from '../../../../mocks/address';
 import { countryName } from '../../../../services/partnerMasters';
@@ -41,20 +42,23 @@ export function DprVendorCard({ draft, update, errors, m, ctx, pickVendor }: Dpr
     option(vendor!.name, a, ` · ${a.label || 'Untitled address'}${a.id === vendor?.defaultBillToId ? ' (default bill-to)' : ''}`),
   );
 
+  // Posted, or based on another document: the vendor is fixed.
+  const vendorLocked = !!vendor && (ctx.readOnly || ctx.based);
   return (
     <fieldset disabled={ctx.readOnly} className="contents">
       <Section icon="storefront" title="Vendor">
         <Fields>
           <div className="md:col-span-2">
-            {vendor && (ctx.readOnly || ctx.based) ? (
-              <ReadOnly label="Vendor" value={draft.vendorName} description={`${draft.vendorCode} · ${draft.currency}`} />
-            ) : (
-              <FormField label="Vendor" required error={errors.vendorId}>
-                {(p) => (
-                  <Combobox {...p} placeholder="Search vendors" options={m.vendors.filter((v) => v.status !== 'Inactive' || v.id === draft.vendorId).map((v) => ({ value: v.id, label: v.name, subLabel: v.code, subLabelPlacement: 'top' as const, description: v.currency, text: `${v.code} ${v.name}` }))} value={draft.vendorId || null} onValueChange={pickVendor} />
-                )}
-              </FormField>
-            )}
+            <CardField
+              label="Vendor"
+              required
+              placeholder="Search vendors"
+              options={vendorLocked ? [stampedVendorOption(draft, vendor, draft.currency)] : vendorOptions(m.vendors, draft.vendorId)}
+              value={draft.vendorId}
+              onValueChange={(id) => pickVendor(id || null)}
+              readOnly={vendorLocked}
+              error={errors.vendorId}
+            />
           </div>
           {h.lookup('contactId', 'Contact person', [{ value: '', label: '— None —' }, ...(vendor?.contacts ?? []).filter((c) => c.active || c.id === draft.contactId).map((c) => ({ value: c.id, label: contactName(c) }))], { disabled: !vendor })}
           {h.text('vendorRef', 'Vendor ref. no.', { hint: "The vendor's proforma or billing no." })}

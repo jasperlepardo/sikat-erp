@@ -11,6 +11,7 @@ import { AddressPanel } from '../../../partners/detail/addresses';
 import { EditPanel } from '../../../partners/detail/EditPanel';
 import { ALL_CURRENCIES, formatAddress, type RfqSectionProps } from './types';
 import { receivesFromVendors } from '../../../../mocks/itemMasters';
+import { PartnerAvatar } from '../../../../components/PartnerAvatar';
 
 type AddressKey = 'shipTo' | 'payTo';
 const OURS = 'ours';
@@ -143,7 +144,7 @@ export function RfqVendorCard({ draft, update, errors, m, ctx, pickVendor, onNew
                   .map((v): CardFieldOption => ({
                     value: v.id,
                     label: v.name,
-                    icon: <Icon size={16}>storefront</Icon>,
+                    icon: <PartnerAvatar partner={v} size={36} />,
                     fields: [
                       { label: 'Code', value: v.code },
                       ...(v.currency && v.currency !== ALL_CURRENCIES ? [{ label: 'Currency', value: v.currency }] : []),

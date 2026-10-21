@@ -21,6 +21,7 @@ import { lineNet, rfqTotals } from '../../../../services/rfqs';
 import { type RfqLine } from '../../../../mocks/rfqs';
 import { PurchTotalsFooter } from '../../shared/PurchTotalsFooter';
 import { blanketOptions, lineFromItem, linePricing, type RfqTabProps } from './types';
+import { LineItemText } from '../../../../components/form/LineItemText';
 
 const num = (v: string) => (v === '' ? 0 : Number(v));
 const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -110,8 +111,7 @@ export function RfqLinesCard({ draft, update, errors, m, ctx }: RfqTabProps) {
                 </>
               ) : (
                 <div className="flex flex-col">
-                  <Text variant="caption">{item.itemNo}</Text>
-                  <Text variant="small">{l.description || item.name}</Text>
+                  <LineItemText itemNo={item.itemNo} description={l.description} name={item.name} />
                 </div>
               )}
               {linesLocked ? null : (
@@ -211,7 +211,6 @@ export function RfqLinesCard({ draft, update, errors, m, ctx }: RfqTabProps) {
 
   return (
     <div className="flex flex-col gap-2">
-      {prefs.settings}
       <DataTable
         icon="format_list_bulleted"
         title="Lines"
@@ -221,7 +220,7 @@ export function RfqLinesCard({ draft, update, errors, m, ctx }: RfqTabProps) {
         unsortable={['item', 'requiredQty', 'quotedQty', 'requiredDate', 'quotedDate', 'uomName', 'itemsPerUnit', 'priceListId', 'pricing', 'total', 'blanketAgreement', 'requisitionSlipNo']}
         noPagination
         onRemove={linesLocked ? undefined : (picked) => update({ lines: lines.filter((l) => !picked.includes(l)) })}
-        onColumnSettings={prefs.toggleSettings}
+        columnMenu={prefs.menu}
         spanRow={linesLocked ? undefined : (
           <Combobox
             key={addKey}

@@ -704,6 +704,27 @@ const GIFT_CERTIFICATES: Item[] = [1000, 5000, 10000].map((amount, n) =>
   }),
 );
 
+/**
+ * Where each bought service costs to. Services the store resells (setup, delivery) stay on the
+ * Services group's 5030 Cost of Services; the ones it uses itself are operating or other expenses,
+ * so they post at item level. Rent is set on the Rent & Leases group (6100).
+ */
+const EXPENSE_ACCOUNT: Record<string, string> = {
+  'SVC-SUB-FITOUT': '6120', 'SVC-AIRCON': '6120',
+  'SVC-SECURITY': '6130',
+  'SVC-ADS-DIGITAL': '6200', 'SVC-PHOTO': '6200', 'SVC-DESIGN': '6200', 'SVC-VIDEO-EDIT': '6200',
+  'SVC-COURIER': '6210',
+  'SVC-POSTAGE': '6240',
+  'SVC-AUDIT': '6250', 'SVC-IT-CONSULT': '6250', 'SVC-LEGAL': '6250', 'SVC-ADVISORY': '6250',
+  'SVC-CLD-HOST': '6260', 'SVC-AI-SEAT': '6260', 'SVC-POS-LICENSE': '6260', 'SVC-SIGNAGE-LIC': '6260',
+  'SVC-SALES-COMM': '6390', 'SVC-POS-LEASE': '6390', 'SVC-MANUALS': '6390', 'SVC-FOREIGN-MISC': '6390',
+  // Import costs: part of landing the goods, like freight.
+  'SVC-CUSTOMS': '5040', 'SVC-FREIGHT': '5040', 'SVC-VAT-DISB': '5040',
+  'SVC-LOAN-INT': '8010',
+};
+const expenseGl = (itemNo: string): Partial<Item> =>
+  EXPENSE_ACCOUNT[itemNo] ? { glBy: 'Item Level', cogsAccount: EXPENSE_ACCOUNT[itemNo] } : {};
+
 type PurchasedService = [
   id: string, itemNo: string, description: string, uom: string, withholdingGroup: string, defaultVendorId: string, purchaseTaxGroup?: string,
 ];
@@ -736,13 +757,13 @@ const PURCHASED_SERVICES: PurchasedService[] = [
 /** Purchases whose tax treatment is fixed on the item rather than decided by the vendor. */
 const ITEM_TAX_CASES: Item[] = [
   seed('itm-043', 'Services', {
-    itemNo: 'SVC-VAT-DISB', name: 'Import VAT disbursement', description: 'Import VAT advanced by customs broker', itemType: 'Items', inventoryUom: 'pc', purchasingUom: 'pc',
+    itemNo: 'SVC-VAT-DISB', ...expenseGl('SVC-VAT-DISB'), name: 'Import VAT disbursement', description: 'Import VAT advanced by customs broker', itemType: 'Items', inventoryUom: 'pc', purchasingUom: 'pc',
     salesItem: false, inventoryItem: false, purchaseTaxGroup: 'P-VAT12', purchaseTaxCode: '46', withholdingGroup: 'WH-NONE',
     defaultVendorId: 'bp-022', warehouses: [], cycleCountDays: 0, hasTransactions: false,
     generalRemarks: 'The broker pays the import VAT to the Bureau of Customs for us and bills it back at cost: fixed code 46, and no withholding on a reimbursement.',
   }),
   seed('itm-044', 'Services', {
-    itemNo: 'SVC-MANUALS', name: 'Printed Apple training manuals', description: 'Printed Apple training manuals (imported)', itemType: 'Items', inventoryUom: 'pc', purchasingUom: 'pc',
+    itemNo: 'SVC-MANUALS', ...expenseGl('SVC-MANUALS'), name: 'Printed Apple training manuals', description: 'Printed Apple training manuals (imported)', itemType: 'Items', inventoryUom: 'pc', purchasingUom: 'pc',
     salesItem: false, inventoryItem: false, purchaseTaxGroup: 'P-VATX', withholdingGroup: 'WH-GDS',
     defaultVendorId: 'bp-017', warehouses: [], cycleCountDays: 0, hasTransactions: false,
     generalRemarks: 'Books and printed materials are VAT-exempt on importation (NIRC Sec. 109): imported from Apple they get code 49.',
@@ -771,12 +792,12 @@ export const SEED_ITEMS: Item[] = [
     defaultVendorId: 'bp-002', cycleCountDays: 0, hasTransactions: false,
   }),
   seed('itm-019', 'Services', {
-    itemNo: 'SVC-SUB-FITOUT', name: 'Store fit-out subcontract', description: 'Store fit-out subcontract', itemType: 'Labor', inventoryUom: 'hour', purchasingUom: 'hour',
+    itemNo: 'SVC-SUB-FITOUT', ...expenseGl('SVC-SUB-FITOUT'), name: 'Store fit-out subcontract', description: 'Store fit-out subcontract', itemType: 'Labor', inventoryUom: 'hour', purchasingUom: 'hour',
     salesItem: false, inventoryItem: false, purchaseTaxGroup: 'P-VAT12S', withholdingGroup: 'WH-CONT', warehouses: [],
     defaultVendorId: 'bp-025', cycleCountDays: 0, hasTransactions: false,
   }),
   seed('itm-020', 'Services', {
-    itemNo: 'SVC-CLD-HOST', name: 'Cloud hosting subscription', description: 'Cloud hosting subscription (monthly)', itemType: 'Items', inventoryUom: 'month',
+    itemNo: 'SVC-CLD-HOST', ...expenseGl('SVC-CLD-HOST'), name: 'Cloud hosting subscription', description: 'Cloud hosting subscription (monthly)', itemType: 'Items', inventoryUom: 'month',
     purchasingUom: 'month', salesItem: false, inventoryItem: false, purchaseTaxGroup: 'P-VAT12S', withholdingGroup: 'WH-SVC',
     defaultVendorId: 'bp-015', warehouses: [], cycleCountDays: 0, hasTransactions: false,
   }),
@@ -785,6 +806,7 @@ export const SEED_ITEMS: Item[] = [
     seed(id, withholdingGroup === 'WH-RENT' ? 'Rent & Leases' : 'Services', {
       itemNo, name: description.replace(/ \(.*\)$/, ''), description, itemType: 'Items', inventoryUom: uom, purchasingUom: uom, salesItem: false, inventoryItem: false,
       purchaseTaxGroup, withholdingGroup, defaultVendorId, warehouses: [], cycleCountDays: 0, hasTransactions: false,
+      ...expenseGl(itemNo),
     }),
   ),
   ...ITEM_TAX_CASES,

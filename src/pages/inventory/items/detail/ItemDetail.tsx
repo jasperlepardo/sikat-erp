@@ -137,7 +137,7 @@ function validate(d: Draft, codeMode: 'auto' | 'manual', inv: InventoryMasters):
   if (d.glBy === 'Item Level') {
     for (const [key, role, required] of [
       ['inventoryAccount', 'inventory', d.inventoryItem],
-      ['cogsAccount', 'cogs', true],
+      ['cogsAccount', d.inventoryItem ? 'cogs' : 'expense', true],
       ['revenueAccount', 'revenue', d.salesItem],
     ] as const) {
       const problem = accountProblem(d[key], role, inv.accounts, required);

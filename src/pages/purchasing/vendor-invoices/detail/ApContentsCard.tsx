@@ -24,6 +24,7 @@ import { PurchTotalsFooter, PurchTotalNote, PurchTotalRow } from '../../shared/P
 import { defaultBin, lineFromItem, linePricing, linesFromPo } from '../../goods-receipts/detail/types';
 import { DrawPanel } from './DrawPanel';
 import { baseHref, linesFromReceipt, toApLine, type ApSectionProps } from './types';
+import { LineItemText } from '../../../../components/form/LineItemText';
 
 const WITHHELD_LABEL: Record<string, string> = {
   'Expanded (EWT)': 'EWT',
@@ -111,11 +112,7 @@ export function ApContentsCard({ draft, update, errors, m, ctx, onCopy }: ApSect
       );
       return (
         <div className="flex w-60 flex-col gap-1 whitespace-normal">
-          <div className="flex flex-col">
-            <Text variant="caption">{item.itemNo}</Text>
-            <Text variant="small">{l.name}</Text>
-            <Text variant="small" tone="muted">{l.description}</Text>
-          </div>
+          <LineItemText itemNo={item.itemNo} description={l.description} name={l.name} />
           {ctx.readOnly ? null : (
             <div className="flex gap-3">
               <Link intent="primary" onClick={() => setEditing((s) => new Set(s).add(l.id))}>Edit</Link>
@@ -194,7 +191,6 @@ export function ApContentsCard({ draft, update, errors, m, ctx, onCopy }: ApSect
 
   return (
     <>
-      {prefs.settings}
       <DataTable
         noPagination
         icon="list_alt"
@@ -209,7 +205,7 @@ export function ApContentsCard({ draft, update, errors, m, ctx, onCopy }: ApSect
         unsortable={columns.map((c) => c.key).filter((k) => k !== 'item')}
         sortValue={(l, key) => (key === 'item' ? l.itemNo : String(l[key as keyof ApLine] ?? '')).toLowerCase()}
         onRemove={ctx.readOnly ? undefined : (picked) => update({ lines: lines.filter((l) => !picked.includes(l)) })}
-        onColumnSettings={prefs.toggleSettings}
+        columnMenu={prefs.menu}
         spanRow={ctx.readOnly ? undefined : (
           <div className="flex items-center gap-2">
             <div className="flex-1">
@@ -327,7 +323,7 @@ export function ApContentsCard({ draft, update, errors, m, ctx, onCopy }: ApSect
                     id: gr.id,
                     label: `Receipt ${grNumber(gr)}`,
                     description: `Received ${formatDate(gr.postingDate)} · ${gr.currency}${gr.orderNumber ? ` · PO ${gr.orderNumber}` : ''}`,
-                    lines: gr.lines.map((l) => ({ id: l.id, itemNo: l.itemNo, name: l.name, warehouse: l.warehouse, total: `${l.quantity} ${l.uomCode}`, open: grOpenQty(l, gr) })),
+                    lines: gr.lines.map((l) => ({ id: l.id, itemNo: l.itemNo, name: l.name, description: l.description, warehouse: l.warehouse, total: `${l.quantity} ${l.uomCode}`, open: grOpenQty(l, gr) })),
                   })),
                 },
                 {
@@ -340,7 +336,7 @@ export function ApContentsCard({ draft, update, errors, m, ctx, onCopy }: ApSect
                     id: po.id,
                     label: `PO ${poNumber(po)}`,
                     description: `Delivery ${formatDate(po.deliveryDate)} · ${po.currency} · not yet received — billing it receives the stock`,
-                    lines: po.lines.filter((l) => l.status === 'Open').map((l) => ({ id: l.id, itemNo: l.itemNo, name: l.name, warehouse: l.warehouse, total: `${l.quantity} ${l.uomCode}`, open: openQty(l) })),
+                    lines: po.lines.filter((l) => l.status === 'Open').map((l) => ({ id: l.id, itemNo: l.itemNo, name: l.name, description: l.description, warehouse: l.warehouse, total: `${l.quantity} ${l.uomCode}`, open: openQty(l) })),
                   })),
                 },
               ]}

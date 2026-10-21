@@ -16,7 +16,7 @@ const wait = () => new Promise((r) => setTimeout(r, LATENCY_MS));
  * shadow the seed forever, so a browser holding an older version drops every
  * `sikat-erp:` key on load and starts again from the current seed.
  */
-const SEED_VERSION = 82;
+const SEED_VERSION = 83;
 const VERSION_KEY = 'sikat-erp:seed-version';
 
 // Runs once at module load — before any collection below reads storage.

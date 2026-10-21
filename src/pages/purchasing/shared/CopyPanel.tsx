@@ -3,13 +3,14 @@ import { Checkbox, Combobox, Radio, Text, TextField, type TableColumn } from '@j
 import { DataTable } from '../../../components/form/DataTable';
 import { Section } from '../../../components/form/fields';
 import { EditPanel } from '../../partners/detail/EditPanel';
+import { LineItemText } from '../../../components/form/LineItemText';
 
 /** One document that lines can be copied from. */
 export interface CopyDoc {
   id: string;
   label: string;
   description: string;
-  lines: { id: string; itemNo: string; name: string; warehouse: string; total: string; open: number }[];
+  lines: { id: string; itemNo: string; name: string; description?: string; warehouse: string; total: string; open: number }[];
 }
 
 /** A kind of base document: its documents, and what copying from it means. */
@@ -72,7 +73,7 @@ export function CopyPanel<K extends string>({
         />
       ),
     },
-    { key: 'item', header: 'Item', cell: (l) => <div className="flex flex-col"><Text variant="caption">{l.itemNo}</Text><Text variant="small">{l.name}</Text></div> },
+    { key: 'item', header: 'Item', cell: (l) => <LineItemText itemNo={l.itemNo} description={l.description ?? ''} name={l.name} /> },
     { key: 'warehouse', header: 'Whse', cell: (l) => l.warehouse || '—' },
     { key: 'total', header: source.totalHeader, cell: (l) => l.total },
     {
