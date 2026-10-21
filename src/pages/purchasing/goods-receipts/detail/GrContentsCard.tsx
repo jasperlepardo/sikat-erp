@@ -2,17 +2,15 @@ import { useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Button,
-  Card,
-  Checkbox,
   Combobox,
   Icon,
   Link,
   Text,
   TextField,
-  type TableColumn,
 } from '@jasperlepardo/sikat-design-system';
 import { DataTable } from '../../../../components/form/DataTable';
-import { MasterLookup } from '../../../../components/form/MasterLookup';
+import { useColumnPrefs, type PrefColumn } from '../../../../components/form/columnPrefs';
+import { textCol, masterCol, amountCol } from '../../shared/purchColumns';
 import { newGrLine, type GrLine } from '../../../../mocks/goodsReceipts';
 import { itemUnits, itemsPerUom } from '../../../../mocks/items';
 import { BLANKET_AGREEMENTS, type PurchaseOrder } from '../../../../mocks/purchaseOrders';
@@ -30,20 +28,10 @@ import { priceListDef } from '../../../settings/masterDefs';
 import { PurchTotalsFooter } from '../../shared/PurchTotalsFooter';
 import { defaultBin, lineFromItem, linePricing, linesFromPo, type GrSectionProps } from './types';
 
-/** Optional column groups (the table's column settings). Item, quantity, warehouse, price and total always show. */
-const GROUPS = {
-  quantities: 'Quantities & packages',
-  pricing: 'Pricing',
-  references: 'References',
-} as const;
-type Group = keyof typeof GROUPS;
-
 const num = (v: string) => (v === '' ? 0 : Number(v));
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
 export function GrContents({ draft, update, errors, m, ctx, onCopy }: GrSectionProps & { onCopy: (po: PurchaseOrder, lines: GrLine[]) => void }) {
-  const [shown, setShown] = useState<Group[]>(['references']);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [editing, setEditing] = useState<Set<string>>(new Set());
   const [addKey, setAddKey] = useState(0);
   const [copying, setCopying] = useState(false);
@@ -56,7 +44,6 @@ export function GrContents({ draft, update, errors, m, ctx, onCopy }: GrSectionP
   const whOf = (code: string) => m.inv.warehouses.find((w) => w.code === code);
   const patch = (id: string, p: Partial<GrLine>) => update({ lines: lines.map((l) => (l.id === id ? { ...l, ...p } : l)) });
   const err = (l: GrLine, field: string) => errors[`line:${l.id}:${field}`];
-  const is = (g: Group) => shown.includes(g);
   const lc = (n: number) => formatAmount(n * ctx.fx);
   const copyable = draft.vendorId ? receivablePos(m.orders, draft.vendorId).filter((po) => !ctx.based || po.currency === draft.currency) : [];
 
@@ -111,9 +98,9 @@ export function GrContents({ draft, update, errors, m, ctx, onCopy }: GrSectionP
     patch(l.id, { priceListId, ...(item && ctx.fx ? linePricing(item, { ...l, priceListId }, draft, ctx) : {}) });
   };
 
-  const col = (key: string, header: string, cell: (l: GrLine) => ReactNode, group?: Group): TableColumn<GrLine> & { group?: Group } => ({ key, header, cell, group });
+  const col = (key: string, header: string, cell: (l: GrLine) => ReactNode, opts?: { optional?: boolean; defaultHidden?: boolean }): PrefColumn<GrLine> => ({ key, header, cell, ...opts });
 
-  const columns = [
+  const allColumns: PrefColumn<GrLine>[] = [
     col('item', 'Item / Description', (l) => {
       const item = itemOf(l);
       if (!item) return (
@@ -205,14 +192,12 @@ export function GrContents({ draft, update, errors, m, ctx, onCopy }: GrSectionP
     col('inventoryQty', 'Qty (inventory UoM)', (l) => {
       const item = itemOf(l);
       return item ? `${grInventoryQty(l).toLocaleString('en-PH')} ${item.inventoryUom}` : null;
-    }, 'quantities'),
+    }, { optional: true, defaultHidden: true }),
     col('packages', 'No. of packages', (l) => (l.itemId ? (
       <TextField aria-label="No. of packages" type="number" min={0} className="w-24" value={String(l.packages)} onChange={(e) => patch(l.id, { packages: num(e.currentTarget.value) })} />
-    ) : null), 'quantities'),
-    col('openQty', 'Open qty', (l) => (l.itemId ? grOpenQty(l, draft).toLocaleString('en-PH') : null), 'quantities'),
-    col('priceListId', 'Price list', (l) => (l.itemId ? (
-      <MasterLookup def={priceListDef} fieldProps={{ 'aria-label': 'Price list', className: 'w-44' }} where={(r) => isPriceListValid(r, draft.postingDate)} value={l.priceListId} onChange={(v) => changePriceList(l, v)} />
-    ) : null), 'pricing'),
+    ) : null), { optional: true, defaultHidden: true }),
+    col('openQty', 'Open qty', (l) => (l.itemId ? grOpenQty(l, draft).toLocaleString('en-PH') : null), { optional: true, defaultHidden: true }),
+    masterCol({ key: 'priceListId', header: 'Price list', def: priceListDef, get: (l: GrLine) => l.priceListId, onChange: (l, v) => changePriceList(l, v), where: (r) => isPriceListValid(r, draft.postingDate), readOnly: ctx.readOnly, width: 'w-44' }),
     col('pricing', 'Unit price / Tax / Discount', (l) => {
       if (!l.itemId) return null;
       return (
@@ -238,27 +223,26 @@ export function GrContents({ draft, update, errors, m, ctx, onCopy }: GrSectionP
         </div>
       );
     }),
-    col('priceAfterDiscount', 'Price after discount', (l) => (l.itemId ? formatAmount(priceAfterDiscount(l)) : null), 'pricing'),
+    amountCol({ key: 'priceAfterDiscount', header: 'Price after discount', value: (l: GrLine) => priceAfterDiscount(l) }),
     col('totalLc', 'Total (LC)', (l) => (l.itemId ? <span className="whitespace-nowrap">PHP {lc(lineNet(l))}</span> : null)),
     col('base', 'Base document', (l) => (l.baseId ? (
       <Link intent="primary" href={`#/purchasing/purchase-orders/${l.baseId}`}>PO {l.baseDocNo}</Link>
-    ) : l.itemId ? <span className="text-muted">—</span> : null), 'references'),
+    ) : l.itemId ? <span className="text-muted">—</span> : null), { optional: true }),
     col('blanketAgreement', 'Blanket agreement', (l) => (l.itemId ? (
       <Combobox aria-label="Blanket agreement" className="w-48" options={blanketOptions} value={l.blanketAgreement} onValueChange={(blanketAgreement) => patch(l.id, { blanketAgreement: blanketAgreement ?? '' })} />
-    ) : null), 'references'),
+    ) : null), { optional: true }),
     col('lineVendorId', 'Vendor', (l) => (l.itemId ? (
       <Combobox aria-label="Line vendor" className="w-48" options={vendorOptions} value={l.lineVendorId} onValueChange={(lineVendorId) => patch(l.id, { lineVendorId: lineVendorId ?? '' })} />
-    ) : null), 'references'),
-    col('requisitionSlipNo', 'Requisition slip no.', (l) => (l.itemId ? (
-      <TextField aria-label="Requisition slip no." className="w-36" value={l.requisitionSlipNo} onChange={(e) => patch(l.id, { requisitionSlipNo: e.currentTarget.value })} />
-    ) : null), 'references'),
-    col('freeText', 'Free text', (l) => (l.itemId ? (
-      <TextField aria-label="Free text" className="w-48" value={l.freeText} onChange={(e) => patch(l.id, { freeText: e.currentTarget.value })} />
-    ) : null), 'references'),
-  ].filter((c) => !c.group || is(c.group));
+    ) : null), { optional: true }),
+    textCol({ key: 'requisitionSlipNo', header: 'Requisition slip no.', width: 'w-36', readOnly: ctx.readOnly, defaultHidden: false, get: (l: GrLine) => l.requisitionSlipNo, onChange: (l, v) => patch(l.id, { requisitionSlipNo: v }) }),
+    textCol({ key: 'freeText', header: 'Free text', width: 'w-48', readOnly: ctx.readOnly, defaultHidden: false, get: (l: GrLine) => l.freeText, onChange: (l, v) => patch(l.id, { freeText: v }) }),
+  ];
+  const prefs = useColumnPrefs('gr', allColumns);
+  const columns = prefs.columns;
 
   return (
     <>
+      {prefs.settings}
       <DataTable
         noPagination
         icon="list_alt"
@@ -273,7 +257,7 @@ export function GrContents({ draft, update, errors, m, ctx, onCopy }: GrSectionP
         unsortable={columns.map((c) => c.key).filter((k) => k !== 'item')}
         sortValue={(l, key) => (key === 'item' ? l.itemNo : String(l[key as keyof GrLine] ?? '')).toLowerCase()}
         onRemove={ctx.readOnly ? undefined : (picked) => update({ lines: lines.filter((l) => !picked.includes(l)) })}
-        onColumnSettings={() => setSettingsOpen(!settingsOpen)}
+        onColumnSettings={prefs.toggleSettings}
         spanRow={ctx.readOnly ? undefined : (
           <div className="flex items-center gap-2">
             <div className="flex-1">
@@ -337,22 +321,7 @@ export function GrContents({ draft, update, errors, m, ctx, onCopy }: GrSectionP
             fx={draft.currency !== 'PHP' ? { rate: ctx.fx, source: ctx.fxSource } : undefined}
           />
         }
-      >
-        {settingsOpen ? (
-          <Card>
-            <Card.Header icon={<Icon size={24}>tune</Icon>}>Columns</Card.Header>
-            <Card.Content>
-              <div className="flex flex-wrap gap-x-6 gap-y-3">
-                {(Object.keys(GROUPS) as Group[]).map((g) => (
-                  <Checkbox key={g} checked={is(g)} onChange={(e) => setShown(e.currentTarget.checked ? [...shown, g] : shown.filter((x) => x !== g))}>
-                    {GROUPS[g]}
-                  </Checkbox>
-                ))}
-              </div>
-            </Card.Content>
-          </Card>
-        ) : null}
-      </DataTable>
+      />
       {copying
         ? createPortal(
             <CopyPanel

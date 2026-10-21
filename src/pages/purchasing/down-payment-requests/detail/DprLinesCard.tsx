@@ -1,7 +1,9 @@
 import { useState, type ReactNode } from 'react';
-import { Button, Card, Checkbox, Combobox, Icon, Link, Text, TextField, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { Button, Combobox, Icon, Link, Text, TextField } from '@jasperlepardo/sikat-design-system';
 import { DataTable } from '../../../../components/form/DataTable';
+import { useColumnPrefs, type PrefColumn } from '../../../../components/form/columnPrefs';
 import { MasterLookup } from '../../../../components/form/MasterLookup';
+import { textCol } from '../../shared/purchColumns';
 import { newDprLine, type DprLine } from '../../../../mocks/apDownPayments';
 import { itemUnits, itemsPerUom } from '../../../../mocks/items';
 import { BLANKET_AGREEMENTS } from '../../../../mocks/purchaseOrders';
@@ -15,8 +17,6 @@ import { PurchTotalsFooter, PurchTotalNote, PurchTotalRow } from '../../shared/P
 import { lineFromItem, linePricing } from '../../goods-receipts/detail/types';
 import type { DprSectionProps } from './types';
 
-const GROUPS = { details: 'Item details', withholding: 'Withholding', references: 'References' } as const;
-type Group = keyof typeof GROUPS;
 const num = (v: string) => (v === '' ? 0 : Number(v));
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
@@ -30,8 +30,6 @@ export function DprLinesCard({
   onCopy,
   canCopy,
 }: DprSectionProps & { onCopy: () => void; canCopy: boolean }) {
-  const [shown, setShown] = useState<Group[]>(['references']);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [editing, setEditing] = useState<Set<string>>(new Set());
   const [addKey, setAddKey] = useState(0);
   const { lines, currency: code, postingDate, vendorId } = draft;
@@ -42,8 +40,7 @@ export function DprLinesCard({
   const itemOf = (l: DprLine) => m.items.find((i) => i.id === l.itemId);
   const patch = (id: string, p: Partial<DprLine>) => onChange(lines.map((l) => (l.id === id ? { ...l, ...p } : l)));
   const err = (l: DprLine, f: string) => errors[`line:${l.id}:${f}`];
-  const is = (g: Group) => shown.includes(g);
-  const taxOptions = m.tax.codes.filter((c) => c.direction === 'Purchase' && c.active).map((c) => ({ value: c.code, label: `${c.code} (${ctx.rateOf(c.code)}%)` }));
+  const taxOptions =m.tax.codes.filter((c) => c.direction === 'Purchase' && c.active).map((c) => ({ value: c.code, label: `${c.code} (${ctx.rateOf(c.code)}%)` }));
   const blanketOptions = [{ value: '', label: '— None —' }, ...BLANKET_AGREEMENTS.filter((b) => b.vendorId === vendorId).map((b) => ({ value: b.no, label: `${b.no} · ${b.description}` }))];
   const itemOptions = (current: string) =>
     m.items
@@ -73,8 +70,8 @@ export function DprLinesCard({
     return item && ctx.vendor ? determineWithholding(item, ctx.vendor, m.tax, postingDate).withholding : [];
   };
 
-  const col = (key: string, header: string, cell: (l: DprLine) => ReactNode, group?: Group): TableColumn<DprLine> & { group?: Group } => ({ key, header, cell, group });
-  const columns = [
+  const col = (key: string, header: string, cell: (l: DprLine) => ReactNode, opts?: { optional?: boolean; defaultHidden?: boolean }): PrefColumn<DprLine> => ({ key, header, cell, ...opts });
+  const allColumns: PrefColumn<DprLine>[] = [
     col('item', 'Item / Description', (l) => {
       const item = itemOf(l);
       if (!item) return (
@@ -121,24 +118,28 @@ export function DprLinesCard({
       ) : null,
     ),
     col('totalLc', 'Total (LC)', (l) => (l.itemId ? <span className="whitespace-nowrap">PHP {formatAmount(lineNet(l) * ctx.fx)}</span> : null)),
-    col('countryOfOriginCode', 'Country of origin', (l) => (l.itemId ? <MasterLookup def={countryDef} fieldProps={{ 'aria-label': 'Country of origin', className: 'w-40' }} clearable value={l.countryOfOriginCode} onChange={(countryOfOriginCode) => patch(l.id, { countryOfOriginCode })} /> : null), 'details'),
+    col('countryOfOriginCode', 'Country of origin', (l) => (l.itemId ? <MasterLookup def={countryDef} fieldProps={{ 'aria-label': 'Country of origin', className: 'w-40' }} clearable value={l.countryOfOriginCode} onChange={(countryOfOriginCode) => patch(l.id, { countryOfOriginCode })} /> : null), { optional: true, defaultHidden: true }),
     col('warranty', 'Warranty', (l) => {
       const w = itemOf(l)?.warrantyTemplate;
       return l.itemId ? <Text variant="small" tone={w ? 'default' : 'muted'}>{w ? m.inv.warranties.find((x) => x.id === w)?.name ?? w : 'None'}</Text> : null;
-    }, 'details'),
-    col('unitCost', 'Unit cost price', (l) => (itemOf(l) ? <span className="whitespace-nowrap">PHP {formatAmount(itemOf(l)!.itemCost)}</span> : null), 'details'),
+    }, { optional: true, defaultHidden: true }),
+    col('unitCost', 'Unit cost price', (l) => (itemOf(l) ? <span className="whitespace-nowrap">PHP {formatAmount(itemOf(l)!.itemCost)}</span> : null), { optional: true, defaultHidden: true }),
     col('wt', 'WT code / rate', (l) => {
       const wt = withholdingOf(l);
       return l.itemId ? <Text variant="small">{wt.length ? wt.map((w) => `${w.atc} (${w.rate}%)`).join(', ') : 'None'}</Text> : null;
-    }, 'withholding'),
-    col('wtBase', 'Taxable amount', (l) => (l.itemId && withholdingOf(l).length ? <span className="tabular-nums">{formatAmount(lineNet(l))}</span> : null), 'withholding'),
-    col('base', 'Base document', (l) => (l.baseType ? <Link intent="primary" href={`#/purchasing/purchase-orders/${l.baseId}`}>PO {l.baseDocNo}</Link> : l.itemId ? <span className="text-muted">—</span> : null), 'references'),
-    col('blanketAgreement', 'Blanket agreement', (l) => (l.itemId ? <Combobox aria-label="Blanket agreement" className="w-48" options={blanketOptions} value={l.blanketAgreement} onValueChange={(blanketAgreement) => patch(l.id, { blanketAgreement: blanketAgreement ?? '' })} /> : null), 'references'),
-    col('freeText', 'Free text', (l) => (l.itemId ? <TextField aria-label="Free text" className="w-48" value={l.freeText} onChange={(e) => patch(l.id, { freeText: e.currentTarget.value })} /> : null), 'references'),
-  ].filter((c) => !c.group || is(c.group));
+    }, { optional: true, defaultHidden: true }),
+    col('wtBase', 'Taxable amount', (l) => (l.itemId && withholdingOf(l).length ? <span className="tabular-nums">{formatAmount(lineNet(l))}</span> : null), { optional: true, defaultHidden: true }),
+    col('base', 'Base document', (l) => (l.baseType ? <Link intent="primary" href={`#/purchasing/purchase-orders/${l.baseId}`}>PO {l.baseDocNo}</Link> : l.itemId ? <span className="text-muted">—</span> : null), { optional: true }),
+    col('blanketAgreement', 'Blanket agreement', (l) => (l.itemId ? <Combobox aria-label="Blanket agreement" className="w-48" options={blanketOptions} value={l.blanketAgreement} onValueChange={(blanketAgreement) => patch(l.id, { blanketAgreement: blanketAgreement ?? '' })} /> : null), { optional: true }),
+    textCol({ key: 'freeText', header: 'Free text', width: 'w-48', readOnly: readOnly, defaultHidden: false, get: (l: DprLine) => l.freeText, onChange: (l, v) => patch(l.id, { freeText: v }) }),
+  ];
+  const prefs = useColumnPrefs('dpr', allColumns);
+  const columns = prefs.columns;
 
   return (
-    <DataTable
+    <>
+      {prefs.settings}
+      <DataTable
       noPagination
       icon="list_alt"
       title="Contents"
@@ -149,7 +150,7 @@ export function DprLinesCard({
       unsortable={columns.map((c) => c.key).filter((k) => k !== 'item')}
       sortValue={(l, key) => (key === 'item' ? l.itemNo : String((l as unknown as Record<string, unknown>)[key] ?? '')).toLowerCase()}
       onRemove={readOnly ? undefined : (picked) => onChange(lines.filter((l) => !picked.includes(l)))}
-      onColumnSettings={() => setSettingsOpen(!settingsOpen)}
+      onColumnSettings={prefs.toggleSettings}
       spanRow={readOnly ? undefined : (
         <div className="flex items-center gap-2">
           <div className="flex-1">
@@ -189,19 +190,7 @@ export function DprLinesCard({
           </>}
         />
       }
-    >
-      {settingsOpen ? (
-        <Card>
-          <Card.Header icon={<Icon size={24}>tune</Icon>}>Columns</Card.Header>
-          <Card.Content>
-            <div className="flex flex-wrap gap-x-6 gap-y-3">
-              {(Object.keys(GROUPS) as Group[]).map((g) => (
-                <Checkbox key={g} checked={is(g)} onChange={(e) => setShown(e.currentTarget.checked ? [...shown, g] : shown.filter((x) => x !== g))}>{GROUPS[g]}</Checkbox>
-              ))}
-            </div>
-          </Card.Content>
-        </Card>
-      ) : null}
-    </DataTable>
+      />
+    </>
   );
 }

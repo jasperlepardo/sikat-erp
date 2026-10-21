@@ -1,18 +1,15 @@
 import { useState } from 'react';
 import {
-  Card,
-  Checkbox,
   Combobox,
-  Icon,
   Link,
   Select,
   Text,
   TextField,
   DatePicker,
-  type TableColumn,
 } from '@jasperlepardo/sikat-design-system';
 import { DataTable } from '../../../../components/form/DataTable';
-import { MasterLookup } from '../../../../components/form/MasterLookup';
+import { useColumnPrefs, type PrefColumn } from '../../../../components/form/columnPrefs';
+import { textCol, masterCol } from '../../shared/purchColumns';
 import { priceListDef } from '../../../settings/masterDefs';
 import { isPriceListValid } from '../../../../services/priceLists';
 import { itemUnits, itemsPerUom } from '../../../../mocks/items';
@@ -28,16 +25,7 @@ import { blanketOptions, lineFromItem, linePricing, type RfqTabProps } from './t
 const num = (v: string) => (v === '' ? 0 : Number(v));
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
-const GROUPS = {
-  quantities: 'UoM details',
-  quoted: 'Quoted quantities & dates',
-  references: 'References',
-} as const;
-type Group = keyof typeof GROUPS;
-
 export function RfqLinesCard({ draft, update, errors, m, ctx }: RfqTabProps) {
-  const [shown, setShown] = useState<Group[]>(['quoted']);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Set<string>>(new Set());
   const [addKey, setAddKey] = useState(0);
   const lines = draft.lines;
@@ -48,7 +36,6 @@ export function RfqLinesCard({ draft, update, errors, m, ctx }: RfqTabProps) {
   const itemOf = (l: RfqLine) => m.items.find((i) => i.id === l.itemId);
   const patch = (id: string, p: Partial<RfqLine>) =>
     update({ lines: lines.map((l) => (l.id === id ? { ...l, ...p } : l)) });
-  const is = (g: Group) => shown.includes(g);
   const err = (l: RfqLine, field: string) => errors[`line:${l.id}:${field}`];
 
   const changeUom = (l: RfqLine, uomCode: string) => {
@@ -100,9 +87,9 @@ export function RfqLinesCard({ draft, update, errors, m, ctx }: RfqTabProps) {
     .map((c) => ({ value: c.code, label: `${c.code} (${ctx.rateOf(c.code)}%)` }));
 
   const ba = blanketOptions(draft.vendorId, draft.postingDate);
-  const col = (key: string, header: string, cell: (l: RfqLine) => React.ReactNode, group?: Group): TableColumn<RfqLine> & { group?: Group } => ({ key, header, cell, group });
+  const col = (key: string, header: string, cell: (l: RfqLine) => React.ReactNode, opts?: { optional?: boolean; defaultHidden?: boolean }): PrefColumn<RfqLine> => ({ key, header, cell, ...opts });
 
-  const columns = [
+  const allColumns: PrefColumn<RfqLine>[] = [
     col('item', 'Item / Description', (l) => {
       const item = itemOf(l);
       const isEditing = editingItem.has(l.id);
@@ -159,7 +146,7 @@ export function RfqLinesCard({ draft, update, errors, m, ctx }: RfqTabProps) {
       if (!l.itemId) return null;
       if (linesLocked) return <Text variant="small" className="whitespace-nowrap tabular-nums">{l.quotedQty.toLocaleString('en-PH')}</Text>;
       return <TextField aria-label="Quoted quantity" type="number" min={0} className="w-24" value={String(l.quotedQty)} onChange={(e) => patch(l.id, { quotedQty: num(e.currentTarget.value) })} />;
-    }, 'quoted'),
+    }, { optional: true }),
     col('requiredDate', 'Required date', (l) => {
       if (!l.itemId) return null;
       if (linesLocked) return <Text variant="small">{l.requiredDate ? formatDate(l.requiredDate) : '—'}</Text>;
@@ -169,25 +156,18 @@ export function RfqLinesCard({ draft, update, errors, m, ctx }: RfqTabProps) {
       if (!l.itemId) return null;
       if (linesLocked) return <Text variant="small">{l.quotedDate ? formatDate(l.quotedDate) : '—'}</Text>;
       return <DatePicker aria-label="Quoted date" className="w-36" value={l.quotedDate || null} onValueChange={(v) => patch(l.id, { quotedDate: v ?? '' })} />;
-    }, 'quoted'),
+    }, { optional: true }),
     col('uomName', 'UoM name', (l) => {
       if (!l.itemId) return null;
       if (linesLocked || itemOf(l)) return <Text variant="small">{l.uomName}</Text>;
       return <TextField aria-label="UoM name" className="w-28" value={l.uomName} onChange={(e) => patch(l.id, { uomName: e.currentTarget.value })} />;
-    }, 'quantities'),
+    }, { optional: true, defaultHidden: true }),
     col('itemsPerUnit', 'Items per unit', (l) => {
       if (!l.itemId) return null;
       if (linesLocked || itemOf(l)) return <Text variant="small">{l.itemsPerUnit}</Text>;
       return <TextField aria-label="Items per unit" type="number" min={1} className="w-24" value={String(l.itemsPerUnit)} onChange={(e) => patch(l.id, { itemsPerUnit: num(e.currentTarget.value) })} />;
-    }, 'quantities'),
-    col('priceListId', 'Price list', (l) => {
-      if (!l.itemId) return null;
-      if (linesLocked) {
-        const pl = priceListDef.collection.snapshot().find((p) => p.id === l.priceListId);
-        return <Text variant="small">{pl ? priceListDef.label(pl) : '—'}</Text>;
-      }
-      return <MasterLookup def={priceListDef} fieldProps={{ 'aria-label': 'Price list', className: 'w-44' }} where={(r) => isPriceListValid(r, draft.postingDate)} value={l.priceListId} onChange={(v) => changePriceList(l, v)} />;
-    }),
+    }, { optional: true, defaultHidden: true }),
+    masterCol({ key: 'priceListId', header: 'Price list', def: priceListDef, get: (l: RfqLine) => l.priceListId, onChange: (l, v) => changePriceList(l, v), where: (r) => isPriceListValid(r, draft.postingDate), readOnly: linesLocked, width: 'w-44', optional: false }),
     col('pricing', 'Unit price / Tax / Discount', (l) => {
       if (!l.itemId) return null;
       const taxLabel = taxOptions.find((t) => t.value === l.taxCode)?.label ?? l.taxCode;
@@ -222,32 +202,16 @@ export function RfqLinesCard({ draft, update, errors, m, ctx }: RfqTabProps) {
       if (!l.itemId) return null;
       if (linesLocked) return <Text variant="small">{l.blanketAgreement || '—'}</Text>;
       return <Select aria-label="Blanket agreement" className="w-48" options={ba} value={l.blanketAgreement} onValueChange={(v) => patch(l.id, { blanketAgreement: v })} />;
-    }, 'references'),
-    col('requisitionSlipNo', 'Requisition slip no.', (l) => {
-      if (!l.itemId) return null;
-      if (linesLocked) return <Text variant="small">{l.requisitionSlipNo || '—'}</Text>;
-      return <TextField aria-label="Requisition slip no." className="w-36" value={l.requisitionSlipNo} onChange={(e) => patch(l.id, { requisitionSlipNo: e.currentTarget.value })} />;
-    }, 'references'),
+    }, { optional: true, defaultHidden: true }),
+    textCol({ key: 'requisitionSlipNo', header: 'Requisition slip no.', width: 'w-36', readOnly: linesLocked, get: (l: RfqLine) => l.requisitionSlipNo, onChange: (l, v) => patch(l.id, { requisitionSlipNo: v }) }),
   ];
 
-  const visibleColumns = columns.filter((c) => !c.group || is(c.group));
+  const prefs = useColumnPrefs('rfq', allColumns);
+  const visibleColumns = prefs.columns;
 
   return (
     <div className="flex flex-col gap-2">
-      {settingsOpen ? (
-        <Card>
-          <Card.Header icon={<Icon size={24}>tune</Icon>}>Columns</Card.Header>
-          <Card.Content>
-            <div className="flex flex-wrap gap-x-6 gap-y-3">
-              {(Object.keys(GROUPS) as Group[]).map((g) => (
-                <Checkbox key={g} checked={is(g)} onChange={(e) => setShown(e.currentTarget.checked ? [...shown, g] : shown.filter((x) => x !== g))}>
-                  {GROUPS[g]}
-                </Checkbox>
-              ))}
-            </div>
-          </Card.Content>
-        </Card>
-      ) : null}
+      {prefs.settings}
       <DataTable
         icon="format_list_bulleted"
         title="Lines"
@@ -257,7 +221,7 @@ export function RfqLinesCard({ draft, update, errors, m, ctx }: RfqTabProps) {
         unsortable={['item', 'requiredQty', 'quotedQty', 'requiredDate', 'quotedDate', 'uomName', 'itemsPerUnit', 'priceListId', 'pricing', 'total', 'blanketAgreement', 'requisitionSlipNo']}
         noPagination
         onRemove={linesLocked ? undefined : (picked) => update({ lines: lines.filter((l) => !picked.includes(l)) })}
-        onColumnSettings={() => setSettingsOpen(!settingsOpen)}
+        onColumnSettings={prefs.toggleSettings}
         spanRow={linesLocked ? undefined : (
           <Combobox
             key={addKey}

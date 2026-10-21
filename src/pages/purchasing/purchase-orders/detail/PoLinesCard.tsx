@@ -1,22 +1,17 @@
 import { useState } from 'react';
 import {
-  Card,
-  Checkbox,
   Combobox,
-  Icon,
   Link,
   Radio,
   TableStatus,
   Text,
   TextField,
   DatePicker,
-  type TableColumn,
 } from '@jasperlepardo/sikat-design-system';
 import { DataTable } from '../../../../components/form/DataTable';
-import { MasterLookup } from '../../../../components/form/MasterLookup';
+import { useColumnPrefs, type PrefColumn } from '../../../../components/form/columnPrefs';
+import { textCol, masterCol, amountCol } from '../../shared/purchColumns';
 import { departmentDef, priceListDef } from '../../../settings/masterDefs';
-import { nameIn } from '../../../../services/partnerMasters';
-import { departments } from '../../../../services/peopleMasters';
 import { isPriceListValid } from '../../../../services/priceLists';
 import {
   BLANKET_AGREEMENTS,
@@ -35,18 +30,6 @@ import { getPurchasingSettings, grossPrice, inventoryQty, lineNet, openQty, poTo
 import { linePricing, lineFromItem, viewCurrency, type PoTabProps } from './types';
 import { PurchTotalsFooter, PurchTotalNote, PurchTotalRow } from '../../shared/PurchTotalsFooter';
 
-/** Optional column groups (the table's column settings). Item, quantity, price and totals always show. */
-const GROUPS = {
-  quantities: 'Quantities & UoM',
-  pricing: 'Pricing',
-  warehouse: 'Warehouse',
-  priceListId: 'Price list',
-  tax: 'Tax',
-  delivery: 'Delivery & status',
-  references: 'References',
-} as const;
-type Group = keyof typeof GROUPS;
-
 const num = (v: string) => (v === '' ? 0 : Number(v));
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
@@ -58,8 +41,6 @@ const WITHHELD_LABEL: Record<string, string> = {
 };
 
 export function PoLinesCard({ draft, update, errors, m, ctx }: PoTabProps) {
-  const [shown, setShown] = useState<Group[]>(['delivery']);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Set<string>>(new Set());
   const [addKey, setAddKey] = useState(0);
   const lines = draft.lines;
@@ -99,7 +80,6 @@ export function PoLinesCard({ draft, update, errors, m, ctx }: PoTabProps) {
   const lc = (n: number) => formatAmount(n * ctx.fx);
   const showNet = draft.priceMode !== 'Gross';
   const showGross = draft.priceMode !== 'Net';
-  const is = (g: Group) => shown.includes(g);
   const err = (l: PoLine, field: string) => errors[`line:${l.id}:${field}`];
 
   const itemOptions = (current: string) =>
@@ -152,14 +132,14 @@ export function PoLinesCard({ draft, update, errors, m, ctx }: PoTabProps) {
     return p && p.source.kind !== 'list' && p.discountPct === l.discountPct && (p.source.kind !== 'special' || p.unitPrice === l.unitPrice) ? p.source.label : undefined;
   };
 
-  const col = (key: string, header: string, cell: (l: PoLine) => React.ReactNode, group?: Group): TableColumn<PoLine> & { group?: Group } => ({
+  const col = (key: string, header: string, cell: (l: PoLine) => React.ReactNode, opts?: { optional?: boolean; defaultHidden?: boolean }): PrefColumn<PoLine> => ({
     key,
     header,
     cell,
-    group,
+    ...opts,
   });
 
-  const columns = [
+  const allColumns: PrefColumn<PoLine>[] = [
     col('item', 'Item / Description', (l) => {
       const item = itemOf(l);
       const isEditingItem = editingItem.has(l.id);
@@ -226,19 +206,19 @@ export function PoLinesCard({ draft, update, errors, m, ctx }: PoTabProps) {
       if (!l.itemId) return null;
       if (linesLocked || itemOf(l)) return <Text variant="small">{l.uomName}</Text>;
       return <TextField aria-label="UoM name" className="w-28" value={l.uomName} onChange={(e) => patch(l.id, { uomName: e.currentTarget.value })} />;
-    }, 'quantities'),
+    }, { optional: true, defaultHidden: true }),
     col('itemsPerUnit', 'Items per unit', (l) => {
       if (!l.itemId) return null;
       if (linesLocked || itemOf(l)) return <Text variant="small">{l.itemsPerUnit}</Text>;
       return <TextField aria-label="Items per unit" type="number" min={1} className="w-24" value={String(l.itemsPerUnit)} onChange={(e) => patch(l.id, { itemsPerUnit: num(e.currentTarget.value) })} />;
-    }, 'quantities'),
-    col('inventoryUom', 'Inventory UoM', (l) => l.itemId ? (l.itemsPerUnit === 1 ? 'Yes' : 'No') : null, 'quantities'),
+    }, { optional: true, defaultHidden: true }),
+    col('inventoryUom', 'Inventory UoM', (l) => l.itemId ? (l.itemsPerUnit === 1 ? 'Yes' : 'No') : null, { optional: true, defaultHidden: true }),
     col('inventoryQty', 'Qty (inventory UoM)', (l) => {
       if (!l.itemId) return null;
       const item = itemOf(l);
       return `${inventoryQty(l).toLocaleString('en-PH')} ${item?.inventoryUom ?? ''}`;
-    }, 'quantities'),
-    col('openQty', 'Open qty', (l) => l.itemId ? openQty(l).toLocaleString('en-PH') : null, 'quantities'),
+    }, { optional: true, defaultHidden: true }),
+    col('openQty', 'Open qty', (l) => l.itemId ? openQty(l).toLocaleString('en-PH') : null, { optional: true, defaultHidden: true }),
     col('warehouse', 'Whse', (l) => {
       if (!l.itemId) return null;
       const item = itemOf(l);
@@ -254,15 +234,8 @@ export function PoLinesCard({ draft, update, errors, m, ctx }: PoTabProps) {
           onValueChange={(warehouse) => patch(l.id, { warehouse: warehouse ?? '' })}
         />
       );
-    }, 'warehouse'),
-    col('priceListId', 'Price list', (l) => {
-      if (!l.itemId) return null;
-      if (linesLocked) {
-        const pl = priceListDef.collection.snapshot().find((p) => p.id === l.priceListId);
-        return <Text variant="small">{pl ? priceListDef.label(pl) : '—'}</Text>;
-      }
-      return <MasterLookup def={priceListDef} fieldProps={{ 'aria-label': 'Price list', className: 'w-44' }} where={(r) => isPriceListValid(r, draft.postingDate)} value={l.priceListId} onChange={(v) => changePriceList(l, v)} />;
-    }, 'priceListId'),
+    }, { optional: true, defaultHidden: true }),
+    masterCol({ key: 'priceListId', header: 'Price list', def: priceListDef, get: (l: PoLine) => l.priceListId, onChange: (l, v) => changePriceList(l, v), where: (r) => isPriceListValid(r, draft.postingDate), readOnly: linesLocked, width: 'w-44' }),
     col('pricing', 'Unit price / Discount', (l) => {
       if (!l.itemId) return null;
       const rate = ctx.rateOf(l.taxCode);
@@ -285,51 +258,33 @@ export function PoLinesCard({ draft, update, errors, m, ctx }: PoTabProps) {
       if (!l.itemId) return null;
       if (linesLocked) return <Text variant="small">{l.taxCode}</Text>;
       return <Combobox aria-label="Tax code" invalid={Boolean(err(l, 'taxCode'))} options={taxOptions} value={l.taxCode} onValueChange={(taxCode) => patch(l.id, { taxCode: taxCode ?? '' })} />;
-    }, 'tax'),
-    col('priceAfterDiscount', 'Price after discount', (l) => l.itemId ? formatAmount(priceAfterDiscount(l)) : null, 'pricing'),
+    }, { optional: true, defaultHidden: true }),
+    amountCol({ key: 'priceAfterDiscount', header: 'Price after discount', value: (l: PoLine) => priceAfterDiscount(l) }),
     col('totalLc', 'Total (LC)', (l) => l.itemId ? <span className="whitespace-nowrap">PHP {lc(lineNet(l))}</span> : null),
     col('grossTotalLc', 'Gross total (LC)', (l) => l.itemId ? (
       <span className="whitespace-nowrap">PHP {lc(lineNet(l) * (1 + ctx.rateOf(l.taxCode) / 100))}</span>
-    ) : null, 'pricing'),
+    ) : null, { optional: true, defaultHidden: true }),
     col('deliveryDate', 'Del. date', (l) => {
       if (!l.itemId) return null;
       if (linesLocked) return <Text variant="small">{l.deliveryDate ? formatDate(l.deliveryDate) : '—'}</Text>;
       return <DatePicker aria-label="Line delivery date" className="w-fit" invalid={Boolean(err(l, 'deliveryDate'))} value={l.deliveryDate || null} onValueChange={(v) => patch(l.id, { deliveryDate: v ?? '' })} />;
-    }, 'delivery'),
+    }, { optional: true }),
     col('status', 'Row status', (l) => l.itemId ? (
       <TableStatus intent={l.status === 'Open' ? 'primary' : 'success'}>{l.status}</TableStatus>
-    ) : null, 'delivery'),
+    ) : null, { optional: true }),
     col('blanketAgreement', 'Blanket agreement', (l) => {
       if (!l.itemId) return null;
       if (linesLocked) return <Text variant="small">{l.blanketAgreement || '—'}</Text>;
       return <Combobox aria-label="Blanket agreement" className="w-48" options={blanketOptions} value={l.blanketAgreement} onValueChange={(blanketAgreement) => patch(l.id, { blanketAgreement: blanketAgreement ?? '' })} />;
-    }, 'references'),
-    col('bpCatalogNo', 'BP catalog no.', (l) => {
-      if (!l.itemId) return null;
-      if (linesLocked) return <Text variant="small">{l.bpCatalogNo || '—'}</Text>;
-      return <TextField aria-label="BP catalog no." className="w-36" value={l.bpCatalogNo} onChange={(e) => patch(l.id, { bpCatalogNo: e.currentTarget.value })} />;
-    }, 'references'),
-    col('mfrNo', 'Mfr no.', (l) => {
-      if (!l.itemId) return null;
-      if (linesLocked) return <Text variant="small">{l.mfrNo || '—'}</Text>;
-      return <TextField aria-label="Mfr no." className="w-36" value={l.mfrNo} onChange={(e) => patch(l.id, { mfrNo: e.currentTarget.value })} />;
-    }, 'references'),
-    col('requisitionSlipNo', 'Requisition slip no.', (l) => {
-      if (!l.itemId) return null;
-      if (linesLocked) return <Text variant="small">{l.requisitionSlipNo || '—'}</Text>;
-      return <TextField aria-label="Requisition slip no." className="w-36" value={l.requisitionSlipNo} onChange={(e) => patch(l.id, { requisitionSlipNo: e.currentTarget.value })} />;
-    }, 'references'),
-    col('department', 'Department', (l) => {
-      if (!l.itemId) return null;
-      if (linesLocked) return <Text variant="small">{l.departmentId ? nameIn(departments, l.departmentId) : '—'}</Text>;
-      return <MasterLookup def={departmentDef} fieldProps={{ 'aria-label': 'Department', className: 'w-40' }} value={l.departmentId} onChange={(departmentId) => patch(l.id, { departmentId })} placeholder="None" clearable />;
-    }, 'references'),
-    col('freeText', 'Free text', (l) => {
-      if (!l.itemId) return null;
-      if (linesLocked) return <Text variant="small">{l.freeText || '—'}</Text>;
-      return <TextField aria-label="Free text" className="w-48" value={l.freeText} onChange={(e) => patch(l.id, { freeText: e.currentTarget.value })} />;
-    }, 'references'),
-  ].filter((c) => !c.group || is(c.group));
+    }, { optional: true, defaultHidden: true }),
+    textCol({ key: 'bpCatalogNo', header: 'BP catalog no.', width: 'w-36', readOnly: linesLocked, get: (l: PoLine) => l.bpCatalogNo, onChange: (l, v) => patch(l.id, { bpCatalogNo: v }) }),
+    textCol({ key: 'mfrNo', header: 'Mfr no.', width: 'w-36', readOnly: linesLocked, get: (l: PoLine) => l.mfrNo, onChange: (l, v) => patch(l.id, { mfrNo: v }) }),
+    textCol({ key: 'requisitionSlipNo', header: 'Requisition slip no.', width: 'w-36', readOnly: linesLocked, get: (l: PoLine) => l.requisitionSlipNo, onChange: (l, v) => patch(l.id, { requisitionSlipNo: v }) }),
+    masterCol({ key: 'department', header: 'Department', def: departmentDef, get: (l: PoLine) => l.departmentId, onChange: (l, v) => patch(l.id, { departmentId: v }), placeholder: 'None', clearable: true, readOnly: linesLocked }),
+    textCol({ key: 'freeText', header: 'Free text', width: 'w-48', readOnly: linesLocked, get: (l: PoLine) => l.freeText, onChange: (l, v) => patch(l.id, { freeText: v }) }),
+  ];
+  const prefs = useColumnPrefs('po', allColumns);
+  const columns = prefs.columns;
 
   return (
     <div className="flex flex-col gap-2">
@@ -353,24 +308,7 @@ export function PoLinesCard({ draft, update, errors, m, ctx }: PoTabProps) {
         </div>
       ) : null}
 
-      {settingsOpen ? (
-        <Card>
-          <Card.Header icon={<Icon size={24}>tune</Icon>}>Columns</Card.Header>
-          <Card.Content>
-            <div className="flex flex-wrap gap-x-6 gap-y-3">
-              {(Object.keys(GROUPS) as Group[]).map((g) => (
-                <Checkbox
-                  key={g}
-                  checked={is(g)}
-                  onChange={(e) => setShown(e.currentTarget.checked ? [...shown, g] : shown.filter((x) => x !== g))}
-                >
-                  {GROUPS[g]}
-                </Checkbox>
-              ))}
-            </div>
-          </Card.Content>
-        </Card>
-      ) : null}
+      {prefs.settings}
 
       <DataTable
         noPagination
@@ -386,7 +324,7 @@ export function PoLinesCard({ draft, update, errors, m, ctx }: PoTabProps) {
         unsortable={columns.map((c) => c.key).filter((k) => k !== 'item')}
         sortValue={(l, key) => (key === 'item' ? l.itemNo : String(l[key as keyof PoLine] ?? '')).toLowerCase()}
         onRemove={linesLocked ? undefined : (picked) => update({ lines: lines.filter((l) => !picked.includes(l)) })}
-        onColumnSettings={() => setSettingsOpen(!settingsOpen)}
+        onColumnSettings={prefs.toggleSettings}
         spanRow={linesLocked ? undefined : (
           <Combobox
             key={addKey}
