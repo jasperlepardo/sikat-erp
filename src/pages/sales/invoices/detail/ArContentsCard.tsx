@@ -50,7 +50,7 @@ export function ArContentsCard({ draft, update, errors, m, ctx, onCopy, cardFoot
   const rate = (l: ArLine) => ctx.rateOf(l.taxCode);
   const taxOf = (l: ArLine) => lineTax(l, rate(l), 0);
   const so = asSoDraft(draft as never);
-  const taxOptions = m.tax.codes.filter((c) => c.direction === 'Sales' && c.active).map((c) => ({ value: c.code, label: `${c.code} (${ctx.rateOf(c.code)}%)` }));
+  const taxOptions = m.tax.codes.filter((c) => c.direction === 'Sales' && c.active).map((c) => ({ value: c.code, label: c.name }));
   const revenueOptions = m.accounts.filter((a) => a.drawer === 'Revenue' && !a.title && a.active && !a.contra).map((a) => ({ value: a.code, label: `${a.code} ${a.name}` }));
 
   // Copy From: this customer's open deliveries with something left to bill, and open orders with something left to ship.

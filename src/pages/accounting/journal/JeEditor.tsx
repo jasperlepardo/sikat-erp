@@ -300,8 +300,8 @@ export function JeRowsTable({
             header: 'Tax code',
             cell: (l: JeLine) =>
               editable(l) ? (
-                <div className="w-28">
-                  <Combobox aria-label="Tax code" clearable options={m.codes.filter((c) => c.active).map((c) => ({ value: c.code, label: c.code }))} value={l.taxCode || null} onValueChange={(v) => patchLine(l.id, { taxCode: v ?? '' })} />
+                <div className="w-48">
+                  <Combobox aria-label="Tax code" clearable options={m.codes.filter((c) => c.active).map((c) => ({ value: c.code, label: c.name }))} value={l.taxCode || null} onValueChange={(v) => patchLine(l.id, { taxCode: v ?? '' })} />
                 </div>
               ) : (
                 <Text variant="small">{l.taxOf ?? l.taxCode}</Text>

@@ -57,7 +57,7 @@ export function SoLinesCard({ draft, update, errors, m, ctx, tabs, contentTab, s
         ),
         text: `${i.itemNo} ${i.name} ${i.description}`,
       }));
-  const taxOptions = m.tax.codes.filter((c) => c.direction === 'Sales' && c.active).map((c) => ({ value: c.code, label: `${c.code} (${ctx.rateOf(c.code)}%)` }));
+  const taxOptions = m.tax.codes.filter((c) => c.direction === 'Sales' && c.active).map((c) => ({ value: c.code, label: c.name }));
 
   const pickItem = (l: SoLine, itemId: string | null) => {
     const item = m.items.find((i) => i.id === itemId);

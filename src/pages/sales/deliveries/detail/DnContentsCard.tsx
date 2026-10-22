@@ -40,7 +40,7 @@ export function DnContentsCard({ draft, update, errors, m, ctx, onCopy, cardFoot
   const orderOf = (l: DnLine) => (l.baseId ? m.orders.find((o) => o.id === l.baseId) : undefined);
   const baseLineOf = (l: DnLine) => orderOf(l)?.lines.find((x) => x.id === l.baseLineId);
   const so = asSoDraft(draft);
-  const taxOptions = m.tax.codes.filter((c) => c.direction === 'Sales' && c.active).map((c) => ({ value: c.code, label: `${c.code} (${ctx.rateOf(c.code)}%)` }));
+  const taxOptions = m.tax.codes.filter((c) => c.direction === 'Sales' && c.active).map((c) => ({ value: c.code, label: c.name }));
 
   // Open orders of this customer (or any customer, before one is picked) with something left to ship.
   const orders = m.orders.filter((o) => o.status === 'Open' && o.docType === 'Item' && (!draft.customerId || o.customerId === draft.customerId) && o.lines.some((l) => openQty(l) > 0) && (!ctx.based || o.currency === draft.currency));

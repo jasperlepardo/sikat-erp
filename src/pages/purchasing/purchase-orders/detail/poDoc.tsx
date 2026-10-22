@@ -67,11 +67,13 @@ export function poDoc({ draft, update, errors, m, ctx }: PoTabProps): PurchDocPr
     });
   };
 
-  const taxRate = (l: PoLine) => ctx.rateOf(l.taxCode);
+  // Reverse-charge codes aren't paid to the vendor, so they add no tax to gross / tax-amount.
+  const taxRate = (l: PoLine) => (ctx.isReverseCharge(l.taxCode) ? 0 : ctx.rateOf(l.taxCode));
+  const reverseChargeVat = (l: PoLine) => (ctx.isReverseCharge(l.taxCode) ? round2((lineNet(l) * ctx.rateOf(l.taxCode)) / 100) : null);
 
   const taxOptions = m.tax.codes
     .filter((c) => c.direction === 'Purchase' && c.active)
-    .map((c) => ({ value: c.code, label: `${c.code} (${ctx.rateOf(c.code)}%)` }));
+    .map((c) => ({ value: c.code, label: c.name }));
   const blanketOptions = [
     { value: '', label: '— None —' },
     ...BLANKET_AGREEMENTS.filter((b) => b.vendorId === draft.vendorId && b.validTo >= draft.postingDate).map((b) => ({
@@ -109,6 +111,7 @@ export function poDoc({ draft, update, errors, m, ctx }: PoTabProps): PurchDocPr
     priceAfterDisc: priceAfterDiscount,
     grossAfterDisc: (l) => priceAfterDiscount(l) * (1 + taxRate(l) / 100),
     taxAmount: (l) => round2((lineNet(l) * taxRate(l)) / 100),
+    reverseChargeVat,
     grossPrice: priceModeOn ? {
       showNet: draft.priceMode !== 'Gross',
       showGross: draft.priceMode !== 'Net',
@@ -135,7 +138,7 @@ export function poDoc({ draft, update, errors, m, ctx }: PoTabProps): PurchDocPr
     ['uomName', 'hide'], ['itemsPerUnit', 'hide'], ['inventoryUom', 'hide'], ['inventoryQty', 'hide'],
     ['warehouse', 'hide'], ['priceList', 'hide'],
     ['unitPrice', 'always'], ['discount', 'hide'], ['priceAfterDisc', 'hide'],
-    ['tax', 'hide'], ['taxAmount', 'hide'], ['gross', 'hide'], ['total', 'always'], ['grossTotalLc', 'hide'],
+    ['tax', 'hide'], ['taxAmount', 'hide'], ['reverseChargeVat', 'hide'], ['gross', 'hide'], ['total', 'always'], ['grossTotalLc', 'hide'],
     ['deliveryDate', 'hide'], ['lineStatus', 'hide'], ['blanket', 'hide'],
     ['bpCatalogNo', 'hide'], ['mfrNo', 'hide'], ['requisition', 'hide'],
     ['department', 'hide'], ['freeText', 'hide'], ['returnReason', 'hide'],
@@ -202,8 +205,8 @@ export function poDoc({ draft, update, errors, m, ctx }: PoTabProps): PurchDocPr
             />
             <Combobox
               aria-label="Freight tax code"
-              className="w-28"
-              options={m.tax.codes.filter((c) => c.direction === 'Purchase' && c.active).map((c) => ({ value: c.code, label: c.code }))}
+              className="w-48"
+              options={m.tax.codes.filter((c) => c.direction === 'Purchase' && c.active).map((c) => ({ value: c.code, label: c.name }))}
               value={draft.freightTaxCode}
               onValueChange={(freightTaxCode) => update({ freightTaxCode: freightTaxCode ?? '' })}
             />

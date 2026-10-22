@@ -41,7 +41,7 @@ export function DprLinesCard({
   const itemOf = (l: DprLine) => m.items.find((i) => i.id === l.itemId);
   const patch = (id: string, p: Partial<DprLine>) => onChange(lines.map((l) => (l.id === id ? { ...l, ...p } : l)));
   const err = (l: DprLine, f: string) => errors[`line:${l.id}:${f}`];
-  const taxOptions =m.tax.codes.filter((c) => c.direction === 'Purchase' && c.active).map((c) => ({ value: c.code, label: `${c.code} (${ctx.rateOf(c.code)}%)` }));
+  const taxOptions =m.tax.codes.filter((c) => c.direction === 'Purchase' && c.active).map((c) => ({ value: c.code, label: c.name }));
   const blanketOptions = [{ value: '', label: '— None —' }, ...BLANKET_AGREEMENTS.filter((b) => b.vendorId === vendorId).map((b) => ({ value: b.no, label: `${b.no} · ${b.description}` }))];
   const itemOptions = (current: string) =>
     m.items

@@ -55,7 +55,7 @@ export function rfqDoc({ draft, update, errors, m, ctx }: RfqTabProps): PurchDoc
 
   const taxOptions = m.tax.codes
     .filter((c) => c.direction === 'Purchase' && c.active)
-    .map((c) => ({ value: c.code, label: `${c.code} (${ctx.rateOf(c.code)}%)` }));
+    .map((c) => ({ value: c.code, label: c.name }));
   const ba = blanketOptions(draft.vendorId, draft.postingDate);
   const vendorOpts = m.vendors.map((v) => ({ value: v.id, label: v.name }));
   const warehouseOpts = m.inv.warehouses.filter((w) => w.active).map((w) => ({ value: w.code, label: `${w.code} ${w.name}` }));
@@ -65,12 +65,14 @@ export function rfqDoc({ draft, update, errors, m, ctx }: RfqTabProps): PurchDoc
   const taxRate = (l: RfqLine) => (ctx.isReverseCharge(l.taxCode) ? 0 : ctx.rateOf(l.taxCode));
   const grossAfterDisc = (l: RfqLine) => priceAfterDisc(l) * (1 + taxRate(l) / 100);
   const taxAmount = (l: RfqLine) => round2((lineNet(l) * taxRate(l)) / 100);
+  // The self-assessed VAT the buyer remits on a reverse-charge line (not billed by the vendor).
+  const reverseChargeVat = (l: RfqLine) => (ctx.isReverseCharge(l.taxCode) ? round2((lineNet(l) * ctx.rateOf(l.taxCode)) / 100) : null);
 
   // All column rendering lives in the shared registry; PQ supplies its data/services here
   // and picks which columns + default visibility. Order mirrors the Purchase Request.
   const cols = purchCols<RfqLine>({
     patch, readOnly: linesLocked, currency: draft.currency, fx: ctx.fx,
-    lineNet, priceAfterDisc, grossAfterDisc, taxAmount,
+    lineNet, priceAfterDisc, grossAfterDisc, taxAmount, reverseChargeVat,
     taxOptions: () => taxOptions,
     vendorOptions: vendorOpts, warehouseOptions: warehouseOpts, blanketOptions: ba,
     uomOptions, uomLabel,
@@ -85,7 +87,7 @@ export function rfqDoc({ draft, update, errors, m, ctx }: RfqTabProps): PurchDoc
   const columns = pick(cols, [
     ['type', 'hide'], ['qty', 'always'], ['quotedQty', 'hide'],
     ['priceList', 'hide'], ['unitPrice', 'always'], ['discount', 'hide'], ['priceAfterDisc', 'hide'],
-    ['tax', 'hide'], ['taxAmount', 'hide'], ['gross', 'hide'], ['total', 'always'],
+    ['tax', 'hide'], ['taxAmount', 'hide'], ['reverseChargeVat', 'hide'], ['gross', 'hide'], ['total', 'always'],
     ['requiredDate', 'hide'], ['quotedDate', 'hide'], ['uomName', 'hide'], ['itemsPerUnit', 'hide'],
     ['vendor', 'hide'], ['warehouse', 'hide'], ['department', 'hide'], ['freeText', 'hide'],
     ['blanket', 'hide'], ['requisition', 'hide'], ['returnReason', 'hide'],

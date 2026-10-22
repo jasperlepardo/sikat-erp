@@ -45,7 +45,7 @@ export function returnDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy 
 
   const taxOptions = m.tax.codes
     .filter((c) => c.direction === 'Purchase' && c.active)
-    .map((c) => ({ value: c.code, label: `${c.code} (${ctx.rateOf(c.code)}%)` }));
+    .map((c) => ({ value: c.code, label: c.name }));
   const blanketOptions = [
     { value: '', label: '— None —' },
     ...BLANKET_AGREEMENTS.filter((b) => b.vendorId === draft.vendorId).map((b) => ({ value: b.no, label: `${b.no} · ${b.description}` })),

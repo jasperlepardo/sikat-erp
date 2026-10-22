@@ -73,7 +73,7 @@ export function ApContentsCard({ draft, update, errors, m, ctx, onCopy }: ApSect
         ),
         text: `${i.itemNo} ${i.description}`,
       }));
-  const taxOptions = m.tax.codes.filter((c) => c.direction === 'Purchase' && c.active).map((c) => ({ value: c.code, label: `${c.code} (${ctx.rateOf(c.code)}%)` }));
+  const taxOptions = m.tax.codes.filter((c) => c.direction === 'Purchase' && c.active).map((c) => ({ value: c.code, label: c.name }));
   const blanketOptions = [
     { value: '', label: '— None —' },
     ...BLANKET_AGREEMENTS.filter((b) => b.vendorId === draft.vendorId && b.validTo >= draft.postingDate).map((b) => ({ value: b.no, label: `${b.no} · ${b.description}` })),
@@ -250,8 +250,8 @@ export function ApContentsCard({ draft, update, errors, m, ctx, onCopy }: ApSect
                 <TextField aria-label={`Freight (${code}, net)`} type="number" min={0} className="w-32" prefix={code} value={String(draft.freight)} onChange={(e) => update({ freight: Number(e.currentTarget.value) })} />
                 <Combobox
                   aria-label="Freight tax code"
-                  className="w-28"
-                  options={m.tax.codes.filter((c) => c.direction === 'Purchase' && c.active).map((c) => ({ value: c.code, label: c.code }))}
+                  className="w-48"
+                  options={m.tax.codes.filter((c) => c.direction === 'Purchase' && c.active).map((c) => ({ value: c.code, label: c.name }))}
                   value={draft.freightTaxCode}
                   onValueChange={(freightTaxCode) => update({ freightTaxCode: freightTaxCode ?? '' })}
                 />

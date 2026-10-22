@@ -44,7 +44,7 @@ export function prDoc({ draft, update, errors, m, ctx }: PrTabProps): PurchDocPr
   };
 
   const taxOptions = (current: string) =>
-    activeOptions(m.tax.codes.filter((c) => c.direction === 'Purchase'), (c) => c.code, (c) => `${c.code} (${ctx.rateOf(c.code)}%)`, current);
+    activeOptions(m.tax.codes.filter((c) => c.direction === 'Purchase'), (c) => c.code, (c) => c.name, current);
 
   const fromItem = (itemId: string) => {
     const item = m.items.find((i) => i.id === itemId);

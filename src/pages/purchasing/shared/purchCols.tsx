@@ -43,7 +43,10 @@ export interface ColBindings<T extends PurchLine> {
   // pricing (per unit / per line)
   priceAfterDisc: (l: T) => number;
   grossAfterDisc: (l: T) => number;
+  /** VAT charged by the vendor (0 on reverse-charge lines — the vendor doesn't bill it). */
   taxAmount: (l: T) => number;
+  /** Self-assessed VAT on a reverse-charge line (you remit it on 1600-VT), or null when not reverse charge. */
+  reverseChargeVat?: (l: T) => number | null;
   // option providers
   taxOptions: (l: T) => Opt[];
   vendorOptions: Opt[];
@@ -185,6 +188,8 @@ export function purchCols<T extends PurchLine>(b: ColBindings<T>): Record<string
     priceAfterDisc: amountCol<T>({ key: 'priceAfterDisc', header: 'Price after discount', value: b.priceAfterDisc, align: 'end' }),
     tax: taxCol<T>({ key: 'taxCode', header: 'Tax code', options: b.taxOptions, get: (l) => l.taxCode, onChange: (l, v) => b.patch(l.id, { taxCode: v } as Partial<T>), readOnly: ro, clearable: true, invalid: (l) => b.invalid(l, 'taxCode') }),
     taxAmount: amountCol<T>({ key: 'taxAmount', header: 'Tax amount', value: b.taxAmount, align: 'end' }),
+    // Reverse-charge (self-assessed) VAT: shown only on reverse-charge lines; "—" elsewhere.
+    reverseChargeVat: { key: 'reverseChargeVat', header: 'Reverse-charge VAT', align: 'end', cell: (l) => { if (!l.itemId) return null; const v = b.reverseChargeVat?.(l); return v != null ? money(v) : <span className="text-muted">—</span>; } },
     gross: amountCol<T>({ key: 'grossAfterDisc', header: 'Gross price', value: b.grossAfterDisc, align: 'end' }),
     total: {
       key: 'total', header: 'Net total', align: 'end',

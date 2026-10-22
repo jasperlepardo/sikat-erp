@@ -39,7 +39,7 @@ export function ArCmLinesCard({
   const err = (l: ArCmLine, f: string) => errors[`line:${l.id}:${f}`];
   const lc = (n: number) => formatAmount(n * ctx.fx);
   const taxOf = (l: ArCmLine) => lineTax(l, ctx.rateOf(l.taxCode), 0);
-  const taxOptions = m.tax.codes.filter((c) => c.direction === 'Sales' && c.active).map((c) => ({ value: c.code, label: `${c.code} (${ctx.rateOf(c.code)}%)` }));
+  const taxOptions = m.tax.codes.filter((c) => c.direction === 'Sales' && c.active).map((c) => ({ value: c.code, label: c.name }));
 
   const itemOptions = (current: string) =>
     m.items

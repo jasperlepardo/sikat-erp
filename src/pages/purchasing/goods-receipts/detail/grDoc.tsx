@@ -34,11 +34,13 @@ export function grDoc({ draft, update, errors, m, ctx, onCopyClick, copyableCoun
   const h = lineHelpers<GrLine>({ items: m.items, lines, update, errors, postingDate: draft.postingDate, uoms: m.inv.uoms });
   const { itemOf, patch, err, lineKind, uomLabel, uomOptions } = h;
   const whOf = (code: string) => m.inv.warehouses.find((w) => w.code === code);
-  const taxRate = (l: GrLine) => ctx.rateOf(l.taxCode);
+  // Reverse-charge codes aren't paid to the vendor, so they add no tax to gross / tax-amount.
+  const taxRate = (l: GrLine) => (ctx.isReverseCharge(l.taxCode) ? 0 : ctx.rateOf(l.taxCode));
+  const reverseChargeVat = (l: GrLine) => (ctx.isReverseCharge(l.taxCode) ? round2((lineNet(l) * ctx.rateOf(l.taxCode)) / 100) : null);
 
   const taxOptions = m.tax.codes
     .filter((c) => c.direction === 'Purchase' && c.active)
-    .map((c) => ({ value: c.code, label: `${c.code} (${ctx.rateOf(c.code)}%)` }));
+    .map((c) => ({ value: c.code, label: c.name }));
   const blanketOptions = [
     { value: '', label: '— None —' },
     ...BLANKET_AGREEMENTS.filter((b) => b.vendorId === draft.vendorId && b.validTo >= draft.postingDate).map((b) => ({ value: b.no, label: `${b.no} · ${b.description}` })),
@@ -82,6 +84,7 @@ export function grDoc({ draft, update, errors, m, ctx, onCopyClick, copyableCoun
     priceAfterDisc: priceAfterDiscount,
     grossAfterDisc: (l) => priceAfterDiscount(l) * (1 + taxRate(l) / 100),
     taxAmount: (l) => round2((lineNet(l) * taxRate(l)) / 100),
+    reverseChargeVat,
     taxOptions: () => taxOptions,
     vendorOptions,
     warehouseOptions: m.inv.warehouses.filter((w) => receivesFromVendors(w)).map((w) => ({ value: w.code, label: w.code })),
@@ -117,7 +120,7 @@ export function grDoc({ draft, update, errors, m, ctx, onCopyClick, copyableCoun
     ['inventoryQty', 'hide'], ['packages', 'hide'], ['openQty', 'hide'],
     ['priceList', 'hide'],
     ['unitPrice', 'always'], ['discount', 'hide'],
-    ['tax', 'hide'], ['taxAmount', 'hide'],
+    ['tax', 'hide'], ['taxAmount', 'hide'], ['reverseChargeVat', 'hide'],
     ['total', 'always'],
     ['baseDoc', 'hide'], ['blanket', 'hide'], ['vendor', 'hide'],
     ['requisition', 'hide'], ['freeText', 'hide'], ['returnReason', 'hide'],
@@ -178,8 +181,8 @@ export function grDoc({ draft, update, errors, m, ctx, onCopyClick, copyableCoun
             />
             <Combobox
               aria-label="Freight tax code"
-              className="w-28"
-              options={m.tax.codes.filter((c) => c.direction === 'Purchase' && c.active).map((c) => ({ value: c.code, label: c.code }))}
+              className="w-48"
+              options={m.tax.codes.filter((c) => c.direction === 'Purchase' && c.active).map((c) => ({ value: c.code, label: c.name }))}
               value={draft.freightTaxCode}
               onValueChange={(freightTaxCode) => update({ freightTaxCode: freightTaxCode ?? '' })}
             />
