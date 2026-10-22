@@ -106,6 +106,7 @@ export function poDoc({ draft, update, errors, m, ctx }: PoTabProps): PurchDocPr
   const cols = purchCols<PoLine>({
     patch, readOnly: linesLocked, currency: draft.currency, fx: ctx.fx,
     lineNet,
+    unitPriceHeader: 'Unit price',
     priceAfterDisc: priceAfterDiscount,
     grossAfterDisc: (l) => priceAfterDiscount(l) * (1 + taxRate(l) / 100),
     taxAmount: (l) => round2((lineNet(l) * taxRate(l)) / 100),

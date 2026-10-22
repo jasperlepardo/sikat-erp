@@ -79,6 +79,7 @@ export function grDoc({ draft, update, errors, m, ctx, onCopyClick, copyableCoun
   const cols = purchCols<GrLine>({
     patch, readOnly: ctx.readOnly, currency: draft.currency, fx: ctx.fx,
     lineNet,
+    unitPriceHeader: 'Unit price',
     priceAfterDisc: priceAfterDiscount,
     grossAfterDisc: (l) => priceAfterDiscount(l) * (1 + taxRate(l) / 100),
     taxAmount: (l) => round2((lineNet(l) * taxRate(l)) / 100),
@@ -114,15 +115,15 @@ export function grDoc({ draft, update, errors, m, ctx, onCopyClick, copyableCoun
   });
 
   const columns = pick(cols, [
-    ['qty', 'always'],
+    ['type', 'hide'], ['qty', 'always'],
     ['warehouse', 'opt'],
     ['inventoryQty', 'hide'], ['packages', 'hide'], ['openQty', 'hide'],
     ['priceList', 'opt'],
-    ['unitPrice', 'always'], ['discount', 'opt'], ['priceAfterDisc', 'opt'],
+    ['unitPrice', 'always'], ['discount', 'opt'],
     ['tax', 'opt'], ['taxAmount', 'hide'],
     ['total', 'always'],
     ['baseDoc', 'opt'], ['blanket', 'hide'], ['vendor', 'hide'],
-    ['requisition', 'opt'], ['freeText', 'opt'],
+    ['requisition', 'opt'], ['freeText', 'opt'], ['returnReason', 'hide'],
   ]);
 
   return {

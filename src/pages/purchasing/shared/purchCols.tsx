@@ -40,6 +40,8 @@ export interface ColBindings<T extends PurchLine> {
     onChange: (l: T, gross: number) => void;
   };
   lineNet: (l: T) => number;
+  /** Header for the single net-price field (no price-mode). 'Info price' on PR; 'Unit price' elsewhere. */
+  unitPriceHeader?: string;
   // pricing (per unit / per line)
   priceAfterDisc: (l: T) => number;
   grossAfterDisc: (l: T) => number;
@@ -170,7 +172,7 @@ export function purchCols<T extends PurchLine>(b: ColBindings<T>): Record<string
             );
           },
         }
-      : priceCol<T>({ key: 'unitPrice', header: 'Info price', prefix: curPrefix, readOnly: ro, get: (l) => l.unitPrice, onChange: (l, v) => b.patch(l.id, { unitPrice: v } as Partial<T>) }),
+      : priceCol<T>({ key: 'unitPrice', header: b.unitPriceHeader ?? 'Info price', prefix: curPrefix, readOnly: ro, get: (l) => l.unitPrice, onChange: (l, v) => b.patch(l.id, { unitPrice: v } as Partial<T>) }),
     discount: discountCol<T>({ key: 'discountPct', header: 'Discount', readOnly: ro, get: (l) => l.discountPct, onChange: (l, v) => b.patch(l.id, { discountPct: v } as Partial<T>), basePrice: (l) => l.unitPrice }),
     priceAfterDisc: amountCol<T>({ key: 'priceAfterDisc', header: 'Price after discount', value: b.priceAfterDisc, align: 'end' }),
     tax: taxCol<T>({ key: 'taxCode', header: 'Tax code', options: b.taxOptions, get: (l) => l.taxCode, onChange: (l, v) => b.patch(l.id, { taxCode: v } as Partial<T>), readOnly: ro, clearable: true, invalid: (l) => b.invalid(l, 'taxCode') }),
