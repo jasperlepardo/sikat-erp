@@ -113,14 +113,14 @@ export function grDoc({ draft, update, errors, m, ctx, onCopyClick, copyableCoun
 
   const columns = pick(cols, [
     ['type', 'hide'], ['qty', 'always'],
-    ['warehouse', 'opt'],
+    ['warehouse', 'hide'],
     ['inventoryQty', 'hide'], ['packages', 'hide'], ['openQty', 'hide'],
-    ['priceList', 'opt'],
-    ['unitPrice', 'always'], ['discount', 'opt'],
-    ['tax', 'opt'], ['taxAmount', 'hide'],
+    ['priceList', 'hide'],
+    ['unitPrice', 'always'], ['discount', 'hide'],
+    ['tax', 'hide'], ['taxAmount', 'hide'],
     ['total', 'always'],
-    ['baseDoc', 'opt'], ['blanket', 'hide'], ['vendor', 'hide'],
-    ['requisition', 'opt'], ['freeText', 'opt'], ['returnReason', 'hide'],
+    ['baseDoc', 'hide'], ['blanket', 'hide'], ['vendor', 'hide'],
+    ['requisition', 'hide'], ['freeText', 'hide'], ['returnReason', 'hide'],
   ]);
 
   return {

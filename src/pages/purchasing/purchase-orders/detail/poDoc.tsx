@@ -134,9 +134,9 @@ export function poDoc({ draft, update, errors, m, ctx }: PoTabProps): PurchDocPr
     ['type', 'hide'], ['qty', 'always'],
     ['uomName', 'hide'], ['itemsPerUnit', 'hide'], ['inventoryUom', 'hide'], ['inventoryQty', 'hide'],
     ['warehouse', 'hide'], ['priceList', 'hide'],
-    ['unitPrice', 'always'], ['discount', 'opt'], ['priceAfterDisc', 'hide'],
+    ['unitPrice', 'always'], ['discount', 'hide'], ['priceAfterDisc', 'hide'],
     ['tax', 'hide'], ['taxAmount', 'hide'], ['gross', 'hide'], ['total', 'always'], ['grossTotalLc', 'hide'],
-    ['deliveryDate', 'opt'], ['lineStatus', 'opt'], ['blanket', 'hide'],
+    ['deliveryDate', 'hide'], ['lineStatus', 'hide'], ['blanket', 'hide'],
     ['bpCatalogNo', 'hide'], ['mfrNo', 'hide'], ['requisition', 'hide'],
     ['department', 'hide'], ['freeText', 'hide'], ['returnReason', 'hide'],
   ]);

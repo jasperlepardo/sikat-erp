@@ -87,13 +87,13 @@ export function prDoc({ draft, update, errors, m, ctx }: PrTabProps): PurchDocPr
   });
 
   const columns = pick(cols, [
-    ['type', 'opt'], ['qty', 'always'], ['openQty', 'opt'],
+    ['type', 'hide'], ['qty', 'always'], ['openQty', 'hide'],
     ['inventoryQty', 'hide'], ['inStock', 'hide'], ['committed', 'hide'], ['ordered', 'hide'],
     ['priceList', 'hide'], ['unitPrice', 'always'], ['discount', 'hide'], ['priceAfterDisc', 'hide'],
-    ['tax', 'opt'], ['taxAmount', 'hide'], ['gross', 'hide'], ['total', 'always'],
-    ['requiredDate', 'hide'], ['vendor', 'hide'], ['warehouse', 'opt'], ['glAccount', 'hide'],
+    ['tax', 'hide'], ['taxAmount', 'hide'], ['gross', 'hide'], ['total', 'always'],
+    ['requiredDate', 'hide'], ['vendor', 'hide'], ['warehouse', 'hide'], ['glAccount', 'hide'],
     ['department', 'hide'], ['freeText', 'hide'], ['requisition', 'hide'], ['returnReason', 'hide'],
-    ['lineStatus', 'opt'],
+    ['lineStatus', 'hide'],
   ]);
 
   return {

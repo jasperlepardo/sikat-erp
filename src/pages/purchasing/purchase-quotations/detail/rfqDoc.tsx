@@ -83,9 +83,9 @@ export function rfqDoc({ draft, update, errors, m, ctx }: RfqTabProps): PurchDoc
   });
 
   const columns = pick(cols, [
-    ['type', 'opt'], ['qty', 'always'], ['quotedQty', 'opt'],
+    ['type', 'hide'], ['qty', 'always'], ['quotedQty', 'hide'],
     ['priceList', 'hide'], ['unitPrice', 'always'], ['discount', 'hide'], ['priceAfterDisc', 'hide'],
-    ['tax', 'opt'], ['taxAmount', 'hide'], ['gross', 'hide'], ['total', 'always'],
+    ['tax', 'hide'], ['taxAmount', 'hide'], ['gross', 'hide'], ['total', 'always'],
     ['requiredDate', 'hide'], ['quotedDate', 'hide'], ['uomName', 'hide'], ['itemsPerUnit', 'hide'],
     ['vendor', 'hide'], ['warehouse', 'hide'], ['department', 'hide'], ['freeText', 'hide'],
     ['blanket', 'hide'], ['requisition', 'hide'], ['returnReason', 'hide'],
