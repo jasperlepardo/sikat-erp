@@ -65,7 +65,6 @@ export function prDoc({ draft, update, errors, m, ctx }: PrTabProps): PurchDocPr
   const cols = purchCols<PrLine>({
     patch, readOnly: ro, currency: 'PHP',
     lineNet,
-    unitPriceHeader: 'Info price',
     priceAfterDisc: priceAfterDiscount,
     grossAfterDisc,
     taxAmount: (l) => Math.round(lineNet(l) * ctx.rateOf(l.taxCode)) / 100,
