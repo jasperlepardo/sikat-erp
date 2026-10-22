@@ -79,7 +79,6 @@ export function grDoc({ draft, update, errors, m, ctx, onCopyClick, copyableCoun
   const cols = purchCols<GrLine>({
     patch, readOnly: ctx.readOnly, currency: draft.currency, fx: ctx.fx,
     lineNet,
-    unitPriceHeader: 'Unit price',
     priceAfterDisc: priceAfterDiscount,
     grossAfterDisc: (l) => priceAfterDiscount(l) * (1 + taxRate(l) / 100),
     taxAmount: (l) => round2((lineNet(l) * taxRate(l)) / 100),

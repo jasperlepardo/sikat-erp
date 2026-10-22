@@ -70,7 +70,7 @@ export function rfqDoc({ draft, update, errors, m, ctx }: RfqTabProps): PurchDoc
   // and picks which columns + default visibility. Order mirrors the Purchase Request.
   const cols = purchCols<RfqLine>({
     patch, readOnly: linesLocked, currency: draft.currency, fx: ctx.fx,
-    lineNet, unitPriceHeader: 'Unit price', priceAfterDisc, grossAfterDisc, taxAmount,
+    lineNet, priceAfterDisc, grossAfterDisc, taxAmount,
     taxOptions: () => taxOptions,
     vendorOptions: vendorOpts, warehouseOptions: warehouseOpts, blanketOptions: ba,
     uomOptions, uomLabel,
