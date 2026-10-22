@@ -1,4 +1,5 @@
-import { DatePicker, Select, TableStatus, Text, TextField } from '@jasperlepardo/sikat-design-system';
+import type { ReactNode } from 'react';
+import { DatePicker, Link, Select, TableStatus, Text, TextField } from '@jasperlepardo/sikat-design-system';
 import type { PrefColumn } from '../../../components/form/columnPrefs';
 import type { MasterDef, MasterRow } from '../../../components/form/MasterLookup';
 import { formatAmount } from '../../../services/format';
@@ -68,6 +69,23 @@ export interface ColBindings<T extends PurchLine> {
   stockAt?: (l: T) => { inStock: number; committed: number; ordered: number } | null;
   inventoryQty?: (l: T) => number;
   glAccountText?: (l: T) => string;
+  // Goods-receipt extras (optional — leave unset elsewhere)
+  /** Override the qty column header (GR = "Received qty", GRet = "Returned qty"). */
+  qtyHeader?: string;
+  /** A note rendered under the qty field (GR: how much of the PO line is still open). */
+  qtyHint?: (l: T) => ReactNode;
+  /** Lock the UoM select (default: locked once `copiedQty` > 0). GR locks copied-from-PO lines. */
+  lockUom?: (l: T) => boolean;
+  /** When false, the warehouse cell shows "Not stocked" instead of a picker (non-inventory lines). */
+  warehouseStocked?: (l: T) => boolean;
+  /** Bin picker rendered under the warehouse, for warehouses with bins enabled. */
+  bin?: { show: (l: T) => boolean; options: (l: T) => Opt[]; onChange: (l: T, binId: string) => void; invalid?: (l: T) => boolean };
+  /** Warehouse-change hook (GR resets the bin). Defaults to writing the warehouse only. */
+  onWarehouse?: (l: T, code: string) => void;
+  /** Computed open qty for the `openQty` column (GR derives it from the receipt + PO). */
+  openQtyOf?: (l: T) => number;
+  /** The base document a line was copied from, for the `baseDoc` column (GR → PO). */
+  baseDoc?: (l: T) => { href: string; label: string } | null;
 }
 
 const money = (n: number) => <span className="whitespace-nowrap text-sm tabular-nums">{formatAmount(n)}</span>;
@@ -88,18 +106,20 @@ export function purchCols<T extends PurchLine>(b: ColBindings<T>): Record<string
       cell: (l) => { const k = b.lineKind?.(l); return k ? <TableStatus intent={k === 'Service' ? 'primary' : 'default'}>{k}</TableStatus> : null; },
     },
     qty: {
-      key: 'qty', header: 'Required qty', align: 'end',
+      key: 'qty', header: b.qtyHeader ?? 'Required qty', align: 'end',
       cell: (l) => {
         if (!l.itemId) return null;
         if (ro) return <span className="whitespace-nowrap text-sm tabular-nums">{l.quantity.toLocaleString('en-PH')} {b.uomLabel(l)}</span>;
+        const lockUom = b.lockUom ? b.lockUom(l) : b.copiedQty(l) > 0;
         return (
           <div className="flex flex-col items-end gap-1">
             <div className="flex w-44 items-stretch">
-              <TextField aria-label="Required qty" className="z-10 -mr-px min-w-0 flex-1 rounded-r-none! [&_input]:text-right" type="number" min={b.copiedQty(l)} value={String(l.quantity)} invalid={b.invalid(l, 'quantity')} onChange={(e) => b.onQty(l, num(e.currentTarget.value))} />
+              <TextField aria-label={b.qtyHeader ?? 'Required qty'} className="z-10 -mr-px min-w-0 flex-1 rounded-r-none! [&_input]:text-right" type="number" min={b.copiedQty(l)} value={String(l.quantity)} invalid={b.invalid(l, 'quantity')} onChange={(e) => b.onQty(l, num(e.currentTarget.value))} />
               <div className="z-20 w-24 shrink-0">
-                <Select aria-label="UoM" className="rounded-l-none!" options={b.uomOptions(l)} value={l.uomCode} onValueChange={(v) => v && b.changeUom(l, v)} disabled={b.copiedQty(l) > 0} />
+                <Select aria-label="UoM" className="rounded-l-none!" options={b.uomOptions(l)} value={l.uomCode} onValueChange={(v) => v && b.changeUom(l, v)} disabled={lockUom} />
               </div>
             </div>
+            {b.qtyHint?.(l) ?? null}
           </div>
         );
       },
@@ -109,9 +129,10 @@ export function purchCols<T extends PurchLine>(b: ColBindings<T>): Record<string
       cell: (l) => {
         if (!l.itemId) return null;
         const copied = b.copiedQty(l);
+        const open = b.openQtyOf?.(l) ?? l.openQty ?? 0;
         return (
           <div className="flex flex-col items-end">
-            <span className="whitespace-nowrap text-sm tabular-nums">{(l.openQty ?? 0).toLocaleString('en-PH')} {b.uomLabel(l)}</span>
+            <span className="whitespace-nowrap text-sm tabular-nums">{open.toLocaleString('en-PH')} {b.uomLabel(l)}</span>
             {copied ? <Text variant="caption" tone="muted">{copied} copied</Text> : null}
           </div>
         );
@@ -180,12 +201,27 @@ export function purchCols<T extends PurchLine>(b: ColBindings<T>): Record<string
 
     vendor: comboCol<T>({ key: 'lineVendorId', header: 'Preferred vendor', options: b.vendorOptions, readOnly: ro, get: (l) => l.lineVendorId ?? '', onChange: (l, v) => b.patch(l.id, { lineVendorId: v } as Partial<T>), placeholder: 'Any vendor' }),
     warehouse: {
-      key: 'warehouse', header: 'Warehouse',
+      key: 'warehouse', header: b.bin ? 'Whse / Bin' : 'Warehouse',
       cell: (l) => {
         if (!l.itemId) return null;
-        if (ro) { const w = b.warehouseOptions.find((o) => o.value === l.warehouse); return <Text variant="small">{w?.label ?? l.warehouse ?? '—'}</Text>; }
+        if (b.warehouseStocked && !b.warehouseStocked(l)) return <span className="text-muted">Not stocked</span>;
+        const showBin = b.bin?.show(l) ?? false;
+        if (ro) {
+          const w = b.warehouseOptions.find((o) => o.value === l.warehouse);
+          return (
+            <div className="flex flex-col gap-0.5">
+              <Text variant="small">{w?.label ?? l.warehouse ?? '—'}</Text>
+              {showBin && l.binCode ? <Text variant="caption" tone="muted">{l.binCode}</Text> : null}
+            </div>
+          );
+        }
         // Copied lines keep their warehouse (a downstream doc points at it).
-        return <Select aria-label="Warehouse" className="min-w-28" placeholder="None" clearable options={b.warehouseOptions} value={l.warehouse ?? ''} onValueChange={(v) => b.patch(l.id, { warehouse: v ?? '' } as Partial<T>)} disabled={b.copiedQty(l) > 0} invalid={b.invalid(l, 'warehouse')} />;
+        return (
+          <div className="flex flex-col gap-1">
+            <Select aria-label="Warehouse" className="min-w-28" placeholder="None" clearable options={b.warehouseOptions} value={l.warehouse ?? ''} onValueChange={(v) => (b.onWarehouse ? b.onWarehouse(l, v ?? '') : b.patch(l.id, { warehouse: v ?? '' } as Partial<T>))} disabled={b.copiedQty(l) > 0} invalid={b.invalid(l, 'warehouse')} />
+            {showBin ? <Select aria-label="Bin location" className="min-w-28" options={b.bin!.options(l)} value={l.binId ?? ''} onValueChange={(v) => b.bin!.onChange(l, v ?? '')} invalid={b.bin!.invalid?.(l)} /> : null}
+          </div>
+        );
       },
     },
     glAccount: { key: 'glAccount', header: 'G/L account', cell: (l) => { const t = b.glAccountText?.(l); return t ? <Text variant="small" className="whitespace-normal">{t}</Text> : <span className="text-muted">—</span>; } },
@@ -213,7 +249,14 @@ export function purchCols<T extends PurchLine>(b: ColBindings<T>): Record<string
     mfrNo: textCol<T>({ key: 'mfrNo', header: 'Mfr no.', width: 'w-36', readOnly: ro, get: (l) => l.mfrNo ?? '', onChange: (l, v) => b.patch(l.id, { mfrNo: v } as Partial<T>) }),
     deliveryDate: { key: 'deliveryDate', header: 'Del. date', cell: (l) => !l.itemId ? null : ro ? <Text variant="small">{l.deliveryDate ? formatDate(l.deliveryDate) : '—'}</Text> : <DatePicker aria-label="Del. date" className="w-36" value={l.deliveryDate || null} onValueChange={(v) => b.patch(l.id, { deliveryDate: v ?? '' } as Partial<T>)} /> },
     receivedQty: { key: 'receivedQty', header: 'Received qty', align: 'end', cell: (l) => (l.itemId ? <span className="text-sm tabular-nums">{(l.receivedQty ?? 0).toLocaleString('en-PH')}</span> : null) },
-    packages: { key: 'packages', header: 'No. of packages', align: 'end', cell: (l) => (l.itemId ? <span className="text-sm tabular-nums">{(l.packages ?? 0).toLocaleString('en-PH')}</span> : null) },
+    packages: {
+      key: 'packages', header: 'No. of packages', align: 'end',
+      cell: (l) => !l.itemId ? null : ro
+        ? <span className="text-sm tabular-nums">{(l.packages ?? 0).toLocaleString('en-PH')}</span>
+        : <TextField aria-label="No. of packages" type="number" min={0} className="w-24" value={String(l.packages ?? 0)} onChange={(e) => b.patch(l.id, { packages: num(e.currentTarget.value) } as Partial<T>)} />,
+    },
+    // The document a line was copied from (GR → PO).
+    baseDoc: { key: 'baseDoc', header: 'Base document', cell: (l) => { const d = b.baseDoc?.(l); return d ? <Link intent="primary" href={d.href}>{d.label}</Link> : l.itemId ? <span className="text-muted">—</span> : null; } },
   };
 }
 

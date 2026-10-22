@@ -29,6 +29,7 @@ const ROUTES = [
   'purchasing/purchase-orders',
   'purchasing/purchase-orders/po-001',
   'purchasing/goods-receipts',
+  'purchasing/goods-receipts/gr-001',
   'purchasing/bills',
   'purchasing/bills/ap-001',
   'purchasing/bills/down-payment-requests',
