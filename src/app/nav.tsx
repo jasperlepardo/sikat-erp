@@ -158,10 +158,36 @@ export const APPS: NavbarMenuItem[] = APP_MODULES.map((m) => ({ id: m.id, label:
 
 const appModule = (appId: string) => APP_MODULES.find((m) => m.id === appId) ?? APP_MODULES[0];
 
-/** The sidebar for an app: the app's pages. */
+/**
+ * Section headers for an app's sidebar, grouping its pages by lifecycle stage.
+ * Each group is [title, page labels]; '' title renders as a header-less block.
+ * Apps absent here keep a single flat, header-less section. The page labels must
+ * match the hub's pages — the leaf ids stay flat on the hub, so route lookups
+ * (`moduleOf`, `leafForPath`, …) are unaffected; this only reshapes rendering.
+ */
+const APP_SECTIONS: Record<string, [string, string[]][]> = {
+  purchasing: [
+    ['', ['Dashboard', 'Vendors', 'Agreements']],
+    ['Procurement', ['Purchase Requests', 'Purchase Quotations', 'Purchase Orders']],
+    ['Receiving', ['Goods Receipts', 'Goods Returns', 'Landed Costs']],
+    ['Invoicing', ['Vendor Invoices', 'Reserve Invoices', 'Down Payment Requests', 'Debit Memos']],
+    ['Payments', ['Outgoing Payments']],
+    ['', ['Insights']],
+  ],
+};
+
+/** The sidebar for an app: the app's pages, split into titled sections when grouped. */
 export function appNav(appId: string): SideNavSection[] {
   const app = appModule(appId);
-  return [{ id: app.id, items: app.items ?? [] }];
+  const items = app.items ?? [];
+  const groups = APP_SECTIONS[appId];
+  if (!groups) return [{ id: app.id, items }];
+  const byId = new Map(items.map((i) => [i.id, i]));
+  return groups.map(([title, labels], n) => ({
+    id: `${app.id}-${n}`,
+    ...(title ? { title } : {}),
+    items: labels.map((label) => byId.get(`${app.id}/${slug(label)}`)).filter(Boolean) as SideNavItem[],
+  }));
 }
 
 const LEAVES = NAV.flatMap((s) => s.items.flatMap((i) => (i.items?.length ? i.items : [i])));

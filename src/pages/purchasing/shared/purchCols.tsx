@@ -286,7 +286,12 @@ export function pick<T>(cols: Record<string, PrefColumn<T>>, list: [string, Vis]
   return list.map(([key, vis]) => {
     const c = cols[key];
     if (!c) throw new Error(`purchCols: unknown column "${key}"`);
-    const flags = vis === 'always' ? {} : vis === 'opt' ? { optional: true } : { optional: true, defaultHidden: true };
+    // Set both flags explicitly — the registry primitives default to optional+defaultHidden,
+    // so 'always'/'opt' must clear them, not just leave them untouched.
+    const flags =
+      vis === 'always' ? { optional: false, defaultHidden: false }
+      : vis === 'opt' ? { optional: true, defaultHidden: false }
+      : { optional: true, defaultHidden: true };
     return { ...c, ...flags };
   });
 }
