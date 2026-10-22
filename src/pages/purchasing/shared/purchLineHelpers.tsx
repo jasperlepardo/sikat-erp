@@ -52,14 +52,15 @@ export function lineHelpers<T extends PurchLine>(d: LineDeps<T>): LineHelpers<T>
       }));
 
   const lineKind = (l: T) => { const it = itemOf(l); return it ? (it.inventoryItem ? 'Item' : 'Service') : ''; };
-  const uomLabel = (l: T) => d.uoms.find((u) => u.code === l.uomCode)?.name ?? (l.uomName || l.uomCode);
+  // The UoM is shown by its code (compact), not its name, across every document.
+  const uomLabel = (l: T) => l.uomCode || l.uomName;
   const uomOptions = (l: T) => {
     const item = itemOf(l);
-    if (!item) return [{ value: l.uomCode, label: l.uomName || l.uomCode }];
+    if (!item) return [{ value: l.uomCode, label: l.uomCode || l.uomName }];
     // Purchase units only, as on a PO; the saved unit stays pickable.
     const codes = [item.inventoryUom, item.purchasingUom, ...itemUnits(item, 'purchase').map((u) => u.uom), l.uomCode].filter(Boolean);
-    const opts = d.uoms.filter((u) => (u.active || u.code === l.uomCode) && codes.includes(u.code)).map((u) => ({ value: u.code, label: u.name }));
-    return opts.length ? opts : [{ value: l.uomCode, label: l.uomName || l.uomCode }];
+    const opts = d.uoms.filter((u) => (u.active || u.code === l.uomCode) && codes.includes(u.code)).map((u) => ({ value: u.code, label: u.code }));
+    return opts.length ? opts : [{ value: l.uomCode, label: l.uomCode || l.uomName }];
   };
 
   return { itemOf, patch, err, itemOptions, lineKind, uomLabel, uomOptions, lines: d.lines, update: d.update };
