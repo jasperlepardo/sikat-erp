@@ -70,8 +70,6 @@ export interface ColBindings<T extends PurchLine> {
   inventoryQty?: (l: T) => number;
   glAccountText?: (l: T) => string;
   // Goods-receipt extras (optional — leave unset elsewhere)
-  /** Override the qty column header (GR = "Received qty", GRet = "Returned qty"). */
-  qtyHeader?: string;
   /** A note rendered under the qty field (GR: how much of the PO line is still open). */
   qtyHint?: (l: T) => ReactNode;
   /** Lock the UoM select (default: locked once `copiedQty` > 0). GR locks copied-from-PO lines. */
@@ -106,7 +104,7 @@ export function purchCols<T extends PurchLine>(b: ColBindings<T>): Record<string
       cell: (l) => { const k = b.lineKind?.(l); return k ? <TableStatus intent={k === 'Service' ? 'primary' : 'default'}>{k}</TableStatus> : null; },
     },
     qty: {
-      key: 'qty', header: b.qtyHeader ?? 'Required qty', align: 'end',
+      key: 'qty', header: 'Quantity', align: 'end',
       cell: (l) => {
         if (!l.itemId) return null;
         if (ro) return <span className="whitespace-nowrap text-sm tabular-nums">{l.quantity.toLocaleString('en-PH')} {b.uomLabel(l)}</span>;
@@ -114,7 +112,7 @@ export function purchCols<T extends PurchLine>(b: ColBindings<T>): Record<string
         return (
           <div className="flex flex-col items-end gap-1">
             <div className="flex w-44 items-stretch">
-              <TextField aria-label={b.qtyHeader ?? 'Required qty'} className="z-10 -mr-px min-w-0 flex-1 rounded-r-none! [&_input]:text-right" type="number" min={b.copiedQty(l)} value={String(l.quantity)} invalid={b.invalid(l, 'quantity')} onChange={(e) => b.onQty(l, num(e.currentTarget.value))} />
+              <TextField aria-label="Quantity" className="z-10 -mr-px min-w-0 flex-1 rounded-r-none! [&_input]:text-right" type="number" min={b.copiedQty(l)} value={String(l.quantity)} invalid={b.invalid(l, 'quantity')} onChange={(e) => b.onQty(l, num(e.currentTarget.value))} />
               <div className="z-20 w-24 shrink-0">
                 <Select aria-label="UoM" className="rounded-l-none!" options={b.uomOptions(l)} value={l.uomCode} onValueChange={(v) => v && b.changeUom(l, v)} disabled={lockUom} />
               </div>

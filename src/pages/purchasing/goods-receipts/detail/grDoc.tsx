@@ -94,8 +94,6 @@ export function grDoc({ draft, update, errors, m, ctx, onCopyClick, copyableCoun
     invalid: (l, f) => Boolean(err(l, f)),
     lineKind,
     inventoryQty: grInventoryQty,
-    // Received, in the receiving warehouse / bin.
-    qtyHeader: 'Received qty',
     qtyHint: (l) => {
       const pl = l.baseId ? m.orders.find((p) => p.id === l.baseId)?.lines.find((x) => x.id === l.baseLineId) : undefined;
       return pl ? <Text variant="small" tone="muted">{openQty(pl)} of {pl.quantity} open on the PO</Text> : null;
