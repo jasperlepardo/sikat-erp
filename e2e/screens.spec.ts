@@ -30,6 +30,8 @@ const ROUTES = [
   'purchasing/purchase-orders/po-001',
   'purchasing/goods-receipts',
   'purchasing/goods-receipts/gr-001',
+  'purchasing/goods-returns',
+  'purchasing/goods-returns/new',
   'purchasing/bills',
   'purchasing/bills/ap-001',
   'purchasing/bills/down-payment-requests',

@@ -17,7 +17,7 @@ import { type Errors } from '../../../components/form/fields';
 import { MoreMenu, type MoreMenuItem } from '../../../components/form/MoreMenu';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../components/form/ProblemsAlert';
 import { CURRENT_USER_ID } from '../../../mocks/common';
-import { blankGoodsReturn, needsCredit, newReturnLine, type GoodsReturn, type ReturnLine, type ReturnStatus } from '../../../mocks/goodsReturns';
+import { blankGoodsReturn, type GoodsReturn, type ReturnLine, type ReturnStatus } from '../../../mocks/goodsReturns';
 import type { Partner } from '../../../mocks/partners';
 import { logRejection } from '../../../services/approvalRules';
 import { apNumber, returnableQty } from '../../../services/apInvoices';
@@ -46,7 +46,8 @@ import { buildGrContext } from '../goods-receipts/detail/types';
 import { CopyPanel } from '../shared/CopyPanel';
 import { DocumentFlow } from '../shared/DocumentFlow';
 import { loadRetMasters, vendorAddressOptions, RETURN_STATUS_INTENT, returnFromInvoice, returnFromReceipt, MEMO_LIST_PATH, RETURN_LIST_PATH, type RetMasters, type RetContext } from '../shared/returnsTypes';
-import { ReturnLines } from '../shared/ReturnLines';
+import { PurchDoc } from '../shared/PurchDoc';
+import { returnDoc } from './detail/returnDoc';
 import { ActivityTab } from '../../../components/activity/ActivityTab';
 import { NotFound, PrevNext, neighbours } from '../../../components/form/DetailNav';
 import { useDocTitle } from '../../../services/useDocTitle';
@@ -347,34 +348,16 @@ function GoodsReturnForm() {
                       pickVendor={pickVendor}
                       onOpenDetails={() => setVendorDetailsOpen(true)}
                     />
-                    <ReturnLines<ReturnLine>
-                      lines={draft.lines}
-                      onChange={(lines) => update({ lines })}
-                      errors={errors}
-                      m={m}
-                      ctx={ctx}
-                      currency={code}
-                      postingDate={draft.postingDate}
-                      vendorId={draft.vendorId}
-                      title="Contents"
-                      description={`What goes back, in the line's unit. Stock leaves at the cost it came in at; prices are in ${code} for the vendor's credit.`}
-                      empty={draft.vendorId ? 'Copy from a goods receipt (goods not yet billed) or an A/P invoice (goods already billed), or add lines.' : 'Pick a vendor first.'}
-                      newLine={() => newReturnLine()}
-                      sendsStock={(l) => Boolean(m.items.find((i) => i.id === l.itemId)?.inventoryItem)}
-                      openHint={(l) => {
-                        if (l.baseType === 'GRPO') {
-                          const gr = m.receipts.find((r) => r.id === l.baseId);
-                          const gl = gr?.lines.find((x) => x.id === l.baseLineId);
-                          return gr && gl ? `${grOpenQty(gl, gr)} of ${gl.quantity} left on the receipt` : undefined;
-                        }
-                        if (l.baseType === 'APINV') {
-                          const il = m.invoices.find((i) => i.id === l.baseId)?.lines.find((x) => x.id === l.baseLineId);
-                          return il ? `${returnableQty(il)} of ${il.quantity} billed left to return` : undefined;
-                        }
-                        return needsCredit(l) && added ? `${l.creditedQty} credited` : undefined;
-                      }}
-                      onCopy={() => setCopying(true)}
-                      canCopy={sameCurrency(receipts).length + sameCurrency(invoices).length > 0}
+                    <PurchDoc
+                      {...returnDoc({
+                        draft,
+                        update,
+                        errors,
+                        m,
+                        ctx,
+                        onCopyClick: () => setCopying(true),
+                        canCopy: sameCurrency(receipts).length + sameCurrency(invoices).length > 0,
+                      })}
                     />
                     <ReferencesTable refs={draft.references} onChange={(references) => update({ references })} readOnly={added} description="Other documents this return refers to, e.g. the vendor's RMA or the original receipt." />
                   </fieldset>

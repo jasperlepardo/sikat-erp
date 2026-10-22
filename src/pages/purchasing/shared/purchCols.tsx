@@ -82,8 +82,20 @@ export interface ColBindings<T extends PurchLine> {
   onWarehouse?: (l: T, code: string) => void;
   /** Computed open qty for the `openQty` column (GR derives it from the receipt + PO). */
   openQtyOf?: (l: T) => number;
-  /** The base document a line was copied from, for the `baseDoc` column (GR → PO). */
+  /** The base document a line was copied from, for the `baseDoc` column (GR → PO, Return → GR/AP). */
   baseDoc?: (l: T) => { href: string; label: string } | null;
+  // Goods-return / credit-memo extras (optional)
+  /** Country-of-origin master, for the `countryOfOrigin` column. */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  countryDef?: MasterDef<any>;
+  /** The line item's warranty template name (or "None"), for the `warranty` column. */
+  warrantyText?: (l: T) => string;
+  /** The line's unit cost in PHP, for the `unitCost` column. */
+  unitCost?: (l: T) => number;
+  /** The line's withholding codes/rates summary (or "None"), for the `withholding` column. */
+  withholdingText?: (l: T) => string;
+  /** The withholding taxable base, or null when none applies, for the `withholdingBase` column. */
+  withholdingBase?: (l: T) => number | null;
 }
 
 const money = (n: number) => <span className="whitespace-nowrap text-sm tabular-nums">{formatAmount(n)}</span>;
@@ -236,9 +248,15 @@ export function purchCols<T extends PurchLine>(b: ColBindings<T>): Record<string
         if (!l.itemId) return null;
         const value = (l as { returnReason?: string }).returnReason ?? '';
         if (ro) return <Text variant="small">{value || '—'}</Text>;
-        return <Select aria-label="Return reason" className="w-44" placeholder="None" clearable options={RETURN_REASONS.map((r) => ({ value: r, label: r }))} value={value} onValueChange={(v) => b.patch(l.id, { returnReason: v ?? '' } as Partial<T>)} />;
+        return <Select aria-label="Return reason" className="w-44" placeholder="— Pick a reason —" clearable invalid={b.invalid(l, 'returnReason')} options={RETURN_REASONS.map((r) => ({ value: r, label: r }))} value={value} onValueChange={(v) => b.patch(l.id, { returnReason: v ?? '' } as Partial<T>)} />;
       },
     },
+    // Goods-return / credit-memo columns.
+    countryOfOrigin: masterCol<T, MasterRow>({ key: 'countryOfOrigin', header: 'Country of origin', def: b.countryDef!, get: (l) => (l as { countryOfOriginCode?: string }).countryOfOriginCode ?? '', onChange: (l, v) => b.patch(l.id, { countryOfOriginCode: v } as unknown as Partial<T>), clearable: true, readOnly: ro, width: 'w-40' }),
+    warranty: { key: 'warranty', header: 'Warranty', cell: (l) => { if (!l.itemId) return null; const t = b.warrantyText?.(l) || 'None'; return <Text variant="small" tone={t === 'None' ? 'muted' : 'default'}>{t}</Text>; } },
+    unitCost: { key: 'unitCost', header: 'Unit cost price', align: 'end', cell: (l) => (l.itemId ? <span className="whitespace-nowrap text-sm tabular-nums">PHP {formatAmount(b.unitCost?.(l) ?? 0)}</span> : null) },
+    withholding: { key: 'withholding', header: 'WT code / rate', cell: (l) => (l.itemId ? <Text variant="small">{b.withholdingText?.(l) || 'None'}</Text> : null) },
+    withholdingBase: { key: 'withholdingBase', header: 'Taxable amount', align: 'end', cell: (l) => { const v = b.withholdingBase?.(l); return l.itemId && v != null ? <span className="text-sm tabular-nums">{formatAmount(v)}</span> : null; } },
     lineStatus: { key: 'lineStatus', header: 'Line status', cell: (l) => { const s = (l as { status?: 'Open' | 'Closed' }).status; return s ? <TableStatus intent={s === 'Open' ? 'primary' : 'success'}>{s}</TableStatus> : null; } },
 
     // Catalog extras — mostly post-order/receipt fields, available (hidden) on any doc.
