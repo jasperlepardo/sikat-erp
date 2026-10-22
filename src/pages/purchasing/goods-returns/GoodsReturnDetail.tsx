@@ -348,7 +348,9 @@ function GoodsReturnForm() {
                       pickVendor={pickVendor}
                       onOpenDetails={() => setVendorDetailsOpen(true)}
                     />
-                    <PurchDoc
+                  </fieldset>
+                  {/* Outside the disabled fieldset: the table manages its own read-only state, so its view controls (Columns menu) stay usable on added returns. */}
+                  <PurchDoc
                       {...returnDoc({
                         draft,
                         update,
@@ -359,6 +361,7 @@ function GoodsReturnForm() {
                         canCopy: sameCurrency(receipts).length + sameCurrency(invoices).length > 0,
                       })}
                     />
+                  <fieldset disabled={added} className="contents">
                     <ReferencesTable refs={draft.references} onChange={(references) => update({ references })} readOnly={added} description="Other documents this return refers to, e.g. the vendor's RMA or the original receipt." />
                   </fieldset>
                   <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach the RMA, photos of the damage, or the courier waybill." />
