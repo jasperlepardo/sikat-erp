@@ -176,7 +176,7 @@ export function blankQuotation(ownerId: string): Omit<Quotation, 'id'> {
     ownerId,
     discountPct: 0,
     freight: 0,
-    freightTaxCode: '31',
+    freightTaxCode: 'OVAT',
     rounding: false,
     remarks: '',
     convertedToOrderId: '',
@@ -205,7 +205,7 @@ const qtLine = (id: string, item: ReturnType<typeof byId>, quantity: number, pat
     priceListId: plId('Base price'),
     unitPrice: round2(item.basePrice / 1.12),
     priceSource: 'Base price',
-    taxCode: '31',
+    taxCode: 'OVAT',
     ...patch,
   });
 
@@ -331,7 +331,7 @@ const qt006 = qtHeader('qt-006', 6, 'bp-040', {
     qtLine('qt-006-1', byItemNo('IPD-AIR-11-128-WF-BLU'), 30, {
       priceListId: plId('Wholesale'), discountPct: 3, priceSource: 'Discount group Customers – Trade × iPad: 3%',
       unitPrice: round2(byItemNo('IPD-AIR-11-128-WF-BLU').basePrice / 1.12),
-      taxCode: '32',
+      taxCode: 'ZVAT',
     }),
   ],
 });
@@ -360,7 +360,7 @@ const qt008 = qtHeader('qt-008', 8, 'bp-007', {
   remarks: "Quote for the end-of-year teacher giveaway. PO delayed beyond validity; customer to request a new quote. VAT-exempt (cooperative).",
   lines: [
     qtLine('qt-008-1', byItemNo('ACC-PENUSBC'), 24, {
-      taxCode: '33',
+      taxCode: 'XVAT',
       unitPrice: round2(byItemNo('ACC-PENUSBC').basePrice / 1.12),
     }),
   ],

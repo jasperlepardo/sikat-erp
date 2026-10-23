@@ -758,7 +758,7 @@ const PURCHASED_SERVICES: PurchasedService[] = [
 const ITEM_TAX_CASES: Item[] = [
   seed('itm-043', 'Services', {
     itemNo: 'SVC-VAT-DISB', ...expenseGl('SVC-VAT-DISB'), name: 'Import VAT disbursement', description: 'Import VAT advanced by customs broker', itemType: 'Items', inventoryUom: 'pc', purchasingUom: 'pc',
-    salesItem: false, inventoryItem: false, purchaseTaxGroup: 'P-VAT12', purchaseTaxCode: '46', withholdingGroup: 'WH-NONE',
+    salesItem: false, inventoryItem: false, purchaseTaxGroup: 'P-VAT12', purchaseTaxCode: 'IMVAT', withholdingGroup: 'WH-NONE',
     defaultVendorId: 'bp-022', warehouses: [], cycleCountDays: 0, hasTransactions: false,
     generalRemarks: 'The broker pays the import VAT to the Bureau of Customs for us and bills it back at cost: fixed code 46, and no withholding on a reimbursement.',
   }),

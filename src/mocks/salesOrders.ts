@@ -258,7 +258,7 @@ export function blankSalesOrder(ownerId: string): Omit<SalesOrder, 'id'> {
     ownerId: ownerId,
     discountPct: 0,
     freight: 0,
-    freightTaxCode: '31',
+    freightTaxCode: 'OVAT',
     rounding: false,
     remarks: '',
   };
@@ -292,7 +292,7 @@ const line = (id: string, itemId: string, quantity: number, patch: Partial<SoLin
     priceListId: plId('Base price'),
     unitPrice: round2(item.basePrice / 1.12),
     priceSource: 'Base price',
-    taxCode: '31',
+    taxCode: 'OVAT',
     ...patch,
   });
 };
@@ -348,7 +348,7 @@ const CORPORATE_ORDERS: SalesOrder[] = [
   header('so-c04', CORPORATE_SO_START + 3, 'bp-007', {
     postingDate: '2026-09-09', documentDate: '2026-09-09', deliveryDate: '2026-09-11', status: 'Closed', closeDate: '2026-09-11',
     customerRef: 'GNB-2026-PEN', remarks: 'Apple Pencils for the cooperative’s teacher-members. VAT-exempt sale to a cooperative; half paid.',
-    lines: [line('so-c04-1', idOf('ACC-PENUSBC'), 12, { deliveredQty: 12, status: 'Closed', taxCode: '33' })],
+    lines: [line('so-c04-1', idOf('ACC-PENUSBC'), 12, { deliveredQty: 12, status: 'Closed', taxCode: 'XVAT' })],
   }),
   header('so-c05', CORPORATE_SO_START + 4, 'bp-041', {
     postingDate: '2026-09-24', documentDate: '2026-09-24', deliveryDate: '2026-10-02',
@@ -421,7 +421,7 @@ const HAND_ORDERS: SalesOrder[] = [
     status: 'Closed',
     closeDate: '2026-08-21',
     remarks: 'Delivered and invoiced in full.',
-    lines: [line('so-004-1', 'apl-0362', 30, { deliveredQty: 30, status: 'Closed', discountPct: 5, taxCode: '32', priceSource: 'Discount group Customers – Trade × Accessories: 5%', agreementId: 'ba-002', agreementLineId: 'ba-002-3' })],
+    lines: [line('so-004-1', 'apl-0362', 30, { deliveredQty: 30, status: 'Closed', discountPct: 5, taxCode: 'ZVAT', priceSource: 'Discount group Customers – Trade × Accessories: 5%', agreementId: 'ba-002', agreementLineId: 'ba-002-3' })],
   }),
   header('so-005', 3, 'bp-005', {
     postingDate: '2026-08-26',
@@ -450,7 +450,7 @@ const HAND_ORDERS: SalesOrder[] = [
     deliveryDate: '2026-10-12',
     customerRef: 'GNB-2026-RAFFLE',
     remarks: 'AirPods for the cooperative’s members’ raffle. VAT-exempt sale to a cooperative.',
-    lines: [line('so-007-1', 'apl-0352', 6, { taxCode: '33' })],
+    lines: [line('so-007-1', 'apl-0352', 6, { taxCode: 'XVAT' })],
   }),
   // A USD export order: priced in PHP from the price list, converted at the BSP rate on the posting date.
   header('so-009', 6, 'bp-010', {
@@ -545,7 +545,7 @@ export const H1_SALES: PlannedSale[] = [
 ];
 
 /** A customer's usual tax code on its orders: zero-rated (PEZA) for Clarkfield, exempt for the cooperative. */
-const taxFor = (customerId: string) => (customerId === 'bp-004' ? '32' : customerId === 'bp-007' ? '33' : '31');
+const taxFor = (customerId: string) => (customerId === 'bp-004' ? 'ZVAT' : customerId === 'bp-007' ? 'XVAT' : 'OVAT');
 export const termDaysOf = (termId: string) => SEED_PAYMENT_TERMS.find((t) => t.id === termId)?.days ?? 30;
 
 const H1_ORDERS: SalesOrder[] = H1_SALES.map((p) =>

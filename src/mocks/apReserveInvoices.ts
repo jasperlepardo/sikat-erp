@@ -186,7 +186,7 @@ const apriLine = (id: string, patch: Partial<ApRiLine>): ApRiLine => ({
   uomName: 'Piece',
   itemsPerUnit: 1,
   warehouse: '',
-  taxCode: '46',
+  taxCode: 'IMVAT',
   baseType: 'PO',
   ...patch,
 });
@@ -202,7 +202,7 @@ export const SEED_AP_RESERVE_INVOICES: ApReserveInvoice[] = [
     status: 'Closed',
     fxRate: 61.655,
     freight: 1200,
-    freightTaxCode: '46',
+    freightTaxCode: 'IMVAT',
     orderNumber: 'IMP-2026-0002',
     remarks: 'Back-to-school MacBook Air import. Billed before shipment; goods received complete on 1 Sep.',
     lines: [
@@ -239,7 +239,7 @@ export const SEED_AP_RESERVE_INVOICES: ApReserveInvoice[] = [
     status: 'Open',
     fxRate: 62.698,
     freight: 1850,
-    freightTaxCode: '46',
+    freightTaxCode: 'IMVAT',
     orderNumber: 'IMP-2026-0001',
     remarks: 'iPhone 18 Pro launch import. Billed before clearance; goods expected 6 Oct.',
     references: [{ id: 'apri-002-r1', docType: 'Email', docNo: 'Allocation notice 2026-09-16', docDate: '2026-09-16', remarks: 'iPhone 18 Pro launch allocation' }],
@@ -268,7 +268,7 @@ export const SEED_AP_RESERVE_INVOICES: ApReserveInvoice[] = [
       apriLine('apri-002-4', {
         itemId: 'itm-044', itemNo: 'SVC-MANUALS',
         name: 'Printed Apple training manuals', description: 'Printed Apple training manuals (imported)',
-        quantity: 200, unitPrice: 3.5, taxCode: '49',
+        quantity: 200, unitPrice: 3.5, taxCode: 'XIMP',
         baseId: 'po-006', baseLineId: 'po-006-4', baseDocNo: 'IMP-2026-0001',
         receivedQty: 0,
       }),

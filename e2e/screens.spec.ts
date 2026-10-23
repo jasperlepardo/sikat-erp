@@ -113,6 +113,8 @@ const ROUTES = [
   'settings/inventory/variant-attributes',
   'settings/inventory/variant-attributes/va-001',
   'settings/accounting-and-tax/tax-codes',
+  'settings/accounting-and-tax/value-added-tax',
+  'settings/accounting-and-tax/percentage-tax',
   'settings/accounting-and-tax/withholding-groups',
 ];
 

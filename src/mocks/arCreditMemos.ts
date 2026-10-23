@@ -139,7 +139,7 @@ export const SEED_AR_CREDIT_MEMOS: ArCreditMemo[] = [
         id: 'acm-001-1', itemId: invLine.itemId, itemNo: invLine.itemNo, description: invLine.description, quantity: 1,
         uomCode: invLine.uomCode, uomName: invLine.uomName, itemsPerUnit: 1, warehouse: invLine.warehouse, priceListId: invLine.priceListId,
         // Clarkfield is zero-rated (PEZA), so no VAT.
-        unitPrice: 5000, discountPct: 0, priceSource: 'Manual', taxCode: '32', unitCostLc: 0,
+        unitPrice: 5000, discountPct: 0, priceSource: 'Manual', taxCode: 'ZVAT', unitCostLc: 0,
         baseType: 'ARIN', baseId: invoice.id, baseLineId: invLine.id, baseDocNo: arNo(invoice), baseRow: 1,
         returnReason: '', returnGoods: false, invoiceId: invoice.id,
       })],

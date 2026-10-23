@@ -220,7 +220,7 @@ export function blankArInvoice(today: string, ownerId: string): Omit<ArInvoice, 
     ownerId: ownerId,
     discountPct: 0,
     freight: 0,
-    freightTaxCode: '31',
+    freightTaxCode: 'OVAT',
     rounding: false,
     remarks: '',
     appliedAmount: 0,
@@ -234,7 +234,7 @@ export function blankArInvoice(today: string, ownerId: string): Omit<ArInvoice, 
 // seeded incoming payments (mocks/incomingPayments).
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
-const RATE: Record<string, number> = { '31': 12, '32': 0, '33': 0 };
+const RATE: Record<string, number> = { OVAT: 12, ZVAT: 0, XVAT: 0 };
 
 /**
  * What a seeded invoice asks the customer to pay: total (net + VAT) less the creditable withholding
@@ -379,8 +379,8 @@ const invoices: ArInvoice[] = [
     journalRemark: 'A/R Invoices – BP-0040',
     remarks: 'Fleet device setup and MDM enrolment, 60 iPads at the Subic yard. Not yet paid.',
     lines: [
-      newArLine({ id: 'ar-004-1', description: 'Device setup and MDM enrolment — 60 iPads, on site', glAccount: '4030', quantity: 1, unitPrice: 45000, taxCode: '31', priceSource: 'Manual' }),
-      newArLine({ id: 'ar-004-2', description: 'Staff training, half day', glAccount: '4030', quantity: 1, unitPrice: 12000, taxCode: '31', priceSource: 'Manual' }),
+      newArLine({ id: 'ar-004-1', description: 'Device setup and MDM enrolment — 60 iPads, on site', glAccount: '4030', quantity: 1, unitPrice: 45000, taxCode: 'OVAT', priceSource: 'Manual' }),
+      newArLine({ id: 'ar-004-2', description: 'Staff training, half day', glAccount: '4030', quantity: 1, unitPrice: 12000, taxCode: 'OVAT', priceSource: 'Manual' }),
     ],
   },
   // Corporate orders: paid, past due and half paid. ASEAN's first 12 iPhones (dn-c05) aren't billed
@@ -467,7 +467,7 @@ const POS_INVOICES: ArInvoice[] = STORE_SALES.map((sale, n) => {
       return newArLine({
         id: `${id}-${k + 1}`, itemId: item.id, itemNo: item.itemNo, description: item.description || item.name, quantity: l.qty,
         uomCode: item.salesUom, uomName: item.salesUom === 'pc' ? 'Piece' : item.salesUom, itemsPerUnit: 1, warehouse: sale.store,
-        priceListId: plId('Base price'), unitPrice: round2(item.basePrice / 1.12), priceSource: 'Base price (SRP)', taxCode: '31',
+        priceListId: plId('Base price'), unitPrice: round2(item.basePrice / 1.12), priceSource: 'Base price (SRP)', taxCode: 'OVAT',
       });
     }),
   };

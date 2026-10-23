@@ -39,6 +39,21 @@ export interface TaxCode {
   legalBasis: string;
   active: boolean;
   notes: string;
+  /** BIR Alphanumeric Tax Code for this tax, when it has one (from SEED_VAT_ATCS). '' when none applies. */
+  atc: string;
+}
+
+/** A BIR Alphanumeric Tax Code (VAT or percentage tax), as listed in RMO 57-2022 / eFPS. */
+export interface VatAtc {
+  code: string;
+  /** Industry / nature grouping (PSIC-based) or NIRC section. */
+  category: string;
+  /** Sub-classification within the category, or '' when the category stands alone. */
+  coverage: string;
+  description: string;
+  rate: number;
+  /** Optional caveat shown in the reference table (e.g. repealed, legacy, confirm rate). */
+  note?: string;
 }
 
 export interface TaxRatePeriod {
@@ -572,42 +587,151 @@ const tc = (
   id: code, code, name, direction, category,
   rates: typeof rate === 'number' ? [{ from: rate ? VAT_SINCE : ZERO_SINCE, rate }] : rate,
   glAccount: toAccountCode(glAccount), birReturn, legalBasis, active: true, notes,
+  atc: ATC_OF[code] ?? '',
 });
 
-/*
- * Codes are BIR's own. VAT has no ATCs: BIR Form 2550Q (April 2024) identifies each kind
- * of sale and purchase by its line number in Part IV, so the code is that line number and
- * the name is the line's label. Percentage tax uses its ATC from BIR Form 2551Q.
- * Notes quote BIR's Value-Added Tax page and the 2550Q guidelines.
+/**
+ * The BIR ATC for each seeded tax code, where one applies. VAT output tax is keyed by the
+ * nature of sale / industry — this business is a wholesale/retail reseller that imports its
+ * stock, so output VAT uses VT010 and import VAT VI010. Zero-rated, exempt and input VAT carry
+ * no positive ATC. Pick from SEED_VAT_ATCS below.
+ */
+const ATC_OF: Record<string, string> = {
+  OVAT: 'VT010',   // VAT on wholesale and retail
+  IMVAT: 'VI010',  // VAT on importation of goods
+  WVAT: 'WV080',   // Final withholding VAT — digital services from non-residents (private agent)
+  PT: 'PT010',     // Percentage tax, NIRC Sec. 116
+};
+
+/**
+ * Output and import VAT Alphanumeric Tax Codes (ATCs), keyed by nature of sale. Categories, coverage
+ * labels and descriptions are taken verbatim from the official BIR consolidation — RMO 57-2022 Annex A,
+ * "SCHEDULE 3. VALUE-ADDED TAX" — in the Annex's own order, plus VN010 (the non-resident DSP's own
+ * output VAT, RMO 13-2025). Withholding VAT (WV0xx/WV1xx) lives in SEED_WITHHOLDING; percentage tax
+ * (PT0xx) in SEED_PERCENTAGE_ATCS. A tax code's `atc` points at one of these three (see ATC_OF).
+ */
+export const SEED_VAT_ATCS: VatAtc[] = [
+  // 1. Manufacturing
+  { code: 'VM140', category: 'Manufacturing', coverage: 'Excisable Products', description: 'VAT on manufacturing - Excisable Products', rate: 12 },
+  { code: 'VM010', category: 'Manufacturing', coverage: 'In General', description: 'VAT on manufacturing - In General', rate: 12 },
+  { code: 'VM020', category: 'Manufacturing', coverage: 'Food, Products & Beverages', description: 'VAT on manufacturing - Food, Products & Beverages', rate: 12 },
+  { code: 'VM030', category: 'Manufacturing', coverage: 'Cement', description: 'VAT on manufacturing - Cement', rate: 12 },
+  { code: 'VM040', category: 'Manufacturing', coverage: 'Tobacco', description: 'VAT on manufacturing - Tobacco', rate: 12 },
+  { code: 'VM050', category: 'Manufacturing', coverage: 'Flour', description: 'VAT on manufacturing - Flour', rate: 12 },
+  { code: 'VM100', category: 'Manufacturing', coverage: 'Pesticides', description: 'VAT on manufacturing - Pesticides', rate: 12 },
+  { code: 'VM110', category: 'Manufacturing', coverage: 'Alcohol', description: 'VAT on manufacturing - Alcohol', rate: 12 },
+  { code: 'VM120', category: 'Manufacturing', coverage: 'Petroleum', description: 'VAT on manufacturing - Petroleum', rate: 12 },
+  { code: 'VM130', category: 'Manufacturing', coverage: 'Automobiles', description: 'VAT on manufacturing - Automobiles', rate: 12 },
+  { code: 'VM150', category: 'Manufacturing', coverage: 'Pharmaceuticals', description: 'VAT on manufacturing - Pharmaceuticals', rate: 12 },
+  { code: 'VM160', category: 'Manufacturing', coverage: 'Sugar', description: 'VAT on manufacturing - Sugar', rate: 12 },
+  // 2. Construction
+  { code: 'VC010', category: 'Construction', coverage: '', description: 'VAT on Construction', rate: 12 },
+  // 3. Wholesale and Retail Trade
+  { code: 'VT010', category: 'Wholesale and Retail Trade', coverage: '', description: 'VAT on Wholesale and Retail Trade', rate: 12 },
+  // 4. Storage and Warehousing
+  { code: 'VS010', category: 'Storage and Warehousing', coverage: '', description: 'VAT on Storage and Warehousing', rate: 12 },
+  // 5. Business Services
+  { code: 'VB100', category: 'Business Services', coverage: 'Hotels, Motels, etc.', description: 'VAT on Business Services - Hotels, Motels, etc.', rate: 12 },
+  { code: 'VB101', category: 'Business Services', coverage: 'Restaurants, Caterers', description: 'VAT on Business Services - Restaurants, Caterers', rate: 12 },
+  { code: 'VB102', category: 'Business Services', coverage: 'Securities/Dealers/Lending Investors', description: 'VAT on Business Services - Securities/Dealers/Lending Investors', rate: 12 },
+  { code: 'VB105', category: 'Business Services', coverage: 'Land Based Cargo Transport', description: 'VAT on Business Services - Land Based Cargo Transport', rate: 12 },
+  { code: 'VB106', category: 'Business Services', coverage: 'Domestic Ocean-going Vessels', description: 'VAT on Business Services - Domestic Ocean-going Vessels', rate: 12 },
+  { code: 'VB107', category: 'Business Services', coverage: 'Inter-island Shipping Vessel', description: 'VAT on Business Services - Inter-island Shipping Vessel', rate: 12 },
+  { code: 'VB108', category: 'Business Services', coverage: 'Aircraft Cargo Transport', description: 'VAT on Business Services - Aircraft Cargo Transport', rate: 12 },
+  { code: 'VB109', category: 'Business Services', coverage: 'Telecommunication Services', description: 'VAT on Business Services - Telecommunication Services', rate: 12 },
+  { code: 'VB111', category: 'Business Services', coverage: 'Radio/T.V. Broadcasting', description: 'VAT on Business Services - Radio/T.V. Broadcasting', rate: 12 },
+  { code: 'VB112', category: 'Business Services', coverage: 'Other Franchises', description: 'VAT on Business Services - Other Franchises', rate: 12 },
+  { code: 'VB113', category: 'Business Services', coverage: 'Non-life Insurance Companies', description: 'VAT on Business Services - Non-life Insurance Companies', rate: 12 },
+  { code: 'VS062', category: 'Business Services', coverage: 'Professionals', description: 'VAT on Professionals', rate: 12 },
+  { code: 'VQ010', category: 'Business Services', coverage: 'Mining and Quarrying', description: 'VAT on Mining and Quarrying', rate: 12 },
+  { code: 'VD010', category: 'Business Services', coverage: 'Compulsory Social Security, Public Administration and Defense', description: 'VAT on Compulsory Social Security, Public Administration and Defense', rate: 12 },
+  { code: 'VB010', category: 'Business Services', coverage: 'In General', description: 'VAT on business services, In General', rate: 12 },
+  { code: 'VI010', category: 'Business Services', coverage: 'Importation of Goods', description: 'VAT on importation of goods', rate: 12 },
+  { code: 'VS210', category: 'Business Services', coverage: 'Brokers', description: 'VAT on services rendered by stock, real estate, commercial, customs, insurance and immigration brokers', rate: 12 },
+  { code: 'VS111', category: 'Business Services', coverage: 'Banks, Non-bank Financial Intermediaries', description: 'VAT on services rendered by banks, non-bank financial intermediaries', rate: 12 },
+  // 6. Community, Personal and HH Services
+  { code: 'VH010', category: 'Community, Personal and HH Services', coverage: '', description: 'VAT on Community, Personal and Household Services', rate: 12 },
+  // 7. Real Property
+  { code: 'VP100', category: 'Real Property', coverage: 'Sale of Real Property', description: 'VAT on Sale of Real Property', rate: 12 },
+  { code: 'VP101', category: 'Real Property', coverage: 'Lease of Real Property', description: 'VAT on Lease of Real Property', rate: 12 },
+  { code: 'VP102', category: 'Real Property', coverage: 'Sale/lease of Intangible Property', description: 'VAT on Sale/lease of Intangible Property', rate: 12 },
+  // Non-resident digital service provider's own output VAT (the NRDSP registers and files on 2550-DS) - RMO 13-2025.
+  { code: 'VN010', category: 'Digital Services', coverage: 'Non-Resident Digital Service Provider', description: "VAT on a non-resident digital service provider's sales (NRDSP files on 2550-DS)", rate: 12 },
+  // Removed from this list (they are not output VAT by nature of sale):
+  //  - VE010 ("WT on VAT - Exporter/Trader"): not in any official BIR source; inconsistent with the law (exports are 0%).
+  //  - WV080/090/100/110 (final withholding VAT): these are WITHHOLDING VAT - now on the Withholding tab (SEED_WITHHOLDING).
+  //  - PT010 (percentage tax, Sec. 116): not VAT - now in SEED_PERCENTAGE_ATCS below.
+  // All three groups stay selectable in the Tax codes "BIR ATC" picker, which draws from all three catalogs.
+];
+
+/**
+ * Percentage tax ATCs (BIR Form 2551Q). Codes and descriptions follow RMO 57-2022 Annex A,
+ * "Schedule 4. Percentage Tax on Services"; rates are the NIRC Secs. 116-127 rates as amended.
+ * Not VAT, so kept out of SEED_VAT_ATCS; a tax code's `atc` may still point at one (see ATC_OF).
+ */
+export const SEED_PERCENTAGE_ATCS: VatAtc[] = [
+  { code: 'PT010', category: 'Exempt from VAT (Sec. 116)', coverage: 'Persons exempt from VAT', description: 'Persons exempt from VAT under Sec. 116 (annual gross sales not over P3M)', rate: 3 },
+  { code: 'PT040', category: 'Carriers & Garages (Sec. 117)', coverage: 'Domestic carriers & garages', description: 'Domestic carriers and keepers of garages', rate: 3 },
+  { code: 'PT041', category: 'Carriers & Garages (Sec. 118)', coverage: 'International carriers', description: 'International air and shipping carriers doing business in the Philippines', rate: 3 },
+  { code: 'PT060', category: 'Franchise (Sec. 119)', coverage: 'Electric, gas and water', description: 'Franchise on electric utilities, gas and water supplies', rate: 2 },
+  { code: 'PT070', category: 'Franchise (Sec. 119)', coverage: 'Broadcasting & other franchises', description: 'Franchise on radio/TV broadcasting (annual gross receipts not over P10M) and other franchises', rate: 3 },
+  { code: 'PT090', category: 'Overseas Communication (Sec. 120)', coverage: '', description: 'Overseas dispatch, message or conversation originating from the Philippines', rate: 10 },
+  { code: 'PT101', category: 'Banks & Quasi-Banks (Sec. 121)', coverage: 'Lending - maturity 5 years or less', description: 'Interest, commissions and discounts from lending and financial leasing (remaining maturity 5 years or less)', rate: 5 },
+  { code: 'PT105', category: 'Banks & Quasi-Banks (Sec. 121)', coverage: 'Lending - maturity over 5 years', description: 'Interest, commissions and discounts from lending and financial leasing (remaining maturity more than 5 years)', rate: 1 },
+  { code: 'PT102', category: 'Banks & Quasi-Banks (Sec. 121)', coverage: 'Dividends & equity shares', description: 'Dividends and equity shares in net income of subsidiaries', rate: 0 },
+  { code: 'PT103', category: 'Banks & Quasi-Banks (Sec. 121)', coverage: 'Royalties, rentals & other income', description: 'Royalties, rentals of property, profits from exchange and all other gross income', rate: 7 },
+  { code: 'PT104', category: 'Banks & Quasi-Banks (Sec. 121)', coverage: 'Net trading gains', description: 'Net trading gains on foreign currency, debt securities, derivatives and other financial instruments', rate: 7 },
+  { code: 'PT113', category: 'Non-bank Financial Intermediaries (Sec. 122)', coverage: 'Lending - maturity 5 years or less', description: 'Interest, commissions and discounts from lending and financial leasing (remaining maturity 5 years or less)', rate: 5 },
+  { code: 'PT114', category: 'Non-bank Financial Intermediaries (Sec. 122)', coverage: 'Lending - maturity over 5 years', description: 'Interest, commissions and discounts from lending and financial leasing (remaining maturity more than 5 years)', rate: 1 },
+  { code: 'PT115', category: 'Non-bank Financial Intermediaries (Sec. 122)', coverage: 'Other gross income', description: 'From all other items treated as gross income under the Code', rate: 5 },
+  { code: 'PT118', category: 'Non-bank Financial Intermediaries (Sec. 122)', coverage: 'Other financing income', description: 'Other financing/gross receipts of financial companies', rate: 5, note: 'Confirm coverage and rate against the current 2551Q ATC table.' },
+  { code: 'PT120', category: 'Insurance (Sec. 123)', coverage: 'Life insurance premiums', description: 'Tax on life insurance premiums', rate: 2 },
+  { code: 'PT130', category: 'Foreign Insurance Agents (Sec. 124)', coverage: 'Insurance agents', description: 'Agents of foreign insurance companies - premiums paid to insurance agents', rate: 4 },
+  { code: 'PT131', category: 'Foreign Insurance Agents (Sec. 124)', coverage: 'Insurance agents', description: 'Agents of foreign insurance companies', rate: 4 },
+  { code: 'PT132', category: 'Foreign Insurance Agents (Sec. 124)', coverage: 'Owners obtaining directly', description: 'Owners of property obtaining insurance directly with foreign insurance companies', rate: 5 },
+  { code: 'PT140', category: 'Amusement (Sec. 125)', coverage: 'Cockpits', description: 'Tax on cockpits', rate: 18 },
+  { code: 'PT150', category: 'Amusement (Sec. 125)', coverage: 'Amusement places', description: 'Cabarets, night and day clubs, videoke/karaoke bars and similar establishments', rate: 18 },
+  { code: 'PT160', category: 'Amusement (Sec. 125)', coverage: 'Boxing exhibitions', description: 'Tax on boxing exhibitions', rate: 10 },
+  { code: 'PT170', category: 'Amusement (Sec. 125)', coverage: 'Professional basketball games', description: 'Tax on professional basketball games', rate: 15 },
+  { code: 'PT180', category: 'Amusement (Sec. 125)', coverage: 'Jai-alai & race tracks', description: 'Tax on jai-alai and race tracks', rate: 30 },
+  { code: 'PT200', category: 'Stock Transactions (Sec. 127)', coverage: 'Listed shares', description: 'Sale, barter or exchange of shares listed and traded through the local stock exchange', rate: 0.6 },
+  { code: 'PT201', category: 'Stock Transactions (Sec. 127)', coverage: 'Initial public offering', description: 'Shares sold or exchanged through initial public offering', rate: 0, note: 'IPO tax repealed by RA 11494 (Bayanihan 2) effective 2020; formerly tiered 1-4%.' },
+  { code: 'PT202', category: 'Stock Transactions (Sec. 127)', coverage: 'Secondary public offering', description: 'Shares sold or exchanged through secondary public offering', rate: 0, note: 'IPO tax repealed by RA 11494 (Bayanihan 2) effective 2020.' },
+  { code: 'PT210', category: 'Stock Transactions (Sec. 127)', coverage: 'Brokers', description: 'Services by stock, real estate, commercial, customs, insurance and immigration brokers', rate: 7, note: 'Legacy - broker services are generally VAT-able now (see VS210).' },
+  { code: 'PT300', category: 'Other Services', coverage: 'PAGCOR', description: 'Philippine Amusement and Gaming Corporation (PAGCOR)', rate: 5, note: '5% franchise tax in lieu of all taxes on gaming operations.' },
+  { code: 'PT320', category: 'Other Services', coverage: 'Gaming tax', description: 'Gaming tax on offshore gaming licensees (RA 11590)', rate: 5, note: '5% on gross gaming revenue (RA 11590).' },
+];
+
+/**
+ * `code` is the app's internal identifier; `atc` is the BIR Alphanumeric Tax Code, where one applies —
+ * drawn from SEED_VAT_ATCS (output/import VAT), SEED_WITHHOLDING (withholding VAT) or SEED_PERCENTAGE_ATCS.
+ * Output VAT ATCs are keyed by nature of sale, so this reseller's output VAT is VT010 and import VAT VI010;
+ * zero-rated, exempt and input VAT carry no positive ATC.
  */
 export const SEED_TAX_CODES: TaxCode[] = [
   // Sales — 2550Q Part IV, "Total Sales and Output Tax"
-  tc('31', 'Output VAT', 'Sales', 'Standard', 12, '2310 Output VAT Payable', '2550Q', 'NIRC Secs. 106, 108',
-    '2550Q guidelines: "On Sale of Goods or Properties – twelve percent (12%) of the gross sales of the goods or properties sold, bartered or exchanged" and '
-    + '"On Sale of Services and Use or Lease of Properties – twelve percent (12%) of gross sales derived from the sale or exchange of services, including the use or lease of properties". '
-    + 'Sales to government are VATable too: the buyer withholds 5% creditable VAT, claimed on 2550Q item 16 (Creditable VAT Withheld).'),
-  tc('32', 'Zero-Rated Sales', 'Sales', 'Zero-rated', 0, '2310 Output VAT Payable', '2550Q', 'NIRC Secs. 106(A)(2), 108(B)',
-    'BIR: "It is a taxable transaction for VAT purposes, but shall not result in any output tax." The invoice must show "ZERO-RATED SALE".'),
-  tc('33', 'Exempt Sales', 'Sales', 'Exempt', 0, '— None —', '2550Q', 'NIRC Sec. 109',
-    'BIR: a sale "which is not subject to output tax and whereby the buyer is not allowed any tax credit or input tax related to such exempt sale". The invoice must show "VAT-EXEMPT SALE".'),
-  tc('PT010', 'Percentage Tax', 'Sales', 'Percentage tax',
+  tc('OVAT', 'Output VAT', 'Sales', 'Standard', 12, '2310 Output VAT Payable', '2550Q', 'NIRC Secs. 106, 108',
+    '12% output VAT on sales of goods, services and lease of property. Sales to government are VATable too: the buyer withholds 5% creditable VAT (WV010/WV020), claimed on 2550Q.'),
+  tc('ZVAT', 'Zero-Rated Sales', 'Sales', 'Zero-rated', 0, '2310 Output VAT Payable', '2550Q', 'NIRC Secs. 106(A)(2), 108(B)',
+    'A VAT transaction taxed at 0% - no output tax results. The invoice must show "ZERO-RATED SALE".'),
+  tc('XVAT', 'Exempt Sales', 'Sales', 'Exempt', 0, '', '2550Q', 'NIRC Sec. 109',
+    'Sale not subject to output tax; the buyer gets no input tax credit on it. The invoice must show "VAT-EXEMPT SALE".'),
+  tc('PT', 'Percentage Tax', 'Sales', 'Percentage tax',
     [{ from: '2018-01-01', rate: 3 }, { from: '2020-07-01', rate: 1 }, { from: '2023-07-01', rate: 3 }],
     '2320 Percentage Tax Payable', '2551Q', 'NIRC Sec. 116 as amended by TRAIN and CREATE (RA 11534)',
-    'ATC from BIR Form 2551Q. For sellers whose gross annual sales do not exceed Three Million Pesos (Php 3,000,000.00). CREATE cut the rate to 1% from 1 Jul 2020 to 30 Jun 2023.'),
+    'For non-VAT sellers with annual gross sales not over P3M (Form 2551Q). CREATE cut the rate to 1% from 1 Jul 2020 to 30 Jun 2023.'),
   // Purchases — 2550Q Part IV, "Current Transactions"
-  tc('44', 'Input VAT', 'Purchase', 'Standard', 12, '1410 Input VAT', '2550Q', 'NIRC Sec. 110',
-    'Goods, services, lease and capital goods bought locally from VAT-registered suppliers. 2550Q guidelines: input tax is "the value-added tax due from or paid by a VAT-registered person '
-    + 'in the course of his trade or business on importation of goods, or local purchase of goods or services, including lease or use of property, from a VAT-registered person".'),
-  tc('45', 'Withholding VAT', 'Purchase', 'Reverse charge', 12, '1410 Input VAT', '2550Q / 1600-VT', 'NIRC Sec. 114(C); RA 12023 (digital services)',
-    'You withhold the 12% VAT and remit it on 1600-VT (ATC WV050 / WV070), then claim it as input tax. BIR: buyers "shall withhold twelve percent (12%) VAT" on '
-    + '"Lease or use of properties or property rights owned by non-residents" and "Other services rendered in the Philippines by non-residents".'),
-  tc('46', 'Import VAT', 'Purchase', 'Importation', 12, '1420 Input VAT – Importation', '2550Q', 'NIRC Sec. 107',
-    '2550Q guidelines: "twelve percent (12%) based on the total value used by the Bureau of Customs in determining tariff and customs duties, plus customs duties, excise taxes, if any, and other charges". '
-    + 'Entered on the import entry / landed cost, not the foreign supplier’s bill.'),
-  tc('48', 'Non-VAT Purchases', 'Purchase', 'Non-VAT', 0, '— None —', '2550Q', 'NIRC Sec. 110',
+  tc('IVAT', 'Input VAT', 'Purchase', 'Standard', 12, '1410 Input VAT', '2550Q', 'NIRC Sec. 110',
+    '12% input VAT on local purchases of goods, services, lease and capital goods from VAT-registered suppliers.'),
+  tc('WVAT', 'Withholding VAT', 'Purchase', 'Reverse charge', 12, '1410 Input VAT', '2550Q / 1600-VT', 'NIRC Sec. 114(C); RA 12023; RR 3-2025 (digital services)',
+    'Reverse charge on services from non-residents: the buyer self-assesses the 12% VAT, remits it on Form 1600-VT, then claims it as input tax (the non-resident bills no VAT). '
+    + 'For digital services (RA 12023 / RR 3-2025) use WV080 (private) or WV090 (government); effective 2 Jun 2025.'),
+  tc('IMVAT', 'Import VAT', 'Purchase', 'Importation', 12, '1420 Input VAT – Importation', '2550Q', 'NIRC Sec. 107',
+    '12% VAT on the Bureau of Customs landed cost (dutiable value plus duties, excise and other charges). Entered on the import entry, not the foreign supplier invoice.'),
+  tc('NVAT', 'Non-VAT Purchases', 'Purchase', 'Non-VAT', 0, '', '2550Q', 'NIRC Sec. 110',
     'Purchases from non-VAT suppliers, and VAT-exempt or zero-rated purchases: no input tax to claim.'),
-  tc('49', 'Exempt Importations', 'Purchase', 'Exempt', 0, '— None —', '2550Q', 'NIRC Sec. 109',
-    'Importations exempt under Sec. 109 (e.g. agricultural and marine food products in their original state, books). Entered on the import entry.'),
+  tc('XIMP', 'Exempt Importations', 'Purchase', 'Exempt', 0, '', '2550Q', 'NIRC Sec. 109',
+    'Importations exempt under Sec. 109 (e.g. agricultural and marine food in original state, books). Entered on the import entry.'),
 ];
 
 const tg = (code: string, name: string, direction: TaxDirection, taxCode: string, zeroRated = false): TaxGroup => ({
@@ -615,14 +739,14 @@ const tg = (code: string, name: string, direction: TaxDirection, taxCode: string
 });
 
 export const SEED_TAX_GROUPS: TaxGroup[] = [
-  tg('S-VAT12', 'Taxable Sales', 'Sales', '31'),
-  tg('S-VATX', 'Exempt Sales', 'Sales', '33'),
-  tg('S-VAT0', 'Zero-Rated Sales', 'Sales', '32', true),
-  tg('P-VAT12', 'Taxable Goods', 'Purchase', '44'),
-  tg('P-VAT12S', 'Taxable Services', 'Purchase', '44'),
-  tg('P-VAT12C', 'Capital Goods', 'Purchase', '44'),
-  tg('P-VATX', 'Exempt Purchases', 'Purchase', '48'),
-  tg('P-VAT0', 'Zero-Rated Purchases', 'Purchase', '48', true),
+  tg('S-VAT12', 'Taxable Sales', 'Sales', 'OVAT'),
+  tg('S-VATX', 'Exempt Sales', 'Sales', 'XVAT'),
+  tg('S-VAT0', 'Zero-Rated Sales', 'Sales', 'ZVAT', true),
+  tg('P-VAT12', 'Taxable Goods', 'Purchase', 'IVAT'),
+  tg('P-VAT12S', 'Taxable Services', 'Purchase', 'IVAT'),
+  tg('P-VAT12C', 'Capital Goods', 'Purchase', 'IVAT'),
+  tg('P-VATX', 'Exempt Purchases', 'Purchase', 'NVAT'),
+  tg('P-VAT0', 'Zero-Rated Purchases', 'Purchase', 'NVAT', true),
 ];
 
 const BASE_FOR_KIND: Record<WithholdingKind, WithholdingBase> = {
@@ -867,6 +991,11 @@ const GMP: WithholdingTax[] = [
   wvBoth('WV014', 12, 'VAT Withholding on Purchases of Goods (with waiver of privilege to claim input tax credit) final'),
   wvBoth('WV022', 12, 'VAT Withholding on Purchases of Services (with waiver of privilege to claim input tax credit) creditable'),
   wvBoth('WV024', 12, 'VAT Withholding on Purchases of Services (with waiver of privilege to claim input tax credit) final'),
+  // Final withholding VAT on digital services / RBE local sales (RA 12023 / RR 3-2025 / RMO 13-2025 / RR 9-2025)
+  wt('Withholding VAT', 'WV080', 'Any', 12, 'Final withholding VAT on digital services from non-resident DSPs (private withholding agent)', '', 'Private', '2025-06-02'),
+  wt('Withholding VAT', 'WV090', 'Any', 12, 'Final withholding VAT on digital services from non-resident DSPs (government withholding agent)', '', 'Government', '2025-06-02'),
+  wt('Withholding VAT', 'WV100', 'Any', 12, 'Final withholding VAT by a resident e-marketplace on the gross amount paid to non-resident sellers / merchants', '', 'Private', '2025-06-02'),
+  wt('Withholding VAT', 'WV110', 'Any', 12, 'VAT on local sales of Registered Business Enterprises (RBEs) - withheld and remitted by the buyer', '', 'Any', '2025-03-14'),
   // Applicable to Government Withholding Agent Only
   wbGov('WB030', 3, 'Tax on Carriers and Keepers of Garages'),
   wbGov('WB040', 2, 'Franchise Tax on Gas and Utilities'),
@@ -936,16 +1065,16 @@ const wg = (
  */
 export const SYSTEM_TAX_CODES = {
   // Sales
-  VATABLE:            '31',   // VATable Sales — 12%
-  ZERO_RATED:         '32',   // Zero-Rated Sales
-  EXEMPT:             '33',   // Exempt Sales
-  PERCENTAGE_TAX:     'PT010',// Non-VAT seller: percentage tax
+  VATABLE:            'OVAT',  // VATable Sales — 12%
+  ZERO_RATED:         'ZVAT',  // Zero-Rated Sales
+  EXEMPT:             'XVAT',  // Exempt Sales
+  PERCENTAGE_TAX:     'PT',    // Non-VAT seller: percentage tax
   // Purchases
-  DOMESTIC:           '44',   // Domestic Purchases — 12% input
-  NR_SERVICES:        '45',   // Services from non-residents — reverse charge
-  IMPORTATION:        '46',   // Importations — 12% import VAT via BoC
-  NO_INPUT_TAX:       '48',   // Non-VAT or exempt purchases
-  EXEMPT_IMPORTATION: '49',   // VAT-exempt importations
+  DOMESTIC:           'IVAT',  // Domestic Purchases — 12% input
+  NR_SERVICES:        'WVAT',  // Services from non-residents — reverse charge
+  IMPORTATION:        'IMVAT', // Importations — 12% import VAT via BoC
+  NO_INPUT_TAX:       'NVAT',  // Non-VAT or exempt purchases
+  EXEMPT_IMPORTATION: 'XIMP',  // VAT-exempt importations
 } as const;
 
 /**
@@ -1008,33 +1137,33 @@ export const SEED_EXCISE: ExciseCategory[] = [
   ex('EX-CIG', 'Cigarettes', 'Specific', 'pack of 20', '', [
     ['2020-01-01', [[null, 0, 45]]],
     ['2022-01-01', [[null, 0, 55]]],
-    ['2024-01-01', [[null, 0, 62.50]]],
+    ['2024-01-01', [[null, 0, 63.00]]],
     ['2026-01-01', [[null, 0, 69.46]]],
-  ], 'RA 11346, RA 11467', 'Rate steps up yearly as indexed by RA 11346.'),
-  ex('EX-HTP', 'Heated tobacco products', 'Specific', 'pack', '', [
+  ], 'RA 11346', 'Fixed steps 2020-2023 (P45/50/55/60), then +5% every year from 2024. 2026: P69.46/pack (BOC 2026 schedule).'),
+  ex('EX-HTP', 'Heated tobacco products', 'Specific', 'pack of 20', '', [
     ['2020-01-01', [[null, 0, 25]]],
     ['2022-01-01', [[null, 0, 30]]],
-    ['2024-01-01', [[null, 0, 32.50]]],
+    ['2024-01-01', [[null, 0, 34.13]]],
     ['2026-01-01', [[null, 0, 37.63]]],
-  ], 'RA 11467'),
-  ex('EX-VAP', 'Vapor products', 'Specific', 'mL', '', [
-    ['2020-01-01', [[null, 0, 45]]],
-    ['2022-01-01', [[null, 0, 50]]],
-    ['2024-01-01', [[null, 0, 55]]],
+  ], 'RA 11467', 'Fixed steps 2020-2023 (P25/27.50/30/32.50), then +5% every year from 2024. 2026: P37.63/pack.'),
+  ex('EX-VAP', 'Vapor products (nicotine salt)', 'Specific', 'mL', '', [
+    ['2020-01-01', [[null, 0, 37]]],
+    ['2022-01-01', [[null, 0, 47]]],
+    ['2024-01-01', [[null, 0, 54.60]]],
     ['2026-01-01', [[null, 0, 60.20]]],
-  ], 'RA 11467', 'Covers nicotine salt and freebase vapor products.'),
+  ], 'RA 11467', 'Nicotine salt is taxed per mL. 2026: P60.20/mL. Conventional freebase/classic nicotine is taxed per 10 mL (P69.46/10 mL in 2026) - create a separate category for it.'),
   ex('EX-SPR', 'Distilled spirits', 'Specific + ad valorem', 'proof liter', 'net retail price', [
-    ['2020-01-01', [[null, 22, 52.87]]],
-    ['2022-01-01', [[null, 22, 59.27]]],
-    ['2024-01-01', [[null, 22, 66.44]]],
+    ['2020-01-01', [[null, 22, 42]]],
+    ['2022-01-01', [[null, 22, 52]]],
+    ['2024-01-01', [[null, 22, 66]]],
     ['2026-01-01', [[null, 22, 74.16]]],
-  ], 'RA 11467'),
+  ], 'RA 11467', 'Specific steps P42/47/52/59/66 for 2020-2024, then +6% every year. 2026: P74.16/proof liter plus 22% ad valorem on net retail price.'),
   ex('EX-BER', 'Fermented liquors (beer)', 'Specific', 'liter', '', [
-    ['2026-01-01', [[null, 0, 0]]],
-  ], 'RA 11467', 'Indexed yearly — enter the current BIR/BOC schedule rate.'),
+    ['2026-01-01', [[null, 0, 48.31]]],
+  ], 'RA 11467', '2026: P48.31/liter (BOC 2026 schedule). Fixed steps 2020-2023 (P35/37/39/41), then +6% every year.'),
   ex('EX-WIN', 'Wines', 'Specific', 'liter', '', [
-    ['2026-01-01', [[null, 0, 0]]],
-  ], 'RA 11467', 'Indexed yearly — enter the current BIR/BOC schedule rate.'),
+    ['2026-01-01', [[null, 0, 70.92]]],
+  ], 'RA 11467', '2026: P70.92/liter for both still and sparkling wine (BOC 2026 schedule); P50/liter base in 2020, then +6% every year.'),
   ex('EX-SSB', 'Sweetened beverages', 'Specific', 'liter', '', [
     ['2018-01-01', [[null, 0, 6]]],
   ], 'RA 10963 (TRAIN), NIRC Sec. 150-B', 'Products with high-fructose corn syrup: ₱12 per liter — create a separate category for HFCS variants.'),

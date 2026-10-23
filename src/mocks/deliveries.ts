@@ -202,7 +202,7 @@ export function blankDelivery(today: string, ownerId: string): Omit<Delivery, 'i
     ownerId: ownerId,
     discountPct: 0,
     freight: 0,
-    freightTaxCode: '31',
+    freightTaxCode: 'OVAT',
     rounding: false,
     remarks: '',
     fxRate: 1,

@@ -300,7 +300,7 @@ export function blankPurchaseOrder(buyerId: string): Omit<PurchaseOrder, 'id'> {
     attachments: [],
     discountPct: 0,
     freight: 0,
-    freightTaxCode: '44',
+    freightTaxCode: 'IVAT',
     baseRfqId: '',
   };
 }
@@ -323,7 +323,7 @@ const line = (n: string, itemNo: string, quantity: number, patch: Partial<PoLine
     uomName: item.purchasingUom === 'pc' ? 'Piece' : item.purchasingUom,
     itemsPerUnit: itemsPerUom(item, item.purchasingUom) ?? 1,
     unitPrice: item.itemCost,
-    taxCode: '44',
+    taxCode: 'IVAT',
     mfrNo: item.manufacturers[0]?.catalogNo ?? '',
     // Non-stock items (services, imported manuals) go to no warehouse.
     warehouse: item.inventoryItem ? 'WH-001' : '',
@@ -337,7 +337,7 @@ const USD_PHP = 58;
 /** A seeded import line from Apple South Asia: USD cost, 46 Importations. */
 const importLine = (n: string, itemNo: string, quantity: number): PoLine => {
   const l = line(n, itemNo, quantity);
-  return { ...l, unitPrice: Math.round((l.unitPrice / USD_PHP) * 100) / 100, taxCode: '46', deliveryDate: '2026-10-06' };
+  return { ...l, unitPrice: Math.round((l.unitPrice / USD_PHP) * 100) / 100, taxCode: 'IMVAT', deliveryDate: '2026-10-06' };
 };
 
 const plusDays = (iso: string, days: number) => {
@@ -441,7 +441,7 @@ const HAND_ORDERS: PurchaseOrder[] = [
     lines: [
       newPoLine({
         id: 'po-005-1', itemId: 'itm-020', itemNo: 'SVC-CLD-HOST', name: 'Cloud hosting subscription', description: 'Cloud hosting subscription (October 2026)',
-        quantity: 1, unitPrice: 420, taxCode: '45', warehouse: '', deliveryDate: '2026-10-01', blanketAgreement: 'BA-2026-003',
+        quantity: 1, unitPrice: 420, taxCode: 'WVAT', warehouse: '', deliveryDate: '2026-10-01', blanketAgreement: 'BA-2026-003',
         departmentId: departmentId('IT'),
       }),
     ],
@@ -450,21 +450,21 @@ const HAND_ORDERS: PurchaseOrder[] = [
   vendorPo('po-006', 1, 'bp-017', {
     status: 'Open', seriesId: 'ser-import', currencyView: 'BP', shipTo: MNL_SHIP_TO, shippingType: 'sh-own',
     postingDate: '2026-09-22', documentDate: '2026-09-22', deliveryDate: '2026-10-06', dueDate: '2026-10-22',
-    vendorRef: 'ASA-PO-7741902', freightTaxCode: '46', freight: 1850,
+    vendorRef: 'ASA-PO-7741902', freightTaxCode: 'IMVAT', freight: 1850,
     lines: [
       importLine('po-006-1', 'IPH-18P-256-BLK', 20),
       importLine('po-006-2', 'IPH-18P-256-SLV', 20),
       importLine('po-006-3', 'IPH-18PM-512-GLC', 10),
     ].map((l) => ({ ...l, blanketAgreement: 'BA-2026-004' })).concat(
       // Printed materials are VAT-exempt on importation.
-      svc('po-006-4', 'SVC-MANUALS', 200, 3.5, '49', { deliveryDate: '2026-10-06' }),
+      svc('po-006-4', 'SVC-MANUALS', 200, 3.5, 'XIMP', { deliveryDate: '2026-10-06' }),
     ),
     remarks: 'Direct import from Apple. Import VAT (46) is paid to the Bureau of Customs on the import entry, not to Apple; the printed manuals are exempt (49). Pier Four Customs Brokerage files the entry; Nordlys Freight flies it in.',
   }),
   vendorPo('po-007', 2, 'bp-017', {
     status: 'Closed', seriesId: 'ser-import', currencyView: 'BP', shipTo: MNL_SHIP_TO, shippingType: 'sh-own',
     postingDate: '2026-08-18', documentDate: '2026-08-18', deliveryDate: '2026-09-01', closeDate: '2026-09-02', dueDate: '2026-09-17',
-    vendorRef: 'ASA-PO-7738115', freightTaxCode: '46', freight: 1200,
+    vendorRef: 'ASA-PO-7738115', freightTaxCode: 'IMVAT', freight: 1200,
     lines: [
       importLine('po-007-1', 'MAC-MBA13-M5-8G-16-512-MDN', 15),
       importLine('po-007-2', 'MAC-MBA13-M5-8G-16-512-SLV', 15),
@@ -492,7 +492,7 @@ const HAND_ORDERS: PurchaseOrder[] = [
     lines: [
       line('po-009-1', 'IPD-PRO-11-256-SG-WF-SLV', 40, { receivedQty: 24, deliveryDate: '2026-10-05' }),
       // AppleCare+ is a service: same input VAT, but 2% EWT instead of 1% on goods.
-      svc('po-009-2', 'ACP-IPD-2Y', 40, 4200, '44', { warehouse: '', deliveryDate: '2026-10-05' }),
+      svc('po-009-2', 'ACP-IPD-2Y', 40, 4200, 'IVAT', { warehouse: '', deliveryDate: '2026-10-05' }),
     ],
     references: [{ id: 'po-009-r1', docType: 'Sales order', docNo: 'SO-2026-0412', docDate: '2026-09-19', remarks: 'DepEd Pasig — 40 iPads for teachers (PhilGEPS award)' }],
     remarks: 'DepEd Pasig iPad rollout. 24 of 40 received; balance on 5 Oct.',
@@ -508,123 +508,123 @@ const HAND_ORDERS: PurchaseOrder[] = [
   svcPo('po-011', 8, 'bp-002', {
     status: 'Open', postingDate: '2026-09-25', documentDate: '2026-09-25', deliveryDate: '2026-10-01', dueDate: '2026-10-10',
     vendorRef: 'NPM-SOA-2026-10-118',
-    lines: [svc('po-011-1', 'RNT-MALL', 1, 385000, '44', { freeText: 'Unit 2-118, October 2026', deliveryDate: '2026-10-01', departmentId: departmentId('Operations') })],
+    lines: [svc('po-011-1', 'RNT-MALL', 1, 385000, 'IVAT', { freeText: 'Unit 2-118, October 2026', deliveryDate: '2026-10-01', departmentId: departmentId('Operations') })],
   }),
   svcPo('po-012', 9, 'bp-036', {
     status: 'Open', postingDate: '2026-09-25', documentDate: '2026-09-25', deliveryDate: '2026-10-01', dueDate: '2026-10-05',
-    lines: [svc('po-012-1', 'RNT-CEB', 1, 95000, '48', { freeText: 'Cebu store, October 2026', deliveryDate: '2026-10-01', departmentId: departmentId('Operations') })],
+    lines: [svc('po-012-1', 'RNT-CEB', 1, 95000, 'NVAT', { freeText: 'Cebu store, October 2026', deliveryDate: '2026-10-01', departmentId: departmentId('Operations') })],
   }),
   svcPo('po-013', 10, 'bp-014', {
     status: 'Closed', postingDate: '2026-09-01', documentDate: '2026-09-01', deliveryDate: '2026-09-30', closeDate: '2026-09-28', dueDate: '2026-10-15',
-    lines: [svc('po-013-1', 'SVC-SECURITY', 2, 92000, '44', { receivedQty: 2, status: 'Closed', freeText: 'Pasig and Muntinlupa stores, September', deliveryDate: '2026-09-30', departmentId: departmentId('Operations') })],
+    lines: [svc('po-013-1', 'SVC-SECURITY', 2, 92000, 'IVAT', { receivedQty: 2, status: 'Closed', freeText: 'Pasig and Muntinlupa stores, September', deliveryDate: '2026-09-30', departmentId: departmentId('Operations') })],
   }),
   svcPo('po-014', 11, 'bp-034', {
     status: 'Open', postingDate: '2026-09-15', documentDate: '2026-09-15', deliveryDate: '2026-09-30', dueDate: '2026-09-30',
-    lines: [svc('po-014-1', 'SVC-AIRCON', 3, 18500, '44', { receivedQty: 1, freeText: 'Quarterly PMS, three stores', deliveryDate: '2026-09-30', departmentId: departmentId('Operations') })],
+    lines: [svc('po-014-1', 'SVC-AIRCON', 3, 18500, 'IVAT', { receivedQty: 1, freeText: 'Quarterly PMS, three stores', deliveryDate: '2026-09-30', departmentId: departmentId('Operations') })],
     remarks: 'Withholding follows the vendor override (WC120 contractor), not the item.',
   }),
   svcPo('po-015', 12, 'bp-027', {
     status: 'Open', postingDate: '2026-09-01', documentDate: '2026-09-01', deliveryDate: '2026-09-30', dueDate: '2026-10-15',
-    lines: [svc('po-015-1', 'SVC-COURIER', 40, 850, '44', { receivedQty: 31, freeText: 'Provincial deliveries, September', deliveryDate: '2026-09-30' })],
+    lines: [svc('po-015-1', 'SVC-COURIER', 40, 850, 'IVAT', { receivedQty: 31, freeText: 'Provincial deliveries, September', deliveryDate: '2026-09-30' })],
   }),
   svcPo('po-016', 13, 'bp-008', {
     status: 'Open', postingDate: '2026-09-01', documentDate: '2026-09-01', deliveryDate: '2026-09-30', dueDate: '2026-10-07',
-    lines: [svc('po-016-1', 'SVC-COURIER', 120, 180, '48', { receivedQty: 96, freeText: 'Same-day Metro Manila deliveries, September', deliveryDate: '2026-09-30' })],
+    lines: [svc('po-016-1', 'SVC-COURIER', 120, 180, 'NVAT', { receivedQty: 96, freeText: 'Same-day Metro Manila deliveries, September', deliveryDate: '2026-09-30' })],
   }),
   svcPo('po-017', 14, 'bp-042', {
     status: 'Open', postingDate: '2026-09-22', documentDate: '2026-09-22', deliveryDate: '2026-10-06', dueDate: '2026-10-22',
-    lines: [svc('po-017-1', 'SVC-FREIGHT', 1, 142000, '44', { freeText: 'SIN–MNL air freight for the 22 Sep Apple South Asia import', deliveryDate: '2026-10-06' })],
+    lines: [svc('po-017-1', 'SVC-FREIGHT', 1, 142000, 'IVAT', { freeText: 'SIN–MNL air freight for the 22 Sep Apple South Asia import', deliveryDate: '2026-10-06' })],
     references: [{ id: 'po-017-r1', docType: 'Other', docNo: 'IMP-2026-0001', docDate: '2026-09-22', remarks: 'Apple South Asia import' }],
   }),
   svcPo('po-018', 15, 'bp-022', {
     status: 'Open', postingDate: '2026-09-22', documentDate: '2026-09-22', deliveryDate: '2026-10-07', dueDate: '2026-10-14',
-    lines: [svc('po-018-1', 'SVC-CUSTOMS', 1, 18000, '44', { freeText: 'Import entry for the 22 Sep Apple South Asia import', deliveryDate: '2026-10-07' })],
+    lines: [svc('po-018-1', 'SVC-CUSTOMS', 1, 18000, 'IVAT', { freeText: 'Import entry for the 22 Sep Apple South Asia import', deliveryDate: '2026-10-07' })],
     references: [{ id: 'po-018-r1', docType: 'Other', docNo: 'IMP-2026-0001', docDate: '2026-09-22', remarks: 'Apple South Asia import' }],
   }),
   svcPo('po-019', 16, 'bp-028', {
     status: 'Closed', priceMode: 'Gross', postingDate: '2026-09-11', documentDate: '2026-09-11', deliveryDate: '2026-09-11', closeDate: '2026-09-11',
     dueDate: '2026-09-11', paymentMethod: 'CASH',
-    lines: [svc('po-019-1', 'SVC-POSTAGE', 1, 3200, '44', { receivedQty: 1, status: 'Closed', freeText: 'Registered mail — BIR and warranty documents', deliveryDate: '2026-09-11', departmentId: departmentId('Finance') })],
+    lines: [svc('po-019-1', 'SVC-POSTAGE', 1, 3200, 'IVAT', { receivedQty: 1, status: 'Closed', freeText: 'Registered mail — BIR and warranty documents', deliveryDate: '2026-09-11', departmentId: departmentId('Finance') })],
   }),
 
   // ── Professionals, freelancers and agents ──────────────────────────────────
   svcPo('po-020', 17, 'bp-021', {
     status: 'Not Confirmed', approved: false, postingDate: '2026-09-24', documentDate: '2026-09-24', deliveryDate: '2027-04-15', dueDate: '2027-04-30',
-    lines: [svc('po-020-1', 'SVC-AUDIT', 1, 450000, '44', { freeText: 'FY2026 financial statement audit', deliveryDate: '2027-04-15', departmentId: departmentId('Finance') })],
+    lines: [svc('po-020-1', 'SVC-AUDIT', 1, 450000, 'IVAT', { freeText: 'FY2026 financial statement audit', deliveryDate: '2027-04-15', departmentId: departmentId('Finance') })],
     remarks: 'Engagement letter signed; waiting for the CFO’s approval.',
   }),
   svcPo('po-021', 18, 'bp-033', {
     status: 'Open', postingDate: '2026-09-01', documentDate: '2026-09-01', deliveryDate: '2026-09-30', dueDate: '2026-10-15',
-    lines: [svc('po-021-1', 'SVC-LEGAL', 1, 60000, '44', { freeText: 'Monthly retainer, September', deliveryDate: '2026-09-30', departmentId: departmentId('Finance') })],
+    lines: [svc('po-021-1', 'SVC-LEGAL', 1, 60000, 'IVAT', { freeText: 'Monthly retainer, September', deliveryDate: '2026-09-30', departmentId: departmentId('Finance') })],
   }),
   svcPo('po-022', 19, 'bp-023', {
     status: 'Closed', priceMode: 'Net and Gross', postingDate: '2026-09-03', documentDate: '2026-09-03', deliveryDate: '2026-09-12', closeDate: '2026-09-14', dueDate: '2026-09-21',
-    lines: [svc('po-022-1', 'SVC-PHOTO', 1, 45000, '48', { receivedQty: 1, status: 'Closed', freeText: 'iPhone 18 launch product shoot', deliveryDate: '2026-09-12', departmentId: departmentId('Marketing') })],
+    lines: [svc('po-022-1', 'SVC-PHOTO', 1, 45000, 'NVAT', { receivedQty: 1, status: 'Closed', freeText: 'iPhone 18 launch product shoot', deliveryDate: '2026-09-12', departmentId: departmentId('Marketing') })],
   }),
   svcPo('po-023', 0, 'bp-037', {
     status: 'Draft', postingDate: TODAY, documentDate: TODAY,
-    lines: [svc('po-023-1', 'SVC-VIDEO-EDIT', 4, 8000, '48', { freeText: 'Unboxing reels, October', departmentId: departmentId('Marketing') })],
+    lines: [svc('po-023-1', 'SVC-VIDEO-EDIT', 4, 8000, 'NVAT', { freeText: 'Unboxing reels, October', departmentId: departmentId('Marketing') })],
     remarks: 'Draft — waiting for his sworn declaration before sending (WI011 10% applies until then).',
   }),
   svcPo('po-024', 20, 'bp-035', {
     status: 'Open', postingDate: '2026-09-16', documentDate: '2026-09-16', deliveryDate: '2026-10-10', dueDate: '2026-10-25',
-    lines: [svc('po-024-1', 'SVC-DESIGN', 1, 120000, '44', { freeText: 'Holiday campaign — in-store signage', deliveryDate: '2026-10-10', departmentId: departmentId('Marketing') })],
+    lines: [svc('po-024-1', 'SVC-DESIGN', 1, 120000, 'IVAT', { freeText: 'Holiday campaign — in-store signage', deliveryDate: '2026-10-10', departmentId: departmentId('Marketing') })],
   }),
   svcPo('po-025', 21, 'bp-024', {
     status: 'Open', postingDate: '2026-09-14', documentDate: '2026-09-14', deliveryDate: '2026-10-16', dueDate: '2026-10-31',
-    lines: [svc('po-025-1', 'SVC-IT-CONSULT', 40, 2500, '44', { receivedQty: 16, freeText: 'MDM setup — Bayanihan Savings Bank deployment', deliveryDate: '2026-10-16', departmentId: departmentId('IT') })],
+    lines: [svc('po-025-1', 'SVC-IT-CONSULT', 40, 2500, 'IVAT', { receivedQty: 16, freeText: 'MDM setup — Bayanihan Savings Bank deployment', deliveryDate: '2026-10-16', departmentId: departmentId('IT') })],
   }),
   svcPo('po-026', 22, 'bp-025', {
     status: 'Open', projectId: 'prj-003', postingDate: '2026-09-07', documentDate: '2026-09-07', deliveryDate: '2026-10-31', dueDate: '2026-11-15',
-    lines: [svc('po-026-1', 'SVC-SUB-FITOUT', 320, 450, '48', { receivedQty: 120, freeText: 'Cebu store fit-out', deliveryDate: '2026-10-31', departmentId: departmentId('Operations') })],
+    lines: [svc('po-026-1', 'SVC-SUB-FITOUT', 320, 450, 'NVAT', { receivedQty: 120, freeText: 'Cebu store fit-out', deliveryDate: '2026-10-31', departmentId: departmentId('Operations') })],
     references: [{ id: 'po-026-r1', docType: 'Contract', docNo: 'FO-2026-CEB-01', docDate: '2026-09-05', remarks: '50% down payment paid' }],
   }),
   svcPo('po-027', 23, 'bp-026', {
     status: 'Open', postingDate: '2026-09-26', documentDate: '2026-09-26', deliveryDate: '2026-09-30', dueDate: '2026-10-15',
-    lines: [svc('po-027-1', 'SVC-SALES-COMM', 1, 38500, '48', { freeText: 'Commission — Bayanihan Savings Bank fleet deal', deliveryDate: '2026-09-30', departmentId: departmentId('Operations') })],
+    lines: [svc('po-027-1', 'SVC-SALES-COMM', 1, 38500, 'NVAT', { freeText: 'Commission — Bayanihan Savings Bank fleet deal', deliveryDate: '2026-09-30', departmentId: departmentId('Operations') })],
   }),
 
   // ── Foreign services ───────────────────────────────────────────────────────
   svcPo('po-028', 24, 'bp-018', {
     status: 'Open', currencyView: 'BP', postingDate: '2026-09-28', documentDate: '2026-09-28', deliveryDate: '2026-10-01', dueDate: '2026-10-01', paymentMethod: 'CARD',
-    lines: [svc('po-028-1', 'SVC-AI-SEAT', 25, 30, '45', { freeText: 'ChatGPT Team, October', deliveryDate: '2026-10-01', departmentId: departmentId('IT') })],
+    lines: [svc('po-028-1', 'SVC-AI-SEAT', 25, 30, 'WVAT', { freeText: 'ChatGPT Team, October', deliveryDate: '2026-10-01', departmentId: departmentId('IT') })],
   }),
   svcPo('po-029', 25, 'bp-019', {
     status: 'Open', postingDate: '2026-09-01', documentDate: '2026-09-01', deliveryDate: '2026-09-30', dueDate: '2026-10-30',
-    lines: [svc('po-029-1', 'SVC-ADS-DIGITAL', 1, 250000, '44', { freeText: 'Search and YouTube — iPhone 18 launch', deliveryDate: '2026-09-30', departmentId: departmentId('Marketing') })],
+    lines: [svc('po-029-1', 'SVC-ADS-DIGITAL', 1, 250000, 'IVAT', { freeText: 'Search and YouTube — iPhone 18 launch', deliveryDate: '2026-09-30', departmentId: departmentId('Marketing') })],
   }),
   svcPo('po-030', 26, 'bp-020', {
     status: 'Closed', postingDate: '2026-09-01', documentDate: '2026-09-01', deliveryDate: '2026-09-30', closeDate: '2026-09-28', dueDate: '2026-09-01', paymentMethod: 'CARD',
-    lines: [svc('po-030-1', 'SVC-ADS-DIGITAL', 1, 180000, '44', { receivedQty: 1, status: 'Closed', freeText: 'Facebook and Instagram — iPhone 18 launch', deliveryDate: '2026-09-30', departmentId: departmentId('Marketing') })],
+    lines: [svc('po-030-1', 'SVC-ADS-DIGITAL', 1, 180000, 'IVAT', { receivedQty: 1, status: 'Closed', freeText: 'Facebook and Instagram — iPhone 18 launch', deliveryDate: '2026-09-30', departmentId: departmentId('Marketing') })],
   }),
   svcPo('po-031', 27, 'bp-029', {
     status: 'Open', currencyView: 'BP', postingDate: '2026-09-10', documentDate: '2026-09-10', deliveryDate: '2026-11-30', dueDate: '2026-12-30',
-    lines: [svc('po-031-1', 'SVC-IT-CONSULT', 120, 95, '45', { receivedQty: 48, freeText: 'POS–ERP integration, phase 1', deliveryDate: '2026-11-30', departmentId: departmentId('IT') })],
+    lines: [svc('po-031-1', 'SVC-IT-CONSULT', 120, 95, 'WVAT', { receivedQty: 48, freeText: 'POS–ERP integration, phase 1', deliveryDate: '2026-11-30', departmentId: departmentId('IT') })],
   }),
   svcPo('po-032', 28, 'bp-030', {
     status: 'Open', currencyView: 'BP', postingDate: '2026-09-15', documentDate: '2026-09-15', deliveryDate: '2026-10-01', dueDate: '2026-10-31',
-    lines: [svc('po-032-1', 'SVC-POS-LICENSE', 1, 4800000, '45', { freeText: 'POS licence, Oct 2026 – Sep 2027, all stores', deliveryDate: '2026-10-01', departmentId: departmentId('IT') })],
+    lines: [svc('po-032-1', 'SVC-POS-LICENSE', 1, 4800000, 'WVAT', { freeText: 'POS licence, Oct 2026 – Sep 2027, all stores', deliveryDate: '2026-10-01', departmentId: departmentId('IT') })],
   }),
   svcPo('po-033', 29, 'bp-039', {
     status: 'Open', currencyView: 'BP', postingDate: '2026-09-18', documentDate: '2026-09-18', deliveryDate: '2026-10-01', dueDate: '2026-10-31',
-    lines: [svc('po-033-1', 'SVC-SIGNAGE-LIC', 1, 6000, '45', { freeText: 'Video wall content software, annual', deliveryDate: '2026-10-01', departmentId: departmentId('Marketing') })],
+    lines: [svc('po-033-1', 'SVC-SIGNAGE-LIC', 1, 6000, 'WVAT', { freeText: 'Video wall content software, annual', deliveryDate: '2026-10-01', departmentId: departmentId('Marketing') })],
     remarks: 'Their Certificate of Residence expired in June — ask for the new one before payment to get the 10% treaty rate back.',
   }),
   svcPo('po-034', 30, 'bp-038', {
     status: 'Open', currencyView: 'BP', postingDate: '2026-09-25', documentDate: '2026-09-25', deliveryDate: '2026-10-01', dueDate: '2026-10-31',
-    lines: [svc('po-034-1', 'SVC-POS-LEASE', 24, 45, '45', { freeText: '24 terminals, October', deliveryDate: '2026-10-01', departmentId: departmentId('Operations') })],
+    lines: [svc('po-034-1', 'SVC-POS-LEASE', 24, 45, 'WVAT', { freeText: '24 terminals, October', deliveryDate: '2026-10-01', departmentId: departmentId('Operations') })],
   }),
   svcPo('po-035', 31, 'bp-031', {
     status: 'Closed', currencyView: 'BP', postingDate: '2026-08-25', documentDate: '2026-08-25', deliveryDate: '2026-09-08', closeDate: '2026-09-09', dueDate: '2026-09-15',
-    lines: [svc('po-035-1', 'SVC-VIDEO-EDIT', 3, 600, '45', { receivedQty: 3, status: 'Closed', freeText: 'Launch motion graphics', deliveryDate: '2026-09-08', departmentId: departmentId('Marketing') })],
+    lines: [svc('po-035-1', 'SVC-VIDEO-EDIT', 3, 600, 'WVAT', { receivedQty: 3, status: 'Closed', freeText: 'Launch motion graphics', deliveryDate: '2026-09-08', departmentId: departmentId('Marketing') })],
   }),
   svcPo('po-036', 32, 'bp-043', {
     status: 'Not Confirmed', approved: false, currencyView: 'BP', postingDate: '2026-09-27', documentDate: '2026-09-27', deliveryDate: '2026-11-15', dueDate: '2026-12-15',
-    lines: [svc('po-036-1', 'SVC-ADVISORY', 1, 28000, '45', { freeText: 'Store layout and staffing review', deliveryDate: '2026-11-15', departmentId: departmentId('Operations') })],
+    lines: [svc('po-036-1', 'SVC-ADVISORY', 1, 28000, 'WVAT', { freeText: 'Store layout and staffing review', deliveryDate: '2026-11-15', departmentId: departmentId('Operations') })],
   }),
   svcPo('po-037', 33, 'bp-032', {
     status: 'Open', currencyView: 'BP', postingDate: '2026-09-28', documentDate: '2026-09-28', deliveryDate: '2026-09-30', dueDate: '2026-10-05',
-    lines: [svc('po-037-1', 'SVC-LOAN-INT', 1, 18750, '48', { freeText: 'Interest, Q3 2026 — USD 1.5M facility', deliveryDate: '2026-09-30', departmentId: departmentId('Finance') })],
+    lines: [svc('po-037-1', 'SVC-LOAN-INT', 1, 18750, 'NVAT', { freeText: 'Interest, Q3 2026 — USD 1.5M facility', deliveryDate: '2026-09-30', departmentId: departmentId('Finance') })],
   }),
 
   // ── Backorders for open sales orders ───────────────────────────────────────
@@ -837,7 +837,7 @@ const PLANNED: PurchaseOrder[] = planSupply([...HAND_ORDERS, ...MONTHLY_SERVICES
   const month = p.month ? MONTH_NAMES[Number(p.month.slice(5)) - 1] : '';
   return vendorPo(p.id, 0, p.vendorId, {
     status: 'Closed',
-    ...(imported ? { seriesId: 'ser-import', freightTaxCode: '46', freight: 1500 } : {}),
+    ...(imported ? { seriesId: 'ser-import', freightTaxCode: 'IMVAT', freight: 1500 } : {}),
     currencyView: 'BP', shipTo: MNL_SHIP_TO, shippingType: 'sh-own',
     postingDate: p.postingDate, documentDate: p.postingDate, deliveryDate: p.receivedOn, closeDate: p.receivedOn,
     dueDate: plusDays(p.receivedOn, 30),

@@ -282,7 +282,7 @@ export function RiContentsCard({ draft, update, errors, m, ctx, onCopy, cardFoot
   );
   const addRow = ro ? undefined : service ? (
     <div className="flex items-center justify-between gap-2">
-      <Link leadingIcon={<Icon size={20}>add</Icon>} disabled={!draft.customerId} onClick={() => update({ lines: [...lines, newRiLine({ taxCode: '31', glAccount: '4030', priceSource: 'Manual', wtaxLiable: withholds })] })}>
+      <Link leadingIcon={<Icon size={20}>add</Icon>} disabled={!draft.customerId} onClick={() => update({ lines: [...lines, newRiLine({ taxCode: 'OVAT', glAccount: '4030', priceSource: 'Manual', wtaxLiable: withholds })] })}>
         Add service line
       </Link>
       {copyButton}

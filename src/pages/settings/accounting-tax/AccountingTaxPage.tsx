@@ -5,8 +5,10 @@ import { DeMinimisTab } from './DeMinimisTab';
 import { ExchangeRatesTab } from './ExchangeRatesTab';
 import { ExciseTab } from './ExciseTab';
 import { ExclusionsTab } from './ExclusionsTab';
+import { PercentageTaxTab } from './PercentageTaxTab';
 import { TaxCodesTab } from './TaxCodesTab';
 import { TaxGroupsTab } from './TaxGroupsTab';
+import { VatAtcsTab } from './VatAtcsTab';
 import { WithholdingFormsTab } from './WithholdingFormsTab';
 import { WithholdingGroupsTab } from './WithholdingGroupsTab';
 import { WithholdingTab } from './WithholdingTab';
@@ -14,6 +16,8 @@ import { WithholdingTab } from './WithholdingTab';
 const TABS: PageTab[] = [
   { value: 'tax-codes', label: 'Tax codes', Component: TaxCodesTab },
   { value: 'tax-groups', label: 'Tax groups', Component: TaxGroupsTab },
+  { value: 'value-added-tax', label: 'Value-added tax', Component: VatAtcsTab },
+  { value: 'percentage-tax', label: 'Percentage tax', Component: PercentageTaxTab },
   { value: 'withholding', label: 'Withholding tax', Component: WithholdingTab },
   { value: 'withholding-groups', label: 'Withholding groups', Component: WithholdingGroupsTab },
   { value: 'compensation', label: 'Compensation tax', Component: CompensationTaxTab },

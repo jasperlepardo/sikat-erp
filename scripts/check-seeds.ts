@@ -142,7 +142,7 @@ check('Nothing posts after the as-of day', L.entries.filter((e) => e.postingDate
   const credit = SEED_AR_CREDIT_MEMOS.filter((m) => posted(m.status)).reduce((n, m) => {
     const total = m.lines.reduce((k, l) => {
       const net = r2(l.quantity * l.unitPrice * (1 - l.discountPct / 100));
-      return k + net + r2((net * (l.taxCode === '31' ? 12 : 0)) / 100);
+      return k + net + r2((net * (l.taxCode === 'OVAT' ? 12 : 0)) / 100);
     }, 0);
     return n + (total - m.appliedAmount) * (m.fxRate || 1);
   }, 0);

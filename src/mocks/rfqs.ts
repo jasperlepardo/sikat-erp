@@ -184,7 +184,7 @@ export function blankRfq(ownerId: string): Omit<Rfq, 'id'> {
     ownerId,
     discountPct: 0,
     freight: 0,
-    freightTaxCode: '44',
+    freightTaxCode: 'IVAT',
     rounding: false,
     remarks: '',
     attachments: [],
@@ -210,7 +210,7 @@ const rl = (id: string, itemNo: string, quantity: number, patch: Partial<RfqLine
     uomCode: item.purchasingUom,
     uomName: item.purchasingUom === 'pc' ? 'Piece' : item.purchasingUom,
     itemsPerUnit: itemsPerUom(item, item.purchasingUom) ?? 1,
-    taxCode: '44',
+    taxCode: 'IVAT',
     ...patch,
   });
 };
@@ -249,9 +249,9 @@ export const SEED_RFQS: Rfq[] = [
     requiredDate: '2026-10-15',
     shipTo: MNL_SHIP_TO,
     lines: [
-      rl('rfq-001-1', 'IPH-18P-256-BLK', 20, { requiredDate: '2026-10-15', unitPrice: 68200, quotedQty: 20, quotedDate: '2026-09-20', taxCode: '44' }),
-      rl('rfq-001-2', 'IPH-18P-256-SLV', 20, { requiredDate: '2026-10-15', unitPrice: 68200, quotedQty: 15, quotedDate: '2026-09-20', taxCode: '44' }),
-      rl('rfq-001-3', 'IPH-18PM-512-GLC', 10, { requiredDate: '2026-10-15', unitPrice: 89500, quotedQty: 10, quotedDate: '2026-09-20', taxCode: '44' }),
+      rl('rfq-001-1', 'IPH-18P-256-BLK', 20, { requiredDate: '2026-10-15', unitPrice: 68200, quotedQty: 20, quotedDate: '2026-09-20', taxCode: 'IVAT' }),
+      rl('rfq-001-2', 'IPH-18P-256-SLV', 20, { requiredDate: '2026-10-15', unitPrice: 68200, quotedQty: 15, quotedDate: '2026-09-20', taxCode: 'IVAT' }),
+      rl('rfq-001-3', 'IPH-18PM-512-GLC', 10, { requiredDate: '2026-10-15', unitPrice: 89500, quotedQty: 10, quotedDate: '2026-09-20', taxCode: 'IVAT' }),
     ],
     remarks: 'Holiday season allocation. Luzon responded on 20 Sep; Silver allocation is short (15 of 20). Following up on the 5-unit gap.',
   }),
@@ -265,8 +265,8 @@ export const SEED_RFQS: Rfq[] = [
     status: 'Closed',
     convertedToPoId: 'po-045',
     lines: [
-      rl('rfq-002-1', 'ACC-PWR20', 100, { requiredDate: '2026-10-03', unitPrice: 1680, quotedQty: 100, quotedDate: '2026-09-26', taxCode: '44', discountPct: 8 }),
-      rl('rfq-002-2', 'ACC-MAGSF1', 2, { requiredDate: '2026-10-03', unitPrice: 24 * 2410, quotedQty: 2, quotedDate: '2026-09-26', taxCode: '44' }),
+      rl('rfq-002-1', 'ACC-PWR20', 100, { requiredDate: '2026-10-03', unitPrice: 1680, quotedQty: 100, quotedDate: '2026-09-26', taxCode: 'IVAT', discountPct: 8 }),
+      rl('rfq-002-2', 'ACC-MAGSF1', 2, { requiredDate: '2026-10-03', unitPrice: 24 * 2410, quotedQty: 2, quotedDate: '2026-09-26', taxCode: 'IVAT' }),
     ],
     remarks: 'Techzone quoted on 26 Sep with the standard 8% discount on chargers. Ordered on 1 Oct.',
   }),
@@ -280,7 +280,7 @@ export const SEED_RFQS: Rfq[] = [
     convertedToPoId: 'po-039',
     lines: [
       rl('rfq-003-1', 'IPD-PRO-11-256-SG-WF-SBK', 120, {
-        requiredDate: '2026-09-22', unitPrice: 685, quotedQty: 120, quotedDate: '2026-09-08', taxCode: '46',
+        requiredDate: '2026-09-22', unitPrice: 685, quotedQty: 120, quotedDate: '2026-09-08', taxCode: 'IMVAT',
       }),
     ],
     remarks: 'Quote for the DepEd Pasig award (120 iPad Pro 11"). Apple confirmed allocation on 8 Sep; converted to the 30 Sep import order.',
@@ -292,9 +292,9 @@ export const SEED_RFQS: Rfq[] = [
     requiredDate: '2026-10-20',
     shipTo: MNL_SHIP_TO,
     lines: [
-      rl('rfq-004-1', 'MAC-MBA13-M5-8G-16-512-MDN', 15, { requiredDate: '2026-10-20', taxCode: '44' }),
-      rl('rfq-004-2', 'MAC-MBA13-M5-8G-16-512-SKB', 10, { requiredDate: '2026-10-20', taxCode: '44' }),
-      rl('rfq-004-3', 'MAC-MBA13-M5-10G-24-1T-SKB', 5, { requiredDate: '2026-10-20', taxCode: '44' }),
+      rl('rfq-004-1', 'MAC-MBA13-M5-8G-16-512-MDN', 15, { requiredDate: '2026-10-20', taxCode: 'IVAT' }),
+      rl('rfq-004-2', 'MAC-MBA13-M5-8G-16-512-SKB', 10, { requiredDate: '2026-10-20', taxCode: 'IVAT' }),
+      rl('rfq-004-3', 'MAC-MBA13-M5-10G-24-1T-SKB', 5, { requiredDate: '2026-10-20', taxCode: 'IVAT' }),
     ],
     remarks: 'MacBook Air quote for B2B pipeline — Pasig City LGU and two insurance clients. Awaiting Luzon pricing.',
   }),
@@ -307,7 +307,7 @@ export const SEED_RFQS: Rfq[] = [
     currency: 'USD',
     lines: [
       rl('rfq-005-1', 'SVC-CLD-HOST', 12, {
-        requiredDate: '2026-10-15', unitPrice: 420, quotedQty: 12, quotedDate: '2026-10-02', taxCode: '45',
+        requiredDate: '2026-10-15', unitPrice: 420, quotedQty: 12, quotedDate: '2026-10-02', taxCode: 'WVAT',
       }),
     ],
     remarks: 'Annual compute renewal at Oct 2026 rates. AWS confirmed 12 months on 2 Oct.',
@@ -319,7 +319,7 @@ export const SEED_RFQS: Rfq[] = [
     postingDate: '2026-08-15', documentDate: '2026-08-15', validUntil: '2026-09-15',
     requiredDate: '2026-09-01', shipTo: MNL_SHIP_TO,
     lines: [
-      rl('rfq-006-1', 'IPH-18P-256-BLK', 50, { requiredDate: '2026-09-01', taxCode: '44' }),
+      rl('rfq-006-1', 'IPH-18P-256-BLK', 50, { requiredDate: '2026-09-01', taxCode: 'IVAT' }),
     ],
     remarks: 'Cancelled — Luzon iDistribution allocation too small. Switched to direct import from Apple South Asia.',
   }),
@@ -330,9 +330,9 @@ export const SEED_RFQS: Rfq[] = [
     postingDate: TODAY, documentDate: TODAY, validUntil: '',
     shipTo: MNL_SHIP_TO,
     lines: [
-      rl('rfq-007-1', 'IPH-DUO-256-STW', 6, { taxCode: '44' }),
-      rl('rfq-007-2', 'IPH-DUO-256-NSK', 6, { taxCode: '44' }),
-      rl('rfq-007-3', 'IPH-DUO-512-NSK', 4, { taxCode: '44' }),
+      rl('rfq-007-1', 'IPH-DUO-256-STW', 6, { taxCode: 'IVAT' }),
+      rl('rfq-007-2', 'IPH-DUO-256-NSK', 6, { taxCode: 'IVAT' }),
+      rl('rfq-007-3', 'IPH-DUO-512-NSK', 4, { taxCode: 'IVAT' }),
     ],
     remarks: 'Draft — checking Luzon availability before sending. iPhone Duo launch.',
   }),

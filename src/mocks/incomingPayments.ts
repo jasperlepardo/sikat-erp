@@ -255,7 +255,7 @@ function row(inv: ArInvoice, amount: number): IncomingRow {
 const arTotal = (inv: ArInvoice) =>
   round2(inv.lines.reduce((n, l) => {
     const net = round2(l.quantity * l.unitPrice * (1 - l.discountPct / 100));
-    return n + net + round2((net * (l.taxCode === '31' ? 12 : 0)) / 100);
+    return n + net + round2((net * (l.taxCode === 'OVAT' ? 12 : 0)) / 100);
   }, 0));
 
 function customerPayment(id: string, docNum: number, invoiceId: string, patch: Partial<IncomingPayment>, meansPatch: Partial<IncomingMeans>): IncomingPayment {

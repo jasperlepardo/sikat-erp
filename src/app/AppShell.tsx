@@ -7,6 +7,9 @@ import { useCollection } from '../components/form/MasterLookup';
 import { companies, setCurrentCompanyId, useCurrentCompany } from '../services/companies';
 import { DateSettings } from './DateSettings';
 
+/** Settings is an app peer to CRM / Sales / Purchasing: it shows in the app selector and as the header name. */
+const SETTINGS_APP: NavbarMenuItem = { id: 'settings', label: 'Settings' };
+const ALL_APPS: NavbarMenuItem[] = [...APPS, SETTINGS_APP];
 
 /** Navbar on top, SideNav on the left, the routed screen on the right. */
 export function AppShell() {
@@ -38,6 +41,8 @@ export function AppShell() {
   useEffect(() => {
     if (routeApp) setAppId(routeApp);
   }, [routeApp]);
+  // While on a settings route the app selector + header read "Settings"; otherwise the current module.
+  const currentAppId = isSettings ? SETTINGS_APP.id : appId;
 
   // Settings nav state
   const settingsActiveId = settingsLeafForPath(location.pathname)?.id;
@@ -84,10 +89,14 @@ export function AppShell() {
         onSideNavToggleHover={peek.onHover}
         sideNavExpanded={navExpanded}
         sideNavId="app-sidenav"
-        appName={APPS.find((a) => a.id === appId)?.label}
-        apps={APPS}
-        appId={appId}
+        appName={ALL_APPS.find((a) => a.id === currentAppId)?.label}
+        apps={ALL_APPS}
+        appId={currentAppId}
         onAppChange={(id) => {
+          if (id === SETTINGS_APP.id) {
+            navigate('/settings');
+            return;
+          }
           setAppId(id);
           navigate(firstPageOf(id));
         }}

@@ -47,6 +47,8 @@ export const SETTINGS_NAV: SideNavSection[] = [
         items: [
           { id: 'settings/accounting-and-tax/tax-codes', label: 'Tax codes', icon: icon('percent') },
           { id: 'settings/accounting-and-tax/tax-groups', label: 'Tax groups', icon: icon('account_tree') },
+          { id: 'settings/accounting-and-tax/value-added-tax', label: 'Value-added tax', icon: icon('tag') },
+          { id: 'settings/accounting-and-tax/percentage-tax', label: 'Percentage tax', icon: icon('pie_chart') },
           { id: 'settings/accounting-and-tax/withholding', label: 'Withholding tax', icon: icon('request_quote') },
           { id: 'settings/accounting-and-tax/compensation', label: 'Compensation tax', icon: icon('payments') },
           { id: 'settings/accounting-and-tax/tax-free-compensation', label: 'Tax-free compensation', icon: icon('money_off') },

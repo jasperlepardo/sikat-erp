@@ -8,12 +8,16 @@ import {
   Text,
   TextField,
 } from '@jasperlepardo/sikat-design-system';
+import type { Option } from '@jasperlepardo/sikat-design-system';
 import { AccountField, useAccounts } from '../../../components/form/AccountField';
 import { FieldStack, Section, bind } from '../../../components/form/fields';
 import { accountProblem } from '../../../mocks/chartOfAccounts';
 import { MasterList, type ListRoute } from '../../../components/form/MasterList';
 import {
   BIR_RETURNS,
+  SEED_PERCENTAGE_ATCS,
+  SEED_VAT_ATCS,
+  SEED_WITHHOLDING,
   TAX_CATEGORIES,
   currentRate,
   type TaxCode,
@@ -38,7 +42,30 @@ const blank = (): TaxCode => ({
   legalBasis: '',
   active: true,
   notes: '',
+  atc: '',
 });
+
+/**
+ * BIR ATC pick options; '' = no ATC. A tax code can point at an output/import VAT ATC (SEED_VAT_ATCS),
+ * a withholding-VAT ATC (SEED_WITHHOLDING, kind "Withholding VAT") for reverse-charge codes, or a
+ * percentage-tax ATC (SEED_PERCENTAGE_ATCS) — so the searchable picker draws from all three, each
+ * tagged by type (prefix) so the ~80 codes stay navigable.
+ */
+const ATC_OPTIONS: Option[] = [
+  { value: '', label: '— None —' },
+  ...SEED_VAT_ATCS.map((a) => ({
+    value: a.code, label: a.code, prefix: 'Value-added tax', subLabel: a.coverage || a.description,
+    text: `${a.code} value-added tax VAT ${a.coverage} ${a.description}`,
+  })),
+  ...SEED_WITHHOLDING.filter((w) => w.kind === 'Withholding VAT').map((w) => ({
+    value: w.atc, label: w.atc, prefix: 'Withholding VAT', subLabel: w.description,
+    text: `${w.atc} withholding VAT ${w.description}`,
+  })),
+  ...SEED_PERCENTAGE_ATCS.map((a) => ({
+    value: a.code, label: a.code, prefix: 'Percentage tax', subLabel: a.coverage || a.description,
+    text: `${a.code} percentage tax ${a.coverage} ${a.description}`,
+  })),
+];
 
 export function TaxCodesTab(route: ListRoute) {
   const { rows, save, setActive } = useCollectionRows(taxCodes);
@@ -62,6 +89,8 @@ export function TaxCodesTab(route: ListRoute) {
       columns={[
         { key: 'code', header: 'Code', cell: (t) => t.code },
         { key: 'name', header: 'Name', cell: (t) => t.name },
+        { key: 'category', header: 'Category', cell: (t) => <span className="text-muted">{t.category}</span> },
+        { key: 'atc', header: 'ATC', cell: (t) => (t.atc ? t.atc : <span className="text-muted">—</span>) },
         {
           key: 'direction',
           header: 'Used on',
@@ -89,7 +118,7 @@ export function TaxCodesTab(route: ListRoute) {
           ),
         },
       ]}
-      searchText={(t) => `${t.code} ${t.name} ${t.category} ${t.legalBasis}`}
+      searchText={(t) => `${t.code} ${t.atc} ${t.name} ${t.category} ${t.legalBasis}`}
       blank={blank}
       label={(t) => `${t.code} · ${t.name}`}
       validate={(t, all) => {
@@ -119,10 +148,11 @@ export function TaxCodesTab(route: ListRoute) {
         const f = bind(t, update);
         return (
           <FieldStack>
-            {f.text('code', 'Code', { required: true, error: errors.code, placeholder: 'e.g. 31', disabled: !isNew, hint: !isNew ? "Can't change once saved — items, partners and documents store it." : undefined })}
+            {f.text('code', 'Code', { required: true, error: errors.code, placeholder: 'e.g. OVAT', disabled: !isNew, hint: !isNew ? "Can't change once saved — items, partners and documents store it." : undefined })}
             {f.text('name', 'Name', { required: true, error: errors.name })}
             {f.pick('direction', 'Used on', ['Sales', 'Purchase'])}
             {f.pick('category', 'Category', TAX_CATEGORIES)}
+            {f.lookup('atc', 'BIR ATC', ATC_OPTIONS, { hint: 'Search the BIR Alphanumeric Tax Code: output/import VAT, withholding VAT or percentage tax. Leave as None for codes with no ATC (zero-rated, exempt, input VAT).' })}
             {f.pick('birReturn', 'BIR return', BIR_RETURNS)}
             <AccountField
               label="G/L account"
