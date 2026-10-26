@@ -4,12 +4,12 @@ _Audited 2026-10-26 on branch `settings-tax-cleanup`._
 
 | Phase | Status |
 |---|---|
-| 1 — Bundle | Done 2026-10-26, not yet committed |
-| 2 — Data layer | Done 2026-10-26, not yet committed |
-| 3 — Seed/history build → page start-up | Done 2026-10-26, not yet committed |
-| 4 — Render cost | Done 2026-10-26: measured, one cleanup; not yet committed |
-| 5 — De-duplication | Done 2026-10-26, not yet committed |
-| 6 — Dead code & tooling | Done 2026-10-26, not yet committed |
+| 1 — Bundle | Done 2026-10-26 (`f4edf05`) |
+| 2 — Data layer | Done 2026-10-26 (`f4edf05`) |
+| 3 — Seed/history build → page start-up | Done 2026-10-26 (`f4edf05`) |
+| 4 — Render cost | Done 2026-10-26: measured, one cleanup (`f4edf05`) |
+| 5 — De-duplication | Done 2026-10-26 (`f4edf05`) |
+| 6 — Dead code & tooling | Done 2026-10-26 (`f4edf05`) |
 
 ## Progress log
 
@@ -53,11 +53,13 @@ _Audited 2026-10-26 on branch `settings-tax-cleanup`._
 - Found and fixed a bug: list pages dropped the "saved" or "rejected" notice a detail page sent back to them.
 - Result: 508 → 505 files and about 900 fewer lines. Lint warnings went from 35 to 12.
 
-**Not committed yet.** All six phases sit in the working tree on `settings-tax-cleanup`, mixed with other sessions' uncommitted tax-settings work. Commit each phase on its own and stage shared files by hunk. The **Notes for the commit** under each phase list those shared files.
+**Committed 2026-10-26** as one commit, `f4edf05` on `settings-tax-cleanup` (pushed). It isn't split by phase. The same commit also carries other sessions' work that was in the tree: the tax-settings changes and `docs/test-plan.md`. The **Files** notes under each phase say which files each phase changed.
 
 **How to resume:**
 1. Check `git status` and the running Claude sessions for concurrent work.
-2. All six phases are done. What's left is follow-ups each phase lists as not done (e.g. passing an item `Map` into `arJournal`/`apJournal` once the tax work is committed), plus dropping the tax-settings entries from `knip.json` `ignoreIssues`.
+2. All six phases are done. What's left is follow-ups each phase lists as not done. Two of them were waiting for the tax-settings work to be committed, and it now is (`f4edf05`):
+   - passing an item `Map` into `arJournal`/`apJournal`;
+   - dropping that session's entries from `knip.json` → `ignoreIssues`, then running `npm run knip` and fixing what it reports. Check first whether that session is still editing them.
 3. Follow **Verification (each phase)** at the end of this doc.
 
 The measuring scripts are in `scripts/` (listed in `CLAUDE.md` § Commands):
@@ -104,9 +106,9 @@ Before each phase, check `git status` for concurrent uncommitted work, and never
 > - `npm run typecheck` and `npm run build` pass, and all 143 tests in `npm run test:e2e` pass.
 > - Measured by building the pre-change source and the current source, then adding up each route's static import closure in `dist/assets`. The measuring script isn't committed.
 >
-> Notes for the commit:
+> Files:
 > - About 110 files changed, mostly import lines. The edits were made with a codemod; renames covered the bare `STATUS_INTENT` exports, which became `PO_`, `PR_` and `RFQ_STATUS_INTENT`.
-> - Four of those files also had other sessions' uncommitted tax work: `sales/invoices/detail/ArContentsCard.tsx`, `sales/reserve-invoices/detail/RiContentsCard.tsx`, `sales/sales-orders/detail/types.ts` (`SO_LIST_PATH` moved out) and `people/detail/EmployeeDetail.tsx`. Phase 1's changes there are import lines only. Stage those files by hunk, so Phase 1 goes in its own commit, separate from the tax work.
+> - Four of those files also had other sessions' uncommitted tax work: `sales/invoices/detail/ArContentsCard.tsx`, `sales/reserve-invoices/detail/RiContentsCard.tsx`, `sales/sales-orders/detail/types.ts` (`SO_LIST_PATH` moved out) and `people/detail/EmployeeDetail.tsx`. Phase 1's changes there are import lines only.
 > - `CLAUDE.md` § Architecture has a new rule: shared constants go in `paths.ts`, and nothing is ever imported from a routed page module.
 
 **Original findings:**
@@ -164,9 +166,9 @@ Routes are already lazy (`src/app/router.tsx:12`), but splitting is defeated:
 > - prev/next `listIds()`, whose list loads already run in parallel with the page's other loads;
 > - capping the audit log, which is 6 KB after 40 saves.
 >
-> Notes for the commit:
+> Files:
 > - Files: `store.ts`, `items.ts`, `costLayers.ts` and `useCollectionRows.ts`. Also 11 posting services: `apCreditMemos`, `apInvoices`, `arCreditMemos`, `arInvoices`, `deliveries`, `goodsReceipts`, `goodsReturns`, `inventoryCountings`, `inventoryTransfers`, `salesOrders` and `salesReturns`. All are under `src/services/`.
-> - Four of them also hold other sessions' uncommitted tax work: `store.ts`, `apInvoices.ts`, `apCreditMemos.ts` and `arInvoices.ts`. Stage them by hunk. Phase 2's hunks are:
+> - Four of them also held other sessions' tax work at the time: `store.ts`, `apInvoices.ts`, `apCreditMemos.ts` and `arInvoices.ts`. Phase 2's changes in them are:
 >   - in `store.ts`: `saveMany`/`writeMany`, `invalidatesCaches` and `recordAudit`;
 >   - in the services: the `saveItems` import and the batched loops.
 > - `CLAUDE.md` § Core data layer has a new rule: `saveMany`/`saveItems`, never `for … await save()`.
@@ -229,7 +231,7 @@ Routes are already lazy (`src/app/router.tsx:12`), but splitting is defeated:
 > - `typecheck`, `build`, `lint` (0 errors) and `knip` all pass, along with all 13 `check-seeds` checks and all 143 `test:e2e` tests. That includes `lazy.spec.ts`, which checks that a page whose chunk fails to load shows the error with a reload inside the shell.
 > - The history output hashes match before and after.
 >
-> Notes for the commit:
+> Files:
 > - Files changed: `src/app/router.tsx` (`page()`, `withPreload`, and the `createHashRouter(withPreload([...]))` wrapper) and `src/services/stockHistory.ts`.
 > - `CLAUDE.md` has a new note: declare pages with `page()`, never a bare `React.lazy`.
 
@@ -270,7 +272,7 @@ Routes are already lazy (`src/app/router.tsx:12`), but splitting is defeated:
 > - `typecheck`, `build` and `lint` (0 errors) pass, along with all 143 `test:e2e` tests.
 > - A trace of the store waits confirmed one company load per mount.
 >
-> Notes for the commit: `src/app/DateSettings.tsx` and `src/app/AppShell.tsx` (one line: `<DateSettings company={company}>`).
+> Files: `src/app/DateSettings.tsx` and `src/app/AppShell.tsx` (one line: `<DateSettings company={company}>`).
 
 **Original findings:**
 
@@ -349,8 +351,8 @@ Routes are already lazy (`src/app/router.tsx:12`), but splitting is defeated:
 >   - Transactions: only the intended "covers" change.
 >   - Reject flow: works, and the notice now appears.
 >
-> Notes for the commit:
-> - Phase 5 touches the tax-settings session's files, which the user approved: `ArContentsCard`/`RiContentsCard` (now merged and deleted), `arInvoices.ts`, `apInvoices.ts`, `apCreditMemos.ts`, `masterData`-adjacent pickers and `mocks/taxes.ts` (`rateFrom` added). Coordinate before committing.
+> Files:
+> - Phase 5 touches the tax-settings session's files, which the user approved: `ArContentsCard`/`RiContentsCard` (now merged and deleted), `arInvoices.ts`, `apInvoices.ts`, `apCreditMemos.ts`, `masterData`-adjacent pickers and `mocks/taxes.ts` (`rateFrom` added).
 > - The `knip.json` `ignoreIssues` list still covers that session's remaining files.
 
 **Original findings:**
@@ -403,9 +405,9 @@ Routes are already lazy (`src/app/router.tsx:12`), but splitting is defeated:
 > - `typecheck`, `build`, `lint` (0 errors) and `knip` all pass, along with all 13 `check-seeds` checks and all 143 `test:e2e` tests.
 > - Each list tab was checked in a browser. The check caught a bug in the first version of the merge: the `useMemo` destructuring `const [returns, …]` shadowed the new `returns` flag, so the memos tab listed goods returns. The flag is now `isReturns`, and each tab shows its own rows (`RTN-…` and `CM-…`).
 >
-> Notes for the commit:
-> - Another session (`match-settings-record-header`) has uncommitted tax-settings edits. Its files are listed in `knip.json` → `ignoreIssues`, and **Phase 6 made no changes to any of them**. I restored the ones `knip --fix` had touched after confirming every difference was mine. Drop the `ignoreIssues` entries once that work is committed, then run `npm run knip` and fix what it reports.
-> - New files: `eslint.config.js`, `knip.json` and `src/pages/purchasing/shared/ReturnDocumentsList.tsx`. Changed: `package.json` and `package-lock.json`. The 4 deleted files show as unstaged deletions.
+> Files:
+> - Another session (`match-settings-record-header`) had uncommitted tax-settings edits at the time. Its files are listed in `knip.json` → `ignoreIssues`, and **Phase 6 made no changes to any of them**. I restored the ones `knip --fix` had touched after confirming every difference was mine. That work is now committed (`f4edf05`), so the `ignoreIssues` entries can be dropped and `npm run knip` re-run.
+> - New files: `eslint.config.js`, `knip.json` and `src/pages/purchasing/shared/ReturnDocumentsList.tsx`. Changed: `package.json` and `package-lock.json`. Deleted: the 4 unused files listed above.
 
 **Original findings:**
 
