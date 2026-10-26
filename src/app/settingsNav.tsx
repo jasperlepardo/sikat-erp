@@ -179,7 +179,7 @@ export const SETTINGS_NAV: SideNavSection[] = [
 ];
 
 /** All navigable leaf items in the settings nav (excludes hubs). */
-export const SETTINGS_LEAVES: SideNavItem[] = SETTINGS_NAV.flatMap((s) =>
+const SETTINGS_LEAVES: SideNavItem[] = SETTINGS_NAV.flatMap((s) =>
   s.items.flatMap((i) => (i.items?.length ? i.items : [i])),
 );
 

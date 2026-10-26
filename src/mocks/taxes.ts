@@ -316,8 +316,8 @@ export const RDOS: { value: string; label: string }[] = [
  * BIR corporation type — relevant for withholding rates on FDAP income (dividends,
  * interest, royalties). Non-resident foreign is covered by the nonResident flag.
  */
-export const CORPORATION_TYPES = ['Domestic', 'Resident foreign', 'Non-resident foreign'] as const;
-export type CorporationType = (typeof CORPORATION_TYPES)[number];
+const CORPORATION_TYPES = ['Domestic', 'Resident foreign', 'Non-resident foreign'] as const;
+/** @public */ export type CorporationType = (typeof CORPORATION_TYPES)[number];
 
 /** Legal grounds for a customer's VAT exemption under Philippine law. */
 export const EXEMPTION_BASES = [
@@ -328,7 +328,7 @@ export const EXEMPTION_BASES = [
   'DFA certificate — Diplomatic mission',
   'RA 9994 / RA 10754 — Senior citizen / PWD',
 ] as const;
-export type ExemptionBasis = (typeof EXEMPTION_BASES)[number];
+/** @public */ export type ExemptionBasis = (typeof EXEMPTION_BASES)[number];
 
 /** Income types relevant for tax treaty withholding rate lookups. */
 export const TREATY_INCOME_TYPES = ['Dividends', 'Interest', 'Royalties', 'Technical fees'] as const;
@@ -503,7 +503,7 @@ export interface WithholdingRatePeriod {
  * sworn declaration with attachment before the reduced rate can be used.
  * null = no attachment required (flat rate, or the higher tier of a tiered pair).
  */
-export type WithholdingAttachment = 'sworn-declaration' | null;
+type WithholdingAttachment = 'sworn-declaration' | null;
 
 export interface WithholdingTax {
   id: string;
@@ -593,7 +593,7 @@ export const currentExcisePeriod = (category: ExciseCategory, date: string) =>
  * Excise tax on a line. Finds the rate period in force on `date`, then the
  * applicable price band tier, and applies the ad valorem and/or specific rate.
  */
-export function exciseTax(category: ExciseCategory, unitPrice: number, quantity: number, date: string): number {
+/** @public */ export function exciseTax(category: ExciseCategory, unitPrice: number, quantity: number, date: string): number {
   const period = currentExcisePeriod(category, date);
   if (!period) return 0;
   const sorted = [...period.tiers].sort((a, b) => (a.upTo ?? Infinity) - (b.upTo ?? Infinity));

@@ -154,7 +154,7 @@ export const SEED_COMPENSATION_TAX: CompensationTable[] = [
  * force on `date`: fixed tax + rate × (compensation − "over"). The last bracket whose
  * range starts at or below the compensation applies.
  */
-export function compensationTax(tables: CompensationTable[], compensation: number, frequency: PayFrequency, date: string) {
+function compensationTax(tables: CompensationTable[], compensation: number, frequency: PayFrequency, date: string) {
   const table = tables.find(
     (t) => t.active && t.frequency === frequency && t.effectiveFrom <= date && (!t.effectiveTo || date <= t.effectiveTo),
   );
@@ -227,7 +227,7 @@ export const SEED_EXCLUSIONS: CompensationExclusion[] = [
 ];
 
 /** A pay period's compensation, split the way the minimum wage earner rule needs it. */
-export interface PeriodPay {
+interface PeriodPay {
   /** Basic pay — the statutory minimum wage for a minimum wage earner. */
   basic: number;
   holiday: number;
@@ -243,13 +243,13 @@ export interface PeriodPay {
  * overtime pay, night shift differential and hazard pay are exempt (RR 2-98 as amended
  * by RR 11-2018); anything else they earn is taxed like anyone else's.
  */
-export function taxablePay(pay: PeriodPay, minimumWageEarner: boolean) {
+/** @public */ export function taxablePay(pay: PeriodPay, minimumWageEarner: boolean) {
   if (minimumWageEarner) return pay.other;
   return pay.basic + pay.holiday + pay.overtime + pay.nightShift + pay.hazard + pay.other;
 }
 
 /** Amounts for the ANNUALIZED WITHHOLDING TAX FORMULA. */
-export interface YearEndInput {
+interface YearEndInput {
   /** Gross Compensation Income (present + previous employer). */
   gross: number;
   /** 13th month pay and other benefits received. */
@@ -262,7 +262,7 @@ export interface YearEndInput {
   withheld: number;
 }
 
-export type YearEndOutcome = 'Collect' | 'Refund' | 'Break even';
+type YearEndOutcome = 'Collect' | 'Refund' | 'Break even';
 
 /**
  * Year-end adjustment: taxable compensation for the year, tax due on it from the
@@ -270,7 +270,7 @@ export type YearEndOutcome = 'Collect' | 'Refund' | 'Break even';
  * Exclusions on a capped line (13th month pay and other benefits: ₱90,000) count only
  * up to the cap; the excess stays taxable.
  */
-export function yearEndAdjustment(tables: CompensationTable[], exclusions: CompensationExclusion[], input: YearEndInput, date: string) {
+/** @public */ export function yearEndAdjustment(tables: CompensationTable[], exclusions: CompensationExclusion[], input: YearEndInput, date: string) {
   const caps = exclusions.filter((x) => x.active && x.line === '13th month pay and other benefits' && x.annualCap > 0).map((x) => x.annualCap);
   const benefitsCap = caps.length ? Math.max(...caps) : Infinity;
   const benefitsExcluded = Math.min(input.benefits, benefitsCap);
@@ -284,7 +284,7 @@ export function yearEndAdjustment(tables: CompensationTable[], exclusions: Compe
 }
 
 /** What BIR says to do with each outcome, verbatim. */
-export const YEAR_END_OUTCOMES: Record<YearEndOutcome, string> = {
+/** @public */ export const YEAR_END_OUTCOMES: Record<YearEndOutcome, string> = {
   Collect: 'Tax Due> tax withheld  - collect before payment of last salary',
   Refund: 'Tax Due< tax withheld -  refund on or before January 25th of the year/ last payment of salary',
   'Break even': 'Tax due = tax withheld    - no more withholding for December salary',

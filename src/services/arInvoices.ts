@@ -37,7 +37,7 @@ export async function getArInvoice(idOrNumber: string) {
 
 export type ArInput = Omit<ArInvoice, 'id'> & { id?: string };
 
-export const arSeriesOf = (id: string) => seriesLookup(arSeries, id, AR_SERIES);
+const arSeriesOf = (id: string) => seriesLookup(arSeries, id, AR_SERIES);
 export const arNumber = (a: Pick<ArInvoice, 'seriesId' | 'docNum' | 'postingDate'>) => formatDocNum(arSeriesOf(a.seriesId), a.docNum, a.postingDate);
 
 /** Lines that take stock out when the invoice is added: stocked items not already shipped by a delivery. */
@@ -146,7 +146,7 @@ export class ArPostError extends Error {
 }
 
 /** Why lines can't be billed as things are now: delivery lines over their open qty, stock lines as a delivery would check them. */
-export async function invoiceProblems(input: ArInput, items: readonly Item[]) {
+async function invoiceProblems(input: ArInput, items: readonly Item[]) {
   const out: { lineId: string; message: string }[] = [];
   const dns = await listDeliveries();
   const byBase = new Map<string, { line: ArLine; qty: number }>();

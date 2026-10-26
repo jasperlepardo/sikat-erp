@@ -41,11 +41,10 @@ export async function getApInvoice(idOrNumber: string) {
   const all = await invoices.list();
   return all.find((inv) => apNumber(inv) === idOrNumber) ?? null;
 }
-export const resetApInvoices = invoices.reset;
 
 export type ApInput = Omit<ApInvoice, 'id'> & { id?: string };
 
-export const apSeriesOf = (id: string) => seriesLookup(apSeries, id, AP_SERIES);
+const apSeriesOf = (id: string) => seriesLookup(apSeries, id, AP_SERIES);
 /** "Primary 290004", or "Draft" before it's added. */
 export const apNumber = (inv: Pick<ApInvoice, 'seriesId' | 'docNum' | 'postingDate'>) => formatDocNum(apSeriesOf(inv.seriesId), inv.docNum, inv.postingDate);
 

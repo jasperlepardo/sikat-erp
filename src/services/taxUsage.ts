@@ -21,7 +21,7 @@ export interface TaxUsage {
 
 const empty = (): TaxUsage => ({ rules: [], taxCodes: [], taxGroups: [], withholdingGroups: [], withholdingTaxes: [], itemGroups: [], items: 0, partners: [], accounts: [], company: false });
 
-export const taxUsageCount = (u?: TaxUsage) =>
+const taxUsageCount = (u?: TaxUsage) =>
   u ? u.rules.length + u.taxCodes.length + u.taxGroups.length + u.withholdingGroups.length + u.withholdingTaxes.length + u.itemGroups.length + u.items + u.partners.length + u.accounts.length + (u.company ? 1 : 0) : 0;
 
 /** The rule behind each tax code the engine names directly (services/taxDetermination.ts). */
