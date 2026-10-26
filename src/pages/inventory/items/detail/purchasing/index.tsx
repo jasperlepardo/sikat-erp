@@ -20,7 +20,7 @@ export function PurchasingTab({ draft, update, errors, tax, inv }: TabProps) {
         <Fields>
           {f.num('dutyPct', 'Duty', { suffix: '%', hint: 'Used in landed cost.' })}
           {f.lookup('purchaseTaxGroup', 'Tax group', taxGroupOptions(tax, 'Purchase', draft.purchaseTaxGroup), {
-            required: draft.purchaseItem && !draft.purchaseTaxCode,
+            required: (draft.purchaseItem || draft.variantAxes.length > 0) && !draft.purchaseTaxCode,
             error: errors.purchaseTaxGroup,
             hint: taxResolution(tax, draft.purchaseTaxGroup, draft.purchaseTaxCode) + groupTaxNote(inv, draft, 'purchaseTaxGroup'),
           })}

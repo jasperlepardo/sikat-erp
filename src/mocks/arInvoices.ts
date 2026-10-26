@@ -31,6 +31,7 @@ import { SEED_PARTNERS, formatAddress } from './partners';
 import type { PoReference } from './purchaseOrders';
 import { H1_SALES, SEED_SALES_ORDERS, seedSoNo, termDaysOf, type SoDocType } from './salesOrders';
 import { SEED_ITEMS } from './items';
+import type { WithholdingKind } from './taxes';
 import { SEED_WAREHOUSES } from './itemMasters';
 import { MONTH_NAMES, POS_CUSTOMER_ID, STORE_SALES } from './storeSales';
 
@@ -126,6 +127,21 @@ export interface ArInvoice {
   appliedAmount: number;
   fxRate: number;
   approved: boolean;
+  /** What the customer withholds, fixed when the invoice was added (one entry per ATC). Missing on drafts: worked out live. */
+  withholdingSummary?: StampedCustomerWithholding[];
+}
+
+/** A tax the customer withholds from its payment, as stamped on an added invoice. */
+export interface StampedCustomerWithholding {
+  kind: WithholdingKind;
+  atc: string;
+  label: string;
+  rate: number;
+  /** Net of VAT, after the document discount, document currency. */
+  base: number;
+  amount: number;
+  /** What it's booked to on our side: a tax credit, or (percentage tax) less tax payable. */
+  account: string;
 }
 
 export const AR_SERIES: DocumentSeries[] = [

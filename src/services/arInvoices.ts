@@ -2,9 +2,9 @@ import { AR_SERIES, FREIGHT_INCOME_ACCOUNT, SEED_AR_INVOICES, type ArInvoice, ty
 import { arSeries, seriesLookup, formatDocNum } from './allSeries';
 import { SHIPPED_GOODS_ACCOUNT } from '../mocks/deliveries';
 import type { ItemGroup } from '../mocks/itemMasters';
-import type { Item } from '../mocks/items';
-import type { Partner } from '../mocks/partners';
-import { rateAt, type TaxCode } from '../mocks/taxes';
+import { SEED_ITEMS, mergedItems, type Item } from '../mocks/items';
+import { SEED_PARTNERS, type Partner } from '../mocks/partners';
+import { SEED_COMPANY_TAX, SEED_TAX_CODES, SEED_TAX_GROUPS, SEED_WITHHOLDING, SEED_WITHHOLDING_GROUPS, rateAt, type TaxCode } from '../mocks/taxes';
 import type { TaxMasterData } from './taxDetermination';
 import { customerWithholding, customerWithholds, type CustomerWithholding } from './withholding';
 import { withTaxFiling } from './taxRecalc';
@@ -21,7 +21,8 @@ import { createCollection } from './store';
 import { withLineCosts } from './stockHistory';
 
 // Seeded lines carry the cost their stock went out at (services/stockHistory.ts).
-const invoices = createCollection<ArInvoice>('sikat-erp:ar-invoices:v7', withLineCosts(SEED_AR_INVOICES), 'ar', { audit: 'ARINV' });
+// Seeded withholding is stamped as if each was added under the seeded Settings.
+const invoices = createCollection<ArInvoice>('sikat-erp:ar-invoices:v7', () => withSeedWithholding(withLineCosts(SEED_AR_INVOICES)()), 'ar', { audit: 'ARINV' });
 
 export const listArInvoices = invoices.list;
 export async function getArInvoice(idOrNumber: string) {
@@ -53,16 +54,33 @@ const rateFrom = (codes: readonly TaxCode[], date: string) => (code: string) => 
 export type ArWithholding = CustomerWithholding;
 export { customerWithholds };
 
-/** The WTax Amount (document currency) on WTax Liable lines — see customerWithholding. */
+/**
+ * The WTax Amount (document currency) on WTax Liable lines: what was stamped when the invoice was
+ * added, else (a draft, or a document that isn't an invoice) worked out live — see customerWithholding.
+ */
 export function arWithholding(
-  a: Pick<ArInvoice, 'lines' | 'discountPct' | 'docType' | 'postingDate'>,
+  a: Pick<ArInvoice, 'lines' | 'discountPct' | 'docType' | 'postingDate'> & Partial<Pick<ArInvoice, 'status' | 'withholdingSummary'>>,
   customer: Pick<Partner, 'businessType' | 'topWithholdingAgent'> | undefined,
   items: readonly Item[],
   rateOf: (code: string) => number,
   tax?: TaxMasterData,
 ): ArWithholding[] {
+  if (a.status !== 'Draft' && a.withholdingSummary) return a.withholdingSummary;
   return customerWithholding(a, customer, items, rateOf, tax);
 }
+
+/** Seeded invoices count as added under the seeded Settings: stamp their withholding the same way. */
+const SEED_TAX: TaxMasterData = {
+  company: SEED_COMPANY_TAX[0], codes: SEED_TAX_CODES, groups: SEED_TAX_GROUPS, withholding: SEED_WITHHOLDING, withholdingGroups: SEED_WITHHOLDING_GROUPS,
+};
+const withSeedWithholding = (docs: ArInvoice[]): ArInvoice[] => {
+  const items = mergedItems(SEED_ITEMS);
+  return docs.map((a) => {
+    if (a.status === 'Draft' || a.status === 'Not Confirmed') return a;
+    const customer = SEED_PARTNERS.find((p) => p.id === a.customerId);
+    return { ...a, withholdingSummary: customerWithholding(a, customer, items, rateFrom(SEED_TAX_CODES, a.postingDate), SEED_TAX) };
+  });
+};
 
 /** What the customer still owes: total − withholding − payments applied. */
 export const balanceDue = (total: number, withheld: number, applied: number) => round2(total - withheld - applied);
@@ -229,7 +247,8 @@ export async function addArInvoice(input: ArInput, fx: number, ctx: { codes: rea
   }
 
   await updateFifoCosts([...fifoItemIds]);
-  const saved = await invoices.save({ ...input, lines: withTaxFiling(lines, ctx.codes), docNum, status: 'Open', fxRate: fx });
+  // The withholding is fixed now (shown on the form when adding), so later Settings changes don't move it.
+  const saved = await invoices.save({ ...input, lines: withTaxFiling(lines, ctx.codes), withholdingSummary: ctx.withholding, docNum, status: 'Open', fxRate: fx });
   await logConsumption(saved.id, saved.postingDate, taken);
   await postDocumentEntry({
     origin: 'IN',

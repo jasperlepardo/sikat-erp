@@ -29,7 +29,7 @@ export function SalesTab({ draft, update, errors, tax, inv }: TabProps) {
       <Section icon="percent" title="Tax & commission">
         <Fields>
           {f.lookup('salesTaxGroup', 'Tax group', taxGroupOptions(tax, 'Sales', draft.salesTaxGroup), {
-            required: draft.salesItem && draft.taxLiable && !draft.salesTaxCode,
+            required: (draft.salesItem || draft.variantAxes.length > 0) && draft.taxLiable && !draft.salesTaxCode,
             error: errors.salesTaxGroup,
             hint: draft.taxLiable
               ? taxResolution(tax, draft.salesTaxGroup, draft.salesTaxCode) + groupTaxNote(inv, draft, 'salesTaxGroup')

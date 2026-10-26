@@ -3,7 +3,7 @@
  * totalling it per ATC, and stamping it on added documents so later Settings changes don't move it.
  */
 import { WITHHOLDING_PAYABLE, type StampedWithholding } from '../mocks/apInvoices';
-import { CREDITABLE_VAT_ACCOUNT, CWT_ACCOUNT } from '../mocks/arInvoices';
+import { CREDITABLE_VAT_ACCOUNT, CWT_ACCOUNT, type StampedCustomerWithholding } from '../mocks/arInvoices';
 import type { Item } from '../mocks/items';
 import type { LineWithholding } from '../mocks/purchLine';
 import type { Partner } from '../mocks/partners';
@@ -180,16 +180,7 @@ export function resolveCustomerWithholding(
 export const customerWithholds = (c: Pick<Partner, 'businessType' | 'topWithholdingAgent'> | undefined) =>
   Boolean(c && (c.businessType === 'Government' || c.topWithholdingAgent));
 
-export interface CustomerWithholding {
-  kind: WithholdingKind;
-  atc: string;
-  label: string;
-  rate: number;
-  base: number;
-  amount: number;
-  /** What it's booked to on our side: a tax credit, or (percentage tax) less tax payable. */
-  account: string;
-}
+export type CustomerWithholding = StampedCustomerWithholding;
 
 const CUSTOMER_WITHHOLDING_ACCOUNT: Record<WithholdingKind, string> = {
   'Expanded (EWT)': CWT_ACCOUNT,
