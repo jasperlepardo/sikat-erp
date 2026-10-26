@@ -48,7 +48,7 @@ import { VendorCard } from '../../shared/VendorCard';
 import { VendorDetailsPanel } from '../../shared/VendorDetailsPanel';
 import { RfqDocumentCard } from './RfqDocumentCard';
 import { RfqAssignmentCard } from './RfqTotalsCard';
-import { PurchDoc } from '../../shared/PurchDoc';
+import { DocLines } from '../../../../components/form/docLines/DocLines';
 import { rfqDoc } from './rfqDoc';
 import { RfqDeliveryCard } from './RfqDeliveryCard';
 import { RfqJournalPaymentCard } from './RfqJournalPaymentCard';
@@ -231,6 +231,8 @@ function RfqForm() {
     const poDraft = {
       ...blankPurchaseOrder(CURRENT_USER_ID),
       approved: !getPurchasingSettings().requirePoApproval,
+      // Lineage back to this quotation (the graph links PO → RFQ → PR transitively).
+      baseRfqId: draft.id ?? '',
       vendorId: draft.vendorId, vendorCode: draft.vendorCode, vendorName: draft.vendorName,
       contactId: draft.contactId, vendorRef: draft.vendorRef, currency: draft.currency,
       paymentTermId: draft.paymentTermId, paymentMethod: draft.paymentMethod,
@@ -256,7 +258,9 @@ function RfqForm() {
     const copy: RfqDraft = {
       ...structuredClone(draft), id: undefined, status: 'Draft', docNum: 0, vendorRef: '',
       postingDate: today, documentDate: today, validUntil: '', convertedToPoId: '',
-      lines: draft.lines.map((l) => ({ ...l, id: `rl-${crypto.randomUUID().slice(0, 8)}`, quotedQty: 0, quotedDate: '' })),
+      // A duplicate is its own document — drop the link to any source request.
+      basePrId: '',
+      lines: draft.lines.map((l) => ({ ...l, id: `rl-${crypto.randomUUID().slice(0, 8)}`, quotedQty: 0, quotedDate: '', baseId: undefined, baseLineId: undefined, baseDocNo: undefined })),
     };
     navigate(`${RFQ_LIST_PATH}/new`, { state: { copyFrom: copy } });
   };
@@ -366,7 +370,7 @@ function RfqForm() {
               <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
                 <div className="flex flex-col gap-2 lg:col-span-8">
                   <VendorCard vendors={m.vendors} vendorId={draft.vendorId} vendor={ctx.vendor} readOnly={ctx.readOnly} added={ctx.added} error={errors.vendorId} pickVendor={pickVendor} onNewVendor={() => setShowVendorCreate(true)} onOpenDetails={() => setVendorDetailsOpen(true)} />
-                  <PurchDoc {...rfqDoc(sectionProps)} />
+                  <DocLines {...rfqDoc(sectionProps)} />
                   <ReferencesTable refs={draft.references} onChange={(references) => update({ references })} readOnly={ctx.readOnly} description="Other documents this RFQ refers to — purchase requests, sales orders, contract references." />
                   <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach the vendor's quotation or price list." />
                 </div>

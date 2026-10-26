@@ -142,6 +142,8 @@ export interface PurchaseOrder {
   freightTaxCode: string;
   /** Id of the RFQ this PO was copied from, if any. */
   baseRfqId: string;
+  /** Id of the purchase request this PO was copied from, if any. Lines copied from it carry `baseLineId`. */
+  basePrId?: string;
   /** Set on POs created by splitting another across warehouses. */
   splitFrom?: string;
 }

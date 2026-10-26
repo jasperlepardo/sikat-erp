@@ -49,7 +49,8 @@ import { dueDateFor, getPurchasingSettings, listPurchaseOrders, openQty, poNumbe
 import { buildGrContext, linesFromPo } from '../../goods-receipts/detail/types';
 import { CopyPanel } from '../../shared/CopyPanel';
 import { DocumentFlow } from '../../shared/DocumentFlow';
-import { DprLinesCard } from './DprLinesCard';
+import { dprDoc } from './dprDoc';
+import { DocLines } from '../../../../components/form/docLines/DocLines';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
 import { neighbours, NotFound, PrevNext, siblingKeys, useDocTab, useReject } from '../../../../components/form/DetailNav';
@@ -61,7 +62,7 @@ import { DprAccountingCard } from './DprAccountingCard';
 import { ReferencesTable } from '../../shared/ReferencesTable';
 import { DprTotalsCard } from './DprTotalsCard';
 import { type DprDraft as Draft, type DprMasters as Masters } from './types';
-import { DPR_LIST_PATH, DPR_STATUS_INTENT } from '../../paths';
+import { DPR_LIST_PATH, DPR_STATUS_INTENT, PAYMENT_LIST_PATH } from '../../paths';
 
 type TabId = 'contents' | 'logistics' | 'accounting';
 
@@ -230,7 +231,7 @@ function DprForm() {
     ...(!added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
     ...(draft.status === 'Not Confirmed' ? [{ label: 'Approve', icon: 'check_circle', onSelect: () => submit(null, false, { approved: true }) }, { label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => reject.start() }] : []),
     ...(draft.status === 'Open' && balance > 0 && !draft.paymentBlock
-      ? [{ label: 'Pay', icon: 'payments', onSelect: () => navigate('/purchasing/payments-made-made/new', { state: { vendorId: draft.vendorId, invoiceIds: [saved.id] } }) }]
+      ? [{ label: 'Pay', icon: 'payments', onSelect: () => navigate(`${PAYMENT_LIST_PATH}/new`, { state: { vendorId: draft.vendorId, invoiceIds: [saved.id] } }) }]
       : []),
     ...(draft.status === 'Open' && !draft.appliedAmount ? [{ label: 'Cancel request', icon: 'cancel', onSelect: cancelIt }] : []),
     ...(draft.status === 'Open' ? [{ label: 'Close', icon: 'task_alt', onSelect: closeIt }] : []),
@@ -250,7 +251,7 @@ function DprForm() {
             iconIntent="default"
             iconShape="rounded"
             iconSize={32} iconVariant="outline"
-            breadcrumbs={[{ label: 'Down Payment Requests', href: DPR_LIST_PATH }, { label: title }]}
+            breadcrumbs={[{ label: 'A/P Down Payment Requests', href: DPR_LIST_PATH }, { label: title }]}
             onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
             onBack={() => navigate(DPR_LIST_PATH)}
             trailing={
@@ -305,7 +306,7 @@ function DprForm() {
                     pickVendor={pickVendor}
                     onOpenDetails={() => setVendorDetailsOpen(true)}
                   />
-                  <DprLinesCard {...sectionProps} onCopy={() => setCopying(true)} canCopy={orders.length > 0} />
+                  <DocLines {...dprDoc({ ...sectionProps, onCopyClick: () => setCopying(true), canCopy: orders.length > 0 })} />
                   <ReferencesTable refs={draft.references} onChange={(references) => update({ references })} readOnly={ctx.readOnly} description="Other documents this request refers to, e.g. the vendor's proforma invoice." />
                   <AttachmentsCard attachments={draft.attachments ?? []} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach the vendor's proforma invoice or quotation." />
                 </div>

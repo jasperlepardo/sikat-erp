@@ -343,10 +343,10 @@ function SalesOrderForm() {
     ...(draft.status === 'Open' && openLines.length > 0
       ? isMixed
         ? [
-            { label: 'Sales Invoice (goods)', icon: 'receipt', onSelect: () => navigate('/sales/invoices/new', { state: { fromOrder: draft.id, lineFilter: 'goods' } }) },
-            { label: 'Official Receipt (services)', icon: 'receipt_long', onSelect: () => navigate('/sales/invoices/new', { state: { fromOrder: draft.id, lineFilter: 'services' } }) },
+            { label: 'Sales Invoice (goods)', icon: 'receipt', onSelect: () => navigate('/sales/customer-invoices/new', { state: { fromOrder: draft.id, lineFilter: 'goods' } }) },
+            { label: 'Official Receipt (services)', icon: 'receipt_long', onSelect: () => navigate('/sales/customer-invoices/new', { state: { fromOrder: draft.id, lineFilter: 'services' } }) },
           ]
-        : [{ label: svcLines.length > 0 ? 'Copy to Official Receipt' : 'Copy to A/R invoice', icon: 'receipt', onSelect: () => navigate('/sales/invoices/new', { state: { fromOrder: draft.id, lineFilter: svcLines.length > 0 ? 'services' : undefined } }) }]
+        : [{ label: svcLines.length > 0 ? 'Copy to Official Receipt' : 'Copy to A/R invoice', icon: 'receipt', onSelect: () => navigate('/sales/customer-invoices/new', { state: { fromOrder: draft.id, lineFilter: svcLines.length > 0 ? 'services' : undefined } }) }]
       : []),
     ...(draft.status === 'Open'
       ? byVendor.map(({ vendorId, vendor, rows }) => ({

@@ -122,7 +122,7 @@ export function TransactionsTab({ draft }: { draft: Draft }) {
                     variant="solid"
                     disabled={!payable || draft.paymentBlock}
                     title={draft.paymentBlock ? 'Payment block is on for this partner.' : payable ? undefined : 'Pick open A/P invoices in one currency, without a payment block.'}
-                    onClick={() => navigate('/purchasing/payments-made-made/new', { state: { vendorId: draft.id, invoiceIds: picked.map((d) => d.id) } })}
+                    onClick={() => navigate('/purchasing/outgoing-payments/new', { state: { vendorId: draft.id, invoiceIds: picked.map((d) => d.id) } })}
                   >
                     Pay {sum(picked)}
                   </Button>

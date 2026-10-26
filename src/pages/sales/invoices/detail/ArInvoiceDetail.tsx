@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
+import { createPortal } from 'react-dom';
 import { Alert, Badge, Button, Form, Panel, PanelHeader, Tabs, Text } from '@jasperlepardo/sikat-design-system';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { type Errors } from '../../../../components/form/fields';
@@ -29,7 +30,7 @@ import { todayISO } from '../../../../services/dates';
 import type { Partner } from '../../../../mocks/partners';
 import { recalcLineTaxes } from '../../../../services/taxRecalc';
 import { defaultJournalRemark } from '../../../../services/journalPatterns';
-import { listDeliveries } from '../../../../services/deliveries';
+import { listDeliveries, dnNumber } from '../../../../services/deliveries';
 import { formatAmount } from '../../../../services/format';
 import { loadInventoryMasters } from '../../../../services/inventoryMasters';
 import { isValidToday, listItems } from '../../../../services/items';
@@ -41,7 +42,9 @@ import { logRejection } from '../../../../services/approvalRules';
 import { getSalesSettings, listSalesOrders, openQty, soDueDate, soNumber } from '../../../../services/salesOrders';
 import { soSeries } from '../../../../services/allSeries';
 import { ALL_CURRENCIES, proposedTaxCode } from '../../sales-orders/detail/types';
-import { InvoiceContentsCard, type CopyPick } from '../../shared/InvoiceContentsCard';
+import { DocLines } from '../../../../components/form/docLines/DocLines';
+import { CopyPanel, type CopySourceType } from '../../../purchasing/shared/CopyPanel';
+import { invoiceDoc, type CopyPick } from '../../shared/invoiceDoc';
 import { ArDatesCard } from './ArDatesCard';
 import { ArSettingsCard } from './ArSettingsCard';
 import { BpChannelCard } from '../../shared/BpChannelCard';
@@ -121,6 +124,7 @@ function ArInvoiceForm() {
   const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
   const setPage = useDocTab<PageId>(`${AR_LIST_PATH}/${id}`, tabParam);
   const [customerDetailsOpen, setCustomerDetailsOpen] = useState(false);
+  const [copying, setCopying] = useState(false);
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);
@@ -332,6 +336,10 @@ function ArInvoiceForm() {
   ];
 
   const tabProps = { draft, update, errors, m, ctx };
+  // Copy-from sources: this customer's open deliveries with something left to bill, and open orders with something left.
+  const mineCopy = (c: { customerId: string; currency: string }) => (!draft.customerId || c.customerId === draft.customerId) && (!ctx.based || c.currency === draft.currency);
+  const copyDns = m.deliveries.filter((d) => d.status === 'Open' && mineCopy(d) && d.lines.some((l) => l.quantity > l.invoicedQty));
+  const copySos = m.orders.filter((o) => o.status === 'Open' && o.docType === draft.docType && mineCopy(o) && o.lines.some((l) => openQty(l) > 0));
   const title = isNew ? 'New A/R invoice' : draft.status === 'Draft' ? 'Draft A/R invoice' : arNumber(draft);
 
   return (
@@ -404,11 +412,9 @@ function ArInvoiceForm() {
                   onOpenDetails={() => setCustomerDetailsOpen(true)}
                 />
                 {/* Not in a disabled fieldset: the table locks its own inputs and keeps its column settings. */}
-                <InvoiceContentsCard
-                  kind="AR"
-                  {...tabProps}
-                  onCopy={(src, picks) => setDraft(copyLines(draft, src, picks, m))}
-                  cardFooter={
+                <DocLines
+                  {...invoiceDoc({ kind: 'AR', ...tabProps, onCopyClick: () => setCopying(true), canCopy: copyDns.length > 0 || copySos.length > 0 })}
+                  footer={
                     <SalesTotalsFooter
                       {...tabProps}
                       withRounding
@@ -454,6 +460,50 @@ function ArInvoiceForm() {
       </Panel>
     </Form>
     <InvoiceCustomerDetailsPanel {...tabProps} noun="invoice" remarkDefault="A/R Invoices – customer code" open={customerDetailsOpen} onClose={() => setCustomerDetailsOpen(false)} />
+    {copying
+      ? createPortal(
+          <CopyPanel
+            sources={[
+              {
+                key: 'DN' as const,
+                label: 'Deliveries',
+                totalHeader: 'Shipped',
+                qtyHeader: 'Bill',
+                hint: 'Bills what was shipped, at the delivery’s price. The stock already went out with the delivery.',
+                docs: copyDns.map((d) => ({
+                  id: d.id,
+                  label: `${dnNumber(d)} · ${d.customerName}`,
+                  description: `Shipped ${d.postingDate}${d.orderNumber ? ` · order ${d.orderNumber}` : ''}`,
+                  lines: d.lines.map((l) => ({ id: l.id, itemNo: l.itemNo, name: l.description, warehouse: l.warehouse, total: `${l.quantity} ${l.uomCode}`, open: l.quantity - l.invoicedQty })),
+                })),
+              },
+              {
+                key: 'SO' as const,
+                label: 'Sales orders',
+                totalHeader: 'Ordered',
+                qtyHeader: 'Bill',
+                hint: 'Bills straight from the order with no delivery: adding the invoice also ships the stock.',
+                docs: copySos.map((o) => ({
+                  id: o.id,
+                  label: `${soNumber(o)} · ${o.customerName}`,
+                  description: o.deliveryDate ? `Due ${o.deliveryDate}` : 'No delivery date',
+                  lines: o.lines.map((l) => ({ id: l.id, itemNo: l.itemNo || l.description, name: l.description, warehouse: l.warehouse, total: `${l.quantity} ${l.uomCode}`, open: openQty(l) })),
+                })),
+              },
+            ] satisfies CopySourceType<'DN' | 'SO'>[]}
+            taken={new Set(draft.lines.map((l) => l.baseLineId).filter((id): id is string => !!id))}
+            onCancel={() => setCopying(false)}
+            onCopy={(type, docId, picks) => {
+              setCopying(false);
+              const src: CopyPick | null = type === 'DN'
+                ? (() => { const doc = copyDns.find((d) => d.id === docId); return doc ? { kind: 'DN', doc } : null; })()
+                : (() => { const doc = copySos.find((o) => o.id === docId); return doc ? { kind: 'SO', doc } : null; })();
+              if (src) setDraft(copyLines(draft, src, picks, m));
+            }}
+          />,
+          document.body,
+        )
+      : null}
     </>
   );
 }

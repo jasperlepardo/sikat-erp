@@ -1,0 +1,155 @@
+import { Button, Icon, Text } from '@jasperlepardo/sikat-design-system';
+import { type DocLinesProps } from '../../../../components/form/docLines/DocLines';
+import { purchCols, pick } from '../../shared/purchCols';
+import { lineHelpers, itemConfig } from '../../shared/purchLineHelpers';
+import { countryDef, departmentDef, priceListDef } from '../../../settings/masterDefs';
+import { BLANKET_AGREEMENTS } from '../../../../mocks/purchaseOrders';
+import { newDpiLine, type DpiLine } from '../../../../mocks/apDownPaymentInvoices';
+import { itemsPerUom } from '../../../../mocks/items';
+import { formatAmount } from '../../../../services/format';
+import { dpiTotals } from '../../../../services/apDownPaymentInvoices';
+import { lineNet, priceAfterDiscount } from '../../../../services/purchaseOrders';
+import { grInventoryQty } from '../../../../services/goodsReceipts';
+import { docWithholding } from '../../../../services/withholding';
+import { lineFromItem, linePricing } from '../../goods-receipts/detail/types';
+import { PurchTotalsFooter, PurchTotalNote, PurchTotalRow } from '../../shared/PurchTotalsFooter';
+import { taxCodeOptions } from '../../../../services/taxCodeOptions';
+import { round2 } from '../../../../services/num';
+import { type DpiSectionProps } from './types';
+
+const WITHHELD_LABEL: Record<string, string> = {
+  'Expanded (EWT)': 'EWT',
+  'Final (FWT)': 'Final tax',
+  'Withholding VAT': 'VAT',
+  'Percentage tax': 'Percentage tax',
+};
+
+export interface DpiDocProps extends DpiSectionProps {
+  onCopyClick: () => void;
+  canCopy: boolean;
+}
+
+export function dpiDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy }: DpiDocProps): DocLinesProps<DpiLine> {
+  const { lines, currency: code, postingDate, vendorId } = draft;
+  const totals = dpiTotals(draft, ctx.rateOf, ctx.isReverseCharge);
+  const balance = round2(totals.total - draft.appliedAmount);
+  const withholding = docWithholding(draft as Parameters<typeof docWithholding>[0], ctx.vendor, m.items, m.tax, postingDate);
+
+  const h = lineHelpers<DpiLine>({ items: m.items, lines, update, errors, postingDate, uoms: m.inv.uoms });
+  const { itemOf, patch, err, lineKind, uomLabel, uomOptions } = h;
+  const taxRate = (l: DpiLine) => ctx.rateOf(l.taxCode);
+
+  const taxOptions = (current: string) => taxCodeOptions(m.tax.codes, 'Purchase', current);
+  const blanketOptions = BLANKET_AGREEMENTS.filter((b) => b.vendorId === vendorId).map((b) => ({ value: b.no, label: `${b.no} · ${b.description}` }));
+
+  const pickItem = (l: DpiLine, itemId: string | null) => {
+    const item = m.items.find((i) => i.id === itemId);
+    if (!item) { patch(l.id, { itemId: '' }); return; }
+    const { invoicedQty: _i, returnedQty: _r, id: _id, ...base } = lineFromItem(item, { postingDate }, ctx, m, { quantity: l.quantity });
+    patch(l.id, { ...base, warehouse: '', binId: '', countryOfOriginCode: item.countryOfOriginCode, bpCatalogNo: item.vendors.find((v) => v.vendorId === vendorId)?.vendorItemNo ?? '' });
+  };
+  const fromItem = (itemId: string) => {
+    const item = m.items.find((i) => i.id === itemId);
+    if (!item) return undefined;
+    const { invoicedQty: _i, returnedQty: _r, id: _id, ...base } = lineFromItem(item, { postingDate }, ctx, m, { quantity: 1 });
+    return newDpiLine({ ...base, warehouse: '', binId: '', countryOfOriginCode: item.countryOfOriginCode, bpCatalogNo: item.vendors.find((v) => v.vendorId === vendorId)?.vendorItemNo ?? '' });
+  };
+  const changeUom = (l: DpiLine, uomCode: string) => {
+    const item = itemOf(l);
+    const itemsPerUnit = item ? itemsPerUom(item, uomCode) : undefined;
+    if (!item || !itemsPerUnit) return;
+    patch(l.id, { uomCode, uomName: m.inv.uoms.find((u) => u.code === uomCode)?.name ?? uomCode, itemsPerUnit, ...(ctx.fx ? linePricing(item, { ...l, uomCode }, { postingDate }, ctx) : {}) });
+  };
+
+  const cols = purchCols<DpiLine>({
+    patch, readOnly: ctx.readOnly, currency: code, fx: ctx.fx,
+    lineNet,
+    priceAfterDisc: priceAfterDiscount,
+    grossAfterDisc: (l) => priceAfterDiscount(l) * (1 + taxRate(l) / 100),
+    taxAmount: (l) => round2((lineNet(l) * taxRate(l)) / 100),
+    taxOptions: (l) => taxOptions(l.taxCode),
+    vendorOptions: [],
+    warehouseOptions: [],
+    blanketOptions,
+    uomOptions, uomLabel,
+    priceListDef, departmentDef, countryDef,
+    changeUom,
+    changePriceList: (l, priceListId) => patch(l.id, { priceListId }),
+    onQty: (l, quantity) => patch(l.id, { quantity }),
+    copiedQty: () => 0,
+    lockUom: (l) => Boolean(l.baseType),
+    invalid: (l, f) => Boolean(err(l, f)),
+    lineKind,
+    inventoryQty: grInventoryQty,
+    unitCost: (l) => itemOf(l)?.itemCost ?? 0,
+    warrantyText: (l) => { const w = itemOf(l)?.warrantyTemplate; return w ? (m.inv.warranties.find((x) => x.id === w)?.name ?? w) : 'None'; },
+    baseDoc: (l) => (l.baseType === 'PO' ? { href: `#/purchasing/purchase-orders/${l.baseId}`, label: `PO ${l.baseDocNo}` } : l.baseType === 'DPR' ? { href: `#/purchasing/down-payment-requests/${l.baseId}`, label: `DPR ${l.baseDocNo}` } : null),
+  });
+
+  const columns = pick(cols, [
+    ['type', 'hide'], ['qty', 'always'], ['uomName', 'hide'], ['itemsPerUnit', 'hide'], ['inventoryUom', 'hide'], ['inventoryQty', 'hide'],
+    ['priceList', 'hide'],
+    ['unitPrice', 'always'], ['discount', 'hide'], ['priceAfterDisc', 'hide'],
+    ['tax', 'always'], ['taxAmount', 'hide'], ['reverseChargeVat', 'hide'], ['gross', 'hide'], ['total', 'always'], ['grossTotalLc', 'hide'],
+    ['countryOfOrigin', 'hide'], ['warranty', 'hide'], ['unitCost', 'hide'], ['department', 'hide'],
+    ['name', 'hide'], ['bpCatalogNo', 'hide'], ['requisition', 'hide'],
+    ['baseDoc', 'hide'], ['blanket', 'hide'], ['freeText', 'hide'],
+  ]);
+
+  return {
+    prefsKey: 'dpi',
+    columns,
+    rows: lines,
+    icon: 'list_alt',
+    title: 'Contents',
+    description: errors.lines ?? `What the advance is for, at the full order price in ${code}. The DPM % in the totals sets the billed portion. Adding this invoice posts the advance to the GL.`,
+    sortableKeys: ['item'],
+    sortValue: (l, key) => (key === 'item' ? l.itemNo : String(l[key as keyof DpiLine] ?? '')).toLowerCase(),
+    readOnly: ctx.readOnly,
+    onRemove: (picked) => update({ lines: lines.filter((l) => !picked.includes(l)) }),
+    item: itemConfig(h, {
+      resolve: (l) => { const it = itemOf(l); return it ? { itemNo: it.itemNo, name: l.name || it.name } : null; },
+      onPick: (l, id) => { if (id) pickItem(l, id); else patch(l.id, { itemId: '', itemNo: '', name: '', description: '' }); },
+      fromItem,
+      canChange: (l) => !l.baseType,
+      addDisabled: !vendorId,
+      addPlaceholder: vendorId ? 'Search items to add a line…' : 'Pick a vendor to add items',
+    }),
+    empty: (
+      <Text variant="small" tone={errors.lines ? 'danger' : 'muted'}>
+        {vendorId ? 'Search above to add a line, or copy from an open PO.' : 'Pick a vendor first.'}
+      </Text>
+    ),
+    header: ctx.readOnly ? undefined : (
+      <div className="flex justify-end px-2">
+        <Button type="button" size="small" variant="outline" leadingIcon={<Icon size={16}>content_copy</Icon>} disabled={!canCopy} onClick={onCopyClick}>
+          Copy from PO
+        </Button>
+      </div>
+    ),
+    footer: (
+      <PurchTotalsFooter
+        totals={{ ...totals, freight: 0, rounding: 0 }}
+        currency={code}
+        readOnly={ctx.readOnly}
+        discountPct={draft.discountPct}
+        onDiscountChange={(discountPct) => update({ discountPct })}
+        midRows={<PurchTotalRow label={`Down payment (${draft.dpmPct}%)`} value={totals.dpm} code={code} />}
+        extraRows={
+          <>
+            <PurchTotalRow label="Applied amount" value={-draft.appliedAmount} code={code} />
+            <PurchTotalRow label="Balance due" value={balance} code={code} strong />
+            {ctx.readOnly && draft.appliedAmount ? (
+              <PurchTotalNote>Drawn on A/P invoices: {code} {formatAmount(draft.drawnAmount)} of {formatAmount(draft.appliedAmount)} paid.</PurchTotalNote>
+            ) : null}
+            {withholding.map((w) => (
+              <PurchTotalNote key={w.atc}>
+                {WITHHELD_LABEL[w.kind] ?? 'Tax'} — {w.atc} ({w.rate}%): {code} {formatAmount(w.amount)} taken on the final invoice.
+              </PurchTotalNote>
+            ))}
+          </>
+        }
+      />
+    ),
+  };
+}

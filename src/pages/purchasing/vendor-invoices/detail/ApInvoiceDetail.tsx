@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import { postDocumentEntry, reverseDocumentEntry } from '../../../../services/journalEntries';
 import {
@@ -43,22 +44,25 @@ import { formatDate, todayISO } from '../../../../services/dates';
 import { recalcLineTaxes } from '../../../../services/taxRecalc';
 import { defaultJournalRemark } from '../../../../services/journalPatterns';
 import { formatAmount } from '../../../../services/format';
-import { grOpenQty, listGoodsReceipts } from '../../../../services/goodsReceipts';
+import { grNumber, grOpenQty, invoiceableReceipts, listGoodsReceipts, receivablePos } from '../../../../services/goodsReceipts';
 import { loadInventoryMasters } from '../../../../services/inventoryMasters';
 import { isValidToday, listItems } from '../../../../services/items';
 import { companyTax, currencies, exchangeRates, taxCodes, taxGroups, withholdingGroups, withholdingTaxes } from '../../../../services/masterData';
 import { listPartnersByRole } from '../../../../services/partners';
-import { dueDateFor, getPurchasingSettings, listPurchaseOrders, openQty } from '../../../../services/purchaseOrders';
+import { dueDateFor, getPurchasingSettings, listPurchaseOrders, openQty, poNumber } from '../../../../services/purchaseOrders';
 import { docWithholding } from '../../../../services/withholding';
 import { proposedTaxCode } from '../../purchase-orders/detail/types';
 import { GrLogistics } from '../../goods-receipts/detail/GrLogisticsCard';
 import { buildGrContext, defaultPayTo, defaultShipTo, linesFromPo } from '../../goods-receipts/detail/types';
 import { DocumentFlow } from '../../shared/DocumentFlow';
-import { listDownPayments } from '../../../../services/apDownPayments';
+import { drawableAmount, listDownPayments } from '../../../../services/apDownPayments';
 import { ApAccountingCard as ApAccounting } from './ApAccountingCard';
 import { ReferencesTable } from '../../shared/ReferencesTable';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
-import { ApContentsCard as ApContents } from './ApContentsCard';
+import { apDoc } from './apDoc';
+import { DocLines } from '../../../../components/form/docLines/DocLines';
+import { CopyPanel } from '../../shared/CopyPanel';
+import { DrawPanel } from './DrawPanel';
 import { linesFromReceipt, orderNumbersOf, toApLine, type ApContext, type ApDraft, type ApMasters } from './types';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
@@ -69,7 +73,7 @@ import { receivingVendorAddressFields } from '../../shared/vendorAddresses';
 import { ApDocumentCard } from './ApDocumentCard';
 import { ApTotalsCard } from './ApTotalsCard';
 import { ApJournalCard } from './ApJournalCard';
-import { AP_LIST_PATH, AP_STATUS_INTENT } from '../../paths';
+import { AP_LIST_PATH, AP_STATUS_INTENT, MEMO_LIST_PATH, PAYMENT_LIST_PATH, RETURN_LIST_PATH } from '../../paths';
 
 type TabId = 'contents' | 'logistics' | 'accounting';
 
@@ -161,6 +165,8 @@ function ApInvoiceForm() {
   const [saving, setSaving] = useState(false);
   const reject = useReject();
   const [vendorDetailsOpen, setVendorDetailsOpen] = useState(false);
+  const [copying, setCopying] = useState(false);
+  const [drawing, setDrawing] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -360,14 +366,14 @@ function ApInvoiceForm() {
     ...(!added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
     ...(draft.status === 'Not Confirmed' ? [{ label: 'Approve', icon: 'check_circle', onSelect: () => submit(null, false, { approved: true }) }, { label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => reject.start() }] : []),
     ...(draft.status === 'Open' && balance > 0 && !draft.paymentBlock
-      ? [{ label: 'Pay', icon: 'payments', onSelect: () => navigate('/purchasing/payments-made-made/new', { state: { vendorId: draft.vendorId, invoiceIds: [saved.id] } }) }]
+      ? [{ label: 'Pay', icon: 'payments', onSelect: () => navigate(`${PAYMENT_LIST_PATH}/new`, { state: { vendorId: draft.vendorId, invoiceIds: [saved.id] } }) }]
       : []),
     ...(draft.status === 'Open' || draft.status === 'Closed'
       ? [
           ...(draft.lines.some((l) => returnableQty(l) > 0 && m.items.find((i) => i.id === l.itemId)?.inventoryItem)
-            ? [{ label: 'Copy to goods return', icon: 'assignment_return', onSelect: () => navigate('/purchasing/returns-and-debits-and-debits/returns/new', { state: { fromInvoice: saved.id } }) }]
+            ? [{ label: 'Copy to goods return', icon: 'assignment_return', onSelect: () => navigate(`${RETURN_LIST_PATH}/new`, { state: { fromInvoice: saved.id } }) }]
             : []),
-          { label: 'Copy to A/P credit memo', icon: 'receipt', onSelect: () => navigate('/purchasing/returns-and-debits-and-debits/credit-memos/new', { state: { fromInvoice: saved.id } }) },
+          { label: 'Copy to A/P credit memo', icon: 'receipt', onSelect: () => navigate(`${MEMO_LIST_PATH}/new`, { state: { fromInvoice: saved.id } }) },
         ]
       : []),
     ...(!isNew ? [{ label: 'Duplicate', icon: 'content_copy', onSelect: duplicate }] : []),
@@ -385,6 +391,14 @@ function ApInvoiceForm() {
   const title = isNew ? 'New A/P invoice' : added ? apNumber(draft) : 'Draft A/P invoice';
   const sectionProps = { draft, update, errors, m, ctx };
 
+  // Documents this invoice can bill (Copy from) and down payments it can draw.
+  const sameCurrency = <T extends { currency: string }>(docs: T[]) => (ctx.based ? docs.filter((d) => d.currency === draft.currency) : docs);
+  const receipts = draft.vendorId ? sameCurrency(invoiceableReceipts(m.receipts, draft.vendorId)) : [];
+  const orders = draft.vendorId ? sameCurrency(receivablePos(m.orders, draft.vendorId)) : [];
+  const drawable = m.downPayments
+    .filter((d) => d.vendorId === draft.vendorId && d.currency === draft.currency && (d.status === 'Open' || (draft.drawnDownPayments ?? []).some((x) => x.requestId === d.id)))
+    .filter((d) => drawableAmount(d) > 0 || (draft.drawnDownPayments ?? []).some((x) => x.requestId === d.id));
+
   return (
     <>
     <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
@@ -395,7 +409,7 @@ function ApInvoiceForm() {
           iconIntent="default"
           iconShape="rounded"
           iconSize={32} iconVariant="outline"
-          breadcrumbs={[{ label: 'Bills', href: AP_LIST_PATH }, { label: title }]}
+          breadcrumbs={[{ label: 'A/P Invoices', href: AP_LIST_PATH }, { label: title }]}
           onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
           onBack={() => navigate(AP_LIST_PATH)}
           trailing={
@@ -463,7 +477,7 @@ function ApInvoiceForm() {
                   pickVendor={pickVendor}
                   onOpenDetails={() => setVendorDetailsOpen(true)}
                 />
-                <ApContents {...sectionProps} onCopy={copyLines} />
+                <DocLines {...apDoc({ ...sectionProps, onCopyClick: () => setCopying(true), copyableCount: receipts.length + orders.length, onDrawClick: () => setDrawing(true), drawableCount: drawable.length })} />
                 <ReferencesTable refs={draft.references} onChange={(references) => update({ references })} readOnly={ctx.readOnly} description="Other documents this invoice refers to, e.g. the vendor's official receipt or statement of account." />
                 <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach the vendor's invoice, delivery receipt or statement of account." />
               </div>
@@ -500,6 +514,69 @@ function ApInvoiceForm() {
       }}
       addresses={ctx.vendor ? receivingVendorAddressFields(m, ctx.vendor) : []}
     />
+    {drawing
+      ? createPortal(
+          <DrawPanel
+            code={draft.currency}
+            requests={drawable}
+            current={draft.drawnDownPayments ?? []}
+            max={Math.max(0, Math.round((totals.total - withholding.filter((w) => w.deducted).reduce((n, w) => n + w.amount, 0)) * 100) / 100)}
+            onCancel={() => setDrawing(false)}
+            onDone={(draws) => {
+              update({ drawnDownPayments: draws, downPayment: Math.round(draws.reduce((n, d) => n + d.amount, 0) * 100) / 100 });
+              setDrawing(false);
+            }}
+          />,
+          document.body,
+        )
+      : null}
+    {copying
+      ? createPortal(
+          <CopyPanel
+            sources={[
+              {
+                key: 'GRPO' as const,
+                label: 'Goods receipts',
+                totalHeader: 'Received',
+                qtyHeader: 'Bill',
+                hint: 'Bill what was received: the usual three-way match. Only receipts with quantity still to bill are listed.',
+                docs: receipts.map((gr) => ({
+                  id: gr.id,
+                  label: `Receipt ${grNumber(gr)}`,
+                  description: `Received ${formatDate(gr.postingDate)} · ${gr.currency}${gr.orderNumber ? ` · PO ${gr.orderNumber}` : ''}`,
+                  lines: gr.lines.map((l) => ({ id: l.id, itemNo: l.itemNo, name: l.name, description: l.description, warehouse: l.warehouse, total: `${l.quantity} ${l.uomCode}`, open: grOpenQty(l, gr) })),
+                })),
+              },
+              {
+                key: 'PO' as const,
+                label: 'Purchase orders',
+                totalHeader: 'Ordered',
+                qtyHeader: 'Bill',
+                hint: 'Bill straight from a PO when nothing was received on a receipt — the invoice receives the stock too.',
+                docs: orders.map((po) => ({
+                  id: po.id,
+                  label: `PO ${poNumber(po)}`,
+                  description: `Delivery ${formatDate(po.deliveryDate)} · ${po.currency} · not yet received — billing it receives the stock`,
+                  lines: po.lines.filter((l) => l.status === 'Open').map((l) => ({ id: l.id, itemNo: l.itemNo, name: l.name, description: l.description, warehouse: l.warehouse, total: `${l.quantity} ${l.uomCode}`, open: openQty(l) })),
+                })),
+              },
+            ]}
+            taken={new Set(draft.lines.map((l) => l.baseLineId).filter(Boolean))}
+            onCancel={() => setCopying(false)}
+            onCopy={(type, docId, picks) => {
+              if (type === 'GRPO') {
+                const gr = receipts.find((r) => r.id === docId)!;
+                copyLines(linesFromReceipt(gr, picks, m.items));
+              } else {
+                const po = orders.find((p) => p.id === docId)!;
+                copyLines(linesFromPo(po, picks, m).map((l) => toApLine(l, { baseType: 'PO' }, m.items, po.vendorId)));
+              }
+              setCopying(false);
+            }}
+          />,
+          document.body,
+        )
+      : null}
     </>
   );
 }

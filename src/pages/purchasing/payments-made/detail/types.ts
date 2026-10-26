@@ -1,7 +1,9 @@
 import type { Errors } from '../../../../components/form/fields';
 import type { ApInvoice } from '../../../../mocks/apInvoices';
 import { ADVANCES_TO_SUPPLIERS, type DownPaymentRequest } from '../../../../mocks/apDownPayments';
+import { type DownPaymentInvoice } from '../../../../mocks/apDownPaymentInvoices';
 import { dprNumber, dprTotals } from '../../../../services/apDownPayments';
+import { dpiNumber, dpiTotals } from '../../../../services/apDownPaymentInvoices';
 import type { Account } from '../../../../mocks/chartOfAccounts';
 import type { Currency, ExchangeRate } from '../../../../mocks/currencies';
 import type { Item } from '../../../../mocks/items';
@@ -26,6 +28,7 @@ export interface PayMasters {
   accounts: Account[];
   cardBrands: { id: string; name: string; active: boolean }[];
   downPayments: DownPaymentRequest[];
+  downPaymentInvoices: DownPaymentInvoice[];
 }
 
 export interface PaySectionProps {
@@ -62,9 +65,19 @@ export function requestBalance(d: DownPaymentRequest, m: Pick<PayMasters, 'tax'>
   return { total, balanceDue: Math.round((total - d.appliedAmount) * 100) / 100 };
 }
 
+/** An APDPI's total payment due and what's still unpaid. */
+export function invoiceAdvanceBalance(d: DownPaymentInvoice, m: Pick<PayMasters, 'tax'>) {
+  const rateOf = (code: string) => {
+    const c = m.tax.codes.find((x) => x.code === code);
+    return c ? (rateAt(c, d.postingDate) ?? 0) : 0;
+  };
+  const total = dpiTotals(d, rateOf, (code) => vatNotPaidToVendor(m.tax.codes.find((x) => x.code === code))).total;
+  return { total, balanceDue: Math.round((total - d.appliedAmount) * 100) / 100 };
+}
+
 /**
  * The vendor's open documents in the payment currency, as payment rows (oldest due first):
- * A/P invoices, then down payment requests. Rows in `tick` start ticked at their balance.
+ * A/P invoices, down payment requests, then down payment invoices. Rows in `tick` start ticked.
  */
 export function openRows(m: PayMasters, vendorId: string, currency: string, tick: string[] = []): PaymentRow[] {
   const invoiceRows = m.invoices
@@ -114,7 +127,31 @@ export function openRows(m: PayMasters, vendorId: string, currency: string, tick
       account: d.downPaymentAccount || ADVANCES_TO_SUPPLIERS,
       blocked: d.paymentBlock,
     }));
-  return [...invoiceRows, ...requestRows];
+  const dpiRows = (m.downPaymentInvoices ?? [])
+    .filter((d) => d.vendorId === vendorId && d.status === 'Open' && d.currency === currency)
+    .map((d) => ({ d, ...invoiceAdvanceBalance(d, m) }))
+    .filter((x) => x.balanceDue > 0)
+    .sort((a, b) => a.d.dueDate.localeCompare(b.d.dueDate))
+    .map(({ d, total, balanceDue }): PaymentRow => ({
+      id: `pr-${d.id}`,
+      invoiceId: d.id,
+      docNo: dpiNumber(d),
+      vendorRef: d.vendorRef,
+      docDate: d.postingDate,
+      dueDate: d.dueDate,
+      total,
+      wtAmount: 0,
+      balanceDue,
+      cashDiscountPct: 0,
+      amount: tick.includes(d.id) && !d.paymentBlock ? balanceDue : 0,
+      invoiceFx: d.fxRate || 1,
+      projectId: d.projectId,
+      selected: tick.includes(d.id) && !d.paymentBlock,
+      docType: 'APDPI',
+      account: d.downPaymentAccount || ADVANCES_TO_SUPPLIERS,
+      blocked: d.paymentBlock,
+    }));
+  return [...invoiceRows, ...requestRows, ...dpiRows];
 }
 
 /** Days past due on the posting date: positive overdue, 0 due today, negative not yet due. */

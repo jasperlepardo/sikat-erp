@@ -1,16 +1,22 @@
 import { useState, type ReactNode } from 'react';
 import { Combobox, Link, Text, TextField } from '@jasperlepardo/sikat-design-system';
-import { DataTable } from '../../../components/form/DataTable';
-import { useColumnPrefs, type PrefColumn } from '../../../components/form/columnPrefs';
-import { RowMenu } from '../../../components/form/RowMenu';
-import { LineItemText } from '../../../components/form/LineItemText';
-import type { PurchLineBase } from '../../../mocks/purchLine';
+import { DataTable } from '../DataTable';
+import { useColumnPrefs, type PrefColumn } from '../columnPrefs';
+import { RowMenu } from '../RowMenu';
+import { LineItemText } from '../LineItemText';
+
+/**
+ * The minimal constraint the shared table and column builders need: a stable row id
+ * and the item foreign key (columns render nothing until an item is picked). Shared
+ * across purchasing and sales line-item tables.
+ */
+export type DocLineBase = { id: string; itemId: string };
 
 type ComboOption = { value: string; label: ReactNode; text?: string };
 
 /**
- * Config for the shared item cell + actions column. When supplied, `PurchDoc`
- * owns the layout every purchasing lines table repeats — the item lookup/description
+ * Config for the shared item cell + actions column. When supplied, `DocLines`
+ * owns the layout every lines table repeats — the item lookup/description
  * cell (first column), the inline add-row, the ⋯ row menu (Edit / Change / Remove,
  * last column), and the edit state — so cards don't re-author it. The document just
  * supplies these callbacks.
@@ -48,15 +54,15 @@ export interface ItemCellConfig<T> {
 }
 
 /**
- * The shared contents-table shell for purchasing documents. It owns the parts every
- * line card repeats: the per-document column-visibility engine (`useColumnPrefs`),
+ * The shared contents-table shell for line documents (purchasing + sales). It owns the
+ * parts every line card repeats: the per-document column-visibility engine (`useColumnPrefs`),
  * the `DataTable` wiring, the totals footer, read-only handling — and, when an `item`
  * config is supplied, the item cell, inline add-row, ⋯ actions menu and edit state.
- * The document supplies its own middle `columns` (via the `purchColumns` builders)
+ * The document supplies its own middle `columns` (via the `docColumns` builders)
  * and services. See `docs/purchasing-lines-table-unification.md`.
  */
-export interface PurchDocProps<T extends PurchLineBase> {
-  /** Column-prefs key, one per document type: 'pr', 'rfq', 'po', 'gr', … */
+export interface DocLinesProps<T extends DocLineBase> {
+  /** Column-prefs key, one per document type: 'pr', 'rfq', 'po', 'gr', 'qt', 'so', … */
   prefsKey: string;
   /** The middle columns (doc-specific + catalog). The item + actions columns are added when `item` is set. */
   columns: PrefColumn<T>[];
@@ -74,7 +80,7 @@ export interface PurchDocProps<T extends PurchLineBase> {
   item?: ItemCellConfig<T>;
   /** Inline add-row control; used only when `item` is not supplied. */
   addRow?: ReactNode;
-  /** Totals footer (usually `<PurchTotalsFooter>`). */
+  /** Totals footer (usually `<PurchTotalsFooter>` / `<SalesTotalsFooter>`). */
   footer?: ReactNode;
   /** Content rendered above the table, inside the card wrapper (e.g. a summary-type picker). */
   header?: ReactNode;
@@ -83,11 +89,11 @@ export interface PurchDocProps<T extends PurchLineBase> {
   sortValue?: (row: T, key: string) => string | number;
   /** Fold the settings menu into this column's header. Defaults to the actions column when `item` is set. */
   menuColumn?: string;
-  /** Purchasing tables don't paginate by default. */
+  /** Contents tables don't paginate by default. */
   noPagination?: boolean;
 }
 
-export function PurchDoc<T extends PurchLineBase>({
+export function DocLines<T extends DocLineBase>({
   prefsKey,
   columns,
   rows,
@@ -106,7 +112,7 @@ export function PurchDoc<T extends PurchLineBase>({
   sortValue,
   menuColumn,
   noPagination = true,
-}: PurchDocProps<T>) {
+}: DocLinesProps<T>) {
   const [editing, setEditing] = useState<Set<string>>(new Set());
   const [addKey, setAddKey] = useState(0);
   const stopEditing = (id: string) => setEditing((s) => { const n = new Set(s); n.delete(id); return n; });

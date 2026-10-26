@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { itemUnits, type Item } from '../../../mocks/items';
 import { isValidToday } from '../../../services/items';
 import type { PurchLine } from '../../../mocks/purchLine';
-import type { ItemCellConfig } from './PurchDoc';
+import type { ItemCellConfig } from '../../../components/form/docLines/DocLines';
 
 type Uom = { code: string; name: string; active: boolean };
 

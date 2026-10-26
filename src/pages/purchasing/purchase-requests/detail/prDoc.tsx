@@ -1,5 +1,5 @@
 import { Text } from '@jasperlepardo/sikat-design-system';
-import { type PurchDocProps } from '../../shared/PurchDoc';
+import { type DocLinesProps } from '../../../../components/form/docLines/DocLines';
 import { purchCols, pick } from '../../shared/purchCols';
 import { lineHelpers, itemConfig } from '../../shared/purchLineHelpers';
 import { summaryTypeHeader, purchFooter } from '../../shared/purchChrome';
@@ -15,8 +15,8 @@ import { inventoryAccountFor } from '../../../../services/inventoryTransfers';
 import { copiedQty, lineNet, priceAfterDiscount, inventoryQty, prTotals, summarizeLines } from '../../../../services/purchaseRequests';
 import { infoPrice, lineFromItem, type PrTabProps } from './types';
 
-/** Builds the Purchase Request contents descriptor for the shared <PurchDoc>. */
-export function prDoc({ draft, update, errors, m, ctx }: PrTabProps): PurchDocProps<PrLine> {
+/** Builds the Purchase Request contents descriptor for the shared <DocLines>. */
+export function prDoc({ draft, update, errors, m, ctx }: PrTabProps): DocLinesProps<PrLine> {
   const lines = draft.lines;
   const totals = prTotals(draft, ctx.rateOf);
   // "By Item" collapses the grid to one read-only row per item; the footer totals stay off the real lines.
@@ -88,12 +88,13 @@ export function prDoc({ draft, update, errors, m, ctx }: PrTabProps): PurchDocPr
 
   const columns = pick(cols, [
     ['type', 'hide'], ['qty', 'always'], ['openQty', 'hide'],
+    ['uomName', 'hide'], ['itemsPerUnit', 'hide'], ['inventoryUom', 'hide'],
     ['inventoryQty', 'hide'], ['inStock', 'hide'], ['committed', 'hide'], ['ordered', 'hide'],
     ['priceList', 'hide'], ['unitPrice', 'always'], ['discount', 'hide'], ['priceAfterDisc', 'hide'],
-    ['tax', 'hide'], ['taxAmount', 'hide'], ['gross', 'hide'], ['total', 'always'],
+    ['tax', 'hide'], ['taxAmount', 'hide'], ['gross', 'hide'], ['total', 'always'], ['grossTotalLc', 'hide'],
     ['requiredDate', 'hide'], ['vendor', 'hide'], ['warehouse', 'hide'], ['glAccount', 'hide'],
     ['department', 'hide'], ['freeText', 'hide'], ['requisition', 'hide'], ['returnReason', 'hide'],
-    ['lineStatus', 'hide'],
+    ['name', 'hide'], ['bpCatalogNo', 'hide'], ['blanket', 'hide'], ['lineStatus', 'hide'],
   ]);
 
   return {

@@ -41,6 +41,8 @@ export interface GoodsReturn extends Omit<GoodsReceipt, 'lines' | 'status'> {
   lines: ReturnLine[];
   consolidatingBpId: string;
   attachments: Attachment[];
+  /** Id of the Goods Return Request this return was created from, if any. Lines carry grrLineId. */
+  baseGrrId?: string;
 }
 
 export const RETURN_SERIES: DocumentSeries[] = [

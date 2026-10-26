@@ -96,6 +96,10 @@ const DprList = page(() => import('../pages/purchasing/down-payment-requests/Dpr
 const DprDetail = page(() => import('../pages/purchasing/down-payment-requests/detail/DprDetail'), 'DprDetail');
 const PaymentList = page(() => import('../pages/purchasing/payments-made/PaymentList'), 'PaymentList');
 const PaymentDetail = page(() => import('../pages/purchasing/payments-made/detail/PaymentDetail'), 'PaymentDetail');
+const DownPaymentInvoiceList = page(() => import('../pages/purchasing/down-payment-invoices/DpiList'), 'DpiList');
+const DownPaymentInvoiceDetail = page(() => import('../pages/purchasing/down-payment-invoices/detail/DpiDetail'), 'DpiDetail');
+const GoodsReturnRequestList = page(() => import('../pages/purchasing/goods-return-requests/GoodsReturnRequestList'), 'GoodsReturnRequestList');
+const GoodsReturnRequestDetail = page(() => import('../pages/purchasing/goods-return-requests/detail/GoodsReturnRequestDetail'), 'GoodsReturnRequestDetail');
 const GoodsReturnsList = page(() => import('../pages/purchasing/goods-returns/GoodsReturnsList'), 'GoodsReturnsList');
 const DebitMemosList = page(() => import('../pages/purchasing/debit-memos/DebitMemosList'), 'DebitMemosList');
 const GoodsReturnDetail = page(() => import('../pages/purchasing/goods-returns/GoodsReturnDetail'), 'GoodsReturnDetail');
@@ -196,12 +200,16 @@ export const router = createHashRouter(withPreload([
           { path: 'purchasing/reserve-invoices/:id/:tab?', element: <ApReserveInvoiceDetail /> },
           { path: 'purchasing/down-payment-requests', element: <DprList /> },
           { path: 'purchasing/down-payment-requests/:id/:tab?', element: <DprDetail /> },
+          { path: 'purchasing/down-payment-invoices', element: <DownPaymentInvoiceList /> },
+          { path: 'purchasing/down-payment-invoices/:id/:tab?', element: <DownPaymentInvoiceDetail /> },
           { path: 'purchasing/outgoing-payments', element: <PaymentList /> },
           { path: 'purchasing/outgoing-payments/:id/:tab?', element: <PaymentDetail /> },
 
 
 
 
+          { path: 'purchasing/goods-return-requests', element: <GoodsReturnRequestList /> },
+          { path: 'purchasing/goods-return-requests/:id/:tab?', element: <GoodsReturnRequestDetail /> },
           { path: 'purchasing/goods-returns', element: <GoodsReturnsList /> },
           { path: 'purchasing/goods-returns/:id/:tab?', element: <GoodsReturnDetail /> },
           { path: 'purchasing/debit-memos', element: <DebitMemosList /> },

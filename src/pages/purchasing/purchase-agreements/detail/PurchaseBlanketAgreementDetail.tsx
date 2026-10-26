@@ -25,7 +25,7 @@ import { pbaSeries } from '../../../../services/allSeries';
 import { pbaNumber, pbaTotals, openQty, getPurchaseBlanketAgreement, listPurchaseBlanketAgreements, savePurchaseBlanketAgreement, type PbaInput } from '../../../../services/purchaseBlanketAgreements';
 import { getPurchasingSettings } from '../../../../services/purchaseOrders';
 import { useDocTitle } from '../../../../services/useDocTitle';
-import { VendorCard } from './VendorCard';
+import { VendorCard } from '../../shared/VendorCard';
 import { AgreementCard } from './AgreementCard';
 import { GeneralTab } from './general';
 import { AgreementLinesCard } from '../../../../components/agreements/AgreementLinesCard';
@@ -129,6 +129,14 @@ function PbaForm() {
   const vendor = m.vendors.find((v) => v.id === draft.vendorId);
 
   const update = (patch: Partial<PbaDraft>) => setDraft({ ...draft, ...patch });
+
+  const pickVendor = (vendorId: string | null) => {
+    const v = m.vendors.find((x) => x.id === vendorId);
+    if (!v) { update({ vendorId: '', vendorCode: '', vendorName: '', contactId: '', currency: 'PHP', phone: '', email: '' }); return; }
+    const phoneChannel = v.contactChannels.find((ch) => ch.type === 'Phone' || ch.type === 'Mobile');
+    const emailChannel = v.contactChannels.find((ch) => ch.type === 'Email');
+    update({ vendorId: v.id, vendorCode: v.code, vendorName: v.name, contactId: v.defaultContactId, currency: v.currency === 'All currencies' ? 'PHP' : v.currency, phone: phoneChannel?.value ?? '', email: emailChannel?.value ?? '', paymentTermId: v.vendorPaymentTermId });
+  };
 
   const submit = async (e: FormEvent | null, asDraft = false) => {
     e?.preventDefault();
@@ -260,7 +268,20 @@ function PbaForm() {
           ) : null}
 
           <fieldset disabled={readOnly} className="contents">
-            <VendorCard draft={draft} update={update} errors={errors} m={m} added={added} readOnly={readOnly} />
+            <VendorCard
+              vendors={m.vendors}
+              vendorId={draft.vendorId}
+              vendor={vendor}
+              readOnly={readOnly}
+              added={added}
+              error={errors.vendorId}
+              pickVendor={pickVendor}
+              contact={{ contactId: draft.contactId, onChange: (id) => update({ contactId: id }) }}
+              vendorRef={{ value: draft.vendorRef, onChange: (v) => update({ vendorRef: v }), hint: "The vendor's own reference for this agreement." }}
+              currency={{ value: draft.currency, readOnly: true }}
+              phone={draft.phone}
+              email={draft.email}
+            />
             <AgreementCard draft={draft} update={update} m={m} added={added} />
           </fieldset>
 

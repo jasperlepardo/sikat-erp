@@ -6,6 +6,7 @@ import type { ItemGroup } from '../mocks/itemMasters';
 import type { Item } from '../mocks/items';
 import { rateAt, vatNotPaidToVendor, type TaxCode } from '../mocks/taxes';
 import { applyInvoiceReturns, listApInvoices, returnableQty } from './apInvoices';
+import { applyGrrConsumption } from './goodsReturnRequests';
 import { todayISO } from './dates';
 import { applyReturnedQty, applyStock, expenseAccountFor, frozenLines, grInventoryQty, grOpenQty, listGoodsReceipts } from './goodsReceipts';
 import { inventoryAccountFor, type JournalLine } from './inventoryTransfers';
@@ -173,6 +174,7 @@ export async function addGoodsReturn(input: ReturnInput): Promise<GoodsReturn> {
   const status = lines.some(needsCredit) ? 'Open' : 'Closed';
   const saved = await returns.save({ ...input, lines: withBinCodes(lines), docNum, status, closeDate: status === 'Closed' ? todayISO() : '' });
   await logConsumption(saved.id, saved.postingDate, taken);
+  await applyGrrConsumption(undefined, saved);
   return saved;
 }
 
@@ -197,7 +199,9 @@ export async function cancelGoodsReturn(r: GoodsReturn) {
   }
   await updateFifoCosts([...fifoItemIds]);
 
-  return returns.save({ ...r, status: 'Cancelled', closeDate: todayISO() });
+  const cancelled = await returns.save({ ...r, status: 'Cancelled', closeDate: todayISO() });
+  await applyGrrConsumption(r, cancelled);
+  return cancelled;
 }
 
 /** Credited quantities on return lines, from credit memos copied from them. A return closes when fully credited. */

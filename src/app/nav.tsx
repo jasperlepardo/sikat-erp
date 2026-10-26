@@ -23,14 +23,14 @@ const slug = (label: string) =>
     .replace(/\W+/g, '-')
     .replace(/^-|-$/g, '');
 
-/** A hub: a module row whose pages open as its submenu. Each page is [label, icon glyph]. */
-const hub = (label: string, glyph: string, pages: [string, string][]): SideNavItem => {
+/** A hub: a module row whose pages open as its submenu. Each page is [label, icon glyph, optional route id]. */
+const hub = (label: string, glyph: string, pages: [string, string, string?][]): SideNavItem => {
   const id = slug(label);
   return {
     id,
     label,
     icon: icon(glyph),
-    items: pages.map(([page, pageGlyph]) => ({ id: `${id}/${slug(page)}`, label: page, icon: icon(pageGlyph) })),
+    items: pages.map(([page, pageGlyph, pageId]) => ({ id: pageId ?? `${id}/${slug(page)}`, label: page, icon: icon(pageGlyph) })),
   };
 };
 
@@ -70,11 +70,13 @@ const APP_MODULES: SideNavItem[] = [
     ['Purchase Quotations', 'description'],
     ['Purchase Orders', 'receipt_long'],
     ['Goods Receipts', 'inventory'],
-    ['Vendor Invoices', 'request_quote'],
-    ['Reserve Invoices', 'receipt_long'],
-    ['Down Payment Requests', 'savings'],
+    ['A/P Invoices', 'request_quote', 'purchasing/vendor-invoices'],
+    ['A/P Reserve Invoices', 'receipt_long', 'purchasing/reserve-invoices'],
+    ['A/P Down Payment Requests', 'savings', 'purchasing/down-payment-requests'],
+    ['A/P Down Payment Invoices', 'receipt_long', 'purchasing/down-payment-invoices'],
+    ['Goods Return Requests', 'assignment_return'],
     ['Goods Returns', 'assignment_return'],
-    ['Debit Memos', 'receipt'],
+    ['A/P Credit Memos', 'receipt', 'purchasing/debit-memos'],
     ['Outgoing Payments', 'payments'],
     ['Landed Costs', 'calculate'],
     ['Agreements', 'description'],

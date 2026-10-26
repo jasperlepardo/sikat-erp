@@ -1,21 +1,21 @@
 import { useState } from 'react';
 import { AffixSelect, Combobox, Select, Text, TextField } from '@jasperlepardo/sikat-design-system';
-import type { PrefColumn } from '../../../components/form/columnPrefs';
-import { MasterLookup, type MasterDef, type MasterRow } from '../../../components/form/MasterLookup';
+import type { PrefColumn } from '../columnPrefs';
+import { MasterLookup, type MasterDef, type MasterRow } from '../MasterLookup';
 import { formatAmount } from '../../../services/format';
 import { round4 } from '../../../services/num';
+import type { DocLineBase } from './DocLines';
 
 /**
- * Shared column builders for the purchasing contents tables. These cover the few
- * columns that are genuinely identical across documents (free text, references,
+ * Shared column builders for the contents tables (purchasing + sales). These cover the
+ * few columns that are genuinely identical across documents (free text, references,
  * department / price list, a read-only amount); each document still writes its
  * own doc-specific columns (prices, tax, quantities, stock, delivery…).
  *
  * All builders return a `PrefColumn<T>` and work for any line type via accessor
- * functions, so `PoLine`, `PrLine`, `GrLine`, … share one implementation.
+ * functions, so `PoLine`, `GrLine`, `QuoteLine`, … share one implementation.
  */
 
-type Base = { id: string; itemId: string };
 type ColOpts = { optional?: boolean; defaultHidden?: boolean };
 
 /** Every extracted column is an optional, default-hidden one unless told otherwise. */
@@ -26,7 +26,7 @@ const withOpts = (o: ColOpts) => ({ optional: o.optional ?? true, defaultHidden:
  * no., manufacturer no. Renders nothing until an item is picked, and a read-only
  * `Text` when the document is locked.
  */
-export function textCol<T extends Base>(
+export function textCol<T extends DocLineBase>(
   cfg: { key: string; header: string; width?: string; readOnly?: boolean; get: (l: T) => string; onChange: (l: T, v: string) => void } & ColOpts,
 ): PrefColumn<T> {
   const { key, header, width = 'w-44', readOnly, get, onChange } = cfg;
@@ -47,7 +47,7 @@ export function textCol<T extends Base>(
  * select. Shows the current option's label read-only when locked; stores the
  * option value. Clearable by default so a line can have no selection ('').
  */
-export function comboCol<T extends Base>(
+export function comboCol<T extends DocLineBase>(
   cfg: {
     key: string;
     header: string;
@@ -87,7 +87,7 @@ export function comboCol<T extends Base>(
  * Master-data lookup cell — department, price list. Stores the row's id and
  * shows its label at render; read-only renders the label as plain `Text`.
  */
-export function masterCol<T extends Base, R extends MasterRow>(
+export function masterCol<T extends DocLineBase, R extends MasterRow>(
   cfg: {
     key: string;
     header: string;
@@ -128,7 +128,7 @@ export function masterCol<T extends Base, R extends MasterRow>(
 }
 
 /** Read-only formatted amount — price after discount, gross after discount. */
-export function amountCol<T extends Base>(
+export function amountCol<T extends DocLineBase>(
   cfg: { key: string; header: string; value: (l: T) => number; align?: 'start' | 'end' } & ColOpts,
 ): PrefColumn<T> {
   const { key, header, value, align } = cfg;
@@ -141,15 +141,12 @@ export function amountCol<T extends Base>(
   };
 }
 
-// The per-field column catalog + document assembly now live in `purchCols.tsx`
-// (the single registry). These builders remain the shared primitives it composes.
-
 // ── Shared pricing-group cells (one rendering, used by every document) ──────────
 
 const toNum = (v: string) => (v === '' ? 0 : Number(v));
 
 /** Editable unit/info price — right-aligned number, optional currency prefix. */
-export function priceCol<T extends Base>(
+export function priceCol<T extends DocLineBase>(
   cfg: { key: string; header: string; get: (l: T) => number; onChange: (l: T, v: number) => void; readOnly?: boolean; prefix?: string } & ColOpts,
 ): PrefColumn<T> {
   const { key, header, get, onChange, readOnly, prefix } = cfg;
@@ -188,7 +185,7 @@ function DiscountCell({ value, onChange, base, readOnly, label }: { value: numbe
 }
 
 /** Line discount percent, entered as % or a PHP amount off the unit price. Stores the percent. */
-export function discountCol<T extends Base>(
+export function discountCol<T extends DocLineBase>(
   cfg: { key: string; header: string; get: (l: T) => number; onChange: (l: T, v: number) => void; basePrice: (l: T) => number; readOnly?: boolean } & ColOpts,
 ): PrefColumn<T> {
   const { key, header, get, onChange, basePrice, readOnly } = cfg;
@@ -202,7 +199,7 @@ export function discountCol<T extends Base>(
 }
 
 /** Tax-code picker (Select); read-only shows the selected option's label. */
-export function taxCol<T extends Base>(
+export function taxCol<T extends DocLineBase>(
   cfg: { key: string; header: string; options: (l: T) => { value: string; label: string }[]; get: (l: T) => string; onChange: (l: T, v: string) => void; readOnly?: boolean; clearable?: boolean; invalid?: (l: T) => boolean } & ColOpts,
 ): PrefColumn<T> {
   const { key, header, options, get, onChange, readOnly, clearable, invalid } = cfg;

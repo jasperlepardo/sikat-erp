@@ -2,6 +2,7 @@ import { RFQ_SERIES, SEED_RFQS, type Rfq, type RfqLine, type RfqStatus } from '.
 import { rfqSeries, seriesLookup, formatDocNum } from './allSeries';
 import { createCollection } from './store';
 import { poTotals, type PoTotals } from './purchaseOrders';
+import { applyRequestDraw } from './purchaseRequests';
 import type { RoundingRule } from '../mocks/currencies';
 import type { TaxCode } from '../mocks/taxes';
 import { rateAt, vatNotPaidToVendor } from '../mocks/taxes';
@@ -61,25 +62,38 @@ export const rfqTotal = (q: Rfq, codes: TaxCode[]) =>
 // ── Saving ───────────────────────────────────────────────────────────────────
 
 export async function saveRfqDraft(input: RfqInput): Promise<Rfq> {
-  return rfqs.save({ ...input, status: 'Draft', docNum: 0 });
+  const before = input.id ? (await rfqs.list()).find((q) => q.id === input.id) : undefined;
+  const draft = await rfqs.save({ ...input, status: 'Draft', docNum: 0 });
+  await applyRequestDraw(before, draft);
+  return draft;
 }
 
 export async function addRfq(input: RfqInput): Promise<Rfq> {
   const all = await rfqs.list();
+  const before = input.id ? all.find((q) => q.id === input.id) : undefined;
   const series = seriesOf(input.seriesId);
   const docNum =
     Math.max(series.firstNo - 1, ...all.filter((q) => q.seriesId === series.id && q.docNum).map((q) => q.docNum)) + 1;
-  return rfqs.save({ ...input, docNum, status: input.approved ? 'Open' : 'Not Confirmed' });
+  const saved = await rfqs.save({ ...input, docNum, status: input.approved ? 'Open' : 'Not Confirmed' });
+  await applyRequestDraw(before, saved);
+  return saved;
 }
 
 export async function closeRfq(q: Rfq): Promise<Rfq> {
-  return rfqs.save({ ...q, status: 'Closed' as RfqStatus });
+  const closed = await rfqs.save({ ...q, status: 'Closed' as RfqStatus });
+  await applyRequestDraw(q, closed);
+  return closed;
 }
 
 export async function cancelRfq(q: Rfq): Promise<Rfq> {
-  return rfqs.save({ ...q, status: 'Cancelled' as RfqStatus });
+  const cancelled = await rfqs.save({ ...q, status: 'Cancelled' as RfqStatus });
+  // No longer a live quotation, so it releases its source request's open quantities.
+  await applyRequestDraw(q, cancelled);
+  return cancelled;
 }
 
 export async function recallRfq(q: Rfq): Promise<Rfq> {
-  return rfqs.save({ ...q, status: 'Draft', approved: false });
+  const recalled = await rfqs.save({ ...q, status: 'Draft', approved: false });
+  await applyRequestDraw(q, recalled);
+  return recalled;
 }

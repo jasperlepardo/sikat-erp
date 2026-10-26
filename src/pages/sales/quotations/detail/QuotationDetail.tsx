@@ -32,7 +32,8 @@ import { BASE_PRICE_LIST_ID } from '../../../../services/priceLists';
 import { QtDetailsCard } from './QtDetailsCard';
 import { CustomerCard } from '../../shared/CustomerCard';
 import { CustomerDetailsPanel } from '../../shared/CustomerDetailsPanel';
-import { QtContentsTable } from './QtContentsTable';
+import { DocLines } from '../../../../components/form/docLines/DocLines';
+import { qtDoc } from './qtDoc';
 import { SalesTotalsFooter } from '../../shared/TotalsFooter';
 import { ReferencesTable } from '../../../purchasing/shared/ReferencesTable';
 import { QT_LIST_PATH, QT_STATUS_INTENT, SO_LIST_PATH } from '../../paths';
@@ -346,9 +347,9 @@ function QuotationForm() {
                     onPickCustomer={pickCustomer}
                     onOpenDetails={() => setCustomerDetailsOpen(true)}
                   />
-                  <QtContentsTable
-                    {...tabProps}
-                    cardFooter={<SalesTotalsFooter {...tabProps} ctx={{ ...ctx, readOnly: readOnly || added }} withholding={[]} />}
+                  <DocLines
+                    {...qtDoc(tabProps)}
+                    footer={<SalesTotalsFooter {...tabProps} ctx={{ ...ctx, readOnly: readOnly || added }} withholding={[]} />}
                   />
                   <ReferencesTable
                     refs={draft.references}

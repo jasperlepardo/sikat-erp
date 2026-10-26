@@ -1,8 +1,8 @@
 import { Button, Combobox, Icon, Text, TextField } from '@jasperlepardo/sikat-design-system';
-import { type PurchDocProps } from '../../shared/PurchDoc';
+import { type DocLinesProps } from '../../../../components/form/docLines/DocLines';
 import { purchCols, pick } from '../../shared/purchCols';
 import { lineHelpers, itemConfig } from '../../shared/purchLineHelpers';
-import { departmentDef, priceListDef } from '../../../settings/masterDefs';
+import { countryDef, departmentDef, priceListDef } from '../../../settings/masterDefs';
 import { isPriceListValid } from '../../../../services/priceLists';
 import { BLANKET_AGREEMENTS } from '../../../../mocks/purchaseOrders';
 import { newGrLine, type GrLine } from '../../../../mocks/goodsReceipts';
@@ -23,8 +23,8 @@ export interface GrDocProps extends GrSectionProps {
   copyableCount: number;
 }
 
-/** Builds the Goods Receipt (GRPO) contents descriptor for the shared <PurchDoc>. */
-export function grDoc({ draft, update, errors, m, ctx, onCopyClick, copyableCount }: GrDocProps): PurchDocProps<GrLine> {
+/** Builds the Goods Receipt (GRPO) contents descriptor for the shared <DocLines>. */
+export function grDoc({ draft, update, errors, m, ctx, onCopyClick, copyableCount }: GrDocProps): DocLinesProps<GrLine> {
   const lines = draft.lines;
   const docCurrency = m.currencies.find((c) => c.code === draft.currency);
   const totals = grTotals(draft, ctx.rateOf, docCurrency?.rounding, ctx.isReverseCharge);
@@ -109,18 +109,23 @@ export function grDoc({ draft, update, errors, m, ctx, onCopyClick, copyableCoun
     },
     openQtyOf: (l) => grOpenQty(l, draft),
     baseDoc: (l) => (l.baseId ? { href: `#/purchasing/purchase-orders/${l.baseId}`, label: `PO ${l.baseDocNo}` } : null),
+    countryDef,
+    warrantyText: (l) => { const w = itemOf(l)?.warrantyTemplate; return w ? (m.inv.warranties.find((x) => x.id === w)?.name ?? w) : 'None'; },
+    unitCost: (l) => l.unitCostLc || itemOf(l)?.itemCost || 0,
   });
 
   const columns = pick(cols, [
     ['type', 'hide'], ['qty', 'always'],
-    ['warehouse', 'hide'],
-    ['inventoryQty', 'hide'], ['packages', 'hide'], ['openQty', 'hide'],
+    ['uomName', 'hide'], ['itemsPerUnit', 'hide'], ['inventoryUom', 'hide'],
+    ['warehouse', 'hide'], ['inventoryQty', 'hide'], ['packages', 'hide'], ['openQty', 'hide'],
     ['priceList', 'hide'],
-    ['unitPrice', 'always'], ['discount', 'hide'],
-    ['tax', 'hide'], ['taxAmount', 'hide'], ['reverseChargeVat', 'hide'],
-    ['total', 'always'],
+    ['unitPrice', 'always'], ['discount', 'hide'], ['priceAfterDisc', 'hide'],
+    ['tax', 'hide'], ['taxAmount', 'hide'], ['reverseChargeVat', 'hide'], ['gross', 'hide'], ['total', 'always'], ['grossTotalLc', 'hide'],
     ['baseDoc', 'hide'], ['blanket', 'hide'], ['vendor', 'hide'],
     ['requisition', 'hide'], ['freeText', 'hide'], ['returnReason', 'hide'],
+    ['name', 'hide'], ['bpCatalogNo', 'hide'], ['mfrNo', 'hide'], ['deliveryDate', 'hide'],
+    ['countryOfOrigin', 'hide'], ['warranty', 'hide'], ['unitCost', 'hide'],
+    ['department', 'hide'], ['lineStatus', 'hide'],
   ]);
 
   return {

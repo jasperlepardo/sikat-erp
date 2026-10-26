@@ -7,6 +7,7 @@ import type { StatusIntent } from '../../components/form/fields';
 import type { ApRiStatus } from '../../mocks/apReserveInvoices';
 import type { ApStatus } from '../../mocks/apInvoices';
 import type { DprStatus } from '../../mocks/apDownPayments';
+import type { DpiStatus } from '../../mocks/apDownPaymentInvoices';
 import type { GrStatus } from '../../mocks/goodsReceipts';
 import type { LcStatus } from '../../mocks/landedCosts';
 import type { MemoStatus } from '../../mocks/apCreditMemos';
@@ -15,6 +16,7 @@ import type { PbaStatus } from '../../mocks/purchaseBlanketAgreements';
 import type { PoStatus } from '../../mocks/purchaseOrders';
 import type { PrStatus } from '../../mocks/purchaseRequests';
 import type { ReturnStatus } from '../../mocks/goodsReturns';
+import type { GrrStatus } from '../../mocks/goodsReturnRequests';
 import type { RfqStatus } from '../../mocks/rfqs';
 
 export const PO_LIST_PATH = '/purchasing/purchase-orders';
@@ -84,6 +86,14 @@ export const PAYMENT_STATUS_INTENT: Record<PaymentStatus, 'default' | 'success' 
 };
 
 export const DPR_LIST_PATH = '/purchasing/down-payment-requests';
+export const DPI_LIST_PATH = '/purchasing/down-payment-invoices';
+export const DPI_STATUS_INTENT: Record<DpiStatus, 'default' | 'primary' | 'success' | 'danger' | 'warning'> = {
+  Draft: 'default',
+  'Not Confirmed': 'warning',
+  Open: 'primary',
+  Closed: 'success',
+  Cancelled: 'danger',
+};
 
 export const DPR_STATUS_INTENT: Record<DprStatus, 'default' | 'primary' | 'success' | 'danger' | 'warning'> = {
   Draft: 'default',
@@ -104,6 +114,11 @@ export const PBA_STATUS_INTENT: Record<PbaStatus, 'default' | 'primary' | 'succe
 };
 
 export const RETURN_LIST_PATH = '/purchasing/goods-returns';
+export const GRR_LIST_PATH = '/purchasing/goods-return-requests';
+export const GRR_STATUS_INTENT: Record<GrrStatus, 'default' | 'primary' | 'success'> = {
+  Open: 'primary',
+  Closed: 'success',
+};
 
 export const MEMO_LIST_PATH = '/purchasing/debit-memos';
 

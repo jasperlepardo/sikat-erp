@@ -1,5 +1,5 @@
 import { Combobox, Radio, Text, TextField } from '@jasperlepardo/sikat-design-system';
-import { type PurchDocProps } from '../../shared/PurchDoc';
+import { type DocLinesProps } from '../../../../components/form/docLines/DocLines';
 import { purchCols, pick } from '../../shared/purchCols';
 import { lineHelpers, itemConfig } from '../../shared/purchLineHelpers';
 import { departmentDef, priceListDef } from '../../../settings/masterDefs';
@@ -29,8 +29,8 @@ const WITHHELD_LABEL: Record<string, string> = {
   'Percentage tax': 'Percentage tax',
 };
 
-/** Builds the Purchase Order contents descriptor for the shared <PurchDoc>. */
-export function poDoc({ draft, update, errors, m, ctx }: PoTabProps): PurchDocProps<PoLine> {
+/** Builds the Purchase Order contents descriptor for the shared <DocLines>. */
+export function poDoc({ draft, update, errors, m, ctx }: PoTabProps): DocLinesProps<PoLine> {
   const lines = draft.lines;
   const linesLocked = ctx.readOnly || ctx.added;
   const docCurrency = m.currencies.find((c) => c.code === draft.currency);

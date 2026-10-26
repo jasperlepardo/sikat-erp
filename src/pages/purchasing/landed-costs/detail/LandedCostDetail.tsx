@@ -7,15 +7,13 @@ import {
   Form,
   Panel,
   PanelHeader,
-  Tabs,
   Text,
 } from '@jasperlepardo/sikat-design-system';
 import { type Errors } from '../../../../components/form/fields';
 import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
-import { ActivityTab } from '../../../../components/activity/ActivityTab';
-import { NotFound, PrevNext, neighbours, useDocTab } from '../../../../components/form/DetailNav';
+import { NotFound, PrevNext, neighbours } from '../../../../components/form/DetailNav';
 import { blankLandedCost, type LandedCost, type LcStatus } from '../../../../mocks/landedCosts';
 import {
   addLandedCost,
@@ -32,8 +30,8 @@ import { defaultJournalRemark } from '../../../../services/journalPatterns';
 import { listPartnersByRole } from '../../../../services/partners';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { type LcDraft, type LcMasters, type LcSectionProps } from './types';
-import { DocumentFlow } from '../../shared/DocumentFlow';
-import { LcVendorCard } from './LcVendorCard';
+import { VendorCard } from '../../shared/VendorCard';
+import { LcVendorDetailsPanel } from './LcVendorDetailsPanel';
 import { LcDocumentCard } from './LcDocumentCard';
 import { LcItemsCard } from './LcItemsCard';
 import { LcCostsCard } from './LcCostsCard';
@@ -43,20 +41,6 @@ import { LcRemarksCard } from './LcRemarksCard';
 import { LC_LIST_PATH, LC_STATUS_INTENT } from '../../paths';
 
 type TabId = 'items' | 'costs' | 'vendors' | 'general';
-
-const TABS = [
-  { value: 'items', label: 'Items' },
-  { value: 'costs', label: 'Costs' },
-  { value: 'vendors', label: 'Vendors' },
-  { value: 'general', label: 'General' },
-] as const;
-
-const PAGES = [
-  { value: 'details', label: 'Details' },
-  { value: 'transactions', label: 'Transactions' },
-  { value: 'activity', label: 'Activity' },
-] as const;
-type PageId = (typeof PAGES)[number]['value'];
 
 function validate(d: LcDraft, asDraft: boolean): Problem<TabId>[] {
   const { problems, need } = problemCollector<TabId>();
@@ -80,7 +64,7 @@ export function LandedCostDetail() {
 }
 
 function LandedCostForm() {
-  const { id, tab: tabParam } = useParams();
+  const { id } = useParams();
   const isNew = id === 'new';
   const navigate = useNavigate();
 
@@ -91,9 +75,7 @@ function LandedCostForm() {
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);
-  const [tab, setTab] = useState<TabId>('items');
-  const page = (PAGES.some((p) => p.value === tabParam) ? tabParam : 'details') as PageId;
-  const setPage = useDocTab<PageId>(`${LC_LIST_PATH}/${id}`, tabParam);
+  const [vendorDetailsOpen, setVendorDetailsOpen] = useState(false);
 
   useEffect(() => {
     Promise.all([listPartnersByRole('vendor'), landedCostTypes.list(), listGoodsReceipts()]).then(
@@ -186,6 +168,7 @@ function LandedCostForm() {
   const sectionProps: LcSectionProps = { draft, update, errors, m, readOnly };
 
   return (
+    <>
     <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
       <Panel className="flex-1">
         <PanelHeader
@@ -199,16 +182,6 @@ function LandedCostForm() {
           onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
           onBack={() => navigate(LC_LIST_PATH)}
           trailing={isNew ? undefined : <PrevNext path={LC_LIST_PATH} prevId={prevId} nextId={nextId} />}
-          tabs={
-            isNew ? undefined : (
-              <Tabs
-                variant="outline"
-                value={page}
-                onValueChange={(v) => setPage(v as PageId)}
-                items={PAGES.map((p) => ({ ...p }))}
-              />
-            )
-          }
           status={isNew ? undefined : <Badge size="small" intent={LC_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
           actions={
             <>
@@ -220,69 +193,61 @@ function LandedCostForm() {
           }
         />
 
-        {page === 'transactions' && draft.id ? (
-          <Panel.Body className="flex flex-col gap-2">
-            <DocumentFlow kind="LC" id={draft.id} notes="The goods receipts whose lines are included in this landed cost." />
-          </Panel.Body>
-        ) : page !== 'details' ? (
-          <Panel.Body>
-            <ActivityTab target={{ kind: 'LC', id: draft.id ?? '' }} partnerId={draft.vendorId} />
-          </Panel.Body>
-        ) : (
-          <Panel.Body className="flex flex-col gap-2">
-            <ProblemsAlert
-              problems={problems}
-              tabLabel={(t) =>
-                ({ items: 'Items', costs: 'Costs', vendors: 'Vendors', general: 'General' })[t]
-              }
-            />
-            {added ? (
-              <Alert intent="default" variant="outline" title={`This landed cost is ${draft.status.toLowerCase()}`}>
-                Only attachments can change.
-              </Alert>
-            ) : null}
+        <Panel.Body className="flex flex-col gap-2">
+          <ProblemsAlert
+            problems={problems}
+            tabLabel={(t) =>
+              ({ items: 'Items', costs: 'Costs', vendors: 'Vendors', general: 'General' })[t]
+            }
+          />
+          {added ? (
+            <Alert intent="default" variant="outline" title={`This landed cost is ${draft.status.toLowerCase()}`}>
+              Only attachments can change.
+            </Alert>
+          ) : null}
 
-            <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
-              <div className="flex flex-col gap-2 lg:col-span-8">
-                <fieldset disabled={readOnly} className="contents">
-                  <LcVendorCard {...sectionProps} pickVendor={pickVendor} />
-                </fieldset>
-
-                <Tabs
-                  variant="outline"
-                  value={tab}
-                  onValueChange={(v) => setTab(v as TabId)}
-                  items={TABS.map((t) => ({ value: t.value, label: t.label }))}
+          <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
+            <div className="flex flex-col gap-2 lg:col-span-8">
+              <fieldset disabled={readOnly} className="contents">
+                <VendorCard
+                  vendors={m.vendors}
+                  vendorId={draft.vendorId}
+                  vendor={m.vendors.find((v) => v.id === draft.vendorId)}
+                  readOnly={readOnly}
+                  added={added}
+                  error={errors.vendorId}
+                  pickVendor={pickVendor}
+                  onOpenDetails={() => setVendorDetailsOpen(true)}
                 />
-                <fieldset disabled={readOnly} className="contents">
-                  {tab === 'items' && (
-                    <LcItemsCard
-                      {...sectionProps}
-                      onLinesChange={(lines) => update({ lines })}
-                    />
-                  )}
-                  {tab === 'costs' && <LcCostsCard {...sectionProps} />}
-                  {tab === 'vendors' && <LcVendorsCard {...sectionProps} />}
-                  {tab === 'general' && <LcGeneralCard {...sectionProps} />}
-                </fieldset>
+                <LcItemsCard {...sectionProps} onLinesChange={(lines) => update({ lines })} />
+                <LcCostsCard {...sectionProps} />
+                <LcVendorsCard {...sectionProps} />
+                <LcGeneralCard {...sectionProps} />
+              </fieldset>
 
-                <AttachmentsCard
-                  attachments={draft.attachments}
-                  onChange={(attachments) => update({ attachments })}
-                  emptyHint="Attach shipping documents, customs declarations or insurance certificates."
-                />
-              </div>
-
-              <aside className="flex flex-col gap-2 lg:col-span-4">
-                <fieldset disabled={readOnly} className="contents">
-                  <LcDocumentCard {...sectionProps} statusMoves={statusMoves} />
-                  <LcRemarksCard {...sectionProps} />
-                </fieldset>
-              </aside>
+              <AttachmentsCard
+                attachments={draft.attachments}
+                onChange={(attachments) => update({ attachments })}
+                emptyHint="Attach shipping documents, customs declarations or insurance certificates."
+              />
             </div>
-          </Panel.Body>
-        )}
+
+            <aside className="flex flex-col gap-2 lg:col-span-4">
+              <fieldset disabled={readOnly} className="contents">
+                <LcDocumentCard {...sectionProps} statusMoves={statusMoves} />
+                <LcRemarksCard {...sectionProps} />
+              </fieldset>
+            </aside>
+          </div>
+        </Panel.Body>
       </Panel>
     </Form>
+    <LcVendorDetailsPanel
+      {...sectionProps}
+      vendor={m.vendors.find((v) => v.id === draft.vendorId)}
+      open={vendorDetailsOpen}
+      onClose={() => setVendorDetailsOpen(false)}
+    />
+    </>
   );
 }

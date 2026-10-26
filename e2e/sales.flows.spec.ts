@@ -152,19 +152,12 @@ test.describe('sales workflows', () => {
     expect(errors).toEqual([]);
   });
 
-  // US-SAL-060: "Copy to A/R invoice" from an Open delivery should bill the shipped lines.
-  //
-  // KNOWN BUG (skipped until fixed): the delivery "Copy to A/R invoice" action — and the equivalent
-  // "Sales Invoice (goods)" / "Official Receipt (services)" / "Copy to A/R invoice" actions on a
-  // sales order — navigate to `/sales/invoices/new`, but A/R invoices are routed at
-  // `/sales/customer-invoices/:id`. The unknown route falls through to the "Coming soon" placeholder,
-  // so a delivery/order can't be billed from the UI.
-  //   Fix: '/sales/invoices/new' -> '/sales/customer-invoices/new' in
-  //   DeliveryDetail.tsx (1 nav) and SalesOrderDetail.tsx (3 navs); then un-skip and drive the post.
-  test.fixme('delivery → A/R invoice (blocked: dead route /sales/invoices/new) @US-SAL-060', async ({ page }) => {
+  // US-SAL-060: "Copy to A/R invoice" from an Open delivery lands on the A/R invoice form, pre-filled.
+  // (Was a dead route: the delivery/SO copy actions navigated to the unregistered /sales/invoices/new;
+  // fixed to /sales/customer-invoices/new, which the ArInvoiceDetail resolves with the fromDelivery state.)
+  test('delivery → A/R invoice opens the pre-filled form @US-SAL-060', async ({ page }) => {
     await openStatus(page, 'sales/deliveries/dn-c05', 'Open');
     await pickAction(page, 'Copy to A/R invoice');
-    // Once the nav is fixed, this should land on the A/R invoice form, not the placeholder.
     await expect(page).toHaveURL(/sales\/customer-invoices\/new/);
     await expect(page.getByText('Coming soon')).toHaveCount(0);
   });

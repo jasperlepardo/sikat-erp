@@ -6,7 +6,7 @@ import { formatAmount } from '../../../services/format';
 import { formatDate } from '../../../services/dates';
 import { RETURN_REASONS } from '../../../mocks/goodsReturns';
 import type { PurchLine } from '../../../mocks/purchLine';
-import { priceCol, discountCol, taxCol, amountCol, masterCol, textCol, comboCol } from './purchColumns';
+import { priceCol, discountCol, taxCol, amountCol, masterCol, textCol, comboCol } from '../../../components/form/docLines/docColumns';
 import { editTaxCode } from '../../../services/taxRecalc';
 
 const num = (v: string) => (v === '' ? 0 : Number(v));
@@ -88,6 +88,10 @@ export interface ColBindings<T extends PurchLine> {
   openQtyOf?: (l: T) => number;
   /** The base document a line was copied from, for the `baseDoc` column (GR → PO, Return → GR/AP). */
   baseDoc?: (l: T) => { href: string; label: string } | null;
+  /** A muted note shown instead of the warehouse picker (e.g. A/P invoice: "Received in WH01" for a receipt-copied line). */
+  warehouseNote?: (l: T) => ReactNode;
+  /** A muted sub-line under the tax-code cell (e.g. A/P invoice: the line's resolved ATC). */
+  taxHint?: (l: T) => ReactNode;
   // Goods-return / credit-memo extras (optional)
   /** Country-of-origin master, for the `countryOfOrigin` column. */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -106,7 +110,7 @@ const money = (n: number) => <span className="whitespace-nowrap text-sm tabular-
 
 /**
  * The single source of truth for every purchasing line column (except the item cell
- * and ⋯ actions, which `<PurchDoc>` injects). A document builds this map with its
+ * and ⋯ actions, which `<DocLines>` injects). A document builds this map with its
  * bindings, then `pick()`s the columns it wants and their default visibility.
  */
 export function purchCols<T extends PurchLine>(b: ColBindings<T>): Record<string, PrefColumn<T>> {
@@ -187,7 +191,12 @@ export function purchCols<T extends PurchLine>(b: ColBindings<T>): Record<string
       : priceCol<T>({ key: 'unitPrice', header: 'Unit price', prefix: curPrefix, readOnly: ro, get: (l) => l.unitPrice, onChange: (l, v) => b.patch(l.id, { unitPrice: v } as Partial<T>) }),
     discount: discountCol<T>({ key: 'discountPct', header: 'Discount', readOnly: ro, get: (l) => l.discountPct, onChange: (l, v) => b.patch(l.id, { discountPct: v } as Partial<T>), basePrice: (l) => l.unitPrice }),
     priceAfterDisc: amountCol<T>({ key: 'priceAfterDisc', header: 'Price after discount', value: b.priceAfterDisc, align: 'end' }),
-    tax: taxCol<T>({ key: 'taxCode', header: 'Tax code', options: b.taxOptions, get: (l) => l.taxCode, onChange: (l, v) => b.patch(l.id, editTaxCode(v) as Partial<T>), readOnly: ro, clearable: true, invalid: (l) => b.invalid(l, 'taxCode') }),
+    tax: (() => {
+      const base = taxCol<T>({ key: 'taxCode', header: 'Tax code', options: b.taxOptions, get: (l) => l.taxCode, onChange: (l, v) => b.patch(l.id, editTaxCode(v) as Partial<T>), readOnly: ro, clearable: true, invalid: (l) => b.invalid(l, 'taxCode') });
+      if (!b.taxHint) return base;
+      // Compose the tax picker with a per-line hint (the resolved ATC) underneath.
+      return { ...base, cell: (l: T) => (l.itemId ? <div className="flex flex-col gap-1">{base.cell!(l)}{b.taxHint!(l) ?? null}</div> : null) };
+    })(),
     taxAmount: amountCol<T>({ key: 'taxAmount', header: 'Tax amount', value: b.taxAmount, align: 'end' }),
     // Reverse-charge (self-assessed) VAT: shown only on reverse-charge lines; "—" elsewhere.
     reverseChargeVat: { key: 'reverseChargeVat', header: 'Reverse-charge VAT', align: 'end', cell: (l) => { if (!l.itemId) return null; const v = b.reverseChargeVat?.(l); return v != null ? money(v) : <span className="text-muted">—</span>; } },
@@ -221,6 +230,8 @@ export function purchCols<T extends PurchLine>(b: ColBindings<T>): Record<string
       cell: (l) => {
         if (!l.itemId) return null;
         if (b.warehouseStocked && !b.warehouseStocked(l)) return <span className="text-muted">Not stocked</span>;
+        const note = b.warehouseNote?.(l);
+        if (note) return <Text variant="small" tone="muted">{note}</Text>;
         const showBin = b.bin?.show(l) ?? false;
         if (ro) {
           const w = b.warehouseOptions.find((o) => o.value === l.warehouse);
@@ -282,22 +293,6 @@ export function purchCols<T extends PurchLine>(b: ColBindings<T>): Record<string
   };
 }
 
-type Vis = 'always' | 'opt' | 'hide';
-/**
- * Choose a document's columns, in order, from the registry — and their default
- * visibility. 'always' = shown, not hideable; 'opt' = shown, in the Columns menu;
- * 'hide' = available but hidden by default.
- */
-export function pick<T>(cols: Record<string, PrefColumn<T>>, list: [string, Vis][]): PrefColumn<T>[] {
-  return list.map(([key, vis]) => {
-    const c = cols[key];
-    if (!c) throw new Error(`purchCols: unknown column "${key}"`);
-    // Set both flags explicitly — the registry primitives default to optional+defaultHidden,
-    // so 'always'/'opt' must clear them, not just leave them untouched.
-    const flags =
-      vis === 'always' ? { optional: false, defaultHidden: false }
-      : vis === 'opt' ? { optional: true, defaultHidden: false }
-      : { optional: true, defaultHidden: true };
-    return { ...c, ...flags };
-  });
-}
+// The generic column picker now lives in the shared docLines module; re-exported
+// here so document descriptors keep importing `{ purchCols, pick }` from one place.
+export { pick } from '../../../components/form/docLines/pick';

@@ -49,8 +49,8 @@ export interface PaymentRow {
   projectId: string;
   /** Ticked for payment. Unticked rows stay listed but aren't paid. */
   selected: boolean;
-  /** What the row pays: an A/P invoice (default) or an A/P down payment request. */
-  docType?: 'APINV' | 'DPR';
+  /** What the row pays: an A/P invoice (default), a down payment request, or a down payment invoice. */
+  docType?: 'APINV' | 'DPR' | 'APDPI';
   /** For a down payment request: the account the advance goes to (Advances to Suppliers by default). */
   account?: string;
   /** The row can't be ticked: the document has a payment block. */

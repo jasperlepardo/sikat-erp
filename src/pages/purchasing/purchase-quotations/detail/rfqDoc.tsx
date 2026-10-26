@@ -1,9 +1,9 @@
 import { Text } from '@jasperlepardo/sikat-design-system';
-import { type PurchDocProps } from '../../shared/PurchDoc';
+import { type DocLinesProps } from '../../../../components/form/docLines/DocLines';
 import { purchCols, pick } from '../../shared/purchCols';
 import { lineHelpers, itemConfig } from '../../shared/purchLineHelpers';
 import { purchFooter } from '../../shared/purchChrome';
-import { priceListDef, departmentDef } from '../../../settings/masterDefs';
+import { countryDef, priceListDef, departmentDef } from '../../../settings/masterDefs';
 import { isPriceListValid } from '../../../../services/priceLists';
 import { itemsPerUom } from '../../../../mocks/items';
 import { formatDate } from '../../../../services/dates';
@@ -14,8 +14,8 @@ import { blanketOptions, lineFromItem, linePricing, type RfqTabProps } from './t
 import { taxCodeOptions } from '../../../../services/taxCodeOptions';
 import { round2 } from '../../../../services/num';
 
-/** Builds the Purchase Quotation (RFQ) contents descriptor for the shared <PurchDoc>. */
-export function rfqDoc({ draft, update, errors, m, ctx }: RfqTabProps): PurchDocProps<RfqLine> {
+/** Builds the Purchase Quotation (RFQ) contents descriptor for the shared <DocLines>. */
+export function rfqDoc({ draft, update, errors, m, ctx }: RfqTabProps): DocLinesProps<RfqLine> {
   const lines = draft.lines;
   const linesLocked = ctx.readOnly || ctx.added;
   const docCurrency = m.currencies.find((c) => c.code === draft.currency);
@@ -81,17 +81,22 @@ export function rfqDoc({ draft, update, errors, m, ctx }: RfqTabProps): PurchDoc
     copiedQty: () => 0,
     invalid: (l, f) => Boolean(err(l, f)),
     lineKind,
+    countryDef,
+    warrantyText: (l) => { const w = itemOf(l)?.warrantyTemplate; return w ? (m.inv.warranties.find((x) => x.id === w)?.name ?? w) : 'None'; },
+    unitCost: (l) => itemOf(l)?.itemCost ?? 0,
   });
 
   const columns = pick(cols, [
-    ['type', 'hide'], ['qty', 'always'], ['quotedQty', 'hide'],
+    ['type', 'hide'], ['qty', 'always'], ['quotedQty', 'hide'], ['openQty', 'hide'],
+    ['uomName', 'hide'], ['itemsPerUnit', 'hide'], ['inventoryUom', 'hide'], ['inventoryQty', 'hide'],
     ['priceList', 'hide'], ['unitPrice', 'always'], ['discount', 'hide'], ['priceAfterDisc', 'hide'],
-    ['tax', 'hide'], ['taxAmount', 'hide'], ['reverseChargeVat', 'hide'], ['gross', 'hide'], ['total', 'always'],
-    ['requiredDate', 'hide'], ['quotedDate', 'hide'], ['uomName', 'hide'], ['itemsPerUnit', 'hide'],
+    ['tax', 'hide'], ['taxAmount', 'hide'], ['reverseChargeVat', 'hide'], ['gross', 'hide'], ['total', 'always'], ['grossTotalLc', 'hide'],
+    ['requiredDate', 'hide'], ['quotedDate', 'hide'],
     ['vendor', 'hide'], ['warehouse', 'hide'], ['department', 'hide'], ['freeText', 'hide'],
     ['blanket', 'hide'], ['requisition', 'hide'], ['returnReason', 'hide'],
     ['name', 'hide'], ['bpCatalogNo', 'hide'], ['mfrNo', 'hide'], ['deliveryDate', 'hide'],
-    ['openQty', 'hide'], ['receivedQty', 'hide'], ['packages', 'hide'],
+    ['receivedQty', 'hide'], ['packages', 'hide'],
+    ['countryOfOrigin', 'hide'], ['warranty', 'hide'], ['unitCost', 'hide'], ['lineStatus', 'hide'],
   ]);
 
   return {

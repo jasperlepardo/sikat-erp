@@ -20,6 +20,9 @@ import {
   type PrStatus,
   type PurchaseRequest,
 } from '../../../../mocks/purchaseRequests';
+import { blankPurchaseOrder, newPoLine } from '../../../../mocks/purchaseOrders';
+import { blankRfq, newRfqLine } from '../../../../mocks/rfqs';
+import { getPurchasingSettings } from '../../../../services/purchaseOrders';
 import { loadInventoryMasters } from '../../../../services/inventoryMasters';
 import { listItems } from '../../../../services/items';
 import { taxCodes, taxGroups } from '../../../../services/masterData';
@@ -37,7 +40,7 @@ import {
 import { RequesterCard } from '../../shared/RequesterCard';
 import { RequesterDetailsPanel } from '../../shared/RequesterDetailsPanel';
 import { PrDocumentCard } from './PrDocumentCard';
-import { PurchDoc } from '../../shared/PurchDoc';
+import { DocLines } from '../../../../components/form/docLines/DocLines';
 import { prDoc } from './prDoc';
 import { PrTotalsCard } from './PrTotalsCard';
 import { buildContext, type PrDraft, type PrMasters } from './types';
@@ -46,7 +49,7 @@ import { ActivityTab } from '../../../../components/activity/ActivityTab';
 import { todayISO } from '../../../../services/dates';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { neighbours, NotFound, PrevNext, useDocTab } from '../../../../components/form/DetailNav';
-import { PR_LIST_PATH, PR_STATUS_INTENT } from '../../paths';
+import { PO_LIST_PATH, PR_LIST_PATH, PR_STATUS_INTENT, RFQ_LIST_PATH } from '../../paths';
 
 type TabId = 'contents';
 
@@ -209,6 +212,67 @@ function PurchaseRequestForm() {
     navigate(`${PR_LIST_PATH}/new`, { state: { copyFrom: copy } });
   };
 
+  // Copy to purchase order: carry the open lines and header context into a new PO draft.
+  // A request is pre-vendor, so the buyer picks the vendor on the PO (which derives currency,
+  // payment terms and addresses); every line field — including each line's preferred vendor —
+  // carries across. Only lines still open (not yet converted) are copied, at their open qty.
+  const copyToPo = () => {
+    const today = todayISO();
+    const open = draft.lines.filter((l) => l.status === 'Open' && (l.openQty ?? l.quantity) > 0 && l.itemId);
+    const poDraft = {
+      ...blankPurchaseOrder(CURRENT_USER_ID),
+      approved: !getPurchasingSettings().requirePoApproval,
+      ownerId: draft.ownerId || CURRENT_USER_ID,
+      postingDate: today,
+      documentDate: today,
+      requiredDate: draft.requiredDate,
+      freight: draft.freight,
+      // Lineage back to this request: header link + each line's source request line.
+      basePrId: saved.id,
+      lines: open.map((l) =>
+        newPoLine({
+          itemId: l.itemId, itemNo: l.itemNo, name: l.description, description: l.description,
+          quantity: l.openQty ?? l.quantity, uomCode: l.uomCode, uomName: l.uomName,
+          itemsPerUnit: l.itemsPerUnit, priceListId: l.priceListId, unitPrice: l.unitPrice,
+          discountPct: l.discountPct, taxCode: l.taxCode, warehouse: l.warehouse,
+          departmentId: l.departmentId, freeText: l.freeText, requisitionSlipNo: l.requisitionSlipNo,
+          requiredDate: l.requiredDate, lineVendorId: l.lineVendorId,
+          baseId: saved.id, baseLineId: l.id, baseDocNo: prNumber(saved),
+        }),
+      ),
+      remarks: `From purchase request ${prNumber(saved)}.${draft.remarks ? ` ${draft.remarks}` : ''}`,
+    };
+    navigate(`${PO_LIST_PATH}/new`, { state: { copyFrom: poDraft } });
+  };
+
+  // Copy to purchase quotation: the open lines become an RFQ to send vendors for pricing.
+  // Same lineage as Copy to purchase order — the request's open quantities are drawn when the RFQ is added.
+  const copyToRfq = () => {
+    const today = todayISO();
+    const open = draft.lines.filter((l) => l.status === 'Open' && (l.openQty ?? l.quantity) > 0 && l.itemId);
+    const rfqDraft = {
+      ...blankRfq(CURRENT_USER_ID),
+      ownerId: draft.ownerId || CURRENT_USER_ID,
+      postingDate: today,
+      documentDate: today,
+      requiredDate: draft.requiredDate,
+      freight: draft.freight,
+      basePrId: saved.id,
+      lines: open.map((l) =>
+        newRfqLine({
+          itemId: l.itemId, itemNo: l.itemNo, description: l.description,
+          requiredDate: l.requiredDate, quantity: l.openQty ?? l.quantity,
+          uomCode: l.uomCode, uomName: l.uomName, itemsPerUnit: l.itemsPerUnit,
+          priceListId: l.priceListId, unitPrice: l.unitPrice, discountPct: l.discountPct,
+          taxCode: l.taxCode, requisitionSlipNo: l.requisitionSlipNo, lineVendorId: l.lineVendorId,
+          baseId: saved.id, baseLineId: l.id, baseDocNo: prNumber(saved),
+        }),
+      ),
+      remarks: `From purchase request ${prNumber(saved)}.${draft.remarks ? ` ${draft.remarks}` : ''}`,
+    };
+    navigate(`${RFQ_LIST_PATH}/new`, { state: { copyFrom: rfqDraft } });
+  };
+
   const transitions: Partial<Record<PrStatus, () => void>> =
     draft.status === 'Open' ? { Closed: closeIt } : {};
   const sectionProps = { draft, update, errors, m, ctx };
@@ -216,9 +280,11 @@ function PurchaseRequestForm() {
   const menu: MoreMenuItem[] = [
     ...(draft.status === 'Open' ? [{ label: 'Close request', icon: 'task_alt', onSelect: closeIt }] : []),
     ...(!isNew ? [{ label: 'Duplicate', icon: 'content_copy', onSelect: duplicate }] : []),
-    // Copy to PO placeholder — a future feature
-    ...(draft.status === 'Open' && draft.lines.some((l) => l.status === 'Open')
-      ? [{ label: 'Copy to purchase order', icon: 'receipt_long', onSelect: () => navigate('/purchasing/purchase-orders/new', { state: { fromPr: saved.id } }) }]
+    ...(draft.status === 'Open' && draft.lines.some((l) => l.status === 'Open' && l.itemId)
+      ? [
+          { label: 'Copy to purchase quotation', icon: 'request_quote', onSelect: copyToRfq },
+          { label: 'Copy to purchase order', icon: 'receipt_long', onSelect: copyToPo },
+        ]
       : []),
   ];
 
@@ -302,7 +368,7 @@ function PurchaseRequestForm() {
                   pickRequester={pickRequester}
                   onOpenDetails={() => setRequesterDetailsOpen(true)}
                 />
-                <PurchDoc {...prDoc(sectionProps)} />
+                <DocLines {...prDoc(sectionProps)} />
                 <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach supporting documents, e.g. specs, approvals or quotes." />
               </div>
               <div className="flex flex-col gap-2 lg:col-span-4">

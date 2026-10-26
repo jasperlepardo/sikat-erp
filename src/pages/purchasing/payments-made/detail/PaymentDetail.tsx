@@ -5,7 +5,6 @@ import {
   Alert,
   Badge,
   Button,
-  Combobox,
   Form,
   FormField,
   List,
@@ -17,14 +16,14 @@ import {
   Text,
 } from '@jasperlepardo/sikat-design-system';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
-import { Fields, FieldStack, ReadOnly, Section, bind, type Errors } from '../../../../components/form/fields';
+import { Fields, FieldStack, Section, bind, type Errors } from '../../../../components/form/fields';
 import { StatusField } from '../../../../components/form/StatusField';
 import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { formatAddress } from '../../../../mocks/address';
 import { accountText } from '../../../../mocks/chartOfAccounts';
 import { FX_GAIN_ACCOUNT, FX_LOSS_ACCOUNT, PAYMENT_SERIES, PAYMENT_STATUSES, blankPayment, type OutgoingPayment, type PaymentStatus, type PaymentType } from '../../../../mocks/outgoingPayments';
-import { contactName, type Partner } from '../../../../mocks/partners';
+import { type Partner } from '../../../../mocks/partners';
 import { listApInvoices } from '../../../../services/apInvoices';
 import { formatDate, todayISO } from '../../../../services/dates';
 import { defaultJournalRemark } from '../../../../services/journalPatterns';
@@ -55,16 +54,19 @@ import { listPartnersByRole } from '../../../../services/partners';
 import { projectDef } from '../../../settings/masterDefs';
 import { ReferencesTable } from '../../shared/ReferencesTable';
 import { DocumentFlow } from '../../shared/DocumentFlow';
+import { VendorCard } from '../../shared/VendorCard';
+import { PayPayeeDetailsPanel } from './PayPayeeDetailsPanel';
 import { PayVendorRows, PayAccountRows } from './PayVendorRowsCard';
 import { PayMeansCard } from './PayMeansCard';
-import { invoiceBalance, openRows, requestBalance, type PayMasters, type PaymentDraft } from './types';
+import { invoiceAdvanceBalance, invoiceBalance, openRows, requestBalance, type PayMasters, type PaymentDraft } from './types';
 import { listDownPayments } from '../../../../services/apDownPayments';
+import { listDownPaymentInvoices } from '../../../../services/apDownPaymentInvoices';
 import { logRejection } from '../../../../services/approvalRules';
 import { getPurchasingSettings } from '../../../../services/purchaseOrders';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
 import { neighbours, NotFound, PrevNext, siblingKeys, useDocTab, useReject } from '../../../../components/form/DetailNav';
-import { AP_LIST_PATH, DPR_LIST_PATH, PAYMENT_LIST_PATH, PAYMENT_STATUS_INTENT } from '../../paths';
+import { AP_LIST_PATH, DPI_LIST_PATH, DPR_LIST_PATH, PAYMENT_LIST_PATH, PAYMENT_STATUS_INTENT } from '../../paths';
 
 type TabId = 'contents' | 'means';
 
@@ -128,6 +130,7 @@ function PaymentForm() {
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);
+  const [vendorDetailsOpen, setVendorDetailsOpen] = useState(false);
   const reject = useReject();
 
   useEffect(() => {
@@ -145,8 +148,9 @@ function PaymentForm() {
       listApInvoices(),
       cardBrands.list(),
       listDownPayments(),
-    ]).then(([vendors, items, inv, [company], codes, groups, withholding, wGroups, curs, rates, invoices, cards, downPayments]) => {
-      const masters: PayMasters = { vendors, items, tax: { company, codes, groups, withholding, withholdingGroups: wGroups }, currencies: curs, rates, invoices, accounts: inv.accounts, cardBrands: cards, downPayments };
+      listDownPaymentInvoices(),
+    ]).then(([vendors, items, inv, [company], codes, groups, withholding, wGroups, curs, rates, invoices, cards, downPayments, downPaymentInvoices]) => {
+      const masters: PayMasters = { vendors, items, tax: { company, codes, groups, withholding, withholdingGroups: wGroups }, currencies: curs, rates, invoices, accounts: inv.accounts, cardBrands: cards, downPayments, downPaymentInvoices };
       setM(masters);
       // Pay from a vendor's page or an invoice: the vendor, with those invoices ticked.
       const vendor = state?.vendorId ? vendors.find((v) => v.id === state.vendorId) : undefined;
@@ -211,10 +215,11 @@ function PaymentForm() {
     setSaving(true);
     try {
       // Balances as they are now, so a payment added elsewhere since this form opened counts.
-      const [fresh, requests] = await Promise.all([listApInvoices(), listDownPayments()]);
+      const [fresh, requests, dpiInvs] = await Promise.all([listApInvoices(), listDownPayments(), listDownPaymentInvoices()]);
       const balances = new Map([
         ...fresh.map((inv) => [inv.id, invoiceBalance(inv, m).balanceDue] as const),
         ...requests.map((d) => [d.id, requestBalance(d, m).balanceDue] as const),
+        ...dpiInvs.map((d) => [d.id, invoiceAdvanceBalance(d, m).balanceDue] as const),
       ]);
       const saved = effectiveDraft ? await savePaymentDraft(doc) : await addPayment(doc, fx, balances);
       if (!effectiveDraft && saved.status === 'Posted') {
@@ -272,16 +277,18 @@ function PaymentForm() {
     ...paidInvoices.map((r) =>
       r.docType === 'DPR'
         ? { label: `Open down payment request ${r.docNo}`, icon: 'savings', onSelect: () => navigate(`${DPR_LIST_PATH}/${r.invoiceId}`) }
-        : { label: `Open A/P invoice ${r.docNo}`, icon: 'request_quote', onSelect: () => navigate(`${AP_LIST_PATH}/${r.invoiceId}`) },
+        : r.docType === 'APDPI'
+          ? { label: `Open down payment invoice ${r.docNo}`, icon: 'receipt_long', onSelect: () => navigate(`${DPI_LIST_PATH}/${r.invoiceId}`) }
+          : { label: `Open A/P invoice ${r.docNo}`, icon: 'request_quote', onSelect: () => navigate(`${AP_LIST_PATH}/${r.invoiceId}`) },
     ),
     ...(vendor ? [{ label: `Open vendor ${vendor.code}`, icon: 'local_shipping', onSelect: () => navigate(`/purchasing/vendors/${vendor.id}`) }] : []),
   ];
 
   const title = isNew ? 'New outgoing payment' : added ? paymentNumber(draft) : 'Draft outgoing payment';
   const sectionProps = { draft, update, errors, m, fx, readOnly: added };
-  const payToOptions = (vendor?.addresses ?? []).map((a) => ({ value: formatAddress(a, vendor!.name), label: `${a.label || 'Address'} · ${a.city || a.countryCode}` }));
 
   return (
+    <>
     <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
       <Panel className="flex-1">
         <PanelHeader
@@ -331,63 +338,30 @@ function PaymentForm() {
             <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
               <div className="flex flex-col gap-2 lg:col-span-8">
                 <fieldset disabled={added} className="contents">
-                  <Section icon={draft.type === 'Vendor' ? 'storefront' : 'account_tree'} title="Payee">
-                    <Fields>
-                      {draft.type === 'Vendor' ? (
-                        <>
-                          <div className="md:col-span-2">
-                            {added ? (
-                              <ReadOnly label="Vendor" value={draft.payeeName} description={`${draft.vendorCode} · ${code}`} />
-                            ) : (
-                              <FormField label="Vendor" required error={errors.vendorId} tooltip="Picking one lists its open A/P invoices in its currency.">
-                                {(p) => (
-                                  <Combobox
-                                    {...p}
-                                    placeholder="Search vendors"
-                                    options={m.vendors
-                                      .filter((v) => v.status !== 'Inactive' || v.id === draft.vendorId)
-                                      .map((v) => ({ value: v.id, label: v.name, subLabel: v.code, subLabelPlacement: 'top' as const, description: v.currency, text: `${v.code} ${v.name}` }))}
-                                    value={draft.vendorId || null}
-                                    onValueChange={pickVendor}
-                                  />
-                                )}
-                              </FormField>
-                            )}
-                          </div>
-                          {h.lookup('payTo', 'Pay to', payToOptions.length ? payToOptions : [{ value: draft.payTo, label: draft.payTo || '—' }], { hint: "The vendor's address the payment goes to." })}
-                          {h.lookup(
-                            'contactId',
-                            'Contact person',
-                            (vendor?.contacts ?? []).filter((c) => c.active || c.id === draft.contactId).map((c) => ({ value: c.id, label: contactName(c) })),
-                            { clearable: true, disabled: !vendor },
-                          )}
-                          {vendor?.currency === ALL_CURRENCIES ? (
-                            <FormField label="Currency" tooltip="This vendor takes all currencies — open invoices in the currency picked are listed.">
-                              {(p) => (
-                                <Select
-                                  {...p}
-                                  options={activeOptions(m.currencies, (c) => c.code, (c) => `${c.code} — ${c.name}`, draft.currency)}
-                                  value={draft.currency}
-                                  onValueChange={(currency) => update({ currency, rows: openRows(m, draft.vendorId, currency) })}
-                                />
-                              )}
-                            </FormField>
-                          ) : (
-                            <ReadOnly label="Currency" value={code} hint="The vendor's currency." />
-                          )}
-                        </>
-                      ) : (
-                        <>
-                          {h.text('payeeName', 'To order of', { required: true, error: errors.payeeName, hint: 'Who the payment is to, e.g. Meralco.' })}
-                          {h.text('payTo', 'Pay to', { hint: 'Their address, for the check or transfer.' })}
-                          <FormField label="Doc. currency">
-                            {(p) => <Select {...p} options={activeOptions(m.currencies, (c) => c.code, (c) => `${c.code} — ${c.name}`, draft.currency)} value={draft.currency} onValueChange={(currency) => update({ currency })} />}
-                          </FormField>
-                        </>
-                      )}
-                    </Fields>
-                    {errors.currency ? <Text variant="small" tone="danger">{errors.currency}</Text> : null}
-                  </Section>
+                  {draft.type === 'Vendor' ? (
+                    <VendorCard
+                      vendors={m.vendors}
+                      vendorId={draft.vendorId}
+                      vendor={vendor}
+                      readOnly={added}
+                      added={added}
+                      error={errors.vendorId}
+                      tooltip="Picking one lists its open A/P invoices in its currency."
+                      pickVendor={pickVendor}
+                      onOpenDetails={() => setVendorDetailsOpen(true)}
+                    />
+                  ) : (
+                    <Section icon="account_tree" title="Payee">
+                      <Fields>
+                        {h.text('payeeName', 'To order of', { required: true, error: errors.payeeName, hint: 'Who the payment is to, e.g. Meralco.' })}
+                        {h.text('payTo', 'Pay to', { hint: 'Their address, for the check or transfer.' })}
+                        <FormField label="Doc. currency">
+                          {(p) => <Select {...p} options={activeOptions(m.currencies, (c) => c.code, (c) => `${c.code} — ${c.name}`, draft.currency)} value={draft.currency} onValueChange={(currency) => update({ currency })} />}
+                        </FormField>
+                      </Fields>
+                      {errors.currency ? <Text variant="small" tone="danger">{errors.currency}</Text> : null}
+                    </Section>
+                  )}
                 </fieldset>
 
                 {draft.type === 'Vendor' ? <PayVendorRows {...sectionProps} /> : <PayAccountRows {...sectionProps} />}
@@ -480,6 +454,8 @@ function PaymentForm() {
         )}
       </Panel>
     </Form>
+    <PayPayeeDetailsPanel draft={draft} update={update} vendor={vendor} m={m} readOnly={added} open={vendorDetailsOpen} onClose={() => setVendorDetailsOpen(false)} />
+    </>
   );
 }
 

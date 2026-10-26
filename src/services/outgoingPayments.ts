@@ -13,6 +13,7 @@ import { todayISO } from './dates';
 import type { JournalLine } from './inventoryTransfers';
 import { applyPayments } from './apInvoices';
 import { applyDownPaymentPayments } from './apDownPayments';
+import { applyDownPaymentInvoicePayments } from './apDownPaymentInvoices';
 import { createCollection } from './store';
 import { purchasingHistory } from './purchasingHistory';
 import { round2 } from './num';
@@ -50,7 +51,8 @@ export const meansBalance = (p: Pick<OutgoingPayment, 'type' | 'rows' | 'onAccou
   round2(overallAmount(p) + p.means.bankCharge - meansTotal(p.means));
 
 /** Realized exchange difference on a row in PHP: positive costs more than booked (a loss). */
-export const rowFxDifference = (r: PaymentRow, fx: number) => (r.docType === 'DPR' ? 0 : round2(rowSettled(r) * (fx - r.invoiceFx)));
+const isAdvanceRow = (r: PaymentRow) => r.docType === 'DPR' || r.docType === 'APDPI';
+export const rowFxDifference = (r: PaymentRow, fx: number) => (isAdvanceRow(r) ? 0 : round2(rowSettled(r) * (fx - r.invoiceFx)));
 
 
 // ── Accounting ───────────────────────────────────────────────────────────────
@@ -74,8 +76,9 @@ export function paymentJournal(p: PaymentInput, fx: number, vendorAccountOf: (in
     for (const r of p.accountRows) add(r.account, round2(r.amount * fx));
   } else {
     for (const r of paidRows(p)) {
-      // An advance goes on the down payment account at today's rate: there's nothing booked to clear yet.
-      if (r.docType === 'DPR') add(r.account || p.controlAccount, round2(rowSettled(r) * fx));
+      // An advance (DPR/APDPI) goes on the down payment account at today's rate.
+      // For APDPI the GL was already posted when the invoice was added — now we're just paying it.
+      if (isAdvanceRow(r)) add(r.account || p.controlAccount, round2(rowSettled(r) * fx));
       else add(vendorAccountOf(r.invoiceId) || p.controlAccount, round2(rowSettled(r) * r.invoiceFx));
       add(CASH_DISCOUNT_ACCOUNT, -round2(rowDiscount(r) * fx));
     }
@@ -141,8 +144,9 @@ export async function addPayment(input: PaymentInput, fx: number, balances: Map<
     taken[c.account] = [...(taken[c.account] ?? []), checkNo];
     return { ...c, checkNo };
   });
-  await applyPayments(paidRows(input).filter((r) => r.docType !== 'DPR').map((r) => ({ invoiceId: r.invoiceId, amount: rowSettled(r), total: r.total })), 1);
+  await applyPayments(paidRows(input).filter((r) => !isAdvanceRow(r)).map((r) => ({ invoiceId: r.invoiceId, amount: rowSettled(r), total: r.total })), 1);
   await applyDownPaymentPayments(paidRows(input).filter((r) => r.docType === 'DPR').map((r) => ({ requestId: r.invoiceId, amount: rowSettled(r), amountLc: round2(rowSettled(r) * fx) })), 1);
+  await applyDownPaymentInvoicePayments(paidRows(input).filter((r) => r.docType === 'APDPI').map((r) => ({ requestId: r.invoiceId, amount: rowSettled(r), amountLc: round2(rowSettled(r) * fx) })), 1);
 
   return payments.save({
     ...input,
@@ -156,8 +160,9 @@ export async function addPayment(input: PaymentInput, fx: number, balances: Map<
 
 /** Cancel: the invoices it paid are open again for what it settled. Its checks are void. */
 export async function cancelPayment(p: OutgoingPayment) {
-  await applyPayments(paidRows(p).filter((r) => r.docType !== 'DPR').map((r) => ({ invoiceId: r.invoiceId, amount: rowSettled(r), total: r.total })), -1);
+  await applyPayments(paidRows(p).filter((r) => !isAdvanceRow(r)).map((r) => ({ invoiceId: r.invoiceId, amount: rowSettled(r), total: r.total })), -1);
   await applyDownPaymentPayments(paidRows(p).filter((r) => r.docType === 'DPR').map((r) => ({ requestId: r.invoiceId, amount: rowSettled(r), amountLc: round2(rowSettled(r) * p.fxRate) })), -1);
+  await applyDownPaymentInvoicePayments(paidRows(p).filter((r) => r.docType === 'APDPI').map((r) => ({ requestId: r.invoiceId, amount: rowSettled(r), amountLc: round2(rowSettled(r) * p.fxRate) })), -1);
   return payments.save({ ...p, status: 'Cancelled', cancelDate: todayISO() });
 }
 

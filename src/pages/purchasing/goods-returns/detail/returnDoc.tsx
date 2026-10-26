@@ -1,5 +1,5 @@
 import { Button, Icon, Text } from '@jasperlepardo/sikat-design-system';
-import { type PurchDocProps } from '../../shared/PurchDoc';
+import { type DocLinesProps } from '../../../../components/form/docLines/DocLines';
 import { purchCols, pick } from '../../shared/purchCols';
 import { lineHelpers, itemConfig } from '../../shared/purchLineHelpers';
 import { countryDef, departmentDef, priceListDef } from '../../../settings/masterDefs';
@@ -31,8 +31,8 @@ export interface ReturnDocProps {
   canCopy: boolean;
 }
 
-/** Builds the Goods Return contents descriptor for the shared <PurchDoc>. */
-export function returnDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy }: ReturnDocProps): PurchDocProps<ReturnLine> {
+/** Builds the Goods Return contents descriptor for the shared <DocLines>. */
+export function returnDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy }: ReturnDocProps): DocLinesProps<ReturnLine> {
   const lines = draft.lines;
   const h = lineHelpers<ReturnLine>({ items: m.items, lines, update, errors, postingDate: draft.postingDate, uoms: m.inv.uoms });
   const { itemOf, patch, err, lineKind, uomLabel, uomOptions } = h;
@@ -123,14 +123,16 @@ export function returnDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy 
 
   const columns = pick(cols, [
     ['type', 'hide'], ['qty', 'always'],
-    ['warehouse', 'hide'], ['inventoryQty', 'hide'],
-    ['unitPrice', 'always'], ['discount', 'hide'],
-    ['tax', 'hide'], ['taxAmount', 'hide'],
-    ['total', 'always'],
+    ['uomName', 'hide'], ['itemsPerUnit', 'hide'], ['inventoryUom', 'hide'],
+    ['warehouse', 'hide'], ['inventoryQty', 'hide'], ['priceList', 'hide'],
+    ['unitPrice', 'always'], ['discount', 'hide'], ['priceAfterDisc', 'hide'],
+    ['tax', 'hide'], ['taxAmount', 'hide'], ['gross', 'hide'], ['total', 'always'], ['grossTotalLc', 'hide'],
     ['returnReason', 'always'],
     ['countryOfOrigin', 'hide'], ['warranty', 'hide'], ['unitCost', 'hide'],
     ['withholding', 'hide'], ['withholdingBase', 'hide'],
     ['baseDoc', 'hide'], ['blanket', 'hide'], ['freeText', 'hide'],
+    ['name', 'hide'], ['bpCatalogNo', 'hide'], ['mfrNo', 'hide'],
+    ['department', 'hide'], ['requisition', 'hide'], ['lineStatus', 'hide'],
   ]);
 
   return {

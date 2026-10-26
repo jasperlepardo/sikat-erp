@@ -14,7 +14,7 @@ export type ActivityTargetKind =
   | 'ITEM'
   | 'BP'
   | 'EMP'
-  | 'PR' | 'RFQ' | 'PO' | 'GRPO' | 'APINV' | 'APRI' | 'PAY' | 'GRET' | 'APCM' | 'DPR' | 'PBA' | 'LC' | 'RI'
+  | 'PR' | 'RFQ' | 'PO' | 'GRPO' | 'APINV' | 'APRI' | 'PAY' | 'GRET' | 'GRR' | 'APCM' | 'DPR' | 'APDPI' | 'PBA' | 'LC' | 'RI'
   | 'QT' | 'SO' | 'DN' | 'ARINV' | 'RCV' | 'ARCM' | 'SRT' | 'BA';
 
 /** One record the activity shows on. */

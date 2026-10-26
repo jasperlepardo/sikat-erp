@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
+import { createPortal } from 'react-dom';
 import { Alert, Badge, Button, Form, Panel, PanelHeader, Select, Tabs, Text } from '@jasperlepardo/sikat-design-system';
 import { AttachmentsCard } from '../../../../../components/form/AttachmentsCard';
 import { type Errors } from '../../../../../components/form/fields';
@@ -44,7 +45,9 @@ import { CustomerCard } from '../../../shared/CustomerCard';
 import { buildDnContext, type DnDraft, type DnMasters } from '../../../deliveries/detail/types';
 import { useDocTitle } from '../../../../../services/useDocTitle';
 import { type SrContext, type SrDraft, type SrMasters } from '../../types';
-import { SrLinesCard } from './SrLinesCard';
+import { DocLines } from '../../../../../components/form/docLines/DocLines';
+import { CopyPanel, type CopySourceType } from '../../../../purchasing/shared/CopyPanel';
+import { srDoc } from './srDoc';
 import { ReturnDatesCard } from '../../ReturnDatesCard';
 import { ReturnShipmentCard } from '../../ReturnShipmentCard';
 import { ReturnAssignmentCard } from '../../ReturnAssignmentCard';
@@ -155,6 +158,7 @@ function SalesReturnForm() {
   const [linkingReplacement, setLinkingReplacement] = useState(false);
   const [replacementDnId, setReplacementDnId] = useState('');
   const [customerDetailsOpen, setCustomerDetailsOpen] = useState(false);
+  const [copying, setCopying] = useState(false);
 
   useEffect(() => {
     loadSrMasters().then((masters) => {
@@ -453,7 +457,7 @@ function SalesReturnForm() {
                     onPickCustomer={pickCustomer}
                     onOpenDetails={() => setCustomerDetailsOpen(true)}
                   />
-                  <SrLinesCard {...sectionProps} deliveries={availableDeliveries} onCopy={copyFromDelivery} />
+                  <DocLines {...srDoc({ ...sectionProps, onCopyClick: () => setCopying(true), canCopy: availableDeliveries.length > 0 })} />
                   <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach the RMA, photos of damage, or the courier return waybill." />
                 </div>
 
@@ -468,6 +472,35 @@ function SalesReturnForm() {
         </Panel>
       </Form>
       <SrCustomerDetailsPanel {...sectionProps} open={customerDetailsOpen} onClose={() => setCustomerDetailsOpen(false)} />
+      {copying
+        ? createPortal(
+            <CopyPanel
+              sources={[{
+                key: 'DN' as const,
+                label: 'Deliveries',
+                totalHeader: 'Shipped',
+                qtyHeader: 'Return',
+                hint: 'Return quantities can be at most the delivery open qty.',
+                docs: availableDeliveries.map((d) => ({
+                  id: d.id,
+                  label: `${dnNumber(d)} · ${d.customerName}`,
+                  description: `Shipped ${d.postingDate}`,
+                  lines: d.lines
+                    .filter((l) => dnOpenQty(l, d) > 0)
+                    .map((l) => ({ id: l.id, itemNo: l.itemNo, name: l.description, warehouse: l.warehouse, total: `${l.quantity} ${l.uomCode}`, open: dnOpenQty(l, d) })),
+                })),
+              }] satisfies CopySourceType<'DN'>[]}
+              taken={new Set(draft.lines.map((l) => l.baseLineId).filter((id): id is string => !!id))}
+              onCancel={() => setCopying(false)}
+              onCopy={(_type, docId, picks) => {
+                const dn = availableDeliveries.find((d) => d.id === docId);
+                setCopying(false);
+                if (dn) copyFromDelivery(dn, picks);
+              }}
+            />,
+            document.body,
+          )
+        : null}
     </>
   );
 }

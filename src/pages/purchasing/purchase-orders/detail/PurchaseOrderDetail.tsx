@@ -42,7 +42,7 @@ import {
   seriesOf,
 } from '../../../../services/purchaseOrders';
 import { logRejection } from '../../../../services/approvalRules';
-import { PurchDoc } from '../../shared/PurchDoc';
+import { DocLines } from '../../../../components/form/docLines/DocLines';
 import { poDoc } from './poDoc';
 import { PoDeliveryCard } from './PoDeliveryCard';
 import { PoReceiptsTab } from './PoReceiptsTab';
@@ -75,7 +75,7 @@ import { VendorCard } from '../../shared/VendorCard';
 import { VendorDetailsPanel } from '../../shared/VendorDetailsPanel';
 import { PoDocumentCard } from './PoDocumentCard';
 import { PoAssignmentCard } from './PoTotalsCard';
-import { AP_LIST_PATH, DPR_LIST_PATH, PO_LIST_PATH, PO_STATUS_INTENT } from '../../paths';
+import { AP_LIST_PATH, APRI_LIST_PATH, DPI_LIST_PATH, DPR_LIST_PATH, PO_LIST_PATH, PO_STATUS_INTENT } from '../../paths';
 
 /** Everything that defaults from the vendor. Tax codes depend on the vendor's VAT status, so lines re-propose theirs. */
 function vendorPatch(v: Partner, draft: PoDraft, m: PoMasters): Partial<PoDraft> {
@@ -317,7 +317,10 @@ function PurchaseOrderForm() {
       closeDate: '',
       dueDate: dueDateFor(today, draft.paymentTermId),
       splitFrom: undefined,
-      lines: draft.lines.map((l) => ({ ...l, id: `ln-${crypto.randomUUID().slice(0, 8)}`, receivedQty: 0, status: 'Open' as const, deliveryDate: '' })),
+      // A duplicate is its own document — drop the link to any source quotation or request.
+      baseRfqId: '',
+      basePrId: undefined,
+      lines: draft.lines.map((l) => ({ ...l, id: `ln-${crypto.randomUUID().slice(0, 8)}`, receivedQty: 0, status: 'Open' as const, deliveryDate: '', baseId: undefined, baseLineId: undefined, baseDocNo: undefined })),
     };
     navigate(`${PO_LIST_PATH}/new`, { state: { copyFrom: copy } });
   };
@@ -353,7 +356,9 @@ function PurchaseOrderForm() {
       ? [
           { label: 'Copy to goods receipt', icon: 'inventory', onSelect: () => navigate('/purchasing/goods-receipts/new', { state: { fromPo: saved.id } }) },
           { label: 'Copy to A/P invoice', icon: 'request_quote', onSelect: () => navigate(`${AP_LIST_PATH}/new`, { state: { fromPo: saved.id } }) },
+          { label: 'Copy to A/P reserve invoice', icon: 'receipt_long', onSelect: () => navigate(`${APRI_LIST_PATH}/new`, { state: { fromPo: saved.id } }) },
           { label: 'Copy to A/P down payment request', icon: 'savings', onSelect: () => navigate(`${DPR_LIST_PATH}/new`, { state: { fromPo: saved.id } }) },
+          { label: 'Copy to A/P down payment invoice', icon: 'receipt_long', onSelect: () => navigate(`${DPI_LIST_PATH}/new`, { state: { fromPo: saved.id } }) },
         ]
       : []),
     ...(!isNew ? [{ label: 'Duplicate', icon: 'content_copy', onSelect: duplicate }] : []),
@@ -462,7 +467,7 @@ function PurchaseOrderForm() {
                     { value: 'receipts', label: 'Receipts' },
                   ]}
                 />
-                {contentTab === 'item' ? <PurchDoc {...poDoc(sectionProps)} /> : <PoReceiptsTab draft={draft} />}
+                {contentTab === 'item' ? <DocLines {...poDoc(sectionProps)} /> : <PoReceiptsTab draft={draft} />}
                 <ReferencesTable refs={draft.references} onChange={(references) => update({ references })} readOnly={ctx.readOnly} description="Other documents this PO refers to, or that refer to it." />
                 <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach the vendor's quotation, signed PO acknowledgement or order confirmation." />
               </div>

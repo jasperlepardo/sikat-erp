@@ -12,6 +12,7 @@ import { paymentTerms } from './partnerMasters';
 import { createCollection } from './store';
 import { addDays, todayISO } from './dates';
 import { applyOrderedChange } from './items';
+import { applyRequestDraw } from './purchaseRequests';
 
 import { poSeries, seriesLookup, formatDocNum } from './allSeries';
 import { round2 } from './num';
@@ -157,6 +158,7 @@ export async function savePurchaseOrder(input: PoInput, { asDraft = false } = {}
   if (asDraft) {
     const draft = await orders.save({ ...input, status: 'Draft', docNum: 0 });
     await applyOrderedChange(before, draft);
+    await applyRequestDraw(before, draft);
     return [draft];
   }
 
@@ -183,6 +185,7 @@ export async function savePurchaseOrder(input: PoInput, { asDraft = false } = {}
   if (!splitting) {
     const saved = await orders.save(withStatus({ ...input, docNum: number(input.docNum) }));
     await applyOrderedChange(before, saved);
+    await applyRequestDraw(before, saved);
     return [saved];
   }
 
@@ -200,9 +203,13 @@ export async function savePurchaseOrder(input: PoInput, { asDraft = false } = {}
     };
     saved.push(await orders.save(withStatus(part)));
   }
-  // The split parts together take over what the original had on order.
+  // The split parts together take over what the original had on order, and what it drew from a request.
   await applyOrderedChange(before, undefined);
-  for (const part of saved) await applyOrderedChange(undefined, part);
+  await applyRequestDraw(before, undefined);
+  for (const part of saved) {
+    await applyOrderedChange(undefined, part);
+    await applyRequestDraw(undefined, part);
+  }
   return saved;
 }
 
@@ -218,6 +225,7 @@ export async function closePurchaseOrder(po: PurchaseOrder) {
     lines: po.lines.map((l) => ({ ...l, status: 'Closed' as const })),
   });
   await applyOrderedChange(po, closed);
+  await applyRequestDraw(po, closed);
   return closed;
 }
 
@@ -226,10 +234,14 @@ export async function cancelPurchaseOrder(po: PurchaseOrder) {
   if (po.lines.some((l) => l.receivedQty > 0)) throw new Error('Goods were already received on this PO — close it instead.');
   const cancelled = await orders.save({ ...po, status: 'Cancelled', closeDate: TODAY(), lines: po.lines.map((l) => ({ ...l, status: 'Closed' as const })) });
   await applyOrderedChange(po, cancelled);
+  await applyRequestDraw(po, cancelled);
   return cancelled;
 }
 
 /** Recall: move Not Confirmed back to Draft without clearing the document number. */
 export async function recallPurchaseOrder(po: PurchaseOrder) {
-  return orders.save({ ...po, status: 'Draft', approved: false });
+  const recalled = await orders.save({ ...po, status: 'Draft', approved: false });
+  // Back to Draft, so it no longer consumes its source request's open quantities.
+  await applyRequestDraw(po, recalled);
+  return recalled;
 }

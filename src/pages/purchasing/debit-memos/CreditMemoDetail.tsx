@@ -5,19 +5,17 @@ import {
   Alert,
   Badge,
   Button,
-  Checkbox,
   Form,
   Panel,
   PanelHeader,
   Tabs,
   Text,
-  type TableColumn,
 } from '@jasperlepardo/sikat-design-system';
 import { type Errors } from '../../../components/form/fields';
 import { MoreMenu, type MoreMenuItem } from '../../../components/form/MoreMenu';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../components/form/ProblemsAlert';
 import { formatAddress } from '../../../mocks/address';
-import { blankCreditMemo, newMemoLine, type ApCreditMemo, type MemoLine, type MemoStatus } from '../../../mocks/apCreditMemos';
+import { blankCreditMemo, type ApCreditMemo, type MemoLine, type MemoStatus } from '../../../mocks/apCreditMemos';
 import type { ApInvoice } from '../../../mocks/apInvoices';
 import type { GoodsReturn } from '../../../mocks/goodsReturns';
 import { CURRENT_USER_ID } from '../../../mocks/common';
@@ -54,14 +52,16 @@ import { dueDateFor, getPurchasingSettings } from '../../../services/purchaseOrd
 import { docWithholding } from '../../../services/withholding';
 import { buildGrContext } from '../goods-receipts/detail/types';
 import { CopyPanel } from '../shared/CopyPanel';
-import { DocumentFlow } from '../shared/DocumentFlow';
 import { invoiceBalance } from '../payments-made/detail/types';
 import { loadRetMasters, vendorAddressOptions, type RetMasters, memoFromInvoice, memoFromReturn } from '../shared/returnsTypes';
-import { ReturnLines } from '../shared/ReturnLines';
-import { ActivityTab } from '../../../components/activity/ActivityTab';
+import { memoDoc } from './detail/memoDoc';
+import { DocLines } from '../../../components/form/docLines/DocLines';
 import { neighbours, NotFound, PrevNext, siblingKeys, useDocTab, useReject } from '../../../components/form/DetailNav';
+import { DocumentFlow } from '../shared/DocumentFlow';
+import { ActivityTab } from '../../../components/activity/ActivityTab';
 import { useDocTitle } from '../../../services/useDocTitle';
-import { CmVendorCard } from './detail/CmVendorCard';
+import { VendorCard } from '../shared/VendorCard';
+import { VendorDetailsPanel } from '../shared/VendorDetailsPanel';
 import { CmDocumentCard } from './detail/CmDocumentCard';
 import { CmTotalsCard } from './detail/CmTotalsCard';
 import { CmJournalCard } from './detail/CmJournalCard';
@@ -70,18 +70,11 @@ import { CmLogisticsCard } from './detail/CmLogisticsCard';
 import { CmAccountingCard } from './detail/CmAccountingCard';
 import { ReferencesTable } from '../shared/ReferencesTable';
 import { AttachmentsCard } from '../../../components/form/AttachmentsCard';
-import { MEMO_LIST_PATH, MEMO_STATUS_INTENT } from '../paths';
+import { MEMO_LIST_PATH, MEMO_STATUS_INTENT, RETURN_LIST_PATH } from '../paths';
 import { round2 } from '../../../services/num';
 
 type Draft = Omit<ApCreditMemo, 'id'> & { id?: string };
 type TabId = 'contents' | 'logistics' | 'accounting';
-
-const PAGES = [
-  { value: 'details', label: 'Details' },
-  { value: 'transactions', label: 'Transactions' },
-  { value: 'activity', label: 'Activity' },
-] as const;
-type PageId = (typeof PAGES)[number]['value'];
 
 const ALL_CURRENCIES = 'All currencies';
 
@@ -125,6 +118,13 @@ function validate(d: Draft, fx: number, m: RetMasters, asDraft: boolean): Proble
   return problems;
 }
 
+const PAGES = [
+  { value: 'details', label: 'Details' },
+  { value: 'transactions', label: 'Transactions' },
+  { value: 'activity', label: 'Activity' },
+] as const;
+type PageId = (typeof PAGES)[number]['value'];
+
 export function CreditMemoDetail() {
   const { id } = useParams();
   const location = useLocation();
@@ -141,14 +141,16 @@ function CreditMemoForm() {
   const cmApproved = !getPurchasingSettings().requireApCreditMemoApproval;
   const [draft, setDraft] = useState<Draft | null | undefined>(isNew ? { ...blankCreditMemo(todayISO(), CURRENT_USER_ID), approved: cmApproved } : undefined);
   const [m, setM] = useState<RetMasters>();
-  const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
-  const setPage = useDocTab<PageId>(`${MEMO_LIST_PATH}/${id}`, tabParam);
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);
   const reject = useReject();
   const [copying, setCopying] = useState(false);
   const [applying, setApplying] = useState(false);
+  const [vendorDetailsOpen, setVendorDetailsOpen] = useState(false);
+  // Tab state (hook) must stay above the loading/not-found early returns — rules of hooks.
+  const page = (PAGES.some((p) => p.value === tabParam) ? tabParam : 'details') as PageId;
+  const setPage = useDocTab<PageId>(`${MEMO_LIST_PATH}/${id}`, tabParam);
 
   useEffect(() => {
     loadRetMasters().then((masters) => {
@@ -294,7 +296,7 @@ function CreditMemoForm() {
     ...bases.map((l) => ({
       label: `Open ${l.baseType === 'GRET' ? 'goods return' : 'A/P invoice'} ${l.baseDocNo}`,
       icon: l.baseType === 'GRET' ? 'assignment_return' : 'request_quote',
-      onSelect: () => navigate(l.baseType === 'GRET' ? `/purchasing/returns-and-debits-and-debits/returns/${l.baseId}` : `/purchasing/vendor-invoices/${l.baseId}`),
+      onSelect: () => navigate(l.baseType === 'GRET' ? `${RETURN_LIST_PATH}/${l.baseId}` : `/purchasing/vendor-invoices/${l.baseId}`),
     })),
     ...(vendor ? [{ label: `Open vendor ${vendor.code}`, icon: 'local_shipping', onSelect: () => navigate(`/purchasing/vendors/${vendor.id}`) }] : []),
   ];
@@ -303,27 +305,6 @@ function CreditMemoForm() {
   const addressOptions = vendorAddressOptions(vendor);
   const currencyTooltip = ctx.based ? `Locked to the base documents' currency; credited at ${baseInvoice ? `invoice ${apNumber(baseInvoice)}'s rate (${baseInvoice.fxRate})` : 'the posting date rate'}.` : undefined;
   const sectionProps = { draft, update, errors, m, ctx };
-
-  const returnGoodsColumn: TableColumn<MemoLine> = {
-    key: 'returnGoods',
-    header: 'Return goods',
-    cell: (l) => {
-      const item = m.items.find((i) => i.id === l.itemId);
-      if (!item) return null;
-      if (l.baseType === 'GRET') return <Text variant="small" tone="muted">Returned on {l.baseDocNo}</Text>;
-      if (!item.inventoryItem) return <Text variant="small" tone="muted">Not stocked</Text>;
-      return (
-        <Checkbox
-          aria-label={`Return the goods on ${l.itemNo}`}
-          checked={l.returnGoods}
-          disabled={added}
-          onChange={(e) => update({ lines: draft.lines.map((x) => (x.id === l.id ? { ...x, returnGoods: e.currentTarget.checked } : x)) })}
-        >
-          {l.returnGoods ? 'Send back' : 'Price only'}
-        </Checkbox>
-      );
-    },
-  };
 
   return (
     <>
@@ -339,8 +320,8 @@ function CreditMemoForm() {
             onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
             onBack={() => navigate(MEMO_LIST_PATH)}
             trailing={isNew ? undefined : <PrevNext path={MEMO_LIST_PATH} prevId={prevId} nextId={nextId} />}
-            tabs={isNew ? undefined : <Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={PAGES.map((p) => ({ ...p }))} />}
             status={isNew ? undefined : <Badge size="small" intent={MEMO_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
+            tabs={isNew ? undefined : <Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={PAGES.map((p) => ({ ...p }))} />}
             actions={
               <>
                 {added ? null : <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(MEMO_LIST_PATH)}>Cancel</Button>}
@@ -355,12 +336,12 @@ function CreditMemoForm() {
             <Panel.Body className="flex flex-col gap-2">
               <DocumentFlow kind="APCM" id={draft.id} notes="Everything linked to this credit memo: the invoices and goods returns it credits, and back through them to receipts and purchase orders." />
             </Panel.Body>
-          ) : page !== 'details' ? (
+          ) : page === 'activity' ? (
             <Panel.Body>
               <ActivityTab target={{ kind: 'APCM', id: draft.id ?? '' }} partnerId={draft.vendorId} />
             </Panel.Body>
           ) : (
-            <Panel.Body className="flex flex-col gap-2">
+          <Panel.Body className="flex flex-col gap-2">
               <ProblemsAlert problems={problems} tabLabel={(t) => ({ contents: 'Contents', logistics: 'Logistics', accounting: 'Accounting' })[t]} />
               {reject.alert('Reject A/P credit memo', rejectIt)}
               {added ? (
@@ -374,37 +355,17 @@ function CreditMemoForm() {
               <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
                 <div className="flex flex-col gap-2 lg:col-span-8">
                   <fieldset disabled={added} className="contents">
-                    <CmVendorCard {...sectionProps} pickVendor={pickVendor} locked={added} currencyTooltip={currencyTooltip} />
-                    <ReturnLines<MemoLine>
-                      lines={draft.lines}
-                      onChange={(lines) => update({ lines })}
-                      errors={errors}
-                      m={m}
-                      ctx={ctx}
-                      currency={code}
-                      postingDate={draft.postingDate}
+                    <VendorCard
+                      vendors={m.vendors}
                       vendorId={draft.vendorId}
-                      title="Contents"
-                      description={`What the vendor credits, in ${code}. Lines from an invoice send the goods back or adjust the price only; lines from a goods return just credit it.`}
-                      empty={draft.vendorId ? 'Copy from an A/P invoice or a goods return, or add lines.' : 'Pick a vendor first.'}
-                      newLine={() => newMemoLine()}
-                      sendsStock={(l) => sendsStock(l, m.items)}
-                      openHint={(l) => {
-                        if (l.baseType === 'APINV') {
-                          const il = m.invoices.find((i) => i.id === l.baseId)?.lines.find((x) => x.id === l.baseLineId);
-                          return il ? `${il.quantity} billed · ${returnableQty(il)} left to return` : undefined;
-                        }
-                        if (l.baseType === 'GRET') {
-                          const r = m.returns.find((x) => x.id === l.baseId);
-                          const rl = r?.lines.find((x) => x.id === l.baseLineId);
-                          return r && rl ? `${returnOpenQty(rl, r)} of ${rl.quantity} left to credit on the return` : undefined;
-                        }
-                        return undefined;
-                      }}
-                      onCopy={() => setCopying(true)}
-                      canCopy={invoices.length + returns.length > 0}
-                      extraColumns={[returnGoodsColumn]}
+                      vendor={ctx.vendor}
+                      readOnly={ctx.readOnly}
+                      locked={!!ctx.vendor && (added || ctx.based)}
+                      error={errors.vendorId}
+                      pickVendor={pickVendor}
+                      onOpenDetails={() => setVendorDetailsOpen(true)}
                     />
+                    <DocLines {...memoDoc({ ...sectionProps, onCopyClick: () => setCopying(true), canCopy: invoices.length + returns.length > 0 })} />
                     <ReferencesTable refs={draft.references} onChange={(references) => update({ references })} readOnly={added} description="Other documents this credit memo refers to, e.g. the vendor's credit note." />
                   </fieldset>
                   <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach the vendor's credit note or debit memo." />
@@ -486,6 +447,19 @@ function CreditMemoForm() {
             document.body,
           )
         : null}
+      <VendorDetailsPanel
+        draft={draft}
+        update={update}
+        vendor={ctx.vendor}
+        currencies={m.currencies}
+        readOnly={ctx.readOnly}
+        open={vendorDetailsOpen}
+        onClose={() => setVendorDetailsOpen(false)}
+        vendorRefHint="The vendor's credit note no."
+        vendorRefError={errors.vendorRef}
+        currency={{ disabled: added || ctx.based, tooltip: currencyTooltip, error: errors.currency }}
+        addresses={[]}
+      />
     </>
   );
 }

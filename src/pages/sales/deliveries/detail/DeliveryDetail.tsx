@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
+import { createPortal } from 'react-dom';
 import { Alert, Badge, Button, Form, Panel, PanelHeader, Tabs, Text } from '@jasperlepardo/sikat-design-system';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { type Errors } from '../../../../components/form/fields';
@@ -24,7 +25,9 @@ import { logRejection } from '../../../../services/approvalRules';
 import { getSalesSettings, listSalesOrders, openQty, soDueDate, soNumber } from '../../../../services/salesOrders';
 import { soSeries } from '../../../../services/allSeries';
 import { ALL_CURRENCIES, proposedTaxCode } from '../../sales-orders/detail/types';
-import { DnContentsCard } from './DnContentsCard';
+import { DocLines } from '../../../../components/form/docLines/DocLines';
+import { CopyPanel, type CopySourceType } from '../../../purchasing/shared/CopyPanel';
+import { dnDoc } from './dnDoc';
 import { buildDnContext, dnLineFromOrder, type DnContext, type DnDraft, type DnMasters } from './types';
 import { SalesDocumentFlow } from '../../shared/SalesDocumentFlow';
 import { useDocTitle } from '../../../../services/useDocTitle';
@@ -98,6 +101,7 @@ function DeliveryForm() {
   const [saving, setSaving] = useState(false);
   const reject = useReject();
   const [customerDetailsOpen, setCustomerDetailsOpen] = useState(false);
+  const [copying, setCopying] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -227,7 +231,7 @@ function DeliveryForm() {
     ...(draft.status === 'Draft' && !draft.approved ? [{ label: 'Submit for approval', icon: 'upload', onSelect: () => submit(null, false) }] : []),
     ...(draft.status === 'Not Confirmed' ? [{ label: 'Approve', icon: 'verified', onSelect: () => submit(null, false, { approved: true }) }, { label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => reject.start() }] : []),
     ...(draft.status === 'Open' && draft.lines.some((l) => l.quantity > l.invoicedQty)
-      ? [{ label: 'Copy to A/R invoice', icon: 'receipt', onSelect: () => navigate('/sales/invoices/new', { state: { fromDelivery: draft.id } }) }]
+      ? [{ label: 'Copy to A/R invoice', icon: 'receipt', onSelect: () => navigate('/sales/customer-invoices/new', { state: { fromDelivery: draft.id } }) }]
       : []),
     ...(draft.status === 'Open' ? [{ label: 'Copy to sales return', icon: 'assignment_return', onSelect: () => navigate(`${SR_LIST_PATH}/new`, { state: { fromDelivery: draft.id } }) }] : []),
     ...(draft.status === 'Open' ? [{ label: 'Close', icon: 'task_alt', onSelect: closeIt }] : []),
@@ -237,6 +241,8 @@ function DeliveryForm() {
 
   const title = isNew ? 'New delivery' : draft.status === 'Draft' ? 'Draft delivery' : dnNumber(draft);
   const tabProps = { draft, update, errors, m, ctx };
+  // Open orders of this customer (or any customer, before one is picked) with something left to ship.
+  const copyableOrders = m.orders.filter((o) => o.status === 'Open' && o.docType === 'Item' && (!draft.customerId || o.customerId === draft.customerId) && o.lines.some((l) => openQty(l) > 0) && (!ctx.based || o.currency === draft.currency));
 
   return (
     <>
@@ -302,10 +308,7 @@ function DeliveryForm() {
                     onOpenDetails={() => setCustomerDetailsOpen(true)}
                   />
                   {/* Not in a disabled fieldset: the table locks its own inputs and keeps its column settings. */}
-                  <DnContentsCard
-                    {...tabProps}
-                    onCopy={(so, picks) => setDraft(copyLines(draft, so, picks))}
-                  />
+                  <DocLines {...dnDoc({ ...tabProps, onCopyClick: () => setCopying(true), canCopy: copyableOrders.length > 0 })} />
                   <ReferencesTable
                     refs={draft.references}
                     onChange={(references) => update({ references })}
@@ -337,6 +340,33 @@ function DeliveryForm() {
         open={customerDetailsOpen}
         onClose={() => setCustomerDetailsOpen(false)}
       />
+      {copying
+        ? createPortal(
+            <CopyPanel
+              sources={[{
+                key: 'SO' as const,
+                label: 'Sales orders',
+                totalHeader: 'Ordered',
+                qtyHeader: 'Deliver',
+                hint: 'Open lines come at their open quantity; ship less if the order allows partial delivery.',
+                docs: copyableOrders.map((o) => ({
+                  id: o.id,
+                  label: `${soNumber(o)} · ${o.customerName}`,
+                  description: `${o.deliveryDate ? `Due ${o.deliveryDate}` : 'No delivery date'}${o.allowPartialDelivery ? '' : ' · full delivery only'}`,
+                  lines: o.lines.map((l) => ({ id: l.id, itemNo: l.itemNo, name: l.description, warehouse: l.warehouse, total: `${l.quantity} ${l.uomCode}`, open: openQty(l) })),
+                })),
+              }] satisfies CopySourceType<'SO'>[]}
+              taken={new Set(draft.lines.map((l) => l.baseLineId).filter((id): id is string => !!id))}
+              onCancel={() => setCopying(false)}
+              onCopy={(_type, docId, picks) => {
+                const order = m.orders.find((o) => o.id === docId);
+                setCopying(false);
+                if (order) setDraft(copyLines(draft, order, picks));
+              }}
+            />,
+            document.body,
+          )
+        : null}
     </>
   );
 }

@@ -57,7 +57,9 @@ import { SalesTotalsFooter } from '../../../shared/TotalsFooter';
 import { buildDnContext, type DnDraft, type DnMasters } from '../../../deliveries/detail/types';
 import { useDocTitle } from '../../../../../services/useDocTitle';
 import { type ArCmMasters, type SrContext } from '../../types';
-import { ArCmLinesCard } from './ArCmLinesCard';
+import { DocLines } from '../../../../../components/form/docLines/DocLines';
+import { CopyPanel, type CopySourceType } from '../../../../purchasing/shared/CopyPanel';
+import { arCmDoc } from './arCmDoc';
 import { ArCmCustomerDetailsPanel } from './ArCmCustomerDetailsPanel';
 import { ReturnDatesCard } from '../../ReturnDatesCard';
 import { ReturnShipmentCard } from '../../ReturnShipmentCard';
@@ -148,6 +150,7 @@ function ArCreditMemoForm() {
   const reject = useReject();
   const [applying, setApplying] = useState(false);
   const [customerDetailsOpen, setCustomerDetailsOpen] = useState(false);
+  const [copying, setCopying] = useState(false);
 
   useEffect(() => {
     loadArCmMasters().then((masters) => {
@@ -401,11 +404,9 @@ function ArCreditMemoForm() {
                     onPickCustomer={pickCustomer}
                     onOpenDetails={() => setCustomerDetailsOpen(true)}
                   />
-                  <ArCmLinesCard
-                    {...sectionProps}
-                    invoices={invoices}
-                    onCopy={copyFromInvoice}
-                    cardFooter={
+                  <DocLines
+                    {...arCmDoc({ ...sectionProps, onCopyClick: () => setCopying(true), canCopy: invoices.length > 0 })}
+                    footer={
                       <SalesTotalsFooter
                         {...sectionProps}
                         withholding={withholding.map((w) => ({ label: `${w.kind === 'Withholding VAT' ? 'VAT' : 'EWT'} withheld — ${w.atc} (${w.rate}%)`, amount: w.amount }))}
@@ -447,6 +448,35 @@ function ArCreditMemoForm() {
         </Panel>
       </Form>
       <ArCmCustomerDetailsPanel {...sectionProps} open={customerDetailsOpen} onClose={() => setCustomerDetailsOpen(false)} />
+      {copying
+        ? createPortal(
+            <CopyPanel
+              sources={[{
+                key: 'AR' as const,
+                label: 'A/R invoices',
+                totalHeader: 'Billed',
+                qtyHeader: 'Credit',
+                hint: 'Credit quantities can be at most the billed quantity.',
+                docs: invoices.map((inv) => ({
+                  id: inv.id,
+                  label: `${arNumber(inv)} · ${inv.customerName}`,
+                  description: `Invoiced ${inv.postingDate}`,
+                  lines: inv.lines
+                    .filter((l) => l.quantity > 0)
+                    .map((l) => ({ id: l.id, itemNo: l.itemNo, name: l.description, warehouse: l.warehouse, total: `${l.quantity} ${l.uomCode}`, open: l.quantity })),
+                })),
+              }] satisfies CopySourceType<'AR'>[]}
+              taken={new Set(draft.lines.map((l) => l.baseLineId).filter((id): id is string => !!id))}
+              onCancel={() => setCopying(false)}
+              onCopy={(_type, docId, picks) => {
+                const inv = invoices.find((i) => i.id === docId);
+                setCopying(false);
+                if (inv) copyFromInvoice(inv, picks);
+              }}
+            />,
+            document.body,
+          )
+        : null}
       {applying && (draft as ArCreditMemo).id
         ? createPortal(
             <ApplyCreditPanel

@@ -9,8 +9,10 @@ import { apRiNumber, apRiTotals, listApReserveInvoices } from '../../../services
 import { listPayments, overallAmount, paymentNumber, rowSettled } from '../../../services/outgoingPayments';
 import { formatAmount } from '../../../services/format';
 import { listGoodsReturns, returnNumber, returnTotal } from '../../../services/goodsReturns';
+import { grrNumber, listGoodsReturnRequests } from '../../../services/goodsReturnRequests';
 import { listCreditMemos, memoNumber, memoTotal } from '../../../services/apCreditMemos';
 import { dprNumber, dprTotal, listDownPayments } from '../../../services/apDownPayments';
+import { dpiNumber, dpiTotal, listDownPaymentInvoices } from '../../../services/apDownPaymentInvoices';
 import { listPurchaseBlanketAgreements, pbaNumber, pbaTotals } from '../../../services/purchaseBlanketAgreements';
 import { listLandedCosts, lcNumber, lcTotals } from '../../../services/landedCosts';
 import { lineage, type LinkedDocument } from './lineage';
@@ -37,13 +39,17 @@ import {
   PR_STATUS_INTENT,
   RETURN_LIST_PATH,
   RETURN_STATUS_INTENT,
+  GRR_LIST_PATH,
+  GRR_STATUS_INTENT,
+  DPI_LIST_PATH,
+  DPI_STATUS_INTENT,
   RFQ_LIST_PATH,
   RFQ_STATUS_INTENT,
 } from '../paths';
 
 export type { LinkedDocument,  } from './lineage';
 
-export type DocKind = 'PR' | 'RFQ' | 'PO' | 'GRPO' | 'APINV' | 'APRI' | 'PAY' | 'GRET' | 'APCM' | 'DPR' | 'PBA' | 'LC';
+export type DocKind = 'PR' | 'RFQ' | 'PO' | 'GRPO' | 'APINV' | 'APRI' | 'PAY' | 'GRET' | 'GRR' | 'APCM' | 'DPR' | 'APDPI' | 'PBA' | 'LC';
 
 /** Lines of a document copied from one base document. */
 export interface CoveredLine {
@@ -137,6 +143,7 @@ const SOURCES: Record<DocKind, () => Promise<DocNode[]>> = {
       items: coveredLines(po.lines),
       bases: [
         ...(po.baseRfqId ? [{ kind: 'RFQ' as const, id: po.baseRfqId, lines: [] }] : []),
+        ...(po.basePrId ? [{ kind: 'PR' as const, id: po.basePrId, lines: coveredLines(po.lines.filter((l) => l.baseLineId)) }] : []),
         ...[...new Set(po.lines.map((l) => l.agreementId).filter(Boolean))].map((id) => ({
           kind: 'PBA' as const,
           id,
@@ -190,8 +197,12 @@ const SOURCES: Record<DocKind, () => Promise<DocNode[]>> = {
           id: b.baseId,
           lines: inv.lines.filter((l) => l.baseType === b.baseType && l.baseId === b.baseId),
         })),
-        // Down payments it drew count as bases too: the advance came before the bill.
-        ...(inv.drawnDownPayments ?? []).map((d) => ({ kind: 'DPR' as const, id: d.requestId, lines: [], note: `Drew ${inv.currency} ${formatAmount(d.amount)}` })),
+        // Down payments drawn count as bases (DPR or APDPI): the advance came before the bill.
+        ...(inv.drawnDownPayments ?? []).map((d) => {
+          // Resolve kind dynamically: stored requestId could be DPR or APDPI.
+          // Default to DPR for graph display; APDPI node will link back from its own source entry.
+          return { kind: 'DPR' as DocKind, id: d.requestId, lines: [] as CoveredLine[], note: `Drew ${inv.currency} ${formatAmount(d.amount)}` };
+        }),
       ],
     }));
   },
@@ -234,7 +245,7 @@ const SOURCES: Record<DocKind, () => Promise<DocNode[]>> = {
       items: [],
       bases: p.rows
         .filter((r) => r.selected && r.amount > 0)
-        .map((r) => ({ kind: (r.docType === 'DPR' ? 'DPR' : 'APINV') as DocKind, id: r.invoiceId, lines: [], note: `Paid ${p.currency} ${formatAmount(rowSettled(r))}` })),
+        .map((r) => ({ kind: (r.docType === 'DPR' ? 'DPR' : r.docType === 'APDPI' ? 'APDPI' : 'APINV') as DocKind, id: r.invoiceId, lines: [], note: `Paid ${p.currency} ${formatAmount(rowSettled(r))}` })),
     })),
   // Return lines come from receipt lines (unbilled goods) or invoice lines (billed goods).
   GRET: async () => {
@@ -252,11 +263,14 @@ const SOURCES: Record<DocKind, () => Promise<DocNode[]>> = {
       total: returnTotal(r, codes),
       partnerId: r.vendorId,
       items: coveredLines(r.lines),
-      bases: [...new Map(r.lines.filter((l) => l.baseType).map((l) => [`${l.baseType}:${l.baseId}`, l])).values()].map((b) => ({
-        kind: (b.baseType === 'GRPO' ? 'GRPO' : 'APINV') as DocKind,
-        id: b.baseId,
-        lines: r.lines.filter((l) => l.baseType === b.baseType && l.baseId === b.baseId),
-      })),
+      bases: [
+        ...(r.baseGrrId ? [{ kind: 'GRR' as DocKind, id: r.baseGrrId, lines: coveredLines(r.lines.filter((l) => l.grrLineId)) }] : []),
+        ...[...new Map(r.lines.filter((l) => l.baseType).map((l) => [`${l.baseType}:${l.baseId}`, l])).values()].map((b) => ({
+          kind: (b.baseType === 'GRPO' ? 'GRPO' : 'APINV') as DocKind,
+          id: b.baseId,
+          lines: r.lines.filter((l) => l.baseType === b.baseType && l.baseId === b.baseId),
+        })),
+      ],
     }));
   },
   // Credit memo lines come from invoice lines or goods return lines.
@@ -306,6 +320,30 @@ const SOURCES: Record<DocKind, () => Promise<DocNode[]>> = {
     }));
   },
 
+  APDPI: async () => {
+    const [invs, codes] = await Promise.all([listDownPaymentInvoices(), taxCodes.list()]);
+    return invs.map((d) => ({
+      kind: 'APDPI' as const,
+      id: d.id,
+      type: 'A/P down payment invoice',
+      number: dpiNumber(d),
+      href: `${DPI_LIST_PATH}/${d.id}`,
+      date: d.postingDate,
+      status: d.status,
+      intent: DPI_STATUS_INTENT[d.status],
+      currency: d.currency,
+      total: dpiTotal(d, codes),
+      partnerId: d.vendorId,
+      items: coveredLines(d.lines),
+      bases: [
+        ...(d.baseDprId ? [{ kind: 'DPR' as const, id: d.baseDprId, lines: [] as CoveredLine[] }] : []),
+        ...[...new Set(d.lines.filter((l) => l.baseType === 'PO').map((l) => l.baseId))].map((poId) => ({
+          kind: 'PO' as const, id: poId, lines: d.lines.filter((l) => l.baseId === poId),
+        })),
+      ],
+    }));
+  },
+
   PBA: async () => {
     const pbas = await listPurchaseBlanketAgreements();
     return pbas.map((pba) => ({
@@ -345,6 +383,25 @@ const SOURCES: Record<DocKind, () => Promise<DocNode[]>> = {
         id: grId,
         lines: coveredLines(lc.lines.filter((l) => l.baseId === grId)),
       })),
+    }));
+  },
+
+  GRR: async () => {
+    const grrs = await listGoodsReturnRequests();
+    return grrs.map((r) => ({
+      kind: 'GRR' as const,
+      id: r.id,
+      type: 'Goods return request',
+      number: r.docNum ? grrNumber(r) : r.id,
+      href: `${GRR_LIST_PATH}/${r.docNum ? grrNumber(r) : r.id}`,
+      date: r.postingDate,
+      status: r.status,
+      intent: GRR_STATUS_INTENT[r.status],
+      currency: r.currency,
+      total: 0,
+      partnerId: r.vendorId,
+      items: coveredLines(r.lines),
+      bases: [],
     }));
   },
 };

@@ -90,6 +90,8 @@ export interface PurchLine {
   unitCostLc?: number;
   /** Billed so far on A/P invoices copied from this line. GR. */
   invoicedQty?: number;
+  /** The Goods Return Request line this GR line was drawn from, for open-qty write-back. GR. */
+  grrLineId?: string;
   /** Sent back on goods returns copied from this line. GR. */
   returnedQty?: number;
   /** Withholding resolved for this line, stamped when a posting document is added. A/P invoice. */
@@ -104,9 +106,3 @@ export interface LineWithholding {
   base: number;
   amount: number;
 }
-
-/**
- * The minimal constraint the shared table and column builders need: a stable row id
- * and the item foreign key (columns render nothing until an item is picked).
- */
-export type PurchLineBase = { id: string; itemId: string };

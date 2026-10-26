@@ -28,7 +28,8 @@ import { withTaxFiling } from './taxRecalc';
 import { createCollection } from './store';
 import { purchasingHistory } from './purchasingHistory';
 import { birForms, taxCodes } from './masterData';
-import { drawDownPayments, drawableAmount, dprTotal, listDownPayments } from './apDownPayments';
+import { drawDownPayments, dprTotal, listDownPayments } from './apDownPayments';
+import { drawDownPaymentInvoices, dpiTotal, listDownPaymentInvoices } from './apDownPaymentInvoices';
 import { round2 } from './num';
 
 // Seeded withholding is stamped as if each was added under the seeded Settings.
@@ -229,10 +230,14 @@ export async function addApInvoice(input: ApInput, fx: number, due?: number): Pr
     if (qty > open) over.push({ lineId: line.id, message: `${line.itemNo}: billing ${qty} ${line.uomCode} but PO ${line.baseDocNo} has ${open} open.` });
   }
   if (over.length) throw new ApPostError(over.map((o) => o.lineId), over.map((o) => o.message).join(' '));
-  const requests = await listDownPayments();
+  const [requests, dpiInvoices] = await Promise.all([listDownPayments(), listDownPaymentInvoices()]);
   const overDrawn = (input.drawnDownPayments ?? []).filter((d) => {
-    const r = requests.find((x) => x.id === d.requestId);
-    return !r || d.amount > drawableAmount(r) + 0.005;
+    const dpr = requests.find((x) => x.id === d.requestId);
+    const dpi = dpiInvoices.find((x) => x.id === d.requestId);
+    const r = dpr ?? dpi;
+    if (!r) return true;
+    const available = Math.max(0, Math.round((r.appliedAmount - r.drawnAmount) * 100) / 100);
+    return d.amount > available + 0.005;
   });
   if (overDrawn.length) throw new ApPostError([], `Down payment ${overDrawn.map((d) => d.docNo).join(', ')} doesn't have that much paid and undrawn any more.`);
 
@@ -346,11 +351,15 @@ export async function applyInvoiceReturns(lines: { baseId: string; baseLineId: s
 /** What's left to send back on an invoice line: billed less already returned. */
 export const returnableQty = (l: ApLine) => Math.max(0, round2(l.quantity - (l.returnedQty ?? 0)));
 
-/** Draw (or give back) amounts on down payment requests; a request closes once fully paid and drawn. */
+/** Draw (or give back) amounts on down payment requests or invoices; they close once fully drawn. */
 async function drawRequests(draws: DownPaymentDraw[], sign: 1 | -1) {
   if (!draws.length) return;
-  const codes = await taxCodes.list();
-  await drawDownPayments(draws.map((d) => ({ requestId: d.requestId, amount: d.amount })), (r) => dprTotal(r, codes), sign);
+  const [codes, dpis] = await Promise.all([taxCodes.list(), listDownPaymentInvoices()]);
+  const dpiIds = new Set(dpis.map((d) => d.id));
+  const dprDraws = draws.filter((d) => !dpiIds.has(d.requestId));
+  const dpiDraws = draws.filter((d) => dpiIds.has(d.requestId));
+  if (dprDraws.length) await drawDownPayments(dprDraws.map((d) => ({ requestId: d.requestId, amount: d.amount })), (r) => dprTotal(r, codes), sign);
+  if (dpiDraws.length) await drawDownPaymentInvoices(dpiDraws.map((d) => ({ requestId: d.requestId, amount: d.amount })), (r) => dpiTotal(r, codes), sign);
 }
 
 export async function recallApInvoice(inv: ApInvoice): Promise<ApInvoice> {

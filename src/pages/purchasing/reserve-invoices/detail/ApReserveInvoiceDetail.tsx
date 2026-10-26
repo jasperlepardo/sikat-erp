@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import {
   Alert,
@@ -36,7 +37,7 @@ import { loadInventoryMasters } from '../../../../services/inventoryMasters';
 import { listItems } from '../../../../services/items';
 import { companyTax, currencies, exchangeRates, taxCodes, taxGroups, withholdingGroups, withholdingTaxes } from '../../../../services/masterData';
 import { listPartnersByRole } from '../../../../services/partners';
-import { dueDateFor, getPurchasingSettings, listPurchaseOrders, openQty } from '../../../../services/purchaseOrders';
+import { dueDateFor, getPurchasingSettings, listPurchaseOrders, openQty, poNumber } from '../../../../services/purchaseOrders';
 import { proposedTaxCode } from '../../purchase-orders/detail/types';
 import { GrLogistics } from '../../goods-receipts/detail/GrLogisticsCard';
 import { defaultPayTo } from '../../goods-receipts/detail/types';
@@ -51,7 +52,9 @@ import { VendorCard } from '../../shared/VendorCard';
 import { VendorDetailsPanel } from '../../shared/VendorDetailsPanel';
 import { receivingVendorAddressFields } from '../../shared/vendorAddresses';
 import { ApriDocumentCard } from './ApriDocumentCard';
-import { ApriContentsCard } from './ApriContentsCard';
+import { apriDoc } from './apriDoc';
+import { DocLines } from '../../../../components/form/docLines/DocLines';
+import { CopyPanel } from '../../shared/CopyPanel';
 import { ApriAccountingCard } from './ApriAccountingCard';
 import { ApriTotalsCard } from './ApriTotalsCard';
 import { ApriJournalCard } from './ApriJournalCard';
@@ -113,6 +116,7 @@ function ApReserveInvoiceForm() {
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);
   const [vendorDetailsOpen, setVendorDetailsOpen] = useState(false);
+  const [copying, setCopying] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -278,6 +282,11 @@ function ApReserveInvoiceForm() {
   const title = isNew ? 'New A/P reserve invoice' : added ? apRiNumber(draft) : 'Draft A/P reserve invoice';
   const sectionProps = { draft, update, errors, m, ctx };
 
+  // Open POs from the vendor that this invoice can bill (Copy from).
+  const orders = draft.vendorId
+    ? m.orders.filter((po) => po.vendorId === draft.vendorId && po.status === 'Open' && (!ctx.based || po.currency === draft.currency))
+    : [];
+
   return (
     <>
     <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
@@ -289,7 +298,7 @@ function ApReserveInvoiceForm() {
           iconShape="rounded"
           iconSize={32}
           iconVariant="outline"
-          breadcrumbs={[{ label: 'Reserve Invoices', href: APRI_LIST_PATH }, { label: title }]}
+          breadcrumbs={[{ label: 'A/P Reserve Invoices', href: APRI_LIST_PATH }, { label: title }]}
           onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
           onBack={() => navigate(APRI_LIST_PATH)}
           trailing={isNew ? undefined : <PrevNext path={APRI_LIST_PATH} prevId={prevId} nextId={nextId} />}
@@ -344,7 +353,7 @@ function ApReserveInvoiceForm() {
                   pickVendor={pickVendor}
                   onOpenDetails={() => setVendorDetailsOpen(true)}
                 />
-                <ApriContentsCard {...sectionProps} onCopy={copyLines} />
+                <DocLines {...apriDoc({ ...sectionProps, onCopyClick: () => setCopying(true), copyableCount: orders.length })} />
                 <ReferencesTable refs={draft.references} onChange={(references) => update({ references })} readOnly={ctx.readOnly} description="Other documents this invoice refers to." />
                 <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach the vendor's invoice or supporting documents." />
               </div>
@@ -381,6 +390,37 @@ function ApReserveInvoiceForm() {
       }}
       addresses={ctx.vendor ? receivingVendorAddressFields(m, ctx.vendor, { includeWarehouses: false, shipPlaceholder: 'Delivery address when goods arrive' }) : []}
     />
+    {copying
+      ? createPortal(
+          <CopyPanel
+            sources={[
+              {
+                key: 'PO' as const,
+                label: 'Purchase orders',
+                totalHeader: 'Ordered',
+                qtyHeader: 'Invoice',
+                hint: 'Bill from an open PO. Goods are received later when you create a Goods Receipt referencing this invoice.',
+                docs: orders.map((po) => ({
+                  id: po.id,
+                  label: `PO ${poNumber(po)}`,
+                  description: `Delivery ${formatDate(po.deliveryDate)} · ${po.currency}`,
+                  lines: po.lines
+                    .filter((l) => l.status === 'Open')
+                    .map((l) => ({ id: l.id, itemNo: l.itemNo, name: l.name, description: l.description, warehouse: l.warehouse, total: `${l.quantity} ${l.uomCode}`, open: openQty(l) })),
+                })),
+              },
+            ]}
+            taken={new Set(draft.lines.map((l) => l.baseLineId).filter(Boolean))}
+            onCancel={() => setCopying(false)}
+            onCopy={(_type, docId, picks) => {
+              const po = orders.find((p) => p.id === docId)!;
+              copyLines(riLinesFromPo(po, picks, m));
+              setCopying(false);
+            }}
+          />,
+          document.body,
+        )
+      : null}
     </>
   );
 }

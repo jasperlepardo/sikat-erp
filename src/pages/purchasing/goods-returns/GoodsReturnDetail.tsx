@@ -47,7 +47,7 @@ import { buildGrContext } from '../goods-receipts/detail/types';
 import { CopyPanel } from '../shared/CopyPanel';
 import { DocumentFlow } from '../shared/DocumentFlow';
 import { loadRetMasters, vendorAddressOptions, returnFromInvoice, returnFromReceipt, type RetMasters, type RetContext } from '../shared/returnsTypes';
-import { PurchDoc } from '../shared/PurchDoc';
+import { DocLines } from '../../../components/form/docLines/DocLines';
 import { returnDoc } from './detail/returnDoc';
 import { ActivityTab } from '../../../components/activity/ActivityTab';
 import { neighbours, NotFound, PrevNext, siblingKeys, useDocTab, useReject } from '../../../components/form/DetailNav';
@@ -131,7 +131,7 @@ function GoodsReturnForm() {
   const isNew = id === 'new';
   const navigate = useNavigate();
   const location = useLocation();
-  const state = location.state as { fromReceipt?: string; fromInvoice?: string } | null;
+  const state = location.state as { fromReceipt?: string; fromInvoice?: string; prefill?: { baseGrrId?: string; lines: import('../../../mocks/goodsReturns').ReturnLine[] } } | null;
 
   const rtnApproved = !getPurchasingSettings().requireGoodsReturnApproval;
   const [draft, setDraft] = useState<Draft | null | undefined>(isNew ? { ...blankGoodsReturn(todayISO(), CURRENT_USER_ID), approved: rtnApproved } : undefined);
@@ -146,8 +146,16 @@ function GoodsReturnForm() {
   const [vendorDetailsOpen, setVendorDetailsOpen] = useState(false);
 
   useEffect(() => {
-    loadRetMasters().then((masters) => {
+    loadRetMasters().then(async (masters) => {
       setM(masters);
+      // Pre-fill from a Goods Return Request (copyToReturn action on the GRR).
+      if (isNew && state?.prefill) {
+        const { baseGrrId, lines } = state.prefill;
+        const grrMod = await import('../../../services/goodsReturnRequests');
+        const grr = baseGrrId ? await grrMod.getGoodsReturnRequest(baseGrrId) : undefined;
+        const vendor = grr ? masters.vendors.find((v) => v.id === grr.vendorId) : undefined;
+        setDraft((d) => d ? { ...d, ...(vendor ? vendorDefaults(vendor, d) : {}), baseGrrId, lines } : d);
+      }
       const gr = state?.fromReceipt ? masters.receipts.find((r) => r.id === state.fromReceipt) : undefined;
       const inv = state?.fromInvoice ? masters.invoices.find((i) => i.id === state.fromInvoice) : undefined;
       if (isNew && (gr || inv)) {
@@ -347,7 +355,7 @@ function GoodsReturnForm() {
                     />
                   </fieldset>
                   {/* Outside the disabled fieldset: the table manages its own read-only state, so its view controls (Columns menu) stay usable on added returns. */}
-                  <PurchDoc
+                  <DocLines
                       {...returnDoc({
                         draft,
                         update,

@@ -10,7 +10,6 @@ import {
   TableAmount,
   TableContent,
   TableStatus,
-  Tabs,
   Text,
   type TableColumn,
 } from '@jasperlepardo/sikat-design-system';
@@ -145,21 +144,6 @@ export function ReturnDocumentsList({ kind }: { kind: Kind }) {
           <Button intent="primary" variant="solid" size="medium" shape="pill" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${path}/new`)}>
             {isReturns ? 'New goods return' : 'New A/P credit memo'}
           </Button>
-        }
-        tabs={
-          <div className="flex flex-col gap-2">
-            <Tabs
-              variant="outline"
-              value={kind}
-              onValueChange={(v) => {
-                navigate(v === 'returns' ? RETURN_LIST_PATH : MEMO_LIST_PATH);
-              }}
-              items={[
-                { value: 'returns', label: 'Goods returns', badge: data ? String(data[0].length) : undefined },
-                { value: 'memos', label: 'A/P credit memos', badge: data ? String(data[1].length) : undefined },
-              ]}
-            />
-          </div>
         }
       />
       <Panel.Body className="flex flex-col gap-2">

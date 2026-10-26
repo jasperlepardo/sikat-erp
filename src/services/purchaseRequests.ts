@@ -9,7 +9,7 @@ import { prSeries, seriesLookup, formatDocNum } from './allSeries';
 import { todayISO } from './dates';
 import { snapshotItems } from './items';
 import { LAST_PURCHASE_PRICE_LIST_ID, listPrice } from './priceLists';
-import { round2 } from './num';
+import { round2, round4 } from './num';
 import { inventoryQty, lineNet, priceAfterDiscount } from './lineMath';
 
 /**
@@ -135,6 +135,57 @@ export async function savePurchaseRequest(input: PrInput): Promise<PurchaseReque
     }
   }
   return requests.save(input);
+}
+
+// ── Draw-down by purchase orders and quotations ────────────────────────────────
+
+/** The parts of a quotation or purchase order this service reads to reconcile request open quantities. */
+interface DrawingDoc {
+  basePrId?: string;
+  status: string;
+  lines: { baseLineId?: string; quantity: number }[];
+}
+
+/** How much of each request line a document draws while it's live (not Draft or Cancelled). */
+function drawnBy(doc: DrawingDoc | undefined): Map<string, number> {
+  const out = new Map<string, number>();
+  if (!doc || doc.status === 'Draft' || doc.status === 'Cancelled') return out;
+  for (const l of doc.lines) if (l.baseLineId) out.set(l.baseLineId, (out.get(l.baseLineId) ?? 0) + l.quantity);
+  return out;
+}
+
+/**
+ * Write back how much of a purchase request a quotation or purchase order has drawn, from the
+ * document's before/after states — mirrors `applyOrderedChange`. Adding a document copied from a
+ * request lowers its lines' open quantities; a request line closes when fully drawn and the request
+ * closes when all lines are. Cancelling or recalling the document releases the quantities and reopens
+ * the request.
+ */
+export async function applyRequestDraw(
+  before: DrawingDoc | undefined,
+  after: DrawingDoc | undefined,
+): Promise<void> {
+  const prId = after?.basePrId || before?.basePrId;
+  if (!prId) return;
+
+  const delta = new Map(drawnBy(after));
+  for (const [lineId, qty] of drawnBy(before)) delta.set(lineId, (delta.get(lineId) ?? 0) - qty);
+  const changes = [...delta].filter(([, d]) => Math.abs(d) > 0.0001);
+  if (!changes.length) return;
+
+  const pr = await requests.get(prId);
+  if (!pr) return;
+  const lines = pr.lines.map((l) => ({ ...l }));
+  for (const [lineId, d] of changes) {
+    const pl = lines.find((x) => x.id === lineId);
+    if (!pl) continue;
+    pl.openQty = Math.max(0, round4(pl.openQty - d));
+    pl.status = pl.openQty <= 0 ? 'Closed' : 'Open';
+  }
+  const allClosed = lines.every((l) => l.status === 'Closed');
+  const status = allClosed ? 'Closed' : 'Open';
+  const closeDate = allClosed ? pr.closeDate || todayISO() : '';
+  await requests.save({ ...pr, status, closeDate, lines });
 }
 
 export async function closePurchaseRequest(pr: PurchaseRequest): Promise<PurchaseRequest> {

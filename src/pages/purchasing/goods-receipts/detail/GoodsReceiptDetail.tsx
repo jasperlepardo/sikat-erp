@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
+import { createPortal } from 'react-dom';
 import { postDocumentEntry, reverseDocumentEntry } from '../../../../services/journalEntries';
 import {
   Alert,
@@ -33,6 +34,7 @@ import {
   grNumber,
   listGoodsReceipts,
   recallGoodsReceipt,
+  receivablePos,
   saveGrDraft,
   saveGrRemarks,
 } from '../../../../services/goodsReceipts';
@@ -44,7 +46,9 @@ import { listPartnersByRole } from '../../../../services/partners';
 import { dueDateFor, getPurchasingSettings, listPurchaseOrders, openQty, poNumber } from '../../../../services/purchaseOrders';
 import { transferBlock } from '../../../../services/binLocations';
 import { proposedTaxCode } from '../../purchase-orders/detail/types';
-import { GrContents } from './GrContentsCard';
+import { DocLines } from '../../../../components/form/docLines/DocLines';
+import { CopyPanel, type CopySourceType } from '../../shared/CopyPanel';
+import { grDoc } from './grDoc';
 import { DocumentFlow } from '../../shared/DocumentFlow';
 import { GrLogistics } from './GrLogisticsCard';
 import { GrAccounting } from './GrAccountingCard';
@@ -60,7 +64,7 @@ import { GrTotalsCard } from './GrTotalsCard';
 import { GrJournalCard } from './GrJournalCard';
 import { ReferencesTable } from '../../shared/ReferencesTable';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
-import { AP_LIST_PATH, GR_LIST_PATH, GR_STATUS_INTENT } from '../../paths';
+import { AP_LIST_PATH, GR_LIST_PATH, GR_STATUS_INTENT, RETURN_LIST_PATH } from '../../paths';
 
 type TabId = 'contents' | 'logistics' | 'accounting';
 
@@ -145,6 +149,7 @@ function GoodsReceiptForm() {
   const [saving, setSaving] = useState(false);
   const reject = useReject();
   const [vendorDetailsOpen, setVendorDetailsOpen] = useState(false);
+  const [copying, setCopying] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -309,7 +314,7 @@ function GoodsReceiptForm() {
     ...(draft.status === 'Open' && draft.lines.some((l) => grOpenQty(l, draft) > 0)
       ? [
           { label: 'Copy to A/P invoice', icon: 'request_quote', onSelect: () => navigate(`${AP_LIST_PATH}/new`, { state: { fromReceipt: saved.id } }) },
-          { label: 'Copy to goods return', icon: 'assignment_return', onSelect: () => navigate('/purchasing/returns-and-debits-and-debits/returns/new', { state: { fromReceipt: saved.id } }) },
+          { label: 'Copy to goods return', icon: 'assignment_return', onSelect: () => navigate(`${RETURN_LIST_PATH}/new`, { state: { fromReceipt: saved.id } }) },
         ]
       : []),
     ...(!isNew ? [{ label: 'Duplicate', icon: 'content_copy', onSelect: duplicate }] : []),
@@ -323,6 +328,7 @@ function GoodsReceiptForm() {
 
   const title = isNew ? 'New goods receipt' : added ? grNumber(draft) : 'Draft goods receipt';
   const sectionProps = { draft, update, errors, m, ctx };
+  const copyablePos = draft.vendorId ? receivablePos(m.orders, draft.vendorId).filter((po) => !ctx.based || po.currency === draft.currency) : [];
 
   return (
     <>
@@ -390,7 +396,7 @@ function GoodsReceiptForm() {
                   pickVendor={pickVendor}
                   onOpenDetails={() => setVendorDetailsOpen(true)}
                 />
-                <GrContents {...sectionProps} onCopy={copyLines} />
+                <DocLines {...grDoc({ ...sectionProps, onCopyClick: () => setCopying(true), copyableCount: copyablePos.length })} />
                 <ReferencesTable refs={draft.references} onChange={(references) => update({ references })} readOnly={ctx.readOnly} description="Other documents this receipt refers to, e.g. the vendor's delivery receipt or a courier waybill." />
                 <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach the vendor's delivery receipt, packing list or proof of receipt." />
               </div>
@@ -426,6 +432,35 @@ function GoodsReceiptForm() {
       }}
       addresses={ctx.vendor ? receivingVendorAddressFields(m, ctx.vendor) : []}
     />
+    {copying
+      ? createPortal(
+          <CopyPanel
+            sources={[{
+              key: 'PO' as const,
+              label: 'Purchase orders',
+              totalHeader: 'Ordered',
+              qtyHeader: 'Receive',
+              hint: 'Receive quantities can be at most the PO open qty.',
+              docs: copyablePos.map((po) => ({
+                id: po.id,
+                label: `${poNumber(po)} · ${po.vendorName}`,
+                description: po.postingDate,
+                lines: po.lines
+                  .filter((l) => l.status === 'Open' && openQty(l) > 0)
+                  .map((l) => ({ id: l.id, itemNo: l.itemNo, name: l.name, description: l.description, warehouse: l.warehouse, total: `${l.quantity} ${l.uomCode}`, open: openQty(l) })),
+              })),
+            }] satisfies CopySourceType<'PO'>[]}
+            taken={new Set(draft.lines.map((l) => l.baseLineId).filter((id): id is string => !!id))}
+            onCancel={() => setCopying(false)}
+            onCopy={(_type, docId, picks) => {
+              const po = copyablePos.find((p) => p.id === docId);
+              setCopying(false);
+              if (po) copyLines(po, linesFromPo(po, picks, m));
+            }}
+          />,
+          document.body,
+        )
+      : null}
     </>
   );
 }

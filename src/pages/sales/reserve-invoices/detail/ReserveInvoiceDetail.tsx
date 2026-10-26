@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useAutoSave } from '../../../../components/form/useAutoSave';
 import { useLocation, useNavigate, useParams } from 'react-router';
+import { createPortal } from 'react-dom';
 import { Alert, Badge, Button, Form, Panel, PanelHeader, Tabs, Text } from '@jasperlepardo/sikat-design-system';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { type Errors } from '../../../../components/form/fields';
@@ -52,7 +53,9 @@ import { RiDatesCard } from './RiCustomerCard';
 import { RiShipmentCard } from './RiShipmentCard';
 import { RiAssignmentCard } from './RiAssignmentCard';
 import { RiAccountingCard } from './RiAccountingCard';
-import { InvoiceContentsCard, type CopyPickRi } from '../../shared/InvoiceContentsCard';
+import { DocLines } from '../../../../components/form/docLines/DocLines';
+import { CopyPanel, type CopySourceType } from '../../../purchasing/shared/CopyPanel';
+import { invoiceDoc, type CopyPickRi } from '../../shared/invoiceDoc';
 import { InvoiceCustomerDetailsPanel } from '../../shared/InvoiceCustomerDetailsPanel';
 import { RI_LIST_PATH, RI_STATUS_INTENT, SO_LIST_PATH } from '../../paths';
 import { customerWithholds } from '../../../../services/withholding';
@@ -117,6 +120,7 @@ function ReserveInvoiceForm() {
   const page = (PAGES.some((p) => p.value === tabParam) ? tabParam : 'details') as PageId;
   const setPage = useDocTab<PageId>(`${RI_LIST_PATH}/${id}`, tabParam);
   const [customerDetailsOpen, setCustomerDetailsOpen] = useState(false);
+  const [copying, setCopying] = useState(false);
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);
@@ -322,6 +326,9 @@ function ReserveInvoiceForm() {
   ];
 
   const tabProps = { draft, update, errors, m, ctx };
+  // Copy-from sources: this customer's open orders with something left to invoice.
+  const mineCopy = (c: { customerId: string; currency: string }) => (!draft.customerId || c.customerId === draft.customerId) && (!ctx.based || c.currency === draft.currency);
+  const copySos = m.orders.filter((o) => o.status === 'Open' && o.docType === draft.docType && mineCopy(o) && o.lines.some((l) => openQty(l) > 0));
   const title = isNew ? 'New reserve invoice' : draft.status === 'Draft' ? 'Draft reserve invoice' : riNumber(draft);
 
   return (
@@ -392,11 +399,9 @@ function ReserveInvoiceForm() {
                     onPickCustomer={pickCustomer}
                     onOpenDetails={() => setCustomerDetailsOpen(true)}
                   />
-                  <InvoiceContentsCard
-                    kind="RI"
-                    {...tabProps}
-                    onCopy={(src, picks) => setDraft(copyLines(draft, src, picks, m))}
-                    cardFooter={
+                  <DocLines
+                    {...invoiceDoc({ kind: 'RI', ...tabProps, onCopyClick: () => setCopying(true), canCopy: copySos.length > 0 })}
+                    footer={
                       <SalesTotalsFooter
                         {...tabProps}
                         withRounding
@@ -443,6 +448,33 @@ function ReserveInvoiceForm() {
         </Panel>
       </Form>
       <InvoiceCustomerDetailsPanel {...tabProps} noun="reserve invoice" remarkDefault="Reserve Invoice – customer code" open={customerDetailsOpen} onClose={() => setCustomerDetailsOpen(false)} />
+      {copying
+        ? createPortal(
+            <CopyPanel
+              sources={[{
+                key: 'SO' as const,
+                label: 'Sales orders',
+                totalHeader: 'Ordered',
+                qtyHeader: 'Invoice',
+                hint: 'Posts revenue immediately; stock is relieved when the delivery is created later.',
+                docs: copySos.map((o) => ({
+                  id: o.id,
+                  label: `${soNumber(o)} · ${o.customerName}`,
+                  description: o.deliveryDate ? `Due ${o.deliveryDate}` : 'No delivery date',
+                  lines: o.lines.map((l) => ({ id: l.id, itemNo: l.itemNo || l.description, name: l.description, warehouse: l.warehouse, total: `${l.quantity} ${l.uomCode}`, open: openQty(l) })),
+                })),
+              }] satisfies CopySourceType<'SO'>[]}
+              taken={new Set(draft.lines.map((l) => l.baseLineId).filter((id): id is string => !!id))}
+              onCancel={() => setCopying(false)}
+              onCopy={(_type, docId, picks) => {
+                const doc = copySos.find((o) => o.id === docId);
+                setCopying(false);
+                if (doc) setDraft(copyLines(draft, { kind: 'SO', doc } as CopyPickRi, picks, m));
+              }}
+            />,
+            document.body,
+          )
+        : null}
     </>
   );
 }
