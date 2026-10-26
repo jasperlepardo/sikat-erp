@@ -27,6 +27,8 @@ import {
 } from '../../../../services/reserveInvoices';
 import { loadCurrentCompany } from '../../../../services/companies';
 import { todayISO } from '../../../../services/dates';
+import type { Partner } from '../../../../mocks/partners';
+import { recalcLineTaxes } from '../../../../services/taxRecalc';
 import { defaultJournalRemark } from '../../../../services/journalPatterns';
 import { formatAmount } from '../../../../services/format';
 import { loadInventoryMasters } from '../../../../services/inventoryMasters';
@@ -169,7 +171,17 @@ function ReserveInvoiceForm() {
   const balance = riBalanceDue(totals.total, wtax, draft.appliedAmount);
   const { prevId, nextId } = neighbours(siblings, draft.id && (draft.docNum ? riNumber(draft as ReserveInvoice) : draft.id));
 
-  const update = (patch: Partial<RiDraft>) => setDraft({ ...draft, ...patch });
+  /** Tax codes re-proposed for the customer and date, except ones set by hand or copied from a base document. */
+  const retax = (lines: RiDraft['lines'], c: Partner | undefined, date: string) =>
+    recalcLineTaxes(lines, (itemId) => {
+      const item = m.items.find((i) => i.id === itemId);
+      return item ? proposedTaxCode(item, c, m, date) : '';
+    });
+  const update = (patch: Partial<RiDraft>) => {
+    const next = { ...draft, ...patch };
+    if (!ro && patch.postingDate !== undefined && patch.postingDate !== draft.postingDate) next.lines = retax(next.lines, customer, next.postingDate);
+    setDraft(next);
+  };
 
   function copyLines(d: RiDraft, src: CopyPickRi, picks: { lineId: string; qty: number }[], masters: RiMasters): RiDraft {
     const c = masters.customers.find((x) => x.id === src.doc.customerId);
@@ -238,10 +250,7 @@ function ReserveInvoiceForm() {
       billTo: bill ? formatAddress(bill, c.name) : '',
       shipTo: ship ? formatAddress(ship, c.name) : '',
       journalRemark: defaultJournalRemark('reserve-invoices', { entityCode: c.code, entityName: c.name }),
-      lines: draft.lines.map((l) => {
-        const item = m.items.find((i) => i.id === l.itemId);
-        return { ...l, wtaxLiable: liable, ...(item && !l.baseId ? { taxCode: proposedTaxCode(item, c, m, draft.postingDate) } : {}) };
-      }),
+      lines: retax(draft.lines, c, draft.postingDate).map((l) => ({ ...l, wtaxLiable: liable })),
     });
   };
 

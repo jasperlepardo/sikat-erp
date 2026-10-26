@@ -29,6 +29,7 @@ import {
 } from '../../../../services/apReserveInvoices';
 import { loadCurrentCompany } from '../../../../services/companies';
 import { formatDate, todayISO } from '../../../../services/dates';
+import { recalcLineTaxes } from '../../../../services/taxRecalc';
 import { defaultJournalRemark } from '../../../../services/journalPatterns';
 import { formatAmount } from '../../../../services/format';
 import { loadInventoryMasters } from '../../../../services/inventoryMasters';
@@ -169,18 +170,23 @@ function ApReserveInvoiceForm() {
       next.dueDate = dueDateFor(next.postingDate, next.paymentTermId);
     }
     if (patch.lines) next.orderNumber = orderNumbersOf(next.lines);
+    if (!added && patch.postingDate !== undefined && patch.postingDate !== draft.postingDate) next.lines = retax(next.lines, vendor, next.postingDate);
     setDraft(next);
   };
+
+  /** Tax codes re-proposed for the vendor and date, except ones set by hand or copied from a base document. */
+  const retax = (lines: ApriDraft['lines'], v: Partner | undefined, date: string) =>
+    recalcLineTaxes(lines, (itemId) => {
+      const item = m.items.find((i) => i.id === itemId);
+      return item ? proposedTaxCode(item, v, m, date) : '';
+    });
 
   const pickVendor = (vendorId: string | null) => {
     const v = m.vendors.find((x) => x.id === vendorId);
     if (!v) return update({ vendorId: '', vendorCode: '', vendorName: '', contactId: '', payTo: '' });
     update({
       ...vendorDefaults(v, draft),
-      lines: draft.lines.filter((l) => !l.baseType).map((l) => {
-        const item = m.items.find((i) => i.id === l.itemId);
-        return item ? { ...l, taxCode: proposedTaxCode(item, v, m, draft.postingDate) } : l;
-      }),
+      lines: retax(draft.lines.filter((l) => !l.baseType), v, draft.postingDate),
     });
   };
 

@@ -18,6 +18,7 @@ import { CopyPanel, type CopySourceType } from '../../../purchasing/shared/CopyP
 import { SO_LIST_PATH, lineFromItem, linePricing } from '../../sales-orders/detail/types';
 import { asSoDraft } from '../../deliveries/detail/types';
 import type { RiSectionProps } from './types';
+import { editTaxCode } from '../../../../services/taxRecalc';
 
 const num = (v: string) => (v === '' ? 0 : Number(v));
 const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -107,7 +108,7 @@ export function RiContentsCard({ draft, update, errors, m, ctx, onCopy, cardFoot
     );
     return (
       <div className="flex w-32 flex-col gap-1">
-        <Combobox aria-label="Tax code" invalid={Boolean(err(l, 'taxCode'))} options={taxOptions} value={l.taxCode || null} onValueChange={(v) => patch(l.id, { taxCode: v ?? '' })} />
+        <Combobox aria-label="Tax code" invalid={Boolean(err(l, 'taxCode'))} options={taxOptions} value={l.taxCode || null} onValueChange={(v) => patch(l.id, editTaxCode(v ?? ''))} />
         <Text variant="small" tone="muted">Tax PHP {lc(taxOf(l))}</Text>
       </div>
     );

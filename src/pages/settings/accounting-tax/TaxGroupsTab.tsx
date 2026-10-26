@@ -20,7 +20,7 @@ export function TaxGroupsTab(route: ListRoute) {
       icon="account_tree"
       title="Tax groups"
       noun="tax group"
-      description="Items carry a sales and a purchase tax group: the default code for what the item is (goods, services, capital goods, exempt…). The partner’s or company’s tax status can override it — see Determination rules."
+      description="Items carry a sales and a purchase tax group: the default code for what the item is (goods, services, capital goods, exempt…). The group picks a tax code, and the code carries the ATC, G/L account and BIR return line. The partner’s or company’s tax status can override it."
       rows={rows}
       onSetActive={setActive}
       columns={[
@@ -37,6 +37,15 @@ export function TaxGroupsTab(route: ListRoute) {
             ) : (
               <span className="text-warning">Missing</span>
             );
+          },
+        },
+        {
+          key: 'filesUnder',
+          header: 'Files under',
+          cell: (g) => {
+            const c = codeOf(g.taxCode);
+            if (!c) return <span className="text-muted">—</span>;
+            return [c.category, c.atc, c.birReturn].filter(Boolean).join(' · ');
           },
         },
         {

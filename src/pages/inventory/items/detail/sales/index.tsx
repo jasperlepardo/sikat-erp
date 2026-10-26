@@ -3,7 +3,7 @@ import { formatAmount } from '../../../../../services/format';
 import { Fields, Section, bind } from '../../../../../components/form/fields';
 import { activeOptions } from '../../../../../services/inventoryMasters';
 import { shippingTypeDef, warrantyTemplateDef } from '../../../../settings/masterDefs';
-import { groupTaxNote, taxCodeOptions, taxGroupOptions, taxResolution, unitOptions, type TabProps } from '../types';
+import { fixedCodeHint, groupTaxNote, taxCodeOptions, taxGroupOptions, taxResolution, unitOptions, type TabProps } from '../types';
 
 export function SalesTab({ draft, update, errors, tax, inv }: TabProps) {
   const f = bind(draft, update);
@@ -29,14 +29,15 @@ export function SalesTab({ draft, update, errors, tax, inv }: TabProps) {
       <Section icon="percent" title="Tax & commission">
         <Fields>
           {f.lookup('salesTaxGroup', 'Tax group', taxGroupOptions(tax, 'Sales', draft.salesTaxGroup), {
-            required: draft.salesItem,
+            required: draft.salesItem && draft.taxLiable && !draft.salesTaxCode,
             error: errors.salesTaxGroup,
             hint: draft.taxLiable
               ? taxResolution(tax, draft.salesTaxGroup, draft.salesTaxCode) + groupTaxNote(inv, draft, 'salesTaxGroup')
               : 'Not tax liable (General tab): no tax is charged on sales.',
           })}
           {f.lookup('salesTaxCode', 'Fixed sales tax code', taxCodeOptions(tax, 'Sales', draft.salesTaxCode), {
-            hint: 'Overrides the tax group on every sale.',
+            error: errors.salesTaxCode,
+            hint: fixedCodeHint(draft.salesTaxGroup, draft.salesTaxCode, 'sale'),
           })}
           {f.lookup(
             'commissionGroup',

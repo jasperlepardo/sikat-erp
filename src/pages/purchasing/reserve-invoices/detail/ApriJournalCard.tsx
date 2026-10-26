@@ -2,7 +2,7 @@ import { List, Text } from '@jasperlepardo/sikat-design-system';
 import { Section } from '../../../../components/form/fields';
 import { accountText } from '../../../../mocks/chartOfAccounts';
 import { formatAmount } from '../../../../services/format';
-import { poWithholding } from '../../../../services/purchaseOrders';
+import { poWithholding } from '../../../../services/withholding';
 import { expenseAccountFor } from '../../../../services/goodsReceipts';
 import { inventoryAccountFor } from '../../../../services/inventoryTransfers';
 import { rateAt, vatNotPaidToVendor } from '../../../../mocks/taxes';

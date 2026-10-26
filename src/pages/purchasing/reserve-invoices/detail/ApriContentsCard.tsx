@@ -12,12 +12,14 @@ import { itemUnits, itemsPerUom } from '../../../../mocks/items';
 import { formatAmount } from '../../../../services/format';
 import { formatDate } from '../../../../services/dates';
 import { apRiTotals } from '../../../../services/apReserveInvoices';
-import { getPurchasingSettings, lineNet, openQty, poNumber, poWithholding } from '../../../../services/purchaseOrders';
+import { getPurchasingSettings, lineNet, openQty, poNumber } from '../../../../services/purchaseOrders';
+import { poWithholding } from '../../../../services/withholding';
 import { isValidToday } from '../../../../services/items';
 import { PurchTotalsFooter, PurchTotalNote, PurchTotalRow } from '../../shared/PurchTotalsFooter';
 import { CopyPanel } from '../../shared/CopyPanel';
 import { riLineFromItem, riLinesFromPo, type ApriSectionProps } from './types';
 import { LineItemText } from '../../../../components/form/LineItemText';
+import { editTaxCode } from '../../../../services/taxRecalc';
 
 const WITHHELD_LABEL: Record<string, string> = {
   'Expanded (EWT)': 'EWT',
@@ -164,7 +166,7 @@ export function ApriContentsCard({
       l.itemId ? (
         <div className="flex w-44 flex-col gap-1">
           <TextField aria-label="Unit price" type="number" min={0} prefix={draft.currency} invalid={Boolean(err(l, 'unitPrice'))} value={String(l.unitPrice)} onChange={(e) => patch(l.id, { unitPrice: round2(num(e.currentTarget.value)) })} />
-          <Combobox aria-label="Tax code" invalid={Boolean(err(l, 'taxCode'))} options={taxOptions} value={l.taxCode} onValueChange={(taxCode) => patch(l.id, { taxCode: taxCode ?? '' })} />
+          <Combobox aria-label="Tax code" invalid={Boolean(err(l, 'taxCode'))} options={taxOptions} value={l.taxCode} onValueChange={(taxCode) => patch(l.id, editTaxCode(taxCode ?? ''))} />
           <TextField aria-label="Discount %" type="number" min={0} suffix="%" value={String(l.discountPct)} onChange={(e) => patch(l.id, { discountPct: Math.min(100, num(e.currentTarget.value)) })} />
         </div>
       ) : null,

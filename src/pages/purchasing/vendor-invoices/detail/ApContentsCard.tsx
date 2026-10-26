@@ -17,7 +17,9 @@ import { grInventoryQty, grNumber, grOpenQty, invoiceableReceipts, receivablePos
 import { activeOptions } from '../../../../services/inventoryMasters';
 import { receivesFromVendors } from '../../../../mocks/itemMasters';
 import { isValidToday } from '../../../../services/items';
-import { getPurchasingSettings, lineNet, openQty, poNumber, poWithholding } from '../../../../services/purchaseOrders';
+import { editTaxCode, lineAtc } from '../../../../services/taxRecalc';
+import { getPurchasingSettings, lineNet, openQty, poNumber } from '../../../../services/purchaseOrders';
+import { docWithholding } from '../../../../services/withholding';
 import { binOptions } from '../../../inventory/transfers/TransferLines';
 import { CopyPanel } from '../../shared/CopyPanel';
 import { PurchTotalsFooter, PurchTotalNote, PurchTotalRow } from '../../shared/PurchTotalsFooter';
@@ -45,7 +47,7 @@ export function ApContentsCard({ draft, update, errors, m, ctx, onCopy }: ApSect
   const code = draft.currency;
   const docCurrency = m.currencies.find((c) => c.code === code);
   const totals = apTotals(draft, ctx.rateOf, docCurrency?.rounding, ctx.isReverseCharge);
-  const withholding = poWithholding(draft, ctx.vendor, m.items, m.tax, draft.postingDate);
+  const withholding = docWithholding(draft, ctx.vendor, m.items, m.tax, draft.postingDate);
   const due = netDue(totals.total, withholding, draft.downPayment);
   const balance = Math.round((due - draft.appliedAmount) * 100) / 100;
   const drawable = m.downPayments
@@ -167,7 +169,8 @@ export function ApContentsCard({ draft, update, errors, m, ctx, onCopy }: ApSect
       l.itemId ? (
         <div className="flex w-44 flex-col gap-1">
           <TextField aria-label="Unit price" type="number" min={0} prefix={draft.currency} invalid={Boolean(err(l, 'unitPrice'))} value={String(l.unitPrice)} onChange={(e) => patch(l.id, { unitPrice: round2(num(e.currentTarget.value)) })} />
-          <Combobox aria-label="Tax code" invalid={Boolean(err(l, 'taxCode'))} options={taxOptions} value={l.taxCode} onValueChange={(taxCode) => patch(l.id, { taxCode: taxCode ?? '' })} />
+          <Combobox aria-label="Tax code" invalid={Boolean(err(l, 'taxCode'))} options={taxOptions} value={l.taxCode} onValueChange={(taxCode) => patch(l.id, editTaxCode(taxCode ?? ''))} />
+          {lineAtc(l, m.tax.codes, ctx.readOnly) ? <Text variant="small" tone="muted">ATC {lineAtc(l, m.tax.codes, ctx.readOnly)}</Text> : null}
           <TextField aria-label="Discount %" type="number" min={0} suffix="%" value={String(l.discountPct)} onChange={(e) => patch(l.id, { discountPct: Math.min(100, num(e.currentTarget.value)) })} />
         </div>
       ) : null,

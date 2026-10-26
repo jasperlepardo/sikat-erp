@@ -37,6 +37,7 @@ import { ProblemsAlert, problemCollector, type Problem as ProblemBase } from '..
 import { AgreementsSection } from './AgreementsSection';
 import { ActivityTab } from '../../../components/activity/ActivityTab';
 import { PrevNext, neighbours } from '../../../components/form/DetailNav';
+import { withholdingTaxes } from '../../../services/masterData';
 
 const TABS = [
   { value: 'settings', label: 'Settings', Component: SettingsTab },
@@ -74,6 +75,13 @@ function validate(d: Draft, codeMode: 'auto' | 'manual', chart: Account[] | unde
   need(d.name.trim(), 'header', 'name', 'Name is required.');
   need(d.bpGroupId, 'header', 'bpGroupId', 'Group is required.');
   need(d.currency, 'header', 'currency', 'Currency is required.');
+  // Only where the field shows (Tax tab › Vendor tax): a non-government vendor.
+  if (d.withholdingOverrideId && d.roles.includes('vendor') && d.businessType !== 'Government') {
+    const w = withholdingTaxes.snapshot().find((x) => x.id === d.withholdingOverrideId);
+    need(w?.active, 'tax', 'withholdingOverrideId', w
+      ? `Withholding override ${w.atc || w.description} is inactive in Settings. Pick another, or clear it to use the rules.`
+      : 'The withholding override no longer exists in Settings. Pick another, or clear it to use the rules.');
+  }
   if (d.status === 'Advanced') {
     need(d.statusFrom, 'header', 'statusFrom', 'Pick a start date.');
     need(d.statusTo, 'header', 'statusTo', 'Pick an end date.');

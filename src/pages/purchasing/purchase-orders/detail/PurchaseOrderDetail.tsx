@@ -66,6 +66,7 @@ import {
   type PoSuggestion,
 } from './types';
 import { todayISO } from '../../../../services/dates';
+import { recalcLineTaxes } from '../../../../services/taxRecalc';
 import { defaultJournalRemark } from '../../../../services/journalPatterns';
 import { listGoodsReceipts } from '../../../../services/goodsReceipts';
 import { useDocTitle } from '../../../../services/useDocTitle';
@@ -97,9 +98,9 @@ function vendorPatch(v: Partner, draft: PoDraft, m: PoMasters): Partial<PoDraft>
     projectId: v.projectId,
     shippingType: v.shippingType,
     journalRemark: defaultJournalRemark('purchase-orders', { entityCode: v.code, entityName: v.name }),
-    lines: draft.lines.map((l) => {
-      const item = m.items.find((i) => i.id === l.itemId);
-      return item ? { ...l, taxCode: proposedTaxCode(item, v, m, draft.postingDate) } : l;
+    lines: recalcLineTaxes(draft.lines, (itemId) => {
+      const item = m.items.find((i) => i.id === itemId);
+      return item ? proposedTaxCode(item, v, m, draft.postingDate) : '';
     }),
   };
 }
@@ -239,8 +240,16 @@ function PurchaseOrderForm() {
   const update = (patch: Partial<PoDraft>) => {
     const next = { ...draft, ...patch };
     if (patch.lines && patch.shipTo === undefined && draft.shipTo === defaultShipTo(draft.lines, m)) next.shipTo = defaultShipTo(patch.lines, m);
+    if (!ctx.readOnly && patch.postingDate !== undefined && patch.postingDate !== draft.postingDate) next.lines = retax(next.lines, ctx.vendor, next.postingDate);
     setDraft(next);
   };
+
+  /** Tax codes re-proposed for the vendor and date, except ones set by hand or copied from a base document. */
+  const retax = (lines: PoDraft['lines'], v: Partner | undefined, date: string) =>
+    recalcLineTaxes(lines, (itemId) => {
+      const item = m.items.find((i) => i.id === itemId);
+      return item ? proposedTaxCode(item, v, m, date) : '';
+    });
 
   const pickVendor = (vendorId: string | null, override?: Partner) => {
     const v = override ?? m.vendors.find((x) => x.id === vendorId);

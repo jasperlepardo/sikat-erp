@@ -38,6 +38,8 @@ export interface QuoteLine {
   discountPct: number;
   priceSource: string;
   taxCode: string;
+  /** User edited the tax code by hand: auto-recalc leaves this line alone. Missing = false. */
+  taxOverridden?: boolean;
   glAccount: string;
 }
 

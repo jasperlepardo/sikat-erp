@@ -151,6 +151,11 @@ export interface WithholdingGroup {
   nrVat: NonResidentVat | null;
   /** Income type looked up in the vendor's treaty incomes. null = no treaty relief. */
   treatyIncomeType: TreatyIncomeType | null;
+  /**
+   * When the low tier applies, for groups with a high-tier ATC ('' = not tiered). The numbers and the
+   * sworn-declaration check live in the determination engine; this only explains them.
+   */
+  thresholdLabel: string;
   active: boolean;
   notes: string;
 }
@@ -393,6 +398,11 @@ export interface CompanyTaxProfile {
   governmentEntity: boolean;
   /** One or more; decides whether the company itself pays excise. */
   businessActivities: BusinessActivity[];
+  /**
+   * Sales tax code a non-VAT company charges, for its line of business (a Sales code in the
+   * Percentage tax category; the code carries the PT ATC and rate). '' = PT (PT010, Sec. 116).
+   */
+  percentageTaxCode: string;
 }
 
 /** Whether the company pays excise itself (manufacturer or importer), rather than in the purchase price. */
@@ -411,6 +421,7 @@ export const SEED_COMPANY_TAX: CompanyTaxProfile[] = [
     governmentEntity: false,
     // Buys Apple products locally and imports from Apple directly (mocks/partners.ts bp-017).
     businessActivities: ['Reseller', 'Importer'],
+    percentageTaxCode: '',
   },
 ];
 
@@ -601,6 +612,7 @@ const ATC_OF: Record<string, string> = {
   IMVAT: 'VI010',  // VAT on importation of goods
   WVAT: 'WV080',   // Final withholding VAT — digital services from non-residents (private agent)
   PT: 'PT010',     // Percentage tax, NIRC Sec. 116
+  'PT-060': 'PT060', // Franchise tax — electric, gas and water, NIRC Sec. 119
 };
 
 /**
@@ -720,9 +732,16 @@ export const SEED_TAX_CODES: TaxCode[] = [
     [{ from: '2018-01-01', rate: 3 }, { from: '2020-07-01', rate: 1 }, { from: '2023-07-01', rate: 3 }],
     '2320 Percentage Tax Payable', '2551Q', 'NIRC Sec. 116 as amended by TRAIN and CREATE (RA 11534)',
     'For non-VAT sellers with annual gross sales not over P3M (Form 2551Q). CREATE cut the rate to 1% from 1 Jul 2020 to 30 Jun 2023.'),
+  tc('PT-060', 'Percentage Tax – Utilities Franchise', 'Sales', 'Percentage tax', 2,
+    '2320 Percentage Tax Payable', '2551Q', 'NIRC Sec. 119',
+    'Franchise tax on electric, gas and water utilities (Form 2551Q). Pick it as the company’s percentage tax code in Settings › Company when that is the line of business.'),
   // Purchases — 2550Q Part IV, "Current Transactions"
   tc('IVAT', 'Input VAT', 'Purchase', 'Standard', 12, '1410 Input VAT', '2550Q', 'NIRC Sec. 110',
-    '12% input VAT on local purchases of goods, services, lease and capital goods from VAT-registered suppliers.'),
+    '12% input VAT on local purchases of goods other than capital goods from VAT-registered suppliers.'),
+  tc('IVAT-S', 'Input VAT – Services', 'Purchase', 'Services', 12, '1410 Input VAT', '2550Q', 'NIRC Sec. 110',
+    '12% input VAT on domestic purchases of services and lease of property from VAT-registered suppliers (2550Q: domestic purchase of services).'),
+  tc('IVAT-C', 'Input VAT – Capital Goods', 'Purchase', 'Capital goods', 12, '1410 Input VAT', '2550Q', 'NIRC Sec. 110',
+    '12% input VAT on domestic purchases of capital goods (2550Q: purchase of capital goods). Claimed in full since 1 Jan 2022 (TRAIN).'),
   tc('WVAT', 'Withholding VAT', 'Purchase', 'Reverse charge', 12, '1410 Input VAT', '2550Q / 1600-VT', 'NIRC Sec. 114(C); RA 12023; RR 3-2025 (digital services)',
     'Reverse charge on services from non-residents: the buyer self-assesses the 12% VAT, remits it on Form 1600-VT, then claims it as input tax (the non-resident bills no VAT). '
     + 'For digital services (RA 12023 / RR 3-2025) use WV080 (private) or WV090 (government); effective 2 Jun 2025.'),
@@ -743,8 +762,8 @@ export const SEED_TAX_GROUPS: TaxGroup[] = [
   tg('S-VATX', 'Exempt Sales', 'Sales', 'XVAT'),
   tg('S-VAT0', 'Zero-Rated Sales', 'Sales', 'ZVAT', true),
   tg('P-VAT12', 'Taxable Goods', 'Purchase', 'IVAT'),
-  tg('P-VAT12S', 'Taxable Services', 'Purchase', 'IVAT'),
-  tg('P-VAT12C', 'Capital Goods', 'Purchase', 'IVAT'),
+  tg('P-VAT12S', 'Taxable Services', 'Purchase', 'IVAT-S'),
+  tg('P-VAT12C', 'Capital Goods', 'Purchase', 'IVAT-C'),
   tg('P-VATX', 'Exempt Purchases', 'Purchase', 'NVAT'),
   tg('P-VAT0', 'Zero-Rated Purchases', 'Purchase', 'NVAT', true),
 ];
@@ -1030,6 +1049,10 @@ const GMP: WithholdingTax[] = [
 
 export const SEED_WITHHOLDING: WithholdingTax[] = [...EXPANDED, ...FINAL, ...GMP];
 
+/** The income tier rule (RR 11-2018) as the engine applies it — see determineWithholding. */
+const TIER_THRESHOLD_LABEL =
+  'Low tier: gross income ≤ ₱3M (individual) or ≤ ₱720,000 (corporate), with a sworn declaration for the year on file. Otherwise — or a VAT-registered individual — the high tier.';
+
 const wg = (
   code: string, name: string,
   atcIndividual: string | null, atcIndividualHigh: string | null,
@@ -1054,6 +1077,7 @@ const wg = (
   atcCorporateGov: opts.atcCorporateGov ?? null,
   nrVat: opts.nrVat ?? null,
   treatyIncomeType: opts.treatyIncomeType ?? null,
+  thresholdLabel: atcIndividualHigh || atcCorporateHigh ? TIER_THRESHOLD_LABEL : '',
   active: true,
   notes: opts.notes ?? '',
 });

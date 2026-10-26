@@ -10,6 +10,8 @@ import { blankQuotation, type Quotation } from '../../../../mocks/quotations';
 import { rateAt } from '../../../../mocks/taxes';
 import { loadCurrentCompany } from '../../../../services/companies';
 import { todayISO } from '../../../../services/dates';
+import { recalcLineTaxes } from '../../../../services/taxRecalc';
+import type { Partner } from '../../../../mocks/partners';
 import { loadInventoryMasters } from '../../../../services/inventoryMasters';
 import { listItems } from '../../../../services/items';
 import { companyTax, currencies, exchangeRates, rateOn, taxCodes } from '../../../../services/masterData';
@@ -148,7 +150,19 @@ function QuotationForm() {
   const overCredit = SALES_SETTINGS.creditLimitCheck && !!customer && customer.creditLimit > 0 && openBalance + totalLc > customer.creditLimit && !readOnly;
   const isExpired = draft.status === 'Open' && !!draft.validUntil && draft.validUntil < todayISO();
 
-  const update = (patch: Partial<Draft>) => setDraft((d) => d && { ...d, ...patch });
+  /** Tax codes re-proposed for the customer and date, except ones set by hand. */
+  const retax = (lines: Draft['lines'], c: Partner | undefined, date: string) =>
+    recalcLineTaxes(lines, (itemId) => {
+      const item = m.items.find((i) => i.id === itemId);
+      return item ? proposedTaxCode(item, c, m, date) : '';
+    });
+  const update = (patch: Partial<Draft>) =>
+    setDraft((d) => {
+      if (!d) return d;
+      const next = { ...d, ...patch };
+      if (!readOnly && patch.postingDate !== undefined && patch.postingDate !== d.postingDate) next.lines = retax(next.lines, customer, next.postingDate);
+      return next;
+    });
 
   const pickCustomer = (customerId: string | null) => {
     const c = m.customers.find((x) => x.id === customerId);
@@ -156,10 +170,10 @@ function QuotationForm() {
     // Lines can be added before the customer: reprice them on the customer's price list, tax code and currency.
     const next = { ...draft, ...customerDefaults(c, draft) };
     const nextFx = next.currency === 'PHP' ? 1 : (rateOn(m.rates, next.currency, date)?.rate ?? 0);
-    const lines = draft.lines.map((l) => {
+    const lines = retax(draft.lines, c, next.postingDate).map((l) => {
       const item = m.items.find((i) => i.id === l.itemId);
       if (!item) return l;
-      const repriced = { ...l, priceListId: c.priceListId || BASE_PRICE_LIST_ID, taxCode: proposedTaxCode(item, c, m, next.postingDate) };
+      const repriced = { ...l, priceListId: c.priceListId || BASE_PRICE_LIST_ID };
       return l.priceSource === 'Manual' || !nextFx ? repriced : { ...repriced, ...linePricing(item, repriced, next, m.customers, vatRegistered, rateOf, nextFx) };
     });
     update({ ...customerDefaults(c, draft), lines });

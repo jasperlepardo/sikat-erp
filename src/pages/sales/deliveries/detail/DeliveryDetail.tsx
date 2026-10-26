@@ -11,6 +11,8 @@ import { blankDelivery, deliveryHeaderFrom, type Delivery, type DnStatus } from 
 import { type SalesOrder } from '../../../../mocks/salesOrders';
 import { loadCurrentCompany } from '../../../../services/companies';
 import { todayISO } from '../../../../services/dates';
+import { recalcLineTaxes } from '../../../../services/taxRecalc';
+import type { Partner } from '../../../../mocks/partners';
 import { defaultJournalRemark } from '../../../../services/journalPatterns';
 import { DnPostError, addDelivery, cancelDelivery, closeDelivery, dnNumber, getDelivery, listDeliveries, recallDelivery, saveDeliveryDraft, saveDeliveryNotes } from '../../../../services/deliveries';
 import { loadInventoryMasters } from '../../../../services/inventoryMasters';
@@ -134,7 +136,17 @@ function DeliveryForm() {
   const { prevId, nextId } = neighbours(siblings, draft.id && (draft.docNum ? dnNumber(draft as Delivery) : draft.id));
   const baseOrders = [...new Set(draft.lines.map((l) => l.baseId).filter(Boolean))];
 
-  const update = (patch: Partial<DnDraft>) => setDraft({ ...draft, ...patch });
+  /** Tax codes re-proposed for the customer and date, except ones set by hand or copied from an order. */
+  const retax = (lines: DnDraft['lines'], c: Partner | undefined, date: string) =>
+    recalcLineTaxes(lines, (itemId) => {
+      const item = m.items.find((i) => i.id === itemId);
+      return item ? proposedTaxCode(item, c, m, date) : '';
+    });
+  const update = (patch: Partial<DnDraft>) => {
+    const next = { ...draft, ...patch };
+    if (!ro && patch.postingDate !== undefined && patch.postingDate !== draft.postingDate) next.lines = retax(next.lines, customer, next.postingDate);
+    setDraft(next);
+  };
 
   function copyLines(d: DnDraft, so: SalesOrder, picks: { lineId: string; qty: number }[]): DnDraft {
     const added = picks.map((p) => dnLineFromOrder(so, so.lines.find((l) => l.id === p.lineId)!, p.qty));
@@ -167,10 +179,7 @@ function DeliveryForm() {
       billTo: bill ? formatAddress(bill, c.name) : '',
       shipTo: ship ? formatAddress(ship, c.name) : '',
       journalRemark: defaultJournalRemark('deliveries', { entityCode: c.code, entityName: c.name }),
-      lines: draft.lines.map((l) => {
-        const item = m.items.find((i) => i.id === l.itemId);
-        return item && !l.baseId ? { ...l, taxCode: proposedTaxCode(item, c, m, draft.postingDate) } : l;
-      }),
+      lines: retax(draft.lines, c, draft.postingDate),
     });
   };
 

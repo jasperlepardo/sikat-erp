@@ -12,7 +12,8 @@ import { applyStock, expenseAccountFor, frozenLines, grInventoryQty, unitCostLc 
 import { applyCreditedQty, listGoodsReturns, returnOpenQty } from './goodsReturns';
 import { inventoryAccountFor, type JournalLine } from './inventoryTransfers';
 import { listItems, saveItem } from './items';
-import { lineNet, poTotals, type WithholdingLine } from './purchaseOrders';
+import { lineNet, poTotals } from './purchaseOrders';
+import { type WithholdingLine } from './withholding';
 import { createCollection } from './store';
 import { purchasingHistory } from './purchasingHistory';
 

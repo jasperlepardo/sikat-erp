@@ -18,6 +18,7 @@ import { countryDef } from '../../settings/masterDefs';
 import { defaultBin, lineFromItem, linePricing } from '../goods-receipts/detail/types';
 import { baseLink, type AnyReturnLine, type RetContext, type RetMasters } from './returnsTypes';
 import { LineItemText } from '../../../components/form/LineItemText';
+import { editTaxCode } from '../../../services/taxRecalc';
 
 const GROUPS = { details: 'Item details', withholding: 'Withholding', references: 'References' } as const;
 type Group = keyof typeof GROUPS;
@@ -169,7 +170,7 @@ export function ReturnLines<L extends AnyReturnLine>({
       l.itemId ? (
         <div className="flex w-44 shrink-0 flex-col gap-1 whitespace-normal">
           <TextField aria-label="Unit price" type="number" min={0} prefix={currency} invalid={Boolean(err(l, 'unitPrice'))} value={String(l.unitPrice)} onChange={(e) => patch(l.id, { unitPrice: round2(num(e.currentTarget.value)) })} />
-          <Combobox aria-label="Tax code" invalid={Boolean(err(l, 'taxCode'))} options={taxOptions} value={l.taxCode} onValueChange={(taxCode) => patch(l.id, { taxCode: taxCode ?? '' })} />
+          <Combobox aria-label="Tax code" invalid={Boolean(err(l, 'taxCode'))} options={taxOptions} value={l.taxCode} onValueChange={(taxCode) => patch(l.id, editTaxCode(taxCode ?? ''))} />
           <TextField aria-label="Discount %" type="number" min={0} suffix="%" value={String(l.discountPct)} onChange={(e) => patch(l.id, { discountPct: Math.min(100, num(e.currentTarget.value)) })} />
         </div>
       ) : null,

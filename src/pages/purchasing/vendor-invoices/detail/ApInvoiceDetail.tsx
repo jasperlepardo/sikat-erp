@@ -41,6 +41,7 @@ import { logRejection } from '../../../../services/approvalRules';
 import { transferBlock } from '../../../../services/binLocations';
 import { loadCurrentCompany } from '../../../../services/companies';
 import { formatDate, todayISO } from '../../../../services/dates';
+import { recalcLineTaxes } from '../../../../services/taxRecalc';
 import { defaultJournalRemark } from '../../../../services/journalPatterns';
 import { formatAmount } from '../../../../services/format';
 import { grOpenQty, listGoodsReceipts } from '../../../../services/goodsReceipts';
@@ -48,7 +49,8 @@ import { loadInventoryMasters } from '../../../../services/inventoryMasters';
 import { isValidToday, listItems } from '../../../../services/items';
 import { companyTax, currencies, exchangeRates, taxCodes, taxGroups, withholdingGroups, withholdingTaxes } from '../../../../services/masterData';
 import { listPartnersByRole } from '../../../../services/partners';
-import { dueDateFor, getPurchasingSettings, listPurchaseOrders, openQty, poWithholding } from '../../../../services/purchaseOrders';
+import { dueDateFor, getPurchasingSettings, listPurchaseOrders, openQty } from '../../../../services/purchaseOrders';
+import { docWithholding } from '../../../../services/withholding';
 import { proposedTaxCode } from '../../purchase-orders/detail/types';
 import { GrLogistics } from '../../goods-receipts/detail/GrLogisticsCard';
 import { buildGrContext, defaultPayTo, defaultShipTo, linesFromPo } from '../../goods-receipts/detail/types';
@@ -220,7 +222,7 @@ function ApInvoiceForm() {
   const errors: Errors = Object.fromEntries(problems.map((p) => [p.key, p.message]));
   const docCurrency = m.currencies.find((c) => c.code === draft.currency);
   const totals = apTotals(draft, ctx.rateOf, docCurrency?.rounding, ctx.isReverseCharge);
-  const withholding = poWithholding(draft, vendor, m.items, m.tax, draft.postingDate);
+  const withholding = docWithholding(draft, vendor, m.items, m.tax, draft.postingDate);
   const due = netDue(totals.total, withholding, draft.downPayment);
   const balance = Math.round((due - draft.appliedAmount) * 100) / 100;
   const journal = ctx.fx ? apJournal(draft, ctx.fx, { items: m.items, groups: m.inv.groups, codes: m.tax.codes, rateOf: ctx.rateOf, withholding }) : [];
@@ -233,8 +235,16 @@ function ApInvoiceForm() {
       next.dueDate = dueDateFor(next.postingDate, next.paymentTermId);
     }
     if (patch.lines) next.orderNumber = orderNumbersOf(next.lines, m);
+    if (!added && patch.postingDate !== undefined && patch.postingDate !== draft.postingDate) next.lines = retax(next.lines, vendor, next.postingDate);
     setDraft(next);
   };
+
+  /** Tax codes re-proposed for the vendor and date, except ones set by hand or copied from a base document. */
+  const retax = (lines: ApLine[], v: Partner | undefined, date: string) =>
+    recalcLineTaxes(lines, (itemId) => {
+      const item = m.items.find((i) => i.id === itemId);
+      return item ? proposedTaxCode(item, v, m, date) : '';
+    });
 
   /** Picking the vendor fills everything that defaults from it. Lines copied from another vendor's documents go. */
   const pickVendor = (vendorId: string | null) => {
@@ -242,10 +252,7 @@ function ApInvoiceForm() {
     if (!v) return update({ vendorId: '', vendorCode: '', vendorName: '', contactId: '', payTo: '' });
     update({
       ...vendorDefaults(v, draft),
-      lines: draft.lines.filter((l) => !l.baseType).map((l) => {
-        const item = m.items.find((i) => i.id === l.itemId);
-        return item ? { ...l, taxCode: proposedTaxCode(item, v, m, draft.postingDate) } : l;
-      }),
+      lines: retax(draft.lines.filter((l) => !l.baseType), v, draft.postingDate),
     });
   };
 
@@ -333,7 +340,13 @@ function ApInvoiceForm() {
       appliedAmount: 0,
       downPayment: 0,
       drawnDownPayments: [],
-      lines: draft.lines.map((l) => ({ ...l, id: newApLine().id, baseType: '', baseId: '', baseLineId: '', baseDocNo: '', receiptCostLc: 0, unitCostLc: 0 })),
+      // Withholding and filing were fixed for the original's date: the copy works them out again.
+      withholdingSummary: undefined,
+      lines: retax(
+        draft.lines.map((l) => ({ ...l, id: newApLine().id, baseType: '', baseId: '', baseLineId: '', baseDocNo: '', receiptCostLc: 0, unitCostLc: 0, lineWithholding: undefined, taxAtc: undefined, taxReturn: undefined })),
+        vendor,
+        today,
+      ),
     };
     navigate(`${AP_LIST_PATH}/new`, { state: { copyFrom: copy } });
   };

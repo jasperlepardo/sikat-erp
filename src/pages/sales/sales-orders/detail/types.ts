@@ -77,7 +77,7 @@ export function buildContext(draft: SoDraft, m: SoMasters, ownCommitted = new Ma
 }
 
 /** Proposed output tax code for selling the item to the customer (Settings › Accounting & Tax rules). */
-export const proposedTaxCode = (item: Item, customer: Partner | undefined, m: SoMasters, date: string) =>
+export const proposedTaxCode = (item: Item, customer: Partner | undefined, m: Pick<SoMasters, 'tax'>, date: string) =>
   customer ? (determineTax('Sales', item, customer, m.tax, date).taxCode?.code ?? '') : '';
 
 /**
@@ -114,6 +114,7 @@ export function lineFromItem(item: Item, draft: SoDraft, ctx: SoContext, m: SoMa
     warehouse: item.inventoryItem ? defaultWarehouse(item) : '',
     priceListId: ctx.customer?.priceListId || BASE_PRICE_LIST_ID,
     taxCode: proposedTaxCode(item, ctx.customer, m, draft.postingDate),
+    taxOverridden: false,
   });
   return { ...line, ...linePricing(item, line, draft, ctx) };
 }

@@ -21,6 +21,7 @@
  *   classification and serial numbers wait for their masters.
  */
 import type { DocumentSeries } from './common';
+import type { WithholdingKind } from './taxes';
 import { SEED_GOODS_RECEIPTS, newGrLine, type GoodsReceipt, type GrLine } from './goodsReceipts';
 import { SEED_ITEMS } from './items';
 import { SEED_PAYMENT_TERMS } from './partnerMasters';
@@ -76,6 +77,8 @@ export interface ApInvoice extends Omit<GoodsReceipt, 'lines' | 'status'> {
   downPayment: number;
   /** The down payment requests drawn, with the PHP each draw clears from its advance account. */
   drawnDownPayments?: DownPaymentDraw[];
+  /** Withholding fixed when the invoice was added, one entry per ATC — the 2307 lines. Missing on drafts and older invoices: worked out live. */
+  withholdingSummary?: StampedWithholding[];
   /** Include in payment runs (Payment Order Ref.). */
   paymentOrderRun: boolean;
   /** Paid or credited so far, in the document currency. */
@@ -85,6 +88,19 @@ export interface ApInvoice extends Omit<GoodsReceipt, 'lines' | 'status'> {
 export const AP_SERIES: DocumentSeries[] = [
   { id: 'aps-primary', name: 'Primary', prefix: '', firstNo: 1, manual: false, isDefault: true, active: true, segments: [{ type: 'literal', value: 'BILL' }, { type: 'year' }, { type: 'sequence', padding: 4 }] },
 ];
+
+/** A withholding tax as stamped on an added invoice: the 2307 line plus the account it credits. */
+export interface StampedWithholding {
+  atc: string;
+  description: string;
+  rate: number;
+  kind: WithholdingKind;
+  base: number;
+  amount: number;
+  account: string;
+  /** Taken off the vendor's payment (false for reverse-charge VAT, remitted on top). */
+  deducted: boolean;
+}
 
 /** Payable accounts withholding tax is credited to, by kind. */
 export const WITHHOLDING_PAYABLE: Record<string, string> = {

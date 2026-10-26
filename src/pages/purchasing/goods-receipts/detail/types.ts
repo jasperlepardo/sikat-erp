@@ -116,6 +116,7 @@ export function lineFromItem(item: Item, draft: Pick<GrDraft, 'postingDate'>, ct
     binId: warehouse ? defaultBin(item, warehouse, m) : '',
     priceListId,
     taxCode: proposedTaxCode(item, ctx.vendor, m, draft.postingDate),
+    taxOverridden: false,
   });
   return { ...line, ...linePricing(item, line, draft, ctx) };
 }

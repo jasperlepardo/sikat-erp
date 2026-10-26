@@ -1,7 +1,9 @@
 import { Combobox, MultiSelect, Text } from '@jasperlepardo/sikat-design-system';
 import { CtxFormField, FieldStack, bind, type Errors } from '../../../components/form/fields';
 import { BUSINESS_ACTIVITIES, RDOS, paysExcise, type BusinessActivity, type CompanyTaxProfile } from '../../../mocks/taxes';
-import { companyTax } from '../../../services/masterData';
+import { activeOptions } from '../../../services/inventoryMasters';
+import { companyTax, taxCodes } from '../../../services/masterData';
+import { useAsync } from '../../../services/useAsync';
 
 const ACTIVITY_LABELS: Record<BusinessActivity, string> = {
   Manufacturer: 'Manufacturer (makes or assembles goods)',
@@ -14,7 +16,7 @@ type StatusKey = 'vatRegistered' | 'topWithholdingAgent' | 'exportEnterprise' | 
 /** The company's BIR registration, ready to edit: profiles saved before business activities existed count as a reseller. */
 export async function loadTaxProfile(): Promise<CompanyTaxProfile> {
   const [stored] = await companyTax.list();
-  return { ...stored, businessActivities: stored.businessActivities ?? ['Reseller'] };
+  return { ...stored, businessActivities: stored.businessActivities ?? ['Reseller'], percentageTaxCode: stored.percentageTaxCode ?? '' };
 }
 
 /** Field errors for the tax profile (keys `tin`, `businessActivities`). */
@@ -40,6 +42,13 @@ export function CompanyTaxFields({
   errors: Errors;
 }) {
   const f = bind(profile, onChange);
+  const codes = useAsync(taxCodes.list, []) ?? [];
+  const ptOptions = activeOptions(
+    codes.filter((c) => c.direction === 'Sales' && c.category === 'Percentage tax'),
+    (c) => c.code,
+    (c) => `${c.code} · ${c.name}${c.atc ? ` (${c.atc})` : ''}`,
+    profile.percentageTaxCode,
+  );
 
   // A yes/no part of the registration, as a field with both answers spelled out.
   const status = (key: StatusKey, label: string, yes: string, no: string, tooltip?: string) => (
@@ -77,6 +86,13 @@ export function CompanyTaxFields({
           )}
         </CtxFormField>
         {status('vatRegistered', 'VAT status', 'VAT-registered (charges 12% VAT)', 'Non-VAT (pays 3% percentage tax)', 'As on the COR.')}
+        {profile.vatRegistered
+          ? null
+          : f.lookup('percentageTaxCode', 'Percentage tax code', ptOptions, {
+              clearable: true,
+              placeholder: 'PT · Percentage Tax (PT010)',
+              hint: 'For your line of business: the code carries the PT ATC and rate. Empty = PT (PT010, Sec. 116).',
+            })}
         {status('topWithholdingAgent', 'Withholding agent', 'Top withholding agent (BIR-notified)', 'Regular', 'Only when BIR has notified you in writing.')}
         {status('exportEnterprise', 'Export registration', 'Registered export enterprise (PEZA, BOI or other IPA)', 'Not registered')}
         {status('governmentEntity', 'Entity type', 'Government (NGA, LGU, GOCC)', 'Private')}
@@ -101,7 +117,7 @@ export function CompanyTaxFields({
           : 'Reseller only: excise is already in what you pay suppliers, so it is part of item cost and never calculated.'}{' '}
         {profile.vatRegistered
           ? 'VAT-registered: sales carry output VAT from the item and customer.'
-          : 'Not VAT-registered: every sale uses percentage tax (PT010), whatever the item says.'}{' '}
+          : `Not VAT-registered: every sale uses percentage tax (${profile.percentageTaxCode || 'PT'}), whatever the item says.`}{' '}
         {profile.governmentEntity
           ? 'Government entity: withholds 5% creditable VAT (WV010/WV020) or 3% percentage tax (WB080) from all supplier payments, and uses government EWT rates (WI640/WI157) on goods and services.'
           : profile.topWithholdingAgent

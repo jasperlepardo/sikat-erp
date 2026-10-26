@@ -144,8 +144,11 @@ function validate(d: Draft, codeMode: 'auto' | 'manual', inv: InventoryMasters):
       need(!problem, 'general', key, problem ?? '');
     }
   }
-  need(!d.purchaseItem || d.purchaseTaxGroup, 'purchasing', 'purchaseTaxGroup', 'Purchase items need a tax group.');
-  need(!d.salesItem || d.salesTaxGroup, 'sales', 'salesTaxGroup', 'Sales items need a tax group.');
+  // A parent with variants is neither bought nor sold itself, but its variants inherit its tax setup.
+  const isParent = d.variantAxes.length > 0;
+  need(!(d.purchaseItem || isParent) || d.purchaseTaxGroup || d.purchaseTaxCode, 'purchasing', 'purchaseTaxGroup', 'Purchase items need a tax group or a fixed tax code.');
+  need(!(d.salesItem || isParent) || !d.taxLiable || d.salesTaxGroup || d.salesTaxCode, 'sales', 'salesTaxGroup', 'Tax-liable sales items need a tax group or a fixed tax code.');
+  need(d.taxLiable || !d.salesTaxCode, 'sales', 'salesTaxCode', 'Not tax liable, so this code is never used. Clear it, or tick Tax liable on the General tab.');
 
   if (d.inventoryItem) {
     need(!d.maxStock || d.maxStock >= d.minStock, 'inventory', 'maxStock', 'Maximum stock is below minimum stock.');

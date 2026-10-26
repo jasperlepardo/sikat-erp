@@ -1,10 +1,13 @@
-import { AR_SERIES, CREDITABLE_VAT_ACCOUNT, CWT_ACCOUNT, FREIGHT_INCOME_ACCOUNT, SEED_AR_INVOICES, type ArInvoice, type ArLine } from '../mocks/arInvoices';
+import { AR_SERIES, FREIGHT_INCOME_ACCOUNT, SEED_AR_INVOICES, type ArInvoice, type ArLine } from '../mocks/arInvoices';
 import { arSeries, seriesLookup, formatDocNum } from './allSeries';
 import { SHIPPED_GOODS_ACCOUNT } from '../mocks/deliveries';
 import type { ItemGroup } from '../mocks/itemMasters';
 import type { Item } from '../mocks/items';
 import type { Partner } from '../mocks/partners';
 import { rateAt, type TaxCode } from '../mocks/taxes';
+import type { TaxMasterData } from './taxDetermination';
+import { customerWithholding, customerWithholds, type CustomerWithholding } from './withholding';
+import { withTaxFiling } from './taxRecalc';
 import { todayISO } from './dates';
 import { applyInvoiced, deliveryProblems, dnInventoryQty, listDeliveries } from './deliveries';
 import { frozenStock } from './inventoryCountings';
@@ -47,43 +50,18 @@ const rateFrom = (codes: readonly TaxCode[], date: string) => (code: string) => 
   return c ? (rateAt(c, date) ?? 0) : 0;
 };
 
-export interface ArWithholding {
-  kind: 'Expanded (EWT)' | 'Withholding VAT';
-  atc: string;
-  label: string;
-  rate: number;
-  base: number;
-  amount: number;
-  account: string;
-}
+export type ArWithholding = CustomerWithholding;
+export { customerWithholds };
 
-/** Whether the customer withholds on what it pays us: a top withholding agent, or government. */
-export const customerWithholds = (c: Pick<Partner, 'businessType' | 'topWithholdingAgent'> | undefined) => Boolean(c && (c.businessType === 'Government' || c.topWithholdingAgent));
-
-/**
- * The WTax Amount (document currency) on WTax Liable lines: EWT at 1% on goods and 2% on services
- * from a top withholding agent or government office, plus 5% VAT from government (on VATable
- * lines). The base is net of VAT, after the document discount.
- */
-export function arWithholding(a: Pick<ArInvoice, 'lines' | 'discountPct' | 'docType'>, customer: Pick<Partner, 'businessType' | 'topWithholdingAgent'> | undefined, items: readonly Item[], rateOf: (code: string) => number): ArWithholding[] {
-  if (!customerWithholds(customer)) return [];
-  const gov = customer!.businessType === 'Government';
-  const factor = 1 - a.discountPct / 100;
-  let goods = 0;
-  let services = 0;
-  let vatable = 0;
-  for (const l of a.lines.filter((x) => x.wtaxLiable)) {
-    const net = lineNet(l as never) * factor;
-    const item = items.find((i) => i.id === l.itemId);
-    if (a.docType === 'Service' || (item && !item.inventoryItem)) services += net;
-    else goods += net;
-    if (rateOf(l.taxCode) > 0) vatable += net;
-  }
-  const out: ArWithholding[] = [];
-  if (goods) out.push({ kind: 'Expanded (EWT)', atc: 'WC158', label: 'Creditable withholding tax — goods (1%)', rate: 1, base: round2(goods), amount: round2(goods * 0.01), account: CWT_ACCOUNT });
-  if (services) out.push({ kind: 'Expanded (EWT)', atc: 'WC159', label: 'Creditable withholding tax — services (2%)', rate: 2, base: round2(services), amount: round2(services * 0.02), account: CWT_ACCOUNT });
-  if (gov && vatable) out.push({ kind: 'Withholding VAT', atc: 'WVO10', label: 'VAT withheld by government (5%)', rate: 5, base: round2(vatable), amount: round2(vatable * 0.05), account: CREDITABLE_VAT_ACCOUNT });
-  return out;
+/** The WTax Amount (document currency) on WTax Liable lines — see customerWithholding. */
+export function arWithholding(
+  a: Pick<ArInvoice, 'lines' | 'discountPct' | 'docType' | 'postingDate'>,
+  customer: Pick<Partner, 'businessType' | 'topWithholdingAgent'> | undefined,
+  items: readonly Item[],
+  rateOf: (code: string) => number,
+  tax?: TaxMasterData,
+): ArWithholding[] {
+  return customerWithholding(a, customer, items, rateOf, tax);
 }
 
 /** What the customer still owes: total − withholding − payments applied. */
@@ -251,7 +229,7 @@ export async function addArInvoice(input: ArInput, fx: number, ctx: { codes: rea
   }
 
   await updateFifoCosts([...fifoItemIds]);
-  const saved = await invoices.save({ ...input, lines, docNum, status: 'Open', fxRate: fx });
+  const saved = await invoices.save({ ...input, lines: withTaxFiling(lines, ctx.codes), docNum, status: 'Open', fxRate: fx });
   await logConsumption(saved.id, saved.postingDate, taken);
   await postDocumentEntry({
     origin: 'IN',

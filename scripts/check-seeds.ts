@@ -32,7 +32,8 @@ const { purchasingHistory } = await import('../src/services/purchasingHistory');
 const { stockHistory } = await import('../src/services/stockHistory');
 const { seededLedger } = await import('../src/services/ledgerHistory');
 const { listItems } = await import('../src/services/items');
-const { poTotals, poWithholding } = await import('../src/services/purchaseOrders');
+const { poTotals } = await import('../src/services/purchaseOrders');
+const { poWithholding } = await import('../src/services/withholding');
 
 const failures: string[] = [];
 const check = (name: string, problems: string[]) => {

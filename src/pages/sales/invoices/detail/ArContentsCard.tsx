@@ -20,6 +20,7 @@ import { CopyPanel, type CopySourceType } from '../../../purchasing/shared/CopyP
 import { DN_LIST_PATH, asSoDraft } from '../../deliveries/detail/types';
 import { SO_LIST_PATH, lineFromItem, linePricing } from '../../sales-orders/detail/types';
 import type { ArSectionProps } from './types';
+import { editTaxCode, lineAtc } from '../../../../services/taxRecalc';
 
 const num = (v: string) => (v === '' ? 0 : Number(v));
 const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -120,13 +121,13 @@ export function ArContentsCard({ draft, update, errors, m, ctx, onCopy, cardFoot
   const taxCol = col('tax', 'Tax code', (l) => {
     if (ro) return (
       <div className="flex flex-col gap-0.5">
-        <Text variant="small">{l.taxCode} ({rate(l)}%)</Text>
+        <Text variant="small">{l.taxCode} ({rate(l)}%){lineAtc(l, m.tax.codes, true) ? ` · ${lineAtc(l, m.tax.codes, true)}` : ''}</Text>
         <Text variant="small" tone="muted">Tax PHP {lc(taxOf(l))}</Text>
       </div>
     );
     return (
       <div className="flex w-32 flex-col gap-1">
-        <Combobox aria-label="Tax code" invalid={Boolean(err(l, 'taxCode'))} options={taxOptions} value={l.taxCode || null} onValueChange={(v) => patch(l.id, { taxCode: v ?? '' })} />
+        <Combobox aria-label="Tax code" invalid={Boolean(err(l, 'taxCode'))} options={taxOptions} value={l.taxCode || null} onValueChange={(v) => patch(l.id, editTaxCode(v ?? ''))} />
         <Text variant="small" tone="muted">Tax PHP {lc(taxOf(l))}</Text>
       </div>
     );

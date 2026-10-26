@@ -65,12 +65,18 @@ export function groupTaxNote(
 }
 
 /** The item's default tax code, and a reminder that partner/company status can override it. */
+/** Hint on a fixed tax code: it beats the tax group, so warn when both are set. */
+export const fixedCodeHint = (groupCode: string, fixedCode: string, doc: 'sale' | 'purchase') =>
+  fixedCode && groupCode
+    ? `Overrides tax group ${groupCode} on every ${doc} — the group isn't used while this is set.`
+    : `Overrides the tax group on every ${doc}.`;
+
 export function taxResolution(tax: TaxMasters, groupCode: string, fixedCode: string) {
   const describe = (code: string) => {
     const c = tax.codes.find((x) => x.code === code);
     return c ? `${c.code} ${currentRate(c) ?? '—'}%` : code || '—';
   };
-  const override = 'The partner’s or company’s tax status can override it (Settings › Accounting & Tax › Determination rules).';
+  const override = 'The partner’s or company’s tax status can override it.';
   if (fixedCode) return `Always ${describe(fixedCode)}. Only company or supplier VAT status overrides a fixed code.`;
   const g = tax.groups.find((x) => x.code === groupCode);
   if (!g) return 'Pick a tax group.';

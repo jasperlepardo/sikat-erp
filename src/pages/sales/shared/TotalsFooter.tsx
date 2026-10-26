@@ -33,7 +33,7 @@ export function SalesTotalsFooter({ draft, update, ctx, m, withRounding, withhol
   const customer = ctx.customer;
   const docCurrency = m.currencies.find((c) => c.code === draft.currency);
   const totals = soTotals(doc, ctx.rateOf, docCurrency?.rounding);
-  const withholdingLines = withholding ?? soWithholding(doc, customer, m.items, m.tax).map((w) => ({ label: `${w.kind === 'Withholding VAT' ? 'VAT' : 'EWT'} withheld — ${w.atc} (${w.rate}%)`, amount: w.amount }));
+  const withholdingLines = withholding ?? soWithholding({ ...doc, postingDate: draft.postingDate }, customer, m.items, m.tax).map((w) => ({ label: `${w.kind === 'Withholding VAT' ? 'VAT' : 'EWT'} withheld — ${w.atc} (${w.rate}%)`, amount: w.amount }));
   const withholdingTotal = withholdingLines.reduce((n, w) => n + w.amount, 0);
   const totalLc = totals.total * ctx.fx;
   const taxNotes = [

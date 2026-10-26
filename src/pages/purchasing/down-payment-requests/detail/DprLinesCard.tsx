@@ -17,6 +17,7 @@ import { PurchTotalsFooter, PurchTotalNote, PurchTotalRow } from '../../shared/P
 import { lineFromItem, linePricing } from '../../goods-receipts/detail/types';
 import type { DprSectionProps } from './types';
 import { LineItemText } from '../../../../components/form/LineItemText';
+import { editTaxCode } from '../../../../services/taxRecalc';
 
 const num = (v: string) => (v === '' ? 0 : Number(v));
 const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -111,7 +112,7 @@ export function DprLinesCard({
       l.itemId ? (
         <div className="flex w-44 flex-col gap-1">
           <TextField aria-label="Unit price" type="number" min={0} prefix={code} invalid={Boolean(err(l, 'unitPrice'))} value={String(l.unitPrice)} onChange={(e) => patch(l.id, { unitPrice: round2(num(e.currentTarget.value)) })} />
-          <Combobox aria-label="Tax code" invalid={Boolean(err(l, 'taxCode'))} options={taxOptions} value={l.taxCode} onValueChange={(taxCode) => patch(l.id, { taxCode: taxCode ?? '' })} />
+          <Combobox aria-label="Tax code" invalid={Boolean(err(l, 'taxCode'))} options={taxOptions} value={l.taxCode} onValueChange={(taxCode) => patch(l.id, editTaxCode(taxCode ?? ''))} />
           <TextField aria-label="Discount %" type="number" min={0} suffix="%" value={String(l.discountPct)} onChange={(e) => patch(l.id, { discountPct: Math.min(100, num(e.currentTarget.value)) })} />
         </div>
       ) : null,

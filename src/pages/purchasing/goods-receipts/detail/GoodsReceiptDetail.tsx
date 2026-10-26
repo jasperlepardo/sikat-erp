@@ -21,6 +21,7 @@ import { type Partner } from '../../../../mocks/partners';
 import { type PurchaseOrder } from '../../../../mocks/purchaseOrders';
 import { loadCurrentCompany } from '../../../../services/companies';
 import { formatDate, todayISO } from '../../../../services/dates';
+import { recalcLineTaxes } from '../../../../services/taxRecalc';
 import { defaultJournalRemark } from '../../../../services/journalPatterns';
 import {
   GrPostError,
@@ -207,8 +208,16 @@ function GoodsReceiptForm() {
     if ((patch.paymentTermId !== undefined || patch.postingDate !== undefined) && patch.dueDate === undefined && (!draft.dueDate || draft.dueDate === dueDateFor(draft.postingDate, draft.paymentTermId))) {
       next.dueDate = dueDateFor(next.postingDate, next.paymentTermId);
     }
+    if (!added && patch.postingDate !== undefined && patch.postingDate !== draft.postingDate) next.lines = retax(next.lines, vendor, next.postingDate);
     setDraft(next);
   };
+
+  /** Tax codes re-proposed for the vendor and date, except ones set by hand or copied from a base document. */
+  const retax = (lines: GrDraft['lines'], v: Partner | undefined, date: string) =>
+    recalcLineTaxes(lines, (itemId) => {
+      const item = m.items.find((i) => i.id === itemId);
+      return item ? proposedTaxCode(item, v, m, date) : '';
+    });
 
   /** Picking the vendor fills everything that defaults from it. Lines copied from another vendor's PO go. */
   const pickVendor = (vendorId: string | null) => {
@@ -217,10 +226,7 @@ function GoodsReceiptForm() {
     const kept = draft.lines.filter((l) => !l.baseId);
     update({
       ...vendorDefaults(v, draft),
-      lines: kept.map((l) => {
-        const item = m.items.find((i) => i.id === l.itemId);
-        return item ? { ...l, taxCode: proposedTaxCode(item, v, m, draft.postingDate) } : l;
-      }),
+      lines: retax(kept, v, draft.postingDate),
       orderNumber: '',
     });
   };

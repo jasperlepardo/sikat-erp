@@ -15,7 +15,8 @@ import { itemsPerUom } from '../../../../mocks/items';
 import { formatAmount } from '../../../../services/format';
 import { formatDate } from '../../../../services/dates';
 import { receivesFromVendors } from '../../../../mocks/itemMasters';
-import { getPurchasingSettings, grossPrice, inventoryQty, lineNet, poTotals, poWithholding, priceAfterDiscount } from '../../../../services/purchaseOrders';
+import { getPurchasingSettings, grossPrice, inventoryQty, lineNet, poTotals, priceAfterDiscount } from '../../../../services/purchaseOrders';
+import { poWithholding } from '../../../../services/withholding';
 import { linePricing, lineFromItem, viewCurrency, type PoTabProps } from './types';
 import { PurchTotalsFooter, PurchTotalNote, PurchTotalRow } from '../../shared/PurchTotalsFooter';
 

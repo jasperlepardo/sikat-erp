@@ -37,6 +37,8 @@ import {
 import { logRejection } from '../../../../services/approvalRules';
 import { loadCurrentCompany } from '../../../../services/companies';
 import { formatDate, todayISO } from '../../../../services/dates';
+import { recalcLineTaxes } from '../../../../services/taxRecalc';
+import { proposedTaxCode } from '../../purchase-orders/detail/types';
 import { defaultJournalRemark } from '../../../../services/journalPatterns';
 import { formatAmount } from '../../../../services/format';
 import { receivablePos } from '../../../../services/goodsReceipts';
@@ -164,8 +166,15 @@ function DprForm() {
   const code = draft.currency;
   const orders = draft.vendorId ? receivablePos(m.orders, draft.vendorId).filter((po) => !ctx.based || po.currency === code) : [];
 
+  /** Tax codes re-proposed for the vendor and date, except ones set by hand or copied from a base document. */
+  const retax = (lines: Draft['lines'], v: Partner | undefined, date: string) =>
+    recalcLineTaxes(lines, (itemId) => {
+      const item = m.items.find((i) => i.id === itemId);
+      return item ? proposedTaxCode(item, v, m, date) : '';
+    });
   const update = (patch: Partial<Draft>) => {
     const next = { ...draft, ...patch };
+    if (!added && patch.postingDate !== undefined && patch.postingDate !== draft.postingDate) next.lines = retax(next.lines, vendor, next.postingDate);
     if ((patch.paymentTermId !== undefined || patch.postingDate !== undefined) && patch.dueDate === undefined && (!draft.dueDate || draft.dueDate === dueDateFor(draft.postingDate, draft.paymentTermId))) {
       next.dueDate = dueDateFor(next.postingDate, next.paymentTermId);
     }
@@ -175,7 +184,7 @@ function DprForm() {
 
   const pickVendor = (vendorId: string | null) => {
     const v = m.vendors.find((x) => x.id === vendorId);
-    update(v ? { ...vendorDefaults(v, draft, m), lines: draft.lines.filter((l) => !l.baseType) } : { vendorId: '', vendorCode: '', vendorName: '', contactId: '' });
+    update(v ? { ...vendorDefaults(v, draft, m), lines: retax(draft.lines.filter((l) => !l.baseType), v, draft.postingDate) } : { vendorId: '', vendorCode: '', vendorName: '', contactId: '' });
   };
   const sectionProps = { draft, update, errors, m, ctx };
 

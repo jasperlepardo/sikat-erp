@@ -51,6 +51,11 @@ export interface DnLine {
   discountPct: number;
   priceSource: string;
   taxCode: string;
+  /** User edited the tax code by hand: auto-recalc leaves this line alone. Missing = false. */
+  taxOverridden?: boolean;
+  /** The tax code's ATC and BIR return, stamped when the document is added ('' = none). */
+  taxAtc?: string;
+  taxReturn?: string;
   /** The sales order and line this was copied from ('' for a line entered by hand). */
   baseType: '' | 'SO';
   baseId: string;

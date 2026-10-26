@@ -57,6 +57,8 @@ export interface SoLine {
   /** What set the price: "Special price", "Discount group …", the list name, or "Manual". */
   priceSource: string;
   taxCode: string;
+  /** User edited the tax code by hand: auto-recalc leaves this line alone. Missing = false. */
+  taxOverridden?: boolean;
   /** Service documents: the revenue account the line posts to. */
   glAccount: string;
   status: SoRowStatus;

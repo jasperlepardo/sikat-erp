@@ -24,7 +24,8 @@ import { RETAIL_RETURNS } from '../mocks/retailHistory';
 import { SEED_COMPANY_TAX, SEED_TAX_CODES, SEED_TAX_GROUPS, SEED_WITHHOLDING, SEED_WITHHOLDING_GROUPS, rateAt, vatNotPaidToVendor } from '../mocks/taxes';
 import { SEED_RATES } from '../mocks/currencies';
 import { rateOn } from './masterData';
-import { poTotals, poWithholding } from './purchaseOrders';
+import { poTotals } from './purchaseOrders';
+import { poWithholding } from './withholding';
 import type { TaxMasterData } from './taxDetermination';
 
 const round2 = (n: number) => Math.round(n * 100) / 100;

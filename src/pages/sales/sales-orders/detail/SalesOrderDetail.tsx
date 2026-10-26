@@ -7,9 +7,10 @@ import { ProblemsAlert, problemCollector, type Problem } from '../../../../compo
 import { CURRENT_USER_ID } from '../../../../mocks/common';
 import { formatAddress } from '../../../../mocks/address';
 import type { Partner } from '../../../../mocks/partners';
-import { SALES_SETTINGS, blankSalesOrder, newSoLine, openCommitted, type SalesOrder, type SoStatus } from '../../../../mocks/salesOrders';
+import { SALES_SETTINGS, blankSalesOrder, newSoLine, openCommitted, type SalesOrder, type SoLine, type SoStatus } from '../../../../mocks/salesOrders';
 import { loadCurrentCompany } from '../../../../services/companies';
 import { formatDate, todayISO } from '../../../../services/dates';
+import { recalcLineTaxes } from '../../../../services/taxRecalc';
 import { formatAmount } from '../../../../services/format';
 import { loadInventoryMasters } from '../../../../services/inventoryMasters';
 import { isValidToday, listItems } from '../../../../services/items';
@@ -178,7 +179,17 @@ function SalesOrderForm() {
   const delivered = draft.lines.some((l) => l.deliveredQty > 0);
   const overCredit = SALES_SETTINGS.creditLimitCheck && customer && customer.creditLimit > 0 && openBalance + totalLc > customer.creditLimit && !ctx.readOnly;
 
-  const update = (patch: Partial<SoDraft>) => setDraft({ ...draft, ...patch });
+  /** Tax codes re-proposed for the customer and date, except ones set by hand. */
+  const retax = (lines: SoLine[], c: Partner | undefined, date: string) =>
+    recalcLineTaxes(lines, (itemId) => {
+      const item = m.items.find((i) => i.id === itemId);
+      return item ? proposedTaxCode(item, c, m, date) : '';
+    });
+  const update = (patch: Partial<SoDraft>) => {
+    const next = { ...draft, ...patch };
+    if (!ctx.readOnly && patch.postingDate !== undefined && patch.postingDate !== draft.postingDate) next.lines = retax(next.lines, customer, next.postingDate);
+    setDraft(next);
+  };
 
   /** Picking the customer fills everything that defaults from it, and reprices the lines. */
   const pickCustomer = (customerId: string | null) => {
@@ -217,11 +228,10 @@ function SalesOrderForm() {
     // Tax codes and prices depend on the customer, so lines re-propose theirs.
     update({
       ...next,
-      lines: draft.lines.map((l) => {
+      lines: retax(draft.lines, c, next.postingDate).map((l) => {
         const item = m.items.find((i) => i.id === l.itemId);
         if (!item) return l;
-        const taxCode = proposedTaxCode(item, c, m, next.postingDate);
-        const priced = { ...l, taxCode, priceListId: c.priceListId || BASE_PRICE_LIST_ID };
+        const priced = { ...l, priceListId: c.priceListId || BASE_PRICE_LIST_ID };
         return { ...priced, ...(nextCtx.fx ? linePricing(item, priced, next, nextCtx) : {}) };
       }),
     });

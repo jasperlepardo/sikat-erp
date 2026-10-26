@@ -44,12 +44,15 @@ import {
   type InvoiceBalances,
 } from '../../../services/apCreditMemos';
 import { formatDate, todayISO } from '../../../services/dates';
+import { recalcLineTaxes } from '../../../services/taxRecalc';
+import { proposedTaxCode } from '../purchase-orders/detail/types';
 import { defaultJournalRemark } from '../../../services/journalPatterns';
 import { formatAmount } from '../../../services/format';
 import { creditableReturns, returnNumber, returnOpenQty } from '../../../services/goodsReturns';
 import { isValidToday } from '../../../services/items';
 import { postDocumentEntry, reverseDocumentEntry } from '../../../services/journalEntries';
-import { dueDateFor, getPurchasingSettings, poWithholding } from '../../../services/purchaseOrders';
+import { dueDateFor, getPurchasingSettings } from '../../../services/purchaseOrders';
+import { poWithholding } from '../../../services/withholding';
 import { buildGrContext } from '../goods-receipts/detail/types';
 import { CopyPanel } from '../shared/CopyPanel';
 import { DocumentFlow } from '../shared/DocumentFlow';
@@ -193,8 +196,15 @@ function CreditMemoForm() {
   const code = draft.currency;
   const balanceOf = (inv: ApInvoice) => invoiceBalance(inv, m);
 
+  /** Tax codes re-proposed for the vendor and date, except ones set by hand or copied from a base document. */
+  const retax = (lines: Draft['lines'], v: Partner | undefined, date: string) =>
+    recalcLineTaxes(lines, (itemId) => {
+      const item = m.items.find((i) => i.id === itemId);
+      return item ? proposedTaxCode(item, v, m, date) : '';
+    });
   const update = (patch: Partial<Draft>) => {
     const next = { ...draft, ...patch };
+    if (!added && patch.postingDate !== undefined && patch.postingDate !== draft.postingDate) next.lines = retax(next.lines, vendor, next.postingDate);
     if ((patch.paymentTermId !== undefined || patch.postingDate !== undefined) && patch.dueDate === undefined && (!draft.dueDate || draft.dueDate === dueDateFor(draft.postingDate, draft.paymentTermId))) {
       next.dueDate = dueDateFor(next.postingDate, next.paymentTermId);
     }
@@ -203,7 +213,7 @@ function CreditMemoForm() {
 
   const pickVendor = (vendorId: string | null) => {
     const v = m.vendors.find((x) => x.id === vendorId);
-    update(v ? { ...vendorDefaults(v, draft), lines: draft.lines.filter((l) => !l.baseType) } : { vendorId: '', vendorCode: '', vendorName: '', contactId: '', shipTo: '', payTo: '' });
+    update(v ? { ...vendorDefaults(v, draft), lines: retax(draft.lines.filter((l) => !l.baseType), v, draft.postingDate) } : { vendorId: '', vendorCode: '', vendorName: '', contactId: '', shipTo: '', payTo: '' });
   };
 
   const sameCurrency = <T extends { currency: string }>(docs: T[]) => (ctx.based ? docs.filter((d) => d.currency === code) : docs);

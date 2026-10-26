@@ -10,7 +10,7 @@ import type { Partner } from '../../../../mocks/partners';
 import { rateAt, vatNotPaidToVendor } from '../../../../mocks/taxes';
 import { apNumber, apTotals, netDue } from '../../../../services/apInvoices';
 import type { PaymentInput } from '../../../../services/outgoingPayments';
-import { poWithholding } from '../../../../services/purchaseOrders';
+import { docWithholding } from '../../../../services/withholding';
 import type { TaxMasterData } from '../../../../services/taxDetermination';
 
 export type PaymentDraft = PaymentInput;
@@ -46,7 +46,7 @@ export function invoiceBalance(inv: ApInvoice, m: Pick<PayMasters, 'vendors' | '
   };
   const totals = apTotals(inv, rateOf, undefined, (code) => vatNotPaidToVendor(m.tax.codes.find((x) => x.code === code)));
   const vendor = m.vendors.find((v) => v.id === inv.vendorId);
-  const withholding = poWithholding(inv, vendor, m.items, m.tax, inv.postingDate);
+  const withholding = docWithholding(inv, vendor, m.items, m.tax, inv.postingDate);
   const total = netDue(totals.total, withholding, inv.downPayment);
   const wtAmount = Math.round(withholding.filter((w) => w.deducted).reduce((n, w) => n + w.amount, 0) * 100) / 100;
   return { total, wtAmount, balanceDue: Math.round((total - inv.appliedAmount) * 100) / 100 };

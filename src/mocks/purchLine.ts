@@ -1,3 +1,5 @@
+import type { WithholdingKind } from './taxes';
+
 /**
  * The unified purchasing line shape for the forward flow (PR / RFQ / PO / GRPO).
  *
@@ -29,6 +31,11 @@ export interface PurchLine {
   unitPrice: number;
   discountPct: number;
   taxCode: string;
+  /** User edited the tax code by hand: auto-recalc leaves this line alone. Missing = false. */
+  taxOverridden?: boolean;
+  /** The tax code's ATC and BIR return, stamped when the document is added ('' = none). */
+  taxAtc?: string;
+  taxReturn?: string;
   priceListId: string;
   /** Linked requisition reference — traceability only. */
   requisitionSlipNo: string;
@@ -85,6 +92,17 @@ export interface PurchLine {
   invoicedQty?: number;
   /** Sent back on goods returns copied from this line. GR. */
   returnedQty?: number;
+  /** Withholding resolved for this line, stamped when a posting document is added. A/P invoice. */
+  lineWithholding?: LineWithholding[];
+}
+
+/** One withholding tax on one line — with `atc` and `rate`, exactly a BIR 2307 line. */
+export interface LineWithholding {
+  atc: string;
+  rate: number;
+  kind: WithholdingKind;
+  base: number;
+  amount: number;
 }
 
 /**

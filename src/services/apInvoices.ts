@@ -21,7 +21,10 @@ import {
 import { inventoryAccountFor, type JournalLine } from './inventoryTransfers';
 import { listItems, saveItem } from './items';
 import { addLayer, removeLayersBySource, updateFifoCosts } from './costLayers';
-import { lineNet, listPurchaseOrders, openQty, poTotals, saveReceivedQuantities, type WithholdingLine } from './purchaseOrders';
+import { lineNet, listPurchaseOrders, openQty, poTotals, saveReceivedQuantities } from './purchaseOrders';
+import { currentTaxData, stampWithholding, type WithholdingLine } from './withholding';
+import { getPartner } from './partners';
+import { withTaxFiling } from './taxRecalc';
 import { createCollection } from './store';
 import { purchasingHistory } from './purchasingHistory';
 import { taxCodes } from './masterData';
@@ -132,7 +135,7 @@ export function apJournal(
   let withheld = 0;
   for (const w of ctx.withholding.filter((x) => x.deducted)) {
     const amt = round2(w.amount * fx);
-    add(WITHHOLDING_PAYABLE[w.kind] ?? '2340', -amt);
+    add(w.account || WITHHOLDING_PAYABLE[w.kind] || '2340', -amt);
     withheld += amt;
   }
   // Down payments drawn clear the advance at the rate it was paid at; the vendor is owed the rest.
@@ -252,8 +255,12 @@ export async function addApInvoice(input: ApInput, fx: number, due?: number): Pr
   await applyInvoicedQty(lines.filter((l) => l.baseType === 'GRPO'), 1);
   await drawRequests(input.drawnDownPayments ?? [], 1);
 
+  // Withholding is fixed now, per line and per ATC (the 2307), so later Settings changes don't move it.
+  const vendor = (await getPartner(input.vendorId)) ?? undefined;
+  const stamped = stampWithholding({ discountPct: input.discountPct, lines }, vendor, items, currentTaxData(), input.postingDate);
+
   const settled = due !== undefined && due <= 0.005;
-  const saved = await invoices.save({ ...input, lines: withBinCodes(lines), docNum, status: settled ? 'Closed' : 'Open', closeDate: settled ? todayISO() : '', fxRate: fx });
+  const saved = await invoices.save({ ...input, lines: withTaxFiling(withBinCodes(stamped.lines), await taxCodes.list()), withholdingSummary: stamped.withholdingSummary, docNum, status: settled ? 'Closed' : 'Open', closeDate: settled ? todayISO() : '', fxRate: fx });
 
   // FIFO: create layers for lines that bring stock in directly (not via a GR).
   const fifoStockLines = lines.filter((l) => movesStock(l, items) && items.find((i) => i.id === l.itemId)?.valuationMethod === 'FIFO');

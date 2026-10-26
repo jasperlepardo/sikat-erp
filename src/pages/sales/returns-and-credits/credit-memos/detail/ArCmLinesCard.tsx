@@ -16,6 +16,7 @@ import { asSoDraft, type DnDraft } from '../../../deliveries/detail/types';
 import { AR_LIST_PATH } from '../../../invoices/detail/types';
 import { lineFromItem, type SoMasters } from '../../../sales-orders/detail/types';
 import { SR_LIST_PATH, type ArCmSectionProps } from '../../types';
+import { editTaxCode } from '../../../../../services/taxRecalc';
 
 const num = (v: string) => (v === '' ? 0 : Number(v));
 
@@ -55,7 +56,7 @@ export function ArCmLinesCard({
       itemId: s.itemId, itemNo: s.itemNo, description: s.description, quantity: s.quantity,
       uomCode: s.uomCode, uomName: s.uomName, itemsPerUnit: s.itemsPerUnit, warehouse: s.warehouse,
       priceListId: s.priceListId, unitPrice: s.unitPrice, discountPct: s.discountPct,
-      priceSource: s.priceSource, taxCode: s.taxCode, returnGoods: item.inventoryItem,
+      priceSource: s.priceSource, taxCode: s.taxCode, taxOverridden: false, returnGoods: item.inventoryItem,
     });
   };
   const pickItem = (l: ArCmLine, itemId: string | null) => {
@@ -159,7 +160,7 @@ export function ArCmLinesCard({
       );
       return (
         <div className="flex w-32 flex-col gap-1">
-          <Combobox aria-label="Tax code" invalid={Boolean(err(l, 'taxCode'))} options={taxOptions} value={l.taxCode || null} onValueChange={(v) => patch(l.id, { taxCode: v ?? '' })} />
+          <Combobox aria-label="Tax code" invalid={Boolean(err(l, 'taxCode'))} options={taxOptions} value={l.taxCode || null} onValueChange={(v) => patch(l.id, editTaxCode(v ?? ''))} />
           <Text variant="small" tone="muted">Tax PHP {lc(taxOf(l))}</Text>
         </div>
       );

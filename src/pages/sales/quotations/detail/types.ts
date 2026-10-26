@@ -98,6 +98,7 @@ export function lineFromItem(item: Item, draft: Draft, ctx: QtContext, m: QtMast
     warehouse: item.inventoryItem ? (item.warehouses[0]?.code ?? 'WH-001') : '',
     priceListId: ctx.customer?.priceListId || BASE_PRICE_LIST_ID,
     taxCode: proposedTaxCode(item, ctx.customer, m, draft.postingDate),
+    taxOverridden: false,
   });
   return { ...line, ...linePricing(item, line, draft, m.customers, ctx.vatRegistered, ctx.rateOf, ctx.fx) };
 }

@@ -89,6 +89,7 @@ export function lineFromItem(item: Item, draft: PrDraft, m: PrMasters, base: Par
     departmentId: base.departmentId ?? draft.departmentId,
     unitPrice: price,
     taxCode,
+    taxOverridden: false,
     quantity: qty,
     openQty: qty,
     requiredDate: draft.requiredDate,

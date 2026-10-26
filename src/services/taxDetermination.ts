@@ -138,7 +138,9 @@ export function determineTax(
 
   if (direction === 'Sales') {
     // 1. Company status
-    if (!data.company.vatRegistered) decide('Company is not VAT-registered', SYSTEM_TAX_CODES.PERCENTAGE_TAX, 'Non-VAT sellers pay percentage tax on every sale');
+    if (!data.company.vatRegistered) {
+      decide('Company is not VAT-registered', data.company.percentageTaxCode || SYSTEM_TAX_CODES.PERCENTAGE_TAX, 'Non-VAT sellers pay percentage tax on every sale, at the rate for their line of business');
+    }
     else step('Company is not VAT-registered', 'skipped', 'The company is VAT-registered.');
 
     // 2. Item not tax liable
@@ -361,7 +363,8 @@ export function determineWithholding(
 
   // 5. Vendor override (income tiering still applies to residents).
   if (partner.withholdingOverrideId) {
-    const set = data.withholding.find((x) => x.id === partner.withholdingOverrideId);
+    const found = data.withholding.find((x) => x.id === partner.withholdingOverrideId);
+    const set = found?.active ? found : undefined;
     if (set) {
       let w = set;
       if (!partner.nonResident && set.condition && set.kind === 'Expanded (EWT)') {
@@ -382,7 +385,9 @@ export function determineWithholding(
       );
       return done();
     }
-    step('Vendor override', 'warning', "The vendor's override points to a withholding tax that no longer exists.");
+    step('Vendor override', 'warning', found
+      ? `The vendor's override ${found.atc || found.description} is inactive in Settings — using the item's withholding group instead.`
+      : "The vendor's override points to a withholding tax that no longer exists — using the item's withholding group instead.");
   } else step('Vendor override', 'skipped', 'No override on the vendor.');
 
   // 6. Withholding group lookup.

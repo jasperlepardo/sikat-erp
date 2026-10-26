@@ -47,7 +47,7 @@ import { incomingJournal } from './incomingPayments';
 import { postingJournal } from './inventoryCountings';
 import { inventoryAccountFor, type JournalLine } from './inventoryTransfers';
 import { paymentJournal } from './outgoingPayments';
-import { poWithholding } from './purchaseOrders';
+import { poWithholding } from './withholding';
 import { purchasingHistory } from './purchasingHistory';
 import { srJournal } from './salesReturns';
 import { BOOKS_OPEN, stockHistory, withLineCosts, withStockHistory } from './stockHistory';
@@ -163,7 +163,7 @@ function build(): Ledger {
     doc({
       id: `je-in-${a.id}`, date: a.postingDate, origin: 'IN', originNo: String(a.docNum), originId: a.id, dueDate: a.dueDate, remarks: a.journalRemark,
       partnerId: a.customerId, controlAccount: a.controlAccount,
-      lines: arJournal(a, a.fxRate || 1, { items, groups, codes, rateOf: rates, withholding: arWithholding(a, partner.get(a.customerId), items, rates) }, true),
+      lines: arJournal(a, a.fxRate || 1, { items, groups, codes, rateOf: rates, withholding: arWithholding(a, partner.get(a.customerId), items, rates, TAX) }, true),
     });
   }
   for (const p of SEED_INCOMING_PAYMENTS.filter((x) => posted(x.status)))

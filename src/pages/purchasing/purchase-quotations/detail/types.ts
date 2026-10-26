@@ -145,6 +145,7 @@ export function lineFromItem(item: Item, draft: RfqDraft, ctx: RfqContext, m: Rf
     itemsPerUnit: itemsPerUom(item, item.purchasingUom) ?? 1,
     priceListId,
     taxCode: proposedTaxCode(item, ctx.vendor, m, draft.postingDate),
+    taxOverridden: false,
     requiredDate: draft.requiredDate,
   });
   const { unitPrice, discountPct } = linePricing(item, line, draft, ctx);

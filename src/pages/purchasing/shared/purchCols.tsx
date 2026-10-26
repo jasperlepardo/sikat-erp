@@ -7,6 +7,7 @@ import { formatDate } from '../../../services/dates';
 import { RETURN_REASONS } from '../../../mocks/goodsReturns';
 import type { PurchLine } from '../../../mocks/purchLine';
 import { priceCol, discountCol, taxCol, amountCol, masterCol, textCol, comboCol } from './purchColumns';
+import { editTaxCode } from '../../../services/taxRecalc';
 
 const num = (v: string) => (v === '' ? 0 : Number(v));
 type Opt = { value: string; label: string };
@@ -186,7 +187,7 @@ export function purchCols<T extends PurchLine>(b: ColBindings<T>): Record<string
       : priceCol<T>({ key: 'unitPrice', header: 'Unit price', prefix: curPrefix, readOnly: ro, get: (l) => l.unitPrice, onChange: (l, v) => b.patch(l.id, { unitPrice: v } as Partial<T>) }),
     discount: discountCol<T>({ key: 'discountPct', header: 'Discount', readOnly: ro, get: (l) => l.discountPct, onChange: (l, v) => b.patch(l.id, { discountPct: v } as Partial<T>), basePrice: (l) => l.unitPrice }),
     priceAfterDisc: amountCol<T>({ key: 'priceAfterDisc', header: 'Price after discount', value: b.priceAfterDisc, align: 'end' }),
-    tax: taxCol<T>({ key: 'taxCode', header: 'Tax code', options: b.taxOptions, get: (l) => l.taxCode, onChange: (l, v) => b.patch(l.id, { taxCode: v } as Partial<T>), readOnly: ro, clearable: true, invalid: (l) => b.invalid(l, 'taxCode') }),
+    tax: taxCol<T>({ key: 'taxCode', header: 'Tax code', options: b.taxOptions, get: (l) => l.taxCode, onChange: (l, v) => b.patch(l.id, editTaxCode(v) as Partial<T>), readOnly: ro, clearable: true, invalid: (l) => b.invalid(l, 'taxCode') }),
     taxAmount: amountCol<T>({ key: 'taxAmount', header: 'Tax amount', value: b.taxAmount, align: 'end' }),
     // Reverse-charge (self-assessed) VAT: shown only on reverse-charge lines; "—" elsewhere.
     reverseChargeVat: { key: 'reverseChargeVat', header: 'Reverse-charge VAT', align: 'end', cell: (l) => { if (!l.itemId) return null; const v = b.reverseChargeVat?.(l); return v != null ? money(v) : <span className="text-muted">—</span>; } },

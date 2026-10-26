@@ -157,7 +157,7 @@ export function linePricing(item: Item, l: Pick<PoLine, 'priceListId' | 'uomCode
 }
 
 /** Proposed tax code for an item bought from the vendor (Settings › Accounting & Tax rules). */
-export const proposedTaxCode = (item: Item, vendor: Partner | undefined, m: PoMasters, date: string) =>
+export const proposedTaxCode = (item: Item, vendor: Partner | undefined, m: Pick<PoMasters, 'tax'>, date: string) =>
   vendor ? (determineTax('Purchase', item, vendor, m.tax, date).taxCode?.code ?? '') : '';
 
 /** A line with every default taken from the item, vendor and header. */
@@ -178,6 +178,7 @@ export function lineFromItem(item: Item, draft: PoDraft, ctx: PoContext, m: PoMa
     warehouse: item.inventoryItem ? vendorDeliveryLocation(item.warehouses.map((w) => w.code), m.inv.warehouses) : '',
     priceListId,
     taxCode: proposedTaxCode(item, ctx.vendor, m, draft.postingDate),
+    taxOverridden: false,
     mfrNo: item.manufacturers.find((x) => x.code === item.manufacturer)?.catalogNo ?? '',
     deliveryDate: draft.deliveryDate,
   });

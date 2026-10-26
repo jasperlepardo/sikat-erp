@@ -7,11 +7,9 @@ import {
   type PurchasingSettings,
 } from '../mocks/purchaseOrders';
 import type { RoundingRule } from '../mocks/currencies';
-import type { Item } from '../mocks/items';
-import { SYSTEM_ATCS, rateAt, vatNotPaidToVendor, type TaxCode } from '../mocks/taxes';
+import { rateAt, vatNotPaidToVendor, type TaxCode } from '../mocks/taxes';
 import { paymentTerms } from './partnerMasters';
 import { createCollection } from './store';
-import { determineWithholding, type LineParty, type TaxMasterData } from './taxDetermination';
 import { todayISO } from './dates';
 import { applyOrderedChange } from './items';
 
@@ -69,7 +67,7 @@ export interface PoTotals {
  * line's tax base proportionally; freight carries its own tax code.
  */
 /** What the totals read from a line; goods receipt lines have the same fields. */
-type PricedLine = Pick<PoLine, 'itemId' | 'quantity' | 'unitPrice' | 'discountPct' | 'taxCode'>;
+export type PricedLine = Pick<PoLine, 'itemId' | 'quantity' | 'unitPrice' | 'discountPct' | 'taxCode'>;
 
 export function poTotals(
   po: Pick<PurchaseOrder, 'discountPct' | 'freight' | 'freightTaxCode'> & { lines: PricedLine[] },
@@ -107,59 +105,6 @@ export const poTotal = (po: PurchaseOrder, codes: TaxCode[]) =>
     undefined,
     (code) => vatNotPaidToVendor(codes.find((x) => x.code === code)),
   ).total;
-
-export interface WithholdingLine {
-  atc: string;
-  description: string;
-  rate: number;
-  kind: string;
-  amount: number;
-  /**
-   * Taken off the vendor's payment. False for the VAT you withhold on a non-resident's services
-   * (reverse charge): the vendor never charged it, so you remit it on top instead.
-   */
-  deducted: boolean;
-}
-
-/** Withholding VAT on payments to non-residents: the reverse charge, remitted on 1600-VT. */
-const REVERSE_CHARGE_ATCS: string[] = [
-  SYSTEM_ATCS.NR_LEASE_VAT_GOV, SYSTEM_ATCS.NR_LEASE_VAT_PRIVATE, SYSTEM_ATCS.NR_VAT_GOV, SYSTEM_ATCS.NR_VAT_PRIVATE,
-];
-
-/**
- * Withholding taxes on paying the vendor — one entry per ATC, amounts summed
- * across all lines, in document currency.
- */
-export function poWithholding(
-  po: Pick<PurchaseOrder, 'discountPct'> & { lines: PricedLine[] },
-  vendor: LineParty | undefined,
-  items: Item[],
-  tax: TaxMasterData,
-  date: string,
-): WithholdingLine[] {
-  if (!vendor) return [];
-  const factor = 1 - po.discountPct / 100;
-  const totals = new Map<string, WithholdingLine>();
-  for (const line of po.lines) {
-    const item = items.find((i) => i.id === line.itemId);
-    if (!item) continue;
-    const { withholding } = determineWithholding(item, vendor, tax, date);
-    const base = lineNet(line) * factor;
-    for (const wt of withholding) {
-      const amt = round2((base * wt.rate) / 100);
-      const existing = totals.get(wt.atc);
-      if (existing) {
-        existing.amount = round2(existing.amount + amt);
-      } else {
-        totals.set(wt.atc, {
-          atc: wt.atc, description: wt.description, rate: wt.rate, kind: wt.kind, amount: amt,
-          deducted: !REVERSE_CHARGE_ATCS.includes(wt.atc),
-        });
-      }
-    }
-  }
-  return [...totals.values()];
-}
 
 const ROUNDING_STEP: Record<RoundingRule, number> = {
   'No rounding': 0,

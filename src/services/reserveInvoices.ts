@@ -1,5 +1,5 @@
 import { RI_SERIES, SEED_RESERVE_INVOICES, type ReserveInvoice, type RiLine } from '../mocks/reserveInvoices';
-import { CREDITABLE_VAT_ACCOUNT, CWT_ACCOUNT, FREIGHT_INCOME_ACCOUNT } from '../mocks/arInvoices';
+import { FREIGHT_INCOME_ACCOUNT } from '../mocks/arInvoices';
 import { riSeries, seriesLookup, formatDocNum } from './allSeries';
 import type { ItemGroup } from '../mocks/itemMasters';
 import type { Item } from '../mocks/items';
@@ -11,6 +11,7 @@ import { inventoryAccountFor, type JournalLine } from './inventoryTransfers';
 import { postDocumentEntry, reverseDocumentEntry } from './journalEntries';
 import { lineNet, soTotals } from './salesOrders';
 import { createCollection } from './store';
+import { customerWithholding, type CustomerWithholding } from './withholding';
 
 const reserveInvoices = createCollection<ReserveInvoice>('sikat-erp:reserve-invoices', SEED_RESERVE_INVOICES, 'ri', { audit: 'RI' });
 
@@ -40,48 +41,23 @@ const rateFrom = (codes: readonly TaxCode[], date: string) => (code: string) => 
   return c ? (rateAt(c, date) ?? 0) : 0;
 };
 
-export interface RiWithholding {
-  kind: 'Expanded (EWT)' | 'Withholding VAT';
-  atc: string;
-  label: string;
-  rate: number;
-  base: number;
-  amount: number;
-  account: string;
-}
+export type RiWithholding = CustomerWithholding;
 
 /** Whether the customer withholds on what it pays us: a top withholding agent, or government. */
 export const customerWithholdsRi = (c: Pick<Partner, 'businessType' | 'topWithholdingAgent'> | undefined) =>
   Boolean(c && (c.businessType === 'Government' || c.topWithholdingAgent));
 
 /**
- * The WTax Amount (document currency) on WTax Liable lines: EWT at 1% on goods and 2% on services
- * from a top withholding agent or government office, plus 5% VAT from government (on VATable lines).
+ * The WTax Amount (document currency) on WTax Liable lines — the same resolution as A/R invoices
+ * (see customerWithholding).
  */
 export function riWithholding(
-  r: Pick<ReserveInvoice, 'lines' | 'discountPct' | 'docType'>,
+  r: Pick<ReserveInvoice, 'lines' | 'discountPct' | 'docType' | 'postingDate'>,
   customer: Pick<Partner, 'businessType' | 'topWithholdingAgent'> | undefined,
   items: readonly Item[],
   rateOf: (code: string) => number,
 ): RiWithholding[] {
-  if (!customerWithholdsRi(customer)) return [];
-  const gov = customer!.businessType === 'Government';
-  const factor = 1 - r.discountPct / 100;
-  let goods = 0;
-  let services = 0;
-  let vatable = 0;
-  for (const l of r.lines.filter((x) => x.wtaxLiable)) {
-    const net = lineNet(l as never) * factor;
-    const item = items.find((i) => i.id === l.itemId);
-    if (r.docType === 'Service' || (item && !item.inventoryItem)) services += net;
-    else goods += net;
-    if (rateOf(l.taxCode) > 0) vatable += net;
-  }
-  const out: RiWithholding[] = [];
-  if (goods) out.push({ kind: 'Expanded (EWT)', atc: 'WC158', label: 'Creditable withholding tax — goods (1%)', rate: 1, base: round2(goods), amount: round2(goods * 0.01), account: CWT_ACCOUNT });
-  if (services) out.push({ kind: 'Expanded (EWT)', atc: 'WC159', label: 'Creditable withholding tax — services (2%)', rate: 2, base: round2(services), amount: round2(services * 0.02), account: CWT_ACCOUNT });
-  if (gov && vatable) out.push({ kind: 'Withholding VAT', atc: 'WVO10', label: 'VAT withheld by government (5%)', rate: 5, base: round2(vatable), amount: round2(vatable * 0.05), account: CREDITABLE_VAT_ACCOUNT });
-  return out;
+  return customerWithholding(r, customer, items, rateOf);
 }
 
 /** What the customer still owes: total − withholding − payments applied. */

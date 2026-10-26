@@ -100,6 +100,8 @@ export interface Account {
   reconcile: boolean;
   /** Tax code proposed on manual postings ('' = not VAT-relevant). */
   defaultTaxCode: string;
+  /** Withholding group (code) for purchases costed here when the item has none ('' = none). */
+  defaultWithholdingGroup: string;
 }
 
 export type AccountType = 'Sales' | 'Expenditure' | 'Other';
@@ -190,6 +192,7 @@ function drawer(drawerName: Drawer, root: Node): Account[] {
       indexed: false,
       reconcile: false,
       defaultTaxCode: '',
+      defaultWithholdingGroup: '',
     });
     children.forEach((c) => walk(c, code));
   };
@@ -386,9 +389,11 @@ const CONFIDENTIAL = ['6005', '2410'];
 /** Tax code proposed on manual postings. */
 const DEFAULT_TAX: Rule<string> = [
   ['4010', 'OVAT'], ['4030', 'OVAT'],
-  ['5040', 'IVAT'], ['6230', 'IVAT'],
-  ['6100', 'IVAT'], ['6110', 'IVAT'], ['6120', 'IVAT'], ['6130', 'IVAT'], ['6200', 'IVAT'], ['6210', 'IVAT'], ['6240', 'IVAT'],
-  ['6250', 'IVAT'], ['6260', 'IVAT'], ['6270', 'IVAT'],
+  // Store supplies are goods; freight and the operating expenses below are services.
+  ['6230', 'IVAT'],
+  ['5040', 'IVAT-S'],
+  ['6100', 'IVAT-S'], ['6110', 'IVAT-S'], ['6120', 'IVAT-S'], ['6130', 'IVAT-S'], ['6200', 'IVAT-S'], ['6210', 'IVAT-S'], ['6240', 'IVAT-S'],
+  ['6250', 'IVAT-S'], ['6260', 'IVAT-S'], ['6270', 'IVAT-S'],
 ];
 
 /**
@@ -427,6 +432,7 @@ export const SEED_ACCOUNTS: Account[] = CHART.map((a) => {
     revalue: a.currency !== 'PHP' && a.currency !== 'All currencies',
     reconcile: a.cash && a.name.startsWith('Cash in Bank'),
     defaultTaxCode: pick(DEFAULT_TAX, ''),
+    defaultWithholdingGroup: '',
   };
 });
 

@@ -4,7 +4,7 @@ import { accountText } from '../../../../mocks/chartOfAccounts';
 import type { Item } from '../../../../mocks/items';
 import { apJournal, lineValueLc, receiptValueLc } from '../../../../services/apInvoices';
 import { formatAmount } from '../../../../services/format';
-import { poWithholding } from '../../../../services/purchaseOrders';
+import { docWithholding } from '../../../../services/withholding';
 import type { ApSectionProps } from './types';
 
 function differenceTarget(item: Item | undefined) {
@@ -15,7 +15,7 @@ function differenceTarget(item: Item | undefined) {
 export function ApJournalCard({ draft, m, ctx }: ApSectionProps) {
   if (!ctx.fx) return null;
 
-  const withholding = poWithholding(draft, ctx.vendor, m.items, m.tax, draft.postingDate);
+  const withholding = docWithholding(draft, ctx.vendor, m.items, m.tax, draft.postingDate);
   const journal = apJournal(draft, ctx.fx, { items: m.items, groups: m.inv.groups, codes: m.tax.codes, rateOf: ctx.rateOf, withholding });
   const differences = draft.lines
     .filter((l) => l.baseType === 'GRPO')

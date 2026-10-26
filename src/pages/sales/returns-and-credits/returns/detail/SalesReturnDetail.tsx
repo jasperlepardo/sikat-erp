@@ -13,6 +13,8 @@ import { blankSalesReturn, newSrLine, type SalesReturn } from '../../../../../mo
 import { rateAt } from '../../../../../mocks/taxes';
 import { loadCurrentCompany } from '../../../../../services/companies';
 import { todayISO } from '../../../../../services/dates';
+import { recalcLineTaxes } from '../../../../../services/taxRecalc';
+import { proposedTaxCode } from '../../../sales-orders/detail/types';
 import { defaultJournalRemark } from '../../../../../services/journalPatterns';
 import { dnNumber, dnOpenQty, listDeliveries } from '../../../../../services/deliveries';
 import { loadInventoryMasters } from '../../../../../services/inventoryMasters';
@@ -220,8 +222,15 @@ function SalesReturnForm() {
   const { prevId, nextId } = neighbours(siblings, (draft as SalesReturn).id && (draft.docNum ? srNumber(draft as SalesReturn) : (draft as SalesReturn).id));
   const errors: Errors = Object.fromEntries(problems.map((p) => [p.key, p.message]));
 
+  /** Tax codes re-proposed for the customer and date, except ones set by hand or copied from a base document. */
+  const retax = (lines: Draft['lines'], c: Partner | undefined, postingDate: string) =>
+    recalcLineTaxes(lines, (itemId) => {
+      const item = m.items.find((i) => i.id === itemId);
+      return item ? proposedTaxCode(item, c, m, postingDate) : '';
+    });
   const update = (patch: Partial<Draft>) => {
     const next = { ...draft, ...patch };
+    if (!added && patch.postingDate !== undefined && patch.postingDate !== draft.postingDate) next.lines = retax(next.lines, customer, next.postingDate);
     if ((patch.paymentTermId !== undefined || patch.postingDate !== undefined) && patch.dueDate === undefined && (!draft.dueDate || draft.dueDate === dueDateFor(draft.postingDate, draft.paymentTermId))) {
       next.dueDate = dueDateFor(next.postingDate, next.paymentTermId);
     }
@@ -230,7 +239,7 @@ function SalesReturnForm() {
 
   const pickCustomer = (customerId: string | null) => {
     const c = m.customers.find((x) => x.id === customerId);
-    update(c ? { ...customerDefaults(c, draft), lines: draft.lines.filter((l) => !l.baseType) } : { customerId: '', customerCode: '', customerName: '', contactId: '', shipTo: '', billTo: '' });
+    update(c ? { ...customerDefaults(c, draft), lines: retax(draft.lines.filter((l) => !l.baseType), c, draft.postingDate) } : { customerId: '', customerCode: '', customerName: '', contactId: '', shipTo: '', billTo: '' });
   };
 
   const availableDeliveries = draft.customerId

@@ -3,11 +3,12 @@ import { recalculateBACommitments } from './blanketAgreements';
 import { soSeries, seriesLookup, formatDocNum } from './allSeries';
 import type { RoundingRule } from '../mocks/currencies';
 import type { Item } from '../mocks/items';
-import { rateAt, SYSTEM_ATCS, type TaxCode } from '../mocks/taxes';
+import { rateAt, type TaxCode } from '../mocks/taxes';
 import type { LineParty, TaxMasterData } from './taxDetermination';
 import { todayISO } from './dates';
 import { listItems, saveItem } from './items';
 import { createCollection } from './store';
+import { customerWithholding } from './withholding';
 
 const orders = createCollection<SalesOrder>('sikat-erp:sales-orders:v7', SEED_SALES_ORDERS, 'so', { audit: 'SO' });
 export const salesSettings = createCollection<SalesSettings>('sikat-erp:sales-settings', SEED_SALES_SETTINGS, 'ss');
@@ -80,55 +81,24 @@ export interface SoWithholdingLine {
 }
 
 /**
- * Amounts the customer will withhold from their payment — one entry per ATC,
- * summed across all lines.
- *
- * Two scenarios:
- *  - Government buyer: withholds 5% creditable VAT (WV010/WV020) + 1%/2% EWT (WC640/WC157)
- *  - Top withholding agent (non-gov): withholds 1%/2% EWT only (WC158/WC160)
- *
- * Goods vs. services is determined by the item's withholding group (nrExempt = goods).
+ * Amounts the customer will withhold from their payment — one entry per ATC, summed across all
+ * lines. Every line counts (orders have no WTax Liable flag); the ATCs come from Settings the same
+ * way as on A/R invoices (see customerWithholding).
  */
 export function soWithholding(
-  so: Pick<SalesOrder, 'discountPct'> & { lines: SoLine[] },
+  so: Pick<SalesOrder, 'discountPct' | 'postingDate'> & { lines: SoLine[] },
   customer: LineParty | undefined,
   items: Item[],
   tax: TaxMasterData,
 ): SoWithholdingLine[] {
-  if (!customer) return [];
-  const isGov = customer.businessType === 'Government';
-  const isTWA = customer.topWithholdingAgent;
-  if (!isGov && !isTWA) return [];
-
-  const factor = 1 - so.discountPct / 100;
-  const totals = new Map<string, SoWithholdingLine>();
-
-  const add = (atc: string, description: string, kind: string, rate: number, base: number) => {
-    const amt = round2((base * rate) / 100);
-    const existing = totals.get(atc);
-    if (existing) existing.amount = round2(existing.amount + amt);
-    else totals.set(atc, { atc, description, kind, rate, amount: amt });
+  const rateOf = (code: string) => {
+    const c = tax.codes.find((x) => x.code === code);
+    return c ? (rateAt(c, so.postingDate) ?? 0) : 0;
   };
-
-  for (const line of so.lines) {
-    const item = items.find((i) => i.id === line.itemId);
-    if (!item || !item.salesItem) continue;
-    const group = tax.withholdingGroups.find((g) => g.id === item.withholdingGroup);
-    const isGoods = group?.nrExempt ?? true;
-    const base = lineNet(line) * factor;
-
-    if (isGov) {
-      const vatAtc = isGoods ? SYSTEM_ATCS.GMP_VAT_GOODS : SYSTEM_ATCS.GMP_VAT_SERVICES;
-      add(vatAtc, `5% creditable VAT on ${isGoods ? 'goods' : 'services'} (BIR Form 1600-VT)`, 'Withholding VAT', 5, base);
-      const ewtAtc = isGoods ? 'WC640' : 'WC157';
-      add(ewtAtc, `${isGoods ? '1%' : '2%'} EWT — government ${isGoods ? 'goods' : 'services'}`, 'Expanded (EWT)', isGoods ? 1 : 2, base);
-    } else {
-      const ewtAtc = isGoods ? 'WC158' : 'WC160';
-      add(ewtAtc, `${isGoods ? '1%' : '2%'} EWT — top withholding agent ${isGoods ? 'goods' : 'services'}`, 'Expanded (EWT)', isGoods ? 1 : 2, base);
-    }
-  }
-
-  return [...totals.values()];
+  const sold = items.filter((i) => i.salesItem);
+  const lines = so.lines.map((l) => ({ ...l, wtaxLiable: true }));
+  return customerWithholding({ ...so, lines }, customer, sold, rateOf, tax)
+    .map((w) => ({ atc: w.atc, description: w.label, rate: w.rate, kind: w.kind, amount: w.amount }));
 }
 
 export const soTotal = (so: SalesOrder, codes: TaxCode[]) =>

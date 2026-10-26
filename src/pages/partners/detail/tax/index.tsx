@@ -12,7 +12,7 @@ const NON_RESIDENT_TYPES = ['Non-resident foreign company', 'Non-resident foreig
 const RESIDENT_CORPORATE_TYPES = ['Company', 'Resident foreign company', 'Partnership', 'General professional partnership', 'Resident foreign partnership'];
 
 
-export function TaxTab({ draft, update }: TabProps) {
+export function TaxTab({ draft, update, errors }: TabProps) {
   const f = bind(draft, update);
   const isCustomer = draft.roles.includes('customer');
   const isVendor = draft.roles.includes('vendor');
@@ -150,6 +150,7 @@ export function TaxTab({ draft, update }: TabProps) {
           <Fields>
             {f.lookup('withholdingOverrideId', 'Withholding tax override', withholdingOptions, {
               clearable: true,
+              error: errors.withholdingOverrideId,
               placeholder: 'Use the rules (by item and company status)',
               hint: draft.nonResident
                 ? 'Non-resident: showing final withholding (FWT) ATCs only.'

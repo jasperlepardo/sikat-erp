@@ -38,6 +38,8 @@ import { listSalesReturns, srNumber, srOpenQty } from '../../../../../services/s
 import { arAmounts, arNumber, listArInvoices } from '../../../../../services/arInvoices';
 import { loadCurrentCompany } from '../../../../../services/companies';
 import { formatDate, todayISO } from '../../../../../services/dates';
+import { recalcLineTaxes } from '../../../../../services/taxRecalc';
+import { proposedTaxCode } from '../../../sales-orders/detail/types';
 import { defaultJournalRemark } from '../../../../../services/journalPatterns';
 import { formatAmount } from '../../../../../services/format';
 import { loadInventoryMasters } from '../../../../../services/inventoryMasters';
@@ -208,8 +210,15 @@ function ArCreditMemoForm() {
   const openBalance = round2(totals.total - draft.appliedAmount);
   const journal = fx ? arCmJournal(draft, fx, { items: m.items, groups: m.inv.groups, codes: m.tax.codes, rateOf }) : [];
 
+  /** Tax codes re-proposed for the customer and date, except ones set by hand or copied from a base document. */
+  const retax = (lines: ArCmInput['lines'], c: Partner | undefined, postingDate: string) =>
+    recalcLineTaxes(lines, (itemId) => {
+      const item = m.items.find((i) => i.id === itemId);
+      return item ? proposedTaxCode(item, c, m, postingDate) : '';
+    });
   const update = (patch: Partial<ArCmInput>) => {
     const next = { ...draft, ...patch };
+    if (!added && patch.postingDate !== undefined && patch.postingDate !== draft.postingDate) next.lines = retax(next.lines, customer, next.postingDate);
     if ((patch.paymentTermId !== undefined || patch.postingDate !== undefined) && patch.dueDate === undefined && (!draft.dueDate || draft.dueDate === dueDateFor(draft.postingDate, draft.paymentTermId))) {
       next.dueDate = dueDateFor(next.postingDate, next.paymentTermId);
     }
@@ -218,7 +227,7 @@ function ArCreditMemoForm() {
 
   const pickCustomer = (customerId: string | null) => {
     const c = m.customers.find((x) => x.id === customerId);
-    update(c ? { ...customerDefaults(c, draft), lines: draft.lines.filter((l) => !l.baseType) } : { customerId: '', customerCode: '', customerName: '', contactId: '', shipTo: '', billTo: '' });
+    update(c ? { ...customerDefaults(c, draft), lines: retax(draft.lines.filter((l) => !l.baseType), c, draft.postingDate) } : { customerId: '', customerCode: '', customerName: '', contactId: '', shipTo: '', billTo: '' });
   };
 
   const sameCurrency = <T extends { currency: string }>(docs: T[]) => docs.filter((d) => !draft.lines.some((l) => l.baseType) || d.currency === code);

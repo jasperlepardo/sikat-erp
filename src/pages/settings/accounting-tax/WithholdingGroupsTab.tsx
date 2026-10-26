@@ -26,6 +26,7 @@ const blank = (): WithholdingGroup => ({
   atcCorporateGov: null,
   nrVat: null,
   treatyIncomeType: null,
+  thresholdLabel: '',
   active: true,
   notes: '',
 });
@@ -67,6 +68,11 @@ export function WithholdingGroupsTab(route: ListRoute) {
             g.atcCorporate
               ? <span className="font-mono text-sm">{g.atcCorporate}{g.atcCorporateHigh ? ` / ${g.atcCorporateHigh}` : ''}</span>
               : <span className="text-muted">—</span>,
+        },
+        {
+          key: 'thresholdLabel',
+          header: 'Income tier',
+          cell: (g) => (g.thresholdLabel ? <span className="text-sm">{g.thresholdLabel}</span> : <span className="text-muted">Not tiered</span>),
         },
         {
           key: 'active',
@@ -123,6 +129,9 @@ export function WithholdingGroupsTab(route: ListRoute) {
                 {pickAtc('atcIndividualHigh', 'Individual — high income tier', 'Leave blank if not tiered.')}
                 {pickAtc('atcCorporate', 'Corporate — default / low tier')}
                 {pickAtc('atcCorporateHigh', 'Corporate — high income tier', 'Leave blank if not tiered.')}
+                {g.atcIndividualHigh || g.atcCorporateHigh
+                  ? f.area('thresholdLabel', 'When the low tier applies', { rows: 2, hint: 'Shown beside the tiers. The thresholds and sworn-declaration check themselves are fixed in the tax rules.' })
+                  : null}
                 {f.check('requiresTopWA', 'Only applicable when the company is a top withholding agent')}
               </FieldStack>
             </Section>

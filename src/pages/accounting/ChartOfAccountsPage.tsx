@@ -19,7 +19,8 @@ import {
 import { DIMENSION_NAMES, DIMENSION_NOS, accountDimension, withAccountDimension, type AccountDimension, type DimensionNo } from '../../mocks/costAccounting';
 import { describeUsage, loadAccountUsage, usageCount } from '../../services/accountUsage';
 import { loadAccountBalances } from '../../services/journalEntries';
-import { accounts, taxCodes } from '../../services/masterData';
+import { accounts, taxCodes, withholdingGroups } from '../../services/masterData';
+import { activeOptions } from '../../services/inventoryMasters';
 import { currencyDef, distributionRuleDef, projectDef } from '../settings/masterDefs';
 import { AccountBalancePanel, signedBalance } from './AccountBalancePanel';
 import { useAsync } from '../../services/useAsync';
@@ -72,6 +73,7 @@ const blank = (drawer: Drawer, all: readonly Account[]): Account => ({
   indexed: false,
   reconcile: false,
   defaultTaxCode: '',
+  defaultWithholdingGroup: '',
 });
 
 function balanceSheet(d: Drawer) {
@@ -94,6 +96,7 @@ export function ChartOfAccountsPage() {
   // Which records use each account; reloads whenever the chart changes.
   const usage = useAsync(loadAccountUsage, [rows]);
   const codes = useAsync(taxCodes.list, []);
+  const whGroups = useAsync(withholdingGroups.list, []);
   const ledger = useAsync(loadAccountBalances, []);
   const usedBy = (code: string) => usage?.get(code);
 
@@ -462,6 +465,13 @@ export function ChartOfAccountsPage() {
                     {f.lookup('defaultTaxCode', 'Default tax code', taxOptions, {
                       hint: 'Proposed on manual postings to this account. None = not VAT-relevant.',
                     })}
+                    {a.accountType === 'Expenditure'
+                      ? f.lookup('defaultWithholdingGroup', 'Default withholding group', activeOptions(whGroups ?? [], (g) => g.code, (g) => `${g.code} · ${g.name}`, a.defaultWithholdingGroup), {
+                          clearable: true,
+                          placeholder: 'None',
+                          hint: "Withholding on purchases costed here when the item has no withholding group of its own.",
+                        })
+                      : null}
                   </FieldStack>
                   <Flags>
                     {f.check('revalue', 'Revalue at period-end (foreign currency)', { disabled: a.currency === 'PHP' || a.currency === 'All currencies' })}

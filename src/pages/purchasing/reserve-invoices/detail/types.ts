@@ -55,6 +55,7 @@ export function riLineFromItem(item: Item, draft: ApriDraft, ctx: ApriContext, m
     unitPrice,
     discountPct: p.discountPct,
     taxCode,
+    taxOverridden: false,
   });
 }
 

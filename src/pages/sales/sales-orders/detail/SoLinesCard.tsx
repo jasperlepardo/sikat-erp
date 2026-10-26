@@ -14,6 +14,7 @@ import { listBlanketAgreements, baNumber, openQty as baOpenQty } from '../../../
 import { useAsync } from '../../../../services/useAsync';
 import type { BlanketAgreement, BaLine } from '../../../../mocks/blanketAgreements';
 import { BA_LIST_PATH } from '../../agreements/BlanketAgreementList';
+import { editTaxCode } from '../../../../services/taxRecalc';
 
 const num = (v: string) => (v === '' ? 0 : Number(v));
 
@@ -312,7 +313,7 @@ export function SoLinesCard({ draft, update, errors, m, ctx, tabs, contentTab, s
             invalid={Boolean(err(l, 'taxCode'))}
             options={taxOptions}
             value={l.taxCode || null}
-            onValueChange={(taxCode) => reprice(l, { taxCode: taxCode ?? '' })}
+            onValueChange={(taxCode) => reprice(l, editTaxCode(taxCode ?? ''))}
           />
           <Text variant="small" tone="muted">
             Tax PHP {lc(taxOf(l))}

@@ -40,6 +40,7 @@ import {
   type RfqMasters,
 } from './types';
 import { todayISO } from '../../../../services/dates';
+import { recalcLineTaxes } from '../../../../services/taxRecalc';
 import { blankPurchaseOrder, newPoLine } from '../../../../mocks/purchaseOrders';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
@@ -167,7 +168,19 @@ function RfqForm() {
   const { prevId, nextId } = neighbours(siblings, draft.id && (draft.docNum ? rfqNumber(draft as Rfq) : draft.id));
   const errors: Errors = Object.fromEntries(problems.map((p) => [p.key, p.message]));
 
-  const update = (patch: Partial<RfqDraft>) => setDraft((d) => (d ? { ...d, ...patch } : d));
+  /** Tax codes re-proposed for the vendor and date, except ones set by hand or copied from a base document. */
+  const retax = (lines: RfqDraft['lines'], v: Partner | undefined, date: string) =>
+    recalcLineTaxes(lines, (itemId) => {
+      const item = m.items.find((i) => i.id === itemId);
+      return item ? proposedTaxCode(item, v, m, date) : '';
+    });
+  const update = (patch: Partial<RfqDraft>) =>
+    setDraft((d) => {
+      if (!d) return d;
+      const next = { ...d, ...patch };
+      if (!ctx.readOnly && patch.postingDate !== undefined && patch.postingDate !== d.postingDate) next.lines = retax(next.lines, ctx.vendor, next.postingDate);
+      return next;
+    });
 
   const pickVendor = (vendorId: string | null, override?: Partner) => {
     const v = override ?? m.vendors.find((x) => x.id === vendorId);
@@ -180,10 +193,7 @@ function RfqForm() {
       shippingType: v.shippingType,
       journalRemark: `Purchase Quotations – ${v.code}`,
       payTo: billAddr ? formatAddress(billAddr, v.name) : '',
-      lines: draft.lines.map((l) => {
-        const item = m.items.find((i) => i.id === l.itemId);
-        return item ? { ...l, taxCode: proposedTaxCode(item, v, m, draft.postingDate) } : l;
-      }),
+      lines: retax(draft.lines, v, draft.postingDate),
     });
   };
 
