@@ -11,6 +11,11 @@ export default defineConfig({
     globals: true,
     setupFiles: ['src/test/setup.ts'],
     include: ['src/**/*.test.ts'],
+    // Each test file runs in isolation (fresh module state). Stock-flow tests do many awaited
+    // collection writes; under parallel + coverage load the 5s default is too tight, so allow more.
+    isolate: true,
+    testTimeout: 30000,
+    hookTimeout: 30000,
     coverage: {
       provider: 'v8',
       include: ['src/services/**', 'src/mocks/**', 'src/components/filter/**'],
