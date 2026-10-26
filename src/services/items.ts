@@ -99,7 +99,9 @@ export async function saveItems(inputs: Iterable<Omit<Item, 'id'> & { id?: strin
 
 /** `input` ready to store, numbered if it has no Item No.; throws `ItemSaveError` on a clash with `all`. */
 function checkedItem(input: Omit<Item, 'id'> & { id?: string }, all: readonly Item[]): Omit<Item, 'id'> & { id?: string } {
-  const others = all.filter((i) => i.id !== input.id);
+  // Exclude self by id when editing; a new (id-less) row compares against everything — otherwise two
+  // new rows in one batch both have id undefined and `undefined !== undefined` would hide the clash.
+  const others = input.id ? all.filter((i) => i.id !== input.id) : all;
 
   const clash = input.barcodes.find((b) => others.some((o) => o.barcodes.some((ob) => ob.barcode === b.barcode)));
   if (clash) {

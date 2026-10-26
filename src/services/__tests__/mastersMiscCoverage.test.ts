@@ -207,11 +207,9 @@ describe('items.saveItem / saveItems', () => {
     ).rejects.toBeInstanceOf(ItemSaveError);
   });
 
-  // BUG: saveItems does not catch two *new* (id-less) rows in the same batch that share an Item No.
-  // checkedItem filters `others` by `i.id !== input.id`; both new rows have id === undefined, so the
-  // first record (also id-less at that point) is excluded from the second row's clash check.
-  // Expected: the batch is rejected with ItemSaveError. Marked it.fails to pin the current behaviour.
-  it.fails('saveItems should reject two new rows in one batch sharing an Item No.', async () => {
+  // FIXED: two *new* (id-less) rows in one batch sharing an Item No. are now rejected. checkedItem
+  // compares an id-less row against all rows (it only filters self out when there's an id to match).
+  it('rejects two new rows in one batch sharing an Item No.', async () => {
     await expect(
       saveItems([
         draft({ name: 'Batch A', itemNo: 'COV-BATCH-1' }),
