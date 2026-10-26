@@ -307,18 +307,10 @@ describe('landedCosts.addLandedCost', () => {
     expect((await listLandedCosts()).some((r) => r.id === doc.id)).toBe(true);
   });
 
-  // ╔═══════════════════════════════════════════════════════════════════════╗
-  // ║ SUSPECTED BUG 2 — addLandedCost never applies the landed cost.         ║
-  // ║ src/services/landedCosts.ts:63-72 only writes the LandedCost document  ║
-  // ║ (lc.save). It does NOT:                                                ║
-  // ║   • create/raise FIFO cost batches for the receipted items,           ║
-  // ║   • update each item's itemCost,                                       ║
-  // ║   • post a journal entry (no import of costLayers/items/journalEntries).║
-  // ║ So posting a landed cost has zero effect on inventory valuation or the ║
-  // ║ ledger. The test below asserts the item cost rises by the allocated    ║
-  // ║ landed cost per unit; it currently does not.                          ║
-  // ╚═══════════════════════════════════════════════════════════════════════╝
-  it.fails('BUG: addLandedCost should raise the receipted item cost by the allocation per unit', async () => {
+  // FIXED (was bug 2): addLandedCost now capitalizes the allocation into inventory — it raises each
+  // item's cost by the allocated amount per unit on hand (and posts Dr Inventory / Cr accrual in the
+  // ledger; the seeded books fold the same amount into the receipt's cost layers).
+  it('raises the receipted item cost by the allocation per unit', async () => {
     const item = `lcitem-${crypto.randomUUID().slice(0, 8)}`;
     await saveItems([makeItem({ id: item, itemCost: 100, warehouses: [wh('TEST-WH', 10)] })]);
     const before = (await listItems()).find((i) => i.id === item)!.itemCost;
@@ -337,8 +329,8 @@ describe('landedCosts.addLandedCost', () => {
     });
 
     const after = (await listItems()).find((i) => i.id === item)!.itemCost;
-    // 100 landed over 10 units = +10 per unit.
-    expect(after).toBe(before + 10); // actual: unchanged (100)
+    // 100 landed over 10 units on hand = +10 per unit.
+    expect(after).toBe(before + 10);
   });
 });
 

@@ -26,6 +26,7 @@ import { SEED_AR_CREDIT_MEMOS } from '../mocks/arCreditMemos';
 import { SEED_AR_INVOICES } from '../mocks/arInvoices';
 import { SEED_DELIVERIES } from '../mocks/deliveries';
 import { SEED_INCOMING_PAYMENTS } from '../mocks/incomingPayments';
+import { SEED_LANDED_COSTS } from '../mocks/landedCosts';
 import { SEED_POSTINGS } from '../mocks/inventoryCountings';
 import { SEED_ITEM_GROUPS } from '../mocks/itemMasters';
 import { SEED_ITEMS, mergedItems } from '../mocks/items';
@@ -42,6 +43,7 @@ import { arCmJournal } from './arCreditMemos';
 import { arJournal, arWithholding } from './arInvoices';
 import { dnJournal } from './deliveries';
 import { grJournal } from './goodsReceipts';
+import { lcJournal } from './landedCosts';
 import { returnJournal } from './goodsReturns';
 import { incomingJournal } from './incomingPayments';
 import { postingJournal } from './inventoryCountings';
@@ -132,6 +134,9 @@ function build(): Ledger {
   // Purchasing
   for (const gr of H.receipts.filter((x) => posted(x.status)))
     doc({ id: `je-pd-${gr.id}`, date: gr.postingDate, origin: 'PD', originNo: String(gr.docNum), originId: gr.id, remarks: gr.journalRemark, lines: grJournal(gr, gr.fxRate || 1, items, groups) });
+  // Landed costs capitalize onto inventory: debit the items' inventory accounts, credit the accrual.
+  for (const lcd of SEED_LANDED_COSTS.filter((x) => posted(x.status)))
+    doc({ id: `je-lc-${lcd.id}`, date: lcd.postingDate, origin: 'LC', originNo: String(lcd.docNum), originId: lcd.id, remarks: lcd.journalRemark || 'Landed cost capitalized to inventory', lines: lcJournal(lcd, items, groups) });
   for (const inv of H.invoices.filter((x) => posted(x.status))) {
     const withholding = poWithholding(inv, partner.get(inv.vendorId), items, TAX, inv.postingDate);
     doc({

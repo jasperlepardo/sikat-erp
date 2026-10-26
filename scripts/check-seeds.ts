@@ -425,6 +425,19 @@ check('Nothing posts after the as-of day', L.entries.filter((e) => e.postingDate
   }
   check('Landed cost allocations add up to the cost total', bad);
 }
+{
+  // Each posted landed cost capitalizes its full allocation onto inventory in the ledger
+  // (debit Inventory / credit the accrual), so the ledger debit equals the allocated total.
+  const bad: string[] = [];
+  for (const lc of SEED_LANDED_COSTS.filter((x) => x.status !== 'Draft' && x.status !== 'Cancelled')) {
+    const entry = L.entries.find((e) => e.origin === 'LC' && e.originId === lc.id);
+    const alloc = r2(lc.lines.reduce((n, l) => n + l.allocCostsVal, 0));
+    if (!entry) { bad.push(`${lc.id}: no LC ledger entry`); continue; }
+    const debit = r2(entry.lines.reduce((n, l) => n + l.debit, 0));
+    if (!near(debit, alloc, lc.lines.length * 0.01 + 0.01)) bad.push(`${lc.id}: ledger debit ${debit} vs allocated ${alloc}`);
+  }
+  check('Posted landed costs capitalize their full allocation to inventory', bad);
+}
 
 // ── Numbering ──────────────────────────────────────────────────────────────────
 {

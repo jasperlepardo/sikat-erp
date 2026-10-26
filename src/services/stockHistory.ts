@@ -25,6 +25,7 @@ import { SEED_AR_INVOICES } from '../mocks/arInvoices';
 import { SEED_DELIVERIES } from '../mocks/deliveries';
 import { SEED_POSTINGS, countedQty } from '../mocks/inventoryCountings';
 import { SEED_TRANSFERS } from '../mocks/inventoryTransfers';
+import { SEED_LANDED_COSTS } from '../mocks/landedCosts';
 import { SEED_ITEMS, mergedItems, newItemWarehouse, type Item } from '../mocks/items';
 import { SEED_SALES_RETURNS } from '../mocks/salesReturns';
 import type { CostConsumption, CostLayer } from './costLayers';
@@ -74,11 +75,25 @@ function events(items: Map<string, Item>): Event[] {
   const stocked = (itemId: string) => items.get(itemId)?.inventoryItem === true;
   const H = purchasingHistory();
 
+  // A posted landed cost capitalizes onto its receipt line: total allocated amount per `${receiptId}:${lineId}`.
+  const landedPerLine = new Map<string, number>();
+  for (const lcd of SEED_LANDED_COSTS)
+    if (lcd.status !== 'Draft' && lcd.status !== 'Cancelled')
+      for (const l of lcd.lines)
+        if (l.baseType === 'GRPO' && l.allocCostsVal)
+          landedPerLine.set(`${l.baseId}:${l.baseLineId}`, (landedPerLine.get(`${l.baseId}:${l.baseLineId}`) ?? 0) + l.allocCostsVal);
+
   // Same-day order: what comes in, transfers, counts, goods returns, what goes out, what comes back, cost changes.
   for (const gr of H.receipts.filter((g) => posted(g.status)))
     for (const l of gr.lines)
-      if (stocked(l.itemId) && l.warehouse)
-        out.push({ date: gr.postingDate, order: 0, kind: 'in', itemId: l.itemId, warehouse: l.warehouse, qty: invQty(l), unitCost: l.unitCostLc, reAverage: true, sourceId: gr.id });
+      if (stocked(l.itemId) && l.warehouse) {
+        // Fold any landed cost allocated to this receipt line into the layer's unit cost, so it flows
+        // into the item's cost (and, when the units sell, into COGS) exactly as the ledger posts it.
+        const landed = landedPerLine.get(`${gr.id}:${l.id}`) ?? 0;
+        const q = invQty(l);
+        const unitCost = landed && q > 0 ? round2(l.unitCostLc + landed / q) : l.unitCostLc;
+        out.push({ date: gr.postingDate, order: 0, kind: 'in', itemId: l.itemId, warehouse: l.warehouse, qty: q, unitCost, reAverage: true, sourceId: gr.id });
+      }
   for (const t of SEED_TRANSFERS.filter((x) => x.status === 'Posted'))
     for (const l of t.lines)
       if (stocked(l.itemId)) out.push({ date: t.postingDate, order: 1, kind: 'move', itemId: l.itemId, from: t.fromWarehouse, to: l.toWarehouse || t.toWarehouse, qty: l.quantity, sourceId: `tr-${t.id}` });
