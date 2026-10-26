@@ -170,3 +170,21 @@ Target: 80%+ line coverage on `src/services/` (`npm run test:coverage`), and at 
   - the `taxOverridden` check in `recalcLineTaxes`
   - the balance check in `lineProblems`
   - the reopen-on-cancel in `applyToOrders`
+
+---
+
+## Progress (as of 2026-10-26)
+
+**Done**
+- **Harness** — `vitest.config.ts`, `src/test/setup.ts` (localStorage shim with key listing, frozen Asia/Manila clock, ~0 latency, 30s timeout for stock-flow tests), `npm test` / `test:coverage`, CLAUDE.md. `coverage/` untracked + gitignored.
+- **Layer 1** — 24 test files, **3,571 tests**, all green: store, dates, format, numbering, filters, pricing, sales/purchasing totals, journals (balance across every seed doc), copy-from-base, inventory/costLayers (+ concurrency), counts/bins/mergedItems, accounting validation matrix, tax, people/CRM; plus service **workflow** tests (post/cancel/copy/drawdown) for sales, purchasing and inventory/accounting.
+- **Coverage** — `src/services` **89.6% lines / 84.9% branch** (target 80%). `mocks` 97.9%. (`companies.ts` 57% — rest is a React hook, needs jsdom; `xlsx.ts` / `locations.ts` excluded as noted.)
+- **Layer 2** — `check-seeds.ts` extended 14 → **22 invariants** (orders vs fulfilment/returns, requests, blanket commitments, cost batches vs stock + weighted avg, bins, transfers/counts, landed-cost sum, unique doc numbers, withholding/ATC/service-VAT).
+- **Layer 3a** — smoke sweep widened **114 → 221 URLs** (every `/new`, one `:tab` per detail, all settings tabs, crm lead, variant item, redirect, placeholder), generated from the router/nav.
+- **Mutation sanity** — all three guards confirmed: breaking each turns the suite red (verified + restored).
+- **Bugs**: (1) `landedCosts.allocate` rounding — **fixed**; (2) `addLandedCost` posting — confirmed, `it.fails`, follow-up below; (3) PR `recalcLineTaxes` — **not a defect**. Also found + **fixed** `SoLinesCard` passing `onColumnSettings` to the raw `<Table>`; and flagged (`it.fails`) `saveItems` not rejecting two new rows that share an Item No. in one batch.
+
+**Remaining**
+- **Layer 3b** — Playwright workflow specs (`e2e/*.flows.spec.ts`) mapping the user stories. The workflows are currently covered at the **service** level (salesFlows/purchasingFlows/inventoryAccountingFlows); the UI-driven specs are still to write.
+- **Landed-cost posting feature** (bug 2) — make `addLandedCost` raise cost batches / item cost and post to the derived ledger, with the matching `check-seeds` invariant; flip the `it.fails` pin. Feature-scale (valuation-method branching + ledger + seed tie-out).
+- Fix the `saveItems` two-new-rows clash (minor) and flip its pin.
