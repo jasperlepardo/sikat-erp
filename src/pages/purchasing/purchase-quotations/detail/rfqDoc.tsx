@@ -11,8 +11,8 @@ import { getPurchasingSettings } from '../../../../services/purchaseOrders';
 import { lineNet, rfqTotals } from '../../../../services/rfqs';
 import { type RfqLine } from '../../../../mocks/rfqs';
 import { blanketOptions, lineFromItem, linePricing, type RfqTabProps } from './types';
-
-const round2 = (n: number) => Math.round(n * 100) / 100;
+import { taxCodeOptions } from '../../../../services/taxCodeOptions';
+import { round2 } from '../../../../services/num';
 
 /** Builds the Purchase Quotation (RFQ) contents descriptor for the shared <PurchDoc>. */
 export function rfqDoc({ draft, update, errors, m, ctx }: RfqTabProps): PurchDocProps<RfqLine> {
@@ -53,12 +53,11 @@ export function rfqDoc({ draft, update, errors, m, ctx }: RfqTabProps): PurchDoc
     patch(l.id, { priceListId, ...(priced ? { unitPrice: priced.unitPrice, discountPct: priced.discountPct } : {}) });
   };
 
-  const taxOptions = m.tax.codes
-    .filter((c) => c.direction === 'Purchase' && c.active)
-    .map((c) => ({ value: c.code, label: c.name }));
+  const taxOptions = (current: string) => taxCodeOptions(m.tax.codes, 'Purchase', current);
   const ba = blanketOptions(draft.vendorId, draft.postingDate);
   const vendorOpts = m.vendors.map((v) => ({ value: v.id, label: v.name }));
-  const warehouseOpts = m.inv.warehouses.filter((w) => w.active).map((w) => ({ value: w.code, label: `${w.code} ${w.name}` }));
+  // Active warehouses, and any a line already uses (one list for every row).
+  const warehouseOpts = m.inv.warehouses.filter((w) => w.active || draft.lines.some((l) => l.warehouse === w.code)).map((w) => ({ value: w.code, label: `${w.code} ${w.name}` }));
 
   const priceAfterDisc = (l: RfqLine) => l.unitPrice * (1 - l.discountPct / 100);
   // Reverse-charge codes aren't paid to the vendor, so they add no tax to gross / tax-amount.
@@ -73,7 +72,7 @@ export function rfqDoc({ draft, update, errors, m, ctx }: RfqTabProps): PurchDoc
   const cols = purchCols<RfqLine>({
     patch, readOnly: linesLocked, currency: draft.currency, fx: ctx.fx,
     lineNet, priceAfterDisc, grossAfterDisc, taxAmount, reverseChargeVat,
-    taxOptions: () => taxOptions,
+    taxOptions: (l) => taxOptions(l.taxCode),
     vendorOptions: vendorOpts, warehouseOptions: warehouseOpts, blanketOptions: ba,
     uomOptions, uomLabel,
     priceListDef, priceListWhere: (r) => isPriceListValid(r, draft.postingDate), departmentDef,

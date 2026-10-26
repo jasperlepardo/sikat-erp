@@ -36,7 +36,7 @@ import { MoreMenu } from '../../../components/form/MoreMenu';
 import { ProblemsAlert, problemCollector, type Problem as ProblemBase } from '../../../components/form/ProblemsAlert';
 import { AgreementsSection } from './AgreementsSection';
 import { ActivityTab } from '../../../components/activity/ActivityTab';
-import { PrevNext, neighbours } from '../../../components/form/DetailNav';
+import { neighbours, PrevNext, useDocTab } from '../../../components/form/DetailNav';
 import { withholdingTaxes } from '../../../services/masterData';
 
 const TABS = [
@@ -163,8 +163,7 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
   }, [id, isNew]);
 
   const config = scope === 'all' ? MASTER_CONFIG : ROLE_CONFIG[isNew ? (draft?.roles[0] ?? initialType) : scope];
-  const setPage = (v: PageId) => navigate(`${config.basePath}/${id}/${v}`, { replace: true });
-  useEffect(() => { if (!tabParam) navigate(`${config.basePath}/${id}/details`, { replace: true }); }, []);
+  const setPage = useDocTab<PageId>(`${config.basePath}/${id}`, tabParam, { keepState: false });
 
   if (draft === undefined) return <Text tone="muted" className="p-4">Loading {config.singular.toLowerCase()}…</Text>;
   if (draft === null) {

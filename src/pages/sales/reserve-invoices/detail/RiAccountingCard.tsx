@@ -1,12 +1,12 @@
 import { Select, Text } from '@jasperlepardo/sikat-design-system';
 import { CtxFormField, Section } from '../../../../components/form/fields';
 import type { SoDocType } from '../../../../mocks/salesOrders';
-import { customerWithholdsRi } from '../../../../services/reserveInvoices';
+import { customerWithholds } from '../../../../services/withholding';
 import type { RiSectionProps } from './types';
 
 export function RiAccountingCard({ draft, update, ctx, m: _ }: RiSectionProps) {
   const hasLines = draft.lines.some((l) => l.itemId || l.description);
-  const withholds = customerWithholdsRi(ctx.customer);
+  const withholds = customerWithholds(ctx.customer);
   return (
     <fieldset disabled={ctx.readOnly} className="contents">
       <Section icon="settings" title="Settings">

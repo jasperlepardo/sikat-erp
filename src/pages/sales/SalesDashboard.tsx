@@ -19,10 +19,7 @@ import { listSalesOrders, soNumber, soTotal } from '../../services/salesOrders';
 import { arNumber, arTotal, listArInvoices } from '../../services/arInvoices';
 import { useAsync } from '../../services/useAsync';
 import { Stat } from '../../components/Stat';
-import { SO_STATUS_INTENT } from './sales-orders/detail/SalesOrderDetail';
-import { AR_STATUS_INTENT } from './invoices/detail/ArInvoiceDetail';
-import { SO_LIST_PATH } from './sales-orders/detail/types';
-import { AR_LIST_PATH } from './invoices/detail/types';
+import { AR_LIST_PATH, AR_STATUS_INTENT, SO_LIST_PATH, SO_STATUS_INTENT } from './paths';
 
 export function SalesDashboard() {
   const navigate = useNavigate();

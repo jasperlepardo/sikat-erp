@@ -19,8 +19,8 @@ import { getPurchasingSettings, grossPrice, inventoryQty, lineNet, poTotals, pri
 import { poWithholding } from '../../../../services/withholding';
 import { linePricing, lineFromItem, viewCurrency, type PoTabProps } from './types';
 import { PurchTotalsFooter, PurchTotalNote, PurchTotalRow } from '../../shared/PurchTotalsFooter';
-
-const round2 = (n: number) => Math.round(n * 100) / 100;
+import { taxCodeOptions } from '../../../../services/taxCodeOptions';
+import { round2 } from '../../../../services/num';
 
 const WITHHELD_LABEL: Record<string, string> = {
   'Expanded (EWT)': 'EWT',
@@ -72,11 +72,8 @@ export function poDoc({ draft, update, errors, m, ctx }: PoTabProps): PurchDocPr
   const taxRate = (l: PoLine) => (ctx.isReverseCharge(l.taxCode) ? 0 : ctx.rateOf(l.taxCode));
   const reverseChargeVat = (l: PoLine) => (ctx.isReverseCharge(l.taxCode) ? round2((lineNet(l) * ctx.rateOf(l.taxCode)) / 100) : null);
 
-  const taxOptions = m.tax.codes
-    .filter((c) => c.direction === 'Purchase' && c.active)
-    .map((c) => ({ value: c.code, label: c.name }));
+  const taxOptions = (current: string) => taxCodeOptions(m.tax.codes, 'Purchase', current);
   const blanketOptions = [
-    { value: '', label: '— None —' },
     ...BLANKET_AGREEMENTS.filter((b) => b.vendorId === draft.vendorId && b.validTo >= draft.postingDate).map((b) => ({
       value: b.no,
       label: `${b.no} · ${b.description}`,
@@ -119,7 +116,7 @@ export function poDoc({ draft, update, errors, m, ctx }: PoTabProps): PurchDocPr
       get: (l) => round2(grossPrice(l, taxRate(l))),
       onChange: (l, g) => patch(l.id, { unitPrice: round2(g / (1 + taxRate(l) / 100)) }),
     } : undefined,
-    taxOptions: () => taxOptions,
+    taxOptions: (l) => taxOptions(l.taxCode),
     vendorOptions: [],
     warehouseOptions: m.inv.warehouses.filter((w) => receivesFromVendors(w)).map((w) => ({ value: w.code, label: `${w.code} ${w.name}` })),
     blanketOptions,
@@ -207,7 +204,7 @@ export function poDoc({ draft, update, errors, m, ctx }: PoTabProps): PurchDocPr
             <Combobox
               aria-label="Freight tax code"
               className="w-48"
-              options={m.tax.codes.filter((c) => c.direction === 'Purchase' && c.active).map((c) => ({ value: c.code, label: c.name }))}
+              options={taxCodeOptions(m.tax.codes, 'Purchase', draft.freightTaxCode)}
               value={draft.freightTaxCode}
               onValueChange={(freightTaxCode) => update({ freightTaxCode: freightTaxCode ?? '' })}
             />

@@ -17,7 +17,7 @@ export const binWarehouseOptions = (current = '') =>
     .map((w) => ({ value: w.code, label: `${w.code} · ${w.name}` }));
 
 /** How many bins use a sublevel code. */
-export const binsUsing = (s: Pick<BinSublevel, 'warehouse' | 'tier' | 'code'>) =>
+const binsUsing = (s: Pick<BinSublevel, 'warehouse' | 'tier' | 'code'>) =>
   binLocations.snapshot().filter((b) => b.warehouse === s.warehouse && b[s.tier] === s.code).length;
 
 /** Aisle, shelf and level codes, per warehouse. Bins are addressed by one of each. */

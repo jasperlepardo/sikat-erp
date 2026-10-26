@@ -116,13 +116,13 @@ export function VariantPanel({ variant, axes, title, onDone, onCancel }: Props) 
                           {isBase ? (
                             <span>₱{formatAmount(draft.basePrice)}</span>
                           ) : (
-                            <input
+                            <TextField
                               type="number"
                               min={0}
                               aria-label={`Price for ${u.uom}`}
-                              className="w-32 rounded border border-[var(--color-border-default)] px-2 py-0.5 text-right tabular-nums text-sm bg-transparent"
+                              className="w-32 text-right tabular-nums"
                               placeholder={`₱${formatAmount(derived)}`}
-                              value={u.price || ''}
+                              value={u.price ? String(u.price) : ''}
                               onChange={(e) => {
                                 const val = parseFloat(e.currentTarget.value) || 0;
                                 update({ uoms: draft.uoms.map((x) => x.uom === u.uom ? { ...x, price: val } : x) });

@@ -1,18 +1,44 @@
-import { lazy, type ComponentType } from 'react';
-import { createHashRouter, Navigate } from 'react-router';
+import { isValidElement, lazy, type ComponentProps, type ComponentType } from 'react';
+import { createHashRouter, Navigate, type RouteObject } from 'react-router';
 import { AppShell } from './AppShell';
 import { PageError } from './PageError';
-import { Home } from '../pages/Home';
 import { ROLE_CONFIG, scopeConfig, type PartnerScope } from '../pages/partners/roles';
 
 /**
  * A page loaded on first visit: each route is its own chunk, so the first screen doesn't download
- * every page (and the seeds and history replays they pull in). AppShell's Suspense shows meanwhile.
+ * every page (and the seeds and history replays they pull in).
+ *
+ * The router loads the chunk before it renders the route (`withPreload`), so the page renders at
+ * once. Left to React.lazy, the page suspends, AppShell's fallback shows, and React then holds that
+ * fallback for its ~300 ms throttle even when the chunk is already there: about 270 ms of every cold
+ * load. The lazy component stays as the fallback for a page rendered before its chunk is in.
  */
+// Pages take different props (or none), so any component fits.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- props vary per page
 function page<M extends Record<K, ComponentType<any>>, K extends keyof M & string>(load: () => Promise<M>, name: K) {
-  return lazy(() => load().then((m) => ({ default: m[name] })));
+  let loaded: M[K] | undefined;
+  const preload = () => load().then((m) => void (loaded = m[name]));
+  const Suspending = lazy(() => preload().then(() => ({ default: loaded! })));
+  const Page = (props: ComponentProps<M[K]>) => {
+    const Component = (loaded ?? Suspending) as ComponentType<ComponentProps<M[K]>>;
+    return <Component {...props} />;
+  };
+  return Object.assign(Page, { preload });
 }
 
+/** Give every route whose element is a `page()` a `lazy` that loads its chunk before the route renders. */
+function withPreload(routes: RouteObject[]): RouteObject[] {
+  return routes.map((route) => {
+    const preload = isValidElement(route.element) ? (route.element.type as { preload?: () => Promise<void> }).preload : undefined;
+    return {
+      ...route,
+      ...(preload && { lazy: () => preload().then(() => ({})) }),
+      ...(route.children && { children: withPreload(route.children) }),
+    } as RouteObject;
+  });
+}
+
+const Home = page(() => import('../pages/Home'), 'Home');
 const InventoryDashboard = page(() => import('../pages/inventory/InventoryDashboard'), 'InventoryDashboard');
 const ItemList = page(() => import('../pages/inventory/items/ItemList'), 'ItemList');
 const ItemDetail = page(() => import('../pages/inventory/items/detail/ItemDetail'), 'ItemDetail');
@@ -109,7 +135,7 @@ const partnerRoutes = (['all', ...Object.keys(ROLE_CONFIG)] as PartnerScope[]).f
  * Hash routing (`/#/items`) so the static build works on any host — GitHub Pages,
  * Netlify, a file share — with no server-side rewrite rules.
  */
-export const router = createHashRouter([
+export const router = createHashRouter(withPreload([
   {
     element: <AppShell />,
     children: [
@@ -198,7 +224,7 @@ export const router = createHashRouter([
           { path: 'settings/company/:tab?/:recordId?', element: <CompanySettingsPage /> },
           { path: 'settings/people/:tab?/:recordId?', element: <PeopleSettingsPage /> },
           { path: 'people/employees', element: <EmployeeList /> },
-          { path: 'people/employees/:id', element: <EmployeeDetail /> },
+          { path: 'people/employees/:id/:tab?', element: <EmployeeDetail /> },
           { path: 'inventory/warehouses-and-bins/:tab?/:recordId?', element: <WarehousesPage /> },
           { path: 'inventory/price-lists/:tab?/:recordId?', element: <PriceListsPage /> },
           { path: 'accounting/dashboard', element: <AccountingDashboard /> },
@@ -214,4 +240,4 @@ export const router = createHashRouter([
       },
     ],
   },
-]);
+]));

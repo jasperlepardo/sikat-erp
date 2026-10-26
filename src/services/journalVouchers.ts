@@ -14,6 +14,13 @@ export const voucherStatus = (v: Pick<JournalVoucher, 'entries'>): VoucherStatus
 
 export const hasPosted = (v: Pick<JournalVoucher, 'entries'>) => v.entries.some((e) => e.entryStatus === 'Closed');
 
+/** Open, Partly posted (some entries posted, others still open) or Closed. */
+export function voucherState(v: Pick<JournalVoucher, 'entries'>) {
+  const status = voucherStatus(v);
+  if (status === 'Closed') return { label: 'Closed', intent: 'default' as const };
+  return hasPosted(v) ? { label: 'Partly posted', intent: 'warning' as const } : { label: 'Open', intent: 'success' as const };
+}
+
 export { newVoucherEntry };
 
 const nextTransNo = (v: Pick<JournalVoucher, 'entries'>) => Math.max(0, ...v.entries.map((e) => e.transNo)) + 1;

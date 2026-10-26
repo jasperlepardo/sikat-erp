@@ -15,7 +15,7 @@ import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMen
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
-import { NotFound, PrevNext, neighbours } from '../../../../components/form/DetailNav';
+import { NotFound, PrevNext, neighbours, useDocTab } from '../../../../components/form/DetailNav';
 import { blankLandedCost, type LandedCost, type LcStatus } from '../../../../mocks/landedCosts';
 import {
   addLandedCost,
@@ -31,13 +31,7 @@ import { todayISO } from '../../../../services/dates';
 import { defaultJournalRemark } from '../../../../services/journalPatterns';
 import { listPartnersByRole } from '../../../../services/partners';
 import { useDocTitle } from '../../../../services/useDocTitle';
-import {
-  LC_LIST_PATH,
-  LC_STATUS_INTENT,
-  type LcDraft,
-  type LcMasters,
-  type LcSectionProps,
-} from './types';
+import { type LcDraft, type LcMasters, type LcSectionProps } from './types';
 import { DocumentFlow } from '../../shared/DocumentFlow';
 import { LcVendorCard } from './LcVendorCard';
 import { LcDocumentCard } from './LcDocumentCard';
@@ -46,6 +40,7 @@ import { LcCostsCard } from './LcCostsCard';
 import { LcVendorsCard } from './LcVendorsCard';
 import { LcGeneralCard } from './LcGeneralCard';
 import { LcRemarksCard } from './LcRemarksCard';
+import { LC_LIST_PATH, LC_STATUS_INTENT } from '../../paths';
 
 type TabId = 'items' | 'costs' | 'vendors' | 'general';
 
@@ -88,7 +83,6 @@ function LandedCostForm() {
   const { id, tab: tabParam } = useParams();
   const isNew = id === 'new';
   const navigate = useNavigate();
-  const location = useLocation();
 
   const [draft, setDraft] = useState<LcDraft | null | undefined>(
     isNew ? blankLandedCost(todayISO()) : undefined,
@@ -99,11 +93,7 @@ function LandedCostForm() {
   const [saving, setSaving] = useState(false);
   const [tab, setTab] = useState<TabId>('items');
   const page = (PAGES.some((p) => p.value === tabParam) ? tabParam : 'details') as PageId;
-  const setPage = (v: PageId) => navigate(`${LC_LIST_PATH}/${id}/${v}`, { replace: true });
-
-  useEffect(() => {
-    if (!tabParam) navigate(`${LC_LIST_PATH}/${id}/details`, { replace: true, state: location.state });
-  }, []);
+  const setPage = useDocTab<PageId>(`${LC_LIST_PATH}/${id}`, tabParam);
 
   useEffect(() => {
     Promise.all([listPartnersByRole('vendor'), landedCostTypes.list(), listGoodsReceipts()]).then(

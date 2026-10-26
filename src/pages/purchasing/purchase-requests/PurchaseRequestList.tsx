@@ -20,10 +20,10 @@ import { listPurchaseRequests, prNumber, prTotals } from '../../../services/purc
 import { useAsync } from '../../../services/useAsync';
 import { nameIn } from '../../../services/partnerMasters';
 import { branches, departments } from '../../../services/peopleMasters';
-import { PR_LIST_PATH, STATUS_INTENT } from './detail/PurchaseRequestDetail';
 import { dateField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { useListPage } from '../../../components/form/DataTable';
+import { PR_LIST_PATH, PR_STATUS_INTENT } from '../paths';
 
 export function PurchaseRequestList() {
   const navigate = useNavigate();
@@ -133,7 +133,7 @@ export function PurchaseRequestList() {
       key: 'status',
       header: 'Status',
       sortable: true,
-      cell: (r) => <TableStatus intent={STATUS_INTENT[r.status]}>{r.status}</TableStatus>,
+      cell: (r) => <TableStatus intent={PR_STATUS_INTENT[r.status]}>{r.status}</TableStatus>,
     },
   ];
 

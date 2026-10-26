@@ -3,10 +3,6 @@ import { formatDate } from '../../../../services/dates';
 import { type PrStatus } from '../../../../mocks/purchaseRequests';
 import type { PrSectionProps } from './types';
 
-export const PR_STATUS_INTENT: Record<PrStatus, 'default' | 'primary' | 'success' | 'danger'> = {
-  Open: 'primary',
-  Closed: 'success',
-};
 
 interface PrDocumentCardProps extends PrSectionProps {
   transitions: Partial<Record<PrStatus, () => void>>;

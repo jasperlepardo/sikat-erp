@@ -16,7 +16,7 @@
 import type { VariantAttribute } from './itemMasters';
 
 /** Family specs expanded into items by `expandCatalog`. */
-export interface Family {
+interface Family {
   /** Item group name. */
   group: string;
   /** Item No. stem after the group prefix, e.g. 18P → IPH-18P-256-BLK. */
@@ -37,7 +37,7 @@ export interface Family {
   remarks?: string;
 }
 
-export interface Opt {
+interface Opt {
   /** Item No. segment. */
   code: string;
   /** Description segment. */
@@ -62,7 +62,7 @@ const storage = (...tiers: [keyof typeof STORAGE, number][]) => tiers.map(([k, u
 const wifiCell = (cellUs: number) => [o('WF', 'Wi-Fi'), o('CL', 'Wi-Fi + Cellular', cellUs)];
 
 /** Colour → Item No. code. */
-export const COLOUR_CODES: Record<string, string> = {
+const COLOUR_CODES: Record<string, string> = {
   Black: 'BLK', White: 'WHT', Silver: 'SLV', Glacier: 'GLC', Burgundy: 'BUR',
   'Star White': 'STW', 'Night Sky': 'NSK',
   Lavender: 'LAV', Sage: 'SAG', 'Mist Blue': 'MBL',
@@ -82,7 +82,7 @@ const IPHONE_REMARK = 'Activation-locked device: check serial / IMEI at receivin
 const PRO_MAX_PH = { '256': 99990, '512': 115990, '1T': 147990, '2T': 194990 };
 const PRO_PH = Object.fromEntries(Object.entries(PRO_MAX_PH).map(([k, v]) => [k, v - 5000]));
 
-export const APPLE_FAMILIES: Family[] = [
+const APPLE_FAMILIES: Family[] = [
   // ── iPhone ────────────────────────────────────────────────────────────────
   {
     group: 'iPhone', code: '18PM', name: 'iPhone 18 Pro Max', usFrom: 1299, ph: PRO_MAX_PH, serial: true, validFrom: '2026-09-18', weightKg: 0.23,
@@ -324,7 +324,7 @@ export const APPLE_FAMILIES: Family[] = [
  * Estimated PH SRP from a US price. Calibrated on iPhone 18 Pro
  * (US$1,199 → ₱94,990): × 79.2, rounded to the nearest ₱1,000, less ₱10.
  */
-export const phEstimate = (usd: number) => Math.max(990, Math.round((usd * 79.2) / 1000) * 1000 - 10);
+const phEstimate = (usd: number) => Math.max(990, Math.round((usd * 79.2) / 1000) * 1000 - 10);
 
 /** Infer a human axis name from the option labels of one axis. */
 function axisName(axis: Opt[]): string {
@@ -387,7 +387,7 @@ function catalogValue(name: string, label: string) {
 }
 
 /** A parent (template) item representing one product family. */
-export interface FamilyEntry {
+interface FamilyEntry {
   /** Stable id for the parent item, e.g. 'apl-fam-001'. */
   id: string;
   /** Item No. for the parent item, e.g. 'IPH-18PM'. */
@@ -397,7 +397,7 @@ export interface FamilyEntry {
   variantAxes: { attributeId: string; valueIds: string[] }[];
 }
 
-export interface CatalogEntry {
+interface CatalogEntry {
   family: Family;
   /** Parent item id; '' when this family has only one variant (stays flat). */
   familyId: string;

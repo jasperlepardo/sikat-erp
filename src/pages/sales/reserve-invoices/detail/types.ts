@@ -1,11 +1,10 @@
 import type { Errors } from '../../../../components/form/fields';
-import { newRiLine, type RiLine, type ReserveInvoice } from '../../../../mocks/reserveInvoices';
+import { newRiLine, type RiLine } from '../../../../mocks/reserveInvoices';
 import type { SalesOrder, SoLine } from '../../../../mocks/salesOrders';
 import type { RiInput } from '../../../../services/reserveInvoices';
 import { soNumber } from '../../../../services/salesOrders';
 import { buildDnContext, type DnContext, type DnDraft, type DnMasters } from '../../deliveries/detail/types';
 
-export const RI_LIST_PATH = '/sales/reserve-invoices';
 
 export type RiDraft = RiInput;
 
@@ -51,4 +50,4 @@ export const riLineFromOrder = (so: SalesOrder, l: SoLine, quantity: number, wta
     openQtyForIt: quantity,
   });
 
-export type { ReserveInvoice };
+;

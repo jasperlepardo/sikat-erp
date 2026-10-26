@@ -1,33 +1,42 @@
 import { useState } from 'react';
 import { Button, Combobox, Icon, Link, TableStatus, Text, TextField, type TableColumn } from '@jasperlepardo/sikat-design-system';
-import { DataTable } from '../../../../../components/form/DataTable';
-import { itemsPerUom } from '../../../../../mocks/items';
-import { newPbaLine, type PbaLine } from '../../../../../mocks/purchaseBlanketAgreements';
-import { formatAmount } from '../../../../../services/format';
-import { itemGroupName } from '../../../../../services/inventoryMasters';
-import { lineTotal, openAmountLC, openQty } from '../../../../../services/purchaseBlanketAgreements';
-import type { PbaDraft, PbaMasters } from '../types';
+import { DataTable } from '../../components/form/DataTable';
+import { itemsPerUom } from '../../mocks/items';
+import type { Item } from '../../mocks/items';
+import type { BaLine } from '../../mocks/blanketAgreements';
+import type { PbaLine } from '../../mocks/purchaseBlanketAgreements';
+import { formatAmount } from '../../services/format';
+import { itemGroupName, type InventoryMasters } from '../../services/inventoryMasters';
+import { lineTotal, openAmountLC, openQty } from '../../services/blanketAgreements';
 
 const num = (v: string) => (v === '' ? 0 : Number(v));
 
-interface Props {
-  draft: PbaDraft;
-  update: (patch: Partial<PbaDraft>) => void;
-  m: PbaMasters;
+/** A blanket agreement line: purchase and sales agreement lines have the same shape. */
+type Line = PbaLine | BaLine;
+
+interface Props<L extends Line> {
+  /** Purchase agreements commit purchase items at cost; sales agreements, sales items at their net price. */
+  side: 'purchase' | 'sales';
+  draft: { lines: L[]; currency: string };
+  update: (patch: { lines: L[] }) => void;
+  m: { items: Item[]; inv: Pick<InventoryMasters, 'uoms' | 'uomGroups'> };
   readOnly: boolean;
+  newLine: () => L;
 }
 
-export function LinesCard({ draft, update, m, readOnly }: Props) {
+/** The Lines tab of a purchase or sales blanket agreement. */
+export function AgreementLinesCard<L extends Line>({ side, draft, update, m, readOnly, newLine }: Props<L>) {
+  const purchase = side === 'purchase';
   const [editing, setEditing] = useState<Set<string>>(new Set());
 
   const lines = draft.lines;
-  const itemOf = (l: PbaLine) => m.items.find((i) => i.id === l.itemId);
-  const patch = (id: string, p: Partial<PbaLine>) =>
-    update({ lines: lines.map((l) => (l.id === id ? { ...l, ...p } : l)) });
+  const itemOf = (l: L) => m.items.find((i) => i.id === l.itemId);
+  const patch = (id: string, p: Partial<Line>) =>
+    update({ lines: lines.map((l) => (l.id === id ? ({ ...l, ...p } as L) : l)) });
 
   const itemOptions = (current: string) =>
     m.items
-      .filter((i) => i.id === current || i.purchaseItem)
+      .filter((i) => i.id === current || (purchase ? i.purchaseItem : i.salesItem))
       .map((i) => ({
         value: i.id,
         label: (
@@ -39,32 +48,34 @@ export function LinesCard({ draft, update, m, readOnly }: Props) {
         text: `${i.itemNo} ${i.name} ${i.description}`,
       }));
 
-  const pickItem = (l: PbaLine, itemId: string | null) => {
+  const pickItem = (l: L, itemId: string | null) => {
     const item = m.items.find((i) => i.id === itemId);
     if (!item) {
       patch(l.id, { itemId: '', itemNo: '', description: '', itemGroupId: '' });
       return;
     }
-    const uom = m.inv.uoms.find((u) => u.code === item.purchasingUom);
-    const uomGroupId = m.inv.uomGroups.find((g) => g.baseUom === item.purchasingUom || g.conversions.some((c) => c.altUom === item.purchasingUom))?.id ?? '';
+    const unit = purchase ? item.purchasingUom : item.salesUom;
+    const uom = m.inv.uoms.find((u) => u.code === unit);
+    const uomGroupId = m.inv.uomGroups.find((g) => g.baseUom === unit || g.conversions.some((c) => c.altUom === unit))?.id ?? '';
     patch(l.id, {
       itemId: item.id,
       itemNo: item.itemNo,
       description: item.description || item.name,
       itemGroupId: item.itemGroupId,
-      unitPrice: Math.round(item.itemCost * 100) / 100,
-      uomCode: item.purchasingUom,
-      uomName: uom?.name ?? item.purchasingUom,
-      itemsPerUnit: itemsPerUom(item, item.purchasingUom) ?? 1,
+      // The agreed purchase cost; a sale's price net of VAT.
+      unitPrice: Math.round((purchase ? item.itemCost : item.basePrice / 1.12) * 100) / 100,
+      uomCode: unit,
+      uomName: uom?.name ?? unit,
+      itemsPerUnit: itemsPerUom(item, unit) ?? 1,
       uomGroupId,
     });
   };
 
-  const col = (key: string, header: string, cell: (l: PbaLine) => React.ReactNode, opts?: Partial<TableColumn<PbaLine>>): TableColumn<PbaLine> => ({
+  const col = (key: string, header: string, cell: (l: L) => React.ReactNode, opts?: Partial<TableColumn<L>>): TableColumn<L> => ({
     key, header, cell, ...opts,
   });
 
-  const columns: TableColumn<PbaLine>[] = [
+  const columns: TableColumn<L>[] = [
     col('item', 'Item / Description', (l) => {
       const item = itemOf(l);
       if (!item || (editing.has(l.id) && !readOnly)) {
@@ -134,10 +145,10 @@ export function LinesCard({ draft, update, m, readOnly }: Props) {
         />
       ),
     ),
-    col('cumulativeOrderedQty', 'Ordered qty', (l) => (
+    ...(purchase ? [col('cumulativeOrderedQty', 'Ordered qty', (l) => (
       <Text variant="small" tone="muted" className="tabular-nums">{l.cumulativeCommittedQty}</Text>
-    )),
-    col('cumulativeQty', 'Received qty', (l) => (
+    ))] : []),
+    col('cumulativeQty', purchase ? 'Received qty' : 'Cumulative qty', (l) => (
       <Text variant="small" tone="muted" className="tabular-nums">{l.cumulativeQty}</Text>
     )),
     col('cumulativeAmountLC', 'Cumulative amt (LC)', (l) => (
@@ -170,10 +181,11 @@ export function LinesCard({ draft, update, m, readOnly }: Props) {
   ];
 
   return (
-    <DataTable<PbaLine>
+    <DataTable<L>
+      variant={purchase ? undefined : 'plain'}
       icon="list_alt"
       title="Line Items"
-      description={`Items committed under this agreement. Unit prices are the agreed purchase cost in ${draft.currency}.`}
+      description={`Items committed under this agreement. Unit prices are ${purchase ? 'the agreed purchase cost' : 'net of VAT'} in ${draft.currency}.`}
       columns={columns}
       rows={lines}
       getRowId={(l) => l.id}
@@ -181,7 +193,7 @@ export function LinesCard({ draft, update, m, readOnly }: Props) {
       unsortable={columns.map((c) => c.key)}
       actions={
         !readOnly ? (
-          <Button type="button" intent="primary" variant="solid" size="small" leadingIcon={<Icon size={16}>add</Icon>} onClick={() => update({ lines: [...lines, newPbaLine()] })}>
+          <Button type="button" intent="primary" variant="solid" size="small" leadingIcon={<Icon size={16}>add</Icon>} onClick={() => update({ lines: [...lines, newLine()] })}>
             Add line
           </Button>
         ) : undefined

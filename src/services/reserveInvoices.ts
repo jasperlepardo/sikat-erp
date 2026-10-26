@@ -4,14 +4,16 @@ import { riSeries, seriesLookup, formatDocNum } from './allSeries';
 import type { ItemGroup } from '../mocks/itemMasters';
 import type { Item } from '../mocks/items';
 import type { Partner } from '../mocks/partners';
-import { rateAt, type TaxCode } from '../mocks/taxes';
+import { rateFrom, type TaxCode } from '../mocks/taxes';
 import { todayISO } from './dates';
 import { itemGroups } from './inventoryMasters';
-import { inventoryAccountFor, type JournalLine } from './inventoryTransfers';
+import { type JournalLine } from './inventoryTransfers';
 import { postDocumentEntry, reverseDocumentEntry } from './journalEntries';
 import { lineNet, soTotals } from './salesOrders';
 import { createCollection } from './store';
 import { customerWithholding, type CustomerWithholding } from './withholding';
+import { round2 } from './num';
+import { revenueAccountFor } from './itemAccounts';
 
 const reserveInvoices = createCollection<ReserveInvoice>('sikat-erp:reserve-invoices', SEED_RESERVE_INVOICES, 'ri', { audit: 'RI' });
 
@@ -25,9 +27,7 @@ export async function getReserveInvoice(idOrNumber: string) {
 
 export type RiInput = Omit<ReserveInvoice, 'id'> & { id?: string };
 
-const round2 = (n: number) => Math.round(n * 100) / 100;
-
-export const riSeriesOf = (id: string) => seriesLookup(riSeries, id, RI_SERIES);
+const riSeriesOf = (id: string) => seriesLookup(riSeries, id, RI_SERIES);
 export const riNumber = (r: Pick<ReserveInvoice, 'seriesId' | 'docNum' | 'postingDate'>) => formatDocNum(riSeriesOf(r.seriesId), r.docNum, r.postingDate);
 
 export const riTotals = (
@@ -36,16 +36,8 @@ export const riTotals = (
   rule?: Parameters<typeof soTotals>[2],
 ) => soTotals(r as unknown as Parameters<typeof soTotals>[0], rateOf, rule);
 
-const rateFrom = (codes: readonly TaxCode[], date: string) => (code: string) => {
-  const c = codes.find((x) => x.code === code);
-  return c ? (rateAt(c, date) ?? 0) : 0;
-};
 
 export type RiWithholding = CustomerWithholding;
-
-/** Whether the customer withholds on what it pays us: a top withholding agent, or government. */
-export const customerWithholdsRi = (c: Pick<Partner, 'businessType' | 'topWithholdingAgent'> | undefined) =>
-  Boolean(c && (c.businessType === 'Government' || c.topWithholdingAgent));
 
 /**
  * The WTax Amount (document currency) on WTax Liable lines — the same resolution as A/R invoices
@@ -63,14 +55,12 @@ export function riWithholding(
 /** What the customer still owes: total − withholding − payments applied. */
 export const riBalanceDue = (total: number, withheld: number, applied: number) => round2(total - withheld - applied);
 
-const groupOf = (item: Item, groups: readonly ItemGroup[]) => groups.find((g) => g.id === item.itemGroupId);
-const revenueAccountFor = (item: Item, groups: readonly ItemGroup[]) =>
-  (item.glBy === 'Item Level' ? item.revenueAccount : groupOf(item, groups)?.revenueAccount || item.revenueAccount) || '4010';
 
 /**
  * The journal entry for a Reserve Invoice: Dr A/R / Cr Revenue / Cr Output VAT.
  * NO inventory movement (no COGS or Inventory lines).
  * `fixed` uses the rates saved on the doc instead of today's.
+ * @public
  */
 export function riJournal(
   r: Pick<ReserveInvoice, 'lines' | 'discountPct' | 'freight' | 'freightTaxCode' | 'rounding' | 'controlAccount' | 'docType'>,
@@ -185,16 +175,3 @@ export async function cancelReserveInvoice(r: ReserveInvoice) {
 export async function recallReserveInvoice(ri: ReserveInvoice): Promise<ReserveInvoice> {
   return reserveInvoices.save({ ...ri, status: 'Draft', approved: false });
 }
-
-/** An invoice's total, the customer's withholding, and what's still unpaid (document currency). */
-export function netDueRi(r: ReserveInvoice, customer: Pick<Partner, 'businessType' | 'topWithholdingAgent'> | undefined, items: readonly Item[], codes: readonly TaxCode[]) {
-  const rateOf = rateFrom(codes, r.postingDate);
-  const total = riTotals(r, rateOf).total;
-  const wtAmount = round2(riWithholding(r, customer, items, rateOf).reduce((n, w) => n + w.amount, 0));
-  const due = round2(total - wtAmount);
-  return { total, wtAmount, due, balanceDue: round2(due - r.appliedAmount) };
-}
-
-/** What to display for the inventory account of a line (used in journal preview). */
-export const riInventoryAccount = (item: Item, warehouse: string, groups: readonly ItemGroup[]) =>
-  inventoryAccountFor(item, warehouse, [...groups]);

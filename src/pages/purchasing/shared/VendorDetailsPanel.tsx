@@ -107,8 +107,8 @@ export function VendorDetailsPanel<D extends VendorDraftBase>({
                 {h.lookup(
                   'contactId',
                   'Contact person',
-                  [{ value: '', label: '— None —' }, ...(vendor.contacts ?? []).filter((c) => c.active || c.id === draft.contactId).map((c) => ({ value: c.id, label: contactName(c) }))],
-                  { hint: contactHint },
+                  (vendor.contacts ?? []).filter((c) => c.active || c.id === draft.contactId).map((c) => ({ value: c.id, label: contactName(c) })),
+                  { clearable: true, hint: contactHint },
                 )}
                 {h.text('vendorRef', 'Vendor ref. no.', { hint: vendorRefHint, error: vendorRefError })}
                 <FormField label="Currency" required error={currency.error} tooltip={currency.tooltip}>

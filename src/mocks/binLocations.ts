@@ -10,7 +10,7 @@ export const SUBLEVEL_TIERS: SublevelTier[] = ['aisle', 'shelf', 'level'];
 export const TIER_LABEL: Record<SublevelTier, string> = { aisle: 'Aisle', shelf: 'Shelf', level: 'Level' };
 
 /** Joins the warehouse and sublevel segments of a bin code. */
-export const BIN_SEPARATOR = '-';
+const BIN_SEPARATOR = '-';
 
 /** One aisle, shelf or level code a warehouse's bins can use. */
 export interface BinSublevel {

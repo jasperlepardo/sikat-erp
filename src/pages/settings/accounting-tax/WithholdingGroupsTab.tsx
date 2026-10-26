@@ -1,4 +1,5 @@
-import { TableStatus } from '@jasperlepardo/sikat-design-system';
+import { useState } from 'react';
+import { Alert, TableStatus, Text } from '@jasperlepardo/sikat-design-system';
 import { FieldStack, Section, bind } from '../../../components/form/fields';
 import { MasterList, type ListRoute } from '../../../components/form/MasterList';
 import {
@@ -6,6 +7,7 @@ import {
   type WithholdingGroup,
 } from '../../../mocks/taxes';
 import { withholdingGroups, withholdingTaxes } from '../../../services/masterData';
+import { blockedDeactivation, describeTaxUsage, loadTaxUsage } from '../../../services/taxUsage';
 import { useAsync } from '../../../services/useAsync';
 import { useCollectionRows } from '../../../services/useCollectionRows';
 
@@ -33,6 +35,15 @@ const blank = (): WithholdingGroup => ({
 
 export function WithholdingGroupsTab(route: ListRoute) {
   const { rows, save, setActive } = useCollectionRows(withholdingGroups);
+  const usage = useAsync(loadTaxUsage, [rows]);
+  const usedBy = (g: WithholdingGroup) => usage?.withholdingGroups.get(g.code);
+  const [notice, setNotice] = useState<string>();
+  // Withholding groups items, accounts or rules use can't be deactivated.
+  const setActiveChecked = async (picked: WithholdingGroup[], active: boolean) => {
+    const { allowed, notice: n } = blockedDeactivation(picked, active, usedBy, (g) => g.code);
+    await setActive(allowed, active);
+    setNotice(n);
+  };
   const taxes = useAsync(withholdingTaxes.list, []) ?? [];
 
   const atcLabel = (atc: string | null) => {
@@ -49,7 +60,8 @@ export function WithholdingGroupsTab(route: ListRoute) {
       noun="withholding group"
       description="Items carry a withholding group that determines which EWT/FWT ATC applies on purchase documents. The determination engine picks the right ATC by payee type, income tier, and whether the company is a government entity or top withholding agent."
       rows={rows}
-      onSetActive={setActive}
+      onSetActive={setActiveChecked}
+      intro={notice ? <Alert intent="warning" variant="outline" title="Some withholding groups are in use">{notice}</Alert> : undefined}
       columns={[
         { key: 'code', header: 'Code', cell: (g) => <span className="font-semibold">{g.code}</span> },
         { key: 'name', header: 'Name', cell: (g) => g.name },
@@ -75,6 +87,15 @@ export function WithholdingGroupsTab(route: ListRoute) {
           cell: (g) => (g.thresholdLabel ? <span className="text-sm">{g.thresholdLabel}</span> : <span className="text-muted">Not tiered</span>),
         },
         {
+          key: 'usedBy',
+          header: 'Used by',
+          sortable: false,
+          cell: (g) => {
+            const u = describeTaxUsage(usedBy(g));
+            return u ? <span className="max-w-xs whitespace-normal text-sm">{u}</span> : <span className="text-muted">—</span>;
+          },
+        },
+        {
           key: 'active',
           header: 'Status',
           cell: (g) => (
@@ -91,13 +112,16 @@ export function WithholdingGroupsTab(route: ListRoute) {
         else if (all.some((x) => x.id !== g.id && x.code.toLowerCase() === g.code.trim().toLowerCase()))
           e.code = `${g.code} already exists.`;
         if (!g.name.trim()) e.name = 'Name is required.';
+        if (!g.active && g.id && usage) {
+          const u = describeTaxUsage(usedBy(g));
+          if (u) e.active = `Still used by ${u}.`;
+        }
         return e;
       }}
       onSave={(g) => save({ ...g, id: g.id || g.code.trim().toUpperCase(), code: g.code.trim().toUpperCase() })}
       editor={(g, update, errors, isNew) => {
         const f = bind(g, update);
-        const atcOptions = (includeNull: boolean) => [
-          ...(includeNull ? [{ value: '', label: '— None —' }] : []),
+        const atcOptions = () => [
           ...taxes
             .filter((t) => t.active || Object.values(g).includes(t.atc))
             .map((t) => ({ value: t.atc, label: `${t.atc} · ${t.description}` })),
@@ -110,7 +134,7 @@ export function WithholdingGroupsTab(route: ListRoute) {
           label: string,
           hint?: string,
         ) =>
-          f.lookup(field, label, atcOptions(true), {
+          f.lookup(field, label, atcOptions(), {
             clearable: true,
             hint: g[field] ? atcLabel(g[field] as string) : hint,
           });
@@ -164,7 +188,10 @@ export function WithholdingGroupsTab(route: ListRoute) {
               </FieldStack>
             </Section>
 
-            <FieldStack>{f.status('active', 'Status')}</FieldStack>
+            <FieldStack>
+              {f.status('active', 'Status', { error: errors.active })}
+              {isNew ? null : <Text variant="small" tone="muted">Used by: {describeTaxUsage(usedBy(g)) || 'not used yet.'}</Text>}
+            </FieldStack>
           </>
         );
       }}

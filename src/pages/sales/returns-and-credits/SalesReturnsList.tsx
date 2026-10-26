@@ -22,7 +22,7 @@ import { arCmNumber, arCmTotal, listArCreditMemos } from '../../../services/arCr
 import { listSalesReturns, srNumber, srTotal } from '../../../services/salesReturns';
 import { taxCodes } from '../../../services/masterData';
 import { useAsync } from '../../../services/useAsync';
-import { AR_CM_LIST_PATH, ARCM_STATUS_INTENT, SR_LIST_PATH, SR_STATUS_INTENT } from './types';
+import { ARCM_STATUS_INTENT, AR_CM_LIST_PATH, SR_LIST_PATH, SR_STATUS_INTENT } from '../paths';
 
 type Kind = 'returns' | 'memos';
 type Status = 'Draft' | 'Not Confirmed' | 'Open' | 'Closed' | 'Cancelled';

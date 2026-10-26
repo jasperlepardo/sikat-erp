@@ -5,8 +5,7 @@ import { Section } from '../../../../components/form/fields';
 import { formatAmount } from '../../../../services/format';
 import { formatDate } from '../../../../services/dates';
 import { EditPanel } from '../../../partners/detail/EditPanel';
-
-const round2 = (n: number) => Math.round(n * 100) / 100;
+import { round2 } from '../../../../services/num';
 
 /** Copy To › A/P Invoice: put credit left on the memo against the vendor's open invoices, oldest due first. */
 export function ApplyCreditPanel({

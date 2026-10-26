@@ -23,7 +23,7 @@ import { dateField, linesField, masterField, numberField, statusField, textField
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { salesEmployeeDef } from '../../settings/masterDefs';
 import { fillCardClass, useListPage } from '../../../components/form/DataTable';
-import { TRANSFER_LIST_PATH, TRANSFER_STATUS_INTENT } from './InventoryTransferDetail';
+import { TRANSFER_LIST_PATH, TRANSFER_STATUS_INTENT } from '../paths';
 
 export function InventoryTransferList() {
   const navigate = useNavigate();

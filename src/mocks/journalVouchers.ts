@@ -15,7 +15,7 @@
 import { blankJournalEntry, newJeLine, type JournalEntry } from './journalEntries';
 
 /** An entry inside a voucher: Open while it's a draft, Closed once posted. */
-export type VoucherEntryStatus = 'Open' | 'Closed';
+type VoucherEntryStatus = 'Open' | 'Closed';
 export type VoucherStatus = 'Open' | 'Closed';
 
 /**

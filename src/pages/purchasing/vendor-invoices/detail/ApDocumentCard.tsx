@@ -5,7 +5,8 @@ import { AP_SERIES, AP_STATUSES, type ApStatus } from '../../../../mocks/apInvoi
 import { formatDate } from '../../../../services/dates';
 import { apNumber } from '../../../../services/apInvoices';
 import { paymentTermName } from '../../../../services/purchaseOrders';
-import { AP_STATUS_INTENT, type ApSectionProps } from './types';
+import { type ApSectionProps } from './types';
+import { AP_STATUS_INTENT } from '../../paths';
 
 interface ApDocumentCardProps extends ApSectionProps {
   statusMoves: Partial<Record<ApStatus, () => void>>;

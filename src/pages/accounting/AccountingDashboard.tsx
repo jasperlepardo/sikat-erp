@@ -15,11 +15,10 @@ import { type JournalVoucher } from '../../mocks/journalVouchers';
 import { formatDate, todayISO } from '../../services/dates';
 import { formatAmount } from '../../services/format';
 import { jeTotals, jeNumber, listJournalEntries } from '../../services/journalEntries';
-import { listVouchers, voucherStatus } from '../../services/journalVouchers';
+import { listVouchers, voucherState, voucherStatus } from '../../services/journalVouchers';
 import { useAsync } from '../../services/useAsync';
 import { Stat } from '../../components/Stat';
-import { JE_LIST_PATH, JE_STATUS_INTENT } from './journal/JournalEntryDetail';
-import { JV_LIST_PATH, voucherState } from './vouchers/JournalVoucherList';
+import { JE_LIST_PATH, JE_STATUS_INTENT, JV_LIST_PATH } from './paths';
 
 const debitOf = (v: JournalVoucher) => v.entries.reduce((n, e) => n + jeTotals(e.lines).debit, 0);
 

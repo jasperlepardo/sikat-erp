@@ -22,7 +22,7 @@ import { formatAmount } from '../../../services/format';
 import { taxCodes } from '../../../services/masterData';
 import { amountDue, incomingNumber, listIncomingPayments } from '../../../services/incomingPayments';
 import { useAsync } from '../../../services/useAsync';
-import { RC_LIST_PATH, RC_STATUS_INTENT } from './detail/IncomingPaymentDetail';
+import { RC_LIST_PATH, RC_STATUS_INTENT } from '../paths';
 
 export function IncomingPaymentList() {
   const navigate = useNavigate();

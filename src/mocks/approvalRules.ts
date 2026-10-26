@@ -1,4 +1,4 @@
-export const DOC_TYPES = ['RFQ', 'PO', 'GRPO', 'APINV', 'GRET', 'CM', 'DPR', 'PMT', 'QT', 'SO', 'DN', 'ARINV', 'SR', 'ARCM', 'RC'] as const;
+const DOC_TYPES = ['RFQ', 'PO', 'GRPO', 'APINV', 'GRET', 'CM', 'DPR', 'PMT', 'QT', 'SO', 'DN', 'ARINV', 'SR', 'ARCM', 'RC'] as const;
 export type DocType = typeof DOC_TYPES[number];
 
 export const DOC_TYPE_LABEL: Record<DocType, string> = {

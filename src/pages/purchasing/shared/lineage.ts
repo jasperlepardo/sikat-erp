@@ -1,6 +1,6 @@
 import type { CoveredLine, DocNode } from './documentLinks';
 
-export type Relation = 'Base' | 'This' | 'Target';
+type Relation = 'Base' | 'This' | 'Target';
 
 /** A document linked to the one open, directly or through others. */
 export interface LinkedDocument extends DocNode {

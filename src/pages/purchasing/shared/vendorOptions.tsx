@@ -6,7 +6,7 @@ import { ALL_CURRENCIES } from '../purchase-orders/detail/types';
 const vendorHref = (id: string) => `#/purchasing/vendors/${id}`;
 
 /** A vendor as a Vendor-field card: avatar, code, currency and TIN, linked to the vendor record. */
-export const vendorOption = (v: Partner): CardFieldOption => ({
+const vendorOption = (v: Partner): CardFieldOption => ({
   value: v.id,
   label: v.name,
   icon: <PartnerAvatar partner={v} size={36} />,

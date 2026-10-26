@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import { todayISO } from '../../../services/dates';
 import { Badge, Button, Form, FormField, Panel, PanelHeader, Select, Tabs, Text, type Option } from '@jasperlepardo/sikat-design-system';
+import { ActivityTab } from '../../../components/activity/ActivityTab';
 import { FieldStack, ReadOnly, Section, bind, type Errors } from '../../../components/form/fields';
 import { useCollection } from '../../../components/form/MasterLookup';
 import { MoreMenu } from '../../../components/form/MoreMenu';
@@ -12,15 +13,22 @@ import { employeeName, employees, getEmployee, saveEmployee } from '../../../ser
 import { listPartnersByRole } from '../../../services/partners';
 import { useAsync } from '../../../services/useAsync';
 import { branchDef, costCenterDef, departmentDef, positionDef, salesEmployeeDef, userDef } from '../../settings/masterDefs';
-import { EMPLOYEES_PATH } from '../EmployeeList';
 import { AddressTab } from './address';
 import { AdministrationTab } from './administration';
 import { FinanceTab } from './finance';
 import { MembershipTab } from './membership';
 import { PersonalTab } from './personal';
 import { TABS, type Draft, type TabId } from './types';
+import { EMPLOYEES_PATH } from '../paths';
 
 type Problem = ProblemBase<TabId>;
+
+/** Top-level views in the panel header. */
+const PAGES = [
+  { value: 'details', label: 'Details' },
+  { value: 'activity', label: 'Activity' },
+] as const;
+type PageId = (typeof PAGES)[number]['value'];
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -57,13 +65,15 @@ export function EmployeeDetail() {
 }
 
 function EmployeeForm() {
-  const { id } = useParams();
+  const { id, tab: tabParam } = useParams();
   const isNew = id === 'new';
   const navigate = useNavigate();
   const copyFrom = (useLocation().state as { copyFrom?: Draft } | null)?.copyFrom;
 
   const [draft, setDraft] = useState<Draft | null | undefined>(isNew ? (copyFrom ?? blankEmployee()) : undefined);
   const [codeMode, setCodeMode] = useState<'auto' | 'manual'>('auto');
+  const page = (PAGES.some((p) => p.value === tabParam) ? tabParam : 'details') as PageId;
+  const setPage = (v: PageId) => navigate(`${EMPLOYEES_PATH}/${id}/${v}`, { replace: true });
   const [tab, setTab] = useState<TabId>('address');
   const [problems, setProblems] = useState<Problem[]>([]);
   const [saving, setSaving] = useState(false);
@@ -115,6 +125,7 @@ function EmployeeForm() {
   const check = () => {
     const found = validate(draft, todayISO());
     setProblems(found);
+    if (found.length) setPage('details');
     const first = found.find((p) => p.tab !== 'header');
     if (first && first.tab !== 'header') setTab(first.tab);
     return !found.length;
@@ -186,6 +197,15 @@ function EmployeeForm() {
           onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
           onBack={() => navigate(EMPLOYEES_PATH)}
           trailing={isNew ? undefined : <PrevNext path={EMPLOYEES_PATH} prevId={prevId} nextId={nextId} />}
+          tabs={
+            <Tabs
+              variant="outline"
+              value={page}
+              onValueChange={(v) => setPage(v as PageId)}
+              // An employee has no activity until it's added.
+              items={PAGES.map((p) => ({ ...p, disabled: isNew && p.value !== 'details' }))}
+            />
+          }
           status={isNew ? undefined : draft.active ? undefined : <Badge intent="default">Inactive</Badge>}
           actions={
             <>
@@ -199,121 +219,127 @@ function EmployeeForm() {
             </>
           }
         />
-        {/* Side by side (lg), each column scrolls on its own; stacked, the body scrolls as one. */}
-        <Panel.Body className="flex flex-col gap-2 lg:overflow-hidden!">
-          <ProblemsAlert problems={problems} tabLabel={(t) => TABS.find((x) => x.value === t)?.label} onOpenTab={(t) => setTab(t)} />
+        {page === 'activity' ? (
+          <Panel.Body>
+            <ActivityTab target={{ kind: 'EMP', id: draft.id ?? '' }} />
+          </Panel.Body>
+        ) : (
+          /* Side by side (lg), each column scrolls on its own; stacked, the body scrolls as one. */
+          <Panel.Body className="flex flex-col gap-2 lg:overflow-hidden!">
+            <ProblemsAlert problems={problems} tabLabel={(t) => TABS.find((x) => x.value === t)?.label} onOpenTab={(t) => setTab(t)} />
 
-          <div className="grid gap-4 lg:min-h-0 lg:flex-1 lg:grid-cols-12 lg:grid-rows-1">
-            <aside className="flex flex-col gap-2 lg:col-span-3 lg:min-h-0 lg:overflow-y-auto">
-              <Section icon="badge" title="Employee">
-                <FieldStack>
-                  {isNew ? (
-                    <FormField orientation="responsive" label="Numbering" tooltip="Auto assigns the next EMP-####.">
-                      {(p) => (
-                        <Select
-                          {...p}
-                          options={[
-                            { value: 'auto', label: 'Auto (EMP-####)' },
-                            { value: 'manual', label: 'Manual' },
-                          ]}
-                          value={codeMode}
-                          onValueChange={(v) => setCodeMode(v as 'auto' | 'manual')}
-                        />
-                      )}
-                    </FormField>
-                  ) : null}
-                  {isNew ? (
-                    codeMode === 'auto' ? (
-                      <ReadOnly label="Employee code" value="Assigned on save" hint="Auto: the next EMP-####." />
+            <div className="grid gap-4 lg:min-h-0 lg:flex-1 lg:grid-cols-12 lg:grid-rows-1">
+              <aside className="flex flex-col gap-2 lg:col-span-3 lg:min-h-0 lg:overflow-y-auto">
+                <Section icon="badge" title="Employee">
+                  <FieldStack>
+                    {isNew ? (
+                      <FormField orientation="responsive" label="Numbering" tooltip="Auto assigns the next EMP-####.">
+                        {(p) => (
+                          <Select
+                            {...p}
+                            options={[
+                              { value: 'auto', label: 'Auto (EMP-####)' },
+                              { value: 'manual', label: 'Manual' },
+                            ]}
+                            value={codeMode}
+                            onValueChange={(v) => setCodeMode(v as 'auto' | 'manual')}
+                          />
+                        )}
+                      </FormField>
+                    ) : null}
+                    {isNew ? (
+                      codeMode === 'auto' ? (
+                        <ReadOnly label="Employee code" value="Assigned on save" hint="Auto: the next EMP-####." />
+                      ) : (
+                        h.text('code', 'Employee code', { ...beside, required: true, error: errors.code, placeholder: 'e.g. EMP-0100' })
+                      )
                     ) : (
-                      h.text('code', 'Employee code', { ...beside, required: true, error: errors.code, placeholder: 'e.g. EMP-0100' })
-                    )
-                  ) : (
-                    <ReadOnly label="Employee code" value={draft.code} hint="Locked after the employee is added." error={errors.code} />
-                  )}
-                  {h.text('firstName', 'First name', { ...beside, required: true, error: errors.firstName })}
-                  {h.text('middleName', 'Middle name', beside)}
-                  {h.text('lastName', 'Last name', beside)}
-                  {h.text('externalNo', 'Ext. employee no.', { ...beside, hint: 'Number in the outside payroll system.' })}
-                  {h.status('active', 'Status', { ...beside, hint: 'Inactive employees drop out of pickers.' })}
-                </FieldStack>
-              </Section>
-
-              <Section icon="corporate_fare" title="Organisation">
-                <FieldStack>
-                  {h.text('jobTitle', 'Job title', { ...beside, placeholder: 'e.g. Store Manager, Cebu' })}
-                  {h.master('positionId', 'Position', positionDef, { ...beside, clearable: true })}
-                  {h.master('departmentId', 'Department', departmentDef, { ...beside, clearable: true })}
-                  {h.master('branchId', 'Branch', branchDef, { ...beside, clearable: true })}
-                  {h.lookup('managerId', 'Manager', employeeOptions(draft.managerId, draft.id), {
-                    ...beside,
-                    clearable: true,
-                    placeholder: 'None',
-                    error: errors.managerId,
-                  })}
-                  {h.master('userId', 'User code', userDef, { ...beside, clearable: true, hint: 'The login account this employee uses.' })}
-                  {h.master('salesEmployeeId', 'Sales employee', salesEmployeeDef, {
-                    ...beside,
-                    clearable: true,
-                    hint: 'The Sales employees & buyers entry this employee sells or buys as.',
-                  })}
-                  {h.master('costCenterId', 'Cost center', costCenterDef, { ...beside, clearable: true })}
-                  {h.lookup('vendorId', 'Linked vendor', vendorOptions, {
-                    ...beside,
-                    clearable: true,
-                    placeholder: 'None',
-                    hint: 'Vendor record expense claims are paid through.',
-                  })}
-                </FieldStack>
-              </Section>
-
-              <Section icon="call" title="Contact">
-                <FieldStack>
-                  {h.text('officePhone', 'Office phone', { ...beside, placeholder: '(02) 8000 0000' })}
-                  {h.text('officeExt', 'Ext.', beside)}
-                  {h.text('mobilePhone', 'Mobile phone', { ...beside, placeholder: '0917 000 0000' })}
-                  {h.text('pager', 'Pager', beside)}
-                  {h.text('homePhone', 'Home phone', beside)}
-                  {h.text('fax', 'Fax', beside)}
-                  {h.text('email', 'E-mail', { ...beside, error: errors.email, placeholder: 'name@company.ph' })}
-                </FieldStack>
-              </Section>
-            </aside>
-
-            <div className="flex min-w-0 flex-col gap-2 lg:col-span-9 lg:min-h-0 lg:overflow-y-auto">
-              <Tabs
-                value={tab}
-                onValueChange={(v) => setTab(v as TabId)}
-                items={TABS.map((t) => ({
-                  value: t.value,
-                  label: t.label,
-                  badge: problems.some((p) => p.tab === t.value) ? '!' : undefined,
-                }))}
-              />
-              {tab === 'address' ? (
-                <AddressTab draft={draft} update={update} errors={errors} />
-              ) : tab === 'membership' ? (
-                <MembershipTab draft={draft} update={update} errors={errors} />
-              ) : tab === 'administration' ? (
-                <AdministrationTab
-                  draft={draft}
-                  update={update}
-                  errors={errors}
-                  employees={employeeOptions('', draft.id)}
-                  employeeNameOf={nameOf}
-                />
-              ) : tab === 'personal' ? (
-                <PersonalTab draft={draft} update={update} errors={errors} />
-              ) : tab === 'finance' ? (
-                <FinanceTab draft={draft} update={update} errors={errors} />
-              ) : (
-                <Section icon="notes" title="Remarks">
-                  {h.area('remarks', 'Remarks', { rows: 8, placeholder: 'General comments and HR notes' })}
+                      <ReadOnly label="Employee code" value={draft.code} hint="Locked after the employee is added." error={errors.code} />
+                    )}
+                    {h.text('firstName', 'First name', { ...beside, required: true, error: errors.firstName })}
+                    {h.text('middleName', 'Middle name', beside)}
+                    {h.text('lastName', 'Last name', beside)}
+                    {h.text('externalNo', 'Ext. employee no.', { ...beside, hint: 'Number in the outside payroll system.' })}
+                    {h.status('active', 'Status', { ...beside, hint: 'Inactive employees drop out of pickers.' })}
+                  </FieldStack>
                 </Section>
-              )}
+
+                <Section icon="corporate_fare" title="Organisation">
+                  <FieldStack>
+                    {h.text('jobTitle', 'Job title', { ...beside, placeholder: 'e.g. Store Manager, Cebu' })}
+                    {h.master('positionId', 'Position', positionDef, { ...beside, clearable: true })}
+                    {h.master('departmentId', 'Department', departmentDef, { ...beside, clearable: true })}
+                    {h.master('branchId', 'Branch', branchDef, { ...beside, clearable: true })}
+                    {h.lookup('managerId', 'Manager', employeeOptions(draft.managerId, draft.id), {
+                      ...beside,
+                      clearable: true,
+                      placeholder: 'None',
+                      error: errors.managerId,
+                    })}
+                    {h.master('userId', 'User code', userDef, { ...beside, clearable: true, hint: 'The login account this employee uses.' })}
+                    {h.master('salesEmployeeId', 'Sales employee', salesEmployeeDef, {
+                      ...beside,
+                      clearable: true,
+                      hint: 'The Sales employees & buyers entry this employee sells or buys as.',
+                    })}
+                    {h.master('costCenterId', 'Cost center', costCenterDef, { ...beside, clearable: true })}
+                    {h.lookup('vendorId', 'Linked vendor', vendorOptions, {
+                      ...beside,
+                      clearable: true,
+                      placeholder: 'None',
+                      hint: 'Vendor record expense claims are paid through.',
+                    })}
+                  </FieldStack>
+                </Section>
+
+                <Section icon="call" title="Contact">
+                  <FieldStack>
+                    {h.text('officePhone', 'Office phone', { ...beside, placeholder: '(02) 8000 0000' })}
+                    {h.text('officeExt', 'Ext.', beside)}
+                    {h.text('mobilePhone', 'Mobile phone', { ...beside, placeholder: '0917 000 0000' })}
+                    {h.text('pager', 'Pager', beside)}
+                    {h.text('homePhone', 'Home phone', beside)}
+                    {h.text('fax', 'Fax', beside)}
+                    {h.text('email', 'E-mail', { ...beside, error: errors.email, placeholder: 'name@company.ph' })}
+                  </FieldStack>
+                </Section>
+              </aside>
+
+              <div className="flex min-w-0 flex-col gap-2 lg:col-span-9 lg:min-h-0 lg:overflow-y-auto">
+                <Tabs
+                  value={tab}
+                  onValueChange={(v) => setTab(v as TabId)}
+                  items={TABS.map((t) => ({
+                    value: t.value,
+                    label: t.label,
+                    badge: problems.some((p) => p.tab === t.value) ? '!' : undefined,
+                  }))}
+                />
+                {tab === 'address' ? (
+                  <AddressTab draft={draft} update={update} errors={errors} />
+                ) : tab === 'membership' ? (
+                  <MembershipTab draft={draft} update={update} errors={errors} />
+                ) : tab === 'administration' ? (
+                  <AdministrationTab
+                    draft={draft}
+                    update={update}
+                    errors={errors}
+                    employees={employeeOptions('', draft.id)}
+                    employeeNameOf={nameOf}
+                  />
+                ) : tab === 'personal' ? (
+                  <PersonalTab draft={draft} update={update} errors={errors} />
+                ) : tab === 'finance' ? (
+                  <FinanceTab draft={draft} update={update} errors={errors} />
+                ) : (
+                  <Section icon="notes" title="Remarks">
+                    {h.area('remarks', 'Remarks', { rows: 8, placeholder: 'General comments and HR notes' })}
+                  </Section>
+                )}
+              </div>
             </div>
-          </div>
-        </Panel.Body>
+          </Panel.Body>
+        )}
       </Panel>
     </Form>
   );

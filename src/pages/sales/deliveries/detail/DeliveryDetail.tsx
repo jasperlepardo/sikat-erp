@@ -1,13 +1,13 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { Alert, Badge, Button, Form, Panel, PanelHeader, Tabs, Text, TextField } from '@jasperlepardo/sikat-design-system';
+import { Alert, Badge, Button, Form, Panel, PanelHeader, Tabs, Text } from '@jasperlepardo/sikat-design-system';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { type Errors } from '../../../../components/form/fields';
 import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { CURRENT_USER_ID } from '../../../../mocks/common';
 import { formatAddress } from '../../../../mocks/address';
-import { blankDelivery, deliveryHeaderFrom, type Delivery, type DnStatus } from '../../../../mocks/deliveries';
+import { blankDelivery, deliveryHeaderFrom, type Delivery } from '../../../../mocks/deliveries';
 import { type SalesOrder } from '../../../../mocks/salesOrders';
 import { loadCurrentCompany } from '../../../../services/companies';
 import { todayISO } from '../../../../services/dates';
@@ -23,24 +23,22 @@ import { termDays } from '../../../../services/purchaseOrders';
 import { logRejection } from '../../../../services/approvalRules';
 import { getSalesSettings, listSalesOrders, openQty, soDueDate, soNumber } from '../../../../services/salesOrders';
 import { soSeries } from '../../../../services/allSeries';
-import { ALL_CURRENCIES, SO_LIST_PATH, proposedTaxCode } from '../../sales-orders/detail/types';
+import { ALL_CURRENCIES, proposedTaxCode } from '../../sales-orders/detail/types';
 import { DnContentsCard } from './DnContentsCard';
-import { DN_LIST_PATH, buildDnContext, dnLineFromOrder, type DnContext, type DnDraft, type DnMasters } from './types';
+import { buildDnContext, dnLineFromOrder, type DnContext, type DnDraft, type DnMasters } from './types';
 import { SalesDocumentFlow } from '../../shared/SalesDocumentFlow';
 import { useDocTitle } from '../../../../services/useDocTitle';
-import { SR_LIST_PATH } from '../../returns-and-credits/types';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
-import { NotFound, PrevNext, neighbours } from '../../../../components/form/DetailNav';
+import { neighbours, NotFound, PrevNext, siblingKeys, useDocTab, useReject } from '../../../../components/form/DetailNav';
 import { DnDatesCard } from './DnDatesCard';
 import { DnSettingsCard } from './DnSettingsCard';
-import { DnBpChannelCard } from './DnBpChannelCard';
+import { BpChannelCard } from '../../shared/BpChannelCard';
 import { DnShipmentCard } from './DnShipmentCard';
 import { DnAssignmentCard } from './DnAssignmentCard';
 import { CustomerCard } from '../../shared/CustomerCard';
 import { DnCustomerDetailsPanel } from './DnCustomerDetailsPanel';
 import { ReferencesTable } from '../../../purchasing/shared/ReferencesTable';
-
-
+import { DN_LIST_PATH, DN_STATUS_INTENT, SO_LIST_PATH, SR_LIST_PATH } from '../../paths';
 
 type TabId = 'contents';
 const TAB_LABEL: Record<TabId, string> = { contents: 'Contents' };
@@ -51,8 +49,6 @@ const PAGES = [
   { value: 'activity', label: 'Activity' },
 ] as const;
 type PageId = (typeof PAGES)[number]['value'];
-
-export const DN_STATUS_INTENT: Record<DnStatus, 'default' | 'primary' | 'success' | 'danger' | 'warning'> = { Draft: 'default', 'Not Confirmed': 'warning', Open: 'primary', Closed: 'success', Cancelled: 'danger' };
 
 function validate(d: DnDraft, ctx: DnContext, m: DnMasters, asDraft: boolean): Problem<TabId>[] {
   const { problems, need } = problemCollector<TabId>();
@@ -96,13 +92,11 @@ function DeliveryForm() {
   const [draft, setDraft] = useState<DnDraft | null | undefined>(isNew ? { ...blankDelivery(todayISO(), CURRENT_USER_ID), approved: dnApproved } : undefined);
   const [m, setM] = useState<DnMasters>();
   const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
-  const setPage = (v: PageId) => navigate(`${DN_LIST_PATH}/${id}/${v}`, { replace: true });
-  useEffect(() => { if (!tabParam) navigate(`${DN_LIST_PATH}/${id}/details`, { replace: true, state: location.state }); }, []);
+  const setPage = useDocTab<PageId>(`${DN_LIST_PATH}/${id}`, tabParam);
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);
-  const [rejecting, setRejecting] = useState(false);
-  const [rejectionReason, setRejectionReason] = useState('');
+  const reject = useReject();
   const [customerDetailsOpen, setCustomerDetailsOpen] = useState(false);
 
   useEffect(() => {
@@ -119,10 +113,9 @@ function DeliveryForm() {
     });
     if (!isNew && id) {
       getDelivery(id).then((dn) => !cancelled && setDraft(dn ?? null));
-      listDeliveries().then((all) => !cancelled && setSiblings([...all].sort((a, b) => b.postingDate.localeCompare(a.postingDate)).map((d) => d.docNum ? dnNumber(d) : d.id)));
+      listDeliveries().then((all) => !cancelled && setSiblings(siblingKeys(all, dnNumber)));
     }
     return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, isNew, fromOrder]);
 
   useDocTitle(draft?.docNum ? (isNew ? 'New delivery' : draft.status === 'Draft' ? 'Draft delivery' : dnNumber(draft)) : undefined);
@@ -224,7 +217,7 @@ function DeliveryForm() {
   const closeIt = () => act(() => closeDelivery(saved), 'closed');
   const cancelIt = () => act(() => cancelDelivery(saved), 'cancelled — the stock is back and the order lines are open again');
   const recallIt = () => act(() => recallDelivery(saved), 'recalled to draft');
-  const rejectIt = async () => {
+  const rejectIt = async (rejectionReason: string) => {
     await logRejection('DN', saved.id, saved.customerId, rejectionReason);
     await recallDelivery(saved);
     navigate(DN_LIST_PATH, { state: { notice: `Delivery ${dnNumber(saved)} rejected and returned to draft.` } });
@@ -232,7 +225,7 @@ function DeliveryForm() {
   const menu: MoreMenuItem[] = [
     ...(!ctx.added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
     ...(draft.status === 'Draft' && !draft.approved ? [{ label: 'Submit for approval', icon: 'upload', onSelect: () => submit(null, false) }] : []),
-    ...(draft.status === 'Not Confirmed' ? [{ label: 'Approve', icon: 'verified', onSelect: () => submit(null, false, { approved: true }) }, { label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => setRejecting(true) }] : []),
+    ...(draft.status === 'Not Confirmed' ? [{ label: 'Approve', icon: 'verified', onSelect: () => submit(null, false, { approved: true }) }, { label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => reject.start() }] : []),
     ...(draft.status === 'Open' && draft.lines.some((l) => l.quantity > l.invoicedQty)
       ? [{ label: 'Copy to A/R invoice', icon: 'receipt', onSelect: () => navigate('/sales/invoices/new', { state: { fromDelivery: draft.id } }) }]
       : []),
@@ -287,17 +280,7 @@ function DeliveryForm() {
           {page === 'details' ? (
             <Panel.Body className="flex flex-col gap-2">
               <ProblemsAlert problems={problems} tabLabel={(t) => TAB_LABEL[t as TabId]} />
-              {rejecting ? (
-                <Alert intent="danger" variant="outline" title="Reject delivery">
-                  <div className="flex flex-col gap-2">
-                    <TextField aria-label="Rejection reason" value={rejectionReason} onChange={(e) => setRejectionReason(e.currentTarget.value)} placeholder="Explain why…" />
-                    <div className="flex gap-2">
-                      <Button type="button" intent="danger" variant="solid" size="small" onClick={rejectIt}>Confirm reject</Button>
-                      <Button type="button" intent="white" variant="solid" size="small" onClick={() => { setRejecting(false); setRejectionReason(''); }}>Cancel</Button>
-                    </div>
-                  </div>
-                </Alert>
-              ) : null}
+              {reject.alert('Reject delivery', rejectIt)}
               {ro ? (
                 <Alert intent="default" variant="outline" title={`This delivery is ${draft.status.toLowerCase()}`}>
                   {draft.status === 'Cancelled'
@@ -340,7 +323,7 @@ function DeliveryForm() {
                 <aside className="flex flex-col gap-2 lg:col-span-4">
                   <DnDatesCard {...tabProps} />
                   <DnSettingsCard {...tabProps} />
-                  <DnBpChannelCard {...tabProps} />
+                  <BpChannelCard {...tabProps} />
                   <DnShipmentCard {...tabProps} />
                   <DnAssignmentCard {...tabProps} />
                 </aside>

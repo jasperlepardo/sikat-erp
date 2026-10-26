@@ -15,11 +15,12 @@ import type { Partner } from '../mocks/partners';
 import { DIMENSION_NAMES, DIMENSION_NOS, ruleOf } from '../mocks/costAccounting';
 import { jeSeries, seriesLookup, formatDocNum } from './allSeries';
 import { rateAt, type TaxCode } from '../mocks/taxes';
-import { formatDate, todayISO } from './dates';
+import { addDays, formatDate, todayISO } from './dates';
 import { createCollection } from './store';
 import { seededLedger } from './ledgerHistory';
 import { accounts as accountsCollection } from './masterData';
 import { listPartners } from './partners';
+import { round2 } from './num';
 
 // The seeded ledger: opening balances, every seeded document's entry and the month's finance entries.
 const entries = createCollection<JournalEntry>('sikat-erp:journal-entries:v4', () => seededLedger().entries, 'je');
@@ -36,9 +37,7 @@ export const getJournalEntry = async (id: string) => {
 
 export type JeInput = Omit<JournalEntry, 'id'> & { id?: string };
 
-const round2 = (n: number) => Math.round(n * 100) / 100;
-
-export const seriesOf = (id: string) => seriesLookup(jeSeries, id, JE_SERIES);
+const seriesOf = (id: string) => seriesLookup(jeSeries, id, JE_SERIES);
 export const jeNumber = (je: Pick<JournalEntry, 'number' | 'postingDate'> & { seriesId?: string }) =>
   je.seriesId
     ? formatDocNum(seriesOf(je.seriesId), je.number, je.postingDate, 'New')
@@ -61,7 +60,10 @@ export const rowAccount = (l: JeLine, partners: readonly Partner[]) => {
   return p ? controlAccountOf(p) : '';
 };
 
-/** Each account's balance over every posted entry, debit positive. A BP row counts on its control account. */
+/**
+ * Each account's balance over every posted entry, debit positive. A BP row counts on its control account.
+ * @public
+ */
 export function balancesOf(list: readonly JournalEntry[], partners: readonly Partner[]) {
   const out = new Map<string, number>();
   for (const je of list)
@@ -275,17 +277,12 @@ export async function postDocumentEntry(o: {
 export async function reverseDocumentEntry(originId: string, date = todayISO()) {
   const je = (await entries.list()).find((e) => e.originId === originId && e.origin !== 'JE' && e.status === 'Posted' && !e.reverses);
   if (!je) return undefined;
-  const open = date <= CLOSED_THROUGH ? nextDay(CLOSED_THROUGH) : date;
+  const open = date <= CLOSED_THROUGH ? addDays(CLOSED_THROUGH, 1) : date;
   const reversal = await entries.save({ ...reversalOf(je, open, await nextNumbers(je.seriesId)), remarks: `Cancellation of ${ORIGIN_LABEL[je.origin]} ${je.originNo}` });
   await entries.save({ ...je, status: 'Reversed', reversedBy: reversal.id });
   return reversal;
 }
 
-const nextDay = (iso: string) => {
-  const d = new Date(`${iso}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + 1);
-  return d.toISOString().slice(0, 10);
-};
 
 /**
  * Import from Excel: rows of Account | Debit | Credit | Remarks (tab-separated text, as

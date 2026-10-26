@@ -23,6 +23,7 @@ import { formatAmount } from '../../../../../services/format';
 import { VariantAxesEditor } from './VariantAxesEditor';
 import { VariantPanel } from './VariantPanel';
 import { valueIdOf, variantFromParent, variantValueLabels, type TabProps } from '../types';
+import { round2 } from '../../../../../services/num';
 
 const LIST_PATH = '/inventory/items';
 
@@ -33,8 +34,6 @@ function axisCombos(axes: VariantAxis[]): VariantValue[][] {
     [[]],
   );
 }
-
-const round2 = (n: number) => Math.round(n * 100) / 100;
 
 export function VariantsTab({ draft, update }: TabProps) {
   const navigate = useNavigate();

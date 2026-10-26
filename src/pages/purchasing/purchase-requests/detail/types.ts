@@ -57,7 +57,7 @@ export function buildContext(draft: PrDraft, m: PrMasters): PrContext {
 }
 
 /** Proposed purchase tax code for an item at request time (no vendor known yet). */
-export function proposedTaxCode(item: Item, m: PrMasters): string {
+function proposedTaxCode(item: Item, m: PrMasters): string {
   if (item.purchaseTaxCode) return item.purchaseTaxCode;
   const group = m.tax.groups.find((g) => g.code === item.purchaseTaxGroup);
   return group?.taxCode ?? '';

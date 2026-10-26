@@ -58,5 +58,3 @@ export function blankGoodsReturn(today: string, buyerId: string): Omit<GoodsRetu
 
 /** A return line only needs crediting when the goods were billed (or it was entered by hand). */
 export const needsCredit = (l: Pick<ReturnLine, 'baseType'>) => l.baseType !== 'GRPO';
-
-export const SEED_GOODS_RETURNS: GoodsReturn[] = [];

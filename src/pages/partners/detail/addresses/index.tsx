@@ -10,11 +10,11 @@ import { Fields, Section, bind, type Draft, type Errors, DefaultFlags, useDefaul
 const mapUrl = (a: PartnerAddress) =>
   `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([addressLine(a), a.zip, a.countryCode].filter(Boolean).join(', '))}`;
 
-export const addressLine = (a: PartnerAddress) =>
+const addressLine = (a: PartnerAddress) =>
   [a.addressLine, a.block, a.city, a.province].filter(Boolean).join(', ');
 
 /** Problems that block saving an address (same messages as the partner form's validation). */
-export function addressProblems(a: PartnerAddress): Errors {
+function addressProblems(a: PartnerAddress): Errors {
   const e: Errors = {};
   if (!a.label.trim()) e[`address:${a.id}:label`] = 'Every address needs an Address ID.';
   if (!a.countryCode) e[`address:${a.id}:country`] = 'Every address needs a country.';

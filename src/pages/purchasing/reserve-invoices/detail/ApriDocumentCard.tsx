@@ -6,14 +6,7 @@ import { formatDate } from '../../../../services/dates';
 import { apRiNumber } from '../../../../services/apReserveInvoices';
 import { paymentTermName } from '../../../../services/purchaseOrders';
 import type { ApriSectionProps } from './types';
-
-export const AP_RI_STATUS_INTENT: Record<ApRiStatus, 'default' | 'primary' | 'success' | 'danger' | 'warning'> = {
-  Draft: 'default',
-  'Not Confirmed': 'warning',
-  Open: 'primary',
-  Closed: 'success',
-  Cancelled: 'danger',
-};
+import { AP_RI_STATUS_INTENT } from '../../paths';
 
 interface ApriDocumentCardProps extends ApriSectionProps {
   statusMoves: Partial<Record<ApRiStatus, () => void>>;

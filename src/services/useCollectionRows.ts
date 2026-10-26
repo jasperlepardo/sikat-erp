@@ -9,7 +9,7 @@ export function useCollectionRows<T extends { id: string }>(collection: Collecti
   };
   /** Bulk activate/deactivate (for rows with an `active` flag). */
   const setActive = async (picked: readonly T[], active: boolean) => {
-    for (const row of picked) await collection.save({ ...row, active });
+    await collection.saveMany(picked.map((row) => ({ ...row, active })));
   };
   return { rows, save, setActive };
 }

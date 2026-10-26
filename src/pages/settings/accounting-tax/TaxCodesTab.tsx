@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import {
+  Alert,
   Button,
   Card,
   DatePicker,
@@ -13,17 +15,17 @@ import { AccountField, useAccounts } from '../../../components/form/AccountField
 import { FieldStack, Section, bind } from '../../../components/form/fields';
 import { accountProblem } from '../../../mocks/chartOfAccounts';
 import { MasterList, type ListRoute } from '../../../components/form/MasterList';
+import { useCollection } from '../../../components/form/MasterLookup';
 import {
-  BIR_RETURNS,
-  SEED_PERCENTAGE_ATCS,
-  SEED_VAT_ATCS,
-  SEED_WITHHOLDING,
   TAX_CATEGORIES,
   currentRate,
   type TaxCode,
   type TaxRatePeriod,
 } from '../../../mocks/taxes';
-import { taxCodes } from '../../../services/masterData';
+import { birForms, percentageAtcs, taxCodes, vatAtcs, withholdingTaxes } from '../../../services/masterData';
+import { BirFormsField, formNumbers } from './BirFormsField';
+import { blockedDeactivation, describeTaxUsage, loadTaxUsage } from '../../../services/taxUsage';
+import { useAsync } from '../../../services/useAsync';
 import { useCollectionRows } from '../../../services/useCollectionRows';
 import { todayISO } from '../../../services/dates';
 
@@ -38,38 +40,51 @@ const blank = (): TaxCode => ({
   category: 'Standard',
   rates: [{ from: today(), rate: 12 }],
   glAccount: '2310',
-  birReturn: '2550Q',
+  returnFormIds: ['wf-2550q'],
   legalBasis: '',
   active: true,
   notes: '',
   atc: '',
 });
 
-/**
- * BIR ATC pick options; '' = no ATC. A tax code can point at an output/import VAT ATC (SEED_VAT_ATCS),
- * a withholding-VAT ATC (SEED_WITHHOLDING, kind "Withholding VAT") for reverse-charge codes, or a
- * percentage-tax ATC (SEED_PERCENTAGE_ATCS) — so the searchable picker draws from all three, each
- * tagged by type (prefix) so the ~80 codes stay navigable.
- */
-const ATC_OPTIONS: Option[] = [
-  { value: '', label: '— None —' },
-  ...SEED_VAT_ATCS.map((a) => ({
-    value: a.code, label: a.code, prefix: 'Value-added tax', subLabel: a.coverage || a.description,
-    text: `${a.code} value-added tax VAT ${a.coverage} ${a.description}`,
-  })),
-  ...SEED_WITHHOLDING.filter((w) => w.kind === 'Withholding VAT').map((w) => ({
-    value: w.atc, label: w.atc, prefix: 'Withholding VAT', subLabel: w.description,
-    text: `${w.atc} withholding VAT ${w.description}`,
-  })),
-  ...SEED_PERCENTAGE_ATCS.map((a) => ({
-    value: a.code, label: a.code, prefix: 'Percentage tax', subLabel: a.coverage || a.description,
-    text: `${a.code} percentage tax ${a.coverage} ${a.description}`,
-  })),
-];
+/** Which ATC catalog a tax code of this category files under. */
+const catalogFor = (category: TaxCode['category']) =>
+  category === 'Percentage tax' ? 'Percentage tax' : category === 'Reverse charge' ? 'Withholding VAT' : 'Value-added tax';
 
 export function TaxCodesTab(route: ListRoute) {
   const { rows, save, setActive } = useCollectionRows(taxCodes);
   const chart = useAccounts();
+  const usage = useAsync(loadTaxUsage, [rows]);
+  const usedBy = (t: TaxCode) => usage?.codes.get(t.code);
+  const [notice, setNotice] = useState<string>();
+
+  // The ATC catalogs, live from their tabs: Value-added tax, Withholding tax (WV codes), Percentage tax.
+  const vat = useCollection(vatAtcs) ?? [];
+  const pt = useCollection(percentageAtcs) ?? [];
+  const wht = useCollection(withholdingTaxes) ?? [];
+  const forms = useCollection(birForms) ?? [];
+  const catalog = [
+    ...vat.map((a) => ({ atc: a.code, kind: 'Value-added tax', text: a.coverage || a.description, description: a.description, rate: a.rate as number | undefined, active: a.active })),
+    ...wht
+      .filter((w) => w.kind === 'Withholding VAT' && w.atc)
+      .map((w) => ({ atc: w.atc, kind: 'Withholding VAT', text: w.description, description: w.description, rate: undefined as number | undefined, active: w.active })),
+    ...pt.map((a) => ({ atc: a.code, kind: 'Percentage tax', text: a.coverage || a.description, description: a.description, rate: a.rate as number | undefined, active: a.active })),
+  ];
+  const atcOf = (atc: string) => catalog.find((a) => a.atc === atc);
+  /** BIR ATC pick options ('' = none), each tagged by its catalog so the ~80 codes stay navigable. A saved ATC stays listed when inactive. */
+  const atcOptions = (current: string): Option[] => [
+    ...catalog
+      .filter((a, i) => (a.active || a.atc === current) && catalog.findIndex((x) => x.atc === a.atc) === i)
+      .map((a) => ({ value: a.atc, label: a.atc, prefix: a.kind, subLabel: a.text, text: `${a.atc} ${a.kind} ${a.description}` })),
+  ];
+
+  // Tax codes the rules, items, groups or accounts use can't be deactivated.
+  const setActiveChecked = async (picked: TaxCode[], active: boolean) => {
+    const { allowed, notice: n } = blockedDeactivation(picked, active, usedBy, (t) => t.code);
+    await setActive(allowed, active);
+    setNotice(n);
+  };
+
   return (
     <MasterList<TaxCode>
       {...route}
@@ -78,7 +93,8 @@ export function TaxCodesTab(route: ListRoute) {
       noun="tax code"
       description="VAT and percentage tax applied on document rows. Rates are kept with effective dates, so older documents keep the rate of their posting date."
       rows={rows}
-      onSetActive={setActive}
+      onSetActive={setActiveChecked}
+      intro={notice ? <Alert intent="warning" variant="outline" title="Some tax codes are in use">{notice}</Alert> : undefined}
       sortValue={(t, key) =>
         key === 'rate'
           ? (currentRate(t) ?? -1)
@@ -90,7 +106,15 @@ export function TaxCodesTab(route: ListRoute) {
         { key: 'code', header: 'Code', cell: (t) => t.code },
         { key: 'name', header: 'Name', cell: (t) => t.name },
         { key: 'category', header: 'Category', cell: (t) => <span className="text-muted">{t.category}</span> },
-        { key: 'atc', header: 'ATC', cell: (t) => (t.atc ? t.atc : <span className="text-muted">—</span>) },
+        {
+          key: 'atc',
+          header: 'ATC',
+          cell: (t) => {
+            if (!t.atc) return <span className="text-muted">—</span>;
+            const a = atcOf(t.atc);
+            return a?.active ? <span title={a.description}>{t.atc}</span> : <span className="text-warning">{t.atc} ({a ? 'inactive' : 'not in the ATC lists'})</span>;
+          },
+        },
         {
           key: 'direction',
           header: 'Used on',
@@ -109,7 +133,16 @@ export function TaxCodesTab(route: ListRoute) {
             );
           },
         },
-        { key: 'birReturn', header: 'BIR return', cell: (t) => t.birReturn },
+        { key: 'returnFormIds', header: 'BIR return', sortable: false, cell: (t) => formNumbers(t.returnFormIds, forms) || <span className="text-muted">—</span> },
+        {
+          key: 'usedBy',
+          header: 'Used by',
+          sortable: false,
+          cell: (t) => {
+            const u = describeTaxUsage(usedBy(t));
+            return u ? <span className="max-w-xs whitespace-normal text-sm">{u}</span> : <span className="text-muted">—</span>;
+          },
+        },
         {
           key: 'active',
           header: 'Status',
@@ -134,6 +167,17 @@ export function TaxCodesTab(route: ListRoute) {
         else if (t.rates.some((r) => r.rate < 0 || r.rate > 100)) e.rates = 'Rates must be between 0 and 100.';
         else if (new Set(t.rates.map((r) => r.from)).size !== t.rates.length)
           e.rates = 'Two rates start on the same date.';
+        if (t.atc) {
+          const a = atcOf(t.atc);
+          const want = catalogFor(t.category);
+          if (!a) e.atc = `${t.atc} isn't in the ATC lists. Add it on the ${want} tab first.`;
+          else if (!a.active) e.atc = `${t.atc} is inactive on the ${a.kind} tab.`;
+          else if (a.kind !== want) e.atc = `A ${t.category} code files under a ${want} ATC, not ${a.kind}.`;
+        }
+        if (!t.active && t.id && usage) {
+          const u = describeTaxUsage(usedBy(t));
+          if (u) e.active = `Still used by ${u}.`;
+        }
         return e;
       }}
       onSave={(t) =>
@@ -152,8 +196,24 @@ export function TaxCodesTab(route: ListRoute) {
             {f.text('name', 'Name', { required: true, error: errors.name })}
             {f.pick('direction', 'Used on', ['Sales', 'Purchase'])}
             {f.pick('category', 'Category', TAX_CATEGORIES)}
-            {f.lookup('atc', 'BIR ATC', ATC_OPTIONS, { hint: 'Search the BIR Alphanumeric Tax Code: output/import VAT, withholding VAT or percentage tax. Leave as None for codes with no ATC (zero-rated, exempt, input VAT).' })}
-            {f.pick('birReturn', 'BIR return', BIR_RETURNS)}
+            {f.lookup('atc', 'BIR ATC', atcOptions(t.atc), {
+              clearable: true,
+              error: errors.atc,
+              hint: (() => {
+                const a = t.atc ? atcOf(t.atc) : undefined;
+                const today = currentRate(t);
+                if (a?.rate !== undefined && today !== undefined && a.rate !== today)
+                  return `BIR lists ${t.atc} at ${a.rate}%; this code charges ${today}% today (its rates below are what documents use).`;
+                return `From the ${catalogFor(t.category)} tab. Leave as None for codes with no ATC (zero-rated, exempt, input VAT).`;
+              })(),
+            })}
+            <BirFormsField
+              label="BIR return"
+              value={t.returnFormIds}
+              onChange={(returnFormIds) => update({ returnFormIds })}
+              categories={['VAT/Percentage Tax Returns', 'Payment/Remittance Forms']}
+              error={errors.returnFormIds}
+            />
             <AccountField
               label="G/L account"
               role="tax"
@@ -167,7 +227,8 @@ export function TaxCodesTab(route: ListRoute) {
             {f.text('legalBasis', 'Legal basis', { placeholder: 'e.g. NIRC Sec. 106' })}
             {f.area('notes', 'Notes', { rows: 2 })}
             <RateHistory rates={t.rates} error={errors.rates} onChange={(rates) => update({ rates })} />
-            {f.status('active', 'Status')}
+            {f.status('active', 'Status', { error: errors.active })}
+            {isNew ? null : <Text variant="small" tone="muted">Used by: {describeTaxUsage(usedBy(t)) || 'not used yet.'}</Text>}
           </FieldStack>
         );
       }}

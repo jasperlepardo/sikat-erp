@@ -36,7 +36,7 @@ import {
 } from '../../../../services/purchaseRequests';
 import { RequesterCard } from '../../shared/RequesterCard';
 import { RequesterDetailsPanel } from '../../shared/RequesterDetailsPanel';
-import { PrDocumentCard, PR_STATUS_INTENT } from './PrDocumentCard';
+import { PrDocumentCard } from './PrDocumentCard';
 import { PurchDoc } from '../../shared/PurchDoc';
 import { prDoc } from './prDoc';
 import { PrTotalsCard } from './PrTotalsCard';
@@ -45,9 +45,8 @@ import { DocumentFlow } from '../../shared/DocumentFlow';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
 import { todayISO } from '../../../../services/dates';
 import { useDocTitle } from '../../../../services/useDocTitle';
-import { NotFound, PrevNext, neighbours } from '../../../../components/form/DetailNav';
-
-export const PR_LIST_PATH = '/purchasing/purchase-requests';
+import { neighbours, NotFound, PrevNext, useDocTab } from '../../../../components/form/DetailNav';
+import { PR_LIST_PATH, PR_STATUS_INTENT } from '../../paths';
 
 type TabId = 'contents';
 
@@ -58,8 +57,6 @@ const PAGES = [
   { value: 'activity', label: 'Activity' },
 ] as const;
 type PageId = (typeof PAGES)[number]['value'];
-
-export { PR_STATUS_INTENT as STATUS_INTENT };
 
 function validate(d: PrDraft, asDraft: boolean): Problem<TabId>[] {
   const { problems, need } = problemCollector<TabId>();
@@ -112,10 +109,8 @@ function PurchaseRequestForm() {
   }, [isNew]);
 
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
-  const location = useLocation();
   const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
-  const setPage = (v: PageId) => navigate(`${PR_LIST_PATH}/${id}/${v}`, { replace: true });
-  useEffect(() => { if (!tabParam) navigate(`${PR_LIST_PATH}/${id}/details`, { replace: true, state: location.state }); }, []);
+  const setPage = useDocTab<PageId>(`${PR_LIST_PATH}/${id}`, tabParam);
   const [saving, setSaving] = useState(false);
   const [requesterDetailsOpen, setRequesterDetailsOpen] = useState(false);
 

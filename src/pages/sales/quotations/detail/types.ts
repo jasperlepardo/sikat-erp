@@ -9,11 +9,11 @@ import { SYSTEM_TAX_CODES } from '../../../../mocks/taxes';
 import type { InventoryMasters } from '../../../../services/inventoryMasters';
 import { BASE_PRICE_LIST_ID, determinePrice, isGrossList } from '../../../../services/priceLists';
 import { determineTax, type TaxMasterData } from '../../../../services/taxDetermination';
+import { round2 } from '../../../../services/num';
 
 export type Draft = Omit<Quotation, 'id'> & { id?: string };
 
-export const ALL_CURRENCIES = 'All currencies';
-export const round2 = (n: number) => Math.round(n * 100) / 100;
+const ALL_CURRENCIES = 'All currencies';
 
 export interface QtMasters {
   customers: Partner[];
@@ -103,4 +103,4 @@ export function lineFromItem(item: Item, draft: Draft, ctx: QtContext, m: QtMast
   return { ...line, ...linePricing(item, line, draft, m.customers, ctx.vatRegistered, ctx.rateOf, ctx.fx) };
 }
 
-export const itemsPerUnit = (item: Item) => itemsPerUom(item, item.salesUom) ?? 1;
+const itemsPerUnit = (item: Item) => itemsPerUom(item, item.salesUom) ?? 1;

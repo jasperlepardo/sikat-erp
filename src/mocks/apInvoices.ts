@@ -26,12 +26,13 @@ import { SEED_GOODS_RECEIPTS, newGrLine, type GoodsReceipt, type GrLine } from '
 import { SEED_ITEMS } from './items';
 import { SEED_PAYMENT_TERMS } from './partnerMasters';
 import { SEED_PARTNERS } from './partners';
+import { addDays } from '../services/dates';
 
 export type ApStatus = 'Draft' | 'Not Confirmed' | 'Open' | 'Closed' | 'Cancelled';
 export const AP_STATUSES: ApStatus[] = ['Draft', 'Not Confirmed', 'Open', 'Closed', 'Cancelled'];
 
 /** Where a line was copied from. '' = entered by hand. */
-export type ApBaseType = 'GRPO' | 'PO' | '';
+type ApBaseType = 'GRPO' | 'PO' | '';
 
 export interface ApLine extends Omit<GrLine, 'invoicedQty'> {
   baseType: ApBaseType;
@@ -167,11 +168,6 @@ export function blankApInvoice(today: string, buyerId: string): Omit<ApInvoice, 
 // One invoice for every receipt billed in full, at the receipt's prices and rate. Payments,
 // credits and down payments against them are seeded in services/purchasingHistory.ts.
 
-const plusDays = (date: string, days: number) => {
-  const d = new Date(`${date}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
-};
 const termDays = (termId: string) => SEED_PAYMENT_TERMS.find((t) => t.id === termId)?.days ?? 0;
 
 /**
@@ -191,7 +187,7 @@ export function billFromReceipt(gr: GoodsReceipt, n: number, posting: string, bi
     currency: gr.currency,
     docNum: 1 + n,
     status: 'Open',
-    dueDate: plusDays(posting, termDays(gr.paymentTermId)),
+    dueDate: addDays(posting, termDays(gr.paymentTermId)),
     shipTo: gr.shipTo,
     payTo: gr.payTo,
     shippingType: gr.shippingType,

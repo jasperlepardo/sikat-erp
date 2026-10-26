@@ -8,12 +8,13 @@ import { todayISO } from './dates';
 import { frozenStock } from './inventoryCountings';
 import { itemGroups } from './inventoryMasters';
 import { inventoryAccountFor, type JournalLine } from './inventoryTransfers';
-import { listItems, saveItem } from './items';
+import { listItems, saveItems } from './items';
 import { consumeLayers, logConsumption, restoreLayer, updateFifoCosts, type Taken } from './costLayers';
 import { postDocumentEntry, reverseDocumentEntry } from './journalEntries';
 import { applyDelivered, listSalesOrders, openQty as soOpenQty, soNumber, soTotals } from './salesOrders';
 import { createCollection } from './store';
 import { withLineCosts } from './stockHistory';
+import { round2, round4 } from './num';
 
 // Seeded deliveries carry the cost their lines went out at (services/stockHistory.ts).
 const SEEDED = withLineCosts(SEED_DELIVERIES);
@@ -29,10 +30,7 @@ export async function getDelivery(idOrNumber: string) {
 
 export type DnInput = Omit<Delivery, 'id'> & { id?: string };
 
-const round2 = (n: number) => Math.round(n * 100) / 100;
-const round4 = (n: number) => Math.round(n * 10000) / 10000;
-
-export const dnSeriesOf = (id: string) => seriesLookup(dnSeries, id, DN_SERIES);
+const dnSeriesOf = (id: string) => seriesLookup(dnSeries, id, DN_SERIES);
 export const dnNumber = (d: Pick<Delivery, 'seriesId' | 'docNum' | 'postingDate'>) => formatDocNum(dnSeriesOf(d.seriesId), d.docNum, d.postingDate);
 
 /** Quantity × Items per Unit. */
@@ -40,7 +38,10 @@ export const dnInventoryQty = (l: Pick<DnLine, 'quantity' | 'itemsPerUnit'>) => 
 /** Left to invoice. */
 export const dnOpenQty = (l: DnLine, d: Pick<Delivery, 'status'>) => (d.status === 'Open' ? Math.max(0, l.quantity - l.invoicedQty) : 0);
 
-/** Footer totals — same math as the sales order (lines are the same shape for it). */
+/**
+ * Footer totals — same math as the sales order (lines are the same shape for it).
+ * @public
+ */
 export const dnTotals = (d: Pick<Delivery, 'lines' | 'discountPct' | 'freight' | 'freightTaxCode' | 'rounding'>, rateOf: (code: string) => number, rule?: Parameters<typeof soTotals>[2]) =>
   soTotals(d as unknown as Parameters<typeof soTotals>[0], rateOf, rule);
 
@@ -76,7 +77,7 @@ export function dnJournal(d: Pick<Delivery, 'lines' | 'useShippedGoodsAccount'>,
 }
 
 /** Order lines' open quantity, by line id — what's left to deliver. */
-export async function orderOpenQty() {
+async function orderOpenQty() {
   const out = new Map<string, { line: SoLine; open: number; orderStatus: string; partial: boolean; docNo: string }>();
   for (const so of await listSalesOrders()) for (const l of so.lines) out.set(l.id, { line: l, open: soOpenQty(l), orderStatus: so.status, partial: so.allowPartialDelivery, docNo: soNumber(so) });
   return out;
@@ -182,7 +183,7 @@ export async function addDelivery(input: DnInput, fx: number): Promise<Delivery>
     row.inStock = round4(row.inStock - dnInventoryQty(l));
     touched.set(item.id, { ...item, hasTransactions: true });
   }
-  for (const item of touched.values()) await saveItem(item);
+  await saveItems(touched.values());
   await applyDelivered(lines.filter((l) => l.baseType === 'SO'), 1);
 
   const saved = await deliveries.save({ ...input, lines, docNum, status: 'Open', fxRate: fx });
@@ -244,7 +245,7 @@ export async function cancelDelivery(d: Delivery) {
     row.inStock = round4(row.inStock + dnInventoryQty(l));
     touched.set(item.id, item);
   }
-  for (const item of touched.values()) await saveItem(item);
+  await saveItems(touched.values());
   await applyDelivered(d.lines.filter((l) => l.baseType === 'SO'), -1);
 
   // FIFO: put the consumed stock back as a new layer at the cost it was taken out at.

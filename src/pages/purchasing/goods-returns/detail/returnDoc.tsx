@@ -15,8 +15,8 @@ import { binOptions } from '../../../inventory/transfers/TransferLines';
 import { defaultBin, lineFromItem, linePricing } from '../../goods-receipts/detail/types';
 import { baseLink, type RetContext, type RetMasters } from '../../shared/returnsTypes';
 import type { Errors } from '../../../../components/form/fields';
-
-const round2 = (n: number) => Math.round(n * 100) / 100;
+import { taxCodeOptions } from '../../../../services/taxCodeOptions';
+import { round2 } from '../../../../services/num';
 
 type RetDraft = Pick<GoodsReturn, 'lines' | 'vendorId' | 'postingDate' | 'currency' | 'vendorName' | 'status'>;
 
@@ -43,11 +43,8 @@ export function returnDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy 
     return item && ctx.vendor ? determineWithholding(item, ctx.vendor, m.tax, draft.postingDate).withholding : [];
   };
 
-  const taxOptions = m.tax.codes
-    .filter((c) => c.direction === 'Purchase' && c.active)
-    .map((c) => ({ value: c.code, label: c.name }));
+  const taxOptions = (current: string) => taxCodeOptions(m.tax.codes, 'Purchase', current);
   const blanketOptions = [
-    { value: '', label: '— None —' },
     ...BLANKET_AGREEMENTS.filter((b) => b.vendorId === draft.vendorId).map((b) => ({ value: b.no, label: `${b.no} · ${b.description}` })),
   ];
 
@@ -81,7 +78,7 @@ export function returnDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy 
     priceAfterDisc: priceAfterDiscount,
     grossAfterDisc: (l) => priceAfterDiscount(l) * (1 + taxRate(l) / 100),
     taxAmount: (l) => round2((lineNet(l) * taxRate(l)) / 100),
-    taxOptions: () => taxOptions,
+    taxOptions: (l) => taxOptions(l.taxCode),
     vendorOptions: [],
     warehouseOptions: m.inv.warehouses.filter((w) => holdsStock(w)).map((w) => ({ value: w.code, label: w.code })),
     blanketOptions,

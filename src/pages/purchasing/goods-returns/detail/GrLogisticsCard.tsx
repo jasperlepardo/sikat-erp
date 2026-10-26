@@ -16,7 +16,7 @@ export function GrLogisticsCard({ draft, update, errors, m, ctx, addressOptions 
       <Fields>
         {h.lookup('shipTo', 'Ship to', withCurrent(addressOptions, draft.shipTo), { required: true, error: errors.shipTo, hint: "The vendor's return address.", disabled: !vendor })}
         {h.lookup('payTo', 'Pay to', withCurrent(addressOptions, draft.payTo), { disabled: !vendor })}
-        {h.lookup('shippingType', 'Shipping type', [{ value: '', label: '— None —' }, ...m.inv.shipping.filter((s) => s.active || s.id === draft.shippingType).map((s) => ({ value: s.id, label: s.name }))])}
+        {h.lookup('shippingType', 'Shipping type', m.inv.shipping.filter((s) => s.active || s.id === draft.shippingType).map((s) => ({ value: s.id, label: s.name })), { clearable: true })}
       </Fields>
     </Section>
   );

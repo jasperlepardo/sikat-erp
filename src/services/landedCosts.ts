@@ -7,8 +7,8 @@ import {
 } from '../mocks/landedCosts';
 import { SEED_LC_TYPES, type LandedCostType } from '../mocks/landedCostTypes';
 import { lcSeries, seriesLookup, formatDocNum } from './allSeries';
-import { todayISO } from './dates';
 import { createCollection } from './store';
+import { round2 } from './num';
 
 const lc = createCollection<LandedCost>('sikat-erp:landed-costs:v1', SEED_LANDED_COSTS, 'lc', { audit: 'LC' });
 export const landedCostTypes = createCollection<LandedCostType>('sikat-erp:lc-types', SEED_LC_TYPES, 'lct');
@@ -22,8 +22,6 @@ export async function getLandedCost(idOrNumber: string) {
 }
 
 export type LcInput = Omit<LandedCost, 'id'> & { id?: string };
-
-const round2 = (n: number) => Math.round(n * 100) / 100;
 
 export const lcNumber = (doc: Pick<LandedCost, 'seriesId' | 'docNum' | 'postingDate'>) =>
   formatDocNum(seriesLookup(lcSeries, doc.seriesId, LC_SERIES), doc.docNum, doc.postingDate);
@@ -77,4 +75,4 @@ export async function cancelLandedCost(doc: LandedCost): Promise<LandedCost> {
   return lc.save({ ...doc, status: 'Cancelled' });
 }
 
-export { todayISO };
+;

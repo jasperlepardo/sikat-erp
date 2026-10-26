@@ -106,9 +106,8 @@ export function GeneralTab({ draft, update, errors, tax, inv }: TabProps) {
               (c) => c.id,
               (c) => `${c.name} (HS ${c.hsCode}) · ${c.duty}% duty`,
               draft.customsGroup,
-              '— None —',
             ),
-            { hint: 'Sets the default duty % on the Purchasing tab.' },
+            { clearable: true, hint: 'Sets the default duty % on the Purchasing tab.' },
           )}
           {f.text('gtin', 'GTIN / UPC code', {
             hint: 'For items in several packaging units, add per-unit codes on the Barcodes tab.',

@@ -9,7 +9,6 @@ import {
   PanelHeader,
   Tabs,
   Text,
-  TextField,
 } from '@jasperlepardo/sikat-design-system';
 import { type Errors } from '../../../../components/form/fields';
 import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
@@ -44,7 +43,7 @@ import { recalcLineTaxes } from '../../../../services/taxRecalc';
 import { blankPurchaseOrder, newPoLine } from '../../../../mocks/purchaseOrders';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
-import { NotFound, PrevNext, neighbours } from '../../../../components/form/DetailNav';
+import { neighbours, NotFound, PrevNext, siblingKeys, useDocTab, useReject } from '../../../../components/form/DetailNav';
 import { VendorCard } from '../../shared/VendorCard';
 import { VendorDetailsPanel } from '../../shared/VendorDetailsPanel';
 import { RfqDocumentCard } from './RfqDocumentCard';
@@ -54,10 +53,7 @@ import { rfqDoc } from './rfqDoc';
 import { RfqDeliveryCard } from './RfqDeliveryCard';
 import { RfqJournalPaymentCard } from './RfqJournalPaymentCard';
 import { RfqDatesCard } from './RfqDatesCard';
-import { STATUS_INTENT } from './types';
-export { STATUS_INTENT };
-
-export const RFQ_LIST_PATH = '/purchasing/purchase-quotations';
+import { RFQ_LIST_PATH, RFQ_STATUS_INTENT } from '../../paths';
 
 type TabId = 'contents' | 'logistics' | 'accounting';
 
@@ -110,21 +106,19 @@ function RfqForm() {
   );
   const [m, setM] = useState<RfqMasters>();
   const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
-  const setPage = (v: PageId) => navigate(`${RFQ_LIST_PATH}/${id}/${v}`, { replace: true });
-  useEffect(() => { if (!tabParam) navigate(`${RFQ_LIST_PATH}/${id}/details`, { replace: true, state: location.state }); }, []);
+  const setPage = useDocTab<PageId>(`${RFQ_LIST_PATH}/${id}`, tabParam);
   const [siblings, setSiblings] = useState<string[]>([]);
   useEffect(() => {
     if (!isNew)
       listRfqs().then((all) =>
-        setSiblings([...all].sort((a, b) => b.postingDate.localeCompare(a.postingDate)).map((q) => (q.docNum ? rfqNumber(q) : q.id))),
+        setSiblings(siblingKeys(all, rfqNumber)),
       );
   }, [isNew]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);
   const [showVendorCreate, setShowVendorCreate] = useState(false);
   const [vendorDetailsOpen, setVendorDetailsOpen] = useState(false);
-  const [rejecting, setRejecting] = useState(false);
-  const [rejectionReason, setRejectionReason] = useState('');
+  const reject = useReject();
 
   useEffect(() => {
     Promise.all([
@@ -270,7 +264,7 @@ function RfqForm() {
   const saved = draft as Rfq;
   const open = draft.status === 'Open';
   const recallIt = () => act(() => recallRfq(saved), 'recalled to draft');
-  const rejectIt = async () => {
+  const rejectIt = async (rejectionReason: string) => {
     await logRejection('RFQ', saved.id, saved.vendorId, rejectionReason);
     await recallRfq(saved);
     navigate(RFQ_LIST_PATH, { state: { notice: `Purchase quotation ${rfqNumber(saved)} rejected and returned to draft.` } });
@@ -278,7 +272,7 @@ function RfqForm() {
 
   const menu: MoreMenuItem[] = [
     ...(!ctx.added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
-    ...(draft.status === 'Not Confirmed' ? [{ label: 'Approve', icon: 'check_circle', onSelect: () => submit(null, false, { approved: true }) }, { label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => setRejecting(true) }] : []),
+    ...(draft.status === 'Not Confirmed' ? [{ label: 'Approve', icon: 'check_circle', onSelect: () => submit(null, false, { approved: true }) }, { label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => reject.start() }] : []),
     ...(open ? [
       { label: 'Copy to purchase order', icon: 'shopping_cart', onSelect: copyToPo },
       { label: 'Close', icon: 'task_alt', onSelect: () => act(() => closeRfq(saved), 'closed') },
@@ -328,7 +322,7 @@ function RfqForm() {
             status={
               isNew ? undefined : (
                 <div className="flex gap-1">
-                  <Badge size="small" intent={STATUS_INTENT[draft.status]}>{draft.status}</Badge>
+                  <Badge size="small" intent={RFQ_STATUS_INTENT[draft.status]}>{draft.status}</Badge>
                   {draft.convertedToPoId ? <Badge size="small" variant="outline">Converted</Badge> : null}
                   {draft.validUntil && draft.validUntil < todayISO() && draft.status === 'Open' ? (
                     <Badge size="small" intent="warning">Expired</Badge>
@@ -362,17 +356,7 @@ function RfqForm() {
           ) : (
             <Panel.Body className="flex flex-col gap-2">
               <ProblemsAlert problems={problems} tabLabel={(t) => ({ contents: 'Contents', logistics: 'Logistics', accounting: 'Accounting' }[t])} />
-              {rejecting ? (
-                <Alert intent="danger" variant="outline" title="Reject purchase quotation">
-                  <div className="flex flex-col gap-2">
-                    <TextField aria-label="Rejection reason" value={rejectionReason} onChange={(e) => setRejectionReason(e.currentTarget.value)} placeholder="Explain why…" />
-                    <div className="flex gap-2">
-                      <Button type="button" intent="danger" variant="solid" size="small" onClick={rejectIt}>Confirm reject</Button>
-                      <Button type="button" intent="white" variant="solid" size="small" onClick={() => { setRejecting(false); setRejectionReason(''); }}>Cancel</Button>
-                    </div>
-                  </div>
-                </Alert>
-              ) : null}
+              {reject.alert('Reject purchase quotation', rejectIt)}
               {ctx.readOnly ? (
                 <Alert intent="default" variant="outline" title={`This quotation is ${draft.status.toLowerCase()}`}>
                   Only remarks can change{draft.convertedToPoId ? ` (converted to a purchase order)` : ''}.

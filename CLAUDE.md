@@ -21,9 +21,23 @@ Demo scenario: an Apple Premium Reseller in the Philippines, with seed data cove
 ```sh
 npm run dev        # Start dev server
 npm run typecheck  # TypeScript check only
+npm run lint       # ESLint (0 errors expected; exhaustive-deps warnings are known)
+npm run knip       # Unused files, exports and dependencies — keep it at zero
 npm run build      # tsc -b && vite build
 npm run test:e2e   # Playwright smoke tests (starts its own dev server on :5199)
 npx tsx scripts/check-seeds.ts  # Seed tie-out check (stock, ledger) — run after any mock change
+```
+
+Before/after checks for performance work and refactors. The `tsx` scripts take an optional path to another checkout, so the same check runs on old and new code: `git worktree add ../before HEAD`, then diff the two outputs.
+
+```sh
+npx tsx scripts/seed-fingerprint.ts [checkout]   # Hashes of the seeded year: a refactor of mocks or the history must not move them
+npx tsx scripts/posting-check.ts [checkout]      # Post a receipt + delivery; prints stock, costs, FIFO layers and store waits
+npx tsx scripts/fifo-check.ts [checkout]         # FIFO layers: sequential and concurrent takes, transfer, cost refresh
+npx tsx scripts/bench-data-layer.ts [checkout]   # CPU time and store round trips (250 ms each in the app)
+node scripts/bundle-sizes.mjs                    # After npm run build: what a cold load of each route downloads
+node scripts/cold-load.mjs [url]                 # Against npx vite preview --port 4173: time to first table row per route
+node scripts/interaction-latency.mjs [url]       # Against the same preview: input-to-paint latency, 4× CPU throttle
 ```
 
 ---
@@ -42,7 +56,7 @@ e2e/            Playwright specs — screens.spec.ts sweeps every route
 scripts/        check-seeds.ts (tie-out check), build-psgc.mjs
 ```
 
-Routes are defined in `src/app/router.tsx`. All use hash routing (`/#/…`). Detail pages use `:tab?` for top-level page switching.
+Routes are defined in `src/app/router.tsx`. All use hash routing (`/#/…`). Detail pages use `:tab?` for top-level page switching. Declare a new page with `page(() => import(…), 'Name')`, never a bare `React.lazy`. `withPreload` has the router load the chunk before rendering, which avoids React's ~300 ms Suspense-fallback throttle on every cold load.
 
 ---
 
@@ -55,6 +69,7 @@ localStorage holds only the changes since the seed (`{ saved, removed }`), not t
 Key rules:
 - **Bump `SEED_VERSION`** in `store.ts` whenever any file in `src/mocks/` changes. A browser on an older version drops all saved data and reloads the seed.
 - Never mutate rows from `useCollection()` or `snapshot()` — they are shared references. Copy before editing.
+- Write several records with `collection.saveMany(rows)` (or `saveItems` for items), never `for … await save()`. Each save is a 250 ms round trip and an audit write, so posting a 20-line document went from 10 s to one wait. Read with `snapshot()` when you only need to check the current state before a write; `list()` adds another round trip and deep-copies the whole collection.
 - Seeds that depend on other seeds must be lazy functions `() => seed` to avoid circular module init.
 - After changing any seed: `npx tsx scripts/check-seeds.ts` — exits non-zero on stock/ledger tie-out failures.
 
@@ -191,7 +206,9 @@ detail/
 | `tab/index.tsx` | re-export or orchestrator | Entry point for a real UI tab |
 | `tab/NounCard.tsx` | `[Noun]Card` | Card inside a real UI tab |
 
-Shared purchasing components used across multiple document types live in `purchasing/shared/` (`ReferencesTable`, `TotalRow`, `CopyPanel`, `DocumentFlow`).
+Shared purchasing components used across multiple document types live in `purchasing/shared/` (`ReferencesTable`, `PurchTotalsFooter`, `CopyPanel`, `DocumentFlow`, and `ReturnDocumentsList`, which is the goods returns and A/P credit memos list behind both tabs).
+
+An export kept only for tests or docs, with no caller yet, carries a `@public` JSDoc tag so `npm run knip` keeps it.
 
 ---
 
@@ -269,12 +286,24 @@ Every document and master record has an Activity tab. Timeline shows the documen
 
 ### Data
 - Never mutate `useCollection()` / `snapshot()` rows — copy before editing.
-- `activeOptions(rows, keyFn, labelFn, currentValue)` for all picker options; always pass `currentValue`.
+- `activeOptions(rows, keyFn, labelFn, currentValue)` for all picker options; always pass `currentValue`. Tax-code pickers use `taxCodeOptions(codes, direction, current)` (`services/taxCodeOptions.ts`), with the row's own code as `current`.
+- Shared helpers, never redefined in a file:
+  - `round2` / `round4` (`services/num.ts`);
+  - `addDays` (`services/dates.ts`);
+  - `lineNet` / `priceAfterDiscount` / `inventoryQty` (`services/lineMath.ts`, used by PO, PR and SO);
+  - `revenueAccountFor` / `cogsAccountFor` (`services/itemAccounts.ts`);
+  - `rateFrom` (`mocks/taxes.ts`);
+  - `rowDiscount` / `rowSettled` / `meansTotal` / `weightedDueDate` (`services/paymentMath.ts`).
 - Nested lists are row arrays, never objects keyed by a name.
 - Bump `SEED_VERSION` whenever any `src/mocks/` file changes.
 - Seed id lists in `masters.ts` are append-only (positional — never reorder).
 
 ### Forms and UI
+- An optional picker clears with `clearable` (bind: `{ clearable: true }`) and shows `placeholder="None"`: never a `{ value: '', label: '— None —' }` option.
+- Document detail pages:
+  - `useDocTab(path, tabParam)` for the tab in the URL;
+  - `siblingKeys(all, numberOf)` for Previous/Next;
+  - `useReject()` for the Reject reason box (all in `components/form/DetailNav.tsx`).
 - `bind()` + layout helpers — never raw input elements in a form.
 - Discriminated union for SidePanel editing state.
 - `problemCollector` → `ProblemsAlert` + tab jump for validation.
@@ -282,5 +311,6 @@ Every document and master record has an Activity tab. Timeline shows the documen
 
 ### Architecture
 - `MasterDef` + `MasterLookup` + `activeOptions` for all master-data pickers — no one-off hand-rolled `<Select>`.
+- List paths and status intents (`PO_LIST_PATH`, `AP_STATUS_INTENT`…) live in `src/pages/<area>/paths.ts`, which has type-only imports. Never import anything from a routed page module (a `*Detail`/`*List` in `router.tsx`): that pulls the whole page into every chunk that links to it.
 - Use the local `Section` from `fields.tsx`, not the one exported by the design system.
 - Use `mergedItems()` whenever logic depends on item group, G/L accounts, valuation method, UoMs, or tax setup.

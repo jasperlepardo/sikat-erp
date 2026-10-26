@@ -5,7 +5,7 @@ import { createCollection } from './store';
 import { poTotals } from './purchaseOrders';
 import type { RoundingRule } from '../mocks/currencies';
 import { listItems } from './items';
-import { taxCodes } from './masterData';
+import { birForms, taxCodes } from './masterData';
 import { getPartner } from './partners';
 import { withTaxFiling } from './taxRecalc';
 import { currentTaxData, stampWithholding, withSeedWithholding } from './withholding';
@@ -50,9 +50,9 @@ export async function addApReserveInvoice(doc: ApRiInput): Promise<ApReserveInvo
   const status = doc.approved !== false ? 'Open' : 'Not Confirmed';
   if (status !== 'Open') return invoices.save({ ...doc, docNum, status } as ApReserveInvoice);
   // Withholding and filing are fixed now, so later Settings changes don't move them.
-  const [items, vendor, codes] = await Promise.all([listItems(), getPartner(doc.vendorId), taxCodes.list()]);
+  const [items, vendor, codes, forms] = await Promise.all([listItems(), getPartner(doc.vendorId), taxCodes.list(), birForms.list()]);
   const stamped = stampWithholding(doc, vendor ?? undefined, items, currentTaxData(), doc.postingDate);
-  return invoices.save({ ...doc, lines: withTaxFiling(stamped.lines, codes), withholdingSummary: stamped.withholdingSummary, docNum, status } as ApReserveInvoice);
+  return invoices.save({ ...doc, lines: withTaxFiling(stamped.lines, codes, forms), withholdingSummary: stamped.withholdingSummary, docNum, status } as ApReserveInvoice);
 }
 
 export async function cancelApReserveInvoice(inv: ApReserveInvoice): Promise<ApReserveInvoice> {

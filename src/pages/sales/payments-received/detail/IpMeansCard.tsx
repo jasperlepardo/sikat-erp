@@ -8,6 +8,8 @@ import { formatAmount } from '../../../../services/format';
 import { amountDue, meansTotal, paymentDifference, type IncomingInput } from '../../../../services/incomingPayments';
 import { banks as bankList, cardBrands, houseBankFor, nameIn } from '../../../../services/partnerMasters';
 import { cardBrandDef } from '../../../settings/masterDefs';
+import { activeOptions } from '../../../../services/inventoryMasters';
+import { round2 } from '../../../../services/num';
 
 type MeansRow =
   | { id: 'transfer'; kind: 'transfer'; account: string; date: string; reference: string; amount: number }
@@ -17,7 +19,6 @@ type MeansRow =
 
 const METHOD_LABEL: Record<string, string> = { transfer: 'Bank transfer', cash: 'Cash', check: 'Check', card: 'Credit card' };
 const num = (v: string) => (v === '' ? 0 : Number(v));
-const round2 = (n: number) => Math.round(n * 100) / 100;
 
 export function IncomingMeansSection({ draft, update, accounts, fx, readOnly }: { draft: IncomingInput; update: (p: Partial<IncomingInput>) => void; accounts: Account[]; fx: number; readOnly: boolean }) {
   const means = draft.means;
@@ -65,7 +66,7 @@ export function IncomingMeansSection({ draft, update, accounts, fx, readOnly }: 
           }
           return (
             <div className="flex flex-col gap-1">
-              <Combobox aria-label="Bank account" className="w-56" options={banks.map((a) => ({ value: a.code, label: `${a.code} ${a.name}` }))} value={r.account || null} onValueChange={(v) => set({ transfer: { ...means.transfer, account: v ?? '' } })} />
+              <Combobox aria-label="Bank account" className="w-56" options={activeOptions(banks, (a) => a.code, (a) => `${a.code} ${a.name}`, r.account)} value={r.account || null} onValueChange={(v) => set({ transfer: { ...means.transfer, account: v ?? '' } })} />
               {bank && <Text variant="small" tone="muted">{nameIn(bankList, bank.bankId)} · {bank.accountNo}</Text>}
             </div>
           );
@@ -73,7 +74,7 @@ export function IncomingMeansSection({ draft, update, accounts, fx, readOnly }: 
         if (r.kind === 'cash') {
           const acct = accounts.find((a) => a.code === r.account);
           if (readOnly) return <Text variant="small">{acct ? `${acct.code} ${acct.name}` : r.account || '—'}</Text>;
-          return <Combobox aria-label="Cash account" className="w-56" options={cashAccounts.map((a) => ({ value: a.code, label: `${a.code} ${a.name}` }))} value={r.account || null} onValueChange={(v) => set({ cash: { ...means.cash, account: v ?? '' } })} />;
+          return <Combobox aria-label="Cash account" className="w-56" options={activeOptions(cashAccounts, (a) => a.code, (a) => `${a.code} ${a.name}`, r.account)} value={r.account || null} onValueChange={(v) => set({ cash: { ...means.cash, account: v ?? '' } })} />;
         }
         if (r.kind === 'check') {
           if (readOnly) {

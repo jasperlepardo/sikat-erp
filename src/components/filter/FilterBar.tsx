@@ -285,6 +285,7 @@ interface ChoiceProps {
 }
 
 /** Master-list values, including inactive rows — old records still carry them. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- a filter field can be over any master
 function MasterChoice({ def, ...props }: ChoiceProps & { def: MasterDef<any> }) {
   const rows = useCollection(def.collection);
   const seen = new Set<string>();

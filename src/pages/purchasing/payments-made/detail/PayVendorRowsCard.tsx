@@ -8,11 +8,11 @@ import { formatDate } from '../../../../services/dates';
 import { formatAmount } from '../../../../services/format';
 import { overallAmount, rowDiscount, rowFxDifference } from '../../../../services/outgoingPayments';
 import { projectDef } from '../../../settings/masterDefs';
-import { AP_LIST_PATH } from '../../vendor-invoices/detail/ApInvoiceDetail';
 import { overdueDays, type PaySectionProps } from './types';
+import { AP_LIST_PATH } from '../../paths';
+import { round2 } from '../../../../services/num';
 
 const num = (v: string) => (v === '' ? 0 : Number(v));
-const round2 = (n: number) => Math.round(n * 100) / 100;
 
 /** Vendor payments: the vendor's open invoices, ticked and paid in full or in part, plus any amount on account. */
 export function PayVendorRows({ draft, update, errors, m, fx, readOnly }: PaySectionProps) {

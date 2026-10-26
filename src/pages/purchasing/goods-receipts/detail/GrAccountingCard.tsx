@@ -24,7 +24,7 @@ export function GrAccounting({ draft, update, ctx }: GrSectionProps) {
           suffix: 'days',
           hint: 'Days added to the posting date before the early-payment discount window starts.',
         })}
-        {f.choose('indicator', 'Indicator', [{ value: '', label: '— None —' }, ...asOptions(INDICATORS)])}
+        {f.choose('indicator', 'Indicator', asOptions(INDICATORS), { clearable: true })}
         <ReadOnly
           label="Federal tax ID"
           value={ctx.vendor?.tin || <span className="text-muted">{ctx.vendor ? 'Not on the vendor record' : '—'}</span>}

@@ -17,8 +17,7 @@ import type { Account } from '../mocks/chartOfAccounts';
 import type { ItemGroup } from '../mocks/itemMasters';
 import { lineNet, type PricedLine } from './purchaseOrders';
 import { determineWithholding, type LineItem, type LineParty, type TaxMasterData } from './taxDetermination';
-
-const round2 = (n: number) => Math.round(n * 100) / 100;
+import { round2 } from './num';
 
 export interface WithholdingLine {
   atc: string;
@@ -215,7 +214,7 @@ const CUSTOMER_WITHHOLDING_ACCOUNT: Record<WithholdingKind, string> = {
 };
 
 /** A line on a service document has no item: it pays for services. */
-const SERVICE_LINE: LineItem = {
+export const SERVICE_LINE: LineItem = {
   taxLiable: true, salesTaxGroup: '', salesTaxCode: '', purchaseTaxGroup: '', purchaseTaxCode: '', withholdingGroup: 'WH-SVC',
 };
 

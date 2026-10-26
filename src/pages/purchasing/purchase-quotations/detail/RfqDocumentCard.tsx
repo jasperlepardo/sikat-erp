@@ -4,7 +4,9 @@ import { StatusField } from '../../../../components/form/StatusField';
 import { RFQ_STATUSES, type RfqStatus } from '../../../../mocks/rfqs';
 import { todayISO } from '../../../../services/dates';
 import { rfqNumber, rfqSeries, seriesOf } from '../../../../services/rfqs';
-import { STATUS_INTENT, type RfqSectionProps } from './types';
+import { type RfqSectionProps } from './types';
+import { RFQ_STATUS_INTENT } from '../../paths';
+import { activeOptions } from '../../../../services/inventoryMasters';
 
 const STATUS_HINT: Record<RfqStatus, string> = {
   Draft: 'Pick Open to send the RFQ.',
@@ -33,7 +35,7 @@ export function RfqDocumentCard({ draft, update, errors, ctx, transitions }: Doc
                 <Select
                   aria-label="Series"
                   className="w-40"
-                  options={rfqSeries.snapshot().filter((s) => s.active).map((s) => ({ value: s.id, label: s.name }))}
+                  options={activeOptions([...rfqSeries.snapshot()], (s) => s.id, (s) => s.name, draft.seriesId)}
                   value={draft.seriesId}
                   onValueChange={(seriesId) => update({ seriesId, docNum: 0 })}
                 />
@@ -58,7 +60,7 @@ export function RfqDocumentCard({ draft, update, errors, ctx, transitions }: Doc
         {!ctx.added && (
           <StatusField
             statuses={RFQ_STATUSES}
-            intents={STATUS_INTENT}
+            intents={RFQ_STATUS_INTENT}
             value={draft.status}
             moves={transitions}
             hint={STATUS_HINT[draft.status]}

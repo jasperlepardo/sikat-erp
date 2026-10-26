@@ -25,7 +25,7 @@ const capitalize = (s: string) => s[0].toUpperCase() + s.slice(1);
 export const includedMethods = (draft: Draft) => draft.paymentMethods.filter((m) => m.include);
 
 /** Updates one method, adding it if the partner never had it. */
-export function setMethod(list: PaymentMethodSetting[], code: string, patch: Partial<PaymentMethodSetting>): PaymentMethodSetting[] {
+function setMethod(list: PaymentMethodSetting[], code: string, patch: Partial<PaymentMethodSetting>): PaymentMethodSetting[] {
   return list.some((m) => m.code === code)
     ? list.map((m) => (m.code === code ? { ...m, ...patch } : m))
     : [...list, { code, include: false, ...patch }];
@@ -43,7 +43,7 @@ export interface PaymentEntry {
 const entryKey = (e: PaymentEntry) => e.account?.id ?? e.code;
 
 /** The partner's payment methods as cards: one per account, or one for a method without any. */
-export const paymentEntries = (draft: Draft): PaymentEntry[] =>
+const paymentEntries = (draft: Draft): PaymentEntry[] =>
   includedMethods(draft).flatMap((m) =>
     accountKind(m.code) && m.accounts?.length ? m.accounts.map((account) => ({ code: m.code, account })) : [{ code: m.code }],
   );
@@ -55,7 +55,7 @@ export const accountsOf = (draft: Draft, code: string) => {
 };
 
 /** For "New": the first method not yet on the partner, else the first that holds accounts. */
-export const nextEntry = (draft: Draft): PaymentEntry => ({
+const nextEntry = (draft: Draft): PaymentEntry => ({
   code:
     PAYMENT_METHODS.find((m) => !includedMethods(draft).some((x) => x.code === m.code))?.code ??
     PAYMENT_METHODS.find((m) => accountKind(m.code))?.code ??
@@ -66,7 +66,7 @@ export const nextEntry = (draft: Draft): PaymentEntry => ({
  * Takes an entry off the partner. Removing a method's last account turns the method off; the
  * method's default account and the partner's default method move to what's left.
  */
-export function removeEntry(draft: Draft, entry: PaymentEntry): Pick<Draft, 'paymentMethods' | 'defaultPaymentMethod'> {
+function removeEntry(draft: Draft, entry: PaymentEntry): Pick<Draft, 'paymentMethods' | 'defaultPaymentMethod'> {
   let list = draft.paymentMethods;
   if (entry.account) {
     const { accounts, defaultAccountId } = accountsOf(draft, entry.code);

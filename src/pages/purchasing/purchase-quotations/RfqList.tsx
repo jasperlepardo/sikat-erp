@@ -19,11 +19,11 @@ import { formatAmount } from '../../../services/format';
 import { taxCodes } from '../../../services/masterData';
 import { listRfqs, rfqNumber, rfqTotal } from '../../../services/rfqs';
 import { useAsync } from '../../../services/useAsync';
-import { RFQ_LIST_PATH, STATUS_INTENT } from './detail/PurchaseQuotationDetail';
 import { dateField, linesField, masterField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { currencyDef, salesEmployeeDef } from '../../settings/masterDefs';
 import { useListPage } from '../../../components/form/DataTable';
+import { RFQ_LIST_PATH, RFQ_STATUS_INTENT } from '../paths';
 
 export function RfqList() {
   const navigate = useNavigate();
@@ -138,7 +138,7 @@ export function RfqList() {
       key: 'status',
       header: 'Status',
       sortable: true,
-      cell: (rfq) => <TableStatus intent={STATUS_INTENT[rfq.status]}>{rfq.status}</TableStatus>,
+      cell: (rfq) => <TableStatus intent={RFQ_STATUS_INTENT[rfq.status]}>{rfq.status}</TableStatus>,
     },
   ];
 

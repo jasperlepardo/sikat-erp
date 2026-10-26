@@ -14,8 +14,8 @@ export function PoDeliveryCard({ draft, update, m, ctx }: PoTabProps) {
         {f.lookup(
           'shippingType',
           'Shipping type',
-          [{ value: '', label: '— None —' }, ...activeOptions(m.inv.shipping, (s) => s.id, (s) => s.name, draft.shippingType)],
-          { hint: 'Defaults from the vendor.' },
+          activeOptions(m.inv.shipping, (s) => s.id, (s) => s.name, draft.shippingType),
+          { clearable: true, hint: 'Defaults from the vendor.' },
         )}
         {getPurchasingSettings().multiLanguageSupport
           ? f.pick('language', 'Language', LANGUAGES, { hint: "Prints the PO in the vendor's language." })

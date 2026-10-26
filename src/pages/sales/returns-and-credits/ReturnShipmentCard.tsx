@@ -18,7 +18,7 @@ export function ReturnShipmentCard({ draft, update, readOnly, inv }: Props) {
     <fieldset disabled={readOnly} className="contents">
       <Section icon="route" title="Shipment">
         <FieldStack>
-          {h.lookup('shippingType', 'Shipping type', [{ value: '', label: '— None —' }, ...activeOptions(inv.shipping, (s) => s.id, (s) => s.name, draft.shippingType)])}
+          {h.lookup('shippingType', 'Shipping type', activeOptions(inv.shipping, (s) => s.id, (s) => s.name, draft.shippingType), { clearable: true })}
         </FieldStack>
       </Section>
     </fieldset>

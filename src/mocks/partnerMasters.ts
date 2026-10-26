@@ -82,7 +82,7 @@ export const PRICE_ROUNDING: { value: PriceRounding; label: string }[] = [
 ];
 
 /** Where an independent list takes each item's price from (the item form holds one cost and one SRP). */
-export type PriceSource = 'cost' | 'srp';
+type PriceSource = 'cost' | 'srp';
 
 /**
  * A named price tier partners and document lines default to. Independent lists take the item's
@@ -108,7 +108,7 @@ export interface PriceList extends NamedEntry {
 }
 
 /** A hand-set price: PHP per inventory unit, gross or net as the list is. */
-export interface ItemListPrice {
+interface ItemListPrice {
   itemId: string;
   price: number;
 }

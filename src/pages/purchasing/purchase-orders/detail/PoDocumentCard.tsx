@@ -5,7 +5,8 @@ import { PO_STATUSES, type PoStatus } from '../../../../mocks/purchaseOrders';
 import { todayISO, formatDate } from '../../../../services/dates';
 import { poNumber, poSeries, seriesOf } from '../../../../services/purchaseOrders';
 import type { PoDraft, PoSectionProps } from './types';
-import { STATUS_INTENT } from './types';
+import { PO_STATUS_INTENT } from '../../paths';
+import { activeOptions } from '../../../../services/inventoryMasters';
 
 const STATUS_HINT: Record<PoStatus, string> = {
   Draft: 'Pick Open to add it.',
@@ -34,7 +35,7 @@ export function PoDocumentCard({ draft, update, errors, ctx, transitions }: Docu
                 <Select
                   aria-label="Series"
                   className="w-40"
-                  options={poSeries.snapshot().filter((s) => s.active).map((s) => ({ value: s.id, label: s.name }))}
+                  options={activeOptions([...poSeries.snapshot()], (s) => s.id, (s) => s.name, draft.seriesId)}
                   value={draft.seriesId}
                   onValueChange={(seriesId) => update({ seriesId, docNum: 0 })}
                 />
@@ -49,7 +50,7 @@ export function PoDocumentCard({ draft, update, errors, ctx, transitions }: Docu
         {!ctx.added && (
           <StatusField
             statuses={PO_STATUSES}
-            intents={STATUS_INTENT}
+            intents={PO_STATUS_INTENT}
             value={draft.status}
             moves={transitions}
             hint={STATUS_HINT[draft.status]}
@@ -77,7 +78,7 @@ export function PoDocumentCard({ draft, update, errors, ctx, transitions }: Docu
 }
 
 /** Header delivery date; changing it also moves line dates that matched the old one. */
-export function DeliveryDate({ draft, update, error }: { draft: PoDraft; update: (p: Partial<PoDraft>) => void; error?: string }) {
+function DeliveryDate({ draft, update, error }: { draft: PoDraft; update: (p: Partial<PoDraft>) => void; error?: string }) {
   const h = bind(draft, (p) =>
     update({
       ...p,

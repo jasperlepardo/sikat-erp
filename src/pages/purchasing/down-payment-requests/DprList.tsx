@@ -23,7 +23,7 @@ import { formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
 import { taxCodes } from '../../../services/masterData';
 import { useAsync } from '../../../services/useAsync';
-import { DPR_LIST_PATH, DPR_STATUS_INTENT } from './detail/DprDetail';
+import { DPR_LIST_PATH, DPR_STATUS_INTENT } from '../paths';
 
 /** Purchasing › Bills › Down payment requests: advances vendors asked for, paid and drawn. */
 export function DprList() {

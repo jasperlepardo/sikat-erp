@@ -245,7 +245,7 @@ export function purchCols<T extends PurchLine>(b: ColBindings<T>): Record<string
     freeText: textCol<T>({ key: 'freeText', header: 'Free text', width: 'min-w-40', readOnly: ro, get: (l) => l.freeText ?? '', onChange: (l, v) => b.patch(l.id, { freeText: v } as Partial<T>) }),
     blanket: {
       key: 'blanketAgreement', header: 'Blanket agreement',
-      cell: (l) => !l.itemId ? null : ro ? <Text variant="small">{l.blanketAgreement || '—'}</Text> : <Select aria-label="Blanket agreement" className="w-48" options={b.blanketOptions} value={l.blanketAgreement ?? ''} onValueChange={(v) => b.patch(l.id, { blanketAgreement: v } as Partial<T>)} />,
+      cell: (l) => !l.itemId ? null : ro ? <Text variant="small">{l.blanketAgreement || '—'}</Text> : <Select aria-label="Blanket agreement" className="w-48" clearable placeholder="None" options={b.blanketOptions} value={l.blanketAgreement ?? ''} onValueChange={(v) => b.patch(l.id, { blanketAgreement: v } as Partial<T>)} />,
     },
     requisition: textCol<T>({ key: 'requisitionSlipNo', header: 'Requisition slip no.', width: 'w-36', readOnly: ro, get: (l) => l.requisitionSlipNo, onChange: (l, v) => b.patch(l.id, { requisitionSlipNo: v } as Partial<T>) }),
     returnReason: {

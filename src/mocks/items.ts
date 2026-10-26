@@ -9,11 +9,11 @@ import { expandCatalog } from './appleCatalog';
 import { SEED_STORE_WAREHOUSES } from './storeWarehouses';
 
 export type ItemType = 'Items' | 'Labor' | 'Travel';
-export type ManageBy = 'None' | 'Batches' | 'Serial Numbers';
-export type GlBy = 'Item Group' | 'Item Level' | 'Warehouse';
-export type IssueMethod = 'Manual' | 'Backflush';
-export type PlanningMethod = 'MRP' | 'MPS' | 'None';
-export type ProcurementMethod = 'Buy' | 'Make';
+type ManageBy = 'None' | 'Batches' | 'Serial Numbers';
+type GlBy = 'Item Group' | 'Item Level' | 'Warehouse';
+type IssueMethod = 'Manual' | 'Backflush';
+type PlanningMethod = 'MRP' | 'MPS' | 'None';
+type ProcurementMethod = 'Buy' | 'Make';
 
 /** Stock and replenishment settings for one warehouse (the Inventory Data grid). */
 export interface ItemWarehouse {
@@ -263,7 +263,7 @@ export const unitCost = (item: ItemUoms & Pick<Item, 'itemCost'>, uom: string) =
  * Fields that belong to the variant itself. Everything else (tax, UoMs, planning,
  * G/L accounts, etc.) is inherited from the parent item at read time via mergeVariant().
  */
-export const VARIANT_OWN_FIELDS = new Set<keyof Item>([
+const VARIANT_OWN_FIELDS = new Set<keyof Item>([
   'id', 'itemNo', 'description', 'foreignName', 'sellingItemNo', 'gtin',
   'parentItemId', 'variantAxes', 'variantValues',
   // Usage flags: variants are the actual saleable/purchasable items; parent is a template only.
@@ -561,7 +561,6 @@ const APPLE_PARENT_ITEMS: Item[] = catalog.families.map((f) => {
 
 /** One lean variant record per Apple configuration — only own fields stored; global fields come from parent at read time. */
 const APPLE_ITEMS: Item[] = catalog.entries.map((e, n) => {
-  let full: Item;
   const { family } = e;
   const h = hash(e.itemNo);
   const preOrder = !!family.validFrom && family.validFrom > TODAY;
@@ -571,7 +570,7 @@ const APPLE_ITEMS: Item[] = catalog.entries.map((e, n) => {
   const mnl = preOrder ? 0 : (h % 9) * scale;
   const ceb = preOrder ? 0 : ((h >>> 4) % 4) * scale;
   const dvo = preOrder ? 0 : ((h >>> 8) % 3) * scale;
-  full = seed(`apl-${String(n + 1).padStart(4, '0')}`, family.group, {
+  const full = seed(`apl-${String(n + 1).padStart(4, '0')}`, family.group, {
     itemNo: e.itemNo,
     name: e.name,
     description: e.description,

@@ -2,8 +2,7 @@ import type { Errors } from '../../../../components/form/fields';
 import type { GoodsReturn } from '../../../../mocks/goodsReturns';
 import type { RetMasters, RetContext } from '../../shared/returnsTypes';
 
-export type GrDraft = Omit<GoodsReturn, 'id'> & { id?: string };
-export type TabId = 'contents' | 'logistics' | 'accounting';
+type GrDraft = Omit<GoodsReturn, 'id'> & { id?: string };
 
 export interface GrSectionProps {
   draft: GrDraft;

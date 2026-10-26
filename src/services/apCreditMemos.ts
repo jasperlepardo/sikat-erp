@@ -11,14 +11,15 @@ import { todayISO } from './dates';
 import { applyStock, expenseAccountFor, frozenLines, grInventoryQty, unitCostLc } from './goodsReceipts';
 import { applyCreditedQty, listGoodsReturns, returnOpenQty } from './goodsReturns';
 import { inventoryAccountFor, type JournalLine } from './inventoryTransfers';
-import { listItems, saveItem } from './items';
+import { listItems, saveItems, stockTotals } from './items';
 import { lineNet, poTotals } from './purchaseOrders';
 import { currentTaxData, stampWithholding, withSeedWithholding, type WithholdingLine } from './withholding';
 import { getPartner } from './partners';
 import { withTaxFiling } from './taxRecalc';
-import { taxCodes } from './masterData';
+import { birForms, taxCodes } from './masterData';
 import { createCollection } from './store';
 import { purchasingHistory } from './purchasingHistory';
+import { round2 } from './num';
 
 // Seeded withholding is stamped as if each was added under the seeded Settings.
 const memos = createCollection<ApCreditMemo>('sikat-erp:ap-credit-memos:v5', () => withSeedWithholding(purchasingHistory().memos), 'cm', { audit: 'APCM' });
@@ -32,8 +33,6 @@ export async function getCreditMemo(idOrNumber: string) {
 }
 
 export type MemoInput = Omit<ApCreditMemo, 'id'> & { id?: string };
-
-const round2 = (n: number) => Math.round(n * 100) / 100;
 
 /** "Primary 620004", or "Draft" before it's added. */
 export const memoNumber = (m: Pick<ApCreditMemo, 'seriesId' | 'docNum' | 'postingDate'>) =>
@@ -63,7 +62,7 @@ export const memoTotal = (m: ApCreditMemo, codes: TaxCode[]) =>
 export const sendsStock = (l: MemoLine, items: Item[]) => l.returnGoods && l.baseType !== 'GRET' && Boolean(items.find((i) => i.id === l.itemId)?.inventoryItem);
 
 const valueLc = (l: MemoLine, m: Pick<ApCreditMemo, 'discountPct'>, fx: number) => round2(lineNet(l) * (1 - m.discountPct / 100) * fx);
-const onHand = (item: Item) => item.warehouses.reduce((n, w) => n + w.inStock, 0);
+const onHand = (item: Item) => stockTotals(item).inStock;
 
 /**
  * The entry adding the memo makes, in PHP:
@@ -189,7 +188,9 @@ export async function addCreditMemo(input: MemoInput, fx: number, credit: number
     if (!item?.inventoryItem || item.valuationMethod === 'Standard Price' || onHand(item) <= 0) continue;
     costing.set(item.id, { ...item, itemCost: round2(item.itemCost - valueLc(l, input, fx) / onHand(item)) });
   }
-  for (const [id, item] of costing) if (item !== items.find((i) => i.id === id)) await saveItem(item);
+  // Only the items costing changed: unchanged ones are still the stored objects.
+  const stored = new Set(items);
+  await saveItems([...costing.values()].filter((item) => !stored.has(item)));
   await applyInvoiceReturns(lines.filter((l) => l.baseType === 'APINV' && l.returnGoods), 1);
   await applyCreditedQty(lines.filter((l) => l.baseType === 'GRET'), 1);
 
@@ -211,7 +212,7 @@ export async function addCreditMemo(input: MemoInput, fx: number, credit: number
   const stamped = stampWithholding({ discountPct: input.discountPct, lines }, vendor, items, currentTaxData(), input.postingDate);
   return memos.save({
     ...input,
-    lines: withTaxFiling(withBinCodes(stamped.lines), await taxCodes.list()),
+    lines: withTaxFiling(withBinCodes(stamped.lines), await taxCodes.list(), await birForms.list()),
     withholdingSummary: stamped.withholdingSummary,
     docNum,
     fxRate: fx,
@@ -256,7 +257,9 @@ export async function cancelCreditMemo(m: ApCreditMemo, totals: Map<string, numb
     if (!item?.inventoryItem || item.valuationMethod === 'Standard Price' || onHand(item) <= 0) continue;
     costing.set(item.id, { ...item, itemCost: round2(item.itemCost + valueLc(l, m, m.fxRate) / onHand(item)) });
   }
-  for (const [id, item] of costing) if (item !== items.find((i) => i.id === id)) await saveItem(item);
+  // Only the items costing changed: unchanged ones are still the stored objects.
+  const stored = new Set(items);
+  await saveItems([...costing.values()].filter((item) => !stored.has(item)));
   await applyInvoiceReturns(m.lines.filter((l) => l.baseType === 'APINV' && l.returnGoods), -1);
   await applyCreditedQty(m.lines.filter((l) => l.baseType === 'GRET'), -1);
   return memos.save({ ...m, status: 'Cancelled', closeDate: todayISO(), appliedAmount: 0, applications: [] });

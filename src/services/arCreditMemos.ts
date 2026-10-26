@@ -10,10 +10,12 @@ import { todayISO } from './dates';
 import { dnInventoryQty } from './deliveries';
 import { frozenStock } from './inventoryCountings';
 import { inventoryAccountFor, type JournalLine } from './inventoryTransfers';
-import { listItems, saveItem } from './items';
+import { listItems, saveItems } from './items';
 import { soTotals } from './salesOrders';
 import { createCollection } from './store';
 import { withLineCosts } from './stockHistory';
+import { round2, round4 } from './num';
+import { cogsAccountFor, revenueAccountFor } from './itemAccounts';
 
 const creditMemos = createCollection<ArCreditMemo>('sikat-erp:ar-credit-memos', withLineCosts(SEED_AR_CREDIT_MEMOS), 'acm', { audit: 'ARCM' });
 
@@ -27,10 +29,7 @@ export async function getArCreditMemo(idOrNumber: string) {
 
 export type ArCmInput = Omit<ArCreditMemo, 'id'> & { id?: string };
 
-const round2 = (n: number) => Math.round(n * 100) / 100;
-const round4 = (n: number) => Math.round(n * 10000) / 10000;
-
-export const arCreditSeriesOf = (id: string) => seriesLookup(arCreditSeries, id, AR_CREDIT_SERIES);
+const arCreditSeriesOf = (id: string) => seriesLookup(arCreditSeries, id, AR_CREDIT_SERIES);
 export const arCmNumber = (m: Pick<ArCreditMemo, 'seriesId' | 'docNum' | 'postingDate'>) =>
   formatDocNum(arCreditSeriesOf(m.seriesId), m.docNum, m.postingDate);
 
@@ -40,7 +39,10 @@ export const arCmTotals = (
   rule?: Parameters<typeof soTotals>[2],
 ) => arTotals(m as unknown as Parameters<typeof arTotals>[0], rateOf, rule);
 
-/** Total credit less withholding and applied amounts: what the customer gets back. */
+/**
+ * Total credit less withholding and applied amounts: what the customer gets back.
+ * @public
+ */
 export const netArCredit = (total: number, appliedAmount: number) => round2(total - appliedAmount);
 
 export const arCmTotal = (m: ArCreditMemo, codes: TaxCode[]) =>
@@ -53,11 +55,6 @@ export const arCmTotal = (m: ArCreditMemo, codes: TaxCode[]) =>
 export const receivesStock = (l: ArCmLine, items: readonly Item[]) =>
   l.returnGoods && Boolean(items.find((i) => i.id === l.itemId)?.inventoryItem);
 
-const groupOf = (item: Item, groups: readonly ItemGroup[]) => groups.find((g) => g.id === item.itemGroupId);
-const revenueAccountFor = (item: Item, groups: readonly ItemGroup[]) =>
-  (item.glBy === 'Item Level' ? item.revenueAccount : groupOf(item, groups)?.revenueAccount || item.revenueAccount) || '4010';
-const cogsAccountFor = (item: Item, groups: readonly ItemGroup[]) =>
-  (item.glBy === 'Item Level' ? item.cogsAccount : groupOf(item, groups)?.cogsAccount || item.cogsAccount) || '5010';
 
 /**
  * The entry adding the credit memo makes, in PHP — a reversal of arJournal:
@@ -144,7 +141,7 @@ async function moveArStock(lines: ArCmLine[], items: readonly Item[], sign: 1 | 
     row.inStock = round4(row.inStock + sign * dnInventoryQty(l));
     touched.set(item.id, { ...item, hasTransactions: true });
   }
-  for (const item of touched.values()) await saveItem(item);
+  await saveItems(touched.values());
 }
 
 /**

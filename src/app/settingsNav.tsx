@@ -53,7 +53,7 @@ export const SETTINGS_NAV: SideNavSection[] = [
           { id: 'settings/accounting-and-tax/compensation', label: 'Compensation tax', icon: icon('payments') },
           { id: 'settings/accounting-and-tax/tax-free-compensation', label: 'Tax-free compensation', icon: icon('money_off') },
           { id: 'settings/accounting-and-tax/de-minimis', label: 'De minimis benefits', icon: icon('redeem') },
-          { id: 'settings/accounting-and-tax/withholding-forms', label: 'Withholding forms', icon: icon('description') },
+          { id: 'settings/accounting-and-tax/bir-forms', label: 'BIR forms', icon: icon('description') },
           { id: 'settings/accounting-and-tax/excise', label: 'Excise tax', icon: icon('local_bar') },
           { id: 'settings/accounting-and-tax/currencies', label: 'Currencies', icon: icon('currency_exchange') },
           { id: 'settings/accounting-and-tax/exchange-rates', label: 'Exchange rates', icon: icon('trending_up') },

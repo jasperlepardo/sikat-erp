@@ -149,7 +149,7 @@ export const FX_GAIN_ACCOUNT = '7020';
 export const FX_LOSS_ACCOUNT = '8020';
 export const CASH_DISCOUNT_ACCOUNT = '5060';
 export const BANK_CHARGES_ACCOUNT = '6225';
-export const CARD_PAYABLE_ACCOUNT = '2035';
+const CARD_PAYABLE_ACCOUNT = '2035';
 
 const rowId = (p: string) => `${p}-${crypto.randomUUID().slice(0, 8)}`;
 
@@ -201,6 +201,3 @@ export function blankPayment(today: string): Omit<OutgoingPayment, 'id'> {
     cancelDate: '',
   };
 }
-
-/** No payments are seeded: the seeded bills are all unpaid. */
-export const SEED_PAYMENTS: OutgoingPayment[] = [];

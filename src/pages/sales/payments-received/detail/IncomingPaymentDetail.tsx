@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { Alert, Badge, Button, Form, FormField, List, Panel, PanelHeader, Select, Tabs, Text, TextField } from '@jasperlepardo/sikat-design-system';
+import { Alert, Badge, Button, Form, FormField, List, Panel, PanelHeader, Select, Tabs, Text } from '@jasperlepardo/sikat-design-system';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { Section, type Errors } from '../../../../components/form/fields';
 import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
@@ -9,7 +9,7 @@ import { formatAddress } from '../../../../mocks/address';
 import type { ArInvoice } from '../../../../mocks/arInvoices';
 import { accountText, type Account } from '../../../../mocks/chartOfAccounts';
 import type { Currency, ExchangeRate } from '../../../../mocks/currencies';
-import { blankIncomingPayment, type IncomingPayment, type IncomingStatus, type IncomingType } from '../../../../mocks/incomingPayments';
+import { blankIncomingPayment, type IncomingPayment, type IncomingType } from '../../../../mocks/incomingPayments';
 import type { Item } from '../../../../mocks/items';
 import { type Partner } from '../../../../mocks/partners';
 import type { TaxCode } from '../../../../mocks/taxes';
@@ -53,10 +53,9 @@ import { SalesDocumentFlow } from '../../shared/SalesDocumentFlow';
 import { ReferencesTable } from '../../../purchasing/shared/ReferencesTable';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
-import { NotFound, PrevNext, neighbours } from '../../../../components/form/DetailNav';
-
-export const RC_LIST_PATH = '/sales/incoming-payments';
-export const RC_STATUS_INTENT: Record<IncomingStatus, 'default' | 'success' | 'danger' | 'warning'> = { Draft: 'default', 'Not Confirmed': 'warning', Posted: 'success', Cancelled: 'danger' };
+import { neighbours, NotFound, PrevNext, siblingKeys, useDocTab, useReject } from '../../../../components/form/DetailNav';
+import { RC_LIST_PATH, RC_STATUS_INTENT } from '../../paths';
+import { activeOptions } from '../../../../services/inventoryMasters';
 
 type TabId = 'contents' | 'means';
 const TAB_LABEL: Record<TabId, string> = { contents: 'Contents', means: 'Payment means' };
@@ -122,14 +121,12 @@ function IncomingForm() {
   const [draft, setDraft] = useState<IncomingInput | null | undefined>(isNew ? { ...blankIncomingPayment(todayISO()), approved: rcApproved } : undefined);
   const [m, setM] = useState<Masters>();
   const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
-  const setPage = (v: PageId) => navigate(`${RC_LIST_PATH}/${id}/${v}`, { replace: true });
-  useEffect(() => { if (!tabParam) navigate(`${RC_LIST_PATH}/${id}/details`, { replace: true, state: location.state }); }, []);
+  const setPage = useDocTab<PageId>(`${RC_LIST_PATH}/${id}`, tabParam);
   const [customerDetailsOpen, setCustomerDetailsOpen] = useState(false);
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);
-  const [rejecting, setRejecting] = useState(false);
-  const [rejectionReason, setRejectionReason] = useState('');
+  const reject = useReject();
   const [entryId, setEntryId] = useState<string>();
 
   useEffect(() => {
@@ -144,7 +141,7 @@ function IncomingForm() {
     });
     if (!isNew && id) {
       getIncomingPayment(id).then((p) => !cancelled && setDraft(p ?? null));
-      listIncomingPayments().then((all) => !cancelled && setSiblings([...all].sort((a, b) => b.postingDate.localeCompare(a.postingDate)).map((p) => p.docNum ? incomingNumber(p) : p.id)));
+      listIncomingPayments().then((all) => !cancelled && setSiblings(siblingKeys(all, incomingNumber)));
       listJournalEntries().then((es) => !cancelled && setEntryId(es.find((e) => e.originId === id && !e.reverses)?.id));
     }
     return () => {
@@ -246,12 +243,12 @@ function IncomingForm() {
   const paidInvoices = [...new Map(paidRows(draft).map((r) => [r.invoiceId, r])).values()];
   const saved = draft as IncomingPayment;
   const recallIt = async () => { const p = await recallIncomingPayment(saved); navigate(RC_LIST_PATH, { state: { notice: `Payment ${incomingNumber(p)} recalled to draft.` } }); };
-  const rejectIt = async () => { await logRejection('RCV', saved.id, saved.customerId, rejectionReason); await recallIncomingPayment(saved); navigate(RC_LIST_PATH, { state: { notice: `Payment ${incomingNumber(saved)} rejected and returned to draft.` } }); };
+  const rejectIt = async (rejectionReason: string) => { await logRejection('RCV', saved.id, saved.customerId, rejectionReason); await recallIncomingPayment(saved); navigate(RC_LIST_PATH, { state: { notice: `Payment ${incomingNumber(saved)} rejected and returned to draft.` } }); };
 
   const menu: MoreMenuItem[] = [
     ...(!added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
     ...(draft.status === 'Draft' && !draft.approved ? [{ label: 'Submit for approval', icon: 'upload', onSelect: () => submit(null, false) }] : []),
-    ...(draft.status === 'Not Confirmed' ? [{ label: 'Approve', icon: 'verified', onSelect: () => submit(null, false, { approved: true }) }, { label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => setRejecting(true) }] : []),
+    ...(draft.status === 'Not Confirmed' ? [{ label: 'Approve', icon: 'verified', onSelect: () => submit(null, false, { approved: true }) }, { label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => reject.start() }] : []),
     ...(draft.status === 'Posted'
       ? [
           { label: 'Cancel — date it today', icon: 'cancel', onSelect: () => cancel('current') },
@@ -312,7 +309,7 @@ function IncomingForm() {
         {page === 'details' ? (
           <Panel.Body className="flex flex-col gap-2">
             <ProblemsAlert problems={problems} tabLabel={(t) => TAB_LABEL[t as TabId]} />
-            {rejecting ? (<Alert intent="danger" variant="outline" title="Reject incoming payment"><div className="flex flex-col gap-2"><TextField aria-label="Rejection reason" value={rejectionReason} onChange={(e) => setRejectionReason(e.currentTarget.value)} placeholder="Explain why…" /><div className="flex gap-2"><Button type="button" intent="danger" variant="solid" size="small" onClick={rejectIt}>Confirm reject</Button><Button type="button" intent="white" variant="solid" size="small" onClick={() => { setRejecting(false); setRejectionReason(''); }}>Cancel</Button></div></div></Alert>) : null}
+            {reject.alert('Reject incoming payment', rejectIt)}
             {added ? (
               <Alert intent="default" variant="outline" title={draft.status === 'Cancelled' ? 'This payment is cancelled' : draft.status === 'Not Confirmed' ? 'This payment is waiting for approval' : 'This payment is posted'}>
                 {draft.status === 'Cancelled'
@@ -375,7 +372,7 @@ function IncomingAccountCard({ currency, currencies, update, error, readOnly }: 
     <fieldset disabled={readOnly} className="contents">
       <Section icon="account_balance" title="Account payment">
         <FormField label="Doc. currency" error={error}>
-          {(p) => <Select {...p} disabled={readOnly} options={currencies.map((c) => ({ value: c.code, label: `${c.code} — ${c.name}` }))} value={currency} onValueChange={(c) => c && update({ currency: c })} />}
+          {(p) => <Select {...p} disabled={readOnly} options={activeOptions(currencies, (c) => c.code, (c) => `${c.code} — ${c.name}`, currency)} value={currency} onValueChange={(c) => c && update({ currency: c })} />}
         </FormField>
       </Section>
     </fieldset>

@@ -1,22 +1,39 @@
 import { Button, FormField, Select, Text, TextField } from '@jasperlepardo/sikat-design-system';
-import { Fields, Flags, ReadOnly, Section, bind } from '../../../../components/form/fields';
-import { PAYMENT_METHODS } from '../../../../mocks/masters';
-import { formatDate } from '../../../../services/dates';
-import { termDays } from '../../../../services/purchaseOrders';
-import { soDueDate } from '../../../../services/salesOrders';
-import { paymentTermDef, projectDef } from '../../../settings/masterDefs';
-import { CustomerDetailsPanel } from '../../shared/CustomerDetailsPanel';
-import type { ArSectionProps } from './types';
+import type { ComponentProps } from 'react';
+import { Fields, Flags, ReadOnly, Section, bind, type Errors } from '../../../components/form/fields';
+import { PAYMENT_METHODS } from '../../../mocks/masters';
+import { formatDate } from '../../../services/dates';
+import { termDays } from '../../../services/purchaseOrders';
+import { soDueDate } from '../../../services/salesOrders';
+import { paymentTermDef, projectDef } from '../../settings/masterDefs';
+import type { ArDraft } from '../invoices/detail/types';
+import type { DnContext, DnMasters } from '../deliveries/detail/types';
+import { CustomerDetailsPanel } from './CustomerDetailsPanel';
 
-interface ArCustomerDetailsPanelProps extends ArSectionProps {
+/** The draft fields this panel edits: what A/R invoices and reserve invoices both have. */
+type InvoiceDetails = ComponentProps<typeof CustomerDetailsPanel>['draft'] &
+  Pick<ArDraft, 'paymentTermId' | 'postingDate' | 'dueMonths' | 'dueDays' | 'dueDate' | 'paymentMethod' | 'cashDiscountDays' | 'installments' | 'paymentBlock' | 'maxCashDiscount' | 'journalRemark' | 'controlAccount' | 'projectId' | 'federalTaxId'>;
+
+interface InvoiceCustomerDetailsPanelProps<D extends InvoiceDetails> {
+  draft: D;
+  update: (patch: Partial<D>) => void;
+  errors: Errors;
+  m: DnMasters;
+  ctx: DnContext;
   open: boolean;
   onClose: () => void;
+  /** "invoice", "reserve invoice". */
+  noun: string;
+  /** What the journal remark defaults to, e.g. "A/R Invoices – customer code". */
+  remarkDefault: string;
 }
 
-/** The shared customer panel, plus how the invoice is paid and where it posts. */
-export function ArCustomerDetailsPanel({ draft, update, errors, ctx, m, open, onClose }: ArCustomerDetailsPanelProps) {
+/** The shared customer panel, plus how an A/R or reserve invoice is paid and where it posts. */
+export function InvoiceCustomerDetailsPanel<D extends InvoiceDetails>({ draft: doc, update: patch, errors, ctx, m, open, onClose, noun, remarkDefault }: InvoiceCustomerDetailsPanelProps<D>) {
   if (!open || !ctx.customer) return null;
 
+  const draft: InvoiceDetails = doc;
+  const update = patch as (patch: Partial<InvoiceDetails>) => void;
   const h = bind(draft, update);
   const days = termDays(draft.paymentTermId);
   const computedDue = soDueDate(draft.postingDate, days, draft.dueMonths, draft.dueDays);
@@ -32,7 +49,7 @@ export function ArCustomerDetailsPanel({ draft, update, errors, ctx, m, open, on
       draft={draft}
       update={update}
       readOnly={ctx.readOnly}
-      noun="invoice"
+      noun={noun}
       open={open}
       onClose={onClose}
       orderNumberHint="Set by Copy from."
@@ -67,11 +84,11 @@ export function ArCustomerDetailsPanel({ draft, update, errors, ctx, m, open, on
           {h.check('paymentBlock', 'Payment block')}
           {h.check('maxCashDiscount', 'Max. cash discount')}
         </Flags>
-        <Text variant="small" tone="muted">Payment block keeps the invoice out of collection and payment runs.</Text>
+        <Text variant="small" tone="muted">Payment block keeps the {noun} out of collection and payment runs.</Text>
       </Section>
       <Section icon="account_balance" title="Accounting">
         <Fields cols={1}>
-          {h.text('journalRemark', 'Journal remark', { hint: 'Defaults to “A/R Invoices – customer code”.' })}
+          {h.text('journalRemark', 'Journal remark', { hint: `Defaults to “${remarkDefault}”.` })}
           <FormField label="Control account" error={errors.controlAccount} tooltip="The customer's receivable account, from the customer record.">
             {(p) => (
               <Select

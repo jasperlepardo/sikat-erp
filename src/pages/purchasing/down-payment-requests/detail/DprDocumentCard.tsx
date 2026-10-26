@@ -4,7 +4,8 @@ import { StatusField } from '../../../../components/form/StatusField';
 import { DPR_SERIES, DPR_STATUSES, type DprStatus } from '../../../../mocks/apDownPayments';
 import { formatDate } from '../../../../services/dates';
 import { dprNumber } from '../../../../services/apDownPayments';
-import { DPR_STATUS_INTENT, type DprSectionProps } from './types';
+import { type DprSectionProps } from './types';
+import { DPR_STATUS_INTENT } from '../../paths';
 
 interface DprDocumentCardProps extends DprSectionProps {
   statusMoves: Partial<Record<DprStatus, () => void>>;

@@ -11,7 +11,7 @@ export function RiShipmentCard({ draft, update, ctx, m }: RiSectionProps) {
     <fieldset disabled={ctx.readOnly} className="contents">
       <Section icon="route" title="Shipment & collection">
         <FieldStack>
-          {h.lookup('shippingType', 'Shipping type', [{ value: '', label: '— None —' }, ...activeOptions(m.inv.shipping, (s) => s.id, (s) => s.name, draft.shippingType)])}
+          {h.lookup('shippingType', 'Shipping type', activeOptions(m.inv.shipping, (s) => s.id, (s) => s.name, draft.shippingType), { clearable: true })}
           {SALES_SETTINGS.multiLanguageSupport ? h.pick('language', 'Language', LANGUAGES) : null}
           {h.text('trackingNo', 'Tracking no.', { hint: 'Pre-fill when the delivery date is known.' })}
         </FieldStack>

@@ -67,6 +67,8 @@ test('renaming a bin: drafts show the new code, posted documents keep the code t
     return (await listGoodsReceipts()).find((g) => g.status !== 'Draft' && g.lines.some((l) => l.binCode === 'WH-001-A-01-01'))?.id;
   });
   expect(receiptId).toBeTruthy();
+  // Receipt lines hide the Warehouse column (where the bin shows) by default: show every column.
+  await page.evaluate(() => localStorage.setItem('sikat-ui:cols:gr', '[]'));
   await open(page, `purchasing/goods-receipts/${receiptId}`);
   await expect.poll(() => screenText(page)).toContain('WH-001-A-01-01');
   await open(page, 'inventory/inventory-transfers/it-001');

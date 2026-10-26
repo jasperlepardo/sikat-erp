@@ -13,8 +13,9 @@ import { availableIn, lineFromItem, linePricing, shortages, type SoTabProps } fr
 import { listBlanketAgreements, baNumber, openQty as baOpenQty } from '../../../../services/blanketAgreements';
 import { useAsync } from '../../../../services/useAsync';
 import type { BlanketAgreement, BaLine } from '../../../../mocks/blanketAgreements';
-import { BA_LIST_PATH } from '../../agreements/BlanketAgreementList';
 import { editTaxCode } from '../../../../services/taxRecalc';
+import { BA_LIST_PATH } from '../../paths';
+import { taxCodeOptions } from '../../../../services/taxCodeOptions';
 
 const num = (v: string) => (v === '' ? 0 : Number(v));
 
@@ -58,7 +59,7 @@ export function SoLinesCard({ draft, update, errors, m, ctx, tabs, contentTab, s
         ),
         text: `${i.itemNo} ${i.name} ${i.description}`,
       }));
-  const taxOptions = m.tax.codes.filter((c) => c.direction === 'Sales' && c.active).map((c) => ({ value: c.code, label: c.name }));
+  const taxOptions = (current: string) => taxCodeOptions(m.tax.codes, 'Sales', current);
 
   const pickItem = (l: SoLine, itemId: string | null) => {
     const item = m.items.find((i) => i.id === itemId);
@@ -311,7 +312,7 @@ export function SoLinesCard({ draft, update, errors, m, ctx, tabs, contentTab, s
           <Combobox
             aria-label="Tax code"
             invalid={Boolean(err(l, 'taxCode'))}
-            options={taxOptions}
+            options={taxOptions(l.taxCode)}
             value={l.taxCode || null}
             onValueChange={(taxCode) => reprice(l, editTaxCode(taxCode ?? ''))}
           />

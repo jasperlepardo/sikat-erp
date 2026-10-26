@@ -6,6 +6,7 @@ import { soTotals } from './salesOrders';
 import type { RoundingRule } from '../mocks/currencies';
 import type { TaxCode } from '../mocks/taxes';
 import { rateAt } from '../mocks/taxes';
+import { round2 } from './num';
 
 const quotations = createCollection<Quotation>('sikat-erp:quotations', SEED_QUOTATIONS, 'qt', { audit: 'QT' });
 
@@ -19,9 +20,7 @@ export async function getQuotation(idOrNumber: string) {
 
 export type QtInput = Omit<Quotation, 'id'> & { id?: string };
 
-const round2 = (n: number) => Math.round(n * 100) / 100;
-
-export const seriesOf = (id: string) => seriesLookup(qtSeries, id, QT_SERIES);
+const seriesOf = (id: string) => seriesLookup(qtSeries, id, QT_SERIES);
 export const qtNumber = (q: Pick<Quotation, 'seriesId' | 'docNum' | 'postingDate'>) =>
   formatDocNum(seriesOf(q.seriesId), q.docNum, q.postingDate);
 
@@ -72,10 +71,6 @@ export async function closeQuotation(q: Quotation): Promise<Quotation> {
 
 export async function cancelQuotation(q: Quotation): Promise<Quotation> {
   return quotations.save({ ...q, status: 'Cancelled', closeDate: todayISO() });
-}
-
-export async function markConverted(q: Quotation, orderId: string): Promise<Quotation> {
-  return quotations.save({ ...q, convertedToOrderId: orderId, status: 'Closed', closeDate: todayISO() });
 }
 
 export async function recallQuotation(q: Quotation): Promise<Quotation> {

@@ -37,11 +37,12 @@ import {
 import type { Partner } from '../../../mocks/partners';
 import { BLANKET_AGREEMENTS, INDICATORS } from '../../../mocks/purchaseOrders';
 import type { TaxCode } from '../../../mocks/taxes';
-import { formatDate } from '../../../services/dates';
+import { addDays, formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
 import { controlAccountOf, jeTotals, lineProblems, parseJeRows, postingPeriodProblem, rowAccount } from '../../../services/journalEntries';
 import { readXlsxText } from '../../../services/xlsx';
 import { projectDef } from '../../settings/masterDefs';
+import { activeOptions } from '../../../services/inventoryMasters';
 
 /** An entry's fields, posted or not (status aside: a voucher entry has its own). */
 export type JeDraft = Omit<JournalEntry, 'id' | 'status'>;
@@ -80,11 +81,6 @@ export function jeProblems(d: JeDraft, m: JeMasters): Problem<'contents'>[] {
 /** The rows an entry posts: Automatic Tax rows included, empty rows dropped. */
 export const rowsToPost = (lines: JeLine[]) => lines.filter((l) => l.taxOf || l.account || l.partnerId || l.debit || l.credit);
 
-export const nextDayOf = (iso: string) => {
-  const d = new Date(`${iso}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + 1);
-  return d.toISOString().slice(0, 10);
-};
 
 /** Document, References and Options. `documentTop` adds fields above Number (e.g. Voucher No.). */
 export function JeHeaderSections({
@@ -121,7 +117,7 @@ export function JeHeaderSections({
           {h.date('postingDate', 'Posting date', {
             required: true,
             error: errors.postingDate,
-            hint: `The period it hits. Open: ${formatDate(nextDayOf(CLOSED_THROUGH))} – ${formatDate(FISCAL_YEAR_END)}.`,
+            hint: `The period it hits. Open: ${formatDate(addDays(CLOSED_THROUGH, 1))} – ${formatDate(FISCAL_YEAR_END)}.`,
           })}
           {h.date('dueDate', 'Due date', { required: true, error: errors.dueDate, hint: 'For rows on a business partner.' })}
           {h.date('documentDate', 'Doc. date', { required: true, error: errors.documentDate })}
@@ -138,10 +134,10 @@ export function JeHeaderSections({
           {h.text('ref1', 'Ref. 1')}
           {h.text('ref2', 'Ref. 2')}
           {h.text('ref3', 'Ref. 3')}
-          {h.choose('transCode', 'Trans. code', TRANS_CODES.map((c) => ({ value: c, label: TRANS_CODE_LABEL[c] })))}
-          {h.choose('indicator', 'Indicator', [{ value: '', label: '— None —' }, ...INDICATORS.map((v) => ({ value: v, label: v }))])}
+          {h.choose('transCode', 'Trans. code', TRANS_CODES.filter(Boolean).map((c) => ({ value: c, label: TRANS_CODE_LABEL[c] })), { clearable: true })}
+          {h.choose('indicator', 'Indicator', INDICATORS.map((v) => ({ value: v, label: v })), { clearable: true })}
           {h.master('projectId', 'Project', projectDef, { clearable: true })}
-          {h.choose('blanketAgreement', 'Blanket agreement', [{ value: '', label: '— None —' }, ...BLANKET_AGREEMENTS.map((b) => ({ value: b.no, label: `${b.no} · ${b.description}` }))])}
+          {h.choose('blanketAgreement', 'Blanket agreement', BLANKET_AGREEMENTS.map((b) => ({ value: b.no, label: `${b.no} · ${b.description}` })), { clearable: true })}
         </Fields>
       </Section>
 
@@ -301,7 +297,7 @@ export function JeRowsTable({
             cell: (l: JeLine) =>
               editable(l) ? (
                 <div className="w-48">
-                  <Combobox aria-label="Tax code" clearable options={m.codes.filter((c) => c.active).map((c) => ({ value: c.code, label: c.name }))} value={l.taxCode || null} onValueChange={(v) => patchLine(l.id, { taxCode: v ?? '' })} />
+                  <Combobox aria-label="Tax code" clearable options={activeOptions(m.codes, (c) => c.code, (c) => c.name, l.taxCode)} value={l.taxCode || null} onValueChange={(v) => patchLine(l.id, { taxCode: v ?? '' })} />
                 </div>
               ) : (
                 <Text variant="small">{l.taxOf ?? l.taxCode}</Text>

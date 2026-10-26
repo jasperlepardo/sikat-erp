@@ -22,6 +22,9 @@ export async function open(page: Page, route: string) {
   await page.waitForLoadState('networkidle');
   // "Loading…", "Loading purchase quotation…": any screen still fetching.
   await expect(page.locator('body')).not.toContainText(/Loading[^\n…]*…/, { timeout: 10_000 });
+  // A route the router doesn't know falls through to the "Coming soon" placeholder, which loads
+  // cleanly: fail here so a renamed route can't pass the sweep unseen.
+  await expect(page.getByText('Coming soon'), `/${route} has no page`).toHaveCount(0);
   let last = '';
   await expect
     .poll(async () => {

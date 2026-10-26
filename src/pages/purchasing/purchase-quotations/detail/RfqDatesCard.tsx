@@ -10,7 +10,7 @@ export function RfqDatesCard({ draft, update, m }: RfqTabProps) {
     <Section icon="event" title="Dates & references">
       <FieldStack>
         {f.date('cancellationDate', 'Cancellation date', { hint: 'After this date the RFQ is considered cancelled.' })}
-        {f.choose('indicator', 'Indicator', [{ value: '', label: '— None —' }, ...asOptions(INDICATORS)])}
+        {f.choose('indicator', 'Indicator', asOptions(INDICATORS), { clearable: true })}
         <ReadOnly
           label="Federal tax ID"
           value={m.tax.company.tin || <span className="opacity-50">Not set — Settings › Accounting & Tax › Company tax profile</span>}

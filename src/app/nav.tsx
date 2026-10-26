@@ -152,7 +152,7 @@ const APP_MODULES: SideNavItem[] = [
 ];
 
 /** Every entry, for route lookups. */
-export const NAV: SideNavSection[] = [{ id: 'apps', items: APP_MODULES }];
+const NAV: SideNavSection[] = [{ id: 'apps', items: APP_MODULES }];
 
 export const APPS: NavbarMenuItem[] = APP_MODULES.map((m) => ({ id: m.id, label: m.label }));
 

@@ -26,7 +26,7 @@ import { blankApInvoice, newApLine, type ApInvoice, type ApLine } from './apInvo
 export type MemoStatus = 'Draft' | 'Not Confirmed' | 'Open' | 'Closed' | 'Cancelled';
 export const MEMO_STATUSES: MemoStatus[] = ['Draft', 'Open', 'Closed', 'Cancelled'];
 
-export type MemoBaseType = 'APINV' | 'GRET' | '';
+type MemoBaseType = 'APINV' | 'GRET' | '';
 
 export interface MemoLine extends Omit<ApLine, 'baseType' | 'returnedQty'> {
   baseType: MemoBaseType;
@@ -63,5 +63,3 @@ export const newMemoLine = (patch: Partial<MemoLine> = {}): MemoLine => {
 export function blankCreditMemo(today: string, buyerId: string): Omit<ApCreditMemo, 'id'> {
   return { ...blankApInvoice(today, buyerId), seriesId: MEMO_SERIES[0].id, status: 'Draft', lines: [], applications: [], paymentOrderRun: false };
 }
-
-export const SEED_CREDIT_MEMOS: ApCreditMemo[] = [];

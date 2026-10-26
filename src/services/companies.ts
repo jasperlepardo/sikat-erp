@@ -2,10 +2,16 @@
 import { useEffect, useState } from 'react';
 import { SEED_COMPANIES, type Company } from '../mocks/companies';
 import type { Warehouse } from '../mocks/itemMasters';
-import { warehouses } from './inventoryMasters';
 import { createCollection } from './store';
 
 export const companies = createCollection<Company>('sikat-erp:companies:v6', SEED_COMPANIES, 'co');
+
+/**
+ * The locations collection, where the registered office's address lives. Imported on first use rather than
+ * at load: the navbar's company switcher reads this module on every first paint, and the inventory
+ * masters bring most of the seed data with them.
+ */
+const locations = () => import('./inventoryMasters').then((m) => m.warehouses);
 
 /** The company's registered office, if it's set and still exists. */
 export const registeredOfficeOf = (c: Pick<Company, 'registeredOffice'>, locations: readonly Warehouse[]) =>
@@ -20,7 +26,7 @@ export const withRegisteredAddress = (c: Company, locations: readonly Warehouse[
 const CURRENT_KEY = 'sikat-erp:current-company';
 const listeners = new Set<() => void>();
 
-export function currentCompanyId(): string {
+function currentCompanyId(): string {
   try {
     return localStorage.getItem(CURRENT_KEY) || SEED_COMPANIES[0].id;
   } catch {
@@ -39,9 +45,9 @@ export function setCurrentCompanyId(id: string) {
 
 /** The company documents are created in; falls back to the first active one. */
 export async function loadCurrentCompany(): Promise<Company> {
-  const [all, locations] = await Promise.all([companies.list(), warehouses.list()]);
+  const [all, offices] = await Promise.all([companies.list(), locations().then((w) => w.list())]);
   const id = currentCompanyId();
-  return withRegisteredAddress(all.find((c) => c.id === id) ?? all.find((c) => c.active) ?? SEED_COMPANIES[0], locations);
+  return withRegisteredAddress(all.find((c) => c.id === id) ?? all.find((c) => c.active) ?? SEED_COMPANIES[0], offices);
 }
 
 /** The current company, kept up to date when it's switched or edited. `undefined` while loading. */
@@ -54,7 +60,10 @@ export function useCurrentCompany() {
     listeners.add(load);
     const off = companies.subscribe(load);
     // The address lives on the registered office.
-    const offLocations = warehouses.subscribe(load);
+    let offLocations = () => {};
+    void locations().then((w) => {
+      if (live) offLocations = w.subscribe(load);
+    });
     return () => {
       live = false;
       listeners.delete(load);

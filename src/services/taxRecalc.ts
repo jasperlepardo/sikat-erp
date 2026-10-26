@@ -1,3 +1,4 @@
+import { birFormNo, type BirForm } from '../mocks/birForms';
 import type { TaxCode } from '../mocks/taxes';
 
 /**
@@ -39,9 +40,17 @@ export const editTaxCode = (taxCode: string) => ({ taxCode, taxOverridden: Boole
 export const lineAtc = (l: { taxCode: string; taxAtc?: string }, codes: readonly Pick<TaxCode, 'code' | 'atc'>[], added: boolean) =>
   (added ? l.taxAtc : undefined) ?? codes.find((c) => c.code === l.taxCode)?.atc ?? '';
 
+/** The BIR returns a tax code is filed on, as form numbers ("2550Q / 1600-VT"); '' for none. */
+export const returnsOf = (code: Pick<TaxCode, 'returnFormIds'> | undefined, forms: readonly BirForm[]) =>
+  (code?.returnFormIds ?? []).map((id) => forms.find((f) => f.id === id)).filter((f): f is BirForm => Boolean(f)).map(birFormNo).join(' / ');
+
 /** Stamp each line's ATC and BIR return from its tax code, so the VAT/percentage tax return keeps them. */
-export const withTaxFiling = <L extends { taxCode: string }>(lines: readonly L[], codes: readonly Pick<TaxCode, 'code' | 'atc' | 'birReturn'>[]): L[] =>
+export const withTaxFiling = <L extends { taxCode: string }>(
+  lines: readonly L[],
+  codes: readonly Pick<TaxCode, 'code' | 'atc' | 'returnFormIds'>[],
+  forms: readonly BirForm[],
+): L[] =>
   lines.map((l) => {
     const c = codes.find((x) => x.code === l.taxCode);
-    return { ...l, taxAtc: c?.atc ?? '', taxReturn: c?.birReturn ?? '' };
+    return { ...l, taxAtc: c?.atc ?? '', taxReturn: returnsOf(c, forms) };
   });

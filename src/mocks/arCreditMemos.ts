@@ -18,9 +18,8 @@ import { SEED_SALES_RETURNS } from './salesReturns';
 import { termId } from './masters';
 
 export type ArCmStatus = 'Draft' | 'Not Confirmed' | 'Open' | 'Closed' | 'Cancelled';
-export const AR_CM_STATUSES: ArCmStatus[] = ['Draft', 'Open', 'Closed', 'Cancelled'];
 
-export type ArCmBaseType = 'ARIN' | 'SRT' | '';
+type ArCmBaseType = 'ARIN' | 'SRT' | '';
 
 export interface ArCmLine extends Omit<ArLine, 'baseType' | 'shippedGoods' | 'wtaxLiable'> {
   baseType: ArCmBaseType;

@@ -7,12 +7,15 @@ import { formatDate } from '../../../../services/dates';
 import { grNumber, listGoodsReceipts } from '../../../../services/goodsReceipts';
 import { listGoodsReturns, returnNumber } from '../../../../services/goodsReturns';
 import { useAsync } from '../../../../services/useAsync';
-import { GR_LIST_PATH } from '../../goods-receipts/detail/GoodsReceiptDetail';
-import { GR_STATUS_INTENT } from '../../goods-receipts/detail/types';
-import { RETURN_LIST_PATH, RETURN_STATUS_INTENT } from '../../shared/returnsTypes';
-import { AP_LIST_PATH } from '../../vendor-invoices/detail/ApInvoiceDetail';
-import { AP_STATUS_INTENT } from '../../vendor-invoices/detail/types';
 import type { PoDraft } from './types';
+import {
+  AP_LIST_PATH,
+  AP_STATUS_INTENT,
+  GR_LIST_PATH,
+  GR_STATUS_INTENT,
+  RETURN_LIST_PATH,
+  RETURN_STATUS_INTENT,
+} from '../../paths';
 
 type Intent = 'default' | 'primary' | 'success' | 'danger' | 'warning';
 

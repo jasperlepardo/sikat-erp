@@ -10,7 +10,6 @@ import {
   PanelHeader,
   Tabs,
   Text,
-  TextField,
 } from '@jasperlepardo/sikat-design-system';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { type Errors } from '../../../../components/form/fields';
@@ -53,7 +52,7 @@ import { DocumentFlow } from '../../shared/DocumentFlow';
 import { DprLinesCard } from './DprLinesCard';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
-import { NotFound, PrevNext, neighbours } from '../../../../components/form/DetailNav';
+import { neighbours, NotFound, PrevNext, siblingKeys, useDocTab, useReject } from '../../../../components/form/DetailNav';
 import { VendorCard } from '../../shared/VendorCard';
 import { VendorDetailsPanel } from '../../shared/VendorDetailsPanel';
 import { receivingVendorAddressFields } from '../../shared/vendorAddresses';
@@ -61,10 +60,8 @@ import { DprDocumentCard } from './DprDocumentCard';
 import { DprAccountingCard } from './DprAccountingCard';
 import { ReferencesTable } from '../../shared/ReferencesTable';
 import { DprTotalsCard } from './DprTotalsCard';
-import { DPR_STATUS_INTENT, type DprDraft as Draft, type DprMasters as Masters } from './types';
-export { DPR_STATUS_INTENT };
-
-export const DPR_LIST_PATH = '/purchasing/down-payment-requests';
+import { type DprDraft as Draft, type DprMasters as Masters } from './types';
+import { DPR_LIST_PATH, DPR_STATUS_INTENT } from '../../paths';
 
 type TabId = 'contents' | 'logistics' | 'accounting';
 
@@ -75,7 +72,6 @@ const PAGES = [
 ] as const;
 type PageId = (typeof PAGES)[number]['value'];
 const ALL_CURRENCIES = 'All currencies';
-
 
 function validate(d: Draft, fx: number, m: Masters, asDraft: boolean): Problem<TabId>[] {
   const { problems, need } = problemCollector<TabId>();
@@ -118,13 +114,11 @@ function DprForm() {
   const [draft, setDraft] = useState<Draft | null | undefined>(isNew ? { ...blankDownPaymentRequest(todayISO(), CURRENT_USER_ID), approved: dprApproved } : undefined);
   const [m, setM] = useState<Masters>();
   const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
-  const setPage = (v: PageId) => navigate(`${DPR_LIST_PATH}/${id}/${v}`, { replace: true });
-  useEffect(() => { if (!tabParam) navigate(`${DPR_LIST_PATH}/${id}/details`, { replace: true, state: location.state }); }, []);
+  const setPage = useDocTab<PageId>(`${DPR_LIST_PATH}/${id}`, tabParam);
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);
-  const [rejecting, setRejecting] = useState(false);
-  const [rejectionReason, setRejectionReason] = useState('');
+  const reject = useReject();
   const [copying, setCopying] = useState(false);
   const [vendorDetailsOpen, setVendorDetailsOpen] = useState(false);
 
@@ -145,7 +139,7 @@ function DprForm() {
     if (isNew || !id) return;
     let cancelled = false;
     getDownPayment(id).then((d) => !cancelled && setDraft(d ?? null));
-    listDownPayments().then((all) => !cancelled && setSiblings([...all].sort((a, b) => b.postingDate.localeCompare(a.postingDate)).map((d) => d.docNum ? dprNumber(d) : d.id)));
+    listDownPayments().then((all) => !cancelled && setSiblings(siblingKeys(all, dprNumber)));
     return () => {
       cancelled = true;
     };
@@ -229,12 +223,12 @@ function DprForm() {
   const cancelIt = () => act(() => cancelDownPayment(saved), 'cancelled');
   const closeIt = () => act(() => closeDownPayment(saved), 'closed');
   const recallIt = () => act(() => recallDownPayment(saved), 'recalled to draft');
-  const rejectIt = async () => { await logRejection('DPR', saved.id, saved.vendorId, rejectionReason); await recallDownPayment(saved); navigate(DPR_LIST_PATH, { state: { notice: `Down payment request ${dprNumber(saved)} rejected and returned to draft.` } }); };
+  const rejectIt = async (rejectionReason: string) => { await logRejection('DPR', saved.id, saved.vendorId, rejectionReason); await recallDownPayment(saved); navigate(DPR_LIST_PATH, { state: { notice: `Down payment request ${dprNumber(saved)} rejected and returned to draft.` } }); };
   const statusMoves: Partial<Record<DprStatus, () => void>> = draft.status === 'Draft' ? (draft.approved ? { Open: () => submit(null) } : { 'Not Confirmed': () => submit(null) }) : draft.status === 'Not Confirmed' ? { Open: () => submit(null, false, { approved: true }) } : draft.status === 'Open' ? { Closed: closeIt, ...(!draft.appliedAmount ? { Cancelled: cancelIt } : {}) } : {};
 
   const menu: MoreMenuItem[] = [
     ...(!added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
-    ...(draft.status === 'Not Confirmed' ? [{ label: 'Approve', icon: 'check_circle', onSelect: () => submit(null, false, { approved: true }) }, { label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => setRejecting(true) }] : []),
+    ...(draft.status === 'Not Confirmed' ? [{ label: 'Approve', icon: 'check_circle', onSelect: () => submit(null, false, { approved: true }) }, { label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => reject.start() }] : []),
     ...(draft.status === 'Open' && balance > 0 && !draft.paymentBlock
       ? [{ label: 'Pay', icon: 'payments', onSelect: () => navigate('/purchasing/payments-made-made/new', { state: { vendorId: draft.vendorId, invoiceIds: [saved.id] } }) }]
       : []),
@@ -288,7 +282,7 @@ function DprForm() {
           ) : (
             <Panel.Body className="flex flex-col gap-2">
               <ProblemsAlert problems={problems} tabLabel={(t) => ({ contents: 'Contents', logistics: 'Logistics', accounting: 'Accounting' })[t]} />
-              {rejecting ? (<Alert intent="danger" variant="outline" title="Reject down payment request"><div className="flex flex-col gap-2"><TextField aria-label="Rejection reason" value={rejectionReason} onChange={(e) => setRejectionReason(e.currentTarget.value)} placeholder="Explain why…" /><div className="flex gap-2"><Button type="button" intent="danger" variant="solid" size="small" onClick={rejectIt}>Confirm reject</Button><Button type="button" intent="white" variant="solid" size="small" onClick={() => { setRejecting(false); setRejectionReason(''); }}>Cancel</Button></div></div></Alert>) : null}
+              {reject.alert('Reject down payment request', rejectIt)}
               {added ? (
                 <Alert intent="default" variant="outline" title={draft.status === 'Open' ? (balance > 0 ? `${code} ${formatAmount(balance)} still to pay` : `Paid — ${code} ${formatAmount(drawableAmount(saved))} left to draw`) : `This request is ${draft.status.toLowerCase()}`}>
                   {draft.status === 'Open'

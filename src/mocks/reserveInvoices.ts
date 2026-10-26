@@ -17,7 +17,7 @@ export type ArStatus = 'Draft' | 'Not Confirmed' | 'Open' | 'Closed' | 'Cancelle
 export const RI_STATUSES: ArStatus[] = ['Draft', 'Not Confirmed', 'Open', 'Closed', 'Cancelled'];
 
 /** Where a line came from. '' = entered by hand. */
-export type RiBaseType = '' | 'SO';
+type RiBaseType = '' | 'SO';
 
 export interface RiLine extends Omit<DnLine, 'baseType' | 'invoicedQty'> {
   baseType: RiBaseType;
@@ -113,14 +113,6 @@ export const RI_SERIES: DocumentSeries[] = [
     segments: [{ type: 'literal', value: 'RI' }, { type: 'year' }, { type: 'sequence', padding: 5 }],
   },
 ];
-
-/** A seeded reserve invoice number: RI-2026-00001. */
-export const seedRiNo = (r: Pick<ReserveInvoice, 'seriesId' | 'docNum' | 'postingDate'>) => {
-  const series = RI_SERIES.find((x) => x.id === r.seriesId) ?? RI_SERIES[0];
-  const literal = series.segments?.find((x) => x.type === 'literal');
-  const pad = series.segments?.find((x) => x.type === 'sequence');
-  return `${literal?.value ?? 'RI'}-${r.postingDate.slice(0, 4)}-${String(r.docNum).padStart(pad?.padding ?? 5, '0')}`;
-};
 
 export const newRiLine = (patch: Partial<RiLine> = {}): RiLine => ({
   itemId: '',

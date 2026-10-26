@@ -19,11 +19,11 @@ import { formatAmount } from '../../../services/format';
 import { taxCodes } from '../../../services/masterData';
 import { listPurchaseOrders, openQty, poNumber, poTotal } from '../../../services/purchaseOrders';
 import { useAsync } from '../../../services/useAsync';
-import { PO_LIST_PATH, STATUS_INTENT } from './detail/PurchaseOrderDetail';
 import { dateField, linesField, masterField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { currencyDef, salesEmployeeDef } from '../../settings/masterDefs';
 import { useListPage } from '../../../components/form/DataTable';
+import { PO_LIST_PATH, PO_STATUS_INTENT } from '../paths';
 
 export function PurchaseOrderList() {
   const navigate = useNavigate();
@@ -115,7 +115,7 @@ export function PurchaseOrderList() {
       sortable: true,
       cell: (po) => <TableAmount currency={po.currency}>{formatAmount(totalOf(po))}</TableAmount>,
     },
-    { key: 'status', header: 'Status', sortable: true, cell: (po) => <TableStatus intent={STATUS_INTENT[po.status]}>{po.status}</TableStatus> },
+    { key: 'status', header: 'Status', sortable: true, cell: (po) => <TableStatus intent={PO_STATUS_INTENT[po.status]}>{po.status}</TableStatus> },
   ];
 
   const { visible, pagination } = paginate(rows);

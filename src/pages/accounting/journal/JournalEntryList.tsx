@@ -24,7 +24,7 @@ import { formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
 import { jeNumber, jeTotals, listJournalEntries } from '../../../services/journalEntries';
 import { useAsync } from '../../../services/useAsync';
-import { JE_LIST_PATH, JE_STATUS_INTENT } from './JournalEntryDetail';
+import { JE_LIST_PATH, JE_STATUS_INTENT } from '../paths';
 
 const JE_VIEWS: BuiltInView[] = [
   { id: 'all', name: 'All journal entries', filter: EMPTY_FILTER },

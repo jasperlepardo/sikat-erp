@@ -11,7 +11,6 @@ import {
   PanelHeader,
   Tabs,
   Text,
-  TextField,
   type TableColumn,
 } from '@jasperlepardo/sikat-design-system';
 import { type Errors } from '../../../components/form/fields';
@@ -57,12 +56,11 @@ import { buildGrContext } from '../goods-receipts/detail/types';
 import { CopyPanel } from '../shared/CopyPanel';
 import { DocumentFlow } from '../shared/DocumentFlow';
 import { invoiceBalance } from '../payments-made/detail/types';
-import { loadRetMasters, vendorAddressOptions, MEMO_LIST_PATH, type RetMasters, memoFromInvoice, memoFromReturn } from '../shared/returnsTypes';
+import { loadRetMasters, vendorAddressOptions, type RetMasters, memoFromInvoice, memoFromReturn } from '../shared/returnsTypes';
 import { ReturnLines } from '../shared/ReturnLines';
 import { ActivityTab } from '../../../components/activity/ActivityTab';
-import { NotFound, PrevNext, neighbours } from '../../../components/form/DetailNav';
+import { neighbours, NotFound, PrevNext, siblingKeys, useDocTab, useReject } from '../../../components/form/DetailNav';
 import { useDocTitle } from '../../../services/useDocTitle';
-import { MEMO_STATUS_INTENT } from '../shared/returnsTypes';
 import { CmVendorCard } from './detail/CmVendorCard';
 import { CmDocumentCard } from './detail/CmDocumentCard';
 import { CmTotalsCard } from './detail/CmTotalsCard';
@@ -72,6 +70,8 @@ import { CmLogisticsCard } from './detail/CmLogisticsCard';
 import { CmAccountingCard } from './detail/CmAccountingCard';
 import { ReferencesTable } from '../shared/ReferencesTable';
 import { AttachmentsCard } from '../../../components/form/AttachmentsCard';
+import { MEMO_LIST_PATH, MEMO_STATUS_INTENT } from '../paths';
+import { round2 } from '../../../services/num';
 
 type Draft = Omit<ApCreditMemo, 'id'> & { id?: string };
 type TabId = 'contents' | 'logistics' | 'accounting';
@@ -84,7 +84,6 @@ const PAGES = [
 type PageId = (typeof PAGES)[number]['value'];
 
 const ALL_CURRENCIES = 'All currencies';
-const round2 = (n: number) => Math.round(n * 100) / 100;
 
 /** Invoices open to credit or return against: added, not cancelled. */
 const creditableInvoices = (m: RetMasters, vendorId: string) => m.invoices.filter((i) => i.vendorId === vendorId && (i.status === 'Open' || i.status === 'Closed'));
@@ -143,13 +142,11 @@ function CreditMemoForm() {
   const [draft, setDraft] = useState<Draft | null | undefined>(isNew ? { ...blankCreditMemo(todayISO(), CURRENT_USER_ID), approved: cmApproved } : undefined);
   const [m, setM] = useState<RetMasters>();
   const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
-  const setPage = (v: PageId) => navigate(`${MEMO_LIST_PATH}/${id}/${v}`, { replace: true });
-  useEffect(() => { if (!tabParam) navigate(`${MEMO_LIST_PATH}/${id}/details`, { replace: true, state: location.state }); }, []);
+  const setPage = useDocTab<PageId>(`${MEMO_LIST_PATH}/${id}`, tabParam);
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);
-  const [rejecting, setRejecting] = useState(false);
-  const [rejectionReason, setRejectionReason] = useState('');
+  const reject = useReject();
   const [copying, setCopying] = useState(false);
   const [applying, setApplying] = useState(false);
 
@@ -169,7 +166,7 @@ function CreditMemoForm() {
     if (isNew || !id) return;
     let cancelled = false;
     getCreditMemo(id).then((c) => !cancelled && setDraft(c ?? null));
-    listCreditMemos().then((all) => !cancelled && setSiblings([...all].sort((a, b) => b.postingDate.localeCompare(a.postingDate)).map((c) => c.docNum ? memoNumber(c) : c.id)));
+    listCreditMemos().then((all) => !cancelled && setSiblings(siblingKeys(all, memoNumber)));
     return () => {
       cancelled = true;
     };
@@ -284,12 +281,12 @@ function CreditMemoForm() {
     }
   };
   const recallIt = async () => { const m2 = await recallCreditMemo(saved); navigate(MEMO_LIST_PATH, { state: { notice: `A/P credit memo ${memoNumber(m2)} recalled to draft.` } }); };
-  const rejectIt = async () => { await logRejection('APCM', saved.id, saved.vendorId, rejectionReason); await recallCreditMemo(saved); navigate(MEMO_LIST_PATH, { state: { notice: `A/P credit memo ${memoNumber(saved)} rejected and returned to draft.` } }); };
+  const rejectIt = async (rejectionReason: string) => { await logRejection('APCM', saved.id, saved.vendorId, rejectionReason); await recallCreditMemo(saved); navigate(MEMO_LIST_PATH, { state: { notice: `A/P credit memo ${memoNumber(saved)} rejected and returned to draft.` } }); };
   const statusMoves: Partial<Record<MemoStatus, () => void>> = draft.status === 'Draft' ? (draft.approved ? { Open: () => submit(null) } : { 'Not Confirmed': () => submit(null) }) : draft.status === 'Not Confirmed' ? { Open: () => submit(null, false, { approved: true }) } : draft.status === 'Open' || draft.status === 'Closed' ? { Cancelled: cancelIt } : {};
 
   const menu: MoreMenuItem[] = [
     ...(!added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
-    ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => setRejecting(true) }] : []),
+    ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => reject.start() }] : []),
     ...(draft.status === 'Open' && openBalance > 0 && openInvoices.length ? [{ label: 'Apply credit to an invoice', icon: 'request_quote', onSelect: () => setApplying(true) }] : []),
     ...(draft.status === 'Open' || draft.status === 'Closed'
       ? [{ label: 'Cancel credit memo', icon: 'cancel', onSelect: cancelIt }]
@@ -365,17 +362,7 @@ function CreditMemoForm() {
           ) : (
             <Panel.Body className="flex flex-col gap-2">
               <ProblemsAlert problems={problems} tabLabel={(t) => ({ contents: 'Contents', logistics: 'Logistics', accounting: 'Accounting' })[t]} />
-              {rejecting ? (
-                <Alert intent="danger" variant="outline" title="Reject A/P credit memo">
-                  <div className="flex flex-col gap-2">
-                    <TextField aria-label="Rejection reason" value={rejectionReason} onChange={(e) => setRejectionReason(e.currentTarget.value)} placeholder="Explain why…" />
-                    <div className="flex gap-2">
-                      <Button type="button" intent="danger" variant="solid" size="small" onClick={rejectIt}>Confirm reject</Button>
-                      <Button type="button" intent="white" variant="solid" size="small" onClick={() => { setRejecting(false); setRejectionReason(''); }}>Cancel</Button>
-                    </div>
-                  </div>
-                </Alert>
-              ) : null}
+              {reject.alert('Reject A/P credit memo', rejectIt)}
               {added ? (
                 <Alert intent="default" variant="outline" title={draft.status === 'Open' ? `${code} ${formatAmount(openBalance)} of credit left to apply` : `This credit memo is ${draft.status.toLowerCase()}`}>
                   {draft.status === 'Open'

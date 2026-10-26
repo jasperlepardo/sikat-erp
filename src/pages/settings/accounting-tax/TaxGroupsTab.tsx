@@ -1,8 +1,11 @@
-import { TableStatus } from '@jasperlepardo/sikat-design-system';
+import { useState } from 'react';
+import { Alert, TableStatus, Text } from '@jasperlepardo/sikat-design-system';
 import { FieldStack, bind } from '../../../components/form/fields';
 import { MasterList, type ListRoute } from '../../../components/form/MasterList';
 import { currentRate, type TaxGroup } from '../../../mocks/taxes';
-import { taxCodes, taxGroups } from '../../../services/masterData';
+import { birForms, taxCodes, taxGroups } from '../../../services/masterData';
+import { formNumbers } from './BirFormsField';
+import { blockedDeactivation, describeTaxUsage, loadTaxUsage } from '../../../services/taxUsage';
 import { useAsync } from '../../../services/useAsync';
 import { useCollectionRows } from '../../../services/useCollectionRows';
 
@@ -11,7 +14,17 @@ const blank = (): TaxGroup => ({ id: '', code: '', name: '', direction: 'Sales',
 
 export function TaxGroupsTab(route: ListRoute) {
   const { rows, save, setActive } = useCollectionRows(taxGroups);
+  const usage = useAsync(loadTaxUsage, [rows]);
+  const usedBy = (g: TaxGroup) => usage?.groups.get(g.code);
+  const [notice, setNotice] = useState<string>();
+  // Tax groups items, accounts or rules use can't be deactivated.
+  const setActiveChecked = async (picked: TaxGroup[], active: boolean) => {
+    const { allowed, notice: n } = blockedDeactivation(picked, active, usedBy, (g) => g.code);
+    await setActive(allowed, active);
+    setNotice(n);
+  };
   const codes = useAsync(taxCodes.list, []) ?? [];
+  const forms = useAsync(birForms.list, []) ?? [];
   const codeOf = (code: string) => codes.find((c) => c.code === code);
 
   return (
@@ -22,7 +35,8 @@ export function TaxGroupsTab(route: ListRoute) {
       noun="tax group"
       description="Items carry a sales and a purchase tax group: the default code for what the item is (goods, services, capital goods, exempt…). The group picks a tax code, and the code carries the ATC, G/L account and BIR return line. The partner’s or company’s tax status can override it."
       rows={rows}
-      onSetActive={setActive}
+      onSetActive={setActiveChecked}
+      intro={notice ? <Alert intent="warning" variant="outline" title="Some tax groups are in use">{notice}</Alert> : undefined}
       columns={[
         { key: 'code', header: 'Code', cell: (g) => g.code },
         { key: 'name', header: 'Name', cell: (g) => g.name },
@@ -45,7 +59,16 @@ export function TaxGroupsTab(route: ListRoute) {
           cell: (g) => {
             const c = codeOf(g.taxCode);
             if (!c) return <span className="text-muted">—</span>;
-            return [c.category, c.atc, c.birReturn].filter(Boolean).join(' · ');
+            return [c.category, c.atc, formNumbers(c.returnFormIds, forms)].filter(Boolean).join(' · ');
+          },
+        },
+        {
+          key: 'usedBy',
+          header: 'Used by',
+          sortable: false,
+          cell: (g) => {
+            const u = describeTaxUsage(usedBy(g));
+            return u ? <span className="max-w-xs whitespace-normal text-sm">{u}</span> : <span className="text-muted">—</span>;
           },
         },
         {
@@ -68,6 +91,10 @@ export function TaxGroupsTab(route: ListRoute) {
         const c = codeOf(g.taxCode);
         if (!c) e.taxCode = 'Pick a tax code.';
         else if (c.direction !== g.direction) e.taxCode = `${c.code} is a ${c.direction.toLowerCase()} code.`;
+        if (!g.active && g.id && usage) {
+          const u = describeTaxUsage(usedBy(g));
+          if (u) e.active = `Still used by ${u}.`;
+        }
         return e;
       }}
       onSave={(g) => save({ ...g, id: g.id || g.code.trim().toUpperCase(), code: g.code.trim().toUpperCase() })}
@@ -87,7 +114,8 @@ export function TaxGroupsTab(route: ListRoute) {
                   .map((c) => ({ value: c.code, label: `${c.code} · ${c.name} (${currentRate(c) ?? '—'}%)` })),
                 { required: true, error: errors.taxCode, placeholder: 'Pick a tax code',  },
               )}
-              {f.status('active', 'Status')}
+              {f.status('active', 'Status', { error: errors.active })}
+              {isNew ? null : <Text variant="small" tone="muted">Used by: {describeTaxUsage(usedBy(g)) || 'not used yet.'}</Text>}
             </FieldStack>
             {f.check('zeroRated', 'Zero-rated — suppliers may zero-rate it only for a registered export enterprise')}
           </>

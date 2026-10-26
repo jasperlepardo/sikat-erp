@@ -14,9 +14,11 @@ import { lineTax, openQty, priceAfterDiscount, soNumber } from '../../../../serv
 import { priceListDef } from '../../../settings/masterDefs';
 import { warehouseOptions } from '../../../inventory/transfers/TransferLines';
 import { CopyPanel, type CopySourceType } from '../../../purchasing/shared/CopyPanel';
-import { lineFromItem, linePricing, SO_LIST_PATH } from '../../sales-orders/detail/types';
+import { lineFromItem, linePricing } from '../../sales-orders/detail/types';
 import { asSoDraft, type DnSectionProps } from './types';
 import { editTaxCode } from '../../../../services/taxRecalc';
+import { SO_LIST_PATH } from '../../paths';
+import { taxCodeOptions } from '../../../../services/taxCodeOptions';
 
 const num = (v: string) => (v === '' ? 0 : Number(v));
 
@@ -41,7 +43,7 @@ export function DnContentsCard({ draft, update, errors, m, ctx, onCopy, cardFoot
   const orderOf = (l: DnLine) => (l.baseId ? m.orders.find((o) => o.id === l.baseId) : undefined);
   const baseLineOf = (l: DnLine) => orderOf(l)?.lines.find((x) => x.id === l.baseLineId);
   const so = asSoDraft(draft);
-  const taxOptions = m.tax.codes.filter((c) => c.direction === 'Sales' && c.active).map((c) => ({ value: c.code, label: c.name }));
+  const taxOptions = (current: string) => taxCodeOptions(m.tax.codes, 'Sales', current);
 
   // Open orders of this customer (or any customer, before one is picked) with something left to ship.
   const orders = m.orders.filter((o) => o.status === 'Open' && o.docType === 'Item' && (!draft.customerId || o.customerId === draft.customerId) && o.lines.some((l) => openQty(l) > 0) && (!ctx.based || o.currency === draft.currency));
@@ -228,7 +230,7 @@ export function DnContentsCard({ draft, update, errors, m, ctx, onCopy, cardFoot
       );
       return (
         <div className="flex w-32 flex-col gap-1">
-          <Combobox aria-label="Tax code" invalid={Boolean(err(l, 'taxCode'))} options={taxOptions} value={l.taxCode || null} onValueChange={(v) => patch(l.id, editTaxCode(v ?? ''))} />
+          <Combobox aria-label="Tax code" invalid={Boolean(err(l, 'taxCode'))} options={taxOptions(l.taxCode)} value={l.taxCode || null} onValueChange={(v) => patch(l.id, editTaxCode(v ?? ''))} />
           <Text variant="small" tone="muted">Tax PHP {lc(taxOf(l))}</Text>
         </div>
       );

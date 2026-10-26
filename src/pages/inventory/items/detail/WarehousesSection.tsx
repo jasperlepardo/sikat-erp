@@ -22,10 +22,10 @@ import { useAsync } from '../../../../services/useAsync';
 import { layerHistory, type CostLayer } from '../../../../services/costLayers';
 import { formatAmount } from '../../../../services/format';
 import { grNumber, listGoodsReceipts } from '../../../../services/goodsReceipts';
-import { GR_LIST_PATH } from '../../../purchasing/goods-receipts/detail/GoodsReceiptDetail';
 import { EditPanel } from '../../../partners/detail/EditPanel';
 import { vendorOptions, type Draft } from './types';
 import { listWarehouseDocuments, type WarehouseDocument } from './warehouseDocuments';
+import { GR_LIST_PATH } from '../../../purchasing/paths';
 
 const qty = (n: number) => n.toLocaleString('en-PH');
 export const binErrorKey = (code: string) => `wh:${code}:bin`;
@@ -101,7 +101,7 @@ export function WarehousePanel({
               {(p) => (
                 <Combobox
                   {...p}
-                  options={vendorOptions(vendors).filter((o) => o.value)}
+                  options={vendorOptions(vendors)}
                   placeholder="None"
                   clearable
                   value={row.preferredVendorId || null}

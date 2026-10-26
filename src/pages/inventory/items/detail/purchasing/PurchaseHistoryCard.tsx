@@ -3,8 +3,8 @@ import { listCostLayers } from '../../../../../services/costLayers';
 import { formatAmount } from '../../../../../services/format';
 import { grNumber, listGoodsReceipts } from '../../../../../services/goodsReceipts';
 import { useAsync } from '../../../../../services/useAsync';
-import { GR_LIST_PATH } from '../../../../purchasing/goods-receipts/detail/GoodsReceiptDetail';
 import type { Draft } from '../types';
+import { GR_LIST_PATH } from '../../../../purchasing/paths';
 
 const qty = (n: number) => n.toLocaleString('en-PH');
 

@@ -1,19 +1,28 @@
 import type { PartnerRole } from '../../../mocks/partners';
 import { taxCodes } from '../../../services/masterData';
 import { listPurchaseOrders, poNumber, poTotal } from '../../../services/purchaseOrders';
-import { PO_LIST_PATH, STATUS_INTENT } from '../../purchasing/purchase-orders/detail/PurchaseOrderDetail';
 import { grNumber, grTotal, listGoodsReceipts } from '../../../services/goodsReceipts';
-import { GR_LIST_PATH, GR_STATUS_INTENT } from '../../purchasing/goods-receipts/detail/GoodsReceiptDetail';
 import { apNumber, apTotal, listApInvoices } from '../../../services/apInvoices';
-import { AP_LIST_PATH, AP_STATUS_INTENT } from '../../purchasing/vendor-invoices/detail/ApInvoiceDetail';
 import { listPayments, overallAmount, paymentNumber } from '../../../services/outgoingPayments';
-import { PAYMENT_LIST_PATH, PAYMENT_STATUS_INTENT } from '../../purchasing/payments-made/detail/PaymentDetail';
 import { listGoodsReturns, returnNumber, returnTotal } from '../../../services/goodsReturns';
 import { listCreditMemos, memoNumber, memoTotal } from '../../../services/apCreditMemos';
-import { RETURN_STATUS_INTENT } from '../../purchasing/shared/returnsTypes';
-import { MEMO_LIST_PATH, MEMO_STATUS_INTENT, RETURN_LIST_PATH } from '../../purchasing/shared/returnsTypes';
 import { dprNumber, dprTotal, listDownPayments } from '../../../services/apDownPayments';
-import { DPR_LIST_PATH, DPR_STATUS_INTENT } from '../../purchasing/down-payment-requests/detail/DprDetail';
+import {
+  AP_LIST_PATH,
+  AP_STATUS_INTENT,
+  DPR_LIST_PATH,
+  DPR_STATUS_INTENT,
+  GR_LIST_PATH,
+  GR_STATUS_INTENT,
+  MEMO_LIST_PATH,
+  MEMO_STATUS_INTENT,
+  PAYMENT_LIST_PATH,
+  PAYMENT_STATUS_INTENT,
+  PO_LIST_PATH,
+  PO_STATUS_INTENT,
+  RETURN_LIST_PATH,
+  RETURN_STATUS_INTENT,
+} from '../../purchasing/paths';
 
 export type DocType = 'PR' | 'RFQ' | 'PO' | 'DPR' | 'GRPO' | 'APINV' | 'PAY' | 'GRET' | 'APCM' | 'SQ' | 'SO';
 export type StatusIntent = 'default' | 'primary' | 'warning' | 'success' | 'danger';
@@ -69,7 +78,7 @@ export const DOC_SOURCES: Record<DocType, DocSource> = {
           date: po.postingDate,
           dueDate: po.dueDate,
           status: po.status,
-          intent: STATUS_INTENT[po.status],
+          intent: PO_STATUS_INTENT[po.status],
           open: po.status === 'Open' || po.status === 'Not Confirmed',
           currency: po.currency,
           total: poTotal(po, codes),

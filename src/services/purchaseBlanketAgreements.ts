@@ -6,7 +6,6 @@ import type { PurchaseOrder } from '../mocks/purchaseOrders';
 const agreements = createCollection<PurchaseBlanketAgreement>('sikat-erp:purchase-blanket-agreements', SEED_PURCHASE_BLANKET_AGREEMENTS, 'pba');
 
 export const listPurchaseBlanketAgreements = agreements.list;
-export const resetPurchaseBlanketAgreements = agreements.reset;
 
 export async function getPurchaseBlanketAgreement(idOrNumber: string) {
   const direct = await agreements.get(idOrNumber);
@@ -17,7 +16,7 @@ export async function getPurchaseBlanketAgreement(idOrNumber: string) {
 
 export type PbaInput = Omit<PurchaseBlanketAgreement, 'id'> & { id?: string };
 
-export const seriesOf = (id: string) => seriesLookup(pbaSeries, id, PBA_SERIES);
+const seriesOf = (id: string) => seriesLookup(pbaSeries, id, PBA_SERIES);
 export const pbaNumber = (pba: Pick<PurchaseBlanketAgreement, 'seriesId' | 'docNum' | 'startDate'>) =>
   formatDocNum(seriesOf(pba.seriesId), pba.docNum, pba.startDate);
 
@@ -41,6 +40,7 @@ export async function savePurchaseBlanketAgreement(input: PbaInput, options: { a
 /**
  * After any PO save, recompute committed and cumulative figures on all PBA lines
  * that any PO line references.
+ * @public
  */
 export async function recalculatePBACommitments(pbaIds: string[]): Promise<void> {
   if (!pbaIds.length) return;
@@ -85,10 +85,10 @@ export async function recalculatePBACommitments(pbaIds: string[]): Promise<void>
 export const openQty = (l: PbaLine) =>
   l.rowStatus === 'Closed' ? 0 : Math.max(0, l.plannedQty - l.cumulativeQty);
 
-export const openAmountLC = (l: PbaLine) =>
+const openAmountLC = (l: PbaLine) =>
   openQty(l) * l.unitPrice;
 
-export const lineTotal = (l: PbaLine) => l.plannedQty * l.unitPrice;
+const lineTotal = (l: PbaLine) => l.plannedQty * l.unitPrice;
 
 export function pbaTotals(pba: Pick<PurchaseBlanketAgreement, 'lines'>) {
   const plannedTotal = pba.lines.reduce((n, l) => n + lineTotal(l), 0);

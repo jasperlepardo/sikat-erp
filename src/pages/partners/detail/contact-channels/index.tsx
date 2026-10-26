@@ -20,12 +20,12 @@ const CHANNEL_ICON: Record<ContactChannelType, string> = {
   Other: 'contact_phone',
 };
 
-export const CHANNEL_INPUT_TYPE: Record<ContactChannelType, string> = {
+const CHANNEL_INPUT_TYPE: Record<ContactChannelType, string> = {
   Phone: 'tel', Mobile: 'tel', WhatsApp: 'tel', Viber: 'tel',
   Email: 'email', Fax: 'tel', Website: 'url', Other: 'text',
 };
 
-export const CHANNEL_PLACEHOLDER: Record<ContactChannelType, string> = {
+const CHANNEL_PLACEHOLDER: Record<ContactChannelType, string> = {
   Phone: '+63 2 8000 0000', Mobile: '+63 917 000 0000', WhatsApp: '+63 917 000 0000',
   Viber: '+63 917 000 0000', Email: 'name@company.ph', Fax: '+63 2 8000 0000',
   Website: 'https://', Other: '',

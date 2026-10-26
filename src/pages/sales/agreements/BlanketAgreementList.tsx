@@ -15,22 +15,13 @@ import {
 import { dateField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { useListPage } from '../../../components/form/DataTable';
-import { BA_STATUSES, type BlanketAgreement, type BaStatus } from '../../../mocks/blanketAgreements';
+import { BA_STATUSES, type BlanketAgreement } from '../../../mocks/blanketAgreements';
 import { formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
 import { listBlanketAgreements, baNumber, baTotals } from '../../../services/blanketAgreements';
 import { useAsync } from '../../../services/useAsync';
 import { useDocTitle } from '../../../services/useDocTitle';
-
-export const BA_LIST_PATH = '/sales/agreements';
-
-export const BA_STATUS_INTENT: Record<BaStatus, 'default' | 'primary' | 'success' | 'danger' | 'warning'> = {
-  Draft: 'default',
-  Approved: 'primary',
-  'On Hold': 'warning',
-  Terminated: 'danger',
-  Closed: 'success',
-};
+import { BA_LIST_PATH, BA_STATUS_INTENT } from '../paths';
 
 export function BlanketAgreementList() {
   const navigate = useNavigate();

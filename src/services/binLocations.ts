@@ -82,7 +82,7 @@ export interface Range {
 }
 
 /** The codes of a tier within a From–To range (blank ends are open). */
-export function inRange(codes: string[], { from, to }: Range) {
+function inRange(codes: string[], { from, to }: Range) {
   const cmp = (a: string, b: string) => a.localeCompare(b, undefined, { numeric: true });
   return codes.filter((c) => (!from || cmp(c, from) >= 0) && (!to || cmp(c, to) <= 0));
 }

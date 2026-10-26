@@ -4,8 +4,9 @@ import {
   Icon,
   Select,
   Table,
-  Text,
   type TableColumn,
+  Text,
+  TextField,
 } from '@jasperlepardo/sikat-design-system';
 import { MasterLookup } from '../../../../components/form/MasterLookup';
 import { Fields, Section, bind } from '../../../../components/form/fields';
@@ -80,12 +81,11 @@ export function LcCostsCard({ draft, update, errors, readOnly }: LcSectionProps)
       key: 'amount',
       header: 'Amount',
       cell: (e) => (
-        <input
+        <TextField
           type="number"
           aria-label="Amount"
-          className="w-28 rounded border px-2 py-1 text-sm tabular-nums"
-          style={{ borderColor: 'var(--color-border-default)' }}
-          value={e.amount}
+          className="w-28 tabular-nums"
+          value={String(e.amount)}
           min={0}
           step="0.01"
           disabled={readOnly}

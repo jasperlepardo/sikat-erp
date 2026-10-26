@@ -10,7 +10,6 @@ import {
   PanelHeader,
   Tabs,
   Text,
-  TextField,
 } from '@jasperlepardo/sikat-design-system';
 import { AttachmentsCard } from '../../../components/form/AttachmentsCard';
 import { type Errors } from '../../../components/form/fields';
@@ -47,11 +46,11 @@ import { dueDateFor, getPurchasingSettings } from '../../../services/purchaseOrd
 import { buildGrContext } from '../goods-receipts/detail/types';
 import { CopyPanel } from '../shared/CopyPanel';
 import { DocumentFlow } from '../shared/DocumentFlow';
-import { loadRetMasters, vendorAddressOptions, RETURN_STATUS_INTENT, returnFromInvoice, returnFromReceipt, MEMO_LIST_PATH, RETURN_LIST_PATH, type RetMasters, type RetContext } from '../shared/returnsTypes';
+import { loadRetMasters, vendorAddressOptions, returnFromInvoice, returnFromReceipt, type RetMasters, type RetContext } from '../shared/returnsTypes';
 import { PurchDoc } from '../shared/PurchDoc';
 import { returnDoc } from './detail/returnDoc';
 import { ActivityTab } from '../../../components/activity/ActivityTab';
-import { NotFound, PrevNext, neighbours } from '../../../components/form/DetailNav';
+import { neighbours, NotFound, PrevNext, siblingKeys, useDocTab, useReject } from '../../../components/form/DetailNav';
 import { useDocTitle } from '../../../services/useDocTitle';
 import { VendorCard } from '../shared/VendorCard';
 import { VendorDetailsPanel } from '../shared/VendorDetailsPanel';
@@ -61,6 +60,7 @@ import { GrJournalCard } from './detail/GrJournalCard';
 import { GrLogisticsCard } from './detail/GrLogisticsCard';
 import { GrAccountingCard } from './detail/GrAccountingCard';
 import { ReferencesTable } from '../shared/ReferencesTable';
+import { MEMO_LIST_PATH, RETURN_LIST_PATH, RETURN_STATUS_INTENT } from '../paths';
 
 type Draft = Omit<GoodsReturn, 'id'> & { id?: string };
 type TabId = 'contents' | 'logistics' | 'accounting';
@@ -106,7 +106,7 @@ function validate(d: Draft, ctx: RetContext, m: RetMasters, asDraft: boolean): P
   }
   for (const [baseLineId, qty] of byBase) {
     const l = d.lines.find((x) => x.baseLineId === baseLineId)!;
-    let open = 0;
+    let open: number;
     if (l.baseType === 'GRPO') {
       const gr = m.receipts.find((r) => r.id === l.baseId);
       const gl = gr?.lines.find((x) => x.id === baseLineId);
@@ -137,13 +137,11 @@ function GoodsReturnForm() {
   const [draft, setDraft] = useState<Draft | null | undefined>(isNew ? { ...blankGoodsReturn(todayISO(), CURRENT_USER_ID), approved: rtnApproved } : undefined);
   const [m, setM] = useState<RetMasters>();
   const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
-  const setPage = (v: PageId) => navigate(`${RETURN_LIST_PATH}/${id}/${v}`, { replace: true });
-  useEffect(() => { if (!tabParam) navigate(`${RETURN_LIST_PATH}/${id}/details`, { replace: true, state: location.state }); }, []);
+  const setPage = useDocTab<PageId>(`${RETURN_LIST_PATH}/${id}`, tabParam);
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);
-  const [rejecting, setRejecting] = useState(false);
-  const [rejectionReason, setRejectionReason] = useState('');
+  const reject = useReject();
   const [copying, setCopying] = useState(false);
   const [vendorDetailsOpen, setVendorDetailsOpen] = useState(false);
 
@@ -163,7 +161,7 @@ function GoodsReturnForm() {
     if (isNew || !id) return;
     let cancelled = false;
     getGoodsReturn(id).then((r) => !cancelled && setDraft(r ?? null));
-    listGoodsReturns().then((all) => !cancelled && setSiblings([...all].sort((a, b) => b.postingDate.localeCompare(a.postingDate)).map((r) => r.docNum ? returnNumber(r) : r.id)));
+    listGoodsReturns().then((all) => !cancelled && setSiblings(siblingKeys(all, returnNumber)));
     return () => {
       cancelled = true;
     };
@@ -261,7 +259,7 @@ function GoodsReturnForm() {
     }
   };
   const recallIt = async () => { const r = await recallGoodsReturn(saved); navigate(RETURN_LIST_PATH, { state: { notice: `Goods return ${returnNumber(r)} recalled to draft.` } }); };
-  const rejectIt = async () => {
+  const rejectIt = async (rejectionReason: string) => {
     await logRejection('GRET', saved.id, saved.vendorId, rejectionReason);
     await recallGoodsReturn(saved);
     navigate(RETURN_LIST_PATH, { state: { notice: `Goods return ${returnNumber(saved)} rejected and returned to draft.` } });
@@ -270,7 +268,7 @@ function GoodsReturnForm() {
 
   const menu: MoreMenuItem[] = [
     ...(!added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
-    ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => setRejecting(true) }] : []),
+    ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => reject.start() }] : []),
     ...(creditable ? [{ label: 'Copy to A/P credit memo', icon: 'receipt', onSelect: () => navigate(`${MEMO_LIST_PATH}/new`, { state: { fromReturn: saved.id } }) }] : []),
     ...(draft.status === 'Open' || draft.status === 'Closed'
       ? [{ label: 'Cancel goods return', icon: 'cancel', onSelect: cancelIt }]
@@ -324,17 +322,7 @@ function GoodsReturnForm() {
           ) : (
             <Panel.Body className="flex flex-col gap-2">
               <ProblemsAlert problems={problems} tabLabel={(t) => ({ contents: 'Contents', logistics: 'Logistics', accounting: 'Accounting' })[t]} />
-              {rejecting ? (
-                <Alert intent="danger" variant="outline" title="Reject goods return">
-                  <div className="flex flex-col gap-2">
-                    <TextField aria-label="Rejection reason" value={rejectionReason} onChange={(e) => setRejectionReason(e.currentTarget.value)} placeholder="Explain why…" />
-                    <div className="flex gap-2">
-                      <Button type="button" intent="danger" variant="solid" size="small" onClick={rejectIt}>Confirm reject</Button>
-                      <Button type="button" intent="white" variant="solid" size="small" onClick={() => { setRejecting(false); setRejectionReason(''); }}>Cancel</Button>
-                    </div>
-                  </div>
-                </Alert>
-              ) : null}
+              {reject.alert('Reject goods return', rejectIt)}
               {added ? (
                 <Alert intent="default" variant="outline" title={draft.status === 'Open' ? "Waiting for the vendor's credit" : `This goods return is ${draft.status.toLowerCase()}`}>
                   {draft.status === 'Open'

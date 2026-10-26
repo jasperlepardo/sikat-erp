@@ -14,7 +14,7 @@ import { AddItemsBar, FindBar, findRows, itemOptions, itemsPer, num, signed, uom
 export type CountingDraft = Omit<InventoryCounting, 'id'> & { id?: string };
 
 /** A count line for the item in a warehouse, with In-Whse Qty snapshotted now. */
-export function countLineFor(item: Item, warehouse: string, base: Partial<CountLine> = {}): CountLine {
+function countLineFor(item: Item, warehouse: string, base: Partial<CountLine> = {}): CountLine {
   return newCountLine({
     ...base,
     itemId: item.id,

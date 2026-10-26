@@ -10,23 +10,16 @@ import { invoiceBalance } from '../pages/purchasing/payments-made/detail/types';
 import { apNumber } from './apInvoices';
 import { arAmounts, arNumber } from './arInvoices';
 import { formatDate } from './dates';
-import { addJournalEntry, jeNumber } from './journalEntries';
+import { addJournalEntry } from './journalEntries';
 import { rateOn } from './masterData';
 import { createCollection } from './store';
 import type { TaxMasterData } from './taxDetermination';
+import { round2, round4 } from './num';
 
 const runs = createCollection<ErdRun>('sikat-erp:exchange-rate-differences', SEED_ERD_RUNS, 'erd');
 
 export const listErdRuns = runs.list;
 
-const round2 = (n: number) => Math.round(n * 100) / 100;
-const round4 = (n: number) => Math.round(n * 10000) / 10000;
-
-export const nextDay = (iso: string) => {
-  const d = new Date(`${iso}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + 1);
-  return d.toISOString().slice(0, 10);
-};
 
 export interface ErdMasters {
   arInvoices: ArInvoice[];
@@ -132,5 +125,3 @@ export async function postErdRun(date: string, reversalDate: string, rates: Reco
     remarks: remarks || label,
   });
 }
-
-export const runLabel = (r: Pick<ErdRun, 'date' | 'journalEntryNo'>) => `${formatDate(r.date)} · journal entry ${jeNumber({ number: r.journalEntryNo, postingDate: r.date })}`;

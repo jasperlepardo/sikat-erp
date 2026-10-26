@@ -56,14 +56,16 @@ import { CustomerCard } from '../../../shared/CustomerCard';
 import { SalesTotalsFooter } from '../../../shared/TotalsFooter';
 import { buildDnContext, type DnDraft, type DnMasters } from '../../../deliveries/detail/types';
 import { useDocTitle } from '../../../../../services/useDocTitle';
-import { AR_CM_LIST_PATH, ARCM_STATUS_INTENT, type ArCmMasters, type SrContext } from '../../types';
+import { type ArCmMasters, type SrContext } from '../../types';
 import { ArCmLinesCard } from './ArCmLinesCard';
 import { ArCmCustomerDetailsPanel } from './ArCmCustomerDetailsPanel';
 import { ReturnDatesCard } from '../../ReturnDatesCard';
 import { ReturnShipmentCard } from '../../ReturnShipmentCard';
 import { ReturnAssignmentCard } from '../../ReturnAssignmentCard';
 import { ActivityTab } from '../../../../../components/activity/ActivityTab';
-import { NotFound, PrevNext, neighbours } from '../../../../../components/form/DetailNav';
+import { neighbours, NotFound, PrevNext, siblingKeys, useDocTab, useReject } from '../../../../../components/form/DetailNav';
+import { ARCM_STATUS_INTENT, AR_CM_LIST_PATH } from '../../../paths';
+import { round2 } from '../../../../../services/num';
 
 type TabId = 'header';
 
@@ -75,7 +77,6 @@ const PAGES = [
 type PageId = (typeof PAGES)[number]['value'];
 
 const ALL_CURRENCIES = 'All currencies';
-const round2 = (n: number) => Math.round(n * 100) / 100;
 
 async function loadArCmMasters(): Promise<ArCmMasters> {
   const [customers, items, inv, [company], codes, groups, withholding, wGroups, curs, rates, ours, invoices, returns] = await Promise.all([
@@ -140,13 +141,11 @@ function ArCreditMemoForm() {
   const [draft, setDraft] = useState<ArCmInput | null | undefined>(isNew ? { ...blankArCreditMemo(todayISO(), CURRENT_USER_ID), approved: arcmApproved } : undefined);
   const [m, setM] = useState<ArCmMasters>();
   const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
-  const setPage = (v: PageId) => navigate(`${AR_CM_LIST_PATH}/${id}/${v}`, { replace: true });
-  useEffect(() => { if (!tabParam) navigate(`${AR_CM_LIST_PATH}/${id}/details`, { replace: true, state: location.state }); }, []);
+  const setPage = useDocTab<PageId>(`${AR_CM_LIST_PATH}/${id}`, tabParam);
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);
-  const [rejecting, setRejecting] = useState(false);
-  const [rejectionReason, setRejectionReason] = useState('');
+  const reject = useReject();
   const [applying, setApplying] = useState(false);
   const [customerDetailsOpen, setCustomerDetailsOpen] = useState(false);
 
@@ -183,7 +182,7 @@ function ArCreditMemoForm() {
     if (isNew || !id) return;
     let cancelled = false;
     getArCreditMemo(id).then((c) => !cancelled && setDraft(c ?? null));
-    listArCreditMemos().then((all) => !cancelled && setSiblings([...all].sort((a, b) => b.postingDate.localeCompare(a.postingDate)).map((c) => c.docNum ? arCmNumber(c) : c.id)));
+    listArCreditMemos().then((all) => !cancelled && setSiblings(siblingKeys(all, arCmNumber)));
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, isNew]);
@@ -309,7 +308,7 @@ function ArCreditMemoForm() {
   };
 
   const recallIt = async () => { const m2 = await recallArCreditMemo(saved); navigate(AR_CM_LIST_PATH, { state: { notice: `A/R credit memo ${arCmNumber(m2)} recalled to draft.` } }); };
-  const rejectIt = async () => { await logRejection('ARCM', saved.id, saved.customerId, rejectionReason); await recallArCreditMemo(saved); navigate(AR_CM_LIST_PATH, { state: { notice: `A/R credit memo ${arCmNumber(saved)} rejected and returned to draft.` } }); };
+  const rejectIt = async (rejectionReason: string) => { await logRejection('ARCM', saved.id, saved.customerId, rejectionReason); await recallArCreditMemo(saved); navigate(AR_CM_LIST_PATH, { state: { notice: `A/R credit memo ${arCmNumber(saved)} rejected and returned to draft.` } }); };
 
   const baseInvIds = baseArInvoiceIds(draft);
   const baseInvoiceDocs = baseInvIds.flatMap((invoiceId) => {
@@ -320,7 +319,7 @@ function ArCreditMemoForm() {
   const menu: MoreMenuItem[] = [
     ...(!added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
     ...(draft.status === 'Draft' && !draft.approved ? [{ label: 'Submit for approval', icon: 'upload', onSelect: () => submit(null, false) }] : []),
-    ...(draft.status === 'Not Confirmed' ? [{ label: 'Approve', icon: 'verified', onSelect: () => submit(null, false, { approved: true }) }, { label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => setRejecting(true) }] : []),
+    ...(draft.status === 'Not Confirmed' ? [{ label: 'Approve', icon: 'verified', onSelect: () => submit(null, false, { approved: true }) }, { label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => reject.start() }] : []),
     ...(draft.status === 'Open' && openBalance > 0 && openInvoices.length ? [{ label: 'Apply credit to an invoice', icon: 'request_quote', onSelect: () => setApplying(true) }] : []),
     ...(draft.status === 'Open' || draft.status === 'Closed' ? [{ label: 'Cancel credit memo', icon: 'cancel', onSelect: cancelIt }] : []),
     ...baseInvoiceDocs.map((inv) => ({ label: `Open A/R invoice ${inv.docNo}`, icon: 'receipt' as const, onSelect: () => navigate(`/sales/invoices/${inv.id}`) })),
@@ -381,7 +380,7 @@ function ArCreditMemoForm() {
           ) : (
             <Panel.Body className="flex flex-col gap-2">
               <ProblemsAlert problems={problems} tabLabel={() => 'Details'} />
-              {rejecting ? (<Alert intent="danger" variant="outline" title="Reject A/R credit memo"><div className="flex flex-col gap-2"><TextField aria-label="Rejection reason" value={rejectionReason} onChange={(e) => setRejectionReason(e.currentTarget.value)} placeholder="Explain why…" /><div className="flex gap-2"><Button type="button" intent="danger" variant="solid" size="small" onClick={rejectIt}>Confirm reject</Button><Button type="button" intent="white" variant="solid" size="small" onClick={() => { setRejecting(false); setRejectionReason(''); }}>Cancel</Button></div></div></Alert>) : null}
+              {reject.alert('Reject A/R credit memo', rejectIt)}
               {added ? (
                 <Alert intent="default" variant="outline" title={draft.status === 'Open' ? `${code} ${formatAmount(openBalance)} of credit left to apply` : `This credit memo is ${draft.status.toLowerCase()}`}>
                   {draft.status === 'Open'

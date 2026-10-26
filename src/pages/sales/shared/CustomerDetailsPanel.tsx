@@ -9,7 +9,7 @@ import { formatAmount } from '../../../services/format';
 import { Fields, Section, bind } from '../../../components/form/fields';
 
 /** The header fields the panel edits; sales orders and quotations both carry them. */
-export interface CustomerDetailsFields {
+interface CustomerDetailsFields {
   contactId: string;
   customerRef: string;
   shipTo: string;
@@ -175,7 +175,7 @@ export function CustomerDetailsPanel({ customer, draft, update, readOnly, noun, 
           </Section>
           <Section icon="tune" title="Order details">
             <Fields cols={1}>
-              {h.choose('indicator', 'Indicator', [{ value: '', label: '— None —' }, ...INDICATORS.map((v) => ({ value: v, label: v }))])}
+              {h.choose('indicator', 'Indicator', INDICATORS.map((v) => ({ value: v, label: v })), { clearable: true })}
               {h.text('orderNumber', 'Order number', { hint: orderNumberHint })}
             </Fields>
           </Section>

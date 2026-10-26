@@ -28,12 +28,13 @@ import type { PoReference } from './purchaseOrders';
 import { todayISO } from '../services/dates';
 import { SEED_RATES } from './currencies';
 import { SEED_PAYMENT_TERMS } from './partnerMasters';
+import { round2 } from '../services/num';
 
 export type SoStatus = 'Draft' | 'Not Confirmed' | 'Open' | 'Closed' | 'Cancelled';
 export const SO_STATUSES: SoStatus[] = ['Draft', 'Not Confirmed', 'Open', 'Closed', 'Cancelled'];
 
 export type SoDocType = 'Item' | 'Service';
-export type SoRowStatus = 'Open' | 'Closed';
+type SoRowStatus = 'Open' | 'Closed';
 
 export interface SoLine {
   id: string;
@@ -270,7 +271,6 @@ export function blankSalesOrder(ownerId: string): Omit<SalesOrder, 'id'> {
 
 const byId = (id: string) => SEED_ITEMS.find((i) => i.id === id)!;
 const partner = (id: string) => SEED_PARTNERS.find((p) => p.id === id)!;
-const round2 = (n: number) => Math.round(n * 100) / 100;
 
 /** The BSP reference rate on a date (the latest on or before it), PHP per unit — for seeded foreign-currency documents. */
 export function seedRateOn(currency: string, date: string) {
@@ -327,7 +327,7 @@ const header = (id: string, docNum: number, customerId: string, patch: Partial<S
 
 const idOf = (itemNo: string) => SEED_ITEMS.find((i) => i.itemNo === itemNo)!.id;
 
-export const CORPORATE_SO_START = 9;
+const CORPORATE_SO_START = 9;
 const CORPORATE_ORDERS: SalesOrder[] = [
   header('so-c01', CORPORATE_SO_START, 'bp-004', {
     postingDate: '2026-08-06', documentDate: '2026-08-06', deliveryDate: '2026-08-14', status: 'Closed', closeDate: '2026-08-14',
@@ -390,7 +390,6 @@ const BUNDLE_ORDERS: SalesOrder[] = [
     ],
   }),
 ];
-
 
 /** The hand-written orders, July onwards; January–June is added below. */
 const HAND_ORDERS: SalesOrder[] = [

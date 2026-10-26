@@ -3,14 +3,15 @@ import { useState } from 'react';
 import {
   Button,
   Card,
+  Checkbox,
   Icon,
   Panel,
   PanelHeader,
   SidePanel,
   Table,
+  type TableColumn,
   TableContent,
   Text,
-  type TableColumn,
 } from '@jasperlepardo/sikat-design-system';
 import { formatAmount } from '../../../../services/format';
 import { grNumber } from '../../../../services/goodsReceipts';
@@ -143,22 +144,17 @@ function CopyFromGrpoPanel({
               ) : (
                 <div className="flex flex-col gap-0 rounded border overflow-hidden" style={{ borderColor: 'var(--color-border-subtle)' }}>
                   {availableLines.map((l) => (
-                    <label
+                    <Checkbox
                       key={l.id}
-                      className="flex items-start gap-2 px-3 py-2 cursor-pointer hover:bg-(--color-bg-subtle) transition-colors border-b last:border-b-0"
-                      style={{ borderColor: 'var(--color-border-subtle)' }}
+                      className="flex items-start gap-2 px-3 py-2 hover:bg-(--color-bg-subtle) transition-colors border-b border-(--color-border-subtle) last:border-b-0"
+                      checked={picks.has(l.id)}
+                      onChange={() => toggle(l.id)}
                     >
-                      <input
-                        type="checkbox"
-                        className="mt-0.5 shrink-0"
-                        checked={picks.has(l.id)}
-                        onChange={() => toggle(l.id)}
-                      />
                       <div className="flex flex-col">
                         <span className="text-sm font-medium">{l.itemNo}</span>
                         <span className="text-xs text-(--color-text-muted)">{l.description || l.name} · {l.quantity} {l.uomCode} · {l.warehouse}</span>
                       </div>
-                    </label>
+                    </Checkbox>
                   ))}
                 </div>
               )}

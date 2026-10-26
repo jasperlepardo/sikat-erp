@@ -4,7 +4,7 @@ import { PLANNING_METHODS, PROCUREMENT_METHODS } from '../../../../../mocks/item
 import type { TabProps } from '../types';
 
 /** What MRP would suggest for a raw need, applying this item's order rules. */
-export function mrpSuggestion(need: number, d: TabProps['draft']) {
+function mrpSuggestion(need: number, d: TabProps['draft']) {
   let q = Math.max(need, d.mrpMinOrderQty || 0);
   if (d.orderMultiple > 0) q = Math.ceil(q / d.orderMultiple) * d.orderMultiple;
   const orders = d.maxOrderQty > 0 ? Math.ceil(q / d.maxOrderQty) : 1;

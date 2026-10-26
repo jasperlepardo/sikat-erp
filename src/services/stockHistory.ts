@@ -30,20 +30,18 @@ import { SEED_SALES_RETURNS } from '../mocks/salesReturns';
 import type { CostConsumption, CostLayer } from './costLayers';
 import { purchasingHistory } from './purchasingHistory';
 import { lineNet } from './purchaseOrders';
+import { round2, round4 } from './num';
 
 /**
  * Pasig, the central warehouse, balances: everything else is bought for it or sent from it, so its
  * stock follows from the documents. It opens with the least stock that never runs out (none for
  * items released during the year), and its In stock today is what the documents leave.
  */
-export const CENTRAL_WAREHOUSE = 'WH-001';
+const CENTRAL_WAREHOUSE = 'WH-001';
 
 /** The books open on 1 Jan 2026; opening stock is dated the day before. */
 export const BOOKS_OPEN = '2026-01-01';
-export const OPENING_DATE = '2025-12-31';
-
-const round2 = (n: number) => Math.round(n * 100) / 100;
-const round4 = (n: number) => Math.round(n * 10000) / 10000;
+const OPENING_DATE = '2025-12-31';
 const posted = (status: string) => status !== 'Draft' && status !== 'Cancelled';
 const invQty = (l: { quantity: number; itemsPerUnit?: number }) => round4(l.quantity * (l.itemsPerUnit || 1));
 
@@ -139,7 +137,10 @@ function build(): StockHistory {
   for (const e of evs) {
     if (e.kind === 'in' || e.kind === 'back') bump(key(e.itemId, e.warehouse), e.qty);
     if (e.kind === 'out') bump(key(e.itemId, e.warehouse), -e.qty);
-    if (e.kind === 'move') (bump(key(e.itemId, e.from), -e.qty), bump(key(e.itemId, e.to), e.qty));
+    if (e.kind === 'move') {
+      bump(key(e.itemId, e.from), -e.qty);
+      bump(key(e.itemId, e.to), e.qty);
+    }
   }
   // Pasig's opening: the least stock that keeps it from running out, walking the documents from zero.
   const centralLow = new Map<string, number>();
@@ -154,7 +155,10 @@ function build(): StockHistory {
     for (const e of evs) {
       if (e.kind === 'in' || e.kind === 'back') step(e.itemId, e.warehouse, e.qty);
       if (e.kind === 'out') step(e.itemId, e.warehouse, -e.qty);
-      if (e.kind === 'move') (step(e.itemId, e.from, -e.qty), step(e.itemId, e.to, e.qty));
+      if (e.kind === 'move') {
+        step(e.itemId, e.from, -e.qty);
+        step(e.itemId, e.to, e.qty);
+      }
     }
   }
   const centralOpening = (itemId: string) => -(centralLow.get(itemId) ?? 0);
@@ -164,7 +168,9 @@ function build(): StockHistory {
   const movedIn = new Map<string, string[]>();
   for (const k of net.keys()) {
     const at = k.indexOf('@');
-    movedIn.set(k.slice(0, at), [...(movedIn.get(k.slice(0, at)) ?? []), k.slice(at + 1)]);
+    const list = movedIn.get(k.slice(0, at));
+    if (list) list.push(k.slice(at + 1));
+    else movedIn.set(k.slice(0, at), [k.slice(at + 1)]);
   }
   for (const item of items.values()) {
     if (!item.inventoryItem) continue;
@@ -199,12 +205,21 @@ function build(): StockHistory {
     const layer = { ...l, id: `cl-seed-${layers.length + 1}` };
     layers.push(layer);
     const k = key(l.itemId, l.warehouse);
-    byStock.set(k, [...(byStock.get(k) ?? []), layer]);
-    byItem.set(l.itemId, [...(byItem.get(l.itemId) ?? []), layer]);
+    const atStock = byStock.get(k);
+    if (atStock) atStock.push(layer);
+    else byStock.set(k, [layer]);
+    const ofItem = byItem.get(l.itemId);
+    if (ofItem) ofItem.push(layer);
+    else byItem.set(l.itemId, [layer]);
   };
   for (const o of opening) if (isFifo(o.itemId)) addLayer({ itemId: o.itemId, warehouse: o.warehouse, receivedOn: OPENING_DATE, qty: o.qty, receivedQty: o.qty, unitCost: o.unitCost, sourceId: 'opening', receiptId: 'opening' });
+  // Oldest receipt first, then the order added (a seeded layer's id is cl-seed-<n>). Compared directly:
+  // a locale-aware compare here, once per take over a year of documents, was most of the build.
+  const added = (l: CostLayer) => Number(l.id.slice('cl-seed-'.length));
   const oldestFirst = (itemId: string, warehouse: string) =>
-    (byStock.get(key(itemId, warehouse)) ?? []).filter((l) => l.qty > 0).sort((a, b) => a.receivedOn.localeCompare(b.receivedOn) || a.id.localeCompare(b.id, undefined, { numeric: true }));
+    (byStock.get(key(itemId, warehouse)) ?? [])
+      .filter((l) => l.qty > 0)
+      .sort((a, b) => (a.receivedOn < b.receivedOn ? -1 : a.receivedOn > b.receivedOn ? 1 : added(a) - added(b)));
   /** Take `qty` oldest-first (from one receipt's batch first, if given); returns what each layer gave. */
   const take = (itemId: string, warehouse: string, qty: number, receiptId?: string) => {
     const taken: { layer: CostLayer; qty: number }[] = [];

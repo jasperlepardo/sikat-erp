@@ -8,7 +8,6 @@ import {
   SALES_DISCOUNT_ACCOUNT,
   SEED_INCOMING_PAYMENTS,
   UNDERPAYMENT_ACCOUNT,
-  type IncomingMeans,
   type IncomingPayment,
   type IncomingRow,
 } from '../mocks/incomingPayments';
@@ -23,6 +22,8 @@ import { postDocumentEntry, reverseDocumentEntry } from './journalEntries';
 import { termDays } from './purchaseOrders';
 import { createCollection } from './store';
 import { seededLedger } from './ledgerHistory';
+import { round2 } from './num';
+import { meansTotal, rowDiscount, rowSettled, weightedDueDate } from './paymentMath';
 
 // Seeded payments carry the number of the entry they posted (services/ledgerHistory.ts), as added ones do.
 const payments = createCollection<IncomingPayment>(
@@ -44,8 +45,6 @@ export async function getIncomingPayment(idOrNumber: string) {
 }
 
 export type IncomingInput = Omit<IncomingPayment, 'id'> & { id?: string };
-
-const round2 = (n: number) => Math.round(n * 100) / 100;
 
 export const incomingSeriesOf = (id: string) => seriesLookup(incomingPaymentSeries, id, INCOMING_SERIES);
 export const incomingNumber = (p: Pick<IncomingPayment, 'seriesId' | 'docNum' | 'postingDate'>) => formatDocNum(incomingSeriesOf(p.seriesId), p.docNum, p.postingDate);
@@ -102,9 +101,7 @@ export const overdueDays = (r: Pick<IncomingRow, 'dueDate'>, date: string) =>
 
 // ── Amounts ──────────────────────────────────────────────────────────────────
 
-export const rowDiscount = (r: IncomingRow) => round2((r.amount * r.cashDiscountPct) / 100);
-/** What a row settles on the invoice: the payment plus the discount allowed. */
-export const rowSettled = (r: IncomingRow) => round2(r.amount + rowDiscount(r));
+export { meansTotal, rowDiscount, weightedDueDate };
 export const paidRows = (p: Pick<IncomingPayment, 'rows'>) => p.rows.filter((r) => r.selected && r.amount > 0);
 
 /** Total Amount Due: invoices being paid plus on account — or the G/L lines. */
@@ -112,8 +109,6 @@ export function amountDue(p: Pick<IncomingPayment, 'type' | 'rows' | 'onAccount'
   if (p.type === 'Account') return round2(p.accountRows.reduce((n, r) => n + r.amount, 0));
   return round2(paidRows(p).reduce((n, r) => n + r.amount, 0) + p.onAccount);
 }
-
-export const meansTotal = (m: IncomingMeans) => round2(m.transfer.amount + m.cash.amount + m.checks.reduce((n, c) => n + c.amount, 0) + m.cards.reduce((n, c) => n + c.amount, 0));
 
 /**
  * Received − due. Within the allowed difference it's posted as over/underpayment; beyond it,
@@ -135,14 +130,6 @@ export function allocateInSequence(rows: IncomingRow[], amount: number): Incomin
   });
 }
 
-/** The BP row's due date: the amount-weighted average of the transfer date and check due dates. */
-export function weightedDueDate(m: IncomingMeans, fallback: string) {
-  const dated = [...(m.transfer.amount ? [{ date: m.transfer.date, amount: m.transfer.amount }] : []), ...m.checks.filter((c) => c.amount && c.dueDate).map((c) => ({ date: c.dueDate, amount: c.amount }))];
-  const total = dated.reduce((n, d) => n + d.amount, 0);
-  if (!total) return fallback;
-  const ms = dated.reduce((n, d) => n + Date.parse(`${d.date}T00:00:00Z`) * d.amount, 0) / total;
-  return new Date(Math.round(ms / 86400000) * 86400000).toISOString().slice(0, 10);
-}
 
 // ── Accounting ───────────────────────────────────────────────────────────────
 

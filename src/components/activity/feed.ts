@@ -124,6 +124,8 @@ async function itemEntries(ids: string[]): Promise<FeedEntry[]> {
 export function systemEntries(target: FeedTarget): Promise<FeedEntry[]> {
   if (target.kind === 'BP') return partnerEntries(target.id);
   if (target.kind === 'ITEM') return itemEntries([target.id, ...(target.ids ?? [])]);
+  // An employee is in no document chain: its timeline is its audit log and activities.
+  if (target.kind === 'EMP') return Promise.resolve([]);
   return documentEntries(target.kind, target.id);
 }
 

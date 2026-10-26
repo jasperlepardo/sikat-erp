@@ -4,8 +4,8 @@ import { StatusField } from '../../../../components/form/StatusField';
 import { MEMO_SERIES, MEMO_STATUSES, type MemoStatus } from '../../../../mocks/apCreditMemos';
 import { formatDate } from '../../../../services/dates';
 import { memoNumber } from '../../../../services/apCreditMemos';
-import { MEMO_STATUS_INTENT } from '../../shared/returnsTypes';
 import type { CmSectionProps } from './types';
+import { MEMO_STATUS_INTENT } from '../../paths';
 
 interface CmDocumentCardProps extends CmSectionProps {
   statusMoves: Partial<Record<MemoStatus, () => void>>;

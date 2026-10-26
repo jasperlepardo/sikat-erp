@@ -24,10 +24,7 @@ import { accounts as accountsCollection, taxCodes as taxCodesCollection } from '
 import { listPartners } from '../../../services/partners';
 import { JeHeaderSections, JeRowsTable, jeProblems, rowsToPost, type JeMasters } from './JeEditor';
 import { NotFound, PrevNext, neighbours } from '../../../components/form/DetailNav';
-
-export const JE_LIST_PATH = '/accounting/journal-entries';
-
-export const JE_STATUS_INTENT = { Posted: 'success', Reversed: 'default' } as const;
+import { JE_LIST_PATH, JE_STATUS_INTENT } from '../paths';
 
 type TabId = 'contents' | 'attachments';
 

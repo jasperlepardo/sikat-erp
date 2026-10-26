@@ -8,7 +8,6 @@ const partners = createCollection<Partner>('sikat-erp:partners:v26', SEED_PARTNE
 
 export const listPartners = partners.list;
 export const getPartner = partners.get;
-export const resetPartners = partners.reset;
 
 export async function listPartnersByRole(role: PartnerRole): Promise<Partner[]> {
   return (await partners.list()).filter((p) => p.roles.includes(role));

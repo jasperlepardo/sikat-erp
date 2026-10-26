@@ -54,15 +54,8 @@ import { TransferLines, binFor, binOptions, warehouseOptions, type TransferDraft
 import { useDocTitle } from '../../../services/useDocTitle';
 import { useAsync } from '../../../services/useAsync';
 import { getTransferRequest, transferRequestNumber } from '../../../services/inventoryTransferRequests';
-import { TRANSFER_REQUEST_LIST_PATH } from '../transfer-requests/detail/TransferRequestDetail';
 import { NotFound, PrevNext, neighbours } from '../../../components/form/DetailNav';
-
-export const TRANSFER_LIST_PATH = '/inventory/inventory-transfers';
-
-export const TRANSFER_STATUS_INTENT: Record<TransferStatus, 'default' | 'success'> = {
-  Draft: 'default',
-  Posted: 'success',
-};
+import { TRANSFER_LIST_PATH, TRANSFER_REQUEST_LIST_PATH, TRANSFER_STATUS_INTENT } from '../paths';
 
 type TabId = 'contents';
 

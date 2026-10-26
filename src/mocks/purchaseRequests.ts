@@ -13,8 +13,7 @@ import { branchId, departmentId } from './peopleMasters';
 export type PrStatus = 'Open' | 'Closed';
 export const PR_STATUSES: PrStatus[] = ['Open', 'Closed'];
 
-export type PrItemType = 'Item' | 'Service';
-export const PR_ITEM_TYPES: PrItemType[] = ['Item', 'Service'];
+type PrItemType = 'Item' | 'Service';
 
 /** How the Contents grid is shown: line by line, or collapsed to one row per item. */
 export type PrSummaryType = 'No Summary' | 'By Item';

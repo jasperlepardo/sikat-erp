@@ -8,6 +8,7 @@ import { todayISO } from './dates';
 
 export const approvalRules = createCollection<ApprovalRule>('sikat-erp:approval-rules', SEED_APPROVAL_RULES, 'ar');
 
+/** @public — kept for tests (docs/test-plan.md) and docs. */
 export const getApprovalRule = (docType: DocType): ApprovalRule =>
   approvalRules.snapshot().find((r) => r.id === docType) ?? { id: docType, approverId: '' };
 

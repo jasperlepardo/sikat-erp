@@ -23,8 +23,7 @@ import { formatAmount } from '../../../services/format';
 import { taxCodes } from '../../../services/masterData';
 import { riNumber, riTotals, listReserveInvoices } from '../../../services/reserveInvoices';
 import { useAsync } from '../../../services/useAsync';
-import { RI_LIST_PATH } from './detail/types';
-import { RI_STATUS_INTENT } from './detail/ReserveInvoiceDetail';
+import { RI_LIST_PATH, RI_STATUS_INTENT } from '../paths';
 
 const rateOfOn = (codes: readonly TaxCode[], date: string) => (code: string) => {
   const c = codes.find((x) => x.code === code);

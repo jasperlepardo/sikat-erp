@@ -39,7 +39,7 @@ export interface Counter {
 }
 
 /** One counter's figure for a line, in the line's `uomCode` — a child row of the line (count_line_counts). */
-export interface CounterCount {
+interface CounterCount {
   counterId: string;
   qty: number;
 }

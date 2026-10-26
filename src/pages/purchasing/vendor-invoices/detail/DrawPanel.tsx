@@ -8,8 +8,7 @@ import { dprNumber, drawableAmount, paidRate } from '../../../../services/apDown
 import { formatDate } from '../../../../services/dates';
 import { formatAmount } from '../../../../services/format';
 import { EditPanel } from '../../../partners/detail/EditPanel';
-
-const round2 = (n: number) => Math.round(n * 100) / 100;
+import { round2 } from '../../../../services/num';
 
 /**
  * Total Down Payment › draw: pick the paid down payment requests this invoice settles, and how

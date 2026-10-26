@@ -27,6 +27,8 @@ import { defaultBin, lineFromItem, linePricing, linesFromPo } from '../../goods-
 import { DrawPanel } from './DrawPanel';
 import { baseHref, linesFromReceipt, toApLine, type ApSectionProps } from './types';
 import { LineItemText } from '../../../../components/form/LineItemText';
+import { taxCodeOptions } from '../../../../services/taxCodeOptions';
+import { round2 } from '../../../../services/num';
 
 const WITHHELD_LABEL: Record<string, string> = {
   'Expanded (EWT)': 'EWT',
@@ -36,7 +38,6 @@ const WITHHELD_LABEL: Record<string, string> = {
 };
 
 const num = (v: string) => (v === '' ? 0 : Number(v));
-const round2 = (n: number) => Math.round(n * 100) / 100;
 
 export function ApContentsCard({ draft, update, errors, m, ctx, onCopy }: ApSectionProps & { onCopy: (lines: ApLine[]) => void }) {
   const [editing, setEditing] = useState<Set<string>>(new Set());
@@ -75,9 +76,8 @@ export function ApContentsCard({ draft, update, errors, m, ctx, onCopy }: ApSect
         ),
         text: `${i.itemNo} ${i.description}`,
       }));
-  const taxOptions = m.tax.codes.filter((c) => c.direction === 'Purchase' && c.active).map((c) => ({ value: c.code, label: c.name }));
+  const taxOptions = (current: string) => taxCodeOptions(m.tax.codes, 'Purchase', current);
   const blanketOptions = [
-    { value: '', label: '— None —' },
     ...BLANKET_AGREEMENTS.filter((b) => b.vendorId === draft.vendorId && b.validTo >= draft.postingDate).map((b) => ({ value: b.no, label: `${b.no} · ${b.description}` })),
   ];
 
@@ -169,7 +169,7 @@ export function ApContentsCard({ draft, update, errors, m, ctx, onCopy }: ApSect
       l.itemId ? (
         <div className="flex w-44 flex-col gap-1">
           <TextField aria-label="Unit price" type="number" min={0} prefix={draft.currency} invalid={Boolean(err(l, 'unitPrice'))} value={String(l.unitPrice)} onChange={(e) => patch(l.id, { unitPrice: round2(num(e.currentTarget.value)) })} />
-          <Combobox aria-label="Tax code" invalid={Boolean(err(l, 'taxCode'))} options={taxOptions} value={l.taxCode} onValueChange={(taxCode) => patch(l.id, editTaxCode(taxCode ?? ''))} />
+          <Combobox aria-label="Tax code" invalid={Boolean(err(l, 'taxCode'))} options={taxOptions(l.taxCode)} value={l.taxCode} onValueChange={(taxCode) => patch(l.id, editTaxCode(taxCode ?? ''))} />
           {lineAtc(l, m.tax.codes, ctx.readOnly) ? <Text variant="small" tone="muted">ATC {lineAtc(l, m.tax.codes, ctx.readOnly)}</Text> : null}
           <TextField aria-label="Discount %" type="number" min={0} suffix="%" value={String(l.discountPct)} onChange={(e) => patch(l.id, { discountPct: Math.min(100, num(e.currentTarget.value)) })} />
         </div>
@@ -186,7 +186,7 @@ export function ApContentsCard({ draft, update, errors, m, ctx, onCopy }: ApSect
     col('base', 'Base document', (l) =>
       l.baseType ? <Link intent="primary" href={baseHref(l)}>{l.baseType === 'GRPO' ? 'Receipt' : 'PO'} {l.baseDocNo}</Link> : l.itemId ? <span className="text-muted">—</span> : null, { optional: true }),
     col('blanketAgreement', 'Blanket agreement', (l) =>
-      l.itemId ? <Combobox aria-label="Blanket agreement" className="w-48" options={blanketOptions} value={l.blanketAgreement} onValueChange={(blanketAgreement) => patch(l.id, { blanketAgreement: blanketAgreement ?? '' })} /> : null, { optional: true }),
+      l.itemId ? <Combobox aria-label="Blanket agreement" className="w-48" clearable placeholder="None" options={blanketOptions} value={l.blanketAgreement} onValueChange={(blanketAgreement) => patch(l.id, { blanketAgreement: blanketAgreement ?? '' })} /> : null, { optional: true }),
     textCol({ key: 'freeText', header: 'Free text', width: 'w-48', readOnly: ctx.readOnly, defaultHidden: false, get: (l: ApLine) => l.freeText, onChange: (l, v) => patch(l.id, { freeText: v }) }),
   ];
   const prefs = useColumnPrefs('ap', allColumns);
@@ -254,7 +254,7 @@ export function ApContentsCard({ draft, update, errors, m, ctx, onCopy }: ApSect
                 <Combobox
                   aria-label="Freight tax code"
                   className="w-48"
-                  options={m.tax.codes.filter((c) => c.direction === 'Purchase' && c.active).map((c) => ({ value: c.code, label: c.name }))}
+                  options={taxCodeOptions(m.tax.codes, 'Purchase', draft.freightTaxCode)}
                   value={draft.freightTaxCode}
                   onValueChange={(freightTaxCode) => update({ freightTaxCode: freightTaxCode ?? '' })}
                 />

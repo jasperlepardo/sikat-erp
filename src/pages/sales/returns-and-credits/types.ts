@@ -1,6 +1,5 @@
-import type { ArCmInput, ArCmPostError } from '../../../services/arCreditMemos';
-import type { ArCmStatus } from '../../../mocks/arCreditMemos';
-import type { SalesReturn, SrStatus } from '../../../mocks/salesReturns';
+import type { ArCmInput } from '../../../services/arCreditMemos';
+import type { SalesReturn } from '../../../mocks/salesReturns';
 import type { Errors } from '../../../components/form/fields';
 import type { ArInvoice } from '../../../mocks/arInvoices';
 import type { Account } from '../../../mocks/chartOfAccounts';
@@ -13,29 +12,12 @@ import type { InventoryMasters } from '../../../services/inventoryMasters';
 import type { TaxMasterData } from '../../../services/taxDetermination';
 import type { DnContext } from '../deliveries/detail/types';
 
-export const AC_LIST_PATH = '/sales/returns-and-credits';
-export const AR_CM_LIST_PATH = '/sales/credit-memos';
-export const SR_LIST_PATH = '/sales/sales-returns';
 
-export type ArCmDraft = ArCmInput;
+type ArCmDraft = ArCmInput;
 
-export const ARCM_STATUS_INTENT: Record<ArCmStatus, 'default' | 'primary' | 'success' | 'danger' | 'warning'> = {
-  Draft: 'default',
-  'Not Confirmed': 'warning',
-  Open: 'primary',
-  Closed: 'success',
-  Cancelled: 'danger',
-};
 
-export const SR_STATUS_INTENT: Record<SrStatus, 'default' | 'primary' | 'success' | 'danger' | 'warning'> = {
-  Draft: 'default',
-  'Not Confirmed': 'warning',
-  Open: 'primary',
-  Closed: 'success',
-  Cancelled: 'danger',
-};
 
-export type { ArCmPostError };
+;
 
 // ── Sales return form ─────────────────────────────────────────────────────────
 

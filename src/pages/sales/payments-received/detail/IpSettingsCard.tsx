@@ -28,7 +28,7 @@ export function IncomingSettingsCard({ draft, update, readOnly, onType }: Props)
         </div>
         <FieldStack>
           {h.master('projectId', 'Project', projectDef, { clearable: true })}
-          {h.choose('blanketAgreement', 'Blanket agreement', [{ value: '', label: '— None —' }, ...BLANKET_AGREEMENTS.map((b) => ({ value: b.no, label: `${b.no} · ${b.description}` }))])}
+          {h.choose('blanketAgreement', 'Blanket agreement', BLANKET_AGREEMENTS.map((b) => ({ value: b.no, label: `${b.no} · ${b.description}` })), { clearable: true })}
           {h.text('reference', 'Reference', { hint: draft.type === 'Customer' ? "The customer's reference for this payment." : undefined })}
           <ReadOnly label="Created by Payment Wizard" value="No" />
         </FieldStack>

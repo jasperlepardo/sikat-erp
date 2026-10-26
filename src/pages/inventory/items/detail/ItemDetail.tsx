@@ -69,7 +69,7 @@ import { WarehousePanel, binErrorKey } from './WarehousesSection';
 import { uomDef } from '../../../settings/masterDefs';
 import { LOCKED_HINT, asOptions, valueIdOf, variantFromParent, type Draft, type TaxMasters } from './types';
 import { ItemActivityTab } from './activity';
-import { NotFound, PrevNext, neighbours } from '../../../../components/form/DetailNav';
+import { neighbours, NotFound, PrevNext, useDocTab } from '../../../../components/form/DetailNav';
 
 const LIST_PATH = '/inventory/items';
 
@@ -197,8 +197,7 @@ function ItemForm() {
   const [codeMode, setCodeMode] = useState<'auto' | 'manual'>('auto');
   const [tab, setTab] = useState<TabId>('general');
   const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
-  const setPage = (v: PageId) => navigate(`${LIST_PATH}/${id}/${v}`, { replace: true });
-  useEffect(() => { if (!tabParam) navigate(`${LIST_PATH}/${id}/details`, { replace: true }); }, []);
+  const setPage = useDocTab<PageId>(`${LIST_PATH}/${id}`, tabParam, { keepState: false });
   // Items in the list's order, for previous/next.
   const [siblings, setSiblings] = useState<string[]>([]);
   useEffect(() => {

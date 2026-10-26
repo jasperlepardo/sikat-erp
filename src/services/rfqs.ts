@@ -5,6 +5,7 @@ import { poTotals, type PoTotals } from './purchaseOrders';
 import type { RoundingRule } from '../mocks/currencies';
 import type { TaxCode } from '../mocks/taxes';
 import { rateAt, vatNotPaidToVendor } from '../mocks/taxes';
+import { round2 } from './num';
 
 const rfqs = createCollection<Rfq>('sikat-erp:rfqs:v1', SEED_RFQS, 'rfq', { audit: 'RFQ' });
 
@@ -24,8 +25,6 @@ export const rfqNumber = (q: Pick<Rfq, 'seriesId' | 'docNum' | 'postingDate'>) =
   formatDocNum(seriesOf(q.seriesId), q.docNum, q.postingDate);
 
 // ── Line and document math ───────────────────────────────────────────────────
-
-const round2 = (n: number) => Math.round(n * 100) / 100;
 
 export const lineNet = (l: Pick<RfqLine, 'quantity' | 'unitPrice' | 'discountPct'>) =>
   round2(l.quantity * l.unitPrice * (1 - l.discountPct / 100));
@@ -73,10 +72,6 @@ export async function addRfq(input: RfqInput): Promise<Rfq> {
   return rfqs.save({ ...input, docNum, status: input.approved ? 'Open' : 'Not Confirmed' });
 }
 
-export async function saveRfq(input: RfqInput): Promise<Rfq> {
-  return rfqs.save(input as Rfq);
-}
-
 export async function closeRfq(q: Rfq): Promise<Rfq> {
   return rfqs.save({ ...q, status: 'Closed' as RfqStatus });
 }
@@ -87,8 +82,4 @@ export async function cancelRfq(q: Rfq): Promise<Rfq> {
 
 export async function recallRfq(q: Rfq): Promise<Rfq> {
   return rfqs.save({ ...q, status: 'Draft', approved: false });
-}
-
-export async function markConvertedToPo(q: Rfq, poId: string): Promise<Rfq> {
-  return rfqs.save({ ...q, convertedToPoId: poId, status: 'Closed' as RfqStatus });
 }

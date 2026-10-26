@@ -32,17 +32,10 @@ import {
 } from '../../../../services/inventoryTransferRequests';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { salesEmployeeDef } from '../../../settings/masterDefs';
-import { TRANSFER_LIST_PATH } from '../../transfers/InventoryTransferDetail';
 import { lineFromItem, warehouseOptions, type TransferDraft } from '../../transfers/TransferLines';
 import { ItrLinesCard } from './ItrLinesCard';
 import { transferredQty, type ItrDraft, type ItrMasters } from './types';
-
-export const TRANSFER_REQUEST_LIST_PATH = '/inventory/transfer-requests';
-
-export const TRANSFER_REQUEST_STATUS_INTENT: Record<TransferRequestStatus, 'primary' | 'success'> = {
-  Open: 'primary',
-  Closed: 'success',
-};
+import { TRANSFER_LIST_PATH, TRANSFER_REQUEST_LIST_PATH, TRANSFER_REQUEST_STATUS_INTENT } from '../../paths';
 
 const STATUS_HINT: Record<TransferRequestStatus, string> = {
   Open: 'Waiting to be transferred. Closes when every line has been sent.',

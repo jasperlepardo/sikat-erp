@@ -5,7 +5,6 @@ import {
   FX_LOSS_ACCOUNT,
   PAYMENT_SERIES,
   type OutgoingPayment,
-  type PaymentMeans,
   type PaymentRow,
 } from '../mocks/outgoingPayments';
 import { outgoingPaymentSeries, seriesLookup, formatDocNum } from './allSeries';
@@ -16,6 +15,8 @@ import { applyPayments } from './apInvoices';
 import { applyDownPaymentPayments } from './apDownPayments';
 import { createCollection } from './store';
 import { purchasingHistory } from './purchasingHistory';
+import { round2 } from './num';
+import { meansTotal, rowDiscount, rowSettled, weightedDueDate } from './paymentMath';
 
 const payments = createCollection<OutgoingPayment>('sikat-erp:outgoing-payments:v5', () => purchasingHistory().payments, 'op', { audit: 'PAY' });
 
@@ -26,22 +27,16 @@ export async function getPayment(idOrNumber: string) {
   const all = await payments.list();
   return all.find((p) => paymentNumber(p) === idOrNumber) ?? null;
 }
-export const resetPayments = payments.reset;
 
 export type PaymentInput = Omit<OutgoingPayment, 'id'> & { id?: string };
 
-const round2 = (n: number) => Math.round(n * 100) / 100;
-
-export const paymentSeriesOf = (id: string) => seriesLookup(outgoingPaymentSeries, id, PAYMENT_SERIES);
+const paymentSeriesOf = (id: string) => seriesLookup(outgoingPaymentSeries, id, PAYMENT_SERIES);
 /** "Primary 510004", or "Draft" before it's added. */
 export const paymentNumber = (p: Pick<OutgoingPayment, 'seriesId' | 'docNum' | 'postingDate'>) => formatDocNum(paymentSeriesOf(p.seriesId), p.docNum, p.postingDate);
 
 // ── Amounts ──────────────────────────────────────────────────────────────────
 
-/** The cash discount on a row, from its discount % of what's paid toward it. */
-export const rowDiscount = (r: PaymentRow) => round2((r.amount * r.cashDiscountPct) / 100);
-/** What a row settles on the invoice: the payment plus the discount taken. */
-export const rowSettled = (r: PaymentRow) => round2(r.amount + rowDiscount(r));
+export { meansTotal, rowDiscount, rowSettled, weightedDueDate };
 const paidRows = (p: Pick<OutgoingPayment, 'rows'>) => p.rows.filter((r) => r.selected && r.amount > 0);
 
 /** Overall Amount: invoices paid (net of discounts), plus on account — or the G/L lines. */
@@ -50,10 +45,6 @@ export function overallAmount(p: Pick<OutgoingPayment, 'type' | 'rows' | 'onAcco
   return round2(paidRows(p).reduce((n, r) => n + r.amount, 0) + p.onAccount);
 }
 
-/** Paid: the total entered across every payment means. */
-export const meansTotal = (m: PaymentMeans) =>
-  round2(m.transfer.amount + m.cash.amount + m.checks.reduce((n, c) => n + c.amount, 0) + m.cards.reduce((n, c) => n + c.amount, 0));
-
 /** Left for the payment means to cover: the overall amount plus the bank charge, less what's entered. */
 export const meansBalance = (p: Pick<OutgoingPayment, 'type' | 'rows' | 'onAccount' | 'accountRows' | 'means'>) =>
   round2(overallAmount(p) + p.means.bankCharge - meansTotal(p.means));
@@ -61,17 +52,6 @@ export const meansBalance = (p: Pick<OutgoingPayment, 'type' | 'rows' | 'onAccou
 /** Realized exchange difference on a row in PHP: positive costs more than booked (a loss). */
 export const rowFxDifference = (r: PaymentRow, fx: number) => (r.docType === 'DPR' ? 0 : round2(rowSettled(r) * (fx - r.invoiceFx)));
 
-/** The due date of the BP row: the amount-weighted average of the payment means' dates. */
-export function weightedDueDate(m: PaymentMeans, fallback: string) {
-  const dated = [
-    ...(m.transfer.amount ? [{ date: m.transfer.date, amount: m.transfer.amount }] : []),
-    ...m.checks.filter((c) => c.amount && c.dueDate).map((c) => ({ date: c.dueDate, amount: c.amount })),
-  ];
-  const total = dated.reduce((n, d) => n + d.amount, 0);
-  if (!total) return fallback;
-  const ms = dated.reduce((n, d) => n + Date.parse(`${d.date}T00:00:00Z`) * d.amount, 0) / total;
-  return new Date(Math.round(ms / 86400000) * 86400000).toISOString().slice(0, 10);
-}
 
 // ── Accounting ───────────────────────────────────────────────────────────────
 

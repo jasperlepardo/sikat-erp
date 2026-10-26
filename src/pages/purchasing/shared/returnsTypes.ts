@@ -1,10 +1,9 @@
-import type { Errors } from '../../../components/form/fields';
 import { formatAddress } from '../../../mocks/address';
-import { newMemoLine, type MemoLine, type MemoStatus } from '../../../mocks/apCreditMemos';
+import { newMemoLine, type MemoLine } from '../../../mocks/apCreditMemos';
 import type { ApInvoice } from '../../../mocks/apInvoices';
 import type { Account } from '../../../mocks/chartOfAccounts';
 import type { GoodsReceipt } from '../../../mocks/goodsReceipts';
-import { newReturnLine, type GoodsReturn, type ReturnLine, type ReturnStatus } from '../../../mocks/goodsReturns';
+import { newReturnLine, type GoodsReturn, type ReturnLine } from '../../../mocks/goodsReturns';
 import type { Item } from '../../../mocks/items';
 import type { Partner } from '../../../mocks/partners';
 import { apNumber, listApInvoices, returnableQty } from '../../../services/apInvoices';
@@ -17,26 +16,7 @@ import { companyTax, currencies, exchangeRates, taxCodes, taxGroups, withholding
 import { listPartnersByRole } from '../../../services/partners';
 import { listPurchaseOrders } from '../../../services/purchaseOrders';
 import type { GrContext, GrMasters } from '../goods-receipts/detail/types';
-
-
-export const RETURN_LIST_PATH = '/purchasing/goods-returns';
-export const MEMO_LIST_PATH = '/purchasing/debit-memos';
-
-export const MEMO_STATUS_INTENT: Record<MemoStatus, 'default' | 'primary' | 'success' | 'danger' | 'warning'> = {
-  Draft: 'default',
-  'Not Confirmed': 'warning',
-  Open: 'primary',
-  Closed: 'success',
-  Cancelled: 'danger',
-};
-
-export const RETURN_STATUS_INTENT: Record<ReturnStatus, 'default' | 'primary' | 'success' | 'danger' | 'warning'> = {
-  Draft: 'default',
-  'Not Confirmed': 'warning',
-  Open: 'primary',
-  Closed: 'success',
-  Cancelled: 'danger',
-};
+import { RETURN_LIST_PATH } from '../paths';
 
 /** Master data the return and credit memo forms read, loaded once. */
 export interface RetMasters extends GrMasters {
@@ -50,14 +30,6 @@ export type RetContext = GrContext;
 
 /** What both line shapes share, for the lines table. */
 export type AnyReturnLine = ReturnLine | MemoLine;
-
-export interface RetSectionProps<D> {
-  draft: D;
-  update: (patch: Partial<D>) => void;
-  errors: Errors;
-  m: RetMasters;
-  ctx: RetContext;
-}
 
 /** Loads everything the return and credit memo forms read. */
 export async function loadRetMasters(): Promise<RetMasters> {

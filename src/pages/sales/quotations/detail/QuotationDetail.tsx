@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { Alert, Badge, Button, Form, Panel, PanelHeader, Tabs, Text, TextField } from '@jasperlepardo/sikat-design-system';
+import { Alert, Badge, Button, Form, Panel, PanelHeader, Tabs, Text } from '@jasperlepardo/sikat-design-system';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { type Errors } from '../../../../components/form/fields';
 import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
@@ -24,11 +24,9 @@ import { getSalesSettings, openOrdersTotal } from '../../../../services/salesOrd
 import { SALES_SETTINGS, blankSalesOrder, newSoLine } from '../../../../mocks/salesOrders';
 import { logRejection } from '../../../../services/approvalRules';
 import { useDocTitle } from '../../../../services/useDocTitle';
-import { QT_LIST_PATH, QT_STATUS_INTENT } from '../QuotationList';
-import { SO_LIST_PATH } from '../../sales-orders/detail/types';
 import { SalesDocumentFlow } from '../../shared/SalesDocumentFlow';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
-import { NotFound, PrevNext, neighbours } from '../../../../components/form/DetailNav';
+import { neighbours, NotFound, PrevNext, siblingKeys, useDocTab, useReject } from '../../../../components/form/DetailNav';
 import { customerDefaults, linePricing, proposedTaxCode, type Draft, type QtContext, type QtMasters } from './types';
 import { BASE_PRICE_LIST_ID } from '../../../../services/priceLists';
 import { QtDetailsCard } from './QtDetailsCard';
@@ -37,6 +35,7 @@ import { CustomerDetailsPanel } from '../../shared/CustomerDetailsPanel';
 import { QtContentsTable } from './QtContentsTable';
 import { SalesTotalsFooter } from '../../shared/TotalsFooter';
 import { ReferencesTable } from '../../../purchasing/shared/ReferencesTable';
+import { QT_LIST_PATH, QT_STATUS_INTENT, SO_LIST_PATH } from '../../paths';
 
 type TabId = 'contents';
 const TAB_LABEL: Record<TabId, string> = { contents: 'Contents' };
@@ -94,18 +93,15 @@ function QuotationForm() {
   const isNew = id === 'new';
   const navigate = useNavigate();
 
-  const location = useLocation();
   const qtApproved = !getSalesSettings().requireQuotationApproval;
   const [draft, setDraft] = useState<Draft | null | undefined>(isNew ? { ...blankQuotation(CURRENT_USER_ID), approved: qtApproved } : undefined);
   const [m, setM] = useState<QtMasters>();
   const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
-  const setPage = (v: PageId) => navigate(`${QT_LIST_PATH}/${id}/${v}`, { replace: true });
-  useEffect(() => { if (!tabParam) navigate(`${QT_LIST_PATH}/${id}/details`, { replace: true, state: location.state }); }, []);
+  const setPage = useDocTab<PageId>(`${QT_LIST_PATH}/${id}`, tabParam);
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);
-  const [rejecting, setRejecting] = useState(false);
-  const [rejectionReason, setRejectionReason] = useState('');
+  const reject = useReject();
   const [customerDetailsOpen, setCustomerDetailsOpen] = useState(false);
   const [openBalance, setOpenBalance] = useState(0);
 
@@ -114,9 +110,8 @@ function QuotationForm() {
     if (isNew || !id) return;
     let cancelled = false;
     getQuotation(id).then((q) => !cancelled && setDraft(q ?? null));
-    listQuotations().then((all) => !cancelled && setSiblings([...all].sort((a, b) => b.postingDate.localeCompare(a.postingDate)).map((q) => q.docNum ? qtNumber(q) : q.id)));
+    listQuotations().then((all) => !cancelled && setSiblings(siblingKeys(all, qtNumber)));
     return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, isNew]);
 
   // The customer's open sales orders, for the credit bar in the customer panel.
@@ -208,7 +203,7 @@ function QuotationForm() {
 
   const saved = draft as Quotation;
   const recallIt = async () => { const q = await recallQuotation(saved); navigate(QT_LIST_PATH, { state: { notice: `Quotation ${qtNumber(q)} recalled to draft.` } }); };
-  const rejectIt = async () => { await logRejection('QT', saved.id, saved.customerId, rejectionReason); await recallQuotation(saved); navigate(QT_LIST_PATH, { state: { notice: `Quotation ${qtNumber(saved)} rejected and returned to draft.` } }); };
+  const rejectIt = async (rejectionReason: string) => { await logRejection('QT', saved.id, saved.customerId, rejectionReason); await recallQuotation(saved); navigate(QT_LIST_PATH, { state: { notice: `Quotation ${qtNumber(saved)} rejected and returned to draft.` } }); };
 
   const convertToOrder = () => {
     const copyFrom = {
@@ -253,7 +248,7 @@ function QuotationForm() {
   };
 
   const menu: MoreMenuItem[] = [
-    ...(draft.status === 'Not Confirmed' ? [{ label: 'Approve', icon: 'verified', onSelect: () => submit(null, false, { approved: true }) }, { label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => setRejecting(true) }] : []),
+    ...(draft.status === 'Not Confirmed' ? [{ label: 'Approve', icon: 'verified', onSelect: () => submit(null, false, { approved: true }) }, { label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => reject.start() }] : []),
     ...(draft.status === 'Open' ? [{ label: 'Create sales order', icon: 'shopping_bag', onSelect: convertToOrder }] : []),
     ...(draft.status === 'Open' ? [{ label: 'Close quotation', icon: 'task_alt', onSelect: () => closeQuotation(saved).then((r) => navigate(QT_LIST_PATH, { state: { notice: `Quotation ${qtNumber(r)} closed.` } })) }] : []),
     ...(draft.status === 'Open' ? [{ label: 'Cancel quotation', icon: 'cancel', onSelect: () => cancelQuotation(saved).then((r) => navigate(QT_LIST_PATH, { state: { notice: `Quotation ${qtNumber(r)} cancelled.` } })) }] : []),
@@ -324,17 +319,7 @@ function QuotationForm() {
           ) : (
             <Panel.Body className="flex flex-col gap-2">
               <ProblemsAlert problems={problems} tabLabel={(t) => TAB_LABEL[t as TabId]} />
-              {rejecting ? (
-                <Alert intent="danger" variant="outline" title="Reject quotation">
-                  <div className="flex flex-col gap-2">
-                    <TextField aria-label="Rejection reason" value={rejectionReason} onChange={(e) => setRejectionReason(e.currentTarget.value)} placeholder="Explain why…" />
-                    <div className="flex gap-2">
-                      <Button type="button" intent="danger" variant="solid" size="small" onClick={rejectIt}>Confirm reject</Button>
-                      <Button type="button" intent="white" variant="solid" size="small" onClick={() => { setRejecting(false); setRejectionReason(''); }}>Cancel</Button>
-                    </div>
-                  </div>
-                </Alert>
-              ) : null}
+              {reject.alert('Reject quotation', rejectIt)}
               {added ? (
                 <Alert
                   intent="default"

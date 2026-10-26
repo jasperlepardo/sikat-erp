@@ -18,7 +18,7 @@ import { isLowStock, isValidToday, listItems, stockTotals } from '../../services
 import { listTransfers, transferNumber, transferValue } from '../../services/inventoryTransfers';
 import { useAsync } from '../../services/useAsync';
 import { Stat } from '../../components/Stat';
-import { TRANSFER_LIST_PATH, TRANSFER_STATUS_INTENT } from './transfers/InventoryTransferDetail';
+import { TRANSFER_LIST_PATH, TRANSFER_STATUS_INTENT } from './paths';
 
 const ITEM_LIST_PATH = '/inventory/items';
 

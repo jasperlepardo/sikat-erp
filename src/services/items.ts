@@ -71,8 +71,6 @@ export async function getItem(id: string): Promise<Item | undefined> {
   return parent ? mergeVariant(item, parent) : item;
 }
 
-export const resetItems = items.reset;
-
 /** All items as they are now, variants merged — for sync lookups such as a lazy seed. */
 export const snapshotItems = () => mergedItems(items.snapshot());
 
@@ -82,7 +80,25 @@ export const snapshotItems = () => mergedItems(items.snapshot());
  * Variant items are stored lean — only VARIANT_OWN_FIELDS are persisted.
  */
 export async function saveItem(input: Omit<Item, 'id'> & { id?: string }): Promise<Item> {
-  const all = await items.list();
+  return items.save(checkedItem(input, items.snapshot()));
+}
+
+/**
+ * Save several items as one write — stock and cost updates from posting a document. Each is
+ * checked as `saveItem` checks it, against the others in the batch as well as the stored ones.
+ */
+export async function saveItems(inputs: Iterable<Omit<Item, 'id'> & { id?: string }>): Promise<Item[]> {
+  let all: readonly Item[] = items.snapshot();
+  const records = [...inputs].map((input) => {
+    const record = checkedItem(input, all);
+    all = [...all.filter((i) => !record.id || i.id !== record.id), record as Item];
+    return record;
+  });
+  return items.saveMany(records);
+}
+
+/** `input` ready to store, numbered if it has no Item No.; throws `ItemSaveError` on a clash with `all`. */
+function checkedItem(input: Omit<Item, 'id'> & { id?: string }, all: readonly Item[]): Omit<Item, 'id'> & { id?: string } {
   const others = all.filter((i) => i.id !== input.id);
 
   const clash = input.barcodes.find((b) => others.some((o) => o.barcodes.some((ob) => ob.barcode === b.barcode)));
@@ -95,7 +111,7 @@ export async function saveItem(input: Omit<Item, 'id'> & { id?: string }): Promi
   const store = (withItemNo: string) => {
     const record = { ...input, itemNo: withItemNo };
     // Strip global fields for variants — they come from the parent at read time.
-    return items.save(input.parentItemId ? toVariantRecord(record as Item) : record);
+    return input.parentItemId ? toVariantRecord(record as Item) : record;
   };
 
   if (itemNo) {
@@ -107,9 +123,9 @@ export async function saveItem(input: Omit<Item, 'id'> & { id?: string }): Promi
 
   // Auto-number: for variants, look up the parent's item group for the prefix.
   const groupId = input.parentItemId
-    ? (await items.get(input.parentItemId))?.itemGroupId ?? ''
+    ? all.find((i) => i.id === input.parentItemId)?.itemGroupId ?? ''
     : input.itemGroupId;
-  const prefix = (await itemGroups.list()).find((g) => g.id === groupId)?.prefix ?? 'ITM';
+  const prefix = itemGroups.snapshot().find((g) => g.id === groupId)?.prefix ?? 'ITM';
   const next =
     Math.max(
       0,
@@ -161,7 +177,7 @@ export async function applyOrderedChange(
   for (const [key, qty] of openOrdered(before)) delta.set(key, (delta.get(key) ?? 0) - qty);
   const changes = [...delta].filter(([, d]) => Math.abs(d) > 0.0001);
   if (!changes.length) return;
-  const all = await items.list();
+  const all = items.snapshot();
   const touched = new Map<string, Item>();
   for (const [key, d] of changes) {
     const [itemId, code] = key.split('@');
@@ -172,5 +188,5 @@ export async function applyOrderedChange(
     row.ordered = Math.max(0, Math.round((row.ordered + d) * 10000) / 10000);
     touched.set(itemId, item);
   }
-  for (const item of touched.values()) await items.save(item);
+  await items.saveMany([...touched.values()]);
 }

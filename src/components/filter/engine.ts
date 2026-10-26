@@ -1,5 +1,6 @@
 import type { Option } from '@jasperlepardo/sikat-design-system';
 import type { MasterDef } from '../form/MasterLookup';
+import { addDays } from '../../services/dates';
 
 /**
  * Advanced filter: rows of "field · operator · value" combined with all (AND) or any (OR).
@@ -38,6 +39,7 @@ export interface FilterField<T> {
   /** Value choices for 'choice' fields. */
   options?: Option[];
   /** Master list for 'master' fields — the value picker reuses `MasterLookup`. */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- a filter field can be over any master
   def?: MasterDef<any>;
 }
 
@@ -151,14 +153,9 @@ const toNum = (v: unknown) => (typeof v === 'number' ? v : v === '' || v == null
 /** 'YYYY-MM-DD' from a date string, ISO timestamp or Date. Compared as strings. */
 const toDay = (v: unknown) => (v instanceof Date ? localDay(v) : String(v ?? '').slice(0, 10));
 
-export function localDay(d = new Date()): string {
+function localDay(d = new Date()): string {
   const p = (n: number) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-}
-
-function addDays(day: string, n: number): string {
-  const [y, m, d] = day.split('-').map(Number);
-  return localDay(new Date(y, m - 1, d + n));
 }
 
 /** One scalar value against a positive-form operator. */
@@ -235,6 +232,7 @@ function ruleMatches<T>(row: T, rule: Rule, field: FilterField<T>, today: string
 /**
  * Does the row pass the filter? Incomplete rules and unknown fields are skipped;
  * an empty filter matches everything.
+ * @public
  */
 export function matches<T>(row: T, group: FilterGroup, fields: FilterField<T>[], today = localDay()): boolean {
   const checks = group.rules.flatMap((rule) => {
@@ -254,7 +252,7 @@ export function applyFilter<T>(rows: T[], group: FilterGroup, fields: FilterFiel
 // ---------- display ----------
 
 /** A value as the user would read it — option labels for choice fields. */
-export function formatValue<T>(field: FilterField<T>, value: unknown): string {
+function formatValue<T>(field: FilterField<T>, value: unknown): string {
   const one = (v: unknown) =>
     field.type === 'number' && typeof v === 'number'
       ? v.toLocaleString('en-PH')

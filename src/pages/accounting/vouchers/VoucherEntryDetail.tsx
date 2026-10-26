@@ -21,9 +21,8 @@ import {
 } from '../../../services/journalVouchers';
 import { accounts as accountsCollection, taxCodes as taxCodesCollection } from '../../../services/masterData';
 import { listPartners } from '../../../services/partners';
-import { JE_LIST_PATH } from '../journal/JournalEntryDetail';
 import { JeHeaderSections, JeRowsTable, jeProblems, type JeMasters } from '../journal/JeEditor';
-import { JV_LIST_PATH, entryPath } from './JournalVoucherList';
+import { JE_LIST_PATH, JV_LIST_PATH, entryPath } from '../paths';
 
 type TabId = 'contents' | 'attachments';
 

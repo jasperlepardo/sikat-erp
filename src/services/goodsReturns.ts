@@ -9,11 +9,12 @@ import { applyInvoiceReturns, listApInvoices, returnableQty } from './apInvoices
 import { todayISO } from './dates';
 import { applyReturnedQty, applyStock, expenseAccountFor, frozenLines, grInventoryQty, grOpenQty, listGoodsReceipts } from './goodsReceipts';
 import { inventoryAccountFor, type JournalLine } from './inventoryTransfers';
-import { listItems, saveItem } from './items';
+import { listItems, saveItems } from './items';
 import { consumeLayers, logConsumption, restoreLayer, updateFifoCosts, type Taken } from './costLayers';
 import { poTotals } from './purchaseOrders';
 import { createCollection } from './store';
 import { purchasingHistory } from './purchasingHistory';
+import { round2, round4 } from './num';
 
 const returns = createCollection<GoodsReturn>('sikat-erp:goods-returns:v4', () => purchasingHistory().returns, 'rt', { audit: 'GRET' });
 
@@ -26,9 +27,6 @@ export async function getGoodsReturn(idOrNumber: string) {
 }
 
 export type ReturnInput = Omit<GoodsReturn, 'id'> & { id?: string };
-
-const round2 = (n: number) => Math.round(n * 100) / 100;
-const round4 = (n: number) => Math.round(n * 10000) / 10000;
 
 /** "Primary 610004", or "Draft" before it's added. */
 export const returnNumber = (r: Pick<GoodsReturn, 'seriesId' | 'docNum' | 'postingDate'>) =>
@@ -60,7 +58,7 @@ export const creditableReturns = (all: GoodsReturn[], vendorId: string) =>
   all.filter((r) => r.vendorId === vendorId && r.status === 'Open' && r.lines.some((l) => returnOpenQty(l, r) > 0));
 
 /** The PHP value a line takes out of stock: its cost per inventory unit × inventory quantity. */
-export const returnValueLc = (l: ReturnLine) => round2(l.unitCostLc * grInventoryQty(l));
+const returnValueLc = (l: ReturnLine) => round2(l.unitCostLc * grInventoryQty(l));
 
 /**
  * The entry adding the return makes, in PHP: Dr Goods Received Not Invoiced / Cr Inventory (or
@@ -133,7 +131,7 @@ export async function addGoodsReturn(input: ReturnInput): Promise<GoodsReturn> {
     byBase.set(l.baseLineId, { line: l, qty: (byBase.get(l.baseLineId)?.qty ?? 0) + l.quantity });
   }
   for (const { line, qty } of byBase.values()) {
-    let open = 0;
+    let open: number;
     if (line.baseType === 'GRPO') {
       const gr = receipts.find((r) => r.id === line.baseId);
       const gl = gr?.lines.find((x) => x.id === line.baseLineId);
@@ -167,7 +165,7 @@ export async function addGoodsReturn(input: ReturnInput): Promise<GoodsReturn> {
     return { ...l, unitCostLc: item?.itemCost ?? 0 };
   }));
   // baseLineId is cleared for the stock move: a return doesn't put the quantity back on order.
-  for (const item of applyStock(lines.map((l) => ({ ...l, baseLineId: '' })), items, -1)) await saveItem(item);
+  await saveItems(applyStock(lines.map((l) => ({ ...l, baseLineId: '' })), items, -1));
   await updateFifoCosts([...fifoItemIds]);
   await applyReturnedQty(lines.filter((l) => l.baseType === 'GRPO'), 1);
   await applyInvoiceReturns(lines.filter((l) => l.baseType === 'APINV'), 1);
@@ -184,7 +182,7 @@ export async function cancelGoodsReturn(r: GoodsReturn) {
   const items = await listItems();
   const blocked = await frozenLines(r.lines);
   if (blocked.length) throw new ReturnPostError(blocked.map((b) => b.lineId), blocked.map((b) => b.message).join(' '));
-  for (const item of applyStock(r.lines.map((l) => ({ ...l, baseLineId: '' })), items, 1)) await saveItem(item);
+  await saveItems(applyStock(r.lines.map((l) => ({ ...l, baseLineId: '' })), items, 1));
   await applyReturnedQty(r.lines.filter((l) => l.baseType === 'GRPO'), -1);
   await applyInvoiceReturns(r.lines.filter((l) => l.baseType === 'APINV'), -1);
 

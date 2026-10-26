@@ -23,7 +23,7 @@ import { SEED_COMPANIES } from './companies';
 import { SEED_WAREHOUSES } from './itemMasters';
 import { SEED_ITEMS, itemsPerUom } from './items';
 import { SEED_PARTNERS, formatAddress } from './partners';
-import { todayISO } from '../services/dates';
+import { addDays, todayISO } from '../services/dates';
 import { SEED_PAYMENT_TERMS } from './partnerMasters';
 import { MONTH_NAMES, SALES_MONTHS } from './storeSales';
 import { APPLE, planSupply } from './supplyPlan';
@@ -33,10 +33,10 @@ export type PoStatus = 'Draft' | 'Open' | 'Not Confirmed' | 'Closed' | 'Cancelle
 export const PO_STATUSES: PoStatus[] = ['Draft', 'Open', 'Not Confirmed', 'Closed', 'Cancelled'];
 
 /** Which currency amounts are shown in: local (PHP), system (USD) or the vendor's. */
-export type CurrencyView = 'Local' | 'System' | 'BP';
+type CurrencyView = 'Local' | 'System' | 'BP';
 export type PriceMode = 'Net' | 'Gross' | 'Net and Gross';
 export const PRICE_MODES: PriceMode[] = ['Net', 'Gross', 'Net and Gross'];
-export type RowStatus = 'Open' | 'Closed';
+type RowStatus = 'Open' | 'Closed';
 
 export interface PoLine extends PurchLine {
   id: string;
@@ -340,11 +340,6 @@ const importLine = (n: string, itemNo: string, quantity: number): PoLine => {
   return { ...l, unitPrice: Math.round((l.unitPrice / USD_PHP) * 100) / 100, taxCode: 'IMVAT', deliveryDate: '2026-10-06' };
 };
 
-const plusDays = (iso: string, days: number) => {
-  const d = new Date(`${iso}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
-};
 
 const mnl = SEED_WAREHOUSES.find((w) => w.code === 'WH-001')!;
 const MNL_SHIP_TO = formatAddress(mnl.address, mnl.name);
@@ -718,7 +713,7 @@ const HAND_ORDERS: PurchaseOrder[] = [
   ].map((o) =>
     vendorPo(o.id, o.no, o.vendor, {
       status: 'Closed', shipTo: MNL_SHIP_TO, shippingType: 'sh-own',
-      postingDate: o.on, documentDate: o.on, deliveryDate: o.in, closeDate: o.in, dueDate: plusDays(o.in, 30),
+      postingDate: o.on, documentDate: o.on, deliveryDate: o.in, closeDate: o.in, dueDate: addDays(o.in, 30),
       vendorRef: `${o.vendor === 'bp-013' ? 'TZ' : 'LID'}-SO-${o.no - 200000}`,
       lines: (o.lines as [string, number, number][]).map(([itemNo, qty, price], i) =>
         line(`${o.id}-${i + 1}`, itemNo, qty, { receivedQty: qty, status: 'Closed', deliveryDate: o.in, unitPrice: price }),
@@ -810,7 +805,7 @@ const MONTHLY_SERVICES: PurchaseOrder[] = H1.flatMap((m) =>
       documentDate: start,
       deliveryDate: received,
       closeDate: received,
-      dueDate: plusDays(received, termDays(t.paymentTermId)),
+      dueDate: addDays(received, termDays(t.paymentTermId)),
       vendorRef: '',
       references: [],
       remarks: '',
@@ -840,13 +835,16 @@ const PLANNED: PurchaseOrder[] = planSupply([...HAND_ORDERS, ...MONTHLY_SERVICES
     ...(imported ? { seriesId: 'ser-import', freightTaxCode: 'IMVAT', freight: 1500 } : {}),
     currencyView: 'BP', shipTo: MNL_SHIP_TO, shippingType: 'sh-own',
     postingDate: p.postingDate, documentDate: p.postingDate, deliveryDate: p.receivedOn, closeDate: p.receivedOn,
-    dueDate: plusDays(p.receivedOn, 30),
+    dueDate: addDays(p.receivedOn, 30),
     lines,
     remarks: p.kind === 'release' ? 'Release stock for the stores, received before release day.' : `Store replenishment: what the stores sold in ${month}.`,
   });
 });
 
-/** A PO's number as its series formats it: PO-2026-0001, IMP-2026-0001. */
+/**
+ * A PO's number as its series formats it: PO-2026-0001, IMP-2026-0001.
+ * @public
+ */
 export const seedPoNo = (po: Pick<PurchaseOrder, 'seriesId' | 'docNum' | 'postingDate'>) =>
   `${po.seriesId === 'ser-import' ? 'IMP' : 'PO'}-${po.postingDate.slice(0, 4)}-${String(po.docNum).padStart(4, '0')}`;
 

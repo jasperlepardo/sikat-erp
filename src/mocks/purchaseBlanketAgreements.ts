@@ -4,14 +4,14 @@ import { termId } from './masters';
 import { SEED_ITEMS, itemsPerUom } from './items';
 import { SEED_PARTNERS } from './partners';
 import { todayISO } from '../services/dates';
+import { round2 } from '../services/num';
 
 export type PbaStatus = 'Draft' | 'Approved' | 'On Hold' | 'Terminated' | 'Closed';
 export const PBA_STATUSES: PbaStatus[] = ['Draft', 'Approved', 'On Hold', 'Terminated', 'Closed'];
 
-export type PbaAgreementMethod = 'Items' | 'Money';
-export const PBA_AGREEMENT_METHODS: PbaAgreementMethod[] = ['Items', 'Money'];
+type PbaAgreementMethod = 'Items' | 'Money';
 
-export type PbaRowStatus = 'Open' | 'Closed';
+type PbaRowStatus = 'Open' | 'Closed';
 
 export interface PbaLine {
   id: string;
@@ -170,7 +170,6 @@ export function blankPurchaseBlanketAgreement(ownerId: string): Omit<PurchaseBla
 
 const itemByNo = (itemNo: string) => SEED_ITEMS.find((i) => i.itemNo === itemNo)!;
 const partnerById = (id: string) => SEED_PARTNERS.find((p) => p.id === id)!;
-const round2 = (n: number) => Math.round(n * 100) / 100;
 
 const seedLine = (id: string, itemNo: string, plannedQty: number, patch: Partial<PbaLine> = {}): PbaLine => {
   const item = itemByNo(itemNo);

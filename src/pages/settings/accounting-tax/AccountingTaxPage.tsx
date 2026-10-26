@@ -1,4 +1,5 @@
 import { TabbedPage, type PageTab } from '../../../components/form/TabbedPage';
+import { BirFormsTab } from './BirFormsTab';
 import { CompensationTaxTab } from './CompensationTaxTab';
 import { CurrenciesTab } from './CurrenciesTab';
 import { DeMinimisTab } from './DeMinimisTab';
@@ -9,7 +10,6 @@ import { PercentageTaxTab } from './PercentageTaxTab';
 import { TaxCodesTab } from './TaxCodesTab';
 import { TaxGroupsTab } from './TaxGroupsTab';
 import { VatAtcsTab } from './VatAtcsTab';
-import { WithholdingFormsTab } from './WithholdingFormsTab';
 import { WithholdingGroupsTab } from './WithholdingGroupsTab';
 import { WithholdingTab } from './WithholdingTab';
 
@@ -23,7 +23,7 @@ const TABS: PageTab[] = [
   { value: 'compensation', label: 'Compensation tax', Component: CompensationTaxTab },
   { value: 'tax-free-compensation', label: 'Tax-free compensation', Component: ExclusionsTab },
   { value: 'de-minimis', label: 'De minimis benefits', Component: DeMinimisTab },
-  { value: 'withholding-forms', label: 'Withholding forms', Component: WithholdingFormsTab },
+  { value: 'bir-forms', label: 'BIR forms', Component: BirFormsTab },
   { value: 'excise', label: 'Excise tax', Component: ExciseTab },
   { value: 'currencies', label: 'Currencies', Component: CurrenciesTab },
   { value: 'exchange-rates', label: 'Exchange rates', Component: ExchangeRatesTab },

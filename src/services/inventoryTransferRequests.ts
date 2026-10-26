@@ -16,7 +16,7 @@ export const getTransferRequest = requests.get;
 
 export type TransferRequestInput = Omit<InventoryTransferRequest, 'id'> & { id?: string };
 
-export const seriesOf = (id: string) => seriesLookup(transferRequestSeries, id, TRANSFER_REQUEST_SERIES);
+const seriesOf = (id: string) => seriesLookup(transferRequestSeries, id, TRANSFER_REQUEST_SERIES);
 /** "ITR-2026-0002", or the series name before the request is added. */
 export const transferRequestNumber = (r: Pick<InventoryTransferRequest, 'seriesId' | 'docNum' | 'postingDate'>) =>
   formatDocNum(seriesOf(r.seriesId), r.docNum, r.postingDate);

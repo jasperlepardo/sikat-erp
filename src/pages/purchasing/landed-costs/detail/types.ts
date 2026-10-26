@@ -2,7 +2,6 @@ import type { LandedCost, LcStatus } from '../../../../mocks/landedCosts';
 import type { LandedCostType } from '../../../../mocks/landedCostTypes';
 import type { Partner } from '../../../../mocks/partners';
 import type { GoodsReceipt } from '../../../../mocks/goodsReceipts';
-import type { StatusIntent } from '../../../../components/form/fields';
 
 export type LcDraft = Omit<LandedCost, 'id'> & { id?: string };
 
@@ -20,13 +19,7 @@ export interface LcSectionProps {
   readOnly: boolean;
 }
 
-export const LC_LIST_PATH = '/purchasing/landed-costs';
 
-export const LC_STATUS_INTENT: Record<LcStatus, StatusIntent> = {
-  Draft: 'default',
-  Open: 'primary',
-  Cancelled: 'danger',
-};
 
 export const LC_STATUS_HINT: Record<LcStatus, string> = {
   Draft: 'Not yet posted.',

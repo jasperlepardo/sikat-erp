@@ -42,8 +42,8 @@ export function SalesTab({ draft, update, errors, tax, inv }: TabProps) {
           {f.lookup(
             'commissionGroup',
             'Commission group',
-            activeOptions(inv.commissions, (c) => c.id, (c) => `${c.name} (${c.pct}%)`, draft.commissionGroup, '— None —'),
-            { hint: 'Picking a group sets its commission %.' },
+            activeOptions(inv.commissions, (c) => c.id, (c) => `${c.name} (${c.pct}%)`, draft.commissionGroup),
+            { clearable: true, hint: 'Picking a group sets its commission %.' },
           )}
           {f.num('commissionPct', 'Commission', { suffix: '%', hint: 'Per item; overrides the salesperson rate.' })}
         </Fields>

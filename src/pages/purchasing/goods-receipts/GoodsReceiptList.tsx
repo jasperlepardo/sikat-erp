@@ -23,7 +23,7 @@ import { dateField, linesField, masterField, numberField, statusField, textField
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { currencyDef, salesEmployeeDef } from '../../settings/masterDefs';
 import { useListPage } from '../../../components/form/DataTable';
-import { GR_LIST_PATH, GR_STATUS_INTENT } from './detail/GoodsReceiptDetail';
+import { GR_LIST_PATH, GR_STATUS_INTENT } from '../paths';
 
 export function GoodsReceiptList() {
   const navigate = useNavigate();

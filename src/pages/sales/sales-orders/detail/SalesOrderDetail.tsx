@@ -1,13 +1,13 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { Alert, Badge, Button, Form, Panel, PanelHeader, Tabs, Text, TextField } from '@jasperlepardo/sikat-design-system';
+import { Alert, Badge, Button, Form, Panel, PanelHeader, Tabs, Text } from '@jasperlepardo/sikat-design-system';
 import { type Errors } from '../../../../components/form/fields';
 import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { CURRENT_USER_ID } from '../../../../mocks/common';
 import { formatAddress } from '../../../../mocks/address';
 import type { Partner } from '../../../../mocks/partners';
-import { SALES_SETTINGS, blankSalesOrder, newSoLine, openCommitted, type SalesOrder, type SoLine, type SoStatus } from '../../../../mocks/salesOrders';
+import { SALES_SETTINGS, blankSalesOrder, newSoLine, openCommitted, type SalesOrder, type SoLine } from '../../../../mocks/salesOrders';
 import { loadCurrentCompany } from '../../../../services/companies';
 import { formatDate, todayISO } from '../../../../services/dates';
 import { recalcLineTaxes } from '../../../../services/taxRecalc';
@@ -25,21 +25,22 @@ import { logRejection } from '../../../../services/approvalRules';
 import { listDeliveries } from '../../../../services/deliveries';
 import { SoLinesCard } from './SoLinesCard';
 import { SalesDocumentFlow } from '../../shared/SalesDocumentFlow';
-import { ALL_CURRENCIES, SO_LIST_PATH, buildContext, linePricing, proposedTaxCode, shortages, type Shortage, type SoContext, type SoDraft, type SoMasters } from './types';
-import { PO_LIST_PATH } from '../../../purchasing/purchase-orders/detail/PurchaseOrderDetail';
+import { ALL_CURRENCIES, buildContext, linePricing, proposedTaxCode, shortages, type Shortage, type SoContext, type SoDraft, type SoMasters } from './types';
 import type { PoSuggestion } from '../../../purchasing/purchase-orders/detail/types';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
-import { NotFound, PrevNext, neighbours } from '../../../../components/form/DetailNav';
+import { neighbours, NotFound, PrevNext, siblingKeys, useDocTab, useReject } from '../../../../components/form/DetailNav';
 import { SoDatesCard } from './SoDatesCard';
 import { SoSettingsCard } from './SoSettingsCard';
-import { SoBpChannelCard } from './SoBpChannelCard';
+import { BpChannelCard } from '../../shared/BpChannelCard';
 import { SoAssignmentCard } from './SoAssignmentCard';
 import { SoAttachmentsCard } from './SoAttachmentsCard';
 import { CustomerCard } from '../../shared/CustomerCard';
 import { SalesTotalsFooter } from '../../shared/TotalsFooter';
 import { CustomerDetailsPanel } from '../../shared/CustomerDetailsPanel';
 import { ReferencesTable } from '../../../purchasing/shared/ReferencesTable';
+import { SO_LIST_PATH, SO_STATUS_INTENT } from '../../paths';
+import { PO_LIST_PATH } from '../../../purchasing/paths';
 
 type TabId = 'contents';
 const TAB_LABEL: Record<TabId, string> = { contents: 'Contents' };
@@ -50,14 +51,6 @@ const PAGES = [
   { value: 'activity', label: 'Activity' },
 ] as const;
 type PageId = (typeof PAGES)[number]['value'];
-
-export const SO_STATUS_INTENT: Record<SoStatus, 'default' | 'primary' | 'success' | 'danger' | 'warning'> = {
-  Draft: 'default',
-  'Not Confirmed': 'warning',
-  Open: 'primary',
-  Closed: 'success',
-  Cancelled: 'danger',
-};
 
 function validate(d: SoDraft, ctx: SoContext, m: SoMasters, asDraft: boolean): Problem<TabId>[] {
   const { problems, need } = problemCollector<TabId>();
@@ -105,16 +98,14 @@ function SalesOrderForm() {
   const [draft, setDraft] = useState<SoDraft | null | undefined>(isNew ? { ...(copyFrom ?? { ...blankSalesOrder(CURRENT_USER_ID), lines: [newSoLine({ warehouse: '' })] }), approved } : undefined);
   const [m, setM] = useState<SoMasters>();
   const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
-  const setPage = (v: PageId) => navigate(`${SO_LIST_PATH}/${id}/${v}`, { replace: true });
-  useEffect(() => { if (!tabParam) navigate(`${SO_LIST_PATH}/${id}/details`, { replace: true, state: location.state }); }, []);
+  const setPage = useDocTab<PageId>(`${SO_LIST_PATH}/${id}`, tabParam);
   const [contentTab, setContentTab] = useState<'item' | 'delivery'>('item');
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [warning, setWarning] = useState<string>();
   const [closeWarning, setCloseWarning] = useState<string>();
   const [customerDetailsOpen, setCustomerDetailsOpen] = useState(false);
-  const [rejecting, setRejecting] = useState(false);
-  const [rejectionReason, setRejectionReason] = useState('');
+  const reject = useReject();
   const [openBalance, setOpenBalance] = useState(0);
   // What the order commits as saved — already in the items' Committed, so it's given back when checking stock.
   const [ownCommitted, setOwnCommitted] = useState(() => new Map<string, number>());
@@ -149,7 +140,7 @@ function SalesOrderForm() {
         setDraft(so ?? null);
         if (so) setOwnCommitted(openCommitted(so));
       });
-      listSalesOrders().then((all) => !cancelled && setSiblings([...all].sort((a, b) => b.postingDate.localeCompare(a.postingDate)).map((o) => o.docNum ? soNumber(o) : o.id)));
+      listSalesOrders().then((all) => !cancelled && setSiblings(siblingKeys(all, soNumber)));
     }
     return () => {
       cancelled = true;
@@ -334,7 +325,7 @@ function SalesOrderForm() {
     const r = await recallSalesOrder(saved);
     navigate(SO_LIST_PATH, { state: { notice: `Sales order ${soNumber(r)} recalled to draft.` } });
   };
-  const rejectIt = async () => {
+  const rejectIt = async (rejectionReason: string) => {
     await logRejection('SO', saved.id, saved.customerId, rejectionReason);
     await recallSalesOrder(saved);
     navigate(SO_LIST_PATH, { state: { notice: `Sales order ${soNumber(saved)} rejected and returned to draft.` } });
@@ -345,7 +336,7 @@ function SalesOrderForm() {
     ...(draft.status === 'Draft' && !draft.approved ? [{ label: 'Submit for approval', icon: 'upload', onSelect: () => submit(null, false) }] : []),
     ...(draft.status === 'Not Confirmed' ? [{ label: 'Approve', icon: 'verified', onSelect: () => submit(null, false, { approved: true }) }] : []),
     ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }] : []),
-    ...(draft.status === 'Not Confirmed' ? [{ label: 'Reject', icon: 'cancel', onSelect: () => setRejecting(true) }] : []),
+    ...(draft.status === 'Not Confirmed' ? [{ label: 'Reject', icon: 'cancel', onSelect: () => reject.start() }] : []),
     ...(draft.status === 'Open' && openLines.length > 0
       ? [{ label: 'Copy to delivery', icon: 'local_shipping', onSelect: () => navigate('/sales/deliveries/new', { state: { fromOrder: draft.id } }) }]
       : []),
@@ -420,17 +411,7 @@ function SalesOrderForm() {
           {page === 'details' ? (
             <Panel.Body className="flex flex-col gap-2">
               <ProblemsAlert problems={problems} tabLabel={(t) => TAB_LABEL[t as TabId]} />
-              {rejecting ? (
-                <Alert intent="danger" variant="outline" title="Reject sales order">
-                  <div className="flex flex-col gap-2">
-                    <TextField aria-label="Rejection reason" value={rejectionReason} onChange={(e) => setRejectionReason(e.currentTarget.value)} placeholder="Explain why this is being rejected…" />
-                    <div className="flex gap-2">
-                      <Button type="button" intent="danger" variant="solid" size="small" onClick={rejectIt}>Confirm reject</Button>
-                      <Button type="button" intent="white" variant="solid" size="small" onClick={() => { setRejecting(false); setRejectionReason(''); }}>Cancel</Button>
-                    </div>
-                  </div>
-                </Alert>
-              ) : null}
+              {reject.alert('Reject sales order', rejectIt)}
               {warning ? (
                 <Alert intent="warning" variant="outline" title="Check before saving">
                   {warning} Press {ctx.added ? 'Update' : 'Add'} again to save anyway.
@@ -487,7 +468,7 @@ function SalesOrderForm() {
                 <aside className="flex flex-col gap-2 lg:col-span-4">
                   <SoDatesCard {...tabProps} />
                   <SoSettingsCard {...tabProps} />
-                  <SoBpChannelCard {...tabProps} />
+                  <BpChannelCard {...tabProps} placeholder="e.g. Lazada, Shopee, Apple online store" />
                   <SoAssignmentCard {...tabProps} />
                 </aside>
               </div>

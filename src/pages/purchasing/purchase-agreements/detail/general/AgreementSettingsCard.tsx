@@ -11,7 +11,6 @@ const AGREEMENT_TYPE_OPTIONS = [
 ];
 
 const PAYMENT_METHOD_OPTIONS = [
-  { value: '', label: '— None —' },
   { value: 'CASH', label: 'Cash' },
   { value: 'BANK', label: 'Bank transfer' },
   { value: 'CHECK', label: 'Check' },
@@ -41,10 +40,10 @@ export function AgreementSettingsCard({ draft, update, m, readOnly: _readOnly }:
         {f.choose('agreementType', 'Agreement type', AGREEMENT_TYPE_OPTIONS, { required: true })}
         {f.choose('status', 'Status', PBA_STATUS_OPTIONS)}
         {f.master('paymentTermId', 'Payment terms', paymentTermDef, { clearable: true, hint: 'Defaults from the vendor.' })}
-        {f.choose('paymentMethod', 'Payment method', PAYMENT_METHOD_OPTIONS)}
-        {f.lookup('shippingType', 'Shipping type', [{ value: '', label: '— None —' }, ...activeOptions(m.inv.shipping, (s) => s.id, (s) => s.name, draft.shippingType)])}
+        {f.choose('paymentMethod', 'Payment method', PAYMENT_METHOD_OPTIONS, { clearable: true })}
+        {f.lookup('shippingType', 'Shipping type', activeOptions(m.inv.shipping, (s) => s.id, (s) => s.name, draft.shippingType), { clearable: true })}
         {f.num('settlementProbability', 'Settlement probability %', { hint: 'Estimated likelihood of full settlement (0–100).', suffix: '%' })}
-        {f.master('ownerId', 'Owner', salesEmployeeDef, { clearable: true, placeholder: '— None —' })}
+        {f.master('ownerId', 'Owner', salesEmployeeDef, { clearable: true, placeholder: 'None' })}
         <ReadOnly label="Ignore prices in agreement" value={draft.ignorePrices ? 'Yes — agreement prices excluded' : 'No'} hint="Controlled by Agreement Type." />
       </Fields>
       <Flags>

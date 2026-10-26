@@ -6,7 +6,7 @@ import { companyOption, vendorAddressOption, warehouseOption, type VendorAddress
 import { itemsPerUom, type Item } from '../../../../mocks/items';
 import type { Partner } from '../../../../mocks/partners';
 import type { Company } from '../../../../mocks/companies';
-import { newPoLine, type PoLine, type PoReference, type PoStatus } from '../../../../mocks/purchaseOrders';
+import { newPoLine, type PoLine, type PoReference } from '../../../../mocks/purchaseOrders';
 import { getPurchasingSettings } from '../../../../services/purchaseOrders';
 import { rateAt, vatNotPaidToVendor } from '../../../../mocks/taxes';
 import type { InventoryMasters } from '../../../../services/inventoryMasters';
@@ -63,13 +63,6 @@ export interface PoContext {
 
 export const ALL_CURRENCIES = 'All currencies';
 
-export const STATUS_INTENT: Record<PoStatus, 'default' | 'primary' | 'warning' | 'success' | 'danger'> = {
-  Draft: 'default',
-  Open: 'primary',
-  'Not Confirmed': 'warning',
-  Closed: 'success',
-  Cancelled: 'danger',
-};
 
 /** A PO to start from, e.g. a sales order's stock shortfall: the vendor ('' to pick one), items and what to buy in the inventory unit. */
 export interface PoSuggestion {

@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react';
 /** ISO code of the Philippines — addresses here use the PSGC province / city / barangay pickers. */
 export const PHILIPPINES = 'PH';
 
-export interface Region {
+interface Region {
   code: string;
   name: string;
 }
@@ -34,13 +34,13 @@ export interface Locations {
 }
 
 let locations: Promise<Locations> | undefined;
-export const loadLocations = () => (locations ??= import('../data/psgc/locations.json').then((m) => m.default as Locations));
+const loadLocations = () => (locations ??= import('../data/psgc/locations.json').then((m) => m.default as Locations));
 
 const barangayFiles = import.meta.glob<{ default: Record<string, [string, string][]> }>('../data/psgc/barangays/*.json');
 const barangayCache = new Map<string, Promise<Record<string, [string, string][]>>>();
 
 /** Barangays of one city or municipality (empty when the PSGC lists none). */
-export async function loadBarangays(city: City): Promise<Barangay[]> {
+async function loadBarangays(city: City): Promise<Barangay[]> {
   const file = barangayFiles[`../data/psgc/barangays/${city.province}.json`];
   if (!file) return [];
   if (!barangayCache.has(city.province)) barangayCache.set(city.province, file().then((m) => m.default));

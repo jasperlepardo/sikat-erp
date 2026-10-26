@@ -7,6 +7,7 @@
  * confirmed from a primary source is flagged in `notes` for your accountant to check.
  */
 import { toAccountCode } from './chartOfAccounts';
+import { birFormId } from './birForms';
 import type { Attachment } from './common';
 import { todayISO } from '../services/dates';
 
@@ -35,7 +36,8 @@ export interface TaxCode {
   rates: TaxRatePeriod[];
   /** G/L account code (Accounting › Chart of Accounts); '' for none. */
   glAccount: string;
-  birReturn: string;
+  /** The BIR returns the code is filed on (ids in Settings › Accounting & Tax › BIR forms); [] for none. */
+  returnFormIds: string[];
   legalBasis: string;
   active: boolean;
   notes: string;
@@ -56,6 +58,19 @@ export interface VatAtc {
   note?: string;
 }
 
+/**
+ * A VAT or percentage-tax ATC as master data (Settings › Accounting & Tax). Keyed by its code: `id`
+ * is always `code`, which tax codes store. The rate is BIR's published rate, for reference — what a
+ * document charges is its tax code's dated rate.
+ */
+export interface AtcRecord extends VatAtc {
+  id: string;
+  active: boolean;
+}
+
+/** Seed ATC rows as master records. */
+export const atcRecords = (atcs: readonly VatAtc[]): AtcRecord[] => atcs.map((a) => ({ ...a, id: a.code, active: true }));
+
 export interface TaxRatePeriod {
   /** YYYY-MM-DD the rate takes effect. */
   from: string;
@@ -70,6 +85,12 @@ export const vatNotPaidToVendor = (code?: Pick<TaxCode, 'category'>) =>
 export function rateAt(code: Pick<TaxCode, 'rates'>, date: string): number | undefined {
   return [...code.rates].sort((a, b) => b.from.localeCompare(a.from)).find((p) => p.from <= date)?.rate;
 }
+
+/** A tax-code → rate lookup over `codes` on `date` (0 for an unknown code or a date before its first rate). */
+export const rateFrom = (codes: readonly TaxCode[], date: string) => (code: string) => {
+  const c = codes.find((x) => x.code === code);
+  return c ? (rateAt(c, date) ?? 0) : 0;
+};
 
 /** The rate in force today. */
 export const currentRate = (code: Pick<TaxCode, 'rates'>) => rateAt(code, todayISO());
@@ -430,34 +451,34 @@ export type WithholdingKind = 'Expanded (EWT)' | 'Final (FWT)' | 'Withholding VA
 export const WITHHOLDING_KINDS: WithholdingKind[] = ['Expanded (EWT)', 'Final (FWT)', 'Withholding VAT', 'Percentage tax'];
 
 /** Tax type code, BIR name and BIR definition of each kind (bir.gov.ph › Withholding Tax). */
-export const WITHHOLDING_KIND_INFO: Record<WithholdingKind, { type: string; name: string; definition: string; forms: string }> = {
+export const WITHHOLDING_KIND_INFO: Record<WithholdingKind, { type: string; name: string; definition: string; forms: string[] }> = {
   'Expanded (EWT)': {
     type: 'WE',
     name: 'Expanded',
     definition:
       'A kind of withholding tax which is prescribed on certain income payments and is creditable against the income tax due of the payee for the taxable quarter/year in which the particular income was earned.',
-    forms: '0619-E · 1601-EQ · 2307',
+    forms: ['0619-E', '1601-EQ', '1604-E', '2307'],
   },
   'Final (FWT)': {
     type: 'WF',
     name: 'Final Withholding Tax',
     definition:
       'The amount of income tax withheld by the withholding agent is constituted as a full and final payment of income tax due from the payee of the said income. The liability for payment of tax rests primarily on the payor as a withholding agent. Failure to withhold the tax or in case of under withholding, the deficiency tax shall be collected from payor/withholding agent. The payee is not required to file an income tax return for the particular income.',
-    forms: '0619-F · 1601-FQ · 2306',
+    forms: ['0619-F', '1601-FQ', '1604-F', '2306'],
   },
   'Withholding VAT': {
     type: 'WV',
     name: 'Withholding Tax on GMP - Value Added Taxes (GVAT)',
     definition:
       'The tax withheld by National Government Agencies (NGAs) and instrumentalities, including government-owned and controlled corporations (GOCCs) and local government units (LGUs), before making any payments to VAT registered taxpayers/suppliers/payees on account of their purchases of goods and services.',
-    forms: '1600-VT',
+    forms: ['1600-VT'],
   },
   'Percentage tax': {
     type: 'WB',
     name: 'Withholding Tax on Government Money Payments (GMP) - Percentage Taxes',
     definition:
       'The tax withheld by National Government Agencies (NGAs) and instrumentalities, including government-owned and controlled corporations (GOCCs) and local government units (LGUs), before making any payments to non-VAT registered taxpayers/suppliers/payees.',
-    forms: '1600-PT',
+    forms: ['1600-PT'],
   },
 };
 /** From the BIR table's sections: "Applicable to Government Withholding Agent Only" or "… Both Government and Private". */
@@ -506,7 +527,8 @@ export interface WithholdingTax {
   /** Rate history; a document uses the rate in force on its posting date. */
   rates: WithholdingRatePeriod[];
   base: WithholdingBase;
-  birForms: string;
+  /** The BIR forms it is remitted and certified on (ids in Settings › Accounting & Tax › BIR forms). */
+  formIds: string[];
   legalBasis: string;
   active: boolean;
   notes: string;
@@ -585,7 +607,8 @@ export function exciseTax(category: ExciseCategory, unitPrice: number, quantity:
 export const TAX_CATEGORIES: TaxCategory[] = [
   'Standard', 'Government', 'Zero-rated', 'Exempt', 'Capital goods', 'Services', 'Importation', 'Reverse charge', 'Non-VAT', 'Percentage tax',
 ];
-export const BIR_RETURNS = ['2550Q', '2551Q', '1600-VT', '2550Q / 1600-VT', '—'];
+/** BIR form ids from return numbers as the seed writes them ("2550Q / 1600-VT"; "—" = none). */
+const returnIds = (returns: string) => (returns === '—' ? [] : returns.split(' / ').map(birFormId));
 
 /** VAT has been 12% since 1 Feb 2006 (RA 9337). */
 const VAT_SINCE = '2006-02-01';
@@ -597,7 +620,7 @@ const tc = (
 ): TaxCode => ({
   id: code, code, name, direction, category,
   rates: typeof rate === 'number' ? [{ from: rate ? VAT_SINCE : ZERO_SINCE, rate }] : rate,
-  glAccount: toAccountCode(glAccount), birReturn, legalBasis, active: true, notes,
+  glAccount: toAccountCode(glAccount), returnFormIds: returnIds(birReturn), legalBasis, active: true, notes,
   atc: ATC_OF[code] ?? '',
 });
 
@@ -790,7 +813,7 @@ const wt = (
   id: `wt-${atc}`,
   atc, description, condition, attachmentRequired, kind, agent, payee,
   rates: [{ effectiveFrom: effectiveFrom ?? RATE_FROM[kind], effectiveTo: '', rate }],
-  base: BASE_FOR_KIND[kind], birForms: WITHHOLDING_KIND_INFO[kind].forms, legalBasis: '', active: true, notes: '',
+  base: BASE_FOR_KIND[kind], formIds: WITHHOLDING_KIND_INFO[kind].forms.map(birFormId), legalBasis: '', active: true, notes: '',
 });
 
 /*

@@ -6,8 +6,9 @@
  * Non-FIFO items (Moving Average, Standard Price, Serial/Batch) don't use this service.
  */
 import { createCollection } from './store';
-import { listItems, saveItem } from './items';
+import { saveItems, snapshotItems } from './items';
 import { stockHistory } from './stockHistory';
+import { round2, round4 } from './num';
 
 export interface CostLayer {
   id: string;
@@ -54,22 +55,32 @@ const consumptions = createCollection<CostConsumption>('sikat-erp:cost-consumpti
 export const consumptionsAt = async (itemId: string, warehouse: string) =>
   (await consumptions.list()).filter((c) => c.itemId === itemId && c.warehouse === warehouse);
 
+/**
+ * Layer writes, one at a time. Each reads the layers as they stand and writes back what it took;
+ * a document posts its lines together (`Promise.all`), and two lines of the same item and
+ * warehouse running side by side would both read the same layers and the second write would undo
+ * the first.
+ */
+let queue: Promise<unknown> = Promise.resolve();
+function inTurn<R>(run: () => Promise<R>): Promise<R> {
+  const turn = queue.then(run, run);
+  queue = turn.catch(() => undefined);
+  return turn;
+}
+
+/** An item's remaining layers in one warehouse, oldest first. */
+const openLayers = (itemId: string, warehouse: string) =>
+  layers
+    .snapshot()
+    .filter((l) => l.itemId === itemId && l.warehouse === warehouse && l.qty > 0)
+    .sort((a, b) => a.receivedOn.localeCompare(b.receivedOn) || a.id.localeCompare(b.id));
+
 /** Log what a document took, once it's saved and has an id. */
 export async function logConsumption(docId: string, date: string, taken: Taken[]) {
-  for (const t of taken) await consumptions.save({ ...t, docId, date });
+  await consumptions.saveMany(taken.map((t) => ({ ...t, docId, date })));
 }
 
 export const listCostLayers = layers.list;
-
-const round2 = (n: number) => Math.round(n * 100) / 100;
-const round4 = (n: number) => Math.round(n * 10000) / 10000;
-
-/** All remaining layers for one item across all warehouses, oldest first. */
-export async function layersFor(itemId: string): Promise<CostLayer[]> {
-  return (await layers.list())
-    .filter((l) => l.itemId === itemId && l.qty > 0)
-    .sort((a, b) => a.receivedOn.localeCompare(b.receivedOn) || a.id.localeCompare(b.id));
-}
 
 /** Every layer an item has had in one warehouse, used up or not, oldest first: its batch history. */
 export async function layerHistory(itemId: string, warehouse: string): Promise<CostLayer[]> {
@@ -80,7 +91,7 @@ export async function layerHistory(itemId: string, warehouse: string): Promise<C
 
 /** Create a new layer when a FIFO item is received. */
 export async function addLayer(params: Omit<CostLayer, 'id'>): Promise<CostLayer> {
-  return layers.save(params);
+  return inTurn(() => layers.save(params));
 }
 
 /**
@@ -91,38 +102,40 @@ export async function addLayer(params: Omit<CostLayer, 'id'>): Promise<CostLayer
  */
 export async function consumeLayers(itemId: string, warehouse: string, qty: number, log?: Taken[]): Promise<number> {
   if (qty <= 0) return 0;
-  const all = (await layers.list())
-    .filter((l) => l.itemId === itemId && l.warehouse === warehouse && l.qty > 0)
-    .sort((a, b) => a.receivedOn.localeCompare(b.receivedOn) || a.id.localeCompare(b.id));
+  return inTurn(async () => {
+    const all = openLayers(itemId, warehouse);
 
-  // No layers — fall back to item's stored average cost (opening balance scenario).
-  if (all.length === 0) {
-    const item = (await listItems()).find((i) => i.id === itemId);
-    log?.push({ itemId, warehouse, qty, unitCost: item?.itemCost ?? 0, receiptId: '', receivedOn: '' });
-    return item?.itemCost ?? 0;
-  }
+    // No layers — fall back to item's stored average cost (opening balance scenario).
+    if (all.length === 0) {
+      const item = snapshotItems().find((i) => i.id === itemId);
+      log?.push({ itemId, warehouse, qty, unitCost: item?.itemCost ?? 0, receiptId: '', receivedOn: '' });
+      return item?.itemCost ?? 0;
+    }
 
-  let remaining = qty;
-  let totalCost = 0;
+    let remaining = qty;
+    let totalCost = 0;
+    const used: CostLayer[] = [];
 
-  for (const layer of all) {
-    if (remaining <= 0) break;
-    const take = Math.min(remaining, layer.qty);
-    totalCost += take * layer.unitCost;
-    remaining -= take;
-    await layers.save({ ...layer, qty: round4(layer.qty - take) });
-    log?.push({ itemId, warehouse, qty: take, unitCost: layer.unitCost, receiptId: layer.receiptId ?? layer.sourceId, receivedOn: layer.receivedOn });
-  }
+    for (const layer of all) {
+      if (remaining <= 0) break;
+      const take = Math.min(remaining, layer.qty);
+      totalCost += take * layer.unitCost;
+      remaining -= take;
+      used.push({ ...layer, qty: round4(layer.qty - take) });
+      log?.push({ itemId, warehouse, qty: take, unitCost: layer.unitCost, receiptId: layer.receiptId ?? layer.sourceId, receivedOn: layer.receivedOn });
+    }
+    await layers.saveMany(used);
 
-  // Stock exceeds known layers (e.g., opening balance topped up with FIFO later).
-  // Use last layer's cost for the overage.
-  if (remaining > 0) {
-    const last = all[all.length - 1];
-    totalCost += remaining * last.unitCost;
-    log?.push({ itemId, warehouse, qty: remaining, unitCost: last.unitCost, receiptId: '', receivedOn: '' });
-  }
+    // Stock exceeds known layers (e.g., opening balance topped up with FIFO later).
+    // Use last layer's cost for the overage.
+    if (remaining > 0) {
+      const last = all[all.length - 1];
+      totalCost += remaining * last.unitCost;
+      log?.push({ itemId, warehouse, qty: remaining, unitCost: last.unitCost, receiptId: '', receivedOn: '' });
+    }
 
-  return round2(totalCost / qty);
+    return round2(totalCost / qty);
+  });
 }
 
 /**
@@ -130,15 +143,12 @@ export async function consumeLayers(itemId: string, warehouse: string, qty: numb
  * at (frozen `unitCostLc` on the delivery line).
  */
 export async function restoreLayer(params: Omit<CostLayer, 'id'>): Promise<void> {
-  await layers.save(params);
+  await inTurn(() => layers.save(params));
 }
 
 /** Remove all layers created by a specific source document (GR cancellation). */
 export async function removeLayersBySource(sourceId: string): Promise<void> {
-  const all = await layers.list();
-  for (const l of all.filter((x) => x.sourceId === sourceId)) {
-    await layers.save({ ...l, qty: 0 });
-  }
+  await inTurn(() => layers.saveMany(layers.snapshot().filter((l) => l.sourceId === sourceId).map((l) => ({ ...l, qty: 0 }))));
 }
 
 /**
@@ -155,22 +165,24 @@ export async function transferLayers(
   sourceId: string,
 ): Promise<void> {
   if (qty <= 0) return;
-  const all = (await layers.list())
-    .filter((l) => l.itemId === itemId && l.warehouse === fromWarehouse && l.qty > 0)
-    .sort((a, b) => a.receivedOn.localeCompare(b.receivedOn) || a.id.localeCompare(b.id));
-
-  let remaining = qty;
-  for (const layer of all) {
-    if (remaining <= 0) break;
-    const take = Math.min(remaining, layer.qty);
-    remaining -= take;
-    await layers.save({ ...layer, qty: round4(layer.qty - take) });
-    await addLayer({ itemId, warehouse: toWarehouse, receivedOn: layer.receivedOn, qty: take, receivedQty: take, unitCost: layer.unitCost, sourceId, receiptId: layer.receiptId ?? layer.sourceId });
-  }
-  if (remaining > 0) {
-    const item = (await listItems()).find((i) => i.id === itemId);
-    await addLayer({ itemId, warehouse: toWarehouse, receivedOn: postingDate, qty: remaining, unitCost: item?.itemCost ?? 0, sourceId });
-  }
+  await inTurn(async () => {
+    const writes: (Omit<CostLayer, 'id'> & { id?: string })[] = [];
+    let remaining = qty;
+    for (const layer of openLayers(itemId, fromWarehouse)) {
+      if (remaining <= 0) break;
+      const take = Math.min(remaining, layer.qty);
+      remaining -= take;
+      writes.push(
+        { ...layer, qty: round4(layer.qty - take) },
+        { itemId, warehouse: toWarehouse, receivedOn: layer.receivedOn, qty: take, receivedQty: take, unitCost: layer.unitCost, sourceId, receiptId: layer.receiptId ?? layer.sourceId },
+      );
+    }
+    if (remaining > 0) {
+      const item = snapshotItems().find((i) => i.id === itemId);
+      writes.push({ itemId, warehouse: toWarehouse, receivedOn: postingDate, qty: remaining, unitCost: item?.itemCost ?? 0, sourceId });
+    }
+    await layers.saveMany(writes);
+  });
 }
 
 /**
@@ -180,16 +192,23 @@ export async function transferLayers(
  */
 export async function updateFifoCosts(itemIds: string[]): Promise<void> {
   if (itemIds.length === 0) return;
-  const allLayers = await layers.list();
-  const allItems = await listItems();
+  await queue; // after the layer writes already under way
+  const wanted = new Set(itemIds);
+  const byItem = new Map<string, CostLayer[]>();
+  for (const l of layers.snapshot()) {
+    if (!wanted.has(l.itemId) || l.qty <= 0) continue;
+    const list = byItem.get(l.itemId);
+    if (list) list.push(l);
+    else byItem.set(l.itemId, [l]);
+  }
 
-  for (const itemId of itemIds) {
-    const itemLayers = allLayers.filter((l) => l.itemId === itemId && l.qty > 0);
-    if (itemLayers.length === 0) continue;
+  const changed = snapshotItems().flatMap((item) => {
+    const itemLayers = byItem.get(item.id);
+    if (!itemLayers) return [];
     const totalQty = itemLayers.reduce((n, l) => n + l.qty, 0);
     const totalValue = itemLayers.reduce((n, l) => n + l.qty * l.unitCost, 0);
     const cost = totalQty > 0 ? round2(totalValue / totalQty) : 0;
-    const item = allItems.find((i) => i.id === itemId);
-    if (item && cost > 0 && cost !== item.itemCost) await saveItem({ ...item, itemCost: cost });
-  }
+    return cost > 0 && cost !== item.itemCost ? [{ ...item, itemCost: cost }] : [];
+  });
+  await saveItems(changed);
 }

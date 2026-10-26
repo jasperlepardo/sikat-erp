@@ -55,5 +55,3 @@ export function blankDownPaymentRequest(today: string, buyerId: string): Omit<Do
   const { downPayment: _d, lines: _l, status: _s, ...base } = blankApInvoice(today, buyerId);
   return { ...base, seriesId: DPR_SERIES[0].id, status: 'Draft', lines: [], dpmPct: 100, paidLc: 0, drawnAmount: 0, downPaymentAccount: ADVANCES_TO_SUPPLIERS };
 }
-
-export const SEED_DOWN_PAYMENTS: DownPaymentRequest[] = [];

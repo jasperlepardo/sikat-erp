@@ -1,5 +1,4 @@
 import type { Errors } from '../../../../components/form/fields';
-import type { RfqStatus } from '../../../../mocks/rfqs';
 import type { Currency, ExchangeRate } from '../../../../mocks/currencies';
 import { rateAt, vatNotPaidToVendor } from '../../../../mocks/taxes';
 import type { InventoryMasters } from '../../../../services/inventoryMasters';
@@ -45,13 +44,6 @@ export interface RfqTabProps extends RfqSectionProps {
   onVendorSaved?: (vendor: Partner) => void;
 }
 
-export const STATUS_INTENT: Record<RfqStatus, 'default' | 'primary' | 'success' | 'danger' | 'warning'> = {
-  Draft: 'default',
-  'Not Confirmed': 'warning',
-  Open: 'primary',
-  Closed: 'success',
-  Cancelled: 'danger',
-};
 
 export interface RfqContext {
   vendor?: Partner;
@@ -154,7 +146,6 @@ export function lineFromItem(item: Item, draft: RfqDraft, ctx: RfqContext, m: Rf
 
 export function blanketOptions(vendorId: string, postingDate: string) {
   return [
-    { value: '', label: '— None —' },
     ...BLANKET_AGREEMENTS.filter((b) => b.vendorId === vendorId && b.validTo >= postingDate).map((b) => ({
       value: b.no,
       label: `${b.no} · ${b.description}`,

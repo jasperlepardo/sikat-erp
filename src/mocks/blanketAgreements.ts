@@ -4,14 +4,14 @@ import { termId } from './masters';
 import { SEED_ITEMS, itemsPerUom } from './items';
 import { SEED_PARTNERS } from './partners';
 import { todayISO } from '../services/dates';
+import { round2 } from '../services/num';
 
 export type BaStatus = 'Draft' | 'Approved' | 'On Hold' | 'Terminated' | 'Closed';
 export const BA_STATUSES: BaStatus[] = ['Draft', 'Approved', 'On Hold', 'Terminated', 'Closed'];
 
-export type BaAgreementMethod = 'Items' | 'Money';
-export const BA_AGREEMENT_METHODS: BaAgreementMethod[] = ['Items', 'Money'];
+type BaAgreementMethod = 'Items' | 'Money';
 
-export type BaRowStatus = 'Open' | 'Closed';
+type BaRowStatus = 'Open' | 'Closed';
 
 export interface BaLine {
   id: string;
@@ -170,7 +170,6 @@ export function blankBlanketAgreement(ownerId: string): Omit<BlanketAgreement, '
 
 const itemById = (id: string) => SEED_ITEMS.find((i) => i.id === id)!;
 const partnerById = (id: string) => SEED_PARTNERS.find((p) => p.id === id)!;
-const round2 = (n: number) => Math.round(n * 100) / 100;
 
 const seedLine = (id: string, itemId: string, plannedQty: number, patch: Partial<BaLine> = {}): BaLine => {
   const item = itemById(itemId);

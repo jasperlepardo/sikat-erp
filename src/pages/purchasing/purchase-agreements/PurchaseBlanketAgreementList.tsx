@@ -15,22 +15,13 @@ import {
 import { dateField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { useListPage } from '../../../components/form/DataTable';
-import { PBA_STATUSES, type PurchaseBlanketAgreement, type PbaStatus } from '../../../mocks/purchaseBlanketAgreements';
+import { PBA_STATUSES, type PurchaseBlanketAgreement } from '../../../mocks/purchaseBlanketAgreements';
 import { formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
 import { listPurchaseBlanketAgreements, pbaNumber, pbaTotals } from '../../../services/purchaseBlanketAgreements';
 import { useAsync } from '../../../services/useAsync';
 import { useDocTitle } from '../../../services/useDocTitle';
-
-export const PBA_LIST_PATH = '/purchasing/agreements';
-
-export const PBA_STATUS_INTENT: Record<PbaStatus, 'default' | 'primary' | 'success' | 'danger' | 'warning'> = {
-  Draft: 'default',
-  Approved: 'primary',
-  'On Hold': 'warning',
-  Terminated: 'danger',
-  Closed: 'success',
-};
+import { PBA_LIST_PATH, PBA_STATUS_INTENT } from '../paths';
 
 export function PurchaseBlanketAgreementList() {
   const navigate = useNavigate();

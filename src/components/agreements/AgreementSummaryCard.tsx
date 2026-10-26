@@ -1,6 +1,6 @@
 import { Text } from '@jasperlepardo/sikat-design-system';
-import { Section } from '../../../../components/form/fields';
-import { formatAmount } from '../../../../services/format';
+import { Section } from '../../components/form/fields';
+import { formatAmount } from '../../services/format';
 
 interface Totals {
   plannedTotal: number;
@@ -10,12 +10,15 @@ interface Totals {
 }
 
 interface Props {
+  /** Purchase agreements are ordered and received; sales agreements committed and fulfilled. */
+  side: 'purchase' | 'sales';
   currency: string;
   totals: Totals;
   settlementProbability: number;
 }
 
-export function BaSummaryCard({ currency, totals, settlementProbability }: Props) {
+/** A blanket agreement's totals: planned, ordered or committed, received or fulfilled, and open. */
+export function AgreementSummaryCard({ side, currency, totals, settlementProbability }: Props) {
   return (
     <Section icon="functions" title="Summary">
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
@@ -24,11 +27,11 @@ export function BaSummaryCard({ currency, totals, settlementProbability }: Props
           <Text weight="semibold" tone="heading">{currency} {formatAmount(totals.plannedTotal)}</Text>
         </div>
         <div>
-          <Text variant="small" tone="muted">Committed</Text>
+          <Text variant="small" tone="muted">{side === 'purchase' ? 'Ordered' : 'Committed'}</Text>
           <Text weight="semibold">{currency} {formatAmount(totals.committedTotal)}</Text>
         </div>
         <div>
-          <Text variant="small" tone="muted">Fulfilled</Text>
+          <Text variant="small" tone="muted">{side === 'purchase' ? 'Received' : 'Fulfilled'}</Text>
           <Text weight="semibold">{currency} {formatAmount(totals.cumulativeTotal)}</Text>
         </div>
         <div>

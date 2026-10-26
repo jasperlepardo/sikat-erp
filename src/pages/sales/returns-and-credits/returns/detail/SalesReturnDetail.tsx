@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { Alert, Badge, Button, Form, Panel, PanelHeader, Select, Tabs, Text, TextField } from '@jasperlepardo/sikat-design-system';
+import { Alert, Badge, Button, Form, Panel, PanelHeader, Select, Tabs, Text } from '@jasperlepardo/sikat-design-system';
 import { AttachmentsCard } from '../../../../../components/form/AttachmentsCard';
 import { type Errors } from '../../../../../components/form/fields';
 import { MoreMenu, type MoreMenuItem } from '../../../../../components/form/MoreMenu';
@@ -43,14 +43,15 @@ import { SalesDocumentFlow } from '../../../shared/SalesDocumentFlow';
 import { CustomerCard } from '../../../shared/CustomerCard';
 import { buildDnContext, type DnDraft, type DnMasters } from '../../../deliveries/detail/types';
 import { useDocTitle } from '../../../../../services/useDocTitle';
-import { AR_CM_LIST_PATH, SR_LIST_PATH, SR_STATUS_INTENT, type SrContext, type SrDraft, type SrMasters } from '../../types';
+import { type SrContext, type SrDraft, type SrMasters } from '../../types';
 import { SrLinesCard } from './SrLinesCard';
 import { ReturnDatesCard } from '../../ReturnDatesCard';
 import { ReturnShipmentCard } from '../../ReturnShipmentCard';
 import { ReturnAssignmentCard } from '../../ReturnAssignmentCard';
 import { SrCustomerDetailsPanel } from './SrCustomerDetailsPanel';
 import { ActivityTab } from '../../../../../components/activity/ActivityTab';
-import { NotFound, PrevNext, neighbours } from '../../../../../components/form/DetailNav';
+import { neighbours, NotFound, PrevNext, siblingKeys, useDocTab, useReject } from '../../../../../components/form/DetailNav';
+import { AR_CM_LIST_PATH, SR_LIST_PATH, SR_STATUS_INTENT } from '../../../paths';
 
 type Draft = SrDraft;
 type TabId = 'contents' | 'accounting';
@@ -146,13 +147,11 @@ function SalesReturnForm() {
   const [draft, setDraft] = useState<Draft | null | undefined>(isNew ? { ...blankSalesReturn(todayISO(), CURRENT_USER_ID), approved: srApproved } : undefined);
   const [m, setM] = useState<SrMasters>();
   const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
-  const setPage = (v: PageId) => navigate(`${SR_LIST_PATH}/${id}/${v}`, { replace: true });
-  useEffect(() => { if (!tabParam) navigate(`${SR_LIST_PATH}/${id}/details`, { replace: true, state: location.state }); }, []);
+  const setPage = useDocTab<PageId>(`${SR_LIST_PATH}/${id}`, tabParam);
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);
-  const [rejecting, setRejecting] = useState(false);
-  const [rejectionReason, setRejectionReason] = useState('');
+  const reject = useReject();
   const [linkingReplacement, setLinkingReplacement] = useState(false);
   const [replacementDnId, setReplacementDnId] = useState('');
   const [customerDetailsOpen, setCustomerDetailsOpen] = useState(false);
@@ -199,7 +198,7 @@ function SalesReturnForm() {
     if (isNew || !id) return;
     let cancelled = false;
     getSalesReturn(id).then((r) => !cancelled && setDraft(r ?? null));
-    listSalesReturns().then((all) => !cancelled && setSiblings([...all].sort((a, b) => b.postingDate.localeCompare(a.postingDate)).map((r) => r.docNum ? srNumber(r) : r.id)));
+    listSalesReturns().then((all) => !cancelled && setSiblings(siblingKeys(all, srNumber)));
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, isNew]);
@@ -321,12 +320,12 @@ function SalesReturnForm() {
     const r = await closeWithReplacementDelivery(saved, replacementDnId);
     navigate(SR_LIST_PATH, { state: { notice: `Sales return ${srNumber(r)} closed — replacement delivery linked.` } });
   };
-  const rejectIt = async () => { await logRejection('SRT', saved.id, saved.customerId, rejectionReason); await recallSalesReturn(saved); navigate(SR_LIST_PATH, { state: { notice: `Sales return ${srNumber(saved)} rejected and returned to draft.` } }); };
+  const rejectIt = async (rejectionReason: string) => { await logRejection('SRT', saved.id, saved.customerId, rejectionReason); await recallSalesReturn(saved); navigate(SR_LIST_PATH, { state: { notice: `Sales return ${srNumber(saved)} rejected and returned to draft.` } }); };
 
   const menu: MoreMenuItem[] = [
     ...(!added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
     ...(draft.status === 'Draft' && !draft.approved ? [{ label: 'Submit for approval', icon: 'upload', onSelect: () => submit(null, false) }] : []),
-    ...(draft.status === 'Not Confirmed' ? [{ label: 'Approve', icon: 'verified', onSelect: () => submit(null, false, { approved: true }) }, { label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => setRejecting(true) }] : []),
+    ...(draft.status === 'Not Confirmed' ? [{ label: 'Approve', icon: 'verified', onSelect: () => submit(null, false, { approved: true }) }, { label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => reject.start() }] : []),
     ...(creditable ? [{ label: 'Copy to A/R credit memo', icon: 'undo', onSelect: () => navigate(`${AR_CM_LIST_PATH}/new`, { state: { fromReturn: saved.id } }) }] : []),
     ...(draft.status === 'Open' && replacementDeliveries.length
       ? [{ label: 'Close with replacement delivery', icon: 'local_shipping', onSelect: () => { setReplacementDnId(''); setLinkingReplacement(true); } }]
@@ -416,7 +415,7 @@ function SalesReturnForm() {
           ) : (
             <Panel.Body className="flex flex-col gap-2">
               <ProblemsAlert problems={problems} tabLabel={(t) => TAB_LABEL[t as TabId]} />
-              {rejecting ? (<Alert intent="danger" variant="outline" title="Reject sales return"><div className="flex flex-col gap-2"><TextField aria-label="Rejection reason" value={rejectionReason} onChange={(e) => setRejectionReason(e.currentTarget.value)} placeholder="Explain why…" /><div className="flex gap-2"><Button type="button" intent="danger" variant="solid" size="small" onClick={rejectIt}>Confirm reject</Button><Button type="button" intent="white" variant="solid" size="small" onClick={() => { setRejecting(false); setRejectionReason(''); }}>Cancel</Button></div></div></Alert>) : null}
+              {reject.alert('Reject sales return', rejectIt)}
               {linkingReplacement ? (
                 <Alert intent="default" variant="outline" title="Close with replacement delivery">
                   <div className="flex flex-col gap-2">

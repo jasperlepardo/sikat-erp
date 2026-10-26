@@ -10,7 +10,6 @@ import {
   PanelHeader,
   Tabs,
   Text,
-  TextField,
 } from '@jasperlepardo/sikat-design-system';
 import { type Errors } from '../../../../components/form/fields';
 import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
@@ -53,19 +52,15 @@ import { buildGrContext, defaultPayTo, defaultShipTo, linesFromPo, type GrContex
 import { receivingVendorAddressFields } from '../../shared/vendorAddresses';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
-import { NotFound, PrevNext, neighbours } from '../../../../components/form/DetailNav';
+import { neighbours, NotFound, PrevNext, siblingKeys, useDocTab, useReject } from '../../../../components/form/DetailNav';
 import { VendorCard } from '../../shared/VendorCard';
 import { VendorDetailsPanel } from '../../shared/VendorDetailsPanel';
 import { GrDocumentCard } from './GrDocumentCard';
 import { GrTotalsCard } from './GrTotalsCard';
 import { GrJournalCard } from './GrJournalCard';
-import { GR_STATUS_INTENT } from './types';
 import { ReferencesTable } from '../../shared/ReferencesTable';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
-import { AP_LIST_PATH } from '../../vendor-invoices/detail/ApInvoiceDetail';
-export { GR_STATUS_INTENT };
-
-export const GR_LIST_PATH = '/purchasing/goods-receipts';
+import { AP_LIST_PATH, GR_LIST_PATH, GR_STATUS_INTENT } from '../../paths';
 
 type TabId = 'contents' | 'logistics' | 'accounting';
 
@@ -144,13 +139,11 @@ function GoodsReceiptForm() {
   );
   const [m, setM] = useState<GrMasters>();
   const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
-  const setPage = (v: PageId) => navigate(`${GR_LIST_PATH}/${id}/${v}`, { replace: true });
-  useEffect(() => { if (!tabParam) navigate(`${GR_LIST_PATH}/${id}/details`, { replace: true, state: location.state }); }, []);
+  const setPage = useDocTab<PageId>(`${GR_LIST_PATH}/${id}`, tabParam);
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);
-  const [rejecting, setRejecting] = useState(false);
-  const [rejectionReason, setRejectionReason] = useState('');
+  const reject = useReject();
   const [vendorDetailsOpen, setVendorDetailsOpen] = useState(false);
 
   useEffect(() => {
@@ -183,7 +176,7 @@ function GoodsReceiptForm() {
     if (isNew || !id) return;
     let cancelled = false;
     getGoodsReceipt(id).then((gr) => !cancelled && setDraft(gr ?? null));
-    listGoodsReceipts().then((all) => !cancelled && setSiblings([...all].sort((a, b) => b.postingDate.localeCompare(a.postingDate)).map((r) => r.docNum ? grNumber(r) : r.id)));
+    listGoodsReceipts().then((all) => !cancelled && setSiblings(siblingKeys(all, grNumber)));
     return () => {
       cancelled = true;
     };
@@ -303,7 +296,7 @@ function GoodsReceiptForm() {
   const invoiced = draft.lines.some((l) => l.invoicedQty > 0);
   const returned = draft.lines.some((l) => (l.returnedQty ?? 0) > 0);
   const recallIt = () => act(() => recallGoodsReceipt(saved), 'recalled to draft');
-  const rejectIt = async () => {
+  const rejectIt = async (rejectionReason: string) => {
     await logRejection('GRPO', saved.id, saved.vendorId, rejectionReason);
     await recallGoodsReceipt(saved);
     navigate(GR_LIST_PATH, { state: { notice: `Goods receipt ${grNumber(saved)} rejected and returned to draft.` } });
@@ -312,7 +305,7 @@ function GoodsReceiptForm() {
 
   const menu: MoreMenuItem[] = [
     ...(!added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
-    ...(draft.status === 'Not Confirmed' ? [{ label: 'Approve', icon: 'check_circle', onSelect: () => submit(null, false, { approved: true }) }, { label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => setRejecting(true) }] : []),
+    ...(draft.status === 'Not Confirmed' ? [{ label: 'Approve', icon: 'check_circle', onSelect: () => submit(null, false, { approved: true }) }, { label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => reject.start() }] : []),
     ...(draft.status === 'Open' && draft.lines.some((l) => grOpenQty(l, draft) > 0)
       ? [
           { label: 'Copy to A/P invoice', icon: 'request_quote', onSelect: () => navigate(`${AP_LIST_PATH}/new`, { state: { fromReceipt: saved.id } }) },
@@ -330,7 +323,6 @@ function GoodsReceiptForm() {
 
   const title = isNew ? 'New goods receipt' : added ? grNumber(draft) : 'Draft goods receipt';
   const sectionProps = { draft, update, errors, m, ctx };
-
 
   return (
     <>
@@ -375,7 +367,7 @@ function GoodsReceiptForm() {
         ) : (
           <Panel.Body className="flex flex-col gap-2">
             <ProblemsAlert problems={problems} tabLabel={(t) => ({ contents: 'Contents', logistics: 'Logistics', accounting: 'Accounting' })[t]} />
-            {rejecting ? (<Alert intent="danger" variant="outline" title="Reject goods receipt"><div className="flex flex-col gap-2"><TextField aria-label="Rejection reason" value={rejectionReason} onChange={(e) => setRejectionReason(e.currentTarget.value)} placeholder="Explain why…" /><div className="flex gap-2"><Button type="button" intent="danger" variant="solid" size="small" onClick={rejectIt}>Confirm reject</Button><Button type="button" intent="white" variant="solid" size="small" onClick={() => { setRejecting(false); setRejectionReason(''); }}>Cancel</Button></div></div></Alert>) : null}
+            {reject.alert('Reject goods receipt', rejectIt)}
             {added ? (
               <Alert intent="default" variant="outline" title={draft.status === 'Open' ? 'This goods receipt is added' : `This goods receipt is ${draft.status.toLowerCase()}`}>
                 {draft.status === 'Open'

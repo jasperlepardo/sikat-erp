@@ -6,21 +6,22 @@ import { listTransfers, transferNumber } from '../../../../services/inventoryTra
 import { listPurchaseOrders, openQty as poOpenQty, poNumber } from '../../../../services/purchaseOrders';
 import { listSalesOrders, openQty as soOpenQty, soNumber } from '../../../../services/salesOrders';
 import type { StatusIntent } from '../../../partners/detail/partnerDocuments';
-import { PO_LIST_PATH, STATUS_INTENT } from '../../../purchasing/purchase-orders/detail/PurchaseOrderDetail';
-import { GR_LIST_PATH, GR_STATUS_INTENT } from '../../../purchasing/goods-receipts/detail/GoodsReceiptDetail';
-import { RETURN_STATUS_INTENT } from '../../../purchasing/shared/returnsTypes';
-import { RETURN_LIST_PATH } from '../../../purchasing/shared/returnsTypes';
-import { SO_STATUS_INTENT } from '../../../sales/sales-orders/detail/SalesOrderDetail';
-import { SO_LIST_PATH } from '../../../sales/sales-orders/detail/types';
-import { DN_STATUS_INTENT } from '../../../sales/deliveries/detail/DeliveryDetail';
-import { DN_LIST_PATH } from '../../../sales/deliveries/detail/types';
-import { TRANSFER_LIST_PATH, TRANSFER_STATUS_INTENT } from '../../transfers/InventoryTransferDetail';
+import {
+  GR_LIST_PATH,
+  GR_STATUS_INTENT,
+  PO_LIST_PATH,
+  PO_STATUS_INTENT,
+  RETURN_LIST_PATH,
+  RETURN_STATUS_INTENT,
+} from '../../../purchasing/paths';
+import { DN_LIST_PATH, DN_STATUS_INTENT, SO_LIST_PATH, SO_STATUS_INTENT } from '../../../sales/paths';
+import { TRANSFER_LIST_PATH, TRANSFER_STATUS_INTENT } from '../../paths';
 
 /**
  * What a document row does to the item's stock in one warehouse: moves it in or out (receipts,
  * returns, deliveries, transfers), or reserves it (sales orders commit, purchase orders order).
  */
-export type StockEffect = 'in' | 'out' | 'committed' | 'ordered';
+type StockEffect = 'in' | 'out' | 'committed' | 'ordered';
 
 /** One document row for the item in one warehouse. */
 export interface WarehouseDocument {
@@ -67,7 +68,7 @@ export async function listWarehouseDocuments(itemId: string, warehouse: string):
         const open = (po.status === 'Open' || po.status === 'Not Confirmed') && l.status === 'Open';
         return {
           id: `po:${po.id}:${l.id}`, type: 'Purchase order', number: poNumber(po), subcopy: po.vendorName, date: po.postingDate,
-          status: po.status, intent: STATUS_INTENT[po.status], effect: 'ordered' as const,
+          status: po.status, intent: PO_STATUS_INTENT[po.status], effect: 'ordered' as const,
           quantity: (open ? poOpenQty(l) : l.quantity) * (l.itemsPerUnit || 1), live: open && poOpenQty(l) > 0, href: `${PO_LIST_PATH}/${po.id}`,
         };
       }),

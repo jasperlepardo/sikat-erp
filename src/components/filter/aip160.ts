@@ -19,7 +19,7 @@ import { OPERATORS_BY_TYPE, OP_LABEL, isComplete, type FilterField, type FilterG
 // ---------- printing ----------
 
 /** Each operator's AIP-160 form, for the operator menu: "contains  :", "is not  !=". */
-export const AIP_OP: Record<Op, string> = {
+const AIP_OP: Record<Op, string> = {
   is: '=',
   isNot: '!=',
   contains: ':',

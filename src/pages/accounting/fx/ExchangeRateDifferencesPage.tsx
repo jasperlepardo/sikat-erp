@@ -7,8 +7,8 @@ import { accountText, type Account } from '../../../mocks/chartOfAccounts';
 import type { ErdRow, ErdRun } from '../../../mocks/exchangeRateDifferences';
 import { listApInvoices } from '../../../services/apInvoices';
 import { listArInvoices } from '../../../services/arInvoices';
-import { formatDate, todayISO } from '../../../services/dates';
-import { defaultRates, erdLines, erdTotals, listErdRuns, nextDay, openForeignRows, postErdRun, type ErdMasters } from '../../../services/exchangeRateDifferences';
+import { addDays, formatDate, todayISO } from '../../../services/dates';
+import { defaultRates, erdLines, erdTotals, listErdRuns, openForeignRows, postErdRun, type ErdMasters } from '../../../services/exchangeRateDifferences';
 import { formatAmount } from '../../../services/format';
 import { listItems } from '../../../services/items';
 import { postingPeriodProblem, rowAccount } from '../../../services/journalEntries';
@@ -30,7 +30,7 @@ export function ExchangeRateDifferencesPage() {
   const [m, setM] = useState<ErdMasters & { accounts: Account[] }>();
   const [runs, setRuns] = useState<ErdRun[]>([]);
   const [date, setDate] = useState(lastMonthEnd(todayISO()));
-  const [reversalDate, setReversalDate] = useState(nextDay(lastMonthEnd(todayISO())));
+  const [reversalDate, setReversalDate] = useState(addDays(lastMonthEnd(todayISO()), 1));
   const [rates, setRates] = useState<Record<string, number>>({});
   // Rows the user unticked; everything else with a rate is revalued.
   const [unticked, setUnticked] = useState<Set<string>>(new Set());
@@ -145,7 +145,7 @@ export function ExchangeRateDifferencesPage() {
           <Section icon="event" title="Run">
             <Fields>
               <FormField label="Revaluation date" required error={postingPeriodProblem(date)} tooltip="Usually the last day of the period. Documents posted on or before it are revalued.">
-                {(p) => <DatePicker {...p} value={date} onValueChange={(v) => { if (v) { setDate(v); setReversalDate(nextDay(v)); } }} />}
+                {(p) => <DatePicker {...p} value={date} onValueChange={(v) => { if (v) { setDate(v); setReversalDate(addDays(v, 1)); } }} />}
               </FormField>
               <FormField label="Reversal date" required error={reversalDate <= date ? 'Must be after the revaluation date.' : postingPeriodProblem(reversalDate)} tooltip="The entry reverses automatically on this day.">
                 {(p) => <DatePicker {...p} value={reversalDate} onValueChange={(v) => v && setReversalDate(v)} />}

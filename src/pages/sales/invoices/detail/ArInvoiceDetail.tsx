@@ -1,12 +1,12 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { Alert, Badge, Button, Form, Panel, PanelHeader, Tabs, Text, TextField } from '@jasperlepardo/sikat-design-system';
+import { Alert, Badge, Button, Form, Panel, PanelHeader, Tabs, Text } from '@jasperlepardo/sikat-design-system';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { type Errors } from '../../../../components/form/fields';
 import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { formatAddress } from '../../../../mocks/address';
-import { OR_SERIES_ID, blankArInvoice, type ArInvoice, type ArStatus } from '../../../../mocks/arInvoices';
+import { OR_SERIES_ID, blankArInvoice, type ArInvoice } from '../../../../mocks/arInvoices';
 import { CURRENT_USER_ID } from '../../../../mocks/common';
 import {
   ArPostError,
@@ -40,25 +40,24 @@ import { termDays } from '../../../../services/purchaseOrders';
 import { logRejection } from '../../../../services/approvalRules';
 import { getSalesSettings, listSalesOrders, openQty, soDueDate, soNumber } from '../../../../services/salesOrders';
 import { soSeries } from '../../../../services/allSeries';
-import { DN_LIST_PATH } from '../../deliveries/detail/types';
-import { ALL_CURRENCIES, SO_LIST_PATH, proposedTaxCode } from '../../sales-orders/detail/types';
-import { ArContentsCard, type CopyPick } from './ArContentsCard';
+import { ALL_CURRENCIES, proposedTaxCode } from '../../sales-orders/detail/types';
+import { InvoiceContentsCard, type CopyPick } from '../../shared/InvoiceContentsCard';
 import { ArDatesCard } from './ArDatesCard';
 import { ArSettingsCard } from './ArSettingsCard';
-import { ArBpChannelCard } from './ArBpChannelCard';
+import { BpChannelCard } from '../../shared/BpChannelCard';
 import { ArShipmentCard } from './ArShipmentCard';
 import { ArAssignmentCard } from './ArAssignmentCard';
 import { ArInstallmentsCard } from './ArInstallmentsCard';
-import { ArCustomerDetailsPanel } from './ArCustomerDetailsPanel';
+import { InvoiceCustomerDetailsPanel } from '../../shared/InvoiceCustomerDetailsPanel';
 import { CustomerCard } from '../../shared/CustomerCard';
 import { SalesTotalsFooter } from '../../shared/TotalsFooter';
 import { ReferencesTable } from '../../../purchasing/shared/ReferencesTable';
-import { AR_LIST_PATH, arLineFromDelivery, arLineFromOrder, buildArContext, type ArContext, type ArDraft, type ArMasters } from './types';
+import { arLineFromDelivery, arLineFromOrder, buildArContext, type ArContext, type ArDraft, type ArMasters } from './types';
 import { SalesDocumentFlow } from '../../shared/SalesDocumentFlow';
 import { useDocTitle } from '../../../../services/useDocTitle';
-import { AR_CM_LIST_PATH } from '../../returns-and-credits/types';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
-import { NotFound, PrevNext, neighbours } from '../../../../components/form/DetailNav';
+import { neighbours, NotFound, PrevNext, siblingKeys, useDocTab, useReject } from '../../../../components/form/DetailNav';
+import { AR_CM_LIST_PATH, AR_LIST_PATH, AR_STATUS_INTENT, DN_LIST_PATH, SO_LIST_PATH } from '../../paths';
 
 /** Where a problem's field is: the lines, or the customer details panel (payment and accounting). */
 type TabId = 'contents' | 'accounting';
@@ -70,8 +69,6 @@ const PAGES = [
   { value: 'activity', label: 'Activity' },
 ] as const;
 type PageId = (typeof PAGES)[number]['value'];
-
-export const AR_STATUS_INTENT: Record<ArStatus, 'default' | 'primary' | 'success' | 'danger' | 'warning'> = { Draft: 'default', 'Not Confirmed': 'warning', Open: 'primary', Closed: 'success', Cancelled: 'danger' };
 
 function validate(d: ArDraft, ctx: ArContext, m: ArMasters, asDraft: boolean): Problem<TabId>[] {
   const { problems, need } = problemCollector<TabId>();
@@ -122,14 +119,12 @@ function ArInvoiceForm() {
   const [draft, setDraft] = useState<ArDraft | null | undefined>(isNew ? { ...blankArInvoice(todayISO(), CURRENT_USER_ID), approved: arApproved } : undefined);
   const [m, setM] = useState<ArMasters>();
   const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
-  const setPage = (v: PageId) => navigate(`${AR_LIST_PATH}/${id}/${v}`, { replace: true });
-  useEffect(() => { if (!tabParam) navigate(`${AR_LIST_PATH}/${id}/details`, { replace: true, state: location.state }); }, []);
+  const setPage = useDocTab<PageId>(`${AR_LIST_PATH}/${id}`, tabParam);
   const [customerDetailsOpen, setCustomerDetailsOpen] = useState(false);
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);
-  const [rejecting, setRejecting] = useState(false);
-  const [rejectionReason, setRejectionReason] = useState('');
+  const reject = useReject();
 
   useEffect(() => {
     let cancelled = false;
@@ -165,7 +160,7 @@ function ArInvoiceForm() {
     });
     if (!isNew && id) {
       getArInvoice(id).then((a) => !cancelled && setDraft(a ?? null));
-      listArInvoices().then((all) => !cancelled && setSiblings([...all].sort((a, b) => b.postingDate.localeCompare(a.postingDate)).map((a) => a.docNum ? arNumber(a) : a.id)));
+      listArInvoices().then((all) => !cancelled && setSiblings(siblingKeys(all, arNumber)));
     }
     return () => {
       cancelled = true;
@@ -321,12 +316,12 @@ function ArInvoiceForm() {
   const closeIt = () => act(() => closeArInvoice(saved), 'closed');
   const cancelIt = () => act(() => cancelArInvoice(saved), 'cancelled — the entry is reversed and its deliveries and orders are open again');
   const recallIt = () => act(() => recallArInvoice(saved), 'recalled to draft');
-  const rejectIt = async () => { await logRejection('ARINV', saved.id, saved.customerId, rejectionReason); await recallArInvoice(saved); navigate(AR_LIST_PATH, { state: { notice: `A/R invoice ${arNumber(saved)} rejected and returned to draft.` } }); };
+  const rejectIt = async (rejectionReason: string) => { await logRejection('ARINV', saved.id, saved.customerId, rejectionReason); await recallArInvoice(saved); navigate(AR_LIST_PATH, { state: { notice: `A/R invoice ${arNumber(saved)} rejected and returned to draft.` } }); };
 
   const menu: MoreMenuItem[] = [
     ...(!ctx.added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
     ...(draft.status === 'Draft' && !draft.approved ? [{ label: 'Submit for approval', icon: 'upload', onSelect: () => submit(null, false) }] : []),
-    ...(draft.status === 'Not Confirmed' ? [{ label: 'Approve', icon: 'verified', onSelect: () => submit(null, false, { approved: true }) }, { label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => setRejecting(true) }] : []),
+    ...(draft.status === 'Not Confirmed' ? [{ label: 'Approve', icon: 'verified', onSelect: () => submit(null, false, { approved: true }) }, { label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => reject.start() }] : []),
     ...(draft.status === 'Open' && balance > 0 && !draft.paymentBlock
       ? [{ label: 'Receive payment', icon: 'savings', onSelect: () => navigate('/sales/incoming-payments/new', { state: { fromInvoice: draft.id } }) }]
       : []),
@@ -387,7 +382,7 @@ function ArInvoiceForm() {
         {page === 'details' ? (
           <Panel.Body className="flex flex-col gap-2">
             <ProblemsAlert problems={problems} tabLabel={(t) => TAB_LABEL[t as TabId]} />
-            {rejecting ? (<Alert intent="danger" variant="outline" title="Reject A/R invoice"><div className="flex flex-col gap-2"><TextField aria-label="Rejection reason" value={rejectionReason} onChange={(e) => setRejectionReason(e.currentTarget.value)} placeholder="Explain why…" /><div className="flex gap-2"><Button type="button" intent="danger" variant="solid" size="small" onClick={rejectIt}>Confirm reject</Button><Button type="button" intent="white" variant="solid" size="small" onClick={() => { setRejecting(false); setRejectionReason(''); }}>Cancel</Button></div></div></Alert>) : null}
+            {reject.alert('Reject A/R invoice', rejectIt)}
             {ro ? (
               <Alert intent="default" variant="outline" title={`This invoice is ${draft.status.toLowerCase()}`}>
                 {draft.status === 'Cancelled'
@@ -409,7 +404,8 @@ function ArInvoiceForm() {
                   onOpenDetails={() => setCustomerDetailsOpen(true)}
                 />
                 {/* Not in a disabled fieldset: the table locks its own inputs and keeps its column settings. */}
-                <ArContentsCard
+                <InvoiceContentsCard
+                  kind="AR"
                   {...tabProps}
                   onCopy={(src, picks) => setDraft(copyLines(draft, src, picks, m))}
                   cardFooter={
@@ -448,7 +444,7 @@ function ArInvoiceForm() {
               <aside className="flex flex-col gap-2 lg:col-span-4">
                 <ArDatesCard {...tabProps} />
                 <ArSettingsCard {...tabProps} />
-                <ArBpChannelCard {...tabProps} />
+                <BpChannelCard {...tabProps} />
                 <ArShipmentCard {...tabProps} />
                 <ArAssignmentCard {...tabProps} />
               </aside>
@@ -457,7 +453,7 @@ function ArInvoiceForm() {
         ) : null}
       </Panel>
     </Form>
-    <ArCustomerDetailsPanel {...tabProps} open={customerDetailsOpen} onClose={() => setCustomerDetailsOpen(false)} />
+    <InvoiceCustomerDetailsPanel {...tabProps} noun="invoice" remarkDefault="A/R Invoices – customer code" open={customerDetailsOpen} onClose={() => setCustomerDetailsOpen(false)} />
     </>
   );
 }

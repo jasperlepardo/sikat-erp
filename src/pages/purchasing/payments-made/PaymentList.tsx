@@ -22,7 +22,7 @@ import { choiceField, dateField, masterField, numberField, statusField, textFiel
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { currencyDef } from '../../settings/masterDefs';
 import { useListPage } from '../../../components/form/DataTable';
-import { PAYMENT_LIST_PATH, PAYMENT_STATUS_INTENT } from './detail/PaymentDetail';
+import { PAYMENT_LIST_PATH, PAYMENT_STATUS_INTENT } from '../paths';
 
 /** How a payment went out, in words: "Bank transfer", "2 checks", "Cash + card". */
 const meansText = (p: OutgoingPayment) =>

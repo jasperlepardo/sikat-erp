@@ -131,7 +131,7 @@ export function AppShell() {
         <main className="flex h-[calc(100dvh-64px)] min-w-0 flex-1 flex-col gap-2 overflow-y-auto p-2 *:min-h-0">
           {/* Pages load on first visit (see router.tsx). */}
           <Suspense fallback={<Text tone="muted" className="p-4">Loading…</Text>}>
-            <DateSettings>
+            <DateSettings company={company}>
               <Outlet />
             </DateSettings>
           </Suspense>

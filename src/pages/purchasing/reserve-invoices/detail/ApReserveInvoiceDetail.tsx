@@ -44,20 +44,18 @@ import { DocumentFlow } from '../../shared/DocumentFlow';
 import { ReferencesTable } from '../../shared/ReferencesTable';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { useDocTitle } from '../../../../services/useDocTitle';
-import { NotFound, PrevNext, neighbours } from '../../../../components/form/DetailNav';
+import { neighbours, NotFound, PrevNext, siblingKeys, useDocTab } from '../../../../components/form/DetailNav';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
 import { buildApriContext, orderNumbersOf, riLinesFromPo, type ApriDraft, type ApriMasters } from './types';
 import { VendorCard } from '../../shared/VendorCard';
 import { VendorDetailsPanel } from '../../shared/VendorDetailsPanel';
 import { receivingVendorAddressFields } from '../../shared/vendorAddresses';
-import { ApriDocumentCard, AP_RI_STATUS_INTENT } from './ApriDocumentCard';
+import { ApriDocumentCard } from './ApriDocumentCard';
 import { ApriContentsCard } from './ApriContentsCard';
 import { ApriAccountingCard } from './ApriAccountingCard';
 import { ApriTotalsCard } from './ApriTotalsCard';
 import { ApriJournalCard } from './ApriJournalCard';
-
-export const APRI_LIST_PATH = '/purchasing/reserve-invoices';
-export { AP_RI_STATUS_INTENT };
+import { APRI_LIST_PATH, AP_RI_STATUS_INTENT } from '../../paths';
 
 type TabId = 'contents' | 'logistics' | 'accounting';
 
@@ -110,8 +108,7 @@ function ApReserveInvoiceForm() {
   );
   const [m, setM] = useState<ApriMasters>();
   const page = (PAGES.some((p) => p.value === tabParam) ? tabParam : 'details') as PageId;
-  const setPage = (v: PageId) => navigate(`${APRI_LIST_PATH}/${id}/${v}`, { replace: true });
-  useEffect(() => { if (!tabParam) navigate(`${APRI_LIST_PATH}/${id}/details`, { replace: true, state: location.state }); }, []);
+  const setPage = useDocTab<PageId>(`${APRI_LIST_PATH}/${id}`, tabParam);
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);
@@ -146,7 +143,7 @@ function ApReserveInvoiceForm() {
     if (isNew || !id) return;
     let cancelled = false;
     getApReserveInvoice(id).then((inv) => !cancelled && setDraft(inv ?? null));
-    listApReserveInvoices().then((all) => !cancelled && setSiblings([...all].sort((a, b) => b.postingDate.localeCompare(a.postingDate)).map((inv) => inv.docNum ? apRiNumber(inv) : inv.id)));
+    listApReserveInvoices().then((all) => !cancelled && setSiblings(siblingKeys(all, apRiNumber)));
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, isNew]);

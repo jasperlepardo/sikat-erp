@@ -1,5 +1,4 @@
 import type { Errors } from '../../../../components/form/fields';
-import type { GrStatus } from '../../../../mocks/goodsReceipts';
 import { formatAddress } from '../../../../mocks/address';
 import { newGrLine, type GrLine } from '../../../../mocks/goodsReceipts';
 import { vendorDeliveryLocation } from '../../../../mocks/itemMasters';
@@ -22,13 +21,6 @@ export interface GrMasters extends PoMasters {
   orders: PurchaseOrder[];
 }
 
-export const GR_STATUS_INTENT: Record<GrStatus, 'default' | 'primary' | 'success' | 'danger' | 'warning'> = {
-  Draft: 'default',
-  'Not Confirmed': 'warning',
-  Open: 'primary',
-  Closed: 'success',
-  Cancelled: 'danger',
-};
 
 export interface GrSectionProps {
   draft: GrDraft;

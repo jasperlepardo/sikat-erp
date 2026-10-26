@@ -20,6 +20,8 @@ import { CopyPanel } from '../../shared/CopyPanel';
 import { riLineFromItem, riLinesFromPo, type ApriSectionProps } from './types';
 import { LineItemText } from '../../../../components/form/LineItemText';
 import { editTaxCode } from '../../../../services/taxRecalc';
+import { taxCodeOptions } from '../../../../services/taxCodeOptions';
+import { round2 } from '../../../../services/num';
 
 const WITHHELD_LABEL: Record<string, string> = {
   'Expanded (EWT)': 'EWT',
@@ -29,7 +31,6 @@ const WITHHELD_LABEL: Record<string, string> = {
 };
 
 const num = (v: string) => (v === '' ? 0 : Number(v));
-const round2 = (n: number) => Math.round(n * 100) / 100;
 
 export function ApriContentsCard({
   draft,
@@ -86,12 +87,9 @@ export function ApriContentsCard({
         text: `${i.itemNo} ${i.description}`,
       }));
 
-  const taxOptions = m.tax.codes
-    .filter((c) => c.direction === 'Purchase' && c.active)
-    .map((c) => ({ value: c.code, label: c.name }));
+  const taxOptions = (current: string) => taxCodeOptions(m.tax.codes, 'Purchase', current);
 
   const blanketOptions = [
-    { value: '', label: '— None —' },
     ...BLANKET_AGREEMENTS.filter((b) => b.vendorId === draft.vendorId && b.validTo >= draft.postingDate).map((b) => ({ value: b.no, label: `${b.no} · ${b.description}` })),
   ];
 
@@ -166,7 +164,7 @@ export function ApriContentsCard({
       l.itemId ? (
         <div className="flex w-44 flex-col gap-1">
           <TextField aria-label="Unit price" type="number" min={0} prefix={draft.currency} invalid={Boolean(err(l, 'unitPrice'))} value={String(l.unitPrice)} onChange={(e) => patch(l.id, { unitPrice: round2(num(e.currentTarget.value)) })} />
-          <Combobox aria-label="Tax code" invalid={Boolean(err(l, 'taxCode'))} options={taxOptions} value={l.taxCode} onValueChange={(taxCode) => patch(l.id, editTaxCode(taxCode ?? ''))} />
+          <Combobox aria-label="Tax code" invalid={Boolean(err(l, 'taxCode'))} options={taxOptions(l.taxCode)} value={l.taxCode} onValueChange={(taxCode) => patch(l.id, editTaxCode(taxCode ?? ''))} />
           <TextField aria-label="Discount %" type="number" min={0} suffix="%" value={String(l.discountPct)} onChange={(e) => patch(l.id, { discountPct: Math.min(100, num(e.currentTarget.value)) })} />
         </div>
       ) : null,
@@ -202,7 +200,7 @@ export function ApriContentsCard({
       'Blanket agreement',
       (l) =>
         l.itemId ? (
-          <Combobox aria-label="Blanket agreement" className="w-48" options={blanketOptions} value={l.blanketAgreement} onValueChange={(blanketAgreement) => patch(l.id, { blanketAgreement: blanketAgreement ?? '' })} />
+          <Combobox aria-label="Blanket agreement" className="w-48" clearable placeholder="None" options={blanketOptions} value={l.blanketAgreement} onValueChange={(blanketAgreement) => patch(l.id, { blanketAgreement: blanketAgreement ?? '' })} />
         ) : null,
       { optional: true },
     ),
@@ -276,7 +274,7 @@ export function ApriContentsCard({
                   <Combobox
                     aria-label="Freight tax code"
                     className="w-48"
-                    options={m.tax.codes.filter((c) => c.direction === 'Purchase' && c.active).map((c) => ({ value: c.code, label: c.name }))}
+                    options={taxCodeOptions(m.tax.codes, 'Purchase', draft.freightTaxCode)}
                     value={draft.freightTaxCode}
                     onValueChange={(freightTaxCode) => update({ freightTaxCode: freightTaxCode ?? '' })}
                   />

@@ -27,6 +27,7 @@ import { formatAmount } from './format';
 import { itemGroupName } from './inventoryMasters';
 import { bpGroupName, priceLists } from './partnerMasters';
 import { createCollection } from './store';
+import { round2 } from './num';
 
 export const specialPrices = createCollection<SpecialPriceSet>('sikat-erp:special-prices', SEED_SPECIAL_PRICES, 'spp');
 export const periodVolumeDiscounts = createCollection<PeriodVolumeDiscount>('sikat-erp:period-volume-discounts', SEED_PERIOD_VOLUME_DISCOUNTS, 'pvd');
@@ -37,8 +38,7 @@ const MAX_DEPTH = 10;
 
 const STEP: Record<PriceRounding, number> = { none: 0.01, peso: 1, 'ten-centavos': 0.1, tens: 10, hundreds: 100 };
 
-const round2 = (n: number) => Math.round(n * 100) / 100;
-
+/** @public — kept for tests (docs/test-plan.md) and docs. */
 export const roundPrice = (amount: number, rounding: PriceRounding) => round2(Math.round(amount / STEP[rounding]) * STEP[rounding]);
 
 export const roundingLabel = (rounding: PriceRounding) => PRICE_ROUNDING.find((r) => r.value === rounding)?.label ?? rounding;
@@ -123,18 +123,24 @@ export function listPrice(item: Item, priceListId: string, uom: string, all: rea
   return chain ? chainPrice(chain, item, uom) : unitPrice(item, uom);
 }
 
-/** The tier a line quantity falls in; none when it's in a gap between tiers. */
+/**
+ * The tier a line quantity falls in; none when it's in a gap between tiers.
+ * @public
+ */
 export const tierFor = (tiers: VolumeTier[], qty: number) =>
   tiers.find((t) => qty >= t.qtyFrom && (t.qtyTo === null || qty <= t.qtyTo));
 
-/** The price or % a special price row gives for a quantity (inventory units): the highest tier reached, else the row. */
+/**
+ * The price or % a special price row gives for a quantity (inventory units): the highest tier reached, else the row.
+ * @public
+ */
 export function specialTerms(row: SpecialPriceRow, qty: number) {
   const tier = [...row.tiers].sort((a, b) => b.qtyFrom - a.qtyFrom).find((t) => qty >= t.qtyFrom);
   const terms = tier ?? row;
   return { unitPrice: terms.unitPrice, discountPct: terms.discountPct ?? 0, tier };
 }
 
-export interface PriceSource {
+interface PriceSource {
   kind: 'special' | 'period' | 'volume' | 'group' | 'list';
   /** "Volume discount 50+ · Techzone accessories…", for the line hint. */
   label: string;

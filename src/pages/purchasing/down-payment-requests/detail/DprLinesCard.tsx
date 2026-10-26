@@ -18,9 +18,10 @@ import { lineFromItem, linePricing } from '../../goods-receipts/detail/types';
 import type { DprSectionProps } from './types';
 import { LineItemText } from '../../../../components/form/LineItemText';
 import { editTaxCode } from '../../../../services/taxRecalc';
+import { taxCodeOptions } from '../../../../services/taxCodeOptions';
+import { round2 } from '../../../../services/num';
 
 const num = (v: string) => (v === '' ? 0 : Number(v));
-const round2 = (n: number) => Math.round(n * 100) / 100;
 
 /** The down payment request's Contents: what the advance is for. No stock moves, so no warehouse. */
 export function DprLinesCard({
@@ -42,8 +43,8 @@ export function DprLinesCard({
   const itemOf = (l: DprLine) => m.items.find((i) => i.id === l.itemId);
   const patch = (id: string, p: Partial<DprLine>) => onChange(lines.map((l) => (l.id === id ? { ...l, ...p } : l)));
   const err = (l: DprLine, f: string) => errors[`line:${l.id}:${f}`];
-  const taxOptions =m.tax.codes.filter((c) => c.direction === 'Purchase' && c.active).map((c) => ({ value: c.code, label: c.name }));
-  const blanketOptions = [{ value: '', label: '— None —' }, ...BLANKET_AGREEMENTS.filter((b) => b.vendorId === vendorId).map((b) => ({ value: b.no, label: `${b.no} · ${b.description}` }))];
+  const taxOptions = (current: string) => taxCodeOptions(m.tax.codes, 'Purchase', current);
+  const blanketOptions = [...BLANKET_AGREEMENTS.filter((b) => b.vendorId === vendorId).map((b) => ({ value: b.no, label: `${b.no} · ${b.description}` }))];
   const itemOptions = (current: string) =>
     m.items
       .filter((i) => i.id === current || (i.purchaseItem && isValidToday(i, postingDate)))
@@ -112,7 +113,7 @@ export function DprLinesCard({
       l.itemId ? (
         <div className="flex w-44 flex-col gap-1">
           <TextField aria-label="Unit price" type="number" min={0} prefix={code} invalid={Boolean(err(l, 'unitPrice'))} value={String(l.unitPrice)} onChange={(e) => patch(l.id, { unitPrice: round2(num(e.currentTarget.value)) })} />
-          <Combobox aria-label="Tax code" invalid={Boolean(err(l, 'taxCode'))} options={taxOptions} value={l.taxCode} onValueChange={(taxCode) => patch(l.id, editTaxCode(taxCode ?? ''))} />
+          <Combobox aria-label="Tax code" invalid={Boolean(err(l, 'taxCode'))} options={taxOptions(l.taxCode)} value={l.taxCode} onValueChange={(taxCode) => patch(l.id, editTaxCode(taxCode ?? ''))} />
           <TextField aria-label="Discount %" type="number" min={0} suffix="%" value={String(l.discountPct)} onChange={(e) => patch(l.id, { discountPct: Math.min(100, num(e.currentTarget.value)) })} />
         </div>
       ) : null,
@@ -130,7 +131,7 @@ export function DprLinesCard({
     }, { optional: true, defaultHidden: true }),
     col('wtBase', 'Taxable amount', (l) => (l.itemId && withholdingOf(l).length ? <span className="tabular-nums">{formatAmount(lineNet(l))}</span> : null), { optional: true, defaultHidden: true }),
     col('base', 'Base document', (l) => (l.baseType ? <Link intent="primary" href={`#/purchasing/purchase-orders/${l.baseId}`}>PO {l.baseDocNo}</Link> : l.itemId ? <span className="text-muted">—</span> : null), { optional: true }),
-    col('blanketAgreement', 'Blanket agreement', (l) => (l.itemId ? <Combobox aria-label="Blanket agreement" className="w-48" options={blanketOptions} value={l.blanketAgreement} onValueChange={(blanketAgreement) => patch(l.id, { blanketAgreement: blanketAgreement ?? '' })} /> : null), { optional: true }),
+    col('blanketAgreement', 'Blanket agreement', (l) => (l.itemId ? <Combobox aria-label="Blanket agreement" className="w-48" clearable placeholder="None" options={blanketOptions} value={l.blanketAgreement} onValueChange={(blanketAgreement) => patch(l.id, { blanketAgreement: blanketAgreement ?? '' })} /> : null), { optional: true }),
     textCol({ key: 'freeText', header: 'Free text', width: 'w-48', readOnly: readOnly, defaultHidden: false, get: (l: DprLine) => l.freeText, onChange: (l, v) => patch(l.id, { freeText: v }) }),
   ];
   const prefs = useColumnPrefs('dpr', allColumns);

@@ -19,11 +19,12 @@ import { defaultBin, lineFromItem, linePricing } from '../goods-receipts/detail/
 import { baseLink, type AnyReturnLine, type RetContext, type RetMasters } from './returnsTypes';
 import { LineItemText } from '../../../components/form/LineItemText';
 import { editTaxCode } from '../../../services/taxRecalc';
+import { taxCodeOptions } from '../../../services/taxCodeOptions';
+import { round2 } from '../../../services/num';
 
 const GROUPS = { details: 'Item details', withholding: 'Withholding', references: 'References' } as const;
 type Group = keyof typeof GROUPS;
 const num = (v: string) => (v === '' ? 0 : Number(v));
-const round2 = (n: number) => Math.round(n * 100) / 100;
 
 /**
  * The Contents table shared by goods returns and A/P credit memos: item, quantity, where the goods
@@ -83,8 +84,8 @@ export function ReturnLines<L extends AnyReturnLine>({
     m.items
       .filter((i) => i.id === current || (i.purchaseItem && isValidToday(i, postingDate)))
       .map((i) => ({ value: i.id, label: <div className="flex flex-col gap-0.5"><span className="text-xs opacity-60">{i.itemNo}</span><span>{i.description || i.name}</span></div>, text: `${i.itemNo} ${i.description}` }));
-  const taxOptions = m.tax.codes.filter((c) => c.direction === 'Purchase' && c.active).map((c) => ({ value: c.code, label: c.name }));
-  const blanketOptions = [{ value: '', label: '— None —' }, ...BLANKET_AGREEMENTS.filter((b) => b.vendorId === vendorId).map((b) => ({ value: b.no, label: `${b.no} · ${b.description}` }))];
+  const taxOptions = (current: string) => taxCodeOptions(m.tax.codes, 'Purchase', current);
+  const blanketOptions = [...BLANKET_AGREEMENTS.filter((b) => b.vendorId === vendorId).map((b) => ({ value: b.no, label: `${b.no} · ${b.description}` }))];
 
   const pickItem = (l: L, itemId: string | null) => {
     const item = m.items.find((i) => i.id === itemId);
@@ -170,7 +171,7 @@ export function ReturnLines<L extends AnyReturnLine>({
       l.itemId ? (
         <div className="flex w-44 shrink-0 flex-col gap-1 whitespace-normal">
           <TextField aria-label="Unit price" type="number" min={0} prefix={currency} invalid={Boolean(err(l, 'unitPrice'))} value={String(l.unitPrice)} onChange={(e) => patch(l.id, { unitPrice: round2(num(e.currentTarget.value)) })} />
-          <Combobox aria-label="Tax code" invalid={Boolean(err(l, 'taxCode'))} options={taxOptions} value={l.taxCode} onValueChange={(taxCode) => patch(l.id, editTaxCode(taxCode ?? ''))} />
+          <Combobox aria-label="Tax code" invalid={Boolean(err(l, 'taxCode'))} options={taxOptions(l.taxCode)} value={l.taxCode} onValueChange={(taxCode) => patch(l.id, editTaxCode(taxCode ?? ''))} />
           <TextField aria-label="Discount %" type="number" min={0} suffix="%" value={String(l.discountPct)} onChange={(e) => patch(l.id, { discountPct: Math.min(100, num(e.currentTarget.value)) })} />
         </div>
       ) : null,
@@ -198,7 +199,7 @@ export function ReturnLines<L extends AnyReturnLine>({
       const link = baseLink(l);
       return link ? <Link intent="primary" href={link.href}>{link.label}</Link> : l.itemId ? <span className="text-muted">—</span> : null;
     }, 'references'),
-    col('blanketAgreement', 'Blanket agreement', (l) => (l.itemId ? <Combobox aria-label="Blanket agreement" className="w-48" options={blanketOptions} value={l.blanketAgreement} onValueChange={(blanketAgreement) => patch(l.id, { blanketAgreement: blanketAgreement ?? '' })} /> : null), 'references'),
+    col('blanketAgreement', 'Blanket agreement', (l) => (l.itemId ? <Combobox aria-label="Blanket agreement" className="w-48" clearable placeholder="None" options={blanketOptions} value={l.blanketAgreement} onValueChange={(blanketAgreement) => patch(l.id, { blanketAgreement: blanketAgreement ?? '' })} /> : null), 'references'),
     col('freeText', 'Free text', (l) => (l.itemId ? <TextField aria-label="Free text" className="w-48" value={l.freeText} onChange={(e) => patch(l.id, { freeText: e.currentTarget.value })} /> : null), 'references'),
   ].filter((c) => !c.group || is(c.group));
 

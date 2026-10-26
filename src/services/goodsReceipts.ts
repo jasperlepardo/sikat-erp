@@ -14,11 +14,12 @@ import type { PurchaseOrder } from '../mocks/purchaseOrders';
 import { rateAt, vatNotPaidToVendor, type TaxCode } from '../mocks/taxes';
 import { todayISO } from './dates';
 import { inventoryAccountFor, type JournalLine } from './inventoryTransfers';
-import { listItems, saveItem } from './items';
+import { listItems, saveItems } from './items';
 import { addLayer, removeLayersBySource, updateFifoCosts } from './costLayers';
 import { lineNet, listPurchaseOrders, openQty, poTotals, priceAfterDiscount, saveReceivedQuantities } from './purchaseOrders';
 import { createCollection } from './store';
 import { purchasingHistory } from './purchasingHistory';
+import { round2, round4 } from './num';
 
 const receipts = createCollection<GoodsReceipt>('sikat-erp:goods-receipts:v7', () => purchasingHistory().receipts, 'gr', { audit: 'GRPO' });
 
@@ -29,14 +30,10 @@ export async function getGoodsReceipt(idOrNumber: string) {
   const all = await receipts.list();
   return all.find((r) => grNumber(r) === idOrNumber) ?? null;
 }
-export const resetGoodsReceipts = receipts.reset;
 
 export type GrInput = Omit<GoodsReceipt, 'id'> & { id?: string };
 
-const round2 = (n: number) => Math.round(n * 100) / 100;
-const round4 = (n: number) => Math.round(n * 10000) / 10000;
-
-export const grSeriesOf = (id: string) => seriesLookup(grSeries, id, GR_SERIES);
+const grSeriesOf = (id: string) => seriesLookup(grSeries, id, GR_SERIES);
 /** "Primary 280004", or "Draft" before it's added. */
 export const grNumber = (gr: Pick<GoodsReceipt, 'seriesId' | 'docNum' | 'postingDate'>) =>
   formatDocNum(grSeriesOf(gr.seriesId), gr.docNum, gr.postingDate);
@@ -244,7 +241,7 @@ export async function addGoodsReceipt(input: GrInput, fx: number): Promise<Goods
   }
 
   const lines = input.lines.map((l) => ({ ...l, unitCostLc: unitCostLc(l, input, fx) }));
-  for (const item of applyStock(lines, items, 1)) await saveItem(item);
+  await saveItems(applyStock(lines, items, 1));
   for (const po of applyToOrders(lines, pos, 1)) await saveReceivedQuantities(po);
 
   const saved = await receipts.save({ ...input, lines: withBinCodes(lines), docNum, status: 'Open', fxRate: fx });
@@ -343,7 +340,7 @@ export async function cancelGoodsReceipt(gr: GoodsReceipt) {
   });
   if (short.length) throw new GrPostError(short.map((s) => s.lineId), short.map((s) => s.message).join(' '));
 
-  for (const item of applyStock(gr.lines, items, -1)) await saveItem(item);
+  await saveItems(applyStock(gr.lines, items, -1));
   for (const po of applyToOrders(gr.lines, pos, -1)) await saveReceivedQuantities(po);
 
   // FIFO: zero out the layers this receipt created, then refresh itemCost.

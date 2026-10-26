@@ -4,30 +4,44 @@ import { taxCodes } from '../../../services/masterData';
 import { listPurchaseOrders, poNumber, poTotal } from '../../../services/purchaseOrders';
 import { listPurchaseRequests, prNumber } from '../../../services/purchaseRequests';
 import { listRfqs, rfqNumber, rfqTotal } from '../../../services/rfqs';
-import { PO_LIST_PATH, STATUS_INTENT } from '../purchase-orders/detail/PurchaseOrderDetail';
-import { PR_LIST_PATH, STATUS_INTENT as PR_STATUS_INTENT } from '../purchase-requests/detail/PurchaseRequestDetail';
-import { RFQ_LIST_PATH, STATUS_INTENT as RFQ_STATUS_INTENT } from '../purchase-quotations/detail/PurchaseQuotationDetail';
-import { GR_LIST_PATH, GR_STATUS_INTENT } from '../goods-receipts/detail/GoodsReceiptDetail';
-import { AP_LIST_PATH, AP_STATUS_INTENT } from '../vendor-invoices/detail/ApInvoiceDetail';
 import { apNumber, apTotal, listApInvoices } from '../../../services/apInvoices';
-import { APRI_LIST_PATH, AP_RI_STATUS_INTENT } from '../reserve-invoices/detail/ApReserveInvoiceDetail';
 import { apRiNumber, apRiTotals, listApReserveInvoices } from '../../../services/apReserveInvoices';
 import { listPayments, overallAmount, paymentNumber, rowSettled } from '../../../services/outgoingPayments';
-import { PAYMENT_LIST_PATH, PAYMENT_STATUS_INTENT } from '../payments-made/detail/PaymentDetail';
 import { formatAmount } from '../../../services/format';
 import { listGoodsReturns, returnNumber, returnTotal } from '../../../services/goodsReturns';
 import { listCreditMemos, memoNumber, memoTotal } from '../../../services/apCreditMemos';
-import { RETURN_STATUS_INTENT } from './returnsTypes';
-import { MEMO_LIST_PATH, MEMO_STATUS_INTENT, RETURN_LIST_PATH } from './returnsTypes';
 import { dprNumber, dprTotal, listDownPayments } from '../../../services/apDownPayments';
-import { DPR_LIST_PATH, DPR_STATUS_INTENT } from '../down-payment-requests/detail/DprDetail';
 import { listPurchaseBlanketAgreements, pbaNumber, pbaTotals } from '../../../services/purchaseBlanketAgreements';
-import { PBA_LIST_PATH, PBA_STATUS_INTENT } from '../purchase-agreements/PurchaseBlanketAgreementList';
 import { listLandedCosts, lcNumber, lcTotals } from '../../../services/landedCosts';
-import { LC_LIST_PATH, LC_STATUS_INTENT } from '../landed-costs/detail/types';
 import { lineage, type LinkedDocument } from './lineage';
+import {
+  APRI_LIST_PATH,
+  AP_LIST_PATH,
+  AP_RI_STATUS_INTENT,
+  AP_STATUS_INTENT,
+  DPR_LIST_PATH,
+  DPR_STATUS_INTENT,
+  GR_LIST_PATH,
+  GR_STATUS_INTENT,
+  LC_LIST_PATH,
+  LC_STATUS_INTENT,
+  MEMO_LIST_PATH,
+  MEMO_STATUS_INTENT,
+  PAYMENT_LIST_PATH,
+  PAYMENT_STATUS_INTENT,
+  PBA_LIST_PATH,
+  PBA_STATUS_INTENT,
+  PO_LIST_PATH,
+  PO_STATUS_INTENT,
+  PR_LIST_PATH,
+  PR_STATUS_INTENT,
+  RETURN_LIST_PATH,
+  RETURN_STATUS_INTENT,
+  RFQ_LIST_PATH,
+  RFQ_STATUS_INTENT,
+} from '../paths';
 
-export type { LinkedDocument, Relation } from './lineage';
+export type { LinkedDocument,  } from './lineage';
 
 export type DocKind = 'PR' | 'RFQ' | 'PO' | 'GRPO' | 'APINV' | 'APRI' | 'PAY' | 'GRET' | 'APCM' | 'DPR' | 'PBA' | 'LC';
 
@@ -116,7 +130,7 @@ const SOURCES: Record<DocKind, () => Promise<DocNode[]>> = {
       href: `${PO_LIST_PATH}/${po.id}`,
       date: po.postingDate,
       status: po.status,
-      intent: STATUS_INTENT[po.status],
+      intent: PO_STATUS_INTENT[po.status],
       currency: po.currency,
       total: poTotal(po, codes),
       partnerId: po.vendorId,

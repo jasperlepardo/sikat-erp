@@ -27,8 +27,7 @@ import { formatAmount } from '../../../services/format';
 import { formatDate } from '../../../services/dates';
 import { countNumber, countSummary, countWarehouses, listCountings, listPostings, postingNumber, postingTotal } from '../../../services/inventoryCountings';
 import { useAsync } from '../../../services/useAsync';
-import { COUNT_STATUS_INTENT } from './StockCountDetail';
-import { COUNT_LIST_PATH, POSTING_LIST_PATH } from './shared';
+import { COUNT_LIST_PATH, COUNT_STATUS_INTENT, POSTING_LIST_PATH } from '../paths';
 
 type View = 'counts' | 'postings';
 type SearchProps = Pick<PanelHeaderProps, 'showSearch' | 'searchPlaceholder' | 'searchValue' | 'onSearchChange'>;

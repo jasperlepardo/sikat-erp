@@ -47,21 +47,18 @@ export const BUSINESS_TYPES = [
 export const EMPLOYEES = ['Andrea Ramos', 'Ben Salazar', 'Carla Uy', 'Dino Pascual', 'Jasper L.'] as const;
 export const employeeId = idIn('emp', EMPLOYEES);
 export const TECHNICIANS = ['Edgar Bautista', 'Fe Lopez'] as const;
-export const technicianId = idIn('tec', TECHNICIANS);
 export const TERRITORIES = ['NCR', 'North Luzon', 'South Luzon', 'Visayas', 'Mindanao'] as const;
 export const territoryId = idIn('ter', TERRITORIES);
 export const CHANNELS = ['Direct', 'Distributor', 'E-commerce', 'Walk-in'] as const;
 export const channelId = idIn('chn', CHANNELS);
 export const PROJECTS = ['PRJ-001 Northgate store renovation', 'PRJ-002 DepEd Pasig iPad rollout', 'PRJ-003 Cebu store opening'];
 export const EMAIL_GROUPS = ['Newsletter', 'Promotions', 'Billing notices'] as const;
-export const emailGroupId = idIn('emg', EMAIL_GROUPS);
 
 export const PAYMENT_TERMS = ['COD', 'Net 7', 'Net 15', 'Net 30', 'Net 45', 'Net 60', '50% DP, balance on delivery'] as const;
 export const termId = idIn('pt', PAYMENT_TERMS);
 export const PRICE_LISTS = ['Base price', 'Wholesale', 'Retail', 'Government', 'Last purchase price'] as const;
 export const plId = idIn('prl', PRICE_LISTS);
 export const DUNNING_TERMS = ['Standard (7 / 15 / 30 days)', 'Strict (3 / 7 / 14 days)'] as const;
-export const dunningTermId = idIn('dun', DUNNING_TERMS);
 export const EFFECTIVE_DISCOUNT_GROUPS = ['Lowest discount', 'Highest discount', 'Average', 'Total', 'Discount multiples'];
 export const EFFECTIVE_PRICE = ['Default priority', 'Lowest price', 'Highest price'];
 export const PRIORITIES = ['High', 'Medium', 'Low'];
@@ -138,7 +135,6 @@ export const TREATY_COUNTRIES = [
 export const BANKS = ['BDO Unibank', 'BPI', 'Metrobank', 'Land Bank of the Philippines', 'Security Bank', 'UnionBank', 'China Bank', 'RCBC'] as const;
 export const bankId = idIn('bnk', BANKS);
 export const BANK_CHARGE_CODES = ['Shared (SHA)', 'We pay (OUR)', 'They pay (BEN)'] as const;
-export const bankChargeCodeId = idIn('bcc', BANK_CHARGE_CODES);
 export const CARD_BRANDS = ['Visa', 'Mastercard', 'American Express', 'JCB', 'UnionPay'] as const;
 export const cardBrandId = idIn('crd', CARD_BRANDS);
 export const FACTORING_COMPANIES = ['First Metro Factors Inc.', 'BDO Factoring', 'Asia Trade Receivables Corp.'] as const;
@@ -154,7 +150,6 @@ export const PAYMENT_METHODS = [
 ];
 
 export const PLANNING_GROUPS = ['Fast movers', 'Project-based', 'Seasonal'] as const;
-export const planningGroupId = idIn('plg', PLANNING_GROUPS);
 
 /**
  * Labels for the Properties tab (the real product lets admins rename up to 64). Only facts with no

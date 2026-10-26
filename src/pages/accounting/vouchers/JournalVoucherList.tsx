@@ -21,18 +21,10 @@ import type { JournalVoucher } from '../../../mocks/journalVouchers';
 import { formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
 import { jeTotals } from '../../../services/journalEntries';
-import { hasPosted, listVouchers, voucherStatus } from '../../../services/journalVouchers';
+import { listVouchers, voucherState, voucherStatus } from '../../../services/journalVouchers';
 import { useAsync } from '../../../services/useAsync';
+import { JV_LIST_PATH } from '../paths';
 
-export const JV_LIST_PATH = '/accounting/journal-vouchers';
-export const entryPath = (voucherId: string, entryId: string) => `${JV_LIST_PATH}/${voucherId}/entries/${entryId}`;
-
-/** Open, Partly posted (some entries posted, others still open) or Closed. */
-export function voucherState(v: JournalVoucher) {
-  const status = voucherStatus(v);
-  if (status === 'Closed') return { label: 'Closed', intent: 'default' as const };
-  return hasPosted(v) ? { label: 'Partly posted', intent: 'warning' as const } : { label: 'Open', intent: 'success' as const };
-}
 
 const debitOf = (v: JournalVoucher) => v.entries.reduce((n, e) => n + jeTotals(e.lines).debit, 0);
 

@@ -33,7 +33,7 @@ export function ApAccountingCard({ draft, update, errors, m, ctx }: ApSectionPro
           {(p) => (
             <Combobox
               {...p}
-              placeholder="— None —"
+              placeholder="None"
               options={m.vendors.filter((v) => v.id !== draft.vendorId && (v.status !== 'Inactive' || v.id === draft.consolidatingBpId)).map((v) => ({ value: v.id, label: v.name, subLabel: v.code, subLabelPlacement: 'top' as const, text: `${v.code} ${v.name}` }))}
               value={draft.consolidatingBpId || null}
               onValueChange={(consolidatingBpId) => update({ consolidatingBpId: consolidatingBpId ?? '' })}
@@ -41,7 +41,7 @@ export function ApAccountingCard({ draft, update, errors, m, ctx }: ApSectionPro
           )}
         </CtxFormField>
         {f.master('projectId', 'BP project', projectDef, { clearable: true, hint: 'Defaults from the vendor or the base document.' })}
-        {f.choose('indicator', 'Indicator', [{ value: '', label: '— None —' }, ...asOptions(INDICATORS)])}
+        {f.choose('indicator', 'Indicator', asOptions(INDICATORS), { clearable: true })}
         <ReadOnly
           label="Federal tax ID"
           value={ctx.vendor?.tin || <span className="text-muted">{ctx.vendor ? 'Not on the vendor record' : '—'}</span>}

@@ -16,12 +16,13 @@ import { countSeries, postingSeries, seriesLookup, formatDocNum } from './allSer
 import type { ItemGroup } from '../mocks/itemMasters';
 import { newItemWarehouse, type Item } from '../mocks/items';
 import { inStockAt, inventoryAccountFor, type JournalLine } from './inventoryTransfers';
-import { listItems, saveItem } from './items';
+import { listItems, saveItems } from './items';
 import { addLayer, consumeLayers, logConsumption, updateFifoCosts, type Taken } from './costLayers';
 import { itemGroups, withBinCodes } from './inventoryMasters';
 import { postDocumentEntry } from './journalEntries';
 import { listPrice } from './priceLists';
 import { createCollection } from './store';
+import { round2 } from './num';
 
 const countings = createCollection<InventoryCounting>('sikat-erp:inventory-countings:v2', SEED_COUNTINGS, 'ic');
 const postings = createCollection<InventoryPosting>('sikat-erp:inventory-postings:v2', SEED_POSTINGS, 'ip');
@@ -33,8 +34,6 @@ export const getPosting = postings.get;
 
 export type CountingInput = Omit<InventoryCounting, 'id'> & { id?: string };
 export type PostingInput = Omit<InventoryPosting, 'id'> & { id?: string };
-
-const round2 = (n: number) => Math.round(n * 100) / 100;
 
 const makeNumberFn = (
   col: { snapshot: () => readonly DocumentSeries[] },
@@ -210,7 +209,7 @@ export async function addPosting(input: PostingInput): Promise<InventoryPosting>
     row.inStock = round2(row.inStock + v);
     touched.set(l.itemId, { ...item, hasTransactions: true });
   }
-  for (const item of touched.values()) await saveItem(item);
+  await saveItems(touched.values());
 
   const docNum = await nextNumber(postingSeries, POSTING_SERIES, input.seriesId, postings.list);
   const posted = await postings.save({ ...input, lines: withBinCodes(input.lines), docNum });

@@ -19,7 +19,7 @@ import {
   unitCostLc,
 } from './goodsReceipts';
 import { inventoryAccountFor, type JournalLine } from './inventoryTransfers';
-import { listItems, saveItem } from './items';
+import { listItems, saveItems, stockTotals } from './items';
 import { addLayer, removeLayersBySource, updateFifoCosts } from './costLayers';
 import { lineNet, listPurchaseOrders, openQty, poTotals, saveReceivedQuantities } from './purchaseOrders';
 import { currentTaxData, stampWithholding, withSeedWithholding, type WithholdingLine } from './withholding';
@@ -27,8 +27,9 @@ import { getPartner } from './partners';
 import { withTaxFiling } from './taxRecalc';
 import { createCollection } from './store';
 import { purchasingHistory } from './purchasingHistory';
-import { taxCodes } from './masterData';
+import { birForms, taxCodes } from './masterData';
 import { drawDownPayments, drawableAmount, dprTotal, listDownPayments } from './apDownPayments';
+import { round2 } from './num';
 
 // Seeded withholding is stamped as if each was added under the seeded Settings.
 const invoices = createCollection<ApInvoice>('sikat-erp:ap-invoices:v6', () => withSeedWithholding(purchasingHistory().invoices), 'ap', { audit: 'APINV' });
@@ -43,8 +44,6 @@ export async function getApInvoice(idOrNumber: string) {
 export const resetApInvoices = invoices.reset;
 
 export type ApInput = Omit<ApInvoice, 'id'> & { id?: string };
-
-const round2 = (n: number) => Math.round(n * 100) / 100;
 
 export const apSeriesOf = (id: string) => seriesLookup(apSeries, id, AP_SERIES);
 /** "Primary 290004", or "Draft" before it's added. */
@@ -85,7 +84,7 @@ export const receiptValueLc = (l: ApLine) => round2(l.receiptCostLc * grInventor
 /** Lines that bring stock in: stocked items not already received on a goods receipt. */
 export const movesStock = (l: ApLine, items: Item[]) => l.baseType !== 'GRPO' && Boolean(items.find((i) => i.id === l.itemId)?.inventoryItem);
 
-const onHand = (item: Item) => item.warehouses.reduce((n, w) => n + w.inStock, 0);
+const onHand = (item: Item) => stockTotals(item).inStock;
 
 // ── Accounting ───────────────────────────────────────────────────────────────
 
@@ -250,7 +249,9 @@ export async function addApInvoice(input: ApInput, fx: number, due?: number): Pr
   const touched = new Map(applyStock(lines.filter((l) => movesStock(l, items)), items, 1).map((i) => [i.id, i]));
   const costing = new Map(items.map((i) => [i.id, touched.get(i.id) ?? i]));
   applyCostDifferences(lines, input, fx, costing, 1);
-  for (const [id, item] of costing) if (item !== items.find((i) => i.id === id)) await saveItem(item);
+  // Only the items costing changed: unchanged ones are still the stored objects.
+  const stored = new Set(items);
+  await saveItems([...costing.values()].filter((item) => !stored.has(item)));
 
   for (const po of applyToOrders(lines.filter((l) => l.baseType === 'PO'), pos, 1)) await saveReceivedQuantities(po);
   await applyInvoicedQty(lines.filter((l) => l.baseType === 'GRPO'), 1);
@@ -261,7 +262,7 @@ export async function addApInvoice(input: ApInput, fx: number, due?: number): Pr
   const stamped = stampWithholding({ discountPct: input.discountPct, lines }, vendor, items, currentTaxData(), input.postingDate);
 
   const settled = due !== undefined && due <= 0.005;
-  const saved = await invoices.save({ ...input, lines: withTaxFiling(withBinCodes(stamped.lines), await taxCodes.list()), withholdingSummary: stamped.withholdingSummary, docNum, status: settled ? 'Closed' : 'Open', closeDate: settled ? todayISO() : '', fxRate: fx });
+  const saved = await invoices.save({ ...input, lines: withTaxFiling(withBinCodes(stamped.lines), await taxCodes.list(), await birForms.list()), withholdingSummary: stamped.withholdingSummary, docNum, status: settled ? 'Closed' : 'Open', closeDate: settled ? todayISO() : '', fxRate: fx });
 
   // FIFO: create layers for lines that bring stock in directly (not via a GR).
   const fifoStockLines = lines.filter((l) => movesStock(l, items) && items.find((i) => i.id === l.itemId)?.valuationMethod === 'FIFO');
@@ -295,7 +296,9 @@ export async function cancelApInvoice(inv: ApInvoice) {
   const touched = new Map(applyStock(stockLines, items, -1).map((i) => [i.id, i]));
   const costing = new Map(items.map((i) => [i.id, touched.get(i.id) ?? i]));
   applyCostDifferences(inv.lines, inv, inv.fxRate, costing, -1);
-  for (const [id, item] of costing) if (item !== items.find((i) => i.id === id)) await saveItem(item);
+  // Only the items costing changed: unchanged ones are still the stored objects.
+  const stored = new Set(items);
+  await saveItems([...costing.values()].filter((item) => !stored.has(item)));
 
   for (const po of applyToOrders(inv.lines.filter((l) => l.baseType === 'PO'), pos, -1)) await saveReceivedQuantities(po);
   await applyInvoicedQty(inv.lines.filter((l) => l.baseType === 'GRPO'), -1);
@@ -332,13 +335,13 @@ export async function applyPayments(rows: { invoiceId: string; amount: number; t
 export async function applyInvoiceReturns(lines: { baseId: string; baseLineId: string; quantity: number }[], sign: 1 | -1) {
   const touched = new Map<string, ApInvoice>();
   for (const l of lines) {
-    const inv = touched.get(l.baseId) ?? (await invoices.get(l.baseId));
+    const inv = touched.get(l.baseId) ?? structuredClone(invoices.snapshot().find((i) => i.id === l.baseId));
     const il = inv?.lines.find((x) => x.id === l.baseLineId);
     if (!inv || !il) continue;
     il.returnedQty = Math.max(0, round2((il.returnedQty ?? 0) + l.quantity * sign));
     touched.set(inv.id, inv);
   }
-  for (const inv of touched.values()) await invoices.save(inv);
+  await invoices.saveMany([...touched.values()]);
 }
 
 /** What's left to send back on an invoice line: billed less already returned. */

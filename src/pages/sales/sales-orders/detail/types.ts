@@ -13,10 +13,11 @@ import { rateOn } from '../../../../services/masterData';
 import { BASE_PRICE_LIST_ID, determinePrice, isGrossList } from '../../../../services/priceLists';
 import { inventoryQty, openQty, type SoInput } from '../../../../services/salesOrders';
 import { determineTax, type TaxMasterData } from '../../../../services/taxDetermination';
+import { SERVICE_LINE } from '../../../../services/withholding';
+import { round4 } from '../../../../services/num';
 
 export type SoDraft = SoInput;
 
-export const SO_LIST_PATH = '/sales/sales-orders';
 export const ALL_CURRENCIES = 'All currencies';
 
 /** Master data the sales order form reads, loaded once. */
@@ -79,6 +80,10 @@ export function buildContext(draft: SoDraft, m: SoMasters, ownCommitted = new Ma
 /** Proposed output tax code for selling the item to the customer (Settings › Accounting & Tax rules). */
 export const proposedTaxCode = (item: Item, customer: Partner | undefined, m: Pick<SoMasters, 'tax'>, date: string) =>
   customer ? (determineTax('Sales', item, customer, m.tax, date).taxCode?.code ?? '') : '';
+
+/** Proposed output tax code for a service line with no item (company status and customer exemptions still apply). */
+export const proposedServiceTaxCode = (customer: Partner | undefined, m: Pick<SoMasters, 'tax'>, date: string) =>
+  customer ? (determineTax('Sales', SERVICE_LINE, customer, m.tax, date).taxCode?.code ?? '') : '';
 
 /**
  * Unit price (net of VAT, document currency), discount and price source for a line: special
@@ -160,5 +165,3 @@ export function shortages(draft: SoDraft, m: SoMasters, ownCommitted = new Map<s
     return [{ item, warehouse, need: round4(qty), available, short, ordered, toOrder: round4(Math.max(0, short - ordered)) }];
   });
 }
-
-const round4 = (n: number) => Math.round(n * 10000) / 10000;

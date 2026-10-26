@@ -4,7 +4,7 @@ import { banks, cardBrands, nameIn } from '../../../services/partnerMasters';
 import { bankDef, cardBrandDef, countryDef, currencyDef } from '../../settings/masterDefs';
 import { Fields, bind, type Errors } from './fields';
 
-export type Binder = ReturnType<typeof bind<PaymentAccount>>;
+type Binder = ReturnType<typeof bind<PaymentAccount>>;
 
 /** What a payment method keeps per account, and how its accounts read and are edited. */
 export interface AccountKind {

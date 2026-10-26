@@ -15,7 +15,7 @@
  *   amounts only, with no foreign-currency amounts to revalue.
  */
 
-export type ErdDocType = 'IN' | 'PU';
+type ErdDocType = 'IN' | 'PU';
 
 /** One open document in a run. */
 export interface ErdRow {

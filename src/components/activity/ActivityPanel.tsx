@@ -10,7 +10,7 @@ import { salesEmployeeDef } from '../../pages/settings/masterDefs';
 import { bind, FieldStack, Flags, type Errors } from '../form/fields';
 
 /** What's wrong with the activity, by field. */
-export function validateActivity(a: Pick<Activity, 'subject' | 'date' | 'dueDate' | 'kind'>): Errors {
+function validateActivity(a: Pick<Activity, 'subject' | 'date' | 'dueDate' | 'kind'>): Errors {
   const e: Errors = {};
   if (!a.subject.trim()) e.subject = 'Enter a subject.';
   if (!a.date) e.date = 'Pick a date.';

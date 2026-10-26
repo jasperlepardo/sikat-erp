@@ -37,7 +37,7 @@ import {
   type Range,
   type RenameRow,
 } from '../../../services/binLocations';
-import { itemGroups } from '../../../services/inventoryMasters';
+import { activeOptions, itemGroups } from '../../../services/inventoryMasters';
 import { useCollection } from '../../../components/form/MasterLookup';
 import { binWarehouseOptions } from './sublevels';
 
@@ -239,7 +239,7 @@ export function GenerateBinsPanel({ warehouse: initial, onCancel, onDone }: { wa
             ? f.choose(
                 'restrictedItemGroupId',
                 'Item group',
-                itemGroups.snapshot().filter((g) => g.active).map((g) => ({ value: g.id, label: g.name })),
+                activeOptions([...itemGroups.snapshot()], (g) => g.id, (g) => g.name, d.restrictedItemGroupId),
                 { required: true },
               )
             : null}

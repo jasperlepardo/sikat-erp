@@ -3,7 +3,6 @@ import { createCollection } from './store';
 
 export const employees = createCollection<Employee>('sikat-erp:employees', SEED_EMPLOYEES, 'hem', { audit: 'EMP' });
 
-export const listEmployees = employees.list;
 export const getEmployee = employees.get;
 
 /** The employee's name as its Name positioning says: "Ana Cruz", "Cruz Ana" or "Cruz, Ana" (with the middle name if shown). */

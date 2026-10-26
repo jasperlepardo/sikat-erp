@@ -393,8 +393,8 @@ export function ChartOfAccountsPage() {
                     {f.choose(
                       'cashFlow',
                       'Cash flow category',
-                      CASH_FLOW_CATEGORIES.map((c) => ({ value: c, label: c || '— None —' })),
-                      { hint: a.cash ? 'Cash accounts are the cash itself — no category.' : 'Indirect method: income statement accounts are operating.' },
+                      CASH_FLOW_CATEGORIES.filter(Boolean).map((c) => ({ value: c, label: c })),
+                      { clearable: true, hint: a.cash ? 'Cash accounts are the cash itself — no category.' : 'Indirect method: income statement accounts are operating.' },
                     )}
                     {f.pick('statementLine', 'Statement line', [...new Set([...STATEMENT_LINES[a.drawer], a.statementLine].filter(Boolean))], {
                       required: true,

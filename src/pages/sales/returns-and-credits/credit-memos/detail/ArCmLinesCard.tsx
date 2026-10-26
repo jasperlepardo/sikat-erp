@@ -13,10 +13,11 @@ import { lineNet, lineTax, priceAfterDiscount } from '../../../../../services/sa
 import { warehouseOptions } from '../../../../inventory/transfers/TransferLines';
 import { CopyPanel, type CopySourceType } from '../../../../purchasing/shared/CopyPanel';
 import { asSoDraft, type DnDraft } from '../../../deliveries/detail/types';
-import { AR_LIST_PATH } from '../../../invoices/detail/types';
 import { lineFromItem, type SoMasters } from '../../../sales-orders/detail/types';
-import { SR_LIST_PATH, type ArCmSectionProps } from '../../types';
+import { type ArCmSectionProps } from '../../types';
 import { editTaxCode } from '../../../../../services/taxRecalc';
+import { AR_LIST_PATH, SR_LIST_PATH } from '../../../paths';
+import { taxCodeOptions } from '../../../../../services/taxCodeOptions';
 
 const num = (v: string) => (v === '' ? 0 : Number(v));
 
@@ -40,7 +41,7 @@ export function ArCmLinesCard({
   const err = (l: ArCmLine, f: string) => errors[`line:${l.id}:${f}`];
   const lc = (n: number) => formatAmount(n * ctx.fx);
   const taxOf = (l: ArCmLine) => lineTax(l, ctx.rateOf(l.taxCode), 0);
-  const taxOptions = m.tax.codes.filter((c) => c.direction === 'Sales' && c.active).map((c) => ({ value: c.code, label: c.name }));
+  const taxOptions = (current: string) => taxCodeOptions(m.tax.codes, 'Sales', current);
 
   const itemOptions = (current: string) =>
     m.items
@@ -160,7 +161,7 @@ export function ArCmLinesCard({
       );
       return (
         <div className="flex w-32 flex-col gap-1">
-          <Combobox aria-label="Tax code" invalid={Boolean(err(l, 'taxCode'))} options={taxOptions} value={l.taxCode || null} onValueChange={(v) => patch(l.id, editTaxCode(v ?? ''))} />
+          <Combobox aria-label="Tax code" invalid={Boolean(err(l, 'taxCode'))} options={taxOptions(l.taxCode)} value={l.taxCode || null} onValueChange={(v) => patch(l.id, editTaxCode(v ?? ''))} />
           <Text variant="small" tone="muted">Tax PHP {lc(taxOf(l))}</Text>
         </div>
       );
@@ -170,7 +171,7 @@ export function ArCmLinesCard({
       if (!itemOf(l)) return null;
       if (ro) return <Text variant="small" tone={l.returnReason ? undefined : 'muted'}>{l.returnReason || '—'}</Text>;
       return (
-        <Select aria-label="Return reason" className="w-32" options={[{ value: '', label: '— None —' }, ...RETURN_REASONS.map((r) => ({ value: r, label: r }))]} value={l.returnReason} onValueChange={(returnReason) => patch(l.id, { returnReason })} />
+        <Select clearable placeholder="None" aria-label="Return reason" className="w-32" options={RETURN_REASONS.map((r) => ({ value: r, label: r }))} value={l.returnReason} onValueChange={(returnReason) => patch(l.id, { returnReason })} />
       );
     }, 'reason'),
     col('base', 'Base document', (l) => {

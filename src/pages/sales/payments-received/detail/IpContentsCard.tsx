@@ -159,9 +159,9 @@ export function IncomingDocuments({ draft, update, errors, fx, readOnly }: Props
 export function IncomingAccounts({ draft, update, errors, accounts, readOnly }: Props) {
   const rows = draft.accountRows;
   const patch = (id: string, p: Partial<IncomingAccountRow>) => update({ accountRows: rows.map((r) => (r.id === id ? { ...r, ...p } : r)) });
-  const postable = accounts.filter((a) => !a.title && a.active && !a.control).map((a) => ({ value: a.code, label: `${a.code} ${a.name}`, text: `${a.code} ${a.name}` }));
+  const postable = (current: string) => accounts.filter((a) => !a.title && !a.control && (a.active || a.code === current)).map((a) => ({ value: a.code, label: `${a.code} ${a.name}`, text: `${a.code} ${a.name}` }));
   const columns: TableColumn<IncomingAccountRow>[] = [
-    { key: 'account', header: 'G/L account', cell: (r) => <div className="w-72"><Combobox aria-label="G/L account" disabled={readOnly} invalid={Boolean(errors[`acct:${r.id}`])} options={postable} value={r.account || null} onValueChange={(v) => patch(r.id, { account: v ?? '' })} /></div> },
+    { key: 'account', header: 'G/L account', cell: (r) => <div className="w-72"><Combobox aria-label="G/L account" disabled={readOnly} invalid={Boolean(errors[`acct:${r.id}`])} options={postable(r.account)} value={r.account || null} onValueChange={(v) => patch(r.id, { account: v ?? '' })} /></div> },
     { key: 'remarks', header: 'Doc. remarks', cell: (r) => <TextField aria-label="Doc. remarks" className="w-72" readOnly={readOnly} value={r.remarks} onChange={(e) => patch(r.id, { remarks: e.currentTarget.value })} /> },
     { key: 'amount', header: 'Amount', cell: (r) => <TextField aria-label="Amount" type="number" min={0} className="w-40" prefix={draft.currency} readOnly={readOnly} value={String(r.amount)} onChange={(e) => patch(r.id, { amount: num(e.currentTarget.value) })} /> },
   ];

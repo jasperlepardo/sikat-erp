@@ -82,6 +82,19 @@ const payeeOf = (p: LineParty) =>
  */
 const chargesVat = (p: LineParty) => p.vatRegistered && (!p.nonResident || p.nonResidentDigitalServices);
 
+/**
+ * The item's tax group for this direction, if the engine may use it: an inactive group or one
+ * set up for the other direction is ignored, with the reason in `problem`.
+ */
+function itemTaxGroup(code: string, direction: TaxDirection, data: TaxMasterData): { group?: TaxGroup; problem?: string } {
+  if (!code) return {};
+  const g = data.groups.find((x) => x.code === code);
+  if (!g) return { problem: `Tax group ${code} is missing from Settings.` };
+  if (!g.active) return { problem: `Tax group ${code} is inactive.` };
+  if (g.direction !== direction) return { problem: `Tax group ${code} is a ${g.direction.toLowerCase()} group, not a ${direction.toLowerCase()} group.` };
+  return { group: g };
+}
+
 type NonResidentVatResult =
   | { applies: true; kind: NonResidentVat; why: string }
   | { applies: false; why: string; warning?: boolean };
@@ -103,7 +116,7 @@ function nonResidentVat(item: LineItem, partner: LineParty, data: TaxMasterData,
     const what = partner.nonResidentDigitalServices ? 'digital services' : kind === 'Lease' ? 'lease or use of property' : 'services';
     const why = `Non-resident, ${what}${group ? ` (${group.name})` : ''}`;
     // An exempt purchase tax group on the item wins (a zero-rated one only counts for an export enterprise).
-    const taxGroup = data.groups.find((g) => g.code === item.purchaseTaxGroup);
+    const taxGroup = itemTaxGroup(item.purchaseTaxGroup, 'Purchase', data).group;
     const code = taxGroup && data.codes.find((c) => c.code === taxGroup.taxCode);
     if (taxGroup && code && rateAt(code, date) === 0 && !(taxGroup.zeroRated && !data.company.exportEnterprise)) {
       return { applies: false, why: `${why}, but item group ${taxGroup.code} is not subject to VAT.` };
@@ -184,13 +197,14 @@ export function determineTax(
 
     // 5. Item tax group, 6. company default
     if (!decided) {
-      const g = data.groups.find((x) => x.code === item.salesTaxGroup);
+      const { group: g, problem } = itemTaxGroup(item.salesTaxGroup, 'Sales', data);
       if (g) decide('Item sales tax group', g.taxCode, `Item group ${g.code}`);
+      else if (problem) step('Item sales tax group', 'warning', `${problem} Using the company default.`);
       else step('Item sales tax group', 'skipped', 'The item has no sales tax group.');
     }
     if (!decided) decide('Company default', SYSTEM_TAX_CODES.VATABLE, 'VATable sales');
   } else {
-    const group = data.groups.find((x) => x.code === item.purchaseTaxGroup);
+    const { group, problem: groupProblem } = itemTaxGroup(item.purchaseTaxGroup, 'Purchase', data);
     const groupRate = (g: TaxGroup) => {
       const c = data.codes.find((x) => x.code === g.taxCode);
       return c ? rateAt(c, date) : undefined;
@@ -232,7 +246,8 @@ export function determineTax(
 
     // 5. Item tax group (zero-rating only for an export enterprise), 6. company default
     if (!decided) {
-      if (!group) step('Item purchase tax group', 'skipped', 'The item has no purchase tax group.');
+      if (groupProblem) step('Item purchase tax group', 'warning', `${groupProblem} Using the company default.`);
+      else if (!group) step('Item purchase tax group', 'skipped', 'The item has no purchase tax group.');
       else if (zeroRatingRefused(group)) {
         step(
           'Item purchase tax group',

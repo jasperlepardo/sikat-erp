@@ -106,7 +106,7 @@ export interface Account {
 
 export type AccountType = 'Sales' | 'Expenditure' | 'Other';
 export const ACCOUNT_TYPES: AccountType[] = ['Sales', 'Expenditure', 'Other'];
-export type Classification = '' | 'Current' | 'Non-current';
+type Classification = '' | 'Current' | 'Non-current';
 export type CashFlowCategory = '' | 'Operating' | 'Investing' | 'Financing';
 export const CASH_FLOW_CATEGORIES: CashFlowCategory[] = ['', 'Operating', 'Investing', 'Financing'];
 export type PlanningLevel = '' | 'Cash and bank' | 'Receivables' | 'Payables' | 'Expenses' | 'Other';
@@ -460,7 +460,7 @@ export type AccountRole =
   | 'cash'
   | 'general';
 
-export const ACCOUNT_ROLES: Record<AccountRole, { what: string; fits: (a: Account, all: Account[]) => boolean }> = {
+const ACCOUNT_ROLES: Record<AccountRole, { what: string; fits: (a: Account, all: Account[]) => boolean }> = {
   inventory: { what: 'an inventory account (under 1300 Inventories)', fits: (a, all) => isUnder(a, '1300', all) },
   cogs: { what: 'a cost of sales account', fits: (a) => a.drawer === 'Cost of sales' },
   // What a non-stock purchase costs to: cost of sales when it's resold (setup, delivery), an

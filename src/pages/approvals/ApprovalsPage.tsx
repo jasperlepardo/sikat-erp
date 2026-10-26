@@ -18,20 +18,25 @@ import { listArInvoices, arNumber } from '../../services/arInvoices';
 import { listSalesReturns, srNumber } from '../../services/salesReturns';
 import { listArCreditMemos, arCmNumber } from '../../services/arCreditMemos';
 import { listIncomingPayments, incomingNumber } from '../../services/incomingPayments';
-
-import { PO_LIST_PATH } from '../purchasing/purchase-orders/detail/PurchaseOrderDetail';
-import { RFQ_LIST_PATH } from '../purchasing/purchase-quotations/detail/PurchaseQuotationDetail';
-import { GR_LIST_PATH } from '../purchasing/goods-receipts/detail/GoodsReceiptDetail';
-import { AP_LIST_PATH } from '../purchasing/vendor-invoices/detail/ApInvoiceDetail';
-import { RETURN_LIST_PATH, MEMO_LIST_PATH } from '../purchasing/shared/returnsTypes';
-import { DPR_LIST_PATH } from '../purchasing/down-payment-requests/detail/DprDetail';
-import { PAYMENT_LIST_PATH } from '../purchasing/payments-made/detail/PaymentDetail';
-import { QT_LIST_PATH } from '../sales/quotations/QuotationList';
-import { SO_LIST_PATH } from '../sales/sales-orders/detail/types';
-import { DN_LIST_PATH } from '../sales/deliveries/detail/types';
-import { AR_LIST_PATH } from '../sales/invoices/detail/types';
-import { SR_LIST_PATH, AR_CM_LIST_PATH } from '../sales/returns-and-credits/types';
-import { RC_LIST_PATH } from '../sales/payments-received/detail/IncomingPaymentDetail';
+import {
+  AP_LIST_PATH,
+  DPR_LIST_PATH,
+  GR_LIST_PATH,
+  MEMO_LIST_PATH,
+  PAYMENT_LIST_PATH,
+  PO_LIST_PATH,
+  RETURN_LIST_PATH,
+  RFQ_LIST_PATH,
+} from '../purchasing/paths';
+import {
+  AR_CM_LIST_PATH,
+  AR_LIST_PATH,
+  DN_LIST_PATH,
+  QT_LIST_PATH,
+  RC_LIST_PATH,
+  SO_LIST_PATH,
+  SR_LIST_PATH,
+} from '../sales/paths';
 
 interface PendingItem {
   id: string;

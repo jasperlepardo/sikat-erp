@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { AffixSelect, Combobox, DatePicker, Select, Text, TextField } from '@jasperlepardo/sikat-design-system';
+import { AffixSelect, Combobox, Select, Text, TextField } from '@jasperlepardo/sikat-design-system';
 import type { PrefColumn } from '../../../components/form/columnPrefs';
 import { MasterLookup, type MasterDef, type MasterRow } from '../../../components/form/MasterLookup';
 import { formatAmount } from '../../../services/format';
-import { formatDate } from '../../../services/dates';
+import { round4 } from '../../../services/num';
 
 /**
  * Shared column builders for the purchasing contents tables. These cover the few
@@ -141,44 +141,12 @@ export function amountCol<T extends Base>(
   };
 }
 
-/** Date cell — a `DatePicker`, or the formatted date read-only when locked. */
-export function dateCol<T extends Base>(
-  cfg: { key: string; header: string; get: (l: T) => string; onChange: (l: T, v: string) => void; readOnly?: boolean; width?: string } & ColOpts,
-): PrefColumn<T> {
-  const { key, header, get, onChange, readOnly, width = 'w-36' } = cfg;
-  return {
-    key,
-    header,
-    ...withOpts(cfg),
-    cell: (l: T) => {
-      if (!l.itemId) return null;
-      if (readOnly) return <Text variant="small">{get(l) ? formatDate(get(l)) : '—'}</Text>;
-      return <DatePicker aria-label={header} className={width} value={get(l) || null} onValueChange={(v) => onChange(l, v ?? '')} />;
-    },
-  };
-}
-
-/** Read-only integer/quantity display (en-PH grouping). */
-export function numberCol<T extends Base>(
-  cfg: { key: string; header: string; value: (l: T) => number; align?: 'start' | 'end' } & ColOpts,
-): PrefColumn<T> {
-  const { key, header, value, align = 'end' } = cfg;
-  return {
-    key,
-    header,
-    align,
-    ...withOpts(cfg),
-    cell: (l: T) => (l.itemId ? <span className="text-sm tabular-nums">{value(l).toLocaleString('en-PH')}</span> : null),
-  };
-}
-
 // The per-field column catalog + document assembly now live in `purchCols.tsx`
 // (the single registry). These builders remain the shared primitives it composes.
 
 // ── Shared pricing-group cells (one rendering, used by every document) ──────────
 
 const toNum = (v: string) => (v === '' ? 0 : Number(v));
-const round4 = (n: number) => Math.round(n * 1e4) / 1e4;
 
 /** Editable unit/info price — right-aligned number, optional currency prefix. */
 export function priceCol<T extends Base>(

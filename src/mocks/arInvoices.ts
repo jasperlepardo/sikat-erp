@@ -34,6 +34,8 @@ import { SEED_ITEMS } from './items';
 import type { WithholdingKind } from './taxes';
 import { SEED_WAREHOUSES } from './itemMasters';
 import { MONTH_NAMES, POS_CUSTOMER_ID, STORE_SALES } from './storeSales';
+import { round2 } from '../services/num';
+import { addDays } from '../services/dates';
 
 export type ArStatus = 'Draft' | 'Not Confirmed' | 'Open' | 'Closed' | 'Cancelled';
 export const AR_STATUSES: ArStatus[] = ['Draft', 'Not Confirmed', 'Open', 'Closed', 'Cancelled'];
@@ -45,7 +47,7 @@ export const CWT_ACCOUNT = '1440';
 export const CREDITABLE_VAT_ACCOUNT = '1430';
 
 /** Where a line came from. '' = entered by hand. */
-export type ArBaseType = '' | 'SO' | 'DN';
+type ArBaseType = '' | 'SO' | 'DN';
 
 export interface ArLine extends Omit<DnLine, 'baseType' | 'invoicedQty'> {
   baseType: ArBaseType;
@@ -248,8 +250,6 @@ export function blankArInvoice(today: string, ownerId: string): Omit<ArInvoice, 
 // ── Seed ─────────────────────────────────────────────────────────────────────
 // History, so no journal entries, like other seeded documents. Applied amounts tie out to the
 // seeded incoming payments (mocks/incomingPayments).
-
-const round2 = (n: number) => Math.round(n * 100) / 100;
 const RATE: Record<string, number> = { OVAT: 12, ZVAT: 0, XVAT: 0 };
 
 /**
@@ -430,14 +430,9 @@ const invoices: ArInvoice[] = [
 // ── January–June corporate orders ────────────────────────────────────────────
 // Billed on delivery, paid on the due date (mocks/incomingPayments.ts). Northgate withholds 1%.
 
-const plusDays = (iso: string, days: number) => {
-  const d = new Date(`${iso}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
-};
 const H1_INVOICES: ArInvoice[] = H1_SALES.map((p) => {
   const c = SEED_PARTNERS.find((x) => x.id === p.customerId)!;
-  const due = plusDays(p.delivered, termDaysOf(c.customerPaymentTermId));
+  const due = addDays(p.delivered, termDaysOf(c.customerPaymentTermId));
   return fromDelivery(`ar-${p.id}`, 0, `dn-${p.id}`, {
     postingDate: p.delivered, documentDate: p.delivered, dueDate: due, status: 'Closed', closeDate: due, wtaxLiable: c.topWithholdingAgent,
     remarks: `Paid by bank transfer on the due date.`,
@@ -498,7 +493,7 @@ const PAID: Record<string, 'full' | 'half'> = {
 };
 
 /** A credit for `qty` of a delivered line, at its price with VAT — what a credit memo for it comes to. */
-export function seedLineCredit(dnId: string, lineId: string, qty: number) {
+function seedLineCredit(dnId: string, lineId: string, qty: number) {
   const l = SEED_DELIVERIES.find((d) => d.id === dnId)!.lines.find((x) => x.id === lineId)!;
   const net = round2(qty * l.unitPrice * (1 - l.discountPct / 100));
   return round2(net + round2((net * (RATE[l.taxCode] ?? 0)) / 100));

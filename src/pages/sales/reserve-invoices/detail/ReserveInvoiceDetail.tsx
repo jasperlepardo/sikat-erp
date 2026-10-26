@@ -1,13 +1,13 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useAutoSave } from '../../../../components/form/useAutoSave';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { Alert, Badge, Button, Form, Panel, PanelHeader, Tabs, Text, TextField } from '@jasperlepardo/sikat-design-system';
+import { Alert, Badge, Button, Form, Panel, PanelHeader, Tabs, Text } from '@jasperlepardo/sikat-design-system';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { type Errors } from '../../../../components/form/fields';
 import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { formatAddress } from '../../../../mocks/address';
-import { blankReserveInvoice, type ReserveInvoice, type ArStatus } from '../../../../mocks/reserveInvoices';
+import { blankReserveInvoice, type ReserveInvoice } from '../../../../mocks/reserveInvoices';
 import { CURRENT_USER_ID } from '../../../../mocks/common';
 import {
   RiPostError,
@@ -19,7 +19,6 @@ import {
   riBalanceDue,
   cancelReserveInvoice,
   closeReserveInvoice,
-  customerWithholdsRi,
   getReserveInvoice,
   listReserveInvoices,
   saveRiDraft,
@@ -40,21 +39,23 @@ import { termDays } from '../../../../services/purchaseOrders';
 import { logRejection } from '../../../../services/approvalRules';
 import { getSalesSettings, listSalesOrders, openQty, soDueDate, soNumber } from '../../../../services/salesOrders';
 import { soSeries } from '../../../../services/allSeries';
-import { ALL_CURRENCIES, SO_LIST_PATH, proposedTaxCode } from '../../sales-orders/detail/types';
+import { ALL_CURRENCIES, proposedTaxCode } from '../../sales-orders/detail/types';
 import { CustomerCard } from '../../shared/CustomerCard';
 import { SalesTotalsFooter } from '../../shared/TotalsFooter';
 import { ReferencesTable } from '../../../purchasing/shared/ReferencesTable';
 import { SalesDocumentFlow } from '../../shared/SalesDocumentFlow';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
-import { NotFound, PrevNext, neighbours } from '../../../../components/form/DetailNav';
+import { neighbours, NotFound, PrevNext, siblingKeys, useDocTab, useReject } from '../../../../components/form/DetailNav';
 import { useDocTitle } from '../../../../services/useDocTitle';
-import { RI_LIST_PATH, buildRiContext, riLineFromOrder, type RiContext, type RiDraft, type RiMasters } from './types';
+import { buildRiContext, riLineFromOrder, type RiContext, type RiDraft, type RiMasters } from './types';
 import { RiDatesCard } from './RiCustomerCard';
 import { RiShipmentCard } from './RiShipmentCard';
 import { RiAssignmentCard } from './RiAssignmentCard';
 import { RiAccountingCard } from './RiAccountingCard';
-import { RiContentsCard, type CopyPickRi } from './RiContentsCard';
-import { RiCustomerDetailsPanel } from './RiCustomerDetailsPanel';
+import { InvoiceContentsCard, type CopyPickRi } from '../../shared/InvoiceContentsCard';
+import { InvoiceCustomerDetailsPanel } from '../../shared/InvoiceCustomerDetailsPanel';
+import { RI_LIST_PATH, RI_STATUS_INTENT, SO_LIST_PATH } from '../../paths';
+import { customerWithholds } from '../../../../services/withholding';
 
 type TabId = 'contents' | 'accounting';
 const TAB_LABEL: Record<TabId, string> = { contents: 'Contents', accounting: 'Customer details' };
@@ -65,14 +66,6 @@ const PAGES = [
   { value: 'activity', label: 'Activity' },
 ] as const;
 type PageId = (typeof PAGES)[number]['value'];
-
-export const RI_STATUS_INTENT: Record<ArStatus, 'default' | 'primary' | 'success' | 'danger' | 'warning'> = {
-  Draft: 'default',
-  'Not Confirmed': 'warning',
-  Open: 'primary',
-  Closed: 'success',
-  Cancelled: 'danger',
-};
 
 function validate(d: RiDraft, ctx: RiContext, m: RiMasters, asDraft: boolean): Problem<TabId>[] {
   const { problems, need } = problemCollector<TabId>();
@@ -122,14 +115,12 @@ function ReserveInvoiceForm() {
   const [draft, setDraft] = useState<RiDraft | null | undefined>(isNew ? { ...blankReserveInvoice(todayISO(), CURRENT_USER_ID), approved: riApproved } : undefined);
   const [m, setM] = useState<RiMasters>();
   const page = (PAGES.some((p) => p.value === tabParam) ? tabParam : 'details') as PageId;
-  const setPage = (v: PageId) => navigate(`${RI_LIST_PATH}/${id}/${v}`, { replace: true });
-  useEffect(() => { if (!tabParam) navigate(`${RI_LIST_PATH}/${id}/details`, { replace: true, state: location.state }); }, []);
+  const setPage = useDocTab<PageId>(`${RI_LIST_PATH}/${id}`, tabParam);
   const [customerDetailsOpen, setCustomerDetailsOpen] = useState(false);
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);
-  const [rejecting, setRejecting] = useState(false);
-  const [rejectionReason, setRejectionReason] = useState('');
+  const reject = useReject();
 
   useEffect(() => {
     let cancelled = false;
@@ -149,7 +140,7 @@ function ReserveInvoiceForm() {
     });
     if (!isNew && id) {
       getReserveInvoice(id).then((r) => !cancelled && setDraft(r ?? null));
-      listReserveInvoices().then((all) => !cancelled && setSiblings([...all].sort((a, b) => b.postingDate.localeCompare(a.postingDate)).map((r) => r.docNum ? riNumber(r) : r.id)));
+      listReserveInvoices().then((all) => !cancelled && setSiblings(siblingKeys(all, riNumber)));
     }
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -185,7 +176,7 @@ function ReserveInvoiceForm() {
 
   function copyLines(d: RiDraft, src: CopyPickRi, picks: { lineId: string; qty: number }[], masters: RiMasters): RiDraft {
     const c = masters.customers.find((x) => x.id === src.doc.customerId);
-    const liable = customerWithholdsRi(c);
+    const liable = customerWithholds(c);
     const added = picks.map((p) => riLineFromOrder(src.doc, src.doc.lines.find((l) => l.id === p.lineId)!, p.qty, liable));
     const first = !d.lines.some((l) => l.baseId);
     const s = src.doc;
@@ -231,7 +222,7 @@ function ReserveInvoiceForm() {
     if (!c) return update({ customerId: '', customerCode: '', customerName: '', contactId: '' });
     const bill = c.addresses.find((a) => a.id === c.defaultBillToId) ?? c.addresses[0];
     const ship = c.addresses.find((a) => a.id === c.defaultShipToId) ?? bill;
-    const liable = customerWithholdsRi(c);
+    const liable = customerWithholds(c);
     update({
       customerId: c.id,
       customerCode: c.code,
@@ -300,7 +291,7 @@ function ReserveInvoiceForm() {
   const closeIt = () => act(() => closeReserveInvoice(saved), 'closed');
   const cancelIt = () => act(() => cancelReserveInvoice(saved), 'cancelled — the entry is reversed');
   const recallIt = () => act(() => recallReserveInvoice(saved), 'recalled to draft');
-  const rejectIt = async () => {
+  const rejectIt = async (rejectionReason: string) => {
     await logRejection('ARINV', saved.id, saved.customerId, rejectionReason);
     await recallReserveInvoice(saved);
     navigate(RI_LIST_PATH, { state: { notice: `Reserve invoice ${riNumber(saved)} rejected and returned to draft.` } });
@@ -315,7 +306,7 @@ function ReserveInvoiceForm() {
       ? [
           { label: 'Approve', icon: 'verified', onSelect: () => submit(null, false, { approved: true }) },
           { label: 'Recall', icon: 'undo', onSelect: recallIt },
-          { label: 'Reject', icon: 'cancel', onSelect: () => setRejecting(true) },
+          { label: 'Reject', icon: 'cancel', onSelect: () => reject.start() },
         ]
       : []),
     ...(draft.status === 'Open' && draft.lines.some((l) => l.openQtyForIt > 0)
@@ -381,17 +372,7 @@ function ReserveInvoiceForm() {
           {page === 'details' ? (
             <Panel.Body className="flex flex-col gap-2">
               <ProblemsAlert problems={problems} tabLabel={(t) => TAB_LABEL[t as TabId]} />
-              {rejecting ? (
-                <Alert intent="danger" variant="outline" title="Reject reserve invoice">
-                  <div className="flex flex-col gap-2">
-                    <TextField aria-label="Rejection reason" value={rejectionReason} onChange={(e) => setRejectionReason(e.currentTarget.value)} placeholder="Explain why…" />
-                    <div className="flex gap-2">
-                      <Button type="button" intent="danger" variant="solid" size="small" onClick={rejectIt}>Confirm reject</Button>
-                      <Button type="button" intent="white" variant="solid" size="small" onClick={() => { setRejecting(false); setRejectionReason(''); }}>Cancel</Button>
-                    </div>
-                  </div>
-                </Alert>
-              ) : null}
+              {reject.alert('Reject reserve invoice', rejectIt)}
               {ro ? (
                 <Alert intent="default" variant="outline" title={`This reserve invoice is ${draft.status.toLowerCase()}`}>
                   {draft.status === 'Cancelled'
@@ -411,7 +392,8 @@ function ReserveInvoiceForm() {
                     onPickCustomer={pickCustomer}
                     onOpenDetails={() => setCustomerDetailsOpen(true)}
                   />
-                  <RiContentsCard
+                  <InvoiceContentsCard
+                    kind="RI"
                     {...tabProps}
                     onCopy={(src, picks) => setDraft(copyLines(draft, src, picks, m))}
                     cardFooter={
@@ -460,7 +442,7 @@ function ReserveInvoiceForm() {
           ) : null}
         </Panel>
       </Form>
-      <RiCustomerDetailsPanel {...tabProps} open={customerDetailsOpen} onClose={() => setCustomerDetailsOpen(false)} />
+      <InvoiceCustomerDetailsPanel {...tabProps} noun="reserve invoice" remarkDefault="Reserve Invoice – customer code" open={customerDetailsOpen} onClose={() => setCustomerDetailsOpen(false)} />
     </>
   );
 }

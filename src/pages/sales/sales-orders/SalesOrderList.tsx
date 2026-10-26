@@ -23,8 +23,7 @@ import { formatAmount } from '../../../services/format';
 import { taxCodes } from '../../../services/masterData';
 import { listSalesOrders, openQty, soNumber, soTotal } from '../../../services/salesOrders';
 import { useAsync } from '../../../services/useAsync';
-import { SO_STATUS_INTENT } from './detail/SalesOrderDetail';
-import { SO_LIST_PATH } from './detail/types';
+import { SO_LIST_PATH, SO_STATUS_INTENT } from '../paths';
 
 export function SalesOrderList() {
   const navigate = useNavigate();

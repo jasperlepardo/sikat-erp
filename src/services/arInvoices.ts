@@ -4,21 +4,24 @@ import { SHIPPED_GOODS_ACCOUNT } from '../mocks/deliveries';
 import type { ItemGroup } from '../mocks/itemMasters';
 import { SEED_ITEMS, mergedItems, type Item } from '../mocks/items';
 import { SEED_PARTNERS, type Partner } from '../mocks/partners';
-import { SEED_TAX_CODES, rateAt, type TaxCode } from '../mocks/taxes';
+import { SEED_TAX_CODES, rateFrom, type TaxCode } from '../mocks/taxes';
 import type { TaxMasterData } from './taxDetermination';
 import { SEED_TAX, customerWithholding, customerWithholds, type CustomerWithholding } from './withholding';
+import { birForms } from './masterData';
 import { withTaxFiling } from './taxRecalc';
 import { todayISO } from './dates';
 import { applyInvoiced, deliveryProblems, dnInventoryQty, listDeliveries } from './deliveries';
 import { frozenStock } from './inventoryCountings';
 import { itemGroups } from './inventoryMasters';
 import { inventoryAccountFor, type JournalLine } from './inventoryTransfers';
-import { listItems, saveItem } from './items';
+import { listItems, saveItems } from './items';
 import { consumeLayers, logConsumption, restoreLayer, updateFifoCosts, type Taken } from './costLayers';
 import { postDocumentEntry, reverseDocumentEntry } from './journalEntries';
 import { applyDelivered, closeSalesOrder, lineNet, listSalesOrders, openQty, soTotals } from './salesOrders';
 import { createCollection } from './store';
 import { withLineCosts } from './stockHistory';
+import { round2, round4 } from './num';
+import { cogsAccountFor, revenueAccountFor } from './itemAccounts';
 
 // Seeded lines carry the cost their stock went out at (services/stockHistory.ts).
 // Seeded withholding is stamped as if each was added under the seeded Settings.
@@ -34,9 +37,6 @@ export async function getArInvoice(idOrNumber: string) {
 
 export type ArInput = Omit<ArInvoice, 'id'> & { id?: string };
 
-const round2 = (n: number) => Math.round(n * 100) / 100;
-const round4 = (n: number) => Math.round(n * 10000) / 10000;
-
 export const arSeriesOf = (id: string) => seriesLookup(arSeries, id, AR_SERIES);
 export const arNumber = (a: Pick<ArInvoice, 'seriesId' | 'docNum' | 'postingDate'>) => formatDocNum(arSeriesOf(a.seriesId), a.docNum, a.postingDate);
 
@@ -46,10 +46,6 @@ export const shipsStock = (l: ArLine, items: readonly Item[]) => l.baseType !== 
 export const arTotals = (a: Pick<ArInvoice, 'lines' | 'discountPct' | 'freight' | 'freightTaxCode' | 'rounding'>, rateOf: (code: string) => number, rule?: Parameters<typeof soTotals>[2]) =>
   soTotals(a as unknown as Parameters<typeof soTotals>[0], rateOf, rule);
 
-const rateFrom = (codes: readonly TaxCode[], date: string) => (code: string) => {
-  const c = codes.find((x) => x.code === code);
-  return c ? (rateAt(c, date) ?? 0) : 0;
-};
 
 export type ArWithholding = CustomerWithholding;
 export { customerWithholds };
@@ -82,9 +78,6 @@ const withSeedArWithholding = (docs: ArInvoice[]): ArInvoice[] => {
 /** What the customer still owes: total − withholding − payments applied. */
 export const balanceDue = (total: number, withheld: number, applied: number) => round2(total - withheld - applied);
 
-const groupOf = (item: Item, groups: readonly ItemGroup[]) => groups.find((g) => g.id === item.itemGroupId);
-const revenueAccountFor = (item: Item, groups: readonly ItemGroup[]) => (item.glBy === 'Item Level' ? item.revenueAccount : groupOf(item, groups)?.revenueAccount || item.revenueAccount) || '4010';
-const cogsAccountFor = (item: Item, groups: readonly ItemGroup[]) => (item.glBy === 'Item Level' ? item.cogsAccount : groupOf(item, groups)?.cogsAccount || item.cogsAccount) || '5010';
 
 /**
  * The entry adding the invoice makes, in PHP:
@@ -127,7 +120,6 @@ export function arJournal(
   add(FREIGHT_INCOME_ACCOUNT, -freight);
   add(vatAccount(a.freightTaxCode), -round2((freight * ctx.rateOf(a.freightTaxCode)) / 100));
   add(FREIGHT_INCOME_ACCOUNT, -round2(totalsDoc.rounding * fx));
-
 
   for (const w of ctx.withholding) {
     const amt = round2(w.amount * fx);
@@ -194,7 +186,7 @@ async function moveStock(lines: ArLine[], items: readonly Item[], sign: 1 | -1) 
     row.inStock = round4(row.inStock + sign * dnInventoryQty(l));
     touched.set(item.id, { ...item, hasTransactions: true });
   }
-  for (const item of touched.values()) await saveItem(item);
+  await saveItems(touched.values());
 }
 
 /**
@@ -245,7 +237,7 @@ export async function addArInvoice(input: ArInput, fx: number, ctx: { codes: rea
 
   await updateFifoCosts([...fifoItemIds]);
   // The withholding is fixed now (shown on the form when adding), so later Settings changes don't move it.
-  const saved = await invoices.save({ ...input, lines: withTaxFiling(lines, ctx.codes), withholdingSummary: ctx.withholding, docNum, status: 'Open', fxRate: fx });
+  const saved = await invoices.save({ ...input, lines: withTaxFiling(lines, ctx.codes, await birForms.list()), withholdingSummary: ctx.withholding, docNum, status: 'Open', fxRate: fx });
   await logConsumption(saved.id, saved.postingDate, taken);
   await postDocumentEntry({
     origin: 'IN',

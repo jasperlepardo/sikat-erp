@@ -27,7 +27,7 @@ import { dateField, linesField, masterField, numberField, statusField, textField
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { salesEmployeeDef } from '../../settings/masterDefs';
 import { fillCardClass, useListPage } from '../../../components/form/DataTable';
-import { TRANSFER_REQUEST_LIST_PATH, TRANSFER_REQUEST_STATUS_INTENT } from './detail/TransferRequestDetail';
+import { TRANSFER_REQUEST_LIST_PATH, TRANSFER_REQUEST_STATUS_INTENT } from '../paths';
 
 export function TransferRequestList() {
   const navigate = useNavigate();

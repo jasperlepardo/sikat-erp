@@ -9,7 +9,7 @@ import { formatAmount } from '../../services/format';
 import { jeNumber, listJournalEntries, rowAccount } from '../../services/journalEntries';
 import { listPartners } from '../../services/partners';
 import { useAsync } from '../../services/useAsync';
-import { JE_LIST_PATH } from './journal/JournalEntryDetail';
+import { JE_LIST_PATH } from './paths';
 
 interface Posting {
   id: string;

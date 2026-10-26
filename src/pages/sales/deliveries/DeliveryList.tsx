@@ -24,8 +24,7 @@ import { taxCodes } from '../../../services/masterData';
 import { dnNumber, dnTotal, listDeliveries } from '../../../services/deliveries';
 import { useAsync } from '../../../services/useAsync';
 import { listSalesOrders, soNumber } from '../../../services/salesOrders';
-import { DN_STATUS_INTENT } from './detail/DeliveryDetail';
-import { DN_LIST_PATH } from './detail/types';
+import { DN_LIST_PATH, DN_STATUS_INTENT } from '../paths';
 
 export function DeliveryList() {
   const navigate = useNavigate();

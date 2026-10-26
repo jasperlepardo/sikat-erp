@@ -16,7 +16,7 @@ export function CmLogisticsCard({ draft, update, errors: _errors, m, ctx, addres
       <Fields>
         {h.lookup('shipTo', 'Ship to', withCurrent(addressOptions, draft.shipTo), { hint: "The vendor's return address, for goods sent back.", disabled: !vendor })}
         {h.lookup('payTo', 'Pay to', withCurrent(addressOptions, draft.payTo), { disabled: !vendor })}
-        {h.lookup('shippingType', 'Shipping type', [{ value: '', label: '— None —' }, ...m.inv.shipping.filter((s) => s.active || s.id === draft.shippingType).map((s) => ({ value: s.id, label: s.name }))])}
+        {h.lookup('shippingType', 'Shipping type', m.inv.shipping.filter((s) => s.active || s.id === draft.shippingType).map((s) => ({ value: s.id, label: s.name })), { clearable: true })}
       </Fields>
     </Section>
   );

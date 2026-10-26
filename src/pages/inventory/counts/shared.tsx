@@ -4,8 +4,6 @@ import type { Item } from '../../../mocks/items';
 import type { ItemGroup, Warehouse } from '../../../mocks/itemMasters';
 import { warehouseOptions } from '../transfers/TransferLines';
 
-export const COUNT_LIST_PATH = '/inventory/stock-counts';
-export const POSTING_LIST_PATH = '/inventory/stock-counts/postings';
 
 export interface CountMasters {
   items: Item[];

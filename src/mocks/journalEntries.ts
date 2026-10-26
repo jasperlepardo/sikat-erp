@@ -26,7 +26,7 @@ import type { Attachment, DocumentSeries } from './common';
 import type { Account } from './chartOfAccounts';
 import { ruleOf, withRule, type DimensionRule } from './costAccounting';
 
-export type JeStatus = 'Posted' | 'Reversed';
+type JeStatus = 'Posted' | 'Reversed';
 
 export type OriginType = 'JE' | 'IM' | 'IQ' | 'PD' | 'PU' | 'PS' | 'RD' | 'PC' | 'DN' | 'IN' | 'RC' | 'AC' | 'SR' | 'LC' | 'RI';
 export const ORIGIN_LABEL: Record<OriginType, string> = {
@@ -66,7 +66,6 @@ export const ORIGIN_PATH: Partial<Record<OriginType, string>> = {
 
 export const TRANS_CODES = ['', 'ACCR', 'DEPR', 'RECL', 'CORR', 'YEND', 'FXRV'];
 export const TRANS_CODE_LABEL: Record<string, string> = {
-  '': '— None —',
   ACCR: 'ACCR · Accrual',
   DEPR: 'DEPR · Depreciation',
   RECL: 'RECL · Reclassification',

@@ -5,6 +5,7 @@ import { todayISO } from './dates';
 import { poTotals } from './purchaseOrders';
 import { createCollection } from './store';
 import { purchasingHistory } from './purchasingHistory';
+import { round2 } from './num';
 
 const requests = createCollection<DownPaymentRequest>('sikat-erp:ap-down-payments:v4', () => purchasingHistory().downPayments, 'dp', { audit: 'DPR' });
 
@@ -17,8 +18,6 @@ export async function getDownPayment(idOrNumber: string) {
 }
 
 export type DprInput = Omit<DownPaymentRequest, 'id'> & { id?: string };
-
-const round2 = (n: number) => Math.round(n * 100) / 100;
 
 /** "Primary 630004", or "Draft" before it's added. */
 export const dprNumber = (d: Pick<DownPaymentRequest, 'seriesId' | 'docNum' | 'postingDate'>) =>

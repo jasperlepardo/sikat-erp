@@ -19,9 +19,9 @@ import { formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
 import { lcNumber, lcTotals, listLandedCosts } from '../../../services/landedCosts';
 import { useAsync } from '../../../services/useAsync';
-import { LC_LIST_PATH, LC_STATUS_INTENT } from './detail/types';
 import type { LcStatus } from '../../../mocks/landedCosts';
 import { LC_STATUSES } from '../../../mocks/landedCosts';
+import { LC_LIST_PATH, LC_STATUS_INTENT } from '../paths';
 
 interface Row {
   id: string;

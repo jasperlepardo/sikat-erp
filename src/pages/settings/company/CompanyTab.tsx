@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import {
+  Badge,
   Button,
   Panel,
   PanelHeader,
@@ -17,7 +18,7 @@ import { companyDef } from '../masterDefs';
 import { companies } from '../../../services/companies';
 import { companyTax } from '../../../services/masterData';
 import { useAsync } from '../../../services/useAsync';
-import { PrevNext } from '../../../components/form/DetailNav';
+import { NotFound, PrevNext, neighbours } from '../../../components/form/DetailNav';
 
 /** Companies list; when a record is open, a two-card company detail page. */
 export function CompaniesTab({ basePath, recordId }: ListRoute) {
@@ -44,23 +45,12 @@ function CompanyDetail({ basePath, recordId }: { basePath: string; recordId: str
   const back = () => navigate(basePath);
 
   if (!loaded) return <Text tone="muted" className="p-4">Loading…</Text>;
-  if (!row) {
-    return (
-      <Panel className="flex-1">
-        <PanelHeader icon="domain" iconIntent="default" iconShape="rounded" iconSize={32} iconVariant="outline" title="Company not found" />
-        <Panel.Body>
-          <Button onClick={back}>Back to companies</Button>
-        </Panel.Body>
-      </Panel>
-    );
-  }
+  if (!row) return <NotFound icon="domain" title="Company not found" backTo={basePath} backLabel="Back to companies" />;
 
   const siblings = [...(rows ?? [])]
     .sort((a, b) => companyDef.label(a).localeCompare(companyDef.label(b)))
     .map((r) => r.id);
-  const at = siblings.indexOf(recordId);
-  const prevId = at > 0 ? siblings[at - 1] : undefined;
-  const nextId = at < siblings.length - 1 ? siblings[at + 1] : undefined;
+  const { prevId, nextId } = neighbours(siblings, recordId);
 
   const save = async () => {
     const found = { ...companyDef.validate(row, rows ?? []), ...(tax && !isNew ? validateTaxProfile(tax) : {}) };
@@ -87,27 +77,17 @@ function CompanyDetail({ basePath, recordId }: { basePath: string; recordId: str
         iconShape="rounded"
         iconSize={32}
         iconVariant="outline"
-        title={isNew ? 'New company' : companyDef.label(row)}
-        trailing={
-          isNew ? undefined : <PrevNext path={basePath} prevId={prevId} nextId={nextId} />
+        breadcrumbs={[{ label: 'Companies', href: basePath }, { label: isNew ? 'New company' : companyDef.label(row) }]}
+        onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
+        onBack={back}
+        trailing={isNew ? undefined : <PrevNext path={basePath} prevId={prevId} nextId={nextId} />}
+        status={
+          existing ? <Badge size="small" intent={existing.active ? 'success' : 'default'}>{existing.active ? 'Active' : 'Inactive'}</Badge> : undefined
         }
         actions={
-          <>
-            <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={back}>
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              intent="primary"
-              variant="solid"
-              size="medium"
-              shape="pill"
-              disabled={saving}
-              onClick={save}
-            >
-              {saving ? 'Saving…' : isNew ? 'Add' : 'Save'}
-            </Button>
-          </>
+          <Button type="button" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving} onClick={save}>
+            {saving ? 'Saving…' : isNew ? 'Add' : 'Save'}
+          </Button>
         }
       />
       <Panel.Body className="flex flex-col gap-2">

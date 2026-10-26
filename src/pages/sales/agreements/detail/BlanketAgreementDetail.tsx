@@ -19,7 +19,6 @@ import { CURRENT_USER_ID } from '../../../../mocks/common';
 import { blankBlanketAgreement, newBaLine, type BlanketAgreement } from '../../../../mocks/blanketAgreements';
 import { blankSalesOrder, newSoLine } from '../../../../mocks/salesOrders';
 import { getSalesSettings } from '../../../../services/salesOrders';
-import { SO_LIST_PATH } from '../../sales-orders/detail/types';
 import { formatDate, todayISO } from '../../../../services/dates';
 import { loadInventoryMasters } from '../../../../services/inventoryMasters';
 import { listItems } from '../../../../services/items';
@@ -32,11 +31,11 @@ import { SalesDocumentFlow } from '../../shared/SalesDocumentFlow';
 import { BaCustomerPanel } from './BaCustomerPanel';
 import { BaAgreementCard } from './BaAgreementCard';
 import { GeneralTab } from './general';
-import { LinesTab } from './lines';
-import { BaSummaryCard } from './BaSummaryCard';
-import { BA_LIST_PATH, BA_STATUS_INTENT } from '../BlanketAgreementList';
+import { AgreementLinesCard } from '../../../../components/agreements/AgreementLinesCard';
+import { AgreementSummaryCard } from '../../../../components/agreements/AgreementSummaryCard';
 import type { BaDraft, BaMasters } from './types';
-import { NotFound, PrevNext, neighbours } from '../../../../components/form/DetailNav';
+import { neighbours, NotFound, PrevNext, useDocTab } from '../../../../components/form/DetailNav';
+import { BA_LIST_PATH, BA_STATUS_INTENT, SO_LIST_PATH } from '../../paths';
 
 const PAGES = [
   { value: 'details', label: 'Details' },
@@ -84,8 +83,7 @@ function BaForm() {
   );
   const [m, setM] = useState<BaMasters>();
   const page = (PAGES.some((p) => p.value === tabParam) ? tabParam : 'details') as PageId;
-  const setPage = (v: PageId) => navigate(`${BA_LIST_PATH}/${id}/${v}`, { replace: true });
-  useEffect(() => { if (!tabParam) navigate(`${BA_LIST_PATH}/${id}/details`, { replace: true, state: location.state }); }, []);
+  const setPage = useDocTab<PageId>(`${BA_LIST_PATH}/${id}`, tabParam);
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);
@@ -306,7 +304,7 @@ function BaForm() {
 
               <fieldset disabled={readOnly} className="contents">
                 {draft.lines.length > 0 && (
-                  <BaSummaryCard currency={draft.currency} totals={totals} settlementProbability={draft.settlementProbability} />
+                  <AgreementSummaryCard side="sales" currency={draft.currency} totals={totals} settlementProbability={draft.settlementProbability} />
                 )}
                 <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
                   <div className="flex flex-col gap-2 lg:col-span-8">
@@ -319,7 +317,7 @@ function BaForm() {
                       locked={!!(customer && added)}
                       error={errors.customerId}
                     />
-                    <LinesTab draft={draft} update={update} m={m} readOnly={readOnly} />
+                    <AgreementLinesCard side="sales" draft={draft} update={update} m={m} readOnly={readOnly} newLine={newBaLine} />
                     <AttachmentsCard
                       attachments={draft.attachments}
                       onChange={(attachments) => update({ attachments })}

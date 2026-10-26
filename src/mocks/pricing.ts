@@ -50,7 +50,7 @@ export interface VolumeTier {
   discountPct: number;
 }
 
-export type DiscountKind = 'period' | 'volume';
+type DiscountKind = 'period' | 'volume';
 
 export interface PeriodVolumeDiscount {
   id: string;
@@ -85,7 +85,7 @@ export interface DiscountGroupRow {
   active: boolean;
 }
 
-export interface DiscountGroupCell {
+interface DiscountGroupCell {
   itemGroupId: string;
   discountPct: number;
 }

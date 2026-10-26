@@ -1,9 +1,9 @@
 import type { Errors } from '../../../../components/form/fields';
-import { newApRiLine, type ApRiLine, type ApReserveInvoice } from '../../../../mocks/apReserveInvoices';
+import { newApRiLine, type ApRiLine } from '../../../../mocks/apReserveInvoices';
 import type { PurchaseOrder } from '../../../../mocks/purchaseOrders';
 import type { Account } from '../../../../mocks/chartOfAccounts';
 import type { ApRiInput } from '../../../../services/apReserveInvoices';
-import { buildGrContext, defaultPayTo, linesFromPo, type GrContext, type GrMasters } from '../../goods-receipts/detail/types';
+import { buildGrContext, linesFromPo, type GrContext, type GrMasters } from '../../goods-receipts/detail/types';
 import type { Item } from '../../../../mocks/items';
 import { openQty, poNumber } from '../../../../services/purchaseOrders';
 import { itemsPerUom } from '../../../../mocks/items';
@@ -29,7 +29,7 @@ export interface ApriSectionProps {
 export const buildApriContext = (draft: ApriDraft, m: ApriMasters): ApriContext =>
   buildGrContext(draft as Parameters<typeof buildGrContext>[0], m);
 
-export type { ApReserveInvoice, PurchaseOrder };
+export type {  PurchaseOrder };
 
 export function riLineFromItem(item: Item, draft: ApriDraft, ctx: ApriContext, m: ApriMasters, base: Partial<ApRiLine> = {}): ApRiLine {
   const priceListId =
@@ -94,4 +94,4 @@ export function riLinesFromPo(po: PurchaseOrder, picks: { lineId: string; qty: n
 export const orderNumbersOf = (lines: ApRiLine[]) =>
   [...new Set(lines.filter((l) => l.baseType === 'PO' && l.baseDocNo).map((l) => l.baseDocNo))].join(', ');
 
-export { defaultPayTo, openQty };
+;

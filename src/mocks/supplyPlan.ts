@@ -19,13 +19,14 @@ import { SEED_ITEMS, itemsPerUom, type Item } from './items';
 import type { PurchaseOrder } from './purchaseOrders';
 import { VENDOR_RETURNS } from './retailHistory';
 import { SALES_MONTHS, STORE_SALES, isLaunchItem } from './storeSales';
+import { addDays } from '../services/dates';
 
-export const CENTRAL = 'WH-001';
+const CENTRAL = 'WH-001';
 /** The day the seeded history runs to. Receipts not yet complete are dated no later than this. */
 export const SEED_AS_OF = '2026-10-09';
 
-export const LUZON = 'bp-016';
-export const TECHZONE = 'bp-013';
+const LUZON = 'bp-016';
+const TECHZONE = 'bp-013';
 export const APPLE = 'bp-017';
 
 export interface PlannedOrder {
@@ -43,17 +44,12 @@ export interface PlannedOrder {
 
 const items = new Map(SEED_ITEMS.map((i) => [i.id, i]));
 
-export const supplierOf = (item: Item) => {
+const supplierOf = (item: Item) => {
   if (item.defaultVendorId) return item.defaultVendorId;
   const line = item.itemNo.split('-')[0];
   return line === 'IPD' ? APPLE : line === 'ACC' ? TECHZONE : LUZON;
 };
 
-const plusDays = (iso: string, days: number) => {
-  const d = new Date(`${iso}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
-};
 
 /** The day a hand-written order's goods came in: as mocks/goodsReceipts.ts dates its receipt. */
 export function receiptDate(po: Pick<PurchaseOrder, 'lines' | 'deliveryDate' | 'postingDate'>) {
@@ -119,7 +115,7 @@ function releases(hand: PurchaseOrder[]): PlannedOrder[] {
   const byRelease = new Map<string, PlannedOrder>();
   for (const item of launch) {
     // Received two days before release: the stores' stock goes out the day before.
-    const receivedOn = plusDays(item.validFrom, -2);
+    const receivedOn = addDays(item.validFrom, -2);
     let run = 0;
     let low = 0;
     for (const m of moves.filter((x) => x.itemId === item.id).sort((a, b) => a.date.localeCompare(b.date))) {
@@ -133,7 +129,7 @@ function releases(hand: PurchaseOrder[]): PlannedOrder[] {
       id: `po-l${item.validFrom.slice(2).replace(/-/g, '')}-${vendorId.slice(3)}`,
       vendorId,
       kind: 'release' as const,
-      postingDate: plusDays(item.validFrom, -10),
+      postingDate: addDays(item.validFrom, -10),
       receivedOn,
       lines: [],
     };

@@ -13,7 +13,7 @@ import { AddItemsBar, FindBar, findRows, itemOptions, itemsPer, num, signed, uom
 export type PostingDraft = Omit<InventoryPosting, 'id'> & { id?: string };
 
 /** A line added directly (no count): book = counted = In Stock now, so it starts with no variance. */
-export function postingLineFor(item: Item, warehouse: string, draft: PostingDraft, base: Partial<PostingLine> = {}): PostingLine {
+function postingLineFor(item: Item, warehouse: string, draft: PostingDraft, base: Partial<PostingLine> = {}): PostingLine {
   const inWhseQty = inStockAt(item, warehouse);
   return newPostingLine({
     ...base,

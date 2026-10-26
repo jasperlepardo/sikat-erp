@@ -1,14 +1,13 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import {
+  Badge,
   Button,
-  ButtonGroup,
   Card,
   Icon,
   IconButton,
   Panel,
   PanelHeader,
-  panelHeaderIcons,
   SidePanel,
   Table,
   TableContent,
@@ -20,6 +19,7 @@ import {
   type TableSort,
 } from '@jasperlepardo/sikat-design-system';
 import { Section, type Errors } from './fields';
+import { NotFound, PrevNext, neighbours } from './DetailNav';
 import { useHeaderSearch } from './HeaderSearch';
 import { DEFAULT_PAGE_SIZE, PAGE_SIZES, defaultSortValue, fillCardClass } from './DataTable';
 
@@ -395,8 +395,8 @@ function ListView<T extends { id: string }>({
 }
 
 /**
- * A master-data record on its own page: header with Cancel / Save, the editor in a
- * card, and a return to the list on save or cancel.
+ * A master-data record on its own page: header with breadcrumbs, Back and Save, the editor in a
+ * card, and a return to the list on save or back.
  */
 function RecordPage<T extends { id: string }>({
   icon,
@@ -434,20 +434,13 @@ function RecordPage<T extends { id: string }>({
 
   if (!loaded) return <Text tone="muted" className="p-4">Loading…</Text>;
   if (!row) {
-    return (
-      <Panel className="flex-1">
-        <PanelHeader icon={icon} iconIntent="default" iconShape="rounded" iconSize={32} iconVariant="outline" title={`${noun[0].toUpperCase()}${noun.slice(1)} not found`} />
-        <Panel.Body>
-          <Button onClick={back}>Back to {title.toLowerCase()}</Button>
-        </Panel.Body>
-      </Panel>
-    );
+    return <NotFound icon={icon} title={`${noun[0].toUpperCase()}${noun.slice(1)} not found`} backTo={listPath} backLabel={`Back to ${title.toLowerCase()}`} />;
   }
 
   const siblings = [...(rows ?? [])].sort((a, b) => label(a).localeCompare(label(b))).map((r) => r.id);
-  const at = siblings.indexOf(recordId);
-  const prevId = at > 0 ? siblings[at - 1] : undefined;
-  const nextId = at >= 0 && at < siblings.length - 1 ? siblings[at + 1] : undefined;
+  const { prevId, nextId } = neighbours(siblings, recordId);
+  // The saved status, not the draft's.
+  const active = (existing as { active?: unknown } | undefined)?.active;
 
   const save = async () => {
     const found = validate(row, rows ?? []);
@@ -470,38 +463,19 @@ function RecordPage<T extends { id: string }>({
         iconIntent="default"
         iconShape="rounded"
         iconSize={32} iconVariant="outline"
-        title={isNew ? `New ${noun}` : label(row)}
-        trailing={
-          isNew ? undefined : (
-            <ButtonGroup type="enclosed" intent="white" buttonIntent="default" buttonVariant="link">
-              <IconButton
-                type="button"
-                label="Previous"
-                disabled={!prevId}
-                onClick={() => navigate(`${basePath}/${prevId}`)}
-              >
-                {panelHeaderIcons.arrowUpward}
-              </IconButton>
-              <IconButton
-                type="button"
-                label="Next"
-                disabled={!nextId}
-                onClick={() => navigate(`${basePath}/${nextId}`)}
-              >
-                {panelHeaderIcons.arrowDownward}
-              </IconButton>
-            </ButtonGroup>
+        breadcrumbs={[{ label: title, href: listPath }, { label: isNew ? `New ${noun}` : label(row) }]}
+        onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
+        onBack={back}
+        trailing={isNew ? undefined : <PrevNext path={basePath} prevId={prevId} nextId={nextId} />}
+        status={
+          isNew || typeof active !== 'boolean' ? undefined : (
+            <Badge size="small" intent={active ? 'success' : 'default'}>{active ? 'Active' : 'Inactive'}</Badge>
           )
         }
         actions={
-          <>
-            <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={back}>
-              Cancel
-            </Button>
-            <Button type="button" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving} onClick={save}>
-              {saving ? 'Saving…' : isNew ? 'Add' : 'Save'}
-            </Button>
-          </>
+          <Button type="button" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving} onClick={save}>
+            {saving ? 'Saving…' : isNew ? 'Add' : 'Save'}
+          </Button>
         }
       />
       {related ? (

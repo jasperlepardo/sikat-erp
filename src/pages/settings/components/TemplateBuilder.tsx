@@ -54,7 +54,7 @@ export function TemplateBuilder({ template, variables, docTypeLabel, sampleOverr
 
   const preview = template
     .replace(/\{(\w+)\}/g, (_, key) => sample[key] ?? `{${key}}`)
-    .split(/\s+[–\-]\s+/)
+    .split(/\s+[–-]\s+/)
     .map((p) => p.trim())
     .filter(Boolean)
     .join(' – ');

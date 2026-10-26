@@ -21,13 +21,12 @@ import type { JournalVoucher, VoucherEntry } from '../../../mocks/journalVoucher
 import { formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
 import { jeTotals } from '../../../services/journalEntries';
-import { VoucherPostError, deleteVoucher, deleteVoucherEntries, getVoucher, hasPosted, postVoucherEntries, toJournalEntry } from '../../../services/journalVouchers';
+import { VoucherPostError, deleteVoucher, deleteVoucherEntries, getVoucher, hasPosted, postVoucherEntries, toJournalEntry, voucherState } from '../../../services/journalVouchers';
 import { accounts as accountsCollection, taxCodes as taxCodesCollection } from '../../../services/masterData';
 import { listPartners } from '../../../services/partners';
-import { JE_LIST_PATH } from '../journal/JournalEntryDetail';
 import { jeProblems, type JeMasters } from '../journal/JeEditor';
-import { JV_LIST_PATH, entryPath, voucherState } from './JournalVoucherList';
 import { NotFound } from '../../../components/form/DetailNav';
+import { JE_LIST_PATH, JV_LIST_PATH, entryPath } from '../paths';
 
 /** A voucher: its draft entries, what each needs before it can post, and Post / Delete. */
 export function JournalVoucherDetail() {

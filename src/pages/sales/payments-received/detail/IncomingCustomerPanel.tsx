@@ -3,6 +3,7 @@ import { Fields, Section, bind, type Errors } from '../../../../components/form/
 import type { Account } from '../../../../mocks/chartOfAccounts';
 import { contactName, type Partner } from '../../../../mocks/partners';
 import type { IncomingInput } from '../../../../services/incomingPayments';
+import { activeOptions } from '../../../../services/inventoryMasters';
 
 interface Props {
   customer: Partner | undefined;
@@ -60,7 +61,7 @@ export function IncomingCustomerPanel({ customer, draft, update, errors, account
           </Section>
           <Section icon="account_balance" title="Accounting">
             <Fields cols={1}>
-              {h.choose('controlAccount', 'Control account', accounts.filter((a) => a.control && a.active && a.drawer === 'Assets').map((a) => ({ value: a.code, label: `${a.code} ${a.name}` })), { required: true, error: errors.controlAccount, hint: 'For the part not tied to an invoice (on account).' })}
+              {h.choose('controlAccount', 'Control account', activeOptions(accounts.filter((a) => a.control && a.drawer === 'Assets'), (a) => a.code, (a) => `${a.code} ${a.name}`, draft.controlAccount), { required: true, error: errors.controlAccount, hint: 'For the part not tied to an invoice (on account).' })}
             </Fields>
           </Section>
         </fieldset>

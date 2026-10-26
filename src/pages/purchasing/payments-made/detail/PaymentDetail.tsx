@@ -15,7 +15,6 @@ import {
   Select,
   Tabs,
   Text,
-  TextField,
 } from '@jasperlepardo/sikat-design-system';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { Fields, FieldStack, ReadOnly, Section, bind, type Errors } from '../../../../components/form/fields';
@@ -31,7 +30,7 @@ import { formatDate, todayISO } from '../../../../services/dates';
 import { defaultJournalRemark } from '../../../../services/journalPatterns';
 import { formatAmount } from '../../../../services/format';
 import { cardBrands } from '../../../../services/partnerMasters';
-import { loadInventoryMasters } from '../../../../services/inventoryMasters';
+import { activeOptions, loadInventoryMasters } from '../../../../services/inventoryMasters';
 import { listItems } from '../../../../services/items';
 import { companyTax, currencies, exchangeRates, rateOn, taxCodes, taxGroups, withholdingGroups, withholdingTaxes } from '../../../../services/masterData';
 import {
@@ -64,11 +63,8 @@ import { logRejection } from '../../../../services/approvalRules';
 import { getPurchasingSettings } from '../../../../services/purchaseOrders';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
-import { NotFound, PrevNext, neighbours } from '../../../../components/form/DetailNav';
-import { AP_LIST_PATH } from '../../vendor-invoices/detail/ApInvoiceDetail';
-import { DPR_LIST_PATH } from '../../down-payment-requests/detail/DprDetail';
-
-export const PAYMENT_LIST_PATH = '/purchasing/outgoing-payments';
+import { neighbours, NotFound, PrevNext, siblingKeys, useDocTab, useReject } from '../../../../components/form/DetailNav';
+import { AP_LIST_PATH, DPR_LIST_PATH, PAYMENT_LIST_PATH, PAYMENT_STATUS_INTENT } from '../../paths';
 
 type TabId = 'contents' | 'means';
 
@@ -78,13 +74,6 @@ const PAGES = [
   { value: 'activity', label: 'Activity' },
 ] as const;
 type PageId = (typeof PAGES)[number]['value'];
-
-export const PAYMENT_STATUS_INTENT: Record<PaymentStatus, 'default' | 'success' | 'danger' | 'warning'> = {
-  Draft: 'default',
-  'Not Confirmed': 'warning',
-  Posted: 'success',
-  Cancelled: 'danger',
-};
 
 const ALL_CURRENCIES = 'All currencies';
 
@@ -135,13 +124,11 @@ function PaymentForm() {
   const [draft, setDraft] = useState<PaymentDraft | null | undefined>(isNew ? { ...blankPayment(todayISO()), approved: payApproved } : undefined);
   const [m, setM] = useState<PayMasters>();
   const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
-  const setPage = (v: PageId) => navigate(`${PAYMENT_LIST_PATH}/${id}/${v}`, { replace: true });
-  useEffect(() => { if (!tabParam) navigate(`${PAYMENT_LIST_PATH}/${id}/details`, { replace: true, state: location.state }); }, []);
+  const setPage = useDocTab<PageId>(`${PAYMENT_LIST_PATH}/${id}`, tabParam);
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);
-  const [rejecting, setRejecting] = useState(false);
-  const [rejectionReason, setRejectionReason] = useState('');
+  const reject = useReject();
 
   useEffect(() => {
     Promise.all([
@@ -168,7 +155,7 @@ function PaymentForm() {
     if (isNew || !id) return;
     let cancelled = false;
     getPayment(id).then((p) => !cancelled && setDraft(p ?? null));
-    listPayments().then((all) => !cancelled && setSiblings([...all].sort((a, b) => b.postingDate.localeCompare(a.postingDate)).map((p) => p.docNum ? paymentNumber(p) : p.id)));
+    listPayments().then((all) => !cancelled && setSiblings(siblingKeys(all, paymentNumber)));
     return () => {
       cancelled = true;
     };
@@ -267,12 +254,12 @@ function PaymentForm() {
     navigate(PAYMENT_LIST_PATH, { state: { notice: `Payment ${paymentNumber(p)} cancelled — the invoices it paid are open again${p.means.checks.length ? ' and its checks are void' : ''}.` } });
   };
   const recallIt = async () => { const p = await recallPayment(saved); navigate(PAYMENT_LIST_PATH, { state: { notice: `Payment ${paymentNumber(p)} recalled to draft.` } }); };
-  const rejectIt = async () => { await logRejection('PAY', saved.id, saved.vendorId, rejectionReason); await recallPayment(saved); navigate(PAYMENT_LIST_PATH, { state: { notice: `Payment ${paymentNumber(saved)} rejected and returned to draft.` } }); };
+  const rejectIt = async (rejectionReason: string) => { await logRejection('PAY', saved.id, saved.vendorId, rejectionReason); await recallPayment(saved); navigate(PAYMENT_LIST_PATH, { state: { notice: `Payment ${paymentNumber(saved)} rejected and returned to draft.` } }); };
   const statusMoves: Partial<Record<PaymentStatus, () => void>> = draft.status === 'Draft' ? (draft.approved ? { Posted: () => submit(null) } : { 'Not Confirmed': () => submit(null) }) : draft.status === 'Not Confirmed' ? { Posted: () => submit(null, false, { approved: true }) } : draft.status === 'Posted' ? { Cancelled: cancelIt } : {};
 
   const menu: MoreMenuItem[] = [
     ...(!added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
-    ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => setRejecting(true) }] : []),
+    ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => reject.start() }] : []),
     ...(draft.status === 'Posted'
       ? [
           {
@@ -332,7 +319,7 @@ function PaymentForm() {
         ) : (
           <Panel.Body className="flex flex-col gap-2">
             <ProblemsAlert problems={problems} tabLabel={(t) => ({ contents: 'Contents', means: 'Payment means' })[t]} />
-            {rejecting ? (<Alert intent="danger" variant="outline" title="Reject outgoing payment"><div className="flex flex-col gap-2"><TextField aria-label="Rejection reason" value={rejectionReason} onChange={(e) => setRejectionReason(e.currentTarget.value)} placeholder="Explain why…" /><div className="flex gap-2"><Button type="button" intent="danger" variant="solid" size="small" onClick={rejectIt}>Confirm reject</Button><Button type="button" intent="white" variant="solid" size="small" onClick={() => { setRejecting(false); setRejectionReason(''); }}>Cancel</Button></div></div></Alert>) : null}
+            {reject.alert('Reject outgoing payment', rejectIt)}
             {added ? (
               <Alert intent="default" variant="outline" title={draft.status === 'Posted' ? 'This payment is added' : `This payment was cancelled ${formatDate(draft.cancelDate)}`}>
                 {draft.status === 'Posted'
@@ -371,15 +358,15 @@ function PaymentForm() {
                           {h.lookup(
                             'contactId',
                             'Contact person',
-                            [{ value: '', label: '— None —' }, ...(vendor?.contacts ?? []).filter((c) => c.active || c.id === draft.contactId).map((c) => ({ value: c.id, label: contactName(c) }))],
-                            { disabled: !vendor },
+                            (vendor?.contacts ?? []).filter((c) => c.active || c.id === draft.contactId).map((c) => ({ value: c.id, label: contactName(c) })),
+                            { clearable: true, disabled: !vendor },
                           )}
                           {vendor?.currency === ALL_CURRENCIES ? (
                             <FormField label="Currency" tooltip="This vendor takes all currencies — open invoices in the currency picked are listed.">
                               {(p) => (
                                 <Select
                                   {...p}
-                                  options={m.currencies.map((c) => ({ value: c.code, label: `${c.code} — ${c.name}` }))}
+                                  options={activeOptions(m.currencies, (c) => c.code, (c) => `${c.code} — ${c.name}`, draft.currency)}
                                   value={draft.currency}
                                   onValueChange={(currency) => update({ currency, rows: openRows(m, draft.vendorId, currency) })}
                                 />
@@ -394,7 +381,7 @@ function PaymentForm() {
                           {h.text('payeeName', 'To order of', { required: true, error: errors.payeeName, hint: 'Who the payment is to, e.g. Meralco.' })}
                           {h.text('payTo', 'Pay to', { hint: 'Their address, for the check or transfer.' })}
                           <FormField label="Doc. currency">
-                            {(p) => <Select {...p} options={m.currencies.map((c) => ({ value: c.code, label: `${c.code} — ${c.name}` }))} value={draft.currency} onValueChange={(currency) => update({ currency })} />}
+                            {(p) => <Select {...p} options={activeOptions(m.currencies, (c) => c.code, (c) => `${c.code} — ${c.name}`, draft.currency)} value={draft.currency} onValueChange={(currency) => update({ currency })} />}
                           </FormField>
                         </>
                       )}

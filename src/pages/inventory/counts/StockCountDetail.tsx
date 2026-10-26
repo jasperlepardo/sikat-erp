@@ -15,10 +15,9 @@ import { listItems } from '../../../services/items';
 import { closeCounting, countNumber, countSummary, getCounting, listCountings, postingNumber, getPosting, saveCounting, saveCountingRemarks } from '../../../services/inventoryCountings';
 import { nameIn, salesEmployees } from '../../../services/partnerMasters';
 import { CountLines, type CountingDraft } from './CountLines';
-import { COUNT_LIST_PATH, POSTING_LIST_PATH, nowHHMM, type CountMasters } from './shared';
+import { nowHHMM, type CountMasters } from './shared';
 import { NotFound, PrevNext, neighbours } from '../../../components/form/DetailNav';
-
-export const COUNT_STATUS_INTENT: Record<CountStatus, 'primary' | 'default'> = { Open: 'primary', Closed: 'default' };
+import { COUNT_LIST_PATH, COUNT_STATUS_INTENT, POSTING_LIST_PATH } from '../paths';
 
 type TabId = 'contents' | 'attachments';
 type Action = 'save' | 'copy' | 'close';

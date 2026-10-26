@@ -24,7 +24,7 @@ import { dateField, linesField, masterField, numberField, statusField, textField
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { currencyDef, salesEmployeeDef } from '../../settings/masterDefs';
 import { useListPage } from '../../../components/form/DataTable';
-import { AP_LIST_PATH, AP_STATUS_INTENT } from './detail/ApInvoiceDetail';
+import { AP_LIST_PATH, AP_STATUS_INTENT } from '../paths';
 
 export function ApInvoiceList() {
   const navigate = useNavigate();

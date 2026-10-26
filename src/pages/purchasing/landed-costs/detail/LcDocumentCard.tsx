@@ -3,8 +3,9 @@ import { Fields, Section, bind } from '../../../../components/form/fields';
 import { StatusField } from '../../../../components/form/StatusField';
 import { LC_SERIES, LC_STATUSES, type LcStatus } from '../../../../mocks/landedCosts';
 import { lcNumber } from '../../../../services/landedCosts';
-import { LC_STATUS_INTENT, LC_STATUS_HINT } from './types';
+import { LC_STATUS_HINT } from './types';
 import type { LcSectionProps } from './types';
+import { LC_STATUS_INTENT } from '../../paths';
 
 interface LcDocumentCardProps extends LcSectionProps {
   statusMoves: Partial<Record<LcStatus, () => void>>;

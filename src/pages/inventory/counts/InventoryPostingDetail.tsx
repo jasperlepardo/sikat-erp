@@ -31,8 +31,9 @@ import {
 import { priceLists } from '../../../services/partnerMasters';
 import { priceListName } from '../../../services/priceLists';
 import { PostingLines, type PostingDraft } from './PostingLines';
-import { COUNT_LIST_PATH, POSTING_LIST_PATH, nowHHMM, type CountMasters } from './shared';
+import { nowHHMM, type CountMasters } from './shared';
 import { NotFound, PrevNext, neighbours } from '../../../components/form/DetailNav';
+import { COUNT_LIST_PATH, POSTING_LIST_PATH } from '../paths';
 
 type TabId = 'contents' | 'attachments';
 

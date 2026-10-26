@@ -24,8 +24,7 @@ import { arNumber, arTotal, listArInvoices } from '../../../services/arInvoices'
 import { useAsync } from '../../../services/useAsync';
 import { listDeliveries } from '../../../services/deliveries';
 import { listSalesOrders, soNumber } from '../../../services/salesOrders';
-import { AR_STATUS_INTENT } from './detail/ArInvoiceDetail';
-import { AR_LIST_PATH } from './detail/types';
+import { AR_LIST_PATH, AR_STATUS_INTENT } from '../paths';
 
 export function ArInvoiceList() {
   const navigate = useNavigate();

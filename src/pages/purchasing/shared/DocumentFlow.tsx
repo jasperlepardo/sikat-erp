@@ -16,14 +16,18 @@ const coversText = (lines: CoveredLine[]) => lines.map((l) => `${l.quantity.toLo
  * document, then its targets.
  */
 export function DocumentFlow({ kind, id, notes }: { kind: DocKind; id: string; notes: string }) {
-  const rows = useAsync(() => linkedDocuments(kind, id), [kind, id]);
+  return <DocumentFlowTable rows={useAsync(() => linkedDocuments(kind, id), [kind, id])} notes={notes} />;
+}
+
+/** The Transactions list for purchasing and sales documents alike; `rows` is undefined while loading. */
+export function DocumentFlowTable({ rows, notes }: { rows: LinkedDocument[] | undefined; notes: string }) {
 
   const columns: TableColumn<LinkedDocument>[] = [
     {
       key: 'relation',
       header: 'Relation',
       cell: (d) => (
-        <TableContent subcopy={d.via ? `via ${d.via}` : d.relation === 'Base' ? 'Copied from' : d.relation === 'Target' ? 'Copied to' : undefined}>
+        <TableContent subcopy={d.via ? `via ${d.via}` : d.relation === 'Base' ? 'Copied from' : d.relation === 'Target' ? (d.kind === 'JE' ? 'Accounting entry' : 'Copied to') : undefined}>
           {RELATION_LABEL[d.relation]}
         </TableContent>
       ),
@@ -38,7 +42,7 @@ export function DocumentFlow({ kind, id, notes }: { kind: DocKind; id: string; n
       ),
     },
     { key: 'date', header: 'Posting date', cell: (d) => formatDate(d.date) },
-    { key: 'covers', header: 'What it covers', cell: (d) => coversText(d.covers) || d.note || '—' },
+    { key: 'covers', header: 'What it covers', cell: (d) => coversText(d.covers) || d.note || coversText(d.items) || '—' },
     { key: 'total', header: 'Total', cell: (d) => <TableAmount currency={d.currency}>{formatAmount(d.total)}</TableAmount> },
     { key: 'status', header: 'Status', cell: (d) => <TableStatus intent={d.intent}>{d.status}</TableStatus> },
   ];

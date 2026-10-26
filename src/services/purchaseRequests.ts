@@ -9,6 +9,8 @@ import { prSeries, seriesLookup, formatDocNum } from './allSeries';
 import { todayISO } from './dates';
 import { snapshotItems } from './items';
 import { LAST_PURCHASE_PRICE_LIST_ID, listPrice } from './priceLists';
+import { round2 } from './num';
+import { inventoryQty, lineNet, priceAfterDiscount } from './lineMath';
 
 /**
  * Seeded lines take their info price from the last-purchase list, as a new line does: item
@@ -27,7 +29,7 @@ const seedRequests = () => {
 
 const requests = createCollection<PurchaseRequest>('sikat-erp:purchase-requests', seedRequests, 'prq', { audit: 'PR' });
 
-export { prSeries };
+;
 
 export const listPurchaseRequests = requests.list;
 export async function getPurchaseRequest(idOrNumber: string) {
@@ -36,25 +38,21 @@ export async function getPurchaseRequest(idOrNumber: string) {
   const all = await requests.list();
   return all.find((r) => prNumber(r) === idOrNumber) ?? null;
 }
-export const resetPurchaseRequests = requests.reset;
 
 export type PrInput = Omit<PurchaseRequest, 'id'> & { id?: string };
 
-export const seriesOf = (id: string) => seriesLookup(prSeries, id, PR_SERIES);
+const seriesOf = (id: string) => seriesLookup(prSeries, id, PR_SERIES);
 
 export const prNumber = (pr: Pick<PurchaseRequest, 'seriesId' | 'docNum' | 'postingDate'>) =>
   formatDocNum(seriesOf(pr.seriesId), pr.docNum, pr.postingDate);
 
 // ── Line math ────────────────────────────────────────────────────────────────
 
+/** @public — kept for tests (docs/test-plan.md) and docs. */
 export const openQty = (l: PrLine) => Math.max(0, l.openQty);
 /** Quantity already copied to an RFQ or PO. A copied line keeps its item, UoM and warehouse. */
 export const copiedQty = (l: Pick<PrLine, 'quantity' | 'openQty'>) => Math.max(0, l.quantity - l.openQty);
-export const priceAfterDiscount = (l: Pick<PrLine, 'unitPrice' | 'discountPct'>) =>
-  l.unitPrice * (1 - l.discountPct / 100);
-export const lineNet = (l: Pick<PrLine, 'quantity' | 'unitPrice' | 'discountPct'>) =>
-  Math.round(l.quantity * priceAfterDiscount(l) * 100) / 100;
-export const inventoryQty = (l: PrLine) => l.quantity * (l.itemsPerUnit || 1);
+export { inventoryQty, lineNet, priceAfterDiscount };
 
 /**
  * Display-only: collapse the Contents grid to one row per item, summing quantities
@@ -101,7 +99,6 @@ export function prTotals(
   pr: Pick<PurchaseRequest, 'freight' | 'lines'>,
   rateOf: (taxCode: string) => number,
 ): PrTotals {
-  const round2 = (n: number) => Math.round(n * 100) / 100;
   const beforeDiscount = round2(pr.lines.reduce((n, l) => n + l.quantity * l.unitPrice, 0));
   const discount = round2(pr.lines.reduce((n, l) => n + l.quantity * l.unitPrice * (l.discountPct / 100), 0));
   const net = round2(beforeDiscount - discount);

@@ -8,8 +8,7 @@ import { inventoryAccountFor } from '../../../../services/inventoryTransfers';
 import { rateAt, vatNotPaidToVendor } from '../../../../mocks/taxes';
 import type { JournalLine } from '../../../../services/inventoryTransfers';
 import type { ApriSectionProps } from './types';
-
-const round2 = (n: number) => Math.round(n * 100) / 100;
+import { round2 } from '../../../../services/num';
 
 const WITHHOLDING_PAYABLE: Record<string, string> = {
   'Expanded (EWT)': '2340',

@@ -22,16 +22,7 @@ import { formatAmount } from '../../../services/format';
 import { taxCodes } from '../../../services/masterData';
 import { listQuotations, qtNumber, qtTotal } from '../../../services/quotations';
 import { useAsync } from '../../../services/useAsync';
-
-export const QT_LIST_PATH = '/sales/quotations';
-
-export const QT_STATUS_INTENT: Record<string, 'default' | 'primary' | 'success' | 'danger' | 'warning'> = {
-  Draft: 'default',
-  'Not Confirmed': 'warning',
-  Open: 'primary',
-  Closed: 'success',
-  Cancelled: 'danger',
-};
+import { QT_LIST_PATH, QT_STATUS_INTENT } from '../paths';
 
 export function QuotationList() {
   const navigate = useNavigate();

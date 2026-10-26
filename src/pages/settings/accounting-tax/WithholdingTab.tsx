@@ -26,7 +26,11 @@ import {
   type WithholdingTax,
 } from '../../../mocks/taxes';
 import { todayISO } from '../../../services/dates';
+import { birFormId } from '../../../mocks/birForms';
 import { withholdingTaxes } from '../../../services/masterData';
+import { BirFormsField } from './BirFormsField';
+import { describeTaxUsage, loadTaxUsage } from '../../../services/taxUsage';
+import { useAsync } from '../../../services/useAsync';
 import { newId, useCollectionRows } from '../../../services/useCollectionRows';
 
 const today = () => todayISO();
@@ -43,7 +47,7 @@ const blank = (): WithholdingTax => ({
   payee: 'Corporate',
   rates: [{ effectiveFrom: today(), effectiveTo: '', rate: 1 }],
   base: 'Amount net of VAT',
-  birForms: WITHHOLDING_KIND_INFO['Expanded (EWT)'].forms,
+  formIds: WITHHOLDING_KIND_INFO['Expanded (EWT)'].forms.map(birFormId),
   legalBasis: '',
   active: true,
   notes: '',
@@ -96,6 +100,8 @@ function buildGroups(taxes: readonly WithholdingTax[]): Map<WithholdingKind, Des
 
 export function WithholdingTab(route: ListRoute) {
   const { rows, save, setActive } = useCollectionRows(withholdingTaxes);
+  const usage = useAsync(loadTaxUsage, [rows]);
+  const usedBy = (w: WithholdingTax) => usage?.withholding.get(w.id);
 
   // RecordPage — delegate entirely to MasterList
   if (route.recordId) {
@@ -123,6 +129,10 @@ export function WithholdingTab(route: ListRoute) {
           else if (w.rates.some((p) => !p.effectiveFrom)) e.rates = 'Every period needs an effective date.';
           else if (w.rates.some((p) => p.effectiveTo && p.effectiveTo < p.effectiveFrom)) e.rates = 'A period ends before it starts.';
           else if (w.rates.some((p) => p.rate < 0 || p.rate > 100)) e.rates = 'Rates must be between 0 and 100.';
+          if (!w.active && w.id && usage) {
+            const u = describeTaxUsage(usedBy(w));
+            if (u) e.active = `Still used by ${u}.`;
+          }
           return e;
         }}
         onSave={(w) => save({
@@ -161,7 +171,12 @@ export function WithholdingTab(route: ListRoute) {
                     />
                   ),
                 )}
-                {f.text('birForms', 'BIR forms')}
+                <BirFormsField
+                  label="BIR forms"
+                  value={w.formIds}
+                  onChange={(formIds) => update({ formIds })}
+                  categories={['Payment/Remittance Forms', 'Certificates']}
+                />
                 {f.text('legalBasis', 'Legal basis', { placeholder: 'e.g. RR 2-98 Sec. 2.57.2(A)' })}
                 {f.area('notes', 'Notes', { rows: 2 })}
               </FieldStack>
@@ -170,7 +185,10 @@ export function WithholdingTab(route: ListRoute) {
                 error={errors.rates}
                 onChange={(rates) => update({ rates })}
               />
-              <FieldStack>{f.status('active', 'Status')}</FieldStack>
+              <FieldStack>
+                {f.status('active', 'Status', { error: errors.active })}
+                <Text variant="small" tone="muted">Used by: {describeTaxUsage(usedBy(w)) || 'not used yet.'}</Text>
+              </FieldStack>
             </>
           );
         }}

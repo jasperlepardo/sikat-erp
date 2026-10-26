@@ -10,23 +10,31 @@ import { taxCodes } from '../../../services/masterData';
 import { formatAmount } from '../../../services/format';
 import { lineage, type LinkedDocument } from '../../purchasing/shared/lineage';
 import { coveredLines, type CoveredLine, type DocNode } from '../../purchasing/shared/documentLinks';
-import { SO_LIST_PATH } from '../sales-orders/detail/types';
-import { AR_LIST_PATH } from '../invoices/detail/types';
-import { AR_STATUS_INTENT } from '../invoices/detail/ArInvoiceDetail';
-import { DN_LIST_PATH } from '../deliveries/detail/types';
-import { DN_STATUS_INTENT } from '../deliveries/detail/DeliveryDetail';
-import { RC_LIST_PATH, RC_STATUS_INTENT } from '../payments-received/detail/IncomingPaymentDetail';
-import { SO_STATUS_INTENT } from '../sales-orders/detail/SalesOrderDetail';
-import { AR_CM_LIST_PATH, ARCM_STATUS_INTENT, SR_LIST_PATH, SR_STATUS_INTENT } from '../returns-and-credits/types';
-import { QT_LIST_PATH, QT_STATUS_INTENT } from '../quotations/QuotationList';
 import { listJournalEntries, jeNumber, jeTotals } from '../../../services/journalEntries';
-import { JE_LIST_PATH, JE_STATUS_INTENT } from '../../accounting/journal/JournalEntryDetail';
 import { listBlanketAgreements, baNumber, baTotals } from '../../../services/blanketAgreements';
-import { BA_LIST_PATH, BA_STATUS_INTENT } from '../agreements/BlanketAgreementList';
+import {
+  ARCM_STATUS_INTENT,
+  AR_CM_LIST_PATH,
+  AR_LIST_PATH,
+  AR_STATUS_INTENT,
+  BA_LIST_PATH,
+  BA_STATUS_INTENT,
+  DN_LIST_PATH,
+  DN_STATUS_INTENT,
+  QT_LIST_PATH,
+  QT_STATUS_INTENT,
+  RC_LIST_PATH,
+  RC_STATUS_INTENT,
+  SO_LIST_PATH,
+  SO_STATUS_INTENT,
+  SR_LIST_PATH,
+  SR_STATUS_INTENT,
+} from '../paths';
+import { JE_LIST_PATH, JE_STATUS_INTENT } from '../../accounting/paths';
 
 export type SalesDocKind = 'QT' | 'SO' | 'DN' | 'ARINV' | 'RCV' | 'ARCM' | 'SRT' | 'JE' | 'BA';
 
-export type { LinkedDocument, CoveredLine };
+export type { LinkedDocument };
 
 const SALES_ORIGIN: Partial<Record<string, SalesDocKind>> = {
   DN: 'DN',

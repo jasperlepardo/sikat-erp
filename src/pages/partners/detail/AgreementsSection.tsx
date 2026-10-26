@@ -5,7 +5,7 @@ import { listBlanketAgreements, baNumber, baTotals } from '../../../services/bla
 import { useAsync } from '../../../services/useAsync';
 import { formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
-import { BA_LIST_PATH, BA_STATUS_INTENT } from '../../sales/agreements/BlanketAgreementList';
+import { BA_LIST_PATH, BA_STATUS_INTENT } from '../../sales/paths';
 
 /**
  * Shows open blanket agreements for a customer in the Partner detail side column.

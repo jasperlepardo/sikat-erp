@@ -18,12 +18,12 @@ import {
 } from './peopleMasters';
 
 export const GENDERS = ['Male', 'Female'] as const;
-export type Gender = (typeof GENDERS)[number];
+type Gender = (typeof GENDERS)[number];
 export const MARITAL_STATUSES = ['Single', 'Married', 'Widowed', 'Separated', 'Annulled'] as const;
-export type MaritalStatus = (typeof MARITAL_STATUSES)[number];
+type MaritalStatus = (typeof MARITAL_STATUSES)[number];
 /** What a salary or employee cost amount is per. */
 export const PAY_PERIODS = ['Hour', 'Day', 'Week', 'Semi-month', 'Month', 'Year'] as const;
-export type PayPeriod = (typeof PAY_PERIODS)[number];
+type PayPeriod = (typeof PAY_PERIODS)[number];
 export const EDUCATION_TYPES = ['High school', 'Vocational', 'Bachelor', 'Master', 'Doctorate', 'Certification'] as const;
 export const ABSENCE_REASONS = ['Vacation leave', 'Sick leave', 'Maternity leave', 'Paternity leave', 'Solo parent leave', 'Emergency leave', 'Unpaid leave'] as const;
 

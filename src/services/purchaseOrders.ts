@@ -10,10 +10,12 @@ import type { RoundingRule } from '../mocks/currencies';
 import { rateAt, vatNotPaidToVendor, type TaxCode } from '../mocks/taxes';
 import { paymentTerms } from './partnerMasters';
 import { createCollection } from './store';
-import { todayISO } from './dates';
+import { addDays, todayISO } from './dates';
 import { applyOrderedChange } from './items';
 
 import { poSeries, seriesLookup, formatDocNum } from './allSeries';
+import { round2 } from './num';
+import { inventoryQty, lineNet, priceAfterDiscount } from './lineMath';
 
 const orders = createCollection<PurchaseOrder>('sikat-erp:purchase-orders:v21', SEED_PURCHASE_ORDERS, 'po', { audit: 'PO' });
 export { poSeries };
@@ -26,11 +28,8 @@ export async function getPurchaseOrder(idOrNumber: string) {
   const all = await orders.list();
   return all.find((o) => poNumber(o) === idOrNumber) ?? null;
 }
-export const resetPurchaseOrders = orders.reset;
 
 export type PoInput = Omit<PurchaseOrder, 'id'> & { id?: string };
-
-const round2 = (n: number) => Math.round(n * 100) / 100;
 const TODAY = () => todayISO();
 
 export const seriesOf = (id: string) => seriesLookup(poSeries, id, PO_SERIES);
@@ -46,9 +45,7 @@ export const poNumber = (po: Pick<PurchaseOrder, 'seriesId' | 'docNum' | 'postin
 
 export const openQty = (l: PoLine) => Math.max(0, l.quantity - l.receivedQty);
 /** Quantity × Items per Unit. */
-export const inventoryQty = (l: PoLine) => l.quantity * (l.itemsPerUnit || 1);
-export const priceAfterDiscount = (l: Pick<PoLine, 'unitPrice' | 'discountPct'>) => l.unitPrice * (1 - l.discountPct / 100);
-export const lineNet = (l: Pick<PoLine, 'quantity' | 'unitPrice' | 'discountPct'>) => round2(l.quantity * priceAfterDiscount(l));
+export { inventoryQty, lineNet, priceAfterDiscount };
 export const grossPrice = (l: PoLine, rate: number) => l.unitPrice * (1 + rate / 100);
 
 export interface PoTotals {
@@ -122,10 +119,7 @@ export const paymentTermName = (termId: string) => paymentTerms.snapshot().find(
 
 /** Due date = posting date + the payment term's days. */
 export function dueDateFor(postingDate: string, termId: string) {
-  if (!postingDate) return '';
-  const d = new Date(`${postingDate}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + termDays(termId));
-  return d.toISOString().slice(0, 10);
+  return postingDate ? addDays(postingDate, termDays(termId)) : '';
 }
 
 // ── Saving ───────────────────────────────────────────────────────────────────

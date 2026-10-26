@@ -1,15 +1,22 @@
 import { lineNet, listPurchaseOrders, openQty, poNumber } from '../../../../services/purchaseOrders';
 import { DOC_SOURCES, type DocType, type StatusIntent } from '../../../partners/detail/partnerDocuments';
-import { PO_LIST_PATH, STATUS_INTENT } from '../../../purchasing/purchase-orders/detail/PurchaseOrderDetail';
 import { grNumber, listGoodsReceipts } from '../../../../services/goodsReceipts';
-import { GR_LIST_PATH, GR_STATUS_INTENT } from '../../../purchasing/goods-receipts/detail/GoodsReceiptDetail';
 import { apNumber, listApInvoices } from '../../../../services/apInvoices';
-import { AP_LIST_PATH, AP_STATUS_INTENT } from '../../../purchasing/vendor-invoices/detail/ApInvoiceDetail';
 import { listGoodsReturns, returnNumber } from '../../../../services/goodsReturns';
 import { listCreditMemos, memoNumber } from '../../../../services/apCreditMemos';
-import { RETURN_STATUS_INTENT } from '../../../purchasing/shared/returnsTypes';
-import { MEMO_LIST_PATH, MEMO_STATUS_INTENT, RETURN_LIST_PATH } from '../../../purchasing/shared/returnsTypes';
 import type { Draft } from './types';
+import {
+  AP_LIST_PATH,
+  AP_STATUS_INTENT,
+  GR_LIST_PATH,
+  GR_STATUS_INTENT,
+  MEMO_LIST_PATH,
+  MEMO_STATUS_INTENT,
+  PO_LIST_PATH,
+  PO_STATUS_INTENT,
+  RETURN_LIST_PATH,
+  RETURN_STATUS_INTENT,
+} from '../../../purchasing/paths';
 
 /**
  * A document row the item is on, in one shape, so the Transactions tab can list them together.
@@ -62,7 +69,7 @@ const ITEM_SOURCES: Partial<Record<DocType, (itemId: string) => Promise<ItemDocu
             date: po.postingDate,
             dueDate: l.deliveryDate || po.deliveryDate,
             status: po.status,
-            intent: STATUS_INTENT[po.status],
+            intent: PO_STATUS_INTENT[po.status],
             open: inProgress && l.status === 'Open' && left > 0,
             quantity: l.quantity,
             openQty: left,

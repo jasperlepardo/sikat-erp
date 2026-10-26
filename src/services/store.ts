@@ -16,7 +16,7 @@ const wait = () => new Promise((r) => setTimeout(r, LATENCY_MS));
  * shadow the seed forever, so a browser holding an older version drops every
  * `sikat-erp:` key on load and starts again from the current seed.
  */
-const SEED_VERSION = 96;
+const SEED_VERSION = 100;
 const VERSION_KEY = 'sikat-erp:seed-version';
 
 // Runs once at module load — before any collection below reads storage.
@@ -67,6 +67,11 @@ export function cachedUntilChange<T>(build: () => Promise<T>): () => Promise<T> 
 export interface CollectionOptions {
   /** Record kind ('PO', 'ITEM', 'BP'…): log each save and removal in `auditLog` under it. */
   audit?: string;
+  /**
+   * False for a collection no `cachedUntilChange` value is built from (the audit log): its writes
+   * then leave those caches alone, rather than every audited save rebuilding the document graphs.
+   */
+  invalidatesCaches?: boolean;
 }
 
 /**
@@ -89,7 +94,7 @@ export function createCollection<T extends { id: string }>(
   const current = () => (loaded ??= load());
   const listeners = new Set<() => void>();
   const changed = () => {
-    storeVersion++;
+    if (options.invalidatesCaches !== false) storeVersion++;
     listeners.forEach((fn) => fn());
   };
 
@@ -126,6 +131,27 @@ export function createCollection<T extends { id: string }>(
     }
   }
 
+  async function writeMany(inputs: (Omit<T, 'id'> & { id?: string })[]): Promise<T[]> {
+    if (!inputs.length) return [];
+    await wait();
+    const records = inputs.map((input) => ({ ...input, id: input.id ?? `${idPrefix}-${crypto.randomUUID().slice(0, 8)}` }) as T);
+    const next = [...current()];
+    const at = new Map(next.map((r, i) => [r.id, i]));
+    const befores = records.map((record) => {
+      const index = at.get(record.id);
+      const before = index === undefined ? undefined : next[index];
+      if (index === undefined) at.set(record.id, next.push(record) - 1);
+      else next[index] = record;
+      dirty.add(record.id);
+      return before;
+    });
+    loaded = next;
+    persist();
+    changed();
+    if (options.audit) recordAudit(records.map((record, i) => [options.audit!, record.id, befores[i], record]));
+    return structuredClone(records);
+  }
+
   return {
     /** All records, or those matching `query.filter` (AIP-160 text). Throws `InvalidFilterError` on bad text. */
     async list(query?: ListQuery<T>): Promise<T[]> {
@@ -140,17 +166,15 @@ export function createCollection<T extends { id: string }>(
     },
 
     async save(input: Omit<T, 'id'> & { id?: string }): Promise<T> {
-      await wait();
-      const record = { ...input, id: input.id ?? `${idPrefix}-${crypto.randomUUID().slice(0, 8)}` } as T;
-      const records = current();
-      const index = records.findIndex((r) => r.id === record.id);
-      const before = index === -1 ? undefined : records[index];
-      loaded = index === -1 ? [...records, record] : records.map((r) => (r.id === record.id ? record : r));
-      dirty.add(record.id);
-      persist();
-      changed();
-      if (options.audit) recordAudit(options.audit, record.id, before, record);
-      return structuredClone(record);
+      return (await writeMany([input]))[0];
+    },
+
+    /**
+     * Save several records as one write: one round trip, one storage write and one change notice,
+     * rather than one of each per record. Posting a document touches many items or cost layers at once.
+     */
+    saveMany(inputs: (Omit<T, 'id'> & { id?: string })[]): Promise<T[]> {
+      return writeMany(inputs);
     },
 
     /** Delete a record (for records nothing refers to yet, such as unposted drafts). */
@@ -161,7 +185,7 @@ export function createCollection<T extends { id: string }>(
       dirty.add(id);
       persist();
       changed();
-      if (options.audit && before) recordAudit(options.audit, id, before, undefined);
+      if (options.audit && before) recordAudit([[options.audit, id, before, undefined]]);
     },
 
     /** The records as they are now, without the fake latency — for sync lookups such as a payment term's days. */
@@ -205,7 +229,7 @@ export interface AuditEvent {
  * Saves and removals made in the app, for the Activity tabs. Seeded history isn't here: a
  * record's timeline derives that from its documents. Not audited itself.
  */
-export const auditLog = createCollection<AuditEvent>('sikat-erp:audit', [], 'aud');
+export const auditLog = createCollection<AuditEvent>('sikat-erp:audit', [], 'aud', { invalidatesCaches: false });
 
 /** "dueDate" → "due date". */
 const words = (key: string) => key.replace(/([a-z0-9])([A-Z])/g, '$1 $2').toLowerCase();
@@ -224,16 +248,15 @@ export function describeChanges(before: object, after: object): string[] {
   return out;
 }
 
-function recordAudit(kind: string, recordId: string, before: object | undefined, after: object | undefined) {
-  const changes = before && after ? describeChanges(before, after) : [];
-  // A save that changed nothing isn't news.
-  if (before && after && !changes.length) return;
-  void auditLog.save({
-    kind,
-    recordId,
-    at: new Date().toISOString(),
-    by: CURRENT_USER,
-    action: !before ? 'created' : !after ? 'removed' : 'updated',
-    changes,
+/** Log a write's saves and removals (kind, record id, before, after) — one audit write for the lot. */
+function recordAudit(writes: [kind: string, recordId: string, before: object | undefined, after: object | undefined][]) {
+  const at = new Date().toISOString();
+  const events = writes.flatMap(([kind, recordId, before, after]) => {
+    const changes = before && after ? describeChanges(before, after) : [];
+    // A save that changed nothing isn't news.
+    if (before && after && !changes.length) return [];
+    const action: AuditEvent['action'] = !before ? 'created' : !after ? 'removed' : 'updated';
+    return [{ kind, recordId, at, by: CURRENT_USER, action, changes }];
   });
+  void auditLog.saveMany(events);
 }

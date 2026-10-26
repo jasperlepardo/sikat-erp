@@ -45,6 +45,13 @@ export function applyDateSettings(s: { bookTimeZone: string; dateFormat: DateFor
  * between 00:00 and 08:00 in Manila it gives yesterday — the wrong posting date, exchange rate
  * and tax rate.
  */
+/** The calendar date `days` after `iso` (before, if negative): `addDays('2026-01-31', 1)` is `'2026-02-01'`. */
+export function addDays(iso: string, days: number) {
+  const d = new Date(`${iso}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
 export const todayISO = (now = new Date()) => bookDay.format(now);
 
 /** The time now as HH:mm in the company's time zone — for date + time fields such as a count's. */

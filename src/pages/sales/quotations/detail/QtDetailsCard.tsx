@@ -19,7 +19,7 @@ export function QtDetailsCard({ draft, update, errors, ctx, m }: QtTabProps) {
             hint: 'After this date the quotation is expired.',
           })}
           {h.master('paymentTermId', 'Payment terms', paymentTermDef)}
-          {h.lookup('shippingType', 'Shipping type', [{ value: '', label: '— None —' }, ...activeOptions(m.inv.shipping, (s) => s.id, (s) => s.name, draft.shippingType)])}
+          {h.lookup('shippingType', 'Shipping type', activeOptions(m.inv.shipping, (s) => s.id, (s) => s.name, draft.shippingType), { clearable: true })}
           {h.master('salesEmployeeId', 'Sales employee', salesEmployeeDef, { clearable: true })}
           {h.master('ownerId', 'Owner', salesEmployeeDef)}
           {h.area('remarks', 'Remarks', { rows: 3, hint: 'Can be changed after the quotation is added.' })}

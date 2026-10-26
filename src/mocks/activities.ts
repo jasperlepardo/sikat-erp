@@ -9,10 +9,11 @@ import { employeeId } from './masters';
 export const ACTIVITY_KINDS = ['call', 'meeting', 'task', 'note', 'email'] as const;
 export type ActivityKind = (typeof ACTIVITY_KINDS)[number];
 
-/** Records an activity can be linked to: an item, a partner, or a sales or purchasing document. */
+/** Records an activity can be linked to: an item, a partner, an employee, or a sales or purchasing document. */
 export type ActivityTargetKind =
   | 'ITEM'
   | 'BP'
+  | 'EMP'
   | 'PR' | 'RFQ' | 'PO' | 'GRPO' | 'APINV' | 'APRI' | 'PAY' | 'GRET' | 'APCM' | 'DPR' | 'PBA' | 'LC' | 'RI'
   | 'QT' | 'SO' | 'DN' | 'ARINV' | 'RCV' | 'ARCM' | 'SRT' | 'BA';
 

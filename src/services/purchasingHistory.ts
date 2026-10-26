@@ -27,8 +27,7 @@ import { rateOn } from './masterData';
 import { poTotals } from './purchaseOrders';
 import { poWithholding } from './withholding';
 import type { TaxMasterData } from './taxDetermination';
-
-const round2 = (n: number) => Math.round(n * 100) / 100;
+import { round2 } from './num';
 const TAX: TaxMasterData = { company: SEED_COMPANY_TAX[0], codes: SEED_TAX_CODES, groups: SEED_TAX_GROUPS, withholding: SEED_WITHHOLDING, withholdingGroups: SEED_WITHHOLDING_GROUPS };
 const vendorOf = (id: string) => SEED_PARTNERS.find((p) => p.id === id)!;
 const fxOn = (currency: string, date: string) => (currency === 'PHP' ? 1 : (rateOn(SEED_RATES, currency, date)?.rate ?? 0));

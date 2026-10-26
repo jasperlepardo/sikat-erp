@@ -10,7 +10,6 @@ import {
   PanelHeader,
   Tabs,
   Text,
-  TextField,
 } from '@jasperlepardo/sikat-design-system';
 import { type Errors } from '../../../../components/form/fields';
 import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
@@ -63,17 +62,14 @@ import { ApContentsCard as ApContents } from './ApContentsCard';
 import { linesFromReceipt, orderNumbersOf, toApLine, type ApContext, type ApDraft, type ApMasters } from './types';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
-import { NotFound, PrevNext, neighbours } from '../../../../components/form/DetailNav';
+import { neighbours, NotFound, PrevNext, siblingKeys, useDocTab, useReject } from '../../../../components/form/DetailNav';
 import { VendorCard } from '../../shared/VendorCard';
 import { VendorDetailsPanel } from '../../shared/VendorDetailsPanel';
 import { receivingVendorAddressFields } from '../../shared/vendorAddresses';
 import { ApDocumentCard } from './ApDocumentCard';
 import { ApTotalsCard } from './ApTotalsCard';
 import { ApJournalCard } from './ApJournalCard';
-import { AP_STATUS_INTENT } from './types';
-export { AP_STATUS_INTENT };
-
-export const AP_LIST_PATH = '/purchasing/vendor-invoices';
+import { AP_LIST_PATH, AP_STATUS_INTENT } from '../../paths';
 
 type TabId = 'contents' | 'logistics' | 'accounting';
 
@@ -158,14 +154,12 @@ function ApInvoiceForm() {
   const [draft, setDraft] = useState<ApDraft | null | undefined>(isNew ? { ...(state?.copyFrom ?? { ...blankApInvoice(todayISO(), CURRENT_USER_ID), lines: [] }), approved: apApproved } : undefined);
   const [m, setM] = useState<ApMasters>();
   const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
-  const setPage = (v: PageId) => navigate(`${AP_LIST_PATH}/${id}/${v}`, { replace: true });
-  useEffect(() => { if (!tabParam) navigate(`${AP_LIST_PATH}/${id}/details`, { replace: true, state: location.state }); }, []);
+  const setPage = useDocTab<PageId>(`${AP_LIST_PATH}/${id}`, tabParam);
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [dupWarning, setDupWarning] = useState<string>();
   const [saving, setSaving] = useState(false);
-  const [rejecting, setRejecting] = useState(false);
-  const [rejectionReason, setRejectionReason] = useState('');
+  const reject = useReject();
   const [vendorDetailsOpen, setVendorDetailsOpen] = useState(false);
 
   useEffect(() => {
@@ -204,7 +198,7 @@ function ApInvoiceForm() {
     if (isNew || !id) return;
     let cancelled = false;
     getApInvoice(id).then((inv) => !cancelled && setDraft(inv ?? null));
-    listApInvoices().then((all) => !cancelled && setSiblings([...all].sort((a, b) => b.postingDate.localeCompare(a.postingDate)).map((inv) => inv.docNum ? apNumber(inv) : inv.id)));
+    listApInvoices().then((all) => !cancelled && setSiblings(siblingKeys(all, apNumber)));
     return () => {
       cancelled = true;
     };
@@ -355,7 +349,7 @@ function ApInvoiceForm() {
   const bases = [...new Map(draft.lines.filter((l) => l.baseType).map((l) => [l.baseId, l])).values()];
   const cancelIt = () => act(async () => { const inv = await cancelApInvoice(saved); await reverseDocumentEntry(saved.id); return inv; }, 'cancelled — the receipts and POs it billed are open again');
   const recallIt = () => act(() => recallApInvoice(saved), 'recalled to draft');
-  const rejectIt = async () => {
+  const rejectIt = async (rejectionReason: string) => {
     await logRejection('APINV', saved.id, saved.vendorId, rejectionReason);
     await recallApInvoice(saved);
     navigate(AP_LIST_PATH, { state: { notice: `A/P invoice ${apNumber(saved)} rejected and returned to draft.` } });
@@ -364,7 +358,7 @@ function ApInvoiceForm() {
 
   const menu: MoreMenuItem[] = [
     ...(!added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
-    ...(draft.status === 'Not Confirmed' ? [{ label: 'Approve', icon: 'check_circle', onSelect: () => submit(null, false, { approved: true }) }, { label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => setRejecting(true) }] : []),
+    ...(draft.status === 'Not Confirmed' ? [{ label: 'Approve', icon: 'check_circle', onSelect: () => submit(null, false, { approved: true }) }, { label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => reject.start() }] : []),
     ...(draft.status === 'Open' && balance > 0 && !draft.paymentBlock
       ? [{ label: 'Pay', icon: 'payments', onSelect: () => navigate('/purchasing/payments-made-made/new', { state: { vendorId: draft.vendorId, invoiceIds: [saved.id] } }) }]
       : []),
@@ -441,7 +435,7 @@ function ApInvoiceForm() {
         ) : (
           <Panel.Body className="flex flex-col gap-2">
             <ProblemsAlert problems={problems} tabLabel={(t) => ({ contents: 'Contents', logistics: 'Logistics', accounting: 'Accounting' })[t]} />
-            {rejecting ? (<Alert intent="danger" variant="outline" title="Reject A/P invoice"><div className="flex flex-col gap-2"><TextField aria-label="Rejection reason" value={rejectionReason} onChange={(e) => setRejectionReason(e.currentTarget.value)} placeholder="Explain why…" /><div className="flex gap-2"><Button type="button" intent="danger" variant="solid" size="small" onClick={rejectIt}>Confirm reject</Button><Button type="button" intent="white" variant="solid" size="small" onClick={() => { setRejecting(false); setRejectionReason(''); }}>Cancel</Button></div></div></Alert>) : null}
+            {reject.alert('Reject A/P invoice', rejectIt)}
             {dupWarning ? (
               <Alert intent="warning" variant="outline" title="Possible duplicate bill">
                 {dupWarning} Press Add again if it's a different bill, or change the Vendor Ref. No.

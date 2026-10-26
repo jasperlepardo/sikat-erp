@@ -29,6 +29,7 @@ export const choiceField = <T>(
 export const masterField = <T>(
   key: string,
   label: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- a filter field can be over any master
   def: MasterDef<any>,
   get: (row: T) => unknown,
 ): FilterField<T> => ({ key, label, type: 'master', def, get });

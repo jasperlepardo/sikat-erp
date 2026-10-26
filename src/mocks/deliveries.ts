@@ -381,5 +381,8 @@ export const SEED_DELIVERIES: Delivery[] = [...HAND_DELIVERIES, ...H1_DELIVERIES
 // The closed deliveries were invoiced in full (mocks/arInvoices.ts).
 for (const d of SEED_DELIVERIES.filter((x) => x.status === 'Closed')) d.lines.forEach((l) => (l.invoicedQty = l.quantity));
 
-/** A delivery's number as its series formats it: DN-2026-0001. */
+/**
+ * A delivery's number as its series formats it: DN-2026-0001.
+ * @public
+ */
 export const seedDnNo = (d: Pick<Delivery, 'docNum' | 'postingDate'>) => `DN-${d.postingDate.slice(0, 4)}-${String(d.docNum).padStart(4, '0')}`;

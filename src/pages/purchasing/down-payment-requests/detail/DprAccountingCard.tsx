@@ -21,7 +21,7 @@ export function DprAccountingCard({ draft, update, errors, m, ctx }: DprSectionP
         <ReadOnly label="Installments" value={String(draft.installments)} />
         {h.num('cashDiscountDays', 'Cash discount date offset', { suffix: 'days' })}
         {h.master('projectId', 'BP project', projectDef, { clearable: true })}
-        {h.choose('indicator', 'Indicator', [{ value: '', label: '— None —' }, ...asOptions(INDICATORS)])}
+        {h.choose('indicator', 'Indicator', asOptions(INDICATORS), { clearable: true })}
         <ReadOnly label="Federal tax ID" value={vendor?.tin || '—'} hint="The vendor's TIN." />
         <ReadOnly label="Order number" value={draft.orderNumber || '—'} hint="The PO the lines were copied from." />
       </FieldStack>

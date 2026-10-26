@@ -16,9 +16,8 @@ import { SEED_PARTNERS, formatAddress } from './partners';
 import { termId } from './masters';
 
 export type SrStatus = 'Draft' | 'Not Confirmed' | 'Open' | 'Closed' | 'Cancelled';
-export const SR_STATUSES: SrStatus[] = ['Draft', 'Open', 'Closed', 'Cancelled'];
 
-export type SrBaseType = 'DN' | '';
+type SrBaseType = 'DN' | '';
 
 export interface SrLine extends Omit<DnLine, 'invoicedQty' | 'baseType'> {
   baseType: SrBaseType;

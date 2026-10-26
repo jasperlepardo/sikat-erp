@@ -17,7 +17,7 @@ export function PoDatesCard({ draft, update, errors, m }: PoTabProps) {
           error: errors.cancellationDate,
           hint: 'After this date the PO is cancelled and you\'re no longer committed.',
         })}
-        {f.choose('indicator', 'Indicator', [{ value: '', label: '— None —' }, ...asOptions(INDICATORS)])}
+        {f.choose('indicator', 'Indicator', asOptions(INDICATORS), { clearable: true })}
         <ReadOnly
           label="Federal tax ID"
           value={m.tax.company.tin || <span className="text-muted">Not set — Settings › Accounting & Tax › Company tax profile</span>}

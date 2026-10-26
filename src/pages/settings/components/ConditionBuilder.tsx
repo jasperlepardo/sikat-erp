@@ -2,7 +2,7 @@ import { Button, Icon, IconButton, Select, Text } from '@jasperlepardo/sikat-des
 import type { SeriesCondition } from '../../../mocks/common';
 import type { ConditionField } from '../../../services/allSeries';
 
-export type { ConditionField };
+;
 
 interface Props {
   conditions: SeriesCondition[];

@@ -14,11 +14,12 @@ import type { Attachment, DocumentSeries } from './common';
 import { CURRENT_USER_ID } from './common';
 import { plId, termId } from './masters';
 import type { PoReference } from './purchaseOrders';
-import { todayISO } from '../services/dates';
+import { addDays, todayISO } from '../services/dates';
 import { SEED_ITEMS, itemsPerUom } from './items';
 import { SEED_PARTNERS, formatAddress } from './partners';
 import { H1_SALES, SEED_SALES_ORDERS } from './salesOrders';
 import { MONTH_NAMES } from './storeSales';
+import { round2 } from '../services/num';
 
 export type QuotationStatus = 'Draft' | 'Not Confirmed' | 'Open' | 'Closed' | 'Cancelled';
 export const QUOTATION_STATUSES: QuotationStatus[] = ['Draft', 'Not Confirmed', 'Open', 'Closed', 'Cancelled'];
@@ -191,7 +192,6 @@ export function blankQuotation(ownerId: string): Omit<Quotation, 'id'> {
 const byId = (id: string) => SEED_ITEMS.find((i) => i.id === id)!;
 const byItemNo = (itemNo: string) => SEED_ITEMS.find((i) => i.itemNo === itemNo)!;
 const partner = (id: string) => SEED_PARTNERS.find((p) => p.id === id)!;
-const round2 = (n: number) => Math.round(n * 100) / 100;
 
 const qtLine = (id: string, item: ReturnType<typeof byId>, quantity: number, patch: Partial<QuoteLine> = {}): QuoteLine =>
   newQuoteLine({
@@ -370,16 +370,11 @@ const qt008 = qtHeader('qt-008', 8, 'bp-007', {
 
 // January–June: the quoted corporate orders (mocks/salesOrders.ts), quoted a week before the
 // customer ordered and closed when it did.
-const plusDays = (iso: string, days: number) => {
-  const d = new Date(`${iso}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
-};
 const H1_QUOTES: Quotation[] = H1_SALES.filter((p) => p.quoted).map((p) => {
-  const quoted = plusDays(p.ordered, -7);
+  const quoted = addDays(p.ordered, -7);
   const order = SEED_SALES_ORDERS.find((o) => o.id === `so-${p.id}`)!;
   return qtHeader(`qt-${p.id}`, 0, p.customerId, {
-    postingDate: quoted, documentDate: quoted, validUntil: plusDays(quoted, 30),
+    postingDate: quoted, documentDate: quoted, validUntil: addDays(quoted, 30),
     status: 'Closed', closeDate: p.ordered,
     customerRef: p.customerRef.replace('-PO-', '-RFQ-').replace('-PR-', '-RFQ-'),
     convertedToOrderId: order.id,

@@ -6,7 +6,7 @@ import { EditPanel } from '../../partners/detail/EditPanel';
 import { LineItemText } from '../../../components/form/LineItemText';
 
 /** One document that lines can be copied from. */
-export interface CopyDoc {
+interface CopyDoc {
   id: string;
   label: string;
   description: string;

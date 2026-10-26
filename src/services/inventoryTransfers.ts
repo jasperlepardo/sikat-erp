@@ -8,26 +8,24 @@ import { transferSeries, seriesLookup, formatDocNum } from './allSeries';
 import { withTransferBinCodes } from './inventoryMasters';
 import type { ItemGroup } from '../mocks/itemMasters';
 import { newItemWarehouse, type Item } from '../mocks/items';
-import { listItems, saveItem } from './items';
+import { listItems, saveItems } from './items';
 import { transferLayers, updateFifoCosts } from './costLayers';
 import { createCollection } from './store';
+import { round2 } from './num';
 
 const transfers = createCollection<InventoryTransfer>('sikat-erp:inventory-transfers:v5', SEED_TRANSFERS, 'it');
 
 export const listTransfers = transfers.list;
 export const getTransfer = transfers.get;
-export const resetTransfers = transfers.reset;
 
 export type TransferInput = Omit<InventoryTransfer, 'id'> & { id?: string };
 
-const round2 = (n: number) => Math.round(n * 100) / 100;
-
-export const seriesOf = (id: string) => seriesLookup(transferSeries, id, TRANSFER_SERIES);
+const seriesOf = (id: string) => seriesLookup(transferSeries, id, TRANSFER_SERIES);
 /** "Primary 270004", or "Draft" before posting. */
 export const transferNumber = (t: Pick<InventoryTransfer, 'seriesId' | 'docNum' | 'postingDate'>) =>
   formatDocNum(seriesOf(t.seriesId), t.docNum, t.postingDate);
 
-export const lineValue = (l: TransferLine) => round2(l.quantity * l.unitCost);
+const lineValue = (l: TransferLine) => round2(l.quantity * l.unitCost);
 export const transferValue = (t: Pick<InventoryTransfer, 'lines'>) => round2(t.lines.reduce((n, l) => n + lineValue(l), 0));
 export const transferQty = (t: Pick<InventoryTransfer, 'lines'>) => t.lines.reduce((n, l) => n + l.quantity, 0);
 /** Every destination on the transfer: the header's, plus any a line overrides it with. */
@@ -161,7 +159,7 @@ export async function postTransfer(input: TransferInput): Promise<InventoryTrans
     row(l.toWarehouse, l.toBinId).inStock += l.quantity;
     touched.set(l.itemId, { ...item, hasTransactions: true });
   }
-  for (const item of touched.values()) await saveItem(item);
+  await saveItems(touched.values());
 
   const series = seriesOf(input.seriesId);
   const all = await transfers.list();

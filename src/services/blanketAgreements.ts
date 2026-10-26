@@ -6,7 +6,6 @@ import type { SalesOrder } from '../mocks/salesOrders';
 const agreements = createCollection<BlanketAgreement>('sikat-erp:blanket-agreements:v1', SEED_BLANKET_AGREEMENTS, 'ba');
 
 export const listBlanketAgreements = agreements.list;
-export const resetBlanketAgreements = agreements.reset;
 
 export async function getBlanketAgreement(idOrNumber: string) {
   const direct = await agreements.get(idOrNumber);
@@ -17,7 +16,7 @@ export async function getBlanketAgreement(idOrNumber: string) {
 
 export type BaInput = Omit<BlanketAgreement, 'id'> & { id?: string };
 
-export const seriesOf = (id: string) => seriesLookup(baSeries, id, BA_SERIES);
+const seriesOf = (id: string) => seriesLookup(baSeries, id, BA_SERIES);
 export const baNumber = (ba: Pick<BlanketAgreement, 'seriesId' | 'docNum' | 'startDate'>) =>
   formatDocNum(seriesOf(ba.seriesId), ba.docNum, ba.startDate);
 

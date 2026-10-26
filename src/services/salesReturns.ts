@@ -2,17 +2,18 @@ import { SR_SERIES, SEED_SALES_RETURNS, newSrLine, type SalesReturn, type SrLine
 import { srSeries, seriesLookup, formatDocNum } from './allSeries';
 import type { ItemGroup } from '../mocks/itemMasters';
 import type { Item } from '../mocks/items';
-import { rateAt, type TaxCode } from '../mocks/taxes';
+import { rateFrom, type TaxCode } from '../mocks/taxes';
 import { todayISO } from './dates';
 import { dnInventoryQty, dnNumber, listDeliveries } from './deliveries';
 import { itemGroups } from './inventoryMasters';
 import { inventoryAccountFor, type JournalLine } from './inventoryTransfers';
-import { listItems, saveItem } from './items';
+import { listItems, saveItems } from './items';
 import { consumeLayers, logConsumption, restoreLayer, updateFifoCosts, type Taken } from './costLayers';
 import { postDocumentEntry, reverseDocumentEntry } from './journalEntries';
 import { soTotals } from './salesOrders';
 import { createCollection } from './store';
 import { withLineCosts } from './stockHistory';
+import { round2, round4 } from './num';
 
 const salesReturns = createCollection<SalesReturn>('sikat-erp:sales-returns', withLineCosts(SEED_SALES_RETURNS), 'sr', { audit: 'SRT' });
 
@@ -26,24 +27,20 @@ export async function getSalesReturn(idOrNumber: string) {
 
 export type SrInput = Omit<SalesReturn, 'id'> & { id?: string };
 
-const round2 = (n: number) => Math.round(n * 100) / 100;
-const round4 = (n: number) => Math.round(n * 10000) / 10000;
-
-export const srSeriesOf = (id: string) => seriesLookup(srSeries, id, SR_SERIES);
+const srSeriesOf = (id: string) => seriesLookup(srSeries, id, SR_SERIES);
 export const srNumber = (r: Pick<SalesReturn, 'seriesId' | 'docNum' | 'postingDate'>) =>
   formatDocNum(srSeriesOf(r.seriesId), r.docNum, r.postingDate);
 
-/** Footer totals — same math as the delivery (lines are the same shape). */
+/**
+ * Footer totals — same math as the delivery (lines are the same shape).
+ * @public
+ */
 export const srTotals = (
   r: Pick<SalesReturn, 'lines' | 'discountPct' | 'freight' | 'freightTaxCode' | 'rounding'>,
   rateOf: (code: string) => number,
   rule?: Parameters<typeof soTotals>[2],
 ) => soTotals(r as unknown as Parameters<typeof soTotals>[0], rateOf, rule);
 
-const rateFrom = (codes: readonly TaxCode[], date: string) => (code: string) => {
-  const c = codes.find((x) => x.code === code);
-  return c ? (rateAt(c, date) ?? 0) : 0;
-};
 
 export const srTotal = (r: SalesReturn, codes: TaxCode[]) =>
   srTotals(r, rateFrom(codes, r.postingDate)).total;
@@ -52,11 +49,17 @@ export const srTotal = (r: SalesReturn, codes: TaxCode[]) =>
 export const srOpenQty = (l: SrLine, r: Pick<SalesReturn, 'status'>) =>
   r.status === 'Open' ? Math.max(0, round4(l.quantity - l.creditedQty)) : 0;
 
-/** Returns an A/R credit memo can copy from: the customer's open returns with quantity left to credit. */
+/**
+ * Returns an A/R credit memo can copy from: the customer's open returns with quantity left to credit.
+ * @public
+ */
 export const creditableSalesReturns = (all: SalesReturn[], customerId: string) =>
   all.filter((r) => r.customerId === customerId && r.status === 'Open' && r.lines.some((l) => srOpenQty(l, r) > 0));
 
-/** Build SrLine[] from DnLine picks. */
+/**
+ * Build SrLine[] from DnLine picks.
+ * @public
+ */
 export function srLineFromDelivery(dn: SalesReturn['lines'][0] extends never ? never : import('../mocks/deliveries').Delivery, picks: { lineId: string; qty: number }[]): SrLine[] {
   return picks.flatMap(({ lineId, qty }) => {
     const dl = dn.lines.find((l) => l.id === lineId);
@@ -208,7 +211,7 @@ export async function addSalesReturn(input: SrInput, fx: number): Promise<SalesR
     row.inStock = round4(row.inStock + dnInventoryQty(l));
     touched.set(item.id, { ...item, hasTransactions: true });
   }
-  for (const item of touched.values()) await saveItem(item);
+  await saveItems(touched.values());
 
   // FIFO: restore layers for items coming back in
   for (const l of lines) {
@@ -253,7 +256,7 @@ export async function cancelSalesReturn(r: SalesReturn) {
     row.inStock = round4(row.inStock - dnInventoryQty(l));
     touched.set(item.id, item);
   }
-  for (const item of touched.values()) await saveItem(item);
+  await saveItems(touched.values());
 
   // FIFO: consume back out
   const fifoItemIds = new Set<string>();

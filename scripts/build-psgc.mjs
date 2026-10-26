@@ -31,12 +31,16 @@ function csv(file) {
     for (let i = 0; i < line.length; i++) {
       const c = line[i];
       if (quoted) {
-        if (c === '"' && line[i + 1] === '"') (cell += '"'), i++;
-        else if (c === '"') quoted = false;
+        if (c === '"' && line[i + 1] === '"') {
+          cell += '"';
+          i++;
+        } else if (c === '"') quoted = false;
         else cell += c;
       } else if (c === '"') quoted = true;
-      else if (c === ',') cells.push(cell), (cell = '');
-      else cell += c;
+      else if (c === ',') {
+        cells.push(cell);
+        cell = '';
+      } else cell += c;
     }
     cells.push(cell);
     return Object.fromEntries(keys.map((k, i) => [k, cells[i].trim()]));

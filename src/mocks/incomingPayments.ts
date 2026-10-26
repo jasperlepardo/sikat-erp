@@ -27,6 +27,7 @@ import { cardBrandId, type CARD_BRANDS } from './masters';
 import { SALES_MONTHS } from './storeSales';
 import { seedRateOn } from './salesOrders';
 import type { PoReference } from './purchaseOrders';
+import { round2 } from '../services/num';
 
 export type IncomingType = 'Customer' | 'Account';
 export type IncomingStatus = 'Draft' | 'Not Confirmed' | 'Posted' | 'Cancelled';
@@ -157,10 +158,10 @@ export const INCOMING_SERIES: DocumentSeries[] = [
 ];
 
 /** Bank accounts a transfer can land in (the cash-flagged bank accounts). */
-export const RECEIPT_BANK_DEFAULT = '1015';
-export const CASH_CLEARING_ACCOUNT = '1012';
-export const CHECK_CLEARING_ACCOUNT = '1012';
-export const CARD_CLEARING_ACCOUNT = '1130';
+const RECEIPT_BANK_DEFAULT = '1015';
+const CASH_CLEARING_ACCOUNT = '1012';
+const CHECK_CLEARING_ACCOUNT = '1012';
+const CARD_CLEARING_ACCOUNT = '1130';
 export const SALES_DISCOUNT_ACCOUNT = '4050';
 export const OVERPAYMENT_ACCOUNT = '7030';
 export const UNDERPAYMENT_ACCOUNT = '6390';
@@ -177,7 +178,7 @@ export const newReceivedCheck = (patch: Partial<ReceivedCheck> = {}): ReceivedCh
 export const newReceivedCard = (patch: Partial<ReceivedCard> = {}): ReceivedCard => ({ cardBrandId: '', last4: '', voucherNo: '', amount: 0, ...patch, id: patch.id ?? rid('rcd') });
 export const newIncomingAccountRow = (patch: Partial<IncomingAccountRow> = {}): IncomingAccountRow => ({ account: '', remarks: '', amount: 0, ...patch, id: patch.id ?? rid('iar') });
 
-export const blankIncomingMeans = (today: string): IncomingMeans => ({
+const blankIncomingMeans = (today: string): IncomingMeans => ({
   transfer: { account: RECEIPT_BANK_DEFAULT, date: today, reference: '', amount: 0 },
   cash: { account: CASH_CLEARING_ACCOUNT, amount: 0 },
   checks: [],
@@ -224,8 +225,6 @@ export function blankIncomingPayment(today: string): Omit<IncomingPayment, 'id'>
 
 // ── Seed ─────────────────────────────────────────────────────────────────────
 // The payments behind the seeded invoices' applied amounts. History, so no journal entries.
-
-const round2 = (n: number) => Math.round(n * 100) / 100;
 
 /** A payment row settling `amount` of a seeded invoice. */
 function row(inv: ArInvoice, amount: number): IncomingRow {

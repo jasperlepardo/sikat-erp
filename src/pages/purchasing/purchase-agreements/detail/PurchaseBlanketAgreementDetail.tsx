@@ -24,17 +24,16 @@ import { listPartnersByRole } from '../../../../services/partners';
 import { pbaSeries } from '../../../../services/allSeries';
 import { pbaNumber, pbaTotals, openQty, getPurchaseBlanketAgreement, listPurchaseBlanketAgreements, savePurchaseBlanketAgreement, type PbaInput } from '../../../../services/purchaseBlanketAgreements';
 import { getPurchasingSettings } from '../../../../services/purchaseOrders';
-import { PO_LIST_PATH } from '../../purchase-orders/detail/PurchaseOrderDetail';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { VendorCard } from './VendorCard';
 import { AgreementCard } from './AgreementCard';
 import { GeneralTab } from './general';
-import { LinesTab } from './lines';
+import { AgreementLinesCard } from '../../../../components/agreements/AgreementLinesCard';
 import { DocumentsTab } from './documents';
-import { SummaryCard } from './SummaryCard';
-import { PBA_LIST_PATH, PBA_STATUS_INTENT } from '../PurchaseBlanketAgreementList';
+import { AgreementSummaryCard } from '../../../../components/agreements/AgreementSummaryCard';
 import type { PbaDraft, PbaMasters } from './types';
 import { NotFound, PrevNext, neighbours } from '../../../../components/form/DetailNav';
+import { PBA_LIST_PATH, PBA_STATUS_INTENT, PO_LIST_PATH } from '../../paths';
 
 type TabId = 'general' | 'lines' | 'documents' | 'attachments';
 const TABS: { value: TabId; label: string }[] = [
@@ -280,7 +279,7 @@ function PbaForm() {
               <GeneralTab draft={draft} update={update} m={m} readOnly={readOnly} />
             )}
             {tab === 'lines' && (
-              <LinesTab draft={draft} update={update} m={m} readOnly={readOnly} />
+              <AgreementLinesCard side="purchase" draft={draft} update={update} m={m} readOnly={readOnly} newLine={newPbaLine} />
             )}
             {tab === 'documents' && <DocumentsTab pbaId={draft.id} />}
           </fieldset>
@@ -295,7 +294,7 @@ function PbaForm() {
           )}
 
           {draft.lines.length > 0 && tab !== 'documents' && (
-            <SummaryCard currency={draft.currency} totals={totals} settlementProbability={draft.settlementProbability} />
+            <AgreementSummaryCard side="purchase" currency={draft.currency} totals={totals} settlementProbability={draft.settlementProbability} />
           )}
         </Panel.Body>
       </Panel>

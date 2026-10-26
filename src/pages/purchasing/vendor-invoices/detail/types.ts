@@ -4,10 +4,8 @@ import type { GoodsReceipt, GrLine } from '../../../../mocks/goodsReceipts';
 import type { Item } from '../../../../mocks/items';
 import type { Account } from '../../../../mocks/chartOfAccounts';
 import type { DownPaymentRequest } from '../../../../mocks/apDownPayments';
-import type { PurchaseOrder } from '../../../../mocks/purchaseOrders';
 import type { ApInput } from '../../../../services/apInvoices';
 import { grNumber, grOpenQty } from '../../../../services/goodsReceipts';
-import type { ApStatus } from '../../../../mocks/apInvoices';
 import type { GrContext, GrMasters } from '../../goods-receipts/detail/types';
 
 export type ApDraft = ApInput;
@@ -21,13 +19,6 @@ export interface ApMasters extends GrMasters {
 
 export type ApContext = GrContext;
 
-export const AP_STATUS_INTENT: Record<ApStatus, 'default' | 'primary' | 'success' | 'danger' | 'warning'> = {
-  Draft: 'default',
-  'Not Confirmed': 'warning',
-  Open: 'primary',
-  Closed: 'success',
-  Cancelled: 'danger',
-};
 
 export interface ApSectionProps {
   draft: ApDraft;
@@ -90,4 +81,4 @@ export function orderNumbersOf(lines: ApLine[], m: ApMasters) {
 export const baseHref = (l: ApLine) =>
   l.baseType === 'GRPO' ? `#/purchasing/goods-receipts/${l.baseId}` : l.baseType === 'PO' ? `#/purchasing/purchase-orders/${l.baseId}` : '';
 
-export type { PurchaseOrder };
+;

@@ -88,18 +88,15 @@ export function useListViews<T>({
   const filterParam = encoded !== viewFilter ? formatFilter(filter, fields) : '';
   const viewParam = viewId === builtIns[0].id ? '' : viewId;
   useEffect(() => {
-    setParams(
-      (prev) => {
-        const next = new URLSearchParams(prev);
-        const put = (key: string, value: string) => (value ? next.set(key, value) : next.delete(key));
-        put('view', viewParam);
-        put('filter', filterParam);
-        next.delete('f');
-        return next.toString() === prev.toString() ? prev : next;
-      },
-      { replace: true },
-    );
-  }, [viewParam, filterParam, setParams]);
+    const next = new URLSearchParams(params);
+    const put = (key: string, value: string) => (value ? next.set(key, value) : next.delete(key));
+    put('view', viewParam);
+    put('filter', filterParam);
+    next.delete('f');
+    // Only when it changes: even an unchanged replace is a navigation, and it drops the state the
+    // page was opened with — the "saved" / "rejected" notice a detail page sends back to its list.
+    if (next.toString() !== params.toString()) setParams(next, { replace: true });
+  }, [viewParam, filterParam, params, setParams]);
 
   const select = useCallback(
     (id: string) => {

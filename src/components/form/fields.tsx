@@ -1,21 +1,10 @@
 import type { ReactNode } from 'react';
-import {
-  Card,
-  Select,
-  Icon,
-  ReadOnlyField,
-  bind as dsBind,
-  CtxFormField,
-  FieldOrientationCtx,
-  Fields,
-  FieldStack,
-  Flags,
-} from '@jasperlepardo/sikat-design-system';
-import type { FieldOptions, KeysOf, Option } from '@jasperlepardo/sikat-design-system';
+import { Card, Select, Icon, ReadOnlyField, bind as dsBind, CtxFormField, Fields, FieldStack, Flags } from '@jasperlepardo/sikat-design-system';
+import type { FieldOptions, KeysOf } from '@jasperlepardo/sikat-design-system';
 import { MasterLookup, type MasterDef, type MasterRow } from './MasterLookup';
 
-export type { FieldOptions, KeysOf, Option };
-export { CtxFormField, FieldOrientationCtx, Fields, FieldStack, Flags };
+export type { FieldOptions, KeysOf,  };
+export { CtxFormField,  Fields, FieldStack, Flags };
 
 /** Field errors by key: top-level fields by name, row fields as `<row kind>:<id>:<field>`. */
 export type Errors = Record<string, string>;
@@ -80,7 +69,7 @@ export function bind<T>(obj: T, update: (patch: Partial<T>) => void) {
 export type StatusIntent = 'default' | 'primary' | 'warning' | 'success' | 'danger';
 
 /** The Badge's status dot, tinted by intent (as `TableStatus` colors a status). */
-export function StatusDot({ intent }: { intent: StatusIntent }) {
+function StatusDot({ intent }: { intent: StatusIntent }) {
   const color = intent === 'default' ? 'var(--color-fg-default-solid)' : `var(--color-fg-${intent})`;
   return (
     <span className="sikat-badge__dot-wrap" aria-hidden="true">

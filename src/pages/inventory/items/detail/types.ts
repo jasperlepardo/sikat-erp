@@ -83,10 +83,7 @@ export function taxResolution(tax: TaxMasters, groupCode: string, fixedCode: str
   return `Default ${describe(g.taxCode)}. ${override}`;
 }
 
-export const vendorOptions = (vendors: Partner[]) => [
-  { value: '', label: '— None —' },
-  ...vendors.map((v) => ({ value: v.id, label: `${v.code} · ${v.name}` })),
-];
+export const vendorOptions = (vendors: Partner[]) => vendors.map((v) => ({ value: v.id, label: `${v.code} · ${v.name}` }));
 
 /** Pickers over plain strings. */
 export const asOptions = (values: readonly string[]) => values.map((value) => ({ value, label: value }));

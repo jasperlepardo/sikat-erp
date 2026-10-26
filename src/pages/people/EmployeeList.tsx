@@ -22,8 +22,7 @@ import { EMPTY_FILTER, oneRule } from '../../components/filter/engine';
 import { choiceField, textField } from '../../components/filter/fieldKit';
 import { useListPresets } from '../../components/filter/useListPresets';
 import type { BuiltInView } from '../../components/filter/useListViews';
-
-export const EMPLOYEES_PATH = '/people/employees';
+import { EMPLOYEES_PATH } from './paths';
 
 const initials = (e: Employee) => `${e.firstName[0] ?? ''}${e.lastName[0] ?? ''}`.toUpperCase();
 const name = (list: Parameters<typeof nameIn>[0], id: string) => (id ? nameIn(list, id) : '');

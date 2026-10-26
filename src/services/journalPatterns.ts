@@ -7,7 +7,7 @@ import {
 } from '../mocks/journalPatterns';
 import { createCollection, type Collection } from './store';
 
-export type { JournalPattern, PatternVariable };
+;
 
 export interface JournalContext {
   docType?: string;
@@ -39,23 +39,23 @@ export interface DocPatternConfig {
 }
 
 // One collection per doc type — same subset as document-numbering in settingsNav.
-export const poPatterns = createCollection<JournalPattern>('sikat-erp:po-patterns', PO_PATTERNS, 'jp');
-export const grPatterns = createCollection<JournalPattern>('sikat-erp:gr-patterns', GR_PATTERNS, 'jp');
-export const apPatterns = createCollection<JournalPattern>('sikat-erp:ap-patterns', AP_PATTERNS, 'jp');
-export const apcmPatterns = createCollection<JournalPattern>('sikat-erp:apcm-patterns', APCM_PATTERNS, 'jp');
-export const dprPatterns = createCollection<JournalPattern>('sikat-erp:dpr-patterns', DPR_PATTERNS, 'jp');
-export const opPatterns = createCollection<JournalPattern>('sikat-erp:op-patterns', OP_PATTERNS, 'jp');
-export const grtnPatterns = createCollection<JournalPattern>('sikat-erp:grtn-patterns', GRTN_PATTERNS, 'jp');
-export const soPatterns = createCollection<JournalPattern>('sikat-erp:so-patterns-jp', SO_PATTERNS, 'jp');
-export const dnPatterns = createCollection<JournalPattern>('sikat-erp:dn-patterns', DN_PATTERNS, 'jp');
-export const arPatterns = createCollection<JournalPattern>('sikat-erp:ar-patterns', AR_PATTERNS, 'jp');
-export const ipPatterns = createCollection<JournalPattern>('sikat-erp:ip-patterns', IP_PATTERNS, 'jp');
-export const itPatterns = createCollection<JournalPattern>('sikat-erp:it-patterns', IT_PATTERNS, 'jp');
-export const scPatterns = createCollection<JournalPattern>('sikat-erp:sc-patterns', SC_PATTERNS, 'jp');
-export const ispPatterns = createCollection<JournalPattern>('sikat-erp:isp-patterns', ISP_PATTERNS, 'jp');
-export const jePatterns = createCollection<JournalPattern>('sikat-erp:je-patterns', JE_PATTERNS, 'jp');
-export const lcPatterns = createCollection<JournalPattern>('sikat-erp:lc-patterns', LC_PATTERNS, 'jp');
-export const riPatterns = createCollection<JournalPattern>('sikat-erp:ri-patterns', RI_PATTERNS, 'jp');
+const poPatterns = createCollection<JournalPattern>('sikat-erp:po-patterns', PO_PATTERNS, 'jp');
+const grPatterns = createCollection<JournalPattern>('sikat-erp:gr-patterns', GR_PATTERNS, 'jp');
+const apPatterns = createCollection<JournalPattern>('sikat-erp:ap-patterns', AP_PATTERNS, 'jp');
+const apcmPatterns = createCollection<JournalPattern>('sikat-erp:apcm-patterns', APCM_PATTERNS, 'jp');
+const dprPatterns = createCollection<JournalPattern>('sikat-erp:dpr-patterns', DPR_PATTERNS, 'jp');
+const opPatterns = createCollection<JournalPattern>('sikat-erp:op-patterns', OP_PATTERNS, 'jp');
+const grtnPatterns = createCollection<JournalPattern>('sikat-erp:grtn-patterns', GRTN_PATTERNS, 'jp');
+const soPatterns = createCollection<JournalPattern>('sikat-erp:so-patterns-jp', SO_PATTERNS, 'jp');
+const dnPatterns = createCollection<JournalPattern>('sikat-erp:dn-patterns', DN_PATTERNS, 'jp');
+const arPatterns = createCollection<JournalPattern>('sikat-erp:ar-patterns', AR_PATTERNS, 'jp');
+const ipPatterns = createCollection<JournalPattern>('sikat-erp:ip-patterns', IP_PATTERNS, 'jp');
+const itPatterns = createCollection<JournalPattern>('sikat-erp:it-patterns', IT_PATTERNS, 'jp');
+const scPatterns = createCollection<JournalPattern>('sikat-erp:sc-patterns', SC_PATTERNS, 'jp');
+const ispPatterns = createCollection<JournalPattern>('sikat-erp:isp-patterns', ISP_PATTERNS, 'jp');
+const jePatterns = createCollection<JournalPattern>('sikat-erp:je-patterns', JE_PATTERNS, 'jp');
+const lcPatterns = createCollection<JournalPattern>('sikat-erp:lc-patterns', LC_PATTERNS, 'jp');
+const riPatterns = createCollection<JournalPattern>('sikat-erp:ri-patterns', RI_PATTERNS, 'jp');
 
 const PURCHASING = [...DOC_VARS, ...PARTNER_VARS, ...ACCOUNTING_VARS];
 const SALES = [...DOC_VARS, ...PARTNER_VARS, ...ACCOUNTING_VARS, ...SALES_VARS];
@@ -96,6 +96,6 @@ export function defaultJournalRemark(docTypeKey: string, context: JournalContext
   );
   // Split on " – " or " - " (with surrounding whitespace), drop empty segments, rejoin.
   // This prevents dangling separators when optional variables like {remarks} are blank.
-  const parts = substituted.split(/\s+[–\-]\s+/);
+  const parts = substituted.split(/\s+[–-]\s+/);
   return parts.map((p) => p.trim()).filter(Boolean).join(' – ');
 }

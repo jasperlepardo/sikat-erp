@@ -2,10 +2,14 @@ import { SEED_CURRENCIES, SEED_RATES, type Currency, type ExchangeRate } from '.
 import {
   SEED_COMPANY_TAX,
   SEED_EXCISE,
+  SEED_PERCENTAGE_ATCS,
   SEED_TAX_CODES,
   SEED_TAX_GROUPS,
   SEED_WITHHOLDING,
+  SEED_VAT_ATCS,
   SEED_WITHHOLDING_GROUPS,
+  atcRecords,
+  type AtcRecord,
   type CompanyTaxProfile,
   type ExciseCategory,
   type TaxCode,
@@ -17,12 +21,11 @@ import {
   SEED_COMPENSATION_TAX,
   SEED_DE_MINIMIS,
   SEED_EXCLUSIONS,
-  SEED_WITHHOLDING_FORMS,
   type CompensationTable,
   type CompensationExclusion,
   type DeMinimisBenefit,
-  type WithholdingForm,
 } from '../mocks/compensation';
+import { SEED_BIR_FORMS, type BirForm } from '../mocks/birForms';
 import { SEED_ACCOUNTS, type Account } from '../mocks/chartOfAccounts';
 import { createCollection } from './store';
 import { todayISO } from './dates';
@@ -37,8 +40,13 @@ export const accounts = createCollection<Account>('sikat-erp:accounts:v6', SEED_
 export const compensationTax = createCollection<CompensationTable>('sikat-erp:compensation-tax:v2', SEED_COMPENSATION_TAX, 'ct');
 export const compensationExclusions = createCollection<CompensationExclusion>('sikat-erp:compensation-exclusions', SEED_EXCLUSIONS, 'cx');
 export const deMinimisBenefits = createCollection<DeMinimisBenefit>('sikat-erp:de-minimis', SEED_DE_MINIMIS, 'dm');
-export const withholdingForms = createCollection<WithholdingForm>('sikat-erp:withholding-forms', SEED_WITHHOLDING_FORMS, 'wf');
+/** BIR forms and returns (Settings › BIR forms): what tax codes and withholding taxes are filed on. */
+export const birForms = createCollection<BirForm>('sikat-erp:bir-forms:v1', SEED_BIR_FORMS, 'wf');
 export const withholdingTaxes = createCollection<WithholdingTax>('sikat-erp:withholding:v10', SEED_WITHHOLDING, 'wt');
+/** BIR output/import VAT ATCs (Settings › Value-added tax): what a tax code's ATC is picked from. */
+export const vatAtcs = createCollection<AtcRecord>('sikat-erp:vat-atcs:v1', () => atcRecords(SEED_VAT_ATCS), 'vatc');
+/** BIR percentage tax ATCs (Settings › Percentage tax). */
+export const percentageAtcs = createCollection<AtcRecord>('sikat-erp:percentage-atcs:v1', () => atcRecords(SEED_PERCENTAGE_ATCS), 'ptc');
 export const withholdingGroups = createCollection<WithholdingGroup>('sikat-erp:withholding-groups:v2', SEED_WITHHOLDING_GROUPS, 'wg');
 export const exciseCategories = createCollection<ExciseCategory>('sikat-erp:excise:v3', SEED_EXCISE, 'ex');
 export const currencies = createCollection<Currency>('sikat-erp:currencies', SEED_CURRENCIES, 'cur');

@@ -90,7 +90,7 @@ export interface UomGroup {
 export const groupUoms = (g: UomGroup) => [g.baseUom, ...g.conversions.map((c) => c.altUom)].filter(Boolean);
 
 /** How many base units one `uom` is, or undefined when the group doesn't have it. */
-export function baseQtyPer(g: UomGroup, uom: string): number | undefined {
+function baseQtyPer(g: UomGroup, uom: string): number | undefined {
   if (uom === g.baseUom) return 1;
   const c = g.conversions.find((x) => x.altUom === uom);
   return c && c.altQty > 0 && c.baseQty > 0 ? c.baseQty / c.altQty : undefined;

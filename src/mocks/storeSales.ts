@@ -15,6 +15,7 @@
  */
 import { SEED_ITEMS, type Item } from './items';
 import { SEED_STORE_WAREHOUSES } from './storeWarehouses';
+import { addDays } from '../services/dates';
 
 export const POS_CUSTOMER_ID = 'bp-045';
 
@@ -38,9 +39,9 @@ const RATE: Record<string, number> = { ACC: 0.45, APD: 0.4, AW: 0.3, IPH: 0.35, 
 
 /** Stores that sell to walk-in customers: every store but Mobile Care, which holds demo units. */
 /** Locations that ring up POS sales: the Cebu and Davao stores, then every store warehouse (WH-005…). */
-export const POS_STORES = ['WH-002', 'WH-003', ...SEED_STORE_WAREHOUSES.map((w) => w.code)];
+const POS_STORES = ['WH-002', 'WH-003', ...SEED_STORE_WAREHOUSES.map((w) => w.code)];
 
-export interface StoreSaleLine {
+interface StoreSaleLine {
   itemId: string;
   qty: number;
 }
@@ -60,7 +61,10 @@ export interface LaunchAllocation {
 /** A small seeded random generator (mulberry32), so the year is the same on every load. */
 function random(seed: string) {
   let h = 1779033703 ^ seed.length;
-  for (let i = 0; i < seed.length; i++) h = Math.imul(h ^ seed.charCodeAt(i), 3432918353), (h = (h << 13) | (h >>> 19));
+  for (let i = 0; i < seed.length; i++) {
+    h = Math.imul(h ^ seed.charCodeAt(i), 3432918353);
+    h = (h << 13) | (h >>> 19);
+  }
   let a = h >>> 0;
   return () => {
     a = (a + 0x6d2b79f5) | 0;
@@ -71,11 +75,6 @@ function random(seed: string) {
 }
 
 const lineOf = (item: Item) => item.itemNo.split('-')[0];
-const dayBefore = (iso: string) => {
-  const d = new Date(`${iso}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() - 1);
-  return d.toISOString().slice(0, 10);
-};
 /** Share of the month after release (1 for items on sale all month). */
 const onSaleShare = (item: Item, m: (typeof SALES_MONTHS)[number]) => {
   if (!item.validFrom || item.validFrom <= `${m.month}-01`) return 1;
@@ -121,7 +120,7 @@ function build() {
     for (const w of item.warehouses) {
       if (!stores.has(w.code) || w.inStock <= 0) continue;
       if (isLaunchItem(item)) {
-        const date = dayBefore(item.validFrom);
+        const date = addDays(item.validFrom, -1);
         const a = allocations.get(date) ?? { date, itemIds: [], lines: [] };
         if (!a.itemIds.includes(item.id)) a.itemIds.push(item.id);
         a.lines.push({ store: w.code, itemId: item.id, qty: w.inStock });

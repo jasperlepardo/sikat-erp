@@ -10,7 +10,7 @@ export const PARTNER_STATUSES: PartnerStatus[] = ['Active', 'Inactive', 'Advance
 export type LeadStage = 'New' | 'Contacted' | 'Qualified' | 'Lost';
 
 export const LEAD_SOURCES = ['Referral', 'Website', 'Trade show', 'Walk-in', 'Cold call'] as const;
-export const leadSourceId = idIn('lds', LEAD_SOURCES);
+const leadSourceId = idIn('lds', LEAD_SOURCES);
 export const LEAD_STAGES: LeadStage[] = ['New', 'Contacted', 'Qualified', 'Lost'];
 
 export interface ContactPerson {
@@ -109,9 +109,9 @@ import { blankPostalAddress, formatAddress, type PostalAddress } from './address
 import { bankId, bpgId, channelId, employeeId, holidayCalendarId, idIn, industryId, partnerPropertyId, plId, termId, territoryId } from './masters';
 import type { Attachment } from './common';
 import type { VatExemptionEntry } from './taxes';
-export type { VatExemptionEntry };
+;
 
-export type { Attachment };
+;
 
 /** One income type covered by a tax treaty with a foreign vendor. */
 export interface TreatyIncomeEntry {

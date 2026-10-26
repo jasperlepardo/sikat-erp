@@ -10,10 +10,10 @@ import { formatAmount } from '../../../../services/format';
 import { meansBalance, meansTotal, overallAmount } from '../../../../services/outgoingPayments';
 import { cardBrandDef } from '../../../settings/masterDefs';
 import type { PaySectionProps } from './types';
+import { round2 } from '../../../../services/num';
 
 type MeansTab = 'transfer' | 'cash' | 'check' | 'card';
 const num = (v: string) => (v === '' ? 0 : Number(v));
-const round2 = (n: number) => Math.round(n * 100) / 100;
 
 /**
  * Payment Means: how the money goes out. Each means credits its account; together they must

@@ -4,7 +4,8 @@ import { StatusField } from '../../../../components/form/StatusField';
 import { GR_SERIES, GR_STATUSES, type GrStatus } from '../../../../mocks/goodsReceipts';
 import { formatDate } from '../../../../services/dates';
 import { grNumber } from '../../../../services/goodsReceipts';
-import { GR_STATUS_INTENT, type GrSectionProps } from './types';
+import { type GrSectionProps } from './types';
+import { GR_STATUS_INTENT } from '../../paths';
 
 interface GrDocumentCardProps extends GrSectionProps {
   statusMoves: Partial<Record<GrStatus, () => void>>;

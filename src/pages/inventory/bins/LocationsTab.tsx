@@ -25,7 +25,7 @@ export type Node =
 
 const byCode = (a: { code: string }, b: { code: string }) => a.code.localeCompare(b.code);
 const plural = (n: number, noun: string) => `${n} ${noun}${n === 1 ? '' : 's'}`;
-export const binNode = (bin: BinLocation): Node => ({ kind: 'bin', id: bin.id, bin, bins: [bin] });
+const binNode = (bin: BinLocation): Node => ({ kind: 'bin', id: bin.id, bin, bins: [bin] });
 
 /** "Aisle A · Cold storage": the tier, its code and the sublevel code's description. */
 function tierLabel(sublevels: readonly BinSublevel[], warehouse: string, tier: SublevelTier, code: string) {

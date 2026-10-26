@@ -23,8 +23,8 @@ export function GrLogistics({
         {f.lookup(
           'shippingType',
           'Shipping type',
-          [{ value: '', label: '— None —' }, ...activeOptions(m.inv.shipping, (s) => s.id, (s) => s.name, draft.shippingType)],
-          { hint: 'Defaults from the vendor or the PO.' },
+          activeOptions(m.inv.shipping, (s) => s.id, (s) => s.name, draft.shippingType),
+          { clearable: true, hint: 'Defaults from the vendor or the PO.' },
         )}
         {getPurchasingSettings().multiLanguageSupport ? f.pick('language', 'Language', LANGUAGES, { hint: 'Language the receipt prints in.' }) : null}
       </FieldStack>

@@ -6,9 +6,11 @@ import type { Item } from '../mocks/items';
 import { rateAt, type TaxCode } from '../mocks/taxes';
 import type { LineParty, TaxMasterData } from './taxDetermination';
 import { todayISO } from './dates';
-import { listItems, saveItem } from './items';
+import { listItems, saveItems } from './items';
 import { createCollection } from './store';
 import { customerWithholding } from './withholding';
+import { round2 } from './num';
+import { inventoryQty, lineNet, priceAfterDiscount } from './lineMath';
 
 const orders = createCollection<SalesOrder>('sikat-erp:sales-orders:v7', SEED_SALES_ORDERS, 'so', { audit: 'SO' });
 export const salesSettings = createCollection<SalesSettings>('sikat-erp:sales-settings', SEED_SALES_SETTINGS, 'ss');
@@ -24,9 +26,7 @@ export async function getSalesOrder(idOrNumber: string) {
 
 export type SoInput = Omit<SalesOrder, 'id'> & { id?: string };
 
-const round2 = (n: number) => Math.round(n * 100) / 100;
-
-export const seriesOf = (id: string) => seriesLookup(soSeries, id, SO_SERIES);
+const seriesOf = (id: string) => seriesLookup(soSeries, id, SO_SERIES);
 /** "SO-410004", or "Draft" before a number is assigned. */
 export const soNumber = (so: Pick<SalesOrder, 'seriesId' | 'docNum' | 'postingDate'>) => formatDocNum(seriesOf(so.seriesId), so.docNum, so.postingDate);
 
@@ -34,13 +34,11 @@ export const soNumber = (so: Pick<SalesOrder, 'seriesId' | 'docNum' | 'postingDa
 
 export const openQty = (l: SoLine) => (l.status === 'Closed' ? 0 : Math.max(0, l.quantity - l.deliveredQty));
 /** Quantity × Items per Unit. */
-export const inventoryQty = (l: SoLine, qty = l.quantity) => qty * (l.itemsPerUnit || 1);
 /** The pricing fields of a line; quotation lines carry them too. */
 type PricedLine = Pick<SoLine, 'quantity' | 'unitPrice' | 'discountPct'>;
 
-export const priceAfterDiscount = (l: PricedLine) => l.unitPrice * (1 - l.discountPct / 100);
 /** Total (LC basis): quantity × price after discount, in the document currency. */
-export const lineNet = (l: PricedLine) => round2(l.quantity * priceAfterDiscount(l));
+export { inventoryQty, lineNet, priceAfterDiscount };
 
 const ROUNDING_STEP: Record<RoundingRule, number> = { 'No rounding': 0, 'Round to 0.05': 0.05, 'Round to 1': 1, 'Round to 5': 5, 'Round to 10': 10 };
 
@@ -143,9 +141,8 @@ async function applyCommitDeltas(deltas: (readonly [string, number])[]) {
     row.committed = Math.max(0, round2(row.committed + delta));
     touched.set(itemId, item);
   }
-  for (const item of touched.values()) await saveItem(item);
+  await saveItems(touched.values());
 }
-
 
 // ── Saving ───────────────────────────────────────────────────────────────────
 

@@ -14,8 +14,8 @@ import { grInventoryQty, grOpenQty, grTotals } from '../../../../services/goodsR
 import { binOptions } from '../../../inventory/transfers/TransferLines';
 import { PurchTotalsFooter } from '../../shared/PurchTotalsFooter';
 import { defaultBin, lineFromItem, linePricing, type GrSectionProps } from './types';
-
-const round2 = (n: number) => Math.round(n * 100) / 100;
+import { taxCodeOptions } from '../../../../services/taxCodeOptions';
+import { round2 } from '../../../../services/num';
 
 /** Props grDoc needs beyond the section spread: the Copy-from-PO toolbar lives here, its panel in the wrapper. */
 export interface GrDocProps extends GrSectionProps {
@@ -38,11 +38,8 @@ export function grDoc({ draft, update, errors, m, ctx, onCopyClick, copyableCoun
   const taxRate = (l: GrLine) => (ctx.isReverseCharge(l.taxCode) ? 0 : ctx.rateOf(l.taxCode));
   const reverseChargeVat = (l: GrLine) => (ctx.isReverseCharge(l.taxCode) ? round2((lineNet(l) * ctx.rateOf(l.taxCode)) / 100) : null);
 
-  const taxOptions = m.tax.codes
-    .filter((c) => c.direction === 'Purchase' && c.active)
-    .map((c) => ({ value: c.code, label: c.name }));
+  const taxOptions = (current: string) => taxCodeOptions(m.tax.codes, 'Purchase', current);
   const blanketOptions = [
-    { value: '', label: '— None —' },
     ...BLANKET_AGREEMENTS.filter((b) => b.vendorId === draft.vendorId && b.validTo >= draft.postingDate).map((b) => ({ value: b.no, label: `${b.no} · ${b.description}` })),
   ];
   const vendorOptions = [
@@ -85,7 +82,7 @@ export function grDoc({ draft, update, errors, m, ctx, onCopyClick, copyableCoun
     grossAfterDisc: (l) => priceAfterDiscount(l) * (1 + taxRate(l) / 100),
     taxAmount: (l) => round2((lineNet(l) * taxRate(l)) / 100),
     reverseChargeVat,
-    taxOptions: () => taxOptions,
+    taxOptions: (l) => taxOptions(l.taxCode),
     vendorOptions,
     warehouseOptions: m.inv.warehouses.filter((w) => receivesFromVendors(w)).map((w) => ({ value: w.code, label: w.code })),
     blanketOptions,
@@ -182,7 +179,7 @@ export function grDoc({ draft, update, errors, m, ctx, onCopyClick, copyableCoun
             <Combobox
               aria-label="Freight tax code"
               className="w-48"
-              options={m.tax.codes.filter((c) => c.direction === 'Purchase' && c.active).map((c) => ({ value: c.code, label: c.name }))}
+              options={taxCodeOptions(m.tax.codes, 'Purchase', draft.freightTaxCode)}
               value={draft.freightTaxCode}
               onValueChange={(freightTaxCode) => update({ freightTaxCode: freightTaxCode ?? '' })}
             />
