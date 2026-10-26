@@ -2,7 +2,7 @@ import { List, Text } from '@jasperlepardo/sikat-design-system';
 import { Section } from '../../../../components/form/fields';
 import { accountText } from '../../../../mocks/chartOfAccounts';
 import { formatAmount } from '../../../../services/format';
-import { poWithholding } from '../../../../services/withholding';
+import { docWithholding } from '../../../../services/withholding';
 import { expenseAccountFor } from '../../../../services/goodsReceipts';
 import { inventoryAccountFor } from '../../../../services/inventoryTransfers';
 import { rateAt, vatNotPaidToVendor } from '../../../../mocks/taxes';
@@ -45,8 +45,8 @@ function buildJournal(
     if (!reverse(l.taxCode)) add(vatAccount(l.taxCode), round2((net * rateOf(l.taxCode)) / 100));
   }
 
-  const withholding = poWithholding(
-    draft as Parameters<typeof poWithholding>[0],
+  const withholding = docWithholding(
+    draft as Parameters<typeof docWithholding>[0],
     ctx.vendor,
     m.items,
     m.tax,
@@ -56,7 +56,7 @@ function buildJournal(
   let withheld = 0;
   for (const w of withholding.filter((x) => x.deducted)) {
     const amt = round2(w.amount * fx);
-    add(WITHHOLDING_PAYABLE[w.kind] ?? '2340', -amt);
+    add(w.account || WITHHOLDING_PAYABLE[w.kind] || '2340', -amt);
     withheld += amt;
   }
   if (debits) add(draft.controlAccount || '2010', -round2(debits - withheld));

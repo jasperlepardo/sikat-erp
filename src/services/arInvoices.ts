@@ -4,9 +4,9 @@ import { SHIPPED_GOODS_ACCOUNT } from '../mocks/deliveries';
 import type { ItemGroup } from '../mocks/itemMasters';
 import { SEED_ITEMS, mergedItems, type Item } from '../mocks/items';
 import { SEED_PARTNERS, type Partner } from '../mocks/partners';
-import { SEED_COMPANY_TAX, SEED_TAX_CODES, SEED_TAX_GROUPS, SEED_WITHHOLDING, SEED_WITHHOLDING_GROUPS, rateAt, type TaxCode } from '../mocks/taxes';
+import { SEED_TAX_CODES, rateAt, type TaxCode } from '../mocks/taxes';
 import type { TaxMasterData } from './taxDetermination';
-import { customerWithholding, customerWithholds, type CustomerWithholding } from './withholding';
+import { SEED_TAX, customerWithholding, customerWithholds, type CustomerWithholding } from './withholding';
 import { withTaxFiling } from './taxRecalc';
 import { todayISO } from './dates';
 import { applyInvoiced, deliveryProblems, dnInventoryQty, listDeliveries } from './deliveries';
@@ -22,7 +22,7 @@ import { withLineCosts } from './stockHistory';
 
 // Seeded lines carry the cost their stock went out at (services/stockHistory.ts).
 // Seeded withholding is stamped as if each was added under the seeded Settings.
-const invoices = createCollection<ArInvoice>('sikat-erp:ar-invoices:v7', () => withSeedWithholding(withLineCosts(SEED_AR_INVOICES)()), 'ar', { audit: 'ARINV' });
+const invoices = createCollection<ArInvoice>('sikat-erp:ar-invoices:v7', () => withSeedArWithholding(withLineCosts(SEED_AR_INVOICES)()), 'ar', { audit: 'ARINV' });
 
 export const listArInvoices = invoices.list;
 export async function getArInvoice(idOrNumber: string) {
@@ -70,10 +70,7 @@ export function arWithholding(
 }
 
 /** Seeded invoices count as added under the seeded Settings: stamp their withholding the same way. */
-const SEED_TAX: TaxMasterData = {
-  company: SEED_COMPANY_TAX[0], codes: SEED_TAX_CODES, groups: SEED_TAX_GROUPS, withholding: SEED_WITHHOLDING, withholdingGroups: SEED_WITHHOLDING_GROUPS,
-};
-const withSeedWithholding = (docs: ArInvoice[]): ArInvoice[] => {
+const withSeedArWithholding = (docs: ArInvoice[]): ArInvoice[] => {
   const items = mergedItems(SEED_ITEMS);
   return docs.map((a) => {
     if (a.status === 'Draft' || a.status === 'Not Confirmed') return a;

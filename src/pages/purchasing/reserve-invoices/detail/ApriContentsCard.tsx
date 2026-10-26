@@ -13,7 +13,7 @@ import { formatAmount } from '../../../../services/format';
 import { formatDate } from '../../../../services/dates';
 import { apRiTotals } from '../../../../services/apReserveInvoices';
 import { getPurchasingSettings, lineNet, openQty, poNumber } from '../../../../services/purchaseOrders';
-import { poWithholding } from '../../../../services/withholding';
+import { docWithholding } from '../../../../services/withholding';
 import { isValidToday } from '../../../../services/items';
 import { PurchTotalsFooter, PurchTotalNote, PurchTotalRow } from '../../shared/PurchTotalsFooter';
 import { CopyPanel } from '../../shared/CopyPanel';
@@ -47,8 +47,8 @@ export function ApriContentsCard({
   const code = draft.currency;
   const docCurrency = m.currencies.find((c) => c.code === code);
   const totals = apRiTotals(draft, ctx.rateOf, docCurrency?.rounding, ctx.isReverseCharge);
-  const withholding = poWithholding(
-    draft as Parameters<typeof poWithholding>[0],
+  const withholding = docWithholding(
+    draft as Parameters<typeof docWithholding>[0],
     ctx.vendor,
     m.items,
     m.tax,

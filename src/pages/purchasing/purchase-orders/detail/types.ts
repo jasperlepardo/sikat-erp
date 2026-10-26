@@ -179,6 +179,10 @@ export function lineFromItem(item: Item, draft: PoDraft, ctx: PoContext, m: PoMa
     priceListId,
     taxCode: proposedTaxCode(item, ctx.vendor, m, draft.postingDate),
     taxOverridden: false,
+    // A new item drops what was stamped from a copied invoice line.
+    lineWithholding: undefined,
+    taxAtc: undefined,
+    taxReturn: undefined,
     mfrNo: item.manufacturers.find((x) => x.code === item.manufacturer)?.catalogNo ?? '',
     deliveryDate: draft.deliveryDate,
   });

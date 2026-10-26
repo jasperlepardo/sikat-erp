@@ -52,7 +52,7 @@ import { creditableReturns, returnNumber, returnOpenQty } from '../../../service
 import { isValidToday } from '../../../services/items';
 import { postDocumentEntry, reverseDocumentEntry } from '../../../services/journalEntries';
 import { dueDateFor, getPurchasingSettings } from '../../../services/purchaseOrders';
-import { poWithholding } from '../../../services/withholding';
+import { docWithholding } from '../../../services/withholding';
 import { buildGrContext } from '../goods-receipts/detail/types';
 import { CopyPanel } from '../shared/CopyPanel';
 import { DocumentFlow } from '../shared/DocumentFlow';
@@ -189,7 +189,7 @@ function CreditMemoForm() {
   const { prevId, nextId } = neighbours(siblings, draft.id && (draft.docNum ? memoNumber(draft as ApCreditMemo) : draft.id));
   const errors: Errors = Object.fromEntries(problems.map((p) => [p.key, p.message]));
   const totals = memoTotals(draft, ctx.rateOf, ctx.isReverseCharge);
-  const withholding = poWithholding(draft, vendor, m.items, m.tax, draft.postingDate);
+  const withholding = docWithholding(draft, vendor, m.items, m.tax, draft.postingDate);
   const credit = netCredit(totals.total, withholding, draft.downPayment);
   const openBalance = round2(credit - draft.appliedAmount);
   const journal = fx ? memoJournal(draft, fx, { items: m.items, groups: m.inv.groups, codes: m.tax.codes, rateOf: ctx.rateOf, withholding }) : [];

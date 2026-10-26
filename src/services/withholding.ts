@@ -4,10 +4,13 @@
  */
 import { WITHHOLDING_PAYABLE, type StampedWithholding } from '../mocks/apInvoices';
 import { CREDITABLE_VAT_ACCOUNT, CWT_ACCOUNT, type StampedCustomerWithholding } from '../mocks/arInvoices';
-import type { Item } from '../mocks/items';
+import { SEED_ITEMS, mergedItems, type Item } from '../mocks/items';
 import type { LineWithholding } from '../mocks/purchLine';
-import type { Partner } from '../mocks/partners';
-import { SYSTEM_ATCS, type CompanyTaxProfile, type WithholdingKind } from '../mocks/taxes';
+import { SEED_PARTNERS, type Partner } from '../mocks/partners';
+import {
+  SEED_COMPANY_TAX, SEED_TAX_CODES, SEED_TAX_GROUPS, SEED_WITHHOLDING, SEED_WITHHOLDING_GROUPS, SYSTEM_ATCS,
+  type CompanyTaxProfile, type WithholdingKind,
+} from '../mocks/taxes';
 import { accounts, companyTax, taxCodes, taxGroups, withholdingGroups, withholdingTaxes } from './masterData';
 import { itemGroups } from './inventoryMasters';
 import type { Account } from '../mocks/chartOfAccounts';
@@ -73,9 +76,13 @@ export function totalWithholding(lines: readonly WithholdingLine[]): Withholding
   return [...totals.values()];
 }
 
-/** Withholding on each line paying the vendor, in document currency. */
+/**
+ * Withholding on each line paying the vendor, in document currency. A line copied from an added
+ * invoice carries that invoice's stamped withholding: it keeps those ATCs and rates (a debit memo
+ * reverses what was withheld), on its own amount.
+ */
 export function lineWithholdings(
-  po: Pick<{ discountPct: number }, 'discountPct'> & { lines: (PricedLine & { id: string })[] },
+  po: Pick<{ discountPct: number }, 'discountPct'> & { lines: (PricedLine & { id: string; lineWithholding?: LineWithholding[] })[] },
   vendor: LineParty | undefined,
   items: readonly Item[],
   tax: TaxMasterData,
@@ -87,7 +94,9 @@ export function lineWithholdings(
   for (const line of po.lines) {
     const item = items.find((i) => i.id === line.itemId);
     if (!item) continue;
-    const { withholding } = determineWithholding(withIncomeType(item), vendor, tax, date);
+    const withholding = line.lineWithholding
+      ? line.lineWithholding.map((s) => ({ ...s, description: tax.withholding.find((w) => w.atc === s.atc)?.description ?? s.atc }))
+      : determineWithholding(withIncomeType(item), vendor, tax, date).withholding;
     const base = lineNet(line) * factor;
     out.set(line.id, withholding.map((wt) => ({
       atc: wt.atc, description: wt.description, rate: wt.rate, kind: wt.kind, base: round2(base),
@@ -111,6 +120,21 @@ export function poWithholding(
 ): WithholdingLine[] {
   const keyed = po.lines.map((l, i) => ({ ...l, id: String(i) }));
   return totalWithholding([...lineWithholdings({ ...po, lines: keyed }, vendor, items, tax, date).values()].flat());
+}
+
+/** Settings › Accounting & Tax as seeded: what seeded documents were "added" under. */
+export const SEED_TAX: TaxMasterData = {
+  company: SEED_COMPANY_TAX[0], codes: SEED_TAX_CODES, groups: SEED_TAX_GROUPS, withholding: SEED_WITHHOLDING, withholdingGroups: SEED_WITHHOLDING_GROUPS,
+};
+
+/** Seeded purchase documents count as added under the seeded Settings: stamp their withholding the same way. */
+export function withSeedWithholding<D extends { status: string; vendorId: string; postingDate: string; discountPct: number; lines: (PricedLine & { id: string; lineWithholding?: LineWithholding[] })[]; withholdingSummary?: StampedWithholding[] }>(docs: D[]): D[] {
+  const items = mergedItems(SEED_ITEMS);
+  return docs.map((d) => {
+    if (d.status === 'Draft' || d.status === 'Not Confirmed') return d;
+    const vendor = SEED_PARTNERS.find((p) => p.id === d.vendorId);
+    return { ...d, ...stampWithholding(d, vendor, items, SEED_TAX, d.postingDate) };
+  });
 }
 
 /** The document's withholding: what was stamped when it was added, else (a draft) worked out live. */

@@ -117,6 +117,10 @@ export function lineFromItem(item: Item, draft: Pick<GrDraft, 'postingDate'>, ct
     priceListId,
     taxCode: proposedTaxCode(item, ctx.vendor, m, draft.postingDate),
     taxOverridden: false,
+    // A new item drops what was stamped from a copied invoice line.
+    lineWithholding: undefined,
+    taxAtc: undefined,
+    taxReturn: undefined,
   });
   return { ...line, ...linePricing(item, line, draft, ctx) };
 }

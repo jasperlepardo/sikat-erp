@@ -22,7 +22,7 @@ import { inventoryAccountFor, type JournalLine } from './inventoryTransfers';
 import { listItems, saveItem } from './items';
 import { addLayer, removeLayersBySource, updateFifoCosts } from './costLayers';
 import { lineNet, listPurchaseOrders, openQty, poTotals, saveReceivedQuantities } from './purchaseOrders';
-import { currentTaxData, stampWithholding, type WithholdingLine } from './withholding';
+import { currentTaxData, stampWithholding, withSeedWithholding, type WithholdingLine } from './withholding';
 import { getPartner } from './partners';
 import { withTaxFiling } from './taxRecalc';
 import { createCollection } from './store';
@@ -30,7 +30,8 @@ import { purchasingHistory } from './purchasingHistory';
 import { taxCodes } from './masterData';
 import { drawDownPayments, drawableAmount, dprTotal, listDownPayments } from './apDownPayments';
 
-const invoices = createCollection<ApInvoice>('sikat-erp:ap-invoices:v6', () => purchasingHistory().invoices, 'ap', { audit: 'APINV' });
+// Seeded withholding is stamped as if each was added under the seeded Settings.
+const invoices = createCollection<ApInvoice>('sikat-erp:ap-invoices:v6', () => withSeedWithholding(purchasingHistory().invoices), 'ap', { audit: 'APINV' });
 
 export const listApInvoices = invoices.list;
 export async function getApInvoice(idOrNumber: string) {

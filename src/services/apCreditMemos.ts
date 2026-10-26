@@ -13,11 +13,15 @@ import { applyCreditedQty, listGoodsReturns, returnOpenQty } from './goodsReturn
 import { inventoryAccountFor, type JournalLine } from './inventoryTransfers';
 import { listItems, saveItem } from './items';
 import { lineNet, poTotals } from './purchaseOrders';
-import { type WithholdingLine } from './withholding';
+import { currentTaxData, stampWithholding, withSeedWithholding, type WithholdingLine } from './withholding';
+import { getPartner } from './partners';
+import { withTaxFiling } from './taxRecalc';
+import { taxCodes } from './masterData';
 import { createCollection } from './store';
 import { purchasingHistory } from './purchasingHistory';
 
-const memos = createCollection<ApCreditMemo>('sikat-erp:ap-credit-memos:v5', () => purchasingHistory().memos, 'cm', { audit: 'APCM' });
+// Seeded withholding is stamped as if each was added under the seeded Settings.
+const memos = createCollection<ApCreditMemo>('sikat-erp:ap-credit-memos:v5', () => withSeedWithholding(purchasingHistory().memos), 'cm', { audit: 'APCM' });
 
 export const listCreditMemos = memos.list;
 export async function getCreditMemo(idOrNumber: string) {
@@ -101,7 +105,7 @@ export function memoJournal(
   let withheld = 0;
   for (const w of ctx.withholding.filter((x) => x.deducted)) {
     const amt = round2(w.amount * fx);
-    add(WITHHOLDING_PAYABLE[w.kind] ?? '2340', amt);
+    add(w.account || WITHHOLDING_PAYABLE[w.kind] || '2340', amt);
     withheld += amt;
   }
   if (credits) add(m.controlAccount || '2010', round2(credits - withheld));
@@ -202,9 +206,13 @@ export async function addCreditMemo(input: MemoInput, fx: number, credit: number
   }
 
   const appliedAmount = round2(credit - left);
+  // Withholding is fixed now (lines from an invoice reverse at its stamped rates), so later Settings changes don't move it.
+  const vendor = (await getPartner(input.vendorId)) ?? undefined;
+  const stamped = stampWithholding({ discountPct: input.discountPct, lines }, vendor, items, currentTaxData(), input.postingDate);
   return memos.save({
     ...input,
-    lines: withBinCodes(lines),
+    lines: withTaxFiling(withBinCodes(stamped.lines), await taxCodes.list()),
+    withholdingSummary: stamped.withholdingSummary,
     docNum,
     fxRate: fx,
     applications,

@@ -250,6 +250,9 @@ function ApReserveInvoiceForm() {
       orderNumber: '',
       fxRate: 1,
       appliedAmount: 0,
+      // Withholding and filing were fixed for the original's date: the copy works them out again.
+      withholdingSummary: undefined,
+      lines: retax(draft.lines.map((l) => ({ ...l, lineWithholding: undefined, taxAtc: undefined, taxReturn: undefined })), vendor, today),
     };
     navigate(`${APRI_LIST_PATH}/new`, { state: { copyFrom: copy } });
   };

@@ -4,10 +4,16 @@ import { todayISO } from './dates';
 import { createCollection } from './store';
 import { poTotals } from './purchaseOrders';
 import type { RoundingRule } from '../mocks/currencies';
+import { listItems } from './items';
+import { taxCodes } from './masterData';
+import { getPartner } from './partners';
+import { withTaxFiling } from './taxRecalc';
+import { currentTaxData, stampWithholding, withSeedWithholding } from './withholding';
 
+// Seeded withholding is stamped as if each was added under the seeded Settings.
 const invoices = createCollection<ApReserveInvoice>(
   'sikat-erp:ap-reserve-invoices:v1',
-  SEED_AP_RESERVE_INVOICES,
+  () => withSeedWithholding(SEED_AP_RESERVE_INVOICES),
   'apri',
   { audit: 'APRI' },
 );
@@ -42,7 +48,11 @@ export async function addApReserveInvoice(doc: ApRiInput): Promise<ApReserveInvo
   const all = await invoices.list();
   const docNum = doc.docNum || Math.max(series.firstNo - 1, ...all.filter((r) => r.seriesId === series.id).map((r) => r.docNum)) + 1;
   const status = doc.approved !== false ? 'Open' : 'Not Confirmed';
-  return invoices.save({ ...doc, docNum, status } as ApReserveInvoice);
+  if (status !== 'Open') return invoices.save({ ...doc, docNum, status } as ApReserveInvoice);
+  // Withholding and filing are fixed now, so later Settings changes don't move them.
+  const [items, vendor, codes] = await Promise.all([listItems(), getPartner(doc.vendorId), taxCodes.list()]);
+  const stamped = stampWithholding(doc, vendor ?? undefined, items, currentTaxData(), doc.postingDate);
+  return invoices.save({ ...doc, lines: withTaxFiling(stamped.lines, codes), withholdingSummary: stamped.withholdingSummary, docNum, status } as ApReserveInvoice);
 }
 
 export async function cancelApReserveInvoice(inv: ApReserveInvoice): Promise<ApReserveInvoice> {

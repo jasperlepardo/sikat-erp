@@ -12,6 +12,7 @@
 import type { Attachment, DocumentSeries } from './common';
 import type { PoReference } from './purchaseOrders';
 import { newGrLine, type GrLine } from './goodsReceipts';
+import type { StampedWithholding } from './apInvoices';
 
 export type ApRiStatus = 'Draft' | 'Not Confirmed' | 'Open' | 'Closed' | 'Cancelled';
 export const AP_RI_STATUSES: ApRiStatus[] = ['Draft', 'Not Confirmed', 'Open', 'Closed', 'Cancelled'];
@@ -76,6 +77,8 @@ export interface ApReserveInvoice {
   paymentOrderRun: boolean;
   /** Applied against this invoice from outgoing payments. */
   appliedAmount: number;
+  /** Withholding fixed when the invoice was added, one entry per ATC — the 2307 lines. Missing on drafts: worked out live. */
+  withholdingSummary?: StampedWithholding[];
 
   references: PoReference[];
   attachments: Attachment[];

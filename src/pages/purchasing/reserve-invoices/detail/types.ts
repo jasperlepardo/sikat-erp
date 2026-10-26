@@ -56,6 +56,10 @@ export function riLineFromItem(item: Item, draft: ApriDraft, ctx: ApriContext, m
     discountPct: p.discountPct,
     taxCode,
     taxOverridden: false,
+    // A new item drops what was stamped from a copied invoice line.
+    lineWithholding: undefined,
+    taxAtc: undefined,
+    taxReturn: undefined,
   });
 }
 
