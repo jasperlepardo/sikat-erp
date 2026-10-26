@@ -41,7 +41,9 @@ export async function open(page: Page, route: string) {
  * `size: "large"`; screens pass their buttons in a <>…</> fragment, so React warns about a Fragment
  * prop. Remove once PanelHeader skips fragments.
  */
-const KNOWN = [/Invalid prop .* supplied to .React\.Fragment/];
+const KNOWN = [
+  /Invalid prop .* supplied to .React\.Fragment/,
+];
 
 /** Collect page errors and console errors while a test runs. */
 export function watchErrors(page: Page) {

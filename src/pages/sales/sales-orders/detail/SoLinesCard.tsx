@@ -374,7 +374,7 @@ export function SoLinesCard({ draft, update, errors, m, ctx, tabs, contentTab, s
     },
   ];
 
-  const showHeader = !!tabs || (liveSelection.length > 0 && !linesLocked);
+  const showHeader = !!tabs || !linesLocked;
 
   return (
     <div className="flex flex-col gap-2">
@@ -400,23 +400,36 @@ export function SoLinesCard({ draft, update, errors, m, ctx, tabs, contentTab, s
         {showHeader ? (
           <Card.Header
             actions={
-              !linesLocked && liveSelection.length > 0 ? (
+              linesLocked ? undefined : (
                 <div className="flex items-center gap-2">
-                  <Text variant="small" tone="muted">{liveSelection.length} selected</Text>
+                  {liveSelection.length > 0 ? (
+                    <>
+                      <Text variant="small" tone="muted">{liveSelection.length} selected</Text>
+                      <Button
+                        type="button"
+                        size="small"
+                        variant="ghost"
+                        intent="danger"
+                        onClick={() => {
+                          update({ lines: lines.filter((l) => !liveSelection.includes(l.id) || l.deliveredQty > 0) });
+                          setSelected([]);
+                        }}
+                      >
+                        Remove selected
+                      </Button>
+                    </>
+                  ) : null}
                   <Button
                     type="button"
                     size="small"
                     variant="ghost"
-                    intent="danger"
-                    onClick={() => {
-                      update({ lines: lines.filter((l) => !liveSelection.includes(l.id) || l.deliveredQty > 0) });
-                      setSelected([]);
-                    }}
+                    leadingIcon={<Icon size={16}>tune</Icon>}
+                    onClick={() => setSettingsOpen((v) => !v)}
                   >
-                    Remove selected
+                    Columns
                   </Button>
                 </div>
-              ) : undefined
+              )
             }
           >
             {tabs}
@@ -448,7 +461,6 @@ export function SoLinesCard({ draft, update, errors, m, ctx, tabs, contentTab, s
                     selectable: true,
                     selectedIds: liveSelection,
                     onSelectionChange: setSelected,
-                    onColumnSettings: () => setSettingsOpen(!settingsOpen),
                   } : {})}
                   footerRow={
                     linesLocked ? undefined : (

@@ -1,0 +1,1021 @@
+
+<!doctype html>
+<html lang="en">
+
+<head>
+    <title>Code coverage report for services/ledgerHistory.ts</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="../prettify.css" />
+    <link rel="stylesheet" href="../base.css" />
+    <link rel="shortcut icon" type="image/x-icon" href="../favicon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style type='text/css'>
+        .coverage-summary .sorter {
+            background-image: url(../sort-arrow-sprite.png);
+        }
+    </style>
+</head>
+    
+<body>
+<div class='wrapper'>
+    <div class='pad1'>
+        <h1><a href="../index.html">All files</a> / <a href="index.html">services</a> ledgerHistory.ts</h1>
+        <div class='clearfix'>
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">22.17% </span>
+                <span class="quiet">Statements</span>
+                <span class='fraction'>49/221</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">100% </span>
+                <span class="quiet">Branches</span>
+                <span class='fraction'>0/0</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">0% </span>
+                <span class="quiet">Functions</span>
+                <span class='fraction'>0/4</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">22.17% </span>
+                <span class="quiet">Lines</span>
+                <span class='fraction'>49/221</span>
+            </div>
+        
+            
+        </div>
+        <p class="quiet">
+            Press <em>n</em> or <em>j</em> to go to the next uncovered block, <em>b</em>, <em>p</em> or <em>k</em> for the previous block.
+        </p>
+        <template id="filterTemplate">
+            <div class="quiet">
+                Filter:
+                <input type="search" id="fileSearch">
+            </div>
+        </template>
+    </div>
+    <div class='status-line low'></div>
+    <pre><table class="coverage">
+<tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
+<a name='L2'></a><a href='#L2'>2</a>
+<a name='L3'></a><a href='#L3'>3</a>
+<a name='L4'></a><a href='#L4'>4</a>
+<a name='L5'></a><a href='#L5'>5</a>
+<a name='L6'></a><a href='#L6'>6</a>
+<a name='L7'></a><a href='#L7'>7</a>
+<a name='L8'></a><a href='#L8'>8</a>
+<a name='L9'></a><a href='#L9'>9</a>
+<a name='L10'></a><a href='#L10'>10</a>
+<a name='L11'></a><a href='#L11'>11</a>
+<a name='L12'></a><a href='#L12'>12</a>
+<a name='L13'></a><a href='#L13'>13</a>
+<a name='L14'></a><a href='#L14'>14</a>
+<a name='L15'></a><a href='#L15'>15</a>
+<a name='L16'></a><a href='#L16'>16</a>
+<a name='L17'></a><a href='#L17'>17</a>
+<a name='L18'></a><a href='#L18'>18</a>
+<a name='L19'></a><a href='#L19'>19</a>
+<a name='L20'></a><a href='#L20'>20</a>
+<a name='L21'></a><a href='#L21'>21</a>
+<a name='L22'></a><a href='#L22'>22</a>
+<a name='L23'></a><a href='#L23'>23</a>
+<a name='L24'></a><a href='#L24'>24</a>
+<a name='L25'></a><a href='#L25'>25</a>
+<a name='L26'></a><a href='#L26'>26</a>
+<a name='L27'></a><a href='#L27'>27</a>
+<a name='L28'></a><a href='#L28'>28</a>
+<a name='L29'></a><a href='#L29'>29</a>
+<a name='L30'></a><a href='#L30'>30</a>
+<a name='L31'></a><a href='#L31'>31</a>
+<a name='L32'></a><a href='#L32'>32</a>
+<a name='L33'></a><a href='#L33'>33</a>
+<a name='L34'></a><a href='#L34'>34</a>
+<a name='L35'></a><a href='#L35'>35</a>
+<a name='L36'></a><a href='#L36'>36</a>
+<a name='L37'></a><a href='#L37'>37</a>
+<a name='L38'></a><a href='#L38'>38</a>
+<a name='L39'></a><a href='#L39'>39</a>
+<a name='L40'></a><a href='#L40'>40</a>
+<a name='L41'></a><a href='#L41'>41</a>
+<a name='L42'></a><a href='#L42'>42</a>
+<a name='L43'></a><a href='#L43'>43</a>
+<a name='L44'></a><a href='#L44'>44</a>
+<a name='L45'></a><a href='#L45'>45</a>
+<a name='L46'></a><a href='#L46'>46</a>
+<a name='L47'></a><a href='#L47'>47</a>
+<a name='L48'></a><a href='#L48'>48</a>
+<a name='L49'></a><a href='#L49'>49</a>
+<a name='L50'></a><a href='#L50'>50</a>
+<a name='L51'></a><a href='#L51'>51</a>
+<a name='L52'></a><a href='#L52'>52</a>
+<a name='L53'></a><a href='#L53'>53</a>
+<a name='L54'></a><a href='#L54'>54</a>
+<a name='L55'></a><a href='#L55'>55</a>
+<a name='L56'></a><a href='#L56'>56</a>
+<a name='L57'></a><a href='#L57'>57</a>
+<a name='L58'></a><a href='#L58'>58</a>
+<a name='L59'></a><a href='#L59'>59</a>
+<a name='L60'></a><a href='#L60'>60</a>
+<a name='L61'></a><a href='#L61'>61</a>
+<a name='L62'></a><a href='#L62'>62</a>
+<a name='L63'></a><a href='#L63'>63</a>
+<a name='L64'></a><a href='#L64'>64</a>
+<a name='L65'></a><a href='#L65'>65</a>
+<a name='L66'></a><a href='#L66'>66</a>
+<a name='L67'></a><a href='#L67'>67</a>
+<a name='L68'></a><a href='#L68'>68</a>
+<a name='L69'></a><a href='#L69'>69</a>
+<a name='L70'></a><a href='#L70'>70</a>
+<a name='L71'></a><a href='#L71'>71</a>
+<a name='L72'></a><a href='#L72'>72</a>
+<a name='L73'></a><a href='#L73'>73</a>
+<a name='L74'></a><a href='#L74'>74</a>
+<a name='L75'></a><a href='#L75'>75</a>
+<a name='L76'></a><a href='#L76'>76</a>
+<a name='L77'></a><a href='#L77'>77</a>
+<a name='L78'></a><a href='#L78'>78</a>
+<a name='L79'></a><a href='#L79'>79</a>
+<a name='L80'></a><a href='#L80'>80</a>
+<a name='L81'></a><a href='#L81'>81</a>
+<a name='L82'></a><a href='#L82'>82</a>
+<a name='L83'></a><a href='#L83'>83</a>
+<a name='L84'></a><a href='#L84'>84</a>
+<a name='L85'></a><a href='#L85'>85</a>
+<a name='L86'></a><a href='#L86'>86</a>
+<a name='L87'></a><a href='#L87'>87</a>
+<a name='L88'></a><a href='#L88'>88</a>
+<a name='L89'></a><a href='#L89'>89</a>
+<a name='L90'></a><a href='#L90'>90</a>
+<a name='L91'></a><a href='#L91'>91</a>
+<a name='L92'></a><a href='#L92'>92</a>
+<a name='L93'></a><a href='#L93'>93</a>
+<a name='L94'></a><a href='#L94'>94</a>
+<a name='L95'></a><a href='#L95'>95</a>
+<a name='L96'></a><a href='#L96'>96</a>
+<a name='L97'></a><a href='#L97'>97</a>
+<a name='L98'></a><a href='#L98'>98</a>
+<a name='L99'></a><a href='#L99'>99</a>
+<a name='L100'></a><a href='#L100'>100</a>
+<a name='L101'></a><a href='#L101'>101</a>
+<a name='L102'></a><a href='#L102'>102</a>
+<a name='L103'></a><a href='#L103'>103</a>
+<a name='L104'></a><a href='#L104'>104</a>
+<a name='L105'></a><a href='#L105'>105</a>
+<a name='L106'></a><a href='#L106'>106</a>
+<a name='L107'></a><a href='#L107'>107</a>
+<a name='L108'></a><a href='#L108'>108</a>
+<a name='L109'></a><a href='#L109'>109</a>
+<a name='L110'></a><a href='#L110'>110</a>
+<a name='L111'></a><a href='#L111'>111</a>
+<a name='L112'></a><a href='#L112'>112</a>
+<a name='L113'></a><a href='#L113'>113</a>
+<a name='L114'></a><a href='#L114'>114</a>
+<a name='L115'></a><a href='#L115'>115</a>
+<a name='L116'></a><a href='#L116'>116</a>
+<a name='L117'></a><a href='#L117'>117</a>
+<a name='L118'></a><a href='#L118'>118</a>
+<a name='L119'></a><a href='#L119'>119</a>
+<a name='L120'></a><a href='#L120'>120</a>
+<a name='L121'></a><a href='#L121'>121</a>
+<a name='L122'></a><a href='#L122'>122</a>
+<a name='L123'></a><a href='#L123'>123</a>
+<a name='L124'></a><a href='#L124'>124</a>
+<a name='L125'></a><a href='#L125'>125</a>
+<a name='L126'></a><a href='#L126'>126</a>
+<a name='L127'></a><a href='#L127'>127</a>
+<a name='L128'></a><a href='#L128'>128</a>
+<a name='L129'></a><a href='#L129'>129</a>
+<a name='L130'></a><a href='#L130'>130</a>
+<a name='L131'></a><a href='#L131'>131</a>
+<a name='L132'></a><a href='#L132'>132</a>
+<a name='L133'></a><a href='#L133'>133</a>
+<a name='L134'></a><a href='#L134'>134</a>
+<a name='L135'></a><a href='#L135'>135</a>
+<a name='L136'></a><a href='#L136'>136</a>
+<a name='L137'></a><a href='#L137'>137</a>
+<a name='L138'></a><a href='#L138'>138</a>
+<a name='L139'></a><a href='#L139'>139</a>
+<a name='L140'></a><a href='#L140'>140</a>
+<a name='L141'></a><a href='#L141'>141</a>
+<a name='L142'></a><a href='#L142'>142</a>
+<a name='L143'></a><a href='#L143'>143</a>
+<a name='L144'></a><a href='#L144'>144</a>
+<a name='L145'></a><a href='#L145'>145</a>
+<a name='L146'></a><a href='#L146'>146</a>
+<a name='L147'></a><a href='#L147'>147</a>
+<a name='L148'></a><a href='#L148'>148</a>
+<a name='L149'></a><a href='#L149'>149</a>
+<a name='L150'></a><a href='#L150'>150</a>
+<a name='L151'></a><a href='#L151'>151</a>
+<a name='L152'></a><a href='#L152'>152</a>
+<a name='L153'></a><a href='#L153'>153</a>
+<a name='L154'></a><a href='#L154'>154</a>
+<a name='L155'></a><a href='#L155'>155</a>
+<a name='L156'></a><a href='#L156'>156</a>
+<a name='L157'></a><a href='#L157'>157</a>
+<a name='L158'></a><a href='#L158'>158</a>
+<a name='L159'></a><a href='#L159'>159</a>
+<a name='L160'></a><a href='#L160'>160</a>
+<a name='L161'></a><a href='#L161'>161</a>
+<a name='L162'></a><a href='#L162'>162</a>
+<a name='L163'></a><a href='#L163'>163</a>
+<a name='L164'></a><a href='#L164'>164</a>
+<a name='L165'></a><a href='#L165'>165</a>
+<a name='L166'></a><a href='#L166'>166</a>
+<a name='L167'></a><a href='#L167'>167</a>
+<a name='L168'></a><a href='#L168'>168</a>
+<a name='L169'></a><a href='#L169'>169</a>
+<a name='L170'></a><a href='#L170'>170</a>
+<a name='L171'></a><a href='#L171'>171</a>
+<a name='L172'></a><a href='#L172'>172</a>
+<a name='L173'></a><a href='#L173'>173</a>
+<a name='L174'></a><a href='#L174'>174</a>
+<a name='L175'></a><a href='#L175'>175</a>
+<a name='L176'></a><a href='#L176'>176</a>
+<a name='L177'></a><a href='#L177'>177</a>
+<a name='L178'></a><a href='#L178'>178</a>
+<a name='L179'></a><a href='#L179'>179</a>
+<a name='L180'></a><a href='#L180'>180</a>
+<a name='L181'></a><a href='#L181'>181</a>
+<a name='L182'></a><a href='#L182'>182</a>
+<a name='L183'></a><a href='#L183'>183</a>
+<a name='L184'></a><a href='#L184'>184</a>
+<a name='L185'></a><a href='#L185'>185</a>
+<a name='L186'></a><a href='#L186'>186</a>
+<a name='L187'></a><a href='#L187'>187</a>
+<a name='L188'></a><a href='#L188'>188</a>
+<a name='L189'></a><a href='#L189'>189</a>
+<a name='L190'></a><a href='#L190'>190</a>
+<a name='L191'></a><a href='#L191'>191</a>
+<a name='L192'></a><a href='#L192'>192</a>
+<a name='L193'></a><a href='#L193'>193</a>
+<a name='L194'></a><a href='#L194'>194</a>
+<a name='L195'></a><a href='#L195'>195</a>
+<a name='L196'></a><a href='#L196'>196</a>
+<a name='L197'></a><a href='#L197'>197</a>
+<a name='L198'></a><a href='#L198'>198</a>
+<a name='L199'></a><a href='#L199'>199</a>
+<a name='L200'></a><a href='#L200'>200</a>
+<a name='L201'></a><a href='#L201'>201</a>
+<a name='L202'></a><a href='#L202'>202</a>
+<a name='L203'></a><a href='#L203'>203</a>
+<a name='L204'></a><a href='#L204'>204</a>
+<a name='L205'></a><a href='#L205'>205</a>
+<a name='L206'></a><a href='#L206'>206</a>
+<a name='L207'></a><a href='#L207'>207</a>
+<a name='L208'></a><a href='#L208'>208</a>
+<a name='L209'></a><a href='#L209'>209</a>
+<a name='L210'></a><a href='#L210'>210</a>
+<a name='L211'></a><a href='#L211'>211</a>
+<a name='L212'></a><a href='#L212'>212</a>
+<a name='L213'></a><a href='#L213'>213</a>
+<a name='L214'></a><a href='#L214'>214</a>
+<a name='L215'></a><a href='#L215'>215</a>
+<a name='L216'></a><a href='#L216'>216</a>
+<a name='L217'></a><a href='#L217'>217</a>
+<a name='L218'></a><a href='#L218'>218</a>
+<a name='L219'></a><a href='#L219'>219</a>
+<a name='L220'></a><a href='#L220'>220</a>
+<a name='L221'></a><a href='#L221'>221</a>
+<a name='L222'></a><a href='#L222'>222</a>
+<a name='L223'></a><a href='#L223'>223</a>
+<a name='L224'></a><a href='#L224'>224</a>
+<a name='L225'></a><a href='#L225'>225</a>
+<a name='L226'></a><a href='#L226'>226</a>
+<a name='L227'></a><a href='#L227'>227</a>
+<a name='L228'></a><a href='#L228'>228</a>
+<a name='L229'></a><a href='#L229'>229</a>
+<a name='L230'></a><a href='#L230'>230</a>
+<a name='L231'></a><a href='#L231'>231</a>
+<a name='L232'></a><a href='#L232'>232</a>
+<a name='L233'></a><a href='#L233'>233</a>
+<a name='L234'></a><a href='#L234'>234</a>
+<a name='L235'></a><a href='#L235'>235</a>
+<a name='L236'></a><a href='#L236'>236</a>
+<a name='L237'></a><a href='#L237'>237</a>
+<a name='L238'></a><a href='#L238'>238</a>
+<a name='L239'></a><a href='#L239'>239</a>
+<a name='L240'></a><a href='#L240'>240</a>
+<a name='L241'></a><a href='#L241'>241</a>
+<a name='L242'></a><a href='#L242'>242</a>
+<a name='L243'></a><a href='#L243'>243</a>
+<a name='L244'></a><a href='#L244'>244</a>
+<a name='L245'></a><a href='#L245'>245</a>
+<a name='L246'></a><a href='#L246'>246</a>
+<a name='L247'></a><a href='#L247'>247</a>
+<a name='L248'></a><a href='#L248'>248</a>
+<a name='L249'></a><a href='#L249'>249</a>
+<a name='L250'></a><a href='#L250'>250</a>
+<a name='L251'></a><a href='#L251'>251</a>
+<a name='L252'></a><a href='#L252'>252</a>
+<a name='L253'></a><a href='#L253'>253</a>
+<a name='L254'></a><a href='#L254'>254</a>
+<a name='L255'></a><a href='#L255'>255</a>
+<a name='L256'></a><a href='#L256'>256</a>
+<a name='L257'></a><a href='#L257'>257</a>
+<a name='L258'></a><a href='#L258'>258</a>
+<a name='L259'></a><a href='#L259'>259</a>
+<a name='L260'></a><a href='#L260'>260</a>
+<a name='L261'></a><a href='#L261'>261</a>
+<a name='L262'></a><a href='#L262'>262</a>
+<a name='L263'></a><a href='#L263'>263</a>
+<a name='L264'></a><a href='#L264'>264</a>
+<a name='L265'></a><a href='#L265'>265</a>
+<a name='L266'></a><a href='#L266'>266</a>
+<a name='L267'></a><a href='#L267'>267</a>
+<a name='L268'></a><a href='#L268'>268</a>
+<a name='L269'></a><a href='#L269'>269</a>
+<a name='L270'></a><a href='#L270'>270</a>
+<a name='L271'></a><a href='#L271'>271</a>
+<a name='L272'></a><a href='#L272'>272</a>
+<a name='L273'></a><a href='#L273'>273</a>
+<a name='L274'></a><a href='#L274'>274</a>
+<a name='L275'></a><a href='#L275'>275</a>
+<a name='L276'></a><a href='#L276'>276</a>
+<a name='L277'></a><a href='#L277'>277</a>
+<a name='L278'></a><a href='#L278'>278</a>
+<a name='L279'></a><a href='#L279'>279</a>
+<a name='L280'></a><a href='#L280'>280</a>
+<a name='L281'></a><a href='#L281'>281</a>
+<a name='L282'></a><a href='#L282'>282</a>
+<a name='L283'></a><a href='#L283'>283</a>
+<a name='L284'></a><a href='#L284'>284</a>
+<a name='L285'></a><a href='#L285'>285</a>
+<a name='L286'></a><a href='#L286'>286</a>
+<a name='L287'></a><a href='#L287'>287</a>
+<a name='L288'></a><a href='#L288'>288</a>
+<a name='L289'></a><a href='#L289'>289</a>
+<a name='L290'></a><a href='#L290'>290</a>
+<a name='L291'></a><a href='#L291'>291</a>
+<a name='L292'></a><a href='#L292'>292</a>
+<a name='L293'></a><a href='#L293'>293</a>
+<a name='L294'></a><a href='#L294'>294</a>
+<a name='L295'></a><a href='#L295'>295</a>
+<a name='L296'></a><a href='#L296'>296</a>
+<a name='L297'></a><a href='#L297'>297</a>
+<a name='L298'></a><a href='#L298'>298</a>
+<a name='L299'></a><a href='#L299'>299</a>
+<a name='L300'></a><a href='#L300'>300</a>
+<a name='L301'></a><a href='#L301'>301</a>
+<a name='L302'></a><a href='#L302'>302</a>
+<a name='L303'></a><a href='#L303'>303</a>
+<a name='L304'></a><a href='#L304'>304</a>
+<a name='L305'></a><a href='#L305'>305</a>
+<a name='L306'></a><a href='#L306'>306</a>
+<a name='L307'></a><a href='#L307'>307</a>
+<a name='L308'></a><a href='#L308'>308</a>
+<a name='L309'></a><a href='#L309'>309</a>
+<a name='L310'></a><a href='#L310'>310</a>
+<a name='L311'></a><a href='#L311'>311</a>
+<a name='L312'></a><a href='#L312'>312</a>
+<a name='L313'></a><a href='#L313'>313</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">/**
+ * The ledger for the seeded year: the books open on 1 Jan 2026 with FY2025's closing balance
+ * sheet, then every seeded document posts the entry it makes when it's added in the app — built
+ * with the same journal functions, from the costs the stock history gives its lines — alongside
+ * the month's finance entries that don't come from a document here (payroll, mall leases,
+ * utilities, depreciation, banking the stores' takings, tax remittances).
+ *
+ * Settled here, for the seed:
+ * - Opening balances: stock at its opening cost (services/stockHistory.ts), fixed assets and
+ *   deposits as listed below, and cash in each account enough that it never runs negative,
+ *   with a working floor. Receivables and payables open at nil: FY2025's were all settled.
+ *   Share capital and paid-in capital are fixed; retained earnings take the difference.
+ * - Payroll is accrued and paid at month-end; the withholding and contributions are remitted on
+ *   the 10th of the next month. Mall leases are paid on the 1st, less 5% EWT.
+ * - Expanded and final withholding taken in a month is remitted on the 10th of the next month;
+ *   VAT is settled quarterly on the 25th after the quarter (output less input).
+ * - Dollars for the import and foreign-service payments are bought from the peso account on the day
+ *   each payment goes out (the USD account isn't otherwise funded).
+ * - POS cash is banked as it's collected; card settlements arrive on the 3rd of the next month,
+ *   less the acquirer's fee.
+ * - Import VAT paid to Customs isn't modelled (the import entries are the brokers'), so imports
+ *   carry no input VAT.
+ * - Nothing dated after the seed's as-of day (9 Oct 2026) is posted.
+ */
+import { SEED_AR_CREDIT_MEMOS } from '../mocks/arCreditMemos';
+import { SEED_AR_INVOICES } from '../mocks/arInvoices';
+import { SEED_DELIVERIES } from '../mocks/deliveries';
+import { SEED_INCOMING_PAYMENTS } from '../mocks/incomingPayments';
+import { SEED_POSTINGS } from '../mocks/inventoryCountings';
+import { SEED_ITEM_GROUPS } from '../mocks/itemMasters';
+import { SEED_ITEMS, mergedItems } from '../mocks/items';
+import { SEED_ACCOUNTS } from '../mocks/chartOfAccounts';
+import { SEED_JOURNAL_ENTRIES, blankJournalEntry, newJeLine, withAccountDefaults, type JournalEntry, type OriginType } from '../mocks/journalEntries';
+import { SEED_PARTNERS } from '../mocks/partners';
+import { SEED_SALES_RETURNS } from '../mocks/salesReturns';
+import { SALES_MONTHS } from '../mocks/storeSales';
+import { SEED_AS_OF } from '../mocks/supplyPlan';
+import { SEED_COMPANY_TAX, SEED_TAX_CODES, SEED_TAX_GROUPS, SEED_WITHHOLDING, SEED_WITHHOLDING_GROUPS, rateAt } from '../mocks/taxes';
+import { memoJournal } from './apCreditMemos';
+import { apJournal } from './apInvoices';
+import { arCmJournal } from './arCreditMemos';
+import { arJournal, arWithholding } from './arInvoices';
+import { dnJournal } from './deliveries';
+import { grJournal } from './goodsReceipts';
+import { returnJournal } from './goodsReturns';
+import { incomingJournal } from './incomingPayments';
+import { postingJournal } from './inventoryCountings';
+import { inventoryAccountFor, type JournalLine } from './inventoryTransfers';
+import { paymentJournal } from './outgoingPayments';
+import { poWithholding } from './withholding';
+import { purchasingHistory } from './purchasingHistory';
+import { srJournal } from './salesReturns';
+import { BOOKS_OPEN, stockHistory, withLineCosts, withStockHistory } from './stockHistory';
+import type { TaxMasterData } from './taxDetermination';
+import { round2 } from './num';
+const nextMonth = <span class="fstat-no" title="function not covered" >(month: string, day: number) =&gt; {</span>
+<span class="cstat-no" title="statement not covered" >  const [y, m] = month.split('-').map(Number);</span>
+<span class="cstat-no" title="statement not covered" >  return `${m === 12 ? y + 1 : y}-${String((m % 12) + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;</span>
+<span class="cstat-no" title="statement not covered" >};</span>
+&nbsp;
+// ── The year's fixed figures ─────────────────────────────────────────────────
+&nbsp;
+/** FY2025 closing balances other than cash, stock and the partners' (all settled): [account, debit (+) or credit (−)]. */
+const OPENING_FIXED: [string, number][] = [
+  ['1510', 12_600_000], ['1511', -3_150_000],
+  ['1520', 48_000_000], ['1521', -9_600_000],
+  ['1530', 9_800_000], ['1531', -2_450_000],
+  ['1610', 36_000_000],
+  ['3010', -120_000_000], ['3020', -30_000_000],
+];
+/** The least each cash account holds, as working cash. */
+const CASH_FLOOR: Record&lt;string, number&gt; = { '1011': 50_000, '1012': 0, '1013': 0, '1015': 25_000_000, '1016': 5_000_000, '1017': 5_000_000, '1018': 3_000_000 };
+const CASH = Object.keys(CASH_FLOOR);
+&nbsp;
+/** Monthly payroll: gross pay, the employees' and the employer's contributions, tax withheld. */
+const PAYROLL = { gross: 5_500_000, sssEe: 247_500, sssEr: 522_500, phicEe: 137_500, phicEr: 137_500, hdmfEe: 50_000, hdmfEr: 50_000, tax: 385_000 };
+/** Mall leases for the stores (other than the Greenbelt 3 unit, billed on its own orders), and utilities. */
+const MALL_LEASES = 3_800_000;
+const LEASE_EWT_PCT = 5;
+const UTILITIES = 620_000;
+/** Depreciation per month, as September's. */
+const DEPRECIATION: [string, number][] = [['6310', 214_500], ['1511', -96_500], ['1531', -118_000]];
+/** The acquirer's fee on card settlements. */
+const CARD_FEE_PCT = 1.8;
+&nbsp;
+// ── Entries ──────────────────────────────────────────────────────────────────
+&nbsp;
+interface Posting {
+  id: string;
+  date: string;
+  /** Same-day order: documents first, then the finance entries that follow from them. */
+  order: number;
+  origin: OriginType;
+  originNo: string;
+  originId: string;
+  dueDate?: string;
+  remarks: string;
+  ref1?: string;
+  ref2?: string;
+  transCode?: string;
+  partnerId?: string;
+  controlAccount?: string;
+  lines: JournalLine[];
+}
+&nbsp;
+const lines = <span class="fstat-no" title="function not covered" >(rows: [string, number][]): JournalLine[] =&gt;</span>
+<span class="cstat-no" title="statement not covered" >  rows.filter(([, n]) =&gt; round2(n) !== 0).map(([account, n]) =&gt; ({ account, debit: n &gt; 0 ? round2(n) : 0, credit: n &lt; 0 ? round2(-n) : 0 }));</span>
+&nbsp;
+export interface Ledger {
+  entries: JournalEntry[];
+  /** Entries that don't balance, or documents whose journal came out empty when it shouldn't. */
+  problems: string[];
+}
+&nbsp;
+<span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >function build(): Ledger {</span></span>
+<span class="cstat-no" title="statement not covered" >  const H = purchasingHistory();</span>
+  // As the app reads them: variants with their parent's group, accounts and valuation.
+<span class="cstat-no" title="statement not covered" >  const items = mergedItems(withStockHistory(SEED_ITEMS));</span>
+<span class="cstat-no" title="statement not covered" >  const itemsById = new Map(items.map((i) =&gt; [i.id, i]));</span>
+<span class="cstat-no" title="statement not covered" >  const groups = SEED_ITEM_GROUPS;</span>
+<span class="cstat-no" title="statement not covered" >  const codes = SEED_TAX_CODES;</span>
+<span class="cstat-no" title="statement not covered" >  const rateOf = (date: string) =&gt; (code: string) =&gt; {</span>
+<span class="cstat-no" title="statement not covered" >    const c = codes.find((x) =&gt; x.code === code);</span>
+<span class="cstat-no" title="statement not covered" >    return c ? (rateAt(c, date) ?? 0) : 0;</span>
+<span class="cstat-no" title="statement not covered" >  };</span>
+<span class="cstat-no" title="statement not covered" >  const TAX: TaxMasterData = { company: SEED_COMPANY_TAX[0], codes: SEED_TAX_CODES, groups: SEED_TAX_GROUPS, withholding: SEED_WITHHOLDING, withholdingGroups: SEED_WITHHOLDING_GROUPS };</span>
+<span class="cstat-no" title="statement not covered" >  const partner = new Map(SEED_PARTNERS.map((p) =&gt; [p.id, p]));</span>
+<span class="cstat-no" title="statement not covered" >  const posted = (status: string) =&gt; status !== 'Draft' &amp;&amp; status !== 'Cancelled';</span>
+<span class="cstat-no" title="statement not covered" >  const out: Posting[] = [];</span>
+<span class="cstat-no" title="statement not covered" >  const doc = (p: Omit&lt;Posting, 'order'&gt;) =&gt; out.push({ ...p, order: 0 });</span>
+&nbsp;
+  // Purchasing
+<span class="cstat-no" title="statement not covered" >  for (const gr of H.receipts.filter((x) =&gt; posted(x.status)))</span>
+<span class="cstat-no" title="statement not covered" >    doc({ id: `je-pd-${gr.id}`, date: gr.postingDate, origin: 'PD', originNo: String(gr.docNum), originId: gr.id, remarks: gr.journalRemark, lines: grJournal(gr, gr.fxRate || 1, items, groups) });</span>
+<span class="cstat-no" title="statement not covered" >  for (const inv of H.invoices.filter((x) =&gt; posted(x.status))) {</span>
+<span class="cstat-no" title="statement not covered" >    const withholding = poWithholding(inv, partner.get(inv.vendorId), items, TAX, inv.postingDate);</span>
+<span class="cstat-no" title="statement not covered" >    doc({</span>
+<span class="cstat-no" title="statement not covered" >      id: `je-pu-${inv.id}`, date: inv.postingDate, origin: 'PU', originNo: String(inv.docNum), originId: inv.id, dueDate: inv.dueDate, remarks: inv.journalRemark,</span>
+<span class="cstat-no" title="statement not covered" >      partnerId: inv.vendorId, controlAccount: inv.controlAccount, lines: apJournal(inv, inv.fxRate || 1, { itemsById, groups, codes, rateOf: rateOf(inv.postingDate), withholding }),</span>
+<span class="cstat-no" title="statement not covered" >    });</span>
+<span class="cstat-no" title="statement not covered" >  }</span>
+<span class="cstat-no" title="statement not covered" >  const billAccount = new Map([...H.invoices, ...H.downPayments].map((b) =&gt; [b.id, b.controlAccount]));</span>
+<span class="cstat-no" title="statement not covered" >  for (const p of H.payments.filter((x) =&gt; posted(x.status)))</span>
+<span class="cstat-no" title="statement not covered" >    doc({</span>
+<span class="cstat-no" title="statement not covered" >      id: `je-ps-${p.id}`, date: p.postingDate, origin: 'PS', originNo: String(p.docNum), originId: p.id, remarks: p.journalRemark,</span>
+<span class="cstat-no" title="statement not covered" >      partnerId: p.vendorId, controlAccount: p.controlAccount, lines: paymentJournal(p, p.fxRate || 1, (id) =&gt; billAccount.get(id) ?? ''),</span>
+<span class="cstat-no" title="statement not covered" >    });</span>
+<span class="cstat-no" title="statement not covered" >  for (const r of H.returns.filter((x) =&gt; posted(x.status)))</span>
+<span class="cstat-no" title="statement not covered" >    doc({ id: `je-rd-${r.id}`, date: r.postingDate, origin: 'RD', originNo: String(r.docNum), originId: r.id, remarks: r.journalRemark, lines: returnJournal(r, items, groups) });</span>
+<span class="cstat-no" title="statement not covered" >  for (const m of H.memos.filter((x) =&gt; posted(x.status))) {</span>
+<span class="cstat-no" title="statement not covered" >    const withholding = poWithholding(m, partner.get(m.vendorId), items, TAX, m.postingDate);</span>
+<span class="cstat-no" title="statement not covered" >    doc({</span>
+<span class="cstat-no" title="statement not covered" >      id: `je-pc-${m.id}`, date: m.postingDate, origin: 'PC', originNo: String(m.docNum), originId: m.id, dueDate: m.dueDate, remarks: m.journalRemark,</span>
+<span class="cstat-no" title="statement not covered" >      partnerId: m.vendorId, controlAccount: m.controlAccount, lines: memoJournal(m, m.fxRate || 1, { items, groups, codes, rateOf: rateOf(m.postingDate), withholding }),</span>
+<span class="cstat-no" title="statement not covered" >    });</span>
+<span class="cstat-no" title="statement not covered" >  }</span>
+&nbsp;
+  // Sales
+<span class="cstat-no" title="statement not covered" >  for (const d of withLineCosts(SEED_DELIVERIES)().filter((x) =&gt; posted(x.status)))</span>
+<span class="cstat-no" title="statement not covered" >    doc({ id: `je-dn-${d.id}`, date: d.postingDate, origin: 'DN', originNo: String(d.docNum), originId: d.id, remarks: d.journalRemark, lines: dnJournal(d, items, groups, true) });</span>
+<span class="cstat-no" title="statement not covered" >  for (const a of withLineCosts(SEED_AR_INVOICES)().filter((x) =&gt; posted(x.status))) {</span>
+<span class="cstat-no" title="statement not covered" >    const rates = rateOf(a.postingDate);</span>
+<span class="cstat-no" title="statement not covered" >    doc({</span>
+<span class="cstat-no" title="statement not covered" >      id: `je-in-${a.id}`, date: a.postingDate, origin: 'IN', originNo: String(a.docNum), originId: a.id, dueDate: a.dueDate, remarks: a.journalRemark,</span>
+<span class="cstat-no" title="statement not covered" >      partnerId: a.customerId, controlAccount: a.controlAccount,</span>
+<span class="cstat-no" title="statement not covered" >      lines: arJournal(a, a.fxRate || 1, { itemsById, groups, codes, rateOf: rates, withholding: arWithholding(a, partner.get(a.customerId), items, rates, TAX) }, true),</span>
+<span class="cstat-no" title="statement not covered" >    });</span>
+<span class="cstat-no" title="statement not covered" >  }</span>
+<span class="cstat-no" title="statement not covered" >  for (const p of SEED_INCOMING_PAYMENTS.filter((x) =&gt; posted(x.status)))</span>
+<span class="cstat-no" title="statement not covered" >    doc({</span>
+<span class="cstat-no" title="statement not covered" >      id: `je-rc-${p.id}`, date: p.postingDate, origin: 'RC', originNo: String(p.docNum), originId: p.id, remarks: p.journalRemark, ref2: p.reference,</span>
+<span class="cstat-no" title="statement not covered" >      partnerId: p.customerId, controlAccount: p.controlAccount, lines: incomingJournal(p, p.fxRate || 1),</span>
+<span class="cstat-no" title="statement not covered" >    });</span>
+<span class="cstat-no" title="statement not covered" >  for (const r of withLineCosts(SEED_SALES_RETURNS)().filter((x) =&gt; posted(x.status)))</span>
+<span class="cstat-no" title="statement not covered" >    doc({ id: `je-sr-${r.id}`, date: r.postingDate, origin: 'SR', originNo: String(r.docNum), originId: r.id, remarks: r.journalRemark, lines: srJournal(r, items, groups, true) });</span>
+<span class="cstat-no" title="statement not covered" >  for (const m of withLineCosts(SEED_AR_CREDIT_MEMOS)().filter((x) =&gt; posted(x.status)))</span>
+<span class="cstat-no" title="statement not covered" >    doc({</span>
+<span class="cstat-no" title="statement not covered" >      id: `je-ac-${m.id}`, date: m.postingDate, origin: 'AC', originNo: String(m.docNum), originId: m.id, remarks: m.journalRemark,</span>
+<span class="cstat-no" title="statement not covered" >      partnerId: m.customerId, controlAccount: m.controlAccount, lines: arCmJournal(m, m.fxRate || 1, { items, groups, codes, rateOf: rateOf(m.postingDate) }),</span>
+<span class="cstat-no" title="statement not covered" >    });</span>
+&nbsp;
+  // Inventory (transfers move stock between warehouses on one inventory account: no entry)
+<span class="cstat-no" title="statement not covered" >  for (const p of SEED_POSTINGS.filter((x) =&gt; x.docNum))</span>
+<span class="cstat-no" title="statement not covered" >    doc({ id: `je-iq-${p.id}`, date: p.postingDate, origin: 'IQ', originNo: String(p.docNum), originId: p.id, remarks: p.journalRemark, ref2: p.reference, lines: postingJournal(p, items, groups) });</span>
+&nbsp;
+  // ── Finance entries, month by month ────────────────────────────────────────
+<span class="cstat-no" title="statement not covered" >  const fin = (id: string, date: string, remarks: string, rows: [string, number][], patch: Partial&lt;Posting&gt; = {}) =&gt; {</span>
+<span class="cstat-no" title="statement not covered" >    if (date &lt;= SEED_AS_OF) out.push({ id, date, order: 1, origin: 'JE', originNo: '', originId: '', remarks, lines: lines(rows), ...patch });</span>
+<span class="cstat-no" title="statement not covered" >  };</span>
+  /** Net credit on `accounts` from the entries so far dated within [from, to] (credit positive). */
+<span class="cstat-no" title="statement not covered" >  const creditOn = (accounts: string[], from: string, to: string) =&gt;</span>
+<span class="cstat-no" title="statement not covered" >    round2(out.filter((e) =&gt; e.date &gt;= from &amp;&amp; e.date &lt;= to).reduce((n, e) =&gt; n + e.lines.filter((l) =&gt; accounts.includes(l.account)).reduce((k, l) =&gt; k + l.credit - l.debit, 0), 0));</span>
+&nbsp;
+<span class="cstat-no" title="statement not covered" >  for (const m of SALES_MONTHS) {</span>
+<span class="cstat-no" title="statement not covered" >    const tag = m.month.replace('-', '');</span>
+<span class="cstat-no" title="statement not covered" >    const start = `${m.month}-01`;</span>
+<span class="cstat-no" title="statement not covered" >    const P = PAYROLL;</span>
+<span class="cstat-no" title="statement not covered" >    const eeTotal = P.sssEe + P.phicEe + P.hdmfEe;</span>
+<span class="cstat-no" title="statement not covered" >    fin(`je-lease-${tag}`, start, `Mall leases and CUSA for the stores, ${m.month}`, [['6100', MALL_LEASES], ['2340', -MALL_LEASES * (LEASE_EWT_PCT / 100)], ['1015', -MALL_LEASES * (1 - LEASE_EWT_PCT / 100)]], { ref1: `LEASE-${tag}` });</span>
+<span class="cstat-no" title="statement not covered" >    fin(`je-util-${tag}`, `${m.month}-20`, `Electricity and water billed through the malls, ${m.month}`, [['6110', UTILITIES], ['1015', -UTILITIES]], { ref1: `UTIL-${tag}` });</span>
+<span class="cstat-no" title="statement not covered" >    fin(`je-payroll-${tag}`, m.end, `Payroll, ${m.month}`, [</span>
+<span class="cstat-no" title="statement not covered" >      ['6010', P.gross], ['6030', P.sssEr + P.phicEr + P.hdmfEr],</span>
+<span class="cstat-no" title="statement not covered" >      ['2420', -(P.sssEe + P.sssEr)], ['2430', -(P.phicEe + P.phicEr)], ['2440', -(P.hdmfEe + P.hdmfEr)], ['2350', -P.tax],</span>
+<span class="cstat-no" title="statement not covered" >      ['1015', -(P.gross - eeTotal - P.tax)],</span>
+<span class="cstat-no" title="statement not covered" >    ], { ref1: `PAY-${tag}` });</span>
+<span class="cstat-no" title="statement not covered" >    fin(`je-payrem-${tag}`, nextMonth(m.month, 10), `Withholding on compensation and contributions remitted for ${m.month}`, [</span>
+<span class="cstat-no" title="statement not covered" >      ['2350', P.tax], ['2420', P.sssEe + P.sssEr], ['2430', P.phicEe + P.phicEr], ['2440', P.hdmfEe + P.hdmfEr],</span>
+<span class="cstat-no" title="statement not covered" >      ['1015', -(P.tax + P.sssEe + P.sssEr + P.phicEe + P.phicEr + P.hdmfEe + P.hdmfEr)],</span>
+<span class="cstat-no" title="statement not covered" >    ], { ref1: `REM-${tag}` });</span>
+<span class="cstat-no" title="statement not covered" >    fin(`je-depr-${tag}`, m.end, `Depreciation — store fixtures and IT equipment, ${m.month}`, DEPRECIATION, { transCode: 'DEPR', ref1: `DEP-${tag}` });</span>
+    // Banking the stores' takings: the month's POS collection.
+<span class="cstat-no" title="statement not covered" >    const pos = SEED_INCOMING_PAYMENTS.find((p) =&gt; p.id === `rc-pos-${tag}`);</span>
+<span class="cstat-no" title="statement not covered" >    if (pos) {</span>
+<span class="cstat-no" title="statement not covered" >      const cash = pos.means.cash.amount;</span>
+<span class="cstat-no" title="statement not covered" >      const cards = round2(pos.means.cards.reduce((n, c) =&gt; n + c.amount, 0));</span>
+<span class="cstat-no" title="statement not covered" >      const fee = round2(cards * (CARD_FEE_PCT / 100));</span>
+<span class="cstat-no" title="statement not covered" >      out.push({ id: `je-deposit-${tag}`, date: m.end, order: 2, origin: 'JE', originNo: '', originId: '', remarks: `Store cash banked, ${m.month}`, ref1: `DEP-CASH-${tag}`, lines: lines([['1015', cash], ['1012', -cash]]) });</span>
+<span class="cstat-no" title="statement not covered" >      fin(`je-cards-${tag}`, nextMonth(m.month, 3), `Card settlements for ${m.month}, less the acquirer's fee`, [['1015', cards - fee], ['6220', fee], ['1130', -cards]], { ref1: `CARDS-${tag}` });</span>
+<span class="cstat-no" title="statement not covered" >    }</span>
+<span class="cstat-no" title="statement not covered" >  }</span>
+&nbsp;
+  // Dollars bought for each payment from the USD account, the same day.
+<span class="cstat-no" title="statement not covered" >  for (const p of H.payments.filter((x) =&gt; posted(x.status) &amp;&amp; x.means.transfer.account === '1018' &amp;&amp; x.means.transfer.amount &gt; 0)) {</span>
+<span class="cstat-no" title="statement not covered" >    const php = round2(p.means.transfer.amount * (p.fxRate || 1));</span>
+<span class="cstat-no" title="statement not covered" >    out.push({ id: `je-usd-${p.id}`, date: p.postingDate, order: -0.5, origin: 'JE', originNo: '', originId: '', remarks: `Dollars bought for the payment to ${p.payeeName}`, ref1: `FX-${p.postingDate.replace(/-/g, '')}`, lines: lines([['1018', php], ['1015', -php]]) });</span>
+<span class="cstat-no" title="statement not covered" >  }</span>
+&nbsp;
+  // Withholding taken each month (EWT, final tax), remitted on the 10th of the next — from what's posted so far.
+<span class="cstat-no" title="statement not covered" >  for (const m of SALES_MONTHS) {</span>
+<span class="cstat-no" title="statement not covered" >    const due = round2(creditOn(['2340'], `${m.month}-01`, m.end));</span>
+<span class="cstat-no" title="statement not covered" >    const fwt = round2(creditOn(['2345'], `${m.month}-01`, m.end));</span>
+<span class="cstat-no" title="statement not covered" >    fin(`je-ewt-${m.month.replace('-', '')}`, nextMonth(m.month, 10), `Withholding taxes remitted for ${m.month} (BIR 0619-E / 0619-F)`, [['2340', due], ['2345', fwt], ['1015', -(due + fwt)]], { ref1: `WT-${m.month.replace('-', '')}` });</span>
+<span class="cstat-no" title="statement not covered" >  }</span>
+  // VAT, quarterly: output less input for the quarter, paid on the 25th after it.
+<span class="cstat-no" title="statement not covered" >  for (const [q, from, to, pay] of [['Q1', '2026-01-01', '2026-03-31', '2026-04-25'], ['Q2', '2026-04-01', '2026-06-30', '2026-07-25'], ['Q3', '2026-07-01', '2026-09-30', '2026-10-25']] as const) {</span>
+<span class="cstat-no" title="statement not covered" >    const output = creditOn(['2310'], from, to);</span>
+<span class="cstat-no" title="statement not covered" >    const input = -creditOn(['1410', '1420', '1430'], from, to);</span>
+<span class="cstat-no" title="statement not covered" >    const inputBy = (a: string) =&gt; -creditOn([a], from, to);</span>
+<span class="cstat-no" title="statement not covered" >    if (output - input &gt; 0)</span>
+<span class="cstat-no" title="statement not covered" >      fin(`je-vat-${q}`, pay, `VAT for ${q} 2026 (BIR 2550Q)`, [['2310', output], ['1410', -inputBy('1410')], ['1420', -inputBy('1420')], ['1430', -inputBy('1430')], ['1015', -(output - input)]], { ref1: `VAT-${q}-2026` });</span>
+<span class="cstat-no" title="statement not covered" >  }</span>
+&nbsp;
+  // Hand-written entries that stay (the September rent accrual and its reversal).
+<span class="cstat-no" title="statement not covered" >  const hand = SEED_JOURNAL_ENTRIES;</span>
+&nbsp;
+  // ── Opening balances ───────────────────────────────────────────────────────
+<span class="cstat-no" title="statement not covered" >  const opening = new Map&lt;string, number&gt;();</span>
+<span class="cstat-no" title="statement not covered" >  const add = (account: string, n: number) =&gt; opening.set(account, round2((opening.get(account) ?? 0) + n));</span>
+<span class="cstat-no" title="statement not covered" >  const itemById = new Map(items.map((i) =&gt; [i.id, i]));</span>
+<span class="cstat-no" title="statement not covered" >  for (const o of stockHistory().opening) add(inventoryAccountFor(itemById.get(o.itemId)!, o.warehouse, groups), o.qty * o.unitCost);</span>
+<span class="cstat-no" title="statement not covered" >  for (const [a, n] of OPENING_FIXED) add(a, n);</span>
+  // Cash: enough that no account runs below its floor.
+<span class="cstat-no" title="statement not covered" >  const all = [...out.map((e) =&gt; ({ date: e.date, order: e.order, lines: e.lines })), ...hand.map((e) =&gt; ({ date: e.postingDate, order: 1, lines: e.lines }))].sort((a, b) =&gt; a.date.localeCompare(b.date) || a.order - b.order);</span>
+<span class="cstat-no" title="statement not covered" >  for (const account of CASH) {</span>
+<span class="cstat-no" title="statement not covered" >    let run = 0;</span>
+<span class="cstat-no" title="statement not covered" >    let low = 0;</span>
+<span class="cstat-no" title="statement not covered" >    for (const e of all) {</span>
+<span class="cstat-no" title="statement not covered" >      for (const l of e.lines) if (l.account === account) run += l.debit - l.credit;</span>
+<span class="cstat-no" title="statement not covered" >      low = Math.min(low, run);</span>
+<span class="cstat-no" title="statement not covered" >    }</span>
+<span class="cstat-no" title="statement not covered" >    add(account, Math.ceil((CASH_FLOOR[account] - low) / 1000) * 1000);</span>
+<span class="cstat-no" title="statement not covered" >  }</span>
+  // Retained earnings take the difference.
+<span class="cstat-no" title="statement not covered" >  add('3100', -round2([...opening.values()].reduce((n, v) =&gt; n + v, 0)));</span>
+<span class="cstat-no" title="statement not covered" >  const openingEntry: Posting = {</span>
+<span class="cstat-no" title="statement not covered" >    id: 'je-opening', date: BOOKS_OPEN, order: -1, origin: 'JE', originNo: '', originId: '', remarks: 'Opening balances carried forward from the FY2025 closing balance sheet', ref1: 'OB-2026',</span>
+<span class="cstat-no" title="statement not covered" >    lines: lines([...opening.entries()].sort(([a], [b]) =&gt; a.localeCompare(b))),</span>
+<span class="cstat-no" title="statement not covered" >  };</span>
+&nbsp;
+  // ── Number and shape them ─────────────────────────────────────────────────
+<span class="cstat-no" title="statement not covered" >  const problems: string[] = [];</span>
+<span class="cstat-no" title="statement not covered" >  const entries = [</span>
+<span class="cstat-no" title="statement not covered" >    openingEntry,</span>
+<span class="cstat-no" title="statement not covered" >    ...out,</span>
+<span class="cstat-no" title="statement not covered" >  ]</span>
+<span class="cstat-no" title="statement not covered" >    .filter((e) =&gt; e.lines.length)</span>
+<span class="cstat-no" title="statement not covered" >    .map((e): JournalEntry &amp; { order: number } =&gt; ({</span>
+<span class="cstat-no" title="statement not covered" >      ...blankJournalEntry(e.date),</span>
+<span class="cstat-no" title="statement not covered" >      id: e.id,</span>
+<span class="cstat-no" title="statement not covered" >      order: e.order,</span>
+<span class="cstat-no" title="statement not covered" >      dueDate: e.dueDate || e.date,</span>
+<span class="cstat-no" title="statement not covered" >      origin: e.origin,</span>
+<span class="cstat-no" title="statement not covered" >      originNo: e.originNo,</span>
+<span class="cstat-no" title="statement not covered" >      originId: e.originId,</span>
+<span class="cstat-no" title="statement not covered" >      remarks: e.remarks,</span>
+<span class="cstat-no" title="statement not covered" >      ref1: e.ref1 ?? '',</span>
+<span class="cstat-no" title="statement not covered" >      ref2: e.ref2 ?? '',</span>
+<span class="cstat-no" title="statement not covered" >      transCode: e.transCode ?? '',</span>
+<span class="cstat-no" title="statement not covered" >      lines: e.lines.map((l, i) =&gt;</span>
+<span class="cstat-no" title="statement not covered" >        withAccountDefaults(</span>
+<span class="cstat-no" title="statement not covered" >          newJeLine({ id: `${e.id}-${i + 1}`, account: l.account, debit: l.debit, credit: l.credit, partnerId: e.partnerId &amp;&amp; l.account === e.controlAccount ? e.partnerId : '' }),</span>
+<span class="cstat-no" title="statement not covered" >          SEED_ACCOUNTS.find((a) =&gt; a.code === l.account),</span>
+<span class="cstat-no" title="statement not covered" >        ),</span>
+<span class="cstat-no" title="statement not covered" >      ),</span>
+<span class="cstat-no" title="statement not covered" >    }));</span>
+<span class="cstat-no" title="statement not covered" >  const seeded = [...entries, ...hand.map((e) =&gt; ({ ...e, order: 1 }))]</span>
+<span class="cstat-no" title="statement not covered" >    .sort((a, b) =&gt; a.postingDate.localeCompare(b.postingDate) || a.order - b.order || a.id.localeCompare(b.id))</span>
+<span class="cstat-no" title="statement not covered" >    .map(({ order: _o, ...e }, n) =&gt; ({ ...e, number: n + 1, transNo: n + 1 }));</span>
+<span class="cstat-no" title="statement not covered" >  for (const e of seeded) {</span>
+<span class="cstat-no" title="statement not covered" >    const d = round2(e.lines.reduce((k, l) =&gt; k + l.debit, 0));</span>
+<span class="cstat-no" title="statement not covered" >    const c = round2(e.lines.reduce((k, l) =&gt; k + l.credit, 0));</span>
+<span class="cstat-no" title="statement not covered" >    if (Math.abs(d - c) &gt; 0.005) problems.push(`${e.id}: debits ${d} ≠ credits ${c}`);</span>
+<span class="cstat-no" title="statement not covered" >  }</span>
+  // A reversal names the entry it reverses by number: renumbered above.
+<span class="cstat-no" title="statement not covered" >  const numberOf = new Map(seeded.map((e) =&gt; [e.id, e.number]));</span>
+<span class="cstat-no" title="statement not covered" >  const named = seeded.map((e) =&gt; (e.reverses ? { ...e, remarks: e.remarks.replace(/^Reversal of \d+/, `Reversal of ${numberOf.get(e.reverses)}`) } : e));</span>
+<span class="cstat-no" title="statement not covered" >  return { entries: named, problems };</span>
+<span class="cstat-no" title="statement not covered" >}</span>
+&nbsp;
+let built: Ledger | undefined;
+/** The seeded ledger, built on first use. */
+export const seededLedger = <span class="fstat-no" title="function not covered" >(): Ledger =&gt; (built ??= build());</span>
+&nbsp;</pre></td></tr></table></pre>
+
+                <div class='push'></div><!-- for sticky footer -->
+            </div><!-- /wrapper -->
+            <div class='footer quiet pad2 space-top1 center small'>
+                Code coverage generated by
+                <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
+                at 2026-10-26T12:06:48.073Z
+            </div>
+        <script src="../prettify.js"></script>
+        <script>
+            window.onload = function () {
+                prettyPrint();
+            };
+        </script>
+        <script src="../sorter.js"></script>
+        <script src="../block-navigation.js"></script>
+    </body>
+</html>
+    

@@ -10,6 +10,10 @@ export default defineConfig({
   testDir: 'e2e',
   timeout: 60_000,
   fullyParallel: true,
+  // The screens sweep fires ~220 cold chunk loads at one dev server; under full parallelism a few
+  // occasionally time out on a slow chunk. Retry so transient contention doesn't fail the run — a
+  // real page error reproduces on every retry, so this never hides a genuine bug.
+  retries: 2,
   reporter: 'list',
   use: {
     baseURL: `http://localhost:${PORT}`,

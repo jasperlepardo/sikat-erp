@@ -1,0 +1,397 @@
+
+<!doctype html>
+<html lang="en">
+
+<head>
+    <title>Code coverage report for services/journalVouchers.ts</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="../prettify.css" />
+    <link rel="stylesheet" href="../base.css" />
+    <link rel="shortcut icon" type="image/x-icon" href="../favicon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style type='text/css'>
+        .coverage-summary .sorter {
+            background-image: url(../sort-arrow-sprite.png);
+        }
+    </style>
+</head>
+    
+<body>
+<div class='wrapper'>
+    <div class='pad1'>
+        <h1><a href="../index.html">All files</a> / <a href="index.html">services</a> journalVouchers.ts</h1>
+        <div class='clearfix'>
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">32% </span>
+                <span class="quiet">Statements</span>
+                <span class='fraction'>24/75</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">100% </span>
+                <span class="quiet">Branches</span>
+                <span class='fraction'>17/17</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">40% </span>
+                <span class="quiet">Functions</span>
+                <span class='fraction'>4/10</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">32% </span>
+                <span class="quiet">Lines</span>
+                <span class='fraction'>24/75</span>
+            </div>
+        
+            
+        </div>
+        <p class="quiet">
+            Press <em>n</em> or <em>j</em> to go to the next uncovered block, <em>b</em>, <em>p</em> or <em>k</em> for the previous block.
+        </p>
+        <template id="filterTemplate">
+            <div class="quiet">
+                Filter:
+                <input type="search" id="fileSearch">
+            </div>
+        </template>
+    </div>
+    <div class='status-line low'></div>
+    <pre><table class="coverage">
+<tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
+<a name='L2'></a><a href='#L2'>2</a>
+<a name='L3'></a><a href='#L3'>3</a>
+<a name='L4'></a><a href='#L4'>4</a>
+<a name='L5'></a><a href='#L5'>5</a>
+<a name='L6'></a><a href='#L6'>6</a>
+<a name='L7'></a><a href='#L7'>7</a>
+<a name='L8'></a><a href='#L8'>8</a>
+<a name='L9'></a><a href='#L9'>9</a>
+<a name='L10'></a><a href='#L10'>10</a>
+<a name='L11'></a><a href='#L11'>11</a>
+<a name='L12'></a><a href='#L12'>12</a>
+<a name='L13'></a><a href='#L13'>13</a>
+<a name='L14'></a><a href='#L14'>14</a>
+<a name='L15'></a><a href='#L15'>15</a>
+<a name='L16'></a><a href='#L16'>16</a>
+<a name='L17'></a><a href='#L17'>17</a>
+<a name='L18'></a><a href='#L18'>18</a>
+<a name='L19'></a><a href='#L19'>19</a>
+<a name='L20'></a><a href='#L20'>20</a>
+<a name='L21'></a><a href='#L21'>21</a>
+<a name='L22'></a><a href='#L22'>22</a>
+<a name='L23'></a><a href='#L23'>23</a>
+<a name='L24'></a><a href='#L24'>24</a>
+<a name='L25'></a><a href='#L25'>25</a>
+<a name='L26'></a><a href='#L26'>26</a>
+<a name='L27'></a><a href='#L27'>27</a>
+<a name='L28'></a><a href='#L28'>28</a>
+<a name='L29'></a><a href='#L29'>29</a>
+<a name='L30'></a><a href='#L30'>30</a>
+<a name='L31'></a><a href='#L31'>31</a>
+<a name='L32'></a><a href='#L32'>32</a>
+<a name='L33'></a><a href='#L33'>33</a>
+<a name='L34'></a><a href='#L34'>34</a>
+<a name='L35'></a><a href='#L35'>35</a>
+<a name='L36'></a><a href='#L36'>36</a>
+<a name='L37'></a><a href='#L37'>37</a>
+<a name='L38'></a><a href='#L38'>38</a>
+<a name='L39'></a><a href='#L39'>39</a>
+<a name='L40'></a><a href='#L40'>40</a>
+<a name='L41'></a><a href='#L41'>41</a>
+<a name='L42'></a><a href='#L42'>42</a>
+<a name='L43'></a><a href='#L43'>43</a>
+<a name='L44'></a><a href='#L44'>44</a>
+<a name='L45'></a><a href='#L45'>45</a>
+<a name='L46'></a><a href='#L46'>46</a>
+<a name='L47'></a><a href='#L47'>47</a>
+<a name='L48'></a><a href='#L48'>48</a>
+<a name='L49'></a><a href='#L49'>49</a>
+<a name='L50'></a><a href='#L50'>50</a>
+<a name='L51'></a><a href='#L51'>51</a>
+<a name='L52'></a><a href='#L52'>52</a>
+<a name='L53'></a><a href='#L53'>53</a>
+<a name='L54'></a><a href='#L54'>54</a>
+<a name='L55'></a><a href='#L55'>55</a>
+<a name='L56'></a><a href='#L56'>56</a>
+<a name='L57'></a><a href='#L57'>57</a>
+<a name='L58'></a><a href='#L58'>58</a>
+<a name='L59'></a><a href='#L59'>59</a>
+<a name='L60'></a><a href='#L60'>60</a>
+<a name='L61'></a><a href='#L61'>61</a>
+<a name='L62'></a><a href='#L62'>62</a>
+<a name='L63'></a><a href='#L63'>63</a>
+<a name='L64'></a><a href='#L64'>64</a>
+<a name='L65'></a><a href='#L65'>65</a>
+<a name='L66'></a><a href='#L66'>66</a>
+<a name='L67'></a><a href='#L67'>67</a>
+<a name='L68'></a><a href='#L68'>68</a>
+<a name='L69'></a><a href='#L69'>69</a>
+<a name='L70'></a><a href='#L70'>70</a>
+<a name='L71'></a><a href='#L71'>71</a>
+<a name='L72'></a><a href='#L72'>72</a>
+<a name='L73'></a><a href='#L73'>73</a>
+<a name='L74'></a><a href='#L74'>74</a>
+<a name='L75'></a><a href='#L75'>75</a>
+<a name='L76'></a><a href='#L76'>76</a>
+<a name='L77'></a><a href='#L77'>77</a>
+<a name='L78'></a><a href='#L78'>78</a>
+<a name='L79'></a><a href='#L79'>79</a>
+<a name='L80'></a><a href='#L80'>80</a>
+<a name='L81'></a><a href='#L81'>81</a>
+<a name='L82'></a><a href='#L82'>82</a>
+<a name='L83'></a><a href='#L83'>83</a>
+<a name='L84'></a><a href='#L84'>84</a>
+<a name='L85'></a><a href='#L85'>85</a>
+<a name='L86'></a><a href='#L86'>86</a>
+<a name='L87'></a><a href='#L87'>87</a>
+<a name='L88'></a><a href='#L88'>88</a>
+<a name='L89'></a><a href='#L89'>89</a>
+<a name='L90'></a><a href='#L90'>90</a>
+<a name='L91'></a><a href='#L91'>91</a>
+<a name='L92'></a><a href='#L92'>92</a>
+<a name='L93'></a><a href='#L93'>93</a>
+<a name='L94'></a><a href='#L94'>94</a>
+<a name='L95'></a><a href='#L95'>95</a>
+<a name='L96'></a><a href='#L96'>96</a>
+<a name='L97'></a><a href='#L97'>97</a>
+<a name='L98'></a><a href='#L98'>98</a>
+<a name='L99'></a><a href='#L99'>99</a>
+<a name='L100'></a><a href='#L100'>100</a>
+<a name='L101'></a><a href='#L101'>101</a>
+<a name='L102'></a><a href='#L102'>102</a>
+<a name='L103'></a><a href='#L103'>103</a>
+<a name='L104'></a><a href='#L104'>104</a>
+<a name='L105'></a><a href='#L105'>105</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { SEED_JOURNAL_VOUCHERS, newVoucherEntry, type JournalVoucher, type VoucherEntry, type VoucherStatus } from '../mocks/journalVouchers';
+import { JePostError, addJournalEntry, jeNumber, withAutoTax, type JeInput } from './journalEntries';
+import { taxCodes } from './masterData';
+import { createCollection } from './store';
+&nbsp;
+const vouchers = createCollection&lt;JournalVoucher&gt;('sikat-erp:journal-vouchers', SEED_JOURNAL_VOUCHERS, 'jv');
+&nbsp;
+export const listVouchers = vouchers.list;
+export const getVoucher = vouchers.get;
+&nbsp;
+/** Open while any entry (or none yet) waits to post; Closed once every entry is posted. */
+export const voucherStatus = (v: Pick&lt;JournalVoucher, 'entries'&gt;): VoucherStatus =&gt;
+  v.entries.length &amp;&amp; v.entries.every((e) =&gt; e.entryStatus === 'Closed') ? 'Closed' : 'Open';
+&nbsp;
+export const hasPosted = (v: Pick&lt;JournalVoucher, 'entries'&gt;) =&gt; v.entries.some((e) =&gt; e.entryStatus === 'Closed');
+&nbsp;
+/** Open, Partly posted (some entries posted, others still open) or Closed. */
+export function voucherState(v: Pick&lt;JournalVoucher, 'entries'&gt;) {
+  const status = voucherStatus(v);
+  if (status === 'Closed') return { label: 'Closed', intent: 'default' as const };
+  return hasPosted(v) ? { label: 'Partly posted', intent: 'warning' as const } : { label: 'Open', intent: 'success' as const };
+}
+&nbsp;
+export { newVoucherEntry };
+&nbsp;
+const nextTransNo = <span class="fstat-no" title="function not covered" >(v: Pick&lt;JournalVoucher, 'entries'&gt;) =&gt; Math.max(0, ...v.entries.map((e) =&gt; e.transNo)) + 1;</span>
+&nbsp;
+/**
+ * Save an entry into its voucher — or into a new voucher (`voucherId` 'new'), as "Add Journal
+ * Entry to New Voucher". No G/L impact; it may be unbalanced. Posted entries can't change.
+ */
+<span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >export async function saveVoucherEntry(voucherId: string, entry: VoucherEntry, by: string, today: string) {</span></span>
+<span class="cstat-no" title="statement not covered" >  if (entry.entryStatus === 'Closed') throw new JePostError('This entry is posted — reverse its journal entry instead.');</span>
+<span class="cstat-no" title="statement not covered" >  let voucher: Omit&lt;JournalVoucher, 'id'&gt; &amp; { id?: string };</span>
+<span class="cstat-no" title="statement not covered" >  if (voucherId === 'new') {</span>
+<span class="cstat-no" title="statement not covered" >    const all = await vouchers.list();</span>
+<span class="cstat-no" title="statement not covered" >    voucher = { voucherNo: Math.max(0, ...all.map((v) =&gt; v.voucherNo)) + 1, createdOn: today, createdBy: by, entries: [] };</span>
+<span class="cstat-no" title="statement not covered" >  } else {</span>
+<span class="cstat-no" title="statement not covered" >    const found = await vouchers.get(voucherId);</span>
+<span class="cstat-no" title="statement not covered" >    if (!found) throw new JePostError('This voucher no longer exists.');</span>
+<span class="cstat-no" title="statement not covered" >    voucher = found;</span>
+<span class="cstat-no" title="statement not covered" >  }</span>
+<span class="cstat-no" title="statement not covered" >  const exists = voucher.entries.some((e) =&gt; e.id === entry.id);</span>
+<span class="cstat-no" title="statement not covered" >  const saved = exists ? entry : { ...entry, transNo: nextTransNo(voucher) };</span>
+<span class="cstat-no" title="statement not covered" >  const v = await vouchers.save({ ...voucher, entries: exists ? voucher.entries.map((e) =&gt; (e.id === entry.id ? saved : e)) : [...voucher.entries, saved] });</span>
+<span class="cstat-no" title="statement not covered" >  return { voucher: v, entry: saved };</span>
+<span class="cstat-no" title="statement not covered" >}</span>
+&nbsp;
+/** Delete unposted entries. Posted ones stay: their journal entries are permanent. */
+<span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >export async function deleteVoucherEntries(voucherId: string, entryIds: string[]) {</span></span>
+<span class="cstat-no" title="statement not covered" >  const v = await vouchers.get(voucherId);</span>
+<span class="cstat-no" title="statement not covered" >  if (!v) throw new JePostError('This voucher no longer exists.');</span>
+<span class="cstat-no" title="statement not covered" >  return vouchers.save({ ...v, entries: v.entries.filter((e) =&gt; !entryIds.includes(e.id) || e.entryStatus === 'Closed') });</span>
+<span class="cstat-no" title="statement not covered" >}</span>
+&nbsp;
+/** Delete a voucher that has nothing posted. */
+<span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >export async function deleteVoucher(id: string) {</span></span>
+<span class="cstat-no" title="statement not covered" >  const v = await vouchers.get(id);</span>
+<span class="cstat-no" title="statement not covered" >  if (v &amp;&amp; hasPosted(v)) throw new JePostError('Entries in this voucher are posted — delete only the open ones.');</span>
+<span class="cstat-no" title="statement not covered" >  await vouchers.remove(id);</span>
+<span class="cstat-no" title="statement not covered" >}</span>
+&nbsp;
+/** The journal entry a voucher entry posts as: same fields, Automatic Tax rows included, empty rows dropped. */
+export function toJournalEntry(e: VoucherEntry, codes: Parameters&lt;typeof withAutoTax&gt;[1]): JeInput {
+  const { id: _id, entryStatus: _s, journalEntryId: _j, ...fields } = e;
+  const lines = withAutoTax(e, codes).filter((l) =&gt; l.taxOf || l.account || l.partnerId || l.debit || l.credit);
+  return { ...fields, number: 0, transNo: 0, status: 'Posted', reversedBy: '', reverses: '', lines };
+}
+&nbsp;
+/**
+ * Post entries, in Trans. No. order. Each becomes a manual journal entry through the journal
+ * entry rules (balanced, open period, valid reversal). An entry that's refused stops the run:
+ * the ones before it stay posted, it and the rest stay open, and the error names it.
+ */
+<span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >export async function postVoucherEntries(voucherId: string, entryIds: string[]) {</span></span>
+<span class="cstat-no" title="statement not covered" >  const codes = await taxCodes.list();</span>
+<span class="cstat-no" title="statement not covered" >  let v = await vouchers.get(voucherId);</span>
+<span class="cstat-no" title="statement not covered" >  if (!v) throw new JePostError('This voucher no longer exists.');</span>
+<span class="cstat-no" title="statement not covered" >  const picked = v.entries.filter((e) =&gt; entryIds.includes(e.id) &amp;&amp; e.entryStatus === 'Open').sort((a, b) =&gt; a.transNo - b.transNo);</span>
+<span class="cstat-no" title="statement not covered" >  const posted: { transNo: number; number: string }[] = [];</span>
+<span class="cstat-no" title="statement not covered" >  for (const e of picked) {</span>
+<span class="cstat-no" title="statement not covered" >    try {</span>
+<span class="cstat-no" title="statement not covered" >      const je = await addJournalEntry(toJournalEntry(e, codes));</span>
+<span class="cstat-no" title="statement not covered" >      const done: VoucherEntry = { ...e, entryStatus: 'Closed', journalEntryId: je.id, number: je.number, lines: je.lines };</span>
+<span class="cstat-no" title="statement not covered" >      v = await vouchers.save({ ...v, entries: v.entries.map((x) =&gt; (x.id === e.id ? done : x)) });</span>
+<span class="cstat-no" title="statement not covered" >      posted.push({ transNo: e.transNo, number: jeNumber(je) });</span>
+<span class="cstat-no" title="statement not covered" >    } catch (err) {</span>
+<span class="cstat-no" title="statement not covered" >      if (!(err instanceof JePostError)) throw err;</span>
+<span class="cstat-no" title="statement not covered" >      throw new VoucherPostError(e.id, `Entry ${e.transNo}: ${err.message}`, posted);</span>
+<span class="cstat-no" title="statement not covered" >    }</span>
+<span class="cstat-no" title="statement not covered" >  }</span>
+<span class="cstat-no" title="statement not covered" >  return { voucher: v, posted };</span>
+<span class="cstat-no" title="statement not covered" >}</span>
+&nbsp;
+/** A post stopped at one entry; `posted` lists the ones that went through before it. */
+export class VoucherPostError extends JePostError {
+<span class="fstat-no" title="function not covered" >  constructor(</span>
+<span class="cstat-no" title="statement not covered" >    readonly entryId: string,</span>
+<span class="cstat-no" title="statement not covered" >    message: string,</span>
+<span class="cstat-no" title="statement not covered" >    readonly posted: { transNo: number; number: string }[],</span>
+<span class="cstat-no" title="statement not covered" >  ) {</span>
+<span class="cstat-no" title="statement not covered" >    super(message);</span>
+<span class="cstat-no" title="statement not covered" >  }</span>
+}
+&nbsp;</pre></td></tr></table></pre>
+
+                <div class='push'></div><!-- for sticky footer -->
+            </div><!-- /wrapper -->
+            <div class='footer quiet pad2 space-top1 center small'>
+                Code coverage generated by
+                <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
+                at 2026-10-26T12:06:48.073Z
+            </div>
+        <script src="../prettify.js"></script>
+        <script>
+            window.onload = function () {
+                prettyPrint();
+            };
+        </script>
+        <script src="../sorter.js"></script>
+        <script src="../block-navigation.js"></script>
+    </body>
+</html>
+    

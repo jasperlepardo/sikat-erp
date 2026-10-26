@@ -1,0 +1,514 @@
+
+<!doctype html>
+<html lang="en">
+
+<head>
+    <title>Code coverage report for mocks/birForms.ts</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="../prettify.css" />
+    <link rel="stylesheet" href="../base.css" />
+    <link rel="shortcut icon" type="image/x-icon" href="../favicon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style type='text/css'>
+        .coverage-summary .sorter {
+            background-image: url(../sort-arrow-sprite.png);
+        }
+    </style>
+</head>
+    
+<body>
+<div class='wrapper'>
+    <div class='pad1'>
+        <h1><a href="../index.html">All files</a> / <a href="index.html">mocks</a> birForms.ts</h1>
+        <div class='clearfix'>
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">100% </span>
+                <span class="quiet">Statements</span>
+                <span class='fraction'>91/91</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">100% </span>
+                <span class="quiet">Branches</span>
+                <span class='fraction'>4/4</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">100% </span>
+                <span class="quiet">Functions</span>
+                <span class='fraction'>4/4</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">100% </span>
+                <span class="quiet">Lines</span>
+                <span class='fraction'>91/91</span>
+            </div>
+        
+            
+        </div>
+        <p class="quiet">
+            Press <em>n</em> or <em>j</em> to go to the next uncovered block, <em>b</em>, <em>p</em> or <em>k</em> for the previous block.
+        </p>
+        <template id="filterTemplate">
+            <div class="quiet">
+                Filter:
+                <input type="search" id="fileSearch">
+            </div>
+        </template>
+    </div>
+    <div class='status-line high'></div>
+    <pre><table class="coverage">
+<tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
+<a name='L2'></a><a href='#L2'>2</a>
+<a name='L3'></a><a href='#L3'>3</a>
+<a name='L4'></a><a href='#L4'>4</a>
+<a name='L5'></a><a href='#L5'>5</a>
+<a name='L6'></a><a href='#L6'>6</a>
+<a name='L7'></a><a href='#L7'>7</a>
+<a name='L8'></a><a href='#L8'>8</a>
+<a name='L9'></a><a href='#L9'>9</a>
+<a name='L10'></a><a href='#L10'>10</a>
+<a name='L11'></a><a href='#L11'>11</a>
+<a name='L12'></a><a href='#L12'>12</a>
+<a name='L13'></a><a href='#L13'>13</a>
+<a name='L14'></a><a href='#L14'>14</a>
+<a name='L15'></a><a href='#L15'>15</a>
+<a name='L16'></a><a href='#L16'>16</a>
+<a name='L17'></a><a href='#L17'>17</a>
+<a name='L18'></a><a href='#L18'>18</a>
+<a name='L19'></a><a href='#L19'>19</a>
+<a name='L20'></a><a href='#L20'>20</a>
+<a name='L21'></a><a href='#L21'>21</a>
+<a name='L22'></a><a href='#L22'>22</a>
+<a name='L23'></a><a href='#L23'>23</a>
+<a name='L24'></a><a href='#L24'>24</a>
+<a name='L25'></a><a href='#L25'>25</a>
+<a name='L26'></a><a href='#L26'>26</a>
+<a name='L27'></a><a href='#L27'>27</a>
+<a name='L28'></a><a href='#L28'>28</a>
+<a name='L29'></a><a href='#L29'>29</a>
+<a name='L30'></a><a href='#L30'>30</a>
+<a name='L31'></a><a href='#L31'>31</a>
+<a name='L32'></a><a href='#L32'>32</a>
+<a name='L33'></a><a href='#L33'>33</a>
+<a name='L34'></a><a href='#L34'>34</a>
+<a name='L35'></a><a href='#L35'>35</a>
+<a name='L36'></a><a href='#L36'>36</a>
+<a name='L37'></a><a href='#L37'>37</a>
+<a name='L38'></a><a href='#L38'>38</a>
+<a name='L39'></a><a href='#L39'>39</a>
+<a name='L40'></a><a href='#L40'>40</a>
+<a name='L41'></a><a href='#L41'>41</a>
+<a name='L42'></a><a href='#L42'>42</a>
+<a name='L43'></a><a href='#L43'>43</a>
+<a name='L44'></a><a href='#L44'>44</a>
+<a name='L45'></a><a href='#L45'>45</a>
+<a name='L46'></a><a href='#L46'>46</a>
+<a name='L47'></a><a href='#L47'>47</a>
+<a name='L48'></a><a href='#L48'>48</a>
+<a name='L49'></a><a href='#L49'>49</a>
+<a name='L50'></a><a href='#L50'>50</a>
+<a name='L51'></a><a href='#L51'>51</a>
+<a name='L52'></a><a href='#L52'>52</a>
+<a name='L53'></a><a href='#L53'>53</a>
+<a name='L54'></a><a href='#L54'>54</a>
+<a name='L55'></a><a href='#L55'>55</a>
+<a name='L56'></a><a href='#L56'>56</a>
+<a name='L57'></a><a href='#L57'>57</a>
+<a name='L58'></a><a href='#L58'>58</a>
+<a name='L59'></a><a href='#L59'>59</a>
+<a name='L60'></a><a href='#L60'>60</a>
+<a name='L61'></a><a href='#L61'>61</a>
+<a name='L62'></a><a href='#L62'>62</a>
+<a name='L63'></a><a href='#L63'>63</a>
+<a name='L64'></a><a href='#L64'>64</a>
+<a name='L65'></a><a href='#L65'>65</a>
+<a name='L66'></a><a href='#L66'>66</a>
+<a name='L67'></a><a href='#L67'>67</a>
+<a name='L68'></a><a href='#L68'>68</a>
+<a name='L69'></a><a href='#L69'>69</a>
+<a name='L70'></a><a href='#L70'>70</a>
+<a name='L71'></a><a href='#L71'>71</a>
+<a name='L72'></a><a href='#L72'>72</a>
+<a name='L73'></a><a href='#L73'>73</a>
+<a name='L74'></a><a href='#L74'>74</a>
+<a name='L75'></a><a href='#L75'>75</a>
+<a name='L76'></a><a href='#L76'>76</a>
+<a name='L77'></a><a href='#L77'>77</a>
+<a name='L78'></a><a href='#L78'>78</a>
+<a name='L79'></a><a href='#L79'>79</a>
+<a name='L80'></a><a href='#L80'>80</a>
+<a name='L81'></a><a href='#L81'>81</a>
+<a name='L82'></a><a href='#L82'>82</a>
+<a name='L83'></a><a href='#L83'>83</a>
+<a name='L84'></a><a href='#L84'>84</a>
+<a name='L85'></a><a href='#L85'>85</a>
+<a name='L86'></a><a href='#L86'>86</a>
+<a name='L87'></a><a href='#L87'>87</a>
+<a name='L88'></a><a href='#L88'>88</a>
+<a name='L89'></a><a href='#L89'>89</a>
+<a name='L90'></a><a href='#L90'>90</a>
+<a name='L91'></a><a href='#L91'>91</a>
+<a name='L92'></a><a href='#L92'>92</a>
+<a name='L93'></a><a href='#L93'>93</a>
+<a name='L94'></a><a href='#L94'>94</a>
+<a name='L95'></a><a href='#L95'>95</a>
+<a name='L96'></a><a href='#L96'>96</a>
+<a name='L97'></a><a href='#L97'>97</a>
+<a name='L98'></a><a href='#L98'>98</a>
+<a name='L99'></a><a href='#L99'>99</a>
+<a name='L100'></a><a href='#L100'>100</a>
+<a name='L101'></a><a href='#L101'>101</a>
+<a name='L102'></a><a href='#L102'>102</a>
+<a name='L103'></a><a href='#L103'>103</a>
+<a name='L104'></a><a href='#L104'>104</a>
+<a name='L105'></a><a href='#L105'>105</a>
+<a name='L106'></a><a href='#L106'>106</a>
+<a name='L107'></a><a href='#L107'>107</a>
+<a name='L108'></a><a href='#L108'>108</a>
+<a name='L109'></a><a href='#L109'>109</a>
+<a name='L110'></a><a href='#L110'>110</a>
+<a name='L111'></a><a href='#L111'>111</a>
+<a name='L112'></a><a href='#L112'>112</a>
+<a name='L113'></a><a href='#L113'>113</a>
+<a name='L114'></a><a href='#L114'>114</a>
+<a name='L115'></a><a href='#L115'>115</a>
+<a name='L116'></a><a href='#L116'>116</a>
+<a name='L117'></a><a href='#L117'>117</a>
+<a name='L118'></a><a href='#L118'>118</a>
+<a name='L119'></a><a href='#L119'>119</a>
+<a name='L120'></a><a href='#L120'>120</a>
+<a name='L121'></a><a href='#L121'>121</a>
+<a name='L122'></a><a href='#L122'>122</a>
+<a name='L123'></a><a href='#L123'>123</a>
+<a name='L124'></a><a href='#L124'>124</a>
+<a name='L125'></a><a href='#L125'>125</a>
+<a name='L126'></a><a href='#L126'>126</a>
+<a name='L127'></a><a href='#L127'>127</a>
+<a name='L128'></a><a href='#L128'>128</a>
+<a name='L129'></a><a href='#L129'>129</a>
+<a name='L130'></a><a href='#L130'>130</a>
+<a name='L131'></a><a href='#L131'>131</a>
+<a name='L132'></a><a href='#L132'>132</a>
+<a name='L133'></a><a href='#L133'>133</a>
+<a name='L134'></a><a href='#L134'>134</a>
+<a name='L135'></a><a href='#L135'>135</a>
+<a name='L136'></a><a href='#L136'>136</a>
+<a name='L137'></a><a href='#L137'>137</a>
+<a name='L138'></a><a href='#L138'>138</a>
+<a name='L139'></a><a href='#L139'>139</a>
+<a name='L140'></a><a href='#L140'>140</a>
+<a name='L141'></a><a href='#L141'>141</a>
+<a name='L142'></a><a href='#L142'>142</a>
+<a name='L143'></a><a href='#L143'>143</a>
+<a name='L144'></a><a href='#L144'>144</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">620x</span>
+<span class="cline-any cline-yes">620x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">/**
+ * BIR forms and returns (Settings › Accounting &amp; Tax › BIR forms), in BIR's own categories (bir.gov.ph ›
+ * BIR Forms). Tax codes link to the return they're filed on, withholding taxes to the forms they're
+ * remitted and certified on. Form numbers and titles are BIR's "List of BIR Forms" (bir.gov.ph, 2026),
+ * verbatim; the category split is ours, as that list has none. Due dates are as of 2026 (TRAIN, CREATE,
+ * EOPT) and come from firm tax calendars and the regulation in `note` ("Deadline source: …"), not BIR text.
+ */
+export type BirFormCategory =
+  | "Application Forms"
+  | "Certificates"
+  | "Documentary Stamp Tax Return"
+  | "Excise Tax Return"
+  | "Income Tax Return"
+  | "Legal Forms"
+  | "Other Forms"
+  | "Payment/Remittance Forms"
+  | "Transfer Tax Return"
+  | "VAT/Percentage Tax Returns";
+export const BIR_FORM_CATEGORIES: BirFormCategory[] = [
+  "Application Forms",
+  "Certificates",
+  "Documentary Stamp Tax Return",
+  "Excise Tax Return",
+  "Income Tax Return",
+  "Legal Forms",
+  "Other Forms",
+  "Payment/Remittance Forms",
+  "Transfer Tax Return",
+  "VAT/Percentage Tax Returns",
+];
+&nbsp;
+/** The id of a seeded BIR form, from its number ("2550Q" → "wf-2550q"). Tax codes and withholding taxes link to forms by id. */
+export const birFormId = (no: string) =&gt; `wf-${no.toLowerCase()}`;
+/** The form number ("2550Q"). */
+export const birFormNo = (f: Pick&lt;BirForm, 'form'&gt;) =&gt; f.form;
+&nbsp;
+export interface BirForm {
+  id: string;
+  /** Form number, e.g. "2550Q". */
+  form: string;
+  description: string;
+  category: BirFormCategory;
+  /** Due date when filed through eFPS; '' where eFPS doesn't apply. */
+  dueEfps: string;
+  /** Due date when filed manually / through eBIRForms. */
+  dueManual: string;
+  /** Legal basis, or why the form is discontinued. */
+  note: string;
+  /** Where the due date was checked. */
+  source: string;
+  active: boolean;
+}
+&nbsp;
+const form = (category: BirFormCategory, no: string, description: string, dueEfps: string, dueManual: string, note: string, source: string): BirForm =&gt; ({
+  id: birFormId(no), form: no, description, category, dueEfps, dueManual, note, source, active: true,
+});
+/** A form BIR no longer uses: kept, inactive, so old references still resolve. */
+const discontinued = (...args: Parameters&lt;typeof form&gt;): BirForm =&gt; ({ ...form(...args), active: false });
+&nbsp;
+export const SEED_BIR_FORMS: BirForm[] = [
+  // Application Forms
+  form("Application Forms", "1900", "Application for Permit to Use Loose-Leaf Books of Accounts / Invoices and Other Accounting Records", "", "Event-driven; no periodic filing deadline - before using loose-leaf books/invoices", "Revised Oct 2025 ENCS per RMC 97-2025; Deadline source: https://www.pwc.com/ph/en/tax/tax-publications/tax-alerts/2025/tax-alert-32.html", "https://www.bir.gov.ph/bir-forms"),
+  form("Application Forms", "1901", "Application for Registration For Self-Employed (Single Proprietor/Professional), Mixed Income Individuals, Non-Resident Alien Engaged in Trade/Business, Estates and Trusts", "", "Event-driven; no periodic filing deadline - before commencement of business / on or before first return; ORUS online available", "Revised Oct 2025 ENCS per RMC 97-2025; Annual Registration Fee (BIR 0605) abolished by EOPT RA 11976; Deadline source: https://www.pwc.com/ph/en/tax/tax-publications/tax-alerts/2025/tax-alert-32.html", "https://www.bir.gov.ph/bir-forms"),
+  form("Application Forms", "1902", "Application for Registration For Individuals Earning Purely Compensation Income (Local and Alien Employee)", "", "Event-driven; no periodic filing deadline - within 10 days from date of employment (filed by employer)", "Revised Oct 2025 ENCS per RMC 97-2025; Deadline source: https://www.pwc.com/ph/en/tax/tax-publications/tax-alerts/2025/tax-alert-32.html", "https://www.bir.gov.ph/bir-forms"),
+  form("Application Forms", "1903", "Application for Registration For Corporations, Partnerships (Taxable/Non-Taxable), Including GAIs, LGUs, Cooperatives and Associations", "", "Event-driven; no periodic filing deadline - before commencement of business / on or before first return", "Revised Oct 2025 ENCS per RMC 97-2025; Deadline source: https://www.pwc.com/ph/en/tax/tax-publications/tax-alerts/2025/tax-alert-32.html", "https://www.bir.gov.ph/bir-forms"),
+  form("Application Forms", "1904", "Application for Registration For One-Time Taxpayer and Persons Registering under E.O. 98 (Securing a TIN to be able to transact with any Government Office)", "", "Event-driven; no periodic filing deadline - before payment of any tax due / before transacting with government office", "Revised Oct 2025 ENCS per RMC 97-2025; Deadline source: https://www.pwc.com/ph/en/tax/tax-publications/tax-alerts/2025/tax-alert-32.html", "https://www.bir.gov.ph/bir-forms"),
+  form("Application Forms", "1905", "Application for Registration Information Update/Correction/Cancellation", "", "Event-driven; no periodic filing deadline - upon change in registration information (e.g., transfer, closure, cancellation of TIN)", "Revised Oct 2025 ENCS per RMC 97-2025; EOPT removed RDO-venue restrictions on filing; Deadline source: https://www.pwc.com/ph/en/tax/tax-publications/tax-alerts/2025/tax-alert-32.html", "https://www.bir.gov.ph/bir-forms"),
+  form("Application Forms", "1906", "Application for Authority to Print Invoices", "", "Event-driven; no periodic filing deadline - before printing of invoices", "Revised Oct 2025 ENCS per RMC 97-2025; 'Receipts' dropped from title after EOPT invoicing rules (RR 7-2024); Deadline source: https://www.pwc.com/ph/en/tax/tax-publications/tax-alerts/2025/tax-alert-32.html", "https://www.bir.gov.ph/bir-forms"),
+  form("Application Forms", "2110", "Application for Abatement or Cancellation of Tax, Penalties and/or Interest Under Rev. Reg. No. ______", "", "Event-driven; no periodic filing deadline; one-time abatement for micro taxpayers (RR 4-2026) until 31 Dec 2026", "RR 13-2001, RMO 3-2017; category not shown in pasted list (assigned Application Forms)", "https://www.bir.gov.ph/bir-forms"),
+  form("Application Forms", "2121", "Application Form for One-Time Abatement for Micro Taxpayers", "", "Application window open until 31 December 2026 (unless extended by the Secretary of Finance)", "RR 4-2026: one-time abatement for micro taxpayers with basic tax/penalties up to P80,000 per year; P5,000 fee paid via 0605. Category not shown in pasted list. Deadline source: https://www.grantthornton.com.ph/insights/articles-and-updates1/tax-notes/prescribing-guidelines-and-procedures-for-the-availment-of-a-one-time-abatement-of-taxes-and-penalties-for-micro-taxpayers-under-rr-no-4-2026/", "https://www.bir.gov.ph/bir-forms"),
+  // Certificates
+  form("Certificates", "2304", "Certificate of Income Payment Not Subject to Withholding Tax (Excluding Compensation Income)", "", "Furnished to payee on or before 31 January of the following year (or upon request)", "Deadline from RR 2-98 practice; not confirmed from BIR text; Deadline source: https://bironlineregistration.org/bir-forms-lists/", "https://www.bir.gov.ph/bir-forms"),
+  form("Certificates", "2306", "Certificate of Final Tax Withheld At Source", "", "Furnished to payee on or before the 20th day following the close of the taxable quarter (or upon request)", "RR 2-98 as amended by RR 11-2018; not confirmed from BIR text; Deadline source: https://bironlineregistration.org/bir-forms-lists/", "https://www.bir.gov.ph/bir-forms"),
+  form("Certificates", "2307", "Certificate of Creditable Tax Withheld At Source", "", "Furnished to payee on or before the 20th day following the close of the taxable quarter (or upon request)", "RR 2-98 Sec. 2.58 as amended by RR 11-2018; withholding obligation timing per RR 4-2024 (EOPT); Deadline source: https://kpmg.com/ph/en/home/insights/2018/09/special-intax-sept2018-issue1-vol1.html", "https://www.bir.gov.ph/bir-forms"),
+  form("Certificates", "2316", "Certificate of Compensation Payment/Tax Withheld For Compensation Payment With or Without Tax Withheld", "", "To employee on or before 31 January of the following year (or on last payment if separated); duplicate copies to BIR on or before 28 February", "RR 2-98 Sec. 2.83 as amended by RR 11-2018; Deadline source: https://kpmg.com/ph/en/home/insights/2018/09/special-intax-sept2018-issue1-vol1.html", "https://www.bir.gov.ph/bir-forms"),
+  // Documentary Stamp Tax Return
+  form("Documentary Stamp Tax Return", "2000", "Monthly Documentary Stamp Tax Declaration/Return", "Within 5 days after the close of the month when the taxable document was made, signed, issued, accepted or transferred", "Within 5 days after the close of the month when the taxable document was made, signed, issued, accepted or transferred", "NIRC Sec. 200(B) as amended by TRAIN; eDST system users; Deadline source: https://www.forvismazars.com/ph/en/insights/tax-deadlines/april-2026-tax-calendar", "https://www.bir.gov.ph/bir-forms"),
+  form("Documentary Stamp Tax Return", "2000-OT", "Documentary Stamp Tax Declaration/Return for One-Time Transactions (Capital Gains Tax, Expanded Withholding Tax and Donor\u2019s Tax)", "", "Within 5 days after the close of the month when the taxable document was made/transaction occurred (e.g., sale of real property, shares)", "NIRC Sec. 200(B); Deadline source: https://www.forvismazars.com/ph/en/insights/tax-deadlines/april-2026-tax-calendar", "https://www.bir.gov.ph/bir-forms"),
+  // Excise Tax Return
+  form("Excise Tax Return", "2200-A", "Excise Tax Return for Alcohol Products", "Before removal from place of production (domestic); before release from customs custody (imports)", "Before removal from place of production (domestic); before release from customs custody (imports)", "NIRC Sec. 130 as amended by TRAIN/RA 11467; Deadline source: https://bironlineregistration.org/bir-forms-lists/", "https://www.bir.gov.ph/bir-forms"),
+  form("Excise Tax Return", "2200-AN", "Excise Tax Return for Automobiles and Non-Essential Goods", "Before removal from place of production (domestic); before release from customs custody (imports)", "Before removal from place of production (domestic); before release from customs custody (imports)", "NIRC Sec. 130; automobile rates per TRAIN; Deadline source: https://bironlineregistration.org/bir-forms-lists/", "https://www.bir.gov.ph/bir-forms"),
+  form("Excise Tax Return", "2200-C", "Excise Tax Return for Cosmetic Procedures", "Within 10 days after the close of the month", "Within 10 days after the close of the month", "TRAIN Sec. 150-B; BIR advisory 2018 (replaced 1620-XC); Deadline source: https://www.grantthornton.com.ph/insights/articles-and-updates1/tax-notes/filing-excise-tax-returns-for-invasive-cosmetic-procedures/", "https://www.bir.gov.ph/bir-forms"),
+  form("Excise Tax Return", "2200-M", "Excise Tax Return for Mineral Products", "Within 15 days after the end of the calendar quarter when products were removed; metallic minerals withheld by buyer: 10th day of following month", "Within 15 days after the end of the calendar quarter when products were removed; metallic minerals withheld by buyer: 10th day of following month", "NIRC Sec. 130(A)(3)/151; Deadline source: https://www.forvismazars.com/ph/en/insights/tax-deadlines/april-2026-tax-calendar", "https://www.bir.gov.ph/bir-forms"),
+  form("Excise Tax Return", "2200-P", "Excise Tax Return for Petroleum Products", "Before removal from place of production (domestic); before release from customs custody (imports)", "Before removal from place of production (domestic); before release from customs custody (imports)", "NIRC Sec. 130/148 as amended by TRAIN; Deadline source: https://bironlineregistration.org/bir-forms-lists/", "https://www.bir.gov.ph/bir-forms"),
+  form("Excise Tax Return", "2200-S", "Excise Tax Return for Sweetened Beverages", "Before removal from place of production (domestic); before release from customs custody (imports)", "Before removal from place of production (domestic); before release from customs custody (imports)", "TRAIN Sec. 150-B; RR 20-2018; Deadline source: https://bironlineregistration.org/bir-forms-lists/", "https://www.bir.gov.ph/bir-forms"),
+  form("Excise Tax Return", "2200-T", "Excise Tax Return for Tobacco, Heated Tobacco, Vapor and Novel Tobacco Products", "Before removal from place of production (domestic); before release from customs custody (imports)", "Before removal from place of production (domestic); before release from customs custody (imports)", "NIRC Sec. 130/144-145 as amended by RA 11346/11467; Deadline source: https://bironlineregistration.org/bir-forms-lists/", "https://www.bir.gov.ph/bir-forms"),
+  // Income Tax Return
+  form("Income Tax Return", "1700", "Annual Income Tax Return For Individuals Earning Purely Compensation Income (Including Non-Business/Non-Profession Related Income)", "On or before 15 April of the following year", "On or before 15 April of the following year", "NIRC Sec. 51; substituted filing (2316) available; OCWs/OFWs exempt from filing under EOPT RR 4-2024; Deadline source: https://www.forvismazars.com/ph/en/insights/tax-deadlines/april-2026-tax-calendar", "https://www.bir.gov.ph/bir-forms"),
+  form("Income Tax Return", "1701", "Annual Income Tax Return For Individuals (including MIXED Income Earner), Estates and Trusts", "On or before 15 April of the following year", "On or before 15 April of the following year", "NIRC Sec. 51; RMC 20-2026 for CY2025 AITR; Deadline source: https://www.forvismazars.com/ph/en/insights/tax-deadlines/april-2026-tax-calendar", "https://www.bir.gov.ph/bir-forms"),
+  form("Income Tax Return", "1701-MS", "Annual Income Tax Return for Individuals Classified as Micro and Small Taxpayers", "On or before 15 April of the following year", "On or before 15 April of the following year", "New (Aug 2024 version) under EOPT micro/small taxpayer rules (RR 8-2024); added to eBIRForms 7.9.6.0 per RMC 36/37-2026; Deadline source: https://www.pwc.com/ph/en/tax/tax-publications/tax-alerts/2026/tax-alert-19.html", "https://www.bir.gov.ph/bir-forms"),
+  form("Income Tax Return", "1701A", "Annual Income Tax Return For Individuals Earning Income PURELY from Business/Profession (Those under the graduated income tax rates with OSD as mode of deduction OR those who opted to avail of the 8% flat income tax rate)", "On or before 15 April of the following year", "On or before 15 April of the following year", "NIRC Sec. 51; Deadline source: https://www.forvismazars.com/ph/en/insights/tax-deadlines/april-2026-tax-calendar", "https://www.bir.gov.ph/bir-forms"),
+  form("Income Tax Return", "1701Q", "Quarterly Income Tax Return For Individuals, Estates and Trusts", "Q1: 15 May; Q2: 15 August; Q3: 15 November", "Q1: 15 May; Q2: 15 August; Q3: 15 November", "NIRC Sec. 74; no Q4 return (covered by annual); Deadline source: https://poorpinoyinvestor.com/bir-forms-download-guide/", "https://www.bir.gov.ph/bir-forms"),
+  form("Income Tax Return", "1702-EX", "Annual Income Tax Return For Corporation, Partnership and Other Non-Individual Taxpayer EXEMPT under the Tax Code, as Amended, [Sec. 30 and those exempted in Sec. 27(C)] and Other Special Laws, with NO Other Taxable Income", "On or before the 15th day of the 4th month following the close of the taxable year", "On or before the 15th day of the 4th month following the close of the taxable year", "NIRC Sec. 77; Deadline source: https://www.forvismazars.com/ph/en/insights/tax-deadlines/april-2026-tax-calendar", "https://www.bir.gov.ph/bir-forms"),
+  form("Income Tax Return", "1702-MX", "Annual Income Tax Return For Corporation, Partnership and Other Non-Individual with MIXED Income Subject to Multiple Income Tax Rates or with Income Subject to SPECIAL/PREFERENTIAL RATE", "On or before the 15th day of the 4th month following the close of the taxable year", "On or before the 15th day of the 4th month following the close of the taxable year", "NIRC Sec. 77; CREATE/CREATE MORE (RA 12066) incentives; Deadline source: https://www.forvismazars.com/ph/en/insights/tax-deadlines/april-2026-tax-calendar", "https://www.bir.gov.ph/bir-forms"),
+  form("Income Tax Return", "1702-RT", "Annual Income Tax Return For Corporation, Partnership and Other Non-Individual Taxpayer Subject Only to REGULAR Income Tax Rate", "On or before the 15th day of the 4th month following the close of the taxable year", "On or before the 15th day of the 4th month following the close of the taxable year", "NIRC Sec. 77; CREATE rates; AFS/attachments via eAFS within 15 days after deadline; Deadline source: https://www.forvismazars.com/ph/en/insights/tax-deadlines/april-2026-tax-calendar", "https://www.bir.gov.ph/bir-forms"),
+  form("Income Tax Return", "1702Q", "Quarterly Income Tax Return for Corporations, Partnerships and Other Non-Individual Taxpayers", "Within 60 days following the close of each of the first 3 quarters of the taxable year", "Within 60 days following the close of each of the first 3 quarters of the taxable year", "NIRC Sec. 75-77; SAWT attached; Deadline source: https://www.forvismazars.com/ph/en/insights/tax-deadlines/april-2026-tax-calendar", "https://www.bir.gov.ph/bir-forms"),
+  form("Income Tax Return", "1706", "Capital Gains Tax Return for Onerous Transfer of Real Property Classified as Capital Asset (both Taxable and Exempt)", "", "Within 30 days following each sale, exchange or disposition of real property", "NIRC Sec. 24(D)/27(D)(5); EOPT file-anywhere (RR 4-2024); Deadline source: https://bironlineregistration.org/bir-forms-lists/", "https://www.bir.gov.ph/bir-forms"),
+  form("Income Tax Return", "1707", "Capital Gains Tax Return for Onerous Transfer of Shares of Stocks Not Traded Through the Local Stock Exchange", "", "Within 30 days after each transaction", "NIRC Sec. 24(C)/27(D)(2); 15% CGT under TRAIN; Deadline source: https://bironlineregistration.org/bir-forms-lists/", "https://www.bir.gov.ph/bir-forms"),
+  form("Income Tax Return", "1707-A", "Annual Capital Gains Tax Return for Onerous Transfer of Shares of Stock Not Traded Through the Local Stock Exchange", "On or before 15 April of the following year (15th day of 4th month after FY end for corporations)", "On or before 15 April of the following year (15th day of 4th month after FY end for corporations)", "NIRC Sec. 24(C); Deadline source: https://www.forvismazars.com/ph/en/insights/tax-deadlines/april-2026-tax-calendar", "https://www.bir.gov.ph/bir-forms"),
+  // Other Forms
+  form("Other Forms", "1709", "Information Return on Transactions with Related Party (Foreign and/or Domestic)", "Attached to the Annual Income Tax Return (same deadline as AITR)", "Attached to the Annual Income Tax Return (same deadline as AITR)", "RR 19-2020 as amended by RR 34-2020; category on BIR site unconfirmed; Deadline source: https://bironlineregistration.org/bir-forms-lists/; category not shown in pasted list", "https://www.bir.gov.ph/bir-forms"),
+  // Payment/Remittance Forms
+  form("Payment/Remittance Forms", "0605", "Payment Form", "Varies by tax type paid (e.g., penalties, deficiency taxes per assessment, advance payments)", "Varies by tax type paid", "Annual Registration Fee (former main use) abolished by EOPT RA 11976 effective 22 Jan 2024; Deadline source: https://www.grantthornton.com.ph/insights/articles-and-updates1/tax-notes/eopt-is-here-revised-rules-on-tax-filing-and-payment-and-matters-affecting-the-declaration-of-taxable-income/", "https://www.bir.gov.ph/bir-forms"),
+  form("Payment/Remittance Forms", "0611-A", "Payment Form Covered by a Letter Notice", "", "Within the period stated in the Letter Notice", "Deadline source: https://bironlineregistration.org/bir-forms-lists/", "https://www.bir.gov.ph/bir-forms"),
+  form("Payment/Remittance Forms", "0613", "Payment Form Under Tax Compliance Verification Drive/Tax Mapping", "", "Upon assessment during TCVD/tax mapping", "Deadline source: https://bironlineregistration.org/bir-forms-lists/", "https://www.bir.gov.ph/bir-forms"),
+  form("Payment/Remittance Forms", "0619-E", "Monthly Remittance Form of Creditable Income Taxes Withheld (Expanded)", "eFPS staggered by industry group (RR 26-2002): Group A 15th, B 14th, C 13th, D 12th, E 11th day following the month; e-payment for all groups on or before the 15th - first two months of each quarter only", "On or before the 10th day of the following month (first two months of each quarter only)", "RR 11-2018 / RMC 26-2018 (replaced monthly 1601-E); Deadline source: https://www.pwc.com/ph/en/client-accounting-services/2026-tax-calendar/2026-february-tax-calendar.html", "https://www.bir.gov.ph/bir-forms"),
+  form("Payment/Remittance Forms", "0619-F", "Monthly Remittance Form of Final Income Taxes Withheld", "eFPS staggered by industry group (RR 26-2002): Group A 15th, B 14th, C 13th, D 12th, E 11th day following the month; e-payment for all groups on or before the 15th - first two months of each quarter only", "On or before the 10th day of the following month (first two months of each quarter only)", "RR 11-2018 / RMC 26-2018 (replaced monthly 1601-F); Deadline source: https://www.pwc.com/ph/en/client-accounting-services/2026-tax-calendar/2026-february-tax-calendar.html", "https://www.bir.gov.ph/bir-forms"),
+  form("Payment/Remittance Forms", "0620", "Monthly Remittance Form of Tax Withheld on the Amount Withdrawn from the Decedent's Deposit Account", "On or before the 10th day of the following month (first two months of each quarter)", "On or before the 10th day of the following month (first two months of each quarter)", "TRAIN Sec. 97 (6% final tax on withdrawals); Bank Bulletin 18-19; Deadline source: https://www.digest.ph/taxation/acceptance-of-bir-forms-nos-0620-and-1621", "https://www.bir.gov.ph/bir-forms"),
+  form("Payment/Remittance Forms", "1600-PT", "Monthly Remittance Return of Other Percentage Taxes Withheld", "On or before the 10th day of the following month", "On or before the 10th day of the following month", "Replaced 1600 (2018); Deadline source: https://www.forvismazars.com/ph/en/insights/tax-deadlines/april-2026-tax-calendar", "https://www.bir.gov.ph/bir-forms"),
+  form("Payment/Remittance Forms", "1600-VT", "Monthly Remittance Return of Value-Added Tax Withheld", "On or before the 10th day of the following month", "On or before the 10th day of the following month", "Replaced 1600 (2018); Monthly Alphalist of Payees attached; NGAs use same deadline; Deadline source: https://www.forvismazars.com/ph/en/insights/tax-deadlines/april-2026-tax-calendar", "https://www.bir.gov.ph/bir-forms"),
+  form("Payment/Remittance Forms", "1600-WP", "Remittance Return of Percentage Tax on Winnings and Prizes Withheld by Race Track Operators", "On or before the 20th day of the following month", "On or before the 20th day of the following month", "Deadline source: https://www.forvismazars.com/ph/en/insights/tax-deadlines/april-2026-tax-calendar", "https://www.bir.gov.ph/bir-forms"),
+  form("Payment/Remittance Forms", "1601-C", "Monthly Remittance Return of Income Taxes Withheld on Compensation", "eFPS staggered by industry group (RR 26-2002): Group A 15th, B 14th, C 13th, D 12th, E 11th day following the month; e-payment for all groups on or before the 15th (December return: 15 January for all filers)", "On or before the 10th day of the following month (December: 15 January)", "RR 2-98 as amended by RR 11-2018; RR 26-2002 groupings; Deadline source: https://www.forvismazars.com/ph/en/insights/tax-deadlines/april-2026-tax-calendar", "https://www.bir.gov.ph/bir-forms"),
+  form("Payment/Remittance Forms", "1601-EQ", "Quarterly Remittance Return of Creditable Income Taxes Withheld (Expanded)", "On or before the last day of the month following the close of the quarter", "On or before the last day of the month following the close of the quarter", "RR 11-2018; QAP attached; new 1/2% codes WI840-WC860 per RMC 36-2026; Deadline source: https://www.forvismazars.com/ph/en/insights/tax-deadlines/april-2026-tax-calendar", "https://www.bir.gov.ph/bir-forms"),
+  form("Payment/Remittance Forms", "1601-FQ", "Quarterly Remittance Return of Final Income Taxes Withheld", "On or before the last day of the month following the close of the quarter", "On or before the last day of the month following the close of the quarter", "RR 11-2018; QAP attached; Deadline source: https://www.forvismazars.com/ph/en/insights/tax-deadlines/april-2026-tax-calendar", "https://www.bir.gov.ph/bir-forms"),
+  form("Payment/Remittance Forms", "1602Q", "Quarterly Remittance Return of Final Income Taxes Withheld on Interest Paid on Deposits and Yield on Deposit Substitutes/Trusts/Etc.", "On or before the last day of the month following the close of the quarter", "On or before the last day of the month following the close of the quarter", "Replaced monthly 1602 under TRAIN (RR 11-2018); Deadline source: https://www.forvismazars.com/ph/en/insights/tax-deadlines/april-2026-tax-calendar", "https://www.bir.gov.ph/bir-forms"),
+  form("Payment/Remittance Forms", "1603Q", "Quarterly Remittance Return of Final Income Taxes Withheld on Fringe Benefits Paid to Employees other than Rank and File", "On or before the last day of the month following the close of the quarter", "On or before the last day of the month following the close of the quarter", "Replaced 1603 (RR 11-2018); Deadline source: https://www.forvismazars.com/ph/en/insights/tax-deadlines/april-2026-tax-calendar", "https://www.bir.gov.ph/bir-forms"),
+  form("Payment/Remittance Forms", "1604-C", "Annual Information Return of Income Taxes Withheld on Compensation", "On or before 31 January of the following year", "On or before 31 January of the following year", "RR 11-2018 (split from 1604-CF); alphalist attached; Deadline source: https://kpmg.com/ph/en/home/insights/2018/09/special-intax-sept2018-issue1-vol1.html", "https://www.bir.gov.ph/bir-forms"),
+  form("Payment/Remittance Forms", "1604-E", "Annual Information Return of Creditable Income Taxes Withheld (Expanded)/ Income Payments Exempt from Withholding Tax", "On or before 1 March of the following year", "On or before 1 March of the following year", "RR 11-2018; Deadline source: https://kpmg.com/ph/en/home/insights/2018/09/special-intax-sept2018-issue1-vol1.html", "https://www.bir.gov.ph/bir-forms"),
+  form("Payment/Remittance Forms", "1604-F", "Annual Information Return of Income Payments Subjected to Final Withholding Taxes", "On or before 31 January of the following year", "On or before 31 January of the following year", "RR 11-2018 (split from 1604-CF); Deadline source: https://kpmg.com/ph/en/home/insights/2018/09/special-intax-sept2018-issue1-vol1.html", "https://www.bir.gov.ph/bir-forms"),
+  form("Payment/Remittance Forms", "1606", "Withholding Tax Remittance Return For Onerous Transfer of Real Property Other Than Capital Asset (Including Taxable and Exempt)", "On or before the 10th day following the end of the month in which the transaction occurred", "On or before the 10th day following the end of the month in which the transaction occurred", "RR 2-98 Sec. 2.58(E); Deadline source: https://www.forvismazars.com/ph/en/insights/tax-deadlines/april-2026-tax-calendar", "https://www.bir.gov.ph/bir-forms"),
+  form("Payment/Remittance Forms", "1621", "Quarterly Remittance Return of Tax Withheld on the Amount Withdrawn from Decedent's Deposit Account", "On or before the last day of the month following the close of the quarter", "On or before the last day of the month following the close of the quarter", "TRAIN Sec. 97; Deadline source: https://www.forvismazars.com/ph/en/insights/tax-deadlines/april-2026-tax-calendar", "https://www.bir.gov.ph/bir-forms"),
+  // Transfer Tax Return
+  form("Transfer Tax Return", "1800", "Donor's Tax Return", "", "Within 30 days after the date the gift (donation) is made", "NIRC Sec. 103 as amended by TRAIN (6% flat rate); Deadline source: https://lawphil.net/administ/bir/frms/frms.html", "https://www.bir.gov.ph/bir-forms"),
+  form("Transfer Tax Return", "1801", "Estate Tax Return", "", "Within 1 year from the decedent's death (extendable by Commissioner in meritorious cases)", "NIRC Sec. 90 as amended by TRAIN; estate tax amnesty RA 11956 ran to 14 Jun 2025; Deadline source: https://lawphil.net/administ/bir/frms/frms.html", "https://www.bir.gov.ph/bir-forms"),
+  // VAT/Percentage Tax Returns
+  form("VAT/Percentage Tax Returns", "2550-DS", "Value-Added Tax (VAT) Return for Nonresident Digital Service Provider", "", "Within 25 days following the close of each taxable quarter, via VDS Portal (vds.bir.gov.ph)", "RA 12023 / RR 3-2025; form prescribed by RMC 52-2025; Deadline source: https://www.grantthornton.com.ph/insights/articles-and-updates1/tax-notes/bir-releases-the-guidelines-and-procedures-for-the-registration-filing-of-returns-and-payment-of-vat-for-nonresident-digital-service-providers-through-the-vds-portal/", "https://www.bir.gov.ph/bir-forms"),
+  form("VAT/Percentage Tax Returns", "2550Q", "Quarterly Value-Added Tax (VAT) Return", "Within 25 days following the close of each taxable quarter", "Within 25 days following the close of each taxable quarter", "NIRC Sec. 114(A) as amended by TRAIN; revised April 2024 version (EOPT) per RMC 68-2024; Deadline source: https://forvismazars.com/ph/en/insights/tax-alerts/bir-rmc-68-2024", "https://www.bir.gov.ph/bir-forms"),
+  form("VAT/Percentage Tax Returns", "2551Q", "Quarterly Percentage Tax Return", "Within 25 days following the close of each taxable quarter", "Within 25 days following the close of each taxable quarter", "NIRC Sec. 128(A) as amended by TRAIN; Deadline source: https://www.forvismazars.com/ph/en/insights/tax-deadlines/april-2026-tax-calendar", "https://www.bir.gov.ph/bir-forms"),
+  form("VAT/Percentage Tax Returns", "2552", "Percentage Tax Return for Transactions Involving Shares of Stock Listed and Traded Through the Local Stock Exchange (LSE) or Through Initial and/or Secondary Public Offering", "Stockbroker sales: within 5 banking days from date of collection; IPO: within 30 days from listing", "Stockbroker sales: within 5 banking days from date of collection; IPO: within 30 days from listing", "NIRC Sec. 127; 0.6% STT under TRAIN; Deadline source: https://lawphil.net/administ/bir/frms/frms.html", "https://www.bir.gov.ph/bir-forms"),
+  form("VAT/Percentage Tax Returns", "2553", "Return of Percentage Tax Payable Under Special Laws", "", "Due date stated in the applicable special law", "Deadline set by the special law (e.g., franchise statutes); Deadline source: https://lawphil.net/administ/bir/frms/frms.html", "https://www.bir.gov.ph/bir-forms"),
+  discontinued("VAT/Percentage Tax Returns", "2550M", "Monthly Value-Added Tax Declaration", "", "", "Still listed on bir.gov.ph but no longer required from 1 Jan 2023: TRAIN (RA 10963) Sec. 114(A) made VAT filing quarterly-only", "https://www.bir.gov.ph/bir-forms"),
+];
+&nbsp;
+/** SCHEDULE OF STAGGERED FILING — filing via eFPS (RR 26-2002), verbatim. */
+export const EFPS_FILING_GROUPS = [
+  'Group A - Fifteen (15) days following the end of the month',
+  'Group B - Fourteen (14) days following the end of the month',
+  'Group C - Thirteen (13) days following the end of the month',
+  'Group D - Twelve (12) days following the end of the month',
+  'Group E -  Eleven (11) days following the end of the month',
+];
+export const EFPS_FILING_NOTE =
+  'Note: The staggered manner of filing is only allowed to taxpayers using the Electronic Filing and Payment System (EFPS) based on the industry classification groupings per RR No. 26-2002. However, the staggered filing of returns allowed for withholding agents/taxpayers enrolled in the EFPS facility of the Bureau shall not apply in the case of the NGAs per RR 1-2013.';
+&nbsp;</pre></td></tr></table></pre>
+
+                <div class='push'></div><!-- for sticky footer -->
+            </div><!-- /wrapper -->
+            <div class='footer quiet pad2 space-top1 center small'>
+                Code coverage generated by
+                <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
+                at 2026-10-26T12:06:48.073Z
+            </div>
+        <script src="../prettify.js"></script>
+        <script>
+            window.onload = function () {
+                prettyPrint();
+            };
+        </script>
+        <script src="../sorter.js"></script>
+        <script src="../block-navigation.js"></script>
+    </body>
+</html>
+    

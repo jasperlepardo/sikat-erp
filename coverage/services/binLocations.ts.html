@@ -1,0 +1,733 @@
+
+<!doctype html>
+<html lang="en">
+
+<head>
+    <title>Code coverage report for services/binLocations.ts</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="../prettify.css" />
+    <link rel="stylesheet" href="../base.css" />
+    <link rel="shortcut icon" type="image/x-icon" href="../favicon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style type='text/css'>
+        .coverage-summary .sorter {
+            background-image: url(../sort-arrow-sprite.png);
+        }
+    </style>
+</head>
+    
+<body>
+<div class='wrapper'>
+    <div class='pad1'>
+        <h1><a href="../index.html">All files</a> / <a href="index.html">services</a> binLocations.ts</h1>
+        <div class='clearfix'>
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">77.51% </span>
+                <span class="quiet">Statements</span>
+                <span class='fraction'>100/129</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">87.5% </span>
+                <span class="quiet">Branches</span>
+                <span class='fraction'>56/64</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">68.75% </span>
+                <span class="quiet">Functions</span>
+                <span class='fraction'>11/16</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">77.51% </span>
+                <span class="quiet">Lines</span>
+                <span class='fraction'>100/129</span>
+            </div>
+        
+            
+        </div>
+        <p class="quiet">
+            Press <em>n</em> or <em>j</em> to go to the next uncovered block, <em>b</em>, <em>p</em> or <em>k</em> for the previous block.
+        </p>
+        <template id="filterTemplate">
+            <div class="quiet">
+                Filter:
+                <input type="search" id="fileSearch">
+            </div>
+        </template>
+    </div>
+    <div class='status-line medium'></div>
+    <pre><table class="coverage">
+<tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
+<a name='L2'></a><a href='#L2'>2</a>
+<a name='L3'></a><a href='#L3'>3</a>
+<a name='L4'></a><a href='#L4'>4</a>
+<a name='L5'></a><a href='#L5'>5</a>
+<a name='L6'></a><a href='#L6'>6</a>
+<a name='L7'></a><a href='#L7'>7</a>
+<a name='L8'></a><a href='#L8'>8</a>
+<a name='L9'></a><a href='#L9'>9</a>
+<a name='L10'></a><a href='#L10'>10</a>
+<a name='L11'></a><a href='#L11'>11</a>
+<a name='L12'></a><a href='#L12'>12</a>
+<a name='L13'></a><a href='#L13'>13</a>
+<a name='L14'></a><a href='#L14'>14</a>
+<a name='L15'></a><a href='#L15'>15</a>
+<a name='L16'></a><a href='#L16'>16</a>
+<a name='L17'></a><a href='#L17'>17</a>
+<a name='L18'></a><a href='#L18'>18</a>
+<a name='L19'></a><a href='#L19'>19</a>
+<a name='L20'></a><a href='#L20'>20</a>
+<a name='L21'></a><a href='#L21'>21</a>
+<a name='L22'></a><a href='#L22'>22</a>
+<a name='L23'></a><a href='#L23'>23</a>
+<a name='L24'></a><a href='#L24'>24</a>
+<a name='L25'></a><a href='#L25'>25</a>
+<a name='L26'></a><a href='#L26'>26</a>
+<a name='L27'></a><a href='#L27'>27</a>
+<a name='L28'></a><a href='#L28'>28</a>
+<a name='L29'></a><a href='#L29'>29</a>
+<a name='L30'></a><a href='#L30'>30</a>
+<a name='L31'></a><a href='#L31'>31</a>
+<a name='L32'></a><a href='#L32'>32</a>
+<a name='L33'></a><a href='#L33'>33</a>
+<a name='L34'></a><a href='#L34'>34</a>
+<a name='L35'></a><a href='#L35'>35</a>
+<a name='L36'></a><a href='#L36'>36</a>
+<a name='L37'></a><a href='#L37'>37</a>
+<a name='L38'></a><a href='#L38'>38</a>
+<a name='L39'></a><a href='#L39'>39</a>
+<a name='L40'></a><a href='#L40'>40</a>
+<a name='L41'></a><a href='#L41'>41</a>
+<a name='L42'></a><a href='#L42'>42</a>
+<a name='L43'></a><a href='#L43'>43</a>
+<a name='L44'></a><a href='#L44'>44</a>
+<a name='L45'></a><a href='#L45'>45</a>
+<a name='L46'></a><a href='#L46'>46</a>
+<a name='L47'></a><a href='#L47'>47</a>
+<a name='L48'></a><a href='#L48'>48</a>
+<a name='L49'></a><a href='#L49'>49</a>
+<a name='L50'></a><a href='#L50'>50</a>
+<a name='L51'></a><a href='#L51'>51</a>
+<a name='L52'></a><a href='#L52'>52</a>
+<a name='L53'></a><a href='#L53'>53</a>
+<a name='L54'></a><a href='#L54'>54</a>
+<a name='L55'></a><a href='#L55'>55</a>
+<a name='L56'></a><a href='#L56'>56</a>
+<a name='L57'></a><a href='#L57'>57</a>
+<a name='L58'></a><a href='#L58'>58</a>
+<a name='L59'></a><a href='#L59'>59</a>
+<a name='L60'></a><a href='#L60'>60</a>
+<a name='L61'></a><a href='#L61'>61</a>
+<a name='L62'></a><a href='#L62'>62</a>
+<a name='L63'></a><a href='#L63'>63</a>
+<a name='L64'></a><a href='#L64'>64</a>
+<a name='L65'></a><a href='#L65'>65</a>
+<a name='L66'></a><a href='#L66'>66</a>
+<a name='L67'></a><a href='#L67'>67</a>
+<a name='L68'></a><a href='#L68'>68</a>
+<a name='L69'></a><a href='#L69'>69</a>
+<a name='L70'></a><a href='#L70'>70</a>
+<a name='L71'></a><a href='#L71'>71</a>
+<a name='L72'></a><a href='#L72'>72</a>
+<a name='L73'></a><a href='#L73'>73</a>
+<a name='L74'></a><a href='#L74'>74</a>
+<a name='L75'></a><a href='#L75'>75</a>
+<a name='L76'></a><a href='#L76'>76</a>
+<a name='L77'></a><a href='#L77'>77</a>
+<a name='L78'></a><a href='#L78'>78</a>
+<a name='L79'></a><a href='#L79'>79</a>
+<a name='L80'></a><a href='#L80'>80</a>
+<a name='L81'></a><a href='#L81'>81</a>
+<a name='L82'></a><a href='#L82'>82</a>
+<a name='L83'></a><a href='#L83'>83</a>
+<a name='L84'></a><a href='#L84'>84</a>
+<a name='L85'></a><a href='#L85'>85</a>
+<a name='L86'></a><a href='#L86'>86</a>
+<a name='L87'></a><a href='#L87'>87</a>
+<a name='L88'></a><a href='#L88'>88</a>
+<a name='L89'></a><a href='#L89'>89</a>
+<a name='L90'></a><a href='#L90'>90</a>
+<a name='L91'></a><a href='#L91'>91</a>
+<a name='L92'></a><a href='#L92'>92</a>
+<a name='L93'></a><a href='#L93'>93</a>
+<a name='L94'></a><a href='#L94'>94</a>
+<a name='L95'></a><a href='#L95'>95</a>
+<a name='L96'></a><a href='#L96'>96</a>
+<a name='L97'></a><a href='#L97'>97</a>
+<a name='L98'></a><a href='#L98'>98</a>
+<a name='L99'></a><a href='#L99'>99</a>
+<a name='L100'></a><a href='#L100'>100</a>
+<a name='L101'></a><a href='#L101'>101</a>
+<a name='L102'></a><a href='#L102'>102</a>
+<a name='L103'></a><a href='#L103'>103</a>
+<a name='L104'></a><a href='#L104'>104</a>
+<a name='L105'></a><a href='#L105'>105</a>
+<a name='L106'></a><a href='#L106'>106</a>
+<a name='L107'></a><a href='#L107'>107</a>
+<a name='L108'></a><a href='#L108'>108</a>
+<a name='L109'></a><a href='#L109'>109</a>
+<a name='L110'></a><a href='#L110'>110</a>
+<a name='L111'></a><a href='#L111'>111</a>
+<a name='L112'></a><a href='#L112'>112</a>
+<a name='L113'></a><a href='#L113'>113</a>
+<a name='L114'></a><a href='#L114'>114</a>
+<a name='L115'></a><a href='#L115'>115</a>
+<a name='L116'></a><a href='#L116'>116</a>
+<a name='L117'></a><a href='#L117'>117</a>
+<a name='L118'></a><a href='#L118'>118</a>
+<a name='L119'></a><a href='#L119'>119</a>
+<a name='L120'></a><a href='#L120'>120</a>
+<a name='L121'></a><a href='#L121'>121</a>
+<a name='L122'></a><a href='#L122'>122</a>
+<a name='L123'></a><a href='#L123'>123</a>
+<a name='L124'></a><a href='#L124'>124</a>
+<a name='L125'></a><a href='#L125'>125</a>
+<a name='L126'></a><a href='#L126'>126</a>
+<a name='L127'></a><a href='#L127'>127</a>
+<a name='L128'></a><a href='#L128'>128</a>
+<a name='L129'></a><a href='#L129'>129</a>
+<a name='L130'></a><a href='#L130'>130</a>
+<a name='L131'></a><a href='#L131'>131</a>
+<a name='L132'></a><a href='#L132'>132</a>
+<a name='L133'></a><a href='#L133'>133</a>
+<a name='L134'></a><a href='#L134'>134</a>
+<a name='L135'></a><a href='#L135'>135</a>
+<a name='L136'></a><a href='#L136'>136</a>
+<a name='L137'></a><a href='#L137'>137</a>
+<a name='L138'></a><a href='#L138'>138</a>
+<a name='L139'></a><a href='#L139'>139</a>
+<a name='L140'></a><a href='#L140'>140</a>
+<a name='L141'></a><a href='#L141'>141</a>
+<a name='L142'></a><a href='#L142'>142</a>
+<a name='L143'></a><a href='#L143'>143</a>
+<a name='L144'></a><a href='#L144'>144</a>
+<a name='L145'></a><a href='#L145'>145</a>
+<a name='L146'></a><a href='#L146'>146</a>
+<a name='L147'></a><a href='#L147'>147</a>
+<a name='L148'></a><a href='#L148'>148</a>
+<a name='L149'></a><a href='#L149'>149</a>
+<a name='L150'></a><a href='#L150'>150</a>
+<a name='L151'></a><a href='#L151'>151</a>
+<a name='L152'></a><a href='#L152'>152</a>
+<a name='L153'></a><a href='#L153'>153</a>
+<a name='L154'></a><a href='#L154'>154</a>
+<a name='L155'></a><a href='#L155'>155</a>
+<a name='L156'></a><a href='#L156'>156</a>
+<a name='L157'></a><a href='#L157'>157</a>
+<a name='L158'></a><a href='#L158'>158</a>
+<a name='L159'></a><a href='#L159'>159</a>
+<a name='L160'></a><a href='#L160'>160</a>
+<a name='L161'></a><a href='#L161'>161</a>
+<a name='L162'></a><a href='#L162'>162</a>
+<a name='L163'></a><a href='#L163'>163</a>
+<a name='L164'></a><a href='#L164'>164</a>
+<a name='L165'></a><a href='#L165'>165</a>
+<a name='L166'></a><a href='#L166'>166</a>
+<a name='L167'></a><a href='#L167'>167</a>
+<a name='L168'></a><a href='#L168'>168</a>
+<a name='L169'></a><a href='#L169'>169</a>
+<a name='L170'></a><a href='#L170'>170</a>
+<a name='L171'></a><a href='#L171'>171</a>
+<a name='L172'></a><a href='#L172'>172</a>
+<a name='L173'></a><a href='#L173'>173</a>
+<a name='L174'></a><a href='#L174'>174</a>
+<a name='L175'></a><a href='#L175'>175</a>
+<a name='L176'></a><a href='#L176'>176</a>
+<a name='L177'></a><a href='#L177'>177</a>
+<a name='L178'></a><a href='#L178'>178</a>
+<a name='L179'></a><a href='#L179'>179</a>
+<a name='L180'></a><a href='#L180'>180</a>
+<a name='L181'></a><a href='#L181'>181</a>
+<a name='L182'></a><a href='#L182'>182</a>
+<a name='L183'></a><a href='#L183'>183</a>
+<a name='L184'></a><a href='#L184'>184</a>
+<a name='L185'></a><a href='#L185'>185</a>
+<a name='L186'></a><a href='#L186'>186</a>
+<a name='L187'></a><a href='#L187'>187</a>
+<a name='L188'></a><a href='#L188'>188</a>
+<a name='L189'></a><a href='#L189'>189</a>
+<a name='L190'></a><a href='#L190'>190</a>
+<a name='L191'></a><a href='#L191'>191</a>
+<a name='L192'></a><a href='#L192'>192</a>
+<a name='L193'></a><a href='#L193'>193</a>
+<a name='L194'></a><a href='#L194'>194</a>
+<a name='L195'></a><a href='#L195'>195</a>
+<a name='L196'></a><a href='#L196'>196</a>
+<a name='L197'></a><a href='#L197'>197</a>
+<a name='L198'></a><a href='#L198'>198</a>
+<a name='L199'></a><a href='#L199'>199</a>
+<a name='L200'></a><a href='#L200'>200</a>
+<a name='L201'></a><a href='#L201'>201</a>
+<a name='L202'></a><a href='#L202'>202</a>
+<a name='L203'></a><a href='#L203'>203</a>
+<a name='L204'></a><a href='#L204'>204</a>
+<a name='L205'></a><a href='#L205'>205</a>
+<a name='L206'></a><a href='#L206'>206</a>
+<a name='L207'></a><a href='#L207'>207</a>
+<a name='L208'></a><a href='#L208'>208</a>
+<a name='L209'></a><a href='#L209'>209</a>
+<a name='L210'></a><a href='#L210'>210</a>
+<a name='L211'></a><a href='#L211'>211</a>
+<a name='L212'></a><a href='#L212'>212</a>
+<a name='L213'></a><a href='#L213'>213</a>
+<a name='L214'></a><a href='#L214'>214</a>
+<a name='L215'></a><a href='#L215'>215</a>
+<a name='L216'></a><a href='#L216'>216</a>
+<a name='L217'></a><a href='#L217'>217</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import {
+  SUBLEVEL_TIERS,
+  TIER_LABEL,
+  binCode,
+  blankBin,
+  type BinLocation,
+  type BinSublevel,
+  type SublevelTier,
+} from '../mocks/binLocations';
+import type { Item } from '../mocks/items';
+import { listItems } from './items';
+import { binLocations, binSublevels, itemGroupName } from './inventoryMasters';
+import { newId } from './useCollectionRows';
+&nbsp;
+export { binLocations, binSublevels };
+&nbsp;
+const byCode = (a: { code: string }, b: { code: string }) =&gt; a.code.localeCompare(b.code, undefined, { numeric: true });
+&nbsp;
+/** A warehouse's bins for a picker: active ones in code order, plus the bin with id `current` if it's been deactivated. */
+export <span class="fstat-no" title="function not covered" >function binsOf(bins: readonly BinLocation[], warehouse: string, current = '') {</span>
+<span class="cstat-no" title="statement not covered" >  return bins.filter((b) =&gt; b.warehouse === warehouse &amp;&amp; (b.active || b.id === current)).sort(byCode);</span>
+<span class="cstat-no" title="statement not covered" >}</span>
+&nbsp;
+/**
+ * A bin's code for display. Documents link bins by id; a posted line also keeps the code it was
+ * posted with (`snapshot`), which wins so history reads as it was. Otherwise the bin's current code.
+ */
+export const binCodeOf = <span class="fstat-no" title="function not covered" >(bins: readonly BinLocation[], id: string, snapshot = '') =&gt;</span>
+<span class="cstat-no" title="statement not covered" >  snapshot || bins.find((b) =&gt; b.id === id)?.code || id;</span>
+&nbsp;
+/** Where inbound stock lands by default: the warehouse's first active receiving bin. */
+export const receivingBin = <span class="fstat-no" title="function not covered" >(bins: readonly BinLocation[], warehouse: string) =&gt;</span>
+<span class="cstat-no" title="statement not covered" >  binsOf(bins, warehouse).find((b) =&gt; b.receiving);</span>
+&nbsp;
+/** A warehouse's codes for one tier, in code order. */
+export const sublevelsOf = (rows: readonly BinSublevel[], warehouse: string, tier: SublevelTier) =&gt;
+  rows.filter((r) =&gt; r.warehouse === warehouse &amp;&amp; r.tier === tier).sort(byCode);
+&nbsp;
+/**
+ * What's in a bin. Per-bin quantities aren't tracked yet, so an item's stock in a
+ * warehouse counts as sitting in its default bin there.
+ */
+export function binStock(bin: Pick&lt;BinLocation, 'id' | 'warehouse'&gt;, items: readonly Item[]) {
+  let qty = 0;
+  let weight = 0;
+  let count = 0;
+  for (const item of items) {
+    const w = item.warehouses.find((x) =&gt; x.code === bin.warehouse &amp;&amp; x.defaultBinId === bin.id);
+    if (!w || w.inStock &lt;= 0) continue;
+    count += 1;
+    qty += w.inStock;
+    const unit = item.uoms.find((u) =&gt; u.uom === item.inventoryUom<span class="branch-0 cbranch-no" title="branch not covered" >) ?? item.uoms[0];</span>
+    weight += w.inStock * (unit?.<span class="branch-0 cbranch-no" title="branch not covered" >grossWeight || unit?.<span class="branch-0 cbranch-no" title="branch not covered" >netWeight || 0</span>);</span>
+  }
+  return { qty, weight: Math.round(weight * 100) / 100, items: count };
+}
+&nbsp;
+/**
+ * Why `bin` can't take part in an inventory transfer of `item` (null when it can).
+ * `direction` is 'out' for the from-bin and 'in' for the to-bin.
+ */
+export function transferBlock(bin: BinLocation | undefined, item: Item, uom: string, direction: 'in' | 'out'): string | null {
+  if (!bin) return null;
+  if (!bin.active) return `${bin.code} is inactive.`;
+  const t = bin.transactionRestriction;
+  if (t === 'all') <span class="branch-0 cbranch-no" title="branch not covered" >return `${bin.code} is locked to all transactions.`;</span>
+  if (t === 'inbound' &amp;&amp; direction === 'out') return `${bin.code} takes inbound transactions only.`;
+  if (t === 'outbound' &amp;&amp; direction === 'in') return `${bin.code} takes outbound transactions only.`;
+  if (direction === 'out') return null;
+  if (bin.itemRestriction === 'item' &amp;&amp; bin.restrictedItem !== item.itemNo) return `${bin.code} only holds ${bin.restrictedItem}.`;
+  if (bin.itemRestriction === <span class="branch-0 cbranch-no" title="branch not covered" >'itemGroup' &amp;&amp; bin.restrictedItemGroupId !== item.itemGroupId)</span>
+<span class="branch-0 cbranch-no" title="branch not covered" >    return `${bin.code} only holds ${itemGroupName(bin.restrictedItemGroupId)} items.`;</span>
+  if (bin.uomRestriction === 'uom' &amp;&amp; bin.restrictedUom !== uom) return `${bin.code} only takes ${bin.restrictedUom}.`;
+  return null;
+}
+&nbsp;
+// ── Bin location management: generate a range ──────────────────────────────
+&nbsp;
+export interface Range {
+  from: string;
+  to: string;
+}
+&nbsp;
+/** The codes of a tier within a From–To range (blank ends are open). */
+function inRange(codes: string[], { from, to }: Range) {
+  const cmp = (a: string, b: string) =&gt; a.localeCompare(b, undefined, { numeric: true });
+  return codes.filter((c) =&gt; (!from || cmp(c, from) &gt;= 0) &amp;&amp; (!to || cmp(c, to) &lt;= 0));
+}
+&nbsp;
+/**
+ * A pattern for generated text fields. `{WH}`, `{AISLE}`, `{SHELF}`, `{LEVEL}` are the
+ * bin's segments; `{SEQ}` counts from 1 across the run, `{SEQ:3}` zero-pads it.
+ */
+export function fillPattern(pattern: string, bin: Pick&lt;BinLocation, 'warehouse' | 'aisle' | 'shelf' | 'level'&gt;, seq: number) {
+  return pattern
+    .replace(/\{WH\}/gi, bin.warehouse)
+    .replace(/\{AISLE\}/gi, bin.aisle)
+    .replace(/\{SHELF\}/gi, bin.shelf)
+    .replace(/\{LEVEL\}/gi, bin.level)
+    .replace(/\{SEQ(?::(\d+))?\}/gi, (_, w?: string) =&gt; String(seq).padStart(Number(w ?? 0), '0'));
+}
+&nbsp;
+export interface GenerateInput {
+  warehouse: string;
+  ranges: Record&lt;SublevelTier, Range&gt;;
+  /** Properties every new bin gets. */
+  defaults: Partial&lt;BinLocation&gt;;
+  patterns: { description: string; barcode: string; altSortCode: string };
+}
+&nbsp;
+/** The bins a run would add, and the codes it skips because they already exist. */
+export function planGeneration(input: GenerateInput, subs: readonly BinSublevel[], bins: readonly BinLocation[]) {
+  const [aisles, shelves, levels] = SUBLEVEL_TIERS.map((t) =&gt;
+    inRange(sublevelsOf(subs, input.warehouse, t).map((s) =&gt; s.code), input.ranges[t]),
+  );
+  const existing = new Set(bins.map((b) =&gt; b.code));
+  const add: BinLocation[] = [];
+  const skipped: string[] = [];
+  let seq = 0;
+  for (const aisle of aisles)
+    for (const shelf of shelves)
+      for (const level of levels) {
+        const code = binCode(input.warehouse, aisle, shelf, level);
+        if (existing.has(code)) {
+          skipped.push(code);
+          continue;
+        }
+        seq += 1;
+        const at = { warehouse: input.warehouse, aisle, shelf, level };
+        add.push(
+          blankBin({
+            ...input.defaults,
+            ...at,
+            id: newId('bin'),
+            receiving: false,
+            description: fillPattern(input.patterns.description, at, seq),
+            barcode: fillPattern(input.patterns.barcode, at, seq),
+            altSortCode: fillPattern(input.patterns.altSortCode, at, seq),
+          }),
+        );
+      }
+  return { add, skipped };
+}
+&nbsp;
+<span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >export async function generateBins(add: BinLocation[]) {</span></span>
+<span class="cstat-no" title="statement not covered" >  const updatedAt = new Date().toISOString();</span>
+  // Each save stands alone, so they go together rather than one fake round trip at a time.
+<span class="cstat-no" title="statement not covered" >  await Promise.all(add.map((b) =&gt; binLocations.save({ ...b, updatedAt })));</span>
+<span class="cstat-no" title="statement not covered" >}</span>
+&nbsp;
+// ── Bin location code modification ──────────────────────────────────────────
+&nbsp;
+export interface RenameInput {
+  warehouse: string;
+  ranges: Record&lt;SublevelTier, Range&gt;;
+  /** New value per tier; a tier left out keeps its codes. */
+  changes: Partial&lt;Record&lt;SublevelTier, string&gt;&gt;;
+  reason: string;
+}
+&nbsp;
+export interface RenameRow {
+  bin: BinLocation;
+  to: Pick&lt;BinLocation, 'aisle' | 'shelf' | 'level' | 'code'&gt;;
+  /** Why this rename can't go ahead. */
+  conflict?: string;
+}
+&nbsp;
+/** Each matching bin with its new code. A rename that lands on another bin's code is a conflict. */
+export function planRename(input: RenameInput, bins: readonly BinLocation[]): RenameRow[] {
+  const match = (b: BinLocation, t: SublevelTier) =&gt; inRange([b[t]], input.ranges[t]).length &gt; 0;
+  const picked = bins.filter((b) =&gt; b.warehouse === input.warehouse &amp;&amp; SUBLEVEL_TIERS.every((t) =&gt; match(b, t))).sort(byCode);
+  const rows = picked.map((bin) =&gt; {
+    const seg = (t: SublevelTier) =&gt; input.changes[t]?.trim().toUpperCase() || bin[t];
+    const [aisle, shelf, level] = SUBLEVEL_TIERS.map(seg);
+    return { bin, to: { aisle, shelf, level, code: binCode(bin.warehouse, aisle, shelf, level) } } as RenameRow;
+  });
+  const moving = new Set(rows.filter((r) =&gt; r.to.code !== r.bin.code).map((r) =&gt; r.bin.code));
+  const staying = new Set(bins.filter((b) =&gt; !moving.has(b.code)).map((b) =&gt; b.code));
+  const seen = new Map&lt;string, string&gt;();
+  for (const r of rows) {
+    if (r.to.code === r.bin.code) <span class="branch-0 cbranch-no" title="branch not covered" >continue;</span>
+    if (staying.has(r.to.code)) r.conflict = `${r.to.code<span class="branch-0 cbranch-no" title="branch not covered" >} already exists.`;</span>
+<span class="cstat-no" title="statement not covered" >    else if (seen.has(r.to.code)) r.conflict = `${seen.get(r.to.code)} also becomes ${r.to.code}.`;</span>
+    seen.set(r.to.code, r.bin.code);
+  }
+  return rows;
+}
+&nbsp;
+/**
+ * Rename the bins. Each keeps its id, properties and stock, and a new segment value joins the
+ * warehouse's sublevel codes. Items and draft documents link bins by id, so they show the new
+ * code with nothing to update; posted documents keep the code stamped when they posted.
+ */
+<span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >export async function renameBins(rows: RenameRow[], reason: string) {</span></span>
+<span class="cstat-no" title="statement not covered" >  const changed = rows.filter((r) =&gt; r.to.code !== r.bin.code);</span>
+<span class="cstat-no" title="statement not covered" >  if (changed.some((r) =&gt; r.conflict)) throw new Error('Resolve the conflicts first.');</span>
+<span class="cstat-no" title="statement not covered" >  const updatedAt = new Date().toISOString();</span>
+&nbsp;
+<span class="cstat-no" title="statement not covered" >  const subs = await binSublevels.list();</span>
+<span class="cstat-no" title="statement not covered" >  const newSubs: BinSublevel[] = [];</span>
+<span class="cstat-no" title="statement not covered" >  for (const r of changed)</span>
+<span class="cstat-no" title="statement not covered" >    for (const t of SUBLEVEL_TIERS) {</span>
+<span class="cstat-no" title="statement not covered" >      const code = r.to[t];</span>
+<span class="cstat-no" title="statement not covered" >      const known = [...subs, ...newSubs].some((s) =&gt; s.warehouse === r.bin.warehouse &amp;&amp; s.tier === t &amp;&amp; s.code === code);</span>
+<span class="cstat-no" title="statement not covered" >      if (!known) newSubs.push({ id: newId('bsl'), warehouse: r.bin.warehouse, tier: t, code, description: `${TIER_LABEL[t]} ${code}`, active: true });</span>
+<span class="cstat-no" title="statement not covered" >    }</span>
+&nbsp;
+  // Independent writes, so they go together rather than one fake round trip at a time.
+<span class="cstat-no" title="statement not covered" >  await Promise.all([</span>
+<span class="cstat-no" title="statement not covered" >    ...newSubs.map((row) =&gt; binSublevels.save(row)),</span>
+<span class="cstat-no" title="statement not covered" >    ...changed.map((r) =&gt; binLocations.save({ ...r.bin, ...r.to, updatedAt, reason: reason || `Renamed from ${r.bin.code}` })),</span>
+<span class="cstat-no" title="statement not covered" >  ]);</span>
+<span class="cstat-no" title="statement not covered" >  const ids = new Set(changed.map((r) =&gt; r.bin.id));</span>
+<span class="cstat-no" title="statement not covered" >  const items = (await listItems()).filter((item) =&gt; item.warehouses.some((w) =&gt; ids.has(w.defaultBinId))).length;</span>
+<span class="cstat-no" title="statement not covered" >  return { bins: changed.length, items };</span>
+<span class="cstat-no" title="statement not covered" >}</span>
+&nbsp;</pre></td></tr></table></pre>
+
+                <div class='push'></div><!-- for sticky footer -->
+            </div><!-- /wrapper -->
+            <div class='footer quiet pad2 space-top1 center small'>
+                Code coverage generated by
+                <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
+                at 2026-10-26T12:06:48.073Z
+            </div>
+        <script src="../prettify.js"></script>
+        <script>
+            window.onload = function () {
+                prettyPrint();
+            };
+        </script>
+        <script src="../sorter.js"></script>
+        <script src="../block-navigation.js"></script>
+    </body>
+</html>
+    
