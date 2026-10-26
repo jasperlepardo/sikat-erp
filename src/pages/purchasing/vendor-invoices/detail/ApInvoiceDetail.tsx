@@ -219,7 +219,7 @@ function ApInvoiceForm() {
   const withholding = docWithholding(draft, vendor, m.items, m.tax, draft.postingDate);
   const due = netDue(totals.total, withholding, draft.downPayment);
   const balance = Math.round((due - draft.appliedAmount) * 100) / 100;
-  const journal = ctx.fx ? apJournal(draft, ctx.fx, { items: m.items, groups: m.inv.groups, codes: m.tax.codes, rateOf: ctx.rateOf, withholding }) : [];
+  const journal = ctx.fx ? apJournal(draft, ctx.fx, { itemsById: new Map(m.items.map((i) => [i.id, i])), groups: m.inv.groups, codes: m.tax.codes, rateOf: ctx.rateOf, withholding }) : [];
 
   // Ship To follows the lines, and the due date the terms, while each still holds its default.
   const update = (patch: Partial<ApDraft>) => {

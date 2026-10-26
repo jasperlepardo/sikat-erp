@@ -37,25 +37,33 @@ function basis(by: LandedCostEntry['allocationBy'], l: LandedCostLine): number {
 }
 
 export function allocate(costs: LandedCostEntry[], lines: LandedCostLine[]): LandedCostLine[] {
-  return lines.map((line) => {
-    let alloc = 0;
-    let varAlloc = 0;
-    let constAlloc = 0;
-    for (const entry of costs) {
-      const total = lines.reduce((s, l) => s + basis(entry.allocationBy, l), 0);
+  const alloc = lines.map(() => 0);
+  const varAlloc = lines.map(() => 0);
+  const constAlloc = lines.map(() => 0);
+  // Allocate each cost across the lines with cumulative rounding: round the running total at each
+  // line and take the step as that line's share. The per-line portions then sum to exactly the
+  // cost amount (no penny drift), because the last step closes on round2(amount).
+  for (const entry of costs) {
+    const total = lines.reduce((s, l) => s + basis(entry.allocationBy, l), 0);
+    let cumRaw = 0;
+    let cumRounded = 0;
+    lines.forEach((line, i) => {
       const share = total > 0 ? basis(entry.allocationBy, line) / total : 1 / lines.length;
-      const portion = round2(entry.amount * share);
-      alloc += portion;
-      if (entry.isVariable) varAlloc += portion;
-      else constAlloc += portion;
-    }
-    return {
-      ...line,
-      allocCostsVal: round2(alloc),
-      varCosts: round2(varAlloc),
-      constCosts: round2(constAlloc),
-    };
-  });
+      cumRaw += entry.amount * share;
+      const next = round2(cumRaw);
+      const portion = round2(next - cumRounded);
+      cumRounded = next;
+      alloc[i] += portion;
+      if (entry.isVariable) varAlloc[i] += portion;
+      else constAlloc[i] += portion;
+    });
+  }
+  return lines.map((line, i) => ({
+    ...line,
+    allocCostsVal: round2(alloc[i]),
+    varCosts: round2(varAlloc[i]),
+    constCosts: round2(constAlloc[i]),
+  }));
 }
 
 export const saveLcDraft = (input: LcInput) => lc.save({ ...input, status: 'Draft', docNum: 0 });

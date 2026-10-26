@@ -101,7 +101,7 @@ const onHand = (item: Item) => stockTotals(item).inStock;
 export function apJournal(
   inv: Pick<ApInvoice, 'lines' | 'discountPct' | 'freight' | 'freightTaxCode' | 'controlAccount' | 'drawnDownPayments'>,
   fx: number,
-  ctx: { items: Item[]; groups: ItemGroup[]; codes: TaxCode[]; rateOf: (code: string) => number; withholding: WithholdingLine[] },
+  ctx: { itemsById: ReadonlyMap<string, Item>; groups: ItemGroup[]; codes: TaxCode[]; rateOf: (code: string) => number; withholding: WithholdingLine[] },
 ): JournalLine[] {
   const totals = new Map<string, number>();
   const add = (account: string, amount: number) => {
@@ -112,7 +112,7 @@ export function apJournal(
   const factor = 1 - inv.discountPct / 100;
 
   for (const l of inv.lines) {
-    const item = ctx.items.find((i) => i.id === l.itemId);
+    const item = ctx.itemsById.get(l.itemId);
     if (!item) continue;
     const value = lineValueLc(l as ApLine, inv, fx);
     const own = item.inventoryItem ? inventoryAccountFor(item, l.warehouse, ctx.groups) : expenseAccountFor(item, ctx.groups);

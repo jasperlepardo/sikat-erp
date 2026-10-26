@@ -91,7 +91,7 @@ export const balanceDue = (total: number, withheld: number, applied: number) => 
 export function arJournal(
   a: Pick<ArInvoice, 'lines' | 'discountPct' | 'freight' | 'freightTaxCode' | 'rounding' | 'controlAccount' | 'docType' | 'useShippedGoodsAccount'>,
   fx: number,
-  ctx: { items: readonly Item[]; groups: readonly ItemGroup[]; codes: readonly TaxCode[]; rateOf: (code: string) => number; withholding: ArWithholding[]; roundingRule?: Parameters<typeof soTotals>[2] },
+  ctx: { itemsById: ReadonlyMap<string, Item>; groups: readonly ItemGroup[]; codes: readonly TaxCode[]; rateOf: (code: string) => number; withholding: ArWithholding[]; roundingRule?: Parameters<typeof soTotals>[2] },
   fixed = false,
 ): JournalLine[] {
   const totals = new Map<string, number>();
@@ -101,7 +101,7 @@ export function arJournal(
   const vatAccount = (code: string) => ctx.codes.find((c) => c.code === code)?.glAccount || '2310';
   const factor = 1 - a.discountPct / 100;
   for (const l of a.lines) {
-    const item = ctx.items.find((i) => i.id === l.itemId);
+    const item = ctx.itemsById.get(l.itemId);
     const net = round2(lineNet(l as never) * factor * fx);
     add(a.docType === 'Service' ? l.glAccount || '4030' : item ? revenueAccountFor(item, ctx.groups) : '4010', -net);
     add(vatAccount(l.taxCode), -round2((net * ctx.rateOf(l.taxCode)) / 100));
@@ -248,7 +248,7 @@ export async function addArInvoice(input: ArInput, fx: number, ctx: { codes: rea
     remarks: saved.journalRemark,
     partnerId: saved.customerId,
     controlAccount: saved.controlAccount,
-    lines: arJournal(saved, fx, { items, groups: await itemGroups.list(), codes: ctx.codes, rateOf: rateFrom(ctx.codes, saved.postingDate), withholding: ctx.withholding, roundingRule: ctx.roundingRule }, true),
+    lines: arJournal(saved, fx, { itemsById: new Map(items.map((i) => [i.id, i])), groups: await itemGroups.list(), codes: ctx.codes, rateOf: rateFrom(ctx.codes, saved.postingDate), withholding: ctx.withholding, roundingRule: ctx.roundingRule }, true),
   });
   return saved;
 }

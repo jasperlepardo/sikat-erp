@@ -16,7 +16,7 @@ export function ApJournalCard({ draft, m, ctx }: ApSectionProps) {
   if (!ctx.fx) return null;
 
   const withholding = docWithholding(draft, ctx.vendor, m.items, m.tax, draft.postingDate);
-  const journal = apJournal(draft, ctx.fx, { items: m.items, groups: m.inv.groups, codes: m.tax.codes, rateOf: ctx.rateOf, withholding });
+  const journal = apJournal(draft, ctx.fx, { itemsById: new Map(m.items.map((i) => [i.id, i])), groups: m.inv.groups, codes: m.tax.codes, rateOf: ctx.rateOf, withholding });
   const differences = draft.lines
     .filter((l) => l.baseType === 'GRPO')
     .map((l) => ({ l, gr: m.receipts.find((r) => r.id === l.baseId), diff: Math.round((lineValueLc(l, draft, ctx.fx) - receiptValueLc(l)) * 100) / 100 }))

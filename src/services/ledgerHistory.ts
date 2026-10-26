@@ -116,6 +116,7 @@ function build(): Ledger {
   const H = purchasingHistory();
   // As the app reads them: variants with their parent's group, accounts and valuation.
   const items = mergedItems(withStockHistory(SEED_ITEMS));
+  const itemsById = new Map(items.map((i) => [i.id, i]));
   const groups = SEED_ITEM_GROUPS;
   const codes = SEED_TAX_CODES;
   const rateOf = (date: string) => (code: string) => {
@@ -135,7 +136,7 @@ function build(): Ledger {
     const withholding = poWithholding(inv, partner.get(inv.vendorId), items, TAX, inv.postingDate);
     doc({
       id: `je-pu-${inv.id}`, date: inv.postingDate, origin: 'PU', originNo: String(inv.docNum), originId: inv.id, dueDate: inv.dueDate, remarks: inv.journalRemark,
-      partnerId: inv.vendorId, controlAccount: inv.controlAccount, lines: apJournal(inv, inv.fxRate || 1, { items, groups, codes, rateOf: rateOf(inv.postingDate), withholding }),
+      partnerId: inv.vendorId, controlAccount: inv.controlAccount, lines: apJournal(inv, inv.fxRate || 1, { itemsById, groups, codes, rateOf: rateOf(inv.postingDate), withholding }),
     });
   }
   const billAccount = new Map([...H.invoices, ...H.downPayments].map((b) => [b.id, b.controlAccount]));
@@ -162,7 +163,7 @@ function build(): Ledger {
     doc({
       id: `je-in-${a.id}`, date: a.postingDate, origin: 'IN', originNo: String(a.docNum), originId: a.id, dueDate: a.dueDate, remarks: a.journalRemark,
       partnerId: a.customerId, controlAccount: a.controlAccount,
-      lines: arJournal(a, a.fxRate || 1, { items, groups, codes, rateOf: rates, withholding: arWithholding(a, partner.get(a.customerId), items, rates, TAX) }, true),
+      lines: arJournal(a, a.fxRate || 1, { itemsById, groups, codes, rateOf: rates, withholding: arWithholding(a, partner.get(a.customerId), items, rates, TAX) }, true),
     });
   }
   for (const p of SEED_INCOMING_PAYMENTS.filter((x) => posted(x.status)))

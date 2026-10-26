@@ -24,6 +24,8 @@ npm run typecheck  # TypeScript check only
 npm run lint       # ESLint (0 errors expected; exhaustive-deps warnings are known)
 npm run knip       # Unused files, exports and dependencies — keep it at zero
 npm run build      # tsc -b && vite build
+npm test           # Vitest unit tests (src/**/*.test.ts) — pure business logic
+npm run test:coverage  # Vitest with v8 coverage (target 80%+ on src/services)
 npm run test:e2e   # Playwright smoke tests (starts its own dev server on :5199)
 npx tsx scripts/check-seeds.ts  # Seed tie-out check (stock, ledger) — run after any mock change
 ```
