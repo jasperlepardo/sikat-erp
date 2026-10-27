@@ -10,3 +10,6 @@ untitled folder/
 
 # Coverage reports (generated)
 coverage/
+
+# Claude Code runtime state
+.claude/scheduled_tasks.lock
