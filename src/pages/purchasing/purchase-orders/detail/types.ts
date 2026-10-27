@@ -178,6 +178,7 @@ export function lineFromItem(item: Item, draft: PoDraft, ctx: PoContext, m: PoMa
     taxReturn: undefined,
     mfrNo: item.manufacturers.find((x) => x.code === item.manufacturer)?.catalogNo ?? '',
     deliveryDate: draft.deliveryDate,
+    countryOfOriginCode: item.countryOfOriginCode, warrantyTemplateId: item.warrantyTemplate, glAccount: '',
   });
   const { unitPrice, discountPct } = linePricing(item, line, draft, ctx);
   return { ...line, unitPrice, discountPct };

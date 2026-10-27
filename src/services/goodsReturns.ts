@@ -8,8 +8,8 @@ import { rateAt, vatNotPaidToVendor, type TaxCode } from '../mocks/taxes';
 import { applyInvoiceReturns, listApInvoices, returnableQty } from './apInvoices';
 import { applyGrrConsumption } from './goodsReturnRequests';
 import { todayISO } from './dates';
-import { applyReturnedQty, applyStock, expenseAccountFor, frozenLines, grInventoryQty, grOpenQty, listGoodsReceipts } from './goodsReceipts';
-import { inventoryAccountFor, type JournalLine } from './inventoryTransfers';
+import { applyReturnedQty, applyStock, frozenLines, grInventoryQty, grOpenQty, lineCostAccount, listGoodsReceipts } from './goodsReceipts';
+import type { JournalLine } from './inventoryTransfers';
 import { listItems, saveItems } from './items';
 import { consumeLayers, logConsumption, restoreLayer, updateFifoCosts, type Taken } from './costLayers';
 import { poTotals } from './purchaseOrders';
@@ -76,7 +76,7 @@ export function returnJournal(r: Pick<GoodsReturn, 'lines'>, items: Item[], grou
     if (!item) continue;
     const value = returnValueLc(l);
     add(GRNI_ACCOUNT, value);
-    add(item.inventoryItem ? inventoryAccountFor(item, l.warehouse, groups) : expenseAccountFor(item, groups), -value);
+    add(lineCostAccount(item, l, groups), -value);
   }
   return [...totals.entries()]
     .filter(([, n]) => n !== 0)

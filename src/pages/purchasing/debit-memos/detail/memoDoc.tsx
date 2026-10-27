@@ -2,9 +2,8 @@ import { Button, Checkbox, Icon, Text } from '@jasperlepardo/sikat-design-system
 import { type DocLinesProps } from '../../../../components/form/docLines/DocLines';
 import { type PrefColumn } from '../../../../components/form/columnPrefs';
 import { purchCols, pick } from '../../shared/purchCols';
-import { lineHelpers, itemConfig } from '../../shared/purchLineHelpers';
-import { countryDef, departmentDef, priceListDef } from '../../../settings/masterDefs';
-import { BLANKET_AGREEMENTS } from '../../../../mocks/purchaseOrders';
+import { costAccountOptions, lineHelpers, lineGlAccount, itemConfig } from '../../shared/purchLineHelpers';
+import { countryDef, departmentDef, priceListDef, warrantyTemplateDef } from '../../../settings/masterDefs';
 import { newMemoLine, type MemoLine } from '../../../../mocks/apCreditMemos';
 import { itemsPerUom } from '../../../../mocks/items';
 import { holdsStock } from '../../../../mocks/itemMasters';
@@ -19,16 +18,26 @@ import { defaultBin, lineFromItem, linePricing } from '../../goods-receipts/deta
 import { baseLink } from '../../shared/returnsTypes';
 import { taxCodeOptions } from '../../../../services/taxCodeOptions';
 import { round2 } from '../../../../services/num';
+import { formatAmount } from '../../../../services/format';
+import { formatDate } from '../../../../services/dates';
+import type { WithholdingLine } from '../../../../services/withholding';
+import { PurchTotalsFooter, PurchTotalNote, PurchTotalRow } from '../../shared/PurchTotalsFooter';
 import { type CmSectionProps } from './types';
 
-/** Props memoDoc needs beyond the section spread: the Copy-from toolbar lives here, its panel in the detail. */
+const WITHHELD_LABEL: Record<string, string> = { 'Expanded (EWT)': 'EWT', 'Final (FWT)': 'Final tax', 'Withholding VAT': 'VAT', 'Percentage tax': 'Percentage tax' };
+
+/** Props memoDoc needs beyond the section spread: the Copy-from toolbar lives here, its panel in the detail; the totals come from the detail, which also posts them. */
 export interface MemoDocProps extends CmSectionProps {
   onCopyClick: () => void;
   canCopy: boolean;
+  totals: { beforeDiscount: number; discount: number; tax: number; total: number; reverseCharge?: number };
+  withholding: WithholdingLine[];
+  credit: number;
+  openBalance: number;
 }
 
 /** Builds the A/P Credit Memo contents descriptor for the shared <DocLines>. */
-export function memoDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy }: MemoDocProps): DocLinesProps<MemoLine> {
+export function memoDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy, totals, withholding, credit, openBalance }: MemoDocProps): DocLinesProps<MemoLine> {
   const lines = draft.lines;
   const code = draft.currency;
   const h = lineHelpers<MemoLine>({ items: m.items, lines, update, errors, postingDate: draft.postingDate, uoms: m.inv.uoms });
@@ -37,20 +46,19 @@ export function memoDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy }:
   const taxRate = (l: MemoLine) => ctx.rateOf(l.taxCode);
 
   const taxOptions = (current: string) => taxCodeOptions(m.tax.codes, 'Purchase', current);
-  const blanketOptions = BLANKET_AGREEMENTS.filter((b) => b.vendorId === draft.vendorId).map((b) => ({ value: b.no, label: `${b.no} · ${b.description}` }));
 
   const pickItem = (l: MemoLine, itemId: string | null) => {
     const item = m.items.find((i) => i.id === itemId);
     if (!item) { patch(l.id, { itemId: '' }); return; }
     const { invoicedQty: _i, returnedQty: _r, id: _id, ...base } = lineFromItem(item, { postingDate: draft.postingDate }, ctx, m, { quantity: l.quantity });
-    patch(l.id, { ...base, countryOfOriginCode: item.countryOfOriginCode } as Partial<MemoLine>);
+    patch(l.id, { ...base, countryOfOriginCode: item.countryOfOriginCode, warrantyTemplateId: item.warrantyTemplate, glAccount: '' } as Partial<MemoLine>);
   };
   const fromItem = (itemId: string) => {
     const item = m.items.find((i) => i.id === itemId);
     if (!item) return undefined;
     const blank = newMemoLine();
     const { invoicedQty: _i, returnedQty: _r, id: _id, ...base } = lineFromItem(item, { postingDate: draft.postingDate }, ctx, m, { quantity: 1 });
-    return { ...blank, ...base, countryOfOriginCode: item.countryOfOriginCode } as MemoLine;
+    return { ...blank, ...base, countryOfOriginCode: item.countryOfOriginCode, warrantyTemplateId: item.warrantyTemplate, glAccount: '' } as MemoLine;
   };
   const changeUom = (l: MemoLine, uomCode: string) => {
     const item = itemOf(l);
@@ -64,7 +72,9 @@ export function memoDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy }:
   };
 
   const cols = purchCols<MemoLine>({
-    patch, readOnly: ctx.readOnly, currency: code, fx: ctx.fx,
+    patch, readOnly: ctx.readOnly, currency: code,
+    glAccountOf: (l) => lineGlAccount(itemOf(l), l, m.inv),
+    glAccountOptions: (l) => costAccountOptions(m.inv.accounts, l.glAccount),
     lineNet,
     priceAfterDisc: priceAfterDiscount,
     grossAfterDisc: (l) => priceAfterDiscount(l) * (1 + taxRate(l) / 100),
@@ -72,7 +82,7 @@ export function memoDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy }:
     taxOptions: (l) => taxOptions(l.taxCode),
     vendorOptions: [],
     warehouseOptions: m.inv.warehouses.filter((w) => holdsStock(w)).map((w) => ({ value: w.code, label: w.code })),
-    blanketOptions,
+    blanketScope: { vendorId: draft.vendorId, date: draft.postingDate },
     uomOptions, uomLabel,
     priceListDef, departmentDef, countryDef,
     changeUom,
@@ -84,7 +94,8 @@ export function memoDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy }:
     lineKind,
     inventoryQty: grInventoryQty,
     unitCost: (l) => l.unitCostLc || itemOf(l)?.itemCost || 0,
-    warrantyText: (l) => { const w = itemOf(l)?.warrantyTemplate; return w ? (m.inv.warranties.find((x) => x.id === w)?.name ?? w) : 'None'; },
+    warrantyDef: warrantyTemplateDef,
+    itemWarranty: (l) => itemOf(l)?.warrantyTemplate ?? '',
     qtyHint: (l) => {
       if (l.baseType === 'APINV') {
         const il = m.invoices.find((i) => i.id === l.baseId)?.lines.find((x) => x.id === l.baseLineId);
@@ -132,20 +143,21 @@ export function memoDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy }:
 
   const columns = [
     ...pick(cols, [
-      ['type', 'hide'], ['qty', 'always'], ['uomName', 'hide'], ['itemsPerUnit', 'hide'], ['inventoryUom', 'hide'],
-      ['warehouse', 'hide'], ['inventoryQty', 'hide'], ['priceList', 'hide'],
-      ['unitPrice', 'always'], ['discount', 'hide'], ['priceAfterDisc', 'hide'],
-      ['tax', 'hide'], ['taxAmount', 'hide'], ['gross', 'hide'], ['total', 'always'], ['grossTotalLc', 'hide'],
-      ['returnReason', 'always'],
-      ['countryOfOrigin', 'hide'], ['warranty', 'hide'], ['unitCost', 'hide'], ['department', 'hide'],
-      ['name', 'hide'], ['bpCatalogNo', 'hide'], ['requisition', 'hide'],
-      ['baseDoc', 'hide'], ['blanket', 'hide'], ['freeText', 'hide'],
+      // Shown by default: the SAP B1 v10 Contents fields, in its order (plus the return reason).
+      ['type', 'opt'], ['qty', 'always'], ['unitPrice', 'always'], ['discount', 'opt'], ['tax', 'opt'],
+      ['total', 'always'], ['returnReason', 'always'], ['warehouse', 'opt'], ['countryOfOrigin', 'opt'], ['blanket', 'opt'],
+      ['warranty', 'opt'], ['unitCost', 'opt'],
+      // Everything else, in the column chooser.
+      ['uomName', 'hide'], ['itemsPerUnit', 'hide'], ['inventoryQty', 'hide'], ['priceList', 'hide'], ['priceAfterDisc', 'hide'],
+      ['taxAmount', 'hide'], ['gross', 'hide'], ['grossTotalLc', 'hide'], ['department', 'hide'], ['bpCatalogNo', 'hide'],
+      ['requisition', 'hide'], ['baseDoc', 'hide'], ['freeText', 'hide'], ['glAccount', 'hide'],
     ]),
     returnGoodsColumn,
   ];
 
   return {
     prefsKey: 'apcm',
+    cardHeader: true,
     columns,
     rows: lines,
     icon: 'list_alt',
@@ -174,6 +186,32 @@ export function memoDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy }:
           Copy from
         </Button>
       </div>
+    ),
+    footer: (
+      <PurchTotalsFooter
+        totals={{ ...totals, freight: 0, rounding: 0 }}
+        currency={code}
+        readOnly={ctx.readOnly}
+        discountPct={draft.discountPct}
+        onDiscountChange={(discountPct) => update({ discountPct })}
+        midRows={<PurchTotalRow label="Total down payment" value={-draft.downPayment} code={code} />}
+        totalLabel="Total credit"
+        extraRows={
+          <>
+            {withholding.filter((w) => w.deducted).map((w) => (
+              <PurchTotalRow key={w.atc} label={`${WITHHELD_LABEL[w.kind] ?? 'Tax'} reversed — ${w.atc} (${w.rate}%)`} value={-w.amount} code={code} />
+            ))}
+            <PurchTotalRow label="Net credit" value={credit} code={code} strong />
+            <PurchTotalRow label="Applied amount" value={-draft.appliedAmount} code={code} />
+            <PurchTotalRow label="Open balance" value={openBalance} code={code} strong />
+            {draft.applications.length ? (
+              <PurchTotalNote>
+                Applied to {draft.applications.map((a) => `A/P invoice ${a.docNo} (${code} ${formatAmount(a.amount)}, ${formatDate(a.date)})`).join('; ')}.
+              </PurchTotalNote>
+            ) : null}
+          </>
+        }
+      />
     ),
   };
 }

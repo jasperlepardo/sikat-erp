@@ -1,8 +1,8 @@
 import { Button, Icon, Text } from '@jasperlepardo/sikat-design-system';
 import { type DocLinesProps } from '../../../../components/form/docLines/DocLines';
 import { purchCols, pick } from '../../shared/purchCols';
-import { lineHelpers, itemConfig } from '../../shared/purchLineHelpers';
-import { countryDef, departmentDef, priceListDef } from '../../../settings/masterDefs';
+import { costAccountOptions, lineHelpers, lineGlAccount, itemConfig } from '../../shared/purchLineHelpers';
+import { countryDef, departmentDef, priceListDef, warrantyTemplateDef } from '../../../settings/masterDefs';
 import { newGrrLine, type GrrLine } from '../../../../mocks/goodsReturnRequests';
 import { itemsPerUom } from '../../../../mocks/items';
 import { holdsStock } from '../../../../mocks/itemMasters';
@@ -35,7 +35,7 @@ export function grrDoc({ draft, update, errors, m, onCopyClick, canCopy }: GrrDo
       itemId: item.id, itemNo: item.itemNo, description: item.description || item.name,
       uomCode, uomName: uom?.name ?? uomCode, itemsPerUnit: itemsPerUom(item, uomCode) ?? 1,
       warehouse: item.inventoryItem ? (item.warehouses[0]?.code ?? '') : '',
-      countryOfOriginCode: item.countryOfOriginCode ?? '',
+      countryOfOriginCode: item.countryOfOriginCode ?? '', warrantyTemplateId: item.warrantyTemplate ?? '', glAccount: '',
     });
   };
   const fromItem = (itemId: string): GrrLine | undefined => {
@@ -47,7 +47,7 @@ export function grrDoc({ draft, update, errors, m, onCopyClick, canCopy }: GrrDo
       itemId: item.id, itemNo: item.itemNo, description: item.description || item.name,
       uomCode, uomName: uom?.name ?? uomCode, itemsPerUnit: itemsPerUom(item, uomCode) ?? 1,
       warehouse: item.inventoryItem ? (item.warehouses[0]?.code ?? '') : '',
-      countryOfOriginCode: item.countryOfOriginCode ?? '',
+      countryOfOriginCode: item.countryOfOriginCode ?? '', warrantyTemplateId: item.warrantyTemplate ?? '', glAccount: '',
       quantity: 1, openQty: 1,
     });
   };
@@ -60,6 +60,8 @@ export function grrDoc({ draft, update, errors, m, onCopyClick, canCopy }: GrrDo
 
   const cols = purchCols<GrrLine>({
     patch, readOnly, currency: draft.currency,
+    glAccountOf: (l) => lineGlAccount(itemOf(l), l, m.inv),
+    glAccountOptions: (l) => costAccountOptions(m.inv.accounts, l.glAccount),
     lineNet,
     priceAfterDisc: priceAfterDiscount,
     grossAfterDisc: priceAfterDiscount,
@@ -67,7 +69,6 @@ export function grrDoc({ draft, update, errors, m, onCopyClick, canCopy }: GrrDo
     taxOptions: (l) => taxOptions(l.taxCode),
     vendorOptions: [],
     warehouseOptions: m.inv.warehouses.filter((w) => holdsStock(w)).map((w) => ({ value: w.code, label: w.code })),
-    blanketOptions: [],
     uomOptions, uomLabel,
     priceListDef, departmentDef, countryDef,
     changeUom,
@@ -80,24 +81,24 @@ export function grrDoc({ draft, update, errors, m, onCopyClick, canCopy }: GrrDo
     invalid: (l, f) => Boolean(err(l, f)),
     lineKind,
     unitCost: (l) => itemOf(l)?.itemCost ?? 0,
-    warrantyText: (l) => { const w = itemOf(l)?.warrantyTemplate; return w ? (m.inv.warranties.find((x) => x.id === w)?.name ?? w) : 'None'; },
+    warrantyDef: warrantyTemplateDef,
+    itemWarranty: (l) => itemOf(l)?.warrantyTemplate ?? '',
     warehouseStocked: (l) => Boolean(itemOf(l)?.inventoryItem),
   });
 
   const columns = pick(cols, [
-    ['type', 'hide'], ['qty', 'always'],
-    ['uomName', 'hide'], ['itemsPerUnit', 'hide'],
-    ['warehouse', 'hide'],
-    ['unitPrice', 'always'], ['discount', 'hide'],
-    ['tax', 'hide'], ['total', 'always'],
-    ['returnReason', 'always'],
-    ['countryOfOrigin', 'hide'], ['warranty', 'hide'], ['unitCost', 'hide'],
-    ['department', 'hide'], ['freeText', 'hide'], ['requisition', 'hide'],
-    ['name', 'hide'], ['lineStatus', 'hide'],
+    // Shown by default: the SAP B1 v10 Contents fields, in its order (plus the return reason).
+    ['type', 'opt'], ['qty', 'always'], ['unitPrice', 'always'], ['discount', 'opt'], ['tax', 'opt'],
+    ['total', 'always'], ['returnReason', 'always'], ['warehouse', 'opt'], ['glAccount', 'opt'], ['countryOfOrigin', 'opt'],
+    ['warranty', 'opt'], ['unitCost', 'opt'],
+    // Everything else, in the column chooser.
+    ['uomName', 'hide'], ['itemsPerUnit', 'hide'], ['department', 'hide'], ['freeText', 'hide'], ['requisition', 'hide'],
+    ['lineStatus', 'hide'],
   ]);
 
   return {
     prefsKey: 'grr',
+    cardHeader: true,
     columns,
     rows: lines,
     icon: 'list_alt',

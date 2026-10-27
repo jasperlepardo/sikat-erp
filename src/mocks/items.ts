@@ -272,6 +272,8 @@ const VARIANT_OWN_FIELDS = new Set<keyof Item>([
   // parent's unit setup propagates to all variants instantly at read time.
   'basePrice', 'itemCost',
   'barcodes', 'warehouses', 'attachments',
+  // Vendors are per variant: each configuration has its own vendor part number (catalog no.).
+  'vendors',
   'validFrom', 'validTo', 'hasTransactions',
   'remarks', 'foreignRemarks', 'properties',
 ]);
@@ -506,6 +508,19 @@ const BOUGHT_BY_THE_BOX = /^ACC-(MAGSF|USBC)/;
 /** Small deterministic hash so seeded stock looks varied but never changes between reloads. */
 const hash = (s: string) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
 
+/**
+ * Where each Apple family is assembled (demo approximation of Apple's supply chain):
+ * mostly China; base iPhones in India; MacBook Air, Watch and AirPods in Vietnam;
+ * Mac mini in Malaysia. Variants inherit it from the family.
+ */
+const ORIGIN_BY_GROUP: Record<string, string> = { 'Apple Watch': 'VN', AirPods: 'VN' };
+const ORIGIN_BY_FAMILY: Record<string, string> = {
+  'iPhone/17': 'IN', 'iPhone/17E': 'IN', 'iPhone/16': 'IN',
+  'Mac/MBA13': 'VN', 'Mac/MBA15': 'VN', 'Mac/MINI': 'MY',
+  'AirPods/MAX2': 'CN', 'Accessories/ATAG': 'VN',
+};
+const originOf = (f: { group: string; code: string }) => ORIGIN_BY_FAMILY[`${f.group}/${f.code}`] ?? ORIGIN_BY_GROUP[f.group] ?? 'CN';
+
 const prefixOf = (group: string) => SEED_ITEM_GROUPS.find((g) => g.name === group)!.prefix;
 const TODAY = '2026-09-27';
 
@@ -550,7 +565,7 @@ const APPLE_PARENT_ITEMS: Item[] = catalog.families.map((f) => {
     warehouses: [],
     cycleCountDays: 0,
     planningMethod: 'None' as PlanningMethod,
-    countryOfOriginCode: '',
+    countryOfOriginCode: originOf(f.family),
     customsGroup: CUSTOMS_BY_GROUP[f.family.group] ?? '',
     defaultVendorId: APPLE_VENDOR,
     manufacturer: 'MFR-APL',
@@ -577,7 +592,7 @@ const APPLE_ITEMS: Item[] = catalog.entries.map((e, n) => {
     parentItemId: e.familyId,
     variantValues: e.variantValues,
     manageBy: family.serial ? 'Serial Numbers' : 'None',
-    countryOfOriginCode: '',
+    countryOfOriginCode: originOf(family),
     customsGroup: CUSTOMS_BY_GROUP[family.group] ?? ACCESSORY_CUSTOMS.find(([re]) => re.test(e.itemNo))?.[1] ?? '',
     defaultVendorId: APPLE_VENDOR,
     vendors: [{ id: `apl-${n}-v1`, vendorId: APPLE_DIRECT, vendorItemNo: e.itemNo }],
@@ -810,3 +825,11 @@ export const SEED_ITEMS: Item[] = [
   ),
   ...ITEM_TAX_CASES,
 ];
+
+let seedMerged: Map<string, Item> | undefined;
+/** The seeded item's country of origin and warranty (a variant's come from its family), for seeded document lines. */
+export function seedLineDefaults(itemId: string): { countryOfOriginCode: string; warrantyTemplateId: string } {
+  seedMerged ??= new Map(mergedItems(SEED_ITEMS).map((i) => [i.id, i]));
+  const i = seedMerged.get(itemId);
+  return { countryOfOriginCode: i?.countryOfOriginCode ?? '', warrantyTemplateId: i?.warrantyTemplate ?? '' };
+}

@@ -114,6 +114,7 @@ export function PayVendorRows({ draft, update, errors, m, fx, readOnly }: PaySec
   return (
     <div className="flex flex-col gap-2">
       <DataTable
+        variant="card"
         noPagination
         icon="receipt_long"
         title="Open documents"
@@ -198,6 +199,7 @@ export function PayAccountRows({ draft, update, errors, m, readOnly }: PaySectio
   ];
   return (
     <DataTable
+      variant="card"
       noPagination
       icon="account_tree"
       title="Accounts"

@@ -1,10 +1,9 @@
 import { Button, Combobox, Icon, Text, TextField } from '@jasperlepardo/sikat-design-system';
 import { type DocLinesProps } from '../../../../components/form/docLines/DocLines';
 import { purchCols, pick } from '../../shared/purchCols';
-import { lineHelpers, itemConfig } from '../../shared/purchLineHelpers';
-import { countryDef, departmentDef, priceListDef } from '../../../settings/masterDefs';
+import { costAccountOptions, lineHelpers, lineGlAccount, itemConfig, itemVendorOptions } from '../../shared/purchLineHelpers';
+import { countryDef, departmentDef, priceListDef, warrantyTemplateDef } from '../../../settings/masterDefs';
 import { isPriceListValid } from '../../../../services/priceLists';
-import { BLANKET_AGREEMENTS } from '../../../../mocks/purchaseOrders';
 import { newGrLine, type GrLine } from '../../../../mocks/goodsReceipts';
 import { itemsPerUom } from '../../../../mocks/items';
 import { formatDate } from '../../../../services/dates';
@@ -39,13 +38,6 @@ export function grDoc({ draft, update, errors, m, ctx, onCopyClick, copyableCoun
   const reverseChargeVat = (l: GrLine) => (ctx.isReverseCharge(l.taxCode) ? round2((lineNet(l) * ctx.rateOf(l.taxCode)) / 100) : null);
 
   const taxOptions = (current: string) => taxCodeOptions(m.tax.codes, 'Purchase', current);
-  const blanketOptions = [
-    ...BLANKET_AGREEMENTS.filter((b) => b.vendorId === draft.vendorId && b.validTo >= draft.postingDate).map((b) => ({ value: b.no, label: `${b.no} · ${b.description}` })),
-  ];
-  const vendorOptions = [
-    { value: '', label: '— Header vendor —' },
-    ...m.vendors.filter((v) => v.status !== 'Inactive' && v.id !== draft.vendorId).map((v) => ({ value: v.id, label: v.name })),
-  ];
 
   const pickItem = (l: GrLine, itemId: string | null) => {
     const item = m.items.find((i) => i.id === itemId);
@@ -76,16 +68,20 @@ export function grDoc({ draft, update, errors, m, ctx, onCopyClick, copyableCoun
   // The per-field rendering lives in the shared registry; GR supplies its data/services
   // here and picks which columns + default visibility. Order mirrors PR / PQ / PO.
   const cols = purchCols<GrLine>({
-    patch, readOnly: ctx.readOnly, currency: draft.currency, fx: ctx.fx,
+    patch, readOnly: ctx.readOnly, currency: draft.currency,
+    glAccountOf: (l) => lineGlAccount(itemOf(l), l, m.inv),
+    glAccountOptions: (l) => costAccountOptions(m.inv.accounts, l.glAccount),
     lineNet,
     priceAfterDisc: priceAfterDiscount,
     grossAfterDisc: (l) => priceAfterDiscount(l) * (1 + taxRate(l) / 100),
     taxAmount: (l) => round2((lineNet(l) * taxRate(l)) / 100),
     reverseChargeVat,
     taxOptions: (l) => taxOptions(l.taxCode),
-    vendorOptions,
+    // Another vendor that carries the item, for one line; empty means the header vendor.
+    vendorOptions: (l) => itemVendorOptions(itemOf(l), m.vendors, l.lineVendorId, draft.vendorId),
+    vendorOf: (l) => m.vendors.find((v) => v.id === (l.lineVendorId || draft.vendorId)),
     warehouseOptions: m.inv.warehouses.filter((w) => receivesFromVendors(w)).map((w) => ({ value: w.code, label: w.code })),
-    blanketOptions,
+    blanketScope: { vendorId: draft.vendorId, date: draft.postingDate },
     uomOptions, uomLabel,
     priceListDef, priceListWhere: (r) => isPriceListValid(r, draft.postingDate), departmentDef,
     changeUom, changePriceList,
@@ -110,26 +106,27 @@ export function grDoc({ draft, update, errors, m, ctx, onCopyClick, copyableCoun
     openQtyOf: (l) => grOpenQty(l, draft),
     baseDoc: (l) => (l.baseId ? { href: `#/purchasing/purchase-orders/${l.baseId}`, label: `PO ${l.baseDocNo}` } : null),
     countryDef,
-    warrantyText: (l) => { const w = itemOf(l)?.warrantyTemplate; return w ? (m.inv.warranties.find((x) => x.id === w)?.name ?? w) : 'None'; },
+    warrantyDef: warrantyTemplateDef,
+    itemWarranty: (l) => itemOf(l)?.warrantyTemplate ?? '',
     unitCost: (l) => l.unitCostLc || itemOf(l)?.itemCost || 0,
   });
 
   const columns = pick(cols, [
-    ['type', 'hide'], ['qty', 'always'],
-    ['uomName', 'hide'], ['itemsPerUnit', 'hide'], ['inventoryUom', 'hide'],
-    ['warehouse', 'hide'], ['inventoryQty', 'hide'], ['packages', 'hide'], ['openQty', 'hide'],
-    ['priceList', 'hide'],
-    ['unitPrice', 'always'], ['discount', 'hide'], ['priceAfterDisc', 'hide'],
-    ['tax', 'hide'], ['taxAmount', 'hide'], ['reverseChargeVat', 'hide'], ['gross', 'hide'], ['total', 'always'], ['grossTotalLc', 'hide'],
-    ['baseDoc', 'hide'], ['blanket', 'hide'], ['vendor', 'hide'],
-    ['requisition', 'hide'], ['freeText', 'hide'], ['returnReason', 'hide'],
-    ['name', 'hide'], ['bpCatalogNo', 'hide'], ['mfrNo', 'hide'], ['deliveryDate', 'hide'],
-    ['countryOfOrigin', 'hide'], ['warranty', 'hide'], ['unitCost', 'hide'],
-    ['department', 'hide'], ['lineStatus', 'hide'],
+    // Shown by default: the SAP B1 v10 Contents fields, in its order.
+    ['type', 'opt'], ['qty', 'always'], ['unitPrice', 'always'], ['discount', 'opt'], ['tax', 'opt'],
+    ['total', 'always'], ['warehouse', 'opt'], ['glAccount', 'opt'], ['countryOfOrigin', 'opt'], ['warranty', 'opt'],
+    ['unitCost', 'opt'],
+    // Everything else, in the column chooser.
+    ['uomName', 'hide'], ['itemsPerUnit', 'hide'], ['inventoryQty', 'hide'], ['packages', 'hide'], ['openQty', 'hide'],
+    ['priceList', 'hide'], ['priceAfterDisc', 'hide'], ['taxAmount', 'hide'], ['reverseChargeVat', 'hide'], ['gross', 'hide'],
+    ['grossTotalLc', 'hide'], ['baseDoc', 'hide'], ['blanket', 'hide'], ['vendor', 'hide'], ['requisition', 'hide'],
+    ['freeText', 'hide'], ['bpCatalogNo', 'hide'], ['mfrNo', 'hide'], ['deliveryDate', 'hide'], ['department', 'hide'],
+    ['lineStatus', 'hide'],
   ]);
 
   return {
     prefsKey: 'gr',
+    cardHeader: true,
     columns,
     rows: lines,
     icon: 'list_alt',

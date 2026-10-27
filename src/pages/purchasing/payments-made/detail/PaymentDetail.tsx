@@ -16,7 +16,7 @@ import {
   Text,
 } from '@jasperlepardo/sikat-design-system';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
-import { Fields, FieldStack, Section, bind, type Errors } from '../../../../components/form/fields';
+import { Fields, FieldStack, ReadOnly, Section, bind, type Errors } from '../../../../components/form/fields';
 import { StatusField } from '../../../../components/form/StatusField';
 import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
@@ -403,14 +403,19 @@ function PaymentForm() {
                 <fieldset disabled={added} className="contents">
                   <Section icon="tag" title="Document">
                     <FieldStack>
-                      <FormField label="No." tooltip={added ? undefined : 'Assigned from the series when the payment is added.'}>
-                        {() => (
-                          <div className="flex gap-1">
-                            <Select aria-label="Series" className="w-40" disabled={added} options={PAYMENT_SERIES.map((s) => ({ value: s.id, label: s.name }))} value={draft.seriesId} onValueChange={(seriesId) => update({ seriesId })} />
-                            <span className="flex-1 self-center text-sm">{draft.docNum ? paymentNumber(draft) : <span className="text-placeholder">Next number</span>}</span>
-                          </div>
-                        )}
-                      </FormField>
+                      {/* Narrow aside: once added the series is fixed, so show just the number. */}
+                      {added ? (
+                        <ReadOnly label="No." value={paymentNumber(draft)} />
+                      ) : (
+                        <FormField label="No." tooltip="Assigned from the series when the payment is added.">
+                          {() => (
+                            <div className="flex gap-1">
+                              <Select aria-label="Series" className="min-w-0 flex-1" options={PAYMENT_SERIES.map((s) => ({ value: s.id, label: s.name }))} value={draft.seriesId} onValueChange={(seriesId) => update({ seriesId })} />
+                              <span className="shrink-0 self-center whitespace-nowrap text-sm">{draft.docNum ? paymentNumber(draft) : <span className="text-placeholder">Next number</span>}</span>
+                            </div>
+                          )}
+                        </FormField>
+                      )}
                       <StatusField statuses={PAYMENT_STATUSES} intents={PAYMENT_STATUS_INTENT} value={draft.status} moves={statusMoves} />
                       {h.date('postingDate', 'Posting date', {
                         required: true,

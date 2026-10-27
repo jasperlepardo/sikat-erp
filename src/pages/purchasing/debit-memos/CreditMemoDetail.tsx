@@ -365,7 +365,10 @@ function CreditMemoForm() {
                       pickVendor={pickVendor}
                       onOpenDetails={() => setVendorDetailsOpen(true)}
                     />
-                    <DocLines {...memoDoc({ ...sectionProps, onCopyClick: () => setCopying(true), canCopy: invoices.length + returns.length > 0 })} />
+                  </fieldset>
+                  {/* Outside the fieldset: the lines lock themselves via ctx.readOnly, and the Columns menu stays usable once added. */}
+                  <DocLines {...memoDoc({ ...sectionProps, onCopyClick: () => setCopying(true), canCopy: invoices.length + returns.length > 0, totals, withholding, credit, openBalance })} />
+                  <fieldset disabled={added} className="contents">
                     <ReferencesTable refs={draft.references} onChange={(references) => update({ references })} readOnly={added} description="Other documents this credit memo refers to, e.g. the vendor's credit note." />
                   </fieldset>
                   <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach the vendor's credit note or debit memo." />
@@ -376,7 +379,7 @@ function CreditMemoForm() {
                     <CmLogisticsCard {...sectionProps} addressOptions={addressOptions} />
                     <CmAccountingCard {...sectionProps} readOnly={added} />
                   </fieldset>
-                  <CmTotalsCard {...sectionProps} locked={added} totals={totals} withholding={withholding} credit={credit} openBalance={openBalance} />
+                  <CmTotalsCard {...sectionProps} locked={added} />
                   <CmJournalCard journal={journal} accounts={m.accounts} code={code} fx={fx} />
                 </div>
               </div>

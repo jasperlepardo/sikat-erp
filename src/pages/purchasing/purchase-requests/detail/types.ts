@@ -93,5 +93,6 @@ export function lineFromItem(item: Item, draft: PrDraft, m: PrMasters, base: Par
     quantity: qty,
     openQty: qty,
     requiredDate: draft.requiredDate,
+    countryOfOriginCode: item.countryOfOriginCode, warrantyTemplateId: item.warrantyTemplate, glAccount: '',
   });
 }

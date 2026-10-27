@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AffixSelect, Combobox, Select, Text, TextField } from '@jasperlepardo/sikat-design-system';
+import { AffixSelect, Select, Text, TextField } from '@jasperlepardo/sikat-design-system';
 import type { PrefColumn } from '../columnPrefs';
 import { MasterLookup, type MasterDef, type MasterRow } from '../MasterLookup';
 import { formatAmount } from '../../../services/format';
@@ -41,48 +41,6 @@ export function textCol<T extends DocLineBase>(
     },
   };
 }
-
-/**
- * Picker cell over a fixed option list — line vendor, warehouse, any id→label
- * select. Shows the current option's label read-only when locked; stores the
- * option value. Clearable by default so a line can have no selection ('').
- */
-export function comboCol<T extends DocLineBase>(
-  cfg: {
-    key: string;
-    header: string;
-    options: { value: string; label: string }[];
-    get: (l: T) => string;
-    onChange: (l: T, v: string) => void;
-    readOnly?: boolean;
-    width?: string;
-    placeholder?: string;
-  } & ColOpts,
-): PrefColumn<T> {
-  const { key, header, options, get, onChange, readOnly, width = 'w-44', placeholder } = cfg;
-  return {
-    key,
-    header,
-    ...withOpts(cfg),
-    cell: (l: T) => {
-      if (!l.itemId) return null;
-      const current = get(l);
-      if (readOnly) return <Text variant="small">{options.find((o) => o.value === current)?.label || '—'}</Text>;
-      return (
-        <Combobox
-          aria-label={header}
-          className={width}
-          clearable
-          placeholder={placeholder}
-          options={options}
-          value={current || null}
-          onValueChange={(v) => onChange(l, v ?? '')}
-        />
-      );
-    },
-  };
-}
-
 /**
  * Master-data lookup cell — department, price list. Stores the row's id and
  * shows its label at render; read-only renders the label as plain `Text`.
@@ -137,7 +95,7 @@ export function amountCol<T extends DocLineBase>(
     header,
     ...withOpts(cfg),
     ...(align ? { align } : {}),
-    cell: (l: T) => (l.itemId ? <span className="text-sm tabular-nums">{formatAmount(value(l))}</span> : null),
+    cell: (l: T) => (l.itemId ? <span className="whitespace-nowrap text-sm tabular-nums">{formatAmount(value(l))}</span> : null),
   };
 }
 
@@ -145,11 +103,11 @@ export function amountCol<T extends DocLineBase>(
 
 const toNum = (v: string) => (v === '' ? 0 : Number(v));
 
-/** Editable unit/info price — right-aligned number, optional currency prefix. */
+/** Editable unit/info price — right-aligned number; the currency goes in the header. */
 export function priceCol<T extends DocLineBase>(
-  cfg: { key: string; header: string; get: (l: T) => number; onChange: (l: T, v: number) => void; readOnly?: boolean; prefix?: string } & ColOpts,
+  cfg: { key: string; header: string; get: (l: T) => number; onChange: (l: T, v: number) => void; readOnly?: boolean } & ColOpts,
 ): PrefColumn<T> {
-  const { key, header, get, onChange, readOnly, prefix } = cfg;
+  const { key, header, get, onChange, readOnly } = cfg;
   return {
     key,
     header,
@@ -157,8 +115,8 @@ export function priceCol<T extends DocLineBase>(
     ...withOpts(cfg),
     cell: (l: T) => {
       if (!l.itemId) return null;
-      if (readOnly) return <span className="text-sm tabular-nums">{prefix ? `${prefix} ` : ''}{formatAmount(get(l))}</span>;
-      return <TextField aria-label={header} type="number" min={0} prefix={prefix} className="ml-auto w-28 [&_input]:text-right" value={get(l) ? String(get(l)) : ''} placeholder="0.00" onChange={(e) => onChange(l, toNum(e.currentTarget.value))} />;
+      if (readOnly) return <span className="whitespace-nowrap text-sm tabular-nums">{formatAmount(get(l))}</span>;
+      return <TextField aria-label={header} type="number" min={0} className="ml-auto w-28 [&_input]:text-right" value={get(l) ? String(get(l)) : ''} placeholder="0.00" onChange={(e) => onChange(l, toNum(e.currentTarget.value))} />;
     },
   };
 }

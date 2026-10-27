@@ -1,4 +1,4 @@
-import { Section, Fields, Flags, ReadOnly, bind } from '../../../../../components/form/fields';
+import { Section, FieldStack, Flags, ReadOnly, bind } from '../../../../../components/form/fields';
 import { paymentTermDef, salesEmployeeDef } from '../../../../settings/masterDefs';
 import { activeOptions } from '../../../../../services/inventoryMasters';
 import type { PbaDraft, PbaMasters } from '../types';
@@ -36,7 +36,7 @@ export function AgreementSettingsCard({ draft, update, m, readOnly: _readOnly }:
   const f = bind(draft, update);
   return (
     <Section icon="tune" title="Agreement Settings">
-      <Fields cols={2}>
+      <FieldStack>
         {f.choose('agreementType', 'Agreement type', AGREEMENT_TYPE_OPTIONS, { required: true })}
         {f.choose('status', 'Status', PBA_STATUS_OPTIONS)}
         {f.master('paymentTermId', 'Payment terms', paymentTermDef, { clearable: true, hint: 'Defaults from the vendor.' })}
@@ -45,18 +45,20 @@ export function AgreementSettingsCard({ draft, update, m, readOnly: _readOnly }:
         {f.num('settlementProbability', 'Settlement probability %', { hint: 'Estimated likelihood of full settlement (0–100).', suffix: '%' })}
         {f.master('ownerId', 'Owner', salesEmployeeDef, { clearable: true, placeholder: 'None' })}
         <ReadOnly label="Ignore prices in agreement" value={draft.ignorePrices ? 'Yes — agreement prices excluded' : 'No'} hint="Controlled by Agreement Type." />
-      </Fields>
+      </FieldStack>
       <Flags>
         {f.check('renewal', 'Eligible for automatic renewal')}
       </Flags>
       {draft.renewal
         ? (
-          <Fields cols={2}>
+          <FieldStack>
             {f.num('reminderDays', 'Reminder (days before expiry)', { hint: 'Alert this many days before the agreement ends.', suffix: 'days' })}
-          </Fields>
+          </FieldStack>
         )
         : null}
-      {f.area('remarks', 'Remarks', { rows: 4 })}
+      <FieldStack>
+        {f.area('remarks', 'Remarks', { rows: 4 })}
+      </FieldStack>
     </Section>
   );
 }

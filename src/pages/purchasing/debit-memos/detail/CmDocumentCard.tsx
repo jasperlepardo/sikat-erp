@@ -18,14 +18,19 @@ export function CmDocumentCard({ draft, update, errors, statusMoves, locked }: C
   return (
     <Section icon="tag" title="Document">
       <Fields>
-        <FormField label="No.">
-          {() => (
-            <div className="flex gap-1">
-              <Select aria-label="Series" className="w-40" disabled={locked} options={MEMO_SERIES.map((s) => ({ value: s.id, label: s.name }))} value={draft.seriesId} onValueChange={(seriesId) => update({ seriesId })} />
-              <span className="flex-1 self-center text-sm">{draft.docNum ? memoNumber(draft) : <span className="text-placeholder">Next number</span>}</span>
-            </div>
-          )}
-        </FormField>
+        {/* Half-width cell: once added the series is fixed, so show just the number. */}
+        {locked ? (
+          <ReadOnly label="No." value={memoNumber(draft)} />
+        ) : (
+          <FormField label="No.">
+            {() => (
+              <div className="flex gap-1">
+                <Select aria-label="Series" className="min-w-0 flex-1" options={MEMO_SERIES.map((s) => ({ value: s.id, label: s.name }))} value={draft.seriesId} onValueChange={(seriesId) => update({ seriesId })} />
+                <span className="shrink-0 self-center whitespace-nowrap text-sm">{draft.docNum ? memoNumber(draft) : <span className="text-placeholder">Next number</span>}</span>
+              </div>
+            )}
+          </FormField>
+        )}
         <StatusField statuses={MEMO_STATUSES} intents={MEMO_STATUS_INTENT} value={draft.status} moves={statusMoves} hint="Open while credit is left to apply; Closed once all of it is applied." error={errors.status} />
         {h.date('postingDate', 'Posting date', { required: true, error: errors.postingDate })}
         {h.date('dueDate', 'Due date', { hint: 'When the credit is due, from the payment terms.' })}

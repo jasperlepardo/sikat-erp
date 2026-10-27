@@ -57,7 +57,11 @@ export async function loadRetMasters(): Promise<RetMasters> {
 export const vendorAddressOptions = (v: Partner | undefined) =>
   (v?.addresses ?? []).map((a) => ({ value: formatAddress(a, v!.name), label: `${a.label || 'Address'} · ${a.city || a.countryCode}` }));
 
-const extras = (item: Item | undefined) => ({ countryOfOriginCode: item?.countryOfOriginCode ?? '' });
+// The country of origin and warranty the receipt line carries, else the item's.
+const extras = (item: Item | undefined, src: { countryOfOriginCode?: string; warrantyTemplateId?: string }) => ({
+  countryOfOriginCode: src.countryOfOriginCode ?? item?.countryOfOriginCode ?? '',
+  warrantyTemplateId: src.warrantyTemplateId ?? item?.warrantyTemplate ?? '',
+});
 
 /** Return lines sending back receipt lines not yet billed, each `qty` (defaults to what's open). */
 export function returnFromReceipt(gr: GoodsReceipt, picks: { lineId: string; qty: number }[], items: Item[]): ReturnLine[] {
@@ -65,7 +69,7 @@ export function returnFromReceipt(gr: GoodsReceipt, picks: { lineId: string; qty
     const gl = gr.lines.find((l) => l.id === lineId);
     if (!gl) return [];
     const { invoicedQty: _i, returnedQty: _r, id: _id, ...line } = gl;
-    return [newReturnLine({ ...line, ...extras(items.find((i) => i.id === gl.itemId)), quantity: Math.min(qty, grOpenQty(gl, gr)), baseType: 'GRPO', baseId: gr.id, baseLineId: gl.id, baseDocNo: grNumber(gr) })];
+    return [newReturnLine({ ...line, ...extras(items.find((i) => i.id === gl.itemId), gl), quantity: Math.min(qty, grOpenQty(gl, gr)), baseType: 'GRPO', baseId: gr.id, baseLineId: gl.id, baseDocNo: grNumber(gr) })];
   });
 }
 

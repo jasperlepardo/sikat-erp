@@ -96,6 +96,14 @@ export const expenseAccountFor = (item: Item, groups: ItemGroup[]) =>
   item.glBy === 'Item Level' ? item.cogsAccount : groups.find((g) => g.id === item.itemGroupId)?.cogsAccount || item.cogsAccount;
 
 /**
+ * The account a purchase line's cost posts to: a stock item's inventory account (never
+ * overridden, so stock value and the ledger agree), else the line's own G/L account when
+ * the buyer chose one, else the item's expense account.
+ */
+export const lineCostAccount = (item: Item, l: { warehouse?: string; glAccount?: string }, groups: ItemGroup[]) =>
+  item.inventoryItem ? inventoryAccountFor(item, l.warehouse ?? '', groups) : l.glAccount || expenseAccountFor(item, groups);
+
+/**
  * The entry adding the receipt makes, in PHP: Dr Inventory for stocked lines (at their cost),
  * Dr the cost account for non-stock lines, Dr Freight-in for freight, Cr Goods Received Not
  * Invoiced for the lot. VAT isn't posted until the vendor's invoice.
@@ -109,7 +117,7 @@ export function grJournal(gr: Pick<GoodsReceipt, 'lines' | 'discountPct' | 'frei
     if (!item) continue;
     // The line's net value, so the entry agrees with the document total to the centavo.
     const value = round2(lineNet(l) * (1 - gr.discountPct / 100) * fx);
-    add(item.inventoryItem ? inventoryAccountFor(item, l.warehouse, groups) : expenseAccountFor(item, groups), value);
+    add(lineCostAccount(item, l, groups), value);
     credit += value;
   }
   const freight = round2(gr.freight * fx);

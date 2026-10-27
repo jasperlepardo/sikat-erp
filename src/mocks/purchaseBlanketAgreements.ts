@@ -5,6 +5,8 @@ import { SEED_ITEMS, itemsPerUom } from './items';
 import { SEED_PARTNERS } from './partners';
 import { todayISO } from '../services/dates';
 import { round2 } from '../services/num';
+import { pbaLineId } from './purchLine';
+import { SEED_PURCHASE_ORDERS, type PurchaseOrder } from './purchaseOrders';
 
 export type PbaStatus = 'Draft' | 'Approved' | 'On Hold' | 'Terminated' | 'Closed';
 export const PBA_STATUSES: PbaStatus[] = ['Draft', 'Approved', 'On Hold', 'Terminated', 'Closed'];
@@ -171,10 +173,11 @@ export function blankPurchaseBlanketAgreement(ownerId: string): Omit<PurchaseBla
 const itemByNo = (itemNo: string) => SEED_ITEMS.find((i) => i.itemNo === itemNo)!;
 const partnerById = (id: string) => SEED_PARTNERS.find((p) => p.id === id)!;
 
-const seedLine = (id: string, itemNo: string, plannedQty: number, patch: Partial<PbaLine> = {}): PbaLine => {
+/** A seeded agreement line, id'd by agreement + item so seeded PO lines can point at it (`pbaLineId`). */
+const seedLine = (pbaId: string, itemNo: string, plannedQty: number, patch: Partial<PbaLine> = {}): PbaLine => {
   const item = itemByNo(itemNo);
   return newPbaLine({
-    id,
+    id: pbaLineId(pbaId, itemNo),
     itemId: item.id,
     itemNo: item.itemNo,
     description: item.description || item.name,
@@ -187,6 +190,38 @@ const seedLine = (id: string, itemNo: string, plannedQty: number, patch: Partial
     ...patch,
   });
 };
+/** Apple South Asia prices in USD: the item cost at the seed's ₱58 rate. */
+const usdLine = (pbaId: string, itemNo: string, plannedQty: number) =>
+  seedLine(pbaId, itemNo, plannedQty, { unitPrice: round2(itemByNo(itemNo).itemCost / 58) });
+
+/**
+ * The agreement's committed and cumulative figures from the POs drawn on it: open lines of open
+ * POs are committed, closed lines of POs that weren't cancelled fulfilled. The app recalculates the same way when a PO is saved.
+ */
+export function withCommitments(pba: PurchaseBlanketAgreement, pos: readonly Pick<PurchaseOrder, 'status' | 'lines'>[]): PurchaseBlanketAgreement {
+  return {
+    ...pba,
+    lines: pba.lines.map((bl) => {
+      let committed = 0;
+      let fulfilled = 0;
+      for (const po of pos)
+        for (const l of po.lines) {
+          if (l.agreementId !== pba.id || l.agreementLineId !== bl.id) continue;
+          if (po.status === 'Open' && l.status === 'Open') committed += l.quantity;
+          if (l.status === 'Closed' && po.status !== 'Cancelled') fulfilled += l.quantity;
+        }
+      return {
+        ...bl,
+        cumulativeCommittedQty: committed,
+        cumulativeCommittedAmountLC: round2(committed * bl.unitPrice),
+        cumulativeCommittedAmountFC: 0,
+        cumulativeQty: fulfilled,
+        cumulativeAmountLC: round2(fulfilled * bl.unitPrice),
+        cumulativeAmountFC: 0,
+      };
+    }),
+  };
+}
 
 const seedHeader = (id: string, docNum: number, vendorId: string, patch: Partial<PurchaseBlanketAgreement>): PurchaseBlanketAgreement => {
   const v = partnerById(vendorId);
@@ -209,8 +244,8 @@ const seedHeader = (id: string, docNum: number, vendorId: string, patch: Partial
   };
 };
 
-export const SEED_PURCHASE_BLANKET_AGREEMENTS: PurchaseBlanketAgreement[] = [
-  // Luzon iDistribution — FY2026 volume agreement (iPhones & accessories)
+const AGREEMENTS: PurchaseBlanketAgreement[] = [
+  // Luzon iDistribution — FY2026 volume agreement (iPhones)
   seedHeader('pba-001', 1, 'bp-016', {
     startDate: '2026-01-01',
     endDate: '2026-12-31',
@@ -218,26 +253,15 @@ export const SEED_PURCHASE_BLANKET_AGREEMENTS: PurchaseBlanketAgreement[] = [
     description: 'Luzon iDistribution — FY2026 volume agreement (iPhones)',
     vendorRef: 'LDC-SA-2026-001',
     settlementProbability: 90,
-    remarks: 'Annual volume commitment for iPhone 17 and iPhone 17E. Priced at distributor cost; subject to quarterly reconciliation.',
+    remarks: 'Annual volume commitment for iPhone 17, 17e and the iPhone 18 Pro launch. Priced at distributor cost; subject to quarterly reconciliation.',
     lines: [
-      seedLine('pba-001-1', 'IPH-17-256-BLK', 120, {
-        cumulativeQty: 26,
-        cumulativeAmountLC: round2(26 * itemByNo('IPH-17-256-BLK').itemCost),
-        cumulativeCommittedQty: 12,
-        cumulativeCommittedAmountLC: round2(12 * itemByNo('IPH-17-256-BLK').itemCost),
-      }),
-      seedLine('pba-001-2', 'IPH-17-256-LAV', 80, {
-        cumulativeQty: 40,
-        cumulativeAmountLC: round2(40 * itemByNo('IPH-17-256-LAV').itemCost),
-        cumulativeCommittedQty: 16,
-        cumulativeCommittedAmountLC: round2(16 * itemByNo('IPH-17-256-LAV').itemCost),
-      }),
-      seedLine('pba-001-3', 'IPH-17E-256-SPK', 100, {
-        cumulativeQty: 40,
-        cumulativeAmountLC: round2(40 * itemByNo('IPH-17E-256-SPK').itemCost),
-        cumulativeCommittedQty: 16,
-        cumulativeCommittedAmountLC: round2(16 * itemByNo('IPH-17E-256-SPK').itemCost),
-      }),
+      seedLine('pba-001', 'IPH-17-256-BLK', 120),
+      seedLine('pba-001', 'IPH-17-256-WHT', 60),
+      seedLine('pba-001', 'IPH-17-256-LAV', 80),
+      seedLine('pba-001', 'IPH-17E-256-SPK', 100),
+      seedLine('pba-001', 'IPH-18P-256-BLK', 60),
+      seedLine('pba-001', 'IPH-18P-256-SLV', 60),
+      seedLine('pba-001', 'IPH-18PM-512-GLC', 30),
     ],
   }),
 
@@ -251,15 +275,9 @@ export const SEED_PURCHASE_BLANKET_AGREEMENTS: PurchaseBlanketAgreement[] = [
     settlementProbability: 75,
     remarks: 'Holiday peak allocation. Covers November–January sell-in window.',
     lines: [
-      seedLine('pba-002-1', 'IPH-17-256-BLK', 60, {
-        cumulativeCommittedQty: 12,
-        cumulativeCommittedAmountLC: round2(12 * itemByNo('IPH-17-256-BLK').itemCost),
-      }),
-      seedLine('pba-002-2', 'IPH-17-256-LAV', 40),
-      seedLine('pba-002-3', 'ACC-MAGSF2', 80, {
-        cumulativeCommittedQty: 24,
-        cumulativeCommittedAmountLC: round2(24 * itemByNo('ACC-MAGSF2').itemCost),
-      }),
+      seedLine('pba-002', 'IPH-17-256-BLK', 60),
+      seedLine('pba-002', 'IPH-17-256-LAV', 40),
+      seedLine('pba-002', 'ACC-MAGSF2', 80),
     ],
   }),
 
@@ -272,29 +290,17 @@ export const SEED_PURCHASE_BLANKET_AGREEMENTS: PurchaseBlanketAgreement[] = [
     vendorRef: 'ASAP-ALLOC-2026-PH',
     currency: 'USD',
     settlementProbability: 95,
-    remarks: 'Allocated import quantities for Mac, iPad and accessories for FY2026. Priced in USD at ASAP distributor cost.',
+    remarks: 'Allocated import quantities for Mac, iPad and the iPhone 18 Pro launch for FY2026. Priced in USD at ASAP distributor cost.',
     lines: [
-      seedLine('pba-003-1', 'MAC-MBA13-M5-8G-16-512-MDN', 60, {
-        unitPrice: round2(itemByNo('MAC-MBA13-M5-8G-16-512-MDN').itemCost / 58),
-        cumulativeQty: 30,
-        cumulativeAmountLC: round2(30 * (itemByNo('MAC-MBA13-M5-8G-16-512-MDN').itemCost / 58)),
-        cumulativeCommittedQty: 15,
-        cumulativeCommittedAmountLC: round2(15 * (itemByNo('MAC-MBA13-M5-8G-16-512-MDN').itemCost / 58)),
-      }),
-      seedLine('pba-003-2', 'IPD-PRO-11-256-SG-WF-SBK', 120, {
-        unitPrice: round2(itemByNo('IPD-PRO-11-256-SG-WF-SBK').itemCost / 58),
-        cumulativeQty: 44,
-        cumulativeAmountLC: round2(44 * (itemByNo('IPD-PRO-11-256-SG-WF-SBK').itemCost / 58)),
-        cumulativeCommittedQty: 4,
-        cumulativeCommittedAmountLC: round2(4 * (itemByNo('IPD-PRO-11-256-SG-WF-SBK').itemCost / 58)),
-      }),
-      seedLine('pba-003-3', 'IPD-AIR-11-128-WF-BLU', 80, {
-        unitPrice: round2(itemByNo('IPD-AIR-11-128-WF-BLU').itemCost / 58),
-        cumulativeQty: 12,
-        cumulativeAmountLC: round2(12 * (itemByNo('IPD-AIR-11-128-WF-BLU').itemCost / 58)),
-        cumulativeCommittedQty: 30,
-        cumulativeCommittedAmountLC: round2(30 * (itemByNo('IPD-AIR-11-128-WF-BLU').itemCost / 58)),
-      }),
+      usdLine('pba-003', 'MAC-MBA13-M5-8G-16-512-MDN', 60),
+      usdLine('pba-003', 'MAC-MBA13-M5-8G-16-512-SLV', 60),
+      usdLine('pba-003', 'MAC-MBA13-M5-10G-24-1T-SKB', 30),
+      usdLine('pba-003', 'IPD-PRO-11-256-SG-WF-SBK', 120),
+      usdLine('pba-003', 'IPD-AIR-11-128-WF-BLU', 80),
+      usdLine('pba-003', 'IPD-AIR-11-256-WF-STL', 60),
+      usdLine('pba-003', 'IPH-18P-256-BLK', 60),
+      usdLine('pba-003', 'IPH-18P-256-SLV', 60),
+      usdLine('pba-003', 'IPH-18PM-512-GLC', 30),
     ],
   }),
 
@@ -309,9 +315,25 @@ export const SEED_PURCHASE_BLANKET_AGREEMENTS: PurchaseBlanketAgreement[] = [
     settlementProbability: 60,
     remarks: 'Under review. Covers USB-C cables, MagSafe chargers, and Pencil accessories for the holiday season.',
     lines: [
-      seedLine('pba-004-1', 'ACC-CBL240', 200),
-      seedLine('pba-004-2', 'ACC-PENUSBC', 120),
-      seedLine('pba-004-3', 'ACC-USBCL', 80),
+      seedLine('pba-004', 'ACC-CBL240', 200),
+      seedLine('pba-004', 'ACC-PENUSBC', 120),
+      seedLine('pba-004', 'ACC-USBCL', 80),
     ],
   }),
+
+  // AWS — annual compute savings plan: the monthly cloud hosting draws on it
+  seedHeader('pba-005', 4, 'bp-015', {
+    startDate: '2026-01-01',
+    endDate: '2027-03-31',
+    signingDate: '2025-12-15',
+    description: 'AWS — annual compute savings plan',
+    vendorRef: 'AWS-SP-2026-PH',
+    currency: 'USD',
+    settlementProbability: 100,
+    remarks: 'Fifteen months of committed cloud hosting at the savings-plan rate.',
+    lines: [seedLine('pba-005', 'SVC-CLD-HOST', 15, { unitPrice: 420 })],
+  }),
 ];
+
+/** The seeded agreements, with what the seeded POs commit and fulfil on them. */
+export const SEED_PURCHASE_BLANKET_AGREEMENTS: PurchaseBlanketAgreement[] = AGREEMENTS.map((a) => withCommitments(a, SEED_PURCHASE_ORDERS));

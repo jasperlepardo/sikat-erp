@@ -1,9 +1,8 @@
 import { Button, Combobox, Icon, Text, TextField } from '@jasperlepardo/sikat-design-system';
 import { type DocLinesProps } from '../../../../components/form/docLines/DocLines';
 import { purchCols, pick } from '../../shared/purchCols';
-import { lineHelpers, itemConfig } from '../../shared/purchLineHelpers';
-import { departmentDef, priceListDef, countryDef } from '../../../settings/masterDefs';
-import { BLANKET_AGREEMENTS } from '../../../../mocks/purchaseOrders';
+import { costAccountOptions, lineHelpers, lineGlAccount, itemConfig } from '../../shared/purchLineHelpers';
+import { departmentDef, priceListDef, countryDef, warrantyTemplateDef } from '../../../settings/masterDefs';
 import { itemsPerUom } from '../../../../mocks/items';
 import { type ApRiLine } from '../../../../mocks/apReserveInvoices';
 import { formatAmount } from '../../../../services/format';
@@ -49,7 +48,6 @@ export function apriDoc({ draft, update, errors, m, ctx, onCopyClick, copyableCo
   const reverseChargeVat = (l: ApRiLine) => (ctx.isReverseCharge(l.taxCode) ? round2((lineNet(l) * ctx.rateOf(l.taxCode)) / 100) : null);
 
   const taxOptions = (current: string) => taxCodeOptions(m.tax.codes, 'Purchase', current);
-  const blanketOptions = BLANKET_AGREEMENTS.filter((b) => b.vendorId === draft.vendorId && b.validTo >= draft.postingDate).map((b) => ({ value: b.no, label: `${b.no} · ${b.description}` }));
 
   const pickItem = (l: ApRiLine, itemId: string | null) => {
     const item = m.items.find((i) => i.id === itemId);
@@ -67,7 +65,9 @@ export function apriDoc({ draft, update, errors, m, ctx, onCopyClick, copyableCo
   };
 
   const cols = purchCols<ApRiLine>({
-    patch, readOnly: ctx.readOnly, currency: code, fx: ctx.fx,
+    patch, readOnly: ctx.readOnly, currency: code,
+    glAccountOf: (l) => lineGlAccount(itemOf(l), l, m.inv),
+    glAccountOptions: (l) => costAccountOptions(m.inv.accounts, l.glAccount),
     lineNet,
     priceAfterDisc: priceAfterDiscount,
     grossAfterDisc: (l) => priceAfterDiscount(l) * (1 + taxRate(l) / 100),
@@ -76,7 +76,7 @@ export function apriDoc({ draft, update, errors, m, ctx, onCopyClick, copyableCo
     taxOptions: (l) => taxOptions(l.taxCode),
     vendorOptions: [],
     warehouseOptions: [],
-    blanketOptions,
+    blanketScope: { vendorId: draft.vendorId, date: draft.postingDate },
     uomOptions, uomLabel,
     priceListDef, departmentDef, countryDef,
     changeUom,
@@ -89,7 +89,8 @@ export function apriDoc({ draft, update, errors, m, ctx, onCopyClick, copyableCo
     lineKind,
     inventoryQty: grInventoryQty,
     unitCost: (l) => itemOf(l)?.itemCost ?? 0,
-    warrantyText: (l) => { const w = itemOf(l)?.warrantyTemplate; return w ? (m.inv.warranties.find((x) => x.id === w)?.name ?? w) : 'None'; },
+    warrantyDef: warrantyTemplateDef,
+    itemWarranty: (l) => itemOf(l)?.warrantyTemplate ?? '',
     qtyHint: (l) => {
       const pl = l.baseType === 'PO' ? m.orders.find((p) => p.id === l.baseId)?.lines.find((x) => x.id === l.baseLineId) : undefined;
       return pl ? <Text variant="small" tone="muted">{openQty(pl)} of {pl.quantity} open on the PO</Text> : null;
@@ -98,17 +99,18 @@ export function apriDoc({ draft, update, errors, m, ctx, onCopyClick, copyableCo
   });
 
   const columns = pick(cols, [
-    ['type', 'hide'], ['qty', 'always'], ['uomName', 'hide'], ['itemsPerUnit', 'hide'], ['inventoryUom', 'hide'], ['inventoryQty', 'hide'],
-    ['priceList', 'hide'],
-    ['unitPrice', 'always'], ['discount', 'hide'], ['priceAfterDisc', 'hide'],
-    ['tax', 'always'], ['taxAmount', 'hide'], ['reverseChargeVat', 'hide'], ['gross', 'hide'], ['total', 'always'], ['grossTotalLc', 'hide'],
-    ['countryOfOrigin', 'hide'], ['warranty', 'hide'], ['unitCost', 'hide'], ['department', 'hide'],
-    ['name', 'hide'], ['bpCatalogNo', 'hide'], ['requisition', 'hide'],
-    ['baseDoc', 'hide'], ['blanket', 'hide'], ['freeText', 'hide'],
+    // Shown by default: the SAP B1 v10 Contents fields, in its order.
+    ['type', 'opt'], ['qty', 'always'], ['unitPrice', 'always'], ['discount', 'opt'], ['tax', 'always'],
+    ['total', 'always'], ['countryOfOrigin', 'opt'], ['blanket', 'opt'], ['warranty', 'opt'], ['unitCost', 'opt'],
+    // Everything else, in the column chooser.
+    ['uomName', 'hide'], ['itemsPerUnit', 'hide'], ['inventoryQty', 'hide'], ['priceList', 'hide'], ['priceAfterDisc', 'hide'],
+    ['taxAmount', 'hide'], ['reverseChargeVat', 'hide'], ['gross', 'hide'], ['grossTotalLc', 'hide'], ['department', 'hide'],
+    ['bpCatalogNo', 'hide'], ['requisition', 'hide'], ['baseDoc', 'hide'], ['freeText', 'hide'], ['glAccount', 'hide'],
   ]);
 
   return {
     prefsKey: 'apri',
+    cardHeader: true,
     columns,
     rows: lines,
     icon: 'list_alt',

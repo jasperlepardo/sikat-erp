@@ -12,7 +12,6 @@ import { itemsPerUom } from '../../../../mocks/items';
 import { receivesFromVendors, vendorDeliveryLocation } from '../../../../mocks/itemMasters';
 import { companyOption, vendorAddressOption, warehouseOption, type VendorAddressField } from '../../shared/vendorAddresses';
 
-import { BLANKET_AGREEMENTS } from '../../../../mocks/purchaseOrders';
 import { newRfqLine, type RfqLine } from '../../../../mocks/rfqs';
 import { determineTax, type TaxMasterData } from '../../../../services/taxDetermination';
 import { BASE_PRICE_LIST_ID, LAST_PURCHASE_PRICE_LIST_ID, determinePrice } from '../../../../services/priceLists';
@@ -139,16 +138,9 @@ export function lineFromItem(item: Item, draft: RfqDraft, ctx: RfqContext, m: Rf
     taxCode: proposedTaxCode(item, ctx.vendor, m, draft.postingDate),
     taxOverridden: false,
     requiredDate: draft.requiredDate,
+    countryOfOriginCode: item.countryOfOriginCode, warrantyTemplateId: item.warrantyTemplate, glAccount: '',
   });
   const { unitPrice, discountPct } = linePricing(item, line, draft, ctx);
   return { ...line, unitPrice, discountPct };
 }
 
-export function blanketOptions(vendorId: string, postingDate: string) {
-  return [
-    ...BLANKET_AGREEMENTS.filter((b) => b.vendorId === vendorId && b.validTo >= postingDate).map((b) => ({
-      value: b.no,
-      label: `${b.no} · ${b.description}`,
-    })),
-  ];
-}

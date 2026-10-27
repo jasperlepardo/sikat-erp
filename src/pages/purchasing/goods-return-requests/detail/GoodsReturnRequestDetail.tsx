@@ -154,9 +154,9 @@ function GrrForm() {
         uomCode: l.uomCode, uomName: l.uomName, itemsPerUnit: l.itemsPerUnit,
         unitPrice: l.unitPrice, discountPct: l.discountPct, taxCode: l.taxCode,
         warehouse: l.warehouse, freeText: l.freeText ?? '', requisitionSlipNo: l.requisitionSlipNo,
-        returnReason: l.returnReason, countryOfOriginCode: l.countryOfOriginCode,
+        returnReason: l.returnReason, countryOfOriginCode: l.countryOfOriginCode, warrantyTemplateId: l.warrantyTemplateId, glAccount: l.glAccount,
         baseType: '' as const, creditedQty: 0, binId: '', binCode: '', packages: 0,
-        lineVendorId: '', blanketAgreement: '', priceListId: l.priceListId,
+        lineVendorId: '', priceListId: l.priceListId,
         unitCostLc: 0, grrLineId: l.id,
       })),
     };

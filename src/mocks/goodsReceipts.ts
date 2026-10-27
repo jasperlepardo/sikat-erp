@@ -54,7 +54,6 @@ export interface GrLine extends PurchLine {
   discountPct: number;
   taxCode: string;
   packages: number;
-  blanketAgreement: string;
   /** A different vendor for this line than the header's, if any. */
   lineVendorId: string;
   requisitionSlipNo: string;
@@ -156,7 +155,6 @@ export const newGrLine = (patch: Partial<GrLine> = {}): GrLine => ({
   discountPct: 0,
   taxCode: '',
   packages: 0,
-  blanketAgreement: '',
   lineVendorId: '',
   requisitionSlipNo: '',
   freeText: '',
@@ -275,9 +273,12 @@ export const SEED_GOODS_RECEIPTS: GoodsReceipt[] = received
             unitPrice: l.unitPrice,
             discountPct: l.discountPct,
             taxCode: l.taxCode,
-            blanketAgreement: l.blanketAgreement,
+            agreementId: l.agreementId,
+            agreementLineId: l.agreementLineId,
             requisitionSlipNo: l.requisitionSlipNo,
             freeText: l.freeText,
+            countryOfOriginCode: l.countryOfOriginCode,
+            warrantyTemplateId: l.warrantyTemplateId,
             baseId: po.id,
             baseLineId: l.id,
             baseDocNo: poNo,

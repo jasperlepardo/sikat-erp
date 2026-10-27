@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { TableContent, TableStatus, Text } from '@jasperlepardo/sikat-design-system';
 import { DataTable } from '../../../../components/form/DataTable';
 import type { GoodsReturn, ReturnBaseType } from '../../../../mocks/goodsReturns';
@@ -48,14 +49,32 @@ const counts = (d: { status: string }) => d.status !== 'Draft' && d.status !== '
 const returnedIn = (returns: DocRow[], itemsPerUnit: number) =>
   returns.reduce((n, r) => n + (r.quantity * r.itemsPerUnit) / (itemsPerUnit || 1), 0);
 
-export function PoReceiptsTab({ draft }: { draft: PoDraft }) {
+/** The documents the Receipts tab lists; undefined until all three have loaded. */
+export type PoReceiptDocs = {
+  receipts: Awaited<ReturnType<typeof listGoodsReceipts>>;
+  invoices: Awaited<ReturnType<typeof listApInvoices>>;
+  goodsReturns: Awaited<ReturnType<typeof listGoodsReturns>>;
+};
+
+/**
+ * Loads the Receipts tab's documents. Call it from the PO page, not the tab, so they are
+ * ready before the tab opens: rendering lines first and adding their documents later made
+ * the expand column appear late and shift the table.
+ */
+export function usePoReceiptDocs(): PoReceiptDocs | undefined {
   const receipts = useAsync(listGoodsReceipts, []);
   const invoices = useAsync(listApInvoices, []);
   const goodsReturns = useAsync(listGoodsReturns, []);
+  return receipts && invoices && goodsReturns ? { receipts, invoices, goodsReturns } : undefined;
+}
+
+/** `tabs`: the Item / Receipts switch, shown at the top of the card body. */
+export function PoReceiptsTab({ draft, docs, tabs }: { draft: PoDraft; docs: PoReceiptDocs | undefined; tabs: ReactNode }) {
+  const { receipts, invoices, goodsReturns } = docs ?? { receipts: [], invoices: [], goodsReturns: [] };
 
   // Goods returns copied from one receipt or invoice line.
   const returnsOf = (baseType: ReturnBaseType, baseId: string, baseLineId: string, via?: DocRow['via']): DocRow[] =>
-    (goodsReturns ?? []).filter(counts).flatMap((r: GoodsReturn) =>
+    goodsReturns.filter(counts).flatMap((r: GoodsReturn) =>
       r.lines
         .filter((rl) => rl.baseType === baseType && rl.baseId === baseId && rl.baseLineId === baseLineId)
         .map((rl): DocRow => ({
@@ -78,7 +97,7 @@ export function PoReceiptsTab({ draft }: { draft: PoDraft }) {
   // (once billed, the return is made against the invoice).
   const receiptReturns = (grId: string, grLineId: string) => [
     ...returnsOf('GRPO', grId, grLineId),
-    ...(invoices ?? []).filter(counts).flatMap((inv) =>
+    ...invoices.filter(counts).flatMap((inv) =>
       inv.lines
         .filter((al) => al.baseType === 'GRPO' && al.baseId === grId && al.baseLineId === grLineId)
         .flatMap((al) => returnsOf('APINV', inv.id, al.id, { no: apNumber(inv), href: `#${AP_LIST_PATH}/${inv.docNum ? apNumber(inv) : inv.id}` })),
@@ -88,7 +107,7 @@ export function PoReceiptsTab({ draft }: { draft: PoDraft }) {
   // Only documents that moved the received quantity: added, not cancelled. A/P invoices
   // count when copied straight from the PO (one copied from a receipt doesn't receive again).
   const docsFor = (l: PoLine): DocRow[] => [
-    ...(receipts ?? []).filter(counts).flatMap((gr) =>
+    ...receipts.filter(counts).flatMap((gr) =>
       gr.lines
         .filter((gl) => gl.baseId === draft.id && gl.baseLineId === l.id)
         .map((gl): DocRow => ({
@@ -106,7 +125,7 @@ export function PoReceiptsTab({ draft }: { draft: PoDraft }) {
           returns: receiptReturns(gr.id, gl.id),
         })),
     ),
-    ...(invoices ?? []).filter(counts).flatMap((inv) =>
+    ...invoices.filter(counts).flatMap((inv) =>
       inv.lines
         .filter((al) => al.baseType === 'PO' && al.baseId === draft.id && al.baseLineId === l.id)
         .map((al): DocRow => ({
@@ -126,7 +145,8 @@ export function PoReceiptsTab({ draft }: { draft: PoDraft }) {
     ),
   ].sort((a, b) => a.date.localeCompare(b.date));
 
-  const rows: Row[] = draft.lines
+  // Nothing until the documents are in, so every row and the expand column arrive together.
+  const rows: Row[] = !docs ? [] : draft.lines
     .filter((l) => !!l.itemId)
     .map((l) => ({ kind: 'line', id: l.id, line: l, docs: draft.id ? docsFor(l) : [] }));
   const children = (r: Row) => (r.kind === 'line' ? r.docs : r.returns);
@@ -141,12 +161,15 @@ export function PoReceiptsTab({ draft }: { draft: PoDraft }) {
 
   return (
     <DataTable
+      variant="card"
+      icon="list_alt"
+      title="Contents"
       noPagination
       rows={rows}
       getRowId={(r) => r.id}
       getSubRows={(r) => (children(r).length ? children(r) : undefined)}
       unsortable={['item', 'date', 'ordered', 'received', 'returned', 'balance', 'status']}
-      empty={<Text variant="small" tone="muted">No lines yet.</Text>}
+      empty={<Text variant="small" tone="muted">{docs ? 'No lines yet.' : 'Loading receipts…'}</Text>}
       columns={[
         {
           key: 'item',
@@ -239,6 +262,9 @@ export function PoReceiptsTab({ draft }: { draft: PoDraft }) {
             ),
         },
       ]}
-    />
+    >
+      {tabs}
+      <Text variant="small" tone="muted">What each line has received, invoiced and returned. Expand a line to see its documents.</Text>
+    </DataTable>
   );
 }

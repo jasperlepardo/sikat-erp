@@ -35,7 +35,9 @@ import {
   type JournalEntry,
 } from '../../../mocks/journalEntries';
 import type { Partner } from '../../../mocks/partners';
-import { BLANKET_AGREEMENTS, INDICATORS } from '../../../mocks/purchaseOrders';
+import { INDICATORS } from '../../../mocks/purchaseOrders';
+import { baNumber, salesAgreementsCollection } from '../../../services/blanketAgreements';
+import { pbaNumber, purchaseAgreementsCollection } from '../../../services/purchaseBlanketAgreements';
 import type { TaxCode } from '../../../mocks/taxes';
 import { addDays, formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
@@ -100,6 +102,12 @@ export function JeHeaderSections({
 }) {
   const h = bind(draft, update);
   const manual = draft.origin === 'JE';
+  // Approved sales (BA-) and purchase (PBA-) blanket agreements, and the one already named.
+  const keep = (a: { id: string; status: string }) => a.id === draft.blanketAgreementId || a.status === 'Approved';
+  const agreements = [
+    ...(useCollection(salesAgreementsCollection) ?? []).filter(keep).map((a) => ({ value: a.id, label: `${baNumber(a)} · ${a.description}` })),
+    ...(useCollection(purchaseAgreementsCollection) ?? []).filter(keep).map((a) => ({ value: a.id, label: `${pbaNumber(a)} · ${a.description}` })),
+  ];
   return (
     <div className="grid grid-cols-1 gap-2 lg:grid-cols-3">
       <Section icon="tag" title="Document">
@@ -137,7 +145,7 @@ export function JeHeaderSections({
           {h.choose('transCode', 'Trans. code', TRANS_CODES.filter(Boolean).map((c) => ({ value: c, label: TRANS_CODE_LABEL[c] })), { clearable: true })}
           {h.choose('indicator', 'Indicator', INDICATORS.map((v) => ({ value: v, label: v })), { clearable: true })}
           {h.master('projectId', 'Project', projectDef, { clearable: true })}
-          {h.choose('blanketAgreement', 'Blanket agreement', BLANKET_AGREEMENTS.map((b) => ({ value: b.no, label: `${b.no} · ${b.description}` })), { clearable: true })}
+          {h.lookup('blanketAgreementId', 'Blanket agreement', agreements, { clearable: true, placeholder: 'None' })}
         </Fields>
       </Section>
 

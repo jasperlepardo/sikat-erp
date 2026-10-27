@@ -1,4 +1,4 @@
-import { PBA_SERIES, SEED_PURCHASE_BLANKET_AGREEMENTS, type PbaLine, type PurchaseBlanketAgreement } from '../mocks/purchaseBlanketAgreements';
+import { PBA_SERIES, SEED_PURCHASE_BLANKET_AGREEMENTS, withCommitments, type PbaLine, type PurchaseBlanketAgreement } from '../mocks/purchaseBlanketAgreements';
 import { createCollection } from './store';
 import { pbaSeries, formatDocNum, seriesLookup } from './allSeries';
 import type { PurchaseOrder } from '../mocks/purchaseOrders';
@@ -6,6 +6,10 @@ import type { PurchaseOrder } from '../mocks/purchaseOrders';
 const agreements = createCollection<PurchaseBlanketAgreement>('sikat-erp:purchase-blanket-agreements', SEED_PURCHASE_BLANKET_AGREEMENTS, 'pba');
 
 export const listPurchaseBlanketAgreements = agreements.list;
+/** Live purchase blanket agreements, for pickers (`useCollection`). */
+export const purchaseAgreementsCollection = agreements;
+/** The agreements as last loaded, for pickers that read them synchronously (purchasing line columns). */
+export const agreementsSnapshot = () => agreements.snapshot();
 
 export async function getPurchaseBlanketAgreement(idOrNumber: string) {
   const direct = await agreements.get(idOrNumber);
@@ -38,46 +42,19 @@ export async function savePurchaseBlanketAgreement(input: PbaInput, options: { a
 // ── Commitment recalculation ─────────────────────────────────────────────────
 
 /**
- * After any PO save, recompute committed and cumulative figures on all PBA lines
- * that any PO line references.
- * @public
+ * After any PO save, recompute committed and cumulative figures on the agreements its
+ * lines draw on (before and after the save, so a line moved off an agreement frees it).
  */
 export async function recalculatePBACommitments(pbaIds: string[]): Promise<void> {
   if (!pbaIds.length) return;
   const { listPurchaseOrders } = await import('./purchaseOrders');
   const allPos: PurchaseOrder[] = await listPurchaseOrders();
-  for (const pbaId of pbaIds) {
+  const changed = [];
+  for (const pbaId of new Set(pbaIds)) {
     const pba = await agreements.get(pbaId);
-    if (!pba) continue;
-    const linkedPos = allPos.filter((po) => po.lines.some((l) => l.agreementId === pba.id));
-    const updatedLines: PbaLine[] = pba.lines.map((pbaLine) => {
-      let cumulativeCommittedQty = 0;
-      let cumulativeQty = 0;
-      for (const po of linkedPos) {
-        for (const poLine of po.lines) {
-          if (poLine.agreementLineId !== pbaLine.id) continue;
-          if (po.status === 'Open' && poLine.status === 'Open') {
-            cumulativeCommittedQty += poLine.quantity;
-          }
-          if (poLine.status === 'Closed') {
-            cumulativeQty += poLine.quantity;
-          }
-        }
-      }
-      const cumulativeAmountLC = Math.round(cumulativeQty * pbaLine.unitPrice * 100) / 100;
-      const cumulativeCommittedAmountLC = Math.round(cumulativeCommittedQty * pbaLine.unitPrice * 100) / 100;
-      return {
-        ...pbaLine,
-        cumulativeCommittedQty,
-        cumulativeCommittedAmountLC,
-        cumulativeCommittedAmountFC: 0,
-        cumulativeQty,
-        cumulativeAmountLC,
-        cumulativeAmountFC: 0,
-      };
-    });
-    await agreements.save({ ...pba, lines: updatedLines });
+    if (pba) changed.push(withCommitments(pba, allPos));
   }
+  if (changed.length) await agreements.saveMany(changed);
 }
 
 // ── Calculated fields ────────────────────────────────────────────────────────

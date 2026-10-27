@@ -39,6 +39,7 @@ export interface FeedEntry {
 const STEP: Record<string, { verb: string; icon: string }> = {
   PR: { verb: 'Requested', icon: 'inbox' },
   RFQ: { verb: 'Quotation requested', icon: 'description' },
+  PBA: { verb: 'Agreement signed', icon: 'handshake' },
   PO: { verb: 'Ordered', icon: 'receipt_long' },
   DPR: { verb: 'Down payment requested', icon: 'request_quote' },
   GRPO: { verb: 'Received', icon: 'inventory' },

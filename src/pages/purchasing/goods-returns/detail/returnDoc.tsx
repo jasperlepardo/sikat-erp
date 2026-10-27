@@ -1,9 +1,8 @@
 import { Button, Icon, Text } from '@jasperlepardo/sikat-design-system';
 import { type DocLinesProps } from '../../../../components/form/docLines/DocLines';
 import { purchCols, pick } from '../../shared/purchCols';
-import { lineHelpers, itemConfig } from '../../shared/purchLineHelpers';
-import { countryDef, departmentDef, priceListDef } from '../../../settings/masterDefs';
-import { BLANKET_AGREEMENTS } from '../../../../mocks/purchaseOrders';
+import { costAccountOptions, lineHelpers, lineGlAccount, itemConfig } from '../../shared/purchLineHelpers';
+import { countryDef, departmentDef, priceListDef, warrantyTemplateDef } from '../../../settings/masterDefs';
 import { newReturnLine, needsCredit, type GoodsReturn, type ReturnLine } from '../../../../mocks/goodsReturns';
 import { itemsPerUom } from '../../../../mocks/items';
 import { holdsStock } from '../../../../mocks/itemMasters';
@@ -17,13 +16,15 @@ import { baseLink, type RetContext, type RetMasters } from '../../shared/returns
 import type { Errors } from '../../../../components/form/fields';
 import { taxCodeOptions } from '../../../../services/taxCodeOptions';
 import { round2 } from '../../../../services/num';
+import { returnTotals } from '../../../../services/goodsReturns';
+import { PurchTotalsFooter } from '../../shared/PurchTotalsFooter';
 
-type RetDraft = Pick<GoodsReturn, 'lines' | 'vendorId' | 'postingDate' | 'currency' | 'vendorName' | 'status'>;
+type RetDraft = Pick<GoodsReturn, 'lines' | 'vendorId' | 'postingDate' | 'currency' | 'vendorName' | 'status' | 'discountPct' | 'freight' | 'freightTaxCode'>;
 
 /** Props returnDoc needs beyond the section spread: the Copy-from toolbar lives here, its panel in the detail. */
 export interface ReturnDocProps {
   draft: RetDraft;
-  update: (patch: { lines: ReturnLine[] }) => void;
+  update: (patch: { lines?: ReturnLine[]; discountPct?: number }) => void;
   errors: Errors;
   m: RetMasters;
   ctx: RetContext;
@@ -44,22 +45,19 @@ export function returnDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy 
   };
 
   const taxOptions = (current: string) => taxCodeOptions(m.tax.codes, 'Purchase', current);
-  const blanketOptions = [
-    ...BLANKET_AGREEMENTS.filter((b) => b.vendorId === draft.vendorId).map((b) => ({ value: b.no, label: `${b.no} · ${b.description}` })),
-  ];
 
   const pickItem = (l: ReturnLine, itemId: string | null) => {
     const item = m.items.find((i) => i.id === itemId);
     if (!item) { patch(l.id, { itemId: '' }); return; }
     const { invoicedQty: _i, returnedQty: _r, id: _id, ...base } = lineFromItem(item, { postingDate: draft.postingDate }, ctx, m, { quantity: l.quantity });
-    patch(l.id, { ...base, countryOfOriginCode: item.countryOfOriginCode } as Partial<ReturnLine>);
+    patch(l.id, { ...base, countryOfOriginCode: item.countryOfOriginCode, warrantyTemplateId: item.warrantyTemplate, glAccount: '' } as Partial<ReturnLine>);
   };
   const fromItem = (itemId: string) => {
     const item = m.items.find((i) => i.id === itemId);
     if (!item) return undefined;
     const blank = newReturnLine();
     const { invoicedQty: _i, returnedQty: _r, id: _id, ...base } = lineFromItem(item, { postingDate: draft.postingDate }, ctx, m, { quantity: 1 });
-    return { ...blank, ...base, countryOfOriginCode: item.countryOfOriginCode } as ReturnLine;
+    return { ...blank, ...base, countryOfOriginCode: item.countryOfOriginCode, warrantyTemplateId: item.warrantyTemplate, glAccount: '' } as ReturnLine;
   };
   const changeUom = (l: ReturnLine, uomCode: string) => {
     const item = itemOf(l);
@@ -73,7 +71,9 @@ export function returnDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy 
   };
 
   const cols = purchCols<ReturnLine>({
-    patch, readOnly: ctx.readOnly, currency: draft.currency, fx: ctx.fx,
+    patch, readOnly: ctx.readOnly, currency: draft.currency,
+    glAccountOf: (l) => lineGlAccount(itemOf(l), l, m.inv),
+    glAccountOptions: (l) => costAccountOptions(m.inv.accounts, l.glAccount),
     lineNet,
     priceAfterDisc: priceAfterDiscount,
     grossAfterDisc: (l) => priceAfterDiscount(l) * (1 + taxRate(l) / 100),
@@ -81,7 +81,7 @@ export function returnDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy 
     taxOptions: (l) => taxOptions(l.taxCode),
     vendorOptions: [],
     warehouseOptions: m.inv.warehouses.filter((w) => holdsStock(w)).map((w) => ({ value: w.code, label: w.code })),
-    blanketOptions,
+    blanketScope: { vendorId: draft.vendorId, date: draft.postingDate },
     uomOptions, uomLabel,
     priceListDef, departmentDef,
     changeUom,
@@ -115,28 +115,28 @@ export function returnDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy 
     },
     baseDoc: (l) => baseLink(l) ?? null,
     countryDef,
-    warrantyText: (l) => { const w = itemOf(l)?.warrantyTemplate; return w ? (m.inv.warranties.find((x) => x.id === w)?.name ?? w) : 'None'; },
+    warrantyDef: warrantyTemplateDef,
+    itemWarranty: (l) => itemOf(l)?.warrantyTemplate ?? '',
     unitCost: (l) => l.unitCostLc || itemOf(l)?.itemCost || 0,
     withholdingText: (l) => { const wt = withholdingOf(l); return wt.length ? wt.map((w) => `${w.atc} (${w.rate}%)`).join(', ') : 'None'; },
     withholdingBase: (l) => (withholdingOf(l).length ? lineNet(l) : null),
   });
 
   const columns = pick(cols, [
-    ['type', 'hide'], ['qty', 'always'],
-    ['uomName', 'hide'], ['itemsPerUnit', 'hide'], ['inventoryUom', 'hide'],
-    ['warehouse', 'hide'], ['inventoryQty', 'hide'], ['priceList', 'hide'],
-    ['unitPrice', 'always'], ['discount', 'hide'], ['priceAfterDisc', 'hide'],
-    ['tax', 'hide'], ['taxAmount', 'hide'], ['gross', 'hide'], ['total', 'always'], ['grossTotalLc', 'hide'],
-    ['returnReason', 'always'],
-    ['countryOfOrigin', 'hide'], ['warranty', 'hide'], ['unitCost', 'hide'],
-    ['withholding', 'hide'], ['withholdingBase', 'hide'],
-    ['baseDoc', 'hide'], ['blanket', 'hide'], ['freeText', 'hide'],
-    ['name', 'hide'], ['bpCatalogNo', 'hide'], ['mfrNo', 'hide'],
+    // Shown by default: the SAP B1 v10 Contents fields, in its order (plus the return reason).
+    ['type', 'opt'], ['qty', 'always'], ['unitPrice', 'always'], ['discount', 'opt'], ['tax', 'opt'],
+    ['total', 'always'], ['returnReason', 'always'], ['warehouse', 'opt'], ['glAccount', 'opt'], ['countryOfOrigin', 'opt'],
+    ['warranty', 'opt'], ['unitCost', 'opt'],
+    // Everything else, in the column chooser.
+    ['uomName', 'hide'], ['itemsPerUnit', 'hide'], ['inventoryQty', 'hide'], ['priceList', 'hide'], ['priceAfterDisc', 'hide'],
+    ['taxAmount', 'hide'], ['gross', 'hide'], ['grossTotalLc', 'hide'], ['withholding', 'hide'], ['withholdingBase', 'hide'],
+    ['baseDoc', 'hide'], ['blanket', 'hide'], ['freeText', 'hide'], ['bpCatalogNo', 'hide'], ['mfrNo', 'hide'],
     ['department', 'hide'], ['requisition', 'hide'], ['lineStatus', 'hide'],
   ]);
 
   return {
     prefsKey: 'return',
+    cardHeader: true,
     columns,
     rows: lines,
     icon: 'list_alt',
@@ -167,6 +167,16 @@ export function returnDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy 
           Copy from
         </Button>
       </div>
+    ),
+    footer: (
+      <PurchTotalsFooter
+        totals={returnTotals(draft, ctx.rateOf, ctx.isReverseCharge)}
+        currency={draft.currency}
+        readOnly={ctx.readOnly}
+        discountPct={draft.discountPct}
+        onDiscountChange={(discountPct) => update({ discountPct })}
+        totalLabel="Total credit"
+      />
     ),
   };
 }

@@ -16,12 +16,12 @@
  * - Return Reason is left out — it belongs to returns, not purchase orders.
  */
 import type { Attachment, DocumentSeries } from './common';
-import type { PurchLine } from './purchLine';
+import { pbaLineId, type PurchLine } from './purchLine';
 import { departmentId } from './peopleMasters';
 import { employeeId, plId, termId } from './masters';
 import { SEED_COMPANIES } from './companies';
 import { SEED_WAREHOUSES } from './itemMasters';
-import { SEED_ITEMS, itemsPerUom } from './items';
+import { SEED_ITEMS, itemsPerUom, seedLineDefaults } from './items';
 import { SEED_PARTNERS, formatAddress } from './partners';
 import { addDays, todayISO } from '../services/dates';
 import { SEED_PAYMENT_TERMS } from './partnerMasters';
@@ -63,7 +63,6 @@ export interface PoLine extends PurchLine {
   taxCode: string;
   discountPct: number;
   deliveryDate: string;
-  blanketAgreement: string;
   /** Id of the PurchaseBlanketAgreement collection record this line is drawn against. */
   agreementId: string;
   /** Id of the specific PbaLine this line fulfils. */
@@ -197,18 +196,6 @@ export const LANGUAGES = ['English', 'Filipino'];
 export const INDICATORS = ['Regular', 'Consignment', 'Drop ship'];
 export const REFERENCE_DOC_TYPES = ['Purchase request', 'Purchase quotation', 'Sales order', 'Contract', 'Email', 'Other'];
 
-export interface BlanketAgreement {
-  no: string;
-  vendorId: string;
-  description: string;
-  validTo: string;
-}
-export const BLANKET_AGREEMENTS: BlanketAgreement[] = [
-  { no: 'BA-2026-001', vendorId: 'bp-016', description: 'Luzon iDistribution — FY2026 volume agreement', validTo: '2026-12-31' },
-  { no: 'BA-2026-002', vendorId: 'bp-016', description: 'Luzon iDistribution — holiday season allocation', validTo: '2027-01-15' },
-  { no: 'BA-2026-003', vendorId: 'bp-015', description: 'AWS — annual compute savings plan', validTo: '2027-03-31' },
-  { no: 'BA-2026-004', vendorId: 'bp-017', description: 'Apple South Asia — FY2026 direct import allocation', validTo: '2026-12-31' },
-];
 
 /** Where service-only POs ship to (Company Details › General › Local Language). */
 /** The seed company's address, as service-only POs print it for Ship To. */
@@ -250,7 +237,6 @@ export const newPoLine = (patch: Partial<PoLine> = {}): PoLine => ({
   taxCode: '',
   discountPct: 0,
   deliveryDate: '',
-  blanketAgreement: '',
   agreementId: '',
   agreementLineId: '',
   mfrNo: '',
@@ -392,8 +378,8 @@ const HAND_ORDERS: PurchaseOrder[] = [
     postingDate: '2026-09-10', documentDate: '2026-09-10', deliveryDate: '2026-09-17', closeDate: '2026-09-18', dueDate: '2026-10-10',
     vendorRef: 'APD-SO-558120',
     lines: [
-      line('po-001-1', 'IPH-17-256-BLK', 10, { receivedQty: 10, status: 'Closed', deliveryDate: '2026-09-17', blanketAgreement: 'BA-2026-001', agreementId: 'pba-001', agreementLineId: 'pba-001-1' }),
-      line('po-001-2', 'IPH-17-256-WHT', 8, { receivedQty: 8, status: 'Closed', deliveryDate: '2026-09-17', blanketAgreement: 'BA-2026-001' }),
+      line('po-001-1', 'IPH-17-256-BLK', 10, { receivedQty: 10, status: 'Closed', deliveryDate: '2026-09-17', agreementId: 'pba-001' }),
+      line('po-001-2', 'IPH-17-256-WHT', 8, { receivedQty: 8, status: 'Closed', deliveryDate: '2026-09-17', agreementId: 'pba-001' }),
       line('po-001-3', 'ACC-PWR20', 40, { receivedQty: 40, status: 'Closed', deliveryDate: '2026-09-17' }),
     ],
     remarks: 'Received complete on 17 Sep.',
@@ -403,9 +389,9 @@ const HAND_ORDERS: PurchaseOrder[] = [
     postingDate: '2026-09-18', documentDate: '2026-09-18', deliveryDate: '2026-09-30', dueDate: '2026-10-18',
     vendorRef: 'APD-SO-560044', requiredDate: '2026-09-28', cancellationDate: '2026-10-15',
     lines: [
-      line('po-002-1', 'IPH-18P-256-BLK', 12, { receivedQty: 5, deliveryDate: '2026-09-25', blanketAgreement: 'BA-2026-001' }),
-      line('po-002-2', 'IPH-18P-256-SLV', 12, { receivedQty: 0, deliveryDate: '2026-09-30', blanketAgreement: 'BA-2026-001' }),
-      line('po-002-3', 'IPH-18PM-512-GLC', 6, { deliveryDate: '2026-09-30', blanketAgreement: 'BA-2026-001' }),
+      line('po-002-1', 'IPH-18P-256-BLK', 12, { receivedQty: 5, deliveryDate: '2026-09-25', agreementId: 'pba-001' }),
+      line('po-002-2', 'IPH-18P-256-SLV', 12, { receivedQty: 0, deliveryDate: '2026-09-30', agreementId: 'pba-001' }),
+      line('po-002-3', 'IPH-18PM-512-GLC', 6, { deliveryDate: '2026-09-30', agreementId: 'pba-001' }),
       line('po-002-4', 'ACC-CASE-18P', 30, { deliveryDate: '2026-09-30', discountPct: 5 }),
     ],
     references: [{ id: 'po-002-r1', docType: 'Email', docNo: 'Allocation notice 2026-09-16', docDate: '2026-09-16', remarks: 'iPhone 18 Pro launch allocation' }],
@@ -438,7 +424,7 @@ const HAND_ORDERS: PurchaseOrder[] = [
     lines: [
       newPoLine({
         id: 'po-005-1', itemId: 'itm-020', itemNo: 'SVC-CLD-HOST', name: 'Cloud hosting subscription', description: 'Cloud hosting subscription (October 2026)',
-        quantity: 1, unitPrice: 420, taxCode: 'WVAT', warehouse: '', deliveryDate: '2026-10-01', blanketAgreement: 'BA-2026-003',
+        quantity: 1, unitPrice: 420, taxCode: 'WVAT', warehouse: '', deliveryDate: '2026-10-01', agreementId: 'pba-005',
         departmentId: departmentId('IT'),
       }),
     ],
@@ -452,7 +438,7 @@ const HAND_ORDERS: PurchaseOrder[] = [
       importLine('po-006-1', 'IPH-18P-256-BLK', 20),
       importLine('po-006-2', 'IPH-18P-256-SLV', 20),
       importLine('po-006-3', 'IPH-18PM-512-GLC', 10),
-    ].map((l) => ({ ...l, blanketAgreement: 'BA-2026-004' })).concat(
+    ].map((l) => ({ ...l, agreementId: 'pba-003' })).concat(
       // Printed materials are VAT-exempt on importation.
       svc('po-006-4', 'SVC-MANUALS', 200, 3.5, 'XIMP', { deliveryDate: '2026-10-06' }),
     ),
@@ -466,7 +452,7 @@ const HAND_ORDERS: PurchaseOrder[] = [
       importLine('po-007-1', 'MAC-MBA13-M5-8G-16-512-MDN', 15),
       importLine('po-007-2', 'MAC-MBA13-M5-8G-16-512-SLV', 15),
       importLine('po-007-3', 'MAC-MBA13-M5-10G-24-1T-SKB', 8),
-    ].map((l) => ({ ...l, receivedQty: l.quantity, status: 'Closed' as const, deliveryDate: '2026-09-01', blanketAgreement: 'BA-2026-004' })),
+    ].map((l) => ({ ...l, receivedQty: l.quantity, status: 'Closed' as const, deliveryDate: '2026-09-01', agreementId: 'pba-003' })),
     remarks: 'Back-to-school MacBook Air import. Cleared 1 Sep, received complete.',
   }),
 
@@ -656,8 +642,8 @@ const HAND_ORDERS: PurchaseOrder[] = [
     status: 'Closed', postingDate: '2026-09-08', documentDate: '2026-09-08', deliveryDate: '2026-09-11', closeDate: '2026-09-12', dueDate: '2026-10-12',
     vendorRef: 'LID-SO-561020',
     lines: [
-      line('po-041-1', 'IPH-17-256-LAV', 24, { receivedQty: 24, status: 'Closed', deliveryDate: '2026-09-11', blanketAgreement: 'BA-2026-001', agreementId: 'pba-001', agreementLineId: 'pba-001-2' }),
-      line('po-041-2', 'IPH-17E-256-SPK', 24, { receivedQty: 24, status: 'Closed', deliveryDate: '2026-09-11', blanketAgreement: 'BA-2026-001', agreementId: 'pba-001', agreementLineId: 'pba-001-3' }),
+      line('po-041-1', 'IPH-17-256-LAV', 24, { receivedQty: 24, status: 'Closed', deliveryDate: '2026-09-11', agreementId: 'pba-001' }),
+      line('po-041-2', 'IPH-17E-256-SPK', 24, { receivedQty: 24, status: 'Closed', deliveryDate: '2026-09-11', agreementId: 'pba-001' }),
       line('po-041-3', 'IPH-18P-256-BLK', 12, { receivedQty: 12, status: 'Closed', deliveryDate: '2026-09-11' }),
     ],
     remarks: 'Store replenishment, iPhone. Received complete 11 Sep; out to the stores 12 Sep.',
@@ -677,7 +663,7 @@ const HAND_ORDERS: PurchaseOrder[] = [
     postingDate: '2026-09-09', documentDate: '2026-09-09', deliveryDate: '2026-09-22', closeDate: '2026-09-23', dueDate: '2026-10-23',
     vendorRef: 'ASA-PO-7739402',
     lines: [importLine('po-043-1', 'IPD-AIR-11-128-WF-BLU', 12), importLine('po-043-2', 'IPD-AIR-11-256-WF-STL', 16)].map((l) => ({
-      ...l, receivedQty: l.quantity, status: 'Closed' as const, deliveryDate: '2026-09-22', blanketAgreement: 'BA-2026-004',
+      ...l, receivedQty: l.quantity, status: 'Closed' as const, deliveryDate: '2026-09-22', agreementId: 'pba-003',
     })),
     remarks: 'iPad Air import for the stores. Cleared 22 Sep, received complete.',
   }),
@@ -685,8 +671,8 @@ const HAND_ORDERS: PurchaseOrder[] = [
     status: 'Closed', postingDate: '2026-09-24', documentDate: '2026-09-24', deliveryDate: '2026-09-29', closeDate: '2026-09-30', dueDate: '2026-10-30',
     vendorRef: 'LID-SO-562201',
     lines: [
-      line('po-044-1', 'IPH-17-256-LAV', 16, { receivedQty: 16, status: 'Closed', deliveryDate: '2026-09-29', blanketAgreement: 'BA-2026-001', agreementId: 'pba-001', agreementLineId: 'pba-001-2' }),
-      line('po-044-2', 'IPH-17E-256-SPK', 16, { receivedQty: 16, status: 'Closed', deliveryDate: '2026-09-29', blanketAgreement: 'BA-2026-001', agreementId: 'pba-001', agreementLineId: 'pba-001-3' }),
+      line('po-044-1', 'IPH-17-256-LAV', 16, { receivedQty: 16, status: 'Closed', deliveryDate: '2026-09-29', agreementId: 'pba-001' }),
+      line('po-044-2', 'IPH-17E-256-SPK', 16, { receivedQty: 16, status: 'Closed', deliveryDate: '2026-09-29', agreementId: 'pba-001' }),
     ],
     remarks: 'Second iPhone replenishment of the month. Billed; not yet due.',
   }),
@@ -855,6 +841,16 @@ export const SEED_PURCHASE_ORDERS: PurchaseOrder[] = (() => {
   const next = new Map<string, number>();
   const all = [...HAND_ORDERS, ...MONTHLY_SERVICES, ...PLANNED]
     .sort((a, b) => a.postingDate.localeCompare(b.postingDate) || a.id.localeCompare(b.id))
+    // Each line carries its item's country of origin and warranty, as a line added in the app does,
+    // and a line drawn on a blanket agreement points at the agreement's line for its item.
+    .map((po) => ({
+      ...po,
+      lines: po.lines.map((l) => ({
+        ...seedLineDefaults(l.itemId),
+        ...l,
+        agreementLineId: l.agreementLineId || (l.agreementId ? pbaLineId(l.agreementId, l.itemNo) : ''),
+      })),
+    }))
     .map((po) => {
       if (po.status === 'Draft') return { ...po, docNum: 0 };
       const n = (next.get(po.seriesId) ?? 0) + 1;

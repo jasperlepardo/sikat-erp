@@ -215,7 +215,7 @@ export const router = createHashRouter(withPreload([
           { path: 'purchasing/debit-memos', element: <DebitMemosList /> },
           { path: 'purchasing/debit-memos/:id/:tab?', element: <CreditMemoDetail /> },
           { path: 'purchasing/agreements', element: <PurchaseBlanketAgreementList /> },
-          { path: 'purchasing/agreements/:id', element: <PurchaseBlanketAgreementDetail /> },
+          { path: 'purchasing/agreements/:id/:tab?', element: <PurchaseBlanketAgreementDetail /> },
           { path: 'purchasing/landed-costs', element: <LandedCostsList /> },
           { path: 'purchasing/landed-costs/:id/:tab?', element: <LandedCostDetail /> },
           // Settings shell: redirect bare /settings to the first settings module.

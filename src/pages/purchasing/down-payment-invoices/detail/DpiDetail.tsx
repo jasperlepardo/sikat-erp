@@ -374,7 +374,7 @@ function toDpiLines(po: PurchaseOrder, picks: { lineId: string; qty: number }[],
     const { invoicedQty: _i, returnedQty: _r, unitCostLc: _c, id: _id, ...line } = l;
     const pl = po.lines.find((x) => x.id === l.baseLineId);
     const qty = picks.find((p) => p.lineId === l.baseLineId)?.qty ?? l.quantity;
-    return newDpiLine({ ...line, quantity: qty, baseType: 'PO', warehouse: '', binId: '', unitCostLc: 0, bpCatalogNo: pl?.bpCatalogNo ?? '', countryOfOriginCode: m.items.find((x) => x.id === l.itemId)?.countryOfOriginCode ?? '' });
+    return newDpiLine({ ...line, quantity: qty, baseType: 'PO', warehouse: '', binId: '', unitCostLc: 0, bpCatalogNo: pl?.bpCatalogNo ?? '', countryOfOriginCode: l.countryOfOriginCode ?? m.items.find((x) => x.id === l.itemId)?.countryOfOriginCode ?? '', warrantyTemplateId: l.warrantyTemplateId ?? m.items.find((x) => x.id === l.itemId)?.warrantyTemplate ?? '' });
   });
 }
 

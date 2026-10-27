@@ -13,27 +13,6 @@ import type { SalesLineLike } from './salesLineHelpers';
 const num = (v: string) => (v === '' ? 0 : Number(v));
 type Opt = { value: string; label: string };
 
-/**
- * SAP B1 field-census "long tail" — fields the Sales workbook lists on the line grid that the
- * prototype has no data model for (and the UDF columns). Each `[key, header]` becomes a read-only
- * `placeholderCol` ("—"), registered in `salesCols` so each document can `pick` the ones the
- * workbook marks for it (hidden by default) for row-for-row parity. The info/catalog columns
- * (type, uomName, taxAmount, …) are real registry columns picked inline per document, mirroring
- * how the purchasing descriptors declare their columns.
- */
-const PARITY_FIELDS: [string, string][] = [
-  ['summaryType', 'Summary type'], ['rowNo', '#'], ['distrRule', 'Distr. rule'],
-  ['cogsDistrRule', 'COGS distr. rule'], ['blanketAgreementNo', 'Blanket agreement no.'],
-  ['allowProcmnt', 'Allow procmnt. doc.'], ['warranty', 'Warranty'], ['serialNo', 'Serial no.'],
-  ['unitCostPrice', 'Unit cost price'], ['priceForReport', 'Price for report'],
-  ['customerDescription', 'Customer description'], ['amountInPrintout', 'Amount in printout'],
-  ['moveRow', 'Move row'], ['wWTCode', 'wWTCode'], ['wVTVendor', 'wVTVendor'],
-  ['wTaxDefined', 'wTaxDefined'], ['wtaxRate', 'WTax rate'],
-  ['xSupplierName', 'xSupplierName'], ['xAddress', 'xAddress'], ['xTINumber', 'xTINumber'],
-  ['xCardType', 'xCardType'], ['lastCost', 'Last cost'], ['standardItemId', 'Standard item ID'],
-  ['commodityClass', 'Commodity classification'], ['binAllocation', 'Bin location allocation'],
-];
-
 /** Whether a line renders its cells — an item is picked, or the doc overrides the gate (service lines). */
 function vis<T extends SalesLineLike>(b: ColBindings<T>, l: T): boolean {
   return b.rendered ? b.rendered(l) : Boolean(l.itemId);
@@ -48,9 +27,9 @@ function vis<T extends SalesLineLike>(b: ColBindings<T>, l: T): boolean {
  */
 export interface ColBindings<T extends SalesLineLike> {
   readOnly: boolean;
-  /** Document currency, shown as the unit-price prefix. */
+  /** Document currency, named in each amount column's header. */
   currency: string;
-  /** PHP per unit of document currency, for the Total (LC) column. */
+  /** PHP per unit of document currency, for the Total (PHP) column. */
   fx: number;
   invalid: (l: T, field: string) => boolean;
   /** Overrides the "render only when an item is picked" gate — service lines have no item. */
@@ -58,8 +37,6 @@ export interface ColBindings<T extends SalesLineLike> {
   // shared info/catalog columns (hidden by default, available in the Columns menu)
   /** 'Item' or 'Service' per line, for the Type column. */
   lineKind?: (l: T) => string;
-  /** The resolved item name, for the Item-name column. */
-  itemName?: (l: T) => string;
   /** The line's tax in PHP, for the Tax amount / Gross total columns. */
   taxAmount?: (l: T) => number;
   // service-line columns (invoices in Service mode)
@@ -190,22 +167,22 @@ function qtyCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T> {
 function priceReadOnly<T extends SalesLineLike>(b: ColBindings<T>, l: T) {
   return (
     <div className="flex flex-col whitespace-nowrap tabular-nums">
-      <Text variant="small">{b.currency} {formatAmount(b.discountPct(l) ? b.priceAfterDisc(l) : b.unitPrice(l))}</Text>
-      {b.discountPct(l) ? <Text variant="small" tone="muted" className="line-through">{b.currency} {formatAmount(b.unitPrice(l))}</Text> : null}
+      <Text variant="small">{formatAmount(b.discountPct(l) ? b.priceAfterDisc(l) : b.unitPrice(l))}</Text>
+      {b.discountPct(l) ? <Text variant="small" tone="muted" className="line-through">{formatAmount(b.unitPrice(l))}</Text> : null}
     </div>
   );
 }
 
-/** Editable unit price with currency prefix (separate column; pairs with `discount`). */
+/** Editable unit price (separate column; pairs with `discount`). */
 function unitPriceCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T> {
   return {
     key: 'unitPrice',
-    header: 'Unit price',
+    header: `Unit price (${b.currency})`,
     align: 'end',
     cell: (l) => {
       if (!l.itemId) return null;
       if (b.readOnly) return priceReadOnly(b, l);
-      return <TextField aria-label="Unit price" type="number" min={0} prefix={b.currency} invalid={b.invalid(l, 'unitPrice')} value={String(b.unitPrice(l))} className="ml-auto w-28 [&_input]:text-right" onChange={(e) => b.onUnitPrice(l, num(e.currentTarget.value))} />;
+      return <TextField aria-label="Unit price" type="number" min={0} invalid={b.invalid(l, 'unitPrice')} value={String(b.unitPrice(l))} className="ml-auto w-28 [&_input]:text-right" onChange={(e) => b.onUnitPrice(l, num(e.currentTarget.value))} />;
     },
   };
 }
@@ -233,14 +210,14 @@ function discountCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T> 
 function pricingCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T> {
   return {
     key: 'pricing',
-    header: 'Unit price / Discount',
+    header: `Unit price (${b.currency}) / Discount`,
     align: 'end',
     cell: (l) => {
       if (!l.itemId) return null;
       if (b.readOnly) return priceReadOnly(b, l);
       return (
         <div className="flex w-44 shrink-0 flex-col gap-1 whitespace-normal">
-          <TextField aria-label="Unit price" type="number" min={0} prefix={b.currency} invalid={b.invalid(l, 'unitPrice')} value={String(b.unitPrice(l))} onChange={(e) => b.onUnitPrice(l, num(e.currentTarget.value))} />
+          <TextField aria-label="Unit price" type="number" min={0} invalid={b.invalid(l, 'unitPrice')} value={String(b.unitPrice(l))} onChange={(e) => b.onUnitPrice(l, num(e.currentTarget.value))} />
           <TextField aria-label="Discount %" type="number" min={0} suffix="%" value={String(b.discountPct(l))} onChange={(e) => b.onDiscount(l, Math.min(100, num(e.currentTarget.value)))} />
           <Text variant="small" tone="muted">{b.priceSourceLabel?.(l) ?? '—'}{b.repriceLink?.(l) ?? null}</Text>
         </div>
@@ -276,9 +253,9 @@ function roCol<T extends SalesLineLike>(key: string, header: string, get: (l: T)
 function totalCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T> {
   return {
     key: 'total',
-    header: 'Total (LC)',
+    header: 'Total (PHP)',
     align: 'end',
-    cell: (l) => (vis(b, l) ? <Text variant="small" className="block whitespace-nowrap tabular-nums">PHP {formatAmount(b.lineNet(l) * b.fx)}</Text> : null),
+    cell: (l) => (vis(b, l) ? <Text variant="small" className="block whitespace-nowrap tabular-nums">{formatAmount(b.lineNet(l) * b.fx)}</Text> : null),
   };
 }
 
@@ -367,17 +344,17 @@ function returnCostCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T
   const c = b.returnCost!;
   return {
     key: 'returnCost',
-    header: 'Return cost',
+    header: 'Return cost (PHP)',
     align: 'end',
     cell: (l) => {
       if (!l.itemId || !c.show(l)) return null;
       const manual = c.manual(l);
-      if (b.readOnly) return <Text variant="small" className="whitespace-nowrap tabular-nums">PHP {formatAmount(c.value(l) || c.auto(l))}</Text>;
+      if (b.readOnly) return <Text variant="small" className="whitespace-nowrap tabular-nums">{formatAmount(c.value(l) || c.auto(l))}</Text>;
       return (
         <div className="flex w-44 shrink-0 flex-col gap-1 whitespace-normal">
           <Checkbox checked={manual} onChange={(e) => c.onToggle(l, e.currentTarget.checked)}>Set manually</Checkbox>
           {manual ? (
-            <TextField aria-label="Return cost" type="number" min={0} prefix="PHP" value={String(c.value(l))} onChange={(e) => c.onChange(l, num(e.currentTarget.value))} />
+            <TextField aria-label="Return cost" type="number" min={0} value={String(c.value(l))} onChange={(e) => c.onChange(l, num(e.currentTarget.value))} />
           ) : (
             <Text variant="small" tone="muted">Auto (item cost)</Text>
           )}
@@ -422,12 +399,12 @@ function grossCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T> {
   const g = b.gross!;
   return {
     key: 'gross',
-    header: 'Gross after disc.',
+    header: `Gross after disc. (${b.currency})`,
     align: 'end',
     cell: (l) => {
       if (!vis(b, l)) return null;
-      if (b.readOnly) return <Text variant="small" className="whitespace-nowrap tabular-nums">{b.currency} {formatAmount(g.get(l))}</Text>;
-      return <TextField aria-label="Gross price after discount" type="number" min={0} prefix={b.currency} className="w-40" value={String(g.get(l))} onChange={(e) => g.onChange(l, num(e.currentTarget.value))} />;
+      if (b.readOnly) return <Text variant="small" className="whitespace-nowrap tabular-nums">{formatAmount(g.get(l))}</Text>;
+      return <TextField aria-label="Gross price after discount" type="number" min={0} className="w-40" value={String(g.get(l))} onChange={(e) => g.onChange(l, num(e.currentTarget.value))} />;
     },
   };
 }
@@ -507,9 +484,9 @@ function serviceAmountCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColum
   const a = b.serviceAmount!;
   return {
     key: 'amount',
-    header: 'Amount',
+    header: `Amount (${b.currency})`,
     align: 'end',
-    cell: (l) => (b.readOnly ? <Text variant="small" className="whitespace-nowrap tabular-nums">{b.currency} {formatAmount(a.value(l))}</Text> : <TextField aria-label="Amount" type="number" min={0} prefix={b.currency} className="w-40" invalid={a.invalid?.(l)} value={String(a.value(l))} onChange={(e) => a.onChange(l, num(e.currentTarget.value))} />),
+    cell: (l) => (b.readOnly ? <Text variant="small" className="whitespace-nowrap tabular-nums">{formatAmount(a.value(l))}</Text> : <TextField aria-label="Amount" type="number" min={0} className="w-40" invalid={a.invalid?.(l)} value={String(a.value(l))} onChange={(e) => a.onChange(l, num(e.currentTarget.value))} />),
   };
 }
 
@@ -524,15 +501,6 @@ function typeCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T> {
   };
 }
 
-/** Read-only item name. */
-function nameCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T> {
-  return {
-    key: 'name',
-    header: 'Item name',
-    cell: (l) => (vis(b, l) ? <Text variant="small" className="whitespace-normal">{b.itemName?.(l) || '—'}</Text> : null),
-  };
-}
-
 /** Read-only UoM name (the qty column shows the code). */
 function uomNameCol<T extends SalesLineLike>(): PrefColumn<T> {
   return { key: 'uomName', header: 'UoM name', cell: (l) => (l.itemId ? <Text variant="small">{l.uomName}</Text> : null) };
@@ -543,11 +511,6 @@ function itemsPerUnitCol<T extends SalesLineLike>(): PrefColumn<T> {
   return { key: 'itemsPerUnit', header: 'Items per unit', align: 'end', cell: (l) => (l.itemId ? <span className="text-sm tabular-nums">{l.itemsPerUnit}</span> : null) };
 }
 
-/** Yes/No — is the line unit the inventory unit (items per unit == 1)? */
-function inventoryUomCol<T extends SalesLineLike>(): PrefColumn<T> {
-  return { key: 'inventoryUom', header: 'Inventory UoM', cell: (l) => (l.itemId ? (l.itemsPerUnit === 1 ? 'Yes' : 'No') : null) };
-}
-
 /** What set the price — a list name, "Manual", an agreement. */
 function priceSourceCol<T extends SalesLineLike>(): PrefColumn<T> {
   return { key: 'priceSource', header: 'Price source', cell: (l) => (l.itemId ? <Text variant="small" tone={l.priceSource ? 'default' : 'muted'}>{l.priceSource || '—'}</Text> : null) };
@@ -555,20 +518,20 @@ function priceSourceCol<T extends SalesLineLike>(): PrefColumn<T> {
 
 /** Read-only unit price after discount, in document currency. */
 function priceAfterDiscCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T> {
-  return { key: 'priceAfterDisc', header: 'Price after discount', align: 'end', cell: (l) => (vis(b, l) ? <span className="text-sm tabular-nums">{b.currency} {formatAmount(b.priceAfterDisc(l))}</span> : null) };
+  return { key: 'priceAfterDisc', header: `Price after discount (${b.currency})`, align: 'end', cell: (l) => (vis(b, l) ? <span className="text-sm tabular-nums">{formatAmount(b.priceAfterDisc(l))}</span> : null) };
 }
 
 /** Read-only line tax in PHP. */
 function taxAmountCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T> {
-  return { key: 'taxAmount', header: 'Tax amount (LC)', align: 'end', cell: (l) => (vis(b, l) ? <span className="text-sm tabular-nums">PHP {formatAmount((b.taxAmount?.(l) ?? 0) * b.fx)}</span> : null) };
+  return { key: 'taxAmount', header: 'Tax amount (PHP)', align: 'end', cell: (l) => (vis(b, l) ? <span className="text-sm tabular-nums">{formatAmount((b.taxAmount?.(l) ?? 0) * b.fx)}</span> : null) };
 }
 
 /** Read-only line total including tax, in PHP. */
 function grossTotalLcCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T> {
-  return { key: 'grossTotalLc', header: 'Gross total (LC)', align: 'end', cell: (l) => (vis(b, l) ? <span className="text-sm tabular-nums">PHP {formatAmount((b.lineNet(l) + (b.taxAmount?.(l) ?? 0)) * b.fx)}</span> : null) };
+  return { key: 'grossTotalLc', header: 'Gross total (PHP)', align: 'end', cell: (l) => (vis(b, l) ? <span className="text-sm tabular-nums">{formatAmount((b.lineNet(l) + (b.taxAmount?.(l) ?? 0)) * b.fx)}</span> : null) };
 }
 
-/** A read-only placeholder cell ("—") for a field with no backing data — workbook parity only. */
+/** A read-only placeholder cell ("—") for a field with no backing data. */
 function placeholderCol<T extends SalesLineLike>(key: string, header: string): PrefColumn<T> {
   return { key, header, cell: (l) => (l.itemId ? <span className="text-sm text-muted">—</span> : null) };
 }
@@ -613,15 +576,11 @@ export function salesCols<T extends SalesLineLike>(b: ColBindings<T>): Record<st
     amount: serviceAmountCol(b),
     // Shared info / catalog columns (parity with purchasing; hidden by default).
     type: typeCol(b),
-    name: nameCol(b),
     uomName: uomNameCol(),
     itemsPerUnit: itemsPerUnitCol(),
-    inventoryUom: inventoryUomCol(),
     priceSource: priceSourceCol(),
     priceAfterDisc: priceAfterDiscCol(b),
     taxAmount: taxAmountCol(b),
     grossTotalLc: grossTotalLcCol(b),
-    // SAP workbook long-tail / UDFs — read-only placeholders for row-for-row parity.
-    ...Object.fromEntries(PARITY_FIELDS.map(([k, hdr]) => [k, placeholderCol<T>(k, hdr)])) as Record<string, PrefColumn<T>>,
   };
 }

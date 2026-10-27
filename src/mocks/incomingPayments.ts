@@ -115,7 +115,8 @@ export interface IncomingPayment {
   billTo: string;
   contactId: string;
   projectId: string;
-  blanketAgreement: string;
+  /** Blanket agreement (id) the entry relates to; '' = none. */
+  blanketAgreementId: string;
   seriesId: string;
   /** Auto-numbered, or typed for the Manual series. */
   docNum: number;
@@ -196,7 +197,7 @@ export function blankIncomingPayment(today: string): Omit<IncomingPayment, 'id'>
     billTo: '',
     contactId: '',
     projectId: '',
-    blanketAgreement: '',
+    blanketAgreementId: '',
     seriesId: INCOMING_SERIES[0].id,
     docNum: 0,
     status: 'Draft',

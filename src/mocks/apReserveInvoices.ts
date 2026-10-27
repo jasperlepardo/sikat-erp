@@ -10,6 +10,7 @@
  * - Journal on posting: Dr Purchase account + Input VAT / Cr Vendor Payable — no inventory entry.
  */
 import type { Attachment, DocumentSeries } from './common';
+import { pbaLineId } from './purchLine';
 import type { PoReference } from './purchaseOrders';
 import { newGrLine, type GrLine } from './goodsReceipts';
 import type { StampedWithholding } from './apInvoices';
@@ -212,21 +213,21 @@ export const SEED_AP_RESERVE_INVOICES: ApReserveInvoice[] = [
       apriLine('apri-001-1', {
         itemId: 'apl-0240', itemNo: 'MAC-MBA13-M5-8G-16-512-MDN',
         name: '', description: 'MacBook Air 13-inch (M5), M5 10C CPU/8C GPU, 16GB, 512GB, Midnight',
-        quantity: 15, unitPrice: 1395.19, blanketAgreement: 'BA-2026-004',
+        quantity: 15, unitPrice: 1395.19, agreementId: 'pba-003', agreementLineId: pbaLineId('pba-003', 'MAC-MBA13-M5-8G-16-512-MDN'),
         baseId: 'po-007', baseLineId: 'po-007-1', baseDocNo: 'IMP-2026-0002',
         receivedQty: 15,
       }),
       apriLine('apri-001-2', {
         itemId: 'apl-0242', itemNo: 'MAC-MBA13-M5-8G-16-512-SLV',
         name: '', description: 'MacBook Air 13-inch (M5), M5 10C CPU/8C GPU, 16GB, 512GB, Silver',
-        quantity: 15, unitPrice: 1395.19, blanketAgreement: 'BA-2026-004',
+        quantity: 15, unitPrice: 1395.19, agreementId: 'pba-003', agreementLineId: pbaLineId('pba-003', 'MAC-MBA13-M5-8G-16-512-SLV'),
         baseId: 'po-007', baseLineId: 'po-007-2', baseDocNo: 'IMP-2026-0002',
         receivedQty: 15,
       }),
       apriLine('apri-001-3', {
         itemId: 'apl-0243', itemNo: 'MAC-MBA13-M5-10G-24-1T-SKB',
         name: '', description: 'MacBook Air 13-inch (M5), M5 10C CPU/10C GPU, 24GB, 1TB, Sky Blue',
-        quantity: 8, unitPrice: 1720.31, blanketAgreement: 'BA-2026-004',
+        quantity: 8, unitPrice: 1720.31, agreementId: 'pba-003', agreementLineId: pbaLineId('pba-003', 'MAC-MBA13-M5-10G-24-1T-SKB'),
         baseId: 'po-007', baseLineId: 'po-007-3', baseDocNo: 'IMP-2026-0002',
         receivedQty: 8,
       }),
@@ -250,21 +251,21 @@ export const SEED_AP_RESERVE_INVOICES: ApReserveInvoice[] = [
       apriLine('apri-002-1', {
         itemId: 'apl-0017', itemNo: 'IPH-18P-256-BLK',
         name: '', description: 'iPhone 18 Pro, 256GB, Black',
-        quantity: 20, unitPrice: 1286.81, blanketAgreement: 'BA-2026-004',
+        quantity: 20, unitPrice: 1286.81, agreementId: 'pba-003', agreementLineId: pbaLineId('pba-003', 'IPH-18P-256-BLK'),
         baseId: 'po-006', baseLineId: 'po-006-1', baseDocNo: 'IMP-2026-0001',
         receivedQty: 0,
       }),
       apriLine('apri-002-2', {
         itemId: 'apl-0018', itemNo: 'IPH-18P-256-SLV',
         name: '', description: 'iPhone 18 Pro, 256GB, Silver',
-        quantity: 20, unitPrice: 1286.81, blanketAgreement: 'BA-2026-004',
+        quantity: 20, unitPrice: 1286.81, agreementId: 'pba-003', agreementLineId: pbaLineId('pba-003', 'IPH-18P-256-SLV'),
         baseId: 'po-006', baseLineId: 'po-006-2', baseDocNo: 'IMP-2026-0001',
         receivedQty: 0,
       }),
       apriLine('apri-002-3', {
         itemId: 'apl-0007', itemNo: 'IPH-18PM-512-GLC',
         name: '', description: 'iPhone 18 Pro Max, 512GB, Glacier',
-        quantity: 10, unitPrice: 1571.29, blanketAgreement: 'BA-2026-004',
+        quantity: 10, unitPrice: 1571.29, agreementId: 'pba-003', agreementLineId: pbaLineId('pba-003', 'IPH-18PM-512-GLC'),
         baseId: 'po-006', baseLineId: 'po-006-3', baseDocNo: 'IMP-2026-0001',
         receivedQty: 0,
       }),

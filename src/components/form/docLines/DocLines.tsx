@@ -89,6 +89,13 @@ export interface DocLinesProps<T extends DocLineBase> {
   sortValue?: (row: T, key: string) => string | number;
   /** Fold the settings menu into this column's header. Defaults to the actions column when `item` is set. */
   menuColumn?: string;
+  /**
+   * Title, icon and a "Columns" button (on the right) in a Card.Header, with `header` and the table
+   * inside the card. Otherwise the title sits above the table and the menu folds into a column header.
+   */
+  cardHeader?: boolean;
+  /** Controls beside the Columns button (card header only), e.g. a currency toggle. */
+  actions?: ReactNode;
   /** Contents tables don't paginate by default. */
   noPagination?: boolean;
 }
@@ -111,6 +118,8 @@ export function DocLines<T extends DocLineBase>({
   sortableKeys,
   sortValue,
   menuColumn,
+  cardHeader = false,
+  actions,
   noPagination = true,
 }: DocLinesProps<T>) {
   const [editing, setEditing] = useState<Set<string>>(new Set());
@@ -187,7 +196,7 @@ export function DocLines<T extends DocLineBase>({
     ...(actionsColumn ? [actionsColumn] : []),
   ];
 
-  const effectiveMenuColumn = item ? 'actions' : menuColumn;
+  const effectiveMenuColumn = cardHeader ? undefined : item ? 'actions' : menuColumn;
   const effectiveAddRow = item && !readOnly ? (
     <Combobox
       key={addKey}
@@ -214,25 +223,34 @@ export function DocLines<T extends DocLineBase>({
     ? visible.map((c) => c.key).filter((k) => !sortableKeys.includes(k))
     : undefined;
 
+  const table = (
+    <DataTable
+      variant={cardHeader ? 'card' : 'plain'}
+      noPagination={noPagination}
+      icon={icon}
+      title={title}
+      description={description}
+      rows={rows}
+      getRowId={getRowId}
+      columns={visible}
+      empty={empty}
+      onRemove={readOnly ? undefined : onRemove}
+      spanRow={effectiveAddRow}
+      cardFooter={footer}
+      {...(cardHeader && actions ? { actions } : {})}
+      {...(unsortable ? { unsortable } : {})}
+      {...(sortValue ? { sortValue } : {})}
+      {...(effectiveMenuColumn ? {} : { columnMenu: prefs.menu })}
+    >
+      {cardHeader ? header : null}
+    </DataTable>
+  );
+  if (cardHeader) return table;
+
   return (
     <div className="flex flex-col gap-2">
       {header}
-      <DataTable
-        noPagination={noPagination}
-        icon={icon}
-        title={title}
-        description={description}
-        rows={rows}
-        getRowId={getRowId}
-        columns={visible}
-        empty={empty}
-        onRemove={readOnly ? undefined : onRemove}
-        spanRow={effectiveAddRow}
-        cardFooter={footer}
-        {...(unsortable ? { unsortable } : {})}
-        {...(sortValue ? { sortValue } : {})}
-        {...(effectiveMenuColumn ? {} : { columnMenu: prefs.menu })}
-      />
+      {table}
     </div>
   );
 }

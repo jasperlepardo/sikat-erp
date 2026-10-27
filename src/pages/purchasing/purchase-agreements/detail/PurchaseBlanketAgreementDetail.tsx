@@ -14,6 +14,7 @@ import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { type Errors } from '../../../../components/form/fields';
 import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
+import { ActivityTab } from '../../../../components/activity/ActivityTab';
 import { CURRENT_USER_ID } from '../../../../mocks/common';
 import { blankPurchaseBlanketAgreement, newPbaLine, type PurchaseBlanketAgreement } from '../../../../mocks/purchaseBlanketAgreements';
 import { blankPurchaseOrder, newPoLine } from '../../../../mocks/purchaseOrders';
@@ -25,23 +26,25 @@ import { pbaSeries } from '../../../../services/allSeries';
 import { pbaNumber, pbaTotals, openQty, getPurchaseBlanketAgreement, listPurchaseBlanketAgreements, savePurchaseBlanketAgreement, type PbaInput } from '../../../../services/purchaseBlanketAgreements';
 import { getPurchasingSettings } from '../../../../services/purchaseOrders';
 import { useDocTitle } from '../../../../services/useDocTitle';
+import { DocumentFlow } from '../../shared/DocumentFlow';
 import { VendorCard } from '../../shared/VendorCard';
 import { AgreementCard } from './AgreementCard';
 import { GeneralTab } from './general';
 import { AgreementLinesCard } from '../../../../components/agreements/AgreementLinesCard';
-import { DocumentsTab } from './documents';
 import { AgreementSummaryCard } from '../../../../components/agreements/AgreementSummaryCard';
 import type { PbaDraft, PbaMasters } from './types';
-import { NotFound, PrevNext, neighbours } from '../../../../components/form/DetailNav';
+import { NotFound, PrevNext, neighbours, useDocTab } from '../../../../components/form/DetailNav';
 import { PBA_LIST_PATH, PBA_STATUS_INTENT, PO_LIST_PATH } from '../../paths';
 
-type TabId = 'general' | 'lines' | 'documents' | 'attachments';
-const TABS: { value: TabId; label: string }[] = [
-  { value: 'general', label: 'General' },
-  { value: 'lines', label: 'Lines' },
-  { value: 'documents', label: 'Documents' },
-  { value: 'attachments', label: 'Attachments' },
-];
+const PAGES = [
+  { value: 'details', label: 'Details' },
+  { value: 'transactions', label: 'Transactions' },
+  { value: 'activity', label: 'Activity' },
+] as const;
+type PageId = (typeof PAGES)[number]['value'];
+
+type TabId = 'general' | 'lines';
+const TAB_LABEL: Record<string, string> = { general: 'General', lines: 'Lines', header: 'Agreement' };
 
 function validate(d: PbaDraft): Problem<TabId>[] {
   const { problems, need } = problemCollector<TabId>();
@@ -69,15 +72,18 @@ export function PurchaseBlanketAgreementDetail() {
 }
 
 function PbaForm() {
-  const { id } = useParams();
+  const { id, tab: tabParam } = useParams();
   const isNew = id === 'new';
   const navigate = useNavigate();
+  const location = useLocation();
+  const copyFrom = (location.state as { copyFrom?: PbaDraft } | null)?.copyFrom;
 
   const [draft, setDraft] = useState<PbaDraft | null | undefined>(
-    isNew ? { ...blankPurchaseBlanketAgreement(CURRENT_USER_ID), lines: [] } : undefined,
+    isNew ? { ...(copyFrom ?? { ...blankPurchaseBlanketAgreement(CURRENT_USER_ID), lines: [] }) } : undefined,
   );
   const [m, setM] = useState<PbaMasters>();
-  const [tab, setTab] = useState<TabId>('general');
+  const page = (PAGES.some((p) => p.value === tabParam) ? tabParam : 'details') as PageId;
+  const setPage = useDocTab<PageId>(`${PBA_LIST_PATH}/${id}`, tabParam);
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);
@@ -201,7 +207,9 @@ function PbaForm() {
           uomName: l.uomName,
           itemsPerUnit: l.itemsPerUnit,
           unitPrice: l.unitPrice,
-          blanketAgreement: pbaNumber(pba),
+          // Agreement lines don't carry a country of origin: start from the item's.
+          countryOfOriginCode: m?.items.find((i) => i.id === l.itemId)?.countryOfOriginCode ?? '',
+          warrantyTemplateId: m?.items.find((i) => i.id === l.itemId)?.warrantyTemplate ?? '',
           agreementId: pba.id,
           agreementLineId: l.id,
         }),
@@ -241,6 +249,7 @@ function PbaForm() {
           trailing={
             isNew ? undefined : <PrevNext path={PBA_LIST_PATH} prevId={prevId} nextId={nextId} />
           }
+          tabs={isNew ? undefined : <Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={[...PAGES]} />}
           status={isNew ? undefined : <Badge size="small" intent={PBA_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
           actions={
             <>
@@ -255,69 +264,72 @@ function PbaForm() {
           }
         />
 
-        <Panel.Body className="flex flex-col gap-2">
-          <ProblemsAlert problems={problems} tabLabel={(t) => TABS.find((x) => x.value === t)?.label ?? t} />
-
-          {readOnly ? (
-            <Alert intent="default" variant="outline" title={`This agreement is ${draft.status.toLowerCase()}`}>
-              {draft.status === 'Terminated' && draft.terminationDate
-                ? `Terminated on ${formatDate(draft.terminationDate)}. `
-                : ''}
-              Only remarks and attachments can be changed.
-            </Alert>
-          ) : null}
-
-          <fieldset disabled={readOnly} className="contents">
-            <VendorCard
-              vendors={m.vendors}
-              vendorId={draft.vendorId}
-              vendor={vendor}
-              readOnly={readOnly}
-              added={added}
-              error={errors.vendorId}
-              pickVendor={pickVendor}
-              contact={{ contactId: draft.contactId, onChange: (id) => update({ contactId: id }) }}
-              vendorRef={{ value: draft.vendorRef, onChange: (v) => update({ vendorRef: v }), hint: "The vendor's own reference for this agreement." }}
-              currency={{ value: draft.currency, readOnly: true }}
-              phone={draft.phone}
-              email={draft.email}
-            />
-            <AgreementCard draft={draft} update={update} m={m} added={added} />
-          </fieldset>
-
-          {/* ── Tabs ───────────────────────────────────────────────────────── */}
-          <div>
-            <Tabs
-              variant="outline"
-              value={tab}
-              onValueChange={(v) => setTab(v as TabId)}
-              items={TABS}
-            />
-          </div>
-
-          <fieldset disabled={readOnly} className="contents">
-            {tab === 'general' && (
-              <GeneralTab draft={draft} update={update} m={m} readOnly={readOnly} />
+        {page === 'transactions' ? (
+          <Panel.Body>
+            {added && draft.id ? (
+              <DocumentFlow
+                kind="PBA"
+                id={draft.id}
+                notes="Purchase orders and their downstream documents drawn from this agreement."
+              />
+            ) : (
+              <Text variant="small" tone="muted" className="p-4">Transactions will show here once the agreement is added.</Text>
             )}
-            {tab === 'lines' && (
-              <AgreementLinesCard side="purchase" draft={draft} update={update} m={m} readOnly={readOnly} newLine={newPbaLine} />
-            )}
-            {tab === 'documents' && <DocumentsTab pbaId={draft.id} />}
-          </fieldset>
+          </Panel.Body>
+        ) : page === 'activity' ? (
+          <Panel.Body>
+            <ActivityTab target={{ kind: 'PBA', id: draft.id ?? '' }} partnerId={draft.vendorId} />
+          </Panel.Body>
+        ) : (
+          <Panel.Body className="flex flex-col gap-2">
+            <ProblemsAlert problems={problems} tabLabel={(t) => TAB_LABEL[t as TabId] ?? t} />
 
-          {tab === 'attachments' && (
-            <AttachmentsCard
-              attachments={draft.attachments}
-              onChange={(attachments) => update({ attachments })}
-              emptyHint="Signed agreement, vendor confirmation, or supporting documents."
-              withDescription
-            />
-          )}
+            {readOnly ? (
+              <Alert intent="default" variant="outline" title={`This agreement is ${draft.status.toLowerCase()}`}>
+                {draft.status === 'Terminated' && draft.terminationDate
+                  ? `Terminated on ${formatDate(draft.terminationDate)}. `
+                  : ''}
+                Only remarks and attachments can be changed.
+              </Alert>
+            ) : null}
 
-          {draft.lines.length > 0 && tab !== 'documents' && (
-            <AgreementSummaryCard side="purchase" currency={draft.currency} totals={totals} settlementProbability={draft.settlementProbability} />
-          )}
-        </Panel.Body>
+            <fieldset disabled={readOnly} className="contents">
+              {draft.lines.length > 0 && (
+                <AgreementSummaryCard side="purchase" currency={draft.currency} totals={totals} settlementProbability={draft.settlementProbability} />
+              )}
+              <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
+                <div className="flex flex-col gap-2 lg:col-span-8">
+                  <VendorCard
+                    vendors={m.vendors}
+                    vendorId={draft.vendorId}
+                    vendor={vendor}
+                    readOnly={readOnly}
+                    added={added}
+                    error={errors.vendorId}
+                    pickVendor={pickVendor}
+                    contact={{ contactId: draft.contactId, onChange: (id) => update({ contactId: id }) }}
+                    vendorRef={{ value: draft.vendorRef, onChange: (v) => update({ vendorRef: v }), hint: "The vendor's own reference for this agreement." }}
+                    currency={{ value: draft.currency, readOnly: true }}
+                    phone={draft.phone}
+                    email={draft.email}
+                  />
+                  <AgreementLinesCard side="purchase" draft={draft} update={update} m={m} readOnly={readOnly} newLine={newPbaLine} />
+                  <AttachmentsCard
+                    attachments={draft.attachments}
+                    onChange={(attachments) => update({ attachments })}
+                    emptyHint="Signed agreement, vendor confirmation, or supporting documents."
+                    withDescription
+                  />
+                </div>
+
+                <aside className="flex flex-col gap-2 lg:col-span-4">
+                  <AgreementCard draft={draft} update={update} m={m} added={added} />
+                  <GeneralTab draft={draft} update={update} m={m} readOnly={readOnly} />
+                </aside>
+              </div>
+            </fieldset>
+          </Panel.Body>
+        )}
       </Panel>
     </Form>
   );

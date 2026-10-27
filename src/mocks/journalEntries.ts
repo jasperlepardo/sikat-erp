@@ -121,7 +121,8 @@ export interface JournalEntry {
   ref1: string;
   ref2: string;
   ref3: string;
-  blanketAgreement: string;
+  /** Blanket agreement (id) the entry relates to; '' = none. */
+  blanketAgreementId: string;
   revaluationReporting: boolean;
   /** Reverse on `reversalDate`. */
   reverse: boolean;
@@ -182,7 +183,7 @@ export function blankJournalEntry(today: string): Omit<JournalEntry, 'id'> {
     ref1: '',
     ref2: '',
     ref3: '',
-    blanketAgreement: '',
+    blanketAgreementId: '',
     revaluationReporting: false,
     reverse: false,
     reversalDate: '',

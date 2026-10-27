@@ -1,5 +1,8 @@
 import type { WithholdingKind } from './taxes';
 
+/** A seeded blanket agreement's line for an item: agreement id + item no. (seeds link PO lines by it). */
+export const pbaLineId = (agreementId: string, itemNo: string) => `${agreementId}-${itemNo}`;
+
 /**
  * The unified purchasing line shape for the forward flow (PR / RFQ / PO / GRPO).
  *
@@ -73,13 +76,23 @@ export interface PurchLine {
   freeText?: string;
   /** Department the line's cost is charged to. PR, PO. */
   departmentId?: string;
-  /** Linked blanket agreement no. RFQ, PO, GR. */
-  blanketAgreement?: string;
   /** Per-line open/closed status. PR, PO. */
   status?: 'Open' | 'Closed';
+  /** Country code the goods come from. Defaults from the item, editable per line, carried down each copy. */
+  countryOfOriginCode?: string;
+  /**
+   * Cost account the buyer chose for a non-stock line ('' = the item's expense account).
+   * Stock lines always post to the item's inventory account. Carried down each copy.
+   */
+  glAccount?: string;
+  /** Warranty template (id). Defaults from the item, editable per line, carried down each copy. */
+  warrantyTemplateId?: string;
   /** Return reason code (credit/return docs; conditional, unused at request/order stage). */
   returnReason?: string;
-  /** Blanket-agreement record + line this draws against. PO. */
+  /**
+   * Purchase blanket agreement (id) and its line for the item that this line draws against
+   * ('' = none). Shown by the agreement's number; carried down each copy (RFQ → PO → GR → invoice).
+   */
   agreementId?: string;
   agreementLineId?: string;
   /** Copied-from document + line + display number. GR. */

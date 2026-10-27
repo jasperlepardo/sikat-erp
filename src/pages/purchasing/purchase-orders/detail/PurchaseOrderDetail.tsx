@@ -45,7 +45,7 @@ import { logRejection } from '../../../../services/approvalRules';
 import { DocLines } from '../../../../components/form/docLines/DocLines';
 import { poDoc } from './poDoc';
 import { PoDeliveryCard } from './PoDeliveryCard';
-import { PoReceiptsTab } from './PoReceiptsTab';
+import { PoReceiptsTab, usePoReceiptDocs } from './PoReceiptsTab';
 import { PoJournalPaymentCard } from './PoJournalPaymentCard';
 import { PoDatesCard } from './PoDatesCard';
 import { ReferencesTable } from '../../shared/ReferencesTable';
@@ -176,6 +176,7 @@ function PurchaseOrderForm() {
   const [draft, setDraft] = useState<PoDraft | null | undefined>(isNew ? { ...(copyFrom ?? blank), approved } : undefined);
   const [m, setM] = useState<PoMasters>();
   const [contentTab, setContentTab] = useState<'item' | 'receipts'>('item');
+  const receiptDocs = usePoReceiptDocs();
   const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
   const setPage = useDocTab<PageId>(`${PO_LIST_PATH}/${id}`, tabParam);
   const [siblings, setSiblings] = useState<string[]>([]);
@@ -381,6 +382,32 @@ function PurchaseOrderForm() {
   const title = isNew ? 'New purchase order' : draft.status === 'Draft' ? 'Draft purchase order' : poNumber(draft);
   const sectionProps = { draft, update, errors, m, ctx };
 
+
+  // The Item / Receipts switch sits at the top of the Contents card body, above that tab's description.
+  const contentTabs = (
+    <Tabs
+      variant="primary"
+      // The card body is a flex column, which would stretch the bar full width.
+      className="w-fit max-w-full self-start"
+      value={contentTab}
+      onValueChange={(v) => setContentTab(v as 'item' | 'receipts')}
+      items={[
+        { value: 'item', label: 'Item' },
+        { value: 'receipts', label: 'Receipts' },
+      ]}
+    />
+  );
+  const withTabsOnTop = (lines: ReturnType<typeof poDoc>): ReturnType<typeof poDoc> => ({
+    ...lines,
+    description: undefined,
+    header: (
+      <>
+        {contentTabs}
+        <Text variant="small" tone="muted">{lines.description}</Text>
+        {lines.header}
+      </>
+    ),
+  });
   return (
     <>
     <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
@@ -458,16 +485,7 @@ function PurchaseOrderForm() {
             <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
               <div className="flex flex-col gap-2 lg:col-span-8">
                 <VendorCard vendors={m.vendors} vendorId={draft.vendorId} vendor={ctx.vendor} readOnly={ctx.readOnly} added={ctx.added} error={errors.vendorId} pickVendor={pickVendor} onNewVendor={() => setShowVendorCreate(true)} onOpenDetails={() => setVendorDetailsOpen(true)} />
-                <Tabs
-                  variant="primary"
-                  value={contentTab}
-                  onValueChange={(v) => setContentTab(v as 'item' | 'receipts')}
-                  items={[
-                    { value: 'item', label: 'Item' },
-                    { value: 'receipts', label: 'Receipts' },
-                  ]}
-                />
-                {contentTab === 'item' ? <DocLines {...poDoc(sectionProps)} /> : <PoReceiptsTab draft={draft} />}
+                {contentTab === 'item' ? <DocLines {...withTabsOnTop(poDoc(sectionProps))} /> : <PoReceiptsTab draft={draft} docs={receiptDocs} tabs={contentTabs} />}
                 <ReferencesTable refs={draft.references} onChange={(references) => update({ references })} readOnly={ctx.readOnly} description="Other documents this PO refers to, or that refer to it." />
                 <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach the vendor's quotation, signed PO acknowledgement or order confirmation." />
               </div>

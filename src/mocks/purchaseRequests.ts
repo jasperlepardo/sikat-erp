@@ -6,6 +6,7 @@ import type { Attachment, DocumentSeries } from './common';
 import type { PurchLine } from './purchLine';
 import { employeeId, plId } from './masters';
 import { SEED_ITEMS, mergedItems } from './items';
+import { SEED_UOMS } from './itemMasters';
 import { SEED_TAX_GROUPS } from './taxes';
 import { hemId, type Employee } from './employees';
 import { branchId, departmentId } from './peopleMasters';
@@ -171,7 +172,9 @@ const prLine = (id: string, itemNo: string, qty: number, patch: Partial<PrLine> 
     itemNo,
     description: item.description || item.name,
     uomCode: base,
-    uomName: base,
+    uomName: SEED_UOMS.find((u) => u.code === base)?.name ?? base,
+    countryOfOriginCode: item.countryOfOriginCode,
+    warrantyTemplateId: item.warrantyTemplate,
     quantity: qty,
     openQty: qty,
     warehouse: item.inventoryItem ? 'WH-001' : '',

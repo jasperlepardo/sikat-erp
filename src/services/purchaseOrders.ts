@@ -17,6 +17,7 @@ import { applyRequestDraw } from './purchaseRequests';
 import { poSeries, seriesLookup, formatDocNum } from './allSeries';
 import { round2 } from './num';
 import { inventoryQty, lineNet, priceAfterDiscount } from './lineMath';
+import { recalculatePBACommitments } from './purchaseBlanketAgreements';
 
 const orders = createCollection<PurchaseOrder>('sikat-erp:purchase-orders:v21', SEED_PURCHASE_ORDERS, 'po', { audit: 'PO' });
 export { poSeries };
@@ -159,6 +160,7 @@ export async function savePurchaseOrder(input: PoInput, { asDraft = false } = {}
     const draft = await orders.save({ ...input, status: 'Draft', docNum: 0 });
     await applyOrderedChange(before, draft);
     await applyRequestDraw(before, draft);
+    await recalculatePBACommitments(agreementsOf(before, draft));
     return [draft];
   }
 
@@ -186,6 +188,7 @@ export async function savePurchaseOrder(input: PoInput, { asDraft = false } = {}
     const saved = await orders.save(withStatus({ ...input, docNum: number(input.docNum) }));
     await applyOrderedChange(before, saved);
     await applyRequestDraw(before, saved);
+    await recalculatePBACommitments(agreementsOf(before, saved));
     return [saved];
   }
 
@@ -210,11 +213,21 @@ export async function savePurchaseOrder(input: PoInput, { asDraft = false } = {}
     await applyOrderedChange(undefined, part);
     await applyRequestDraw(undefined, part);
   }
+  await recalculatePBACommitments(agreementsOf(before, ...saved));
   return saved;
 }
 
+/** The blanket agreements some line of these POs draws on. */
+const agreementsOf = (...pos: (Pick<PurchaseOrder, 'lines'> | undefined)[]) =>
+  [...new Set(pos.flatMap((po) => po?.lines.map((l) => l.agreementId) ?? []).filter(Boolean))];
+
 /** Write back received quantities and row/PO status after a goods receipt is added or cancelled. */
-export const saveReceivedQuantities = (po: PurchaseOrder) => orders.save(po);
+export async function saveReceivedQuantities(po: PurchaseOrder) {
+  const saved = await orders.save(po);
+  // A line received in full closes, which moves it from committed to fulfilled on its agreement.
+  await recalculatePBACommitments(agreementsOf(saved));
+  return saved;
+}
 
 /** Close: the PO and its open rows stop expecting deliveries. */
 export async function closePurchaseOrder(po: PurchaseOrder) {
@@ -226,6 +239,7 @@ export async function closePurchaseOrder(po: PurchaseOrder) {
   });
   await applyOrderedChange(po, closed);
   await applyRequestDraw(po, closed);
+  await recalculatePBACommitments(agreementsOf(closed));
   return closed;
 }
 
@@ -235,6 +249,7 @@ export async function cancelPurchaseOrder(po: PurchaseOrder) {
   const cancelled = await orders.save({ ...po, status: 'Cancelled', closeDate: TODAY(), lines: po.lines.map((l) => ({ ...l, status: 'Closed' as const })) });
   await applyOrderedChange(po, cancelled);
   await applyRequestDraw(po, cancelled);
+  await recalculatePBACommitments(agreementsOf(cancelled));
   return cancelled;
 }
 
@@ -243,5 +258,6 @@ export async function recallPurchaseOrder(po: PurchaseOrder) {
   const recalled = await orders.save({ ...po, status: 'Draft', approved: false });
   // Back to Draft, so it no longer consumes its source request's open quantities.
   await applyRequestDraw(po, recalled);
+  await recalculatePBACommitments(agreementsOf(recalled));
   return recalled;
 }

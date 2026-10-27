@@ -162,39 +162,43 @@ export function DataTable<T>({
   );
   // The span/add row fills the table width even when there are no data rows yet.
   const spanRowCell = spanRow ? <div className="w-full [&>*]:w-full">{spanRow}</div> : undefined;
-  const table = rows.length || spanRow ? (
-    <Card>
-      <Table
-        // The card variant names the table in its header; no hidden caption.
-        {...(variant === 'card' ? {} : { caption: title })}
-        columns={columns.map((c) => ({ sortable: !unsortable.includes(c.key), ...c }))}
-        rows={visible}
-        getRowId={getRowId}
-        sort={sort}
-        onSortChange={setSort}
-        layout="scroll"
-        {...(onRemove ? { selectable: true, selectedIds: liveSelection, onSelectionChange: setSelected } : {})}
-        {...(!noPagination && {
-          pagination: {
-            page: current,
-            pageSize,
-            total: rows.length,
-            pageSizes: PAGE_SIZES,
-            onPageChange: setPage,
-            onPageSizeChange: (size) => {
-              setPageSize(size);
-              setPage(1);
-            },
+  const hasTable = rows.length > 0 || Boolean(spanRow);
+  const tableEl = (
+    <Table
+      // The card variant names the table in its header; no hidden caption.
+      {...(variant === 'card' ? {} : { caption: title })}
+      columns={columns.map((c) => ({ sortable: !unsortable.includes(c.key), ...c }))}
+      rows={visible}
+      getRowId={getRowId}
+      sort={sort}
+      onSortChange={setSort}
+      layout="scroll"
+      {...(onRemove ? { selectable: true, selectedIds: liveSelection, onSelectionChange: setSelected } : {})}
+      {...(!noPagination && {
+        pagination: {
+          page: current,
+          pageSize,
+          total: rows.length,
+          pageSizes: PAGE_SIZES,
+          onPageChange: setPage,
+          onPageSizeChange: (size) => {
+            setPageSize(size);
+            setPage(1);
           },
-        })}
-        {...(spanRow ? { footerRow: spanRowCell } : {})}
-        {...(getSubRows ? { getSubRows } : {})}
-      />
+        },
+      })}
+      {...(spanRow ? { footerRow: spanRowCell } : {})}
+      {...(getSubRows ? { getSubRows } : {})}
+    />
+  );
+  const emptyState = <div className="px-2">{empty}</div>;
+  // Plain: the table and footer in their own Card. Card variant: see below.
+  const table = hasTable ? (
+    <Card>
+      {tableEl}
       {cardFooter}
     </Card>
-  ) : (
-    <div className="px-2">{empty}</div>
-  );
+  ) : emptyState;
 
   if (variant === 'card') {
     return (
@@ -202,15 +206,20 @@ export function DataTable<T>({
         <Card.Header icon={icon ? <Icon size={24}>{icon}</Icon> : undefined} actions={toolbar}>
           {title ?? ''}
         </Card.Header>
-        <Card.Content>
-          {description ? (
-            <Text variant="small" tone="muted">
-              {description}
-            </Text>
-          ) : null}
-          {children}
-          {table}
-        </Card.Content>
+        {description || children || !hasTable ? (
+          <Card.Content>
+            {description ? (
+              <Text variant="small" tone="muted">
+                {description}
+              </Text>
+            ) : null}
+            {children}
+            {hasTable ? null : emptyState}
+          </Card.Content>
+        ) : null}
+        {/* Outside the body: the table runs to the Card's edges, cancelling its padding. */}
+        {hasTable ? <div className="-mx-(--spacing-4)">{tableEl}</div> : null}
+        {hasTable ? cardFooter : null}
       </Card>
     );
   }

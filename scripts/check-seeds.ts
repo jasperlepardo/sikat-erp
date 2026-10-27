@@ -309,8 +309,8 @@ check('Nothing posts after the as-of day', L.entries.filter((e) => e.postingDate
 // ── Blanket agreements ─────────────────────────────────────────────────────────
 {
   // Purchasing blanket agreements: the linked PO lines reference real agreement lines, and never
-  // commit more than the planned quantity. (Seeded cumulative figures are illustrative, so they're
-  // not re-derived from the POs — the sales agreements' committed/used qty are checked above.)
+  // commit more than the planned quantity. (The seeded committed and cumulative figures are
+  // derived from these POs — mocks/purchaseBlanketAgreements.ts, withCommitments.)
   const bad: string[] = [];
   const pbaById = new Map(SEED_PURCHASE_BLANKET_AGREEMENTS.map((b) => [b.id, b]));
   const pbaLineById = new Map(SEED_PURCHASE_BLANKET_AGREEMENTS.flatMap((b) => b.lines).map((l) => [l.id, l]));

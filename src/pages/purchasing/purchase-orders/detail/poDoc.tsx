@@ -1,11 +1,10 @@
 import { Combobox, Radio, Text, TextField } from '@jasperlepardo/sikat-design-system';
 import { type DocLinesProps } from '../../../../components/form/docLines/DocLines';
 import { purchCols, pick } from '../../shared/purchCols';
-import { lineHelpers, itemConfig } from '../../shared/purchLineHelpers';
-import { departmentDef, priceListDef } from '../../../settings/masterDefs';
+import { costAccountOptions, lineHelpers, lineGlAccount, itemConfig } from '../../shared/purchLineHelpers';
+import { countryDef, departmentDef, priceListDef, warrantyTemplateDef } from '../../../settings/masterDefs';
 import { isPriceListValid } from '../../../../services/priceLists';
 import {
-  BLANKET_AGREEMENTS,
   PRICE_MODES,
   newPoLine,
   type PoLine,
@@ -73,12 +72,6 @@ export function poDoc({ draft, update, errors, m, ctx }: PoTabProps): DocLinesPr
   const reverseChargeVat = (l: PoLine) => (ctx.isReverseCharge(l.taxCode) ? round2((lineNet(l) * ctx.rateOf(l.taxCode)) / 100) : null);
 
   const taxOptions = (current: string) => taxCodeOptions(m.tax.codes, 'Purchase', current);
-  const blanketOptions = [
-    ...BLANKET_AGREEMENTS.filter((b) => b.vendorId === draft.vendorId && b.validTo >= draft.postingDate).map((b) => ({
-      value: b.no,
-      label: `${b.no} · ${b.description}`,
-    })),
-  ];
 
   const pickItem = (l: PoLine, itemId: string | null) => {
     const item = m.items.find((i) => i.id === itemId);
@@ -104,7 +97,13 @@ export function poDoc({ draft, update, errors, m, ctx }: PoTabProps): DocLinesPr
   // The per-field rendering lives in the shared registry; PO supplies its data/services
   // here and picks which columns + default visibility. Order mirrors PR / PQ.
   const cols = purchCols<PoLine>({
-    patch, readOnly: linesLocked, currency: draft.currency, fx: ctx.fx,
+    patch, readOnly: linesLocked, currency: draft.currency, qtyHeader: 'Ordered qty',
+    countryDef,
+    warrantyDef: warrantyTemplateDef,
+    itemWarranty: (l) => itemOf(l)?.warrantyTemplate ?? '',
+    unitCost: (l) => itemOf(l)?.itemCost ?? 0,
+    glAccountOf: (l) => lineGlAccount(itemOf(l), l, m.inv),
+    glAccountOptions: (l) => costAccountOptions(m.inv.accounts, l.glAccount),
     lineNet,
     priceAfterDisc: priceAfterDiscount,
     grossAfterDisc: (l) => priceAfterDiscount(l) * (1 + taxRate(l) / 100),
@@ -118,8 +117,9 @@ export function poDoc({ draft, update, errors, m, ctx }: PoTabProps): DocLinesPr
     } : undefined,
     taxOptions: (l) => taxOptions(l.taxCode),
     vendorOptions: [],
+    vendorOf: (l) => m.vendors.find((v) => v.id === (l.lineVendorId || draft.vendorId)),
     warehouseOptions: m.inv.warehouses.filter((w) => receivesFromVendors(w)).map((w) => ({ value: w.code, label: `${w.code} ${w.name}` })),
-    blanketOptions,
+    blanketScope: { vendorId: draft.vendorId, date: draft.postingDate },
     uomOptions, uomLabel,
     priceListDef, priceListWhere: (r) => isPriceListValid(r, draft.postingDate), departmentDef,
     changeUom, changePriceList,
@@ -132,18 +132,20 @@ export function poDoc({ draft, update, errors, m, ctx }: PoTabProps): DocLinesPr
   });
 
   const columns = pick(cols, [
-    ['type', 'hide'], ['qty', 'always'],
-    ['uomName', 'hide'], ['itemsPerUnit', 'hide'], ['inventoryUom', 'hide'], ['inventoryQty', 'hide'],
-    ['warehouse', 'hide'], ['priceList', 'hide'],
-    ['unitPrice', 'always'], ['discount', 'hide'], ['priceAfterDisc', 'hide'],
-    ['tax', 'hide'], ['taxAmount', 'hide'], ['reverseChargeVat', 'hide'], ['gross', 'hide'], ['total', 'always'], ['grossTotalLc', 'hide'],
-    ['deliveryDate', 'hide'], ['lineStatus', 'hide'], ['blanket', 'hide'],
-    ['bpCatalogNo', 'hide'], ['mfrNo', 'hide'], ['requisition', 'hide'],
-    ['department', 'hide'], ['freeText', 'hide'], ['returnReason', 'hide'],
+    // Shown by default: the SAP B1 v10 Contents fields, in its order.
+    ['type', 'opt'], ['vendor', 'opt'], ['deliveryDate', 'opt'], ['qty', 'always'], ['unitPrice', 'always'],
+    ['discount', 'opt'], ['tax', 'opt'], ['total', 'always'], ['glAccount', 'opt'], ['countryOfOrigin', 'opt'],
+    ['warranty', 'opt'], ['unitCost', 'opt'],
+    // Everything else, in the column chooser.
+    ['uomName', 'hide'], ['itemsPerUnit', 'hide'], ['inventoryQty', 'hide'], ['warehouse', 'hide'], ['priceList', 'hide'],
+    ['priceAfterDisc', 'hide'], ['taxAmount', 'hide'], ['reverseChargeVat', 'hide'], ['gross', 'hide'], ['grossTotalLc', 'hide'],
+    ['lineStatus', 'hide'], ['blanket', 'hide'], ['bpCatalogNo', 'hide'], ['mfrNo', 'hide'], ['requisition', 'hide'],
+    ['department', 'hide'], ['freeText', 'hide'],
   ]);
 
   return {
     prefsKey: 'po',
+    cardHeader: true,
     columns,
     rows: lines,
     icon: 'list_alt',

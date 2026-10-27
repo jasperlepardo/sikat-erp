@@ -57,7 +57,6 @@ export function dnDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy }: D
     fx: ctx.fx,
     invalid: (l, f) => Boolean(err(l, f)),
     lineKind: (l) => { const it = itemOf(l); return it ? (it.inventoryItem ? 'Item' : 'Service') : ''; },
-    itemName: (l) => itemOf(l)?.name ?? '',
     taxAmount: taxOf,
     qtyHeader: 'Shipped',
     qty: (l) => l.quantity,
@@ -117,15 +116,9 @@ export function dnDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy }: D
     ['ordered', 'always'], ['qty', 'always'], ['outstanding', 'always'],
     ['warehouse', 'hide'], ['priceList', 'hide'], ['pricing', 'hide'], ['tax', 'hide'], ['total', 'always'], ['baseDoc', 'hide'],
     // Info / catalog columns (hidden).
-    ['type', 'hide'], ['name', 'hide'], ['uomName', 'hide'], ['itemsPerUnit', 'hide'], ['inventoryUom', 'hide'],
+    ['type', 'hide'], ['uomName', 'hide'], ['itemsPerUnit', 'hide'],
     ['priceSource', 'hide'], ['priceAfterDisc', 'hide'], ['taxAmount', 'hide'], ['grossTotalLc', 'hide'],
-    // SAP workbook long-tail / UDF placeholders (hidden) — row-for-row parity.
-    ['summaryType', 'hide'], ['rowNo', 'hide'], ['distrRule', 'hide'], ['cogsDistrRule', 'hide'],
-    ['blanketAgreementNo', 'hide'], ['allowProcmnt', 'hide'], ['warranty', 'hide'], ['serialNo', 'hide'],
-    ['unitCostPrice', 'hide'], ['priceForReport', 'hide'], ['customerDescription', 'hide'], ['amountInPrintout', 'hide'],
-    ['moveRow', 'hide'], ['wWTCode', 'hide'], ['wVTVendor', 'hide'], ['wTaxDefined', 'hide'], ['wtaxRate', 'hide'],
-    ['xSupplierName', 'hide'], ['xAddress', 'hide'], ['xTINumber', 'hide'], ['xCardType', 'hide'], ['countryOfOrigin', 'hide'],
-    ['standardItemId', 'hide'], ['commodityClass', 'hide'], ['binAllocation', 'hide'],
+    ['countryOfOrigin', 'hide'],
   ]);
 
   return {

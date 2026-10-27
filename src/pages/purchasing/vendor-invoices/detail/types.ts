@@ -28,16 +28,17 @@ export interface ApSectionProps {
   ctx: ApContext;
 }
 
-/** The item's vendor catalog number and country of origin, which invoice lines show. */
-const itemExtras = (item: Item | undefined, vendorId: string) => ({
+/** The item's vendor catalog number, and the country of origin and warranty the source line carries (else the item's). */
+const itemExtras = (item: Item | undefined, vendorId: string, src: { countryOfOriginCode?: string; warrantyTemplateId?: string }) => ({
   bpCatalogNo: item?.vendors.find((v) => v.vendorId === vendorId)?.vendorItemNo ?? '',
-  countryOfOriginCode: item?.countryOfOriginCode ?? '',
+  countryOfOriginCode: src.countryOfOriginCode ?? item?.countryOfOriginCode ?? '',
+  warrantyTemplateId: src.warrantyTemplateId ?? item?.warrantyTemplate ?? '',
 });
 
 /** A receipt/PO-shaped line as an invoice line. */
 export function toApLine(l: GrLine, patch: Partial<ApLine>, items: Item[], vendorId: string): ApLine {
   const { invoicedQty: _billed, ...line } = l;
-  return newApLine({ ...line, ...itemExtras(items.find((i) => i.id === l.itemId), vendorId), ...patch });
+  return newApLine({ ...line, ...itemExtras(items.find((i) => i.id === l.itemId), vendorId, l), ...patch });
 }
 
 /** Invoice lines billing receipt lines, each `qty` (defaults to what's left to invoice). */

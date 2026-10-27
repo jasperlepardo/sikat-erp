@@ -69,22 +69,15 @@ export function qtDoc({ draft, update, errors, m, ctx }: QtTabProps): DocLinesPr
       roText: (l) => `${l.taxCode} (${ctx.rateOf(l.taxCode)}%)`,
     },
     lineKind: (l) => { const it = itemOf(l); return it ? (it.inventoryItem ? 'Item' : 'Service') : ''; },
-    itemName: (l) => itemOf(l)?.name ?? '',
     taxAmount: (l) => lineTax(l, ctx.rateOf(l.taxCode), 0),
   });
 
   const columns = pick(cols, [
     ['qty', 'always'], ['priceList', 'hide'], ['unitPrice', 'always'], ['discount', 'always'], ['tax', 'opt'], ['total', 'always'],
     // Info / catalog columns (hidden).
-    ['type', 'hide'], ['name', 'hide'], ['uomName', 'hide'], ['itemsPerUnit', 'hide'], ['inventoryUom', 'hide'],
+    ['type', 'hide'], ['uomName', 'hide'], ['itemsPerUnit', 'hide'],
     ['priceSource', 'hide'], ['priceAfterDisc', 'hide'], ['taxAmount', 'hide'], ['grossTotalLc', 'hide'],
-    // SAP workbook long-tail / UDF placeholders (hidden) — row-for-row parity.
-    ['summaryType', 'hide'], ['rowNo', 'hide'], ['distrRule', 'hide'], ['cogsDistrRule', 'hide'],
-    ['blanketAgreementNo', 'hide'], ['allowProcmnt', 'hide'], ['warranty', 'hide'], ['serialNo', 'hide'],
-    ['unitCostPrice', 'hide'], ['priceForReport', 'hide'], ['customerDescription', 'hide'], ['amountInPrintout', 'hide'],
-    ['moveRow', 'hide'], ['wWTCode', 'hide'], ['wVTVendor', 'hide'], ['wTaxDefined', 'hide'], ['wtaxRate', 'hide'],
-    ['xSupplierName', 'hide'], ['xAddress', 'hide'], ['xTINumber', 'hide'], ['xCardType', 'hide'], ['countryOfOrigin', 'hide'],
-    ['lastCost', 'hide'],
+    ['countryOfOrigin', 'hide'],
   ]);
 
   const fromItem = (itemId: string) => {

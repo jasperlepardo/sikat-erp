@@ -12,13 +12,14 @@ import {
   applyStock,
   applyToOrders,
   expenseAccountFor,
+  lineCostAccount,
   frozenLines,
   grInventoryQty,
   grOpenQty,
   listGoodsReceipts,
   unitCostLc,
 } from './goodsReceipts';
-import { inventoryAccountFor, type JournalLine } from './inventoryTransfers';
+import type { JournalLine } from './inventoryTransfers';
 import { listItems, saveItems, stockTotals } from './items';
 import { addLayer, removeLayersBySource, updateFifoCosts } from './costLayers';
 import { lineNet, listPurchaseOrders, openQty, poTotals, saveReceivedQuantities } from './purchaseOrders';
@@ -115,7 +116,7 @@ export function apJournal(
     const item = ctx.itemsById.get(l.itemId);
     if (!item) continue;
     const value = lineValueLc(l as ApLine, inv, fx);
-    const own = item.inventoryItem ? inventoryAccountFor(item, l.warehouse, ctx.groups) : expenseAccountFor(item, ctx.groups);
+    const own = lineCostAccount(item, l, ctx.groups);
     if (l.baseType === 'GRPO') {
       const cleared = receiptValueLc(l);
       add(GRNI_ACCOUNT, cleared);

@@ -37,6 +37,43 @@
 }
 
 
+/* Design system workaround (v0.43): a dropdown option with its sublabel on top (code over
+   name) gets an 8px gap between the two lines. The sublabel is the label's only element
+   child, so it matches both the inline rule (:last-child, which adds the gap) and the top
+   rule (:first-child, which stacks them). Stacked lines take no gap. Remove once fixed upstream. */
+.sikat-dropdown__label:has(> .sikat-dropdown__sublabel:first-child) {
+  gap: 0;
+}
+
+/* A picker whose value shows as two lines (code over name): tall enough for both, whether
+   the field draws a picked option or the page lays the inherited default over it. */
+.two-line-field .sikat-field {
+  height: calc(var(--spacing) * 12);
+}
+/* The picked option's code and name stay one line each; a long name ends in "…" instead
+   of wrapping to a third line and growing the row. */
+.two-line-field .sikat-field__input {
+  min-width: 0;
+  overflow: hidden;
+}
+.two-line-field .sikat-field__multiline {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.two-line-field .sikat-field__multiline .sikat-field__sublabel {
+  display: block;
+}
+
+/* Trial: all-caps table headers, with a little tracking so the caps don't crowd.
+   Display only — the header text stays sentence case for screen readers and tests. */
+.sikat-table__th {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 /* Remove number input spinners globally. */
 input[type='number']::-webkit-inner-spin-button,
 input[type='number']::-webkit-outer-spin-button {

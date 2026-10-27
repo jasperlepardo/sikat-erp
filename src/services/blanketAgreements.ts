@@ -4,6 +4,8 @@ import { baSeries, formatDocNum, seriesLookup } from './allSeries';
 import type { SalesOrder } from '../mocks/salesOrders';
 
 const agreements = createCollection<BlanketAgreement>('sikat-erp:blanket-agreements:v1', SEED_BLANKET_AGREEMENTS, 'ba');
+/** Live sales blanket agreements, for pickers (`useCollection`). */
+export const salesAgreementsCollection = agreements;
 
 export const listBlanketAgreements = agreements.list;
 

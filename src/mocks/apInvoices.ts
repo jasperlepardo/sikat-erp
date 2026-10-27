@@ -214,7 +214,8 @@ export function billFromReceipt(gr: GoodsReceipt, n: number, posting: string, bi
           baseLineId: l.id,
           baseDocNo: gr.docNum ? `GR-${gr.postingDate.slice(0, 4)}-${String(gr.docNum).padStart(4, '0')}` : 'Draft',
           bpCatalogNo: item?.vendors.find((v) => v.vendorId === gr.vendorId)?.vendorItemNo ?? '',
-          countryOfOriginCode: item?.countryOfOriginCode ?? '',
+          countryOfOriginCode: l.countryOfOriginCode ?? item?.countryOfOriginCode ?? '',
+          warrantyTemplateId: l.warrantyTemplateId ?? item?.warrantyTemplate ?? '',
           receiptCostLc: l.unitCostLc,
         };
       }),

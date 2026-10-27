@@ -118,6 +118,8 @@ function RfqForm() {
   const [saving, setSaving] = useState(false);
   const [showVendorCreate, setShowVendorCreate] = useState(false);
   const [vendorDetailsOpen, setVendorDetailsOpen] = useState(false);
+  // The currency the lines and totals are shown in ('' = the document's own). Not saved.
+  const [currencyView, setCurrencyView] = useState('');
   const reject = useReject();
 
   useEffect(() => {
@@ -245,7 +247,8 @@ function RfqForm() {
           quantity: l.quotedQty || l.quantity, uomCode: l.uomCode, uomName: l.uomName,
           itemsPerUnit: l.itemsPerUnit, priceListId: l.priceListId, unitPrice: l.unitPrice,
           discountPct: l.discountPct, taxCode: l.taxCode,
-          blanketAgreement: l.blanketAgreement, requisitionSlipNo: l.requisitionSlipNo,
+          agreementId: l.agreementId, agreementLineId: l.agreementLineId, requisitionSlipNo: l.requisitionSlipNo,
+          countryOfOriginCode: l.countryOfOriginCode, warrantyTemplateId: l.warrantyTemplateId, glAccount: l.glAccount,
         }),
       ),
       remarks: `From RFQ ${rfqNumber(draft as Rfq)}.`,
@@ -370,7 +373,7 @@ function RfqForm() {
               <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
                 <div className="flex flex-col gap-2 lg:col-span-8">
                   <VendorCard vendors={m.vendors} vendorId={draft.vendorId} vendor={ctx.vendor} readOnly={ctx.readOnly} added={ctx.added} error={errors.vendorId} pickVendor={pickVendor} onNewVendor={() => setShowVendorCreate(true)} onOpenDetails={() => setVendorDetailsOpen(true)} />
-                  <DocLines {...rfqDoc(sectionProps)} />
+                  <DocLines {...rfqDoc(sectionProps, { value: currencyView, onChange: setCurrencyView })} />
                   <ReferencesTable refs={draft.references} onChange={(references) => update({ references })} readOnly={ctx.readOnly} description="Other documents this RFQ refers to — purchase requests, sales orders, contract references." />
                   <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach the vendor's quotation or price list." />
                 </div>

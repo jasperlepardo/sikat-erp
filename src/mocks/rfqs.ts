@@ -14,7 +14,7 @@ import type { PurchLine } from './purchLine';
 import type { PoReference } from './purchaseOrders';
 import { employeeId, plId, termId } from './masters';
 import { SEED_PARTNERS } from './partners';
-import { SEED_ITEMS, itemsPerUom } from './items';
+import { SEED_ITEMS, itemsPerUom, seedLineDefaults } from './items';
 import { SEED_COMPANIES } from './companies';
 import { SEED_WAREHOUSES } from './itemMasters';
 import { formatAddress } from './address';
@@ -46,7 +46,6 @@ export interface RfqLine extends PurchLine {
   unitPrice: number;
   discountPct: number;
   taxCode: string;
-  blanketAgreement: string;
   requisitionSlipNo: string;
   /** Line-level vendor override; '' = use header vendor. */
   lineVendorId: string;
@@ -144,7 +143,6 @@ export const newRfqLine = (patch: Partial<RfqLine> = {}): RfqLine => ({
   unitPrice: 0,
   discountPct: 0,
   taxCode: '',
-  blanketAgreement: '',
   requisitionSlipNo: '',
   lineVendorId: '',
   ...patch,
@@ -211,6 +209,7 @@ const rl = (id: string, itemNo: string, quantity: number, patch: Partial<RfqLine
     uomName: item.purchasingUom === 'pc' ? 'Piece' : item.purchasingUom,
     itemsPerUnit: itemsPerUom(item, item.purchasingUom) ?? 1,
     taxCode: 'IVAT',
+    ...seedLineDefaults(item.id),
     ...patch,
   });
 };

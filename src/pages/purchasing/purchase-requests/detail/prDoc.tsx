@@ -1,17 +1,14 @@
 import { Text } from '@jasperlepardo/sikat-design-system';
 import { type DocLinesProps } from '../../../../components/form/docLines/DocLines';
 import { purchCols, pick } from '../../shared/purchCols';
-import { lineHelpers, itemConfig } from '../../shared/purchLineHelpers';
+import { costAccountOptions, lineHelpers, lineGlAccount, itemConfig, itemVendorOptions } from '../../shared/purchLineHelpers';
 import { summaryTypeHeader, purchFooter } from '../../shared/purchChrome';
-import { departmentDef, priceListDef } from '../../../settings/masterDefs';
+import { countryDef, departmentDef, priceListDef, warrantyTemplateDef } from '../../../settings/masterDefs';
 import { PR_SUMMARY_TYPES, type PrLine, type PrSummaryType } from '../../../../mocks/purchaseRequests';
 import { itemsPerUom } from '../../../../mocks/items';
 import { holdsStock } from '../../../../mocks/itemMasters';
-import { accountText } from '../../../../mocks/chartOfAccounts';
 import { activeOptions } from '../../../../services/inventoryMasters';
 import { stockTotals } from '../../../../services/items';
-import { expenseAccountFor } from '../../../../services/goodsReceipts';
-import { inventoryAccountFor } from '../../../../services/inventoryTransfers';
 import { copiedQty, lineNet, priceAfterDiscount, inventoryQty, prTotals, summarizeLines } from '../../../../services/purchaseRequests';
 import { infoPrice, lineFromItem, type PrTabProps } from './types';
 
@@ -27,11 +24,6 @@ export function prDoc({ draft, update, errors, m, ctx }: PrTabProps): DocLinesPr
   const h = lineHelpers<PrLine>({ items: m.items, lines, update, errors, postingDate: draft.postingDate, uoms: m.inv.uoms });
   const { itemOf, patch, err, lineKind, uomLabel, uomOptions } = h;
 
-  // An item's G/L account is derived from its item master / item group, never typed.
-  const glAccountOf = (l: PrLine) => {
-    const it = itemOf(l);
-    return !it ? '' : it.inventoryItem ? inventoryAccountFor(it, l.warehouse, m.inv.groups) : expenseAccountFor(it, m.inv.groups);
-  };
   const grossAfterDisc = (l: PrLine) => priceAfterDiscount(l) * (1 + ctx.rateOf(l.taxCode) / 100);
 
   // Stock at the line's warehouse; every warehouse when the line has none.
@@ -63,15 +55,19 @@ export function prDoc({ draft, update, errors, m, ctx }: PrTabProps): DocLinesPr
   // All column rendering lives in the shared registry; PR supplies its data/services here
   // and picks which columns + default visibility.
   const cols = purchCols<PrLine>({
-    patch, readOnly: ro, currency: 'PHP',
+    patch, readOnly: ro, currency: 'PHP', qtyHeader: 'Required qty', priceHeader: 'Info price',
+    countryDef,
+    warrantyDef: warrantyTemplateDef,
+    itemWarranty: (l) => itemOf(l)?.warrantyTemplate ?? '',
+    unitCost: (l) => itemOf(l)?.itemCost ?? 0,
     lineNet,
     priceAfterDisc: priceAfterDiscount,
     grossAfterDisc,
     taxAmount: (l) => Math.round(lineNet(l) * ctx.rateOf(l.taxCode)) / 100,
     taxOptions: (l) => taxOptions(l.taxCode),
-    vendorOptions: m.vendors.filter((v) => v.status !== 'Inactive').map((v) => ({ value: v.id, label: v.name })),
+    vendorOptions: (l) => itemVendorOptions(itemOf(l), m.vendors, l.lineVendorId),
+    vendorOf: (l) => m.vendors.find((v) => v.id === (l.lineVendorId || itemOf(l)?.defaultVendorId)),
     warehouseOptions: m.inv.warehouses.filter((w) => holdsStock(w)).map((w) => ({ value: w.code, label: `${w.code} ${w.name}` })),
-    blanketOptions: [],
     uomOptions, uomLabel,
     priceListDef, departmentDef,
     changeUom,
@@ -83,22 +79,25 @@ export function prDoc({ draft, update, errors, m, ctx }: PrTabProps): DocLinesPr
     lineKind,
     stockAt,
     inventoryQty,
-    glAccountText: (l) => { const code = glAccountOf(l); return code ? accountText(code, m.inv.accounts) : ''; },
+    glAccountOf: (l) => lineGlAccount(itemOf(l), l, m.inv),
+    glAccountOptions: (l) => costAccountOptions(m.inv.accounts, l.glAccount),
   });
 
   const columns = pick(cols, [
-    ['type', 'hide'], ['qty', 'always'], ['openQty', 'hide'],
-    ['uomName', 'hide'], ['itemsPerUnit', 'hide'], ['inventoryUom', 'hide'],
-    ['inventoryQty', 'hide'], ['inStock', 'hide'], ['committed', 'hide'], ['ordered', 'hide'],
-    ['priceList', 'hide'], ['unitPrice', 'always'], ['discount', 'hide'], ['priceAfterDisc', 'hide'],
-    ['tax', 'hide'], ['taxAmount', 'hide'], ['gross', 'hide'], ['total', 'always'], ['grossTotalLc', 'hide'],
-    ['requiredDate', 'hide'], ['vendor', 'hide'], ['warehouse', 'hide'], ['glAccount', 'hide'],
-    ['department', 'hide'], ['freeText', 'hide'], ['requisition', 'hide'], ['returnReason', 'hide'],
-    ['name', 'hide'], ['bpCatalogNo', 'hide'], ['blanket', 'hide'], ['lineStatus', 'hide'],
+    // Shown by default: the SAP B1 v10 Contents fields, in its order.
+    ['type', 'opt'], ['vendor', 'opt'], ['requiredDate', 'opt'], ['qty', 'always'], ['unitPrice', 'always'],
+    ['discount', 'opt'], ['tax', 'opt'], ['total', 'always'], ['glAccount', 'opt'], ['countryOfOrigin', 'opt'],
+    ['warranty', 'opt'], ['unitCost', 'opt'],
+    // Everything else, in the column chooser.
+    ['openQty', 'hide'], ['uomName', 'hide'], ['itemsPerUnit', 'hide'], ['inventoryQty', 'hide'], ['inStock', 'hide'],
+    ['committed', 'hide'], ['ordered', 'hide'], ['priceList', 'hide'], ['priceAfterDisc', 'hide'], ['taxAmount', 'hide'],
+    ['gross', 'hide'], ['grossTotalLc', 'hide'], ['warehouse', 'hide'], ['department', 'hide'], ['freeText', 'hide'],
+    ['requisition', 'hide'], ['bpCatalogNo', 'hide'], ['lineStatus', 'hide'],
   ]);
 
   return {
     prefsKey: 'pr',
+    cardHeader: true,
     columns,
     rows: viewRows,
     icon: 'list_alt',

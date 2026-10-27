@@ -1,27 +1,49 @@
 import { Text } from '@jasperlepardo/sikat-design-system';
 import { type DocLinesProps } from '../../../../components/form/docLines/DocLines';
 import { purchCols, pick } from '../../shared/purchCols';
-import { lineHelpers, itemConfig } from '../../shared/purchLineHelpers';
+import { costAccountOptions, lineHelpers, lineGlAccount, itemConfig, itemVendorOptions } from '../../shared/purchLineHelpers';
 import { purchFooter } from '../../shared/purchChrome';
-import { countryDef, priceListDef, departmentDef } from '../../../settings/masterDefs';
+import { countryDef, priceListDef, departmentDef, warrantyTemplateDef } from '../../../settings/masterDefs';
 import { isPriceListValid } from '../../../../services/priceLists';
 import { itemsPerUom } from '../../../../mocks/items';
 import { formatDate } from '../../../../services/dates';
 import { getPurchasingSettings } from '../../../../services/purchaseOrders';
 import { lineNet, rfqTotals } from '../../../../services/rfqs';
 import { type RfqLine } from '../../../../mocks/rfqs';
-import { blanketOptions, lineFromItem, linePricing, type RfqTabProps } from './types';
+import { lineFromItem, linePricing, type RfqTabProps } from './types';
 import { taxCodeOptions } from '../../../../services/taxCodeOptions';
 import { round2 } from '../../../../services/num';
+import { CurrencyToggle, amountsIn, currencyChoices } from '../../shared/CurrencyToggle';
 
-/** Builds the Purchase Quotation (RFQ) contents descriptor for the shared <DocLines>. */
-export function rfqDoc({ draft, update, errors, m, ctx }: RfqTabProps): DocLinesProps<RfqLine> {
-  const lines = draft.lines;
-  const linesLocked = ctx.readOnly || ctx.added;
+/**
+ * Builds the Purchase Quotation (RFQ) contents descriptor for the shared <DocLines>.
+ * `view` is the currency the amounts are shown in ('' = the document's own).
+ */
+export function rfqDoc(
+  { draft, update, errors, m, ctx }: RfqTabProps,
+  view: { value: string; onChange: (code: string) => void } = { value: '', onChange: () => {} },
+): DocLinesProps<RfqLine> {
+  const choices = currencyChoices(draft.currency);
+  // Until switched, show the vendor's currency (the document's own for a multi-currency vendor).
+  const vendorCurrency = ctx.vendor?.currency ?? '';
+  const shown = choices.includes(view.value) ? view.value : choices.includes(vendorCurrency) ? vendorCurrency : draft.currency;
+  const conv = amountsIn(shown, draft.currency, ctx.fx, m.rates, draft.postingDate);
+  const converted = shown !== draft.currency;
+  // Another currency is a view of the amounts: the prices stay in the document's, so it's read-only.
+  const lines = converted ? draft.lines.map((l) => ({ ...l, unitPrice: l.unitPrice * conv.factor })) : draft.lines;
+  const linesLocked = ctx.readOnly || ctx.added || converted;
   const docCurrency = m.currencies.find((c) => c.code === draft.currency);
-  const totals = rfqTotals(draft, ctx.rateOf, docCurrency?.rounding, ctx.isReverseCharge);
+  const docTotals = rfqTotals(draft, ctx.rateOf, docCurrency?.rounding, ctx.isReverseCharge);
+  const totals = converted
+    ? {
+        ...docTotals,
+        beforeDiscount: docTotals.beforeDiscount * conv.factor, discount: docTotals.discount * conv.factor,
+        freight: docTotals.freight * conv.factor, rounding: docTotals.rounding * conv.factor, tax: docTotals.tax * conv.factor,
+        total: docTotals.total * conv.factor, reverseCharge: docTotals.reverseCharge * conv.factor,
+      }
+    : docTotals;
   const showFreight = getPurchasingSettings().manageFreightInDocuments;
-  const h = lineHelpers<RfqLine>({ items: m.items, lines, update, errors, postingDate: draft.postingDate, uoms: m.inv.uoms });
+  const h = lineHelpers<RfqLine>({ items: m.items, lines: draft.lines, update, errors, postingDate: draft.postingDate, uoms: m.inv.uoms });
   const { itemOf, patch, err, lineKind, uomLabel, uomOptions } = h;
 
   const changeUom = (l: RfqLine, uomCode: string) => {
@@ -54,8 +76,6 @@ export function rfqDoc({ draft, update, errors, m, ctx }: RfqTabProps): DocLines
   };
 
   const taxOptions = (current: string) => taxCodeOptions(m.tax.codes, 'Purchase', current);
-  const ba = blanketOptions(draft.vendorId, draft.postingDate);
-  const vendorOpts = m.vendors.map((v) => ({ value: v.id, label: v.name }));
   // Active warehouses, and any a line already uses (one list for every row).
   const warehouseOpts = m.inv.warehouses.filter((w) => w.active || draft.lines.some((l) => l.warehouse === w.code)).map((w) => ({ value: w.code, label: `${w.code} ${w.name}` }));
 
@@ -70,10 +90,13 @@ export function rfqDoc({ draft, update, errors, m, ctx }: RfqTabProps): DocLines
   // All column rendering lives in the shared registry; PQ supplies its data/services here
   // and picks which columns + default visibility. Order mirrors the Purchase Request.
   const cols = purchCols<RfqLine>({
-    patch, readOnly: linesLocked, currency: draft.currency, fx: ctx.fx,
+    patch, readOnly: linesLocked, currency: conv.code, qtyHeader: 'Required qty', priceHeader: 'Info price',
+    glAccountOf: (l) => lineGlAccount(itemOf(l), l, m.inv),
+    glAccountOptions: (l) => costAccountOptions(m.inv.accounts, l.glAccount),
     lineNet, priceAfterDisc, grossAfterDisc, taxAmount, reverseChargeVat,
     taxOptions: (l) => taxOptions(l.taxCode),
-    vendorOptions: vendorOpts, warehouseOptions: warehouseOpts, blanketOptions: ba,
+    vendorOptions: (l) => itemVendorOptions(itemOf(l), m.vendors, l.lineVendorId, draft.vendorId), warehouseOptions: warehouseOpts, blanketScope: { vendorId: draft.vendorId, date: draft.postingDate },
+    vendorOf: (l) => m.vendors.find((v) => v.id === (l.lineVendorId || draft.vendorId)),
     uomOptions, uomLabel,
     priceListDef, priceListWhere: (r) => isPriceListValid(r, draft.postingDate), departmentDef,
     changeUom, changePriceList,
@@ -82,33 +105,41 @@ export function rfqDoc({ draft, update, errors, m, ctx }: RfqTabProps): DocLines
     invalid: (l, f) => Boolean(err(l, f)),
     lineKind,
     countryDef,
-    warrantyText: (l) => { const w = itemOf(l)?.warrantyTemplate; return w ? (m.inv.warranties.find((x) => x.id === w)?.name ?? w) : 'None'; },
+    warrantyDef: warrantyTemplateDef,
+    itemWarranty: (l) => itemOf(l)?.warrantyTemplate ?? '',
     unitCost: (l) => itemOf(l)?.itemCost ?? 0,
   });
 
   const columns = pick(cols, [
-    ['type', 'hide'], ['qty', 'always'], ['quotedQty', 'hide'], ['openQty', 'hide'],
-    ['uomName', 'hide'], ['itemsPerUnit', 'hide'], ['inventoryUom', 'hide'], ['inventoryQty', 'hide'],
-    ['priceList', 'hide'], ['unitPrice', 'always'], ['discount', 'hide'], ['priceAfterDisc', 'hide'],
-    ['tax', 'hide'], ['taxAmount', 'hide'], ['reverseChargeVat', 'hide'], ['gross', 'hide'], ['total', 'always'], ['grossTotalLc', 'hide'],
-    ['requiredDate', 'hide'], ['quotedDate', 'hide'],
-    ['vendor', 'hide'], ['warehouse', 'hide'], ['department', 'hide'], ['freeText', 'hide'],
-    ['blanket', 'hide'], ['requisition', 'hide'], ['returnReason', 'hide'],
-    ['name', 'hide'], ['bpCatalogNo', 'hide'], ['mfrNo', 'hide'], ['deliveryDate', 'hide'],
-    ['receivedQty', 'hide'], ['packages', 'hide'],
-    ['countryOfOrigin', 'hide'], ['warranty', 'hide'], ['unitCost', 'hide'], ['lineStatus', 'hide'],
+    // Shown by default: the SAP B1 v10 Contents fields, in its order.
+    ['type', 'opt'], ['vendor', 'opt'], ['requiredDate', 'opt'], ['qty', 'always'], ['unitPrice', 'always'],
+    ['discount', 'opt'], ['tax', 'opt'], ['total', 'always'], ['glAccount', 'opt'], ['countryOfOrigin', 'opt'],
+    ['warranty', 'opt'], ['unitCost', 'opt'],
+    // Everything else, in the column chooser.
+    ['quotedQty', 'hide'], ['openQty', 'hide'], ['uomName', 'hide'], ['itemsPerUnit', 'hide'], ['inventoryQty', 'hide'],
+    ['priceList', 'hide'], ['priceAfterDisc', 'hide'], ['taxAmount', 'hide'], ['reverseChargeVat', 'hide'], ['gross', 'hide'],
+    ['grossTotalLc', 'hide'], ['quotedDate', 'hide'], ['warehouse', 'hide'], ['department', 'hide'], ['freeText', 'hide'],
+    ['blanket', 'hide'], ['requisition', 'hide'], ['bpCatalogNo', 'hide'], ['mfrNo', 'hide'], ['deliveryDate', 'hide'],
+    ['receivedQty', 'hide'], ['packages', 'hide'], ['lineStatus', 'hide'],
   ]);
 
   return {
     prefsKey: 'rfq',
+    cardHeader: true,
     columns,
     rows: lines,
     icon: 'format_list_bulleted',
     title: 'Lines',
+    actions: <CurrencyToggle choices={choices} value={shown} onChange={view.onChange} />,
+    description: converted
+      ? conv.factor
+        ? `Shown in ${conv.code} at the ${formatDate(conv.rate?.date ?? ctx.fxDate)} rate. Switch to ${draft.currency} to edit.`
+        : `No ${conv.code} rate on or before ${formatDate(draft.postingDate)}.`
+      : undefined,
     // All columns are unsortable on the quotation lines table.
     sortableKeys: [],
     readOnly: linesLocked,
-    onRemove: (picked) => update({ lines: lines.filter((l) => !picked.includes(l)) }),
+    onRemove: (picked) => update({ lines: draft.lines.filter((l) => !picked.some((p) => p.id === l.id)) }),
     item: itemConfig(h, {
       onPick: (l, id) => { if (id) pickItem(l, id); else patch(l.id, { itemId: '', itemNo: '', description: '' }); },
       fromItem,
@@ -116,11 +147,11 @@ export function rfqDoc({ draft, update, errors, m, ctx }: RfqTabProps): DocLines
     empty: <Text variant="small" tone="muted">No lines — search above to add items.</Text>,
     footer: purchFooter({
       totals,
-      currency: draft.currency,
+      currency: conv.code,
       readOnly: linesLocked,
       discount: { value: draft.discountPct, onChange: (d) => update({ discountPct: d }) },
       freight: { value: draft.freight, onChange: (v) => update({ freight: v }), show: showFreight },
-      fx: draft.currency !== 'PHP' && ctx.fx ? { rate: ctx.fx, source: formatDate(ctx.fxDate) } : undefined,
+      fx: !converted && draft.currency !== 'PHP' && ctx.fx ? { rate: ctx.fx, source: formatDate(ctx.fxDate) } : undefined,
     }),
   };
 }

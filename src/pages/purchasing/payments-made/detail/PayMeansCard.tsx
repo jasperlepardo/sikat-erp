@@ -238,7 +238,7 @@ export function PayMeansCard({ draft, update, m, readOnly }: PaySectionProps) {
 
   return (
     <DataTable<MeansRow>
-      variant="plain"
+      variant="card"
       icon="payments"
       title="Payment means"
       description="How the money goes out. Each method credits its own account until it clears."

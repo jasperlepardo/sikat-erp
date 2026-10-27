@@ -81,7 +81,6 @@ export function invoiceDoc(props: InvoiceDocProps): DocLinesProps<InvoiceLine> {
     fx: ctx.fx,
     invalid: (l, f) => Boolean(err(l, f)),
     lineKind: (l) => { const it = itemOf(l); return it ? (it.inventoryItem ? 'Item' : 'Service') : ''; },
-    itemName: (l) => itemOf(l)?.name ?? '',
     taxAmount: taxOf,
     rendered: service ? () => true : undefined,
     qty: (l) => l.quantity,
@@ -161,15 +160,9 @@ export function invoiceDoc(props: InvoiceDocProps): DocLinesProps<InvoiceLine> {
         ['qty', 'always'], ['warehouse', 'hide'], ['priceList', 'hide'], ['pricing', 'always'], ['gross', 'hide'],
         ['tax', 'hide'], ['total', 'always'], ['wtax', wtaxVis], ...(ar ? [['commission', 'hide'] as [string, Vis]] : [['openForDelivery', 'hide'] as [string, Vis]]), ['baseDoc', 'hide'],
         // Info / catalog columns (hidden).
-        ['type', 'hide'], ['name', 'hide'], ['uomName', 'hide'], ['itemsPerUnit', 'hide'], ['inventoryUom', 'hide'],
+        ['type', 'hide'], ['uomName', 'hide'], ['itemsPerUnit', 'hide'],
         ['priceSource', 'hide'], ['priceAfterDisc', 'hide'], ['taxAmount', 'hide'], ['grossTotalLc', 'hide'],
-        // SAP workbook long-tail / UDF placeholders (hidden) — row-for-row parity.
-        ['summaryType', 'hide'], ['rowNo', 'hide'], ['distrRule', 'hide'], ['cogsDistrRule', 'hide'],
-        ['blanketAgreementNo', 'hide'], ['allowProcmnt', 'hide'], ['warranty', 'hide'], ['serialNo', 'hide'],
-        ['unitCostPrice', 'hide'], ['priceForReport', 'hide'], ['customerDescription', 'hide'], ['amountInPrintout', 'hide'],
-        ['moveRow', 'hide'], ['wWTCode', 'hide'], ['wVTVendor', 'hide'], ['wTaxDefined', 'hide'], ['wtaxRate', 'hide'],
-        ['xSupplierName', 'hide'], ['xAddress', 'hide'], ['xTINumber', 'hide'], ['xCardType', 'hide'], ['countryOfOrigin', 'hide'],
-        ['standardItemId', 'hide'], ['commodityClass', 'hide'], ...(ar ? [['binAllocation', 'hide'] as [string, Vis]] : []),
+        ['countryOfOrigin', 'hide'],
       ]);
 
   const copyButton = (

@@ -79,14 +79,17 @@ export function riLinesFromPo(po: PurchaseOrder, picks: { lineId: string; qty: n
       unitPrice: l.unitPrice,
       discountPct: l.discountPct,
       taxCode: l.taxCode,
-      blanketAgreement: l.blanketAgreement,
+      agreementId: l.agreementId,
+      agreementLineId: l.agreementLineId,
       freeText: l.freeText,
       baseType: 'PO' as const,
       baseId: po.id,
       baseLineId: l.baseLineId || l.id,
       baseDocNo: poNumber(po),
       bpCatalogNo: '',
-      countryOfOriginCode: '',
+      countryOfOriginCode: l.countryOfOriginCode ?? '',
+      warrantyTemplateId: l.warrantyTemplateId ?? '',
+      glAccount: l.glAccount,
     });
   });
 }

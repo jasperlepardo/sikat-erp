@@ -18,14 +18,19 @@ export function GrDocumentCard({ draft, update, errors, statusMoves, locked }: G
   return (
     <Section icon="tag" title="Document">
       <Fields>
-        <FormField label="No.">
-          {() => (
-            <div className="flex gap-1">
-              <Select aria-label="Series" className="w-40" disabled={locked} options={RETURN_SERIES.map((s) => ({ value: s.id, label: s.name }))} value={draft.seriesId} onValueChange={(seriesId) => update({ seriesId })} />
-              <span className="flex-1 self-center text-sm">{draft.docNum ? returnNumber(draft) : <span className="text-placeholder">Next number</span>}</span>
-            </div>
-          )}
-        </FormField>
+        {/* Half-width cell: once added the series is fixed, so show just the number. */}
+        {locked ? (
+          <ReadOnly label="No." value={returnNumber(draft)} />
+        ) : (
+          <FormField label="No.">
+            {() => (
+              <div className="flex gap-1">
+                <Select aria-label="Series" className="min-w-0 flex-1" options={RETURN_SERIES.map((s) => ({ value: s.id, label: s.name }))} value={draft.seriesId} onValueChange={(seriesId) => update({ seriesId })} />
+                <span className="shrink-0 self-center whitespace-nowrap text-sm">{draft.docNum ? returnNumber(draft) : <span className="text-placeholder">Next number</span>}</span>
+              </div>
+            )}
+          </FormField>
+        )}
         <StatusField statuses={RETURN_STATUSES} intents={RETURN_STATUS_INTENT} value={draft.status} moves={statusMoves} hint="Open while billed goods wait for a credit memo; Closed once credited (or straight away for unbilled goods)." error={errors.status} />
         {h.date('postingDate', 'Posting date', { required: true, error: errors.postingDate, hint: 'When the stock leaves.' })}
         {h.date('dueDate', 'Due date', { hint: "When the vendor's credit is due, from the payment terms." })}

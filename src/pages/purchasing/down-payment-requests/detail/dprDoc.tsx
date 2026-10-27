@@ -1,9 +1,8 @@
 import { Button, Icon, Text } from '@jasperlepardo/sikat-design-system';
 import { type DocLinesProps } from '../../../../components/form/docLines/DocLines';
 import { purchCols, pick } from '../../shared/purchCols';
-import { lineHelpers, itemConfig } from '../../shared/purchLineHelpers';
-import { countryDef, departmentDef, priceListDef } from '../../../settings/masterDefs';
-import { BLANKET_AGREEMENTS } from '../../../../mocks/purchaseOrders';
+import { costAccountOptions, lineHelpers, lineGlAccount, itemConfig } from '../../shared/purchLineHelpers';
+import { countryDef, departmentDef, priceListDef, warrantyTemplateDef } from '../../../settings/masterDefs';
 import { newDprLine, type DprLine } from '../../../../mocks/apDownPayments';
 import { itemsPerUom } from '../../../../mocks/items';
 import { formatAmount } from '../../../../services/format';
@@ -43,19 +42,18 @@ export function dprDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy }: 
   const taxRate = (l: DprLine) => ctx.rateOf(l.taxCode);
 
   const taxOptions = (current: string) => taxCodeOptions(m.tax.codes, 'Purchase', current);
-  const blanketOptions = BLANKET_AGREEMENTS.filter((b) => b.vendorId === vendorId).map((b) => ({ value: b.no, label: `${b.no} · ${b.description}` }));
 
   const pickItem = (l: DprLine, itemId: string | null) => {
     const item = m.items.find((i) => i.id === itemId);
     if (!item) { patch(l.id, { itemId: '' }); return; }
     const { invoicedQty: _i, returnedQty: _r, id: _id, ...base } = lineFromItem(item, { postingDate }, ctx, m, { quantity: l.quantity });
-    patch(l.id, { ...base, warehouse: '', binId: '', countryOfOriginCode: item.countryOfOriginCode, bpCatalogNo: item.vendors.find((v) => v.vendorId === vendorId)?.vendorItemNo ?? '' });
+    patch(l.id, { ...base, warehouse: '', binId: '', countryOfOriginCode: item.countryOfOriginCode, warrantyTemplateId: item.warrantyTemplate, glAccount: '', bpCatalogNo: item.vendors.find((v) => v.vendorId === vendorId)?.vendorItemNo ?? '' });
   };
   const fromItem = (itemId: string) => {
     const item = m.items.find((i) => i.id === itemId);
     if (!item) return undefined;
     const { invoicedQty: _i, returnedQty: _r, id: _id, ...base } = lineFromItem(item, { postingDate }, ctx, m, { quantity: 1 });
-    return newDprLine({ ...base, warehouse: '', binId: '', countryOfOriginCode: item.countryOfOriginCode, bpCatalogNo: item.vendors.find((v) => v.vendorId === vendorId)?.vendorItemNo ?? '' });
+    return newDprLine({ ...base, warehouse: '', binId: '', countryOfOriginCode: item.countryOfOriginCode, warrantyTemplateId: item.warrantyTemplate, glAccount: '', bpCatalogNo: item.vendors.find((v) => v.vendorId === vendorId)?.vendorItemNo ?? '' });
   };
   const changeUom = (l: DprLine, uomCode: string) => {
     const item = itemOf(l);
@@ -65,7 +63,9 @@ export function dprDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy }: 
   };
 
   const cols = purchCols<DprLine>({
-    patch, readOnly: ctx.readOnly, currency: code, fx: ctx.fx,
+    patch, readOnly: ctx.readOnly, currency: code,
+    glAccountOf: (l) => lineGlAccount(itemOf(l), l, m.inv),
+    glAccountOptions: (l) => costAccountOptions(m.inv.accounts, l.glAccount),
     lineNet,
     priceAfterDisc: priceAfterDiscount,
     grossAfterDisc: (l) => priceAfterDiscount(l) * (1 + taxRate(l) / 100),
@@ -73,7 +73,7 @@ export function dprDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy }: 
     taxOptions: (l) => taxOptions(l.taxCode),
     vendorOptions: [],
     warehouseOptions: [],
-    blanketOptions,
+    blanketScope: { vendorId, date: postingDate },
     uomOptions, uomLabel,
     priceListDef, departmentDef, countryDef,
     changeUom,
@@ -85,22 +85,24 @@ export function dprDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy }: 
     lineKind,
     inventoryQty: grInventoryQty,
     unitCost: (l) => itemOf(l)?.itemCost ?? 0,
-    warrantyText: (l) => { const w = itemOf(l)?.warrantyTemplate; return w ? (m.inv.warranties.find((x) => x.id === w)?.name ?? w) : 'None'; },
+    warrantyDef: warrantyTemplateDef,
+    itemWarranty: (l) => itemOf(l)?.warrantyTemplate ?? '',
     baseDoc: (l) => (l.baseType ? { href: `#/purchasing/purchase-orders/${l.baseId}`, label: `PO ${l.baseDocNo}` } : null),
   });
 
   const columns = pick(cols, [
-    ['type', 'hide'], ['qty', 'always'], ['uomName', 'hide'], ['itemsPerUnit', 'hide'], ['inventoryUom', 'hide'], ['inventoryQty', 'hide'],
-    ['priceList', 'hide'],
-    ['unitPrice', 'always'], ['discount', 'hide'], ['priceAfterDisc', 'hide'],
-    ['tax', 'always'], ['taxAmount', 'hide'], ['reverseChargeVat', 'hide'], ['gross', 'hide'], ['total', 'always'], ['grossTotalLc', 'hide'],
-    ['countryOfOrigin', 'hide'], ['warranty', 'hide'], ['unitCost', 'hide'], ['department', 'hide'],
-    ['name', 'hide'], ['bpCatalogNo', 'hide'], ['requisition', 'hide'],
-    ['baseDoc', 'hide'], ['blanket', 'hide'], ['freeText', 'hide'],
+    // Shown by default: the SAP B1 v10 Contents fields, in its order.
+    ['type', 'opt'], ['qty', 'always'], ['unitPrice', 'always'], ['discount', 'opt'], ['tax', 'always'],
+    ['total', 'always'], ['countryOfOrigin', 'opt'], ['blanket', 'opt'], ['warranty', 'opt'], ['unitCost', 'opt'],
+    // Everything else, in the column chooser.
+    ['uomName', 'hide'], ['itemsPerUnit', 'hide'], ['inventoryQty', 'hide'], ['priceList', 'hide'], ['priceAfterDisc', 'hide'],
+    ['taxAmount', 'hide'], ['reverseChargeVat', 'hide'], ['gross', 'hide'], ['grossTotalLc', 'hide'], ['department', 'hide'],
+    ['bpCatalogNo', 'hide'], ['requisition', 'hide'], ['baseDoc', 'hide'], ['freeText', 'hide'], ['glAccount', 'hide'],
   ]);
 
   return {
     prefsKey: 'dpr',
+    cardHeader: true,
     columns,
     rows: lines,
     icon: 'list_alt',
