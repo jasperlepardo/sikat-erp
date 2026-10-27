@@ -129,7 +129,7 @@ function CopyFromGrpoPanel({
                     onClick={() => { setSelectedGrId(r.id); setPicks(new Set()); }}
                   >
                     <span className="font-medium">{grNumber(r)}</span>
-                    <span className="text-(--color-text-muted) text-xs">{r.vendorName} · {formatDate(r.postingDate)}</span>
+                    <span className="text-muted text-xs">{r.vendorName} · {formatDate(r.postingDate)}</span>
                   </button>
                 ))
               )}
@@ -152,7 +152,7 @@ function CopyFromGrpoPanel({
                     >
                       <div className="flex flex-col">
                         <span className="text-sm font-medium">{l.itemNo}</span>
-                        <span className="text-xs text-(--color-text-muted)">{l.description || l.name} · {l.quantity} {l.uomCode} · {l.warehouse}</span>
+                        <span className="text-xs text-muted">{l.description || l.name} · {l.quantity} {l.uomCode} · {l.warehouse}</span>
                       </div>
                     </Checkbox>
                   ))}

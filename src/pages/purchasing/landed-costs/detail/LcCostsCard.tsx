@@ -186,7 +186,7 @@ export function LcCostsCard({ draft, update, errors, readOnly }: LcSectionProps)
         </Fields>
         <div className="flex flex-col gap-1 text-sm text-right">
           <div className="flex justify-between">
-            <span className="text-(--color-text-muted)">Total costs</span>
+            <span className="text-muted">Total costs</span>
             <span className="tabular-nums font-medium">{formatAmount(total)}</span>
           </div>
         </div>
