@@ -216,12 +216,16 @@ check('Nothing posts after the as-of day', L.entries.filter((e) => e.postingDate
   };
   const open = H.invoices.filter((b) => posted(b.status)).reduce((n, b) => n + (net(b) - b.downPayment - b.appliedAmount) * (b.fxRate || 1), 0);
   const credit = H.memos.filter((m) => posted(m.status)).reduce((n, m) => n + (net(m) - m.appliedAmount) * (m.fxRate || 1), 0);
+  // Payments made on account sit as a prepayment (debit) on the vendor's payable until a bill takes them.
+  const onAccount = H.payments.filter((p) => p.status === 'Posted' && p.type === 'Vendor').reduce((n, p) => n + (p.onAccount ?? 0) * (p.fxRate || 1), 0);
   const ledger = -bal('2010', '2015', '2020');
-  check('A/P (2010, 2015, 2020) equals the open bills less unapplied credit', near(ledger, open - credit, 5) ? [] : [`ledger ${ledger}, documents ${r2(open - credit)}`]);
+  check('A/P (2010, 2015, 2020) equals the open bills less unapplied credit and on-account prepayments', near(ledger, open - credit - onAccount, 5) ? [] : [`ledger ${ledger}, documents ${r2(open - credit - onAccount)}`]);
   // Goods received not invoiced: what's received and neither billed nor sent back, at receipt cost.
   const grni = H.receipts.filter((g) => posted(g.status)).reduce((n, g) => n + g.lines.reduce((k, l) => k + l.unitCostLc * (l.itemsPerUnit || 1) * (l.quantity - l.invoicedQty - (l.returnedQty ?? 0)), 0), 0);
   check('Goods Received Not Invoiced (2025) equals what\'s received and not billed', near(-bal('2025'), grni, 5) ? [] : [`ledger ${-bal('2025')}, documents ${r2(grni)}`]);
-  const advances = H.downPayments.reduce((n, d) => n + d.paidLc - (d.drawnAmount ? d.paidLc * (d.drawnAmount / d.appliedAmount) : 0), 0);
+  // Requests post to 1150 when paid; invoices post to 1150 when added. Either way the undrawn balance sits there.
+  const undrawn = (d: { paidLc: number; drawnAmount: number; appliedAmount: number }) => d.paidLc - (d.drawnAmount ? d.paidLc * (d.drawnAmount / d.appliedAmount) : 0);
+  const advances = [...H.downPayments, ...H.downPaymentInvoices.filter((d) => posted(d.status))].reduce((n, d) => n + undrawn(d), 0);
   check('Advances to Suppliers (1150) equals the down payments paid and not drawn', near(bal('1150'), advances, 1) ? [] : [`ledger ${bal('1150')}, documents ${r2(advances)}`]);
 }
 // Inventory: the stock on hand at its cost. Moving-average costs round to the centavo per receipt,

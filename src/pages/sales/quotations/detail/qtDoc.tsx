@@ -6,8 +6,11 @@ import { lineHelpers, itemConfig } from '../../shared/salesLineHelpers';
 import { itemsPerUom } from '../../../../mocks/items';
 import type { QuoteLine } from '../../../../mocks/quotations';
 import { lineNet } from '../../../../services/quotations';
-import { priceAfterDiscount } from '../../../../services/salesOrders';
+import { lineTax, priceAfterDiscount } from '../../../../services/salesOrders';
 import { isPriceListValid } from '../../../../services/priceLists';
+import { formatAmount } from '../../../../services/format';
+import { editTaxCode } from '../../../../services/taxRecalc';
+import { taxCodeOptions } from '../../../../services/taxCodeOptions';
 import { lineFromItem, linePricing, type QtTabProps } from './types';
 
 /** Builds the Sales Quotation contents descriptor for the shared <DocLines>. */
@@ -57,10 +60,31 @@ export function qtDoc({ draft, update, errors, m, ctx }: QtTabProps): DocLinesPr
     changePriceList,
     priceListWhere: (r) => isPriceListValid(r, draft.postingDate),
     lineNet,
+    tax: {
+      options: (l) => taxCodeOptions(m.tax.codes, 'Sales', l.taxCode),
+      value: (l) => l.taxCode,
+      onChange: (l, v) => reprice(l, editTaxCode(v)),
+      invalid: (l) => Boolean(err(l, 'taxCode')),
+      note: (l) => <Text variant="small" tone="muted">Tax PHP {formatAmount(lineTax(l, ctx.rateOf(l.taxCode), 0) * ctx.fx)}</Text>,
+      roText: (l) => `${l.taxCode} (${ctx.rateOf(l.taxCode)}%)`,
+    },
+    lineKind: (l) => { const it = itemOf(l); return it ? (it.inventoryItem ? 'Item' : 'Service') : ''; },
+    itemName: (l) => itemOf(l)?.name ?? '',
+    taxAmount: (l) => lineTax(l, ctx.rateOf(l.taxCode), 0),
   });
 
   const columns = pick(cols, [
-    ['qty', 'always'], ['priceList', 'hide'], ['unitPrice', 'always'], ['discount', 'always'], ['total', 'always'],
+    ['qty', 'always'], ['priceList', 'hide'], ['unitPrice', 'always'], ['discount', 'always'], ['tax', 'opt'], ['total', 'always'],
+    // Info / catalog columns (hidden).
+    ['type', 'hide'], ['name', 'hide'], ['uomName', 'hide'], ['itemsPerUnit', 'hide'], ['inventoryUom', 'hide'],
+    ['priceSource', 'hide'], ['priceAfterDisc', 'hide'], ['taxAmount', 'hide'], ['grossTotalLc', 'hide'],
+    // SAP workbook long-tail / UDF placeholders (hidden) — row-for-row parity.
+    ['summaryType', 'hide'], ['rowNo', 'hide'], ['distrRule', 'hide'], ['cogsDistrRule', 'hide'],
+    ['blanketAgreementNo', 'hide'], ['allowProcmnt', 'hide'], ['warranty', 'hide'], ['serialNo', 'hide'],
+    ['unitCostPrice', 'hide'], ['priceForReport', 'hide'], ['customerDescription', 'hide'], ['amountInPrintout', 'hide'],
+    ['moveRow', 'hide'], ['wWTCode', 'hide'], ['wVTVendor', 'hide'], ['wTaxDefined', 'hide'], ['wtaxRate', 'hide'],
+    ['xSupplierName', 'hide'], ['xAddress', 'hide'], ['xTINumber', 'hide'], ['xCardType', 'hide'], ['countryOfOrigin', 'hide'],
+    ['lastCost', 'hide'],
   ]);
 
   const fromItem = (itemId: string) => {

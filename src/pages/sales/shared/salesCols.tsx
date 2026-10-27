@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Checkbox, Combobox, Link, Select, Text, TextField } from '@jasperlepardo/sikat-design-system';
+import { Checkbox, Combobox, Link, Select, TableStatus, Text, TextField } from '@jasperlepardo/sikat-design-system';
 import type { PrefColumn } from '../../../components/form/columnPrefs';
 import { masterCol } from '../../../components/form/docLines/docColumns';
 import { MasterLookup } from '../../../components/form/MasterLookup';
@@ -12,6 +12,27 @@ import type { SalesLineLike } from './salesLineHelpers';
 
 const num = (v: string) => (v === '' ? 0 : Number(v));
 type Opt = { value: string; label: string };
+
+/**
+ * SAP B1 field-census "long tail" — fields the Sales workbook lists on the line grid that the
+ * prototype has no data model for (and the UDF columns). Each `[key, header]` becomes a read-only
+ * `placeholderCol` ("—"), registered in `salesCols` so each document can `pick` the ones the
+ * workbook marks for it (hidden by default) for row-for-row parity. The info/catalog columns
+ * (type, uomName, taxAmount, …) are real registry columns picked inline per document, mirroring
+ * how the purchasing descriptors declare their columns.
+ */
+const PARITY_FIELDS: [string, string][] = [
+  ['summaryType', 'Summary type'], ['rowNo', '#'], ['distrRule', 'Distr. rule'],
+  ['cogsDistrRule', 'COGS distr. rule'], ['blanketAgreementNo', 'Blanket agreement no.'],
+  ['allowProcmnt', 'Allow procmnt. doc.'], ['warranty', 'Warranty'], ['serialNo', 'Serial no.'],
+  ['unitCostPrice', 'Unit cost price'], ['priceForReport', 'Price for report'],
+  ['customerDescription', 'Customer description'], ['amountInPrintout', 'Amount in printout'],
+  ['moveRow', 'Move row'], ['wWTCode', 'wWTCode'], ['wVTVendor', 'wVTVendor'],
+  ['wTaxDefined', 'wTaxDefined'], ['wtaxRate', 'WTax rate'],
+  ['xSupplierName', 'xSupplierName'], ['xAddress', 'xAddress'], ['xTINumber', 'xTINumber'],
+  ['xCardType', 'xCardType'], ['lastCost', 'Last cost'], ['standardItemId', 'Standard item ID'],
+  ['commodityClass', 'Commodity classification'], ['binAllocation', 'Bin location allocation'],
+];
 
 /** Whether a line renders its cells — an item is picked, or the doc overrides the gate (service lines). */
 function vis<T extends SalesLineLike>(b: ColBindings<T>, l: T): boolean {
@@ -34,6 +55,13 @@ export interface ColBindings<T extends SalesLineLike> {
   invalid: (l: T, field: string) => boolean;
   /** Overrides the "render only when an item is picked" gate — service lines have no item. */
   rendered?: (l: T) => boolean;
+  // shared info/catalog columns (hidden by default, available in the Columns menu)
+  /** 'Item' or 'Service' per line, for the Type column. */
+  lineKind?: (l: T) => string;
+  /** The resolved item name, for the Item-name column. */
+  itemName?: (l: T) => string;
+  /** The line's tax in PHP, for the Tax amount / Gross total columns. */
+  taxAmount?: (l: T) => number;
   // service-line columns (invoices in Service mode)
   serviceDescription?: { value: (l: T) => string; onChange: (l: T, v: string) => void; invalid?: (l: T) => boolean };
   glAccount?: { options: (current: string) => Opt[]; value: (l: T) => string; onChange: (l: T, v: string) => void; text: (l: T) => string; invalid?: (l: T) => boolean };
@@ -485,6 +513,74 @@ function serviceAmountCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColum
   };
 }
 
+// ── Shared info / catalog columns (hidden by default; the Columns menu reveals them) ──
+
+/** 'Item' / 'Service' kind badge. */
+function typeCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T> {
+  return {
+    key: 'type',
+    header: 'Type',
+    cell: (l) => { const k = b.lineKind?.(l); return k ? <TableStatus intent={k === 'Service' ? 'primary' : 'default'}>{k}</TableStatus> : null; },
+  };
+}
+
+/** Read-only item name. */
+function nameCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T> {
+  return {
+    key: 'name',
+    header: 'Item name',
+    cell: (l) => (vis(b, l) ? <Text variant="small" className="whitespace-normal">{b.itemName?.(l) || '—'}</Text> : null),
+  };
+}
+
+/** Read-only UoM name (the qty column shows the code). */
+function uomNameCol<T extends SalesLineLike>(): PrefColumn<T> {
+  return { key: 'uomName', header: 'UoM name', cell: (l) => (l.itemId ? <Text variant="small">{l.uomName}</Text> : null) };
+}
+
+/** Inventory units in one line unit. */
+function itemsPerUnitCol<T extends SalesLineLike>(): PrefColumn<T> {
+  return { key: 'itemsPerUnit', header: 'Items per unit', align: 'end', cell: (l) => (l.itemId ? <span className="text-sm tabular-nums">{l.itemsPerUnit}</span> : null) };
+}
+
+/** Yes/No — is the line unit the inventory unit (items per unit == 1)? */
+function inventoryUomCol<T extends SalesLineLike>(): PrefColumn<T> {
+  return { key: 'inventoryUom', header: 'Inventory UoM', cell: (l) => (l.itemId ? (l.itemsPerUnit === 1 ? 'Yes' : 'No') : null) };
+}
+
+/** What set the price — a list name, "Manual", an agreement. */
+function priceSourceCol<T extends SalesLineLike>(): PrefColumn<T> {
+  return { key: 'priceSource', header: 'Price source', cell: (l) => (l.itemId ? <Text variant="small" tone={l.priceSource ? 'default' : 'muted'}>{l.priceSource || '—'}</Text> : null) };
+}
+
+/** Read-only unit price after discount, in document currency. */
+function priceAfterDiscCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T> {
+  return { key: 'priceAfterDisc', header: 'Price after discount', align: 'end', cell: (l) => (vis(b, l) ? <span className="text-sm tabular-nums">{b.currency} {formatAmount(b.priceAfterDisc(l))}</span> : null) };
+}
+
+/** Read-only line tax in PHP. */
+function taxAmountCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T> {
+  return { key: 'taxAmount', header: 'Tax amount (LC)', align: 'end', cell: (l) => (vis(b, l) ? <span className="text-sm tabular-nums">PHP {formatAmount((b.taxAmount?.(l) ?? 0) * b.fx)}</span> : null) };
+}
+
+/** Read-only line total including tax, in PHP. */
+function grossTotalLcCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T> {
+  return { key: 'grossTotalLc', header: 'Gross total (LC)', align: 'end', cell: (l) => (vis(b, l) ? <span className="text-sm tabular-nums">PHP {formatAmount((b.lineNet(l) + (b.taxAmount?.(l) ?? 0)) * b.fx)}</span> : null) };
+}
+
+/** A read-only placeholder cell ("—") for a field with no backing data — workbook parity only. */
+function placeholderCol<T extends SalesLineLike>(key: string, header: string): PrefColumn<T> {
+  return { key, header, cell: (l) => (l.itemId ? <span className="text-sm text-muted">—</span> : null) };
+}
+
+/** Country of origin — a real picker where the doc binds `country`, else a read-only placeholder. */
+function countryOfOriginCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T> {
+  if (b.country) {
+    return masterCol({ key: 'countryOfOrigin', header: 'Country of origin', def: countryDef, get: (l) => b.country!.value(l), onChange: (l, v) => b.country!.onChange(l, v), readOnly: b.readOnly, clearable: true });
+  }
+  return placeholderCol('countryOfOrigin', 'Country of origin');
+}
+
 /**
  * The shared sales column registry. A document binds it with its data/services, then
  * `pick`s which columns to show and their default visibility (mirrors `purchCols`).
@@ -504,7 +600,7 @@ export function salesCols<T extends SalesLineLike>(b: ColBindings<T>): Record<st
     tax: taxColSales(b),
     returnReason: returnReasonCol(b),
     returnCost: returnCostCol(b),
-    countryOfOrigin: masterCol({ key: 'countryOfOrigin', header: 'Country of origin', def: countryDef, get: (l) => b.country?.value(l) ?? '', onChange: (l, v) => b.country?.onChange(l, v), readOnly: b.readOnly, clearable: true }),
+    countryOfOrigin: countryOfOriginCol(b),
     baseDoc: baseDocCol(b),
     credited: creditedCol(b),
     gross: grossCol(b),
@@ -515,5 +611,17 @@ export function salesCols<T extends SalesLineLike>(b: ColBindings<T>): Record<st
     description: descriptionCol(b),
     glAccount: glAccountCol(b),
     amount: serviceAmountCol(b),
+    // Shared info / catalog columns (parity with purchasing; hidden by default).
+    type: typeCol(b),
+    name: nameCol(b),
+    uomName: uomNameCol(),
+    itemsPerUnit: itemsPerUnitCol(),
+    inventoryUom: inventoryUomCol(),
+    priceSource: priceSourceCol(),
+    priceAfterDisc: priceAfterDiscCol(b),
+    taxAmount: taxAmountCol(b),
+    grossTotalLc: grossTotalLcCol(b),
+    // SAP workbook long-tail / UDFs — read-only placeholders for row-for-row parity.
+    ...Object.fromEntries(PARITY_FIELDS.map(([k, hdr]) => [k, placeholderCol<T>(k, hdr)])) as Record<string, PrefColumn<T>>,
   };
 }

@@ -8,6 +8,7 @@
  * posted in the app).
  */
 import { ADVANCES_TO_SUPPLIERS, DPR_SERIES, newDprLine, type DownPaymentRequest } from '../mocks/apDownPayments';
+import { DPI_SERIES, newDpiLine, type DownPaymentInvoice } from '../mocks/apDownPaymentInvoices';
 import { MEMO_SERIES, newMemoLine, type ApCreditMemo, type MemoLine } from '../mocks/apCreditMemos';
 import { SEED_AP_INVOICES, billFromReceipt, type ApInvoice } from '../mocks/apInvoices';
 import { SEED_GOODS_RECEIPTS, type GoodsReceipt } from '../mocks/goodsReceipts';
@@ -56,6 +57,7 @@ export interface PurchasingHistory {
   returns: GoodsReturn[];
   memos: ApCreditMemo[];
   downPayments: DownPaymentRequest[];
+  downPaymentInvoices: DownPaymentInvoice[];
 }
 
 function build(): PurchasingHistory {
@@ -122,6 +124,45 @@ function build(): PurchasingHistory {
     Object.assign(d, { drawnAmount: d.appliedAmount, status: 'Closed', closeDate: bill.postingDate });
   };
 
+  // ── A/P down payment invoices ───────────────────────────────────────────────
+  // Unlike a request, a down payment *invoice* posts on its own: Dr Advances to Suppliers / Cr A/P.
+  const dpiNo = (d: DownPaymentInvoice) => `ADPI-${d.postingDate.slice(0, 4)}-${String(d.docNum).padStart(4, '0')}`;
+  const dpiLines = (p: PurchaseOrder) =>
+    p.lines.map((l, i) =>
+      newDpiLine({
+        id: `dil-seed-${p.id}-${i + 1}`, itemId: l.itemId, itemNo: l.itemNo, name: l.name, description: l.description, quantity: l.quantity,
+        uomCode: l.uomCode, uomName: l.uomName, itemsPerUnit: l.itemsPerUnit, priceListId: l.priceListId, unitPrice: l.unitPrice, discountPct: l.discountPct,
+        taxCode: l.taxCode, blanketAgreement: l.blanketAgreement, baseType: 'PO', baseId: p.id, baseLineId: l.id, baseDocNo: poRef(p),
+        bpCatalogNo: l.bpCatalogNo, countryOfOriginCode: SEED_ITEMS.find((x) => x.id === l.itemId)?.countryOfOriginCode ?? '', warehouse: '', binId: '',
+      }),
+    );
+  const dpInvoice = (id: string, docNum: number, p: PurchaseOrder, date: string, dpmPct: number, vendorRef: string): DownPaymentInvoice => {
+    const v = vendorOf(p.vendorId);
+    return {
+      id, vendorId: v.id, vendorCode: v.code, vendorName: v.name, contactId: p.contactId, vendorRef, currency: p.currency, seriesId: DPI_SERIES[0].id, docNum,
+      status: 'Open', postingDate: date, dueDate: date, documentDate: date, closeDate: '', lines: dpiLines(p), shipTo: p.shipTo, payTo: '', shippingType: p.shippingType,
+      language: 'English', journalRemark: `A/P Down Payment Invoice – ${v.code}`, paymentTermId: p.paymentTermId, paymentMethod: v.defaultPaymentMethod, cashDiscountDays: 0,
+      projectId: p.projectId, indicator: '', orderNumber: poRef(p), references: [], buyerId: p.buyerId, ownerId: p.ownerId,
+      remarks: '', discountPct: p.discountPct, freight: 0, freightTaxCode: '', fxRate: fxOn(p.currency, date), controlAccount: v.payableAccount || '2010',
+      paymentBlock: false, maxCashDiscount: false, installments: 1, consolidatingBpId: '', paymentOrderRun: true, appliedAmount: 0, approved: true, attachments: [],
+      dpmPct, paidLc: 0, drawnAmount: 0, downPaymentAccount: v.downPaymentClearingAccount || ADVANCES_TO_SUPPLIERS,
+    };
+  };
+  const dpiTotal = (d: DownPaymentInvoice) => {
+    const t = poTotals({ ...d, freight: 0 }, rateOf(d.postingDate), undefined, reverse);
+    return round2((t.beforeDiscount - t.discount) * (d.dpmPct / 100) + t.tax * (d.dpmPct / 100));
+  };
+  /** A payment row paying a down payment invoice in full (settles the A/P it posted). */
+  const dpiRow = (d: DownPaymentInvoice): PaymentRow => {
+    const due = dpiTotal(d);
+    return {
+      id: `pr-${d.id}`, invoiceId: d.id, docNo: dpiNo(d), vendorRef: d.vendorRef, docDate: d.postingDate, dueDate: d.dueDate, total: due, wtAmount: 0, balanceDue: due,
+      cashDiscountPct: 0, amount: due, invoiceFx: d.fxRate || 1, projectId: d.projectId, selected: true, docType: 'APDPI', account: d.downPaymentAccount,
+    };
+  };
+  /** Record a payment on a down payment invoice: what's paid, and the PHP the advance sits at. */
+  const paidDpi = (d: DownPaymentInvoice, p: OutgoingPayment) => Object.assign(d, { appliedAmount: dpiTotal(d), paidLc: round2(dpiTotal(d) * p.fxRate) });
+
   // ── Outgoing payments ───────────────────────────────────────────────────────
   let payNo = 0;
   const payments: OutgoingPayment[] = [];
@@ -147,7 +188,7 @@ function build(): PurchasingHistory {
       ...patch,
     };
     payments.push(p);
-    for (const r of rows.filter((x) => x.docType !== 'DPR')) settle(invoices.find((i) => i.id === r.invoiceId)!, r.amount, date);
+    for (const r of rows.filter((x) => x.docType !== 'DPR' && x.docType !== 'APDPI')) settle(invoices.find((i) => i.id === r.invoiceId)!, r.amount, date);
     return p;
   };
   const transfer = (account: string, date: string, reference: string) => (amount: number) => ({ transfer: { account, date, reference, amount } });
@@ -186,6 +227,11 @@ function build(): PurchasingHistory {
   paid(macs, pay('op-006', '2026-09-26', macs.vendorId, [dprRow(macs)], transfer('1015', '2026-09-26', 'InstaPay 0926-7731')));
   // Apple wants 30% ahead on the DepEd iPad import — not paid yet.
   const ipads = request('dp-003', 3, po('po-039'), '2026-10-01', 30, 'PROFORMA APL-26-3391');
+  // A/P down payment *invoice*: Luzon billed 30% up front on the October order (po-054) as a formal VAT
+  // deposit invoice — unlike a request, it posts on its own (Dr Advances / Cr A/P), and the payment then
+  // settles that A/P. Paid, not yet drawn: the goods are still in transit, so no bill has taken the advance.
+  const deposit = dpInvoice('dpi-001', 1, po('po-054'), '2026-10-02', 30, 'PI-LID-26-01042');
+  paidDpi(deposit, pay('op-025', '2026-10-03', deposit.vendorId, [dpiRow(deposit)], transfer('1015', '2026-10-03', 'InstaPay 1003-4451')));
 
   // The store replenishment bills: Luzon's iPhones by InstaPay, Techzone's accessories by BPI check, and
   // Apple's iPad Air import from the USD account. Luzon's second September bill (po-044) isn't due yet.
@@ -206,6 +252,24 @@ function build(): PurchasingHistory {
   const partBill = billFromReceipt(october, invoices.length, '2026-10-05', (l) => (l === chargers ? l.quantity : 0));
   invoices.push(partBill);
   pay('op-023', '2026-10-09', partBill.vendorId, [billRow(partBill, round2(amounts(partBill).net / 2))], transfer('1015', '2026-10-09', 'InstaPay 1009-3307'), { remarks: 'First half, as agreed with Techzone; balance on the due date.' });
+
+  // ── A pro-forma advance paid on account ──────────────────────────────────────
+  // Luzon asked for a deposit to reserve holiday stock ahead of the December rush. Paid by InstaPay,
+  // not matched to any bill: it posts Dr the vendor's payable / Cr the bank and sits as a prepayment
+  // on the vendor's account until a December bill is matched against it.
+  const advVendor = vendorOf(po('po-041').vendorId);
+  payments.push({
+    ...blankPayment('2026-10-02'),
+    id: 'op-024',
+    vendorId: advVendor.id, vendorCode: advVendor.code, payeeName: advVendor.name, contactId: advVendor.defaultContactId, projectId: advVendor.projectId,
+    docNum: ++payNo, status: 'Posted', currency: 'PHP', fxRate: 1,
+    controlAccount: advVendor.payableAccount || '2010',
+    journalRemark: `Outgoing – ${advVendor.code} advance`,
+    onAccount: 60000,
+    proForma: true,
+    means: { ...blankMeans('2026-10-02'), transfer: { account: '1015', date: '2026-10-02', reference: 'InstaPay 1002-7744', amount: 60000 } },
+    remarks: 'Advance to reserve holiday stock allocation; to be applied against the December bills.',
+  });
 
   // ── Goods returns ───────────────────────────────────────────────────────────
   const returns: GoodsReturn[] = [];
@@ -306,7 +370,7 @@ function build(): PurchasingHistory {
   // Numbered in date order, like payments added one after another.
   payments.sort((a, b) => a.postingDate.localeCompare(b.postingDate) || a.id.localeCompare(b.id)).forEach((p, n) => (p.docNum = 1 + n));
 
-  return { receipts, invoices, payments, returns, memos, downPayments: [booking, macs, ipads] };
+  return { receipts, invoices, payments, returns, memos, downPayments: [booking, macs, ipads], downPaymentInvoices: [deposit] };
 }
 
 let built: PurchasingHistory | undefined;

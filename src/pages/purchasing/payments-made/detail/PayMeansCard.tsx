@@ -1,166 +1,276 @@
-import { useState } from 'react';
-import { houseBankFor } from '../../../../services/partnerMasters';
-import { Button, Checkbox, DatePicker, Icon, List, Tabs, Text, TextField, type TableColumn } from '@jasperlepardo/sikat-design-system';
-import { AccountField } from '../../../../components/form/AccountField';
+import { Button, Checkbox, Combobox, DatePicker, Icon, Text, TextField, type TableColumn } from '@jasperlepardo/sikat-design-system';
 import { DataTable } from '../../../../components/form/DataTable';
 import { MasterLookup } from '../../../../components/form/MasterLookup';
-import { Fields, Section } from '../../../../components/form/fields';
+import { houseBankFor } from '../../../../services/partnerMasters';
 import { newCardRow, newCheckRow, type CardRow, type CheckRow, type PaymentMeans } from '../../../../mocks/outgoingPayments';
 import { formatAmount } from '../../../../services/format';
 import { meansBalance, meansTotal, overallAmount } from '../../../../services/outgoingPayments';
 import { cardBrandDef } from '../../../settings/masterDefs';
-import type { PaySectionProps } from './types';
+import { activeOptions } from '../../../../services/inventoryMasters';
+import { accountText } from '../../../../mocks/chartOfAccounts';
 import { round2 } from '../../../../services/num';
+import type { PaySectionProps } from './types';
 
-type MeansTab = 'transfer' | 'cash' | 'check' | 'card';
+type MeansRow =
+  | { id: 'transfer'; kind: 'transfer'; account: string; date: string; reference: string; amount: number }
+  | { id: 'cash'; kind: 'cash'; account: string; amount: number }
+  | (CheckRow & { kind: 'check' })
+  | (CardRow & { kind: 'card' });
+
+const METHOD_LABEL: Record<string, string> = { transfer: 'Bank transfer', cash: 'Cash', check: 'Check', card: 'Credit card' };
 const num = (v: string) => (v === '' ? 0 : Number(v));
 
 /**
- * Payment Means: how the money goes out. Each means credits its account; together they must
- * cover the overall amount plus any bank charge.
+ * Payment Means: how the money goes out. One row per method in a single table; each credits its
+ * account, and together they must cover the overall amount plus any bank charge.
  */
 export function PayMeansCard({ draft, update, m, readOnly }: PaySectionProps) {
   const means = draft.means;
-  const [tab, setTab] = useState<MeansTab>(means.checks.length ? 'check' : means.cash.amount ? 'cash' : means.cards.length ? 'card' : 'transfer');
   const set = (patch: Partial<PaymentMeans>) => update({ means: { ...means, ...patch } });
   const code = draft.currency;
   const balance = meansBalance(draft);
-  // Bank and cash accounts in the payment currency (peso accounts can pay any currency; the bank converts).
-  const cashAccounts = m.accounts.filter((a) => a.cash && (a.currency === 'PHP' || a.currency === code));
   const fill = (current: number) => round2(current + Math.max(0, balance));
+
+  // Bank / cash / card accounts in the payment currency (peso accounts can pay any currency).
+  const banks = m.accounts.filter((a) => a.cash && houseBankFor(a.code) && (a.currency === 'PHP' || a.currency === code));
+  const cashAccounts = m.accounts.filter((a) => a.cash && !houseBankFor(a.code) && (a.currency === 'PHP' || a.currency === code));
+
   const patchCheck = (id: string, p: Partial<CheckRow>) => set({ checks: means.checks.map((c) => (c.id === id ? { ...c, ...p } : c)) });
   const patchCard = (id: string, p: Partial<CardRow>) => set({ cards: means.cards.map((c) => (c.id === id ? { ...c, ...p } : c)) });
-  const amountOf = (t: MeansTab) =>
-    t === 'transfer' ? means.transfer.amount : t === 'cash' ? means.cash.amount : t === 'check' ? means.checks.reduce((n, c) => n + c.amount, 0) : means.cards.reduce((n, c) => n + c.amount, 0);
-  const label = { transfer: 'Bank transfer', cash: 'Cash', check: 'Check', card: 'Credit card' } as const;
 
-  const fillButton = (onClick: () => void) =>
-    !readOnly && balance > 0 ? (
-      <Button type="button" size="small" variant="ghost" onClick={onClick}>
-        Pay the balance ({code} {formatAmount(balance)})
-      </Button>
-    ) : null;
+  const rows: MeansRow[] = [
+    ...(means.transfer.amount > 0 ? [{ id: 'transfer' as const, kind: 'transfer' as const, ...means.transfer }] : []),
+    ...(means.cash.amount > 0 ? [{ id: 'cash' as const, kind: 'cash' as const, ...means.cash }] : []),
+    ...means.checks.map((c) => ({ ...c, kind: 'check' as const })),
+    ...means.cards.map((c) => ({ ...c, kind: 'card' as const })),
+  ];
 
-  const checkColumns: TableColumn<CheckRow>[] = [
+  const baseColumns: TableColumn<MeansRow>[] = [
+    { key: 'kind', header: 'Method', cell: (r) => <Text variant="small">{METHOD_LABEL[r.kind]}</Text> },
     {
       key: 'account',
-      header: 'Bank account',
-      cell: (c) => (
-        <div className="w-64">
-          <AccountField label="" role="cash" value={c.account} onChange={(account) => patchCheck(c.id, { account })} accounts={cashAccounts.filter((a) => houseBankFor(a.code))} disabled={readOnly} />
-          {houseBankFor(c.account) ? <Text variant="small" tone="muted">{houseBankFor(c.account)!.branch} · {houseBankFor(c.account)!.accountNo}</Text> : null}
-        </div>
-      ),
+      header: 'Account / Details',
+      cell: (r) => {
+        if (r.kind === 'transfer') {
+          const bank = houseBankFor(r.account);
+          if (readOnly) {
+            return (
+              <div className="flex flex-col gap-0.5">
+                <Text variant="small">{r.account ? accountText(r.account, m.accounts) : '—'}</Text>
+                {bank && <Text variant="small" tone="muted">{bank.branch} · {bank.accountNo}</Text>}
+              </div>
+            );
+          }
+          return (
+            <div className="flex flex-col gap-1">
+              <Combobox aria-label="Bank account" className="w-64" options={activeOptions(banks, (a) => a.code, (a) => `${a.code} ${a.name}`, r.account)} value={r.account || null} onValueChange={(v) => set({ transfer: { ...means.transfer, account: v ?? '' } })} />
+              {bank && <Text variant="small" tone="muted">{bank.branch} · {bank.accountNo}</Text>}
+            </div>
+          );
+        }
+        if (r.kind === 'cash') {
+          if (readOnly) return <Text variant="small">{r.account ? accountText(r.account, m.accounts) : '—'}</Text>;
+          return <Combobox aria-label="Cash account" className="w-64" options={activeOptions(cashAccounts, (a) => a.code, (a) => `${a.code} ${a.name}`, r.account)} value={r.account || null} onValueChange={(v) => set({ cash: { ...means.cash, account: v ?? '' } })} />;
+        }
+        if (r.kind === 'check') {
+          const bank = houseBankFor(r.account);
+          if (readOnly) {
+            return (
+              <div className="flex flex-col gap-0.5">
+                <Text variant="small">{r.account ? accountText(r.account, m.accounts) : '—'}</Text>
+                {bank && <Text variant="small" tone="muted">{bank.branch} · {bank.accountNo}</Text>}
+                {(r.manual || r.checkNo) ? <Text variant="small" tone="muted">Check no. {r.checkNo || '—'}</Text> : <Text variant="small" tone="muted">Numbered when added</Text>}
+              </div>
+            );
+          }
+          return (
+            <div className="flex flex-col gap-1">
+              <Combobox aria-label="House bank account" className="w-64" options={activeOptions(banks, (a) => a.code, (a) => `${a.code} ${a.name}`, r.account)} value={r.account || null} onValueChange={(v) => patchCheck(r.id, { account: v ?? '' })} />
+              {bank && <Text variant="small" tone="muted">{bank.branch} · {bank.accountNo}</Text>}
+              <Checkbox checked={r.manual} onChange={(e) => patchCheck(r.id, { manual: e.currentTarget.checked, checkNo: 0 })}>Manual check</Checkbox>
+              {r.manual || r.checkNo ? (
+                <TextField aria-label="Check no." type="number" className="w-32" readOnly={!r.manual} value={r.checkNo ? String(r.checkNo) : ''} onChange={(e) => patchCheck(r.id, { checkNo: num(e.currentTarget.value) })} />
+              ) : (
+                <Text variant="small" tone="muted">Numbered when added</Text>
+              )}
+            </div>
+          );
+        }
+        // card
+        if (readOnly) {
+          return (
+            <div className="flex flex-col gap-0.5">
+              <Text variant="small">{r.account ? accountText(r.account, m.accounts) : '—'}</Text>
+            </div>
+          );
+        }
+        return (
+          <div className="flex flex-col gap-1">
+            <MasterLookup def={cardBrandDef} fieldProps={{ 'aria-label': 'Credit card', className: 'w-40' }} value={r.cardBrandId} onChange={(card) => patchCard(r.id, { cardBrandId: card })} />
+            <Combobox aria-label="G/L account" className="w-64" options={activeOptions(m.accounts, (a) => a.code, (a) => `${a.code} ${a.name}`, r.account)} value={r.account || null} onValueChange={(v) => patchCard(r.id, { account: v ?? '' })} />
+          </div>
+        );
+      },
     },
-    { key: 'dueDate', header: 'Due date', cell: (c) => <DatePicker aria-label="Check due date" className="w-fit" value={c.dueDate || null} onValueChange={(v) => patchCheck(c.id, { dueDate: v ?? '' })} /> },
     {
-      key: 'checkNo',
-      header: 'Check no.',
-      cell: (c) => (
-        <div className="flex w-40 flex-col gap-1">
-          <Checkbox checked={c.manual} disabled={readOnly} onChange={(e) => patchCheck(c.id, { manual: e.currentTarget.checked, checkNo: 0 })}>
-            Manual check
-          </Checkbox>
-          {c.manual || c.checkNo ? (
-            <TextField aria-label="Check no." type="number" readOnly={!c.manual || readOnly} value={c.checkNo ? String(c.checkNo) : ''} onChange={(e) => patchCheck(c.id, { checkNo: num(e.currentTarget.value) })} />
-          ) : (
-            <Text variant="small" tone="muted">Numbered when added</Text>
-          )}
-        </div>
-      ),
+      key: 'details',
+      header: 'Date / Reference',
+      cell: (r) => {
+        if (r.kind === 'transfer') {
+          if (readOnly) {
+            return (
+              <div className="flex flex-col gap-0.5">
+                {r.date && <Text variant="small">{r.date}</Text>}
+                {r.reference && <Text variant="small" tone="muted">{r.reference}</Text>}
+              </div>
+            );
+          }
+          return (
+            <div className="flex flex-col gap-1">
+              <DatePicker aria-label="Transfer date" value={r.date || null} onValueChange={(v) => set({ transfer: { ...means.transfer, date: v ?? '' } })} />
+              <TextField aria-label="Transfer reference" className="w-48" placeholder="Reference, e.g. InstaPay ref. no." value={r.reference} onChange={(e) => set({ transfer: { ...means.transfer, reference: e.currentTarget.value } })} />
+            </div>
+          );
+        }
+        if (r.kind === 'check') {
+          if (readOnly) {
+            return (
+              <div className="flex flex-col gap-0.5">
+                {r.dueDate && <Text variant="small">{r.dueDate}</Text>}
+                {r.endorsable && <Text variant="small" tone="muted">Endorsable</Text>}
+              </div>
+            );
+          }
+          return (
+            <div className="flex flex-col gap-1">
+              <DatePicker aria-label="Check due date" className="w-fit" value={r.dueDate || null} onValueChange={(v) => patchCheck(r.id, { dueDate: v ?? '' })} />
+              <Checkbox checked={r.endorsable} onChange={(e) => patchCheck(r.id, { endorsable: e.currentTarget.checked })}>Endorsable</Checkbox>
+            </div>
+          );
+        }
+        if (r.kind === 'card') {
+          if (readOnly) return <Text variant="small">{r.voucherNo || '—'}{r.payments > 1 ? ` · ${r.payments} payments` : ''}</Text>;
+          return (
+            <div className="flex flex-col gap-1">
+              <TextField aria-label="Voucher no." className="w-36" placeholder="Voucher no." value={r.voucherNo} onChange={(e) => patchCard(r.id, { voucherNo: e.currentTarget.value })} />
+              <TextField aria-label="No. of payments" type="number" min={1} className="w-28" value={String(r.payments)} onChange={(e) => patchCard(r.id, { payments: Math.max(1, num(e.currentTarget.value)) })} />
+            </div>
+          );
+        }
+        return null;
+      },
     },
-    { key: 'endorsable', header: 'Endors.', cell: (c) => <Checkbox aria-label="Endorsable" checked={c.endorsable} disabled={readOnly} onChange={(e) => patchCheck(c.id, { endorsable: e.currentTarget.checked })} /> },
-    { key: 'amount', header: `Amount (${code})`, cell: (c) => <TextField aria-label="Check amount" type="number" min={0} className="w-36" value={String(c.amount)} onChange={(e) => patchCheck(c.id, { amount: round2(num(e.currentTarget.value)) })} /> },
+    {
+      key: 'amount',
+      header: 'Amount',
+      align: 'end',
+      cell: (r) => {
+        if (readOnly) return <Text variant="small" className="tabular-nums">{code} {formatAmount(r.amount)}</Text>;
+        if (r.kind === 'transfer') {
+          return (
+            <div className="flex flex-col items-end gap-1">
+              <TextField aria-label="Transfer amount" type="number" min={0} className="w-36" prefix={code} value={String(r.amount)} onChange={(e) => set({ transfer: { ...means.transfer, amount: round2(num(e.currentTarget.value)) } })} />
+              {balance > 0 && <Button type="button" size="small" variant="ghost" onClick={() => set({ transfer: { ...means.transfer, amount: fill(r.amount) } })}>Pay balance ({code} {formatAmount(balance)})</Button>}
+            </div>
+          );
+        }
+        if (r.kind === 'cash') {
+          return (
+            <div className="flex flex-col items-end gap-1">
+              <TextField aria-label="Cash amount" type="number" min={0} className="w-36" prefix={code} value={String(r.amount)} onChange={(e) => set({ cash: { ...means.cash, amount: round2(num(e.currentTarget.value)) } })} />
+              {balance > 0 && <Button type="button" size="small" variant="ghost" onClick={() => set({ cash: { ...means.cash, amount: fill(r.amount) } })}>Pay balance ({code} {formatAmount(balance)})</Button>}
+            </div>
+          );
+        }
+        if (r.kind === 'check') return <TextField aria-label="Check amount" type="number" min={0} className="w-36" prefix={code} value={String(r.amount)} onChange={(e) => patchCheck(r.id, { amount: round2(num(e.currentTarget.value)) })} />;
+        return <TextField aria-label="Card amount" type="number" min={0} className="w-36" prefix={code} value={String(r.amount)} onChange={(e) => patchCard(r.id, { amount: round2(num(e.currentTarget.value)) })} />;
+      },
+    },
   ];
 
-  const cardColumns: TableColumn<CardRow>[] = [
-    { key: 'card', header: 'Credit card', cell: (c) => <MasterLookup def={cardBrandDef} fieldProps={{ 'aria-label': 'Credit card', className: 'w-40' }} value={c.cardBrandId} onChange={(card) => patchCard(c.id, { cardBrandId: card })} /> },
-    { key: 'account', header: 'G/L account', cell: (c) => <div className="w-64"><AccountField label="" role="general" value={c.account} onChange={(account) => patchCard(c.id, { account })} accounts={m.accounts} disabled={readOnly} /></div> },
-    { key: 'voucherNo', header: 'Voucher no.', cell: (c) => <TextField aria-label="Voucher no." className="w-32" value={c.voucherNo} onChange={(e) => patchCard(c.id, { voucherNo: e.currentTarget.value })} /> },
-    { key: 'payments', header: 'No. of payments', cell: (c) => <TextField aria-label="No. of payments" type="number" min={1} className="w-20" value={String(c.payments)} onChange={(e) => patchCard(c.id, { payments: Math.max(1, num(e.currentTarget.value)) })} /> },
-    { key: 'amount', header: `Amount (${code})`, cell: (c) => <TextField aria-label="Card amount" type="number" min={0} className="w-36" value={String(c.amount)} onChange={(e) => patchCard(c.id, { amount: round2(num(e.currentTarget.value)) })} /> },
-  ];
+  const removeColumn: TableColumn<MeansRow> = {
+    key: '_remove',
+    header: '',
+    cell: (r) => (
+      <Button
+        type="button"
+        intent="danger"
+        variant="link"
+        size="small"
+        onClick={() => {
+          if (r.kind === 'transfer') set({ transfer: { account: '', date: '', reference: '', amount: 0 } });
+          else if (r.kind === 'cash') set({ cash: { account: '', amount: 0 } });
+          else if (r.kind === 'check') set({ checks: means.checks.filter((c) => c.id !== r.id) });
+          else set({ cards: means.cards.filter((c) => c.id !== r.id) });
+        }}
+      >
+        <Icon size={16}>delete</Icon>
+      </Button>
+    ),
+  };
+
+  const columns = readOnly ? baseColumns : [...baseColumns, removeColumn];
+
+  const footer = (
+    <div className="flex flex-col gap-1 px-2 py-1">
+      <div className="flex items-center justify-between gap-4">
+        <Text variant="small" tone="muted">Overall amount</Text>
+        <Text variant="small" className="tabular-nums">{code} {formatAmount(overallAmount(draft))}</Text>
+      </div>
+      <div className="flex items-center justify-between gap-4">
+        <Text variant="small" tone="muted">Bank charge</Text>
+        {readOnly ? (
+          <Text variant="small" className="tabular-nums">{code} {formatAmount(means.bankCharge)}</Text>
+        ) : (
+          <TextField aria-label="Bank charge" type="number" min={0} className="w-32" prefix={code} value={String(means.bankCharge)} onChange={(e) => set({ bankCharge: round2(num(e.currentTarget.value)) })} />
+        )}
+      </div>
+      <div className="flex items-center justify-between gap-4">
+        <Text variant="small" tone="muted">Paid</Text>
+        <Text variant="small" className="tabular-nums">{code} {formatAmount(meansTotal(means))}</Text>
+      </div>
+      <div className="flex items-baseline justify-between gap-4 border-t pt-1" style={{ borderColor: 'var(--color-border-neutral-subtle)' }}>
+        <Text variant="small" weight="semibold" tone={balance ? 'danger' : 'heading'}>Balance due</Text>
+        <Text variant="small" weight="semibold" tone={balance ? 'danger' : 'heading'} className="tabular-nums">{code} {formatAmount(balance)}</Text>
+      </div>
+    </div>
+  );
 
   return (
-    <Section icon="payments" title="Payment means">
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="flex flex-col gap-2 lg:col-span-2">
-          <Tabs
-            variant="outline"
-            value={tab}
-            onValueChange={(v) => setTab(v as MeansTab)}
-            items={(Object.keys(label) as MeansTab[]).map((t) => ({ value: t, label: label[t], badge: amountOf(t) ? formatAmount(amountOf(t)) : undefined }))}
-          />
-          {tab === 'transfer' ? (
-            <Fields>
-              <AccountField label="G/L account" role="cash" value={means.transfer.account} onChange={(account) => set({ transfer: { ...means.transfer, account } })} accounts={cashAccounts} disabled={readOnly} hint="The bank account the transfer goes out of." />
-              <TextField aria-label="Transfer amount" type="number" min={0} prefix={code} disabled={readOnly} value={String(means.transfer.amount)} onChange={(e) => set({ transfer: { ...means.transfer, amount: round2(num(e.currentTarget.value)) } })} />
-              <DatePicker aria-label="Transfer date" value={means.transfer.date || null} onValueChange={(date) => set({ transfer: { ...means.transfer, date: date ?? '' } })} />
-              <TextField aria-label="Transfer reference" placeholder="Reference, e.g. InstaPay ref. no." disabled={readOnly} value={means.transfer.reference} onChange={(e) => set({ transfer: { ...means.transfer, reference: e.currentTarget.value } })} />
-              <div className="md:col-span-2">{fillButton(() => set({ transfer: { ...means.transfer, amount: fill(means.transfer.amount) } }))}</div>
-            </Fields>
-          ) : tab === 'cash' ? (
-            <Fields>
-              <AccountField label="G/L account" role="cash" value={means.cash.account} onChange={(account) => set({ cash: { ...means.cash, account } })} accounts={cashAccounts.filter((a) => !houseBankFor(a.code))} disabled={readOnly} hint="The cash fund the money comes out of." />
-              <TextField aria-label="Cash amount" type="number" min={0} prefix={code} disabled={readOnly} value={String(means.cash.amount)} onChange={(e) => set({ cash: { ...means.cash, amount: round2(num(e.currentTarget.value)) } })} />
-              <div className="md:col-span-2">{fillButton(() => set({ cash: { ...means.cash, amount: fill(means.cash.amount) } }))}</div>
-            </Fields>
-          ) : tab === 'check' ? (
-            <DataTable
-              icon="money"
-              title="Checks"
-              description="Checks drawn on the house bank accounts. Automatic checks get the account's next number when the payment is added."
-              rows={means.checks}
-              getRowId={(c) => c.id}
-              columns={checkColumns}
-              unsortable={checkColumns.map((c) => c.key)}
-              noPagination
-              onRemove={readOnly ? undefined : (picked) => set({ checks: means.checks.filter((c) => !picked.includes(c)) })}
-              actions={
-                readOnly ? null : (
-                  <Button type="button" size="small" intent="primary" variant="solid" leadingIcon={<Icon size={16}>add</Icon>} onClick={() => set({ checks: [...means.checks, newCheckRow({ dueDate: draft.postingDate, amount: Math.max(0, balance), account: code === 'USD' ? '1018' : '1015' })] })}>
-                    Add check
-                  </Button>
-                )
-              }
-              empty={<Text variant="small" tone="muted">No checks. Add one for the balance.</Text>}
-            />
-          ) : (
-            <DataTable
-              icon="credit_card"
-              title="Credit cards"
-              description="Paid with a corporate card: credits the card's payable account until the card statement is settled."
-              rows={means.cards}
-              getRowId={(c) => c.id}
-              columns={cardColumns}
-              unsortable={cardColumns.map((c) => c.key)}
-              noPagination
-              onRemove={readOnly ? undefined : (picked) => set({ cards: means.cards.filter((c) => !picked.includes(c)) })}
-              actions={
-                readOnly ? null : (
-                  <Button type="button" size="small" intent="primary" variant="solid" leadingIcon={<Icon size={16}>add</Icon>} onClick={() => set({ cards: [...means.cards, newCardRow({ amount: Math.max(0, balance) })] })}>
-                    Add card
-                  </Button>
-                )
-              }
-              empty={<Text variant="small" tone="muted">No card payments.</Text>}
-            />
-          )}
-        </div>
-        <List.Group divider>
-          <List.Item title="Currency" content={code} />
-          <List.Item title="Overall amount" content={<span className="tabular-nums">{formatAmount(overallAmount(draft))}</span>} />
-          <List.Item
-            title="Bank charge"
-            content={<TextField aria-label="Bank charge" type="number" min={0} className="w-32" disabled={readOnly} value={String(means.bankCharge)} onChange={(e) => set({ bankCharge: round2(num(e.currentTarget.value)) })} />}
-          />
-          <List.Item title="Paid" content={<span className="tabular-nums">{formatAmount(meansTotal(means))}</span>} />
-          <List.Item
-            title={<Text as="span" weight="semibold" tone="heading">Balance due</Text>}
-            content={<Text as="span" weight="semibold" tone={balance ? 'danger' : 'heading'}>{formatAmount(balance)}</Text>}
-          />
-        </List.Group>
-      </div>
-    </Section>
+    <DataTable<MeansRow>
+      variant="plain"
+      icon="payments"
+      title="Payment means"
+      description="How the money goes out. Each method credits its own account until it clears."
+      rows={rows}
+      getRowId={(r) => r.id}
+      columns={columns}
+      unsortable={columns.map((c) => c.key)}
+      noPagination
+      cardFooter={footer}
+      actions={
+        !readOnly ? (
+          <div className="flex flex-wrap gap-1">
+            {!means.transfer.amount && (
+              <Button type="button" size="small" intent="white" variant="solid" leadingIcon={<Icon size={16}>add</Icon>} onClick={() => set({ transfer: { account: '', date: draft.postingDate, reference: '', amount: Math.max(0, balance) } })}>
+                Add transfer
+              </Button>
+            )}
+            {!means.cash.amount && (
+              <Button type="button" size="small" intent="white" variant="solid" leadingIcon={<Icon size={16}>add</Icon>} onClick={() => set({ cash: { account: '', amount: Math.max(0, balance) } })}>
+                Add cash
+              </Button>
+            )}
+            <Button type="button" size="small" intent="white" variant="solid" leadingIcon={<Icon size={16}>add</Icon>} onClick={() => set({ checks: [...means.checks, newCheckRow({ dueDate: draft.postingDate, amount: Math.max(0, balance), account: code === 'USD' ? '1018' : '1015' })] })}>
+              Add check
+            </Button>
+            <Button type="button" size="small" intent="white" variant="solid" leadingIcon={<Icon size={16}>add</Icon>} onClick={() => set({ cards: [...means.cards, newCardRow({ amount: Math.max(0, balance) })] })}>
+              Add card
+            </Button>
+          </div>
+        ) : undefined
+      }
+      empty={<Text variant="small" tone="muted">No payment means yet. Add how the money goes out.</Text>}
+    />
   );
 }

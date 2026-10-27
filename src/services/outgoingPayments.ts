@@ -50,9 +50,13 @@ export function overallAmount(p: Pick<OutgoingPayment, 'type' | 'rows' | 'onAcco
 export const meansBalance = (p: Pick<OutgoingPayment, 'type' | 'rows' | 'onAccount' | 'accountRows' | 'means'>) =>
   round2(overallAmount(p) + p.means.bankCharge - meansTotal(p.means));
 
-/** Realized exchange difference on a row in PHP: positive costs more than booked (a loss). */
+/** A row that doesn't settle a booked A/P balance: a down payment *request*, which establishes the advance now. */
 const isAdvanceRow = (r: PaymentRow) => r.docType === 'DPR' || r.docType === 'APDPI';
-export const rowFxDifference = (r: PaymentRow, fx: number) => (isAdvanceRow(r) ? 0 : round2(rowSettled(r) * (fx - r.invoiceFx)));
+/**
+ * Realized exchange difference on a row in PHP. A down payment request is paid at today's rate (no booked
+ * balance yet), so it has none; an invoice and a down payment *invoice* were booked at a rate, so they do.
+ */
+export const rowFxDifference = (r: PaymentRow, fx: number) => (r.docType === 'DPR' ? 0 : round2(rowSettled(r) * (fx - r.invoiceFx)));
 
 
 // ── Accounting ───────────────────────────────────────────────────────────────
@@ -76,9 +80,10 @@ export function paymentJournal(p: PaymentInput, fx: number, vendorAccountOf: (in
     for (const r of p.accountRows) add(r.account, round2(r.amount * fx));
   } else {
     for (const r of paidRows(p)) {
-      // An advance (DPR/APDPI) goes on the down payment account at today's rate.
-      // For APDPI the GL was already posted when the invoice was added — now we're just paying it.
-      if (isAdvanceRow(r)) add(r.account || p.controlAccount, round2(rowSettled(r) * fx));
+      // A down payment *request* establishes the advance now: Dr the down payment account at today's rate.
+      // A down payment *invoice* already posted Dr advance / Cr A/P when it was added, so paying it settles
+      // the A/P it created — Dr the control account at the rate it was booked at, like an ordinary invoice.
+      if (r.docType === 'DPR') add(r.account || p.controlAccount, round2(rowSettled(r) * fx));
       else add(vendorAccountOf(r.invoiceId) || p.controlAccount, round2(rowSettled(r) * r.invoiceFx));
       add(CASH_DISCOUNT_ACCOUNT, -round2(rowDiscount(r) * fx));
     }

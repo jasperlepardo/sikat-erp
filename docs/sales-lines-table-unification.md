@@ -42,6 +42,27 @@ Documents with a **Copy-from** flow keep a thin wrapper component (like purchasi
 `<DocLines {...xxDoc({ …, onCopyClick })} />`. The copy toolbar button lives in the doc's
 `header` slot.
 
+## Column parity with the workbook
+
+Every sales document offers the full breadth of columns the "SAP B1: Sales" field-census
+workbook lists on the line grid. **Each descriptor declares its own column list inline in its
+`pick(...)` call** — no shared column-list constants — mirroring how the purchasing descriptors
+(`poDoc`, `grDoc`, …) each spell out their columns. Beyond a doc's default columns, the inline
+list adds (all hidden, shown from the Columns menu):
+
+- **Info / catalog columns** (real registry columns): `type` (Item/Service), `name`, `uomName`,
+  `itemsPerUnit`, `inventoryUom`, `priceSource`, `priceAfterDisc`, `taxAmount` (Tax amount LC),
+  `grossTotalLc` (Gross total LC).
+- **Workbook long-tail / UDF placeholders** (read-only `placeholderCol` "—" cells, built from
+  `PARITY_FIELDS` and registered in `salesCols`): Summary Type, Row #, Distr. Rule, COGS Distr.
+  Rule, Blanket Agreement No., Allow Procmnt. Doc., Warranty, Serial No., Unit Cost Price, Price
+  for Report, Customer Description, Amount in Printout, Move row, `wWTCode`, `wVTVendor`,
+  `wTaxDefined`, `Wtax rate`, `xSupplierName`, `xAddress`, `xTINumber`, `xCardType`, and —
+  per the workbook's per-module marks — Last Cost (Quotation), Standard Item ID + Commodity
+  Classification (all but Quotation), Bin Allocation (Delivery, Sales Return, A/R Invoice, A/R
+  Credit Memo). Country of Origin is on every doc, rendering a real picker where the doc binds
+  `country` (Sales Return) and a placeholder elsewhere.
+
 ## Two patterns worth noting
 
 - **Service lines (invoices).** An invoice in `docType === 'Service'` has lines with no item

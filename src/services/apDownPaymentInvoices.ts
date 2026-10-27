@@ -8,11 +8,12 @@ import { rateAt, vatNotPaidToVendor, type TaxCode } from '../mocks/taxes';
 import { dpiSeries, seriesLookup, formatDocNum } from './allSeries';
 import { todayISO } from './dates';
 import { poTotals } from './purchaseOrders';
+import { purchasingHistory } from './purchasingHistory';
 import { createCollection } from './store';
 import { round2 } from './num';
 import type { JournalLine } from './inventoryTransfers';
 
-const invoices = createCollection<DownPaymentInvoice>('sikat-erp:ap-down-payment-invoices', () => [], 'dpi', { audit: 'APDPI' });
+const invoices = createCollection<DownPaymentInvoice>('sikat-erp:ap-down-payment-invoices', () => purchasingHistory().downPaymentInvoices, 'dpi', { audit: 'APDPI' });
 
 export const listDownPaymentInvoices = invoices.list;
 export async function getDownPaymentInvoice(idOrNumber: string) {

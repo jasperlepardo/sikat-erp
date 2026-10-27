@@ -38,6 +38,7 @@ import { SALES_MONTHS } from '../mocks/storeSales';
 import { SEED_AS_OF } from '../mocks/supplyPlan';
 import { SEED_COMPANY_TAX, SEED_TAX_CODES, SEED_TAX_GROUPS, SEED_WITHHOLDING, SEED_WITHHOLDING_GROUPS, rateAt } from '../mocks/taxes';
 import { memoJournal } from './apCreditMemos';
+import { dpiJournal } from './apDownPaymentInvoices';
 import { apJournal } from './apInvoices';
 import { arCmJournal } from './arCreditMemos';
 import { arJournal, arWithholding } from './arInvoices';
@@ -144,7 +145,13 @@ function build(): Ledger {
       partnerId: inv.vendorId, controlAccount: inv.controlAccount, lines: apJournal(inv, inv.fxRate || 1, { itemsById, groups, codes, rateOf: rateOf(inv.postingDate), withholding }),
     });
   }
-  const billAccount = new Map([...H.invoices, ...H.downPayments].map((b) => [b.id, b.controlAccount]));
+  // A down payment *invoice* posts on its own when added: Dr Advances to Suppliers / Cr A/P Control.
+  for (const d of H.downPaymentInvoices.filter((x) => posted(x.status)))
+    doc({
+      id: `je-dpi-${d.id}`, date: d.postingDate, origin: 'PU', originNo: String(d.docNum), originId: d.id, dueDate: d.dueDate, remarks: d.journalRemark,
+      partnerId: d.vendorId, controlAccount: d.controlAccount, lines: dpiJournal(d, d.fxRate || 1, rateOf(d.postingDate)),
+    });
+  const billAccount = new Map([...H.invoices, ...H.downPayments, ...H.downPaymentInvoices].map((b) => [b.id, b.controlAccount]));
   for (const p of H.payments.filter((x) => posted(x.status)))
     doc({
       id: `je-ps-${p.id}`, date: p.postingDate, origin: 'PS', originNo: String(p.docNum), originId: p.id, remarks: p.journalRemark,

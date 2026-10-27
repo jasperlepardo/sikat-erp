@@ -6,6 +6,7 @@ import { lineHelpers, itemConfig } from '../../../shared/salesLineHelpers';
 import { itemsPerUom } from '../../../../../mocks/items';
 import { newArCmLine, type ArCmLine } from '../../../../../mocks/arCreditMemos';
 import { formatAmount } from '../../../../../services/format';
+import { round2 } from '../../../../../services/num';
 import { lineNet, lineTax, priceAfterDiscount } from '../../../../../services/salesOrders';
 import { warehouseOptions } from '../../../../inventory/transfers/TransferLines';
 import { editTaxCode } from '../../../../../services/taxRecalc';
@@ -48,6 +49,9 @@ export function arCmDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy }:
     currency: draft.currency,
     fx: ctx.fx,
     invalid: (l, f) => Boolean(err(l, f)),
+    lineKind: (l) => { const it = itemOf(l); return it ? (it.inventoryItem ? 'Item' : 'Service') : ''; },
+    itemName: (l) => itemOf(l)?.name ?? '',
+    taxAmount: taxOf,
     qty: (l) => l.quantity,
     onQty: (l, quantity) => patch(l.id, { quantity }),
     uomValue: (l) => l.uomCode,
@@ -61,6 +65,10 @@ export function arCmDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy }:
     onDiscount: (l, v) => patch(l.id, { discountPct: v, priceSource: 'Manual' }),
     priceAfterDisc: priceAfterDiscount,
     priceSourceLabel: (l) => l.priceSource || '—',
+    gross: {
+      get: (l) => round2(l.unitPrice * (1 - l.discountPct / 100) * (1 + ctx.rateOf(l.taxCode) / 100)),
+      onChange: (l, g) => { const netp = g / (1 + ctx.rateOf(l.taxCode) / 100); patch(l.id, { unitPrice: round2(l.discountPct < 100 ? netp / (1 - l.discountPct / 100) : netp), priceSource: 'Manual' }); },
+    },
     priceListValue: (l) => l.priceListId,
     changePriceList: (l, id) => patch(l.id, { priceListId: id }),
     lineNet,
@@ -95,8 +103,18 @@ export function arCmDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy }:
   });
 
   const columns = pick(cols, [
-    ['qty', 'always'], ['stockPutBack', 'always'], ['warehouse', 'hide'], ['pricing', 'always'],
+    ['qty', 'always'], ['stockPutBack', 'always'], ['warehouse', 'hide'], ['pricing', 'always'], ['gross', 'hide'],
     ['tax', 'hide'], ['total', 'always'], ['returnReason', 'hide'], ['baseDoc', 'hide'],
+    // Info / catalog columns (hidden).
+    ['type', 'hide'], ['name', 'hide'], ['uomName', 'hide'], ['itemsPerUnit', 'hide'], ['inventoryUom', 'hide'],
+    ['priceSource', 'hide'], ['priceAfterDisc', 'hide'], ['taxAmount', 'hide'], ['grossTotalLc', 'hide'],
+    // SAP workbook long-tail / UDF placeholders (hidden) — row-for-row parity.
+    ['summaryType', 'hide'], ['rowNo', 'hide'], ['distrRule', 'hide'], ['cogsDistrRule', 'hide'],
+    ['blanketAgreementNo', 'hide'], ['allowProcmnt', 'hide'], ['warranty', 'hide'], ['serialNo', 'hide'],
+    ['unitCostPrice', 'hide'], ['priceForReport', 'hide'], ['customerDescription', 'hide'], ['amountInPrintout', 'hide'],
+    ['moveRow', 'hide'], ['wWTCode', 'hide'], ['wVTVendor', 'hide'], ['wTaxDefined', 'hide'], ['wtaxRate', 'hide'],
+    ['xSupplierName', 'hide'], ['xAddress', 'hide'], ['xTINumber', 'hide'], ['xCardType', 'hide'], ['countryOfOrigin', 'hide'],
+    ['standardItemId', 'hide'], ['commodityClass', 'hide'], ['binAllocation', 'hide'],
   ]);
 
   return {

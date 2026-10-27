@@ -15,6 +15,10 @@ export type SalesLineLike = {
   description: string;
   uomCode: string;
   uomName: string;
+  /** Inventory units in one line unit — info columns ("Items per unit", "Inventory UoM"). */
+  itemsPerUnit: number;
+  /** What set the price: a list name, "Manual", an agreement — the "Price source" column. */
+  priceSource: string;
 };
 
 interface LineDeps<T extends SalesLineLike> {
