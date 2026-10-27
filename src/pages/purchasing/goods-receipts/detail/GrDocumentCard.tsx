@@ -23,7 +23,7 @@ export function GrDocumentCard({ draft, update, errors, ctx, statusMoves }: GrDo
               {() => (
                 <div className="flex gap-1">
                   <Select aria-label="Series" className="w-40" options={GR_SERIES.map((s) => ({ value: s.id, label: s.name }))} value={draft.seriesId} onValueChange={(seriesId) => update({ seriesId })} />
-                  <span className="flex-1 self-center text-sm">{draft.docNum ? grNumber(draft) : <span className="text-(--color-text-placeholder)">Next number</span>}</span>
+                  <span className="flex-1 self-center text-sm">{draft.docNum ? grNumber(draft) : <span className="text-placeholder">Next number</span>}</span>
                 </div>
               )}
             </CtxFormField>

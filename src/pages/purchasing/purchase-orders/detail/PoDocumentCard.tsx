@@ -41,7 +41,7 @@ export function PoDocumentCard({ draft, update, errors, ctx, transitions }: Docu
                 />
                 {series.manual
                   ? <TextField {...p} className="flex-1" type="number" placeholder="PO number" value={draft.docNum ? String(draft.docNum) : ''} onChange={(e) => update({ docNum: Number(e.currentTarget.value) })} />
-                  : <span className="flex-1 self-center text-sm">{draft.docNum ? poNumber(draft) : <span className="text-(--color-text-placeholder)">Next number</span>}</span>
+                  : <span className="flex-1 self-center text-sm">{draft.docNum ? poNumber(draft) : <span className="text-placeholder">Next number</span>}</span>
                 }
               </div>
             )}

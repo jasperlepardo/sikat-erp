@@ -50,7 +50,7 @@ export function RfqDocumentCard({ draft, update, errors, ctx, transitions }: Doc
                   />
                 ) : (
                   <span className="flex-1 self-center text-sm">
-                    {draft.docNum ? rfqNumber(draft) : <span className="text-(--color-text-placeholder)">Next number</span>}
+                    {draft.docNum ? rfqNumber(draft) : <span className="text-placeholder">Next number</span>}
                   </span>
                 )}
               </div>

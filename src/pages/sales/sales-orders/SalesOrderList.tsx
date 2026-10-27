@@ -96,7 +96,7 @@ export function SalesOrderList() {
         const open = so.lines.filter((l) => openQty(l) > 0);
         const total = open.reduce((n, l) => n + openQty(l), 0).toLocaleString('en-PH');
         // Nothing open (delivered, cancelled or closed): a muted dash, so open orders stand out.
-        if (!open.length) return <span className="text-(--color-text-caption)">-</span>;
+        if (!open.length) return <span className="text-caption">-</span>;
         // Hover the quantity to see what's still open, line by line.
         return (
           <Tooltip

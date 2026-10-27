@@ -137,7 +137,7 @@ export function SalesReturnsList({ kind }: { kind: Kind }) {
       header: 'Applied',
       align: 'end',
       // Nothing applied yet: a muted dash, so applied memos stand out.
-      cell: (r) => (r.applied ? `${r.currency} ${formatAmount(r.applied)}` : <span className="text-(--color-text-caption)">-</span>),
+      cell: (r) => (r.applied ? `${r.currency} ${formatAmount(r.applied)}` : <span className="text-caption">-</span>),
     },
     { key: 'status', header: 'Status', sortable: true, cell: (r) => <TableStatus intent={intent[r.status]}>{r.status}</TableStatus> },
   ];

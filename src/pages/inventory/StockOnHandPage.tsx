@@ -54,13 +54,13 @@ interface Row {
 const numHeader = (label: string) => <span className="table-num">{label}</span>;
 const num = (content: ReactNode) => <div className="table-num gap-1">{content}</div>;
 /** A unit or currency beside a number, styled like a field's prefix/suffix. */
-const affix = (text: string) => <span className="text-(--color-text-caption)">{text}</span>;
+const affix = (text: string) => <span className="text-caption">{text}</span>;
 
 /** The item's full variant name, e.g. "AirTag, 1 pack". */
 const itemName = (item: Item) => item.description || item.name;
 
 /** A zero in a table cell: a muted dash, so the figures that matter stand out. */
-const DASH = <span className="text-(--color-text-caption)">-</span>;
+const DASH = <span className="text-caption">-</span>;
 
 const ITEMS_PATH = '/inventory/items';
 const ALL_GROUPS = '';

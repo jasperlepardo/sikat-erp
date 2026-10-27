@@ -102,7 +102,7 @@ export function DeliveryList() {
       cell: (so) => {
         const shipped = so.lines.filter((l) => l.quantity > 0);
         // Nothing shipped: a muted dash, so deliveries with stock on them stand out.
-        if (!shipped.length) return <span className="text-(--color-text-caption)">-</span>;
+        if (!shipped.length) return <span className="text-caption">-</span>;
         // Hover the quantity to see what was shipped, line by line, and the order it came from.
         return (
           <Tooltip

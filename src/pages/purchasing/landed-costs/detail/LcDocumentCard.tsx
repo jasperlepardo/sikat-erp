@@ -29,7 +29,7 @@ export function LcDocumentCard({ draft, update, errors, statusMoves, readOnly }:
                 onValueChange={(seriesId) => update({ seriesId })}
               />
               <span className="flex-1 self-center text-sm">
-                {draft.docNum ? lcNumber(draft) : <span className="text-(--color-text-placeholder)">Next number</span>}
+                {draft.docNum ? lcNumber(draft) : <span className="text-placeholder">Next number</span>}
               </span>
             </div>
           )}
