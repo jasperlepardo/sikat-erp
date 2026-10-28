@@ -4,15 +4,16 @@ import { useLocation, useNavigate, useParams } from 'react-router';
 import {
   Alert,
   Badge,
-  Button,
   Form,
   Panel,
-  PanelHeader,
   Tabs,
   Text,
 } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../../components/form/PageHeader';
 import { type Errors } from '../../../components/form/fields';
-import { MoreMenu, type MoreMenuItem } from '../../../components/form/MoreMenu';
+import { type MoreMenuItem } from '../../../components/form/MoreMenu';
+import { DetailActions, docMode } from '../../../components/form/DetailActions';
+import { isApprover, needsApproval } from '../../../services/approval';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../components/form/ProblemsAlert';
 import { formatAddress } from '../../../mocks/address';
 import { blankCreditMemo, type ApCreditMemo, type MemoLine, type MemoStatus } from '../../../mocks/apCreditMemos';
@@ -48,7 +49,7 @@ import { formatAmount } from '../../../services/format';
 import { creditableReturns, returnNumber, returnOpenQty } from '../../../services/goodsReturns';
 import { isValidToday } from '../../../services/items';
 import { postDocumentEntry, reverseDocumentEntry } from '../../../services/journalEntries';
-import { dueDateFor, getPurchasingSettings } from '../../../services/purchaseOrders';
+import { dueDateFor } from '../../../services/purchaseOrders';
 import { docWithholding } from '../../../services/withholding';
 import { buildGrContext } from '../goods-receipts/detail/types';
 import { CopyPanel } from '../shared/CopyPanel';
@@ -56,7 +57,7 @@ import { invoiceBalance } from '../payments-made/detail/types';
 import { loadRetMasters, vendorAddressOptions, type RetMasters, memoFromInvoice, memoFromReturn } from '../shared/returnsTypes';
 import { memoDoc } from './detail/memoDoc';
 import { DocLines } from '../../../components/form/docLines/DocLines';
-import { neighbours, NotFound, PrevNext, siblingKeys, useDocTab, useReject } from '../../../components/form/DetailNav';
+import { neighbours, NotFound, siblingKeys, useDocTab, useReject } from '../../../components/form/DetailNav';
 import { DocumentFlow } from '../shared/DocumentFlow';
 import { ActivityTab } from '../../../components/activity/ActivityTab';
 import { useDocTitle } from '../../../services/useDocTitle';
@@ -70,7 +71,7 @@ import { CmLogisticsCard } from './detail/CmLogisticsCard';
 import { CmAccountingCard } from './detail/CmAccountingCard';
 import { ReferencesTable } from '../shared/ReferencesTable';
 import { AttachmentsCard } from '../../../components/form/AttachmentsCard';
-import { MEMO_LIST_PATH, MEMO_STATUS_INTENT, RETURN_LIST_PATH } from '../paths';
+import { MEMO_LIST_PATH, MEMO_NOUN, MEMO_STATUS_INTENT } from '../paths';
 import { round2 } from '../../../services/num';
 
 type Draft = Omit<ApCreditMemo, 'id'> & { id?: string };
@@ -138,7 +139,7 @@ function CreditMemoForm() {
   const location = useLocation();
   const state = location.state as { fromInvoice?: string; fromReturn?: string } | null;
 
-  const cmApproved = !getPurchasingSettings().requireApCreditMemoApproval;
+  const cmApproved = !needsApproval('CM');
   const [draft, setDraft] = useState<Draft | null | undefined>(isNew ? { ...blankCreditMemo(todayISO(), CURRENT_USER_ID), approved: cmApproved } : undefined);
   const [m, setM] = useState<RetMasters>();
   const [siblings, setSiblings] = useState<string[]>([]);
@@ -175,7 +176,7 @@ function CreditMemoForm() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, isNew]);
 
-  useDocTitle(draft?.docNum ? (isNew ? 'New A/P credit memo' : memoNumber(draft)) : undefined);
+  useDocTitle(draft?.docNum ? (isNew ? `New ${MEMO_NOUN.one}` : draft.status !== 'Draft' ? memoNumber(draft) : `Draft ${MEMO_NOUN.one}`) : undefined);
   if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading A/P credit memo…</Text>;
   if (draft === null) return <NotFound icon="receipt" title="A/P credit memo not found" backTo={MEMO_LIST_PATH} backLabel="Back to credit memos" />;
 
@@ -221,7 +222,8 @@ function CreditMemoForm() {
 
   const submit = async (e: FormEvent | null, asDraft = false, overrides: Partial<Draft> = {}) => {
     e?.preventDefault();
-    if (added) {
+    // Added: only remarks and attachments save, unless this is approving it (which posts it).
+    if (added && !overrides.approved) {
       setSaving(true);
       try {
         const saved = await saveMemoRemarks(draft as ApCreditMemo, { remarks: draft.remarks, paymentBlock: draft.paymentBlock, paymentOrderRun: draft.paymentOrderRun });
@@ -270,7 +272,6 @@ function CreditMemoForm() {
   };
 
   const saved = draft as ApCreditMemo;
-  const bases = [...new Map(draft.lines.filter((l) => l.baseType).map((l) => [l.baseId, l])).values()];
   const openInvoices = draft.vendorId ? m.invoices.filter((i) => i.vendorId === draft.vendorId && i.status === 'Open' && i.currency === code).map((inv) => ({ inv, ...balanceOf(inv) })).filter((x) => x.balanceDue > 0) : [];
   const cancelIt = async () => {
     try {
@@ -287,21 +288,14 @@ function CreditMemoForm() {
   const statusMoves: Partial<Record<MemoStatus, () => void>> = draft.status === 'Draft' ? (draft.approved ? { Open: () => submit(null) } : { 'Not Confirmed': () => submit(null) }) : draft.status === 'Not Confirmed' ? { Open: () => submit(null, false, { approved: true }) } : draft.status === 'Open' || draft.status === 'Closed' ? { Cancelled: cancelIt } : {};
 
   const menu: MoreMenuItem[] = [
-    ...(!added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
-    ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => reject.start() }] : []),
     ...(draft.status === 'Open' && openBalance > 0 && openInvoices.length ? [{ label: 'Apply credit to an invoice', icon: 'request_quote', onSelect: () => setApplying(true) }] : []),
+    ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }] : []),
     ...(draft.status === 'Open' || draft.status === 'Closed'
-      ? [{ label: 'Cancel credit memo', icon: 'cancel', onSelect: cancelIt }]
+      ? [{ label: `Cancel ${MEMO_NOUN.one}`, icon: 'cancel', onSelect: cancelIt }]
       : []),
-    ...bases.map((l) => ({
-      label: `Open ${l.baseType === 'GRET' ? 'goods return' : 'A/P invoice'} ${l.baseDocNo}`,
-      icon: l.baseType === 'GRET' ? 'assignment_return' : 'request_quote',
-      onSelect: () => navigate(l.baseType === 'GRET' ? `${RETURN_LIST_PATH}/${l.baseId}` : `/purchasing/vendor-invoices/${l.baseId}`),
-    })),
-    ...(vendor ? [{ label: `Open vendor ${vendor.code}`, icon: 'local_shipping', onSelect: () => navigate(`/purchasing/vendors/${vendor.id}`) }] : []),
   ];
 
-  const title = isNew ? 'New A/P credit memo' : added ? memoNumber(draft) : 'Draft A/P credit memo';
+  const title = isNew ? `New ${MEMO_NOUN.one}` : added ? memoNumber(draft) : `Draft ${MEMO_NOUN.one}`;
   const addressOptions = vendorAddressOptions(vendor);
   const currencyTooltip = ctx.based ? `Locked to the base documents' currency; credited at ${baseInvoice ? `invoice ${apNumber(baseInvoice)}'s rate (${baseInvoice.fxRate})` : 'the posting date rate'}.` : undefined;
   const sectionProps = { draft, update, errors, m, ctx };
@@ -310,26 +304,28 @@ function CreditMemoForm() {
     <>
       <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
         <Panel className="flex-1">
-          <PanelHeader
-            type="details"
+          <PageHeader
+            variant="plain"
             icon="receipt"
-            iconIntent="default"
-            iconShape="rounded"
-            iconSize={32} iconVariant="outline"
-            breadcrumbs={[{ label: 'A/P Credit Memos', href: MEMO_LIST_PATH }, { label: title }]}
-            onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
-            onBack={() => navigate(MEMO_LIST_PATH)}
-            trailing={isNew ? undefined : <PrevNext path={MEMO_LIST_PATH} prevId={prevId} nextId={nextId} />}
+            parent={{ noun: MEMO_NOUN, to: MEMO_LIST_PATH }}
+            title={title}
             status={isNew ? undefined : <Badge size="small" intent={MEMO_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
             tabs={isNew ? undefined : <Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={PAGES.map((p) => ({ ...p }))} />}
             actions={
-              <>
-                {added ? null : <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(MEMO_LIST_PATH)}>Cancel</Button>}
-                {menu.length ? <MoreMenu items={menu} /> : null}
-                <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
-                  {saving ? 'Saving…' : added ? 'Save' : 'Add'}
-                </Button>
-              </>
+              <DetailActions
+                noun={MEMO_NOUN}
+                listPath={MEMO_LIST_PATH}
+                mode={docMode(draft.status, { canApprove: isApprover('CM') })}
+                needsApproval={!draft.approved}
+                remarksOnly={added}
+                busy={saving}
+                onDraft={() => submit(null, true)}
+                onSubmit={() => submit(null)}
+                onApprove={() => submit(null, false, { approved: true })}
+                onReject={reject.start}
+                menu={menu}
+                prevNext={isNew ? undefined : { path: MEMO_LIST_PATH, prevId, nextId }}
+              />
             }
           />
           {page === 'transactions' && draft.id ? (
@@ -347,7 +343,7 @@ function CreditMemoForm() {
               {added ? (
                 <Alert intent="default" variant="outline" title={draft.status === 'Open' ? `${code} ${formatAmount(openBalance)} of credit left to apply` : `This credit memo is ${draft.status.toLowerCase()}`}>
                   {draft.status === 'Open'
-                    ? 'Apply it to another open invoice of this vendor with You can also › Apply credit to an invoice. Only remarks, the payment block and the payment run flag can change.'
+                    ? 'Apply it to another open invoice of this vendor with More actions › Apply credit to an invoice. Only remarks, the payment block and the payment run flag can change.'
                     : 'Only remarks can change.'}
                 </Alert>
               ) : null}

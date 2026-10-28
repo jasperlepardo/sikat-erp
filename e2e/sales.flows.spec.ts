@@ -21,13 +21,13 @@ import { open, rawIds, screenText, watchErrors } from './helpers';
 test.use({ trace: 'off' });
 
 /**
- * Open the "You can also" header menu, then select one of its items by label. The design system's
+ * Open the ⋯ ("More actions") header menu, then select one of its items by label. The design system's
  * DropdownItem is a plain row (no `menuitem` role) that fires `onSelect` on `mousedown` with
  * `preventDefault`, which makes Playwright's full `.click()` sequence hang intermittently (the menu
  * unmounts mid-click). Dispatch `mousedown` directly instead — that is what triggers the action.
  */
 async function pickAction(page: Page, label: string) {
-  await page.getByRole('button', { name: 'You can also' }).click();
+  await page.getByRole('button', { name: 'More actions' }).click();
   const menu = page.locator('[role="menu"]');
   await expect(menu).toBeVisible();
   const item = menu.getByText(label, { exact: true });
@@ -36,13 +36,13 @@ async function pickAction(page: Page, label: string) {
 }
 
 /**
- * Click the "Add" button to post a new document. Some forms show a "Check before saving" warning on
- * the first Add (duplicate customer ref, over credit limit) and stay on /new; a second Add saves
+ * Click the primary "Create <document>" button to post a new document. Some forms show a "Check before saving" warning on
+ * the first press (duplicate customer ref, over credit limit) and stay on /new; a second press saves
  * anyway. `leaves` is the list-URL pattern the save navigates to. Waits for either outcome rather
  * than reading the URL synchronously (hash navigation isn't instant after the click).
  */
 async function postNew(page: Page, leaves: RegExp) {
-  const add = page.getByRole('button', { name: 'Add', exact: true });
+  const add = page.getByRole('button', { name: /^Create / });
   const warning = page.getByText('Check before saving');
   await add.click();
   // Wait until the form either navigates away (saved) or raises the warning (still on /new). Posting
@@ -81,7 +81,7 @@ test.describe('sales workflows', () => {
   // a fresh browser context (empty localStorage → seed data), so the seed anchors stay independent.
   test.describe.configure({ mode: 'serial' });
 
-  // US-SAL-021 / US-SAL-032: a "Copy to Sales Order" (here "Create sales order") on an Open quotation
+  // US-SAL-021 / US-SAL-032: a "Create Sales Order" (here "Create sales order") on an Open quotation
   // pre-fills a new order from the quotation; closing the quotation then closes it.
   //
   // REAL UI BUG (reported, not worked around) — SKIPPED until it's fixed. The sales quotation detail
@@ -109,11 +109,11 @@ test.describe('sales workflows', () => {
     // need per-line warehouse entry; the "quotation closes" step below is the full outcome.)
     await expect.poll(() => screenText(page), { timeout: 10_000 }).toContain('Based on quotation');
     await expect.poll(() => screenText(page), { timeout: 10_000 }).toContain('Northgate Prime Malls');
-    await expect(page.getByRole('button', { name: 'Add', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Create sales order', exact: true })).toBeVisible();
 
     // Close the quotation from its own menu; it lands on the quotations list with a "closed" notice.
     await open(page, 'sales/quotations/qt-007');
-    await pickAction(page, 'Close quotation');
+    await pickAction(page, 'Close');
     await expect(page).toHaveURL(/sales\/quotations$/);
     await expect(notice(page)).toContainText('closed');
 
@@ -123,7 +123,7 @@ test.describe('sales workflows', () => {
     expect(errors).toEqual([]);
   });
 
-  // US-SAL-032 / US-SAL-050: "Copy to delivery" from an Open order ships its open lines; posting the
+  // US-SAL-032 / US-SAL-050: "Create delivery" from an Open order ships its open lines; posting the
   // delivery moves the delivered qty on the order. We ship a partial 1 unit (runtime stock in WH-001
   // is limited), so the order stays Open with its delivered qty raised and the new delivery linked.
   // The "fully delivered → order closes" branch depends on having full stock on hand, which isn't
@@ -132,7 +132,7 @@ test.describe('sales workflows', () => {
     const errors = watchErrors(page);
 
     await openStatus(page, 'sales/sales-orders/so-006', 'Open');
-    await pickAction(page, 'Copy to delivery');
+    await pickAction(page, 'Create delivery');
 
     await expect(page).toHaveURL(/sales\/deliveries\/new/);
     await waitLoaded(page);
@@ -152,12 +152,12 @@ test.describe('sales workflows', () => {
     expect(errors).toEqual([]);
   });
 
-  // US-SAL-060: "Copy to A/R invoice" from an Open delivery lands on the A/R invoice form, pre-filled.
+  // US-SAL-060: "Create A/R invoice" from an Open delivery lands on the A/R invoice form, pre-filled.
   // (Was a dead route: the delivery/SO copy actions navigated to the unregistered /sales/invoices/new;
   // fixed to /sales/customer-invoices/new, which the ArInvoiceDetail resolves with the fromDelivery state.)
   test('delivery → A/R invoice opens the pre-filled form @US-SAL-060', async ({ page }) => {
     await openStatus(page, 'sales/deliveries/dn-c05', 'Open');
-    await pickAction(page, 'Copy to A/R invoice');
+    await pickAction(page, 'Create A/R invoice');
     await expect(page).toHaveURL(/sales\/customer-invoices\/new/);
     await expect(page.getByText('Coming soon')).toHaveCount(0);
   });
@@ -187,7 +187,7 @@ test.describe('sales workflows', () => {
     await page.getByRole('option', { name: /Cash on Hand – Store Collections/ }).click();
     // The means footer shows "Balance" (PHP 0.00 difference) once the cash covers the amount due.
     await expect(page.getByText('Balance', { exact: true })).toBeVisible({ timeout: 10_000 });
-    await page.getByRole('button', { name: 'Add', exact: true }).click();
+    await page.getByRole('button', { name: 'Create incoming payment', exact: true }).click();
 
     await expect(page).toHaveURL(/sales\/incoming-payments$/);
     await expect(notice(page)).toContainText('added');
@@ -219,7 +219,7 @@ test.describe('sales workflows', () => {
     const errors = watchErrors(page);
 
     await openStatus(page, 'sales/customer-invoices/ar-c03', 'Open');
-    await pickAction(page, 'Copy to A/R credit memo');
+    await pickAction(page, 'Create A/R credit memo');
 
     await expect(page).toHaveURL(/sales\/credit-memos\/new/);
     await waitLoaded(page);
@@ -247,7 +247,7 @@ test.describe('sales workflows', () => {
 
     // dn-c05 is the Open seed delivery. Copy it to a sales return.
     await open(page, 'sales/deliveries/dn-c05');
-    await pickAction(page, 'Copy to sales return');
+    await pickAction(page, 'Create sales return');
     await expect(page).toHaveURL(/sales\/sales-returns\/new/);
     await waitLoaded(page);
     // The return is pre-filled from the delivery: the delivery's line item is copied onto it.
@@ -259,7 +259,7 @@ test.describe('sales workflows', () => {
     await page.getByRole('link', { name: /SRT-2026/ }).first().click();
     await expect(page).toHaveURL(/sales\/sales-returns\/(sr-|SRT-2026)/);
     await waitLoaded(page);
-    await pickAction(page, 'Copy to A/R credit memo');
+    await pickAction(page, 'Create A/R credit memo');
     await expect(page).toHaveURL(/sales\/credit-memos\/new/);
     await waitLoaded(page);
     // The credit memo's line is copied from the return (the returned item carries over).

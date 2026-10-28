@@ -1,4 +1,5 @@
-import { Alert, Button, ButtonGroup, IconButton, Panel, PanelHeader, TextField, panelHeaderIcons } from '@jasperlepardo/sikat-design-system';
+import { Alert, Button, ButtonGroup, IconButton, Panel, TextField, panelHeaderIcons } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from './PageHeader';
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 
@@ -80,7 +81,7 @@ export function NotFound({ icon, title, backTo, backLabel }: { icon: string; tit
   const navigate = useNavigate();
   return (
     <Panel className="flex-1">
-      <PanelHeader icon={icon} iconIntent="default" iconShape="rounded" iconSize={32} iconVariant="outline" title={title} />
+      <PageHeader icon={icon} title={title} />
       <Panel.Body>
         <Button onClick={() => navigate(backTo)}>{backLabel}</Button>
       </Panel.Body>

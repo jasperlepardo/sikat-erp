@@ -1,17 +1,15 @@
 import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router';
 import {
-  Button,
   Card,
-  Icon,
   Panel,
-  PanelHeader,
   Table,
   TableContent,
   TableStatus,
   Text,
   type TableColumn,
 } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../components/form/PageHeader';
+import { cap } from '../../components/form/noun';
 import type { Employee } from '../../mocks/employees';
 import { employeeName, employeeNameOf, employees } from '../../services/employees';
 import { nameIn } from '../../services/partnerMasters';
@@ -22,7 +20,7 @@ import { EMPTY_FILTER, oneRule } from '../../components/filter/engine';
 import { choiceField, textField } from '../../components/filter/fieldKit';
 import { useListPresets } from '../../components/filter/useListPresets';
 import type { BuiltInView } from '../../components/filter/useListViews';
-import { EMPLOYEES_PATH } from './paths';
+import { EMPLOYEES_PATH, EMPLOYEE_NOUN } from './paths';
 
 const initials = (e: Employee) => `${e.firstName[0] ?? ''}${e.lastName[0] ?? ''}`.toUpperCase();
 const name = (list: Parameters<typeof nameIn>[0], id: string) => (id ? nameIn(list, id) : '');
@@ -55,7 +53,6 @@ function sortValue(e: Employee, key: string): string {
 
 /** People › Employees: Employee Master Data. */
 export function EmployeeList() {
-  const navigate = useNavigate();
   const loaded = useCollection(employees);
   const all = useMemo(() => [...(loaded ?? [])], [loaded]);
   // The lookups below read these lists; subscribing re-renders the table after a rename in Settings.
@@ -127,11 +124,8 @@ export function EmployeeList() {
 
   return (
     <Panel className="flex-1">
-      <PanelHeader
+      <PageHeader
         icon="badge"
-        iconIntent="default"
-        iconShape="rounded"
-        iconSize={32} iconVariant="outline"
         title={presets.menu}
         showSearch
         searchLabel="Search employees"
@@ -141,25 +135,14 @@ export function EmployeeList() {
           setQuery(value);
           resetPage();
         }}
-        actions={
-          <Button
-            intent="primary"
-            variant="solid"
-            size="medium"
-            shape="pill"
-            leadingIcon={<Icon size={20}>add</Icon>}
-            onClick={() => navigate(`${EMPLOYEES_PATH}/new`)}
-          >
-            New employee
-          </Button>
-        }
+        create={{ noun: EMPLOYEE_NOUN, to: EMPLOYEES_PATH }}
       />
       <Panel.Body className="flex flex-col gap-2">
         {presets.bar(null)}
         <Card className={fillCardClass(onPage.length)}>
           {loaded ? (
             <Table
-              caption="Employees"
+              caption={cap(EMPLOYEE_NOUN.many)}
               columns={columns}
               rows={onPage}
               getRowId={(e) => e.id}

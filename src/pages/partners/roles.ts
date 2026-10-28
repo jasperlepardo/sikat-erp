@@ -1,3 +1,4 @@
+import type { Noun } from '../../components/form/noun';
 import type { LeadStage, PartnerRole } from '../../mocks/partners';
 
 /** How each business partner role presents itself: which hub owns it and what it's called. */
@@ -42,6 +43,12 @@ export const MASTER_CONFIG = {
 };
 
 export const scopeConfig = (scope: PartnerScope) => (scope === 'all' ? MASTER_CONFIG : ROLE_CONFIG[scope]);
+
+/** A partner screen's noun, for its header labels ("New customer", "Customers"). */
+export const scopeNoun = (scope: PartnerScope): Noun => {
+  const config = scopeConfig(scope);
+  return { one: config.singular.toLowerCase(), many: config.title.toLowerCase() };
+};
 
 export const STAGE_INTENT: Record<LeadStage, 'default' | 'primary' | 'success' | 'danger'> = {
   New: 'default',

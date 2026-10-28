@@ -4,7 +4,6 @@ import {
   Card,
   Combobox,
   Panel,
-  PanelHeader,
   Select,
   Table,
   TableContent,
@@ -12,6 +11,7 @@ import {
   Text,
   type TableColumn,
 } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../components/form/PageHeader';
 import type { Item } from '../../mocks/items';
 import { formatAmount } from '../../services/format';
 import { itemGroupName, loadInventoryMasters } from '../../services/inventoryMasters';
@@ -235,11 +235,8 @@ export function StockOnHandPage() {
 
   return (
     <Panel className="flex-1">
-      <PanelHeader
+      <PageHeader
         icon="inventory"
-        iconIntent="default"
-        iconShape="rounded"
-        iconSize={32} iconVariant="outline"
         title={presets.menu}
         showSearch
         searchLabel="Search stock"

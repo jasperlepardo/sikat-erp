@@ -1,4 +1,5 @@
-import { Panel, PanelHeader } from '@jasperlepardo/sikat-design-system';
+import { Panel } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../components/form/PageHeader';
 import { FieldStack, ReadOnly, Section, bind } from '../../components/form/fields';
 import { useCollection } from '../../components/form/MasterLookup';
 import { useCurrentCompany } from '../../services/companies';
@@ -18,7 +19,7 @@ export function PreferencesPage() {
 
   return (
     <Panel className="flex-1">
-      <PanelHeader icon="tune" iconIntent="default" iconShape="rounded" iconSize={32} iconVariant="outline" title="Preferences" />
+      <PageHeader icon="tune" title="Preferences" />
       <Panel.Body className="flex flex-col gap-2">
         <Section icon="calendar_month" title="Dates and times">
           <FieldStack>

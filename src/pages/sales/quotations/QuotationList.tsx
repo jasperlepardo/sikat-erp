@@ -1,12 +1,9 @@
 import { useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router';
+import { useLocation } from 'react-router';
 import {
   Alert,
   Badge,
-  Button,
-  Icon,
   Panel,
-  PanelHeader,
   Table,
   TableContent,
   TableStatus,
@@ -16,16 +13,17 @@ import {
 import { dateField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { useListPage } from '../../../components/form/DataTable';
+import { PageHeader } from '../../../components/form/PageHeader';
+import { cap } from '../../../components/form/noun';
 import { QUOTATION_STATUSES, type Quotation } from '../../../mocks/quotations';
 import { formatDate, todayISO } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
 import { taxCodes } from '../../../services/masterData';
 import { listQuotations, qtNumber, qtTotal } from '../../../services/quotations';
 import { useAsync } from '../../../services/useAsync';
-import { QT_LIST_PATH, QT_STATUS_INTENT } from '../paths';
+import { QT_LIST_PATH, QT_NOUN, QT_STATUS_INTENT } from '../paths';
 
 export function QuotationList() {
-  const navigate = useNavigate();
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const data = useAsync(() => Promise.all([listQuotations(), taxCodes.list()]), []);
   const [query, setQuery] = useState('');
@@ -49,7 +47,7 @@ export function QuotationList() {
   const presets = useListPresets({
     list: 'quotations',
     fields,
-    builtIns: statusViews('quotations', QUOTATION_STATUSES),
+    builtIns: statusViews(QT_NOUN.many, QUOTATION_STATUSES),
     defaultSort: { key: 'postingDate', direction: 'desc' },
     rows: quotes,
     onChange: resetPage,
@@ -103,30 +101,22 @@ export function QuotationList() {
 
   return (
     <Panel className="flex-1">
-      <PanelHeader
+      <PageHeader
         showSearch
-        searchLabel="Search quotations"
+        searchLabel={`Search ${QT_NOUN.many}`}
         searchPlaceholder="Search by no., customer, or item"
         searchValue={query}
         onSearchChange={(value) => { setQuery(value); resetPage(); }}
         icon="request_quote"
-        iconIntent="default"
-        iconShape="rounded"
-        iconSize={32}
-        iconVariant="outline"
         title={presets.menu}
-        actions={
-          <Button intent="primary" variant="solid" size="medium" shape="pill" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${QT_LIST_PATH}/new`)}>
-            New quotation
-          </Button>
-        }
+        create={{ noun: QT_NOUN, to: QT_LIST_PATH }}
       />
       <Panel.Body className="flex flex-col gap-2">
         {notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : null}
         {presets.bar(null)}
         {quotes ? (
           <Table
-            caption="Quotations"
+            caption={cap(QT_NOUN.many)}
             columns={columns}
             rows={onPage}
             getRowId={(q) => q.id}
@@ -136,7 +126,7 @@ export function QuotationList() {
             pagination={pagination}
           />
         ) : (
-          <Text tone="muted" className="p-4">Loading quotations…</Text>
+          <Text tone="muted" className="p-4">Loading {QT_NOUN.many}…</Text>
         )}
       </Panel.Body>
       {presets.panel}

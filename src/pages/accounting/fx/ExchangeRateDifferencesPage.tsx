@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Alert, Button, Checkbox, DatePicker, FormField, List, Panel, PanelHeader, Text, TextField, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { Alert, Button, Checkbox, DatePicker, FormField, List, Panel, Text, TextField, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../../components/form/PageHeader';
 import { DataTable } from '../../../components/form/DataTable';
 import { Fields, Section } from '../../../components/form/fields';
 import { accountText, type Account } from '../../../mocks/chartOfAccounts';
@@ -129,11 +130,8 @@ export function ExchangeRateDifferencesPage() {
 
   return (
     <Panel className="flex-1">
-      <PanelHeader
+      <PageHeader
         icon="currency_exchange"
-        iconIntent="default"
-        iconShape="rounded"
-        iconSize={32} iconVariant="outline"
         title="Exchange Rate Differences"
       />
       <Panel.Body className="flex flex-col gap-2">

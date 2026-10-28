@@ -137,7 +137,7 @@ function OfficePanel({
   };
 
   return (
-    <EditPanel icon="business" title={isNew ? 'New office' : `${row.code} · ${row.name}`} onCancel={onCancel} onDone={done}>
+    <EditPanel icon="business" title={isNew ? 'New office' : `${row.code} · ${row.name}`} noun="office" isNew={isNew} onCancel={onCancel} onDone={done}>
       <Section icon="business" title="Office">
         <FieldStack>
           {f.text('code', 'Code', {

@@ -57,7 +57,7 @@ export interface PurchLine {
   deliveryDate?: string;
   /** Vendor's quoted quantity. RFQ. */
   quotedQty?: number;
-  /** Quantity not yet converted to a PO/quotation. PR. */
+  /** Quantity not yet ordered on a purchase order (quotations don't draw it down). PR. */
   openQty?: number;
   /** Received on goods receipts so far. PO. */
   receivedQty?: number;

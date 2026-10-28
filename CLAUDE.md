@@ -310,6 +310,15 @@ Every document and master record has an Activity tab. Timeline shows the documen
 - Discriminated union for SidePanel editing state.
 - `problemCollector` → `ProblemsAlert` + tab jump for validation.
 - Use straight double quotes (`"it's"`) in JSX string props — smart/curly quotes break the TS/Babel parser.
+- Page headers (`docs/page-header-plan.md`):
+  - every page and side panel renders `PageHeader` (`components/form/PageHeader.tsx`), never the design system's `PanelHeader` (lint enforces it); buttons go in `actions` only;
+  - list page: `title={presets.menu}`, search props, `create={{ noun: X_NOUN, to: X_LIST_PATH }}`; no tabs;
+  - detail page: `variant="plain"`, `parent={{ noun: X_NOUN, to: X_LIST_PATH }}`, title `New {one}` / `Draft {one}` / number, and `actions={<DetailActions … />}` (Cancel · secondary · ⋯ · primary · Prev/Next; labels from the record's `mode`: Save as draft, Submit for approval, Create {one}, Approve, Reject, Save changes — never Add / Update / a bare Save);
+  - ⋯ items in order: Create {target} (never "Copy to …") · Pay · Duplicate · Recall · Close · Cancel {one} · Open journal entry; no "Open vendor" or "Open {base document}" (the partner card and the Transactions tab already link there);
+  - side panel: `variant="plain"`, Close · Cancel · Save changes (or Create {one}).
+- Name each document once, as a `Noun` (`{ one, many }`) in its area's `paths.ts`; build every label from it with `cap()` (sentence case everywhere, sidebar included).
+- Approval: stamp new documents with `approved: !needsApproval('XX')` and gate Approve with `isApprover('XX')` (`services/approval.ts`).
+- No auto-save: every change is saved by a button.
 
 ### Architecture
 - `MasterDef` + `MasterLookup` + `activeOptions` for all master-data pickers — no one-off hand-rolled `<Select>`.

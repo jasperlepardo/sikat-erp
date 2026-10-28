@@ -3,16 +3,16 @@ import { useLocation, useNavigate, useParams } from 'react-router';
 import {
   Alert,
   Badge,
-  Button,
   Form,
   Panel,
-  PanelHeader,
   Tabs,
   Text,
 } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../../../components/form/PageHeader';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { type Errors } from '../../../../components/form/fields';
-import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
+import { type MoreMenuItem } from '../../../../components/form/MoreMenu';
+import { DetailActions } from '../../../../components/form/DetailActions';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
 import { CURRENT_USER_ID } from '../../../../mocks/common';
@@ -24,7 +24,7 @@ import { listItems } from '../../../../services/items';
 import { listPartnersByRole } from '../../../../services/partners';
 import { pbaSeries } from '../../../../services/allSeries';
 import { pbaNumber, pbaTotals, openQty, getPurchaseBlanketAgreement, listPurchaseBlanketAgreements, savePurchaseBlanketAgreement, type PbaInput } from '../../../../services/purchaseBlanketAgreements';
-import { getPurchasingSettings } from '../../../../services/purchaseOrders';
+import { needsApproval } from '../../../../services/approval';
 import { currencies as currencyCollection } from '../../../../services/masterData';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { DocumentFlow } from '../../shared/DocumentFlow';
@@ -35,8 +35,8 @@ import { GeneralTab } from './general';
 import { AgreementLinesCard } from '../../../../components/agreements/AgreementLinesCard';
 import { AgreementSummaryCard } from '../../../../components/agreements/AgreementSummaryCard';
 import type { PbaDraft, PbaMasters } from './types';
-import { NotFound, PrevNext, neighbours, useDocTab } from '../../../../components/form/DetailNav';
-import { PBA_LIST_PATH, PBA_STATUS_INTENT, PO_LIST_PATH } from '../../paths';
+import { NotFound, neighbours, useDocTab } from '../../../../components/form/DetailNav';
+import { PBA_LIST_PATH, PBA_NOUN, PBA_STATUS_INTENT, PO_LIST_PATH } from '../../paths';
 
 const PAGES = [
   { value: 'details', label: 'Details' },
@@ -118,9 +118,9 @@ function PbaForm() {
     draft == null || !draft.docNum
       ? undefined
       : isNew
-        ? 'New purchase blanket agreement'
+        ? `New ${PBA_NOUN.one}`
         : draft.status === 'Draft'
-          ? 'Draft purchase blanket agreement'
+          ? `Draft ${PBA_NOUN.one}`
           : pbaNumber(draft),
   );
 
@@ -193,7 +193,7 @@ function PbaForm() {
     const openLines = draft.lines.filter((l) => openQty(l) > 0);
     const po = {
       ...blankPurchaseOrder(CURRENT_USER_ID),
-      approved: !getPurchasingSettings().requirePoApproval,
+      approved: !needsApproval('PO'),
       vendorId: draft.vendorId,
       vendorCode: draft.vendorCode,
       vendorName: draft.vendorName,
@@ -226,47 +226,41 @@ function PbaForm() {
   };
 
   const menu: MoreMenuItem[] = [
-    ...(!added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
     ...(draft.status === 'Approved' && draft.lines.some((l) => openQty(l) > 0)
-      ? [{ label: 'Copy to Purchase Order', icon: 'receipt_long', onSelect: copyToPo }]
+      ? [{ label: 'Create purchase order', icon: 'receipt_long', onSelect: copyToPo }]
       : []),
     ...(!isNew ? [{ label: 'Duplicate', icon: 'content_copy', onSelect: duplicate }] : []),
-    ...(vendor ? [{ label: `Open vendor ${vendor.code}`, icon: 'local_shipping', onSelect: () => navigate(`/purchasing/vendors/${vendor.id}`) }] : []),
   ];
 
   const title = isNew
-    ? 'New purchase blanket agreement'
+    ? `New ${PBA_NOUN.one}`
     : draft.status === 'Draft'
-      ? 'Draft purchase blanket agreement'
+      ? `Draft ${PBA_NOUN.one}`
       : pbaNumber(draft as PurchaseBlanketAgreement);
 
   return (
     <>
     <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
       <Panel className="flex-1">
-        <PanelHeader
-          type="details"
+        <PageHeader
+          variant="plain"
           icon="handshake"
-          iconIntent="default"
-          iconShape="rounded"
-          iconSize={32}
-          iconVariant="outline"
-          breadcrumbs={[{ label: 'Agreements', href: PBA_LIST_PATH }, { label: title }]}
-          onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
-          onBack={() => navigate(PBA_LIST_PATH)}
-          trailing={
-            isNew ? undefined : <PrevNext path={PBA_LIST_PATH} prevId={prevId} nextId={nextId} />
-          }
+          parent={{ noun: PBA_NOUN, to: PBA_LIST_PATH }}
+          title={title}
           tabs={isNew ? undefined : <Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={[...PAGES]} />}
           status={isNew ? undefined : <Badge size="small" intent={PBA_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
           actions={
-            <>
-              <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(PBA_LIST_PATH)}>Cancel</Button>
-              {menu.length ? <MoreMenu items={menu} /> : null}
-              <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
-                {saving ? 'Saving…' : added ? 'Update' : 'Add'}
-              </Button>
-            </>
+            <DetailActions
+              noun={PBA_NOUN}
+              listPath={PBA_LIST_PATH}
+              mode={!added ? 'draft' : terminal ? 'readonly' : 'open'}
+              remarksOnly={terminal}
+              busy={saving}
+              onDraft={() => submit(null, true)}
+              onSubmit={() => submit(null)}
+              menu={menu}
+              prevNext={isNew ? undefined : { path: PBA_LIST_PATH, prevId, nextId }}
+            />
           }
         />
 

@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router';
-import { CardField, Icon, IconButton, Panel, PanelHeader, SidePanel } from '@jasperlepardo/sikat-design-system';
+import { CardField, Icon, IconButton, Panel, SidePanel } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../../../components/form/PageHeader';
 import { Fields, ReadOnly, Section, bind } from '../../../../components/form/fields';
 import { contactName, type Partner } from '../../../../mocks/partners';
 import type { BaDraft } from './types';
@@ -21,13 +22,9 @@ export function BaCustomerPanel({ customer, draft, update, readOnly, open, onClo
 
   return (
     <SidePanel overlay onOverlayClick={onClose}>
-      <PanelHeader
-        type="details"
+      <PageHeader
+        variant="plain"
         icon="person"
-        iconIntent="default"
-        iconShape="rounded"
-        iconSize={32}
-        iconVariant="outline"
         title={customer.name}
         actions={
           <>

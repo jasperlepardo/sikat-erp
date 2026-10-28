@@ -7,7 +7,6 @@ import {
   Card,
   Icon,
   Panel,
-  PanelHeader,
   Table,
   TableAmount,
   TableContent,
@@ -15,8 +14,11 @@ import {
   Text,
   type TableColumn,
 } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../../components/form/PageHeader';
+import { cap } from '../../../components/form/noun';
 import { Fields, ReadOnly, Section } from '../../../components/form/fields';
-import { MoreMenu, type MoreMenuItem } from '../../../components/form/MoreMenu';
+import { type MoreMenuItem } from '../../../components/form/MoreMenu';
+import { DetailActions } from '../../../components/form/DetailActions';
 import type { JournalVoucher, VoucherEntry } from '../../../mocks/journalVouchers';
 import { formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
@@ -26,7 +28,7 @@ import { accounts as accountsCollection, taxCodes as taxCodesCollection } from '
 import { listPartners } from '../../../services/partners';
 import { jeProblems, type JeMasters } from '../journal/JeEditor';
 import { NotFound } from '../../../components/form/DetailNav';
-import { JE_LIST_PATH, JV_LIST_PATH, entryPath } from '../paths';
+import { JE_LIST_PATH, JV_LIST_PATH, JV_NOUN, entryPath } from '../paths';
 
 /** A voucher: its draft entries, what each needs before it can post, and Post / Delete. */
 export function JournalVoucherDetail() {
@@ -103,7 +105,7 @@ export function JournalVoucherDetail() {
   };
 
   const menu: MoreMenuItem[] = [
-    ...(!hasPosted(voucher) ? [{ label: 'Delete voucher', icon: 'delete', onSelect: removeVoucher }] : []),
+    ...(!hasPosted(voucher) ? [{ label: `Delete ${JV_NOUN.one}`, icon: 'delete', onSelect: removeVoucher }] : []),
   ];
 
   const columns: TableColumn<VoucherEntry>[] = [
@@ -154,34 +156,24 @@ export function JournalVoucherDetail() {
 
   return (
     <Panel className="flex-1">
-      <PanelHeader
-        type="details"
+      <PageHeader
+        variant="plain"
         icon="folder_open"
-        iconIntent="default"
-        iconShape="rounded"
-        iconSize={32} iconVariant="outline"
-        breadcrumbs={[{ label: 'Journal Vouchers', href: JV_LIST_PATH }, { label: `Journal voucher ${voucher.voucherNo}` }]}
-        onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
-        onBack={() => navigate(JV_LIST_PATH)}
+        parent={{ noun: JV_NOUN, to: JV_LIST_PATH }}
+        title={`${cap(JV_NOUN.one)} ${voucher.voucherNo}`}
         status={<Badge size="small" intent={state.intent}>{state.label}</Badge>}
         actions={
-          <>
-            <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(JV_LIST_PATH)}>
-              Back
-            </Button>
-            {menu.length ? <MoreMenu items={menu} /> : null}
-            <Button
-              type="button"
-              intent="primary"
-              variant="solid"
-              size="medium"
-              shape="pill"
-              disabled={busy || !openEntries.length}
-              onClick={() => post(openEntries)}
-            >
-              {busy ? 'Posting…' : 'Post voucher'}
-            </Button>
-          </>
+          // Posts every open entry; with none left, there is nothing to post.
+          <DetailActions
+            noun={JV_NOUN}
+            listPath={JV_LIST_PATH}
+            mode={openEntries.length ? 'open' : 'readonly'}
+            primaryLabel={`Post ${JV_NOUN.one}`}
+            busyLabel="Posting…"
+            busy={busy}
+            onSubmit={() => post(openEntries)}
+            menu={menu}
+          />
         }
       />
       <Panel.Body className="flex flex-col gap-2">

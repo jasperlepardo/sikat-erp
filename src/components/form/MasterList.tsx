@@ -7,7 +7,6 @@ import {
   Icon,
   IconButton,
   Panel,
-  PanelHeader,
   SidePanel,
   Table,
   TableContent,
@@ -18,8 +17,11 @@ import {
   type TableColumn,
   type TableSort,
 } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from './PageHeader';
 import { Section, type Errors } from './fields';
-import { NotFound, PrevNext, neighbours } from './DetailNav';
+import { NotFound, neighbours } from './DetailNav';
+import { DetailActions } from './DetailActions';
+import type { Noun } from './noun';
 import { useHeaderSearch } from './HeaderSearch';
 import { DEFAULT_PAGE_SIZE, PAGE_SIZES, defaultSortValue, fillCardClass } from './DataTable';
 
@@ -63,7 +65,7 @@ export interface MasterListProps<T extends { id: string }> {
   intro?: ReactNode;
   /**
    * Suppress the list header (icon, title, description, New button). Use this
-   * when the page already has a PanelHeader with its own New button. The
+   * when the page already has a PageHeader with its own New button. The
    * activate / deactivate toolbar still appears inline when rows are selected.
    */
   hideHeader?: boolean;
@@ -361,23 +363,20 @@ function ListView<T extends { id: string }>({
 
       {isPanelOpen && panelRow && editor && label && (
         <SidePanel overlay onOverlayClick={closePanel}>
-          <PanelHeader
-            type="details"
+          <PageHeader
+            variant="plain"
             icon={icon}
-            iconIntent="default"
-            iconShape="rounded"
-            iconSize={32} iconVariant="outline"
             title={isPanelNew ? `New ${noun}` : label(panelRow)}
             actions={
               <>
                 <IconButton type="button" label="Close" intent="default" variant="link" onClick={closePanel}>
                   <Icon size={20}>close</Icon>
                 </IconButton>
-                <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={closePanel}>
+                <Button type="button" intent="white" variant="solid" shape="pill" onClick={closePanel}>
                   Cancel
                 </Button>
-                <Button type="button" intent="primary" variant="solid" size="medium" shape="pill" disabled={panelSaving} onClick={savePanel}>
-                  {panelSaving ? 'Saving…' : isPanelNew ? 'Add' : 'Save'}
+                <Button type="button" intent="primary" variant="solid" shape="pill" disabled={panelSaving} onClick={savePanel}>
+                  {panelSaving ? (isPanelNew ? 'Creating…' : 'Saving…') : isPanelNew ? `Create ${noun}` : 'Save changes'}
                 </Button>
               </>
             }
@@ -431,6 +430,8 @@ function RecordPage<T extends { id: string }>({
   const existing = isNew ? undefined : rows?.find((r) => r.id === recordId);
   const row = draft ?? fresh ?? (existing ? structuredClone(existing) : null);
   const back = () => navigate(listPath);
+  // The title is already sentence case and may hold abbreviations ("UoM groups"), so it isn't lower-cased.
+  const recordNoun: Noun = { one: noun, many: title };
 
   if (!loaded) return <Text tone="muted" className="p-4">Loading…</Text>;
   if (!row) {
@@ -457,25 +458,25 @@ function RecordPage<T extends { id: string }>({
 
   return (
     <Panel className="flex-1">
-      <PanelHeader
-        type="details"
+      <PageHeader
+        variant="plain"
         icon={icon}
-        iconIntent="default"
-        iconShape="rounded"
-        iconSize={32} iconVariant="outline"
-        breadcrumbs={[{ label: title, href: listPath }, { label: isNew ? `New ${noun}` : label(row) }]}
-        onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
-        onBack={back}
-        trailing={isNew ? undefined : <PrevNext path={basePath} prevId={prevId} nextId={nextId} />}
+        parent={{ noun: recordNoun, to: listPath }}
+        title={isNew ? `New ${noun}` : label(row)}
         status={
           isNew || typeof active !== 'boolean' ? undefined : (
             <Badge size="small" intent={active ? 'success' : 'default'}>{active ? 'Active' : 'Inactive'}</Badge>
           )
         }
         actions={
-          <Button type="button" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving} onClick={save}>
-            {saving ? 'Saving…' : isNew ? 'Add' : 'Save'}
-          </Button>
+          <DetailActions
+            noun={recordNoun}
+            listPath={listPath}
+            mode={isNew ? 'draft' : 'open'}
+            busy={saving}
+            onSubmit={save}
+            prevNext={isNew ? undefined : { path: basePath, prevId, nextId }}
+          />
         }
       />
       {related ? (

@@ -1,9 +1,11 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { Alert, Badge, Button, Form, Panel, PanelHeader, Tabs, Text } from '@jasperlepardo/sikat-design-system';
+import { Alert, Badge, Form, Panel, Tabs, Text } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../../components/form/PageHeader';
 import { AttachmentsCard } from '../../../components/form/AttachmentsCard';
 import { Fields, Section, bind, type Errors } from '../../../components/form/fields';
-import { MoreMenu, type MoreMenuItem } from '../../../components/form/MoreMenu';
+import { type MoreMenuItem } from '../../../components/form/MoreMenu';
+import { DetailActions } from '../../../components/form/DetailActions';
 import { ProblemsAlert, type Problem } from '../../../components/form/ProblemsAlert';
 import { ORIGIN_LABEL, ORIGIN_PATH, blankJournalEntry, newJeLine, type JournalEntry } from '../../../mocks/journalEntries';
 import { formatDate, todayISO } from '../../../services/dates';
@@ -23,8 +25,8 @@ import {
 import { accounts as accountsCollection, taxCodes as taxCodesCollection } from '../../../services/masterData';
 import { listPartners } from '../../../services/partners';
 import { JeHeaderSections, JeRowsTable, jeProblems, rowsToPost, type JeMasters } from './JeEditor';
-import { NotFound, PrevNext, neighbours } from '../../../components/form/DetailNav';
-import { JE_LIST_PATH, JE_STATUS_INTENT } from '../paths';
+import { NotFound, neighbours } from '../../../components/form/DetailNav';
+import { JE_LIST_PATH, JE_NOUN, JE_STATUS_INTENT } from '../paths';
 
 type TabId = 'contents' | 'attachments';
 
@@ -141,23 +143,16 @@ function JournalEntryForm() {
     ...(reverses ? [{ label: `Open reversed entry ${jeNumber(reverses)}`, icon: 'swap_horiz', onSelect: () => navigate(`${JE_LIST_PATH}/${reverses.id}`) }] : []),
   ];
 
-  const title = isNew ? 'New journal entry' : jeNumber(draft);
+  const title = isNew ? `New ${JE_NOUN.one}` : jeNumber(draft);
 
   return (
     <Form className="flex-1" onSubmit={submit} noValidate>
       <Panel className="flex-1">
-        <PanelHeader
-          type="details"
+        <PageHeader
+          variant="plain"
           icon="menu_book"
-          iconIntent="default"
-          iconShape="rounded"
-          iconSize={32} iconVariant="outline"
-          breadcrumbs={[{ label: 'Journal Entries', href: JE_LIST_PATH }, { label: title }]}
-          onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
-          onBack={() => navigate(JE_LIST_PATH)}
-          trailing={
-            isNew ? undefined : <PrevNext path={JE_LIST_PATH} prevId={prevId} nextId={nextId} />
-          }
+          parent={{ noun: JE_NOUN, to: JE_LIST_PATH }}
+          title={title}
           tabs={
             <Tabs
               variant="outline"
@@ -171,13 +166,16 @@ function JournalEntryForm() {
           }
           status={posted ? <Badge size="small" intent={JE_STATUS_INTENT[draft.status]}>{draft.status}</Badge> : undefined}
           actions={
-            <>
-              {posted ? null : <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(JE_LIST_PATH)}>Cancel</Button>}
-              {menu.length ? <MoreMenu items={menu} /> : null}
-              <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
-                {saving ? 'Saving…' : posted ? 'Save' : 'Add'}
-              </Button>
-            </>
+            // A posted entry never changes, but its remarks and attachments still save.
+            <DetailActions
+              noun={JE_NOUN}
+              listPath={JE_LIST_PATH}
+              mode={posted ? 'readonly' : 'draft'}
+              remarksOnly={posted}
+              busy={saving}
+              menu={menu}
+              prevNext={isNew ? undefined : { path: JE_LIST_PATH, prevId, nextId }}
+            />
           }
         />
         <Panel.Body className="flex flex-col gap-2">

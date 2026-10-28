@@ -3,22 +3,23 @@ import { useLocation, useNavigate, useParams } from 'react-router';
 import {
   Alert,
   Badge,
-  Button,
   Form,
   Panel,
-  PanelHeader,
   Tabs,
   Text,
 } from '@jasperlepardo/sikat-design-system';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { type Errors } from '../../../../components/form/fields';
-import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
+import { type MoreMenuItem } from '../../../../components/form/MoreMenu';
+import { DetailActions } from '../../../../components/form/DetailActions';
+import { PageHeader } from '../../../../components/form/PageHeader';
+import { cap } from '../../../../components/form/noun';
+import { needsApproval } from '../../../../services/approval';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
 import { CURRENT_USER_ID } from '../../../../mocks/common';
 import { blankBlanketAgreement, newBaLine, type BlanketAgreement } from '../../../../mocks/blanketAgreements';
 import { blankSalesOrder, newSoLine } from '../../../../mocks/salesOrders';
-import { getSalesSettings } from '../../../../services/salesOrders';
 import { formatDate, todayISO } from '../../../../services/dates';
 import { loadInventoryMasters } from '../../../../services/inventoryMasters';
 import { listItems } from '../../../../services/items';
@@ -34,8 +35,8 @@ import { GeneralTab } from './general';
 import { AgreementLinesCard } from '../../../../components/agreements/AgreementLinesCard';
 import { AgreementSummaryCard } from '../../../../components/agreements/AgreementSummaryCard';
 import type { BaDraft, BaMasters } from './types';
-import { neighbours, NotFound, PrevNext, useDocTab } from '../../../../components/form/DetailNav';
-import { BA_LIST_PATH, BA_STATUS_INTENT, SO_LIST_PATH } from '../../paths';
+import { neighbours, NotFound, useDocTab } from '../../../../components/form/DetailNav';
+import { BA_LIST_PATH, BA_NOUN, BA_STATUS_INTENT, SO_LIST_PATH } from '../../paths';
 
 const PAGES = [
   { value: 'details', label: 'Details' },
@@ -115,16 +116,16 @@ function BaForm() {
     draft == null || !draft.docNum
       ? undefined
       : isNew
-        ? 'New blanket agreement'
+        ? `New ${BA_NOUN.one}`
         : draft.status === 'Draft'
-          ? 'Draft blanket agreement'
+          ? `Draft ${BA_NOUN.one}`
           : baNumber(draft),
   );
 
   if (draft === undefined || !m) {
-    return <Text tone="muted" className="p-4">Loading…</Text>;
+    return <Text tone="muted" className="p-4">Loading {BA_NOUN.one}…</Text>;
   }
-  if (draft === null) return <NotFound icon="description" title="Agreement not found" backTo={BA_LIST_PATH} backLabel="Back to agreements" />;
+  if (draft === null) return <NotFound icon="description" title={`${cap(BA_NOUN.one)} not found`} backTo={BA_LIST_PATH} backLabel={`Back to ${BA_NOUN.many}`} />;
 
   const readOnly = draft.status === 'Closed' || draft.status === 'Terminated';
   const added = draft.status !== 'Draft';
@@ -201,7 +202,7 @@ function BaForm() {
     const openLines = draft.lines.filter((l) => openQty(l) > 0);
     const so = {
       ...blankSalesOrder(CURRENT_USER_ID),
-      approved: !getSalesSettings().requireSoApproval,
+      approved: !needsApproval('SO'),
       customerId: draft.customerId,
       customerCode: draft.customerCode,
       customerName: draft.customerName,
@@ -230,46 +231,40 @@ function BaForm() {
   };
 
   const menu: MoreMenuItem[] = [
-    ...(!added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
     ...(draft.status === 'Approved' && draft.lines.some((l) => openQty(l) > 0)
-      ? [{ label: 'Copy to Sales Order', icon: 'shopping_bag', onSelect: copyToSo }]
+      ? [{ label: 'Create sales order', icon: 'shopping_bag', onSelect: copyToSo }]
       : []),
     ...(!isNew ? [{ label: 'Duplicate', icon: 'content_copy', onSelect: duplicate }] : []),
   ];
 
   const title = isNew
-    ? 'New blanket agreement'
+    ? `New ${BA_NOUN.one}`
     : draft.status === 'Draft'
-      ? 'Draft blanket agreement'
+      ? `Draft ${BA_NOUN.one}`
       : baNumber(draft as BlanketAgreement);
 
   return (
     <>
       <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
         <Panel className="flex-1">
-          <PanelHeader
-            type="details"
+          <PageHeader
+            variant="plain"
             icon="description"
-            iconIntent="primary"
-            iconShape="rounded"
-            iconSize={32}
-            iconVariant="outline"
-            breadcrumbs={[{ label: 'Agreements', href: BA_LIST_PATH }, { label: title }]}
-            onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
-            onBack={() => navigate(BA_LIST_PATH)}
-            trailing={isNew ? undefined : <PrevNext path={BA_LIST_PATH} prevId={prevId} nextId={nextId} />}
+            parent={{ noun: BA_NOUN, to: BA_LIST_PATH }}
+            title={title}
             tabs={isNew ? undefined : <Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={[...PAGES]} />}
             status={isNew ? undefined : <Badge size="small" intent={BA_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
             actions={
-              <>
-                {readOnly ? null : <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(BA_LIST_PATH)}>Cancel</Button>}
-                {menu.length ? <MoreMenu items={menu} /> : null}
-                {!readOnly && (
-                  <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
-                    {saving ? 'Saving…' : added ? 'Update' : 'Add'}
-                  </Button>
-                )}
-              </>
+              <DetailActions
+                noun={BA_NOUN}
+                listPath={BA_LIST_PATH}
+                mode={draft.status === 'Draft' ? 'draft' : readOnly ? 'readonly' : 'open'}
+                busy={saving}
+                onDraft={() => submit(null, true)}
+                onSubmit={() => submit(null)}
+                menu={menu}
+                prevNext={isNew ? undefined : { path: BA_LIST_PATH, prevId, nextId }}
+              />
             }
           />
 

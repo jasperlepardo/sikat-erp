@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router';
-import { Alert, Badge, Button, Icon, Panel, PanelHeader, Table, TableContent, Text, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { useLocation } from 'react-router';
+import { Alert, Badge, Panel, Table, TableContent, Text, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../../components/form/PageHeader';
 import { GRR_STATUSES, type GoodsReturnRequest } from '../../../mocks/goodsReturnRequests';
 import { formatDate } from '../../../services/dates';
 import { listGoodsReturnRequests, grrNumber } from '../../../services/goodsReturnRequests';
@@ -8,10 +9,10 @@ import { useAsync } from '../../../services/useAsync';
 import { dateField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { useListPage } from '../../../components/form/DataTable';
-import { GRR_LIST_PATH, GRR_STATUS_INTENT } from '../paths';
+import { cap } from '../../../components/form/noun';
+import { GRR_LIST_PATH, GRR_NOUN, GRR_STATUS_INTENT } from '../paths';
 
 export function GoodsReturnRequestList() {
-  const navigate = useNavigate();
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const requests = useAsync(listGoodsReturnRequests, []);
   const [query, setQuery] = useState('');
@@ -26,7 +27,7 @@ export function GoodsReturnRequestList() {
   const presets = useListPresets({
     list: 'goods-return-requests',
     fields,
-    builtIns: statusViews('return requests', GRR_STATUSES),
+    builtIns: statusViews(GRR_NOUN.many, GRR_STATUSES),
     defaultSort: { key: 'postingDate', direction: 'desc' },
     rows: requests,
     onChange: resetPage,
@@ -59,29 +60,21 @@ export function GoodsReturnRequestList() {
 
   return (
     <Panel className="flex-1">
-      <PanelHeader
+      <PageHeader
         showSearch
-        searchLabel="Search return requests"
+        searchLabel={`Search ${GRR_NOUN.many}`}
         searchPlaceholder="Search by no., vendor or item"
         searchValue={query}
         onSearchChange={(v) => { setQuery(v); resetPage(); }}
         icon="assignment_return"
-        iconIntent="default"
-        iconShape="rounded"
-        iconSize={32}
-        iconVariant="outline"
         title={presets.menu}
-        actions={
-          <Button intent="primary" variant="solid" size="medium" shape="pill" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${GRR_LIST_PATH}/new`)}>
-            New request
-          </Button>
-        }
+        create={{ noun: GRR_NOUN, to: GRR_LIST_PATH }}
       />
       <Panel.Body className="flex flex-col gap-2">
         {notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : null}
         {presets.bar(null)}
         {requests ? (
-          <Table caption="Goods return requests" columns={columns} rows={visible} getRowId={(r) => r.id} sort={sort} onSortChange={setSort} layout="fill" pagination={pagination} />
+          <Table caption={cap(GRR_NOUN.many)} columns={columns} rows={visible} getRowId={(r) => r.id} sort={sort} onSortChange={setSort} layout="fill" pagination={pagination} />
         ) : (
           <Text tone="muted" className="p-4">Loading goods return requests…</Text>
         )}

@@ -4,16 +4,17 @@ import { useLocation, useNavigate, useParams } from 'react-router';
 import {
   Alert,
   Badge,
-  Button,
   Form,
   Panel,
-  PanelHeader,
   Tabs,
   Text,
 } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../../components/form/PageHeader';
 import { AttachmentsCard } from '../../../components/form/AttachmentsCard';
 import { type Errors } from '../../../components/form/fields';
-import { MoreMenu, type MoreMenuItem } from '../../../components/form/MoreMenu';
+import { type MoreMenuItem } from '../../../components/form/MoreMenu';
+import { DetailActions, docMode } from '../../../components/form/DetailActions';
+import { isApprover, needsApproval } from '../../../services/approval';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../components/form/ProblemsAlert';
 import { CURRENT_USER_ID } from '../../../mocks/common';
 import { blankGoodsReturn, type GoodsReturn, type ReturnLine, type ReturnStatus } from '../../../mocks/goodsReturns';
@@ -42,7 +43,7 @@ import {
 } from '../../../services/goodsReturns';
 import { isValidToday } from '../../../services/items';
 import { postDocumentEntry, reverseDocumentEntry } from '../../../services/journalEntries';
-import { dueDateFor, getPurchasingSettings } from '../../../services/purchaseOrders';
+import { dueDateFor } from '../../../services/purchaseOrders';
 import { buildGrContext } from '../goods-receipts/detail/types';
 import { CopyPanel } from '../shared/CopyPanel';
 import { DocumentFlow } from '../shared/DocumentFlow';
@@ -50,7 +51,7 @@ import { loadRetMasters, vendorAddressOptions, returnFromInvoice, returnFromRece
 import { DocLines } from '../../../components/form/docLines/DocLines';
 import { returnDoc } from './detail/returnDoc';
 import { ActivityTab } from '../../../components/activity/ActivityTab';
-import { neighbours, NotFound, PrevNext, siblingKeys, useDocTab, useReject } from '../../../components/form/DetailNav';
+import { neighbours, NotFound, siblingKeys, useDocTab, useReject } from '../../../components/form/DetailNav';
 import { useDocTitle } from '../../../services/useDocTitle';
 import { VendorCard } from '../shared/VendorCard';
 import { VendorDetailsPanel } from '../shared/VendorDetailsPanel';
@@ -60,7 +61,7 @@ import { GrJournalCard } from './detail/GrJournalCard';
 import { GrLogisticsCard } from './detail/GrLogisticsCard';
 import { GrAccountingCard } from './detail/GrAccountingCard';
 import { ReferencesTable } from '../shared/ReferencesTable';
-import { MEMO_LIST_PATH, RETURN_LIST_PATH, RETURN_STATUS_INTENT } from '../paths';
+import { MEMO_LIST_PATH, RETURN_LIST_PATH, RETURN_NOUN, RETURN_STATUS_INTENT } from '../paths';
 
 type Draft = Omit<GoodsReturn, 'id'> & { id?: string };
 type TabId = 'contents' | 'logistics' | 'accounting';
@@ -133,7 +134,7 @@ function GoodsReturnForm() {
   const location = useLocation();
   const state = location.state as { fromReceipt?: string; fromInvoice?: string; prefill?: { baseGrrId?: string; lines: import('../../../mocks/goodsReturns').ReturnLine[] } } | null;
 
-  const rtnApproved = !getPurchasingSettings().requireGoodsReturnApproval;
+  const rtnApproved = !needsApproval('GRET');
   const [draft, setDraft] = useState<Draft | null | undefined>(isNew ? { ...blankGoodsReturn(todayISO(), CURRENT_USER_ID), approved: rtnApproved } : undefined);
   const [m, setM] = useState<RetMasters>();
   const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
@@ -176,7 +177,7 @@ function GoodsReturnForm() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, isNew]);
 
-  useDocTitle(draft?.docNum ? (isNew ? 'New goods return' : returnNumber(draft)) : undefined);
+  useDocTitle(draft?.docNum ? (isNew ? `New ${RETURN_NOUN.one}` : draft.status !== 'Draft' ? returnNumber(draft) : `Draft ${RETURN_NOUN.one}`) : undefined);
   if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading goods return…</Text>;
   if (draft === null) return <NotFound icon="assignment_return" title="Goods return not found" backTo={RETURN_LIST_PATH} backLabel="Back to returns" />;
 
@@ -215,7 +216,8 @@ function GoodsReturnForm() {
 
   const submit = async (e: FormEvent | null, asDraft = false, overrides: Partial<Draft> = {}) => {
     e?.preventDefault();
-    if (added) {
+    // Added: only remarks and attachments save, unless this is approving it (which posts it).
+    if (added && !overrides.approved) {
       setSaving(true);
       try {
         const saved = await saveReturnRemarks(draft as GoodsReturn, { remarks: draft.remarks, attachments: draft.attachments });
@@ -255,7 +257,6 @@ function GoodsReturnForm() {
   };
 
   const saved = draft as GoodsReturn;
-  const bases = [...new Map(draft.lines.filter((l) => l.baseType).map((l) => [l.baseId, l])).values()];
   const creditable = draft.status === 'Open' && draft.lines.some((l) => returnOpenQty(l, draft) > 0);
   const cancelIt = async () => {
     try {
@@ -275,21 +276,14 @@ function GoodsReturnForm() {
   const statusMoves: Partial<Record<ReturnStatus, () => void>> = draft.status === 'Draft' ? (draft.approved ? { Open: () => submit(null) } : { 'Not Confirmed': () => submit(null) }) : draft.status === 'Not Confirmed' ? { Open: () => submit(null, false, { approved: true }) } : draft.status === 'Open' || draft.status === 'Closed' ? { Cancelled: cancelIt } : {};
 
   const menu: MoreMenuItem[] = [
-    ...(!added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
-    ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => reject.start() }] : []),
-    ...(creditable ? [{ label: 'Copy to A/P credit memo', icon: 'receipt', onSelect: () => navigate(`${MEMO_LIST_PATH}/new`, { state: { fromReturn: saved.id } }) }] : []),
+    ...(creditable ? [{ label: 'Create A/P credit memo', icon: 'receipt', onSelect: () => navigate(`${MEMO_LIST_PATH}/new`, { state: { fromReturn: saved.id } }) }] : []),
+    ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }] : []),
     ...(draft.status === 'Open' || draft.status === 'Closed'
-      ? [{ label: 'Cancel goods return', icon: 'cancel', onSelect: cancelIt }]
+      ? [{ label: `Cancel ${RETURN_NOUN.one}`, icon: 'cancel', onSelect: cancelIt }]
       : []),
-    ...bases.map((l) => ({
-      label: `Open ${l.baseType === 'GRPO' ? 'receipt' : 'A/P invoice'} ${l.baseDocNo}`,
-      icon: l.baseType === 'GRPO' ? 'inventory' : 'request_quote',
-      onSelect: () => navigate(l.baseType === 'GRPO' ? `/purchasing/goods-receipts/${l.baseId}` : `/purchasing/vendor-invoices/${l.baseId}`),
-    })),
-    ...(vendor ? [{ label: `Open vendor ${vendor.code}`, icon: 'local_shipping', onSelect: () => navigate(`/purchasing/vendors/${vendor.id}`) }] : []),
   ];
 
-  const title = isNew ? 'New goods return' : added ? returnNumber(draft) : 'Draft goods return';
+  const title = isNew ? `New ${RETURN_NOUN.one}` : added ? returnNumber(draft) : `Draft ${RETURN_NOUN.one}`;
   const addressOptions = vendorAddressOptions(vendor);
   const sectionProps = { draft, update, errors, m, ctx };
 
@@ -297,26 +291,28 @@ function GoodsReturnForm() {
     <>
       <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
         <Panel className="flex-1">
-          <PanelHeader
-            type="details"
+          <PageHeader
+            variant="plain"
             icon="assignment_return"
-            iconIntent="default"
-            iconShape="rounded"
-            iconSize={32} iconVariant="outline"
-            breadcrumbs={[{ label: 'Goods Returns', href: RETURN_LIST_PATH }, { label: title }]}
-            onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
-            onBack={() => navigate(RETURN_LIST_PATH)}
-            trailing={isNew ? undefined : <PrevNext path={RETURN_LIST_PATH} prevId={prevId} nextId={nextId} />}
+            parent={{ noun: RETURN_NOUN, to: RETURN_LIST_PATH }}
+            title={title}
             tabs={isNew ? undefined : <Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={PAGES.map((p) => ({ ...p }))} />}
             status={isNew ? undefined : <Badge size="small" intent={RETURN_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
             actions={
-              <>
-                {added ? null : <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(RETURN_LIST_PATH)}>Cancel</Button>}
-                {menu.length ? <MoreMenu items={menu} /> : null}
-                <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
-                  {saving ? 'Saving…' : added ? 'Save' : 'Add'}
-                </Button>
-              </>
+              <DetailActions
+                noun={RETURN_NOUN}
+                listPath={RETURN_LIST_PATH}
+                mode={docMode(draft.status, { canApprove: isApprover('GRET') })}
+                needsApproval={!draft.approved}
+                remarksOnly={added}
+                busy={saving}
+                onDraft={() => submit(null, true)}
+                onSubmit={() => submit(null)}
+                onApprove={() => submit(null, false, { approved: true })}
+                onReject={reject.start}
+                menu={menu}
+                prevNext={isNew ? undefined : { path: RETURN_LIST_PATH, prevId, nextId }}
+              />
             }
           />
           {page === 'transactions' && draft.id ? (

@@ -1,10 +1,13 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { Alert, Badge, Button, Form, Panel, PanelHeader, Tabs, Text } from '@jasperlepardo/sikat-design-system';
+import { Alert, Badge, Form, Panel, Tabs, Text } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../../../components/form/PageHeader';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { type Errors } from '../../../../components/form/fields';
-import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
+import { type MoreMenuItem } from '../../../../components/form/MoreMenu';
+import { DetailActions, docMode } from '../../../../components/form/DetailActions';
+import { isApprover, needsApproval } from '../../../../services/approval';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { DocLines } from '../../../../components/form/docLines/DocLines';
 import { formatAddress } from '../../../../mocks/address';
@@ -39,19 +42,19 @@ import { loadInventoryMasters } from '../../../../services/inventoryMasters';
 import { isValidToday, listItems } from '../../../../services/items';
 import { companyTax, currencies, exchangeRates, taxCodes, taxGroups, withholdingGroups, withholdingTaxes } from '../../../../services/masterData';
 import { listPartnersByRole } from '../../../../services/partners';
-import { dueDateFor, getPurchasingSettings, listPurchaseOrders, openQty, poNumber } from '../../../../services/purchaseOrders';
+import { dueDateFor, listPurchaseOrders, openQty, poNumber } from '../../../../services/purchaseOrders';
 import { buildGrContext, linesFromPo } from '../../goods-receipts/detail/types';
 import { CopyPanel } from '../../shared/CopyPanel';
 import { DocumentFlow } from '../../shared/DocumentFlow';
 import { dpiDoc } from './dpiDoc';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
-import { neighbours, NotFound, PrevNext, siblingKeys, useDocTab, useReject } from '../../../../components/form/DetailNav';
+import { neighbours, NotFound, siblingKeys, useDocTab, useReject } from '../../../../components/form/DetailNav';
 import { VendorCard } from '../../shared/VendorCard';
 import { VendorDetailsPanel } from '../../shared/VendorDetailsPanel';
 import { receivingVendorAddressFields } from '../../shared/vendorAddresses';
 import { ReferencesTable } from '../../shared/ReferencesTable';
-import { DPI_LIST_PATH, DPI_STATUS_INTENT, PAYMENT_LIST_PATH } from '../../paths';
+import { DPI_LIST_PATH, DPI_NOUN, DPI_STATUS_INTENT, PAYMENT_LIST_PATH } from '../../paths';
 import { type DpiDraft as Draft, type DpiMasters as Masters } from './types';
 import { DpiDocumentCard } from './DpiDocumentCard';
 import { DpiAccountingCard } from './DpiAccountingCard';
@@ -104,7 +107,7 @@ function DpiForm() {
   const location = useLocation();
   const state = location.state as { fromPo?: string } | null;
 
-  const dpiApproved = !getPurchasingSettings().requireDprApproval;
+  const dpiApproved = !needsApproval('DPI');
   const [draft, setDraft] = useState<Draft | null | undefined>(
     isNew ? { ...blankDownPaymentInvoice(todayISO(), CURRENT_USER_ID), approved: dpiApproved } : undefined,
   );
@@ -139,7 +142,7 @@ function DpiForm() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, isNew]);
 
-  useDocTitle(draft?.docNum ? (isNew ? 'New A/P down payment invoice' : dpiNumber(draft)) : undefined);
+  useDocTitle(draft?.docNum ? (isNew ? `New ${DPI_NOUN.one}` : draft.status !== 'Draft' ? dpiNumber(draft) : `Draft ${DPI_NOUN.one}`) : undefined);
   if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading down payment invoice…</Text>;
   if (draft === null) return <NotFound icon="receipt_long" title="Down payment invoice not found" backTo={DPI_LIST_PATH} backLabel="Back to down payment invoices" />;
 
@@ -179,7 +182,8 @@ function DpiForm() {
 
   const submit = async (e: FormEvent | null, asDraft = false, overrides: Partial<Draft> = {}) => {
     e?.preventDefault();
-    if (added) {
+    // Added: only remarks and attachments save, unless this is approving it (which posts it).
+    if (added && !overrides.approved) {
       setSaving(true);
       try {
         const saved = await saveDpiRemarks(draft as DownPaymentInvoice, { remarks: draft.remarks, paymentBlock: draft.paymentBlock, paymentOrderRun: draft.paymentOrderRun });
@@ -224,7 +228,6 @@ function DpiForm() {
       setProblems([{ tab: 'header', key: 'status', message: (err as Error).message }]);
     }
   };
-  const bases = [...new Map(draft.lines.filter((l) => l.baseType).map((l) => [l.baseId, l])).values()];
   const cancelIt = () => act(async () => { const d = await cancelDownPaymentInvoice(saved); await reverseDocumentEntry(saved.id); return d; }, 'cancelled');
   const closeIt = () => act(() => closeDownPaymentInvoice(saved), 'closed');
   const recallIt = () => act(() => recallDownPaymentInvoice(saved), 'recalled to draft');
@@ -236,34 +239,25 @@ function DpiForm() {
     : {};
 
   const menu: MoreMenuItem[] = [
-    ...(!added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
-    ...(draft.status === 'Not Confirmed' ? [{ label: 'Approve', icon: 'check_circle', onSelect: () => submit(null, false, { approved: true }) }, { label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => reject.start() }] : []),
     ...(draft.status === 'Open' && balance > 0 && !draft.paymentBlock
       ? [{ label: 'Pay', icon: 'payments', onSelect: () => navigate(`${PAYMENT_LIST_PATH}/new`, { state: { vendorId: draft.vendorId, invoiceIds: [saved.id] } }) }]
       : []),
-    ...(draft.status === 'Open' && !draft.appliedAmount ? [{ label: 'Cancel invoice', icon: 'cancel', onSelect: cancelIt }] : []),
+    ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }] : []),
     ...(draft.status === 'Open' ? [{ label: 'Close', icon: 'task_alt', onSelect: closeIt }] : []),
-    ...bases.filter((l) => l.baseType === 'PO').map((l) => ({ label: `Open PO ${l.baseDocNo}`, icon: 'receipt_long', onSelect: () => navigate(`/purchasing/purchase-orders/${l.baseId}`) })),
-    ...(vendor ? [{ label: `Open vendor ${vendor.code}`, icon: 'local_shipping', onSelect: () => navigate(`/purchasing/vendors/${vendor.id}`) }] : []),
+    ...(draft.status === 'Open' && !draft.appliedAmount ? [{ label: `Cancel ${DPI_NOUN.one}`, icon: 'cancel', onSelect: cancelIt }] : []),
   ];
 
-  const title = isNew ? 'New A/P down payment invoice' : added ? dpiNumber(draft) : 'Draft down payment invoice';
+  const title = isNew ? `New ${DPI_NOUN.one}` : added ? dpiNumber(draft) : `Draft ${DPI_NOUN.one}`;
 
   return (
     <>
       <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
         <Panel className="flex-1">
-          <PanelHeader
-            type="details"
+          <PageHeader
+            variant="plain"
             icon="receipt_long"
-            iconIntent="default"
-            iconShape="rounded"
-            iconSize={32}
-            iconVariant="outline"
-            breadcrumbs={[{ label: 'A/P Down Payment Invoices', href: DPI_LIST_PATH }, { label: title }]}
-            onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
-            onBack={() => navigate(DPI_LIST_PATH)}
-            trailing={isNew ? undefined : <PrevNext path={DPI_LIST_PATH} prevId={prevId} nextId={nextId} />}
+            parent={{ noun: DPI_NOUN, to: DPI_LIST_PATH }}
+            title={title}
             tabs={isNew ? undefined : <Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={PAGES.map((p) => ({ ...p }))} />}
             status={isNew ? undefined : (
               <div className="flex gap-1">
@@ -272,11 +266,20 @@ function DpiForm() {
               </div>
             )}
             actions={
-              <>
-                {added ? null : <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(DPI_LIST_PATH)}>Cancel</Button>}
-                {menu.length ? <MoreMenu items={menu} /> : null}
-                <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>{saving ? 'Saving…' : added ? 'Save' : 'Add'}</Button>
-              </>
+              <DetailActions
+                noun={DPI_NOUN}
+                listPath={DPI_LIST_PATH}
+                mode={docMode(draft.status, { canApprove: isApprover('DPI') })}
+                needsApproval={!draft.approved}
+                remarksOnly={added}
+                busy={saving}
+                onDraft={() => submit(null, true)}
+                onSubmit={() => submit(null)}
+                onApprove={() => submit(null, false, { approved: true })}
+                onReject={reject.start}
+                menu={menu}
+                prevNext={isNew ? undefined : { path: DPI_LIST_PATH, prevId, nextId }}
+              />
             }
           />
           {page === 'transactions' && draft.id ? (

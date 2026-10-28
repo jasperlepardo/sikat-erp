@@ -66,7 +66,7 @@ test('a call logged on a document shows there, on its partner and in CRM › Act
   await page.getByRole('button', { name: 'Log activity' }).click();
   await page.getByRole('option', { name: 'Call' }).click();
   await page.getByLabel('Subject').fill('E2E: check on second delivery drop');
-  await page.getByRole('button', { name: 'Log', exact: true }).click();
+  await page.getByRole('button', { name: 'Create activity', exact: true }).click();
   const timeline = page.getByRole('list', { name: 'Activity timeline' });
   await expect(timeline).toContainText('E2E: check on second delivery drop');
 
@@ -97,7 +97,7 @@ test('a change saved to a partner shows on its timeline, by the user', async ({ 
   const errors = watchErrors(page);
   await open(page, 'sales/customers/bp-005');
   await page.getByRole('textbox', { name: 'Name *', exact: true }).fill('Mactan Pixel Animation Studio, Inc.');
-  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await page.getByRole('button', { name: 'Save changes', exact: true }).click();
   await expect(page).toHaveURL(/sales\/customers$/);
 
   await openActivity(page, 'sales/customers/bp-005');

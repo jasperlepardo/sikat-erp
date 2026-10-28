@@ -248,9 +248,9 @@ export const SEED_RFQS: Rfq[] = [
     requiredDate: '2026-10-15',
     shipTo: MNL_SHIP_TO,
     lines: [
-      rl('rfq-001-1', 'IPH-18P-256-BLK', 20, { requiredDate: '2026-10-15', unitPrice: 68200, quotedQty: 20, quotedDate: '2026-09-20', taxCode: 'IVAT' }),
-      rl('rfq-001-2', 'IPH-18P-256-SLV', 20, { requiredDate: '2026-10-15', unitPrice: 68200, quotedQty: 15, quotedDate: '2026-09-20', taxCode: 'IVAT' }),
-      rl('rfq-001-3', 'IPH-18PM-512-GLC', 10, { requiredDate: '2026-10-15', unitPrice: 89500, quotedQty: 10, quotedDate: '2026-09-20', taxCode: 'IVAT' }),
+      rl('rfq-001-1', 'IPH-18P-256-BLK', 20, { requiredDate: '2026-10-15', unitPrice: 68200, quotedQty: 20, quotedDate: '2026-09-20', taxCode: 'IVAT', baseId: 'prq-001', baseLineId: 'prq-001-1' }),
+      rl('rfq-001-2', 'IPH-18P-256-SLV', 20, { requiredDate: '2026-10-15', unitPrice: 68200, quotedQty: 15, quotedDate: '2026-09-20', taxCode: 'IVAT', baseId: 'prq-001', baseLineId: 'prq-001-2' }),
+      rl('rfq-001-3', 'IPH-18PM-512-GLC', 10, { requiredDate: '2026-10-15', unitPrice: 89500, quotedQty: 10, quotedDate: '2026-09-20', taxCode: 'IVAT', baseId: 'prq-001', baseLineId: 'prq-001-3' }),
     ],
     remarks: 'Holiday season allocation. Luzon responded on 20 Sep; Silver allocation is short (15 of 20). Following up on the 5-unit gap.',
   }),
@@ -334,5 +334,20 @@ export const SEED_RFQS: Rfq[] = [
       rl('rfq-007-3', 'IPH-DUO-512-NSK', 4, { taxCode: 'IVAT' }),
     ],
     remarks: 'Draft — checking Luzon availability before sending. iPhone Duo launch.',
+  }),
+
+  // ── Apple South Asia: second quote on the holiday iPhone request, to compare with Luzon ──
+  rfq('rfq-008', 7, 'bp-017', {
+    postingDate: '2026-09-18', documentDate: '2026-09-18', validUntil: '2026-10-18',
+    basePrId: 'prq-001',
+    requiredDate: '2026-10-15',
+    shipTo: MNL_SHIP_TO,
+    currency: 'USD',
+    lines: [
+      rl('rfq-008-1', 'IPH-18P-256-BLK', 20, { requiredDate: '2026-10-15', unitPrice: 1165, quotedQty: 12, quotedDate: '2026-09-22', taxCode: 'IMVAT', baseId: 'prq-001', baseLineId: 'prq-001-1' }),
+      rl('rfq-008-2', 'IPH-18P-256-SLV', 20, { requiredDate: '2026-10-15', unitPrice: 1185, quotedQty: 20, quotedDate: '2026-09-22', taxCode: 'IMVAT', baseId: 'prq-001', baseLineId: 'prq-001-2' }),
+      rl('rfq-008-3', 'IPH-18PM-512-GLC', 10, { requiredDate: '2026-10-15', taxCode: 'IMVAT', baseId: 'prq-001', baseLineId: 'prq-001-3' }),
+    ],
+    remarks: 'Import quote sent alongside the Luzon one. Apple can cover the Silver gap but only 12 Black; Pro Max pricing still to come.',
   }),
 ];

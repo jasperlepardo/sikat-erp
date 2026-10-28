@@ -29,7 +29,7 @@ export interface PrLine extends PurchLine {
   description: string;
   requiredDate: string;
   quantity: number;
-  /** Open qty tracks what hasn't yet been converted to a PO or quotation. */
+  /** Open qty tracks what hasn't yet been ordered. Only purchase orders draw it down; quotations don't. */
   openQty: number;
   uomCode: string;
   uomName: string;
@@ -61,6 +61,8 @@ export interface PurchaseRequest {
   branchId: string;
   /** The requester's department, stamped when the requester is picked. */
   departmentId: string;
+  /** Vendor-role Business Partner ids to solicit quotes from. Empty = not chosen yet (the lines' linked vendors apply). */
+  candidateVendorIds: string[];
   notifyOnPo: boolean;
   notifyEmail: string;
 
@@ -135,6 +137,7 @@ export function blankPurchaseRequest(today: string, requester: Employee | undefi
     requesterName,
     branchId: requester?.branchId ?? '',
     departmentId: requester?.departmentId ?? '',
+    candidateVendorIds: [],
     notifyOnPo: false,
     notifyEmail: '',
     seriesId: 'ser-pr-primary',
@@ -205,6 +208,7 @@ export const SEED_PURCHASE_REQUESTS: PurchaseRequest[] = [
     ownerId: employeeId('Andrea Ramos'),
     branchId: branchId('Head office (Pasig)'),
     departmentId: departmentId('Sales'),
+    candidateVendorIds: ['bp-016', 'bp-017'],
     notifyOnPo: true,
     notifyEmail: 'andrea.ramos@sikat.ph',
     postingDate: '2026-09-16',
@@ -214,11 +218,11 @@ export const SEED_PURCHASE_REQUESTS: PurchaseRequest[] = [
     status: 'Open',
     itemType: 'Item',
     lines: [
-      prLine('prq-001-1', 'IPH-18P-256-BLK', 20, { requiredDate: '2026-10-15', openQty: 0 }),
-      prLine('prq-001-2', 'IPH-18P-256-SLV', 20, { requiredDate: '2026-10-15', openQty: 0 }),
-      prLine('prq-001-3', 'IPH-18PM-512-GLC', 10, { requiredDate: '2026-10-15', openQty: 0 }),
+      prLine('prq-001-1', 'IPH-18P-256-BLK', 20, { requiredDate: '2026-10-15' }),
+      prLine('prq-001-2', 'IPH-18P-256-SLV', 20, { requiredDate: '2026-10-15' }),
+      prLine('prq-001-3', 'IPH-18PM-512-GLC', 10, { requiredDate: '2026-10-15' }),
     ],
-    remarks: 'Holiday season iPhone 18 Pro stock for the stores. Sent to Luzon for a quotation on 18 Sep.',
+    remarks: 'Holiday season iPhone 18 Pro stock for the stores. Sent to Luzon and Apple for quotations on 18 Sep; it stays open until a PO is raised.',
   }),
   // Head-office buying: Purchasing restocks the central warehouse. Stores ask WH-001 for stock
   // with a transfer request instead (Cebu's MacBooks: mocks/inventoryTransferRequests.ts).
@@ -228,6 +232,7 @@ export const SEED_PURCHASE_REQUESTS: PurchaseRequest[] = [
     ownerId: employeeId('Carla Uy'),
     branchId: branchId('Head office (Pasig)'),
     departmentId: departmentId('Purchasing'),
+    candidateVendorIds: ['bp-016', 'bp-017'],
     notifyOnPo: true,
     notifyEmail: 'carla.uy@sikat.ph',
     postingDate: '2026-10-03',

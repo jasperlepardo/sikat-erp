@@ -2,7 +2,6 @@ import { RFQ_SERIES, SEED_RFQS, type Rfq, type RfqLine, type RfqStatus } from '.
 import { rfqSeries, seriesLookup, formatDocNum } from './allSeries';
 import { createCollection } from './store';
 import { poTotals, type PoTotals } from './purchaseOrders';
-import { applyRequestDraw } from './purchaseRequests';
 import type { RoundingRule } from '../mocks/currencies';
 import type { TaxCode } from '../mocks/taxes';
 import { rateAt, vatNotPaidToVendor } from '../mocks/taxes';
@@ -60,40 +59,52 @@ export const rfqTotal = (q: Rfq, codes: TaxCode[]) =>
   ).total;
 
 // ── Saving ───────────────────────────────────────────────────────────────────
+// A quotation never draws down its source request's open quantities: several vendors can quote
+// the same need, so only the award (a purchase order) does. Lines keep `baseLineId` for lineage.
 
 export async function saveRfqDraft(input: RfqInput): Promise<Rfq> {
-  const before = input.id ? (await rfqs.list()).find((q) => q.id === input.id) : undefined;
-  const draft = await rfqs.save({ ...input, status: 'Draft', docNum: 0 });
-  await applyRequestDraw(before, draft);
-  return draft;
+  return rfqs.save({ ...input, status: 'Draft', docNum: 0 });
 }
 
+/** The next number in a series, past the RFQs already numbered in it. */
+const nextDocNum = (all: readonly Rfq[], seriesId: string) => {
+  const series = seriesOf(seriesId);
+  return Math.max(series.firstNo - 1, ...all.filter((q) => q.seriesId === series.id && q.docNum).map((q) => q.docNum)) + 1;
+};
+
 export async function addRfq(input: RfqInput): Promise<Rfq> {
-  const all = await rfqs.list();
-  const before = input.id ? all.find((q) => q.id === input.id) : undefined;
-  const series = seriesOf(input.seriesId);
-  const docNum =
-    Math.max(series.firstNo - 1, ...all.filter((q) => q.seriesId === series.id && q.docNum).map((q) => q.docNum)) + 1;
-  const saved = await rfqs.save({ ...input, docNum, status: input.approved ? 'Open' : 'Not Confirmed' });
-  await applyRequestDraw(before, saved);
-  return saved;
+  const docNum = nextDocNum(await rfqs.list(), input.seriesId);
+  return rfqs.save({ ...input, docNum, status: input.approved ? 'Open' : 'Not Confirmed' });
+}
+
+/**
+ * Add several RFQs at once (one per vendor when a request is sent out for quotes): numbered in
+ * sequence from one read of the series, and written in one round trip.
+ */
+export async function addRfqs(inputs: RfqInput[]): Promise<Rfq[]> {
+  const all = rfqs.snapshot();
+  const next = new Map<string, number>();
+  const numbered = inputs.map((input) => {
+    const docNum = next.get(input.seriesId) ?? nextDocNum(all, input.seriesId);
+    next.set(input.seriesId, docNum + 1);
+    return { ...input, docNum, status: (input.approved ? 'Open' : 'Not Confirmed') as RfqStatus };
+  });
+  return rfqs.saveMany(numbered);
+}
+
+/** The live (not cancelled) RFQs raised from a purchase request. */
+export async function listRfqsForPr(prId: string): Promise<Rfq[]> {
+  return (await rfqs.list()).filter((q) => q.basePrId === prId && q.status !== 'Cancelled');
 }
 
 export async function closeRfq(q: Rfq): Promise<Rfq> {
-  const closed = await rfqs.save({ ...q, status: 'Closed' as RfqStatus });
-  await applyRequestDraw(q, closed);
-  return closed;
+  return rfqs.save({ ...q, status: 'Closed' as RfqStatus });
 }
 
 export async function cancelRfq(q: Rfq): Promise<Rfq> {
-  const cancelled = await rfqs.save({ ...q, status: 'Cancelled' as RfqStatus });
-  // No longer a live quotation, so it releases its source request's open quantities.
-  await applyRequestDraw(q, cancelled);
-  return cancelled;
+  return rfqs.save({ ...q, status: 'Cancelled' as RfqStatus });
 }
 
 export async function recallRfq(q: Rfq): Promise<Rfq> {
-  const recalled = await rfqs.save({ ...q, status: 'Draft', approved: false });
-  await applyRequestDraw(q, recalled);
-  return recalled;
+  return rfqs.save({ ...q, status: 'Draft', approved: false });
 }

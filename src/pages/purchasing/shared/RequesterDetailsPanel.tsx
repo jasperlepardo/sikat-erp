@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router';
-import { Checkbox, Icon, IconButton, Panel, PanelHeader, SidePanel } from '@jasperlepardo/sikat-design-system';
+import { Checkbox, Icon, IconButton, Panel, SidePanel } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../../components/form/PageHeader';
 import { Fields, Flags, ReadOnly, Section, bind } from '../../../components/form/fields';
 import type { Employee } from '../../../mocks/employees';
 import { employeeName } from '../../../services/employees';
@@ -34,13 +35,9 @@ export function RequesterDetailsPanel<D extends RequesterDraftBase>({ draft, upd
 
   return (
     <SidePanel overlay onOverlayClick={onClose}>
-      <PanelHeader
-        type="details"
+      <PageHeader
+        variant="plain"
         icon="person"
-        iconIntent="default"
-        iconShape="rounded"
-        iconSize={32}
-        iconVariant="outline"
         title={employeeName(requester)}
         actions={
           <>

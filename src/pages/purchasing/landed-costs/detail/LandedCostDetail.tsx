@@ -3,17 +3,17 @@ import { useLocation, useNavigate, useParams } from 'react-router';
 import {
   Alert,
   Badge,
-  Button,
   Form,
   Panel,
-  PanelHeader,
   Text,
 } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../../../components/form/PageHeader';
 import { type Errors } from '../../../../components/form/fields';
-import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
+import { type MoreMenuItem } from '../../../../components/form/MoreMenu';
+import { DetailActions } from '../../../../components/form/DetailActions';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
-import { NotFound, PrevNext, neighbours } from '../../../../components/form/DetailNav';
+import { NotFound, neighbours } from '../../../../components/form/DetailNav';
 import { blankLandedCost, type LandedCost, type LcStatus } from '../../../../mocks/landedCosts';
 import {
   addLandedCost,
@@ -38,7 +38,7 @@ import { LcCostsCard } from './LcCostsCard';
 import { LcVendorsCard } from './LcVendorsCard';
 import { LcGeneralCard } from './LcGeneralCard';
 import { LcRemarksCard } from './LcRemarksCard';
-import { LC_LIST_PATH, LC_STATUS_INTENT } from '../../paths';
+import { LC_LIST_PATH, LC_NOUN, LC_STATUS_INTENT } from '../../paths';
 
 type TabId = 'items' | 'costs' | 'vendors' | 'general';
 
@@ -98,7 +98,7 @@ function LandedCostForm() {
     };
   }, [id, isNew]);
 
-  useDocTitle(draft?.docNum ? (isNew ? 'New landed cost' : lcNumber(draft)) : undefined);
+  useDocTitle(draft?.docNum ? (isNew ? `New ${LC_NOUN.one}` : draft.status !== 'Draft' ? lcNumber(draft) : `Draft ${LC_NOUN.one}`) : undefined);
 
   if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading…</Text>;
   if (draft === null)
@@ -159,11 +159,10 @@ function LandedCostForm() {
         : {};
 
   const menu: MoreMenuItem[] = [
-    ...(!added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
-    ...(draft.status === 'Open' ? [{ label: 'Cancel landed cost', icon: 'cancel', onSelect: cancelIt }] : []),
+    ...(draft.status === 'Open' ? [{ label: `Cancel ${LC_NOUN.one}`, icon: 'cancel', onSelect: cancelIt }] : []),
   ];
 
-  const title = isNew ? 'New landed cost' : added ? lcNumber(draft) : 'Draft landed cost';
+  const title = isNew ? `New ${LC_NOUN.one}` : added ? lcNumber(draft) : `Draft ${LC_NOUN.one}`;
 
   const sectionProps: LcSectionProps = { draft, update, errors, m, readOnly };
 
@@ -171,25 +170,24 @@ function LandedCostForm() {
     <>
     <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
       <Panel className="flex-1">
-        <PanelHeader
-          type="details"
+        <PageHeader
+          variant="plain"
           icon="calculate"
-          iconIntent="default"
-          iconShape="rounded"
-          iconSize={32}
-          iconVariant="outline"
-          breadcrumbs={[{ label: 'Landed Costs', href: LC_LIST_PATH }, { label: title }]}
-          onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
-          onBack={() => navigate(LC_LIST_PATH)}
-          trailing={isNew ? undefined : <PrevNext path={LC_LIST_PATH} prevId={prevId} nextId={nextId} />}
+          parent={{ noun: LC_NOUN, to: LC_LIST_PATH }}
+          title={title}
           status={isNew ? undefined : <Badge size="small" intent={LC_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
           actions={
-            <>
-              {menu.length ? <MoreMenu items={menu} /> : null}
-              <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
-                {saving ? 'Saving…' : added ? 'Save' : 'Add Landed Cost'}
-              </Button>
-            </>
+            <DetailActions
+              noun={LC_NOUN}
+              listPath={LC_LIST_PATH}
+              mode={added ? 'readonly' : 'draft'}
+              remarksOnly={added}
+              busy={saving}
+              onDraft={() => submit(null, true)}
+              onSubmit={() => submit(null)}
+              menu={menu}
+              prevNext={isNew ? undefined : { path: LC_LIST_PATH, prevId, nextId }}
+            />
           }
         />
 

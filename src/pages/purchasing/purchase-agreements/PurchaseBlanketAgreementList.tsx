@@ -1,17 +1,15 @@
 import { useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router';
+import { useLocation } from 'react-router';
 import {
   Alert,
-  Button,
-  Icon,
   Panel,
-  PanelHeader,
   Table,
   TableContent,
   TableStatus,
   Text,
   type TableColumn,
 } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../../components/form/PageHeader';
 import { dateField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { useListPage } from '../../../components/form/DataTable';
@@ -21,10 +19,10 @@ import { formatAmount } from '../../../services/format';
 import { listPurchaseBlanketAgreements, pbaNumber, pbaTotals } from '../../../services/purchaseBlanketAgreements';
 import { useAsync } from '../../../services/useAsync';
 import { useDocTitle } from '../../../services/useDocTitle';
-import { PBA_LIST_PATH, PBA_STATUS_INTENT } from '../paths';
+import { cap } from '../../../components/form/noun';
+import { PBA_LIST_PATH, PBA_NOUN, PBA_STATUS_INTENT } from '../paths';
 
 export function PurchaseBlanketAgreementList() {
-  const navigate = useNavigate();
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const agreements = useAsync(listPurchaseBlanketAgreements, []);
   const [query, setQuery] = useState('');
@@ -45,7 +43,7 @@ export function PurchaseBlanketAgreementList() {
   const presets = useListPresets({
     list: 'purchase-blanket-agreements',
     fields,
-    builtIns: statusViews('agreements', PBA_STATUSES),
+    builtIns: statusViews(PBA_NOUN.many, PBA_STATUSES),
     defaultSort: { key: 'startDate', direction: 'desc' },
     rows: agreements,
     onChange: resetPage,
@@ -128,30 +126,22 @@ export function PurchaseBlanketAgreementList() {
 
   return (
     <Panel className="flex-1">
-      <PanelHeader
+      <PageHeader
         showSearch
-        searchLabel="Search agreements"
+        searchLabel={`Search ${PBA_NOUN.many}`}
         searchPlaceholder="Search by no., vendor, or description"
         searchValue={query}
         onSearchChange={(value) => { setQuery(value); resetPage(); }}
         icon="handshake"
-        iconIntent="default"
-        iconShape="rounded"
-        iconSize={32}
-        iconVariant="outline"
         title={presets.menu}
-        actions={
-          <Button intent="primary" variant="solid" size="medium" shape="pill" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${PBA_LIST_PATH}/new`)}>
-            New agreement
-          </Button>
-        }
+        create={{ noun: PBA_NOUN, to: PBA_LIST_PATH }}
       />
       <Panel.Body className="flex flex-col gap-2">
         {notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : null}
         {presets.bar(null)}
         {agreements ? (
           <Table
-            caption="Purchase blanket agreements"
+            caption={cap(PBA_NOUN.many)}
             columns={columns}
             rows={paginated}
             getRowId={(pba) => pba.id}
@@ -161,7 +151,7 @@ export function PurchaseBlanketAgreementList() {
             pagination={pagination}
           />
         ) : (
-          <Text tone="muted" className="p-4">Loading agreements…</Text>
+          <Text tone="muted" className="p-4">Loading {PBA_NOUN.many}…</Text>
         )}
       </Panel.Body>
       {presets.panel}

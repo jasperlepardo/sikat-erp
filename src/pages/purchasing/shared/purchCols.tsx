@@ -105,6 +105,11 @@ export interface ColBindings<T extends PurchLine> {
   bin?: { show: (l: T) => boolean; options: (l: T) => Opt[]; onChange: (l: T, binId: string) => void; invalid?: (l: T) => boolean };
   /** Warehouse-change hook (GR resets the bin). Defaults to writing the warehouse only. */
   onWarehouse?: (l: T, code: string) => void;
+  /**
+   * How much of the line is on purchase orders (added, not cancelled), for the `orderedQty` column:
+   * a request line's drawn quantity, or what was ordered from a quotation line.
+   */
+  orderedQtyOf?: (l: T) => number;
   /** Computed open qty for the `openQty` column (GR derives it from the receipt + PO). */
   openQtyOf?: (l: T) => number;
   /** The base document a line was copied from, for the `baseDoc` column (GR → PO, Return → GR/AP). */
@@ -221,6 +226,10 @@ export function purchCols<T extends PurchLine>(b: ColBindings<T>): Record<string
           </div>
         );
       },
+    },
+    orderedQty: {
+      key: 'orderedQty', header: 'Ordered qty', align: 'end',
+      cell: (l) => (l.itemId ? <span className="whitespace-nowrap text-sm tabular-nums">{(b.orderedQtyOf?.(l) ?? 0).toLocaleString('en-PH')} {b.uomLabel(l)}</span> : null),
     },
     quotedQty: {
       key: 'quotedQty', header: 'Quoted qty', align: 'end',

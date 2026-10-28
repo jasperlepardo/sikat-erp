@@ -1,9 +1,12 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { Alert, Badge, Button, Form, FormField, List, Panel, PanelHeader, Select, Tabs, Text } from '@jasperlepardo/sikat-design-system';
+import { Alert, Badge, Form, FormField, List, Panel, Select, Tabs, Text } from '@jasperlepardo/sikat-design-system';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { Section, type Errors } from '../../../../components/form/fields';
-import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
+import { type MoreMenuItem } from '../../../../components/form/MoreMenu';
+import { DetailActions, docMode } from '../../../../components/form/DetailActions';
+import { PageHeader } from '../../../../components/form/PageHeader';
+import { isApprover, needsApproval } from '../../../../services/approval';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { formatAddress } from '../../../../mocks/address';
 import type { ArInvoice } from '../../../../mocks/arInvoices';
@@ -41,7 +44,6 @@ import { controlAccountOf, listJournalEntries } from '../../../../services/journ
 import { accounts as accountsCollection, currencies as currenciesCollection, exchangeRates, rateOn, taxCodes } from '../../../../services/masterData';
 import { listPartnersByRole } from '../../../../services/partners';
 import { logRejection } from '../../../../services/approvalRules';
-import { getSalesSettings } from '../../../../services/salesOrders';
 import { IncomingAccounts, IncomingDocuments } from './IpContentsCard';
 import { IncomingMeansSection } from './IpMeansCard';
 import { IncomingDocumentCard } from './IpDocumentCard';
@@ -53,8 +55,8 @@ import { SalesDocumentFlow } from '../../shared/SalesDocumentFlow';
 import { ReferencesTable } from '../../../purchasing/shared/ReferencesTable';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
-import { neighbours, NotFound, PrevNext, siblingKeys, useDocTab, useReject } from '../../../../components/form/DetailNav';
-import { RC_LIST_PATH, RC_STATUS_INTENT } from '../../paths';
+import { neighbours, NotFound, siblingKeys, useDocTab, useReject } from '../../../../components/form/DetailNav';
+import { RC_LIST_PATH, RC_NOUN, RC_STATUS_INTENT } from '../../paths';
 import { activeOptions } from '../../../../services/inventoryMasters';
 
 type TabId = 'contents' | 'means';
@@ -117,7 +119,7 @@ function IncomingForm() {
   const location = useLocation();
   const fromInvoice = (location.state as { fromInvoice?: string } | null)?.fromInvoice;
 
-  const rcApproved = !getSalesSettings().requireIncomingPaymentApproval;
+  const rcApproved = !needsApproval('RC');
   const [draft, setDraft] = useState<IncomingInput | null | undefined>(isNew ? { ...blankIncomingPayment(todayISO()), approved: rcApproved } : undefined);
   const [m, setM] = useState<Masters>();
   const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
@@ -150,9 +152,9 @@ function IncomingForm() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, isNew]);
 
-  useDocTitle(draft?.docNum ? (isNew ? 'New incoming payment' : incomingNumber(draft)) : undefined);
-  if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading payment…</Text>;
-  if (draft === null) return <NotFound icon="savings" title="Incoming payment not found" backTo={RC_LIST_PATH} backLabel="Back to payments received" />;
+  useDocTitle(draft?.docNum ? (isNew ? `New ${RC_NOUN.one}` : draft.status === 'Draft' ? `Draft ${RC_NOUN.one}` : incomingNumber(draft)) : undefined);
+  if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading {RC_NOUN.one}…</Text>;
+  if (draft === null) return <NotFound icon="savings" title="Incoming payment not found" backTo={RC_LIST_PATH} backLabel={`Back to ${RC_NOUN.many}`} />;
 
   const added = draft.status !== 'Draft';
   const ro = added;
@@ -239,16 +241,12 @@ function IncomingForm() {
       setProblems([{ tab: 'header', key: 'status', message: (err as Error).message }]);
     }
   };
-
-  const paidInvoices = [...new Map(paidRows(draft).map((r) => [r.invoiceId, r])).values()];
   const saved = draft as IncomingPayment;
   const recallIt = async () => { const p = await recallIncomingPayment(saved); navigate(RC_LIST_PATH, { state: { notice: `Payment ${incomingNumber(p)} recalled to draft.` } }); };
   const rejectIt = async (rejectionReason: string) => { await logRejection('RCV', saved.id, saved.customerId, rejectionReason); await recallIncomingPayment(saved); navigate(RC_LIST_PATH, { state: { notice: `Payment ${incomingNumber(saved)} rejected and returned to draft.` } }); };
 
   const menu: MoreMenuItem[] = [
-    ...(!added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
-    ...(draft.status === 'Draft' && !draft.approved ? [{ label: 'Submit for approval', icon: 'upload', onSelect: () => submit(null, false) }] : []),
-    ...(draft.status === 'Not Confirmed' ? [{ label: 'Approve', icon: 'verified', onSelect: () => submit(null, false, { approved: true }) }, { label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => reject.start() }] : []),
+    ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }] : []),
     ...(draft.status === 'Posted'
       ? [
           { label: 'Cancel — date it today', icon: 'cancel', onSelect: () => cancel('current') },
@@ -256,37 +254,36 @@ function IncomingForm() {
         ]
       : []),
     ...(entryId ? [{ label: `Open journal entry ${draft.transNo}`, icon: 'menu_book', onSelect: () => navigate(`/accounting/journal-entries/${entryId}`) }] : []),
-    ...paidInvoices.map((r) => ({ label: `Open A/R invoice ${r.docNo}`, icon: 'receipt', onSelect: () => navigate(`/sales/invoices/${r.invoiceId}`) })),
   ];
 
-  const title = isNew ? 'New incoming payment' : added ? incomingNumber(draft) : 'Draft incoming payment';
+  const title = isNew ? `New ${RC_NOUN.one}` : added ? incomingNumber(draft) : `Draft ${RC_NOUN.one}`;
 
   return (
     <>
     <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
       <Panel className="flex-1">
-        <PanelHeader
-          type="details"
+        <PageHeader
+          variant="plain"
           icon="savings"
-          iconIntent="default"
-          iconShape="rounded"
-          iconSize={32} iconVariant="outline"
-          breadcrumbs={[{ label: 'Payments Received', href: RC_LIST_PATH }, { label: title }]}
-          onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
-          onBack={() => navigate(RC_LIST_PATH)}
-          trailing={
-            isNew ? undefined : <PrevNext path={RC_LIST_PATH} prevId={prevId} nextId={nextId} />
-          }
+          parent={{ noun: RC_NOUN, to: RC_LIST_PATH }}
+          title={title}
           tabs={isNew ? undefined : <Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={[...PAGES]} />}
           status={isNew ? undefined : <Badge size="small" intent={RC_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
           actions={
-            <>
-              {ro ? null : <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(RC_LIST_PATH)}>Cancel</Button>}
-              {menu.length ? <MoreMenu items={menu} /> : null}
-              <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
-                {saving ? 'Saving…' : ro ? 'Save' : 'Add'}
-              </Button>
-            </>
+            <DetailActions
+              noun={RC_NOUN}
+              listPath={RC_LIST_PATH}
+              mode={docMode(draft.status, { canApprove: isApprover('RC') })}
+              needsApproval={!draft.approved}
+              remarksOnly={ro}
+              busy={saving}
+              onDraft={() => submit(null, true)}
+              onSubmit={() => submit(null, false)}
+              onApprove={() => submit(null, false, { approved: true })}
+              onReject={reject.start}
+              menu={menu}
+              prevNext={isNew ? undefined : { path: RC_LIST_PATH, prevId, nextId }}
+            />
           }
         />
         {page === 'activity' ? (
@@ -315,7 +312,7 @@ function IncomingForm() {
                 {draft.status === 'Cancelled'
                   ? `A reversing entry was posted on ${formatDate(draft.cancelDate)}, and the invoices it paid reopened.`
                   : draft.status === 'Not Confirmed'
-                    ? 'Approve it from You can also to post it. Only remarks and attachments can change.'
+                    ? 'Approve it to post it. Only remarks and attachments can change.'
                     : `Journal entry ${draft.transNo}. Only remarks and attachments can change; to undo it, cancel it.`}
               </Alert>
             ) : null}

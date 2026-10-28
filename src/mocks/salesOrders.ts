@@ -154,6 +154,7 @@ export interface SalesSettings {
   requireSalesReturnApproval: boolean;
   requireArCreditMemoApproval: boolean;
   requireIncomingPaymentApproval: boolean;
+  requireArReserveInvoiceApproval: boolean;
 }
 
 export const SEED_SALES_SETTINGS: SalesSettings[] = [{
@@ -165,6 +166,7 @@ export const SEED_SALES_SETTINGS: SalesSettings[] = [{
   requireSalesReturnApproval: false,
   requireArCreditMemoApproval: false,
   requireIncomingPaymentApproval: false,
+  requireArReserveInvoiceApproval: false,
 }];
 
 export const SO_SERIES: DocumentSeries[] = [

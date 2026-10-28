@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router';
-import { Card, CardField, Icon, IconButton, Panel, PanelHeader, SidePanel, Text } from '@jasperlepardo/sikat-design-system';
+import { Card, CardField, Icon, IconButton, Panel, SidePanel, Text } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../../components/form/PageHeader';
 import { formatAddress, type PostalAddress } from '../../../mocks/address';
 import { contactName, type Partner, type PartnerAddress } from '../../../mocks/partners';
 import { INDICATORS } from '../../../mocks/purchaseOrders';
@@ -68,13 +69,9 @@ export function CustomerDetailsPanel({ customer, draft, update, readOnly, noun, 
 
   return (
     <SidePanel overlay onOverlayClick={onClose}>
-      <PanelHeader
-        type="details"
+      <PageHeader
+        variant="plain"
         icon="person"
-        iconIntent="default"
-        iconShape="rounded"
-        iconSize={32}
-        iconVariant="outline"
         title={customer.name}
         actions={
           <>

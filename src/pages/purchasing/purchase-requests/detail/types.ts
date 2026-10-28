@@ -1,4 +1,5 @@
 import type { Errors } from '../../../../components/form/fields';
+import type { ExchangeRate } from '../../../../mocks/currencies';
 import type { Item } from '../../../../mocks/items';
 import type { Partner } from '../../../../mocks/partners';
 import type { PrLine, PurchaseRequest } from '../../../../mocks/purchaseRequests';
@@ -21,8 +22,10 @@ export interface PrMasters {
   items: Item[];
   inv: InventoryMasters;
   tax: TaxMasterData;
-  /** Vendors (Business Partners, vendor role) — for the line's preferred-vendor lookup. */
+  /** Vendors (Business Partners, vendor role) — for the line's preferred-vendor lookup and the vendors to solicit. */
   vendors: Partner[];
+  /** Exchange rates, to price a quotation in a foreign vendor's currency and compare quotes in pesos. */
+  rates: ExchangeRate[];
 }
 
 export type PrSectionProps = {
@@ -39,7 +42,7 @@ export interface PrContext {
   rateOf: (taxCode: string) => number;
   readOnly: boolean;
   added: boolean;
-  /** Some line was copied to an RFQ or PO, so the requester is locked. */
+  /** Some line was ordered on a PO, so the requester is locked. */
   copied: boolean;
 }
 

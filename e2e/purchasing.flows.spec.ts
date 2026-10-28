@@ -45,16 +45,16 @@ const DP_OPEN = 'dp-002';
 const DP_VENDOR = 'Luzon iDistribution Corp.';
 
 /**
- * The "You can also" menu in a document header, then one of its items. The design-system
+ * The "More actions" menu in a document header, then one of its items. The design-system
  * Dropdown renders each entry with role="option" inside a role="menu" container.
  */
 async function moreMenu(page: Page, item: string | RegExp) {
-  await page.getByRole('button', { name: 'You can also' }).click();
+  await page.getByRole('button', { name: 'More actions' }).click();
   await page.getByRole('menu').getByRole('option', { name: item }).click();
 }
 
-/** The primary header action: "Add" on a new/unposted document, "Save" once posted. */
-const addButton = (page: Page) => page.getByRole('button', { name: 'Add', exact: true });
+/** The primary header action on a new or unposted document: "Create <document>". */
+const addButton = (page: Page) => page.getByRole('button', { name: /^Create / });
 
 /**
  * Pick a vendor in the shared VendorCard. Its design-system CardField renders a button-combobox
@@ -90,7 +90,7 @@ async function poStatus(page: Page, id: string) {
 // ──────────────────────────────────────────────────────────────────────────────
 // 1. The chain: PR → RFQ → PO → goods receipt → vendor invoice.
 //    PO → GR → AP is driven end-to-end; the PR/RFQ heads are asserted shallowly
-//    (their "Copy to" actions exist and pre-fill), because driving a from-scratch
+//    (their "Create …" actions exist and pre-fill), because driving a from-scratch
 //    purchase request through line entry is out of scope for a stable flow.
 // ──────────────────────────────────────────────────────────────────────────────
 
@@ -102,9 +102,9 @@ test('US-PUR-030/040: PO → goods receipt → vendor invoice, document flow adv
   await expect(page.getByText('Related documents')).toBeVisible();
   await expect(page.locator('body')).toContainText('Not linked to any other document yet.');
 
-  // Copy to goods receipt — the PO's open line comes across at its full open quantity. Add it.
+  // Create goods receipt — the PO's open line comes across at its full open quantity. Add it.
   await open(page, `purchasing/purchase-orders/${PO_OPEN}`);
-  await moreMenu(page, 'Copy to goods receipt');
+  await moreMenu(page, 'Create goods receipt');
   await expect(page).toHaveURL(/goods-receipts\/new/);
   await expect(page.locator('body')).toContainText(PO_VENDOR);
   await addButton(page).click();
@@ -128,7 +128,7 @@ test('US-PUR-030/040: PO → goods receipt → vendor invoice, document flow adv
   expect(grId).toBeTruthy();
 
   await open(page, `purchasing/goods-receipts/${grId}`);
-  await moreMenu(page, 'Copy to A/P invoice');
+  await moreMenu(page, 'Create A/P invoice');
   await expect(page).toHaveURL(/vendor-invoices\/new/);
   await expect(page.locator('body')).toContainText(PO_VENDOR);
   await addButton(page).click();
@@ -144,13 +144,13 @@ test('US-PUR-030/040: PO → goods receipt → vendor invoice, document flow adv
   expect(errors).toEqual([]);
 });
 
-test('US-PUR-024: purchase request and RFQ offer a "Copy to" action into the chain @chain-head', async ({ page }) => {
+test('US-PUR-024: purchase request and RFQ offer a "Create …" action into the chain @chain-head', async ({ page }) => {
   // Shallow: the PR → RFQ → PO heads of the chain. A from-scratch purchase request needs full
   // line entry, so here we only assert the copy-forward action each head exposes, and that it
   // pre-fills the next document — the stock-moving PO → GR → AP steps are driven in full above.
   const errors = watchErrors(page);
 
-  // An open purchase request offers "Copy to purchase order".
+  // An open purchase request offers "Create purchase order".
   await open(page, 'purchasing/purchase-requests');
   const prId = await page.evaluate(async () => {
     const pr = await import('/src/services/purchaseRequests.ts');
@@ -158,17 +158,32 @@ test('US-PUR-024: purchase request and RFQ offer a "Copy to" action into the cha
   });
   if (prId) {
     await open(page, `purchasing/purchase-requests/${prId}`);
-    await page.getByRole('button', { name: 'You can also' }).click();
-    await expect(page.getByRole('menu').getByRole('option', { name: 'Copy to purchase order' })).toBeVisible();
+    await page.getByRole('button', { name: 'More actions' }).click();
+    await expect(page.getByRole('menu').getByRole('option', { name: 'Create purchase order', exact: true })).toBeVisible();
     await page.keyboard.press('Escape');
   }
 
-  // An open RFQ offers "Copy to purchase order", and it pre-fills a new PO for the same vendor.
+  // An open RFQ offers "Create purchase order", and it pre-fills a new PO for the same vendor.
   await open(page, 'purchasing/purchase-quotations/RFQ-2026-0001');
-  await moreMenu(page, 'Copy to purchase order');
+  await moreMenu(page, 'Create purchase order');
   await expect(page).toHaveURL(/purchase-orders\/new/);
   await expect(page.locator('body')).toContainText('New purchase order');
   await expect(page.locator('body')).toContainText('Luzon iDistribution');
+
+  expect(await rawIds(page)).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
+test('US-PUR-025: a purchase request compares its vendors\' quotes per item @comparison', async ({ page }) => {
+  // prq-001 was sent to Luzon (PHP) and Apple (USD): the Contents card's Comparison switch shows
+  // each item with one row per vendor, linking back to the quotation.
+  const errors = watchErrors(page);
+  await open(page, 'purchasing/purchase-requests/prq-001');
+  await page.getByRole('tab', { name: 'Comparison' }).click();
+  const body = page.locator('body');
+  await expect(body).toContainText('Apple South Asia Pte. Ltd.');
+  await expect(body).toContainText('Luzon iDistribution Corp.');
+  await expect(page.getByRole('link', { name: 'RFQ-2026-0001' }).first()).toBeVisible();
 
   expect(await rawIds(page)).toEqual([]);
   expect(errors).toEqual([]);
@@ -186,7 +201,7 @@ test('US-PUR-030: a partial receipt leaves the PO open; the next closes it; canc
 
   // Receipt 1: copy from the PO but only receive 10 of the 30 ordered.
   await open(page, `purchasing/purchase-orders/${PO_OPEN}`);
-  await moreMenu(page, 'Copy to goods receipt');
+  await moreMenu(page, 'Create goods receipt');
   await expect(page).toHaveURL(/goods-receipts\/new/);
   const qty = page.getByLabel('Quantity', { exact: true });
   await expect(qty).toHaveValue(PO_QTY);
@@ -199,7 +214,7 @@ test('US-PUR-030: a partial receipt leaves the PO open; the next closes it; canc
 
   // Receipt 2: the remaining 20 come across pre-ticked — receiving them closes the PO.
   await open(page, `purchasing/purchase-orders/${PO_OPEN}`);
-  await moreMenu(page, 'Copy to goods receipt');
+  await moreMenu(page, 'Create goods receipt');
   await expect(page.getByLabel('Quantity', { exact: true })).toHaveValue('20');
   await addButton(page).click();
   await expectNotice(page, /goods-receipts$/, /stock is in/);
@@ -234,7 +249,7 @@ test('US-PUR-060: goods return against a billed invoice, then copy it to an A/P 
   // (A return against an unbilled receipt posts Closed and needs no credit; only a return against a
   //  billed invoice stays Open awaiting the vendor's credit memo, which is what we copy to here.)
   await open(page, `purchasing/purchase-orders/${PO_OPEN}`);
-  await moreMenu(page, 'Copy to goods receipt');
+  await moreMenu(page, 'Create goods receipt');
   await addButton(page).click();
   await expectNotice(page, /goods-receipts$/, /stock is in/);
   await expect.poll(() => poStatus(page, PO_OPEN), { timeout: 15_000 }).toBe('Closed');
@@ -248,7 +263,7 @@ test('US-PUR-060: goods return against a billed invoice, then copy it to an A/P 
 
   // Bill the receipt.
   await open(page, `purchasing/goods-receipts/${grId}`);
-  await moreMenu(page, 'Copy to A/P invoice');
+  await moreMenu(page, 'Create A/P invoice');
   await expect(page).toHaveURL(/vendor-invoices\/new/);
   await addButton(page).click();
   await expectListed(page, /vendor-invoices$/);
@@ -263,7 +278,7 @@ test('US-PUR-060: goods return against a billed invoice, then copy it to an A/P 
 
   // Copy the A/P invoice to a goods return (billed goods → the return stays Open, awaiting a credit).
   await open(page, `purchasing/vendor-invoices/${invId}`);
-  await moreMenu(page, 'Copy to goods return');
+  await moreMenu(page, 'Create goods return');
   await expect(page).toHaveURL(/goods-returns\/new/);
   await expect(page.locator('body')).toContainText(PO_VENDOR);
   await addButton(page).click();
@@ -278,7 +293,7 @@ test('US-PUR-060: goods return against a billed invoice, then copy it to an A/P 
 
   // The invoice-based return is creditable — copy it to an A/P credit memo (debit memo).
   await open(page, `purchasing/goods-returns/${retId}`);
-  await moreMenu(page, 'Copy to A/P credit memo');
+  await moreMenu(page, 'Create A/P credit memo');
   await expect(page).toHaveURL(/debit-memos\/new/);
   await expect(page.locator('body')).toContainText(PO_VENDOR);
   await addButton(page).click();
@@ -374,7 +389,7 @@ test('US-PUR-020: posting a PO that reuses an open PO\'s vendor reference warns 
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Guard: the purchasing "Copy to" menu items navigate to real routes (not the "Coming soon"
+// Guard: the purchasing "Create …" menu items navigate to real routes (not the "Coming soon"
 // placeholder). An earlier revision of these pages pointed several of them at malformed routes
 // (e.g. /purchasing/returns-and-debits-and-debits/returns/new, /purchasing/payments-made-made/new);
 // those have since been corrected to /purchasing/goods-returns, /purchasing/debit-memos and
@@ -382,12 +397,12 @@ test('US-PUR-020: posting a PO that reuses an open PO\'s vendor reference warns 
 // memo menu items must land on a live form, never the placeholder.
 // ──────────────────────────────────────────────────────────────────────────────
 
-test('purchasing "Copy to" menu items reach live forms, not the "Coming soon" placeholder @copy-routes', async ({ page }) => {
+test('purchasing "Create …" menu items reach live forms, not the "Coming soon" placeholder @copy-routes', async ({ page }) => {
   const errors = watchErrors(page);
 
   // Build an open goods receipt and an A/P invoice from the PO.
   await open(page, `purchasing/purchase-orders/${PO_OPEN}`);
-  await moreMenu(page, 'Copy to goods receipt');
+  await moreMenu(page, 'Create goods receipt');
   await addButton(page).click();
   await expectListed(page, /goods-receipts$/);
 
@@ -399,7 +414,7 @@ test('purchasing "Copy to" menu items reach live forms, not the "Coming soon" pl
 
   // GR → goods return opens the goods-return form (correct route), not the placeholder.
   await open(page, `purchasing/goods-receipts/${grId}`);
-  await moreMenu(page, 'Copy to goods return');
+  await moreMenu(page, 'Create goods return');
   await expect(page).toHaveURL(/goods-returns\/new/);
   await expect(page.getByText('Coming soon')).toHaveCount(0);
   await expect(page.locator('body')).toContainText('New goods return');

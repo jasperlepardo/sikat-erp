@@ -26,7 +26,7 @@ test('renaming a payment term shows the new name on the partner, which still sto
   const name = page.getByLabel('Name');
   await expect(name).toHaveValue('Net 30');
   await name.fill('Net 30 days');
-  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await page.getByRole('button', { name: 'Save changes', exact: true }).click();
   await expect(page).toHaveURL(/payment-terms$/);
   await expect(page.locator('body')).toContainText('Net 30 days');
 
@@ -35,7 +35,7 @@ test('renaming a payment term shows the new name on the partner, which still sto
   expect(await rawIds(page)).toEqual([]);
 
   // Saving the partner writes it to storage: the link is the id, never the name.
-  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await page.getByRole('button', { name: 'Save changes', exact: true }).click();
   await expect.poll(async () => (await stored(page, 'sikat-erp:partners')).find((p) => p.id === 'bp-003')?.customerPaymentTermId).toBe('pt-004');
   expect(errors).toEqual([]);
 });
@@ -114,7 +114,7 @@ test('renaming a variant attribute value shows the new label on the variant, whi
   const second = page.getByLabel('Value', { exact: true }).nth(1);
   await expect(second).toHaveValue('256GB');
   await second.fill('256 GB');
-  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await page.getByRole('button', { name: 'Save changes', exact: true }).click();
   await expect(page).toHaveURL(/variant-attributes$/);
 
   // apl-0001 is the first iPhone 18 Pro Max: 256GB.

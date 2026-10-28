@@ -5,15 +5,16 @@ import { postDocumentEntry, reverseDocumentEntry } from '../../../../services/jo
 import {
   Alert,
   Badge,
-  Button,
   Form,
   Panel,
-  PanelHeader,
   Tabs,
   Text,
 } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../../../components/form/PageHeader';
 import { type Errors } from '../../../../components/form/fields';
-import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
+import { type MoreMenuItem } from '../../../../components/form/MoreMenu';
+import { DetailActions, docMode } from '../../../../components/form/DetailActions';
+import { isApprover, needsApproval } from '../../../../services/approval';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { blankApInvoice, newApLine, type ApInvoice, type ApLine, type ApStatus } from '../../../../mocks/apInvoices';
 import { CURRENT_USER_ID } from '../../../../mocks/common';
@@ -66,14 +67,14 @@ import { DrawPanel } from './DrawPanel';
 import { linesFromReceipt, orderNumbersOf, toApLine, type ApContext, type ApDraft, type ApMasters } from './types';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
-import { neighbours, NotFound, PrevNext, siblingKeys, useDocTab, useReject } from '../../../../components/form/DetailNav';
+import { neighbours, NotFound, siblingKeys, useDocTab, useReject } from '../../../../components/form/DetailNav';
 import { VendorCard } from '../../shared/VendorCard';
 import { VendorDetailsPanel } from '../../shared/VendorDetailsPanel';
 import { receivingVendorAddressFields } from '../../shared/vendorAddresses';
 import { ApDocumentCard } from './ApDocumentCard';
 import { ApTotalsCard } from './ApTotalsCard';
 import { ApJournalCard } from './ApJournalCard';
-import { AP_LIST_PATH, AP_STATUS_INTENT, MEMO_LIST_PATH, PAYMENT_LIST_PATH, RETURN_LIST_PATH } from '../../paths';
+import { AP_LIST_PATH, AP_NOUN, AP_STATUS_INTENT, MEMO_LIST_PATH, PAYMENT_LIST_PATH, RETURN_LIST_PATH } from '../../paths';
 
 type TabId = 'contents' | 'logistics' | 'accounting';
 
@@ -154,7 +155,7 @@ function ApInvoiceForm() {
   const location = useLocation();
   const state = location.state as { copyFrom?: ApDraft; fromReceipt?: string; fromPo?: string } | null;
 
-  const apApproved = !getPurchasingSettings().requireApInvoiceApproval;
+  const apApproved = !needsApproval('APINV');
   const [draft, setDraft] = useState<ApDraft | null | undefined>(isNew ? { ...(state?.copyFrom ?? { ...blankApInvoice(todayISO(), CURRENT_USER_ID), lines: [] }), approved: apApproved } : undefined);
   const [m, setM] = useState<ApMasters>();
   const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
@@ -211,7 +212,7 @@ function ApInvoiceForm() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, isNew]);
 
-  useDocTitle(draft?.docNum ? (isNew ? 'New A/P invoice' : draft.docNum ? apNumber(draft) : 'Draft A/P invoice') : undefined);
+  useDocTitle(draft?.docNum ? (isNew ? `New ${AP_NOUN.one}` : draft.status !== 'Draft' ? apNumber(draft) : `Draft ${AP_NOUN.one}`) : undefined);
   if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading A/P invoice…</Text>;
   if (draft === null) return <NotFound icon="request_quote" title="A/P invoice not found" backTo={AP_LIST_PATH} backLabel="Back to bills" />;
 
@@ -264,7 +265,8 @@ function ApInvoiceForm() {
 
   const submit = async (e: FormEvent | null, asDraft = false, overrides: Partial<ApDraft> = {}) => {
     e?.preventDefault();
-    if (added) {
+    // Added: only remarks and attachments save, unless this is approving it (which posts it).
+    if (added && !overrides.approved) {
       setSaving(true);
       try {
         const saved = await saveApRemarks(draft as ApInvoice, { remarks: draft.remarks, paymentBlock: draft.paymentBlock, paymentOrderRun: draft.paymentOrderRun });
@@ -352,7 +354,6 @@ function ApInvoiceForm() {
   };
 
   const saved = draft as ApInvoice;
-  const bases = [...new Map(draft.lines.filter((l) => l.baseType).map((l) => [l.baseId, l])).values()];
   const cancelIt = () => act(async () => { const inv = await cancelApInvoice(saved); await reverseDocumentEntry(saved.id); return inv; }, 'cancelled — the receipts and POs it billed are open again');
   const recallIt = () => act(() => recallApInvoice(saved), 'recalled to draft');
   const rejectIt = async (rejectionReason: string) => {
@@ -363,32 +364,25 @@ function ApInvoiceForm() {
   const statusMoves: Partial<Record<ApStatus, () => void>> = draft.status === 'Draft' ? (draft.approved ? { Open: () => submit(null) } : { 'Not Confirmed': () => submit(null) }) : draft.status === 'Not Confirmed' ? { Open: () => submit(null, false, { approved: true }) } : draft.status === 'Open' && !draft.appliedAmount ? { Cancelled: cancelIt } : {};
 
   const menu: MoreMenuItem[] = [
-    ...(!added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
-    ...(draft.status === 'Not Confirmed' ? [{ label: 'Approve', icon: 'check_circle', onSelect: () => submit(null, false, { approved: true }) }, { label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => reject.start() }] : []),
-    ...(draft.status === 'Open' && balance > 0 && !draft.paymentBlock
-      ? [{ label: 'Pay', icon: 'payments', onSelect: () => navigate(`${PAYMENT_LIST_PATH}/new`, { state: { vendorId: draft.vendorId, invoiceIds: [saved.id] } }) }]
-      : []),
     ...(draft.status === 'Open' || draft.status === 'Closed'
       ? [
           ...(draft.lines.some((l) => returnableQty(l) > 0 && m.items.find((i) => i.id === l.itemId)?.inventoryItem)
-            ? [{ label: 'Copy to goods return', icon: 'assignment_return', onSelect: () => navigate(`${RETURN_LIST_PATH}/new`, { state: { fromInvoice: saved.id } }) }]
+            ? [{ label: 'Create goods return', icon: 'assignment_return', onSelect: () => navigate(`${RETURN_LIST_PATH}/new`, { state: { fromInvoice: saved.id } }) }]
             : []),
-          { label: 'Copy to A/P credit memo', icon: 'receipt', onSelect: () => navigate(`${MEMO_LIST_PATH}/new`, { state: { fromInvoice: saved.id } }) },
+          { label: 'Create A/P credit memo', icon: 'receipt', onSelect: () => navigate(`${MEMO_LIST_PATH}/new`, { state: { fromInvoice: saved.id } }) },
         ]
       : []),
-    ...(!isNew ? [{ label: 'Duplicate', icon: 'content_copy', onSelect: duplicate }] : []),
-    ...(draft.status === 'Open' && !draft.appliedAmount
-      ? [{ label: 'Cancel A/P invoice', icon: 'cancel', onSelect: cancelIt }]
+    ...(draft.status === 'Open' && balance > 0 && !draft.paymentBlock
+      ? [{ label: 'Pay', icon: 'payments', onSelect: () => navigate(`${PAYMENT_LIST_PATH}/new`, { state: { vendorId: draft.vendorId, invoiceIds: [saved.id] } }) }]
       : []),
-    ...bases.map((l) => ({
-      label: `Open ${l.baseType === 'GRPO' ? 'receipt' : 'PO'} ${l.baseDocNo}`,
-      icon: l.baseType === 'GRPO' ? 'inventory' : 'receipt_long',
-      onSelect: () => navigate(l.baseType === 'GRPO' ? `/purchasing/goods-receipts/${l.baseId}` : `/purchasing/purchase-orders/${l.baseId}`),
-    })),
-    ...(vendor ? [{ label: `Open vendor ${vendor.code}`, icon: 'local_shipping', onSelect: () => navigate(`/purchasing/vendors/${vendor.id}`) }] : []),
+    ...(!isNew ? [{ label: 'Duplicate', icon: 'content_copy', onSelect: duplicate }] : []),
+    ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }] : []),
+    ...(draft.status === 'Open' && !draft.appliedAmount
+      ? [{ label: `Cancel ${AP_NOUN.one}`, icon: 'cancel', onSelect: cancelIt }]
+      : []),
   ];
 
-  const title = isNew ? 'New A/P invoice' : added ? apNumber(draft) : 'Draft A/P invoice';
+  const title = isNew ? `New ${AP_NOUN.one}` : added ? apNumber(draft) : `Draft ${AP_NOUN.one}`;
   const sectionProps = { draft, update, errors, m, ctx };
 
   // Documents this invoice can bill (Copy from) and down payments it can draw.
@@ -403,18 +397,11 @@ function ApInvoiceForm() {
     <>
     <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
       <Panel className="flex-1">
-        <PanelHeader
-          type="details"
+        <PageHeader
+          variant="plain"
           icon="request_quote"
-          iconIntent="default"
-          iconShape="rounded"
-          iconSize={32} iconVariant="outline"
-          breadcrumbs={[{ label: 'A/P Invoices', href: AP_LIST_PATH }, { label: title }]}
-          onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
-          onBack={() => navigate(AP_LIST_PATH)}
-          trailing={
-            isNew ? undefined : <PrevNext path={AP_LIST_PATH} prevId={prevId} nextId={nextId} />
-          }
+          parent={{ noun: AP_NOUN, to: AP_LIST_PATH }}
+          title={title}
           tabs={isNew ? undefined : <Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={PAGES.map((p) => ({ ...p }))} />}
           status={
             isNew ? undefined : (
@@ -425,13 +412,20 @@ function ApInvoiceForm() {
             )
           }
           actions={
-            <>
-              {added ? null : <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(AP_LIST_PATH)}>Cancel</Button>}
-              {menu.length ? <MoreMenu items={menu} /> : null}
-              <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
-                {saving ? 'Saving…' : added ? 'Save' : 'Add'}
-              </Button>
-            </>
+            <DetailActions
+              noun={AP_NOUN}
+              listPath={AP_LIST_PATH}
+              mode={docMode(draft.status, { canApprove: isApprover('APINV') })}
+              needsApproval={!draft.approved}
+              remarksOnly={added}
+              busy={saving}
+              onDraft={() => submit(null, true)}
+              onSubmit={() => submit(null)}
+              onApprove={() => submit(null, false, { approved: true })}
+              onReject={reject.start}
+              menu={menu}
+              prevNext={isNew ? undefined : { path: AP_LIST_PATH, prevId, nextId }}
+            />
           }
         />
         {page === 'transactions' && draft.id ? (

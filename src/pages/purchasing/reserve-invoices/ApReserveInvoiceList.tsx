@@ -1,11 +1,8 @@
 import { useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router';
+import { useLocation } from 'react-router';
 import {
   Alert,
-  Button,
-  Icon,
   Panel,
-  PanelHeader,
   Table,
   TableAmount,
   TableContent,
@@ -13,6 +10,7 @@ import {
   type TableColumn,
   Text,
 } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../../components/form/PageHeader';
 import { AP_RI_STATUSES, type ApReserveInvoice } from '../../../mocks/apReserveInvoices';
 import { formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
@@ -24,10 +22,10 @@ import { dateField, linesField, masterField, numberField, statusField, textField
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { currencyDef, salesEmployeeDef } from '../../settings/masterDefs';
 import { useListPage } from '../../../components/form/DataTable';
-import { APRI_LIST_PATH, AP_RI_STATUS_INTENT } from '../paths';
+import { cap } from '../../../components/form/noun';
+import { APRI_LIST_PATH, APRI_NOUN, AP_RI_STATUS_INTENT } from '../paths';
 
 export function ApReserveInvoiceList() {
-  const navigate = useNavigate();
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const data = useAsync(() => Promise.all([listApReserveInvoices(), taxCodes.list()]), []);
   const [query, setQuery] = useState('');
@@ -57,7 +55,7 @@ export function ApReserveInvoiceList() {
   const presets = useListPresets({
     list: 'ap-reserve-invoices',
     fields,
-    builtIns: statusViews('A/P reserve invoices', AP_RI_STATUSES),
+    builtIns: statusViews(APRI_NOUN.many, AP_RI_STATUSES),
     defaultSort: { key: 'postingDate', direction: 'desc' },
     rows: invoices,
     onChange: resetPage,
@@ -129,9 +127,9 @@ export function ApReserveInvoiceList() {
 
   return (
     <Panel className="flex-1">
-      <PanelHeader
+      <PageHeader
         showSearch
-        searchLabel="Search reserve invoices"
+        searchLabel={`Search ${APRI_NOUN.many}`}
         searchPlaceholder="Search by invoice no., vendor, vendor invoice no., or PO no."
         searchValue={query}
         onSearchChange={(value) => {
@@ -139,16 +137,8 @@ export function ApReserveInvoiceList() {
           resetPage();
         }}
         icon="receipt_long"
-        iconIntent="default"
-        iconShape="rounded"
-        iconSize={32}
-        iconVariant="outline"
         title={presets.menu}
-        actions={
-          <Button intent="primary" variant="solid" size="medium" shape="pill" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${APRI_LIST_PATH}/new`)}>
-            New A/P reserve invoice
-          </Button>
-        }
+        create={{ noun: APRI_NOUN, to: APRI_LIST_PATH }}
       />
       <Panel.Body className="flex flex-col gap-2">
         {notice ? (
@@ -159,7 +149,7 @@ export function ApReserveInvoiceList() {
         {presets.bar(null)}
         {invoices ? (
           <Table
-            caption="A/P reserve invoices"
+            caption={cap(APRI_NOUN.many)}
             columns={columns}
             rows={visible}
             getRowId={(inv) => inv.id}

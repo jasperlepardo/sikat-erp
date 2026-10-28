@@ -1,17 +1,15 @@
 import { useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router';
+import { useLocation } from 'react-router';
 import {
   Alert,
-  Button,
-  Icon,
   Panel,
-  PanelHeader,
   Table,
   TableContent,
   TableStatus,
   Text,
   type TableColumn,
 } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../../components/form/PageHeader';
 import { dateField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { useListPage } from '../../../components/form/DataTable';
@@ -21,7 +19,8 @@ import { lcNumber, lcTotals, listLandedCosts } from '../../../services/landedCos
 import { useAsync } from '../../../services/useAsync';
 import type { LcStatus } from '../../../mocks/landedCosts';
 import { LC_STATUSES } from '../../../mocks/landedCosts';
-import { LC_LIST_PATH, LC_STATUS_INTENT } from '../paths';
+import { cap } from '../../../components/form/noun';
+import { LC_LIST_PATH, LC_NOUN, LC_STATUS_INTENT } from '../paths';
 
 interface Row {
   id: string;
@@ -39,7 +38,6 @@ interface Row {
 }
 
 export function LandedCostsList() {
-  const navigate = useNavigate();
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const data = useAsync(() => listLandedCosts(), []);
   const [query, setQuery] = useState('');
@@ -75,7 +73,7 @@ export function LandedCostsList() {
   const presets = useListPresets({
     list: 'landed-costs',
     fields,
-    builtIns: statusViews('landed costs', LC_STATUSES),
+    builtIns: statusViews(LC_NOUN.many, LC_STATUSES),
     defaultSort: { key: 'postingDate', direction: 'desc' },
     rows: all,
     onChange: resetPage,
@@ -124,30 +122,15 @@ export function LandedCostsList() {
 
   return (
     <Panel className="flex-1">
-      <PanelHeader
+      <PageHeader
         showSearch
         searchLabel="Search"
         searchPlaceholder="Search by no., vendor, reference or file no."
         searchValue={query}
         onSearchChange={(value) => { setQuery(value); resetPage(); }}
         icon="calculate"
-        iconIntent="default"
-        iconShape="rounded"
-        iconSize={32}
-        iconVariant="outline"
         title={presets.menu}
-        actions={
-          <Button
-            intent="primary"
-            variant="solid"
-            size="medium"
-            shape="pill"
-            leadingIcon={<Icon size={20}>add</Icon>}
-            onClick={() => navigate(`${LC_LIST_PATH}/new`)}
-          >
-            New landed cost
-          </Button>
-        }
+        create={{ noun: LC_NOUN, to: LC_LIST_PATH }}
       />
       <Panel.Body className="flex flex-col gap-2">
         {notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : null}
@@ -156,7 +139,7 @@ export function LandedCostsList() {
           <Text tone="muted" className="p-4">Loading…</Text>
         ) : all.length ? (
           <Table
-            caption="Landed costs"
+            caption={cap(LC_NOUN.many)}
             columns={columns}
             rows={visible}
             getRowId={(r) => r.id}

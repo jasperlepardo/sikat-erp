@@ -3,20 +3,20 @@ import { useLocation, useNavigate, useParams } from 'react-router';
 import {
   Alert,
   Badge,
-  Button,
   Combobox,
   Form,
   FormField,
   Link,
   List,
   Panel,
-  PanelHeader,
   Select,
   Text,
 } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../../components/form/PageHeader';
 import { Fields, ReadOnly, Section, bind, type Errors } from '../../../components/form/fields';
 import { StatusField } from '../../../components/form/StatusField';
-import { MoreMenu, type MoreMenuItem } from '../../../components/form/MoreMenu';
+import { type MoreMenuItem } from '../../../components/form/MoreMenu';
+import { DetailActions } from '../../../components/form/DetailActions';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../components/form/ProblemsAlert';
 import { CURRENT_USER_ID } from '../../../mocks/common';
 import { accountText, type Account } from '../../../mocks/chartOfAccounts';
@@ -54,8 +54,8 @@ import { TransferLines, binFor, binOptions, warehouseOptions, type TransferDraft
 import { useDocTitle } from '../../../services/useDocTitle';
 import { useAsync } from '../../../services/useAsync';
 import { getTransferRequest, transferRequestNumber } from '../../../services/inventoryTransferRequests';
-import { NotFound, PrevNext, neighbours } from '../../../components/form/DetailNav';
-import { TRANSFER_LIST_PATH, TRANSFER_REQUEST_LIST_PATH, TRANSFER_STATUS_INTENT } from '../paths';
+import { NotFound, neighbours } from '../../../components/form/DetailNav';
+import { TRANSFER_LIST_PATH, TRANSFER_NOUN, TRANSFER_REQUEST_LIST_PATH, TRANSFER_STATUS_INTENT } from '../paths';
 
 type TabId = 'contents';
 
@@ -143,7 +143,7 @@ function TransferForm() {
     };
   }, [id, isNew]);
 
-  useDocTitle(draft?.docNum ? (isNew ? 'New inventory transfer' : transferNumber(draft)) : undefined);
+  useDocTitle(draft ? (isNew ? `New ${TRANSFER_NOUN.one}` : draft.status === 'Posted' ? transferNumber(draft) : `Draft ${TRANSFER_NOUN.one}`) : undefined);
   if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading transfer…</Text>;
   if (draft === null) return <NotFound icon="move_down" title="Transfer not found" backTo={TRANSFER_LIST_PATH} backLabel="Back to inventory transfers" />;
 
@@ -265,40 +265,33 @@ function TransferForm() {
   const statusMoves: Partial<Record<TransferStatus, () => void>> = draft.status === 'Draft' ? { Posted: () => submit(null) } : {};
 
   const menu: MoreMenuItem[] = [
-    ...(!posted ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
-    ...(!isNew ? [{ label: 'Duplicate', icon: 'content_copy', onSelect: duplicate }] : []),
     ...(posted && destinationsOf.length === 1 ? [{ label: 'Transfer back', icon: 'undo', onSelect: reverse }] : []),
+    ...(!isNew ? [{ label: 'Duplicate', icon: 'content_copy', onSelect: duplicate }] : []),
   ];
 
-  const title = isNew ? 'New inventory transfer' : posted ? transferNumber(draft) : 'Draft inventory transfer';
+  const title = isNew ? `New ${TRANSFER_NOUN.one}` : posted ? transferNumber(draft) : `Draft ${TRANSFER_NOUN.one}`;
 
   return (
     <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
       <Panel className="flex-1">
-        <PanelHeader
-          type="details"
+        <PageHeader
+          variant="plain"
           icon="move_down"
-          iconIntent="default"
-          iconShape="rounded"
-          iconSize={32}
-          iconVariant="outline"
-          breadcrumbs={[{ label: 'Inventory Transfers', href: TRANSFER_LIST_PATH }, { label: title }]}
-          onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
-          onBack={() => navigate(TRANSFER_LIST_PATH)}
-          trailing={
-            isNew ? undefined : <PrevNext path={TRANSFER_LIST_PATH} prevId={prevId} nextId={nextId} />
-          }
+          parent={{ noun: TRANSFER_NOUN, to: TRANSFER_LIST_PATH }}
+          title={title}
           status={isNew ? undefined : <Badge size="small" intent={TRANSFER_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
           actions={
-            <>
-              <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(TRANSFER_LIST_PATH)}>
-                Cancel
-              </Button>
-              {menu.length ? <MoreMenu items={menu} /> : null}
-              <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
-                {saving ? 'Saving…' : posted ? 'Save' : 'Add'}
-              </Button>
-            </>
+            // A posted transfer's remarks still save.
+            <DetailActions
+              noun={TRANSFER_NOUN}
+              listPath={TRANSFER_LIST_PATH}
+              mode={posted ? 'readonly' : 'draft'}
+              remarksOnly={posted}
+              busy={saving}
+              onDraft={() => submit(null, true)}
+              menu={menu}
+              prevNext={isNew ? undefined : { path: TRANSFER_LIST_PATH, prevId, nextId }}
+            />
           }
         />
         <Panel.Body className="flex flex-col gap-2">

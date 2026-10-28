@@ -1,6 +1,7 @@
 import { useEffect, useState, useSyncExternalStore, type CSSProperties, type FormEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { Button, Combobox, Icon, IconButton, Panel, PanelHeader, SidePanel, Text, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { Button, Combobox, Icon, IconButton, Panel, SidePanel, Text, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from './PageHeader';
 import type { Collection } from '../../services/store';
 import { MasterList, type ListRoute } from './MasterList';
 import { Section, type Errors } from './fields';
@@ -117,8 +118,8 @@ export function QuickAddPanel<T extends MasterRow>({
   return createPortal(
     <SidePanel overlay onOverlayClick={onCancel} style={{ '--sikat-side-panel-width': '560px' } as CSSProperties}>
       <form className="flex min-h-0 flex-1 flex-col" onSubmit={save} noValidate>
-        <PanelHeader
-          type="forms"
+        <PageHeader
+          variant="plain"
           icon={def.icon}
           title={`New ${def.noun}`}
           actions={
@@ -126,11 +127,11 @@ export function QuickAddPanel<T extends MasterRow>({
               <IconButton intent="default" variant="link" label="Close" onClick={onCancel}>
                 <Icon size={20}>close</Icon>
               </IconButton>
-              <Button type="button" intent="default" variant="solid" size="large" onClick={onCancel}>
+              <Button type="button" intent="white" variant="solid" shape="pill" onClick={onCancel}>
                 Cancel
               </Button>
-              <Button type="submit" intent="primary" variant="solid" size="large" disabled={saving}>
-                {saving ? 'Adding…' : 'Add'}
+              <Button type="submit" intent="primary" variant="solid" shape="pill" disabled={saving}>
+                {saving ? 'Creating…' : `Create ${def.noun}`}
               </Button>
             </>
           }

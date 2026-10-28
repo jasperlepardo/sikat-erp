@@ -1,11 +1,8 @@
 import { useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router';
+import { useLocation } from 'react-router';
 import {
   Alert,
-  Button,
-  Icon,
   Panel,
-  PanelHeader,
   Table,
   TableContent,
   TableStatus,
@@ -16,6 +13,8 @@ import { dateField, linesField, masterField, numberField, statusField, textField
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { currencyDef, salesEmployeeDef } from '../../settings/masterDefs';
 import { useListPage } from '../../../components/form/DataTable';
+import { PageHeader } from '../../../components/form/PageHeader';
+import { cap } from '../../../components/form/noun';
 import { AR_STATUSES, type ArInvoice } from '../../../mocks/arInvoices';
 import { formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
@@ -24,10 +23,9 @@ import { arNumber, arTotal, listArInvoices } from '../../../services/arInvoices'
 import { useAsync } from '../../../services/useAsync';
 import { listDeliveries } from '../../../services/deliveries';
 import { listSalesOrders, soNumber } from '../../../services/salesOrders';
-import { AR_LIST_PATH, AR_STATUS_INTENT } from '../paths';
+import { AR_LIST_PATH, AR_NOUN, AR_STATUS_INTENT } from '../paths';
 
 export function ArInvoiceList() {
-  const navigate = useNavigate();
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const data = useAsync(() => Promise.all([listArInvoices(), taxCodes.list(), listSalesOrders(), listDeliveries()]), []);
   const [query, setQuery] = useState('');
@@ -64,7 +62,7 @@ export function ArInvoiceList() {
   const presets = useListPresets({
     list: 'ar-invoices',
     fields,
-    builtIns: statusViews('A/R invoices', AR_STATUSES),
+    builtIns: statusViews(AR_NOUN.many, AR_STATUSES),
     defaultSort: { key: 'postingDate', direction: 'desc' },
     rows: orders,
     onChange: resetPage,
@@ -109,9 +107,9 @@ export function ArInvoiceList() {
 
   return (
     <Panel className="flex-1">
-      <PanelHeader
+      <PageHeader
         showSearch
-        searchLabel="Search invoices"
+        searchLabel={`Search ${AR_NOUN.many}`}
         searchPlaceholder="Search by invoice no., customer, order or item"
         searchValue={query}
         onSearchChange={(value) => {
@@ -119,15 +117,8 @@ export function ArInvoiceList() {
           resetPage();
         }}
         icon="receipt"
-        iconIntent="default"
-        iconShape="rounded"
-        iconSize={32} iconVariant="outline"
         title={presets.menu}
-        actions={
-          <Button intent="primary" variant="solid" size="medium" shape="pill" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${AR_LIST_PATH}/new`)}>
-            New A/R invoice
-          </Button>
-        }
+        create={{ noun: AR_NOUN, to: AR_LIST_PATH }}
       />
       <Panel.Body className="flex flex-col gap-2">
         {notice ? (
@@ -138,7 +129,7 @@ export function ArInvoiceList() {
         {presets.bar(null)}
         {orders ? (
           <Table
-            caption="A/R invoices"
+            caption={cap(AR_NOUN.many)}
             columns={columns}
             rows={onPage}
             getRowId={(so) => so.id}
@@ -148,7 +139,7 @@ export function ArInvoiceList() {
             pagination={pagination}
           />
         ) : (
-          <Text tone="muted" className="p-4">Loading invoices…</Text>
+          <Text tone="muted" className="p-4">Loading {AR_NOUN.many}…</Text>
         )}
       </Panel.Body>
       {presets.panel}

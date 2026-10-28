@@ -1,7 +1,8 @@
 import type { ComponentType } from 'react';
 import { useEffect } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { Button, Icon, Panel, PanelHeader, Tabs } from '@jasperlepardo/sikat-design-system';
+import { Button, Icon, Panel, Tabs } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from './PageHeader';
 import type { ListRoute } from './MasterList';
 import { useHeaderSearchHost } from './HeaderSearch';
 
@@ -76,12 +77,9 @@ export function TabbedPage({
 
   return (
     <Panel className="flex-1">
-      <PanelHeader
+      <PageHeader
         {...search.headerProps}
         icon={icon}
-        iconIntent="default"
-        iconShape="rounded"
-        iconSize={32} iconVariant="outline"
         title={isSettings ? shown.label : title}
         actions={
           isSettings ? (
@@ -89,7 +87,6 @@ export function TabbedPage({
               type="button"
               intent="primary"
               variant="solid"
-              size="medium"
               shape="pill"
               leadingIcon={<Icon size={16}>add</Icon>}
               onClick={() => navigate(`${base}/${active.value}/new`)}

@@ -8,13 +8,13 @@ import {
   Form,
   MultiSelect,
   Panel,
-  PanelHeader,
   Select,
   Tabs,
   TextField,
   FormField,
   Text,
 } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../../components/form/PageHeader';
 import { bpGroupDef, currencyDef } from '../../settings/masterDefs';
 import { RDOS } from '../../../mocks/taxes';
 import { LEAD_SOURCES, PARTNER_STATUSES, blankPartner, contactName, type ContactPerson, type PartnerAddress, type PartnerRole } from '../../../mocks/partners';
@@ -32,11 +32,12 @@ import { TransactionsTab } from './transactions';
 import { TaxTab } from './tax';
 import { VendorItemsTab } from './vendor-items';
 import { FieldStack, Section, bind, type DefaultKey, type DefaultPicks, type DefaultRole, type Draft, type Errors } from './fields';
-import { MoreMenu } from '../../../components/form/MoreMenu';
+import { DetailActions } from '../../../components/form/DetailActions';
+import type { Noun } from '../../../components/form/noun';
 import { ProblemsAlert, problemCollector, type Problem as ProblemBase } from '../../../components/form/ProblemsAlert';
 import { AgreementsSection } from './AgreementsSection';
 import { ActivityTab } from '../../../components/activity/ActivityTab';
-import { neighbours, PrevNext, useDocTab } from '../../../components/form/DetailNav';
+import { neighbours, useDocTab } from '../../../components/form/DetailNav';
 import { withholdingTaxes } from '../../../services/masterData';
 
 const TABS = [
@@ -169,7 +170,7 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
   if (draft === null) {
     return (
       <Panel className="flex-1">
-        <PanelHeader icon={config.icon} iconIntent="default" iconShape="rounded" iconSize={32} iconVariant="outline" title={`${config.singular} not found`} />
+        <PageHeader icon={config.icon} title={`${config.singular} not found`} />
         <Panel.Body>
           <Button onClick={() => navigate(config.basePath)}>Back to {config.title.toLowerCase()}</Button>
         </Panel.Body>
@@ -289,7 +290,7 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
     ...(scope === 'all' ? [] : [MASTER_CONFIG])
       .concat(ROLE_ORDER.filter((r) => r !== scope && draft.roles.includes(r)).map((r) => ROLE_CONFIG[r]))
       .map((target) => ({
-        label: `Open in ${target.title}`,
+        label: `Open in ${target.title.toLowerCase()}`,
         icon: target.icon,
         onSelect: () => navigate(`${target.basePath}/${draft.id}`),
         show: !isNew,
@@ -298,23 +299,17 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
 
   const ActiveTab = TABS.find((t) => t.value === tab)!.Component;
   const { prevId, nextId } = neighbours(siblings.map((p) => p.id), draft.id);
+  const noun: Noun = { one: config.singular.toLowerCase(), many: config.title.toLowerCase() };
 
   return (
     <>
       <Form className="flex min-h-0 flex-1 flex-col" onSubmit={submit} noValidate>
         <Panel className="min-h-0 flex-1">
-          <PanelHeader
-            type="details"
+          <PageHeader
+            variant="plain"
             icon={config.icon}
-            iconIntent="default"
-            iconShape="rounded"
-            iconSize={32} iconVariant="outline"
-            breadcrumbs={[{ label: config.title, href: config.basePath }, { label: isNew ? `New ${config.singular.toLowerCase()}` : draft.name }]}
-            onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
-            onBack={() => navigate(config.basePath)}
-            trailing={
-              isNew ? undefined : <PrevNext path={config.basePath} prevId={prevId} nextId={nextId} />
-            }
+            parent={{ noun, to: config.basePath }}
+            title={isNew ? `New ${noun.one}` : draft.name}
             tabs={
               <Tabs
                 variant="outline"
@@ -340,15 +335,14 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
               )
             }
             actions={
-              <>
-                <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(config.basePath)}>
-                  Cancel
-                </Button>
-                {menu.length ? <MoreMenu items={menu} /> : null}
-                <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
-                  {saving ? 'Saving…' : isNew ? 'Add' : 'Save'}
-                </Button>
-              </>
+              <DetailActions
+                noun={noun}
+                listPath={config.basePath}
+                mode={isNew ? 'draft' : 'open'}
+                busy={saving}
+                menu={menu}
+                prevNext={isNew ? undefined : { path: config.basePath, prevId, nextId }}
+              />
             }
           />
           {page !== 'details' ? (

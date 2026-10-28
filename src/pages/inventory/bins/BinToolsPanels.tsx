@@ -9,11 +9,11 @@ import {
   Icon,
   IconButton,
   Panel,
-  PanelHeader,
   SidePanel,
   Text,
   TextField,
 } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../../components/form/PageHeader';
 import { DataTable } from '../../../components/form/DataTable';
 import { Fields, Flags, Section, bind } from '../../../components/form/fields';
 import {
@@ -66,20 +66,16 @@ function ToolPanel({
 
   return createPortal(
     <SidePanel overlay onOverlayClick={onCancel} style={{ '--sikat-side-panel-width': '760px' } as CSSProperties}>
-      <PanelHeader
-        type="forms"
+      <PageHeader
+        variant="plain"
         icon={icon}
-        iconIntent="default"
-        iconShape="rounded"
-        iconSize={32}
-        iconVariant="outline"
         title={title}
         actions={
           <>
             <IconButton intent="default" variant="link" label="Close" onClick={onCancel}>
               <Icon size={20}>close</Icon>
             </IconButton>
-            <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={onCancel}>
+            <Button type="button" intent="white" variant="solid" shape="pill" onClick={onCancel}>
               Cancel
             </Button>
             {primary}
@@ -198,7 +194,7 @@ export function GenerateBinsPanel({ warehouse: initial, onCancel, onDone }: { wa
       title="Generate bins"
       onCancel={onCancel}
       primary={
-        <Button type="button" intent="primary" variant="solid" size="medium" shape="pill" disabled={!add.length || saving} onClick={run}>
+        <Button type="button" intent="primary" variant="solid" shape="pill" disabled={!add.length || saving} onClick={run}>
           {saving ? 'Generating…' : `Generate ${add.length || ''} bin${add.length === 1 ? '' : 's'}`}
         </Button>
       }
@@ -317,7 +313,7 @@ export function ModifyBinCodesPanel({ warehouse: initial, onCancel, onDone }: { 
         title="Bin codes changed"
         onCancel={onDone}
         primary={
-          <Button type="button" intent="primary" variant="solid" size="medium" shape="pill" onClick={onDone}>
+          <Button type="button" intent="primary" variant="solid" shape="pill" onClick={onDone}>
             Done
           </Button>
         }
@@ -341,7 +337,7 @@ export function ModifyBinCodesPanel({ warehouse: initial, onCancel, onDone }: { 
           type="button"
           intent="primary"
           variant="solid"
-          size="medium"
+         
           shape="pill"
           disabled={!moving.length || conflicts.length > 0 || Boolean(badValue) || saving}
           onClick={run}

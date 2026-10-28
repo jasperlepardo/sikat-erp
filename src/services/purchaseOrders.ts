@@ -217,6 +217,14 @@ export async function savePurchaseOrder(input: PoInput, { asDraft = false } = {}
   return saved;
 }
 
+/**
+ * Save several new POs as drafts in one write — the split award of a quote comparison, one PO per
+ * vendor. Drafts have no number, nothing on order and draw nothing from their request until added.
+ */
+export async function addPurchaseOrders(inputs: PoInput[]): Promise<PurchaseOrder[]> {
+  return orders.saveMany(inputs.map((po) => ({ ...po, status: 'Draft' as const, docNum: 0 })));
+}
+
 /** The blanket agreements some line of these POs draws on. */
 const agreementsOf = (...pos: (Pick<PurchaseOrder, 'lines'> | undefined)[]) =>
   [...new Set(pos.flatMap((po) => po?.lines.map((l) => l.agreementId) ?? []).filter(Boolean))];

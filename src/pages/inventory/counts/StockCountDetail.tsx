@@ -1,10 +1,12 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { Alert, Badge, Button, Combobox, Form, Icon, IconButton, Panel, PanelHeader, Select, Tabs, Text } from '@jasperlepardo/sikat-design-system';
+import { Alert, Badge, Button, Combobox, Form, Icon, IconButton, Panel, Select, Tabs, Text } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../../components/form/PageHeader';
 import { AttachmentsCard } from '../../../components/form/AttachmentsCard';
 import { Fields, ReadOnly, Section, bind, type Errors } from '../../../components/form/fields';
 import { StatusField } from '../../../components/form/StatusField';
-import { MoreMenu, type MoreMenuItem } from '../../../components/form/MoreMenu';
+import { type MoreMenuItem } from '../../../components/form/MoreMenu';
+import { DetailActions } from '../../../components/form/DetailActions';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../components/form/ProblemsAlert';
 import { useCollection } from '../../../components/form/MasterLookup';
 import { CURRENT_USER_ID } from '../../../mocks/common';
@@ -16,8 +18,8 @@ import { closeCounting, countNumber, countSummary, getCounting, listCountings, p
 import { nameIn, salesEmployees } from '../../../services/partnerMasters';
 import { CountLines, type CountingDraft } from './CountLines';
 import { nowHHMM, type CountMasters } from './shared';
-import { NotFound, PrevNext, neighbours } from '../../../components/form/DetailNav';
-import { COUNT_LIST_PATH, COUNT_STATUS_INTENT, POSTING_LIST_PATH } from '../paths';
+import { NotFound, neighbours } from '../../../components/form/DetailNav';
+import { COUNT_LIST_PATH, COUNT_NOUN, COUNT_STATUS_INTENT, POSTING_LIST_PATH, POSTING_NOUN } from '../paths';
 
 type TabId = 'contents' | 'attachments';
 type Action = 'save' | 'copy' | 'close';
@@ -161,27 +163,19 @@ function CountForm() {
   const statusMoves: Partial<Record<CountStatus, () => void>> = open && !isNew ? { Closed: () => submit(null, 'close') } : {};
 
   const menu: MoreMenuItem[] = [
-    ...(open && !isNew ? [{ label: 'Close without posting', icon: 'block', onSelect: () => submit(null, 'close') }] : []),
     ...(!isNew ? [{ label: 'Duplicate as a recount', icon: 'content_copy', onSelect: () => recount() }] : []),
     ...(!isNew && summary.withVariance ? [{ label: 'Recount variances only', icon: 'replay', onSelect: () => recount('variances') }] : []),
+    ...(open && !isNew ? [{ label: 'Close without posting', icon: 'block', onSelect: () => submit(null, 'close') }] : []),
   ];
 
   return (
     <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
       <Panel className="flex-1">
-        <PanelHeader
-          type="details"
+        <PageHeader
+          variant="plain"
           icon="inventory"
-          iconIntent="default"
-          iconShape="rounded"
-          iconSize={32}
-          iconVariant="outline"
-          breadcrumbs={[{ label: 'Stock Counts', href: COUNT_LIST_PATH }, { label: isNew ? 'New inventory counting' : `Inventory counting ${countNumber(draft)}` }]}
-          onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
-          onBack={() => navigate(COUNT_LIST_PATH)}
-          trailing={
-            isNew ? undefined : <PrevNext path={COUNT_LIST_PATH} prevId={prevId} nextId={nextId} />
-          }
+          parent={{ noun: COUNT_NOUN, to: COUNT_LIST_PATH }}
+          title={isNew ? `New ${COUNT_NOUN.one}` : countNumber(draft)}
           tabs={
             <Tabs
               variant="outline"
@@ -195,29 +189,17 @@ function CountForm() {
           }
           status={isNew ? undefined : <Badge size="small" intent={COUNT_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
           actions={
-            <>
-              <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(COUNT_LIST_PATH)}>
-                Cancel
-              </Button>
-              {menu.length ? <MoreMenu items={menu} /> : null}
-              {open ? (
-                <Button
-                  type="button"
-                  intent="white"
-                  variant="solid"
-                  size="medium"
-                  shape="pill"
-                  leadingIcon={<Icon size={20}>arrow_forward</Icon>}
-                  disabled={saving || !summary.counted}
-                  onClick={() => submit(null, 'copy')}
-                >
-                  Copy to inventory posting
-                </Button>
-              ) : null}
-              <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
-                {saving ? 'Saving…' : isNew ? 'Add' : open ? 'Update' : 'Save'}
-              </Button>
-            </>
+            // A closed count's remarks and attachments still save.
+            <DetailActions
+              noun={COUNT_NOUN}
+              listPath={COUNT_LIST_PATH}
+              mode={isNew ? 'draft' : open ? 'open' : 'readonly'}
+              remarksOnly={!open}
+              busy={saving}
+              secondary={open ? { label: `Create ${POSTING_NOUN.one}`, onClick: () => submit(null, 'copy'), disabled: !summary.counted } : undefined}
+              menu={menu}
+              prevNext={isNew ? undefined : { path: COUNT_LIST_PATH, prevId, nextId }}
+            />
           }
         />
         <Panel.Body className="flex flex-col gap-2">

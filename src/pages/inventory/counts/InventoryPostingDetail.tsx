@@ -1,6 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { Alert, Badge, Button, Combobox, Form, FormField, List, Panel, PanelHeader, Tabs, Text } from '@jasperlepardo/sikat-design-system';
+import { Alert, Badge, Combobox, Form, FormField, List, Panel, Tabs, Text } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../../components/form/PageHeader';
+import { DetailActions } from '../../../components/form/DetailActions';
 import { AttachmentsCard } from '../../../components/form/AttachmentsCard';
 import { Fields, ReadOnly, Section, bind, type Errors } from '../../../components/form/fields';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../components/form/ProblemsAlert';
@@ -32,8 +34,8 @@ import { priceLists } from '../../../services/partnerMasters';
 import { priceListName } from '../../../services/priceLists';
 import { PostingLines, type PostingDraft } from './PostingLines';
 import { nowHHMM, type CountMasters } from './shared';
-import { NotFound, PrevNext, neighbours } from '../../../components/form/DetailNav';
-import { COUNT_LIST_PATH, POSTING_LIST_PATH } from '../paths';
+import { NotFound, neighbours } from '../../../components/form/DetailNav';
+import { COUNT_LIST_PATH, POSTING_LIST_PATH, POSTING_NOUN } from '../paths';
 
 type TabId = 'contents' | 'attachments';
 
@@ -189,19 +191,11 @@ function PostingForm() {
   return (
     <Form className="flex-1" onSubmit={submit} noValidate>
       <Panel className="flex-1">
-        <PanelHeader
-          type="details"
+        <PageHeader
+          variant="plain"
           icon="fact_check"
-          iconIntent="default"
-          iconShape="rounded"
-          iconSize={32}
-          iconVariant="outline"
-          breadcrumbs={[{ label: 'Inventory Postings', href: POSTING_LIST_PATH }, { label: added ? `Inventory posting ${postingNumber(draft)}` : 'New inventory posting' }]}
-          onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
-          onBack={() => navigate(POSTING_LIST_PATH)}
-          trailing={
-            isNew ? undefined : <PrevNext path={POSTING_LIST_PATH} prevId={prevId} nextId={nextId} />
-          }
+          parent={{ noun: POSTING_NOUN, to: POSTING_LIST_PATH }}
+          title={added ? postingNumber(draft) : `New ${POSTING_NOUN.one}`}
           tabs={
             <Tabs
               variant="outline"
@@ -215,14 +209,15 @@ function PostingForm() {
           }
           status={added ? <Badge size="small" intent="success">Posted</Badge> : undefined}
           actions={
-            <>
-              <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(POSTING_LIST_PATH)}>
-                Cancel
-              </Button>
-              <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
-                {saving ? 'Saving…' : added ? 'Save' : 'Add'}
-              </Button>
-            </>
+            // Once added, only its remarks and attachments change.
+            <DetailActions
+              noun={POSTING_NOUN}
+              listPath={POSTING_LIST_PATH}
+              mode={added ? 'readonly' : 'draft'}
+              remarksOnly={added}
+              busy={saving}
+              prevNext={isNew ? undefined : { path: POSTING_LIST_PATH, prevId, nextId }}
+            />
           }
         />
         <Panel.Body className="flex flex-col gap-2">

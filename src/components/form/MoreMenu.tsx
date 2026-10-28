@@ -7,10 +7,10 @@ export interface MoreMenuItem {
   onSelect: () => void;
 }
 
-/** "You can also" — related actions for the record, in the page header. Other menus pass their own `label` and button look. */
+/** "More actions" — related actions for the record, in the page header. Other menus pass their own `label` and button look. */
 export function MoreMenu({
   items,
-  label = 'You can also',
+  label = 'More actions',
   button,
 }: {
   items: MoreMenuItem[];
@@ -48,7 +48,8 @@ export function MoreMenu({
         {label}
       </Button>
       {open ? (
-        <Dropdown role="menu" style={{ left: 'auto', right: 0, width: 240 }}>
+        // As wide as the longest item ("Create A/P down payment invoice"), within 240–400px and the screen.
+        <Dropdown role="menu" style={{ left: 'auto', right: 0, width: 'max-content', minWidth: 240, maxWidth: 'min(400px, calc(100vw - 32px))' }}>
           {items.map((item) => (
             <DropdownItem
               key={item.label}

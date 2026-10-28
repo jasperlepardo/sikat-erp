@@ -5,12 +5,13 @@ import {
   Form,
   FormField,
   Icon,
+  IconButton,
   Panel,
-  PanelHeader,
   SidePanel,
   Text,
   TextField,
 } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../../../components/form/PageHeader';
 import { blankPartner, type Partner } from '../../../../mocks/partners';
 import { savePartner } from '../../../../services/partners';
 import { Fields } from '../../../../components/form/fields';
@@ -61,21 +62,20 @@ export function PoVendorQuickCreate({ initialName = '', onClose, onCreated }: Pr
       style={{ '--sikat-side-panel-width': '900px' } as React.CSSProperties}
     >
       <Form className="flex flex-col flex-1 min-h-0" onSubmit={submit} noValidate>
-        <PanelHeader
-          type="forms"
+        <PageHeader
+          variant="plain"
           icon="local_shipping"
-          iconIntent="default"
-          iconShape="rounded"
-          iconSize={32}
-          iconVariant="outline"
           title="New vendor"
           actions={
             <>
-              <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={onClose}>
+              <IconButton type="button" intent="default" variant="link" label="Close" onClick={onClose}>
+                <Icon size={20}>close</Icon>
+              </IconButton>
+              <Button type="button" intent="white" variant="solid" shape="pill" onClick={onClose}>
                 Cancel
               </Button>
-              <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
-                {saving ? 'Saving…' : 'Add vendor'}
+              <Button type="submit" intent="primary" variant="solid" shape="pill" disabled={saving}>
+                {saving ? 'Creating…' : 'Create vendor'}
               </Button>
             </>
           }
@@ -84,8 +84,6 @@ export function PoVendorQuickCreate({ initialName = '', onClose, onCreated }: Pr
           <Panel.Sidebar>
             <Panel.Summary
               icon="local_shipping"
-              iconVariant="outline"
-              iconSize={40}
               name={draft.name || 'New vendor'}
               code="Assigned on save"
             />

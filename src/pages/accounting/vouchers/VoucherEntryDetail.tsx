@@ -1,9 +1,12 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { Alert, Badge, Button, Form, Panel, PanelHeader, Tabs, Text } from '@jasperlepardo/sikat-design-system';
+import { Alert, Badge, Button, Form, Panel, Tabs, Text } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../../components/form/PageHeader';
 import { AttachmentsCard } from '../../../components/form/AttachmentsCard';
 import { Fields, ReadOnly, Section, bind, type Errors } from '../../../components/form/fields';
-import { MoreMenu, type MoreMenuItem } from '../../../components/form/MoreMenu';
+import { type MoreMenuItem } from '../../../components/form/MoreMenu';
+import { DetailActions } from '../../../components/form/DetailActions';
+import { cap } from '../../../components/form/noun';
 import { ProblemsAlert, type Problem } from '../../../components/form/ProblemsAlert';
 import { CURRENT_USER } from '../../../mocks/common';
 import type { JournalVoucher, VoucherEntry } from '../../../mocks/journalVouchers';
@@ -22,7 +25,7 @@ import {
 import { accounts as accountsCollection, taxCodes as taxCodesCollection } from '../../../services/masterData';
 import { listPartners } from '../../../services/partners';
 import { JeHeaderSections, JeRowsTable, jeProblems, type JeMasters } from '../journal/JeEditor';
-import { JE_LIST_PATH, JV_LIST_PATH, entryPath } from '../paths';
+import { JE_LIST_PATH, JV_LIST_PATH, JV_NOUN } from '../paths';
 
 type TabId = 'contents' | 'attachments';
 
@@ -75,9 +78,9 @@ function VoucherEntryForm() {
   if (draft === null || (!isNewVoucher && !voucher)) {
     return (
       <Panel className="flex-1">
-        <PanelHeader icon="folder_open" iconIntent="default" iconShape="rounded" iconSize={32} iconVariant="outline" title="Voucher entry not found" />
+        <PageHeader icon="folder_open" title="Voucher entry not found" />
         <Panel.Body>
-          <Button onClick={back}>Back</Button>
+          <Button onClick={back}>Back to {JV_NOUN.many}</Button>
         </Panel.Body>
       </Panel>
     );
@@ -143,28 +146,21 @@ function VoucherEntryForm() {
   const menu: MoreMenuItem[] = [
     ...(!posted ? [{ label: isNewVoucher ? 'Add to new voucher and post' : 'Save and post this entry', icon: 'send', onSelect: postNow }] : []),
     ...(posted && draft.journalEntryId ? [{ label: `Open journal entry ${draft.number}`, icon: 'open_in_new', onSelect: () => navigate(`${JE_LIST_PATH}/${draft.journalEntryId}`) }] : []),
-    ...(at > 0 ? [{ label: `Previous entry (${siblings[at - 1].transNo})`, icon: 'arrow_upward', onSelect: () => navigate(entryPath(voucher!.id, siblings[at - 1].id)) }] : []),
-    ...(at >= 0 && at < siblings.length - 1 ? [{ label: `Next entry (${siblings[at + 1].transNo})`, icon: 'arrow_downward', onSelect: () => navigate(entryPath(voucher!.id, siblings[at + 1].id)) }] : []),
     ...(!posted && !isNew ? [{ label: 'Delete entry', icon: 'delete', onSelect: remove }] : []),
   ];
 
   return (
     <Form className="flex-1" onSubmit={submit} noValidate>
       <Panel className="flex-1">
-        <PanelHeader
-          type="details"
+        <PageHeader
+          variant="plain"
           icon="edit_note"
-          iconIntent="default"
-          iconShape="rounded"
-          iconSize={32}
-          iconVariant="outline"
-          breadcrumbs={
+          parent={
             voucher
-              ? [{ label: 'Journal Vouchers', href: JV_LIST_PATH }, { label: `Journal voucher ${voucher.voucherNo}`, href: `${JV_LIST_PATH}/${voucher.id}` }, { label: isNew ? 'New entry' : `Entry ${draft.transNo}` }]
-              : [{ label: 'Journal Vouchers', href: JV_LIST_PATH }, { label: isNew ? 'New entry' : `Entry ${draft.transNo}` }]
+              ? [{ noun: JV_NOUN, to: JV_LIST_PATH }, { label: `${cap(JV_NOUN.one)} ${voucher.voucherNo}`, to: `${JV_LIST_PATH}/${voucher.id}` }]
+              : { noun: JV_NOUN, to: JV_LIST_PATH }
           }
-          onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
-          onBack={back}
+          title={isNew ? 'New entry' : `Entry ${draft.transNo}`}
           tabs={
             <Tabs
               variant="outline"
@@ -178,15 +174,20 @@ function VoucherEntryForm() {
           }
           status={<Badge size="small" intent={posted ? 'default' : 'success'}>{posted ? 'Posted' : 'Open'}</Badge>}
           actions={
-            <>
-              {posted ? null : <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={back}>Cancel</Button>}
-              {menu.length ? <MoreMenu items={menu} /> : null}
-              {posted ? null : (
-                <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
-                  {saving ? 'Saving…' : isNewVoucher ? 'Add to new voucher' : 'Save to voucher'}
-                </Button>
-              )}
-            </>
+            // The primary is the form's submit: it saves the entry into the voucher.
+            <DetailActions
+              noun={JV_NOUN}
+              listPath={isNewVoucher || !voucher ? JV_LIST_PATH : `${JV_LIST_PATH}/${voucher.id}`}
+              mode={posted ? 'readonly' : 'open'}
+              primaryLabel={isNewVoucher ? 'Add to new voucher' : 'Save to voucher'}
+              busy={saving}
+              menu={menu}
+              prevNext={
+                voucher && at >= 0
+                  ? { path: `${JV_LIST_PATH}/${voucher.id}/entries`, prevId: siblings[at - 1]?.id, nextId: siblings[at + 1]?.id }
+                  : undefined
+              }
+            />
           }
         />
         <Panel.Body className="flex flex-col gap-2">

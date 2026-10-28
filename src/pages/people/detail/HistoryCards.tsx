@@ -229,7 +229,9 @@ function HistoryCard<T extends Row>({
       {editing ? (
         <EditPanel
           icon={def.icon}
-          title={`${editing.isNew ? 'Add' : 'Edit'} ${def.noun}`}
+          title={editing.isNew ? `New ${def.noun}` : `Edit ${def.noun}`}
+          noun={def.noun}
+          isNew={editing.isNew}
           onCancel={() => setEditing(null)}
           onDone={done}
         >

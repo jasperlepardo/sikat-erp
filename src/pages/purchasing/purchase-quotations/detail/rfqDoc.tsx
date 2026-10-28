@@ -14,6 +14,8 @@ import { lineFromItem, linePricing, type RfqTabProps } from './types';
 import { taxCodeOptions } from '../../../../services/taxCodeOptions';
 import { round2 } from '../../../../services/num';
 import { CurrencyToggle, amountsIn, currencyChoices } from '../../shared/CurrencyToggle';
+import { RFQ_LINE_LAYOUT } from '../../shared/rfqLineLayout';
+import { orderedByRfqLine } from '../../shared/poFromRfq';
 
 /**
  * Builds the Purchase Quotation (RFQ) contents descriptor for the shared <DocLines>.
@@ -43,6 +45,7 @@ export function rfqDoc(
       }
     : docTotals;
   const showFreight = getPurchasingSettings().manageFreightInDocuments;
+  const ordered = orderedByRfqLine(m.pos, draft);
   const h = lineHelpers<RfqLine>({ items: m.items, lines: draft.lines, update, errors, postingDate: draft.postingDate, uoms: m.inv.uoms });
   const { itemOf, patch, err, lineKind, uomLabel, uomOptions } = h;
 
@@ -102,6 +105,7 @@ export function rfqDoc(
     changeUom, changePriceList,
     onQty: (l, q) => patch(l.id, { quantity: q }),
     copiedQty: () => 0,
+    orderedQtyOf: (l) => ordered.get(l.id) ?? 0,
     invalid: (l, f) => Boolean(err(l, f)),
     lineKind,
     countryDef,
@@ -110,18 +114,7 @@ export function rfqDoc(
     unitCost: (l) => itemOf(l)?.itemCost ?? 0,
   });
 
-  const columns = pick(cols, [
-    // Shown by default: the SAP B1 v10 Contents fields, in its order.
-    ['type', 'opt'], ['vendor', 'opt'], ['requiredDate', 'opt'], ['qty', 'always'], ['unitPrice', 'always'],
-    ['discount', 'opt'], ['tax', 'opt'], ['total', 'always'], ['glAccount', 'opt'], ['countryOfOrigin', 'opt'],
-    ['warranty', 'opt'], ['unitCost', 'opt'],
-    // Everything else, in the column chooser.
-    ['quotedQty', 'hide'], ['openQty', 'hide'], ['uomName', 'hide'], ['itemsPerUnit', 'hide'], ['inventoryQty', 'hide'],
-    ['priceList', 'hide'], ['priceAfterDisc', 'hide'], ['taxAmount', 'hide'], ['reverseChargeVat', 'hide'], ['gross', 'hide'],
-    ['grossTotalLc', 'hide'], ['quotedDate', 'hide'], ['warehouse', 'hide'], ['department', 'hide'], ['freeText', 'hide'],
-    ['blanket', 'hide'], ['requisition', 'hide'], ['bpCatalogNo', 'hide'], ['mfrNo', 'hide'], ['deliveryDate', 'hide'],
-    ['receivedQty', 'hide'], ['packages', 'hide'], ['lineStatus', 'hide'],
-  ]);
+  const columns = pick(cols, RFQ_LINE_LAYOUT);
 
   return {
     prefsKey: 'rfq',

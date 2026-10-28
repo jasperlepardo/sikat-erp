@@ -1,10 +1,13 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import { createPortal } from 'react-dom';
-import { Alert, Badge, Button, Form, Panel, PanelHeader, Tabs, Text } from '@jasperlepardo/sikat-design-system';
+import { Alert, Badge, Form, Panel, Tabs, Text } from '@jasperlepardo/sikat-design-system';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { type Errors } from '../../../../components/form/fields';
-import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
+import { type MoreMenuItem } from '../../../../components/form/MoreMenu';
+import { DetailActions, docMode } from '../../../../components/form/DetailActions';
+import { PageHeader } from '../../../../components/form/PageHeader';
+import { isApprover, needsApproval } from '../../../../services/approval';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { CURRENT_USER_ID } from '../../../../mocks/common';
 import { formatAddress } from '../../../../mocks/address';
@@ -22,7 +25,7 @@ import { accounts, companyTax, currencies, exchangeRates, taxCodes, taxGroups, w
 import { listPartnersByRole } from '../../../../services/partners';
 import { termDays } from '../../../../services/purchaseOrders';
 import { logRejection } from '../../../../services/approvalRules';
-import { getSalesSettings, listSalesOrders, openQty, soDueDate, soNumber } from '../../../../services/salesOrders';
+import { listSalesOrders, openQty, soDueDate, soNumber } from '../../../../services/salesOrders';
 import { soSeries } from '../../../../services/allSeries';
 import { ALL_CURRENCIES, proposedTaxCode } from '../../sales-orders/detail/types';
 import { DocLines } from '../../../../components/form/docLines/DocLines';
@@ -32,7 +35,7 @@ import { buildDnContext, dnLineFromOrder, type DnContext, type DnDraft, type DnM
 import { SalesDocumentFlow } from '../../shared/SalesDocumentFlow';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
-import { neighbours, NotFound, PrevNext, siblingKeys, useDocTab, useReject } from '../../../../components/form/DetailNav';
+import { neighbours, NotFound, siblingKeys, useDocTab, useReject } from '../../../../components/form/DetailNav';
 import { DnDatesCard } from './DnDatesCard';
 import { DnSettingsCard } from './DnSettingsCard';
 import { BpChannelCard } from '../../shared/BpChannelCard';
@@ -41,7 +44,7 @@ import { DnAssignmentCard } from './DnAssignmentCard';
 import { CustomerCard } from '../../shared/CustomerCard';
 import { DnCustomerDetailsPanel } from './DnCustomerDetailsPanel';
 import { ReferencesTable } from '../../../purchasing/shared/ReferencesTable';
-import { DN_LIST_PATH, DN_STATUS_INTENT, SO_LIST_PATH, SR_LIST_PATH } from '../../paths';
+import { DN_LIST_PATH, DN_NOUN, DN_STATUS_INTENT, SR_LIST_PATH } from '../../paths';
 
 type TabId = 'contents';
 const TAB_LABEL: Record<TabId, string> = { contents: 'Contents' };
@@ -91,7 +94,7 @@ function DeliveryForm() {
   const location = useLocation();
   const fromOrder = (location.state as { fromOrder?: string } | null)?.fromOrder;
 
-  const dnApproved = !getSalesSettings().requireDeliveryApproval;
+  const dnApproved = !needsApproval('DN');
   const [draft, setDraft] = useState<DnDraft | null | undefined>(isNew ? { ...blankDelivery(todayISO(), CURRENT_USER_ID), approved: dnApproved } : undefined);
   const [m, setM] = useState<DnMasters>();
   const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
@@ -122,7 +125,7 @@ function DeliveryForm() {
     return () => { cancelled = true; };
   }, [id, isNew, fromOrder]);
 
-  useDocTitle(draft?.docNum ? (isNew ? 'New delivery' : draft.status === 'Draft' ? 'Draft delivery' : dnNumber(draft)) : undefined);
+  useDocTitle(draft?.docNum ? (isNew ? `New ${DN_NOUN.one}` : draft.status === 'Draft' ? `Draft ${DN_NOUN.one}` : dnNumber(draft)) : undefined);
   if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading delivery…</Text>;
   if (draft === null) return <NotFound icon="local_shipping" title="Delivery not found" backTo={DN_LIST_PATH} backLabel="Back to deliveries" />;
 
@@ -131,7 +134,6 @@ function DeliveryForm() {
   const ro = ctx.readOnly;
   const errors: Errors = Object.fromEntries(problems.map((p) => [p.key, p.message]));
   const { prevId, nextId } = neighbours(siblings, draft.id && (draft.docNum ? dnNumber(draft as Delivery) : draft.id));
-  const baseOrders = [...new Set(draft.lines.map((l) => l.baseId).filter(Boolean))];
 
   /** Tax codes re-proposed for the customer and date, except ones set by hand or copied from an order. */
   const retax = (lines: DnDraft['lines'], c: Partner | undefined, date: string) =>
@@ -227,19 +229,16 @@ function DeliveryForm() {
     navigate(DN_LIST_PATH, { state: { notice: `Delivery ${dnNumber(saved)} rejected and returned to draft.` } });
   };
   const menu: MoreMenuItem[] = [
-    ...(!ctx.added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
-    ...(draft.status === 'Draft' && !draft.approved ? [{ label: 'Submit for approval', icon: 'upload', onSelect: () => submit(null, false) }] : []),
-    ...(draft.status === 'Not Confirmed' ? [{ label: 'Approve', icon: 'verified', onSelect: () => submit(null, false, { approved: true }) }, { label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => reject.start() }] : []),
     ...(draft.status === 'Open' && draft.lines.some((l) => l.quantity > l.invoicedQty)
-      ? [{ label: 'Copy to A/R invoice', icon: 'receipt', onSelect: () => navigate('/sales/customer-invoices/new', { state: { fromDelivery: draft.id } }) }]
+      ? [{ label: 'Create A/R invoice', icon: 'receipt', onSelect: () => navigate('/sales/customer-invoices/new', { state: { fromDelivery: draft.id } }) }]
       : []),
-    ...(draft.status === 'Open' ? [{ label: 'Copy to sales return', icon: 'assignment_return', onSelect: () => navigate(`${SR_LIST_PATH}/new`, { state: { fromDelivery: draft.id } }) }] : []),
+    ...(draft.status === 'Open' ? [{ label: 'Create sales return', icon: 'assignment_return', onSelect: () => navigate(`${SR_LIST_PATH}/new`, { state: { fromDelivery: draft.id } }) }] : []),
+    ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }] : []),
     ...(draft.status === 'Open' ? [{ label: 'Close', icon: 'task_alt', onSelect: closeIt }] : []),
-    ...(draft.status === 'Open' && !invoiced ? [{ label: 'Cancel delivery', icon: 'cancel', onSelect: cancelIt }] : []),
-    ...baseOrders.map((soId) => ({ label: `Open sales order ${draft.lines.find((l) => l.baseId === soId)?.baseDocNo}`, icon: 'shopping_bag', onSelect: () => navigate(`${SO_LIST_PATH}/${soId}`) })),
+    ...(draft.status === 'Open' && !invoiced ? [{ label: `Cancel ${DN_NOUN.one}`, icon: 'cancel', onSelect: cancelIt }] : []),
   ];
 
-  const title = isNew ? 'New delivery' : draft.status === 'Draft' ? 'Draft delivery' : dnNumber(draft);
+  const title = isNew ? `New ${DN_NOUN.one}` : draft.status === 'Draft' ? `Draft ${DN_NOUN.one}` : dnNumber(draft);
   const tabProps = { draft, update, errors, m, ctx };
   // Open orders of this customer (or any customer, before one is picked) with something left to ship.
   const copyableOrders = m.orders.filter((o) => o.status === 'Open' && o.docType === 'Item' && (!draft.customerId || o.customerId === draft.customerId) && o.lines.some((l) => openQty(l) > 0) && (!ctx.based || o.currency === draft.currency));
@@ -248,26 +247,28 @@ function DeliveryForm() {
     <>
       <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
         <Panel className="flex-1">
-          <PanelHeader
-            type="details"
+          <PageHeader
+            variant="plain"
             icon="local_shipping"
-            iconIntent="default"
-            iconShape="rounded"
-            iconSize={32} iconVariant="outline"
-            breadcrumbs={[{ label: 'Deliveries', href: DN_LIST_PATH }, { label: title }]}
-            onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
-            onBack={() => navigate(DN_LIST_PATH)}
-            trailing={isNew ? undefined : <PrevNext path={DN_LIST_PATH} prevId={prevId} nextId={nextId} />}
+            parent={{ noun: DN_NOUN, to: DN_LIST_PATH }}
+            title={title}
             tabs={isNew ? undefined : <Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={[...PAGES]} />}
             status={isNew ? undefined : <Badge size="small" intent={DN_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
             actions={
-              <>
-                {ro ? null : <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(DN_LIST_PATH)}>Cancel</Button>}
-                {menu.length ? <MoreMenu items={menu} /> : null}
-                <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
-                  {saving ? 'Saving…' : ro ? 'Save' : 'Add'}
-                </Button>
-              </>
+              <DetailActions
+                noun={DN_NOUN}
+                listPath={DN_LIST_PATH}
+                mode={docMode(draft.status, { canApprove: isApprover('DN') })}
+                needsApproval={!draft.approved}
+                remarksOnly={ro}
+                busy={saving}
+                onDraft={() => submit(null, true)}
+                onSubmit={() => submit(null, false)}
+                onApprove={() => submit(null, false, { approved: true })}
+                onReject={reject.start}
+                menu={menu}
+                prevNext={isNew ? undefined : { path: DN_LIST_PATH, prevId, nextId }}
+              />
             }
           />
           {page === 'activity' ? (

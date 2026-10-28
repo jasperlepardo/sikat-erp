@@ -4,12 +4,13 @@ import {
   Button,
   Checkbox,
   Icon,
+  IconButton,
   Panel,
-  PanelHeader,
   SidePanel,
   TableContent,
   Text,
 } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../../../components/form/PageHeader';
 import { DocLines } from '../../../../components/form/docLines/DocLines';
 import type { PrefColumn } from '../../../../components/form/columnPrefs';
 import { formatAmount } from '../../../../services/format';
@@ -84,24 +85,22 @@ function CopyFromGrpoPanel({
   return (
     <SidePanel overlay onOverlayClick={onCancel}>
       <Panel className="flex-1 min-h-0 flex flex-col">
-        <PanelHeader
-          type="forms"
+        <PageHeader
+          variant="plain"
           icon="content_copy"
-          iconIntent="default"
-          iconShape="rounded"
-          iconSize={32}
-          iconVariant="outline"
-          title="Copy from Goods Receipt"
+          title="Copy from goods receipt"
           actions={
             <>
-              <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={onCancel}>
+              <IconButton type="button" intent="default" variant="link" label="Close" onClick={onCancel}>
+                <Icon size={20}>close</Icon>
+              </IconButton>
+              <Button type="button" intent="white" variant="solid" shape="pill" onClick={onCancel}>
                 Cancel
               </Button>
               <Button
                 type="button"
                 intent="primary"
                 variant="solid"
-                size="medium"
                 shape="pill"
                 disabled={picks.size === 0}
                 onClick={handleCopy}
