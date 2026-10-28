@@ -28,7 +28,8 @@ export function AgreementSummaryCard({ side, currency, totals, settlementProbabi
         </div>
         <div>
           <Text variant="small" tone="muted">{side === 'purchase' ? 'Ordered' : 'Committed'}</Text>
-          <Text weight="semibold">{currency} {formatAmount(totals.committedTotal)}</Text>
+          {/* Cumulative ordered = still on order + already received (disjoint buckets), so Ordered ≥ Received. */}
+          <Text weight="semibold">{currency} {formatAmount(totals.committedTotal + totals.cumulativeTotal)}</Text>
         </div>
         <div>
           <Text variant="small" tone="muted">{side === 'purchase' ? 'Received' : 'Fulfilled'}</Text>

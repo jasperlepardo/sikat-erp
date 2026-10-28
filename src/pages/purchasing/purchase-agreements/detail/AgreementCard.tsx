@@ -10,12 +10,15 @@ interface Props {
   update: (patch: Partial<PbaDraft>) => void;
   m: PbaMasters;
   added: boolean;
+  /** Once added, the agreement's dates and identity lock. */
+  readOnly: boolean;
 }
 
-export function AgreementCard({ draft, update, m, added }: Props) {
+export function AgreementCard({ draft, update, m, added, readOnly }: Props) {
   const f = bind(draft, update);
   return (
     <Section icon="event_note" title="Agreement">
+      <fieldset disabled={readOnly} className="contents">
       <FieldStack>
         {f.lookup(
           'seriesId',
@@ -46,6 +49,7 @@ export function AgreementCard({ draft, update, m, added }: Props) {
         {f.date('signingDate', 'Signing date', { required: true })}
         {f.text('description', 'Description', { hint: 'Free-text description of the agreement.' })}
       </FieldStack>
+      </fieldset>
     </Section>
   );
 }

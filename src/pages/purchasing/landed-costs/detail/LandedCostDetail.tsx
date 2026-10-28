@@ -221,8 +221,6 @@ function LandedCostForm() {
                 />
                 <LcItemsCard {...sectionProps} onLinesChange={(lines) => update({ lines })} />
                 <LcCostsCard {...sectionProps} />
-                <LcVendorsCard {...sectionProps} />
-                <LcGeneralCard {...sectionProps} />
               </fieldset>
 
               <AttachmentsCard
@@ -235,6 +233,8 @@ function LandedCostForm() {
             <aside className="flex flex-col gap-2 lg:col-span-4">
               <fieldset disabled={readOnly} className="contents">
                 <LcDocumentCard {...sectionProps} statusMoves={statusMoves} />
+                <LcVendorsCard {...sectionProps} />
+                <LcGeneralCard {...sectionProps} />
                 <LcRemarksCard {...sectionProps} />
               </fieldset>
             </aside>

@@ -1,13 +1,23 @@
 import { useState } from 'react';
-import { Button, Combobox, Icon, Link, TableStatus, Text, TextField, type TableColumn } from '@jasperlepardo/sikat-design-system';
-import { DataTable } from '../../components/form/DataTable';
+import { DatePicker, Select, TableStatus, Text, TextField } from '@jasperlepardo/sikat-design-system';
+import { DocLines } from '../form/docLines/DocLines';
+import type { PrefColumn } from '../form/columnPrefs';
+import { masterCol, priceCol, textCol } from '../form/docLines/docColumns';
+import { groupUoms } from '../../mocks/itemMasters';
 import { itemsPerUom } from '../../mocks/items';
 import type { Item } from '../../mocks/items';
 import type { BaLine } from '../../mocks/blanketAgreements';
 import type { PbaLine } from '../../mocks/purchaseBlanketAgreements';
+import type { ShippingType } from '../../mocks/itemMasters';
+import type { Project } from '../../mocks/partnerMasters';
+import { round2 } from '../../services/num';
 import { formatAmount } from '../../services/format';
+import { formatDate, todayISO } from '../../services/dates';
 import { itemGroupName, type InventoryMasters } from '../../services/inventoryMasters';
+import { exchangeRates, rateOn } from '../../services/masterData';
 import { lineTotal, openAmountLC, openQty } from '../../services/blanketAgreements';
+import { projectDef, shippingTypeDef } from '../../pages/settings/masterDefs';
+import { CurrencyToggle, currencyChoices } from '../../pages/purchasing/shared/CurrencyToggle';
 
 const num = (v: string) => (v === '' ? 0 : Number(v));
 
@@ -17,19 +27,37 @@ type Line = PbaLine | BaLine;
 interface Props<L extends Line> {
   /** Purchase agreements commit purchase items at cost; sales agreements, sales items at their net price. */
   side: 'purchase' | 'sales';
-  draft: { lines: L[]; currency: string };
+  draft: { lines: L[]; currency: string; startDate?: string };
   update: (patch: { lines: L[] }) => void;
   m: { items: Item[]; inv: Pick<InventoryMasters, 'uoms' | 'uomGroups'> };
   readOnly: boolean;
   newLine: () => L;
 }
 
-/** The Lines tab of a purchase or sales blanket agreement. */
+/**
+ * The Details tab of a purchase or sales blanket agreement — rendered through the
+ * shared `DocLines` shell so it matches every other purchasing/sales contents table
+ * (shared item cell, inline add-row, ⋯ row menu, Columns show/hide). The column set
+ * follows the SAP B1 "Details Tab (Matrix Grid)" field list; the long tail of
+ * read-only cumulative/UoM columns ships hidden and is revealed via the Columns menu.
+ */
 export function AgreementLinesCard<L extends Line>({ side, draft, update, m, readOnly, newLine }: Props<L>) {
   const purchase = side === 'purchase';
-  const [editing, setEditing] = useState<Set<string>>(new Set());
-
+  const { currency } = draft;
   const lines = draft.lines;
+
+  // Amounts are stored in the agreement's own currency. Like the RFQ, a non-PHP agreement can
+  // switch the amount columns to PHP (local currency) via a toggle; the FX rate is the one on the
+  // agreement's start date. Viewing another currency is read-only — it only converts the display.
+  const choices = currencyChoices(currency);
+  const [view, setView] = useState('');
+  const shown = choices.includes(view) ? view : currency;
+  const converted = shown !== currency;
+  const fx = currency === 'PHP' ? 1 : rateOn([...exchangeRates.snapshot()], currency, draft.startDate ?? todayISO())?.rate ?? 0;
+  const factor = converted ? fx : 1;
+  const cur = (header: string) => `${header} (${shown})`;
+  const locked = readOnly || converted;
+
   const itemOf = (l: L) => m.items.find((i) => i.id === l.itemId);
   const patch = (id: string, p: Partial<Line>) =>
     update({ lines: lines.map((l) => (l.id === id ? ({ ...l, ...p } as L) : l)) });
@@ -48,165 +76,150 @@ export function AgreementLinesCard<L extends Line>({ side, draft, update, m, rea
         text: `${i.itemNo} ${i.name} ${i.description}`,
       }));
 
-  const pickItem = (l: L, itemId: string | null) => {
+  /** The fields an item stamps onto a line — shared by picking on an existing line and the add-row. */
+  const itemPatch = (itemId: string): Partial<L> => {
     const item = m.items.find((i) => i.id === itemId);
-    if (!item) {
-      patch(l.id, { itemId: '', itemNo: '', description: '', itemGroupId: '' });
-      return;
-    }
+    if (!item) return { itemId: '', itemNo: '', description: '', itemGroupId: '' } as Partial<L>;
     const unit = purchase ? item.purchasingUom : item.salesUom;
     const uom = m.inv.uoms.find((u) => u.code === unit);
     const uomGroupId = m.inv.uomGroups.find((g) => g.baseUom === unit || g.conversions.some((c) => c.altUom === unit))?.id ?? '';
-    patch(l.id, {
+    return {
       itemId: item.id,
       itemNo: item.itemNo,
       description: item.description || item.name,
       itemGroupId: item.itemGroupId,
       // The agreed purchase cost; a sale's price net of VAT.
-      unitPrice: Math.round((purchase ? item.itemCost : item.basePrice / 1.12) * 100) / 100,
+      unitPrice: round2(purchase ? item.itemCost : item.basePrice / 1.12),
       uomCode: unit,
       uomName: uom?.name ?? unit,
       itemsPerUnit: itemsPerUom(item, unit) ?? 1,
       uomGroupId,
-    });
+    } as Partial<L>;
   };
 
-  const col = (key: string, header: string, cell: (l: L) => React.ReactNode, opts?: Partial<TableColumn<L>>): TableColumn<L> => ({
-    key, header, cell, ...opts,
-  });
+  /** Units a line can switch to: the item's UoM group, with the saved unit kept selectable. */
+  const uomOptionsFor = (l: L) => {
+    const group =
+      m.inv.uomGroups.find((g) => g.id === l.uomGroupId) ??
+      m.inv.uomGroups.find((g) => g.baseUom === l.uomCode || g.conversions.some((c) => c.altUom === l.uomCode));
+    const codes = group ? groupUoms(group) : [l.uomCode].filter(Boolean);
+    const opts = m.inv.uoms
+      .filter((u) => (u.active || u.code === l.uomCode) && codes.includes(u.code))
+      .map((u) => ({ value: u.code, label: u.code }));
+    return opts.length ? opts : [{ value: l.uomCode, label: l.uomCode || l.uomName }];
+  };
 
-  const columns: TableColumn<L>[] = [
-    col('item', 'Item / Description', (l) => {
-      const item = itemOf(l);
-      if (!item || (editing.has(l.id) && !readOnly)) {
-        return (
-          <div className="flex w-64 flex-col gap-1">
-            {item ? (
-              <TextField
-                aria-label="Description"
-                value={l.description}
-                onChange={(e) => patch(l.id, { description: e.currentTarget.value })}
-              />
-            ) : (
-              <Combobox
-                aria-label="Item No."
-                placeholder="Search items"
-                options={itemOptions(l.itemId)}
-                value={l.itemId || null}
-                onValueChange={(v) => pickItem(l, v)}
-              />
-            )}
-            {item ? (
-              <Link intent="primary" onClick={() => setEditing((s) => { const n = new Set(s); n.delete(l.id); return n; })}>
-                Done
-              </Link>
-            ) : null}
-          </div>
-        );
-      }
-      return (
-        <span className="flex flex-col gap-0.5">
-          <span className="text-xs opacity-60">{item.itemNo}</span>
-          <Link intent="default" onClick={() => !readOnly && setEditing((s) => new Set(s).add(l.id))}>
-            {l.description || item.name}
-          </Link>
-        </span>
-      );
-    }),
-    col('itemGroup', 'Item group', (l) => (
-      <Text variant="small" tone="muted">{l.itemGroupId ? itemGroupName(l.itemGroupId) : '—'}</Text>
-    )),
-    col('plannedQty', 'Planned qty', (l) =>
-      readOnly ? (
-        <span className="tabular-nums">{l.plannedQty}</span>
-      ) : (
-        <TextField
-          aria-label="Planned quantity"
-          type="number"
-          min={0}
-          className="w-24"
-          value={String(l.plannedQty)}
-          onChange={(e) => patch(l.id, { plannedQty: num(e.currentTarget.value) })}
-        />
-      ),
-    ),
-    col('unitPrice', 'Unit price', (l) =>
-      readOnly ? (
-        <span className="tabular-nums">{formatAmount(l.unitPrice)}</span>
-      ) : (
-        <TextField
-          aria-label="Unit price"
-          type="number"
-          min={0}
-          className="w-28"
-          prefix={draft.currency}
-          value={String(l.unitPrice)}
-          onChange={(e) => patch(l.id, { unitPrice: num(e.currentTarget.value) })}
-        />
-      ),
-    ),
-    ...(purchase ? [col('cumulativeOrderedQty', 'Ordered qty', (l) => (
-      <Text variant="small" tone="muted" className="tabular-nums">{l.cumulativeCommittedQty}</Text>
-    ))] : []),
-    col('cumulativeQty', purchase ? 'Received qty' : 'Cumulative qty', (l) => (
-      <Text variant="small" tone="muted" className="tabular-nums">{l.cumulativeQty}</Text>
-    )),
-    col('cumulativeAmountLC', 'Cumulative amt (LC)', (l) => (
-      <Text variant="small" tone="muted" className="tabular-nums">{formatAmount(l.cumulativeAmountLC)}</Text>
-    )),
-    col('openQty', 'Open qty', (l) => (
-      <Text variant="small" tone={openQty(l) === 0 ? 'muted' : 'default'} className="tabular-nums">
-        {openQty(l)}
-      </Text>
-    )),
-    col('openAmountLC', 'Open amt (LC)', (l) => (
-      <Text variant="small" tone={openAmountLC(l) === 0 ? 'muted' : 'default'} className="tabular-nums">
-        {formatAmount(openAmountLC(l))}
-      </Text>
-    )),
-    col('rowStatus', 'Status', (l) => (
-      <TableStatus intent={l.rowStatus === 'Open' ? 'primary' : 'success'}>{l.rowStatus}</TableStatus>
-    )),
-    ...(!readOnly ? [col('remove', '', (l) => (
-      <Button
-        type="button"
-        intent="danger"
-        variant="link"
-        size="small"
-        onClick={() => update({ lines: lines.filter((x) => x.id !== l.id) })}
-      >
-        <Icon size={16}>delete</Icon>
-      </Button>
-    ))] : []),
+  const changeUom = (l: L, code: string) => {
+    const item = itemOf(l);
+    const uom = m.inv.uoms.find((u) => u.code === code);
+    patch(l.id, { uomCode: code, uomName: uom?.name ?? code, itemsPerUnit: (item && itemsPerUom(item, code)) || 1 } as Partial<L>);
+  };
+
+  const uomGroupNameOf = (l: L) => m.inv.uomGroups.find((g) => g.id === l.uomGroupId)?.name ?? '—';
+
+  // Read-only roll-up figures: show the value in the shown currency, de-emphasised (muted) when
+  // zero, full-strength otherwise — the same rule as AgreementSummaryCard on this page.
+  const money = (n: number) => (
+    <Text variant="small" tone={n === 0 ? 'muted' : 'default'} className="tabular-nums">{formatAmount(n * factor)}</Text>
+  );
+  const count = (n: number) => (
+    <Text variant="small" tone={n === 0 ? 'muted' : 'default'} className="tabular-nums">{n.toLocaleString('en-PH')}</Text>
+  );
+
+  const columns: PrefColumn<L>[] = [
+    { key: 'itemGroup', header: 'Item group', optional: true, cell: (l) => {
+      if (!l.itemId) return null;
+      // Resolve from the (variant-merged) item: a variant's own itemGroupId is blank — the group lives on the parent.
+      const groupId = itemOf(l)?.itemGroupId || l.itemGroupId;
+      return <Text variant="small">{groupId ? itemGroupName(groupId) : '—'}</Text>;
+    } },
+    {
+      key: 'plannedQty', header: 'Planned qty', align: 'end',
+      cell: (l) => {
+        if (!l.itemId) return null;
+        if (locked) return <span className="text-sm tabular-nums">{l.plannedQty}</span>;
+        return <TextField aria-label="Planned quantity" type="number" min={0} className="w-24 [&_input]:text-right" value={String(l.plannedQty)} onChange={(e) => patch(l.id, { plannedQty: num(e.currentTarget.value) } as Partial<L>)} />;
+      },
+    },
+    priceCol<L>({ key: 'unitPrice', header: cur('Unit price'), readOnly: locked, optional: false, get: (l) => l.unitPrice * factor, onChange: (l, v) => patch(l.id, { unitPrice: v } as Partial<L>) }),
+
+    // Cumulative ordered = still on order (committed) + already received (closed POs) — the two are
+    // disjoint PO-line buckets, so their sum is the total ever ordered. Keeps Ordered ≥ Received.
+    { key: 'cumulativeOrderedQty', header: 'Ordered qty', align: 'end', optional: true, defaultHidden: false, cell: (l) => (l.itemId ? count(l.cumulativeCommittedQty + l.cumulativeQty) : null) },
+    { key: 'cumulativeOrderedAmountLC', header: cur('Ordered amt'), align: 'end', optional: true, defaultHidden: true, cell: (l) => (l.itemId ? money(l.cumulativeCommittedAmountLC + l.cumulativeAmountLC) : null) },
+
+    { key: 'cumulativeQty', header: purchase ? 'Received qty' : 'Cumulative qty', align: 'end', optional: true, defaultHidden: false, cell: (l) => (l.itemId ? count(l.cumulativeQty) : null) },
+    { key: 'cumulativeAmountLC', header: cur('Cumulative amt'), align: 'end', optional: true, defaultHidden: false, cell: (l) => (l.itemId ? money(l.cumulativeAmountLC) : null) },
+
+    { key: 'openQty', header: 'Open qty', align: 'end', optional: true, defaultHidden: false, cell: (l) => (l.itemId ? count(openQty(l)) : null) },
+    { key: 'openAmountLC', header: cur('Open amt'), align: 'end', optional: true, defaultHidden: false, cell: (l) => (l.itemId ? money(openAmountLC(l)) : null) },
+
+    masterCol<L, ShippingType>({ key: 'shippingType', header: 'Shipping type', def: shippingTypeDef, get: (l) => l.shippingType, onChange: (l, v) => patch(l.id, { shippingType: v } as Partial<L>), clearable: true, placeholder: 'None', readOnly: locked }),
+    masterCol<L, Project>({ key: 'projectId', header: 'Project', def: projectDef, get: (l) => l.projectId, onChange: (l, v) => patch(l.id, { projectId: v } as Partial<L>), clearable: true, placeholder: 'None', readOnly: locked }),
+    textCol<L>({ key: 'freeText', header: 'Free text', readOnly: locked, get: (l) => l.freeText, onChange: (l, v) => patch(l.id, { freeText: v } as Partial<L>) }),
+
+    {
+      key: 'uomCode', header: 'UoM', optional: true, defaultHidden: false,
+      cell: (l) => {
+        if (!l.itemId) return null;
+        if (locked) return <Text variant="small">{l.uomCode}</Text>;
+        return <Select aria-label="UoM" className="w-28" options={uomOptionsFor(l)} value={l.uomCode} onValueChange={(v) => v && changeUom(l, v)} />;
+      },
+    },
+    { key: 'uomName', header: 'UoM name', optional: true, cell: (l) => (l.itemId ? <Text variant="small">{l.uomName}</Text> : null) },
+    { key: 'itemsPerUnit', header: 'Items per unit', align: 'end', optional: true, cell: (l) => (l.itemId ? <span className="text-sm tabular-nums">{l.itemsPerUnit}</span> : null) },
+    { key: 'uomGroup', header: 'UoM group', optional: true, cell: (l) => (l.itemId ? <Text variant="small">{uomGroupNameOf(l)}</Text> : null) },
+
+    {
+      key: 'portionOfReturns', header: 'Portion of returns %', align: 'end', optional: true,
+      cell: (l) => {
+        if (!l.itemId) return null;
+        if (locked) return <span className="text-sm tabular-nums">{l.portionOfReturns}%</span>;
+        return <TextField aria-label="Portion of returns %" type="number" min={0} max={100} className="w-24 [&_input]:text-right" value={String(l.portionOfReturns)} onChange={(e) => patch(l.id, { portionOfReturns: num(e.currentTarget.value) } as Partial<L>)} />;
+      },
+    },
+    {
+      key: 'endOfWarranty', header: 'End of warranty', optional: true,
+      cell: (l) => {
+        if (!l.itemId) return null;
+        if (locked) return <Text variant="small">{l.endOfWarranty ? formatDate(l.endOfWarranty) : '—'}</Text>;
+        return <DatePicker aria-label="End of warranty" className="w-36" value={l.endOfWarranty || null} onValueChange={(v) => patch(l.id, { endOfWarranty: v ?? '' } as Partial<L>)} />;
+      },
+    },
+    { key: 'rowStatus', header: 'Status', optional: true, defaultHidden: false, cell: (l) => (l.itemId ? <TableStatus intent={l.rowStatus === 'Open' ? 'primary' : 'success'}>{l.rowStatus}</TableStatus> : null) },
   ];
 
   return (
-    <DataTable<L>
-      variant={purchase ? undefined : 'plain'}
+    <DocLines<L>
+      cardHeader
+      prefsKey={purchase ? 'pba' : 'ba'}
       icon="list_alt"
       title="Line Items"
-      description={`Items committed under this agreement. Unit prices are ${purchase ? 'the agreed purchase cost' : 'net of VAT'} in ${draft.currency}.`}
+      description={`Items committed under this agreement. Unit prices are ${purchase ? 'the agreed purchase cost' : 'net of VAT'} in ${currency}.`}
       columns={columns}
       rows={lines}
       getRowId={(l) => l.id}
-      noPagination
-      unsortable={columns.map((c) => c.key)}
-      actions={
-        !readOnly ? (
-          <Button type="button" intent="primary" variant="solid" size="small" leadingIcon={<Icon size={16}>add</Icon>} onClick={() => update({ lines: [...lines, newLine()] })}>
-            Add line
-          </Button>
+      readOnly={locked}
+      sortableKeys={[]}
+      actions={<CurrencyToggle choices={choices} value={shown} onChange={setView} />}
+      item={{
+        resolve: (l) => { const it = itemOf(l); return it ? { itemNo: it.itemNo, name: it.name } : null; },
+        description: (l) => l.description,
+        onDescription: (l, v) => patch(l.id, { description: v } as Partial<L>),
+        options: itemOptions,
+        onPick: (l, itemId) => patch(l.id, itemPatch(itemId ?? '')),
+        fromItem: (itemId) => ({ ...newLine(), ...itemPatch(itemId) }) as L,
+        onAdd: (line) => update({ lines: [...lines, line] }),
+        onRemoveLine: (l) => update({ lines: lines.filter((x) => x.id !== l.id) }),
+      }}
+      footer={
+        lines.length > 0 ? (
+          <div className="flex justify-end gap-6 pb-2 text-sm tabular-nums">
+            <span>Planned total: <strong>{shown} {formatAmount(lines.reduce((n, l) => n + lineTotal(l), 0) * factor)}</strong></span>
+          </div>
         ) : undefined
       }
-      empty={
-        <Text variant="small" tone="muted">{readOnly ? 'No lines.' : 'Add a line to get started.'}</Text>
-      }
-    >
-      {lines.length > 0 && (
-        <div className="flex justify-end gap-6 pb-2 text-sm tabular-nums">
-          <span>Planned total: <strong>{draft.currency} {formatAmount(lines.reduce((n, l) => n + lineTotal(l), 0))}</strong></span>
-        </div>
-      )}
-    </DataTable>
+      empty={<Text variant="small" tone="muted">{readOnly ? 'No lines.' : 'Add a line to get started.'}</Text>}
+    />
   );
 }

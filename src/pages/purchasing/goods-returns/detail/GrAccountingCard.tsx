@@ -1,5 +1,5 @@
-import { Combobox, FormField } from '@jasperlepardo/sikat-design-system';
-import { Fields, ReadOnly, Section, bind } from '../../../../components/form/fields';
+import { Combobox } from '@jasperlepardo/sikat-design-system';
+import { CtxFormField, ReadOnly, Section, SideFields, bind } from '../../../../components/form/fields';
 import { PAYMENT_METHODS } from '../../../../mocks/masters';
 import { INDICATORS } from '../../../../mocks/purchaseOrders';
 import { paymentTermDef, projectDef } from '../../../settings/masterDefs';
@@ -17,7 +17,7 @@ export function GrAccountingCard({ draft, update, errors: _errors, m, ctx, readO
 
   return (
     <Section icon="account_balance" title="Accounting">
-      <Fields>
+      <SideFields>
         {h.text('journalRemark', 'Journal remark', { hint: 'Defaults to "Goods Returns – vendor code".' })}
         {h.master('paymentTermId', 'Payment terms', paymentTermDef, { hint: 'Defaults from the vendor or the base document.' })}
         {h.lookup('paymentMethod', 'Payment method', PAYMENT_METHODS.map((p) => ({ value: p.code, label: `${p.code} · ${p.description}` })))}
@@ -26,12 +26,12 @@ export function GrAccountingCard({ draft, update, errors: _errors, m, ctx, readO
         {h.choose('indicator', 'Indicator', asOptions(INDICATORS), { clearable: true })}
         <ReadOnly label="Federal tax ID" value={vendor?.tin || '—'} hint="The vendor's TIN." />
         <ReadOnly label="Order number" value={draft.orderNumber || '—'} hint="The PO behind the lines." />
-        <FormField label="Consolidating BP" tooltip="Settle this return's credit through another partner.">
+        <CtxFormField label="Consolidating BP" tooltip="Settle this return's credit through another partner.">
           {(p) => (
             <Combobox {...p} placeholder="None" options={m.vendors.filter((v) => v.id !== draft.vendorId).map((v) => ({ value: v.id, label: v.name, subLabel: v.code, subLabelPlacement: 'top' as const, text: `${v.code} ${v.name}` }))} value={draft.consolidatingBpId || null} onValueChange={(consolidatingBpId) => update({ consolidatingBpId: consolidatingBpId ?? '' })} />
           )}
-        </FormField>
-      </Fields>
+        </CtxFormField>
+      </SideFields>
     </Section>
   );
 }

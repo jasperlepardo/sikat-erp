@@ -1,4 +1,4 @@
-import { FieldStack, Section, bind } from '../../../../components/form/fields';
+import { FieldStack, Section, SideFields, bind } from '../../../../components/form/fields';
 import { salesEmployeeDef } from '../../../settings/masterDefs';
 import type { GrSectionProps } from './types';
 
@@ -12,10 +12,10 @@ export function GrTotalsCard({ draft, update, locked }: GrTotalsCardProps) {
   return (
     <Section icon="assignment_ind" title="Assignment">
       <fieldset disabled={locked} className="contents">
-        <FieldStack>
+        <SideFields>
           {h.master('buyerId', 'Buyer', salesEmployeeDef)}
           {h.master('ownerId', 'Owner', salesEmployeeDef)}
-        </FieldStack>
+        </SideFields>
       </fieldset>
       <FieldStack>
         {h.area('remarks', 'Remarks', { rows: 3, hint: 'Can be changed after the return is added.' })}

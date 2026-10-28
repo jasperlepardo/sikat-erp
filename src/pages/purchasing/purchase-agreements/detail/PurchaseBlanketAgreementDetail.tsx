@@ -25,9 +25,11 @@ import { listPartnersByRole } from '../../../../services/partners';
 import { pbaSeries } from '../../../../services/allSeries';
 import { pbaNumber, pbaTotals, openQty, getPurchaseBlanketAgreement, listPurchaseBlanketAgreements, savePurchaseBlanketAgreement, type PbaInput } from '../../../../services/purchaseBlanketAgreements';
 import { getPurchasingSettings } from '../../../../services/purchaseOrders';
+import { currencies as currencyCollection } from '../../../../services/masterData';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { DocumentFlow } from '../../shared/DocumentFlow';
 import { VendorCard } from '../../shared/VendorCard';
+import { VendorDetailsPanel } from '../../shared/VendorDetailsPanel';
 import { AgreementCard } from './AgreementCard';
 import { GeneralTab } from './general';
 import { AgreementLinesCard } from '../../../../components/agreements/AgreementLinesCard';
@@ -87,6 +89,7 @@ function PbaForm() {
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);
+  const [vendorDetailsOpen, setVendorDetailsOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -95,9 +98,10 @@ function PbaForm() {
       listItems(),
       loadInventoryMasters(),
       pbaSeries.list(),
-    ]).then(([vendors, items, inv, series]) => {
+      currencyCollection.list(),
+    ]).then(([vendors, items, inv, series, currencies]) => {
       if (cancelled) return;
-      setM({ vendors, items, inv, pbaSeries: series });
+      setM({ vendors, items, inv, pbaSeries: series, currencies });
     });
     if (!isNew && id) {
       getPurchaseBlanketAgreement(id).then((pba) => !cancelled && setDraft(pba ?? null));
@@ -125,8 +129,11 @@ function PbaForm() {
   }
   if (draft === null) return <NotFound icon="handshake" title="Agreement not found" backTo={PBA_LIST_PATH} backLabel="Back to agreements" />;
 
-  const readOnly = draft.status === 'Closed' || draft.status === 'Terminated';
   const added = draft.status !== 'Draft';
+  // Once added (Approved onward), the commercial body locks — only status, remarks and
+  // attachments can change. Terminal statuses also lock the status itself (no outgoing moves).
+  const readOnly = added;
+  const terminal = draft.status === 'Closed' || draft.status === 'Terminated';
   const errors: Errors = Object.fromEntries(problems.map((p) => [p.key, p.message]));
 
   const { prevId, nextId } = neighbours(siblings, draft.id && (draft.docNum ? pbaNumber(draft as PurchaseBlanketAgreement) : draft.id));
@@ -234,6 +241,7 @@ function PbaForm() {
       : pbaNumber(draft as PurchaseBlanketAgreement);
 
   return (
+    <>
     <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
       <Panel className="flex-1">
         <PanelHeader
@@ -253,13 +261,11 @@ function PbaForm() {
           status={isNew ? undefined : <Badge size="small" intent={PBA_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
           actions={
             <>
-              {readOnly ? null : <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(PBA_LIST_PATH)}>Cancel</Button>}
+              <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(PBA_LIST_PATH)}>Cancel</Button>
               {menu.length ? <MoreMenu items={menu} /> : null}
-              {!readOnly && (
-                <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
-                  {saving ? 'Saving…' : added ? 'Update' : 'Add'}
-                </Button>
-              )}
+              <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
+                {saving ? 'Saving…' : added ? 'Update' : 'Add'}
+              </Button>
             </>
           }
         />
@@ -289,48 +295,56 @@ function PbaForm() {
                 {draft.status === 'Terminated' && draft.terminationDate
                   ? `Terminated on ${formatDate(draft.terminationDate)}. `
                   : ''}
-                Only remarks and attachments can be changed.
+                {`Only ${terminal ? '' : 'its status, '}remarks and attachments can be changed.`}
               </Alert>
             ) : null}
 
-            <fieldset disabled={readOnly} className="contents">
-              {draft.lines.length > 0 && (
-                <AgreementSummaryCard side="purchase" currency={draft.currency} totals={totals} settlementProbability={draft.settlementProbability} />
-              )}
-              <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
-                <div className="flex flex-col gap-2 lg:col-span-8">
-                  <VendorCard
-                    vendors={m.vendors}
-                    vendorId={draft.vendorId}
-                    vendor={vendor}
-                    readOnly={readOnly}
-                    added={added}
-                    error={errors.vendorId}
-                    pickVendor={pickVendor}
-                    contact={{ contactId: draft.contactId, onChange: (id) => update({ contactId: id }) }}
-                    vendorRef={{ value: draft.vendorRef, onChange: (v) => update({ vendorRef: v }), hint: "The vendor's own reference for this agreement." }}
-                    currency={{ value: draft.currency, readOnly: true }}
-                    phone={draft.phone}
-                    email={draft.email}
-                  />
-                  <AgreementLinesCard side="purchase" draft={draft} update={update} m={m} readOnly={readOnly} newLine={newPbaLine} />
-                  <AttachmentsCard
-                    attachments={draft.attachments}
-                    onChange={(attachments) => update({ attachments })}
-                    emptyHint="Signed agreement, vendor confirmation, or supporting documents."
-                    withDescription
-                  />
-                </div>
-
-                <aside className="flex flex-col gap-2 lg:col-span-4">
-                  <AgreementCard draft={draft} update={update} m={m} added={added} />
-                  <GeneralTab draft={draft} update={update} m={m} readOnly={readOnly} />
-                </aside>
+            {draft.lines.length > 0 && (
+              <AgreementSummaryCard side="purchase" currency={draft.currency} totals={totals} settlementProbability={draft.settlementProbability} />
+            )}
+            <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
+              <div className="flex flex-col gap-2 lg:col-span-8">
+                <VendorCard
+                  vendors={m.vendors}
+                  vendorId={draft.vendorId}
+                  vendor={vendor}
+                  readOnly={readOnly}
+                  added={added}
+                  error={errors.vendorId}
+                  pickVendor={pickVendor}
+                  onOpenDetails={() => setVendorDetailsOpen(true)}
+                />
+                <AgreementLinesCard side="purchase" draft={draft} update={update} m={m} readOnly={readOnly} newLine={newPbaLine} />
+                {/* Attachments stay editable at every status. */}
+                <AttachmentsCard
+                  attachments={draft.attachments}
+                  onChange={(attachments) => update({ attachments })}
+                  emptyHint="Signed agreement, vendor confirmation, or supporting documents."
+                  withDescription
+                />
               </div>
-            </fieldset>
+
+              <aside className="flex flex-col gap-2 lg:col-span-4">
+                <AgreementCard draft={draft} update={update} m={m} added={added} readOnly={readOnly} />
+                <GeneralTab draft={draft} update={update} m={m} readOnly={readOnly} terminal={terminal} />
+              </aside>
+            </div>
           </Panel.Body>
         )}
       </Panel>
     </Form>
+    <VendorDetailsPanel
+      draft={draft}
+      update={update}
+      vendor={vendor}
+      currencies={m.currencies}
+      readOnly={readOnly}
+      open={vendorDetailsOpen}
+      onClose={() => setVendorDetailsOpen(false)}
+      vendorRefHint="The vendor's own reference for this agreement."
+      currency={{ disabled: true, tooltip: "Set by the vendor's currency." }}
+      addresses={[]}
+    />
+    </>
   );
 }
