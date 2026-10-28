@@ -2,21 +2,21 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import {
   Badge,
-  Button,
   Combobox,
   Form,
   FormField,
   Icon,
   Link,
   Panel,
-  PanelHeader,
   Select,
   Tabs,
   TextField,
   Text,
 } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../../../components/form/PageHeader';
 import { FieldStack, Section, bind, type Errors } from '../../../../components/form/fields';
-import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
+import { type MoreMenuItem } from '../../../../components/form/MoreMenu';
+import { DetailActions } from '../../../../components/form/DetailActions';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { accountProblem } from '../../../../mocks/chartOfAccounts';
 import { ITEM_TYPES, MANAGE_BY } from '../../../../mocks/itemMasters';
@@ -69,9 +69,10 @@ import { WarehousePanel, binErrorKey } from './WarehousesSection';
 import { uomDef } from '../../../settings/masterDefs';
 import { LOCKED_HINT, asOptions, valueIdOf, variantFromParent, type Draft, type TaxMasters } from './types';
 import { ItemActivityTab } from './activity';
-import { neighbours, NotFound, PrevNext, useDocTab } from '../../../../components/form/DetailNav';
+import { neighbours, NotFound, useDocTab } from '../../../../components/form/DetailNav';
+import { ITEM_LIST_PATH, ITEM_NOUN } from '../../paths';
 
-const LIST_PATH = '/inventory/items';
+const LIST_PATH = ITEM_LIST_PATH;
 
 const TABS = [
   { value: 'general', label: 'General', Component: GeneralTab },
@@ -350,15 +351,10 @@ function ItemForm() {
     };
     navigate(`${LIST_PATH}/new`, { state: { copyFrom: copy } });
   };
-
-  const vendor = vendors.find((v) => v.id === draft.defaultVendorId);
   const menu: MoreMenuItem[] = isNew
     ? []
     : [
         { label: 'Duplicate', icon: 'content_copy', onSelect: duplicate },
-        ...(vendor
-          ? [{ label: `Open vendor ${vendor.code}`, icon: 'local_shipping', onSelect: () => navigate(`/purchasing/vendors/${vendor.id}`) }]
-          : []),
       ];
 
   const counts: Partial<Record<TabId, number>> = {
@@ -373,18 +369,11 @@ function ItemForm() {
     <>
       <Form className="flex min-h-0 flex-1 flex-col" onSubmit={submit} noValidate>
         <Panel className="min-h-0 flex-1">
-          <PanelHeader
-            type="details"
+          <PageHeader
+            variant="plain"
             icon="inventory_2"
-            iconIntent="default"
-            iconShape="rounded"
-            iconSize={32} iconVariant="outline"
-            breadcrumbs={[{ label: 'Items', href: LIST_PATH }, { label: isNew ? 'New item' : (draft.name || draft.description) }]}
-            onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
-            onBack={() => navigate(LIST_PATH)}
-            trailing={
-              isNew ? undefined : <PrevNext path={LIST_PATH} prevId={prevId} nextId={nextId} />
-            }
+            parent={{ noun: ITEM_NOUN, to: LIST_PATH }}
+            title={isNew ? `New ${ITEM_NOUN.one}` : (draft.name || draft.description)}
             tabs={
               <Tabs
                 variant="outline"
@@ -406,15 +395,14 @@ function ItemForm() {
               )
             }
             actions={
-              <>
-                <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(LIST_PATH)}>
-                  Cancel
-                </Button>
-                {menu.length ? <MoreMenu items={menu} /> : null}
-                <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
-                  {saving ? 'Saving…' : isNew ? 'Add' : 'Save'}
-                </Button>
-              </>
+              <DetailActions
+                noun={ITEM_NOUN}
+                listPath={LIST_PATH}
+                mode={isNew ? 'draft' : 'open'}
+                busy={saving}
+                menu={menu}
+                prevNext={isNew ? undefined : { path: LIST_PATH, prevId, nextId }}
+              />
             }
           />
           {page !== 'details' ? (

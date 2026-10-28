@@ -98,6 +98,7 @@ export function useListPresets<T>({
   const panelEl = panel ? (
     <PresetPanel
       title={editing ? `Edit “${views.current.name}”` : 'New filter preset'}
+      isNew={!editing}
       fields={fields}
       initial={{ name: editing ? views.current.name : '', filter: views.filter }}
       takenNames={views.views.filter((v) => !(editing && v.id === views.current.id)).map((v) => v.name)}

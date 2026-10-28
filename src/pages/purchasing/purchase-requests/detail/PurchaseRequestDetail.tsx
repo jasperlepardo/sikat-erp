@@ -3,15 +3,15 @@ import { useLocation, useNavigate, useParams } from 'react-router';
 import {
   Alert,
   Badge,
-  Button,
   Form,
   Panel,
-  PanelHeader,
   Tabs,
   Text,
 } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../../../components/form/PageHeader';
 import { type Errors } from '../../../../components/form/fields';
-import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
+import { type MoreMenuItem } from '../../../../components/form/MoreMenu';
+import { DetailActions } from '../../../../components/form/DetailActions';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { CURRENT_USER_ID } from '../../../../mocks/common';
@@ -21,11 +21,13 @@ import {
   type PurchaseRequest,
 } from '../../../../mocks/purchaseRequests';
 import { blankPurchaseOrder, newPoLine } from '../../../../mocks/purchaseOrders';
-import { blankRfq, newRfqLine } from '../../../../mocks/rfqs';
-import { getPurchasingSettings } from '../../../../services/purchaseOrders';
+import type { Rfq } from '../../../../mocks/rfqs';
+import { addPurchaseOrders, listPurchaseOrders, type PoInput } from '../../../../services/purchaseOrders';
+import { needsApproval } from '../../../../services/approval';
+import { addRfqs, listRfqsForPr } from '../../../../services/rfqs';
 import { loadInventoryMasters } from '../../../../services/inventoryMasters';
 import { listItems } from '../../../../services/items';
-import { taxCodes, taxGroups } from '../../../../services/masterData';
+import { exchangeRates, taxCodes, taxGroups } from '../../../../services/masterData';
 import { employeeName, employees } from '../../../../services/employees';
 import { listPartnersByRole } from '../../../../services/partners';
 import {
@@ -43,13 +45,20 @@ import { PrDocumentCard } from './PrDocumentCard';
 import { DocLines } from '../../../../components/form/docLines/DocLines';
 import { prDoc } from './prDoc';
 import { PrTotalsCard } from './PrTotalsCard';
+import { PrVendorsCard } from './PrVendorsCard';
+import { FanOutRfqPanel, type VendorSend } from './FanOutRfqPanel';
+import { AwardPoPanel } from './AwardPoPanel';
+import { ComparisonTab, type Award } from './comparison';
+import { poDraftFromRfq } from '../../shared/poFromRfq';
+import { openPrLines, rfqDraftFromPr } from '../../shared/rfqFromPr';
+import type { PurchaseOrder } from '../../../../mocks/purchaseOrders';
 import { buildContext, type PrDraft, type PrMasters } from './types';
 import { DocumentFlow } from '../../shared/DocumentFlow';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
 import { todayISO } from '../../../../services/dates';
 import { useDocTitle } from '../../../../services/useDocTitle';
-import { neighbours, NotFound, PrevNext, useDocTab } from '../../../../components/form/DetailNav';
-import { PO_LIST_PATH, PR_LIST_PATH, PR_STATUS_INTENT, RFQ_LIST_PATH } from '../../paths';
+import { neighbours, NotFound, useDocTab } from '../../../../components/form/DetailNav';
+import { PO_LIST_PATH, PO_NOUN, PR_LIST_PATH, PR_NOUN, PR_STATUS_INTENT, RFQ_NOUN } from '../../paths';
 
 type TabId = 'contents';
 
@@ -73,7 +82,7 @@ function validate(d: PrDraft, asDraft: boolean): Problem<TabId>[] {
     const n = `Line ${i + 1}`;
     need(l.itemId, 'contents', `line:${l.id}:item`, `${n}: pick an item.`);
     need(l.quantity > 0, 'contents', `line:${l.id}:quantity`, `${n}: quantity must be more than 0.`);
-    need(l.quantity >= copiedQty(l), 'contents', `line:${l.id}:quantity`, `${n}: ${copiedQty(l)} already copied to an RFQ or PO; quantity can't go below that.`);
+    need(l.quantity >= copiedQty(l), 'contents', `line:${l.id}:quantity`, `${n}: ${copiedQty(l)} already ordered on a purchase order; quantity can't go below that.`);
     need(l.taxCode, 'contents', `line:${l.id}:taxCode`, `${n}: pick a tax code.`);
   }
   return problems;
@@ -111,11 +120,24 @@ function PurchaseRequestForm() {
       );
   }, [isNew]);
 
+  // The request's quotations (the Comparison view) and the purchase orders awarded from it (the Award panel).
+  const [quotes, setQuotes] = useState<{ rfqs: Rfq[]; pos: PurchaseOrder[] }>({ rfqs: [], pos: [] });
+  const savedId = draft?.id;
+  const loadQuotes = (prId: string) =>
+    Promise.all([listRfqsForPr(prId), listPurchaseOrders()]).then(([rfqs, pos]) => setQuotes({ rfqs, pos }));
+  useEffect(() => {
+    if (savedId) void loadQuotes(savedId);
+  }, [savedId]);
+
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
-  const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
+  const page = (PAGES.some((p) => p.value === tabParam) ? tabParam : 'details') as PageId;
+  // The Contents card's view: the lines, or the vendors' quotes side by side (once anyone was asked).
+  const [contentTab, setContentTab] = useState<'item' | 'comparison'>('item');
   const setPage = useDocTab<PageId>(`${PR_LIST_PATH}/${id}`, tabParam);
   const [saving, setSaving] = useState(false);
   const [requesterDetailsOpen, setRequesterDetailsOpen] = useState(false);
+  const [panel, setPanel] = useState<'fan-out' | 'award' | null>(null);
+  const [notice, setNotice] = useState('');
 
   useEffect(() => {
     Promise.all([
@@ -125,8 +147,9 @@ function PurchaseRequestForm() {
       taxCodes.list(),
       taxGroups.list(),
       listPartnersByRole('vendor'),
-    ]).then(([emps, items, inv, codes, groups, vendors]) => {
-      setM({ employees: emps, items, inv, tax: { codes, groups, company: undefined as never, withholding: [], withholdingGroups: [] }, vendors });
+      exchangeRates.list(),
+    ]).then(([emps, items, inv, codes, groups, vendors, rates]) => {
+      setM({ employees: emps, items, inv, tax: { codes, groups, company: undefined as never, withholding: [], withholdingGroups: [] }, vendors, rates });
     });
     if (isNew || !id) return;
     let cancelled = false;
@@ -136,7 +159,7 @@ function PurchaseRequestForm() {
     };
   }, [id, isNew]);
 
-  const docTitle = draft?.docNum ? (isNew ? 'New request' : prNumber(draft as PurchaseRequest)) : undefined;
+  const docTitle = draft?.docNum ? (isNew ? `New ${PR_NOUN.one}` : prNumber(draft as PurchaseRequest)) : undefined;
   useDocTitle(docTitle);
 
   if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading purchase request…</Text>;
@@ -221,7 +244,7 @@ function PurchaseRequestForm() {
     const open = draft.lines.filter((l) => l.status === 'Open' && (l.openQty ?? l.quantity) > 0 && l.itemId);
     const poDraft = {
       ...blankPurchaseOrder(CURRENT_USER_ID),
-      approved: !getPurchasingSettings().requirePoApproval,
+      approved: !needsApproval('PO'),
       ownerId: draft.ownerId || CURRENT_USER_ID,
       postingDate: today,
       documentDate: today,
@@ -245,73 +268,114 @@ function PurchaseRequestForm() {
     navigate(`${PO_LIST_PATH}/new`, { state: { copyFrom: poDraft } });
   };
 
-  // Copy to purchase quotation: the open lines become an RFQ to send vendors for pricing.
-  // Same lineage as Copy to purchase order — the request's open quantities are drawn when the RFQ is added.
-  const copyToRfq = () => {
-    const today = todayISO();
-    const open = draft.lines.filter((l) => l.status === 'Open' && (l.openQty ?? l.quantity) > 0 && l.itemId);
-    const rfqDraft = {
-      ...blankRfq(CURRENT_USER_ID),
-      ownerId: draft.ownerId || CURRENT_USER_ID,
-      postingDate: today,
-      documentDate: today,
-      requiredDate: draft.requiredDate,
-      freight: draft.freight,
-      basePrId: saved.id,
-      lines: open.map((l) =>
-        newRfqLine({
-          itemId: l.itemId, itemNo: l.itemNo, description: l.description,
-          requiredDate: l.requiredDate, quantity: l.openQty ?? l.quantity,
-          uomCode: l.uomCode, uomName: l.uomName, itemsPerUnit: l.itemsPerUnit,
-          priceListId: l.priceListId, unitPrice: l.unitPrice, discountPct: l.discountPct,
-          taxCode: l.taxCode, requisitionSlipNo: l.requisitionSlipNo, lineVendorId: l.lineVendorId,
-          countryOfOriginCode: l.countryOfOriginCode, warrantyTemplateId: l.warrantyTemplateId, glAccount: l.glAccount,
-          baseId: saved.id, baseLineId: l.id, baseDocNo: prNumber(saved),
+  // Create purchase quotations: one numbered quotation per vendor, each with the lines routed to it.
+  const sendRfqs = async (sends: VendorSend[]) => {
+    setSaving(true);
+    try {
+      const today = todayISO();
+      const approved = !needsApproval('RFQ');
+      const opts = { ownerId: draft.ownerId || CURRENT_USER_ID, today, approved, rates: m.rates, warehouses: m.inv.warehouses };
+      const created = await addRfqs(
+        sends.flatMap((s) => {
+          const vendor = m.vendors.find((v) => v.id === s.vendorId);
+          return vendor ? [rfqDraftFromPr(saved, vendor, s.lines, opts)] : [];
         }),
-      ),
-      remarks: `From purchase request ${prNumber(saved)}.${draft.remarks ? ` ${draft.remarks}` : ''}`,
-    };
-    navigate(`${RFQ_LIST_PATH}/new`, { state: { copyFrom: rfqDraft } });
+      );
+      await loadQuotes(saved.id);
+      setPanel(null);
+      setNotice(`${created.length === 1 ? `1 ${RFQ_NOUN.one}` : `${created.length} ${RFQ_NOUN.many}`} created — ${created.map((q) => q.vendorName).join(', ')}. Enter each vendor's quote on its ${RFQ_NOUN.one}, then compare them here.`);
+      setContentTab('comparison');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Award: one purchase order per vendor. A single PO opens for review; several are saved as drafts.
+  const award = async (awards: Award[]) => {
+    const opts = { buyerId: CURRENT_USER_ID, approved: !needsApproval('PO'), today: todayISO(), pr: saved };
+    const byVendor = new Map<string, PoInput>();
+    for (const a of awards) {
+      const po = poDraftFromRfq(a.rfq, { ...opts, lineQtys: a.lineQtys });
+      const same = byVendor.get(a.rfq.vendorId);
+      if (same) byVendor.set(a.rfq.vendorId, { ...same, lines: [...same.lines, ...po.lines] });
+      else byVendor.set(a.rfq.vendorId, po);
+    }
+    const drafts = [...byVendor.values()];
+    if (drafts.length === 1) {
+      navigate(`${PO_LIST_PATH}/new`, { state: { copyFrom: drafts[0] } });
+      return;
+    }
+    setSaving(true);
+    try {
+      await addPurchaseOrders(drafts);
+      navigate(PO_LIST_PATH, {
+        state: { notice: `${drafts.length} draft purchase orders created from ${prNumber(saved)} — ${drafts.map((d) => d.vendorName).join(', ')}. Open each to confirm.` },
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const transitions: Partial<Record<PrStatus, () => void>> =
     draft.status === 'Open' ? { Closed: closeIt } : {};
   const sectionProps = { draft, update, errors, m, ctx };
 
+  // The Item / Comparison switch sits at the top of the Contents card body, as on a PO (Item / Receipts).
+  const showComparison = ctx.added && quotes.rfqs.length > 0;
+  const contentTabs = (
+    <Tabs
+      variant="primary"
+      // The card body is a flex column, which would stretch the bar full width.
+      className="w-fit max-w-full self-start"
+      value={contentTab}
+      onValueChange={(v) => setContentTab(v as 'item' | 'comparison')}
+      items={[
+        { value: 'item', label: 'Item' },
+        { value: 'comparison', label: 'Comparison' },
+      ]}
+    />
+  );
+  const withTabsOnTop = (lines: ReturnType<typeof prDoc>): ReturnType<typeof prDoc> => ({
+    ...lines,
+    description: undefined,
+    header: (
+      <>
+        {contentTabs}
+        <Text variant="small" tone="muted">{lines.description}</Text>
+        {lines.header}
+      </>
+    ),
+  });
+
   const menu: MoreMenuItem[] = [
-    ...(draft.status === 'Open' ? [{ label: 'Close request', icon: 'task_alt', onSelect: closeIt }] : []),
-    ...(!isNew ? [{ label: 'Duplicate', icon: 'content_copy', onSelect: duplicate }] : []),
     ...(draft.status === 'Open' && draft.lines.some((l) => l.status === 'Open' && l.itemId)
       ? [
-          { label: 'Copy to purchase quotation', icon: 'request_quote', onSelect: copyToRfq },
-          { label: 'Copy to purchase order', icon: 'receipt_long', onSelect: copyToPo },
+          ...(!isNew ? [{ label: `Create ${RFQ_NOUN.many}…`, icon: 'request_quote', onSelect: () => setPanel('fan-out') }] : []),
+          { label: 'Create purchase order', icon: 'receipt_long', onSelect: copyToPo },
+          ...(quotes.rfqs.some((q) => q.lines.some((l) => l.quotedQty > 0))
+            ? [{ label: `Create ${PO_NOUN.one} from a quote…`, icon: 'shopping_cart', onSelect: () => setPanel('award') }]
+            : []),
         ]
       : []),
+    ...(!isNew ? [{ label: 'Duplicate', icon: 'content_copy', onSelect: duplicate }] : []),
+    ...(draft.status === 'Open' ? [{ label: 'Close', icon: 'task_alt', onSelect: closeIt }] : []),
   ];
 
   const title = isNew
-    ? 'New purchase request'
+    ? `New ${PR_NOUN.one}`
     : draft.docNum
       ? prNumber(draft as PurchaseRequest)
-      : 'Purchase request';
+      : `Draft ${PR_NOUN.one}`;
 
   return (
     <>
     <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
       <Panel className="flex-1">
-        <PanelHeader
-          type="details"
+        <PageHeader
+          variant="plain"
           icon="inbox"
-          iconIntent="default"
-          iconShape="rounded"
-          iconSize={32}
-          iconVariant="outline"
-          breadcrumbs={[{ label: 'Purchase Requests', href: PR_LIST_PATH }, { label: title }]}
-          onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
-          onBack={() => navigate(PR_LIST_PATH)}
-          trailing={
-            isNew ? undefined : <PrevNext path={PR_LIST_PATH} prevId={prevId} nextId={nextId} />
-          }
+          parent={{ noun: PR_NOUN, to: PR_LIST_PATH }}
+          title={title}
           tabs={
             // A request has no transactions or activity until it's added.
             !ctx.added ? undefined : (
@@ -329,19 +393,29 @@ function PurchaseRequestForm() {
             )
           }
           actions={
-            <>
-              {ctx.readOnly ? null : <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(PR_LIST_PATH)}>Cancel</Button>}
-              {menu.length ? <MoreMenu items={menu} /> : null}
-              <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
-                {saving ? 'Saving…' : ctx.added ? 'Save' : 'Add'}
-              </Button>
-            </>
+            <DetailActions
+              noun={PR_NOUN}
+              listPath={PR_LIST_PATH}
+              mode={!ctx.added ? 'draft' : ctx.readOnly ? 'readonly' : 'open'}
+              remarksOnly={ctx.readOnly}
+              busy={saving}
+              onSubmit={() => submit(null)}
+              menu={menu}
+              prevNext={isNew ? undefined : { path: PR_LIST_PATH, prevId, nextId }}
+            />
           }
         />
 
+        {notice ? (
+          <div className="px-2 pt-2">
+            <Alert intent="success" variant="outline" title="Sent">
+              {notice}
+            </Alert>
+          </div>
+        ) : null}
         {page === 'transactions' && ctx.added ? (
           <Panel.Body>
-            <DocumentFlow kind="PR" id={(draft as PurchaseRequest).id} notes="RFQs raised from this request, and the purchase orders they became." />
+            <DocumentFlow kind="PR" id={(draft as PurchaseRequest).id} notes="Purchase quotations raised from this request, and the purchase orders they became." />
           </Panel.Body>
         ) : page === 'activity' && ctx.added ? (
           <Panel.Body>
@@ -365,16 +439,21 @@ function PurchaseRequestForm() {
                   readOnly={ctx.added}
                   locked={ctx.added}
                   error={errors.requesterId}
-                  hint={ctx.copied && !ctx.readOnly ? 'Locked: lines were already copied to an RFQ or PO.' : undefined}
+                  hint={ctx.copied && !ctx.readOnly ? 'Locked: lines were already ordered on a purchase order.' : undefined}
                   pickRequester={pickRequester}
                   onOpenDetails={() => setRequesterDetailsOpen(true)}
                 />
-                <DocLines {...prDoc(sectionProps)} />
+                {showComparison && contentTab === 'comparison' ? (
+                  <ComparisonTab pr={saved} m={m} rfqs={quotes.rfqs} pos={quotes.pos} tabs={contentTabs} />
+                ) : (
+                  <DocLines {...(showComparison ? withTabsOnTop(prDoc(sectionProps)) : prDoc(sectionProps))} />
+                )}
                 <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach supporting documents, e.g. specs, approvals or quotes." />
               </div>
               <div className="flex flex-col gap-2 lg:col-span-4">
                 <fieldset disabled={ctx.readOnly} className="contents">
                   <PrDocumentCard {...sectionProps} transitions={transitions} />
+                  <PrVendorsCard {...sectionProps} />
                   <PrTotalsCard {...sectionProps} />
                 </fieldset>
               </div>
@@ -391,6 +470,11 @@ function PurchaseRequestForm() {
       open={requesterDetailsOpen}
       onClose={() => setRequesterDetailsOpen(false)}
     />
+    {panel === 'fan-out' && openPrLines(saved).length ? (
+      <FanOutRfqPanel pr={saved} m={m} sending={saving} onCancel={() => setPanel(null)} onSend={sendRfqs} />
+    ) : panel === 'award' ? (
+      <AwardPoPanel pr={saved} rfqs={quotes.rfqs} pos={quotes.pos} onCancel={() => setPanel(null)} onAward={(a) => award([a])} />
+    ) : null}
     </>
   );
 }

@@ -1,12 +1,9 @@
 import { useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router';
+import { useLocation } from 'react-router';
 import {
   Alert,
-  Button,
   Card,
-  Icon,
   Panel,
-  PanelHeader,
   Table,
   TableAmount,
   TableContent,
@@ -14,6 +11,8 @@ import {
   Text,
   type TableColumn,
 } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../../components/form/PageHeader';
+import { cap } from '../../../components/form/noun';
 import { boolField, choiceField, dateField, numberField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { fillCardClass, useListPage } from '../../../components/form/DataTable';
@@ -23,13 +22,12 @@ import { formatAmount } from '../../../services/format';
 import { jeTotals } from '../../../services/journalEntries';
 import { listVouchers, voucherState, voucherStatus } from '../../../services/journalVouchers';
 import { useAsync } from '../../../services/useAsync';
-import { JV_LIST_PATH } from '../paths';
+import { JV_LIST_PATH, JV_NOUN } from '../paths';
 
 
 const debitOf = (v: JournalVoucher) => v.entries.reduce((n, e) => n + jeTotals(e.lines).debit, 0);
 
 export function JournalVoucherList() {
-  const navigate = useNavigate();
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const vouchers = useAsync(listVouchers, []);
   const fields = [
@@ -48,7 +46,7 @@ export function JournalVoucherList() {
   const presets = useListPresets({
     list: 'journal-vouchers',
     fields,
-    builtIns: statusViews('journal vouchers', ['Open', 'Closed']),
+    builtIns: statusViews(JV_NOUN.many, ['Open', 'Closed']),
     defaultSort: { key: 'voucherNo', direction: 'desc' },
     rows: vouchers,
     onChange: resetPage,
@@ -109,7 +107,7 @@ export function JournalVoucherList() {
 
   return (
     <Panel className="flex-1">
-      <PanelHeader
+      <PageHeader
         showSearch
         searchLabel="Search journal vouchers"
         searchPlaceholder="Search by voucher number, remarks, reference, account or who created it"
@@ -119,15 +117,9 @@ export function JournalVoucherList() {
           resetPage();
         }}
         icon="folder_open"
-        iconIntent="default"
-        iconShape="rounded"
-        iconSize={32} iconVariant="outline"
         title={presets.menu}
-        actions={
-          <Button intent="primary" variant="solid" size="medium" shape="pill" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${JV_LIST_PATH}/new/entries/new`)}>
-            New voucher
-          </Button>
-        }
+        // A new voucher opens on its first entry.
+        create={{ noun: JV_NOUN, to: `${JV_LIST_PATH}/new/entries` }}
       />
       <Panel.Body className="flex flex-col gap-2">
         {notice ? (
@@ -139,7 +131,7 @@ export function JournalVoucherList() {
         <Card className={fillCardClass(onPage.length)}>
           {vouchers ? (
             <Table
-              caption="Journal vouchers"
+              caption={cap(JV_NOUN.many)}
               columns={columns}
               rows={onPage}
               getRowId={(v) => v.id}

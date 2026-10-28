@@ -4,7 +4,6 @@ import {
   Card,
   Icon,
   Panel,
-  PanelHeader,
   Select,
   Table,
   TableContent,
@@ -14,6 +13,7 @@ import {
   type TableColumn,
   type TableSort,
 } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../components/form/PageHeader';
 import { blankActivity, LogMenu } from '../../components/activity/ActivityTab';
 import { ActivityPanel } from '../../components/activity/ActivityPanel';
 import { fillCardClass, useListPage } from '../../components/form/DataTable';
@@ -170,7 +170,7 @@ export function ActivityList() {
 
   return (
     <Panel className="flex-1">
-      <PanelHeader
+      <PageHeader
         showSearch
         searchLabel="Search activities"
         searchPlaceholder="Search by subject, notes, partner or document"
@@ -180,10 +180,6 @@ export function ActivityList() {
           resetPage();
         }}
         icon="event"
-        iconIntent="default"
-        iconShape="rounded"
-        iconSize={32}
-        iconVariant="outline"
         title="Activities"
         actions={<LogMenu onPick={(k) => setEditing({ value: blankActivity(k, undefined), isNew: true })} />}
       />

@@ -1,10 +1,23 @@
 import type { ReactNode } from 'react';
-import { Card, Select, Icon, ReadOnlyField, bind as dsBind, CtxFormField, Fields, FieldStack, Flags } from '@jasperlepardo/sikat-design-system';
+import { Card, Select, Icon, ReadOnlyField, bind as dsBind, CtxFormField, FieldOrientationCtx, Fields, FieldStack, Flags } from '@jasperlepardo/sikat-design-system';
 import type { FieldOptions, KeysOf } from '@jasperlepardo/sikat-design-system';
 import { MasterLookup, type MasterDef, type MasterRow } from './MasterLookup';
 
 export type { FieldOptions, KeysOf,  };
 export { CtxFormField,  Fields, FieldStack, Flags };
+
+/**
+ * A single column of fields laid out side-by-side (label left, control right), fixed even
+ * in a narrow column — unlike `FieldStack` (responsive), which stacks the label when narrow.
+ * For compact aside cards where the horizontal label reads better than a stacked one.
+ */
+export function SideFields({ children }: { children: ReactNode }) {
+  return (
+    <FieldOrientationCtx.Provider value="vertical">
+      <div className="flex flex-col gap-1">{children}</div>
+    </FieldOrientationCtx.Provider>
+  );
+}
 
 /** Field errors by key: top-level fields by name, row fields as `<row kind>:<id>:<field>`. */
 export type Errors = Record<string, string>;

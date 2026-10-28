@@ -286,7 +286,7 @@ export function ExemptionsCard({
                 swornDeclaration.swornDeclarationRef ? (
                   <RowMenu
                     label="Actions for sworn declaration"
-                    items={[{ label: 'Update', icon: 'edit', onSelect: () => setPanel({ kind: 'sworn-declaration' }) }]}
+                    items={[{ label: 'Edit', icon: 'edit', onSelect: () => setPanel({ kind: 'sworn-declaration' }) }]}
                   />
                 ) : null
               }

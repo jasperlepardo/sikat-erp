@@ -4,15 +4,16 @@ import { useLocation, useNavigate, useParams } from 'react-router';
 import {
   Alert,
   Badge,
-  Button,
   Form,
   Panel,
-  PanelHeader,
   Tabs,
   Text,
 } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../../../components/form/PageHeader';
 import { type Errors } from '../../../../components/form/fields';
-import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
+import { type MoreMenuItem } from '../../../../components/form/MoreMenu';
+import { DetailActions, docMode } from '../../../../components/form/DetailActions';
+import { isApprover, needsApproval } from '../../../../services/approval';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { blankApReserveInvoice, type ApReserveInvoice, type ApRiLine, type ApRiStatus } from '../../../../mocks/apReserveInvoices';
 import { CURRENT_USER_ID } from '../../../../mocks/common';
@@ -37,7 +38,7 @@ import { loadInventoryMasters } from '../../../../services/inventoryMasters';
 import { listItems } from '../../../../services/items';
 import { companyTax, currencies, exchangeRates, taxCodes, taxGroups, withholdingGroups, withholdingTaxes } from '../../../../services/masterData';
 import { listPartnersByRole } from '../../../../services/partners';
-import { dueDateFor, getPurchasingSettings, listPurchaseOrders, openQty, poNumber } from '../../../../services/purchaseOrders';
+import { dueDateFor, listPurchaseOrders, openQty, poNumber } from '../../../../services/purchaseOrders';
 import { proposedTaxCode } from '../../purchase-orders/detail/types';
 import { GrLogistics } from '../../goods-receipts/detail/GrLogisticsCard';
 import { defaultPayTo } from '../../goods-receipts/detail/types';
@@ -45,7 +46,7 @@ import { DocumentFlow } from '../../shared/DocumentFlow';
 import { ReferencesTable } from '../../shared/ReferencesTable';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { useDocTitle } from '../../../../services/useDocTitle';
-import { neighbours, NotFound, PrevNext, siblingKeys, useDocTab } from '../../../../components/form/DetailNav';
+import { neighbours, NotFound, siblingKeys, useDocTab } from '../../../../components/form/DetailNav';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
 import { buildApriContext, orderNumbersOf, riLinesFromPo, type ApriDraft, type ApriMasters } from './types';
 import { VendorCard } from '../../shared/VendorCard';
@@ -58,7 +59,7 @@ import { CopyPanel } from '../../shared/CopyPanel';
 import { ApriAccountingCard } from './ApriAccountingCard';
 import { ApriTotalsCard } from './ApriTotalsCard';
 import { ApriJournalCard } from './ApriJournalCard';
-import { APRI_LIST_PATH, AP_RI_STATUS_INTENT } from '../../paths';
+import { APRI_LIST_PATH, APRI_NOUN, AP_RI_STATUS_INTENT } from '../../paths';
 
 type TabId = 'contents' | 'logistics' | 'accounting';
 
@@ -105,7 +106,7 @@ function ApReserveInvoiceForm() {
   const location = useLocation();
   const state = location.state as { copyFrom?: ApriDraft; fromPo?: string } | null;
 
-  const apriApproved = !getPurchasingSettings().requireApInvoiceApproval;
+  const apriApproved = !needsApproval('APRI');
   const [draft, setDraft] = useState<ApriDraft | null | undefined>(
     isNew ? { ...(state?.copyFrom ?? { ...blankApReserveInvoice(todayISO(), CURRENT_USER_ID), lines: [] }), approved: apriApproved } : undefined,
   );
@@ -152,7 +153,7 @@ function ApReserveInvoiceForm() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, isNew]);
 
-  useDocTitle(draft?.docNum ? (isNew ? 'New A/P reserve invoice' : draft.docNum ? apRiNumber(draft) : 'Draft A/P reserve invoice') : undefined);
+  useDocTitle(draft?.docNum ? (isNew ? `New ${APRI_NOUN.one}` : draft.status !== 'Draft' ? apRiNumber(draft) : `Draft ${APRI_NOUN.one}`) : undefined);
   if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading A/P reserve invoice…</Text>;
   if (draft === null) return <NotFound icon="request_quote" title="A/P reserve invoice not found" backTo={APRI_LIST_PATH} backLabel="Back to reserve invoices" />;
 
@@ -199,7 +200,8 @@ function ApReserveInvoiceForm() {
 
   const submit = async (e: FormEvent | null, asDraft = false, overrides: Partial<ApriDraft> = {}) => {
     e?.preventDefault();
-    if (added) {
+    // Added: only remarks and attachments save, unless this is approving it (which posts it).
+    if (added && !overrides.approved) {
       setSaving(true);
       try {
         const saved = await saveApRiRemarks(draft as ApReserveInvoice, { remarks: draft.remarks, paymentBlock: draft.paymentBlock, paymentOrderRun: draft.paymentOrderRun });
@@ -272,14 +274,12 @@ function ApReserveInvoiceForm() {
           : {};
 
   const menu: MoreMenuItem[] = [
-    ...(!added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
-    ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }] : []),
     ...(!isNew ? [{ label: 'Duplicate', icon: 'content_copy', onSelect: duplicate }] : []),
-    ...(draft.status === 'Open' && !draft.appliedAmount ? [{ label: 'Cancel reserve invoice', icon: 'cancel', onSelect: cancelIt }] : []),
-    ...(vendor ? [{ label: `Open vendor ${vendor.code}`, icon: 'local_shipping', onSelect: () => navigate(`/purchasing/vendors/${vendor.id}`) }] : []),
+    ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }] : []),
+    ...(draft.status === 'Open' && !draft.appliedAmount ? [{ label: `Cancel ${APRI_NOUN.one}`, icon: 'cancel', onSelect: cancelIt }] : []),
   ];
 
-  const title = isNew ? 'New A/P reserve invoice' : added ? apRiNumber(draft) : 'Draft A/P reserve invoice';
+  const title = isNew ? `New ${APRI_NOUN.one}` : added ? apRiNumber(draft) : `Draft ${APRI_NOUN.one}`;
   const sectionProps = { draft, update, errors, m, ctx };
 
   // Open POs from the vendor that this invoice can bill (Copy from).
@@ -291,17 +291,11 @@ function ApReserveInvoiceForm() {
     <>
     <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
       <Panel className="flex-1">
-        <PanelHeader
-          type="details"
+        <PageHeader
+          variant="plain"
           icon="receipt_long"
-          iconIntent="default"
-          iconShape="rounded"
-          iconSize={32}
-          iconVariant="outline"
-          breadcrumbs={[{ label: 'A/P Reserve Invoices', href: APRI_LIST_PATH }, { label: title }]}
-          onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
-          onBack={() => navigate(APRI_LIST_PATH)}
-          trailing={isNew ? undefined : <PrevNext path={APRI_LIST_PATH} prevId={prevId} nextId={nextId} />}
+          parent={{ noun: APRI_NOUN, to: APRI_LIST_PATH }}
+          title={title}
           tabs={isNew ? undefined : <Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={PAGES.map((p) => ({ ...p }))} />}
           status={
             isNew ? undefined : (
@@ -312,13 +306,19 @@ function ApReserveInvoiceForm() {
             )
           }
           actions={
-            <>
-              {added ? null : <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(APRI_LIST_PATH)}>Cancel</Button>}
-              {menu.length ? <MoreMenu items={menu} /> : null}
-              <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
-                {saving ? 'Saving…' : added ? 'Save' : 'Add'}
-              </Button>
-            </>
+            <DetailActions
+              noun={APRI_NOUN}
+              listPath={APRI_LIST_PATH}
+              mode={docMode(draft.status, { canApprove: isApprover('APRI') })}
+              needsApproval={!draft.approved}
+              remarksOnly={added}
+              busy={saving}
+              onDraft={() => submit(null, true)}
+              onSubmit={() => submit(null)}
+              onApprove={() => submit(null, false, { approved: true })}
+              menu={menu}
+              prevNext={isNew ? undefined : { path: APRI_LIST_PATH, prevId, nextId }}
+            />
           }
         />
         {page === 'transactions' && draft.id ? (

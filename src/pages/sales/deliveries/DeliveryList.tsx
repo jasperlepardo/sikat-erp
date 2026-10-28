@@ -1,11 +1,8 @@
 import { useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router';
+import { useLocation } from 'react-router';
 import {
   Alert,
-  Button,
-  Icon,
   Panel,
-  PanelHeader,
   Table,
   TableContent,
   TableStatus,
@@ -17,6 +14,8 @@ import { dateField, linesField, masterField, numberField, statusField, textField
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { currencyDef, salesEmployeeDef } from '../../settings/masterDefs';
 import { useListPage } from '../../../components/form/DataTable';
+import { PageHeader } from '../../../components/form/PageHeader';
+import { cap } from '../../../components/form/noun';
 import { DN_STATUSES, type Delivery } from '../../../mocks/deliveries';
 import { formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
@@ -24,10 +23,9 @@ import { taxCodes } from '../../../services/masterData';
 import { dnNumber, dnTotal, listDeliveries } from '../../../services/deliveries';
 import { useAsync } from '../../../services/useAsync';
 import { listSalesOrders, soNumber } from '../../../services/salesOrders';
-import { DN_LIST_PATH, DN_STATUS_INTENT } from '../paths';
+import { DN_LIST_PATH, DN_NOUN, DN_STATUS_INTENT } from '../paths';
 
 export function DeliveryList() {
-  const navigate = useNavigate();
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const data = useAsync(() => Promise.all([listDeliveries(), taxCodes.list(), listSalesOrders()]), []);
   const [query, setQuery] = useState('');
@@ -57,7 +55,7 @@ export function DeliveryList() {
   const presets = useListPresets({
     list: 'deliveries',
     fields,
-    builtIns: statusViews('deliveries', DN_STATUSES),
+    builtIns: statusViews(DN_NOUN.many, DN_STATUSES),
     defaultSort: { key: 'postingDate', direction: 'desc' },
     rows: orders,
     onChange: resetPage,
@@ -130,9 +128,9 @@ export function DeliveryList() {
 
   return (
     <Panel className="flex-1">
-      <PanelHeader
+      <PageHeader
         showSearch
-        searchLabel="Search deliveries"
+        searchLabel={`Search ${DN_NOUN.many}`}
         searchPlaceholder="Search by delivery no., customer, order, tracking no. or item"
         searchValue={query}
         onSearchChange={(value) => {
@@ -140,15 +138,8 @@ export function DeliveryList() {
           resetPage();
         }}
         icon="local_shipping"
-        iconIntent="default"
-        iconShape="rounded"
-        iconSize={32} iconVariant="outline"
         title={presets.menu}
-        actions={
-          <Button intent="primary" variant="solid" size="medium" shape="pill" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${DN_LIST_PATH}/new`)}>
-            New delivery
-          </Button>
-        }
+        create={{ noun: DN_NOUN, to: DN_LIST_PATH }}
       />
       <Panel.Body className="flex flex-col gap-2">
         {notice ? (
@@ -159,7 +150,7 @@ export function DeliveryList() {
         {presets.bar(null)}
         {orders ? (
           <Table
-            caption="Deliveries"
+            caption={cap(DN_NOUN.many)}
             columns={columns}
             rows={onPage}
             getRowId={(so) => so.id}
@@ -169,7 +160,7 @@ export function DeliveryList() {
             pagination={pagination}
           />
         ) : (
-          <Text tone="muted" className="p-4">Loading deliveries…</Text>
+          <Text tone="muted" className="p-4">Loading {DN_NOUN.many}…</Text>
         )}
       </Panel.Body>
       {presets.panel}

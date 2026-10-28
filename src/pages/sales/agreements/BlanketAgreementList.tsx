@@ -1,11 +1,8 @@
 import { useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router';
+import { useLocation } from 'react-router';
 import {
   Alert,
-  Button,
-  Icon,
   Panel,
-  PanelHeader,
   Table,
   TableContent,
   TableStatus,
@@ -15,16 +12,17 @@ import {
 import { dateField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { useListPage } from '../../../components/form/DataTable';
+import { PageHeader } from '../../../components/form/PageHeader';
+import { cap } from '../../../components/form/noun';
 import { BA_STATUSES, type BlanketAgreement } from '../../../mocks/blanketAgreements';
 import { formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
 import { listBlanketAgreements, baNumber, baTotals } from '../../../services/blanketAgreements';
 import { useAsync } from '../../../services/useAsync';
 import { useDocTitle } from '../../../services/useDocTitle';
-import { BA_LIST_PATH, BA_STATUS_INTENT } from '../paths';
+import { BA_LIST_PATH, BA_NOUN, BA_STATUS_INTENT } from '../paths';
 
 export function BlanketAgreementList() {
-  const navigate = useNavigate();
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const agreements = useAsync(listBlanketAgreements, []);
   const [query, setQuery] = useState('');
@@ -45,7 +43,7 @@ export function BlanketAgreementList() {
   const presets = useListPresets({
     list: 'blanket-agreements',
     fields,
-    builtIns: statusViews('agreements', BA_STATUSES),
+    builtIns: statusViews(BA_NOUN.many, BA_STATUSES),
     defaultSort: { key: 'startDate', direction: 'desc' },
     rows: agreements,
     onChange: resetPage,
@@ -129,30 +127,22 @@ export function BlanketAgreementList() {
 
   return (
     <Panel className="flex-1">
-      <PanelHeader
+      <PageHeader
         showSearch
-        searchLabel="Search agreements"
+        searchLabel={`Search ${BA_NOUN.many}`}
         searchPlaceholder="Search by no., customer, or description"
         searchValue={query}
         onSearchChange={(value) => { setQuery(value); resetPage(); }}
         icon="description"
-        iconIntent="default"
-        iconShape="rounded"
-        iconSize={32}
-        iconVariant="outline"
         title={presets.menu}
-        actions={
-          <Button intent="primary" variant="solid" size="medium" shape="pill" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${BA_LIST_PATH}/new`)}>
-            New agreement
-          </Button>
-        }
+        create={{ noun: BA_NOUN, to: BA_LIST_PATH }}
       />
       <Panel.Body className="flex flex-col gap-2">
         {notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : null}
         {presets.bar(null)}
         {agreements ? (
           <Table
-            caption="Blanket agreements"
+            caption={cap(BA_NOUN.many)}
             columns={columns}
             rows={paginated}
             getRowId={(ba) => ba.id}
@@ -162,7 +152,7 @@ export function BlanketAgreementList() {
             pagination={pagination}
           />
         ) : (
-          <Text tone="muted" className="p-4">Loading agreements…</Text>
+          <Text tone="muted" className="p-4">Loading {BA_NOUN.many}…</Text>
         )}
       </Panel.Body>
       {presets.panel}

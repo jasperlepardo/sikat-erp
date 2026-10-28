@@ -163,6 +163,8 @@ export interface PurchasingSettings {
   requireApCreditMemoApproval: boolean;
   requireDprApproval: boolean;
   requireOutgoingPaymentApproval: boolean;
+  requireApReserveInvoiceApproval: boolean;
+  requireDpiApproval: boolean;
 }
 
 export const SEED_PURCHASING_SETTINGS: PurchasingSettings[] = [{
@@ -181,6 +183,8 @@ export const SEED_PURCHASING_SETTINGS: PurchasingSettings[] = [{
   requireApCreditMemoApproval: false,
   requireDprApproval: false,
   requireOutgoingPaymentApproval: false,
+  requireApReserveInvoiceApproval: false,
+  requireDpiApproval: false,
 }];
 
 export type { DocumentSeries };

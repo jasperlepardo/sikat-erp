@@ -1,4 +1,5 @@
-import { Icon, IconButton, Panel, PanelHeader, SidePanel, TableContent, Text } from '@jasperlepardo/sikat-design-system';
+import { Icon, IconButton, Panel, SidePanel, TableContent, Text } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../components/form/PageHeader';
 import type { TableColumn } from '@jasperlepardo/sikat-design-system';
 import { DataTable } from '../../components/form/DataTable';
 import { Stat } from '../../components/Stat';
@@ -69,13 +70,9 @@ export function AccountBalancePanel({ account, all, onClose }: { account: Accoun
 
   return (
     <SidePanel overlay onOverlayClick={onClose}>
-      <PanelHeader
-        type="details"
+      <PageHeader
+        variant="plain"
         icon="account_balance"
-        iconIntent="default"
-        iconShape="rounded"
-        iconSize={32}
-        iconVariant="outline"
         title={`Account balance · ${accountLabel(account)}`}
         actions={
           <IconButton type="button" intent="default" variant="link" label="Close" onClick={onClose}>

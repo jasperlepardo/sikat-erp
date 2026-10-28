@@ -1,5 +1,6 @@
 import { useLocation } from 'react-router';
-import { Card, Icon, Panel, PanelHeader, Text } from '@jasperlepardo/sikat-design-system';
+import { Card, Icon, Panel, Text } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../components/form/PageHeader';
 import { leafForPath } from '../app/nav';
 
 /** Stand-in for nav entries that don't have a screen yet. */
@@ -8,7 +9,7 @@ export function Placeholder() {
   const title = leafForPath(pathname)?.label ?? 'Not found';
   return (
     <Panel className="flex-1">
-      <PanelHeader icon="construction" iconIntent="default" iconShape="rounded" iconSize={32} iconVariant="outline" title={title} />
+      <PageHeader icon="construction" title={title} />
       <Panel.Body>
         <Card>
           <Card.Header icon={<Icon size={24}>info</Icon>}>Coming soon</Card.Header>

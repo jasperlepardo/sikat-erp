@@ -1,18 +1,17 @@
 import { useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router';
+import { useLocation } from 'react-router';
 import {
   Alert,
-  Button,
   Card,
-  Icon,
   Panel,
-  PanelHeader,
   Table,
   TableContent,
   TableStatus,
   type TableColumn,
   Text,
 } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../../components/form/PageHeader';
+import { cap } from '../../../components/form/noun';
 import { TRANSFER_REQUEST_STATUSES, type InventoryTransferRequest } from '../../../mocks/inventoryTransferRequests';
 import { formatDate } from '../../../services/dates';
 import {
@@ -27,10 +26,9 @@ import { dateField, linesField, masterField, numberField, statusField, textField
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { salesEmployeeDef } from '../../settings/masterDefs';
 import { fillCardClass, useListPage } from '../../../components/form/DataTable';
-import { TRANSFER_REQUEST_LIST_PATH, TRANSFER_REQUEST_STATUS_INTENT } from '../paths';
+import { TRANSFER_REQUEST_LIST_PATH, TRANSFER_REQUEST_NOUN, TRANSFER_REQUEST_STATUS_INTENT } from '../paths';
 
 export function TransferRequestList() {
-  const navigate = useNavigate();
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const requests = useAsync(listTransferRequests, []);
   const fields = [
@@ -50,7 +48,7 @@ export function TransferRequestList() {
   const presets = useListPresets({
     list: 'inventory-transfer-requests',
     fields,
-    builtIns: statusViews('transfer requests', TRANSFER_REQUEST_STATUSES),
+    builtIns: statusViews(TRANSFER_REQUEST_NOUN.many, TRANSFER_REQUEST_STATUSES),
     defaultSort: { key: 'dueDate', direction: 'asc' },
     rows: requests,
     onChange: resetPage,
@@ -117,7 +115,7 @@ export function TransferRequestList() {
 
   return (
     <Panel className="flex-1">
-      <PanelHeader
+      <PageHeader
         showSearch
         searchLabel="Search transfer requests"
         searchPlaceholder="Search by request no., warehouse, item or remarks"
@@ -127,23 +125,8 @@ export function TransferRequestList() {
           resetPage();
         }}
         icon="move_up"
-        iconIntent="default"
-        iconShape="rounded"
-        iconSize={32}
-        iconVariant="outline"
         title={presets.menu}
-        actions={
-          <Button
-            intent="primary"
-            variant="solid"
-            size="medium"
-            shape="pill"
-            leadingIcon={<Icon size={20}>add</Icon>}
-            onClick={() => navigate(`${TRANSFER_REQUEST_LIST_PATH}/new`)}
-          >
-            New request
-          </Button>
-        }
+        create={{ noun: TRANSFER_REQUEST_NOUN, to: TRANSFER_REQUEST_LIST_PATH }}
       />
       <Panel.Body className="flex flex-col gap-2">
         {notice ? (
@@ -155,7 +138,7 @@ export function TransferRequestList() {
         <Card className={fillCardClass(onPage.length)}>
           {requests ? (
             <Table
-              caption="Inventory transfer requests"
+              caption={cap(TRANSFER_REQUEST_NOUN.many)}
               columns={columns}
               rows={onPage}
               getRowId={(r) => r.id}

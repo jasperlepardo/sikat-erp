@@ -1,11 +1,8 @@
 import { useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router';
+import { useLocation } from 'react-router';
 import {
   Alert,
-  Button,
-  Icon,
   Panel,
-  PanelHeader,
   Table,
   TableAmount,
   TableContent,
@@ -13,6 +10,7 @@ import {
   type TableColumn,
   Text,
 } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../../components/form/PageHeader';
 import { PAYMENT_STATUSES, type OutgoingPayment } from '../../../mocks/outgoingPayments';
 import { formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
@@ -22,7 +20,8 @@ import { choiceField, dateField, masterField, numberField, statusField, textFiel
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { currencyDef } from '../../settings/masterDefs';
 import { useListPage } from '../../../components/form/DataTable';
-import { PAYMENT_LIST_PATH, PAYMENT_STATUS_INTENT } from '../paths';
+import { cap } from '../../../components/form/noun';
+import { PAYMENT_LIST_PATH, PAYMENT_NOUN, PAYMENT_STATUS_INTENT } from '../paths';
 
 /** How a payment went out, in words: "Bank transfer", "2 checks", "Cash + card". */
 const meansText = (p: OutgoingPayment) =>
@@ -36,7 +35,6 @@ const meansText = (p: OutgoingPayment) =>
     .join(' + ') || '—';
 
 export function PaymentList() {
-  const navigate = useNavigate();
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const payments = useAsync(listPayments, []);
   const fields = [
@@ -57,7 +55,7 @@ export function PaymentList() {
   const presets = useListPresets({
     list: 'outgoing-payments',
     fields,
-    builtIns: statusViews('payments made', PAYMENT_STATUSES),
+    builtIns: statusViews(PAYMENT_NOUN.many, PAYMENT_STATUSES),
     defaultSort: { key: 'postingDate', direction: 'desc' },
     rows: payments,
     onChange: resetPage,
@@ -111,7 +109,7 @@ export function PaymentList() {
 
   return (
     <Panel className="flex-1">
-      <PanelHeader
+      <PageHeader
         showSearch
         searchLabel="Search payments"
         searchPlaceholder="Search by payment no., payee, reference or invoice no."
@@ -121,15 +119,8 @@ export function PaymentList() {
           resetPage();
         }}
         icon="payments"
-        iconIntent="default"
-        iconShape="rounded"
-        iconSize={32} iconVariant="outline"
         title={presets.menu}
-        actions={
-          <Button intent="primary" variant="solid" size="medium" shape="pill" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${PAYMENT_LIST_PATH}/new`)}>
-            New outgoing payment
-          </Button>
-        }
+        create={{ noun: PAYMENT_NOUN, to: PAYMENT_LIST_PATH }}
       />
       <Panel.Body className="flex flex-col gap-2">
         {notice ? (
@@ -141,7 +132,7 @@ export function PaymentList() {
         {payments ? (
           rows.length || payments.length ? (
             <Table
-              caption="Outgoing payments"
+              caption={cap(PAYMENT_NOUN.many)}
               columns={columns}
               rows={visible}
               getRowId={(p) => p.id}
@@ -152,11 +143,11 @@ export function PaymentList() {
             />
           ) : (
             <Text tone="muted" className="p-4">
-              No payments yet. Pay a bill from Purchasing › Bills (You can also › Pay), from a vendor's Transactions tab, or with New outgoing payment.
+              No {PAYMENT_NOUN.many} yet. Pay a bill from Purchasing › Bills (More actions › Pay), from a vendor's Transactions tab, or with New {PAYMENT_NOUN.one}.
             </Text>
           )
         ) : (
-          <Text tone="muted" className="p-4">Loading payments…</Text>
+          <Text tone="muted" className="p-4">Loading {PAYMENT_NOUN.many}…</Text>
         )}
       </Panel.Body>
       {presets.panel}

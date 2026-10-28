@@ -1,23 +1,21 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { nameIn, salesEmployees } from '../../../services/partnerMasters';
-import { useLocation, useNavigate } from 'react-router';
+import { useLocation } from 'react-router';
 import {
   Alert,
-  Button,
   Card,
-  Icon,
   Panel,
-  PanelHeader,
   Table,
   TableAmount,
   TableContent,
   TableStatus,
-  Tabs,
   Text,
   type PanelHeaderProps,
   type TableColumn,
   type TableSort,
 } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../../components/form/PageHeader';
+import { cap } from '../../../components/form/noun';
 import { fillCardClass, useListPage } from '../../../components/form/DataTable';
 import { EMPTY_FILTER } from '../../../components/filter/engine';
 import { dateField, linesField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
@@ -27,16 +25,18 @@ import { formatAmount } from '../../../services/format';
 import { formatDate } from '../../../services/dates';
 import { countNumber, countSummary, countWarehouses, listCountings, listPostings, postingNumber, postingTotal } from '../../../services/inventoryCountings';
 import { useAsync } from '../../../services/useAsync';
-import { COUNT_LIST_PATH, COUNT_STATUS_INTENT, POSTING_LIST_PATH } from '../paths';
+import { COUNT_LIST_PATH, COUNT_NOUN, COUNT_STATUS_INTENT, POSTING_LIST_PATH, POSTING_NOUN } from '../paths';
 
 type View = 'counts' | 'postings';
 type SearchProps = Pick<PanelHeaderProps, 'showSearch' | 'searchPlaceholder' | 'searchValue' | 'onSearchChange'>;
 
-/** Stock Counts: the counting documents, and the postings made from them — a tab each, with their own presets. */
+/**
+ * Stock counts, or the inventory postings made from them: each has its own route, sidebar entry and
+ * presets, so the page shows the kind its route says.
+ */
 function CountsShell({
   view,
   title,
-  counts,
   search,
   filters,
   panel,
@@ -45,7 +45,6 @@ function CountsShell({
   view: View;
   /** The preset menu. */
   title: ReactNode;
-  counts: Partial<Record<View, number>>;
   /** The header search (from `list.search`). */
   search: SearchProps;
   /** The filter chips (`presets.bar`). */
@@ -54,42 +53,15 @@ function CountsShell({
   panel: ReactNode;
   children: ReactNode;
 }) {
-  const navigate = useNavigate();
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const postings = view === 'postings';
   return (
     <Panel className="flex-1">
-      <PanelHeader
+      <PageHeader
         icon="inventory"
-        iconIntent="default"
-        iconShape="rounded"
-        iconSize={32} iconVariant="outline"
         title={title}
         {...search}
-        actions={
-          <Button
-            intent="primary"
-            variant="solid"
-            size="medium"
-            shape="pill"
-            leadingIcon={<Icon size={20}>add</Icon>}
-            onClick={() => navigate(`${postings ? POSTING_LIST_PATH : COUNT_LIST_PATH}/new`)}
-          >
-            {postings ? 'New posting' : 'New count'}
-          </Button>
-        }
-        tabs={
-          <Tabs
-            variant="outline"
-            value={view}
-            onValueChange={(v) => navigate(v === 'postings' ? POSTING_LIST_PATH : COUNT_LIST_PATH)}
-            items={(['counts', 'postings'] as View[]).map((v) => ({
-              value: v,
-              label: v === 'counts' ? 'Counts' : 'Inventory postings',
-              badge: counts[v] === undefined ? '' : String(counts[v]),
-            }))}
-          />
-        }
+        create={postings ? { noun: POSTING_NOUN, to: POSTING_LIST_PATH } : { noun: COUNT_NOUN, to: COUNT_LIST_PATH }}
       />
       <Panel.Body className="flex flex-col gap-2">
         {notice ? (
@@ -161,12 +133,11 @@ const COUNT_FIELDS = [
 ];
 
 export function StockCountList() {
-  const data = useAsync(() => Promise.all([listCountings(), listPostings()]), []);
-  const counts = data?.[0];
+  const counts = useAsync(listCountings, []);
   const presets = useListPresets({
     list: 'stock-counts',
     fields: COUNT_FIELDS,
-    builtIns: statusViews('counts', COUNT_STATUSES),
+    builtIns: statusViews(COUNT_NOUN.many, COUNT_STATUSES),
     defaultSort: { key: 'countDate', direction: 'desc' },
     rows: counts,
     onChange: () => {
@@ -220,12 +191,11 @@ export function StockCountList() {
     <CountsShell
       view="counts"
       title={presets.menu}
-      counts={{ counts: counts?.length, postings: data?.[1].length }}
       search={list.search('Search by count no., warehouse, counter, item or remarks')}
       filters={presets.bar(null)}
       panel={presets.panel}
     >
-      {list.table('Inventory countings', columns, rows, (c) => c.id)}
+      {list.table(cap(COUNT_NOUN.many), columns, rows, (c) => c.id)}
     </CountsShell>
   );
 }
@@ -249,7 +219,7 @@ export function InventoryPostingList() {
       numberField<InventoryPosting>('total', 'Total', postingTotal),
       linesField<InventoryPosting>(),
     ],
-    builtIns: [{ id: 'all', name: 'All inventory postings', filter: EMPTY_FILTER }],
+    builtIns: [{ id: 'all', name: `All ${POSTING_NOUN.many}`, filter: EMPTY_FILTER }],
     defaultSort: { key: 'postingDate', direction: 'desc' },
     rows: postings,
     onChange: () => {
@@ -285,12 +255,11 @@ export function InventoryPostingList() {
     <CountsShell
       view="postings"
       title={presets.menu}
-      counts={{ counts: counts?.length, postings: postings?.length }}
       search={list.search('Search by posting no., warehouse, item or remarks')}
       filters={presets.bar(null)}
       panel={presets.panel}
     >
-      {list.table('Inventory postings', columns, rows, (p) => p.id)}
+      {list.table(cap(POSTING_NOUN.many), columns, rows, (p) => p.id)}
     </CountsShell>
   );
 }

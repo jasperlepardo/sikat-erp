@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router';
-import { Combobox, FormField, Icon, IconButton, Panel, PanelHeader, Select, SidePanel, TextField } from '@jasperlepardo/sikat-design-system';
+import { Combobox, FormField, Icon, IconButton, Panel, Select, SidePanel, TextField } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../../../components/form/PageHeader';
 import { Fields, ReadOnly, Section } from '../../../../components/form/fields';
 import type { Partner } from '../../../../mocks/partners';
 import type { LcSectionProps } from './types';
@@ -19,13 +20,9 @@ export function LcVendorDetailsPanel({ draft, update, m, readOnly, vendor, open,
 
   return (
     <SidePanel overlay onOverlayClick={onClose}>
-      <PanelHeader
-        type="details"
+      <PageHeader
+        variant="plain"
         icon="storefront"
-        iconIntent="default"
-        iconShape="rounded"
-        iconSize={32}
-        iconVariant="outline"
         title={vendor.name}
         actions={
           <>

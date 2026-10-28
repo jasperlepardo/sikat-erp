@@ -3,15 +3,16 @@ import { useLocation, useNavigate, useParams } from 'react-router';
 import {
   Alert,
   Badge,
-  Button,
   Form,
   Panel,
-  PanelHeader,
   Tabs,
   Text,
 } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../../../components/form/PageHeader';
 import { type Errors } from '../../../../components/form/fields';
-import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
+import { type MoreMenuItem } from '../../../../components/form/MoreMenu';
+import { DetailActions, docMode } from '../../../../components/form/DetailActions';
+import { isApprover, needsApproval } from '../../../../services/approval';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { CURRENT_USER_ID } from '../../../../mocks/common';
@@ -21,12 +22,14 @@ import { loadInventoryMasters } from '../../../../services/inventoryMasters';
 import { listItems } from '../../../../services/items';
 import { companyTax, currencies, exchangeRates, taxCodes, taxGroups, withholdingGroups, withholdingTaxes } from '../../../../services/masterData';
 import { listPartnersByRole } from '../../../../services/partners';
+import { listPurchaseOrders } from '../../../../services/purchaseOrders';
 import { loadCurrentCompany } from '../../../../services/companies';
 import { addRfq, cancelRfq, closeRfq, getRfq, listRfqs, recallRfq, rfqNumber, saveRfqDraft, seriesOf } from '../../../../services/rfqs';
-import { getPurchasingSettings } from '../../../../services/purchaseOrders';
 import { logRejection } from '../../../../services/approvalRules';
 import { PoVendorQuickCreate } from '../../purchase-orders/detail/PoVendorQuickCreate';
 import { DocumentFlow } from '../../shared/DocumentFlow';
+import { poDraftFromRfq } from '../../shared/poFromRfq';
+import { rfqVendorDefaults } from '../../shared/rfqFromPr';
 import { ReferencesTable } from '../../shared/ReferencesTable';
 import {
   ALL_CURRENCIES,
@@ -40,10 +43,9 @@ import {
 } from './types';
 import { todayISO } from '../../../../services/dates';
 import { recalcLineTaxes } from '../../../../services/taxRecalc';
-import { blankPurchaseOrder, newPoLine } from '../../../../mocks/purchaseOrders';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
-import { neighbours, NotFound, PrevNext, siblingKeys, useDocTab, useReject } from '../../../../components/form/DetailNav';
+import { neighbours, NotFound, siblingKeys, useDocTab, useReject } from '../../../../components/form/DetailNav';
 import { VendorCard } from '../../shared/VendorCard';
 import { VendorDetailsPanel } from '../../shared/VendorDetailsPanel';
 import { RfqDocumentCard } from './RfqDocumentCard';
@@ -53,7 +55,7 @@ import { rfqDoc } from './rfqDoc';
 import { RfqDeliveryCard } from './RfqDeliveryCard';
 import { RfqJournalPaymentCard } from './RfqJournalPaymentCard';
 import { RfqDatesCard } from './RfqDatesCard';
-import { RFQ_LIST_PATH, RFQ_STATUS_INTENT } from '../../paths';
+import { RFQ_LIST_PATH, RFQ_NOUN, RFQ_STATUS_INTENT } from '../../paths';
 
 type TabId = 'contents' | 'logistics' | 'accounting';
 
@@ -100,7 +102,7 @@ function RfqForm() {
   const copyFrom = (location.state as { copyFrom?: RfqDraft } | null)?.copyFrom;
 
   const blank = blankRfq(CURRENT_USER_ID);
-  const rfqApproved = !getPurchasingSettings().requireRfqApproval;
+  const rfqApproved = !needsApproval('RFQ');
   const [draft, setDraft] = useState<RfqDraft | null | undefined>(
     isNew ? { ...(copyFrom ?? blank), approved: rfqApproved } : undefined,
   );
@@ -135,8 +137,9 @@ function RfqForm() {
       currencies.list(),
       exchangeRates.list(),
       loadCurrentCompany(),
-    ]).then(([vendors, items, inv, [company], codes, groups, withholding, wGroups, curs, rates, ours]) => {
-      const masters: RfqMasters = { vendors, items, inv, tax: { company, codes, groups, withholding, withholdingGroups: wGroups }, currencies: curs, rates, company: ours };
+      listPurchaseOrders(),
+    ]).then(([vendors, items, inv, [company], codes, groups, withholding, wGroups, curs, rates, ours, pos]) => {
+      const masters: RfqMasters = { vendors, items, inv, tax: { company, codes, groups, withholding, withholdingGroups: wGroups }, currencies: curs, rates, company: ours, pos };
       setM(masters);
       if (isNew)
         setDraft((d) => {
@@ -153,7 +156,7 @@ function RfqForm() {
 
   useDocTitle(
     draft?.docNum
-      ? isNew ? 'New purchase quotation' : draft.status === 'Draft' ? 'Draft purchase quotation' : rfqNumber(draft)
+      ? isNew ? `New ${RFQ_NOUN.one}` : draft.status === 'Draft' ? `Draft ${RFQ_NOUN.one}` : rfqNumber(draft)
       : undefined,
   );
 
@@ -181,16 +184,7 @@ function RfqForm() {
   const pickVendor = (vendorId: string | null, override?: Partner) => {
     const v = override ?? m.vendors.find((x) => x.id === vendorId);
     if (!v) return update({ vendorId: '', vendorCode: '', vendorName: '', contactId: '' });
-    const billAddr = v.addresses.find((a) => a.id === v.defaultBillToId) ?? v.addresses[0];
-    update({
-      vendorId: v.id, vendorCode: v.code, vendorName: v.name, contactId: v.defaultContactId,
-      currency: v.currency === ALL_CURRENCIES ? 'PHP' : v.currency,
-      paymentTermId: v.vendorPaymentTermId, paymentMethod: v.defaultPaymentMethod,
-      shippingType: v.shippingType,
-      journalRemark: `Purchase Quotations – ${v.code}`,
-      payTo: billAddr ? formatAddress(billAddr, v.name) : '',
-      lines: retax(draft.lines, v, draft.postingDate),
-    });
+    update({ ...rfqVendorDefaults(v), lines: retax(draft.lines, v, draft.postingDate) });
   };
 
   const handleVendorCreated = (vendor: Partner) => {
@@ -228,31 +222,10 @@ function RfqForm() {
     navigate(RFQ_LIST_PATH, { state: { notice: `Purchase quotation ${rfqNumber(q)} ${notice}.` } });
   };
 
+  // The award: a quotation raised from a request links its PO back to the request lines, so the
+  // PO (not the quotation) draws the request down.
   const copyToPo = () => {
-    const today = todayISO();
-    const poDraft = {
-      ...blankPurchaseOrder(CURRENT_USER_ID),
-      approved: !getPurchasingSettings().requirePoApproval,
-      // Lineage back to this quotation (the graph links PO → RFQ → PR transitively).
-      baseRfqId: draft.id ?? '',
-      vendorId: draft.vendorId, vendorCode: draft.vendorCode, vendorName: draft.vendorName,
-      contactId: draft.contactId, vendorRef: draft.vendorRef, currency: draft.currency,
-      paymentTermId: draft.paymentTermId, paymentMethod: draft.paymentMethod,
-      shippingType: draft.shippingType, shipTo: draft.shipTo, projectId: draft.projectId,
-      journalRemark: draft.journalRemark.replace('Quotations', 'Orders'),
-      postingDate: today, documentDate: today,
-      lines: draft.lines.filter((l) => l.itemId).map((l) =>
-        newPoLine({
-          itemId: l.itemId, itemNo: l.itemNo, name: l.description, description: l.description,
-          quantity: l.quotedQty || l.quantity, uomCode: l.uomCode, uomName: l.uomName,
-          itemsPerUnit: l.itemsPerUnit, priceListId: l.priceListId, unitPrice: l.unitPrice,
-          discountPct: l.discountPct, taxCode: l.taxCode,
-          agreementId: l.agreementId, agreementLineId: l.agreementLineId, requisitionSlipNo: l.requisitionSlipNo,
-          countryOfOriginCode: l.countryOfOriginCode, warrantyTemplateId: l.warrantyTemplateId, glAccount: l.glAccount,
-        }),
-      ),
-      remarks: `From RFQ ${rfqNumber(draft as Rfq)}.`,
-    };
+    const poDraft = poDraftFromRfq(draft, { buyerId: CURRENT_USER_ID, approved: !needsApproval('PO'), today: todayISO() });
     navigate('/purchasing/purchase-orders/new', { state: { copyFrom: poDraft } });
   };
 
@@ -278,15 +251,13 @@ function RfqForm() {
   };
 
   const menu: MoreMenuItem[] = [
-    ...(!ctx.added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
-    ...(draft.status === 'Not Confirmed' ? [{ label: 'Approve', icon: 'check_circle', onSelect: () => submit(null, false, { approved: true }) }, { label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => reject.start() }] : []),
-    ...(open ? [
-      { label: 'Copy to purchase order', icon: 'shopping_cart', onSelect: copyToPo },
-      { label: 'Close', icon: 'task_alt', onSelect: () => act(() => closeRfq(saved), 'closed') },
-      { label: 'Cancel', icon: 'cancel', onSelect: () => act(() => cancelRfq(saved), 'cancelled') },
-    ] : []),
+    ...(open ? [{ label: 'Create purchase order', icon: 'shopping_cart', onSelect: copyToPo }] : []),
     ...(!isNew ? [{ label: 'Duplicate', icon: 'content_copy', onSelect: duplicate }] : []),
-    ...(ctx.vendor ? [{ label: `Open vendor ${ctx.vendor.code}`, icon: 'local_shipping', onSelect: () => navigate(`/purchasing/vendors/${ctx.vendor!.id}`) }] : []),
+    ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }] : []),
+    ...(open ? [
+      { label: 'Close', icon: 'task_alt', onSelect: () => act(() => closeRfq(saved), 'closed') },
+      { label: `Cancel ${RFQ_NOUN.one}`, icon: 'cancel', onSelect: () => act(() => cancelRfq(saved), 'cancelled') },
+    ] : []),
   ];
 
   const transitions: Partial<Record<RfqStatus, () => void>> =
@@ -298,24 +269,18 @@ function RfqForm() {
           ? { Closed: () => act(() => closeRfq(saved), 'closed'), Cancelled: () => act(() => cancelRfq(saved), 'cancelled') }
           : {};
 
-  const title = isNew ? 'New purchase quotation' : draft.status === 'Draft' ? 'Draft purchase quotation' : rfqNumber(draft);
+  const title = isNew ? `New ${RFQ_NOUN.one}` : draft.status === 'Draft' ? `Draft ${RFQ_NOUN.one}` : rfqNumber(draft);
   const sectionProps = { draft, update, errors, m, ctx };
 
   return (
     <>
       <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
         <Panel className="flex-1">
-          <PanelHeader
-            type="details"
+          <PageHeader
+            variant="plain"
             icon="description"
-            iconIntent="default"
-            iconShape="rounded"
-            iconSize={32}
-            iconVariant="outline"
-            breadcrumbs={[{ label: 'Purchase Quotations', href: RFQ_LIST_PATH }, { label: title }]}
-            onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
-            onBack={() => navigate(RFQ_LIST_PATH)}
-            trailing={isNew ? undefined : <PrevNext path={RFQ_LIST_PATH} prevId={prevId} nextId={nextId} />}
+            parent={{ noun: RFQ_NOUN, to: RFQ_LIST_PATH }}
+            title={title}
             tabs={
               isNew ? undefined : (
                 <Tabs
@@ -338,13 +303,20 @@ function RfqForm() {
               )
             }
             actions={
-              <>
-                {ctx.readOnly ? null : <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(RFQ_LIST_PATH)}>Cancel</Button>}
-                {menu.length ? <MoreMenu items={menu} /> : null}
-                <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
-                  {saving ? 'Saving…' : ctx.added ? 'Save' : 'Add'}
-                </Button>
-              </>
+              <DetailActions
+                noun={RFQ_NOUN}
+                listPath={RFQ_LIST_PATH}
+                mode={docMode(draft.status, { canApprove: isApprover('RFQ') })}
+                needsApproval={!draft.approved}
+                remarksOnly={ctx.readOnly}
+                busy={saving}
+                onDraft={() => submit(null, true)}
+                onSubmit={() => submit(null, false)}
+                onApprove={() => submit(null, false, { approved: true })}
+                onReject={reject.start}
+                menu={menu}
+                prevNext={isNew ? undefined : { path: RFQ_LIST_PATH, prevId, nextId }}
+              />
             }
           />
 

@@ -1,11 +1,8 @@
 import { useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router';
+import { useLocation } from 'react-router';
 import {
   Alert,
-  Button,
-  Icon,
   Panel,
-  PanelHeader,
   Table,
   TableAmount,
   TableContent,
@@ -13,6 +10,7 @@ import {
   Text,
   type TableColumn,
 } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../../components/form/PageHeader';
 import { dateField, linesField, masterField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { currencyDef, salesEmployeeDef } from '../../settings/masterDefs';
@@ -23,11 +21,11 @@ import { formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
 import { taxCodes } from '../../../services/masterData';
 import { useAsync } from '../../../services/useAsync';
-import { DPR_LIST_PATH, DPR_STATUS_INTENT } from '../paths';
+import { cap } from '../../../components/form/noun';
+import { DPR_LIST_PATH, DPR_NOUN, DPR_STATUS_INTENT } from '../paths';
 
 /** Purchasing › Bills › Down payment requests: advances vendors asked for, paid and drawn. */
 export function DprList() {
-  const navigate = useNavigate();
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const data = useAsync(() => Promise.all([listDownPayments(), taxCodes.list()]), []);
   const [query, setQuery] = useState('');
@@ -51,7 +49,7 @@ export function DprList() {
   const presets = useListPresets({
     list: 'ap-down-payment-requests',
     fields,
-    builtIns: statusViews('down payment requests', DPR_STATUSES),
+    builtIns: statusViews(DPR_NOUN.many, DPR_STATUSES),
     defaultSort: { key: 'postingDate', direction: 'desc' },
     rows: requests,
     onChange: resetPage,
@@ -94,9 +92,9 @@ export function DprList() {
 
   return (
     <Panel className="flex-1">
-      <PanelHeader
+      <PageHeader
         showSearch
-        searchLabel="Search down payment requests"
+        searchLabel={`Search ${DPR_NOUN.many}`}
         searchPlaceholder="Search by no., vendor, vendor ref., PO no. or item"
         searchValue={query}
         onSearchChange={(value) => {
@@ -104,25 +102,17 @@ export function DprList() {
           resetPage();
         }}
         icon="request_quote"
-        iconIntent="default"
-        iconShape="rounded"
-        iconSize={32} iconVariant="outline"
         title={presets.menu}
-        actions={
-          <Button intent="primary" variant="solid" size="medium" shape="pill" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${DPR_LIST_PATH}/new`)}>
-            New down payment request
-          </Button>
-        }
-
+        create={{ noun: DPR_NOUN, to: DPR_LIST_PATH }}
       />
       <Panel.Body className="flex flex-col gap-2">
         {notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : null}
         {presets.bar(null)}
         {!requests ? (
-          <Text tone="muted" className="p-4">Loading down payment requests…</Text>
+          <Text tone="muted" className="p-4">Loading {DPR_NOUN.many}…</Text>
         ) : requests.length ? (
           <Table
-            caption="A/P down payment requests"
+            caption={cap(DPR_NOUN.many)}
             columns={columns}
             rows={visible}
             getRowId={(d) => d.id}
@@ -132,7 +122,7 @@ export function DprList() {
             pagination={pagination}
           />
         ) : (
-          <Text tone="muted" className="p-4">No down payment requests yet. Start one from a purchase order (You can also › Copy to A/P down payment request), or with New down payment request.</Text>
+          <Text tone="muted" className="p-4">No {DPR_NOUN.many} yet. Start one from a purchase order (More actions › Create {DPR_NOUN.one}), or with New {DPR_NOUN.one}.</Text>
         )}
       </Panel.Body>
       {presets.panel}

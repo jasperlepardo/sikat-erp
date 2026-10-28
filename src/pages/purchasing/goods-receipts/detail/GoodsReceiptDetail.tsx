@@ -5,15 +5,16 @@ import { postDocumentEntry, reverseDocumentEntry } from '../../../../services/jo
 import {
   Alert,
   Badge,
-  Button,
   Form,
   Panel,
-  PanelHeader,
   Tabs,
   Text,
 } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../../../components/form/PageHeader';
 import { type Errors } from '../../../../components/form/fields';
-import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
+import { type MoreMenuItem } from '../../../../components/form/MoreMenu';
+import { DetailActions, docMode } from '../../../../components/form/DetailActions';
+import { isApprover, needsApproval } from '../../../../services/approval';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { CURRENT_USER_ID } from '../../../../mocks/common';
 import { blankGoodsReceipt, newGrLine, type GoodsReceipt, type GrLine, type GrStatus } from '../../../../mocks/goodsReceipts';
@@ -43,7 +44,7 @@ import { loadInventoryMasters } from '../../../../services/inventoryMasters';
 import { isValidToday, listItems } from '../../../../services/items';
 import { companyTax, currencies, exchangeRates, taxCodes, taxGroups, withholdingGroups, withholdingTaxes } from '../../../../services/masterData';
 import { listPartnersByRole } from '../../../../services/partners';
-import { dueDateFor, getPurchasingSettings, listPurchaseOrders, openQty, poNumber } from '../../../../services/purchaseOrders';
+import { dueDateFor, listPurchaseOrders, openQty, poNumber } from '../../../../services/purchaseOrders';
 import { transferBlock } from '../../../../services/binLocations';
 import { proposedTaxCode } from '../../purchase-orders/detail/types';
 import { DocLines } from '../../../../components/form/docLines/DocLines';
@@ -56,7 +57,7 @@ import { buildGrContext, defaultPayTo, defaultShipTo, linesFromPo, type GrContex
 import { receivingVendorAddressFields } from '../../shared/vendorAddresses';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
-import { neighbours, NotFound, PrevNext, siblingKeys, useDocTab, useReject } from '../../../../components/form/DetailNav';
+import { neighbours, NotFound, siblingKeys, useDocTab, useReject } from '../../../../components/form/DetailNav';
 import { VendorCard } from '../../shared/VendorCard';
 import { VendorDetailsPanel } from '../../shared/VendorDetailsPanel';
 import { GrDocumentCard } from './GrDocumentCard';
@@ -64,7 +65,7 @@ import { GrTotalsCard } from './GrTotalsCard';
 import { GrJournalCard } from './GrJournalCard';
 import { ReferencesTable } from '../../shared/ReferencesTable';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
-import { AP_LIST_PATH, GR_LIST_PATH, GR_STATUS_INTENT, RETURN_LIST_PATH } from '../../paths';
+import { AP_LIST_PATH, GR_LIST_PATH, GR_NOUN, GR_STATUS_INTENT, RETURN_LIST_PATH } from '../../paths';
 
 type TabId = 'contents' | 'logistics' | 'accounting';
 
@@ -137,7 +138,7 @@ function GoodsReceiptForm() {
   const location = useLocation();
   const state = location.state as { copyFrom?: GrDraft; fromPo?: string } | null;
 
-  const grApproved = !getPurchasingSettings().requireGrpoApproval;
+  const grApproved = !needsApproval('GRPO');
   const [draft, setDraft] = useState<GrDraft | null | undefined>(
     isNew ? { ...(state?.copyFrom ?? { ...blankGoodsReceipt(todayISO(), CURRENT_USER_ID), lines: [] }), approved: grApproved } : undefined,
   );
@@ -188,7 +189,7 @@ function GoodsReceiptForm() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, isNew]);
 
-  useDocTitle(draft?.docNum ? (isNew ? 'New goods receipt' : grNumber(draft)) : undefined);
+  useDocTitle(draft?.docNum ? (isNew ? `New ${GR_NOUN.one}` : draft.status !== 'Draft' ? grNumber(draft) : `Draft ${GR_NOUN.one}`) : undefined);
   if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading goods receipt…</Text>;
   if (draft === null) return <NotFound icon="inventory" title="Goods receipt not found" backTo={GR_LIST_PATH} backLabel="Back to goods receipts" />;
 
@@ -233,7 +234,8 @@ function GoodsReceiptForm() {
 
   const submit = async (e: FormEvent | null, asDraft = false, overrides: Partial<GrDraft> = {}) => {
     e?.preventDefault();
-    if (added) {
+    // Added: only remarks and attachments save, unless this is approving it (which posts it).
+    if (added && !overrides.approved) {
       setSaving(true);
       try {
         const saved = await saveGrRemarks(draft as GoodsReceipt, { remarks: draft.remarks, journalRemark: draft.journalRemark });
@@ -295,7 +297,6 @@ function GoodsReceiptForm() {
   };
 
   const saved = draft as GoodsReceipt;
-  const basePos = [...new Set(draft.lines.map((l) => l.baseId).filter(Boolean))];
   const closeIt = () => act(() => closeGoodsReceipt(saved), 'closed');
   const cancelIt = () => act(async () => { const gr = await cancelGoodsReceipt(saved); await reverseDocumentEntry(saved.id); return gr; }, 'cancelled — the stock is back out and the PO lines are open again');
   const invoiced = draft.lines.some((l) => l.invoicedQty > 0);
@@ -309,24 +310,21 @@ function GoodsReceiptForm() {
   const statusMoves: Partial<Record<GrStatus, () => void>> = draft.status === 'Draft' ? (draft.approved ? { Open: () => submit(null) } : { 'Not Confirmed': () => submit(null) }) : draft.status === 'Not Confirmed' ? { Open: () => submit(null, false, { approved: true }) } : draft.status === 'Open' ? { Closed: closeIt, ...(!invoiced && !returned ? { Cancelled: cancelIt } : {}) } : {};
 
   const menu: MoreMenuItem[] = [
-    ...(!added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
-    ...(draft.status === 'Not Confirmed' ? [{ label: 'Approve', icon: 'check_circle', onSelect: () => submit(null, false, { approved: true }) }, { label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => reject.start() }] : []),
     ...(draft.status === 'Open' && draft.lines.some((l) => grOpenQty(l, draft) > 0)
       ? [
-          { label: 'Copy to A/P invoice', icon: 'request_quote', onSelect: () => navigate(`${AP_LIST_PATH}/new`, { state: { fromReceipt: saved.id } }) },
-          { label: 'Copy to goods return', icon: 'assignment_return', onSelect: () => navigate(`${RETURN_LIST_PATH}/new`, { state: { fromReceipt: saved.id } }) },
+          { label: 'Create A/P invoice', icon: 'request_quote', onSelect: () => navigate(`${AP_LIST_PATH}/new`, { state: { fromReceipt: saved.id } }) },
+          { label: 'Create goods return', icon: 'assignment_return', onSelect: () => navigate(`${RETURN_LIST_PATH}/new`, { state: { fromReceipt: saved.id } }) },
         ]
       : []),
     ...(!isNew ? [{ label: 'Duplicate', icon: 'content_copy', onSelect: duplicate }] : []),
+    ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }] : []),
     ...(draft.status === 'Open' ? [{ label: 'Close', icon: 'task_alt', onSelect: closeIt }] : []),
     ...(draft.status === 'Open' && !invoiced && !returned
-      ? [{ label: 'Cancel goods receipt', icon: 'cancel', onSelect: cancelIt }]
+      ? [{ label: `Cancel ${GR_NOUN.one}`, icon: 'cancel', onSelect: cancelIt }]
       : []),
-    ...basePos.map((poId) => ({ label: `Open PO ${draft.lines.find((l) => l.baseId === poId)?.baseDocNo}`, icon: 'receipt_long', onSelect: () => navigate(`/purchasing/purchase-orders/${poId}`) })),
-    ...(vendor ? [{ label: `Open vendor ${vendor.code}`, icon: 'local_shipping', onSelect: () => navigate(`/purchasing/vendors/${vendor.id}`) }] : []),
   ];
 
-  const title = isNew ? 'New goods receipt' : added ? grNumber(draft) : 'Draft goods receipt';
+  const title = isNew ? `New ${GR_NOUN.one}` : added ? grNumber(draft) : `Draft ${GR_NOUN.one}`;
   const sectionProps = { draft, update, errors, m, ctx };
   const copyablePos = draft.vendorId ? receivablePos(m.orders, draft.vendorId).filter((po) => !ctx.based || po.currency === draft.currency) : [];
 
@@ -334,28 +332,28 @@ function GoodsReceiptForm() {
     <>
     <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
       <Panel className="flex-1">
-        <PanelHeader
-          type="details"
+        <PageHeader
+          variant="plain"
           icon="inventory"
-          iconIntent="default"
-          iconShape="rounded"
-          iconSize={32} iconVariant="outline"
-          breadcrumbs={[{ label: 'Goods Receipts', href: GR_LIST_PATH }, { label: title }]}
-          onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
-          onBack={() => navigate(GR_LIST_PATH)}
-          trailing={
-            isNew ? undefined : <PrevNext path={GR_LIST_PATH} prevId={prevId} nextId={nextId} />
-          }
+          parent={{ noun: GR_NOUN, to: GR_LIST_PATH }}
+          title={title}
           tabs={isNew ? undefined : <Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={PAGES.map((p) => ({ ...p }))} />}
           status={isNew ? undefined : <Badge size="small" intent={GR_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
           actions={
-            <>
-              {added ? null : <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(GR_LIST_PATH)}>Cancel</Button>}
-              {menu.length ? <MoreMenu items={menu} /> : null}
-              <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
-                {saving ? 'Saving…' : added ? 'Save' : 'Add'}
-              </Button>
-            </>
+            <DetailActions
+              noun={GR_NOUN}
+              listPath={GR_LIST_PATH}
+              mode={docMode(draft.status, { canApprove: isApprover('GRPO') })}
+              needsApproval={!draft.approved}
+              remarksOnly={added}
+              busy={saving}
+              onDraft={() => submit(null, true)}
+              onSubmit={() => submit(null)}
+              onApprove={() => submit(null, false, { approved: true })}
+              onReject={reject.start}
+              menu={menu}
+              prevNext={isNew ? undefined : { path: GR_LIST_PATH, prevId, nextId }}
+            />
           }
         />
         {page === 'transactions' && draft.id ? (

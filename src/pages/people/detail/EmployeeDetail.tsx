@@ -1,13 +1,14 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import { todayISO } from '../../../services/dates';
-import { Badge, Button, Form, FormField, Panel, PanelHeader, Select, Tabs, Text, type Option } from '@jasperlepardo/sikat-design-system';
+import { Badge, Button, Form, FormField, Panel, Select, Tabs, Text, type Option } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../../components/form/PageHeader';
 import { ActivityTab } from '../../../components/activity/ActivityTab';
 import { FieldStack, ReadOnly, Section, bind, type Errors } from '../../../components/form/fields';
 import { useCollection } from '../../../components/form/MasterLookup';
-import { MoreMenu } from '../../../components/form/MoreMenu';
+import { DetailActions } from '../../../components/form/DetailActions';
 import { ProblemsAlert, problemCollector, type Problem as ProblemBase } from '../../../components/form/ProblemsAlert';
-import { PrevNext, neighbours } from '../../../components/form/DetailNav';
+import { neighbours } from '../../../components/form/DetailNav';
 import { blankEmployee } from '../../../mocks/employees';
 import { employeeName, employees, getEmployee, saveEmployee } from '../../../services/employees';
 import { listPartnersByRole } from '../../../services/partners';
@@ -19,7 +20,7 @@ import { FinanceTab } from './finance';
 import { MembershipTab } from './membership';
 import { PersonalTab } from './personal';
 import { TABS, type Draft, type TabId } from './types';
-import { EMPLOYEES_PATH } from '../paths';
+import { EMPLOYEES_PATH, EMPLOYEE_NOUN } from '../paths';
 
 type Problem = ProblemBase<TabId>;
 
@@ -94,7 +95,7 @@ function EmployeeForm() {
   if (draft === null) {
     return (
       <Panel className="flex-1">
-        <PanelHeader icon="badge" iconIntent="default" iconShape="rounded" iconSize={32} iconVariant="outline" title="Employee not found" />
+        <PageHeader icon="badge" title="Employee not found" />
         <Panel.Body>
           <Button onClick={() => navigate(EMPLOYEES_PATH)}>Back to employees</Button>
         </Panel.Body>
@@ -182,21 +183,16 @@ function EmployeeForm() {
 
   const sorted = [...people].sort((a, b) => employeeName(a).localeCompare(employeeName(b)));
   const { prevId, nextId } = neighbours(sorted.map((e) => e.id), draft.id);
-  const title = isNew ? 'New employee' : employeeName(draft) || draft.code;
+  const title = isNew ? `New ${EMPLOYEE_NOUN.one}` : employeeName(draft) || draft.code;
 
   return (
     <Form className="flex min-h-0 flex-1 flex-col" onSubmit={submit} noValidate>
       <Panel className="min-h-0 flex-1">
-        <PanelHeader
-          type="details"
+        <PageHeader
+          variant="plain"
           icon="badge"
-          iconIntent="default"
-          iconShape="rounded"
-          iconSize={32} iconVariant="outline"
-          breadcrumbs={[{ label: 'Employees', href: EMPLOYEES_PATH }, { label: title }]}
-          onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
-          onBack={() => navigate(EMPLOYEES_PATH)}
-          trailing={isNew ? undefined : <PrevNext path={EMPLOYEES_PATH} prevId={prevId} nextId={nextId} />}
+          parent={{ noun: EMPLOYEE_NOUN, to: EMPLOYEES_PATH }}
+          title={title}
           tabs={
             <Tabs
               variant="outline"
@@ -208,15 +204,14 @@ function EmployeeForm() {
           }
           status={isNew ? undefined : draft.active ? undefined : <Badge intent="default">Inactive</Badge>}
           actions={
-            <>
-              <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(EMPLOYEES_PATH)}>
-                Cancel
-              </Button>
-              {menu.length ? <MoreMenu items={menu} /> : null}
-              <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
-                {saving ? 'Saving…' : isNew ? 'Add' : 'Save'}
-              </Button>
-            </>
+            <DetailActions
+              noun={EMPLOYEE_NOUN}
+              listPath={EMPLOYEES_PATH}
+              mode={isNew ? 'draft' : 'open'}
+              busy={saving}
+              menu={menu}
+              prevNext={isNew ? undefined : { path: EMPLOYEES_PATH, prevId, nextId }}
+            />
           }
         />
         {page === 'activity' ? (

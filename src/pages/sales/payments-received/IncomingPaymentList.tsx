@@ -1,11 +1,8 @@
 import { useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router';
+import { useLocation } from 'react-router';
 import {
   Alert,
-  Button,
-  Icon,
   Panel,
-  PanelHeader,
   Table,
   TableContent,
   TableStatus,
@@ -16,16 +13,17 @@ import { choiceField, dateField, masterField, numberField, statusField, textFiel
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { currencyDef } from '../../settings/masterDefs';
 import { useListPage } from '../../../components/form/DataTable';
+import { PageHeader } from '../../../components/form/PageHeader';
+import { cap } from '../../../components/form/noun';
 import { INCOMING_STATUSES, type IncomingPayment } from '../../../mocks/incomingPayments';
 import { formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
 import { taxCodes } from '../../../services/masterData';
 import { amountDue, incomingNumber, listIncomingPayments } from '../../../services/incomingPayments';
 import { useAsync } from '../../../services/useAsync';
-import { RC_LIST_PATH, RC_STATUS_INTENT } from '../paths';
+import { RC_LIST_PATH, RC_NOUN, RC_STATUS_INTENT } from '../paths';
 
 export function IncomingPaymentList() {
-  const navigate = useNavigate();
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const data = useAsync(() => Promise.all([listIncomingPayments(), taxCodes.list()]), []);
   const [query, setQuery] = useState('');
@@ -49,7 +47,7 @@ export function IncomingPaymentList() {
   const presets = useListPresets({
     list: 'incoming-payments',
     fields,
-    builtIns: statusViews('payments received', INCOMING_STATUSES),
+    builtIns: statusViews(RC_NOUN.many, INCOMING_STATUSES),
     defaultSort: { key: 'postingDate', direction: 'desc' },
     rows: orders,
     onChange: resetPage,
@@ -99,9 +97,9 @@ export function IncomingPaymentList() {
 
   return (
     <Panel className="flex-1">
-      <PanelHeader
+      <PageHeader
         showSearch
-        searchLabel="Search payments"
+        searchLabel={`Search ${RC_NOUN.many}`}
         searchPlaceholder="Search by payment no., customer, reference or invoice"
         searchValue={query}
         onSearchChange={(value) => {
@@ -109,15 +107,8 @@ export function IncomingPaymentList() {
           resetPage();
         }}
         icon="savings"
-        iconIntent="default"
-        iconShape="rounded"
-        iconSize={32} iconVariant="outline"
         title={presets.menu}
-        actions={
-          <Button intent="primary" variant="solid" size="medium" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${RC_LIST_PATH}/new`)}>
-            New incoming payment
-          </Button>
-        }
+        create={{ noun: RC_NOUN, to: RC_LIST_PATH }}
       />
       <Panel.Body className="flex flex-col gap-2">
         {notice ? (
@@ -128,7 +119,7 @@ export function IncomingPaymentList() {
         {presets.bar(null)}
         {orders ? (
           <Table
-            caption="Incoming payments"
+            caption={cap(RC_NOUN.many)}
             columns={columns}
             rows={onPage}
             getRowId={(so) => so.id}
@@ -138,7 +129,7 @@ export function IncomingPaymentList() {
             pagination={pagination}
           />
         ) : (
-          <Text tone="muted" className="p-4">Loading payments…</Text>
+          <Text tone="muted" className="p-4">Loading {RC_NOUN.many}…</Text>
         )}
       </Panel.Body>
       {presets.panel}

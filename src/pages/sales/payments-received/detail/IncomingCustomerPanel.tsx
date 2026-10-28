@@ -1,4 +1,5 @@
-import { Button, CardField, Icon, Panel, PanelHeader, SidePanel } from '@jasperlepardo/sikat-design-system';
+import { Button, CardField, Icon, Panel, SidePanel } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../../../components/form/PageHeader';
 import { Fields, Section, bind, type Errors } from '../../../../components/form/fields';
 import type { Account } from '../../../../mocks/chartOfAccounts';
 import { contactName, type Partner } from '../../../../mocks/partners';
@@ -22,12 +23,12 @@ export function IncomingCustomerPanel({ customer, draft, update, errors, account
   const h = bind(draft, update);
   return (
     <SidePanel overlay onOverlayClick={onClose}>
-      <PanelHeader
-        type="details"
+      <PageHeader
+        variant="plain"
         icon="person"
         title={customer.name}
         actions={
-          <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={onClose}>
+          <Button type="button" intent="white" variant="solid" shape="pill" onClick={onClose}>
             Done
           </Button>
         }

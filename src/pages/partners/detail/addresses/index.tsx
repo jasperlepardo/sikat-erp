@@ -142,6 +142,8 @@ export function AddressPanel({
     <EditPanel
       icon="location_on"
       title={isNew ? 'New address' : (value.label || 'Untitled address')}
+      noun="address"
+      isNew={isNew}
       onCancel={onCancel}
       onDone={done}
     >

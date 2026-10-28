@@ -99,6 +99,8 @@ export function ContactPanel({
     <EditPanel
       icon="person"
       title={isNew ? 'New contact person' : contactName(value)}
+      noun="contact person"
+      isNew={isNew}
       onCancel={onCancel}
       onDone={() => onDone(contact, picks)}
     >

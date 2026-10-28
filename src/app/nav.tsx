@@ -1,4 +1,10 @@
 import { Icon, type NavbarMenuItem, type SideNavItem, type SideNavSection } from '@jasperlepardo/sikat-design-system';
+import { cap } from '../components/form/noun';
+import { JE_NOUN, JV_NOUN } from '../pages/accounting/paths';
+import { COUNT_NOUN, ITEM_NOUN, POSTING_NOUN, TRANSFER_NOUN, TRANSFER_REQUEST_NOUN } from '../pages/inventory/paths';
+import { EMPLOYEE_NOUN } from '../pages/people/paths';
+import { AP_NOUN, APRI_NOUN, DPI_NOUN, DPR_NOUN, GR_NOUN, GRR_NOUN, LC_NOUN, MEMO_NOUN, PAYMENT_NOUN, PBA_NOUN, PO_NOUN, PR_NOUN, RETURN_NOUN, RFQ_NOUN } from '../pages/purchasing/paths';
+import { AR_NOUN, ARCM_NOUN, BA_NOUN, DN_NOUN, QT_NOUN, RC_NOUN, RI_NOUN, SO_NOUN, SR_NOUN } from '../pages/sales/paths';
 
 /**
  * Sidebar, from the Sikat ERP navigation architecture (SAP B1's 590 menu entries
@@ -37,11 +43,11 @@ const hub = (label: string, glyph: string, pages: [string, string, string?][]): 
 /** The apps, in the app selector's order; each hub's pages are that app's sidebar. */
 const APP_MODULES: SideNavItem[] = [
   hub('Approvals', 'verified', [
-    ['Pending Approvals', 'pending_actions'],
+    ['Pending approvals', 'pending_actions'],
   ]),
   hub('CRM', 'handshake', [
     ['Dashboard', 'dashboard'],
-    ['Business Partners', 'groups'],
+    ['Business partners', 'groups'],
     ['Leads', 'person_search'],
     ['Pipeline', 'filter_list'],
     ['Activities', 'event'],
@@ -51,53 +57,54 @@ const APP_MODULES: SideNavItem[] = [
   hub('Sales', 'sell', [
     ['Dashboard', 'dashboard'],
     ['Customers', 'storefront'],
-    ['Quotations', 'request_quote'],
-    ['Sales Orders', 'shopping_bag'],
-    ['Deliveries', 'local_shipping'],
-    ['Customer Invoices', 'receipt'],
-    ['Reserve Invoices', 'receipt_long'],
-    ['Sales Returns', 'assignment_return'],
-    ['Credit Memos', 'undo'],
-    ['Incoming Payments', 'savings'],
+    [cap(QT_NOUN.many), 'request_quote'],
+    [cap(SO_NOUN.many), 'shopping_bag'],
+    [cap(DN_NOUN.many), 'local_shipping'],
+    [cap(AR_NOUN.many), 'receipt', 'sales/customer-invoices'],
+    [cap(RI_NOUN.many), 'receipt_long', 'sales/reserve-invoices'],
+    [cap(SR_NOUN.many), 'assignment_return'],
+    [cap(ARCM_NOUN.many), 'undo', 'sales/credit-memos'],
+    [cap(RC_NOUN.many), 'savings'],
     ['Collections', 'account_balance_wallet'],
-    ['Agreements', 'description'],
+    [cap(BA_NOUN.many), 'description', 'sales/agreements'],
     ['Insights', 'insights'],
   ]),
   hub('Purchasing', 'shopping_cart', [
     ['Dashboard', 'dashboard'],
     ['Vendors', 'local_shipping'],
-    ['Purchase Requests', 'inbox'],
-    ['Purchase Quotations', 'description'],
-    ['Purchase Orders', 'receipt_long'],
-    ['Goods Receipts', 'inventory'],
-    ['A/P Invoices', 'request_quote', 'purchasing/vendor-invoices'],
-    ['A/P Reserve Invoices', 'receipt_long', 'purchasing/reserve-invoices'],
-    ['A/P Down Payment Requests', 'savings', 'purchasing/down-payment-requests'],
-    ['A/P Down Payment Invoices', 'receipt_long', 'purchasing/down-payment-invoices'],
-    ['Goods Return Requests', 'assignment_return'],
-    ['Goods Returns', 'assignment_return'],
-    ['A/P Credit Memos', 'receipt', 'purchasing/debit-memos'],
-    ['Outgoing Payments', 'payments'],
-    ['Landed Costs', 'calculate'],
-    ['Agreements', 'description'],
+    [cap(PR_NOUN.many), 'inbox'],
+    [cap(RFQ_NOUN.many), 'description'],
+    [cap(PO_NOUN.many), 'receipt_long'],
+    [cap(GR_NOUN.many), 'inventory'],
+    [cap(AP_NOUN.many), 'request_quote', 'purchasing/vendor-invoices'],
+    [cap(APRI_NOUN.many), 'receipt_long', 'purchasing/reserve-invoices'],
+    [cap(DPR_NOUN.many), 'savings', 'purchasing/down-payment-requests'],
+    [cap(DPI_NOUN.many), 'receipt_long', 'purchasing/down-payment-invoices'],
+    [cap(GRR_NOUN.many), 'assignment_return'],
+    [cap(RETURN_NOUN.many), 'assignment_return'],
+    [cap(MEMO_NOUN.many), 'receipt', 'purchasing/debit-memos'],
+    [cap(PAYMENT_NOUN.many), 'payments'],
+    [cap(LC_NOUN.many), 'calculate'],
+    [cap(PBA_NOUN.many), 'description', 'purchasing/agreements'],
     ['Insights', 'insights'],
   ]),
   hub('Inventory', 'inventory_2', [
     ['Dashboard', 'dashboard'],
-    ['Items', 'inventory_2'],
-    ['Stock on Hand', 'inventory'],
-    ['Transfer Requests', 'move_up'],
-    ['Inventory Transfers', 'move_down'],
-    ['Stock Counts', 'inventory'],
-    ['Pick & Pack', 'inventory_2'],
-    ['Price Lists', 'price_change'],
-    ['Warehouses & Bins', 'location_on'],
+    [cap(ITEM_NOUN.many), 'inventory_2'],
+    ['Stock on hand', 'inventory'],
+    [cap(TRANSFER_REQUEST_NOUN.many), 'move_up'],
+    [cap(TRANSFER_NOUN.many), 'move_down'],
+    [cap(COUNT_NOUN.many), 'inventory'],
+    [cap(POSTING_NOUN.many), 'fact_check', 'inventory/stock-counts/postings'],
+    ['Pick & pack', 'inventory_2'],
+    ['Price lists', 'price_change'],
+    ['Warehouses & bins', 'location_on'],
     ['Insights', 'insights'],
   ]),
   hub('Manufacturing', 'precision_manufacturing', [
     ['Dashboard', 'dashboard'],
-    ['Bills of Materials', 'account_tree'],
-    ['Production Orders', 'precision_manufacturing'],
+    ['Bills of materials', 'account_tree'],
+    ['Production orders', 'precision_manufacturing'],
     ['Planning (MRP)', 'event_note'],
     ['Resources', 'build_circle'],
     ['Costing', 'calculate'],
@@ -110,7 +117,7 @@ const APP_MODULES: SideNavItem[] = [
   ]),
   hub('Service', 'build', [
     ['Dashboard', 'dashboard'],
-    ['Service Calls', 'support_agent'],
+    ['Service calls', 'support_agent'],
     ['Contracts', 'description'],
     ['Equipment', 'construction'],
     ['Insights', 'insights'],
@@ -122,27 +129,27 @@ const APP_MODULES: SideNavItem[] = [
     ['Deposits', 'savings'],
     ['Checks', 'receipt'],
     ['Cards', 'credit_card'],
-    ['Payment Orders', 'send'],
+    ['Payment orders', 'send'],
     ['Insights', 'insights'],
   ]),
   hub('Accounting', 'account_tree', [
     ['Dashboard', 'dashboard'],
     ['Statements', 'summarize'],
-    ['Journal Entries', 'menu_book'],
-    ['Journal Vouchers', 'folder_open'],
-    ['Exchange Rate Differences', 'currency_exchange'],
-    ['Chart of Accounts', 'account_tree'],
+    [cap(JE_NOUN.many), 'menu_book'],
+    [cap(JV_NOUN.many), 'folder_open'],
+    ['Exchange rate differences', 'currency_exchange'],
+    ['Chart of accounts', 'account_tree'],
     ['Reconciliations', 'check_box'],
-    ['Period Close', 'lock_clock'],
+    ['Period close', 'lock_clock'],
     ['Budgets', 'pie_chart'],
-    ['Cost Accounting', 'calculate'],
-    ['Fixed Assets', 'real_estate_agent'],
+    ['Cost accounting', 'calculate'],
+    ['Fixed assets', 'real_estate_agent'],
     ['Tax', 'percent'],
     ['Insights', 'insights'],
   ]),
   hub('People', 'group', [
     ['Dashboard', 'dashboard'],
-    ['Employees', 'badge'],
+    [cap(EMPLOYEE_NOUN.many), 'badge'],
     ['Absences', 'event_busy'],
   ]),
   hub('Reports', 'bar_chart', [
@@ -162,19 +169,19 @@ const appModule = (appId: string) => APP_MODULES.find((m) => m.id === appId) ?? 
 
 /**
  * Section headers for an app's sidebar, grouping its pages by lifecycle stage.
- * Each group is [title, page labels]; '' title renders as a header-less block.
- * Apps absent here keep a single flat, header-less section. The page labels must
- * match the hub's pages — the leaf ids stay flat on the hub, so route lookups
+ * Each group is [title, page ids under the app]; '' title renders as a header-less block.
+ * Apps absent here keep a single flat, header-less section. Every hub page should be in a
+ * group, or it doesn't show — the leaf ids stay flat on the hub, so route lookups
  * (`moduleOf`, `leafForPath`, …) are unaffected; this only reshapes rendering.
  */
 const APP_SECTIONS: Record<string, [string, string[]][]> = {
   purchasing: [
-    ['', ['Dashboard', 'Vendors', 'Agreements']],
-    ['Procurement', ['Purchase Requests', 'Purchase Quotations', 'Purchase Orders']],
-    ['Receiving', ['Goods Receipts', 'Goods Returns', 'Landed Costs']],
-    ['Invoicing', ['Vendor Invoices', 'Reserve Invoices', 'Down Payment Requests', 'Debit Memos']],
-    ['Payments', ['Outgoing Payments']],
-    ['', ['Insights']],
+    ['', ['dashboard', 'vendors', 'agreements']],
+    ['Procurement', ['purchase-requests', 'purchase-quotations', 'purchase-orders']],
+    ['Receiving', ['goods-receipts', 'goods-return-requests', 'goods-returns', 'landed-costs']],
+    ['Invoicing', ['vendor-invoices', 'reserve-invoices', 'down-payment-requests', 'down-payment-invoices', 'debit-memos']],
+    ['Payments', ['outgoing-payments']],
+    ['', ['insights']],
   ],
 };
 
@@ -185,10 +192,10 @@ export function appNav(appId: string): SideNavSection[] {
   const groups = APP_SECTIONS[appId];
   if (!groups) return [{ id: app.id, items }];
   const byId = new Map(items.map((i) => [i.id, i]));
-  return groups.map(([title, labels], n) => ({
+  return groups.map(([title, ids], n) => ({
     id: `${app.id}-${n}`,
     ...(title ? { title } : {}),
-    items: labels.map((label) => byId.get(`${app.id}/${slug(label)}`)).filter(Boolean) as SideNavItem[],
+    items: ids.map((id) => byId.get(`${app.id}/${id}`)).filter(Boolean) as SideNavItem[],
   }));
 }
 

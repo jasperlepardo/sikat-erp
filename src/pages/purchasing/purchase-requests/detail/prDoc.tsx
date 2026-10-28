@@ -75,6 +75,7 @@ export function prDoc({ draft, update, errors, m, ctx }: PrTabProps): DocLinesPr
     // Quantity drives the open qty (what's left to convert to a PO/quotation).
     onQty: (l, q) => { const open = Math.max(0, q - (l.quantity - l.openQty)); patch(l.id, { quantity: q, openQty: open }); },
     copiedQty,
+    orderedQtyOf: copiedQty,
     invalid: (l, f) => Boolean(err(l, f)),
     lineKind,
     stockAt,
@@ -84,8 +85,8 @@ export function prDoc({ draft, update, errors, m, ctx }: PrTabProps): DocLinesPr
   });
 
   const columns = pick(cols, [
-    // Shown by default: the SAP B1 v10 Contents fields, in its order.
-    ['type', 'opt'], ['vendor', 'opt'], ['requiredDate', 'opt'], ['qty', 'always'], ['unitPrice', 'always'],
+    // Shown by default: the SAP B1 v10 Contents fields, in its order, and how much is on purchase orders.
+    ['type', 'opt'], ['vendor', 'opt'], ['requiredDate', 'opt'], ['qty', 'always'], ['orderedQty', 'opt'], ['unitPrice', 'always'],
     ['discount', 'opt'], ['tax', 'opt'], ['total', 'always'], ['glAccount', 'opt'], ['countryOfOrigin', 'opt'],
     ['warranty', 'opt'], ['unitCost', 'opt'],
     // Everything else, in the column chooser.

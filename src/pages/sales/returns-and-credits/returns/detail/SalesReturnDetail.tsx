@@ -1,10 +1,13 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import { createPortal } from 'react-dom';
-import { Alert, Badge, Button, Form, Panel, PanelHeader, Select, Tabs, Text } from '@jasperlepardo/sikat-design-system';
+import { Alert, Badge, Button, Form, Panel, Select, Tabs, Text } from '@jasperlepardo/sikat-design-system';
 import { AttachmentsCard } from '../../../../../components/form/AttachmentsCard';
 import { type Errors } from '../../../../../components/form/fields';
-import { MoreMenu, type MoreMenuItem } from '../../../../../components/form/MoreMenu';
+import { type MoreMenuItem } from '../../../../../components/form/MoreMenu';
+import { DetailActions, docMode } from '../../../../../components/form/DetailActions';
+import { PageHeader } from '../../../../../components/form/PageHeader';
+import { isApprover, needsApproval } from '../../../../../services/approval';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../../components/form/ProblemsAlert';
 import { formatAddress } from '../../../../../mocks/address';
 import { CURRENT_USER_ID } from '../../../../../mocks/common';
@@ -24,7 +27,6 @@ import { postDocumentEntry, reverseDocumentEntry } from '../../../../../services
 import { companyTax, currencies, exchangeRates, taxCodes, taxGroups, withholdingGroups, withholdingTaxes, rateOn } from '../../../../../services/masterData';
 import { listPartnersByRole } from '../../../../../services/partners';
 import { logRejection } from '../../../../../services/approvalRules';
-import { getSalesSettings } from '../../../../../services/salesOrders';
 import { dueDateFor } from '../../../../../services/purchaseOrders';
 import {
   SrPostError,
@@ -53,8 +55,8 @@ import { ReturnShipmentCard } from '../../ReturnShipmentCard';
 import { ReturnAssignmentCard } from '../../ReturnAssignmentCard';
 import { SrCustomerDetailsPanel } from './SrCustomerDetailsPanel';
 import { ActivityTab } from '../../../../../components/activity/ActivityTab';
-import { neighbours, NotFound, PrevNext, siblingKeys, useDocTab, useReject } from '../../../../../components/form/DetailNav';
-import { AR_CM_LIST_PATH, SR_LIST_PATH, SR_STATUS_INTENT } from '../../../paths';
+import { neighbours, NotFound, siblingKeys, useDocTab, useReject } from '../../../../../components/form/DetailNav';
+import { AR_CM_LIST_PATH, SR_LIST_PATH, SR_NOUN, SR_STATUS_INTENT } from '../../../paths';
 
 type Draft = SrDraft;
 type TabId = 'contents' | 'accounting';
@@ -146,7 +148,7 @@ function SalesReturnForm() {
   const location = useLocation();
   const state = location.state as { fromDelivery?: string } | null;
 
-  const srApproved = !getSalesSettings().requireSalesReturnApproval;
+  const srApproved = !needsApproval('SR');
   const [draft, setDraft] = useState<Draft | null | undefined>(isNew ? { ...blankSalesReturn(todayISO(), CURRENT_USER_ID), approved: srApproved } : undefined);
   const [m, setM] = useState<SrMasters>();
   const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
@@ -207,7 +209,7 @@ function SalesReturnForm() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, isNew]);
 
-  useDocTitle(draft?.docNum ? (isNew ? 'New sales return' : srNumber(draft)) : undefined);
+  useDocTitle(draft?.docNum ? (isNew ? `New ${SR_NOUN.one}` : draft.status === 'Draft' ? `Draft ${SR_NOUN.one}` : srNumber(draft)) : undefined);
   if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading sales return…</Text>;
   if (draft === null) return <NotFound icon="assignment_return" title="Sales return not found" backTo={SR_LIST_PATH} backLabel="Back to sales returns" />;
 
@@ -301,7 +303,6 @@ function SalesReturnForm() {
   };
 
   const saved = draft as SalesReturn;
-  const bases = [...new Map(draft.lines.filter((l) => l.baseType).map((l) => [l.baseId, l])).values()];
   const creditable = draft.status === 'Open' && draft.lines.some((l) => srOpenQty(l, draft) > 0);
   const replacementDeliveries = draft.customerId
     ? m.deliveries.filter((dn) => dn.customerId === draft.customerId && (dn.status === 'Open' || dn.status === 'Closed'))
@@ -327,24 +328,17 @@ function SalesReturnForm() {
   const rejectIt = async (rejectionReason: string) => { await logRejection('SRT', saved.id, saved.customerId, rejectionReason); await recallSalesReturn(saved); navigate(SR_LIST_PATH, { state: { notice: `Sales return ${srNumber(saved)} rejected and returned to draft.` } }); };
 
   const menu: MoreMenuItem[] = [
-    ...(!added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
-    ...(draft.status === 'Draft' && !draft.approved ? [{ label: 'Submit for approval', icon: 'upload', onSelect: () => submit(null, false) }] : []),
-    ...(draft.status === 'Not Confirmed' ? [{ label: 'Approve', icon: 'verified', onSelect: () => submit(null, false, { approved: true }) }, { label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => reject.start() }] : []),
-    ...(creditable ? [{ label: 'Copy to A/R credit memo', icon: 'undo', onSelect: () => navigate(`${AR_CM_LIST_PATH}/new`, { state: { fromReturn: saved.id } }) }] : []),
+    ...(creditable ? [{ label: 'Create A/R credit memo', icon: 'undo', onSelect: () => navigate(`${AR_CM_LIST_PATH}/new`, { state: { fromReturn: saved.id } }) }] : []),
     ...(draft.status === 'Open' && replacementDeliveries.length
       ? [{ label: 'Close with replacement delivery', icon: 'local_shipping', onSelect: () => { setReplacementDnId(''); setLinkingReplacement(true); } }]
       : []),
+    ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }] : []),
     ...(draft.status === 'Open' && !draft.lines.some((l) => l.creditedQty > 0)
-      ? [{ label: 'Cancel sales return', icon: 'cancel', onSelect: cancelIt }]
+      ? [{ label: `Cancel ${SR_NOUN.one}`, icon: 'cancel', onSelect: cancelIt }]
       : []),
-    ...bases.map((l) => ({
-      label: `Open delivery ${l.baseDocNo}`,
-      icon: 'local_shipping',
-      onSelect: () => navigate(`/sales/deliveries/${l.baseId}`),
-    })),
   ];
 
-  const title = isNew ? 'New sales return' : added ? srNumber(draft) : 'Draft sales return';
+  const title = isNew ? `New ${SR_NOUN.one}` : added ? srNumber(draft) : `Draft ${SR_NOUN.one}`;
   const sectionProps = { draft, update, errors, m, ctx };
 
   const copyFromDelivery = (dn: Delivery, picks: { lineId: string; qty: number }[]) => {
@@ -385,27 +379,28 @@ function SalesReturnForm() {
     <>
       <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
         <Panel className="flex-1">
-          <PanelHeader
-            type="details"
+          <PageHeader
+            variant="plain"
             icon="assignment_return"
-            iconIntent="default"
-            iconShape="rounded"
-            iconSize={32}
-            iconVariant="outline"
-            breadcrumbs={[{ label: 'Sales Returns', href: SR_LIST_PATH }, { label: title }]}
-            onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
-            onBack={() => navigate(SR_LIST_PATH)}
-            trailing={isNew ? undefined : <PrevNext path={SR_LIST_PATH} prevId={prevId} nextId={nextId} />}
+            parent={{ noun: SR_NOUN, to: SR_LIST_PATH }}
+            title={title}
             tabs={isNew ? undefined : <Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={[...PAGES]} />}
             status={isNew ? undefined : <Badge size="small" intent={SR_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
             actions={
-              <>
-                {added ? null : <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(SR_LIST_PATH)}>Cancel</Button>}
-                {menu.length ? <MoreMenu items={menu} /> : null}
-                <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
-                  {saving ? 'Saving…' : added ? 'Save' : 'Add'}
-                </Button>
-              </>
+              <DetailActions
+                noun={SR_NOUN}
+                listPath={SR_LIST_PATH}
+                mode={docMode(draft.status, { canApprove: isApprover('SR') })}
+                needsApproval={!draft.approved}
+                remarksOnly={added}
+                busy={saving}
+                onDraft={() => submit(null, true)}
+                onSubmit={() => submit(null, false)}
+                onApprove={() => submit(null, false, { approved: true })}
+                onReject={reject.start}
+                menu={menu}
+                prevNext={isNew ? undefined : { path: SR_LIST_PATH, prevId, nextId }}
+              />
             }
           />
           {page === 'transactions' && (draft as SalesReturn).id ? (

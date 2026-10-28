@@ -8,19 +8,23 @@ import type { DocType } from '../../../mocks/approvalRules';
 import { approvalRules } from '../../../services/approvalRules';
 import { salesEmployees } from '../../../services/partnerMasters';
 import type { NamedEntry } from '../../../mocks/partnerMasters';
+import { cap } from '../../../components/form/noun';
+import { AP_NOUN, APRI_NOUN, DPI_NOUN, DPR_NOUN, GR_NOUN, MEMO_NOUN, PAYMENT_NOUN, PO_NOUN, RETURN_NOUN, RFQ_NOUN } from '../../purchasing/paths';
 
 const ROUNDING_METHODS = ['By Currency', 'No rounding'] as const;
 const DUP_VENDOR_REF = ['Allow', 'Warn', 'Block'] as const;
 
 const PURCHASING_APPROVAL_ROWS: { docType: DocType; label: string; field: keyof PurchasingSettings }[] = [
-  { docType: 'RFQ', label: 'Purchase Quotation', field: 'requireRfqApproval' },
-  { docType: 'PO', label: 'Purchase Order', field: 'requirePoApproval' },
-  { docType: 'GRPO', label: 'Goods Receipt', field: 'requireGrpoApproval' },
-  { docType: 'APINV', label: 'A/P Invoice', field: 'requireApInvoiceApproval' },
-  { docType: 'GRET', label: 'Goods Return', field: 'requireGoodsReturnApproval' },
-  { docType: 'CM', label: 'A/P Credit Memo', field: 'requireApCreditMemoApproval' },
-  { docType: 'DPR', label: 'Down Payment Request', field: 'requireDprApproval' },
-  { docType: 'PMT', label: 'Outgoing Payment', field: 'requireOutgoingPaymentApproval' },
+  { docType: 'RFQ', label: cap(RFQ_NOUN.one), field: 'requireRfqApproval' },
+  { docType: 'PO', label: cap(PO_NOUN.one), field: 'requirePoApproval' },
+  { docType: 'GRPO', label: cap(GR_NOUN.one), field: 'requireGrpoApproval' },
+  { docType: 'APINV', label: cap(AP_NOUN.one), field: 'requireApInvoiceApproval' },
+  { docType: 'GRET', label: cap(RETURN_NOUN.one), field: 'requireGoodsReturnApproval' },
+  { docType: 'CM', label: cap(MEMO_NOUN.one), field: 'requireApCreditMemoApproval' },
+  { docType: 'DPR', label: cap(DPR_NOUN.one), field: 'requireDprApproval' },
+  { docType: 'PMT', label: cap(PAYMENT_NOUN.one), field: 'requireOutgoingPaymentApproval' },
+  { docType: 'APRI', label: cap(APRI_NOUN.one), field: 'requireApReserveInvoiceApproval' },
+  { docType: 'DPI', label: cap(DPI_NOUN.one), field: 'requireDpiApproval' },
 ];
 
 export function PurchasingSettingsTab() {
@@ -121,7 +125,7 @@ export function PurchasingSettingsTab() {
             </table>
           </div>
           <Text variant="small" tone="muted" className="mt-1">
-            When approval is required, clicking Add saves a draft. Use the status field to submit for approval; the configured approver then approves or rejects.
+            When approval is required, new documents show Submit for approval and go to the approver. The approver creates them directly.
           </Text>
           <div className="flex justify-end mt-2">
             <Button type="button" size="small" intent="primary" variant="solid" disabled={!dirty}

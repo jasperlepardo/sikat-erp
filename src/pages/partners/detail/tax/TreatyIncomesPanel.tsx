@@ -46,6 +46,8 @@ function EntryForm({
     <EditPanel
       icon={INCOME_ICONS[local.incomeType] ?? 'receipt_long'}
       title={isNew ? 'New treaty income' : (local.incomeType || 'Treaty income')}
+      noun="treaty income"
+      isNew={isNew}
       onCancel={onCancel}
       onDone={() => onDone(local)}
     >

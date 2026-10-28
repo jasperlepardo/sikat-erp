@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router';
-import { FormField, Icon, IconButton, Panel, PanelHeader, Select, SidePanel } from '@jasperlepardo/sikat-design-system';
+import { FormField, Icon, IconButton, Panel, Select, SidePanel } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../../../components/form/PageHeader';
 import { Fields, ReadOnly, Section, bind } from '../../../../components/form/fields';
 import { formatAddress } from '../../../../mocks/address';
 import { ALL_CURRENCIES } from '../../purchase-orders/detail/types';
@@ -29,13 +30,9 @@ export function PayPayeeDetailsPanel({ draft, update, vendor, m, readOnly, open,
 
   return (
     <SidePanel overlay onOverlayClick={onClose}>
-      <PanelHeader
-        type="details"
+      <PageHeader
+        variant="plain"
         icon="storefront"
-        iconIntent="default"
-        iconShape="rounded"
-        iconSize={32}
-        iconVariant="outline"
         title={vendor.name}
         actions={
           <>

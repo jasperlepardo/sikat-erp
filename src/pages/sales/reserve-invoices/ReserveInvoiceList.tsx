@@ -1,11 +1,8 @@
 import { useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router';
+import { useLocation } from 'react-router';
 import {
   Alert,
-  Button,
-  Icon,
   Panel,
-  PanelHeader,
   Table,
   TableContent,
   TableStatus,
@@ -16,6 +13,8 @@ import { dateField, linesField, masterField, numberField, statusField, textField
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { currencyDef, salesEmployeeDef } from '../../settings/masterDefs';
 import { useListPage } from '../../../components/form/DataTable';
+import { PageHeader } from '../../../components/form/PageHeader';
+import { cap } from '../../../components/form/noun';
 import { RI_STATUSES, type ReserveInvoice } from '../../../mocks/reserveInvoices';
 import { rateAt, type TaxCode } from '../../../mocks/taxes';
 import { formatDate } from '../../../services/dates';
@@ -23,7 +22,7 @@ import { formatAmount } from '../../../services/format';
 import { taxCodes } from '../../../services/masterData';
 import { riNumber, riTotals, listReserveInvoices } from '../../../services/reserveInvoices';
 import { useAsync } from '../../../services/useAsync';
-import { RI_LIST_PATH, RI_STATUS_INTENT } from '../paths';
+import { RI_LIST_PATH, RI_NOUN, RI_STATUS_INTENT } from '../paths';
 
 const rateOfOn = (codes: readonly TaxCode[], date: string) => (code: string) => {
   const c = codes.find((x) => x.code === code);
@@ -31,7 +30,6 @@ const rateOfOn = (codes: readonly TaxCode[], date: string) => (code: string) => 
 };
 
 export function ReserveInvoiceList() {
-  const navigate = useNavigate();
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const data = useAsync(() => Promise.all([listReserveInvoices(), taxCodes.list()]), []);
   const [query, setQuery] = useState('');
@@ -57,7 +55,7 @@ export function ReserveInvoiceList() {
   const presets = useListPresets({
     list: 'reserve-invoices',
     fields,
-    builtIns: statusViews('Reserve invoices', RI_STATUSES),
+    builtIns: statusViews(RI_NOUN.many, RI_STATUSES),
     defaultSort: { key: 'postingDate', direction: 'desc' },
     rows: rows_,
     onChange: resetPage,
@@ -106,9 +104,9 @@ export function ReserveInvoiceList() {
 
   return (
     <Panel className="flex-1">
-      <PanelHeader
+      <PageHeader
         showSearch
-        searchLabel="Search reserve invoices"
+        searchLabel={`Search ${RI_NOUN.many}`}
         searchPlaceholder="Search by invoice no., customer, order or item"
         searchValue={query}
         onSearchChange={(value) => {
@@ -116,16 +114,8 @@ export function ReserveInvoiceList() {
           resetPage();
         }}
         icon="receipt_long"
-        iconIntent="default"
-        iconShape="rounded"
-        iconSize={32}
-        iconVariant="outline"
         title={presets.menu}
-        actions={
-          <Button intent="primary" variant="solid" size="medium" shape="pill" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${RI_LIST_PATH}/new`)}>
-            New reserve invoice
-          </Button>
-        }
+        create={{ noun: RI_NOUN, to: RI_LIST_PATH }}
       />
       <Panel.Body className="flex flex-col gap-2">
         {notice ? (
@@ -136,7 +126,7 @@ export function ReserveInvoiceList() {
         {presets.bar(null)}
         {rows_ ? (
           <Table
-            caption="Reserve invoices"
+            caption={cap(RI_NOUN.many)}
             columns={columns}
             rows={onPage}
             getRowId={(r) => r.id}
@@ -146,7 +136,7 @@ export function ReserveInvoiceList() {
             pagination={pagination}
           />
         ) : (
-          <Text tone="muted" className="p-4">Loading reserve invoices…</Text>
+          <Text tone="muted" className="p-4">Loading {RI_NOUN.many}…</Text>
         )}
       </Panel.Body>
       {presets.panel}

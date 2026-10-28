@@ -1,7 +1,8 @@
 import { useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router';
-import { Button, CardField, FormField, Icon, IconButton, Panel, PanelHeader, Select, SidePanel, Text, type CardFieldOption } from '@jasperlepardo/sikat-design-system';
+import { Button, CardField, FormField, Icon, IconButton, Panel, Select, SidePanel, Text, type CardFieldOption } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../../components/form/PageHeader';
 import { Fields, Section, bind } from '../../../components/form/fields';
 import { blankPostalAddress, formatAddress, type PostalAddress } from '../../../mocks/address';
 import { contactName, newAddress, type Partner, type PartnerAddress } from '../../../mocks/partners';
@@ -81,13 +82,9 @@ export function VendorDetailsPanel<D extends VendorDraftBase>({
   return (
     <>
       <SidePanel overlay onOverlayClick={onClose}>
-        <PanelHeader
-          type="details"
+        <PageHeader
+          variant="plain"
           icon="storefront"
-          iconIntent="default"
-          iconShape="rounded"
-          iconSize={32}
-          iconVariant="outline"
           title={vendor.name}
           actions={
             <>

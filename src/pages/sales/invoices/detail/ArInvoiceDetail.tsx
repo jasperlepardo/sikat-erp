@@ -1,10 +1,13 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import { createPortal } from 'react-dom';
-import { Alert, Badge, Button, Form, Panel, PanelHeader, Tabs, Text } from '@jasperlepardo/sikat-design-system';
+import { Alert, Badge, Form, Panel, Tabs, Text } from '@jasperlepardo/sikat-design-system';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { type Errors } from '../../../../components/form/fields';
-import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
+import { type MoreMenuItem } from '../../../../components/form/MoreMenu';
+import { DetailActions, docMode } from '../../../../components/form/DetailActions';
+import { PageHeader } from '../../../../components/form/PageHeader';
+import { isApprover, needsApproval } from '../../../../services/approval';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { formatAddress } from '../../../../mocks/address';
 import { OR_SERIES_ID, blankArInvoice, type ArInvoice } from '../../../../mocks/arInvoices';
@@ -39,7 +42,7 @@ import { accounts, companyTax, currencies, exchangeRates, taxCodes, taxGroups, w
 import { listPartnersByRole } from '../../../../services/partners';
 import { termDays } from '../../../../services/purchaseOrders';
 import { logRejection } from '../../../../services/approvalRules';
-import { getSalesSettings, listSalesOrders, openQty, soDueDate, soNumber } from '../../../../services/salesOrders';
+import { listSalesOrders, openQty, soDueDate, soNumber } from '../../../../services/salesOrders';
 import { soSeries } from '../../../../services/allSeries';
 import { ALL_CURRENCIES, proposedTaxCode } from '../../sales-orders/detail/types';
 import { DocLines } from '../../../../components/form/docLines/DocLines';
@@ -59,8 +62,8 @@ import { arLineFromDelivery, arLineFromOrder, buildArContext, type ArContext, ty
 import { SalesDocumentFlow } from '../../shared/SalesDocumentFlow';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
-import { neighbours, NotFound, PrevNext, siblingKeys, useDocTab, useReject } from '../../../../components/form/DetailNav';
-import { AR_CM_LIST_PATH, AR_LIST_PATH, AR_STATUS_INTENT, DN_LIST_PATH, SO_LIST_PATH } from '../../paths';
+import { neighbours, NotFound, siblingKeys, useDocTab, useReject } from '../../../../components/form/DetailNav';
+import { AR_CM_LIST_PATH, AR_LIST_PATH, AR_NOUN, AR_STATUS_INTENT } from '../../paths';
 
 /** Where a problem's field is: the lines, or the customer details panel (payment and accounting). */
 type TabId = 'contents' | 'accounting';
@@ -118,7 +121,7 @@ function ArInvoiceForm() {
   const location = useLocation();
   const from = location.state as { fromDelivery?: string; fromOrder?: string; lineFilter?: 'goods' | 'services' } | null;
 
-  const arApproved = !getSalesSettings().requireArInvoiceApproval;
+  const arApproved = !needsApproval('ARINV');
   const [draft, setDraft] = useState<ArDraft | null | undefined>(isNew ? { ...blankArInvoice(todayISO(), CURRENT_USER_ID), approved: arApproved } : undefined);
   const [m, setM] = useState<ArMasters>();
   const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
@@ -172,9 +175,9 @@ function ArInvoiceForm() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, isNew]);
 
-  useDocTitle(draft?.docNum ? (isNew ? 'New A/R invoice' : draft.status === 'Draft' ? 'Draft A/R invoice' : arNumber(draft)) : undefined);
-  if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading invoice…</Text>;
-  if (draft === null) return <NotFound icon="receipt" title="A/R invoice not found" backTo={AR_LIST_PATH} backLabel="Back to invoices" />;
+  useDocTitle(draft?.docNum ? (isNew ? `New ${AR_NOUN.one}` : draft.status === 'Draft' ? `Draft ${AR_NOUN.one}` : arNumber(draft)) : undefined);
+  if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading {AR_NOUN.one}…</Text>;
+  if (draft === null) return <NotFound icon="receipt" title="A/R invoice not found" backTo={AR_LIST_PATH} backLabel={`Back to ${AR_NOUN.many}`} />;
 
   const ctx = buildArContext(draft, m);
   const { customer } = ctx;
@@ -316,23 +319,19 @@ function ArInvoiceForm() {
   };
 
   const saved = draft as ArInvoice;
-  const bases = [...new Map(draft.lines.filter((l) => l.baseId).map((l) => [l.baseId, l])).values()];
   const closeIt = () => act(() => closeArInvoice(saved), 'closed');
   const cancelIt = () => act(() => cancelArInvoice(saved), 'cancelled — the entry is reversed and its deliveries and orders are open again');
   const recallIt = () => act(() => recallArInvoice(saved), 'recalled to draft');
   const rejectIt = async (rejectionReason: string) => { await logRejection('ARINV', saved.id, saved.customerId, rejectionReason); await recallArInvoice(saved); navigate(AR_LIST_PATH, { state: { notice: `A/R invoice ${arNumber(saved)} rejected and returned to draft.` } }); };
 
   const menu: MoreMenuItem[] = [
-    ...(!ctx.added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
-    ...(draft.status === 'Draft' && !draft.approved ? [{ label: 'Submit for approval', icon: 'upload', onSelect: () => submit(null, false) }] : []),
-    ...(draft.status === 'Not Confirmed' ? [{ label: 'Approve', icon: 'verified', onSelect: () => submit(null, false, { approved: true }) }, { label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => reject.start() }] : []),
+    ...(draft.status === 'Open' ? [{ label: 'Create A/R credit memo', icon: 'undo', onSelect: () => navigate(`${AR_CM_LIST_PATH}/new`, { state: { fromInvoice: draft.id } }) }] : []),
     ...(draft.status === 'Open' && balance > 0 && !draft.paymentBlock
       ? [{ label: 'Receive payment', icon: 'savings', onSelect: () => navigate('/sales/incoming-payments/new', { state: { fromInvoice: draft.id } }) }]
       : []),
+    ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }] : []),
     ...(draft.status === 'Open' ? [{ label: 'Close', icon: 'task_alt', onSelect: closeIt }] : []),
-    ...(draft.status === 'Open' && !draft.appliedAmount ? [{ label: 'Cancel A/R invoice', icon: 'cancel', onSelect: cancelIt }] : []),
-    ...(draft.status === 'Open' ? [{ label: 'Copy to A/R credit memo', icon: 'undo', onSelect: () => navigate(`${AR_CM_LIST_PATH}/new`, { state: { fromInvoice: draft.id } }) }] : []),
-    ...bases.map((l) => ({ label: `Open ${l.baseType === 'DN' ? 'delivery' : 'sales order'} ${l.baseDocNo}`, icon: l.baseType === 'DN' ? 'local_shipping' : 'shopping_bag', onSelect: () => navigate(`${l.baseType === 'DN' ? DN_LIST_PATH : SO_LIST_PATH}/${l.baseId}`) })),
+    ...(draft.status === 'Open' && !draft.appliedAmount ? [{ label: `Cancel ${AR_NOUN.one}`, icon: 'cancel', onSelect: cancelIt }] : []),
   ];
 
   const tabProps = { draft, update, errors, m, ctx };
@@ -340,34 +339,34 @@ function ArInvoiceForm() {
   const mineCopy = (c: { customerId: string; currency: string }) => (!draft.customerId || c.customerId === draft.customerId) && (!ctx.based || c.currency === draft.currency);
   const copyDns = m.deliveries.filter((d) => d.status === 'Open' && mineCopy(d) && d.lines.some((l) => l.quantity > l.invoicedQty));
   const copySos = m.orders.filter((o) => o.status === 'Open' && o.docType === draft.docType && mineCopy(o) && o.lines.some((l) => openQty(l) > 0));
-  const title = isNew ? 'New A/R invoice' : draft.status === 'Draft' ? 'Draft A/R invoice' : arNumber(draft);
+  const title = isNew ? `New ${AR_NOUN.one}` : draft.status === 'Draft' ? `Draft ${AR_NOUN.one}` : arNumber(draft);
 
   return (
     <>
     <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
       <Panel className="flex-1">
-        <PanelHeader
-          type="details"
+        <PageHeader
+          variant="plain"
           icon="receipt"
-          iconIntent="default"
-          iconShape="rounded"
-          iconSize={32} iconVariant="outline"
-          breadcrumbs={[{ label: 'Invoices', href: AR_LIST_PATH }, { label: title }]}
-          onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
-          onBack={() => navigate(AR_LIST_PATH)}
-          trailing={
-            isNew ? undefined : <PrevNext path={AR_LIST_PATH} prevId={prevId} nextId={nextId} />
-          }
+          parent={{ noun: AR_NOUN, to: AR_LIST_PATH }}
+          title={title}
           tabs={isNew ? undefined : <Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={[...PAGES]} />}
           status={isNew ? undefined : <Badge size="small" intent={AR_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
           actions={
-            <>
-              {ro ? null : <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(AR_LIST_PATH)}>Cancel</Button>}
-              {menu.length ? <MoreMenu items={menu} /> : null}
-              <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
-                {saving ? 'Saving…' : ro ? 'Save' : 'Add'}
-              </Button>
-            </>
+            <DetailActions
+              noun={AR_NOUN}
+              listPath={AR_LIST_PATH}
+              mode={docMode(draft.status, { canApprove: isApprover('ARINV') })}
+              needsApproval={!draft.approved}
+              remarksOnly={ro}
+              busy={saving}
+              onDraft={() => submit(null, true)}
+              onSubmit={() => submit(null, false)}
+              onApprove={() => submit(null, false, { approved: true })}
+              onReject={reject.start}
+              menu={menu}
+              prevNext={isNew ? undefined : { path: AR_LIST_PATH, prevId, nextId }}
+            />
           }
         />
         {page === 'activity' ? (

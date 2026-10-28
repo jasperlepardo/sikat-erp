@@ -1,4 +1,4 @@
-import { FieldStack, Flags, Section, bind } from '../../../../components/form/fields';
+import { FieldStack, Flags, Section, SideFields, bind } from '../../../../components/form/fields';
 import { salesEmployeeDef } from '../../../settings/masterDefs';
 import type { CmSectionProps } from './types';
 
@@ -8,10 +8,10 @@ export function CmTotalsCard({ draft, update, locked }: CmSectionProps & { locke
   return (
     <Section icon="assignment_ind" title="Assignment">
       <fieldset disabled={locked} className="contents">
-        <FieldStack>
+        <SideFields>
           {h.master('buyerId', 'Buyer', salesEmployeeDef)}
           {h.master('ownerId', 'Owner', salesEmployeeDef)}
-        </FieldStack>
+        </SideFields>
       </fieldset>
       <Flags>
         {h.check('paymentBlock', 'Payment block')}

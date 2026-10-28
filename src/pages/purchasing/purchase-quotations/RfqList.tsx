@@ -1,12 +1,9 @@
 import { useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router';
+import { useLocation } from 'react-router';
 import { todayISO, formatDate } from '../../../services/dates';
 import {
   Alert,
-  Button,
-  Icon,
   Panel,
-  PanelHeader,
   Table,
   TableAmount,
   TableContent,
@@ -14,6 +11,7 @@ import {
   type TableColumn,
   Text,
 } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../../components/form/PageHeader';
 import { RFQ_STATUSES, type Rfq } from '../../../mocks/rfqs';
 import { formatAmount } from '../../../services/format';
 import { taxCodes } from '../../../services/masterData';
@@ -23,10 +21,10 @@ import { dateField, linesField, masterField, numberField, statusField, textField
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { currencyDef, salesEmployeeDef } from '../../settings/masterDefs';
 import { useListPage } from '../../../components/form/DataTable';
-import { RFQ_LIST_PATH, RFQ_STATUS_INTENT } from '../paths';
+import { cap } from '../../../components/form/noun';
+import { RFQ_LIST_PATH, RFQ_NOUN, RFQ_STATUS_INTENT } from '../paths';
 
 export function RfqList() {
-  const navigate = useNavigate();
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const data = useAsync(() => Promise.all([listRfqs(), taxCodes.list()]), []);
   const [query, setQuery] = useState('');
@@ -52,7 +50,7 @@ export function RfqList() {
   const presets = useListPresets({
     list: 'purchase-quotations',
     fields,
-    builtIns: statusViews('purchase quotations', RFQ_STATUSES),
+    builtIns: statusViews(RFQ_NOUN.many, RFQ_STATUSES),
     defaultSort: { key: 'postingDate', direction: 'desc' },
     rows: rfqs,
     onChange: resetPage,
@@ -146,7 +144,7 @@ export function RfqList() {
 
   return (
     <Panel className="flex-1">
-      <PanelHeader
+      <PageHeader
         showSearch
         searchLabel="Search purchase quotations"
         searchPlaceholder="Search by RFQ no., vendor, ref. or item"
@@ -156,23 +154,8 @@ export function RfqList() {
           resetPage();
         }}
         icon="description"
-        iconIntent="default"
-        iconShape="rounded"
-        iconSize={32}
-        iconVariant="outline"
         title={presets.menu}
-        actions={
-          <Button
-            intent="primary"
-            variant="solid"
-            size="medium"
-            shape="pill"
-            leadingIcon={<Icon size={20}>add</Icon>}
-            onClick={() => navigate(`${RFQ_LIST_PATH}/new`)}
-          >
-            New RFQ
-          </Button>
-        }
+        create={{ noun: RFQ_NOUN, to: RFQ_LIST_PATH }}
       />
       <Panel.Body className="flex flex-col gap-2">
         {notice ? (
@@ -183,7 +166,7 @@ export function RfqList() {
         {presets.bar(null)}
         {rfqs ? (
           <Table
-            caption="Purchase quotations"
+            caption={cap(RFQ_NOUN.many)}
             columns={columns}
             rows={visible}
             getRowId={(q) => q.id}

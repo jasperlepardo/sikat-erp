@@ -1,18 +1,16 @@
 import { useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router';
+import { useLocation } from 'react-router';
 import { formatDate } from '../../../services/dates';
 import {
   Alert,
-  Button,
-  Icon,
   Panel,
-  PanelHeader,
   Table,
   TableContent,
   TableStatus,
   Text,
   type TableColumn,
 } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../../components/form/PageHeader';
 import { PR_STATUSES, type PurchaseRequest } from '../../../mocks/purchaseRequests';
 import { formatAmount } from '../../../services/format';
 import { taxCodes } from '../../../services/masterData';
@@ -23,10 +21,10 @@ import { branches, departments } from '../../../services/peopleMasters';
 import { dateField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { useListPage } from '../../../components/form/DataTable';
-import { PR_LIST_PATH, PR_STATUS_INTENT } from '../paths';
+import { cap } from '../../../components/form/noun';
+import { PR_LIST_PATH, PR_NOUN, PR_STATUS_INTENT } from '../paths';
 
 export function PurchaseRequestList() {
-  const navigate = useNavigate();
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const data = useAsync(() => Promise.all([listPurchaseRequests(), taxCodes.list(), branches.list(), departments.list()]), []);
   const [query, setQuery] = useState('');
@@ -54,7 +52,7 @@ export function PurchaseRequestList() {
   const presets = useListPresets({
     list: 'purchase-requests',
     fields,
-    builtIns: statusViews('purchase requests', PR_STATUSES),
+    builtIns: statusViews(PR_NOUN.many, PR_STATUSES),
     defaultSort: { key: 'postingDate', direction: 'desc' },
     rows: requests,
     onChange: resetPage,
@@ -141,7 +139,7 @@ export function PurchaseRequestList() {
 
   return (
     <Panel className="flex-1">
-      <PanelHeader
+      <PageHeader
         showSearch
         searchLabel="Search purchase requests"
         searchPlaceholder="Search by request no., requester, branch or item"
@@ -151,23 +149,8 @@ export function PurchaseRequestList() {
           resetPage();
         }}
         icon="inbox"
-        iconIntent="default"
-        iconShape="rounded"
-        iconSize={32}
-        iconVariant="outline"
         title={presets.menu}
-        actions={
-          <Button
-            intent="primary"
-            variant="solid"
-            size="medium"
-            shape="pill"
-            leadingIcon={<Icon size={20}>add</Icon>}
-            onClick={() => navigate(`${PR_LIST_PATH}/new`)}
-          >
-            New request
-          </Button>
-        }
+        create={{ noun: PR_NOUN, to: PR_LIST_PATH }}
       />
       <Panel.Body className="flex flex-col gap-2">
         {notice ? (
@@ -178,7 +161,7 @@ export function PurchaseRequestList() {
         {presets.bar(null)}
         {requests ? (
           <Table
-            caption="Purchase requests"
+            caption={cap(PR_NOUN.many)}
             columns={columns}
             rows={visible}
             getRowId={(r) => r.id}

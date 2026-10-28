@@ -146,7 +146,7 @@ export function DiscountGroupsTab() {
               Cancel
             </Button>
             <Button type="button" size="small" intent="primary" variant="solid" disabled={!dirty || saving || invalid} onClick={save}>
-              {saving ? 'Saving…' : 'Save'}
+              {saving ? 'Saving…' : 'Save changes'}
             </Button>
           </div>
         }

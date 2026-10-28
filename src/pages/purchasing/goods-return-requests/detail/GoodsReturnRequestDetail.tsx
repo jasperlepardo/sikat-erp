@@ -1,8 +1,10 @@
 import { createPortal } from 'react-dom';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { Alert, Badge, Button, Form, Panel, PanelHeader, Tabs, Text } from '@jasperlepardo/sikat-design-system';
-import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
+import { Alert, Badge, Form, Panel, Tabs, Text } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../../../components/form/PageHeader';
+import { type MoreMenuItem } from '../../../../components/form/MoreMenu';
+import { DetailActions } from '../../../../components/form/DetailActions';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { DocLines } from '../../../../components/form/docLines/DocLines';
@@ -24,12 +26,12 @@ import {
 } from '../../../../services/goodsReturnRequests';
 import { todayISO, formatDate } from '../../../../services/dates';
 import { useDocTitle } from '../../../../services/useDocTitle';
-import { neighbours, NotFound, PrevNext, siblingKeys, useDocTab } from '../../../../components/form/DetailNav';
+import { neighbours, NotFound, siblingKeys, useDocTab } from '../../../../components/form/DetailNav';
 import { DocumentFlow } from '../../shared/DocumentFlow';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
 import { VendorCard } from '../../shared/VendorCard';
 import { CopyPanel } from '../../shared/CopyPanel';
-import { GRR_LIST_PATH, GRR_STATUS_INTENT, RETURN_LIST_PATH } from '../../paths';
+import { GRR_LIST_PATH, GRR_NOUN, GRR_STATUS_INTENT, RETURN_LIST_PATH } from '../../paths';
 import { grrDoc } from './grrDoc';
 import { GrrDocumentCard } from './GrrDocumentCard';
 import { buildGrrContext, type GrrDraft, type GrrMasters } from './types';
@@ -100,7 +102,7 @@ function GrrForm() {
     return () => { cancelled = true; };
   }, [id, isNew]);
 
-  useDocTitle(draft?.docNum ? (isNew ? 'New return request' : grrNumber(draft as GoodsReturnRequest)) : undefined);
+  useDocTitle(draft?.docNum ? (isNew ? `New ${GRR_NOUN.one}` : grrNumber(draft as GoodsReturnRequest)) : undefined);
 
   if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading goods return request…</Text>;
   if (draft === null) return <NotFound icon="assignment_return" title="Goods return request not found" backTo={GRR_LIST_PATH} backLabel="Back to return requests" />;
@@ -167,43 +169,40 @@ function GrrForm() {
     draft.status === 'Open' ? { Closed: closeIt } : {};
 
   const menu: MoreMenuItem[] = [
-    ...(draft.status === 'Open' ? [{ label: 'Close request', icon: 'task_alt', onSelect: closeIt }] : []),
     ...(draft.status === 'Open' && draft.lines.some((l) => l.status === 'Open' && l.itemId)
-      ? [{ label: 'Copy to goods return', icon: 'assignment_return', onSelect: copyToReturn }]
+      ? [{ label: 'Create goods return', icon: 'assignment_return', onSelect: copyToReturn }]
       : []),
+    ...(draft.status === 'Open' ? [{ label: 'Close', icon: 'task_alt', onSelect: closeIt }] : []),
   ];
 
   const vendor = m.vendors.find((v) => v.id === draft.vendorId);
 
-  const title = isNew ? 'New return request' : draft.docNum ? grrNumber(draft as GoodsReturnRequest) : 'Return request';
+  const title = isNew ? `New ${GRR_NOUN.one}` : draft.docNum ? grrNumber(draft as GoodsReturnRequest) : `Draft ${GRR_NOUN.one}`;
 
   return (
     <>
       <Form className="flex-1" onSubmit={submit} noValidate>
         <Panel className="flex-1">
-          <PanelHeader
-            type="details"
+          <PageHeader
+            variant="plain"
             icon="assignment_return"
-            iconIntent="default"
-            iconShape="rounded"
-            iconSize={32}
-            iconVariant="outline"
-            breadcrumbs={[{ label: 'Goods Return Requests', href: GRR_LIST_PATH }, { label: title }]}
-            onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
-            onBack={() => navigate(GRR_LIST_PATH)}
-            trailing={isNew ? undefined : <PrevNext path={GRR_LIST_PATH} prevId={prevId} nextId={nextId} />}
+            parent={{ noun: GRR_NOUN, to: GRR_LIST_PATH }}
+            title={title}
             tabs={!ctx.added ? undefined : (
               <Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={PAGES.map((p) => ({ ...p }))} />
             )}
             status={isNew ? undefined : <Badge size="small" intent={GRR_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
             actions={
-              <>
-                {ctx.readOnly ? null : <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(GRR_LIST_PATH)}>Cancel</Button>}
-                {menu.length ? <MoreMenu items={menu} /> : null}
-                <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
-                  {saving ? 'Saving…' : ctx.added ? 'Save' : 'Add'}
-                </Button>
-              </>
+              <DetailActions
+                noun={GRR_NOUN}
+                listPath={GRR_LIST_PATH}
+                mode={!ctx.added ? 'draft' : ctx.readOnly ? 'readonly' : 'open'}
+                remarksOnly={ctx.readOnly}
+                busy={saving}
+                onSubmit={() => submit(null)}
+                menu={menu}
+                prevNext={isNew ? undefined : { path: GRR_LIST_PATH, prevId, nextId }}
+              />
             }
           />
 

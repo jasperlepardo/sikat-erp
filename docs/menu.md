@@ -14,7 +14,7 @@ The sidebar is defined in [`src/app/nav.tsx`](../src/app/nav.tsx) as `NAV`. It c
 **Shared patterns on built pages**
 
 - **List pages** have a header with filter tabs (with counts), a search box, a sortable table and a **New** button. Clicking a row opens the record.
-- **Document and record pages** have a side column (identity fields and subsidiary cards), tabbed main content, Prev/Next buttons, Cancel/Save, and a **"You can also"** menu (`MoreMenu`) for extra actions. Items, Partners and Purchase Orders also have top-level views: **Details · Transactions · Activity**. Activity is still a placeholder.
+- **Document and record pages** have a side column (identity fields and subsidiary cards), tabbed main content, Prev/Next buttons, Cancel/Save, and a **"More actions"** menu (`MoreMenu`) for extra actions. Items, Partners and Purchase Orders also have top-level views: **Details · Transactions · Activity**. Activity is still a placeholder.
 - **Tabbed settings pages** (`TabbedPage`) keep the active tab and the open record in the URL: `…/:tab?/:recordId?`. Each tab is a master list: a table, then a record form when a row is opened.
 
 ---
@@ -304,7 +304,7 @@ The sidebar is defined in [`src/app/nav.tsx`](../src/app/nav.tsx) as `NAV`. It c
 
 ### Item record
 
-`/inventory/items/:id`. Views: Details · Transactions · Activity. **You can also:** Duplicate.
+`/inventory/items/:id`. Views: Details · Transactions · Activity. **More actions:** Duplicate.
 
 **Side column**
 
@@ -337,7 +337,7 @@ The sidebar is defined in [`src/app/nav.tsx`](../src/app/nav.tsx) as `NAV`. It c
 
 The URL is the role's list path plus `/:id` (for example `/business-partners/:id` or `/sales/customers/:id`). Views: Details · Transactions · Activity.
 
-**You can also:** Duplicate, and **Convert to customer** (leads only).
+**More actions:** Duplicate, and **Convert to customer** (leads only).
 
 **Side column**
 
@@ -363,7 +363,7 @@ The URL is the role's list path plus `/:id` (for example `/business-partners/:id
 
 `/purchasing/purchase-orders/:id`. Views: Details · Transactions · Activity.
 
-**You can also:**
+**More actions:**
 - **Save as draft** (before the PO is added)
 - **Approve**
 - **Copy to goods receipt** and **Copy to A/P invoice** (open POs with quantity left to receive; billing straight from a PO receives the stock too)
@@ -396,7 +396,7 @@ The URL is the role's list path plus `/:id` (for example `/business-partners/:id
 
 **Transactions view:** the same **Related documents** table, with the receipt's whole chain of linked documents. Bases are its PO and that PO's own bases. Targets will be A/P invoices and goods returns (and anything copied from those) once they're built. The links come from `src/pages/purchasing/shared/documentLinks.ts`. Registering a new document type there adds it to every chain.
 
-**You can also:**
+**More actions:**
 - **Save as draft** (before it's added)
 - **Copy to A/P invoice** and **Copy to goods return** (open receipts with quantity left to bill)
 - **Duplicate** (a new draft, unlinked from the POs)
@@ -428,7 +428,7 @@ After that, only remarks can change.
 
 **Transactions view:** the **Related documents** table, with the invoice's whole chain of linked documents. That means the receipts and POs it billed, and the POs behind those receipts. Payments and credit memos will join once they're built.
 
-**You can also:**
+**More actions:**
 - **Save as draft** (before it's added)
 - **Pay** (open bills with a balance and no payment block; opens an outgoing payment with this bill ticked)
 - **Copy to goods return** (bills with stocked goods left to send back) and **Copy to A/P credit memo**
@@ -454,7 +454,7 @@ After that, only remarks can change.
 
 `/purchasing/returns-and-debits/returns/:id`. Views: Details · Transactions · Activity. Transactions is the related-documents chain; Activity is a placeholder.
 
-**You can also:** **Save as draft**, **Copy to A/P credit memo** (open returns with goods left to credit), **Cancel goods return** (not yet credited: the stock comes back in), **Open receipt / A/P invoice …** and **Open vendor**.
+**More actions:** **Save as draft**, **Copy to A/P credit memo** (open returns with goods left to credit), **Cancel goods return** (not yet credited: the stock comes back in), **Open receipt / A/P invoice …** and **Open vendor**.
 
 | Part | What it holds |
 |---|---|
@@ -473,7 +473,7 @@ After that, only remarks can change.
 
 `/purchasing/returns-and-debits/credit-memos/:id`. Views: Details · Transactions · Activity.
 
-**You can also:** **Save as draft**, **Apply credit to an invoice** (open memos with credit left; puts it against the vendor's other open bills), **Cancel credit memo** (takes the credit off the bills, brings returned goods back in, reopens the return), **Open A/P invoice / goods return …** and **Open vendor**.
+**More actions:** **Save as draft**, **Apply credit to an invoice** (open memos with credit left; puts it against the vendor's other open bills), **Cancel credit memo** (takes the credit off the bills, brings returned goods back in, reopens the return), **Open A/P invoice / goods return …** and **Open vendor**.
 
 | Part | What it holds |
 |---|---|
@@ -491,9 +491,9 @@ After that, only remarks can change.
 
 `/purchasing/bills/down-payment-requests/:id`. Views: Details · Transactions · Activity. Transactions is the related-documents chain (the PO, the payments that paid it, and the A/P invoices that drew it).
 
-**Ways to start one:** **You can also › Copy to A/P down payment request** on a PO, or **New down payment request** on the Bills page's Down payment requests tab.
+**Ways to start one:** **More actions › Copy to A/P down payment request** on a PO, or **New down payment request** on the Bills page's Down payment requests tab.
 
-**You can also:** **Save as draft**, **Pay** (opens an outgoing payment with the request ticked), **Cancel request** (unpaid only), **Close**, **Open PO …** and **Open vendor**.
+**More actions:** **Save as draft**, **Pay** (opens an outgoing payment with the request ticked), **Cancel request** (unpaid only), **Close**, **Open PO …** and **Open vendor**.
 
 | Part | What it holds |
 |---|---|
@@ -512,9 +512,9 @@ After that, only remarks can change.
 
 `/purchasing/payments-made/:id` (Banking › Outgoing Payments in SAP). Views: Details · Transactions · Activity. Activity is a placeholder.
 
-**Ways to start one:** **New outgoing payment**, **You can also › Pay** on a bill, or pick bills on a vendor's **Transactions** tab and press **Pay** (this replaced the old preview).
+**Ways to start one:** **New outgoing payment**, **More actions › Pay** on a bill, or pick bills on a vendor's **Transactions** tab and press **Pay** (this replaced the old preview).
 
-**You can also:** **Save as draft**, **Cancel payment** (posted payments: the bills it paid are open again and its checks are void), **Open A/P invoice …** and **Open vendor**.
+**More actions:** **Save as draft**, **Cancel payment** (posted payments: the bills it paid are open again and its checks are void), **Open A/P invoice …** and **Open vendor**.
 
 | Part | What it holds |
 |---|---|
@@ -536,7 +536,7 @@ Adding the payment re-checks each bill's balance, numbers automatic checks per b
 
 `/inventory/inventory-transfers/:id`.
 
-**You can also:**
+**More actions:**
 - **Save as draft** (unposted)
 - **Duplicate**
 - **Transfer back** (posted, single destination)

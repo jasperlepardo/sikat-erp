@@ -1,4 +1,4 @@
-const DOC_TYPES = ['RFQ', 'PO', 'GRPO', 'APINV', 'GRET', 'CM', 'DPR', 'PMT', 'QT', 'SO', 'DN', 'ARINV', 'SR', 'ARCM', 'RC'] as const;
+const DOC_TYPES = ['RFQ', 'PO', 'GRPO', 'APINV', 'GRET', 'CM', 'DPR', 'PMT', 'QT', 'SO', 'DN', 'ARINV', 'SR', 'ARCM', 'RC', 'ARRI', 'APRI', 'DPI'] as const;
 export type DocType = typeof DOC_TYPES[number];
 
 export const DOC_TYPE_LABEL: Record<DocType, string> = {
@@ -17,6 +17,9 @@ export const DOC_TYPE_LABEL: Record<DocType, string> = {
   SR: 'Sales Return',
   ARCM: 'A/R Credit Memo',
   RC: 'Incoming Payment',
+  ARRI: 'A/R Reserve Invoice',
+  APRI: 'A/P Reserve Invoice',
+  DPI: 'A/P Down Payment Invoice',
 };
 
 export interface ApprovalRule {

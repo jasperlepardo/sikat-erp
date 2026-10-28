@@ -4,16 +4,17 @@ import { useLocation, useNavigate, useParams } from 'react-router';
 import {
   Alert,
   Badge,
-  Button,
   Form,
   Panel,
-  PanelHeader,
   Tabs,
   Text,
 } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../../../components/form/PageHeader';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { type Errors } from '../../../../components/form/fields';
-import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
+import { type MoreMenuItem } from '../../../../components/form/MoreMenu';
+import { DetailActions, docMode } from '../../../../components/form/DetailActions';
+import { isApprover, needsApproval } from '../../../../services/approval';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { formatAddress } from '../../../../mocks/address';
 import { ADVANCES_TO_SUPPLIERS, blankDownPaymentRequest, newDprLine, type DownPaymentRequest, type DprLine, type DprStatus } from '../../../../mocks/apDownPayments';
@@ -45,7 +46,7 @@ import { loadInventoryMasters } from '../../../../services/inventoryMasters';
 import { isValidToday, listItems } from '../../../../services/items';
 import { companyTax, currencies, exchangeRates, taxCodes, taxGroups, withholdingGroups, withholdingTaxes } from '../../../../services/masterData';
 import { listPartnersByRole } from '../../../../services/partners';
-import { dueDateFor, getPurchasingSettings, listPurchaseOrders, openQty, poNumber } from '../../../../services/purchaseOrders';
+import { dueDateFor, listPurchaseOrders, openQty, poNumber } from '../../../../services/purchaseOrders';
 import { buildGrContext, linesFromPo } from '../../goods-receipts/detail/types';
 import { CopyPanel } from '../../shared/CopyPanel';
 import { DocumentFlow } from '../../shared/DocumentFlow';
@@ -53,7 +54,7 @@ import { dprDoc } from './dprDoc';
 import { DocLines } from '../../../../components/form/docLines/DocLines';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
-import { neighbours, NotFound, PrevNext, siblingKeys, useDocTab, useReject } from '../../../../components/form/DetailNav';
+import { neighbours, NotFound, siblingKeys, useDocTab, useReject } from '../../../../components/form/DetailNav';
 import { VendorCard } from '../../shared/VendorCard';
 import { VendorDetailsPanel } from '../../shared/VendorDetailsPanel';
 import { receivingVendorAddressFields } from '../../shared/vendorAddresses';
@@ -62,7 +63,7 @@ import { DprAccountingCard } from './DprAccountingCard';
 import { ReferencesTable } from '../../shared/ReferencesTable';
 import { DprTotalsCard } from './DprTotalsCard';
 import { type DprDraft as Draft, type DprMasters as Masters } from './types';
-import { DPR_LIST_PATH, DPR_STATUS_INTENT, PAYMENT_LIST_PATH } from '../../paths';
+import { DPR_LIST_PATH, DPR_NOUN, DPR_STATUS_INTENT, PAYMENT_LIST_PATH } from '../../paths';
 
 type TabId = 'contents' | 'logistics' | 'accounting';
 
@@ -111,7 +112,7 @@ function DprForm() {
   const location = useLocation();
   const state = location.state as { fromPo?: string } | null;
 
-  const dprApproved = !getPurchasingSettings().requireDprApproval;
+  const dprApproved = !needsApproval('DPR');
   const [draft, setDraft] = useState<Draft | null | undefined>(isNew ? { ...blankDownPaymentRequest(todayISO(), CURRENT_USER_ID), approved: dprApproved } : undefined);
   const [m, setM] = useState<Masters>();
   const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
@@ -147,7 +148,7 @@ function DprForm() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, isNew]);
 
-  useDocTitle(draft?.docNum ? (isNew ? 'New A/P down payment request' : dprNumber(draft)) : undefined);
+  useDocTitle(draft?.docNum ? (isNew ? `New ${DPR_NOUN.one}` : draft.status !== 'Draft' ? dprNumber(draft) : `Draft ${DPR_NOUN.one}`) : undefined);
   if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading down payment request…</Text>;
   if (draft === null) return <NotFound icon="savings" title="Down payment request not found" backTo={DPR_LIST_PATH} backLabel="Back to down payment requests" />;
 
@@ -185,7 +186,8 @@ function DprForm() {
 
   const submit = async (e: FormEvent | null, asDraft = false, overrides: Partial<Draft> = {}) => {
     e?.preventDefault();
-    if (added) {
+    // Added: only remarks and attachments save, unless this is approving it (which posts it).
+    if (added && !overrides.approved) {
       setSaving(true);
       try {
         const saved = await saveDprRemarks(draft as DownPaymentRequest, { remarks: draft.remarks, paymentBlock: draft.paymentBlock, paymentOrderRun: draft.paymentOrderRun });
@@ -220,7 +222,6 @@ function DprForm() {
       setProblems([{ tab: 'header', key: 'status', message: (err as Error).message }]);
     }
   };
-  const bases = [...new Map(draft.lines.filter((l) => l.baseType).map((l) => [l.baseId, l])).values()];
   const cancelIt = () => act(() => cancelDownPayment(saved), 'cancelled');
   const closeIt = () => act(() => closeDownPayment(saved), 'closed');
   const recallIt = () => act(() => recallDownPayment(saved), 'recalled to draft');
@@ -228,35 +229,25 @@ function DprForm() {
   const statusMoves: Partial<Record<DprStatus, () => void>> = draft.status === 'Draft' ? (draft.approved ? { Open: () => submit(null) } : { 'Not Confirmed': () => submit(null) }) : draft.status === 'Not Confirmed' ? { Open: () => submit(null, false, { approved: true }) } : draft.status === 'Open' ? { Closed: closeIt, ...(!draft.appliedAmount ? { Cancelled: cancelIt } : {}) } : {};
 
   const menu: MoreMenuItem[] = [
-    ...(!added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
-    ...(draft.status === 'Not Confirmed' ? [{ label: 'Approve', icon: 'check_circle', onSelect: () => submit(null, false, { approved: true }) }, { label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => reject.start() }] : []),
     ...(draft.status === 'Open' && balance > 0 && !draft.paymentBlock
       ? [{ label: 'Pay', icon: 'payments', onSelect: () => navigate(`${PAYMENT_LIST_PATH}/new`, { state: { vendorId: draft.vendorId, invoiceIds: [saved.id] } }) }]
       : []),
-    ...(draft.status === 'Open' && !draft.appliedAmount ? [{ label: 'Cancel request', icon: 'cancel', onSelect: cancelIt }] : []),
+    ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }] : []),
     ...(draft.status === 'Open' ? [{ label: 'Close', icon: 'task_alt', onSelect: closeIt }] : []),
-    ...bases.map((l) => ({ label: `Open PO ${l.baseDocNo}`, icon: 'receipt_long', onSelect: () => navigate(`/purchasing/purchase-orders/${l.baseId}`) })),
-    ...(vendor ? [{ label: `Open vendor ${vendor.code}`, icon: 'local_shipping', onSelect: () => navigate(`/purchasing/vendors/${vendor.id}`) }] : []),
+    ...(draft.status === 'Open' && !draft.appliedAmount ? [{ label: `Cancel ${DPR_NOUN.one}`, icon: 'cancel', onSelect: cancelIt }] : []),
   ];
 
-  const title = isNew ? 'New A/P down payment request' : added ? dprNumber(draft) : 'Draft down payment request';
+  const title = isNew ? `New ${DPR_NOUN.one}` : added ? dprNumber(draft) : `Draft ${DPR_NOUN.one}`;
 
   return (
     <>
       <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
         <Panel className="flex-1">
-          <PanelHeader
-            type="details"
+          <PageHeader
+            variant="plain"
             icon="savings"
-            iconIntent="default"
-            iconShape="rounded"
-            iconSize={32} iconVariant="outline"
-            breadcrumbs={[{ label: 'A/P Down Payment Requests', href: DPR_LIST_PATH }, { label: title }]}
-            onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
-            onBack={() => navigate(DPR_LIST_PATH)}
-            trailing={
-              isNew ? undefined : <PrevNext path={DPR_LIST_PATH} prevId={prevId} nextId={nextId} />
-            }
+            parent={{ noun: DPR_NOUN, to: DPR_LIST_PATH }}
+            title={title}
             tabs={isNew ? undefined : <Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={PAGES.map((p) => ({ ...p }))} />}
             status={
               isNew ? undefined : (
@@ -267,11 +258,20 @@ function DprForm() {
               )
             }
             actions={
-              <>
-                {added ? null : <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(DPR_LIST_PATH)}>Cancel</Button>}
-                {menu.length ? <MoreMenu items={menu} /> : null}
-                <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>{saving ? 'Saving…' : added ? 'Save' : 'Add'}</Button>
-              </>
+              <DetailActions
+                noun={DPR_NOUN}
+                listPath={DPR_LIST_PATH}
+                mode={docMode(draft.status, { canApprove: isApprover('DPR') })}
+                needsApproval={!draft.approved}
+                remarksOnly={added}
+                busy={saving}
+                onDraft={() => submit(null, true)}
+                onSubmit={() => submit(null)}
+                onApprove={() => submit(null, false, { approved: true })}
+                onReject={reject.start}
+                menu={menu}
+                prevNext={isNew ? undefined : { path: DPR_LIST_PATH, prevId, nextId }}
+              />
             }
           />
           {page === 'transactions' && draft.id ? (
@@ -288,7 +288,7 @@ function DprForm() {
                 <Alert intent="default" variant="outline" title={draft.status === 'Open' ? (balance > 0 ? `${code} ${formatAmount(balance)} still to pay` : `Paid — ${code} ${formatAmount(drawableAmount(saved))} left to draw`) : `This request is ${draft.status.toLowerCase()}`}>
                   {draft.status === 'Open'
                     ? balance > 0
-                      ? 'Pay it from Payments Made (or You can also › Pay). Nothing posts until it\'s paid.'
+                      ? 'Pay it from Payments Made (or More actions › Pay). Nothing posts until it\'s paid.'
                       : 'Draw it on the A/P invoice that bills the goods: the invoice\'s Total down payment.'
                     : 'Only remarks, the payment block and the payment run flag can change.'}
                 </Alert>

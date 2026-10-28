@@ -1,9 +1,12 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { Alert, Badge, Button, Form, Panel, PanelHeader, Tabs, Text } from '@jasperlepardo/sikat-design-system';
+import { Alert, Badge, Form, Panel, Tabs, Text } from '@jasperlepardo/sikat-design-system';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { type Errors } from '../../../../components/form/fields';
-import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
+import { type MoreMenuItem } from '../../../../components/form/MoreMenu';
+import { DetailActions, docMode } from '../../../../components/form/DetailActions';
+import { PageHeader } from '../../../../components/form/PageHeader';
+import { isApprover, needsApproval } from '../../../../services/approval';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { CURRENT_USER_ID } from '../../../../mocks/common';
 import { blankQuotation, type Quotation } from '../../../../mocks/quotations';
@@ -20,13 +23,13 @@ import {
   addQuotation, cancelQuotation, closeQuotation, getQuotation, listQuotations,
   qtNumber, qtTotals, recallQuotation, saveQuotationDraft, saveQuotationRemarks,
 } from '../../../../services/quotations';
-import { getSalesSettings, openOrdersTotal } from '../../../../services/salesOrders';
+import { openOrdersTotal } from '../../../../services/salesOrders';
 import { SALES_SETTINGS, blankSalesOrder, newSoLine } from '../../../../mocks/salesOrders';
 import { logRejection } from '../../../../services/approvalRules';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { SalesDocumentFlow } from '../../shared/SalesDocumentFlow';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
-import { neighbours, NotFound, PrevNext, siblingKeys, useDocTab, useReject } from '../../../../components/form/DetailNav';
+import { neighbours, NotFound, siblingKeys, useDocTab, useReject } from '../../../../components/form/DetailNav';
 import { customerDefaults, linePricing, proposedTaxCode, type Draft, type QtContext, type QtMasters } from './types';
 import { BASE_PRICE_LIST_ID } from '../../../../services/priceLists';
 import { QtDetailsCard } from './QtDetailsCard';
@@ -36,7 +39,7 @@ import { DocLines } from '../../../../components/form/docLines/DocLines';
 import { qtDoc } from './qtDoc';
 import { SalesTotalsFooter } from '../../shared/TotalsFooter';
 import { ReferencesTable } from '../../../purchasing/shared/ReferencesTable';
-import { QT_LIST_PATH, QT_STATUS_INTENT, SO_LIST_PATH } from '../../paths';
+import { QT_LIST_PATH, QT_NOUN, QT_STATUS_INTENT, SO_LIST_PATH } from '../../paths';
 
 type TabId = 'contents';
 const TAB_LABEL: Record<TabId, string> = { contents: 'Contents' };
@@ -94,7 +97,7 @@ function QuotationForm() {
   const isNew = id === 'new';
   const navigate = useNavigate();
 
-  const qtApproved = !getSalesSettings().requireQuotationApproval;
+  const qtApproved = !needsApproval('QT');
   const [draft, setDraft] = useState<Draft | null | undefined>(isNew ? { ...blankQuotation(CURRENT_USER_ID), approved: qtApproved } : undefined);
   const [m, setM] = useState<QtMasters>();
   const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
@@ -122,7 +125,7 @@ function QuotationForm() {
     openOrdersTotal(customerId, undefined, m.tax.codes).then(setOpenBalance);
   }, [customerId, m]);
 
-  useDocTitle(draft?.docNum ? (isNew ? 'New quotation' : qtNumber(draft)) : undefined);
+  useDocTitle(draft?.docNum ? (isNew ? `New ${QT_NOUN.one}` : draft.status === 'Draft' ? `Draft ${QT_NOUN.one}` : qtNumber(draft)) : undefined);
 
   if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading quotation…</Text>;
   if (draft === null) return <NotFound icon="request_quote" title="Quotation not found" backTo={QT_LIST_PATH} backLabel="Back to quotations" />;
@@ -209,7 +212,7 @@ function QuotationForm() {
   const convertToOrder = () => {
     const copyFrom = {
       ...blankSalesOrder(CURRENT_USER_ID),
-      approved: !getSalesSettings().requireSoApproval,
+      approved: !needsApproval('SO'),
       customerId: draft.customerId,
       customerCode: draft.customerCode,
       customerName: draft.customerName,
@@ -249,30 +252,24 @@ function QuotationForm() {
   };
 
   const menu: MoreMenuItem[] = [
-    ...(draft.status === 'Not Confirmed' ? [{ label: 'Approve', icon: 'verified', onSelect: () => submit(null, false, { approved: true }) }, { label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => reject.start() }] : []),
     ...(draft.status === 'Open' ? [{ label: 'Create sales order', icon: 'shopping_bag', onSelect: convertToOrder }] : []),
-    ...(draft.status === 'Open' ? [{ label: 'Close quotation', icon: 'task_alt', onSelect: () => closeQuotation(saved).then((r) => navigate(QT_LIST_PATH, { state: { notice: `Quotation ${qtNumber(r)} closed.` } })) }] : []),
-    ...(draft.status === 'Open' ? [{ label: 'Cancel quotation', icon: 'cancel', onSelect: () => cancelQuotation(saved).then((r) => navigate(QT_LIST_PATH, { state: { notice: `Quotation ${qtNumber(r)} cancelled.` } })) }] : []),
+    ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }] : []),
+    ...(draft.status === 'Open' ? [{ label: 'Close', icon: 'task_alt', onSelect: () => closeQuotation(saved).then((r) => navigate(QT_LIST_PATH, { state: { notice: `Quotation ${qtNumber(r)} closed.` } })) }] : []),
+    ...(draft.status === 'Open' ? [{ label: `Cancel ${QT_NOUN.one}`, icon: 'cancel', onSelect: () => cancelQuotation(saved).then((r) => navigate(QT_LIST_PATH, { state: { notice: `Quotation ${qtNumber(r)} cancelled.` } })) }] : []),
   ];
 
-  const title = isNew ? 'New quotation' : added ? qtNumber(draft) : 'Draft quotation';
+  const title = isNew ? `New ${QT_NOUN.one}` : added ? qtNumber(draft) : `Draft ${QT_NOUN.one}`;
   const tabProps = { draft, update, errors, m, ctx };
 
   return (
     <>
       <Form className="flex-1" onSubmit={(e) => submit(e, !added)} noValidate>
         <Panel className="flex-1">
-          <PanelHeader
-            type="details"
+          <PageHeader
+            variant="plain"
             icon="request_quote"
-            iconIntent="default"
-            iconShape="rounded"
-            iconSize={32}
-            iconVariant="outline"
-            breadcrumbs={[{ label: 'Quotations', href: QT_LIST_PATH }, { label: title }]}
-            onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
-            onBack={() => navigate(QT_LIST_PATH)}
-            trailing={isNew ? undefined : <PrevNext path={QT_LIST_PATH} prevId={prevId} nextId={nextId} />}
+            parent={{ noun: QT_NOUN, to: QT_LIST_PATH }}
+            title={title}
             tabs={isNew ? undefined : <Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={[...PAGES]} />}
             status={
               isNew ? undefined : (
@@ -284,24 +281,20 @@ function QuotationForm() {
               )
             }
             actions={
-              <>
-
-                {menu.length ? <MoreMenu items={menu} /> : null}
-                {added ? (
-                  <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
-                    {saving ? 'Saving…' : 'Save'}
-                  </Button>
-                ) : (
-                  <>
-                    <Button type="submit" intent="white" variant="solid" size="medium" shape="pill" disabled={saving}>
-                      Save as draft
-                    </Button>
-                    <Button type="button" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving} onClick={() => submit(null, false)}>
-                      Submit for approval
-                    </Button>
-                  </>
-                )}
-              </>
+              <DetailActions
+                noun={QT_NOUN}
+                listPath={QT_LIST_PATH}
+                mode={docMode(draft.status, { canApprove: isApprover('QT') })}
+                needsApproval={!draft.approved}
+                remarksOnly={readOnly}
+                busy={saving}
+                onDraft={() => submit(null, true)}
+                onSubmit={() => submit(null, false)}
+                onApprove={() => submit(null, false, { approved: true })}
+                onReject={reject.start}
+                menu={menu}
+                prevNext={isNew ? undefined : { path: QT_LIST_PATH, prevId, nextId }}
+              />
             }
           />
 

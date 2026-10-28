@@ -1,5 +1,6 @@
 import { useEffect, useState, type CSSProperties } from 'react';
-import { Alert, Button, Icon, IconButton, Panel, PanelHeader, SidePanel } from '@jasperlepardo/sikat-design-system';
+import { Alert, Button, Icon, IconButton, Panel, SidePanel } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../form/PageHeader';
 import { ACTIVITY_ICON, ACTIVITY_KINDS, ACTIVITY_LABEL, type Activity } from '../../mocks/activities';
 import { CURRENT_USER } from '../../mocks/common';
 import { contactName } from '../../mocks/partners';
@@ -78,12 +79,9 @@ export function ActivityPanel({
 
   return (
     <SidePanel overlay onOverlayClick={onClose} style={{ '--sikat-side-panel-width': '560px' } as CSSProperties}>
-      <PanelHeader
+      <PageHeader
+        variant="plain"
         icon={ACTIVITY_ICON[draft.kind]}
-        iconIntent="default"
-        iconShape="rounded"
-        iconSize={32}
-        iconVariant="outline"
         title={isNew ? `Log ${ACTIVITY_LABEL[draft.kind].toLowerCase()}` : ACTIVITY_LABEL[draft.kind]}
         actions={
           <>
@@ -91,15 +89,15 @@ export function ActivityPanel({
               <Icon size={20}>close</Icon>
             </IconButton>
             {isNew ? null : (
-              <Button type="button" intent="danger" variant="ghost" size="medium" shape="pill" disabled={saving} onClick={remove}>
+              <Button type="button" intent="danger" variant="ghost" shape="pill" disabled={saving} onClick={remove}>
                 Delete
               </Button>
             )}
-            <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={onClose}>
+            <Button type="button" intent="white" variant="solid" shape="pill" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="button" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving} onClick={submit}>
-              {saving ? 'Saving…' : isNew ? 'Log' : 'Save'}
+            <Button type="button" intent="primary" variant="solid" shape="pill" disabled={saving} onClick={submit}>
+              {saving ? (isNew ? 'Creating…' : 'Saving…') : isNew ? 'Create activity' : 'Save changes'}
             </Button>
           </>
         }

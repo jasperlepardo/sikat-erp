@@ -41,6 +41,8 @@ export interface DataTableProps<T> {
   cardFooter?: ReactNode;
   /** Child rows (same columns); rows that have some expand under their parent. */
   getSubRows?: (row: T) => T[] | undefined;
+  /** Rows whose child rows show at first (ids). */
+  defaultExpandedIds?: string[];
 }
 
 /** Page sizes every paginated table offers; tables open at `DEFAULT_PAGE_SIZE`. */
@@ -110,6 +112,7 @@ export function DataTable<T>({
   spanRow,
   cardFooter,
   getSubRows,
+  defaultExpandedIds,
 }: DataTableProps<T>) {
   const [sort, setSort] = useState<TableSort | null>(null);
   const [page, setPage] = useState(1);
@@ -189,6 +192,7 @@ export function DataTable<T>({
       })}
       {...(spanRow ? { footerRow: spanRowCell } : {})}
       {...(getSubRows ? { getSubRows } : {})}
+      {...(defaultExpandedIds ? { defaultExpandedIds } : {})}
     />
   );
   const emptyState = <div className="px-2">{empty}</div>;

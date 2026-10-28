@@ -4,21 +4,21 @@ import { postDocumentEntry, reverseDocumentEntry } from '../../../../services/jo
 import {
   Alert,
   Badge,
-  Button,
   Form,
   FormField,
   List,
   Panel,
-  PanelHeader,
   Radio,
   Select,
   Tabs,
   Text,
 } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../../../components/form/PageHeader';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { Fields, FieldStack, ReadOnly, Section, bind, type Errors } from '../../../../components/form/fields';
 import { StatusField } from '../../../../components/form/StatusField';
-import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
+import { type MoreMenuItem } from '../../../../components/form/MoreMenu';
+import { DetailActions, docMode } from '../../../../components/form/DetailActions';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { formatAddress } from '../../../../mocks/address';
 import { accountText } from '../../../../mocks/chartOfAccounts';
@@ -62,11 +62,11 @@ import { invoiceAdvanceBalance, invoiceBalance, openRows, requestBalance, type P
 import { listDownPayments } from '../../../../services/apDownPayments';
 import { listDownPaymentInvoices } from '../../../../services/apDownPaymentInvoices';
 import { logRejection } from '../../../../services/approvalRules';
-import { getPurchasingSettings } from '../../../../services/purchaseOrders';
+import { isApprover, needsApproval } from '../../../../services/approval';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
-import { neighbours, NotFound, PrevNext, siblingKeys, useDocTab, useReject } from '../../../../components/form/DetailNav';
-import { AP_LIST_PATH, DPI_LIST_PATH, DPR_LIST_PATH, PAYMENT_LIST_PATH, PAYMENT_STATUS_INTENT } from '../../paths';
+import { neighbours, NotFound, siblingKeys, useDocTab, useReject } from '../../../../components/form/DetailNav';
+import { PAYMENT_LIST_PATH, PAYMENT_NOUN, PAYMENT_STATUS_INTENT } from '../../paths';
 
 type TabId = 'contents' | 'means';
 
@@ -122,7 +122,7 @@ function PaymentForm() {
   const location = useLocation();
   const state = location.state as { vendorId?: string; invoiceIds?: string[] } | null;
 
-  const payApproved = !getPurchasingSettings().requireOutgoingPaymentApproval;
+  const payApproved = !needsApproval('PMT');
   const [draft, setDraft] = useState<PaymentDraft | null | undefined>(isNew ? { ...blankPayment(todayISO()), approved: payApproved } : undefined);
   const [m, setM] = useState<PayMasters>();
   const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
@@ -166,7 +166,7 @@ function PaymentForm() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, isNew]);
 
-  useDocTitle(draft?.docNum ? (isNew ? 'New outgoing payment' : paymentNumber(draft)) : undefined);
+  useDocTitle(draft?.docNum ? (isNew ? `New ${PAYMENT_NOUN.one}` : draft.status !== 'Draft' ? paymentNumber(draft) : `Draft ${PAYMENT_NOUN.one}`) : undefined);
   if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading payment…</Text>;
   if (draft === null) return <NotFound icon="payments" title="Payment not found" backTo={PAYMENT_LIST_PATH} backLabel="Back to payments" />;
 
@@ -197,7 +197,8 @@ function PaymentForm() {
 
   const submit = async (e: FormEvent | null, asDraft = false, overrides: Partial<PaymentDraft> = {}) => {
     e?.preventDefault();
-    if (added) {
+    // Added: only remarks and attachments save, unless this is approving it (which posts it).
+    if (added && !overrides.approved) {
       setSaving(true);
       try {
         const saved = await savePaymentRemarks(draft as OutgoingPayment, { remarks: draft.remarks, attachments: draft.attachments });
@@ -263,56 +264,47 @@ function PaymentForm() {
   const statusMoves: Partial<Record<PaymentStatus, () => void>> = draft.status === 'Draft' ? (draft.approved ? { Posted: () => submit(null) } : { 'Not Confirmed': () => submit(null) }) : draft.status === 'Not Confirmed' ? { Posted: () => submit(null, false, { approved: true }) } : draft.status === 'Posted' ? { Cancelled: cancelIt } : {};
 
   const menu: MoreMenuItem[] = [
-    ...(!added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
-    ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }, { label: 'Reject', icon: 'cancel', onSelect: () => reject.start() }] : []),
+    ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }] : []),
     ...(draft.status === 'Posted'
       ? [
           {
-            label: 'Cancel payment',
+            label: `Cancel ${PAYMENT_NOUN.one}`,
             icon: 'cancel',
             onSelect: cancelIt,
           },
         ]
       : []),
-    ...paidInvoices.map((r) =>
-      r.docType === 'DPR'
-        ? { label: `Open down payment request ${r.docNo}`, icon: 'savings', onSelect: () => navigate(`${DPR_LIST_PATH}/${r.invoiceId}`) }
-        : r.docType === 'APDPI'
-          ? { label: `Open down payment invoice ${r.docNo}`, icon: 'receipt_long', onSelect: () => navigate(`${DPI_LIST_PATH}/${r.invoiceId}`) }
-          : { label: `Open A/P invoice ${r.docNo}`, icon: 'request_quote', onSelect: () => navigate(`${AP_LIST_PATH}/${r.invoiceId}`) },
-    ),
-    ...(vendor ? [{ label: `Open vendor ${vendor.code}`, icon: 'local_shipping', onSelect: () => navigate(`/purchasing/vendors/${vendor.id}`) }] : []),
   ];
 
-  const title = isNew ? 'New outgoing payment' : added ? paymentNumber(draft) : 'Draft outgoing payment';
+  const title = isNew ? `New ${PAYMENT_NOUN.one}` : added ? paymentNumber(draft) : `Draft ${PAYMENT_NOUN.one}`;
   const sectionProps = { draft, update, errors, m, fx, readOnly: added };
 
   return (
     <>
     <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
       <Panel className="flex-1">
-        <PanelHeader
-          type="details"
+        <PageHeader
+          variant="plain"
           icon="payments"
-          iconIntent="default"
-          iconShape="rounded"
-          iconSize={32} iconVariant="outline"
-          breadcrumbs={[{ label: 'Payments Made', href: PAYMENT_LIST_PATH }, { label: title }]}
-          onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
-          onBack={() => navigate(PAYMENT_LIST_PATH)}
-          trailing={
-            isNew ? undefined : <PrevNext path={PAYMENT_LIST_PATH} prevId={prevId} nextId={nextId} />
-          }
+          parent={{ noun: PAYMENT_NOUN, to: PAYMENT_LIST_PATH }}
+          title={title}
           tabs={isNew ? undefined : <Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={PAGES.map((p) => ({ ...p }))} />}
           status={isNew ? undefined : <Badge size="small" intent={PAYMENT_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
           actions={
-            <>
-              {added ? null : <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(PAYMENT_LIST_PATH)}>Cancel</Button>}
-              {menu.length ? <MoreMenu items={menu} /> : null}
-              <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
-                {saving ? 'Saving…' : added ? 'Save' : 'Add'}
-              </Button>
-            </>
+            <DetailActions
+              noun={PAYMENT_NOUN}
+              listPath={PAYMENT_LIST_PATH}
+              mode={docMode(draft.status, { canApprove: isApprover('PMT') })}
+              needsApproval={!draft.approved}
+              remarksOnly={added}
+              busy={saving}
+              onDraft={() => submit(null, true)}
+              onSubmit={() => submit(null)}
+              onApprove={() => submit(null, false, { approved: true })}
+              onReject={reject.start}
+              menu={menu}
+              prevNext={isNew ? undefined : { path: PAYMENT_LIST_PATH, prevId, nextId }}
+            />
           }
         />
         {page === 'transactions' && draft.id ? (

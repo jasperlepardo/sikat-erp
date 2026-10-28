@@ -19,6 +19,10 @@ export default defineConfig([
       // tsc's noUnusedLocals / noUnusedParameters already report these; `_name` rest-destructuring drops a field.
       '@typescript-eslint/no-unused-vars': 'off',
       '@typescript-eslint/no-unused-expressions': ['error', { allowShortCircuit: true, allowTernary: true }],
+      // Page and side-panel headers go through PageHeader, which fixes the house look (docs/page-header-plan.md).
+      'no-restricted-imports': ['error', {
+        paths: [{ name: '@jasperlepardo/sikat-design-system', importNames: ['PanelHeader'], message: 'Use PageHeader from components/form/PageHeader.' }],
+      }],
     },
   },
 ]);

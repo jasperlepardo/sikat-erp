@@ -3,15 +3,16 @@ import { useLocation, useNavigate, useParams } from 'react-router';
 import {
   Alert,
   Badge,
-  Button,
   Form,
   Panel,
-  PanelHeader,
   Tabs,
   Text,
 } from '@jasperlepardo/sikat-design-system';
 import { type Errors } from '../../../../components/form/fields';
-import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
+import { type MoreMenuItem } from '../../../../components/form/MoreMenu';
+import { DetailActions, docMode } from '../../../../components/form/DetailActions';
+import { PageHeader } from '../../../../components/form/PageHeader';
+import { isApprover, needsApproval } from '../../../../services/approval';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { CURRENT_USER_ID } from '../../../../mocks/common';
@@ -70,12 +71,12 @@ import { defaultJournalRemark } from '../../../../services/journalPatterns';
 import { listGoodsReceipts } from '../../../../services/goodsReceipts';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
-import { neighbours, NotFound, PrevNext, siblingKeys, useDocTab, useReject } from '../../../../components/form/DetailNav';
+import { neighbours, NotFound, siblingKeys, useDocTab, useReject } from '../../../../components/form/DetailNav';
 import { VendorCard } from '../../shared/VendorCard';
 import { VendorDetailsPanel } from '../../shared/VendorDetailsPanel';
 import { PoDocumentCard } from './PoDocumentCard';
 import { PoAssignmentCard } from './PoTotalsCard';
-import { AP_LIST_PATH, APRI_LIST_PATH, DPI_LIST_PATH, DPR_LIST_PATH, PO_LIST_PATH, PO_STATUS_INTENT } from '../../paths';
+import { AP_LIST_PATH, APRI_LIST_PATH, DPI_LIST_PATH, DPR_LIST_PATH, PO_LIST_PATH, PO_NOUN, PO_STATUS_INTENT } from '../../paths';
 
 /** Everything that defaults from the vendor. Tax codes depend on the vendor's VAT status, so lines re-propose theirs. */
 function vendorPatch(v: Partner, draft: PoDraft, m: PoMasters): Partial<PoDraft> {
@@ -172,7 +173,7 @@ function PurchaseOrderForm() {
   const { copyFrom, suggest } = (location.state as { copyFrom?: PoDraft; suggest?: PoSuggestion } | null) ?? {};
 
   const blank = blankPurchaseOrder(CURRENT_USER_ID);
-  const approved = !getPurchasingSettings().requirePoApproval;
+  const approved = !needsApproval('PO');
   const [draft, setDraft] = useState<PoDraft | null | undefined>(isNew ? { ...(copyFrom ?? blank), approved } : undefined);
   const [m, setM] = useState<PoMasters>();
   const [contentTab, setContentTab] = useState<'item' | 'receipts'>('item');
@@ -221,7 +222,7 @@ function PurchaseOrderForm() {
     return () => { cancelled = true; };
   }, [id, isNew]);
 
-  useDocTitle(draft?.docNum ? (isNew ? 'New purchase order' : draft.status === 'Draft' ? 'Draft purchase order' : poNumber(draft)) : undefined);
+  useDocTitle(draft?.docNum ? (isNew ? `New ${PO_NOUN.one}` : draft.status === 'Draft' ? `Draft ${PO_NOUN.one}` : poNumber(draft)) : undefined);
   if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading purchase order…</Text>;
   if (draft === null) return <NotFound icon="receipt_long" title="Purchase order not found" backTo={PO_LIST_PATH} backLabel="Back to purchase orders" />;
 
@@ -348,24 +349,19 @@ function PurchaseOrderForm() {
   };
 
   const menu: MoreMenuItem[] = [
-    ...(!ctx.added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
-    ...(draft.status === 'Draft' && !draft.approved ? [{ label: 'Submit for approval', icon: 'upload', onSelect: () => submit(null, false) }] : []),
-    ...(draft.status === 'Not Confirmed' ? [{ label: 'Approve', icon: 'verified', onSelect: () => submit(null, false, { approved: true }) }] : []),
-    ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }] : []),
-    ...(draft.status === 'Not Confirmed' ? [{ label: 'Reject', icon: 'cancel', onSelect: () => reject.start() }] : []),
     ...(draft.status === 'Open' && draft.lines.some((l) => l.status === 'Open' && l.receivedQty < l.quantity)
       ? [
-          { label: 'Copy to goods receipt', icon: 'inventory', onSelect: () => navigate('/purchasing/goods-receipts/new', { state: { fromPo: saved.id } }) },
-          { label: 'Copy to A/P invoice', icon: 'request_quote', onSelect: () => navigate(`${AP_LIST_PATH}/new`, { state: { fromPo: saved.id } }) },
-          { label: 'Copy to A/P reserve invoice', icon: 'receipt_long', onSelect: () => navigate(`${APRI_LIST_PATH}/new`, { state: { fromPo: saved.id } }) },
-          { label: 'Copy to A/P down payment request', icon: 'savings', onSelect: () => navigate(`${DPR_LIST_PATH}/new`, { state: { fromPo: saved.id } }) },
-          { label: 'Copy to A/P down payment invoice', icon: 'receipt_long', onSelect: () => navigate(`${DPI_LIST_PATH}/new`, { state: { fromPo: saved.id } }) },
+          { label: 'Create goods receipt', icon: 'inventory', onSelect: () => navigate('/purchasing/goods-receipts/new', { state: { fromPo: saved.id } }) },
+          { label: 'Create A/P invoice', icon: 'request_quote', onSelect: () => navigate(`${AP_LIST_PATH}/new`, { state: { fromPo: saved.id } }) },
+          { label: 'Create A/P reserve invoice', icon: 'receipt_long', onSelect: () => navigate(`${APRI_LIST_PATH}/new`, { state: { fromPo: saved.id } }) },
+          { label: 'Create A/P down payment request', icon: 'savings', onSelect: () => navigate(`${DPR_LIST_PATH}/new`, { state: { fromPo: saved.id } }) },
+          { label: 'Create A/P down payment invoice', icon: 'receipt_long', onSelect: () => navigate(`${DPI_LIST_PATH}/new`, { state: { fromPo: saved.id } }) },
         ]
       : []),
     ...(!isNew ? [{ label: 'Duplicate', icon: 'content_copy', onSelect: duplicate }] : []),
+    ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }] : []),
     ...(open ? [{ label: 'Close', icon: 'task_alt', onSelect: closeIt }] : []),
     ...(open && !received ? [{ label: 'Cancel purchase order', icon: 'cancel', onSelect: () => act(() => cancelPurchaseOrder(saved), 'cancelled') }] : []),
-    ...(ctx.vendor ? [{ label: `Open vendor ${ctx.vendor.code}`, icon: 'local_shipping', onSelect: () => navigate(`/purchasing/vendors/${ctx.vendor!.id}`) }] : []),
   ];
 
   const transitions: Partial<Record<PoStatus, () => void>> =
@@ -379,7 +375,7 @@ function PurchaseOrderForm() {
           }
         : {};
 
-  const title = isNew ? 'New purchase order' : draft.status === 'Draft' ? 'Draft purchase order' : poNumber(draft);
+  const title = isNew ? `New ${PO_NOUN.one}` : draft.status === 'Draft' ? `Draft ${PO_NOUN.one}` : poNumber(draft);
   const sectionProps = { draft, update, errors, m, ctx };
 
 
@@ -412,16 +408,11 @@ function PurchaseOrderForm() {
     <>
     <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
       <Panel className="flex-1">
-        <PanelHeader
-          type="details"
+        <PageHeader
+          variant="plain"
           icon="receipt_long"
-          iconIntent="default"
-          iconShape="rounded"
-          iconSize={32} iconVariant="outline"
-          breadcrumbs={[{ label: 'Purchase Orders', href: PO_LIST_PATH }, { label: title }]}
-          onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
-          onBack={() => navigate(PO_LIST_PATH)}
-          trailing={isNew ? undefined : <PrevNext path={PO_LIST_PATH} prevId={prevId} nextId={nextId} />}
+          parent={{ noun: PO_NOUN, to: PO_LIST_PATH }}
+          title={title}
           tabs={
             isNew ? undefined : (
               <Tabs
@@ -441,13 +432,20 @@ function PurchaseOrderForm() {
             )
           }
           actions={
-            <>
-              {ctx.readOnly ? null : <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(PO_LIST_PATH)}>Cancel</Button>}
-              {menu.length ? <MoreMenu items={menu} /> : null}
-              <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
-                {saving ? 'Saving…' : ctx.added ? 'Save' : 'Add'}
-              </Button>
-            </>
+            <DetailActions
+              noun={PO_NOUN}
+              listPath={PO_LIST_PATH}
+              mode={docMode(draft.status, { canApprove: isApprover('PO') })}
+              needsApproval={!draft.approved}
+              remarksOnly={ctx.readOnly}
+              busy={saving}
+              onDraft={() => submit(null, true)}
+              onSubmit={() => submit(null, false)}
+              onApprove={() => submit(null, false, { approved: true })}
+              onReject={reject.start}
+              menu={menu}
+              prevNext={isNew ? undefined : { path: PO_LIST_PATH, prevId, nextId }}
+            />
           }
         />
         {page === 'transactions' && draft.id ? (
@@ -468,7 +466,7 @@ function PurchaseOrderForm() {
             {reject.alert('Reject purchase order', rejectIt)}
             {dupWarning ? (
               <Alert intent="warning" variant="outline" title="Duplicate vendor reference">
-                {dupWarning} Press {ctx.added ? 'Save' : 'Add'} again to keep it, or change the Vendor Ref. No.
+                {dupWarning} Press {ctx.added ? 'Save changes' : draft.approved ? `Create ${PO_NOUN.one}` : 'Submit for approval'} again to keep it, or change the Vendor Ref. No.
               </Alert>
             ) : null}
             {closeWarning ? (

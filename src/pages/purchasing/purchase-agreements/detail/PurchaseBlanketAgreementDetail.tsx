@@ -3,16 +3,16 @@ import { useLocation, useNavigate, useParams } from 'react-router';
 import {
   Alert,
   Badge,
-  Button,
   Form,
   Panel,
-  PanelHeader,
   Tabs,
   Text,
 } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../../../components/form/PageHeader';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { type Errors } from '../../../../components/form/fields';
-import { MoreMenu, type MoreMenuItem } from '../../../../components/form/MoreMenu';
+import { type MoreMenuItem } from '../../../../components/form/MoreMenu';
+import { DetailActions } from '../../../../components/form/DetailActions';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
 import { CURRENT_USER_ID } from '../../../../mocks/common';
@@ -24,17 +24,19 @@ import { listItems } from '../../../../services/items';
 import { listPartnersByRole } from '../../../../services/partners';
 import { pbaSeries } from '../../../../services/allSeries';
 import { pbaNumber, pbaTotals, openQty, getPurchaseBlanketAgreement, listPurchaseBlanketAgreements, savePurchaseBlanketAgreement, type PbaInput } from '../../../../services/purchaseBlanketAgreements';
-import { getPurchasingSettings } from '../../../../services/purchaseOrders';
+import { needsApproval } from '../../../../services/approval';
+import { currencies as currencyCollection } from '../../../../services/masterData';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { DocumentFlow } from '../../shared/DocumentFlow';
 import { VendorCard } from '../../shared/VendorCard';
+import { VendorDetailsPanel } from '../../shared/VendorDetailsPanel';
 import { AgreementCard } from './AgreementCard';
 import { GeneralTab } from './general';
 import { AgreementLinesCard } from '../../../../components/agreements/AgreementLinesCard';
 import { AgreementSummaryCard } from '../../../../components/agreements/AgreementSummaryCard';
 import type { PbaDraft, PbaMasters } from './types';
-import { NotFound, PrevNext, neighbours, useDocTab } from '../../../../components/form/DetailNav';
-import { PBA_LIST_PATH, PBA_STATUS_INTENT, PO_LIST_PATH } from '../../paths';
+import { NotFound, neighbours, useDocTab } from '../../../../components/form/DetailNav';
+import { PBA_LIST_PATH, PBA_NOUN, PBA_STATUS_INTENT, PO_LIST_PATH } from '../../paths';
 
 const PAGES = [
   { value: 'details', label: 'Details' },
@@ -87,6 +89,7 @@ function PbaForm() {
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);
+  const [vendorDetailsOpen, setVendorDetailsOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -95,9 +98,10 @@ function PbaForm() {
       listItems(),
       loadInventoryMasters(),
       pbaSeries.list(),
-    ]).then(([vendors, items, inv, series]) => {
+      currencyCollection.list(),
+    ]).then(([vendors, items, inv, series, currencies]) => {
       if (cancelled) return;
-      setM({ vendors, items, inv, pbaSeries: series });
+      setM({ vendors, items, inv, pbaSeries: series, currencies });
     });
     if (!isNew && id) {
       getPurchaseBlanketAgreement(id).then((pba) => !cancelled && setDraft(pba ?? null));
@@ -114,9 +118,9 @@ function PbaForm() {
     draft == null || !draft.docNum
       ? undefined
       : isNew
-        ? 'New purchase blanket agreement'
+        ? `New ${PBA_NOUN.one}`
         : draft.status === 'Draft'
-          ? 'Draft purchase blanket agreement'
+          ? `Draft ${PBA_NOUN.one}`
           : pbaNumber(draft),
   );
 
@@ -125,8 +129,11 @@ function PbaForm() {
   }
   if (draft === null) return <NotFound icon="handshake" title="Agreement not found" backTo={PBA_LIST_PATH} backLabel="Back to agreements" />;
 
-  const readOnly = draft.status === 'Closed' || draft.status === 'Terminated';
   const added = draft.status !== 'Draft';
+  // Once added (Approved onward), the commercial body locks — only status, remarks and
+  // attachments can change. Terminal statuses also lock the status itself (no outgoing moves).
+  const readOnly = added;
+  const terminal = draft.status === 'Closed' || draft.status === 'Terminated';
   const errors: Errors = Object.fromEntries(problems.map((p) => [p.key, p.message]));
 
   const { prevId, nextId } = neighbours(siblings, draft.id && (draft.docNum ? pbaNumber(draft as PurchaseBlanketAgreement) : draft.id));
@@ -186,7 +193,7 @@ function PbaForm() {
     const openLines = draft.lines.filter((l) => openQty(l) > 0);
     const po = {
       ...blankPurchaseOrder(CURRENT_USER_ID),
-      approved: !getPurchasingSettings().requirePoApproval,
+      approved: !needsApproval('PO'),
       vendorId: draft.vendorId,
       vendorCode: draft.vendorCode,
       vendorName: draft.vendorName,
@@ -219,48 +226,41 @@ function PbaForm() {
   };
 
   const menu: MoreMenuItem[] = [
-    ...(!added ? [{ label: 'Save as draft', icon: 'draft', onSelect: () => submit(null, true) }] : []),
     ...(draft.status === 'Approved' && draft.lines.some((l) => openQty(l) > 0)
-      ? [{ label: 'Copy to Purchase Order', icon: 'receipt_long', onSelect: copyToPo }]
+      ? [{ label: 'Create purchase order', icon: 'receipt_long', onSelect: copyToPo }]
       : []),
     ...(!isNew ? [{ label: 'Duplicate', icon: 'content_copy', onSelect: duplicate }] : []),
-    ...(vendor ? [{ label: `Open vendor ${vendor.code}`, icon: 'local_shipping', onSelect: () => navigate(`/purchasing/vendors/${vendor.id}`) }] : []),
   ];
 
   const title = isNew
-    ? 'New purchase blanket agreement'
+    ? `New ${PBA_NOUN.one}`
     : draft.status === 'Draft'
-      ? 'Draft purchase blanket agreement'
+      ? `Draft ${PBA_NOUN.one}`
       : pbaNumber(draft as PurchaseBlanketAgreement);
 
   return (
+    <>
     <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
       <Panel className="flex-1">
-        <PanelHeader
-          type="details"
+        <PageHeader
+          variant="plain"
           icon="handshake"
-          iconIntent="default"
-          iconShape="rounded"
-          iconSize={32}
-          iconVariant="outline"
-          breadcrumbs={[{ label: 'Agreements', href: PBA_LIST_PATH }, { label: title }]}
-          onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
-          onBack={() => navigate(PBA_LIST_PATH)}
-          trailing={
-            isNew ? undefined : <PrevNext path={PBA_LIST_PATH} prevId={prevId} nextId={nextId} />
-          }
+          parent={{ noun: PBA_NOUN, to: PBA_LIST_PATH }}
+          title={title}
           tabs={isNew ? undefined : <Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={[...PAGES]} />}
           status={isNew ? undefined : <Badge size="small" intent={PBA_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
           actions={
-            <>
-              {readOnly ? null : <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={() => navigate(PBA_LIST_PATH)}>Cancel</Button>}
-              {menu.length ? <MoreMenu items={menu} /> : null}
-              {!readOnly && (
-                <Button type="submit" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving}>
-                  {saving ? 'Saving…' : added ? 'Update' : 'Add'}
-                </Button>
-              )}
-            </>
+            <DetailActions
+              noun={PBA_NOUN}
+              listPath={PBA_LIST_PATH}
+              mode={!added ? 'draft' : terminal ? 'readonly' : 'open'}
+              remarksOnly={terminal}
+              busy={saving}
+              onDraft={() => submit(null, true)}
+              onSubmit={() => submit(null)}
+              menu={menu}
+              prevNext={isNew ? undefined : { path: PBA_LIST_PATH, prevId, nextId }}
+            />
           }
         />
 
@@ -289,48 +289,56 @@ function PbaForm() {
                 {draft.status === 'Terminated' && draft.terminationDate
                   ? `Terminated on ${formatDate(draft.terminationDate)}. `
                   : ''}
-                Only remarks and attachments can be changed.
+                {`Only ${terminal ? '' : 'its status, '}remarks and attachments can be changed.`}
               </Alert>
             ) : null}
 
-            <fieldset disabled={readOnly} className="contents">
-              {draft.lines.length > 0 && (
-                <AgreementSummaryCard side="purchase" currency={draft.currency} totals={totals} settlementProbability={draft.settlementProbability} />
-              )}
-              <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
-                <div className="flex flex-col gap-2 lg:col-span-8">
-                  <VendorCard
-                    vendors={m.vendors}
-                    vendorId={draft.vendorId}
-                    vendor={vendor}
-                    readOnly={readOnly}
-                    added={added}
-                    error={errors.vendorId}
-                    pickVendor={pickVendor}
-                    contact={{ contactId: draft.contactId, onChange: (id) => update({ contactId: id }) }}
-                    vendorRef={{ value: draft.vendorRef, onChange: (v) => update({ vendorRef: v }), hint: "The vendor's own reference for this agreement." }}
-                    currency={{ value: draft.currency, readOnly: true }}
-                    phone={draft.phone}
-                    email={draft.email}
-                  />
-                  <AgreementLinesCard side="purchase" draft={draft} update={update} m={m} readOnly={readOnly} newLine={newPbaLine} />
-                  <AttachmentsCard
-                    attachments={draft.attachments}
-                    onChange={(attachments) => update({ attachments })}
-                    emptyHint="Signed agreement, vendor confirmation, or supporting documents."
-                    withDescription
-                  />
-                </div>
-
-                <aside className="flex flex-col gap-2 lg:col-span-4">
-                  <AgreementCard draft={draft} update={update} m={m} added={added} />
-                  <GeneralTab draft={draft} update={update} m={m} readOnly={readOnly} />
-                </aside>
+            {draft.lines.length > 0 && (
+              <AgreementSummaryCard side="purchase" currency={draft.currency} totals={totals} settlementProbability={draft.settlementProbability} />
+            )}
+            <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
+              <div className="flex flex-col gap-2 lg:col-span-8">
+                <VendorCard
+                  vendors={m.vendors}
+                  vendorId={draft.vendorId}
+                  vendor={vendor}
+                  readOnly={readOnly}
+                  added={added}
+                  error={errors.vendorId}
+                  pickVendor={pickVendor}
+                  onOpenDetails={() => setVendorDetailsOpen(true)}
+                />
+                <AgreementLinesCard side="purchase" draft={draft} update={update} m={m} readOnly={readOnly} newLine={newPbaLine} />
+                {/* Attachments stay editable at every status. */}
+                <AttachmentsCard
+                  attachments={draft.attachments}
+                  onChange={(attachments) => update({ attachments })}
+                  emptyHint="Signed agreement, vendor confirmation, or supporting documents."
+                  withDescription
+                />
               </div>
-            </fieldset>
+
+              <aside className="flex flex-col gap-2 lg:col-span-4">
+                <AgreementCard draft={draft} update={update} m={m} added={added} readOnly={readOnly} />
+                <GeneralTab draft={draft} update={update} m={m} readOnly={readOnly} terminal={terminal} />
+              </aside>
+            </div>
           </Panel.Body>
         )}
       </Panel>
     </Form>
+    <VendorDetailsPanel
+      draft={draft}
+      update={update}
+      vendor={vendor}
+      currencies={m.currencies}
+      readOnly={readOnly}
+      open={vendorDetailsOpen}
+      onClose={() => setVendorDetailsOpen(false)}
+      vendorRefHint="The vendor's own reference for this agreement."
+      currency={{ disabled: true, tooltip: "Set by the vendor's currency." }}
+      addresses={[]}
+    />
+    </>
   );
 }

@@ -7,15 +7,18 @@ import type { ApprovalRule, DocType } from '../../../mocks/approvalRules';
 import { approvalRules } from '../../../services/approvalRules';
 import { salesEmployees } from '../../../services/partnerMasters';
 import type { NamedEntry } from '../../../mocks/partnerMasters';
+import { cap } from '../../../components/form/noun';
+import { AR_NOUN, ARCM_NOUN, DN_NOUN, QT_NOUN, RC_NOUN, RI_NOUN, SO_NOUN, SR_NOUN } from '../../sales/paths';
 
 const SALES_APPROVAL_ROWS: { docType: DocType; label: string; field: keyof SalesSettings }[] = [
-  { docType: 'QT', label: 'Sales Quotation', field: 'requireQuotationApproval' },
-  { docType: 'SO', label: 'Sales Order', field: 'requireSoApproval' },
-  { docType: 'DN', label: 'Delivery', field: 'requireDeliveryApproval' },
-  { docType: 'ARINV', label: 'A/R Invoice', field: 'requireArInvoiceApproval' },
-  { docType: 'SR', label: 'Sales Return', field: 'requireSalesReturnApproval' },
-  { docType: 'ARCM', label: 'A/R Credit Memo', field: 'requireArCreditMemoApproval' },
-  { docType: 'RC', label: 'Incoming Payment', field: 'requireIncomingPaymentApproval' },
+  { docType: 'QT', label: cap(QT_NOUN.one), field: 'requireQuotationApproval' },
+  { docType: 'SO', label: cap(SO_NOUN.one), field: 'requireSoApproval' },
+  { docType: 'DN', label: cap(DN_NOUN.one), field: 'requireDeliveryApproval' },
+  { docType: 'ARINV', label: cap(AR_NOUN.one), field: 'requireArInvoiceApproval' },
+  { docType: 'SR', label: cap(SR_NOUN.one), field: 'requireSalesReturnApproval' },
+  { docType: 'ARCM', label: cap(ARCM_NOUN.one), field: 'requireArCreditMemoApproval' },
+  { docType: 'RC', label: cap(RC_NOUN.one), field: 'requireIncomingPaymentApproval' },
+  { docType: 'ARRI', label: cap(RI_NOUN.one), field: 'requireArReserveInvoiceApproval' },
 ];
 
 export function SalesSettingsTab() {
@@ -86,7 +89,7 @@ export function SalesSettingsTab() {
             </table>
           </div>
           <Text variant="small" tone="muted" className="mt-1">
-            When approval is required, clicking Add saves a draft. Use the status field to submit for approval.
+            When approval is required, new documents show Submit for approval and go to the approver. The approver creates them directly.
           </Text>
           <div className="flex justify-end mt-2">
             <Button type="button" size="small" intent="primary" variant="solid" disabled={!dirty}

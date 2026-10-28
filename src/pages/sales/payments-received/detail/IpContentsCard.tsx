@@ -8,6 +8,7 @@ import { newIncomingAccountRow, type IncomingAccountRow, type IncomingRow } from
 import { formatDate } from '../../../../services/dates';
 import { formatAmount } from '../../../../services/format';
 import { allocateInSequence, amountDue, overdueDays, rowDiscount, type IncomingInput } from '../../../../services/incomingPayments';
+import { AR_LIST_PATH } from '../../paths';
 
 const num = (v: string) => (v === '' ? 0 : Number(v));
 
@@ -42,7 +43,7 @@ export function IncomingDocuments({ draft, update, errors, fx, readOnly }: Props
       header: 'Document',
       cell: (r) => (
         <div className="flex flex-col whitespace-nowrap">
-          <Link intent="primary" onClick={() => navigate(`/sales/invoices/${r.invoiceId}`)}>{r.docNo}</Link>
+          <Link intent="primary" onClick={() => navigate(`${AR_LIST_PATH}/${r.invoiceId}`)}>{r.docNo}</Link>
           <Text variant="small" tone="muted">
             A/R invoice{r.installment ? ` · installment ${r.installment} of ${r.installments}` : ''}{r.projectId ? ` · ${projectLabel(r.projectId)}` : ''}
           </Text>

@@ -1,6 +1,7 @@
 import { useEffect, useState, type CSSProperties, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
-import { Button, FormField, Icon, IconButton, Panel, PanelHeader, SidePanel, Text, Textarea } from '@jasperlepardo/sikat-design-system';
+import { Button, FormField, Icon, IconButton, Panel, SidePanel, Text, Textarea } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../form/PageHeader';
 import { FieldStack, Section, bind, type Errors } from '../form/fields';
 import { formatFilter, parseFilter } from './aip160';
 import { FilterRules } from './FilterBar';
@@ -12,6 +13,7 @@ import { newRule, type FilterField, type FilterGroup } from './engine';
  */
 export function PresetPanel<T>({
   title,
+  isNew,
   fields,
   initial,
   takenNames,
@@ -19,6 +21,8 @@ export function PresetPanel<T>({
   onSave,
 }: {
   title: string;
+  /** A new preset (Create filter preset) rather than one being edited (Save changes). */
+  isNew: boolean;
   fields: FilterField<T>[];
   initial: { name: string; filter: FilterGroup };
   /** Names already used in this list (excluding the preset being edited). */
@@ -80,8 +84,8 @@ export function PresetPanel<T>({
   return createPortal(
     <SidePanel overlay onOverlayClick={onCancel} style={{ '--sikat-side-panel-width': '880px' } as CSSProperties}>
       <form className="flex min-h-0 flex-1 flex-col" onSubmit={save} noValidate>
-        <PanelHeader
-          type="forms"
+        <PageHeader
+          variant="plain"
           icon="filter_list"
           title={title}
           actions={
@@ -89,11 +93,11 @@ export function PresetPanel<T>({
               <IconButton intent="default" variant="link" label="Close" onClick={onCancel}>
                 <Icon size={20}>close</Icon>
               </IconButton>
-              <Button type="button" intent="default" variant="solid" size="large" onClick={onCancel}>
+              <Button type="button" intent="white" variant="solid" shape="pill" onClick={onCancel}>
                 Cancel
               </Button>
-              <Button type="submit" intent="primary" variant="solid" size="large" disabled={saving}>
-                {saving ? 'Saving…' : 'Save preset'}
+              <Button type="submit" intent="primary" variant="solid" shape="pill" disabled={saving}>
+                {saving ? (isNew ? 'Creating…' : 'Saving…') : isNew ? 'Create filter preset' : 'Save changes'}
               </Button>
             </>
           }

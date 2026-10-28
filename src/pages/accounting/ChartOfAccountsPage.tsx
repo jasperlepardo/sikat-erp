@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import { Alert, Badge, Button, Checkbox, FormField, Icon, Panel, PanelHeader, Select, TableStatus, Tabs, Text } from '@jasperlepardo/sikat-design-system';
+import { Alert, Badge, Checkbox, FormField, Icon, Panel, Select, TableStatus, Tabs, Text } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../components/form/PageHeader';
 import { FieldStack, Flags, ReadOnly, Section, bind } from '../../components/form/fields';
 import { MasterList } from '../../components/form/MasterList';
 import { MasterLookup } from '../../components/form/MasterLookup';
@@ -26,6 +27,7 @@ import { AccountBalancePanel, signedBalance } from './AccountBalancePanel';
 import { useAsync } from '../../services/useAsync';
 import { useCollectionRows } from '../../services/useCollectionRows';
 import { useHeaderSearchHost } from '../../components/form/HeaderSearch';
+import { GL_ACCOUNT_NOUN } from './paths';
 
 const BASE = '/accounting/chart-of-accounts';
 /** The tree's depth picker goes this deep at most. */
@@ -142,7 +144,7 @@ export function ChartOfAccountsPage() {
       recordId={view ? undefined : recordId}
       icon="account_tree"
       title="Accounts"
-      noun="account"
+      noun={GL_ACCOUNT_NOUN.one}
       description="Title accounts group the accounts below them; documents post only to active accounts. Control accounts take postings through business partners only."
       rows={rows && (searching ? rows : inDrawer)}
       hideHeader
@@ -490,18 +492,11 @@ export function ChartOfAccountsPage() {
 
   return (
     <Panel className="flex-1">
-      <PanelHeader
+      <PageHeader
         {...search.headerProps}
         icon="account_tree"
-        iconIntent="default"
-        iconShape="rounded"
-        iconSize={32} iconVariant="outline"
         title="Chart of Accounts"
-        actions={
-          <Button intent="primary" variant="solid" size="medium" shape="pill" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${BASE}/new`)}>
-            New account
-          </Button>
-        }
+        create={{ noun: GL_ACCOUNT_NOUN, to: BASE }}
       />
       <Panel.Body className="flex flex-col gap-2">
         {notice ? (

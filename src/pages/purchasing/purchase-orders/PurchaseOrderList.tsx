@@ -1,12 +1,9 @@
 import { useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router';
+import { useLocation } from 'react-router';
 import { formatDate } from '../../../services/dates';
 import {
   Alert,
-  Button,
-  Icon,
   Panel,
-  PanelHeader,
   Table,
   TableAmount,
   TableContent,
@@ -23,10 +20,11 @@ import { dateField, linesField, masterField, numberField, statusField, textField
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { currencyDef, salesEmployeeDef } from '../../settings/masterDefs';
 import { useListPage } from '../../../components/form/DataTable';
-import { PO_LIST_PATH, PO_STATUS_INTENT } from '../paths';
+import { PageHeader } from '../../../components/form/PageHeader';
+import { cap } from '../../../components/form/noun';
+import { PO_LIST_PATH, PO_NOUN, PO_STATUS_INTENT } from '../paths';
 
 export function PurchaseOrderList() {
-  const navigate = useNavigate();
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const data = useAsync(() => Promise.all([listPurchaseOrders(), taxCodes.list()]), []);
   const [query, setQuery] = useState('');
@@ -50,7 +48,7 @@ export function PurchaseOrderList() {
   const presets = useListPresets({
     list: 'purchase-orders',
     fields,
-    builtIns: statusViews('purchase orders', PO_STATUSES),
+    builtIns: statusViews(PO_NOUN.many, PO_STATUSES),
     defaultSort: { key: 'postingDate', direction: 'desc' },
     rows: orders,
     onChange: resetPage,
@@ -122,7 +120,7 @@ export function PurchaseOrderList() {
 
   return (
     <Panel className="flex-1">
-      <PanelHeader
+      <PageHeader
         showSearch
         searchLabel="Search purchase orders"
         searchPlaceholder="Search by PO no., vendor, vendor ref. or item"
@@ -132,22 +130,8 @@ export function PurchaseOrderList() {
           resetPage();
         }}
         icon="receipt_long"
-        iconIntent="default"
-        iconShape="rounded"
-        iconSize={32} iconVariant="outline"
         title={presets.menu}
-        actions={
-          <Button
-            intent="primary"
-            variant="solid"
-            size="medium"
-            shape="pill"
-            leadingIcon={<Icon size={20}>add</Icon>}
-            onClick={() => navigate(`${PO_LIST_PATH}/new`)}
-          >
-            New purchase order
-          </Button>
-        }
+        create={{ noun: PO_NOUN, to: PO_LIST_PATH }}
       />
       <Panel.Body className="flex flex-col gap-2">
         {notice ? (
@@ -158,7 +142,7 @@ export function PurchaseOrderList() {
         {presets.bar(null)}
         {orders ? (
           <Table
-            caption="Purchase orders"
+            caption={cap(PO_NOUN.many)}
             columns={columns}
             rows={visible}
             getRowId={(po) => po.id}

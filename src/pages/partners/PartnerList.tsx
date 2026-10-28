@@ -1,11 +1,7 @@
 import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router';
 import {
   Badge,
-  Button,
-  Icon,
   Panel,
-  PanelHeader,
   Table,
   TableAmount,
   TableContent,
@@ -13,6 +9,8 @@ import {
   type TableColumn,
   Text,
 } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../components/form/PageHeader';
+import { cap } from '../../components/form/noun';
 import type { Partner } from '../../mocks/partners';
 import {
   defaultBillTo,
@@ -28,7 +26,7 @@ import { bpGroupName, leadSources, nameIn } from '../../services/partnerMasters'
 import { paymentTermName } from '../../services/purchaseOrders';
 import { useListPage } from '../../components/form/DataTable';
 import { useListPresets } from '../../components/filter/useListPresets';
-import { ROLE_CONFIG, ROLE_ORDER, STAGE_INTENT, scopeConfig, type PartnerScope } from './roles';
+import { ROLE_CONFIG, ROLE_ORDER, STAGE_INTENT, scopeConfig, scopeNoun, type PartnerScope } from './roles';
 import { partnerFilterFields, partnerViews } from './filterFields';
 
 const initials = (name: string) =>
@@ -53,7 +51,7 @@ function sortValue(p: Partner, key: string): string {
  */
 export function PartnerList({ scope }: { scope: PartnerScope }) {
   const config = scopeConfig(scope);
-  const navigate = useNavigate();
+  const noun = scopeNoun(scope);
   const partners = useAsync(() => (scope === 'all' ? listPartners() : listPartnersByRole(scope)), [scope]);
   const [query, setQuery] = useState('');
   const { resetPage, paginate } = useListPage();
@@ -149,11 +147,8 @@ export function PartnerList({ scope }: { scope: PartnerScope }) {
 
   return (
     <Panel className="flex-1">
-      <PanelHeader
+      <PageHeader
         icon={config.icon}
-        iconIntent="default"
-        iconShape="rounded"
-        iconSize={32} iconVariant="outline"
         title={presets.menu}
         showSearch
         searchLabel={`Search ${config.title.toLowerCase()}`}
@@ -163,24 +158,13 @@ export function PartnerList({ scope }: { scope: PartnerScope }) {
           setQuery(value);
           resetPage();
         }}
-        actions={
-          <Button
-            intent="primary"
-            variant="solid"
-            size="medium"
-            shape="pill"
-            leadingIcon={<Icon size={20}>add</Icon>}
-            onClick={() => navigate(`${config.basePath}/new`)}
-          >
-            New {config.singular.toLowerCase()}
-          </Button>
-        }
+        create={{ noun, to: config.basePath }}
       />
       <Panel.Body className="flex flex-col gap-2">
         {presets.bar(null)}
         {partners ? (
           <Table
-            caption={config.title}
+            caption={cap(noun.many)}
             columns={columns}
             rows={visible}
             getRowId={(p) => p.id}

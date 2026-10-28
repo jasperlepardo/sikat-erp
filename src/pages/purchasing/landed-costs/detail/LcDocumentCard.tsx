@@ -1,5 +1,5 @@
-import { FormField, Select } from '@jasperlepardo/sikat-design-system';
-import { Fields, Section, bind } from '../../../../components/form/fields';
+import { Combobox, Select } from '@jasperlepardo/sikat-design-system';
+import { CtxFormField, Section, SideFields, bind } from '../../../../components/form/fields';
 import { StatusField } from '../../../../components/form/StatusField';
 import { LC_SERIES, LC_STATUSES, type LcStatus } from '../../../../mocks/landedCosts';
 import { lcNumber } from '../../../../services/landedCosts';
@@ -11,13 +11,13 @@ interface LcDocumentCardProps extends LcSectionProps {
   statusMoves: Partial<Record<LcStatus, () => void>>;
 }
 
-export function LcDocumentCard({ draft, update, errors, statusMoves, readOnly }: LcDocumentCardProps) {
+export function LcDocumentCard({ draft, update, errors, m, statusMoves, readOnly }: LcDocumentCardProps) {
   const h = bind(draft, update);
 
   return (
     <Section icon="tag" title="Document">
-      <Fields>
-        <FormField label="No.">
+      <SideFields>
+        <CtxFormField label="No.">
           {() => (
             <div className="flex gap-1">
               <Select
@@ -33,7 +33,7 @@ export function LcDocumentCard({ draft, update, errors, statusMoves, readOnly }:
               </span>
             </div>
           )}
-        </FormField>
+        </CtxFormField>
         <StatusField
           statuses={LC_STATUSES}
           intents={LC_STATUS_INTENT}
@@ -44,7 +44,23 @@ export function LcDocumentCard({ draft, update, errors, statusMoves, readOnly }:
         />
         {h.date('postingDate', 'Posting date', { required: true, error: errors.postingDate, disabled: readOnly })}
         {h.date('dueDate', 'Due date', { disabled: readOnly })}
-      </Fields>
+        <CtxFormField label="Broker" tooltip="Customs broker or freight forwarder handling clearance.">
+          {(p) => (
+            <Combobox
+              {...p}
+              placeholder="None"
+              options={m.vendors.map((v) => ({ value: v.id, label: v.name, subLabel: v.code, subLabelPlacement: 'top' as const, text: `${v.code} ${v.name}` }))}
+              value={draft.brokerId || null}
+              onValueChange={(brokerId) => {
+                const v = m.vendors.find((x) => x.id === brokerId);
+                update({ brokerId: brokerId ?? '', brokerCode: v?.code ?? '', brokerName: v?.name ?? '' });
+              }}
+            />
+          )}
+        </CtxFormField>
+        {h.text('reference', 'Reference', { hint: 'External shipment or broker reference.', disabled: readOnly })}
+        {h.text('fileNo', 'File no.', { hint: 'Internal tracking reference.', disabled: readOnly })}
+      </SideFields>
     </Section>
   );
 }

@@ -2,11 +2,10 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import {
   Badge,
-  Button,
   Panel,
-  PanelHeader,
   Text,
 } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../../components/form/PageHeader';
 import { Section, type Errors } from '../../../components/form/fields';
 import { MasterDefList } from '../../../components/form/MasterLookup';
 import type { ListRoute } from '../../../components/form/MasterList';
@@ -18,7 +17,11 @@ import { companyDef } from '../masterDefs';
 import { companies } from '../../../services/companies';
 import { companyTax } from '../../../services/masterData';
 import { useAsync } from '../../../services/useAsync';
-import { NotFound, PrevNext, neighbours } from '../../../components/form/DetailNav';
+import { NotFound, neighbours } from '../../../components/form/DetailNav';
+import { DetailActions } from '../../../components/form/DetailActions';
+import type { Noun } from '../../../components/form/noun';
+
+const COMPANY_NOUN: Noun = { one: companyDef.noun, many: companyDef.title };
 
 /** Companies list; when a record is open, a two-card company detail page. */
 export function CompaniesTab({ basePath, recordId }: ListRoute) {
@@ -70,24 +73,23 @@ function CompanyDetail({ basePath, recordId }: { basePath: string; recordId: str
 
   return (
     <Panel className="flex-1">
-      <PanelHeader
-        type="details"
+      <PageHeader
+        variant="plain"
         icon="domain"
-        iconIntent="default"
-        iconShape="rounded"
-        iconSize={32}
-        iconVariant="outline"
-        breadcrumbs={[{ label: 'Companies', href: basePath }, { label: isNew ? 'New company' : companyDef.label(row) }]}
-        onBreadcrumbNavigate={(item, e) => { e.preventDefault(); navigate(item.href!); }}
-        onBack={back}
-        trailing={isNew ? undefined : <PrevNext path={basePath} prevId={prevId} nextId={nextId} />}
+        parent={{ noun: COMPANY_NOUN, to: basePath }}
+        title={isNew ? `New ${COMPANY_NOUN.one}` : companyDef.label(row)}
         status={
           existing ? <Badge size="small" intent={existing.active ? 'success' : 'default'}>{existing.active ? 'Active' : 'Inactive'}</Badge> : undefined
         }
         actions={
-          <Button type="button" intent="primary" variant="solid" size="medium" shape="pill" disabled={saving} onClick={save}>
-            {saving ? 'Saving…' : isNew ? 'Add' : 'Save'}
-          </Button>
+          <DetailActions
+            noun={COMPANY_NOUN}
+            listPath={basePath}
+            mode={isNew ? 'draft' : 'open'}
+            busy={saving}
+            onSubmit={save}
+            prevNext={isNew ? undefined : { path: basePath, prevId, nextId }}
+          />
         }
       />
       <Panel.Body className="flex flex-col gap-2">

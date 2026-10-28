@@ -263,7 +263,7 @@ export function PaymentEntryPanel({
   const title = isNew ? 'New payment method' : value.account && was ? was.title(value.account) : methodTitle(value.code);
 
   return (
-    <EditPanel icon={kind ? kind.icon : methodIcon(code)} title={title} onCancel={onCancel} onDone={done}>
+    <EditPanel icon={kind ? kind.icon : methodIcon(code)} title={title} noun="payment method" isNew={isNew} onCancel={onCancel} onDone={done}>
       <Section icon="payments" title="Payment method">
         <Fields>
           {methodField.choose('code', 'Method', options, {

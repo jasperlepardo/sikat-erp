@@ -2,23 +2,25 @@ import { createPortal } from 'react-dom';
 import { useState } from 'react';
 import {
   Button,
-  Card,
   Checkbox,
   Icon,
+  IconButton,
   Panel,
-  PanelHeader,
   SidePanel,
-  Table,
-  type TableColumn,
   TableContent,
   Text,
 } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../../../components/form/PageHeader';
+import { DocLines } from '../../../../components/form/docLines/DocLines';
+import type { PrefColumn } from '../../../../components/form/columnPrefs';
 import { formatAmount } from '../../../../services/format';
 import { grNumber } from '../../../../services/goodsReceipts';
 import { formatDate } from '../../../../services/dates';
 import type { LandedCostLine } from '../../../../mocks/landedCosts';
 import type { GoodsReceipt, GrLine } from '../../../../mocks/goodsReceipts';
 import type { LcSectionProps } from './types';
+
+const money = (n: number) => <span className="tabular-nums">{formatAmount(n)}</span>;
 
 interface LcItemsCardProps extends LcSectionProps {
   onLinesChange: (lines: LandedCostLine[]) => void;
@@ -83,24 +85,22 @@ function CopyFromGrpoPanel({
   return (
     <SidePanel overlay onOverlayClick={onCancel}>
       <Panel className="flex-1 min-h-0 flex flex-col">
-        <PanelHeader
-          type="forms"
+        <PageHeader
+          variant="plain"
           icon="content_copy"
-          iconIntent="default"
-          iconShape="rounded"
-          iconSize={32}
-          iconVariant="outline"
-          title="Copy from Goods Receipt"
+          title="Copy from goods receipt"
           actions={
             <>
-              <Button type="button" intent="white" variant="solid" size="medium" shape="pill" onClick={onCancel}>
+              <IconButton type="button" intent="default" variant="link" label="Close" onClick={onCancel}>
+                <Icon size={20}>close</Icon>
+              </IconButton>
+              <Button type="button" intent="white" variant="solid" shape="pill" onClick={onCancel}>
                 Cancel
               </Button>
               <Button
                 type="button"
                 intent="primary"
                 variant="solid"
-                size="medium"
                 shape="pill"
                 disabled={picks.size === 0}
                 onClick={handleCopy}
@@ -172,75 +172,51 @@ export function LcItemsCard({ draft, errors, m, readOnly, onLinesChange }: LcIte
   const taken = new Set(draft.lines.map((l) => l.baseLineId).filter(Boolean));
   const openReceipts = m.receipts.filter((r) => r.status === 'Open' || r.status === 'Closed');
 
-  const columns: TableColumn<LandedCostLine>[] = [
+  // Read-only cost-allocation grid: the heavier customs/warehouse columns ship hidden and
+  // are revealed via the Columns menu, like the other purchasing contents tables.
+  const columns: PrefColumn<LandedCostLine>[] = [
     { key: 'itemNo', header: 'Item No.', cell: (l) => <TableContent subcopy={l.baseDocNo}>{l.itemNo}</TableContent> },
     { key: 'description', header: 'Description', cell: (l) => l.description || '—' },
-    { key: 'quantity', header: 'Qty', cell: (l) => <span className="tabular-nums">{formatAmount(l.quantity)}</span> },
+    { key: 'quantity', header: 'Qty', align: 'end', cell: (l) => money(l.quantity) },
     { key: 'uomCode', header: 'UoM', cell: (l) => l.uomCode },
     { key: 'warehouse', header: 'Whse', cell: (l) => l.warehouse },
-    { key: 'unitPrice', header: 'Base price', cell: (l) => <span className="tabular-nums">{formatAmount(l.unitPrice)}</span> },
+    { key: 'unitPrice', header: 'Base price', align: 'end', cell: (l) => money(l.unitPrice) },
+    { key: 'baseValue', header: 'Base value', align: 'end', cell: (l) => money(Math.round(l.unitPrice * l.quantity * 100) / 100) },
+    { key: 'allocCostsVal', header: 'Alloc. costs', align: 'end', cell: (l) => money(l.allocCostsVal) },
     {
-      key: 'baseValue',
-      header: 'Base value',
-      cell: (l) => <span className="tabular-nums">{formatAmount(Math.round(l.unitPrice * l.quantity * 100) / 100)}</span>,
-    },
-    { key: 'allocCostsVal', header: 'Alloc. costs', cell: (l) => <span className="tabular-nums">{formatAmount(l.allocCostsVal)}</span> },
-    {
-      key: 'whsePrice',
-      header: 'Whse price',
+      key: 'whsePrice', header: 'Whse price', align: 'end', optional: true, defaultHidden: true,
       cell: (l) => {
         const base = l.unitPrice * l.quantity + l.allocCostsVal + (draft.customsAffectsInventory ? l.customsValue : 0);
         const whsePrice = l.quantity > 0 ? Math.round((base / l.quantity) * 100) / 100 : 0;
-        return <span className="tabular-nums">{formatAmount(whsePrice)}</span>;
+        return money(whsePrice);
       },
     },
-    { key: 'projectedCustoms', header: 'Proj. customs', cell: (l) => <span className="tabular-nums">{formatAmount(l.projectedCustoms)}</span> },
-    { key: 'customsValue', header: 'Customs val.', cell: (l) => <span className="tabular-nums">{formatAmount(l.customsValue)}</span> },
-    { key: 'releaseNo', header: 'Release no.', cell: (l) => l.releaseNo || '—' },
+    { key: 'projectedCustoms', header: 'Proj. customs', align: 'end', optional: true, defaultHidden: true, cell: (l) => money(l.projectedCustoms) },
+    { key: 'customsValue', header: 'Customs val.', align: 'end', optional: true, defaultHidden: true, cell: (l) => money(l.customsValue) },
+    { key: 'releaseNo', header: 'Release no.', optional: true, defaultHidden: true, cell: (l) => l.releaseNo || '—' },
   ];
 
   return (
     <>
-      <Card>
-        <Card.Header
-          icon={<Icon size={24}>inventory_2</Icon>}
-          actions={
-            !readOnly ? (
-              <Button
-                type="button"
-                intent="primary"
-                variant="outline"
-                size="small"
-                shape="pill"
-                leadingIcon={<Icon size={16}>content_copy</Icon>}
-                onClick={() => setCopying(true)}
-              >
-                Copy from GRPO
-              </Button>
-            ) : undefined
-          }
-        >
-          Items
-        </Card.Header>
-        <Card.Content>
-          {draft.lines.length === 0 ? (
-            <Text tone="muted" className="py-2 text-sm">
-              {readOnly ? 'No items.' : 'Copy lines from a goods receipt to allocate costs to.'}
-            </Text>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table
-                caption="Landed cost lines"
-                columns={columns}
-                rows={draft.lines}
-                getRowId={(l) => l.id}
-                layout="fill"
-              />
-            </div>
-          )}
-          {errors.lines ? <Text tone="danger" variant="small" className="mt-1">{errors.lines}</Text> : null}
-        </Card.Content>
-      </Card>
+      <DocLines<LandedCostLine>
+        cardHeader
+        prefsKey="lc"
+        icon="inventory_2"
+        title="Items"
+        columns={columns}
+        rows={draft.lines}
+        getRowId={(l) => l.id}
+        readOnly={readOnly}
+        actions={
+          !readOnly ? (
+            <Button type="button" intent="primary" variant="outline" size="small" shape="pill" leadingIcon={<Icon size={16}>content_copy</Icon>} onClick={() => setCopying(true)}>
+              Copy from GRPO
+            </Button>
+          ) : undefined
+        }
+        footer={errors.lines ? <Text tone="danger" variant="small">{errors.lines}</Text> : undefined}
+        empty={<Text tone="muted" className="text-sm">{readOnly ? 'No items.' : 'Copy lines from a goods receipt to allocate costs to.'}</Text>}
+      />
 
       {copying
         ? createPortal(

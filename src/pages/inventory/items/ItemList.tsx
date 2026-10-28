@@ -1,11 +1,7 @@
 import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router';
 import {
-  Button,
   Card,
-  Icon,
   Panel,
-  PanelHeader,
   Table,
   TableAmount,
   TableContent,
@@ -13,6 +9,9 @@ import {
   type TableColumn,
   Text,
 } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../../components/form/PageHeader';
+import { ITEM_NOUN } from '../paths';
+import { cap } from '../../../components/form/noun';
 import type { Item } from '../../../mocks/items';
 import { isValidToday, listItems, stockTotals } from '../../../services/items';
 import { useAsync } from '../../../services/useAsync';
@@ -41,7 +40,6 @@ function effectiveStock(item: Item, variantStockMap: Map<string, StockTotals>): 
 }
 
 export function ItemList({ basePath = '/inventory/items' }: { basePath?: string }) {
-  const navigate = useNavigate();
   const items = useAsync(listItems, []);
 
   // Aggregate stock totals for parent items, summed across all their variants.
@@ -197,7 +195,7 @@ export function ItemList({ basePath = '/inventory/items' }: { basePath?: string 
 
   return (
     <Panel className="flex-1">
-      <PanelHeader
+      <PageHeader
         showSearch
         searchLabel="Search items"
         searchPlaceholder="Search by item no., description, group, barcode, or variant"
@@ -207,29 +205,15 @@ export function ItemList({ basePath = '/inventory/items' }: { basePath?: string 
           resetPage();
         }}
         icon="inventory_2"
-        iconIntent="default"
-        iconShape="rounded"
-        iconSize={32} iconVariant="outline"
         title={presets.menu}
-        actions={
-          <Button
-            intent="primary"
-            variant="solid"
-            size="medium"
-            shape="pill"
-            leadingIcon={<Icon size={20}>add</Icon>}
-            onClick={() => navigate(`${basePath}/new`)}
-          >
-            New item
-          </Button>
-        }
+        create={{ noun: ITEM_NOUN, to: basePath }}
       />
       <Panel.Body className="flex flex-col gap-2">
         {presets.bar(null)}
         <Card className={fillCardClass(visible.length)}>
           {items ? (
             <Table
-              caption="Items"
+              caption={cap(ITEM_NOUN.many)}
               columns={columns}
               rows={visible}
               getRowId={(i) => i.id}

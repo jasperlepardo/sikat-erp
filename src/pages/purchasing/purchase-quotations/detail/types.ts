@@ -6,6 +6,7 @@ import { rateOn } from '../../../../services/masterData';
 import { todayISO } from '../../../../services/dates';
 import type { Partner } from '../../../../mocks/partners';
 import type { Company } from '../../../../mocks/companies';
+import type { PurchaseOrder } from '../../../../mocks/purchaseOrders';
 import type { Item } from '../../../../mocks/items';
 import type { RfqInput } from '../../../../services/rfqs';
 import { itemsPerUom } from '../../../../mocks/items';
@@ -29,6 +30,8 @@ export interface RfqMasters {
   currencies: Currency[];
   rates: ExchangeRate[];
   company: Company;
+  /** Purchase orders, for how much was ordered from each line. */
+  pos: PurchaseOrder[];
 }
 
 export interface RfqSectionProps {

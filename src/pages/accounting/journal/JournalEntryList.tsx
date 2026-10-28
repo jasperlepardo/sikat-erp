@@ -1,12 +1,9 @@
 import { useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router';
+import { useLocation } from 'react-router';
 import {
   Alert,
-  Button,
   Card,
-  Icon,
   Panel,
-  PanelHeader,
   Table,
   TableAmount,
   TableContent,
@@ -14,6 +11,8 @@ import {
   Text,
   type TableColumn,
 } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../../components/form/PageHeader';
+import { cap } from '../../../components/form/noun';
 import { EMPTY_FILTER, oneRule } from '../../../components/filter/engine';
 import { choiceField, dateField, numberField, textField } from '../../../components/filter/fieldKit';
 import { useListPresets } from '../../../components/filter/useListPresets';
@@ -24,7 +23,7 @@ import { formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
 import { jeNumber, jeTotals, listJournalEntries } from '../../../services/journalEntries';
 import { useAsync } from '../../../services/useAsync';
-import { JE_LIST_PATH, JE_STATUS_INTENT } from '../paths';
+import { JE_LIST_PATH, JE_NOUN, JE_STATUS_INTENT } from '../paths';
 
 const JE_VIEWS: BuiltInView[] = [
   { id: 'all', name: 'All journal entries', filter: EMPTY_FILTER },
@@ -34,7 +33,6 @@ const JE_VIEWS: BuiltInView[] = [
 ];
 
 export function JournalEntryList() {
-  const navigate = useNavigate();
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const entries = useAsync(listJournalEntries, []);
   const fields = [
@@ -112,7 +110,7 @@ export function JournalEntryList() {
 
   return (
     <Panel className="flex-1">
-      <PanelHeader
+      <PageHeader
         showSearch
         searchLabel="Search journal entries"
         searchPlaceholder="Search by number, origin, remarks, reference or account"
@@ -122,15 +120,8 @@ export function JournalEntryList() {
           resetPage();
         }}
         icon="menu_book"
-        iconIntent="default"
-        iconShape="rounded"
-        iconSize={32} iconVariant="outline"
         title={presets.menu}
-        actions={
-          <Button intent="primary" variant="solid" size="medium" shape="pill" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${JE_LIST_PATH}/new`)}>
-            New journal entry
-          </Button>
-        }
+        create={{ noun: JE_NOUN, to: JE_LIST_PATH }}
       />
       <Panel.Body className="flex flex-col gap-2">
         {notice ? (
@@ -142,7 +133,7 @@ export function JournalEntryList() {
         <Card className={fillCardClass(onPage.length)}>
           {entries ? (
             <Table
-              caption="Journal entries"
+              caption={cap(JE_NOUN.many)}
               columns={columns}
               rows={onPage}
               getRowId={(e) => e.id}

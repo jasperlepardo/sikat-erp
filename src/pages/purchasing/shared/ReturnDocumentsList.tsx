@@ -1,11 +1,8 @@
 import { useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router';
+import { useLocation } from 'react-router';
 import {
   Alert,
-  Button,
-  Icon,
   Panel,
-  PanelHeader,
   Table,
   TableAmount,
   TableContent,
@@ -13,6 +10,7 @@ import {
   Text,
   type TableColumn,
 } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../../components/form/PageHeader';
 import { dateField, masterField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { currencyDef } from '../../settings/masterDefs';
@@ -23,7 +21,8 @@ import { listCreditMemos, memoNumber, memoTotal } from '../../../services/apCred
 import { listGoodsReturns, returnNumber, returnTotal } from '../../../services/goodsReturns';
 import { taxCodes } from '../../../services/masterData';
 import { useAsync } from '../../../services/useAsync';
-import { MEMO_LIST_PATH, MEMO_STATUS_INTENT, RETURN_LIST_PATH, RETURN_STATUS_INTENT } from '../paths';
+import { cap } from '../../../components/form/noun';
+import { MEMO_LIST_PATH, MEMO_NOUN, MEMO_STATUS_INTENT, RETURN_LIST_PATH, RETURN_NOUN, RETURN_STATUS_INTENT } from '../paths';
 
 type Kind = 'returns' | 'memos';
 type Status = 'Draft' | 'Not Confirmed' | 'Open' | 'Closed' | 'Cancelled';
@@ -48,16 +47,16 @@ interface Row {
 
 /**
  * Purchasing › Returns & Debits: goods sent back to vendors, and the vendors' credit notes.
- * One page, a tab for each document; each tab is its own route (GoodsReturnsList, DebitMemosList).
+ * One component for both lists; each document is its own route and sidebar entry (GoodsReturnsList, DebitMemosList).
  */
 export function ReturnDocumentsList({ kind }: { kind: Kind }) {
-  const navigate = useNavigate();
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const data = useAsync(() => Promise.all([listGoodsReturns(), listCreditMemos(), taxCodes.list()]), []);
   const [query, setQuery] = useState('');
   const { resetPage, paginate } = useListPage();
   const isReturns = kind === 'returns';
   const path = isReturns ? RETURN_LIST_PATH : MEMO_LIST_PATH;
+  const noun = isReturns ? RETURN_NOUN : MEMO_NOUN;
 
   const all: Row[] | undefined = useMemo(() => {
     if (!data) return undefined;
@@ -94,7 +93,7 @@ export function ReturnDocumentsList({ kind }: { kind: Kind }) {
   const presets = useListPresets({
     list: isReturns ? 'goods-returns' : 'ap-credit-memos',
     fields,
-    builtIns: statusViews(isReturns ? 'goods returns' : 'A/P credit memos', STATUSES),
+    builtIns: statusViews(noun.many, STATUSES),
     defaultSort: { key: 'postingDate', direction: 'desc' },
     rows: all,
     onChange: resetPage,
@@ -126,9 +125,9 @@ export function ReturnDocumentsList({ kind }: { kind: Kind }) {
 
   return (
     <Panel className="flex-1">
-      <PanelHeader
+      <PageHeader
         showSearch
-        searchLabel="Search"
+        searchLabel={`Search ${noun.many}`}
         searchPlaceholder="Search by no., vendor, vendor ref., item or base document"
         searchValue={query}
         onSearchChange={(value) => {
@@ -136,15 +135,8 @@ export function ReturnDocumentsList({ kind }: { kind: Kind }) {
           resetPage();
         }}
         icon="assignment_return"
-        iconIntent="default"
-        iconShape="rounded"
-        iconSize={32} iconVariant="outline"
         title={presets.menu}
-        actions={
-          <Button intent="primary" variant="solid" size="medium" shape="pill" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${path}/new`)}>
-            {isReturns ? 'New goods return' : 'New A/P credit memo'}
-          </Button>
-        }
+        create={{ noun, to: path }}
       />
       <Panel.Body className="flex flex-col gap-2">
         {notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : null}
@@ -153,7 +145,7 @@ export function ReturnDocumentsList({ kind }: { kind: Kind }) {
           <Text tone="muted" className="p-4">Loading…</Text>
         ) : all.length ? (
           <Table
-            caption={isReturns ? 'Goods returns' : 'A/P credit memos'}
+            caption={cap(noun.many)}
             columns={columns}
             rows={visible}
             getRowId={(r) => r.id}
@@ -165,8 +157,8 @@ export function ReturnDocumentsList({ kind }: { kind: Kind }) {
         ) : (
           <Text tone="muted" className="p-4">
             {isReturns
-              ? 'No goods returns yet. Start one from a goods receipt or A/P invoice (You can also › Copy to goods return), or with New goods return.'
-              : 'No credit memos yet. Start one from an A/P invoice or goods return (You can also › Copy to A/P credit memo), or with New A/P credit memo.'}
+              ? 'No goods returns yet. Start one from a goods receipt or A/P invoice (More actions › Create goods return), or with New goods return.'
+              : 'No credit memos yet. Start one from an A/P invoice or goods return (More actions › Create A/P credit memo), or with New A/P credit memo.'}
           </Text>
         )}
       </Panel.Body>

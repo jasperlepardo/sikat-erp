@@ -1,11 +1,8 @@
 import { useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router';
+import { useLocation } from 'react-router';
 import {
   Alert,
-  Button,
-  Icon,
   Panel,
-  PanelHeader,
   Table,
   TableAmount,
   TableContent,
@@ -13,6 +10,7 @@ import {
   type TableColumn,
   Text,
 } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../../../components/form/PageHeader';
 import { GR_STATUSES, type GoodsReceipt } from '../../../mocks/goodsReceipts';
 import { formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
@@ -23,10 +21,10 @@ import { dateField, linesField, masterField, numberField, statusField, textField
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { currencyDef, salesEmployeeDef } from '../../settings/masterDefs';
 import { useListPage } from '../../../components/form/DataTable';
-import { GR_LIST_PATH, GR_STATUS_INTENT } from '../paths';
+import { cap } from '../../../components/form/noun';
+import { GR_LIST_PATH, GR_NOUN, GR_STATUS_INTENT } from '../paths';
 
 export function GoodsReceiptList() {
-  const navigate = useNavigate();
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const data = useAsync(() => Promise.all([listGoodsReceipts(), taxCodes.list()]), []);
   const [query, setQuery] = useState('');
@@ -50,7 +48,7 @@ export function GoodsReceiptList() {
   const presets = useListPresets({
     list: 'goods-receipts',
     fields,
-    builtIns: statusViews('goods receipts', GR_STATUSES),
+    builtIns: statusViews(GR_NOUN.many, GR_STATUSES),
     defaultSort: { key: 'postingDate', direction: 'desc' },
     rows: receipts,
     onChange: resetPage,
@@ -113,7 +111,7 @@ export function GoodsReceiptList() {
 
   return (
     <Panel className="flex-1">
-      <PanelHeader
+      <PageHeader
         showSearch
         searchLabel="Search goods receipts"
         searchPlaceholder="Search by receipt no., vendor, vendor ref., PO no. or item"
@@ -123,15 +121,8 @@ export function GoodsReceiptList() {
           resetPage();
         }}
         icon="inventory"
-        iconIntent="default"
-        iconShape="rounded"
-        iconSize={32} iconVariant="outline"
         title={presets.menu}
-        actions={
-          <Button intent="primary" variant="solid" size="medium" shape="pill" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${GR_LIST_PATH}/new`)}>
-            New goods receipt
-          </Button>
-        }
+        create={{ noun: GR_NOUN, to: GR_LIST_PATH }}
       />
       <Panel.Body className="flex flex-col gap-2">
         {notice ? (
@@ -142,7 +133,7 @@ export function GoodsReceiptList() {
         {presets.bar(null)}
         {receipts ? (
           <Table
-            caption="Goods receipts"
+            caption={cap(GR_NOUN.many)}
             columns={columns}
             rows={visible}
             getRowId={(gr) => gr.id}

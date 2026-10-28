@@ -1,28 +1,26 @@
 import { useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router';
+import { useLocation } from 'react-router';
 import {
   Alert,
-  Button,
-  Icon,
   Panel,
-  PanelHeader,
   Table,
   TableContent,
   TableStatus,
-  Tabs,
   Text,
   type TableColumn,
 } from '@jasperlepardo/sikat-design-system';
 import { dateField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { useListPage } from '../../../components/form/DataTable';
+import { PageHeader } from '../../../components/form/PageHeader';
+import { cap } from '../../../components/form/noun';
 import { formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
 import { arCmNumber, arCmTotal, listArCreditMemos } from '../../../services/arCreditMemos';
 import { listSalesReturns, srNumber, srTotal } from '../../../services/salesReturns';
 import { taxCodes } from '../../../services/masterData';
 import { useAsync } from '../../../services/useAsync';
-import { ARCM_STATUS_INTENT, AR_CM_LIST_PATH, SR_LIST_PATH, SR_STATUS_INTENT } from '../paths';
+import { ARCM_NOUN, ARCM_STATUS_INTENT, AR_CM_LIST_PATH, SR_LIST_PATH, SR_NOUN, SR_STATUS_INTENT } from '../paths';
 
 type Kind = 'returns' | 'memos';
 type Status = 'Draft' | 'Not Confirmed' | 'Open' | 'Closed' | 'Cancelled';
@@ -44,12 +42,12 @@ interface Row {
 }
 
 export function SalesReturnsList({ kind }: { kind: Kind }) {
-  const navigate = useNavigate();
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const data = useAsync(() => Promise.all([listSalesReturns(), listArCreditMemos(), taxCodes.list()]), []);
   const [query, setQuery] = useState('');
   const { resetPage, paginate } = useListPage();
   const path = kind === 'returns' ? SR_LIST_PATH : AR_CM_LIST_PATH;
+  const noun = kind === 'returns' ? SR_NOUN : ARCM_NOUN;
 
   const all: Row[] | undefined = useMemo(() => {
     if (!data) return undefined;
@@ -97,7 +95,7 @@ export function SalesReturnsList({ kind }: { kind: Kind }) {
   const presets = useListPresets({
     list: kind === 'returns' ? 'sales-returns' : 'ar-credit-memos',
     fields,
-    builtIns: statusViews(kind === 'returns' ? 'sales returns' : 'A/R credit memos', STATUSES),
+    builtIns: statusViews(noun.many, STATUSES),
     defaultSort: { key: 'postingDate', direction: 'desc' },
     rows: all,
     onChange: resetPage,
@@ -143,47 +141,27 @@ export function SalesReturnsList({ kind }: { kind: Kind }) {
   ];
 
   const columns = kind === 'returns' ? srColumns : cmColumns;
-  const counts = data ? { returns: data[0].length, memos: data[1].length } : undefined;
 
   return (
     <Panel className="flex-1">
-      <PanelHeader
+      <PageHeader
         showSearch
-        searchLabel="Search"
-        searchPlaceholder={kind === 'returns' ? 'Search by no., customer, or item' : 'Search by no., customer, or item'}
+        searchLabel={`Search ${noun.many}`}
+        searchPlaceholder="Search by no., customer, or item"
         searchValue={query}
         onSearchChange={(value) => { setQuery(value); resetPage(); }}
         icon="assignment_return"
-        iconIntent="default"
-        iconShape="rounded"
-        iconSize={32}
-        iconVariant="outline"
         title={presets.menu}
-        actions={
-          <Button intent="primary" variant="solid" size="medium" shape="pill" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${path}/new`)}>
-            {kind === 'returns' ? 'New sales return' : 'New credit memo'}
-          </Button>
-        }
-        tabs={
-          <Tabs
-            variant="outline"
-            value={kind}
-            onValueChange={(v) => navigate(v === 'returns' ? SR_LIST_PATH : AR_CM_LIST_PATH)}
-            items={[
-              { value: 'returns', label: 'Sales returns', badge: counts ? String(counts.returns) : undefined },
-              { value: 'memos', label: 'A/R credit memos', badge: counts ? String(counts.memos) : undefined },
-            ]}
-          />
-        }
+        create={{ noun, to: path }}
       />
       <Panel.Body className="flex flex-col gap-2">
         {notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : null}
         {presets.bar(null)}
         {!all ? (
-          <Text tone="muted" className="p-4">Loading…</Text>
+          <Text tone="muted" className="p-4">Loading {noun.many}…</Text>
         ) : all.length ? (
           <Table
-            caption={kind === 'returns' ? 'Sales returns' : 'A/R credit memos'}
+            caption={cap(noun.many)}
             columns={columns}
             rows={onPage}
             getRowId={(r) => r.id}
@@ -195,8 +173,8 @@ export function SalesReturnsList({ kind }: { kind: Kind }) {
         ) : (
           <Text tone="muted" className="p-4">
             {kind === 'returns'
-              ? 'No sales returns yet. Start one from a delivery (You can also › Copy to sales return), or with New sales return.'
-              : 'No credit memos yet. Start one from a sales return (You can also › Copy to A/R credit memo), or with New credit memo.'}
+              ? `No ${SR_NOUN.many} yet. Start one from a delivery (⋯ › Create ${SR_NOUN.one}), or with New ${SR_NOUN.one}.`
+              : `No ${ARCM_NOUN.many} yet. Start one from a sales return (⋯ › Create ${ARCM_NOUN.one}), or with New ${ARCM_NOUN.one}.`}
           </Text>
         )}
       </Panel.Body>

@@ -1,11 +1,8 @@
 import { useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router';
+import { useLocation } from 'react-router';
 import {
   Alert,
-  Button,
-  Icon,
   Panel,
-  PanelHeader,
   Table,
   TableContent,
   TableStatus,
@@ -17,16 +14,17 @@ import { dateField, linesField, masterField, numberField, statusField, textField
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { currencyDef, salesEmployeeDef } from '../../settings/masterDefs';
 import { useListPage } from '../../../components/form/DataTable';
+import { PageHeader } from '../../../components/form/PageHeader';
+import { cap } from '../../../components/form/noun';
 import { SO_STATUSES, type SalesOrder } from '../../../mocks/salesOrders';
 import { formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
 import { taxCodes } from '../../../services/masterData';
 import { listSalesOrders, openQty, soNumber, soTotal } from '../../../services/salesOrders';
 import { useAsync } from '../../../services/useAsync';
-import { SO_LIST_PATH, SO_STATUS_INTENT } from '../paths';
+import { SO_LIST_PATH, SO_NOUN, SO_STATUS_INTENT } from '../paths';
 
 export function SalesOrderList() {
-  const navigate = useNavigate();
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const data = useAsync(() => Promise.all([listSalesOrders(), taxCodes.list()]), []);
   const [query, setQuery] = useState('');
@@ -49,7 +47,7 @@ export function SalesOrderList() {
   const presets = useListPresets({
     list: 'sales-orders',
     fields,
-    builtIns: statusViews('sales orders', SO_STATUSES),
+    builtIns: statusViews(SO_NOUN.many, SO_STATUSES),
     defaultSort: { key: 'postingDate', direction: 'desc' },
     rows: orders,
     onChange: resetPage,
@@ -122,9 +120,9 @@ export function SalesOrderList() {
 
   return (
     <Panel className="flex-1">
-      <PanelHeader
+      <PageHeader
         showSearch
-        searchLabel="Search sales orders"
+        searchLabel={`Search ${SO_NOUN.many}`}
         searchPlaceholder="Search by order no., customer, customer ref. or item"
         searchValue={query}
         onSearchChange={(value) => {
@@ -132,15 +130,8 @@ export function SalesOrderList() {
           resetPage();
         }}
         icon="shopping_bag"
-        iconIntent="default"
-        iconShape="rounded"
-        iconSize={32} iconVariant="outline"
         title={presets.menu}
-        actions={
-          <Button intent="primary" variant="solid" size="medium" shape="pill" leadingIcon={<Icon size={20}>add</Icon>} onClick={() => navigate(`${SO_LIST_PATH}/new`)}>
-            New sales order
-          </Button>
-        }
+        create={{ noun: SO_NOUN, to: SO_LIST_PATH }}
       />
       <Panel.Body className="flex flex-col gap-2">
         {notice ? (
@@ -151,7 +142,7 @@ export function SalesOrderList() {
         {presets.bar(null)}
         {orders ? (
           <Table
-            caption="Sales orders"
+            caption={cap(SO_NOUN.many)}
             columns={columns}
             rows={onPage}
             getRowId={(so) => so.id}
@@ -161,7 +152,7 @@ export function SalesOrderList() {
             pagination={pagination}
           />
         ) : (
-          <Text tone="muted" className="p-4">Loading sales orders…</Text>
+          <Text tone="muted" className="p-4">Loading {SO_NOUN.many}…</Text>
         )}
       </Panel.Body>
       {presets.panel}
