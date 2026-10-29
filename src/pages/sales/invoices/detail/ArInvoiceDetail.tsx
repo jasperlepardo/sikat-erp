@@ -47,6 +47,8 @@ import { soSeries } from '../../../../services/allSeries';
 import { ALL_CURRENCIES, proposedTaxCode } from '../../sales-orders/detail/types';
 import { DocLines } from '../../../../components/form/docLines/DocLines';
 import { CopyPanel, type CopySourceType } from '../../../purchasing/shared/CopyPanel';
+import { CreateFromPanel, createHopMenuItems } from '../../../purchasing/shared/CreateFromPanel';
+import { AR_TO_ARCM, type CopyHop, type LinePick } from '../../shared/copyHops';
 import { invoiceDoc, type CopyPick } from '../../shared/invoiceDoc';
 import { ArDatesCard } from './ArDatesCard';
 import { ArSettingsCard } from './ArSettingsCard';
@@ -63,7 +65,7 @@ import { SalesDocumentFlow } from '../../shared/SalesDocumentFlow';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
 import { neighbours, NotFound, siblingKeys, useDocTab, useReject } from '../../../../components/form/DetailNav';
-import { AR_CM_LIST_PATH, AR_LIST_PATH, AR_NOUN, AR_STATUS_INTENT } from '../../paths';
+import { AR_LIST_PATH, AR_NOUN, AR_STATUS_INTENT } from '../../paths';
 
 /** Where a problem's field is: the lines, or the customer details panel (payment and accounting). */
 type TabId = 'contents' | 'accounting';
@@ -119,7 +121,7 @@ function ArInvoiceForm() {
   const isNew = id === 'new';
   const navigate = useNavigate();
   const location = useLocation();
-  const from = location.state as { fromDelivery?: string; fromOrder?: string; lineFilter?: 'goods' | 'services' } | null;
+  const from = location.state as { fromDelivery?: string; fromOrder?: string; lineFilter?: 'goods' | 'services'; picks?: LinePick[] } | null;
 
   const arApproved = !needsApproval('ARINV');
   const [draft, setDraft] = useState<ArDraft | null | undefined>(isNew ? { ...blankArInvoice(todayISO(), CURRENT_USER_ID), approved: arApproved } : undefined);
@@ -128,6 +130,7 @@ function ArInvoiceForm() {
   const setPage = useDocTab<PageId>(`${AR_LIST_PATH}/${id}`, tabParam);
   const [customerDetailsOpen, setCustomerDetailsOpen] = useState(false);
   const [copying, setCopying] = useState(false);
+  const [createHop, setCreateHop] = useState<CopyHop<ArInvoice> | null>(null);
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);
@@ -146,10 +149,10 @@ function ArInvoiceForm() {
       if (!isNew) return;
       const dn = from?.fromDelivery && deliveries.find((d) => d.id === from.fromDelivery);
       const so = from?.fromOrder && orders.find((o) => o.id === from.fromOrder);
-      if (dn) setDraft((d) => d && copyLines(d, { kind: 'DN', doc: dn }, dn.lines.filter((l) => l.quantity > l.invoicedQty).map((l) => ({ lineId: l.id, qty: l.quantity - l.invoicedQty })), masters));
+      if (dn) setDraft((d) => d && copyLines(d, { kind: 'DN', doc: dn }, from?.picks ?? dn.lines.filter((l) => l.quantity > l.invoicedQty).map((l) => ({ lineId: l.id, qty: l.quantity - l.invoicedQty })), masters));
       else if (so) {
         const lineFilter = from?.lineFilter;
-        const picks = so.lines
+        const picks = from?.picks ?? so.lines
           .filter((l) => {
             if (openQty(l) <= 0) return false;
             if (!lineFilter) return true;
@@ -325,7 +328,7 @@ function ArInvoiceForm() {
   const rejectIt = async (rejectionReason: string) => { await logRejection('ARINV', saved.id, saved.customerId, rejectionReason); await recallArInvoice(saved); navigate(AR_LIST_PATH, { state: { notice: `A/R invoice ${arNumber(saved)} rejected and returned to draft.` } }); };
 
   const menu: MoreMenuItem[] = [
-    ...(draft.status === 'Open' ? [{ label: 'Create A/R credit memo', icon: 'undo', onSelect: () => navigate(`${AR_CM_LIST_PATH}/new`, { state: { fromInvoice: draft.id } }) }] : []),
+    ...(draft.status === 'Open' ? createHopMenuItems(saved, m.items, [AR_TO_ARCM], setCreateHop) : []),
     ...(draft.status === 'Open' && balance > 0 && !draft.paymentBlock
       ? [{ label: 'Receive payment', icon: 'savings', onSelect: () => navigate('/sales/incoming-payments/new', { state: { fromInvoice: draft.id } }) }]
       : []),
@@ -503,6 +506,7 @@ function ArInvoiceForm() {
           document.body,
         )
       : null}
+    {createHop ? <CreateFromPanel source={saved} hop={createHop} items={m.items} partyCard={<CustomerCard customers={m.customers} customerId={saved.customerId} customer={customer} onPickCustomer={() => {}} onOpenDetails={() => {}} locked />} onClose={() => setCreateHop(null)} /> : null}
     </>
   );
 }

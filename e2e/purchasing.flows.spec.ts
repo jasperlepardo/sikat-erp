@@ -53,6 +53,15 @@ async function moreMenu(page: Page, item: string | RegExp) {
   await page.getByRole('menu').getByRole('option', { name: item }).click();
 }
 
+/**
+ * Confirm the source-launched "Copy from" picker. A "Create {target}…" action opens this panel on
+ * the source document with its open lines pre-ticked at their open quantity; "Done" carries the
+ * picks to the pre-filled target form.
+ */
+async function confirmCopy(page: Page) {
+  await page.getByRole('button', { name: 'Done' }).click();
+}
+
 /** The primary header action on a new or unposted document: "Create <document>". */
 const addButton = (page: Page) => page.getByRole('button', { name: /^Create / });
 
@@ -105,6 +114,7 @@ test('US-PUR-030/040: PO → goods receipt → vendor invoice, document flow adv
   // Create goods receipt — the PO's open line comes across at its full open quantity. Add it.
   await open(page, `purchasing/purchase-orders/${PO_OPEN}`);
   await moreMenu(page, 'Create goods receipt');
+  await confirmCopy(page);
   await expect(page).toHaveURL(/goods-receipts\/new/);
   await expect(page.locator('body')).toContainText(PO_VENDOR);
   await addButton(page).click();
@@ -129,6 +139,7 @@ test('US-PUR-030/040: PO → goods receipt → vendor invoice, document flow adv
 
   await open(page, `purchasing/goods-receipts/${grId}`);
   await moreMenu(page, 'Create A/P invoice');
+  await confirmCopy(page);
   await expect(page).toHaveURL(/vendor-invoices\/new/);
   await expect(page.locator('body')).toContainText(PO_VENDOR);
   await addButton(page).click();
@@ -159,13 +170,14 @@ test('US-PUR-024: purchase request and RFQ offer a "Create …" action into the 
   if (prId) {
     await open(page, `purchasing/purchase-requests/${prId}`);
     await page.getByRole('button', { name: 'More actions' }).click();
-    await expect(page.getByRole('menu').getByRole('option', { name: 'Create purchase order', exact: true })).toBeVisible();
+    await expect(page.getByRole('menu').getByRole('option', { name: 'Create purchase order…', exact: true })).toBeVisible();
     await page.keyboard.press('Escape');
   }
 
   // An open RFQ offers "Create purchase order", and it pre-fills a new PO for the same vendor.
   await open(page, 'purchasing/purchase-quotations/RFQ-2026-0001');
   await moreMenu(page, 'Create purchase order');
+  await confirmCopy(page);
   await expect(page).toHaveURL(/purchase-orders\/new/);
   await expect(page.locator('body')).toContainText('New purchase order');
   await expect(page.locator('body')).toContainText('Luzon iDistribution');
@@ -202,6 +214,7 @@ test('US-PUR-030: a partial receipt leaves the PO open; the next closes it; canc
   // Receipt 1: copy from the PO but only receive 10 of the 30 ordered.
   await open(page, `purchasing/purchase-orders/${PO_OPEN}`);
   await moreMenu(page, 'Create goods receipt');
+  await confirmCopy(page);
   await expect(page).toHaveURL(/goods-receipts\/new/);
   const qty = page.getByLabel('Quantity', { exact: true });
   await expect(qty).toHaveValue(PO_QTY);
@@ -215,6 +228,7 @@ test('US-PUR-030: a partial receipt leaves the PO open; the next closes it; canc
   // Receipt 2: the remaining 20 come across pre-ticked — receiving them closes the PO.
   await open(page, `purchasing/purchase-orders/${PO_OPEN}`);
   await moreMenu(page, 'Create goods receipt');
+  await confirmCopy(page);
   await expect(page.getByLabel('Quantity', { exact: true })).toHaveValue('20');
   await addButton(page).click();
   await expectNotice(page, /goods-receipts$/, /stock is in/);
@@ -250,6 +264,7 @@ test('US-PUR-060: goods return against a billed invoice, then copy it to an A/P 
   //  billed invoice stays Open awaiting the vendor's credit memo, which is what we copy to here.)
   await open(page, `purchasing/purchase-orders/${PO_OPEN}`);
   await moreMenu(page, 'Create goods receipt');
+  await confirmCopy(page);
   await addButton(page).click();
   await expectNotice(page, /goods-receipts$/, /stock is in/);
   await expect.poll(() => poStatus(page, PO_OPEN), { timeout: 15_000 }).toBe('Closed');
@@ -264,6 +279,7 @@ test('US-PUR-060: goods return against a billed invoice, then copy it to an A/P 
   // Bill the receipt.
   await open(page, `purchasing/goods-receipts/${grId}`);
   await moreMenu(page, 'Create A/P invoice');
+  await confirmCopy(page);
   await expect(page).toHaveURL(/vendor-invoices\/new/);
   await addButton(page).click();
   await expectListed(page, /vendor-invoices$/);
@@ -279,6 +295,7 @@ test('US-PUR-060: goods return against a billed invoice, then copy it to an A/P 
   // Copy the A/P invoice to a goods return (billed goods → the return stays Open, awaiting a credit).
   await open(page, `purchasing/vendor-invoices/${invId}`);
   await moreMenu(page, 'Create goods return');
+  await confirmCopy(page);
   await expect(page).toHaveURL(/goods-returns\/new/);
   await expect(page.locator('body')).toContainText(PO_VENDOR);
   await addButton(page).click();
@@ -294,6 +311,7 @@ test('US-PUR-060: goods return against a billed invoice, then copy it to an A/P 
   // The invoice-based return is creditable — copy it to an A/P credit memo (debit memo).
   await open(page, `purchasing/goods-returns/${retId}`);
   await moreMenu(page, 'Create A/P credit memo');
+  await confirmCopy(page);
   await expect(page).toHaveURL(/debit-memos\/new/);
   await expect(page.locator('body')).toContainText(PO_VENDOR);
   await addButton(page).click();
@@ -403,6 +421,7 @@ test('purchasing "Create …" menu items reach live forms, not the "Coming soon"
   // Build an open goods receipt and an A/P invoice from the PO.
   await open(page, `purchasing/purchase-orders/${PO_OPEN}`);
   await moreMenu(page, 'Create goods receipt');
+  await confirmCopy(page);
   await addButton(page).click();
   await expectListed(page, /goods-receipts$/);
 
@@ -415,6 +434,7 @@ test('purchasing "Create …" menu items reach live forms, not the "Coming soon"
   // GR → goods return opens the goods-return form (correct route), not the placeholder.
   await open(page, `purchasing/goods-receipts/${grId}`);
   await moreMenu(page, 'Create goods return');
+  await confirmCopy(page);
   await expect(page).toHaveURL(/goods-returns\/new/);
   await expect(page.getByText('Coming soon')).toHaveCount(0);
   await expect(page.locator('body')).toContainText('New goods return');

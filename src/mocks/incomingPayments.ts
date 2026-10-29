@@ -67,6 +67,8 @@ export interface IncomingAccountRow {
   account: string;
   /** Doc. Remarks: what the amount is for. */
   remarks: string;
+  /** Project the amount is charged to — empty if none. */
+  projectId?: string;
   amount: number;
 }
 
@@ -177,7 +179,7 @@ export const newReceivedCheck = (patch: Partial<ReceivedCheck> = {}): ReceivedCh
   dueDate: '', amount: 0, bank: '', branch: '', accountNo: '', checkNo: '', endorsed: false, ...patch, id: patch.id ?? rid('rck'),
 });
 export const newReceivedCard = (patch: Partial<ReceivedCard> = {}): ReceivedCard => ({ cardBrandId: '', last4: '', voucherNo: '', amount: 0, ...patch, id: patch.id ?? rid('rcd') });
-export const newIncomingAccountRow = (patch: Partial<IncomingAccountRow> = {}): IncomingAccountRow => ({ account: '', remarks: '', amount: 0, ...patch, id: patch.id ?? rid('iar') });
+export const newIncomingAccountRow = (patch: Partial<IncomingAccountRow> = {}): IncomingAccountRow => ({ account: '', remarks: '', projectId: '', amount: 0, ...patch, id: patch.id ?? rid('iar') });
 
 const blankIncomingMeans = (today: string): IncomingMeans => ({
   transfer: { account: RECEIPT_BANK_DEFAULT, date: today, reference: '', amount: 0 },

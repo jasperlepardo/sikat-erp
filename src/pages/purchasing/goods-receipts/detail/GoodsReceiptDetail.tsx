@@ -27,7 +27,6 @@ import { defaultJournalRemark } from '../../../../services/journalPatterns';
 import {
   GrPostError,
   addGoodsReceipt,
-  grOpenQty,
   cancelGoodsReceipt,
   closeGoodsReceipt,
   getGoodsReceipt,
@@ -49,6 +48,8 @@ import { transferBlock } from '../../../../services/binLocations';
 import { proposedTaxCode } from '../../purchase-orders/detail/types';
 import { DocLines } from '../../../../components/form/docLines/DocLines';
 import { CopyPanel, type CopySourceType } from '../../shared/CopyPanel';
+import { CreateFromPanel, createHopMenuItems } from '../../shared/CreateFromPanel';
+import { GR_TO_AP, GR_TO_RETURN, type CopyHop, type LinePick } from '../../shared/copyHops';
 import { grDoc } from './grDoc';
 import { DocumentFlow } from '../../shared/DocumentFlow';
 import { GrLogistics } from './GrLogisticsCard';
@@ -65,7 +66,7 @@ import { GrTotalsCard } from './GrTotalsCard';
 import { GrJournalCard } from './GrJournalCard';
 import { ReferencesTable } from '../../shared/ReferencesTable';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
-import { AP_LIST_PATH, GR_LIST_PATH, GR_NOUN, GR_STATUS_INTENT, RETURN_LIST_PATH } from '../../paths';
+import { GR_LIST_PATH, GR_NOUN, GR_STATUS_INTENT } from '../../paths';
 
 type TabId = 'contents' | 'logistics' | 'accounting';
 
@@ -136,7 +137,7 @@ function GoodsReceiptForm() {
   const isNew = id === 'new';
   const navigate = useNavigate();
   const location = useLocation();
-  const state = location.state as { copyFrom?: GrDraft; fromPo?: string } | null;
+  const state = location.state as { copyFrom?: GrDraft; fromPo?: string; picks?: LinePick[] } | null;
 
   const grApproved = !needsApproval('GRPO');
   const [draft, setDraft] = useState<GrDraft | null | undefined>(
@@ -151,6 +152,7 @@ function GoodsReceiptForm() {
   const reject = useReject();
   const [vendorDetailsOpen, setVendorDetailsOpen] = useState(false);
   const [copying, setCopying] = useState(false);
+  const [createHop, setCreateHop] = useState<CopyHop<GoodsReceipt> | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -171,12 +173,14 @@ function GoodsReceiptForm() {
         vendors, items, inv, tax: { company, codes, groups, withholding, withholdingGroups: wGroups }, currencies: curs, rates, company: ours, orders,
       };
       setM(masters);
-      // Copy to › Goods Receipt PO from a purchase order: every open line, at its open quantity.
+      // Create goods receipt from a purchase order: the lines the user picked on the PO, or — when
+      // navigated without picks — every open line at its open quantity.
       const po = state?.fromPo ? orders.find((o) => o.id === state.fromPo) : undefined;
       if (isNew && po) {
         const vendor = vendors.find((v) => v.id === po.vendorId);
+        const picks = state?.picks ?? po.lines.filter((l) => l.status === 'Open').map((l) => ({ lineId: l.id, qty: openQty(l) }));
         // Rebuilt from the PO each time, so running the effect twice doesn't copy the lines twice.
-        setDraft((d) => d && withPo({ ...d, ...vendorDefaults(vendor, d), lines: [], orderNumber: '' }, po, linesFromPo(po, po.lines.filter((l) => l.status === 'Open').map((l) => ({ lineId: l.id, qty: openQty(l) })), masters), masters));
+        setDraft((d) => d && withPo({ ...d, ...vendorDefaults(vendor, d), lines: [], orderNumber: '' }, po, linesFromPo(po, picks, masters), masters));
       }
     });
     if (isNew || !id) return;
@@ -310,12 +314,7 @@ function GoodsReceiptForm() {
   const statusMoves: Partial<Record<GrStatus, () => void>> = draft.status === 'Draft' ? (draft.approved ? { Open: () => submit(null) } : { 'Not Confirmed': () => submit(null) }) : draft.status === 'Not Confirmed' ? { Open: () => submit(null, false, { approved: true }) } : draft.status === 'Open' ? { Closed: closeIt, ...(!invoiced && !returned ? { Cancelled: cancelIt } : {}) } : {};
 
   const menu: MoreMenuItem[] = [
-    ...(draft.status === 'Open' && draft.lines.some((l) => grOpenQty(l, draft) > 0)
-      ? [
-          { label: 'Create A/P invoice', icon: 'request_quote', onSelect: () => navigate(`${AP_LIST_PATH}/new`, { state: { fromReceipt: saved.id } }) },
-          { label: 'Create goods return', icon: 'assignment_return', onSelect: () => navigate(`${RETURN_LIST_PATH}/new`, { state: { fromReceipt: saved.id } }) },
-        ]
-      : []),
+    ...(draft.status === 'Open' ? createHopMenuItems(saved, m.items, [GR_TO_AP, GR_TO_RETURN], setCreateHop) : []),
     ...(!isNew ? [{ label: 'Duplicate', icon: 'content_copy', onSelect: duplicate }] : []),
     ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }] : []),
     ...(draft.status === 'Open' ? [{ label: 'Close', icon: 'task_alt', onSelect: closeIt }] : []),
@@ -459,6 +458,7 @@ function GoodsReceiptForm() {
           document.body,
         )
       : null}
+    {createHop ? <CreateFromPanel source={saved} hop={createHop} items={m.items} partyCard={<VendorCard vendors={m.vendors} vendorId={saved.vendorId} vendor={ctx.vendor} readOnly={false} locked pickVendor={() => {}} />} onClose={() => setCreateHop(null)} /> : null}
     </>
   );
 }

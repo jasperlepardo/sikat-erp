@@ -13,6 +13,12 @@
   background-color: var(--color-bg-default);
 }
 
+/* No hairline between sidebar sections: the section titles (Selling, Delivery, …)
+   already separate the groups, so the divider SideNav draws between sections is noise. */
+.sikat-sidenav__divider {
+  display: none;
+}
+
 /* Design system workaround (v0.17.1): <Icon> is a Material Symbols ligature. Until the
    font loads (or if it's blocked) the glyph name, e.g. "keyboard_arrow_down", is laid
    out as wide text past the icon's box and can sit on top of neighbouring buttons,

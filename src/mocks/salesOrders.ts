@@ -20,6 +20,7 @@
  * - Withholding by the customer (CWT, government VAT) is shown as a note: the customer deducts
  *   it when paying, it isn't part of the order total.
  */
+import type { SalesLine } from './salesLine';
 import { CURRENT_USER_ID, type Attachment, type DocumentSeries } from './common';
 import { plId, termId } from './masters';
 import { SEED_ITEMS, itemsPerUom } from './items';
@@ -36,30 +37,8 @@ export const SO_STATUSES: SoStatus[] = ['Draft', 'Not Confirmed', 'Open', 'Close
 export type SoDocType = 'Item' | 'Service';
 type SoRowStatus = 'Open' | 'Closed';
 
-export interface SoLine {
-  id: string;
-  /** Item documents. */
-  itemId: string;
-  itemNo: string;
-  /** Defaults from the item; editing it here doesn't change the item. */
-  description: string;
-  /** In the sales UoM. */
-  quantity: number;
+export interface SoLine extends SalesLine {
   deliveredQty: number;
-  uomCode: string;
-  uomName: string;
-  /** Inventory units in one sales unit. */
-  itemsPerUnit: number;
-  warehouse: string;
-  priceListId: string;
-  /** Net of VAT, per sales unit, in the document currency. */
-  unitPrice: number;
-  discountPct: number;
-  /** What set the price: "Special price", "Discount group …", the list name, or "Manual". */
-  priceSource: string;
-  taxCode: string;
-  /** User edited the tax code by hand: auto-recalc leaves this line alone. Missing = false. */
-  taxOverridden?: boolean;
   /** Service documents: the revenue account the line posts to. */
   glAccount: string;
   status: SoRowStatus;

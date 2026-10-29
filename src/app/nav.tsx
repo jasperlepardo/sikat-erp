@@ -175,6 +175,14 @@ const appModule = (appId: string) => APP_MODULES.find((m) => m.id === appId) ?? 
  * (`moduleOf`, `leafForPath`, …) are unaffected; this only reshapes rendering.
  */
 const APP_SECTIONS: Record<string, [string, string[]][]> = {
+  sales: [
+    ['', ['dashboard', 'customers', 'agreements']],
+    ['Selling', ['quotations', 'sales-orders']],
+    ['Delivery', ['deliveries', 'sales-returns']],
+    ['Invoicing', ['customer-invoices', 'reserve-invoices', 'credit-memos']],
+    ['Payments', ['incoming-payments', 'collections']],
+    ['', ['insights']],
+  ],
   purchasing: [
     ['', ['dashboard', 'vendors', 'agreements']],
     ['Procurement', ['purchase-requests', 'purchase-quotations', 'purchase-orders']],

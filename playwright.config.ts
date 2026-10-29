@@ -21,7 +21,8 @@ export default defineConfig({
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
-    command: `npx vite --port ${PORT} --strictPort`,
+    // Pin the test server to root base; the smoke suite tests SPA routing, not the hosting path.
+    command: `npx vite --port ${PORT} --strictPort --base /`,
     url: `http://localhost:${PORT}`,
     reuseExistingServer: true,
     timeout: 60_000,

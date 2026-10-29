@@ -52,6 +52,7 @@ export function dnDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy }: D
   };
 
   const cols = salesCols<DnLine>({
+    patch,
     readOnly: ro,
     currency: draft.currency,
     fx: ctx.fx,
@@ -123,12 +124,14 @@ export function dnDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy }: D
 
   return {
     prefsKey: 'dn',
+    cardHeader: true,
     columns,
     rows: lines,
     icon: 'list_alt',
     title: 'Contents',
-    description: errors.lines,
+    description: errors.lines ?? `Items shipped, in the line's unit. Prices are in ${draft.currency}.`,
     sortableKeys: ['item'],
+    sortValue: (l, key) => (key === 'item' ? l.itemNo : String(l[key as keyof DnLine] ?? '')).toLowerCase(),
     readOnly: ro,
     onRemove: (picked) => update({ lines: lines.filter((l) => !picked.includes(l)) }),
     item: itemConfig(h, {

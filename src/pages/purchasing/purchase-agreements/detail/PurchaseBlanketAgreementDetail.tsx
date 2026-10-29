@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import {
   Alert,
@@ -29,6 +30,7 @@ import { currencies as currencyCollection } from '../../../../services/masterDat
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { DocumentFlow } from '../../shared/DocumentFlow';
 import { VendorCard } from '../../shared/VendorCard';
+import { CopyPanel } from '../../shared/CopyPanel';
 import { VendorDetailsPanel } from '../../shared/VendorDetailsPanel';
 import { AgreementCard } from './AgreementCard';
 import { GeneralTab } from './general';
@@ -90,6 +92,7 @@ function PbaForm() {
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);
   const [vendorDetailsOpen, setVendorDetailsOpen] = useState(false);
+  const [creatingPo, setCreatingPo] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -188,9 +191,8 @@ function PbaForm() {
     navigate(`${PBA_LIST_PATH}/new`, { state: { copyFrom: copy } });
   };
 
-  const copyToPo = () => {
+  const createPo = (picks: { lineId: string; qty: number }[]) => {
     const pba = draft as PurchaseBlanketAgreement;
-    const openLines = draft.lines.filter((l) => openQty(l) > 0);
     const po = {
       ...blankPurchaseOrder(CURRENT_USER_ID),
       approved: !needsApproval('PO'),
@@ -203,13 +205,14 @@ function PbaForm() {
       paymentMethod: draft.paymentMethod,
       shippingType: draft.shippingType,
       projectId: draft.projectId,
-      lines: openLines.map((l) =>
-        newPoLine({
+      lines: picks.flatMap(({ lineId, qty }) => {
+        const l = draft.lines.find((x) => x.id === lineId);
+        return l ? [newPoLine({
           itemId: l.itemId,
           itemNo: l.itemNo,
           name: l.description,
           description: '',
-          quantity: openQty(l),
+          quantity: qty,
           uomCode: l.uomCode,
           uomName: l.uomName,
           itemsPerUnit: l.itemsPerUnit,
@@ -219,15 +222,15 @@ function PbaForm() {
           warrantyTemplateId: m?.items.find((i) => i.id === l.itemId)?.warrantyTemplate ?? '',
           agreementId: pba.id,
           agreementLineId: l.id,
-        }),
-      ),
+        })] : [];
+      }),
     };
     navigate(`${PO_LIST_PATH}/new`, { state: { copyFrom: po } });
   };
 
   const menu: MoreMenuItem[] = [
     ...(draft.status === 'Approved' && draft.lines.some((l) => openQty(l) > 0)
-      ? [{ label: 'Create purchase order', icon: 'receipt_long', onSelect: copyToPo }]
+      ? [{ label: 'Create purchase order…', icon: 'receipt_long', onSelect: () => setCreatingPo(true) }]
       : []),
     ...(!isNew ? [{ label: 'Duplicate', icon: 'content_copy', onSelect: duplicate }] : []),
   ];
@@ -339,6 +342,37 @@ function PbaForm() {
       currency={{ disabled: true, tooltip: "Set by the vendor's currency." }}
       addresses={[]}
     />
+    {creatingPo
+      ? createPortal(
+          <CopyPanel
+            title="Create purchase order"
+            icon="receipt_long"
+            partyCard={<VendorCard vendors={m.vendors} vendorId={draft.vendorId} vendor={vendor} readOnly={false} locked pickVendor={() => {}} />}
+            sources={[{
+              key: 'PBA' as const,
+              label: 'Blanket agreements',
+              totalHeader: 'Planned',
+              qtyHeader: 'Order',
+              hint: 'Order against the agreement; leave a line unticked to skip it, or lower its quantity.',
+              docs: [{
+                id: draft.id ?? '',
+                label: pbaNumber(draft as PurchaseBlanketAgreement),
+                description: draft.currency,
+                lines: draft.lines
+                  .filter((l) => openQty(l) > 0)
+                  .map((l) => ({ id: l.id, itemNo: l.itemNo, name: l.description, warehouse: '', total: `${l.plannedQty} ${l.uomCode}`, open: openQty(l) })),
+              }],
+            }]}
+            taken={new Set()}
+            onCancel={() => setCreatingPo(false)}
+            onCopy={(_type, _docId, picks) => {
+              setCreatingPo(false);
+              createPo(picks);
+            }}
+          />,
+          document.body,
+        )
+      : null}
     </>
   );
 }

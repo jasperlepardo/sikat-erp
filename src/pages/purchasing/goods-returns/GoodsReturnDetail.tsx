@@ -46,6 +46,8 @@ import { postDocumentEntry, reverseDocumentEntry } from '../../../services/journ
 import { dueDateFor } from '../../../services/purchaseOrders';
 import { buildGrContext } from '../goods-receipts/detail/types';
 import { CopyPanel } from '../shared/CopyPanel';
+import { CreateFromPanel, createHopMenuItems } from '../shared/CreateFromPanel';
+import { RETURN_TO_APCM, type CopyHop, type LinePick } from '../shared/copyHops';
 import { DocumentFlow } from '../shared/DocumentFlow';
 import { loadRetMasters, vendorAddressOptions, returnFromInvoice, returnFromReceipt, type RetMasters, type RetContext } from '../shared/returnsTypes';
 import { DocLines } from '../../../components/form/docLines/DocLines';
@@ -61,7 +63,7 @@ import { GrJournalCard } from './detail/GrJournalCard';
 import { GrLogisticsCard } from './detail/GrLogisticsCard';
 import { GrAccountingCard } from './detail/GrAccountingCard';
 import { ReferencesTable } from '../shared/ReferencesTable';
-import { MEMO_LIST_PATH, RETURN_LIST_PATH, RETURN_NOUN, RETURN_STATUS_INTENT } from '../paths';
+import { RETURN_LIST_PATH, RETURN_NOUN, RETURN_STATUS_INTENT } from '../paths';
 
 type Draft = Omit<GoodsReturn, 'id'> & { id?: string };
 type TabId = 'contents' | 'logistics' | 'accounting';
@@ -132,7 +134,7 @@ function GoodsReturnForm() {
   const isNew = id === 'new';
   const navigate = useNavigate();
   const location = useLocation();
-  const state = location.state as { fromReceipt?: string; fromInvoice?: string; prefill?: { baseGrrId?: string; lines: import('../../../mocks/goodsReturns').ReturnLine[] } } | null;
+  const state = location.state as { fromReceipt?: string; fromInvoice?: string; picks?: LinePick[]; prefill?: { baseGrrId?: string; lines: import('../../../mocks/goodsReturns').ReturnLine[] } } | null;
 
   const rtnApproved = !needsApproval('GRET');
   const [draft, setDraft] = useState<Draft | null | undefined>(isNew ? { ...blankGoodsReturn(todayISO(), CURRENT_USER_ID), approved: rtnApproved } : undefined);
@@ -144,6 +146,7 @@ function GoodsReturnForm() {
   const [saving, setSaving] = useState(false);
   const reject = useReject();
   const [copying, setCopying] = useState(false);
+  const [createHop, setCreateHop] = useState<CopyHop<GoodsReturn> | null>(null);
   const [vendorDetailsOpen, setVendorDetailsOpen] = useState(false);
 
   useEffect(() => {
@@ -161,9 +164,10 @@ function GoodsReturnForm() {
       const inv = state?.fromInvoice ? masters.invoices.find((i) => i.id === state.fromInvoice) : undefined;
       if (isNew && (gr || inv)) {
         const vendor = masters.vendors.find((v) => v.id === (gr ?? inv)!.vendorId);
+        // The lines the user picked on the source, or — when navigated without picks — every open line.
         const lines = gr
-          ? returnFromReceipt(gr, gr.lines.map((l) => ({ lineId: l.id, qty: grOpenQty(l, gr) })).filter((p) => p.qty > 0), masters.items)
-          : returnFromInvoice(inv!, inv!.lines.map((l) => ({ lineId: l.id, qty: returnableQty(l) })).filter((p) => p.qty > 0 && masters.items.find((i) => i.id === inv!.lines.find((x) => x.id === p.lineId)?.itemId)?.inventoryItem));
+          ? returnFromReceipt(gr, state?.picks ?? gr.lines.map((l) => ({ lineId: l.id, qty: grOpenQty(l, gr) })).filter((p) => p.qty > 0), masters.items)
+          : returnFromInvoice(inv!, state?.picks ?? inv!.lines.map((l) => ({ lineId: l.id, qty: returnableQty(l) })).filter((p) => p.qty > 0 && masters.items.find((i) => i.id === inv!.lines.find((x) => x.id === p.lineId)?.itemId)?.inventoryItem));
         setDraft((d) => d && withBase({ ...d, ...vendorDefaults(vendor, d), lines: [] }, gr ?? inv!, lines));
       }
     });
@@ -276,7 +280,7 @@ function GoodsReturnForm() {
   const statusMoves: Partial<Record<ReturnStatus, () => void>> = draft.status === 'Draft' ? (draft.approved ? { Open: () => submit(null) } : { 'Not Confirmed': () => submit(null) }) : draft.status === 'Not Confirmed' ? { Open: () => submit(null, false, { approved: true }) } : draft.status === 'Open' || draft.status === 'Closed' ? { Cancelled: cancelIt } : {};
 
   const menu: MoreMenuItem[] = [
-    ...(creditable ? [{ label: 'Create A/P credit memo', icon: 'receipt', onSelect: () => navigate(`${MEMO_LIST_PATH}/new`, { state: { fromReturn: saved.id } }) }] : []),
+    ...(creditable ? createHopMenuItems(saved, m.items, [RETURN_TO_APCM], setCreateHop) : []),
     ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }] : []),
     ...(draft.status === 'Open' || draft.status === 'Closed'
       ? [{ label: `Cancel ${RETURN_NOUN.one}`, icon: 'cancel', onSelect: cancelIt }]
@@ -444,6 +448,7 @@ function GoodsReturnForm() {
             document.body,
           )
         : null}
+      {createHop ? <CreateFromPanel source={saved} hop={createHop} items={m.items} partyCard={<VendorCard vendors={m.vendors} vendorId={saved.vendorId} vendor={ctx.vendor} readOnly={false} locked pickVendor={() => {}} />} onClose={() => setCreateHop(null)} /> : null}
     </>
   );
 }

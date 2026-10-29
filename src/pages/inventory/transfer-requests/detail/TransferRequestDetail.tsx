@@ -200,7 +200,12 @@ function TransferRequestForm() {
     ...(added ? [{ label: 'Duplicate', icon: 'content_copy', onSelect: duplicate }] : []),
     ...(added && !closed ? [{ label: 'Close', icon: 'task_alt', onSelect: closeIt }] : []),
   ];
-  const title = isNew ? `New ${TRANSFER_REQUEST_NOUN.one}` : transferRequestNumber(draft);
+  // A draft reads "Draft — {from}→{to} (from {ref})" so a handed-off request is recognisable.
+  const title = !added
+    ? draft.fromWarehouse && draft.toWarehouse
+      ? `Draft — ${draft.fromWarehouse}→${draft.toWarehouse}${draft.ref2 ? ` (from ${draft.ref2})` : ''}`
+      : `New ${TRANSFER_REQUEST_NOUN.one}`
+    : transferRequestNumber(draft);
 
   return (
     <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>

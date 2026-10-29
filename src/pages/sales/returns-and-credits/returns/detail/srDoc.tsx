@@ -56,6 +56,7 @@ export function srDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy }: S
   };
 
   const cols = salesCols<SrLine>({
+    patch,
     readOnly: ro,
     currency: draft.currency,
     fx: ctx.fx,
@@ -123,12 +124,14 @@ export function srDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy }: S
 
   return {
     prefsKey: 'sr',
+    cardHeader: true,
     columns,
     rows: lines,
     icon: 'list_alt',
     title: 'Contents',
-    description: errors.lines,
+    description: errors.lines ?? `Items returned, in the line's unit. Prices are in ${draft.currency}.`,
     sortableKeys: ['item'],
+    sortValue: (l, key) => (key === 'item' ? l.itemNo : String(l[key as keyof SrLine] ?? '')).toLowerCase(),
     readOnly: ro,
     onRemove: (picked) => update({ lines: lines.filter((l) => !picked.includes(l)) }),
     item: itemConfig(h, {

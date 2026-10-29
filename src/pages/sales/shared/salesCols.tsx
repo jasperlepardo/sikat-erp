@@ -1,20 +1,20 @@
 import type { ReactNode } from 'react';
 import { Checkbox, Combobox, Link, Select, TableStatus, Text, TextField } from '@jasperlepardo/sikat-design-system';
 import type { PrefColumn } from '../../../components/form/columnPrefs';
-import { masterCol } from '../../../components/form/docLines/docColumns';
+import { masterCol, priceCol, textCol } from '../../../components/form/docLines/docColumns';
 import { MasterLookup } from '../../../components/form/MasterLookup';
 import { formatAmount } from '../../../services/format';
 import { priceListName } from '../../../services/priceLists';
-import { countryDef, priceListDef } from '../../settings/masterDefs';
+import { countryDef, priceListDef, warrantyTemplateDef } from '../../settings/masterDefs';
 import { RETURN_REASONS } from '../../../mocks/goodsReturns';
 import type { PriceList } from '../../../mocks/partnerMasters';
-import type { SalesLineLike } from './salesLineHelpers';
+import type { SalesLine } from '../../../mocks/salesLine';
 
 const num = (v: string) => (v === '' ? 0 : Number(v));
 type Opt = { value: string; label: string };
 
 /** Whether a line renders its cells — an item is picked, or the doc overrides the gate (service lines). */
-function vis<T extends SalesLineLike>(b: ColBindings<T>, l: T): boolean {
+function vis<T extends SalesLine>(b: ColBindings<T>, l: T): boolean {
   return b.rendered ? b.rendered(l) : Boolean(l.itemId);
 }
 
@@ -25,7 +25,7 @@ function vis<T extends SalesLineLike>(b: ColBindings<T>, l: T): boolean {
  * so the rendering is unified while the logic stays with the doc. Mirrors
  * `purchCols`'s `ColBindings`. Optional groups drive the columns only some docs pick.
  */
-export interface ColBindings<T extends SalesLineLike> {
+export interface ColBindings<T extends SalesLine> {
   readOnly: boolean;
   /** Document currency, named in each amount column's header. */
   currency: string;
@@ -125,10 +125,12 @@ export interface ColBindings<T extends SalesLineLike> {
   country?: { value: (l: T) => string; onChange: (l: T, v: string) => void };
   baseDoc?: (l: T) => { href: string; label: string; sub: string } | null;
   credited?: (l: T) => ReactNode;
+  /** Generic line patch — powers the shared SAP B1 catalog/plumbing columns (mirrors purchCols). */
+  patch: (id: string, p: Partial<T>) => void;
 }
 
 /** Qty + UoM, with an optional muted note and a trailing control (shortage warning). */
-function qtyCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T> {
+function qtyCol<T extends SalesLine>(b: ColBindings<T>): PrefColumn<T> {
   return {
     key: 'qty',
     header: b.qtyHeader ?? 'Qty / UoM',
@@ -164,7 +166,7 @@ function qtyCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T> {
 }
 
 /** The read-only unit-price display: price after discount, with the pre-discount price struck through. */
-function priceReadOnly<T extends SalesLineLike>(b: ColBindings<T>, l: T) {
+function priceReadOnly<T extends SalesLine>(b: ColBindings<T>, l: T) {
   return (
     <div className="flex flex-col whitespace-nowrap tabular-nums">
       <Text variant="small">{formatAmount(b.discountPct(l) ? b.priceAfterDisc(l) : b.unitPrice(l))}</Text>
@@ -174,7 +176,7 @@ function priceReadOnly<T extends SalesLineLike>(b: ColBindings<T>, l: T) {
 }
 
 /** Editable unit price (separate column; pairs with `discount`). */
-function unitPriceCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T> {
+function unitPriceCol<T extends SalesLine>(b: ColBindings<T>): PrefColumn<T> {
   return {
     key: 'unitPrice',
     header: `Unit price (${b.currency})`,
@@ -188,7 +190,7 @@ function unitPriceCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T>
 }
 
 /** Line discount percent (separate column; pairs with `unitPrice`), with an optional "Reprice" link. */
-function discountCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T> {
+function discountCol<T extends SalesLine>(b: ColBindings<T>): PrefColumn<T> {
   return {
     key: 'discount',
     header: 'Discount',
@@ -207,7 +209,7 @@ function discountCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T> 
 }
 
 /** Combined "Unit price / Discount" cell (price field + discount field + price-source note). */
-function pricingCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T> {
+function pricingCol<T extends SalesLine>(b: ColBindings<T>): PrefColumn<T> {
   return {
     key: 'pricing',
     header: `Unit price (${b.currency}) / Discount`,
@@ -227,7 +229,7 @@ function pricingCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T> {
 }
 
 /** Price-list lookup — shows the label when the doc is locked or the line is copied from a base. */
-function priceListCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T> {
+function priceListCol<T extends SalesLine>(b: ColBindings<T>): PrefColumn<T> {
   return {
     key: 'priceList',
     header: 'Price list',
@@ -240,7 +242,7 @@ function priceListCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T>
 }
 
 /** A read-only accessor column (deliveries' Ordered / Outstanding). */
-function roCol<T extends SalesLineLike>(key: string, header: string, get: (l: T) => ReactNode): PrefColumn<T> {
+function roCol<T extends SalesLine>(key: string, header: string, get: (l: T) => ReactNode): PrefColumn<T> {
   return {
     key,
     header,
@@ -250,7 +252,7 @@ function roCol<T extends SalesLineLike>(key: string, header: string, get: (l: T)
 }
 
 /** Read-only line total in local currency (PHP), from the document net × fx. */
-function totalCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T> {
+function totalCol<T extends SalesLine>(b: ColBindings<T>): PrefColumn<T> {
   return {
     key: 'total',
     header: 'Total (PHP)',
@@ -260,7 +262,7 @@ function totalCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T> {
 }
 
 /** Warehouse picker — a `blank` slot covers "Not stocked"/"—" lines; optional stock/available note. */
-function warehouseCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T> {
+function warehouseCol<T extends SalesLine>(b: ColBindings<T>): PrefColumn<T> {
   if (!b.warehouse) return { key: 'warehouse', header: 'Whse', cell: () => null };
   return {
     key: 'warehouse',
@@ -282,7 +284,7 @@ function warehouseCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T>
 }
 
 /** "Stock" column (credit memos): "Not stocked", or a "Put back" / "Price only" toggle. */
-function stockPutBackCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T> {
+function stockPutBackCol<T extends SalesLine>(b: ColBindings<T>): PrefColumn<T> {
   const s = b.stockPutBack!;
   return {
     key: 'stockPutBack',
@@ -300,7 +302,7 @@ function stockPutBackCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn
 }
 
 /** Tax-code picker (Combobox) with a muted "Tax PHP …" note under it. */
-function taxColSales<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T> {
+function taxColSales<T extends SalesLine>(b: ColBindings<T>): PrefColumn<T> {
   const t = b.tax!;
   return {
     key: 'tax',
@@ -326,7 +328,7 @@ function taxColSales<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T> 
 }
 
 /** Return-reason picker over the shared RETURN_REASONS list. */
-function returnReasonCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T> {
+function returnReasonCol<T extends SalesLine>(b: ColBindings<T>): PrefColumn<T> {
   const r = b.returnReason!;
   return {
     key: 'returnReason',
@@ -340,7 +342,7 @@ function returnReasonCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn
 }
 
 /** Return-cost cell — "Set manually" checkbox + a cost field, else "Auto (item cost)". */
-function returnCostCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T> {
+function returnCostCol<T extends SalesLine>(b: ColBindings<T>): PrefColumn<T> {
   const c = b.returnCost!;
   return {
     key: 'returnCost',
@@ -365,7 +367,7 @@ function returnCostCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T
 }
 
 /** Base-document link (delivery / invoice / SO) with a muted "row N" sub-line. */
-function baseDocCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T> {
+function baseDocCol<T extends SalesLine>(b: ColBindings<T>): PrefColumn<T> {
   const base = b.baseDoc!;
   return {
     key: 'baseDoc',
@@ -384,7 +386,7 @@ function baseDocCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T> {
 }
 
 /** Read-only credited-quantity column (sales returns). */
-function creditedCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T> {
+function creditedCol<T extends SalesLine>(b: ColBindings<T>): PrefColumn<T> {
   const credited = b.credited!;
   return {
     key: 'credited',
@@ -395,7 +397,7 @@ function creditedCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T> 
 }
 
 /** Editable "Gross after disc." that back-calculates the unit price (invoices). */
-function grossCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T> {
+function grossCol<T extends SalesLine>(b: ColBindings<T>): PrefColumn<T> {
   const g = b.gross!;
   return {
     key: 'gross',
@@ -410,7 +412,7 @@ function grossCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T> {
 }
 
 /** "WTax" liable checkbox (invoices) — disabled when the doc is locked or the customer doesn't withhold. */
-function wtaxCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T> {
+function wtaxCol<T extends SalesLine>(b: ColBindings<T>): PrefColumn<T> {
   const w = b.wtax!;
   return {
     key: 'wtax',
@@ -420,7 +422,7 @@ function wtaxCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T> {
 }
 
 /** "Comm. %" commission-percent column (A/R invoices). */
-function commissionCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T> {
+function commissionCol<T extends SalesLine>(b: ColBindings<T>): PrefColumn<T> {
   const c = b.commission!;
   return {
     key: 'commission',
@@ -435,7 +437,7 @@ function commissionCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T
 }
 
 /** Read-only "Open for delivery" column (reserve invoices). */
-function openForDeliveryCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T> {
+function openForDeliveryCol<T extends SalesLine>(b: ColBindings<T>): PrefColumn<T> {
   const get = b.openForDelivery!;
   return {
     key: 'openForDelivery',
@@ -449,7 +451,7 @@ function openForDeliveryCol<T extends SalesLineLike>(b: ColBindings<T>): PrefCol
 }
 
 /** "Delivered / Open" column with a status badge (sales orders). */
-function deliveredOpenCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T> {
+function deliveredOpenCol<T extends SalesLine>(b: ColBindings<T>): PrefColumn<T> {
   const get = b.deliveredOpen!;
   return {
     key: 'delivery',
@@ -460,7 +462,7 @@ function deliveredOpenCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColum
 }
 
 /** Editable free-text description (service lines). */
-function descriptionCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T> {
+function descriptionCol<T extends SalesLine>(b: ColBindings<T>): PrefColumn<T> {
   const d = b.serviceDescription!;
   return {
     key: 'description',
@@ -470,7 +472,7 @@ function descriptionCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<
 }
 
 /** G/L revenue-account picker (service lines). */
-function glAccountCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T> {
+function glAccountCol<T extends SalesLine>(b: ColBindings<T>): PrefColumn<T> {
   const g = b.glAccount!;
   return {
     key: 'glAccount',
@@ -480,7 +482,7 @@ function glAccountCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T>
 }
 
 /** Editable amount (service lines) — sets quantity to 1. */
-function serviceAmountCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T> {
+function serviceAmountCol<T extends SalesLine>(b: ColBindings<T>): PrefColumn<T> {
   const a = b.serviceAmount!;
   return {
     key: 'amount',
@@ -493,7 +495,7 @@ function serviceAmountCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColum
 // ── Shared info / catalog columns (hidden by default; the Columns menu reveals them) ──
 
 /** 'Item' / 'Service' kind badge. */
-function typeCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T> {
+function typeCol<T extends SalesLine>(b: ColBindings<T>): PrefColumn<T> {
   return {
     key: 'type',
     header: 'Type',
@@ -502,42 +504,76 @@ function typeCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T> {
 }
 
 /** Read-only UoM name (the qty column shows the code). */
-function uomNameCol<T extends SalesLineLike>(): PrefColumn<T> {
+function uomNameCol<T extends SalesLine>(): PrefColumn<T> {
   return { key: 'uomName', header: 'UoM name', cell: (l) => (l.itemId ? <Text variant="small">{l.uomName}</Text> : null) };
 }
 
 /** Inventory units in one line unit. */
-function itemsPerUnitCol<T extends SalesLineLike>(): PrefColumn<T> {
+function itemsPerUnitCol<T extends SalesLine>(): PrefColumn<T> {
   return { key: 'itemsPerUnit', header: 'Items per unit', align: 'end', cell: (l) => (l.itemId ? <span className="text-sm tabular-nums">{l.itemsPerUnit}</span> : null) };
 }
 
 /** What set the price — a list name, "Manual", an agreement. */
-function priceSourceCol<T extends SalesLineLike>(): PrefColumn<T> {
+function priceSourceCol<T extends SalesLine>(): PrefColumn<T> {
   return { key: 'priceSource', header: 'Price source', cell: (l) => (l.itemId ? <Text variant="small" tone={l.priceSource ? 'default' : 'muted'}>{l.priceSource || '—'}</Text> : null) };
 }
 
 /** Read-only unit price after discount, in document currency. */
-function priceAfterDiscCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T> {
+function priceAfterDiscCol<T extends SalesLine>(b: ColBindings<T>): PrefColumn<T> {
   return { key: 'priceAfterDisc', header: `Price after discount (${b.currency})`, align: 'end', cell: (l) => (vis(b, l) ? <span className="text-sm tabular-nums">{formatAmount(b.priceAfterDisc(l))}</span> : null) };
 }
 
 /** Read-only line tax in PHP. */
-function taxAmountCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T> {
+function taxAmountCol<T extends SalesLine>(b: ColBindings<T>): PrefColumn<T> {
   return { key: 'taxAmount', header: 'Tax amount (PHP)', align: 'end', cell: (l) => (vis(b, l) ? <span className="text-sm tabular-nums">{formatAmount((b.taxAmount?.(l) ?? 0) * b.fx)}</span> : null) };
 }
 
 /** Read-only line total including tax, in PHP. */
-function grossTotalLcCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T> {
+function grossTotalLcCol<T extends SalesLine>(b: ColBindings<T>): PrefColumn<T> {
   return { key: 'grossTotalLc', header: 'Gross total (PHP)', align: 'end', cell: (l) => (vis(b, l) ? <span className="text-sm tabular-nums">{formatAmount((b.lineNet(l) + (b.taxAmount?.(l) ?? 0)) * b.fx)}</span> : null) };
 }
 
 /** A read-only placeholder cell ("—") for a field with no backing data. */
-function placeholderCol<T extends SalesLineLike>(key: string, header: string): PrefColumn<T> {
+function placeholderCol<T extends SalesLine>(key: string, header: string): PrefColumn<T> {
   return { key, header, cell: (l) => (l.itemId ? <span className="text-sm text-muted">—</span> : null) };
 }
 
+// ── Shared SAP B1 "Contents" catalog / printout / withholding columns (parity with purchCols).
+//    All read/write a SalesLine field through b.patch; default-hidden, available in the Columns menu. ──
+type SK = keyof SalesLine & string;
+/** Editable text cell for a SalesLine string field. */
+function sStr<T extends SalesLine>(b: ColBindings<T>, key: SK, header: string, width = 'w-44'): PrefColumn<T> {
+  return textCol<T>({ key, header, width, readOnly: b.readOnly, get: (l) => String(l[key] ?? ''), onChange: (l, v) => b.patch(l.id, { [key]: v } as Partial<T>) });
+}
+/** Editable money cell for a SalesLine numeric field. */
+function sMoney<T extends SalesLine>(b: ColBindings<T>, key: SK, header: string): PrefColumn<T> {
+  return priceCol<T>({ key, header, readOnly: b.readOnly, get: (l) => Number(l[key] ?? 0), onChange: (l, v) => b.patch(l.id, { [key]: v } as Partial<T>) });
+}
+/** Editable plain-number cell (e.g. a rate). */
+function sNum<T extends SalesLine>(b: ColBindings<T>, key: SK, header: string, suffix?: string): PrefColumn<T> {
+  return {
+    key, header, align: 'end', optional: true, defaultHidden: true,
+    cell: (l) => {
+      if (!l.itemId) return null;
+      const v = Number(l[key] ?? 0);
+      return <TextField aria-label={header} type="number" className="ml-auto w-24 [&_input]:text-right" suffix={suffix} value={v ? String(v) : ''} onChange={(e) => b.patch(l.id, { [key]: e.currentTarget.value === '' ? 0 : Number(e.currentTarget.value) } as Partial<T>)} />;
+    },
+  };
+}
+/** Editable checkbox cell for a SalesLine boolean field. */
+function sFlag<T extends SalesLine>(b: ColBindings<T>, key: SK, header: string): PrefColumn<T> {
+  return {
+    key, header, optional: true, defaultHidden: true,
+    cell: (l) => (l.itemId ? <Checkbox aria-label={header} checked={Boolean(l[key])} disabled={b.readOnly} onChange={(e) => b.patch(l.id, { [key]: e.currentTarget.checked } as Partial<T>)} /> : null),
+  };
+}
+/** Warranty template picker, defaulting from the item. */
+function warrantyCol<T extends SalesLine>(b: ColBindings<T>): PrefColumn<T> {
+  return masterCol({ key: 'warranty', header: 'Warranty', def: warrantyTemplateDef, get: (l) => l.warrantyTemplateId ?? '', onChange: (l, v) => b.patch(l.id, { warrantyTemplateId: v } as Partial<T>), where: (r) => r.active, readOnly: b.readOnly, clearable: true, placeholder: 'None', width: 'w-56' });
+}
+
 /** Country of origin — a real picker where the doc binds `country`, else a read-only placeholder. */
-function countryOfOriginCol<T extends SalesLineLike>(b: ColBindings<T>): PrefColumn<T> {
+function countryOfOriginCol<T extends SalesLine>(b: ColBindings<T>): PrefColumn<T> {
   if (b.country) {
     return masterCol({ key: 'countryOfOrigin', header: 'Country of origin', def: countryDef, get: (l) => b.country!.value(l), onChange: (l, v) => b.country!.onChange(l, v), readOnly: b.readOnly, clearable: true });
   }
@@ -548,7 +584,7 @@ function countryOfOriginCol<T extends SalesLineLike>(b: ColBindings<T>): PrefCol
  * The shared sales column registry. A document binds it with its data/services, then
  * `pick`s which columns to show and their default visibility (mirrors `purchCols`).
  */
-export function salesCols<T extends SalesLineLike>(b: ColBindings<T>): Record<string, PrefColumn<T>> {
+export function salesCols<T extends SalesLine>(b: ColBindings<T>): Record<string, PrefColumn<T>> {
   return {
     qty: qtyCol(b),
     ordered: roCol('ordered', 'Ordered', (l) => b.ordered?.(l) ?? null),
@@ -582,5 +618,25 @@ export function salesCols<T extends SalesLineLike>(b: ColBindings<T>): Record<st
     priceAfterDisc: priceAfterDiscCol(b),
     taxAmount: taxAmountCol(b),
     grossTotalLc: grossTotalLcCol(b),
+    // Shared SAP B1 catalog / printout / withholding columns (parity with purchCols; opt-in).
+    warranty: warrantyCol(b),
+    serialNo: sStr(b, 'serialNo', 'Serial no.', 'w-36'),
+    customerDescription: sStr(b, 'customerDescription', 'Customer description', 'min-w-40'),
+    blanketAgreementNo: sStr(b, 'blanketAgreementNo', 'Blanket agreement no.', 'w-44'),
+    distrRule: sStr(b, 'distrRule', 'Distr. rule', 'w-36'),
+    cogsDistrRule: sStr(b, 'cogsDistrRule', 'COGS distr. rule', 'w-36'),
+    unitCost: sMoney(b, 'unitCost', `Unit cost (${b.currency})`),
+    lastCost: sMoney(b, 'lastCost', `Last cost (${b.currency})`),
+    priceForReport: sMoney(b, 'priceForReport', `Price for report (${b.currency})`),
+    wtaxRate: sNum(b, 'wtaxRate', 'WTax rate', '%'),
+    wWTCode: sStr(b, 'wWTCode', 'wWTCode', 'w-32'),
+    wVTVendor: sStr(b, 'wVTVendor', 'wVTVendor', 'w-32'),
+    wTaxDefined: sStr(b, 'wTaxDefined', 'wTaxDefined', 'w-32'),
+    xSupplierName: sStr(b, 'xSupplierName', 'xSupplierName', 'w-40'),
+    xAddress: sStr(b, 'xAddress', 'xAddress', 'w-40'),
+    xTINumber: sStr(b, 'xTINumber', 'xTINumber', 'w-32'),
+    xCardType: sStr(b, 'xCardType', 'xCardType', 'w-32'),
+    allowProcurementDoc: sFlag(b, 'allowProcurementDoc', 'Allow procmnt. doc.'),
+    amountInPrintout: sFlag(b, 'amountInPrintout', 'Amount in printout'),
   };
 }

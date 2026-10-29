@@ -10,6 +10,7 @@
  * - Copy to Sales Order: all open lines carry over; the order then commits stock.
  * - Closing or cancelling a quotation releases nothing (there was nothing committed).
  */
+import type { SalesLine } from './salesLine';
 import type { Attachment, DocumentSeries } from './common';
 import { CURRENT_USER_ID } from './common';
 import { plId, termId } from './masters';
@@ -17,30 +18,15 @@ import type { PoReference } from './purchaseOrders';
 import { addDays, todayISO } from '../services/dates';
 import { SEED_ITEMS, itemsPerUom } from './items';
 import { SEED_PARTNERS, formatAddress } from './partners';
-import { H1_SALES, SEED_SALES_ORDERS } from './salesOrders';
+import { H1_SALES, SEED_SALES_ORDERS, seedRateOn } from './salesOrders';
 import { MONTH_NAMES } from './storeSales';
 import { round2 } from '../services/num';
 
 export type QuotationStatus = 'Draft' | 'Not Confirmed' | 'Open' | 'Closed' | 'Cancelled';
 export const QUOTATION_STATUSES: QuotationStatus[] = ['Draft', 'Not Confirmed', 'Open', 'Closed', 'Cancelled'];
 
-export interface QuoteLine {
-  id: string;
-  itemId: string;
-  itemNo: string;
-  description: string;
-  quantity: number;
-  uomCode: string;
-  uomName: string;
-  itemsPerUnit: number;
-  warehouse: string;
-  priceListId: string;
-  unitPrice: number;
-  discountPct: number;
-  priceSource: string;
-  taxCode: string;
-  /** User edited the tax code by hand: auto-recalc leaves this line alone. Missing = false. */
-  taxOverridden?: boolean;
+/** A quotation line is the shared base; it guarantees a revenue account like orders and invoices. */
+export interface QuoteLine extends SalesLine {
   glAccount: string;
 }
 
@@ -84,6 +70,13 @@ export interface Quotation {
   dueMonths: number;
   dueDays: number;
   cashDiscountDays: number;
+  /** Printout grouping: 'No Summary' | 'By Items' | 'By Document'. */
+  summaryType: string;
+  createQrCodeFrom: string;
+  centralBankIndicator: string;
+  useShippedGoodsAccount: boolean;
+  procureNonDropShip: boolean;
+  procureDropShip: boolean;
   references: PoReference[];
 
   // Attachments
@@ -173,6 +166,12 @@ export function blankQuotation(ownerId: string): Omit<Quotation, 'id'> {
     dueMonths: 0,
     dueDays: 0,
     cashDiscountDays: 0,
+    summaryType: 'No Summary',
+    createQrCodeFrom: '',
+    centralBankIndicator: '',
+    useShippedGoodsAccount: false,
+    procureNonDropShip: false,
+    procureDropShip: false,
     references: [],
     attachments: [],
     salesEmployeeId: '',
@@ -368,6 +367,21 @@ const qt008 = qtHeader('qt-008', 8, 'bp-007', {
   ],
 });
 
+// Open, billed in USD: Harbourline (Singapore) — iPhones for its Manila staff, priced in PHP from
+// the list and converted at the BSP reference rate on the quotation date. Shows the foreign-currency
+// exchange-rate note on the Document card.
+const qt009 = qtHeader('qt-009', 9, 'bp-010', {
+  postingDate: '2026-10-08', documentDate: '2026-10-08', validUntil: '2026-11-08',
+  customerRef: 'HBL-RFQ-SG-2026-091',
+  remarks: 'iPhones for Harbourline’s Manila-based staff, billed in USD at the 8 Oct BSP rate. Awaiting their PO.',
+  lines: [
+    qtLine('qt-009-1', byItemNo('IPH-17-256-BLK'), 6, {
+      priceListId: plId('Wholesale'), discountPct: 2, priceSource: 'Discount group Customers – Trade × iPhone: 2%',
+      unitPrice: round2(byItemNo('IPH-17-256-BLK').basePrice / 1.12 / seedRateOn('USD', '2026-10-08')),
+    }),
+  ],
+});
+
 // January–June: the quoted corporate orders (mocks/salesOrders.ts), quoted a week before the
 // customer ordered and closed when it did.
 const H1_QUOTES: Quotation[] = H1_SALES.filter((p) => p.quoted).map((p) => {
@@ -386,6 +400,6 @@ const H1_QUOTES: Quotation[] = H1_SALES.filter((p) => p.quoted).map((p) => {
 });
 
 /** Every seeded quotation, numbered in date order (drafts have no number). */
-export const SEED_QUOTATIONS: Quotation[] = [qt001, qt002, qt003, qt004, qt005, qt006, qt007, qt008, ...H1_QUOTES]
+export const SEED_QUOTATIONS: Quotation[] = [qt001, qt002, qt003, qt004, qt005, qt006, qt007, qt008, qt009, ...H1_QUOTES]
   .sort((a, b) => a.postingDate.localeCompare(b.postingDate) || a.id.localeCompare(b.id))
   .map((q, n, all) => (q.status === 'Draft' ? { ...q, docNum: 0 } : { ...q, docNum: all.slice(0, n).filter((x) => x.status !== 'Draft').length + 1 }));

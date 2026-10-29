@@ -36,6 +36,14 @@ async function pickAction(page: Page, label: string) {
 }
 
 /**
+ * Confirm the source-launched "Copy from" picker. A "Create {target}…" action opens this panel on the
+ * source document with its open lines pre-ticked; "Done" carries the picks to the pre-filled target.
+ */
+async function confirmCopy(page: Page) {
+  await page.getByRole('button', { name: 'Done' }).click();
+}
+
+/**
  * Click the primary "Create <document>" button to post a new document. Some forms show a "Check before saving" warning on
  * the first press (duplicate customer ref, over credit limit) and stay on /new; a second press saves
  * anyway. `leaves` is the list-URL pattern the save navigates to. Waits for either outcome rather
@@ -83,24 +91,13 @@ test.describe('sales workflows', () => {
 
   // US-SAL-021 / US-SAL-032: a "Create Sales Order" (here "Create sales order") on an Open quotation
   // pre-fills a new order from the quotation; closing the quotation then closes it.
-  //
-  // REAL UI BUG (reported, not worked around) — SKIPPED until it's fixed. The sales quotation detail
-  // page currently crashes to the app error boundary ("This page couldn't load") for every quotation:
-  //   TypeError: Cannot read properties of undefined (reading 'header')
-  //     at warehouseCol (src/pages/sales/shared/salesCols.tsx:208 — `const w = b.warehouse!`)
-  //     at salesCols  (src/pages/sales/shared/salesCols.tsx:352 — builds `warehouse: warehouseCol(b)` unconditionally)
-  //     at qtDoc      (src/pages/sales/quotations/detail/qtDoc.tsx — passes no `warehouse` binding)
-  // `salesCols` always calls `warehouseCol`, which reads `b.warehouse!.header`; a quotation has no
-  // warehouse column, so `b.warehouse` is undefined and the render throws. Both files are new/untracked
-  // (the in-progress purchasing-lines-table-unification refactor). Reproduces for qt-001/007/008.
-  // Fix: `salesCols` should only build the warehouse column when `b.warehouse` is provided (or
-  // `warehouseCol` should no-op when it's undefined). Un-skip and drive the flow once fixed.
   test('quotation → sales order (pre-fill); quotation closes @US-SAL-021', async ({ page }) => {
     const errors = watchErrors(page);
 
     // qt-007 is Open. Convert it: lands on a new SO pre-filled with the customer and lines.
     await openStatus(page, 'sales/quotations/qt-007', 'Open');
-    await pickAction(page, 'Create sales order');
+    await pickAction(page, 'Create sales order…');
+    await confirmCopy(page);
 
     await expect(page).toHaveURL(/sales\/sales-orders\/new/);
     await waitLoaded(page);
@@ -132,7 +129,8 @@ test.describe('sales workflows', () => {
     const errors = watchErrors(page);
 
     await openStatus(page, 'sales/sales-orders/so-006', 'Open');
-    await pickAction(page, 'Create delivery');
+    await pickAction(page, 'Create delivery…');
+    await confirmCopy(page);
 
     await expect(page).toHaveURL(/sales\/deliveries\/new/);
     await waitLoaded(page);
@@ -157,7 +155,8 @@ test.describe('sales workflows', () => {
   // fixed to /sales/customer-invoices/new, which the ArInvoiceDetail resolves with the fromDelivery state.)
   test('delivery → A/R invoice opens the pre-filled form @US-SAL-060', async ({ page }) => {
     await openStatus(page, 'sales/deliveries/dn-c05', 'Open');
-    await pickAction(page, 'Create A/R invoice');
+    await pickAction(page, 'Create A/R invoice…');
+    await confirmCopy(page);
     await expect(page).toHaveURL(/sales\/customer-invoices\/new/);
     await expect(page.getByText('Coming soon')).toHaveCount(0);
   });
@@ -219,7 +218,8 @@ test.describe('sales workflows', () => {
     const errors = watchErrors(page);
 
     await openStatus(page, 'sales/customer-invoices/ar-c03', 'Open');
-    await pickAction(page, 'Create A/R credit memo');
+    await pickAction(page, 'Create A/R credit memo…');
+    await confirmCopy(page);
 
     await expect(page).toHaveURL(/sales\/credit-memos\/new/);
     await waitLoaded(page);
@@ -247,7 +247,8 @@ test.describe('sales workflows', () => {
 
     // dn-c05 is the Open seed delivery. Copy it to a sales return.
     await open(page, 'sales/deliveries/dn-c05');
-    await pickAction(page, 'Create sales return');
+    await pickAction(page, 'Create sales return…');
+    await confirmCopy(page);
     await expect(page).toHaveURL(/sales\/sales-returns\/new/);
     await waitLoaded(page);
     // The return is pre-filled from the delivery: the delivery's line item is copied onto it.
@@ -259,7 +260,8 @@ test.describe('sales workflows', () => {
     await page.getByRole('link', { name: /SRT-2026/ }).first().click();
     await expect(page).toHaveURL(/sales\/sales-returns\/(sr-|SRT-2026)/);
     await waitLoaded(page);
-    await pickAction(page, 'Create A/R credit memo');
+    await pickAction(page, 'Create A/R credit memo…');
+    await confirmCopy(page);
     await expect(page).toHaveURL(/sales\/credit-memos\/new/);
     await waitLoaded(page);
     // The credit memo's line is copied from the return (the returned item carries over).

@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import {
   Alert,
@@ -28,6 +29,7 @@ import { baSeries } from '../../../../services/allSeries';
 import { baNumber, baTotals, openQty, getBlanketAgreement, listBlanketAgreements, saveBlanketAgreement, type BaInput } from '../../../../services/blanketAgreements';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { CustomerCard } from '../../shared/CustomerCard';
+import { CopyPanel } from '../../../purchasing/shared/CopyPanel';
 import { SalesDocumentFlow } from '../../shared/SalesDocumentFlow';
 import { BaCustomerPanel } from './BaCustomerPanel';
 import { BaAgreementCard } from './BaAgreementCard';
@@ -89,6 +91,7 @@ function BaForm() {
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);
   const [customerDetailsOpen, setCustomerDetailsOpen] = useState(false);
+  const [creatingSo, setCreatingSo] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -197,9 +200,8 @@ function BaForm() {
     navigate(`${BA_LIST_PATH}/new`, { state: { copyFrom: copy } });
   };
 
-  const copyToSo = () => {
+  const createSo = (picks: { lineId: string; qty: number }[]) => {
     const ba = draft as BlanketAgreement;
-    const openLines = draft.lines.filter((l) => openQty(l) > 0);
     const so = {
       ...blankSalesOrder(CURRENT_USER_ID),
       approved: !needsApproval('SO'),
@@ -212,27 +214,28 @@ function BaForm() {
       paymentMethod: draft.paymentMethod,
       shippingType: draft.shippingType,
       projectId: draft.projectId,
-      lines: openLines.map((l) =>
-        newSoLine({
+      lines: picks.flatMap(({ lineId, qty }) => {
+        const l = draft.lines.find((x) => x.id === lineId);
+        return l ? [newSoLine({
           itemId: l.itemId,
           itemNo: l.itemNo,
           description: l.description,
-          quantity: openQty(l),
+          quantity: qty,
           uomCode: l.uomCode,
           uomName: l.uomName,
           itemsPerUnit: l.itemsPerUnit,
           unitPrice: l.unitPrice,
           agreementId: ba.id,
           agreementLineId: l.id,
-        }),
-      ),
+        })] : [];
+      }),
     };
     navigate(`${SO_LIST_PATH}/new`, { state: { copyFrom: so } });
   };
 
   const menu: MoreMenuItem[] = [
     ...(draft.status === 'Approved' && draft.lines.some((l) => openQty(l) > 0)
-      ? [{ label: 'Create sales order', icon: 'shopping_bag', onSelect: copyToSo }]
+      ? [{ label: 'Create sales order…', icon: 'shopping_bag', onSelect: () => setCreatingSo(true) }]
       : []),
     ...(!isNew ? [{ label: 'Duplicate', icon: 'content_copy', onSelect: duplicate }] : []),
   ];
@@ -341,6 +344,37 @@ function BaForm() {
           onClose={() => setCustomerDetailsOpen(false)}
         />
       )}
+      {creatingSo
+        ? createPortal(
+            <CopyPanel
+              title="Create sales order"
+              icon="shopping_bag"
+              partyCard={<CustomerCard customers={m.customers} customerId={draft.customerId} customer={customer} onPickCustomer={() => {}} onOpenDetails={() => {}} locked />}
+              sources={[{
+                key: 'BA' as const,
+                label: 'Blanket agreements',
+                totalHeader: 'Planned',
+                qtyHeader: 'Order',
+                hint: 'Order against the agreement; leave a line unticked to skip it, or lower its quantity.',
+                docs: [{
+                  id: draft.id ?? '',
+                  label: baNumber(draft as BlanketAgreement),
+                  description: draft.currency,
+                  lines: draft.lines
+                    .filter((l) => openQty(l) > 0)
+                    .map((l) => ({ id: l.id, itemNo: l.itemNo, name: l.description, warehouse: '', total: `${l.plannedQty} ${l.uomCode}`, open: openQty(l) })),
+                }],
+              }]}
+              taken={new Set()}
+              onCancel={() => setCreatingSo(false)}
+              onCopy={(_type, _docId, picks) => {
+                setCreatingSo(false);
+                createSo(picks);
+              }}
+            />,
+            document.body,
+          )
+        : null}
     </>
   );
 }

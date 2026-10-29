@@ -20,6 +20,7 @@
  * - A/R invoices aren't built yet, so Invoiced Qty stays 0 except on seeded history.
  * - Negative stock isn't allowed: a line can't ship more than the warehouse holds.
  */
+import type { SalesLine } from './salesLine';
 import { CURRENT_USER_ID, type Attachment, type DocumentSeries } from './common';
 import { plId, termId } from './masters';
 import { H1_SALES, SEED_SALES_ORDERS, seedRateOn, type SalesOrder } from './salesOrders';
@@ -32,30 +33,7 @@ export const DN_STATUSES: DnStatus[] = ['Draft', 'Not Confirmed', 'Open', 'Close
 /** Shipped goods (Use Shipped Goods Account): an asset until invoiced. The chart has no dedicated account, so Goods in Transit stands in. */
 export const SHIPPED_GOODS_ACCOUNT = '1340';
 
-export interface DnLine {
-  id: string;
-  itemId: string;
-  itemNo: string;
-  /** Defaults from the item or the order line; editing it here changes neither. */
-  description: string;
-  /** Shipped, in the line's unit. */
-  quantity: number;
-  uomCode: string;
-  uomName: string;
-  /** Inventory units in one line unit. */
-  itemsPerUnit: number;
-  warehouse: string;
-  priceListId: string;
-  /** Net of VAT, per line unit, in the document currency. */
-  unitPrice: number;
-  discountPct: number;
-  priceSource: string;
-  taxCode: string;
-  /** User edited the tax code by hand: auto-recalc leaves this line alone. Missing = false. */
-  taxOverridden?: boolean;
-  /** The tax code's ATC and BIR return, stamped when the document is added ('' = none). */
-  taxAtc?: string;
-  taxReturn?: string;
+export interface DnLine extends SalesLine {
   /** The sales order and line this was copied from ('' for a line entered by hand). */
   baseType: '' | 'SO';
   baseId: string;
