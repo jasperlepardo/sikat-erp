@@ -49,6 +49,8 @@ import { useDocTitle } from '../../../../../services/useDocTitle';
 import { type SrContext, type SrDraft, type SrMasters } from '../../types';
 import { DocLines } from '../../../../../components/form/docLines/DocLines';
 import { CopyPanel, type CopySourceType } from '../../../../purchasing/shared/CopyPanel';
+import { CreateFromPanel, createHopMenuItems } from '../../../../purchasing/shared/CreateFromPanel';
+import { SR_TO_ARCM, type CopyHop, type LinePick } from '../../../shared/copyHops';
 import { srDoc } from './srDoc';
 import { ReturnDatesCard } from '../../ReturnDatesCard';
 import { ReturnShipmentCard } from '../../ReturnShipmentCard';
@@ -56,7 +58,7 @@ import { ReturnAssignmentCard } from '../../ReturnAssignmentCard';
 import { SrCustomerDetailsPanel } from './SrCustomerDetailsPanel';
 import { ActivityTab } from '../../../../../components/activity/ActivityTab';
 import { neighbours, NotFound, siblingKeys, useDocTab, useReject } from '../../../../../components/form/DetailNav';
-import { AR_CM_LIST_PATH, SR_LIST_PATH, SR_NOUN, SR_STATUS_INTENT } from '../../../paths';
+import { SR_LIST_PATH, SR_NOUN, SR_STATUS_INTENT } from '../../../paths';
 
 type Draft = SrDraft;
 type TabId = 'contents' | 'accounting';
@@ -146,7 +148,7 @@ function SalesReturnForm() {
   const isNew = id === 'new';
   const navigate = useNavigate();
   const location = useLocation();
-  const state = location.state as { fromDelivery?: string } | null;
+  const state = location.state as { fromDelivery?: string; picks?: LinePick[] } | null;
 
   const srApproved = !needsApproval('SR');
   const [draft, setDraft] = useState<Draft | null | undefined>(isNew ? { ...blankSalesReturn(todayISO(), CURRENT_USER_ID), approved: srApproved } : undefined);
@@ -161,6 +163,7 @@ function SalesReturnForm() {
   const [replacementDnId, setReplacementDnId] = useState('');
   const [customerDetailsOpen, setCustomerDetailsOpen] = useState(false);
   const [copying, setCopying] = useState(false);
+  const [createHop, setCreateHop] = useState<CopyHop<SalesReturn> | null>(null);
 
   useEffect(() => {
     loadSrMasters().then((masters) => {
@@ -169,22 +172,24 @@ function SalesReturnForm() {
         const dn = masters.deliveries.find((d) => d.id === state.fromDelivery);
         if (dn) {
           const customer = masters.customers.find((c) => c.id === dn.customerId);
-          const lines = dn.lines
-            .filter((l) => dnOpenQty(l, dn) > 0)
-            .map((l) => {
-              const { invoicedQty: _i, ...base } = l;
-              return newSrLine({
-                ...base,
-                id: `srl-${crypto.randomUUID().slice(0, 8)}`,
-                quantity: dnOpenQty(l, dn),
-                baseType: 'DN' as const,
-                baseId: dn.id,
-                baseLineId: l.id,
-                baseDocNo: dnNumber(dn),
-                creditedQty: 0,
-                returnReason: '',
-              });
-            });
+          // The lines the user picked on the delivery, or — when navigated without picks — every open line.
+          const picks = state.picks ?? dn.lines.filter((l) => dnOpenQty(l, dn) > 0).map((l) => ({ lineId: l.id, qty: dnOpenQty(l, dn) }));
+          const lines = picks.flatMap(({ lineId, qty }) => {
+            const l = dn.lines.find((x) => x.id === lineId);
+            if (!l) return [];
+            const { invoicedQty: _i, ...base } = l;
+            return [newSrLine({
+              ...base,
+              id: `srl-${crypto.randomUUID().slice(0, 8)}`,
+              quantity: Math.min(qty, dnOpenQty(l, dn)),
+              baseType: 'DN' as const,
+              baseId: dn.id,
+              baseLineId: l.id,
+              baseDocNo: dnNumber(dn),
+              creditedQty: 0,
+              returnReason: '',
+            })];
+          });
           setDraft((d) => d && {
             ...d,
             ...customerDefaults(customer, d),
@@ -328,7 +333,7 @@ function SalesReturnForm() {
   const rejectIt = async (rejectionReason: string) => { await logRejection('SRT', saved.id, saved.customerId, rejectionReason); await recallSalesReturn(saved); navigate(SR_LIST_PATH, { state: { notice: `Sales return ${srNumber(saved)} rejected and returned to draft.` } }); };
 
   const menu: MoreMenuItem[] = [
-    ...(creditable ? [{ label: 'Create A/R credit memo', icon: 'undo', onSelect: () => navigate(`${AR_CM_LIST_PATH}/new`, { state: { fromReturn: saved.id } }) }] : []),
+    ...(creditable ? createHopMenuItems(saved, m.items, [SR_TO_ARCM], setCreateHop) : []),
     ...(draft.status === 'Open' && replacementDeliveries.length
       ? [{ label: 'Close with replacement delivery', icon: 'local_shipping', onSelect: () => { setReplacementDnId(''); setLinkingReplacement(true); } }]
       : []),
@@ -496,6 +501,7 @@ function SalesReturnForm() {
             document.body,
           )
         : null}
+      {createHop ? <CreateFromPanel source={saved} hop={createHop} items={m.items} partyCard={<CustomerCard customers={m.customers} customerId={saved.customerId} customer={customer} onPickCustomer={() => {}} onOpenDetails={() => {}} locked />} onClose={() => setCreateHop(null)} /> : null}
     </>
   );
 }

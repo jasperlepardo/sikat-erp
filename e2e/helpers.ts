@@ -20,8 +20,10 @@ const RAW_ID = new RegExp(`\\b(?:(${ID_PREFIXES.join('|')})-[A-Za-z0-9-]*\\d[A-Z
 export async function open(page: Page, route: string) {
   await page.goto(`/#/${route.replace(/^\/+/, '')}`);
   await page.waitForLoadState('networkidle');
-  // "Loading…", "Loading purchase quotation…": any screen still fetching.
-  await expect(page.locator('body')).not.toContainText(/Loading[^\n…]*…/, { timeout: 10_000 });
+  // "Loading…", "Loading purchase quotation…": any screen still fetching. Generous timeout: the
+  // fake API is setTimeout-based (~250 ms/call), so under the sweep's full-parallel contention a
+  // multi-call detail page can take several seconds longer than it does in isolation.
+  await expect(page.locator('body')).not.toContainText(/Loading[^\n…]*…/, { timeout: 30_000 });
   // A route the router doesn't know falls through to the "Coming soon" placeholder, which loads
   // cleanly: fail here so a renamed route can't pass the sweep unseen.
   await expect(page.getByText('Coming soon'), `/${route} has no page`).toHaveCount(0);
@@ -32,7 +34,7 @@ export async function open(page: Page, route: string) {
       const same = now === last;
       last = now;
       return same;
-    }, { intervals: [400], timeout: 10_000 })
+    }, { intervals: [400], timeout: 30_000 })
     .toBe(true);
 }
 

@@ -13,7 +13,7 @@ import { CURRENT_USER_ID } from '../../../../mocks/common';
 import { blankGoodsReturnRequest, type GoodsReturnRequest, type GrrStatus } from '../../../../mocks/goodsReturnRequests';
 import { loadInventoryMasters } from '../../../../services/inventoryMasters';
 import { listItems } from '../../../../services/items';
-import { taxCodes, taxGroups, withholdingGroups, withholdingTaxes } from '../../../../services/masterData';
+import { currencies, taxCodes, taxGroups, withholdingGroups, withholdingTaxes } from '../../../../services/masterData';
 import { listPartnersByRole } from '../../../../services/partners';
 import { companyTax } from '../../../../services/masterData';
 import {
@@ -30,6 +30,7 @@ import { neighbours, NotFound, siblingKeys, useDocTab } from '../../../../compon
 import { DocumentFlow } from '../../shared/DocumentFlow';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
 import { VendorCard } from '../../shared/VendorCard';
+import { VendorDetailsPanel } from '../../shared/VendorDetailsPanel';
 import { CopyPanel } from '../../shared/CopyPanel';
 import { GRR_LIST_PATH, GRR_NOUN, GRR_STATUS_INTENT, RETURN_LIST_PATH } from '../../paths';
 import { grrDoc } from './grrDoc';
@@ -78,6 +79,8 @@ function GrrForm() {
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);
   const [copying, setCopying] = useState(false);
+  const [creatingReturn, setCreatingReturn] = useState(false);
+  const [vendorDetailsOpen, setVendorDetailsOpen] = useState(false);
 
   const page = (PAGES.some((p) => p.value === tabParam) ? tabParam : 'details') as PageId;
   const setPage = useDocTab<PageId>(`${GRR_LIST_PATH}/${id}`, tabParam);
@@ -92,8 +95,9 @@ function GrrForm() {
       taxGroups.list(),
       withholdingTaxes.list(),
       withholdingGroups.list(),
-    ]).then(([vendors, items, inv, [company], codes, groups, withholding, wGroups]) => {
-      setM({ vendors, items, inv, tax: { company, codes, groups, withholding, withholdingGroups: wGroups } });
+      currencies.list(),
+    ]).then(([vendors, items, inv, [company], codes, groups, withholding, wGroups, curs]) => {
+      setM({ vendors, items, inv, tax: { company, codes, groups, withholding, withholdingGroups: wGroups }, currencies: curs });
     });
     if (isNew || !id) return;
     let cancelled = false;
@@ -144,23 +148,25 @@ function GrrForm() {
     }
   };
 
-  // Copy to Goods Return: carry open lines as return lines.
-  const copyToReturn = () => {
-    const open = draft.lines.filter((l) => l.status === 'Open' && l.openQty > 0 && l.itemId);
+  // Copy to Goods Return: carry the picked open lines as return lines.
+  const createReturn = (picks: { lineId: string; qty: number }[]) => {
     const poDraft = {
       baseGrrId: saved.id,
-      lines: open.map((l) => ({
-        id: `rl-${crypto.randomUUID().slice(0, 8)}`,
-        itemId: l.itemId, itemNo: l.itemNo, name: l.description, description: l.description,
-        quantity: l.openQty, openQty: l.openQty,
-        uomCode: l.uomCode, uomName: l.uomName, itemsPerUnit: l.itemsPerUnit,
-        unitPrice: l.unitPrice, discountPct: l.discountPct, taxCode: l.taxCode,
-        warehouse: l.warehouse, freeText: l.freeText ?? '', requisitionSlipNo: l.requisitionSlipNo,
-        returnReason: l.returnReason, countryOfOriginCode: l.countryOfOriginCode, warrantyTemplateId: l.warrantyTemplateId, glAccount: l.glAccount,
-        baseType: '' as const, creditedQty: 0, binId: '', binCode: '', packages: 0,
-        lineVendorId: '', priceListId: l.priceListId,
-        unitCostLc: 0, grrLineId: l.id,
-      })),
+      lines: picks.flatMap(({ lineId, qty }) => {
+        const l = draft.lines.find((x) => x.id === lineId && x.status === 'Open' && x.itemId);
+        return l ? [{
+          id: `rl-${crypto.randomUUID().slice(0, 8)}`,
+          itemId: l.itemId, itemNo: l.itemNo, name: l.description, description: l.description,
+          quantity: qty, openQty: qty,
+          uomCode: l.uomCode, uomName: l.uomName, itemsPerUnit: l.itemsPerUnit,
+          unitPrice: l.unitPrice, discountPct: l.discountPct, taxCode: l.taxCode,
+          warehouse: l.warehouse, freeText: l.freeText ?? '', requisitionSlipNo: l.requisitionSlipNo,
+          returnReason: l.returnReason, countryOfOriginCode: l.countryOfOriginCode, warrantyTemplateId: l.warrantyTemplateId, glAccount: l.glAccount,
+          baseType: '' as const, creditedQty: 0, binId: '', binCode: '', packages: 0,
+          lineVendorId: '', priceListId: l.priceListId,
+          unitCostLc: 0, grrLineId: l.id,
+        }] : [];
+      }),
     };
     navigate(`${RETURN_LIST_PATH}/new`, { state: { fromGrr: saved.id, prefill: poDraft } });
   };
@@ -170,7 +176,7 @@ function GrrForm() {
 
   const menu: MoreMenuItem[] = [
     ...(draft.status === 'Open' && draft.lines.some((l) => l.status === 'Open' && l.itemId)
-      ? [{ label: 'Create goods return', icon: 'assignment_return', onSelect: copyToReturn }]
+      ? [{ label: 'Create goods return…', icon: 'assignment_return', onSelect: () => setCreatingReturn(true) }]
       : []),
     ...(draft.status === 'Open' ? [{ label: 'Close', icon: 'task_alt', onSelect: closeIt }] : []),
   ];
@@ -231,8 +237,9 @@ function GrrForm() {
                     readOnly={ctx.readOnly}
                     locked={ctx.added}
                     error={errors.vendorId}
+                    tooltip="The vendor the goods go back to."
                     pickVendor={pickVendor}
-                    onOpenDetails={() => {}}
+                    onOpenDetails={() => setVendorDetailsOpen(true)}
                   />
                   <DocLines {...grrDoc({ draft, update, errors, m, onCopyClick: () => setCopying(true), canCopy: Boolean(draft.vendorId) })} />
                   <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach photos of damage or supporting documents." />
@@ -247,6 +254,22 @@ function GrrForm() {
           )}
         </Panel>
       </Form>
+      <VendorDetailsPanel
+        draft={draft}
+        update={update}
+        vendor={vendor}
+        currencies={m.currencies}
+        readOnly={ctx.readOnly}
+        open={vendorDetailsOpen}
+        onClose={() => setVendorDetailsOpen(false)}
+        vendorRefHint="The vendor's return authorization (RMA) no."
+        currency={{
+          disabled: ctx.added,
+          tooltip: "Defaults to the vendor's currency.",
+          error: errors.currency,
+        }}
+        addresses={[]}
+      />
       {copying
         ? createPortal(
             <CopyPanel
@@ -263,6 +286,37 @@ function GrrForm() {
               taken={new Set()}
               onCancel={() => setCopying(false)}
               onCopy={() => setCopying(false)}
+            />,
+            document.body,
+          )
+        : null}
+      {creatingReturn
+        ? createPortal(
+            <CopyPanel
+              title="Create goods return"
+              icon="assignment_return"
+              partyCard={<VendorCard vendors={m.vendors} vendorId={saved.vendorId} vendor={vendor} readOnly={false} locked pickVendor={() => {}} />}
+              sources={[{
+                key: 'GRR' as const,
+                label: 'Goods return requests',
+                totalHeader: 'Requested',
+                qtyHeader: 'Return',
+                hint: 'Return the open requested lines; leave one unticked to skip it, or lower its quantity.',
+                docs: [{
+                  id: saved.id,
+                  label: grrNumber(saved),
+                  description: saved.postingDate,
+                  lines: draft.lines
+                    .filter((l) => l.status === 'Open' && l.openQty > 0 && l.itemId)
+                    .map((l) => ({ id: l.id, itemNo: l.itemNo, name: l.description, warehouse: l.warehouse ?? '', total: `${l.openQty} ${l.uomCode}`, open: l.openQty })),
+                }],
+              }]}
+              taken={new Set()}
+              onCancel={() => setCreatingReturn(false)}
+              onCopy={(_type, _docId, picks) => {
+                setCreatingReturn(false);
+                createReturn(picks);
+              }}
             />,
             document.body,
           )

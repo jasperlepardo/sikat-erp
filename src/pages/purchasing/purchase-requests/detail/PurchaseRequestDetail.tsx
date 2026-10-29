@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import {
   Alert,
@@ -50,6 +51,7 @@ import { FanOutRfqPanel, type VendorSend } from './FanOutRfqPanel';
 import { AwardPoPanel } from './AwardPoPanel';
 import { ComparisonTab, type Award } from './comparison';
 import { poDraftFromRfq } from '../../shared/poFromRfq';
+import { CopyPanel } from '../../shared/CopyPanel';
 import { openPrLines, rfqDraftFromPr } from '../../shared/rfqFromPr';
 import type { PurchaseOrder } from '../../../../mocks/purchaseOrders';
 import { buildContext, type PrDraft, type PrMasters } from './types';
@@ -137,6 +139,7 @@ function PurchaseRequestForm() {
   const [saving, setSaving] = useState(false);
   const [requesterDetailsOpen, setRequesterDetailsOpen] = useState(false);
   const [panel, setPanel] = useState<'fan-out' | 'award' | null>(null);
+  const [creatingPo, setCreatingPo] = useState(false);
   const [notice, setNotice] = useState('');
 
   useEffect(() => {
@@ -239,9 +242,8 @@ function PurchaseRequestForm() {
   // A request is pre-vendor, so the buyer picks the vendor on the PO (which derives currency,
   // payment terms and addresses); every line field — including each line's preferred vendor —
   // carries across. Only lines still open (not yet converted) are copied, at their open qty.
-  const copyToPo = () => {
+  const createPo = (picks: { lineId: string; qty: number }[]) => {
     const today = todayISO();
-    const open = draft.lines.filter((l) => l.status === 'Open' && (l.openQty ?? l.quantity) > 0 && l.itemId);
     const poDraft = {
       ...blankPurchaseOrder(CURRENT_USER_ID),
       approved: !needsApproval('PO'),
@@ -252,17 +254,18 @@ function PurchaseRequestForm() {
       freight: draft.freight,
       // Lineage back to this request: header link + each line's source request line.
       basePrId: saved.id,
-      lines: open.map((l) =>
-        newPoLine({
+      lines: picks.flatMap(({ lineId, qty }) => {
+        const l = draft.lines.find((x) => x.id === lineId && x.status === 'Open' && x.itemId);
+        return l ? [newPoLine({
           itemId: l.itemId, itemNo: l.itemNo, name: l.description, description: l.description,
-          quantity: l.openQty ?? l.quantity, uomCode: l.uomCode, uomName: l.uomName,
+          quantity: qty, uomCode: l.uomCode, uomName: l.uomName,
           itemsPerUnit: l.itemsPerUnit, priceListId: l.priceListId, unitPrice: l.unitPrice,
           discountPct: l.discountPct, taxCode: l.taxCode, warehouse: l.warehouse,
           departmentId: l.departmentId, freeText: l.freeText, requisitionSlipNo: l.requisitionSlipNo,
           requiredDate: l.requiredDate, lineVendorId: l.lineVendorId, countryOfOriginCode: l.countryOfOriginCode, warrantyTemplateId: l.warrantyTemplateId, glAccount: l.glAccount,
           baseId: saved.id, baseLineId: l.id, baseDocNo: prNumber(saved),
-        }),
-      ),
+        })] : [];
+      }),
       remarks: `From purchase request ${prNumber(saved)}.${draft.remarks ? ` ${draft.remarks}` : ''}`,
     };
     navigate(`${PO_LIST_PATH}/new`, { state: { copyFrom: poDraft } });
@@ -351,7 +354,7 @@ function PurchaseRequestForm() {
     ...(draft.status === 'Open' && draft.lines.some((l) => l.status === 'Open' && l.itemId)
       ? [
           ...(!isNew ? [{ label: `Create ${RFQ_NOUN.many}…`, icon: 'request_quote', onSelect: () => setPanel('fan-out') }] : []),
-          { label: 'Create purchase order', icon: 'receipt_long', onSelect: copyToPo },
+          { label: 'Create purchase order…', icon: 'receipt_long', onSelect: () => setCreatingPo(true) },
           ...(quotes.rfqs.some((q) => q.lines.some((l) => l.quotedQty > 0))
             ? [{ label: `Create ${PO_NOUN.one} from a quote…`, icon: 'shopping_cart', onSelect: () => setPanel('award') }]
             : []),
@@ -475,6 +478,37 @@ function PurchaseRequestForm() {
     ) : panel === 'award' ? (
       <AwardPoPanel pr={saved} rfqs={quotes.rfqs} pos={quotes.pos} onCancel={() => setPanel(null)} onAward={(a) => award([a])} />
     ) : null}
+    {creatingPo
+      ? createPortal(
+          <CopyPanel
+            title="Create purchase order"
+            icon="receipt_long"
+            sectionTitle="Purchase request"
+            sources={[{
+              key: 'PR' as const,
+              label: 'Purchase requests',
+              totalHeader: 'Requested',
+              qtyHeader: 'Order',
+              hint: 'Order the open request lines; leave one unticked to skip it, or lower its quantity. Pick the vendor on the PO.',
+              docs: [{
+                id: saved.id,
+                label: prNumber(saved),
+                description: saved.requiredDate ? `Required ${saved.requiredDate}` : '',
+                lines: draft.lines
+                  .filter((l) => l.status === 'Open' && (l.openQty ?? l.quantity) > 0 && l.itemId)
+                  .map((l) => ({ id: l.id, itemNo: l.itemNo, name: l.description, warehouse: l.warehouse, total: `${l.openQty ?? l.quantity} ${l.uomCode}`, open: l.openQty ?? l.quantity })),
+              }],
+            }]}
+            taken={new Set()}
+            onCancel={() => setCreatingPo(false)}
+            onCopy={(_type, _docId, picks) => {
+              setCreatingPo(false);
+              createPo(picks);
+            }}
+          />,
+          document.body,
+        )
+      : null}
     </>
   );
 }

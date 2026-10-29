@@ -20,7 +20,7 @@ export async function getQuotation(idOrNumber: string) {
 
 export type QtInput = Omit<Quotation, 'id'> & { id?: string };
 
-const seriesOf = (id: string) => seriesLookup(qtSeries, id, QT_SERIES);
+export const seriesOf = (id: string) => seriesLookup(qtSeries, id, QT_SERIES);
 export const qtNumber = (q: Pick<Quotation, 'seriesId' | 'docNum' | 'postingDate'>) =>
   formatDocNum(seriesOf(q.seriesId), q.docNum, q.postingDate);
 

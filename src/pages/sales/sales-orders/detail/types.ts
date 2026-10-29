@@ -130,6 +130,13 @@ export const availableIn = (item: Item, warehouse: string, ownCommitted = new Ma
   return w ? round4(w.inStock - w.committed + (ownCommitted.get(`${item.id}@${warehouse}`) ?? 0)) : 0;
 };
 
+/** Free stock per warehouse (available to promise), only where positive, most-available first. */
+const availabilityByWarehouse = (item: Item, ownCommitted = new Map<string, number>()) =>
+  item.warehouses
+    .map((w) => ({ warehouse: w.code, available: availableIn(item, w.code, ownCommitted) }))
+    .filter((x) => x.available > 0)
+    .sort((a, b) => b.available - a.available);
+
 /** An item the order's open lines need more of in a warehouse than it has free, in the inventory unit. */
 export interface Shortage {
   item: Item;
@@ -144,6 +151,10 @@ export interface Shortage {
   ordered: number;
   /** What's still uncovered after the incoming POs: the suggested purchase quantity. */
   toOrder: number;
+  /** Free stock in other warehouses that could be transferred in, most-available first. */
+  elsewhere: { warehouse: string; available: number }[];
+  /** How much of the shortfall other warehouses could cover: min(short, sum of elsewhere). */
+  transferable: number;
 }
 
 /** Stocked items whose open lines need more than the warehouse has free (lines on the same item and warehouse added up). */
@@ -162,6 +173,8 @@ export function shortages(draft: SoDraft, m: SoMasters, ownCommitted = new Map<s
     const short = round4(qty - available);
     if (short <= 0) return [];
     const ordered = item.warehouses.find((w) => w.code === warehouse)?.ordered ?? 0;
-    return [{ item, warehouse, need: round4(qty), available, short, ordered, toOrder: round4(Math.max(0, short - ordered)) }];
+    const elsewhere = availabilityByWarehouse(item, ownCommitted).filter((x) => x.warehouse !== warehouse);
+    const transferable = round4(Math.min(short, elsewhere.reduce((n, x) => n + x.available, 0)));
+    return [{ item, warehouse, need: round4(qty), available, short, ordered, toOrder: round4(Math.max(0, short - ordered)), elsewhere, transferable }];
   });
 }

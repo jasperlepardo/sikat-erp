@@ -2,7 +2,7 @@ import type { Errors } from '../../../../components/form/fields';
 import { formatAddress } from '../../../../mocks/address';
 import type { Company } from '../../../../mocks/companies';
 import type { Currency, ExchangeRate } from '../../../../mocks/currencies';
-import { itemsPerUom, type Item } from '../../../../mocks/items';
+import { itemsPerUom, seedLineDefaults, type Item } from '../../../../mocks/items';
 import type { Partner } from '../../../../mocks/partners';
 import { newQuoteLine, type Quotation, type QuoteLine } from '../../../../mocks/quotations';
 import { SYSTEM_TAX_CODES } from '../../../../mocks/taxes';
@@ -28,6 +28,8 @@ export interface QtMasters {
 export interface QtContext {
   customer?: Partner;
   fx: number;
+  /** The rate used, with the bulletin day and source it comes from, for the "Exchange rate" field. PHP → undefined. */
+  fxRate?: { rate: number; date: string; source: string };
   rateOf: (code: string) => number;
   vatRegistered: boolean;
   readOnly: boolean;
@@ -99,6 +101,9 @@ export function lineFromItem(item: Item, draft: Draft, ctx: QtContext, m: QtMast
     priceListId: ctx.customer?.priceListId || BASE_PRICE_LIST_ID,
     taxCode: proposedTaxCode(item, ctx.customer, m, draft.postingDate),
     taxOverridden: false,
+    // SAP B1 contents fields that default from the item.
+    ...seedLineDefaults(item.id),
+    customerDescription: item.description || item.name,
   });
   return { ...line, ...linePricing(item, line, draft, m.customers, ctx.vatRegistered, ctx.rateOf, ctx.fx) };
 }

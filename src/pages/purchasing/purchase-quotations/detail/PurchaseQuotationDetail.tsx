@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import {
   Alert,
@@ -28,6 +29,7 @@ import { addRfq, cancelRfq, closeRfq, getRfq, listRfqs, recallRfq, rfqNumber, sa
 import { logRejection } from '../../../../services/approvalRules';
 import { PoVendorQuickCreate } from '../../purchase-orders/detail/PoVendorQuickCreate';
 import { DocumentFlow } from '../../shared/DocumentFlow';
+import { CopyPanel } from '../../shared/CopyPanel';
 import { poDraftFromRfq } from '../../shared/poFromRfq';
 import { rfqVendorDefaults } from '../../shared/rfqFromPr';
 import { ReferencesTable } from '../../shared/ReferencesTable';
@@ -120,6 +122,7 @@ function RfqForm() {
   const [saving, setSaving] = useState(false);
   const [showVendorCreate, setShowVendorCreate] = useState(false);
   const [vendorDetailsOpen, setVendorDetailsOpen] = useState(false);
+  const [creatingPo, setCreatingPo] = useState(false);
   // The currency the lines and totals are shown in ('' = the document's own). Not saved.
   const [currencyView, setCurrencyView] = useState('');
   const reject = useReject();
@@ -223,9 +226,10 @@ function RfqForm() {
   };
 
   // The award: a quotation raised from a request links its PO back to the request lines, so the
-  // PO (not the quotation) draws the request down.
-  const copyToPo = () => {
-    const poDraft = poDraftFromRfq(draft, { buyerId: CURRENT_USER_ID, approved: !needsApproval('PO'), today: todayISO() });
+  // PO (not the quotation) draws the request down. The picker lets the buyer order a subset of the
+  // quoted lines/quantities; poDraftFromRfq takes those as lineQtys.
+  const createPo = (lineQtys: Record<string, number>) => {
+    const poDraft = poDraftFromRfq(draft, { buyerId: CURRENT_USER_ID, approved: !needsApproval('PO'), today: todayISO(), lineQtys });
     navigate('/purchasing/purchase-orders/new', { state: { copyFrom: poDraft } });
   };
 
@@ -251,7 +255,7 @@ function RfqForm() {
   };
 
   const menu: MoreMenuItem[] = [
-    ...(open ? [{ label: 'Create purchase order', icon: 'shopping_cart', onSelect: copyToPo }] : []),
+    ...(open && draft.lines.some((l) => l.itemId && (l.quotedQty || l.quantity) > 0) ? [{ label: 'Create purchase order…', icon: 'shopping_cart', onSelect: () => setCreatingPo(true) }] : []),
     ...(!isNew ? [{ label: 'Duplicate', icon: 'content_copy', onSelect: duplicate }] : []),
     ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }] : []),
     ...(open ? [
@@ -381,6 +385,37 @@ function RfqForm() {
       {showVendorCreate && (
         <PoVendorQuickCreate initialName="" onClose={() => setShowVendorCreate(false)} onCreated={handleVendorCreated} />
       )}
+      {creatingPo
+        ? createPortal(
+            <CopyPanel
+              title="Create purchase order"
+              icon="shopping_cart"
+              partyCard={<VendorCard vendors={m.vendors} vendorId={saved.vendorId} vendor={ctx.vendor} readOnly={false} locked pickVendor={() => {}} />}
+              sources={[{
+                key: 'RFQ' as const,
+                label: 'Purchase quotations',
+                totalHeader: 'Quoted',
+                qtyHeader: 'Order',
+                hint: 'Order the quoted lines; leave a line unticked to skip it, or lower its quantity.',
+                docs: [{
+                  id: saved.id,
+                  label: `${rfqNumber(saved)} · ${saved.vendorName}`,
+                  description: `${saved.postingDate} · ${saved.currency}`,
+                  lines: draft.lines
+                    .filter((l) => l.itemId && (l.quotedQty || l.quantity) > 0)
+                    .map((l) => ({ id: l.id, itemNo: l.itemNo, name: l.description, warehouse: '', total: `${l.quotedQty || l.quantity} ${l.uomCode}`, open: l.quotedQty || l.quantity })),
+                }],
+              }]}
+              taken={new Set()}
+              onCancel={() => setCreatingPo(false)}
+              onCopy={(_type, _docId, picks) => {
+                setCreatingPo(false);
+                createPo(Object.fromEntries(picks.map((p) => [p.lineId, p.qty])));
+              }}
+            />,
+            document.body,
+          )
+        : null}
     </>
   );
 }

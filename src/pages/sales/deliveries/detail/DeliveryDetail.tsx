@@ -30,6 +30,8 @@ import { soSeries } from '../../../../services/allSeries';
 import { ALL_CURRENCIES, proposedTaxCode } from '../../sales-orders/detail/types';
 import { DocLines } from '../../../../components/form/docLines/DocLines';
 import { CopyPanel, type CopySourceType } from '../../../purchasing/shared/CopyPanel';
+import { CreateFromPanel, createHopMenuItems } from '../../../purchasing/shared/CreateFromPanel';
+import { DN_TO_AR, DN_TO_SR, type CopyHop, type LinePick } from '../../shared/copyHops';
 import { dnDoc } from './dnDoc';
 import { buildDnContext, dnLineFromOrder, type DnContext, type DnDraft, type DnMasters } from './types';
 import { SalesDocumentFlow } from '../../shared/SalesDocumentFlow';
@@ -44,7 +46,7 @@ import { DnAssignmentCard } from './DnAssignmentCard';
 import { CustomerCard } from '../../shared/CustomerCard';
 import { DnCustomerDetailsPanel } from './DnCustomerDetailsPanel';
 import { ReferencesTable } from '../../../purchasing/shared/ReferencesTable';
-import { DN_LIST_PATH, DN_NOUN, DN_STATUS_INTENT, SR_LIST_PATH } from '../../paths';
+import { DN_LIST_PATH, DN_NOUN, DN_STATUS_INTENT } from '../../paths';
 
 type TabId = 'contents';
 const TAB_LABEL: Record<TabId, string> = { contents: 'Contents' };
@@ -92,7 +94,8 @@ function DeliveryForm() {
   const isNew = id === 'new';
   const navigate = useNavigate();
   const location = useLocation();
-  const fromOrder = (location.state as { fromOrder?: string } | null)?.fromOrder;
+  const fromOrder = (location.state as { fromOrder?: string; picks?: LinePick[] } | null)?.fromOrder;
+  const fromPicks = (location.state as { fromOrder?: string; picks?: LinePick[] } | null)?.picks;
 
   const dnApproved = !needsApproval('DN');
   const [draft, setDraft] = useState<DnDraft | null | undefined>(isNew ? { ...blankDelivery(todayISO(), CURRENT_USER_ID), approved: dnApproved } : undefined);
@@ -105,6 +108,7 @@ function DeliveryForm() {
   const reject = useReject();
   const [customerDetailsOpen, setCustomerDetailsOpen] = useState(false);
   const [copying, setCopying] = useState(false);
+  const [createHop, setCreateHop] = useState<CopyHop<Delivery> | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -116,14 +120,15 @@ function DeliveryForm() {
       const masters: DnMasters = { customers, items, inv, tax: { company, codes, groups, withholding, withholdingGroups: wGroups }, currencies: curs, rates, accounts: accts, company: ours, orders, soSeries: series };
       setM(masters);
       const so = fromOrder && orders.find((o) => o.id === fromOrder);
-      if (isNew && so) setDraft((d) => d && copyLines(d, so, so.lines.filter((l) => openQty(l) > 0).map((l) => ({ lineId: l.id, qty: openQty(l) }))));
+      // The lines the user picked on the order, or — when navigated without picks — every open line.
+      if (isNew && so) setDraft((d) => d && copyLines(d, so, fromPicks ?? so.lines.filter((l) => openQty(l) > 0).map((l) => ({ lineId: l.id, qty: openQty(l) }))));
     });
     if (!isNew && id) {
       getDelivery(id).then((dn) => !cancelled && setDraft(dn ?? null));
       listDeliveries().then((all) => !cancelled && setSiblings(siblingKeys(all, dnNumber)));
     }
     return () => { cancelled = true; };
-  }, [id, isNew, fromOrder]);
+  }, [id, isNew, fromOrder, fromPicks]);
 
   useDocTitle(draft?.docNum ? (isNew ? `New ${DN_NOUN.one}` : draft.status === 'Draft' ? `Draft ${DN_NOUN.one}` : dnNumber(draft)) : undefined);
   if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading delivery…</Text>;
@@ -229,10 +234,7 @@ function DeliveryForm() {
     navigate(DN_LIST_PATH, { state: { notice: `Delivery ${dnNumber(saved)} rejected and returned to draft.` } });
   };
   const menu: MoreMenuItem[] = [
-    ...(draft.status === 'Open' && draft.lines.some((l) => l.quantity > l.invoicedQty)
-      ? [{ label: 'Create A/R invoice', icon: 'receipt', onSelect: () => navigate('/sales/customer-invoices/new', { state: { fromDelivery: draft.id } }) }]
-      : []),
-    ...(draft.status === 'Open' ? [{ label: 'Create sales return', icon: 'assignment_return', onSelect: () => navigate(`${SR_LIST_PATH}/new`, { state: { fromDelivery: draft.id } }) }] : []),
+    ...(draft.status === 'Open' ? createHopMenuItems(saved, m.items, [DN_TO_AR, DN_TO_SR], setCreateHop) : []),
     ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }] : []),
     ...(draft.status === 'Open' ? [{ label: 'Close', icon: 'task_alt', onSelect: closeIt }] : []),
     ...(draft.status === 'Open' && !invoiced ? [{ label: `Cancel ${DN_NOUN.one}`, icon: 'cancel', onSelect: cancelIt }] : []),
@@ -368,6 +370,7 @@ function DeliveryForm() {
             document.body,
           )
         : null}
+      {createHop ? <CreateFromPanel source={saved} hop={createHop} items={m.items} partyCard={<CustomerCard customers={m.customers} customerId={saved.customerId} customer={customer} onPickCustomer={() => {}} onOpenDetails={() => {}} locked />} onClose={() => setCreateHop(null)} /> : null}
     </>
   );
 }

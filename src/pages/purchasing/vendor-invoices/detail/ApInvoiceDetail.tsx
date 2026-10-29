@@ -33,7 +33,6 @@ import {
   listApInvoices,
   movesStock,
   netDue,
-  returnableQty,
   recallApInvoice,
   saveApDraft,
   saveApRemarks,
@@ -63,6 +62,8 @@ import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { apDoc } from './apDoc';
 import { DocLines } from '../../../../components/form/docLines/DocLines';
 import { CopyPanel } from '../../shared/CopyPanel';
+import { CreateFromPanel, createHopMenuItems } from '../../shared/CreateFromPanel';
+import { AP_TO_RETURN, AP_TO_APCM, type CopyHop, type LinePick } from '../../shared/copyHops';
 import { DrawPanel } from './DrawPanel';
 import { linesFromReceipt, orderNumbersOf, toApLine, type ApContext, type ApDraft, type ApMasters } from './types';
 import { useDocTitle } from '../../../../services/useDocTitle';
@@ -74,7 +75,7 @@ import { receivingVendorAddressFields } from '../../shared/vendorAddresses';
 import { ApDocumentCard } from './ApDocumentCard';
 import { ApTotalsCard } from './ApTotalsCard';
 import { ApJournalCard } from './ApJournalCard';
-import { AP_LIST_PATH, AP_NOUN, AP_STATUS_INTENT, MEMO_LIST_PATH, PAYMENT_LIST_PATH, RETURN_LIST_PATH } from '../../paths';
+import { AP_LIST_PATH, AP_NOUN, AP_STATUS_INTENT, PAYMENT_LIST_PATH } from '../../paths';
 
 type TabId = 'contents' | 'logistics' | 'accounting';
 
@@ -153,7 +154,7 @@ function ApInvoiceForm() {
   const isNew = id === 'new';
   const navigate = useNavigate();
   const location = useLocation();
-  const state = location.state as { copyFrom?: ApDraft; fromReceipt?: string; fromPo?: string } | null;
+  const state = location.state as { copyFrom?: ApDraft; fromReceipt?: string; fromPo?: string; picks?: LinePick[] } | null;
 
   const apApproved = !needsApproval('APINV');
   const [draft, setDraft] = useState<ApDraft | null | undefined>(isNew ? { ...(state?.copyFrom ?? { ...blankApInvoice(todayISO(), CURRENT_USER_ID), lines: [] }), approved: apApproved } : undefined);
@@ -168,6 +169,7 @@ function ApInvoiceForm() {
   const [vendorDetailsOpen, setVendorDetailsOpen] = useState(false);
   const [copying, setCopying] = useState(false);
   const [drawing, setDrawing] = useState(false);
+  const [createHop, setCreateHop] = useState<CopyHop<ApInvoice> | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -190,15 +192,16 @@ function ApInvoiceForm() {
         vendors, items, inv, tax: { company, codes, groups, withholding, withholdingGroups: wGroups }, currencies: curs, rates, company: ours, orders, receipts, accounts: inv.accounts, downPayments,
       };
       setM(masters);
-      // Copy to › A/P Invoice from a receipt or PO: every open line at its open quantity.
-      // Rebuilt from scratch each time, so running the effect twice doesn't copy the lines twice.
+      // Create A/P invoice from a receipt or PO: the lines the user picked, or — when navigated
+      // without picks — every open line at its open quantity. Rebuilt from scratch each time, so
+      // running the effect twice doesn't copy the lines twice.
       const gr = state?.fromReceipt ? receipts.find((r) => r.id === state.fromReceipt) : undefined;
       const po = state?.fromPo ? orders.find((o) => o.id === state.fromPo) : undefined;
       if (isNew && (gr || po)) {
         const vendor = vendors.find((v) => v.id === (gr ?? po)!.vendorId);
         const lines = gr
-          ? linesFromReceipt(gr, gr.lines.map((l) => ({ lineId: l.id, qty: grOpenQty(l, gr) })).filter((p) => p.qty > 0), items)
-          : linesFromPo(po!, po!.lines.filter((l) => l.status === 'Open').map((l) => ({ lineId: l.id, qty: openQty(l) })), masters).map((l) => toApLine(l, { baseType: 'PO' }, items, po!.vendorId));
+          ? linesFromReceipt(gr, state?.picks ?? gr.lines.map((l) => ({ lineId: l.id, qty: grOpenQty(l, gr) })).filter((p) => p.qty > 0), items)
+          : linesFromPo(po!, state?.picks ?? po!.lines.filter((l) => l.status === 'Open').map((l) => ({ lineId: l.id, qty: openQty(l) })), masters).map((l) => toApLine(l, { baseType: 'PO' }, items, po!.vendorId));
         setDraft((d) => d && withBase({ ...d, ...vendorDefaults(vendor, d), lines: [] }, gr ?? po!, lines, masters));
       }
     });
@@ -365,12 +368,7 @@ function ApInvoiceForm() {
 
   const menu: MoreMenuItem[] = [
     ...(draft.status === 'Open' || draft.status === 'Closed'
-      ? [
-          ...(draft.lines.some((l) => returnableQty(l) > 0 && m.items.find((i) => i.id === l.itemId)?.inventoryItem)
-            ? [{ label: 'Create goods return', icon: 'assignment_return', onSelect: () => navigate(`${RETURN_LIST_PATH}/new`, { state: { fromInvoice: saved.id } }) }]
-            : []),
-          { label: 'Create A/P credit memo', icon: 'receipt', onSelect: () => navigate(`${MEMO_LIST_PATH}/new`, { state: { fromInvoice: saved.id } }) },
-        ]
+      ? createHopMenuItems(saved, m.items, [AP_TO_RETURN, AP_TO_APCM], setCreateHop)
       : []),
     ...(draft.status === 'Open' && balance > 0 && !draft.paymentBlock
       ? [{ label: 'Pay', icon: 'payments', onSelect: () => navigate(`${PAYMENT_LIST_PATH}/new`, { state: { vendorId: draft.vendorId, invoiceIds: [saved.id] } }) }]
@@ -571,6 +569,7 @@ function ApInvoiceForm() {
           document.body,
         )
       : null}
+    {createHop ? <CreateFromPanel source={saved} hop={createHop} items={m.items} partyCard={<VendorCard vendors={m.vendors} vendorId={saved.vendorId} vendor={ctx.vendor} readOnly={false} locked pickVendor={() => {}} />} onClose={() => setCreateHop(null)} /> : null}
     </>
   );
 }

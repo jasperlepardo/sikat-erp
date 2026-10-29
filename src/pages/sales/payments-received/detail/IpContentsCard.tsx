@@ -2,6 +2,8 @@ import { Button, Checkbox, Combobox, Icon, Link, Text, TextField, type TableColu
 import { projectLabel } from '../../../../services/partnerMasters';
 import { useNavigate } from 'react-router';
 import { DataTable } from '../../../../components/form/DataTable';
+import { MasterLookup } from '../../../../components/form/MasterLookup';
+import { projectDef } from '../../../settings/masterDefs';
 import type { Errors } from '../../../../components/form/fields';
 import type { Account } from '../../../../mocks/chartOfAccounts';
 import { newIncomingAccountRow, type IncomingAccountRow, type IncomingRow } from '../../../../mocks/incomingPayments';
@@ -43,43 +45,30 @@ export function IncomingDocuments({ draft, update, errors, fx, readOnly }: Props
       header: 'Document',
       cell: (r) => (
         <div className="flex flex-col whitespace-nowrap">
-          <Link intent="primary" onClick={() => navigate(`${AR_LIST_PATH}/${r.invoiceId}`)}>{r.docNo}</Link>
+          <Link intent="primary" onClick={() => navigate(`${AR_LIST_PATH}/${r.invoiceId}`)}>
+            {r.docNo}{overdueDays(r, draft.postingDate) > 0 ? ' *' : ''}
+          </Link>
           <Text variant="small" tone="muted">
-            A/R invoice{r.installment ? ` · installment ${r.installment} of ${r.installments}` : ''}{r.projectId ? ` · ${projectLabel(r.projectId)}` : ''}
+            A/R invoice{r.installment ? ` · installment ${r.installment} of ${r.installments}` : ''}{r.projectId ? ` · ${projectLabel(r.projectId)}` : ''}{r.blocked ? ' · Blocked *' : ''}
           </Text>
-          {r.blocked ? <Text variant="small" tone="danger">Payment block</Text> : null}
         </div>
       ),
     },
+    { key: 'date', header: 'Date', cell: (r) => <Text variant="small" className="whitespace-nowrap">{formatDate(r.docDate)}</Text> },
     {
-      key: 'date',
-      header: 'Date',
-      align: 'end',
+      key: 'overdue',
+      header: 'Overdue days',
       cell: (r) => {
         const d = overdueDays(r, draft.postingDate);
-        return (
-          <div className="flex flex-col items-end whitespace-nowrap">
-            <Text variant="small">{formatDate(r.docDate)}</Text>
-            {d > 0 ? <Text variant="small" tone="danger">{d} {d === 1 ? 'day' : 'days'} overdue</Text> : null}
-          </div>
-        );
+        return <Text variant="small" tone={d > 0 ? 'danger' : 'default'}>{d}</Text>;
       },
     },
-    {
-      key: 'total',
-      header: 'Total',
-      align: 'end',
-      cell: (r) => (
-        <div className="flex flex-col items-end whitespace-nowrap tabular-nums">
-          <Text variant="small">{formatAmount(r.total)}</Text>
-          {r.wtAmount ? <Text variant="small" tone="muted">WT {formatAmount(r.wtAmount)}</Text> : null}
-        </div>
-      ),
-    },
+    { key: 'total', header: 'Total', align: 'end', cell: (r) => <span className="whitespace-nowrap text-sm tabular-nums">{formatAmount(r.total)}</span> },
+    { key: 'wtAmount', header: 'WT amount', align: 'end', cell: (r) => <span className="text-sm tabular-nums">{formatAmount(r.wtAmount)}</span> },
     { key: 'balance', header: 'Balance due', align: 'end', cell: (r) => <Text variant="small" className="whitespace-nowrap tabular-nums">{formatAmount(r.balanceDue)}</Text> },
     {
       key: 'discount',
-      header: 'Cash disc.',
+      header: 'Cash discount %',
       align: 'end',
       cell: (r) =>
         readOnly ? (
@@ -93,7 +82,7 @@ export function IncomingDocuments({ draft, update, errors, fx, readOnly }: Props
     },
     {
       key: 'amount',
-      header: 'Total payment',
+      header: `Total payment (${code})`,
       align: 'end',
       cell: (r) =>
         readOnly ? (
@@ -115,18 +104,20 @@ export function IncomingDocuments({ draft, update, errors, fx, readOnly }: Props
   ];
 
   return (
-    <DataTable
-      noPagination
-      icon="request_quote"
-      title="Contents"
-      description={errors.rows ?? `The customer's open A/R invoices in ${code}. Tick what's being paid; change Total payment to pay part of one.`}
-      rows={rows}
-      getRowId={(r) => r.id}
-      columns={columns}
-      unsortable={columns.map((c) => c.key)}
-      empty={<Text variant="small" tone="muted">{draft.customerId ? `No open invoices in ${code} — record it as a payment on account.` : 'Pick a customer to list its open invoices.'}</Text>}
-    >
-      <div className="flex flex-wrap items-end gap-4">
+    <div className="flex flex-col gap-2">
+      <DataTable
+        variant="card"
+        noPagination
+        icon="receipt_long"
+        title="Open documents"
+        description={errors.rows ?? `The customer's open A/R invoices in ${code}, oldest due first. Tick what this payment settles; lower Total payment to pay part. * = overdue or blocked.`}
+        rows={rows}
+        getRowId={(r) => r.id}
+        columns={columns}
+        unsortable={columns.map((c) => c.key)}
+        empty={<Text variant="small" tone="muted">{draft.customerId ? `No open invoices in ${code} — record it as a payment on account.` : 'Pick a customer to list its open invoices.'}</Text>}
+      />
+      <div className="flex flex-wrap items-end gap-4 px-1">
         <div className="flex items-end gap-2">
           <Checkbox disabled={readOnly} checked={draft.onAccount > 0 || Boolean(errors.onAccount)} onChange={(e) => update({ onAccount: e.currentTarget.checked ? Math.max(0.01, draft.onAccount) : 0 })}>
             Payment on account
@@ -152,7 +143,7 @@ export function IncomingDocuments({ draft, update, errors, fx, readOnly }: Props
           {code !== 'PHP' && fx ? ` · PHP ${formatAmount(due * fx)}` : ''}
         </Text>
       </div>
-    </DataTable>
+    </div>
   );
 }
 
@@ -164,12 +155,14 @@ export function IncomingAccounts({ draft, update, errors, accounts, readOnly }: 
   const columns: TableColumn<IncomingAccountRow>[] = [
     { key: 'account', header: 'G/L account', cell: (r) => <div className="w-72"><Combobox aria-label="G/L account" disabled={readOnly} invalid={Boolean(errors[`acct:${r.id}`])} options={postable(r.account)} value={r.account || null} onValueChange={(v) => patch(r.id, { account: v ?? '' })} /></div> },
     { key: 'remarks', header: 'Doc. remarks', cell: (r) => <TextField aria-label="Doc. remarks" className="w-72" readOnly={readOnly} value={r.remarks} onChange={(e) => patch(r.id, { remarks: e.currentTarget.value })} /> },
-    { key: 'amount', header: 'Amount', cell: (r) => <TextField aria-label="Amount" type="number" min={0} className="w-40" prefix={draft.currency} readOnly={readOnly} value={String(r.amount)} onChange={(e) => patch(r.id, { amount: num(e.currentTarget.value) })} /> },
+    { key: 'project', header: 'Project', cell: (r) => <MasterLookup def={projectDef} fieldProps={{ 'aria-label': 'Project', className: 'w-48' }} clearable disabled={readOnly} value={r.projectId ?? ''} onChange={(projectId) => patch(r.id, { projectId })} /> },
+    { key: 'amount', header: `Amount (${draft.currency})`, cell: (r) => <TextField aria-label="Amount" type="number" min={0} className="w-40" prefix={draft.currency} readOnly={readOnly} value={String(r.amount)} onChange={(e) => patch(r.id, { amount: num(e.currentTarget.value) })} /> },
   ];
   return (
     <DataTable
+      variant="card"
       noPagination
-      icon="account_balance"
+      icon="account_tree"
       title="Accounts"
       description={errors.rows ?? 'Money received with no business partner: each line credits its G/L account.'}
       rows={rows}
@@ -179,8 +172,8 @@ export function IncomingAccounts({ draft, update, errors, accounts, readOnly }: 
       onRemove={readOnly ? undefined : (picked) => update({ accountRows: rows.filter((r) => !picked.includes(r)) })}
       actions={
         readOnly ? null : (
-          <Button type="button" size="small" intent="primary" variant="solid" leadingIcon={<Icon size={16}>add</Icon>} onClick={() => update({ accountRows: [...rows, newIncomingAccountRow()] })}>
-            Add line
+          <Button type="button" size="small" intent="primary" variant="solid" leadingIcon={<Icon size={16}>add</Icon>} onClick={() => update({ accountRows: [...rows, newIncomingAccountRow({ projectId: draft.projectId })] })}>
+            Add account
           </Button>
         )
       }

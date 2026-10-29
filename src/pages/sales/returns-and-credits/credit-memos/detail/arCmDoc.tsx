@@ -45,6 +45,7 @@ export function arCmDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy }:
   };
 
   const cols = salesCols<ArCmLine>({
+    patch,
     readOnly: ro,
     currency: draft.currency,
     fx: ctx.fx,
@@ -112,12 +113,14 @@ export function arCmDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy }:
 
   return {
     prefsKey: 'arcm',
+    cardHeader: true,
     columns,
     rows: lines,
     icon: 'list_alt',
     title: 'Contents',
-    description: errors.lines,
+    description: errors.lines ?? `Items credited, in the line's unit. Prices are in ${draft.currency}.`,
     sortableKeys: ['item'],
+    sortValue: (l, key) => (key === 'item' ? l.itemNo : String(l[key as keyof ArCmLine] ?? '')).toLowerCase(),
     readOnly: ro,
     onRemove: (picked) => update({ lines: lines.filter((l) => !picked.includes(l)) }),
     item: itemConfig(h, {

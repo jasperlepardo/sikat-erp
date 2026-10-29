@@ -76,6 +76,7 @@ export function soDoc({ draft, update, errors, m, ctx, agreements }: SoTabProps 
   };
 
   const cols = salesCols<SoLine>({
+    patch,
     readOnly: linesLocked,
     currency: draft.currency,
     fx: ctx.fx,
@@ -139,12 +140,14 @@ export function soDoc({ draft, update, errors, m, ctx, agreements }: SoTabProps 
 
   return {
     prefsKey: 'so',
+    cardHeader: true,
     columns,
     rows: lines,
     icon: 'list_alt',
     title: 'Contents',
-    description: errors.lines,
+    description: errors.lines ?? `Items ordered, in the sales unit. Prices are in ${draft.currency}.`,
     sortableKeys: ['item'],
+    sortValue: (l, key) => (key === 'item' ? l.itemNo : String(l[key as keyof SoLine] ?? '')).toLowerCase(),
     readOnly: linesLocked,
     // Keep already-delivered lines even if selected for removal.
     onRemove: (picked) => update({ lines: lines.filter((l) => !picked.includes(l) || l.deliveredQty > 0) }),

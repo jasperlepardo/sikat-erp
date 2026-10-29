@@ -11,6 +11,7 @@ import { CURRENT_USER_ID } from '../../../../mocks/common';
 import { formatAddress } from '../../../../mocks/address';
 import type { Partner } from '../../../../mocks/partners';
 import { SALES_SETTINGS, blankSalesOrder, newSoLine, openCommitted, type SalesOrder, type SoLine } from '../../../../mocks/salesOrders';
+import { blankTransferRequest, newTransferRequestLine } from '../../../../mocks/inventoryTransferRequests';
 import { loadCurrentCompany } from '../../../../services/companies';
 import { formatDate, todayISO } from '../../../../services/dates';
 import { recalcLineTaxes } from '../../../../services/taxRecalc';
@@ -22,7 +23,7 @@ import { listPartnersByRole } from '../../../../services/partners';
 import { BASE_PRICE_LIST_ID } from '../../../../services/priceLists';
 import { matchingSeries, soSeries } from '../../../../services/allSeries';
 import { termDays } from '../../../../services/purchaseOrders';
-import { cancelSalesOrder, closeSalesOrder, openQty, findDuplicateCustomerRef, getSalesOrder, listSalesOrders, openOrdersTotal, recallSalesOrder, saveSalesOrder, soDueDate, soNumber, soTotals } from '../../../../services/salesOrders';
+import { cancelSalesOrder, closeSalesOrder, findDuplicateCustomerRef, getSalesOrder, listSalesOrders, openOrdersTotal, recallSalesOrder, saveSalesOrder, soDueDate, soNumber, soTotals } from '../../../../services/salesOrders';
 import { defaultJournalRemark } from '../../../../services/journalPatterns';
 import { logRejection } from '../../../../services/approvalRules';
 import { listDeliveries } from '../../../../services/deliveries';
@@ -42,8 +43,12 @@ import { CustomerCard } from '../../shared/CustomerCard';
 import { SalesTotalsFooter } from '../../shared/TotalsFooter';
 import { CustomerDetailsPanel } from '../../shared/CustomerDetailsPanel';
 import { ReferencesTable } from '../../../purchasing/shared/ReferencesTable';
+import { SoAvailabilityPanel, type TransferGroup } from './SoAvailabilityPanel';
 import { SO_LIST_PATH, SO_NOUN, SO_STATUS_INTENT } from '../../paths';
+import { CreateFromPanel, createHopMenuItems } from '../../../purchasing/shared/CreateFromPanel';
+import { SO_TO_DN, SO_TO_AR_GOODS, SO_TO_AR_SERVICES, type CopyHop } from '../../shared/copyHops';
 import { PO_LIST_PATH } from '../../../purchasing/paths';
+import { TRANSFER_REQUEST_LIST_PATH } from '../../../inventory/paths';
 
 type TabId = 'contents';
 const TAB_LABEL: Record<TabId, string> = { contents: 'Contents' };
@@ -107,7 +112,10 @@ function SalesOrderForm() {
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [warning, setWarning] = useState<string>();
   const [closeWarning, setCloseWarning] = useState<string>();
+  const [availabilityOpen, setAvailabilityOpen] = useState(false);
+  const [pendingOverrides, setPendingOverrides] = useState<Partial<SoDraft>>({});
   const [customerDetailsOpen, setCustomerDetailsOpen] = useState(false);
+  const [createHop, setCreateHop] = useState<CopyHop<SalesOrder> | null>(null);
   const reject = useReject();
   const [openBalance, setOpenBalance] = useState(0);
   // What the order commits as saved — already in the items' Committed, so it's given back when checking stock.
@@ -231,7 +239,7 @@ function SalesOrderForm() {
     });
   };
 
-  const submit = async (e: FormEvent | null, asDraft = false, overrides: Partial<SoDraft> = {}) => {
+  const submit = async (e: FormEvent | null, asDraft = false, overrides: Partial<SoDraft> = {}, ackStock = false) => {
     e?.preventDefault();
     // Lines never given an item (or, on service orders, a description) are dropped.
     const doc: SoDraft = { ...draft, ...overrides, lines: draft.lines.filter((l) => l.itemId) };
@@ -243,11 +251,16 @@ function SalesOrderForm() {
       if (first) void first.tab; // scroll to section when panel support lands
       return;
     }
+    // Short on stock? Raise the availability check — move stock in, buy, or continue short.
+    if (!effectiveDraft && !ackStock && shortages(doc, m, ownCommitted).length) {
+      setPendingOverrides(overrides);
+      setAvailabilityOpen(true);
+      return;
+    }
     if (!effectiveDraft && !warning) {
       const dup = await findDuplicateCustomerRef(doc);
       const credit = overCredit ? `This order takes ${doc.customerName} to PHP ${formatAmount(openBalance + totalLc)} open, over their PHP ${formatAmount(customer!.creditLimit)} credit limit.` : '';
-      const stock = shortages(doc, m, ownCommitted).map(shortageText).join(' ');
-      const message = [dup ? `Order ${soNumber(dup)} from ${doc.customerName} already has Customer Ref. No. ${doc.customerRef}.` : '', credit, stock].filter(Boolean).join(' ');
+      const message = [dup ? `Order ${soNumber(dup)} from ${doc.customerName} already has Customer Ref. No. ${doc.customerRef}.` : '', credit].filter(Boolean).join(' ');
       if (message) return setWarning(message);
     }
     setSaving(true);
@@ -303,6 +316,8 @@ function SalesOrderForm() {
   };
   const cancelIt = () => act(() => cancelSalesOrder(saved), 'cancelled');
 
+  const warehouseName = (code: string) => m.inv.warehouses.find((w) => w.code === code)?.name ?? code;
+
   // What's still uncovered after incoming POs, one suggested PO per vendor.
   const toBuy = short.filter((s) => s.toOrder > 0);
   const vendorOf = (s: Shortage) => s.item.defaultVendorId || s.item.vendors[0]?.vendorId || '';
@@ -311,19 +326,73 @@ function SalesOrderForm() {
     vendor: vendors.find((v) => v.id === vendorId),
     rows: toBuy.filter((s) => vendorOf(s) === vendorId),
   }));
-  const suggestPo = (vendorId: string, rows: Shortage[]) => {
+  const suggestPo = (so: SalesOrder, vendorId: string, rows: Shortage[]) => {
     const suggest: PoSuggestion = {
       vendorId,
       lines: rows.map((s) => ({ itemId: s.item.id, warehouse: s.warehouse, qty: s.toOrder })),
-      reference: { docType: 'Sales order', docNo: soNumber(saved), docDate: draft.postingDate, remarks: `Stock short for ${draft.customerName}` },
+      reference: { docType: 'Sales order', docNo: soNumber(so), docDate: draft.postingDate, remarks: `Stock short for ${draft.customerName}` },
     };
     navigate(`${PO_LIST_PATH}/new`, { state: { suggest } });
   };
-  const openLines = draft.lines.filter((l) => openQty(l) > 0);
-  const goodsLines = openLines.filter((l) => m.items.find((i) => i.id === l.itemId)?.inventoryItem);
-  const svcLines = openLines.filter((l) => l.itemId ? !m.items.find((i) => i.id === l.itemId)?.inventoryItem : !!l.description);
-  const isMixed = goodsLines.length > 0 && svcLines.length > 0;
 
+  // Shortfall that other warehouses could cover: greedily draw each short line from its most-stocked
+  // sources, then one suggested transfer request per source warehouse.
+  const toMove = short.filter((s) => s.transferable > 0);
+  const bySource: TransferGroup[] = (() => {
+    const map = new Map<string, TransferGroup['rows']>();
+    for (const s of toMove) {
+      let remaining = s.short;
+      for (const src of s.elsewhere) {
+        if (remaining <= 0) break;
+        const qty = Math.min(remaining, src.available);
+        if (qty <= 0) continue;
+        const rows = map.get(src.warehouse) ?? [];
+        rows.push({ item: s.item, destWarehouse: s.warehouse, qty });
+        map.set(src.warehouse, rows);
+        remaining -= qty;
+      }
+    }
+    return [...map.entries()].map(([warehouse, rows]) => ({ warehouse, rows }));
+  })();
+  const suggestTransfer = (so: SalesOrder, sourceWarehouse: string, rows: TransferGroup['rows']) => {
+    // Header destination is the one most lines need; a line keeps its own when it differs.
+    const destCount = new Map<string, number>();
+    for (const r of rows) destCount.set(r.destWarehouse, (destCount.get(r.destWarehouse) ?? 0) + 1);
+    const toWarehouse = [...destCount.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? '';
+    const copyFrom = {
+      ...blankTransferRequest(todayISO(), CURRENT_USER_ID),
+      fromWarehouse: sourceWarehouse,
+      toWarehouse,
+      ref2: soNumber(so),
+      remarks: `Stock for ${draft.customerName} — ${soNumber(so)}.`,
+      lines: rows.map((r) =>
+        newTransferRequestLine({
+          itemId: r.item.id,
+          itemNo: r.item.itemNo,
+          name: r.item.name,
+          description: r.item.description,
+          quantity: r.qty,
+          openQty: r.qty,
+          uom: r.item.inventoryUom,
+          toWarehouse: r.destWarehouse,
+        }),
+      ),
+    };
+    navigate(`${TRANSFER_REQUEST_LIST_PATH}/new`, { state: { copyFrom } });
+  };
+
+  // The availability panel's actions save the order (short) first, so the new document references a real number.
+  const saveThen = async (after: (so: SalesOrder) => void) => {
+    const doc: SoDraft = { ...draft, ...pendingOverrides, lines: draft.lines.filter((l) => l.itemId) };
+    setSaving(true);
+    try {
+      const so = await saveSalesOrder(doc, { asDraft: false });
+      setAvailabilityOpen(false);
+      after(so);
+    } finally {
+      setSaving(false);
+    }
+  };
   const recallIt = async () => {
     const r = await recallSalesOrder(saved);
     navigate(SO_LIST_PATH, { state: { notice: `Sales order ${soNumber(r)} recalled to draft.` } });
@@ -335,22 +404,19 @@ function SalesOrderForm() {
   };
 
   const menu: MoreMenuItem[] = [
-    ...(draft.status === 'Open' && openLines.length > 0
-      ? [{ label: 'Create delivery', icon: 'local_shipping', onSelect: () => navigate('/sales/deliveries/new', { state: { fromOrder: draft.id } }) }]
-      : []),
-    ...(draft.status === 'Open' && openLines.length > 0
-      ? isMixed
-        ? [
-            { label: 'Create A/R invoice (goods)', icon: 'receipt', onSelect: () => navigate('/sales/customer-invoices/new', { state: { fromOrder: draft.id, lineFilter: 'goods' } }) },
-            { label: 'Create A/R invoice (services)', icon: 'receipt_long', onSelect: () => navigate('/sales/customer-invoices/new', { state: { fromOrder: draft.id, lineFilter: 'services' } }) },
-          ]
-        : [{ label: 'Create A/R invoice', icon: 'receipt', onSelect: () => navigate('/sales/customer-invoices/new', { state: { fromOrder: draft.id, lineFilter: svcLines.length > 0 ? 'services' : undefined } }) }]
+    ...(draft.status === 'Open' ? createHopMenuItems(saved, m.items, [SO_TO_DN, SO_TO_AR_GOODS, SO_TO_AR_SERVICES], setCreateHop) : []),
+    ...(draft.status === 'Open'
+      ? bySource.map(({ warehouse, rows }) => ({
+          label: `Create stock transfer — from ${warehouseName(warehouse)}`,
+          icon: 'move_up',
+          onSelect: () => suggestTransfer(saved, warehouse, rows),
+        }))
       : []),
     ...(draft.status === 'Open'
       ? byVendor.map(({ vendorId, vendor, rows }) => ({
           label: `Create purchase order${vendor ? ` — ${vendor.name}` : ''}`,
           icon: 'add_shopping_cart',
-          onSelect: () => suggestPo(vendorId, rows),
+          onSelect: () => suggestPo(saved, vendorId, rows),
         }))
       : []),
     ...(!isNew ? [{ label: 'Duplicate', icon: 'content_copy', onSelect: duplicate }] : []),
@@ -359,7 +425,16 @@ function SalesOrderForm() {
     ...(draft.status === 'Open' && !delivered ? [{ label: `Cancel ${SO_NOUN.one}`, icon: 'cancel', onSelect: cancelIt }] : []),
   ];
 
-  const title = isNew ? `New ${SO_NOUN.one}` : draft.status === 'Draft' ? `Draft ${SO_NOUN.one}` : soNumber(draft);
+  // A draft reads "Draft — {customer}" so a handed-off draft is recognisable; a fresh one stays "New …".
+  const title =
+    draft.status !== 'Draft'
+      ? soNumber(draft)
+      : draft.customerName
+        ? `Draft — ${draft.customerName}`
+        : isNew
+          ? `New ${SO_NOUN.one}`
+          : `Draft ${SO_NOUN.one}`;
+  const continueLabel = ctx.added ? 'Save changes' : draft.approved ? `Create ${SO_NOUN.one}` : 'Submit for approval';
   const tabProps = { draft, update, errors, m, ctx };
 
   return (
@@ -485,14 +560,24 @@ function SalesOrderForm() {
         onClose={() => setCustomerDetailsOpen(false)}
         credit={{ overCredit: !!overCredit, openBalance, totalLc }}
       />
+      {availabilityOpen ? (
+        <SoAvailabilityPanel
+          short={short}
+          byVendor={byVendor}
+          bySource={bySource}
+          warehouseName={warehouseName}
+          continueLabel={continueLabel}
+          busy={saving}
+          onPurchase={(vendorId, rows) => saveThen((so) => suggestPo(so, vendorId, rows))}
+          onTransfer={(warehouse, rows) => saveThen((so) => suggestTransfer(so, warehouse, rows))}
+          onContinue={() => {
+            setAvailabilityOpen(false);
+            void submit(null, false, pendingOverrides, true);
+          }}
+          onClose={() => setAvailabilityOpen(false)}
+        />
+      ) : null}
+      {createHop ? <CreateFromPanel source={saved} hop={createHop} items={m.items} partyCard={<CustomerCard customers={m.customers} customerId={saved.customerId} customer={customer} onPickCustomer={() => {}} onOpenDetails={() => {}} locked />} onClose={() => setCreateHop(null)} /> : null}
     </>
   );
-}
-
-/** "iPad Air: needs 20 pc in WH-001, 12 available, 5 on order — 3 to buy." */
-function shortageText(s: Shortage) {
-  const uom = s.item.inventoryUom;
-  const incoming = s.ordered ? `, ${s.ordered} on order` : '';
-  const verdict = s.toOrder ? `${s.toOrder} ${uom} to buy` : 'covered by open POs';
-  return `${s.item.itemNo} ${s.item.name}: needs ${s.need} ${uom} in ${s.warehouse}, ${Math.max(0, s.available)} available${incoming} — ${verdict}.`;
 }

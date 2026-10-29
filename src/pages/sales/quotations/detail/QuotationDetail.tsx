@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import { Alert, Badge, Form, Panel, Tabs, Text } from '@jasperlepardo/sikat-design-system';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
@@ -32,9 +33,16 @@ import { ActivityTab } from '../../../../components/activity/ActivityTab';
 import { neighbours, NotFound, siblingKeys, useDocTab, useReject } from '../../../../components/form/DetailNav';
 import { customerDefaults, linePricing, proposedTaxCode, type Draft, type QtContext, type QtMasters } from './types';
 import { BASE_PRICE_LIST_ID } from '../../../../services/priceLists';
-import { QtDetailsCard } from './QtDetailsCard';
+import { QtDocumentCard } from './QtDocumentCard';
+import { QtDeliveryCard } from './QtDeliveryCard';
+import { QtJournalPaymentCard } from './QtJournalPaymentCard';
+import { QtReferencesCard } from './QtReferencesCard';
+import { QtMoreCard } from './QtMoreCard';
+import { QtAssignmentCard } from './QtAssignmentCard';
+import { BpChannelCard } from '../../shared/BpChannelCard';
 import { CustomerCard } from '../../shared/CustomerCard';
 import { CustomerDetailsPanel } from '../../shared/CustomerDetailsPanel';
+import { CopyPanel } from '../../../purchasing/shared/CopyPanel';
 import { DocLines } from '../../../../components/form/docLines/DocLines';
 import { qtDoc } from './qtDoc';
 import { SalesTotalsFooter } from '../../shared/TotalsFooter';
@@ -107,6 +115,8 @@ function QuotationForm() {
   const [saving, setSaving] = useState(false);
   const reject = useReject();
   const [customerDetailsOpen, setCustomerDetailsOpen] = useState(false);
+  const [copyFromNote, setCopyFromNote] = useState(false);
+  const [creatingSo, setCreatingSo] = useState(false);
   const [openBalance, setOpenBalance] = useState(0);
 
   useEffect(() => {
@@ -141,7 +151,7 @@ function QuotationForm() {
     return c ? (rateAt(c, date) ?? 0) : 0;
   };
   const customer = m.customers.find((c) => c.id === draft.customerId);
-  const ctx: QtContext = { customer, fx, rateOf, vatRegistered, readOnly, added };
+  const ctx: QtContext = { customer, fx, fxRate, rateOf, vatRegistered, readOnly, added };
   const { prevId, nextId } = neighbours(siblings, (draft as Quotation).id && (draft.docNum ? qtNumber(draft as Quotation) : (draft as Quotation).id));
   const errors: Errors = Object.fromEntries(problems.map((p) => [p.key, p.message]));
   const totalLc = qtTotals(draft, rateOf).total * fx;
@@ -178,7 +188,7 @@ function QuotationForm() {
     update({ ...customerDefaults(c, draft), lines });
   };
 
-  const submit = async (e: FormEvent | null, asDraft = false, overrides: Partial<Draft> = {}) => {
+  const submit = async (e: FormEvent | null, asDraft = false, overrides: Partial<Draft> = {}, andNew = false) => {
     e?.preventDefault();
     // Added: only remarks and attachments save, unless this is approving it.
     if (added && !overrides.approved) {
@@ -193,15 +203,17 @@ function QuotationForm() {
     const found = validate(doc, fx, asDraft);
     setProblems(found);
     if (found.length) return;
+    // "… & New" returns to a fresh form instead of the list.
+    const dest = andNew ? `${QT_LIST_PATH}/new` : QT_LIST_PATH;
     setSaving(true);
     try {
       if (asDraft) {
         const saved = await saveQuotationDraft(doc);
-        navigate(QT_LIST_PATH, { state: { notice: `Draft saved — ${saved.customerName}.` } });
+        navigate(dest, { state: { notice: `Draft saved — ${saved.customerName}.` } });
         return;
       }
       const saved = await addQuotation(doc);
-      navigate(QT_LIST_PATH, { state: { notice: saved.status === 'Not Confirmed' ? `Quotation ${qtNumber(saved)} submitted for approval.` : `Quotation ${qtNumber(saved)} added.` } });
+      navigate(dest, { state: { notice: saved.status === 'Not Confirmed' ? `Quotation ${qtNumber(saved)} submitted for approval.` : `Quotation ${qtNumber(saved)} added.` } });
     } finally { setSaving(false); }
   };
 
@@ -209,7 +221,7 @@ function QuotationForm() {
   const recallIt = async () => { const q = await recallQuotation(saved); navigate(QT_LIST_PATH, { state: { notice: `Quotation ${qtNumber(q)} recalled to draft.` } }); };
   const rejectIt = async (rejectionReason: string) => { await logRejection('QT', saved.id, saved.customerId, rejectionReason); await recallQuotation(saved); navigate(QT_LIST_PATH, { state: { notice: `Quotation ${qtNumber(saved)} rejected and returned to draft.` } }); };
 
-  const convertToOrder = () => {
+  const createSo = (picks: { lineId: string; qty: number }[]) => {
     const copyFrom = {
       ...blankSalesOrder(CURRENT_USER_ID),
       approved: !needsApproval('SO'),
@@ -231,28 +243,44 @@ function QuotationForm() {
       freight: draft.freight,
       freightTaxCode: draft.freightTaxCode,
       remarks: `Based on quotation ${qtNumber(saved)}${draft.remarks ? `\n${draft.remarks}` : ''}`,
-      lines: draft.lines.map((l) => newSoLine({
-        itemId: l.itemId,
-        itemNo: l.itemNo,
-        description: l.description,
-        quantity: l.quantity,
-        uomCode: l.uomCode,
-        uomName: l.uomName,
-        itemsPerUnit: l.itemsPerUnit,
-        warehouse: l.warehouse,
-        priceListId: l.priceListId,
-        unitPrice: l.unitPrice,
-        discountPct: l.discountPct,
-        priceSource: l.priceSource,
-        taxCode: l.taxCode,
-        glAccount: l.glAccount,
-      })),
+      lines: picks.flatMap(({ lineId, qty }) => {
+        const l = draft.lines.find((x) => x.id === lineId);
+        return l ? [newSoLine({
+          itemId: l.itemId,
+          itemNo: l.itemNo,
+          description: l.description,
+          quantity: qty,
+          uomCode: l.uomCode,
+          uomName: l.uomName,
+          itemsPerUnit: l.itemsPerUnit,
+          warehouse: l.warehouse,
+          priceListId: l.priceListId,
+          unitPrice: l.unitPrice,
+          discountPct: l.discountPct,
+          priceSource: l.priceSource,
+          taxCode: l.taxCode,
+          glAccount: l.glAccount,
+          // Carry the SAP B1 contents fields forward so they don't vanish on conversion.
+          countryOfOriginCode: l.countryOfOriginCode,
+          warrantyTemplateId: l.warrantyTemplateId,
+          serialNo: l.serialNo,
+          customerDescription: l.customerDescription,
+          blanketAgreementNo: l.blanketAgreementNo,
+          distrRule: l.distrRule,
+          cogsDistrRule: l.cogsDistrRule,
+          allowProcurementDoc: l.allowProcurementDoc,
+          amountInPrintout: l.amountInPrintout,
+        })] : [];
+      }),
     };
     navigate(`${SO_LIST_PATH}/new`, { state: { copyFrom } });
   };
 
   const menu: MoreMenuItem[] = [
-    ...(draft.status === 'Open' ? [{ label: 'Create sales order', icon: 'shopping_bag', onSelect: convertToOrder }] : []),
+    ...(!added ? [{ label: 'Copy from', icon: 'content_copy', onSelect: () => setCopyFromNote(true) }] : []),
+    ...(!added ? [{ label: 'Create and new', icon: 'add', onSelect: () => submit(null, false, {}, true) }] : []),
+    ...(!added ? [{ label: 'Save as draft and new', icon: 'note_add', onSelect: () => submit(null, true, {}, true) }] : []),
+    ...(draft.status === 'Open' && draft.lines.some((l) => l.itemId && l.quantity > 0) ? [{ label: 'Create sales order…', icon: 'shopping_bag', onSelect: () => setCreatingSo(true) }] : []),
     ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }] : []),
     ...(draft.status === 'Open' ? [{ label: 'Close', icon: 'task_alt', onSelect: () => closeQuotation(saved).then((r) => navigate(QT_LIST_PATH, { state: { notice: `Quotation ${qtNumber(r)} closed.` } })) }] : []),
     ...(draft.status === 'Open' ? [{ label: `Cancel ${QT_NOUN.one}`, icon: 'cancel', onSelect: () => cancelQuotation(saved).then((r) => navigate(QT_LIST_PATH, { state: { notice: `Quotation ${qtNumber(r)} cancelled.` } })) }] : []),
@@ -314,6 +342,11 @@ function QuotationForm() {
             <Panel.Body className="flex flex-col gap-2">
               <ProblemsAlert problems={problems} tabLabel={(t) => TAB_LABEL[t as TabId]} />
               {reject.alert('Reject quotation', rejectIt)}
+              {copyFromNote ? (
+                <Alert intent="default" variant="outline" title="Nothing to copy from" onClose={() => setCopyFromNote(false)}>
+                  A quotation starts the sales flow, so there is no earlier document to copy from. Use Copy to (Create sales order) once it is open.
+                </Alert>
+              ) : null}
               {added ? (
                 <Alert
                   intent="default"
@@ -342,7 +375,7 @@ function QuotationForm() {
                   />
                   <DocLines
                     {...qtDoc(tabProps)}
-                    footer={<SalesTotalsFooter {...tabProps} ctx={{ ...ctx, readOnly: readOnly || added }} withholding={[]} />}
+                    footer={<SalesTotalsFooter {...tabProps} ctx={{ ...ctx, readOnly: readOnly || added }} withholding={[]} withRounding />}
                   />
                   <ReferencesTable
                     refs={draft.references}
@@ -354,7 +387,13 @@ function QuotationForm() {
                 </div>
 
                 <aside className="flex flex-col gap-2 lg:col-span-4">
-                  <QtDetailsCard {...tabProps} />
+                  <QtDocumentCard {...tabProps} />
+                  <QtDeliveryCard {...tabProps} />
+                  <QtJournalPaymentCard {...tabProps} />
+                  <QtReferencesCard {...tabProps} />
+                  <BpChannelCard {...tabProps} placeholder="e.g. Lazada, Shopee, Apple online store" />
+                  <QtMoreCard {...tabProps} />
+                  <QtAssignmentCard {...tabProps} />
                 </aside>
               </div>
             </Panel.Body>
@@ -372,6 +411,37 @@ function QuotationForm() {
         open={customerDetailsOpen}
         onClose={() => setCustomerDetailsOpen(false)}
       />
+      {creatingSo
+        ? createPortal(
+            <CopyPanel
+              title="Create sales order"
+              icon="shopping_bag"
+              partyCard={<CustomerCard customers={m.customers} customerId={saved.customerId} customer={customer} onPickCustomer={() => {}} onOpenDetails={() => {}} locked />}
+              sources={[{
+                key: 'QT' as const,
+                label: 'Quotations',
+                totalHeader: 'Quoted',
+                qtyHeader: 'Order',
+                hint: 'Order the quoted lines; leave a line unticked to skip it, or lower its quantity.',
+                docs: [{
+                  id: saved.id,
+                  label: `${qtNumber(saved)} · ${saved.customerName}`,
+                  description: `${saved.postingDate} · ${saved.currency}`,
+                  lines: draft.lines
+                    .filter((l) => l.itemId && l.quantity > 0)
+                    .map((l) => ({ id: l.id, itemNo: l.itemNo, name: l.description, warehouse: l.warehouse, total: `${l.quantity} ${l.uomCode}`, open: l.quantity })),
+                }],
+              }]}
+              taken={new Set()}
+              onCancel={() => setCreatingSo(false)}
+              onCopy={(_type, _docId, picks) => {
+                setCreatingSo(false);
+                createSo(picks);
+              }}
+            />,
+            document.body,
+          )
+        : null}
     </>
   );
 }

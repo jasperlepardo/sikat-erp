@@ -70,14 +70,23 @@ export function qtDoc({ draft, update, errors, m, ctx }: QtTabProps): DocLinesPr
     },
     lineKind: (l) => { const it = itemOf(l); return it ? (it.inventoryItem ? 'Item' : 'Service') : ''; },
     taxAmount: (l) => lineTax(l, ctx.rateOf(l.taxCode), 0),
+    country: { value: (l) => l.countryOfOriginCode ?? '', onChange: (l, v) => patch(l.id, { countryOfOriginCode: v }) },
+    patch,
   });
 
+  // All columns come from the shared registry; each is picked with its default visibility.
   const columns = pick(cols, [
-    ['qty', 'always'], ['priceList', 'hide'], ['unitPrice', 'always'], ['discount', 'always'], ['tax', 'opt'], ['total', 'always'],
-    // Info / catalog columns (hidden).
-    ['type', 'hide'], ['uomName', 'hide'], ['itemsPerUnit', 'hide'],
+    ['qty', 'always'], ['unitPrice', 'always'], ['discount', 'always'], ['tax', 'opt'], ['total', 'always'],
+    ['type', 'opt'], ['countryOfOrigin', 'opt'], ['priceList', 'opt'], ['warranty', 'opt'], ['serialNo', 'opt'], ['customerDescription', 'opt'],
+    // Info columns — available in the Columns menu.
+    ['uomName', 'hide'], ['itemsPerUnit', 'hide'],
     ['priceSource', 'hide'], ['priceAfterDisc', 'hide'], ['taxAmount', 'hide'], ['grossTotalLc', 'hide'],
-    ['countryOfOrigin', 'hide'],
+    // SAP B1 catalog / plumbing — available in the Columns menu.
+    ['blanketAgreementNo', 'hide'], ['distrRule', 'hide'], ['cogsDistrRule', 'hide'],
+    ['unitCost', 'hide'], ['lastCost', 'hide'], ['priceForReport', 'hide'], ['wtaxRate', 'hide'],
+    ['wWTCode', 'hide'], ['wVTVendor', 'hide'], ['wTaxDefined', 'hide'],
+    ['xSupplierName', 'hide'], ['xAddress', 'hide'], ['xTINumber', 'hide'], ['xCardType', 'hide'],
+    ['allowProcurementDoc', 'hide'], ['amountInPrintout', 'hide'],
   ]);
 
   const fromItem = (itemId: string) => {
@@ -87,12 +96,14 @@ export function qtDoc({ draft, update, errors, m, ctx }: QtTabProps): DocLinesPr
 
   return {
     prefsKey: 'qt',
+    cardHeader: true,
     columns,
     rows: lines,
     icon: 'list_alt',
     title: 'Contents',
-    description: errors.lines,
+    description: errors.lines ?? `Items quoted, in the sales unit. Prices are in ${draft.currency}.`,
     sortableKeys: ['item'],
+    sortValue: (l, key) => (key === 'item' ? l.itemNo : String(l[key as keyof QuoteLine] ?? '')).toLowerCase(),
     readOnly: linesLocked,
     onRemove: (picked) => update({ lines: lines.filter((l) => !picked.includes(l)) }),
     item: itemConfig(h, {

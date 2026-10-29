@@ -55,6 +55,7 @@ import { buildGrContext } from '../goods-receipts/detail/types';
 import { CopyPanel } from '../shared/CopyPanel';
 import { invoiceBalance } from '../payments-made/detail/types';
 import { loadRetMasters, vendorAddressOptions, type RetMasters, memoFromInvoice, memoFromReturn } from '../shared/returnsTypes';
+import type { LinePick } from '../shared/copyHops';
 import { memoDoc } from './detail/memoDoc';
 import { DocLines } from '../../../components/form/docLines/DocLines';
 import { neighbours, NotFound, siblingKeys, useDocTab, useReject } from '../../../components/form/DetailNav';
@@ -137,7 +138,7 @@ function CreditMemoForm() {
   const isNew = id === 'new';
   const navigate = useNavigate();
   const location = useLocation();
-  const state = location.state as { fromInvoice?: string; fromReturn?: string } | null;
+  const state = location.state as { fromInvoice?: string; fromReturn?: string; picks?: LinePick[] } | null;
 
   const cmApproved = !needsApproval('CM');
   const [draft, setDraft] = useState<Draft | null | undefined>(isNew ? { ...blankCreditMemo(todayISO(), CURRENT_USER_ID), approved: cmApproved } : undefined);
@@ -161,8 +162,8 @@ function CreditMemoForm() {
       if (isNew && (inv || ret)) {
         const vendor = masters.vendors.find((v) => v.id === (inv ?? ret)!.vendorId);
         const lines = inv
-          ? memoFromInvoice(inv, inv.lines.map((l) => ({ lineId: l.id, qty: l.quantity })), masters.items)
-          : memoFromReturn(ret!, ret!.lines.map((l) => ({ lineId: l.id, qty: returnOpenQty(l, ret!) })).filter((p) => p.qty > 0), masters.items);
+          ? memoFromInvoice(inv, state?.picks ?? inv.lines.map((l) => ({ lineId: l.id, qty: l.quantity })), masters.items)
+          : memoFromReturn(ret!, state?.picks ?? ret!.lines.map((l) => ({ lineId: l.id, qty: returnOpenQty(l, ret!) })).filter((p) => p.qty > 0), masters.items);
         setDraft((d) => d && withBase({ ...d, ...vendorDefaults(vendor, d), lines: [] }, inv ?? ret!, lines));
       }
     });

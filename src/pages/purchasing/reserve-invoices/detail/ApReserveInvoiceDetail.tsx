@@ -49,6 +49,7 @@ import { useDocTitle } from '../../../../services/useDocTitle';
 import { neighbours, NotFound, siblingKeys, useDocTab } from '../../../../components/form/DetailNav';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
 import { buildApriContext, orderNumbersOf, riLinesFromPo, type ApriDraft, type ApriMasters } from './types';
+import type { LinePick } from '../../shared/copyHops';
 import { VendorCard } from '../../shared/VendorCard';
 import { VendorDetailsPanel } from '../../shared/VendorDetailsPanel';
 import { receivingVendorAddressFields } from '../../shared/vendorAddresses';
@@ -104,7 +105,7 @@ function ApReserveInvoiceForm() {
   const isNew = id === 'new';
   const navigate = useNavigate();
   const location = useLocation();
-  const state = location.state as { copyFrom?: ApriDraft; fromPo?: string } | null;
+  const state = location.state as { copyFrom?: ApriDraft; fromPo?: string; picks?: LinePick[] } | null;
 
   const apriApproved = !needsApproval('APRI');
   const [draft, setDraft] = useState<ApriDraft | null | undefined>(
@@ -141,7 +142,8 @@ function ApReserveInvoiceForm() {
       const po = state?.fromPo ? orders.find((o) => o.id === state.fromPo) : undefined;
       if (isNew && po) {
         const vendor = vendors.find((v) => v.id === po.vendorId);
-        const lines = riLinesFromPo(po, po.lines.filter((l) => l.status === 'Open').map((l) => ({ lineId: l.id, qty: openQty(l) })), masters);
+        const picks = state?.picks ?? po.lines.filter((l) => l.status === 'Open').map((l) => ({ lineId: l.id, qty: openQty(l) }));
+        const lines = riLinesFromPo(po, picks, masters);
         setDraft((d) => d && withBase({ ...d, ...vendorDefaults(vendor, d) }, po, lines));
       }
     });

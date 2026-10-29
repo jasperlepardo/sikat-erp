@@ -69,6 +69,7 @@ import { ReturnAssignmentCard } from '../../ReturnAssignmentCard';
 import { ActivityTab } from '../../../../../components/activity/ActivityTab';
 import { neighbours, NotFound, siblingKeys, useDocTab, useReject } from '../../../../../components/form/DetailNav';
 import { ARCM_NOUN, ARCM_STATUS_INTENT, AR_CM_LIST_PATH } from '../../../paths';
+import type { LinePick } from '../../../shared/copyHops';
 import { round2 } from '../../../../../services/num';
 
 type TabId = 'header';
@@ -139,7 +140,7 @@ function ArCreditMemoForm() {
   const isNew = id === 'new';
   const navigate = useNavigate();
   const location = useLocation();
-  const state = location.state as { fromInvoice?: string; fromReturn?: string } | null;
+  const state = location.state as { fromInvoice?: string; fromReturn?: string; picks?: LinePick[] } | null;
 
   const arcmApproved = !needsApproval('ARCM');
   const [draft, setDraft] = useState<ArCmInput | null | undefined>(isNew ? { ...blankArCreditMemo(todayISO(), CURRENT_USER_ID), approved: arcmApproved } : undefined);
@@ -160,7 +161,7 @@ function ArCreditMemoForm() {
       if (isNew && state?.fromInvoice) {
         const inv = masters.invoices.find((i) => i.id === state.fromInvoice);
         if (inv) {
-          const lines = arCreditMemoFromInvoice(inv, inv.lines.map((l) => ({ lineId: l.id, qty: l.quantity })), masters.items);
+          const lines = arCreditMemoFromInvoice(inv, state.picks ?? inv.lines.map((l) => ({ lineId: l.id, qty: l.quantity })), masters.items);
           const customer = masters.customers.find((c) => c.id === inv.customerId);
           setDraft((d) => d && {
             ...d, ...customerDefaults(customer, d), currency: inv.currency, contactId: inv.contactId || d.contactId,
@@ -173,7 +174,7 @@ function ArCreditMemoForm() {
       if (isNew && state?.fromReturn) {
         const sr = masters.returns.find((r) => r.id === state.fromReturn);
         if (sr) {
-          const lines = arCreditMemoFromReturn(sr, sr.lines.map((l) => ({ lineId: l.id, qty: srOpenQty(l, sr) })).filter((p) => p.qty > 0), masters.items, srNumber, srOpenQty);
+          const lines = arCreditMemoFromReturn(sr, state.picks ?? sr.lines.map((l) => ({ lineId: l.id, qty: srOpenQty(l, sr) })).filter((p) => p.qty > 0), masters.items, srNumber, srOpenQty);
           const customer = masters.customers.find((c) => c.id === sr.customerId);
           setDraft((d) => d && {
             ...d, ...customerDefaults(customer, d), currency: sr.currency, contactId: sr.contactId || d.contactId,

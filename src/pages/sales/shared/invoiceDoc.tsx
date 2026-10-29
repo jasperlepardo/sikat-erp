@@ -76,6 +76,7 @@ export function invoiceDoc(props: InvoiceDocProps): DocLinesProps<InvoiceLine> {
   };
 
   const cols = salesCols<InvoiceLine>({
+    patch,
     readOnly: ro,
     currency: draft.currency,
     fx: ctx.fx,
@@ -175,12 +176,14 @@ export function invoiceDoc(props: InvoiceDocProps): DocLinesProps<InvoiceLine> {
 
   const base: DocLinesProps<InvoiceLine> = {
     prefsKey: ar ? 'ar-si' : 'ri-si',
+    cardHeader: true,
     columns,
     rows: service ? lines : lines.filter((l) => !!l.itemId),
     icon: 'list_alt',
     title: 'Contents',
-    description: errors.lines,
+    description: errors.lines ?? `Items billed, in the sales unit. Prices are in ${draft.currency}.`,
     sortableKeys: ['item'],
+    sortValue: (l, key) => (key === 'item' ? l.itemNo : String(l[key as keyof InvoiceLine] ?? '')).toLowerCase(),
     readOnly: ro,
     onRemove: (picked) => update({ lines: lines.filter((l) => !picked.includes(l)) }),
     empty: <Text variant="small" tone="muted">No lines yet.</Text>,

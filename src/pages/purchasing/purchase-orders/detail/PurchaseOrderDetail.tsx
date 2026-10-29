@@ -74,9 +74,11 @@ import { ActivityTab } from '../../../../components/activity/ActivityTab';
 import { neighbours, NotFound, siblingKeys, useDocTab, useReject } from '../../../../components/form/DetailNav';
 import { VendorCard } from '../../shared/VendorCard';
 import { VendorDetailsPanel } from '../../shared/VendorDetailsPanel';
+import { CreateFromPanel, createHopMenuItems } from '../../shared/CreateFromPanel';
+import { PO_TO_GR, PO_TO_AP, PO_TO_APRI, type CopyHop } from '../../shared/copyHops';
 import { PoDocumentCard } from './PoDocumentCard';
 import { PoAssignmentCard } from './PoTotalsCard';
-import { AP_LIST_PATH, APRI_LIST_PATH, DPI_LIST_PATH, DPR_LIST_PATH, PO_LIST_PATH, PO_NOUN, PO_STATUS_INTENT } from '../../paths';
+import { DPI_LIST_PATH, DPR_LIST_PATH, PO_LIST_PATH, PO_NOUN, PO_STATUS_INTENT } from '../../paths';
 
 /** Everything that defaults from the vendor. Tax codes depend on the vendor's VAT status, so lines re-propose theirs. */
 function vendorPatch(v: Partner, draft: PoDraft, m: PoMasters): Partial<PoDraft> {
@@ -191,6 +193,7 @@ function PurchaseOrderForm() {
   const [saving, setSaving] = useState(false);
   const [showVendorCreate, setShowVendorCreate] = useState(false);
   const [vendorDetailsOpen, setVendorDetailsOpen] = useState(false);
+  const [createHop, setCreateHop] = useState<CopyHop<PurchaseOrder> | null>(null);
   const reject = useReject();
 
   useEffect(() => {
@@ -349,11 +352,9 @@ function PurchaseOrderForm() {
   };
 
   const menu: MoreMenuItem[] = [
+    ...(draft.status === 'Open' ? createHopMenuItems(saved, m.items, [PO_TO_GR, PO_TO_AP, PO_TO_APRI], setCreateHop) : []),
     ...(draft.status === 'Open' && draft.lines.some((l) => l.status === 'Open' && l.receivedQty < l.quantity)
       ? [
-          { label: 'Create goods receipt', icon: 'inventory', onSelect: () => navigate('/purchasing/goods-receipts/new', { state: { fromPo: saved.id } }) },
-          { label: 'Create A/P invoice', icon: 'request_quote', onSelect: () => navigate(`${AP_LIST_PATH}/new`, { state: { fromPo: saved.id } }) },
-          { label: 'Create A/P reserve invoice', icon: 'receipt_long', onSelect: () => navigate(`${APRI_LIST_PATH}/new`, { state: { fromPo: saved.id } }) },
           { label: 'Create A/P down payment request', icon: 'savings', onSelect: () => navigate(`${DPR_LIST_PATH}/new`, { state: { fromPo: saved.id } }) },
           { label: 'Create A/P down payment invoice', icon: 'receipt_long', onSelect: () => navigate(`${DPI_LIST_PATH}/new`, { state: { fromPo: saved.id } }) },
         ]
@@ -529,6 +530,7 @@ function PurchaseOrderForm() {
         onCreated={handleVendorCreated}
       />
     )}
+    {createHop ? <CreateFromPanel source={saved} hop={createHop} items={m.items} partyCard={<VendorCard vendors={m.vendors} vendorId={saved.vendorId} vendor={ctx.vendor} readOnly={false} locked pickVendor={() => {}} />} onClose={() => setCreateHop(null)} /> : null}
     </>
   );
 }

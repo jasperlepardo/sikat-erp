@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Checkbox, Combobox, Radio, Text, TextField, type TableColumn } from '@jasperlepardo/sikat-design-system';
 import { DataTable } from '../../../components/form/DataTable';
 import { Section } from '../../../components/form/fields';
@@ -37,11 +37,22 @@ export function CopyPanel<K extends string>({
   taken,
   onCancel,
   onCopy,
+  title = 'Copy from',
+  icon = 'content_copy',
+  sectionTitle = 'Base document',
+  partyCard,
 }: {
   sources: CopySourceType<K>[];
   taken: Set<string>;
   onCancel: () => void;
   onCopy: (type: K, docId: string, picks: { lineId: string; qty: number }[]) => void;
+  /** Header title and icon — defaults to "Copy from"; a source-launched picker passes "Create {target}". */
+  title?: string;
+  icon?: string;
+  /** The picker section's title — defaults to "Base document" for the in-form "Copy from" picker. */
+  sectionTitle?: string;
+  /** Source-launched only: the source document's own vendor/customer card (read-only), shown instead of the document picker. */
+  partyCard?: ReactNode;
 }) {
   const [type, setType] = useState<K>((sources.find((s) => s.docs.length) ?? sources[0]).key);
   const source = sources.find((s) => s.key === type)!;
@@ -86,38 +97,46 @@ export function CopyPanel<K extends string>({
   ];
 
   return (
-    <EditPanel icon="content_copy" title="Copy from" onCancel={onCancel} onDone={() => (doc && picks.length ? onCopy(type, doc.id, picks.filter((p) => p.qty > 0)) : onCancel())}>
-      <Section icon="description" title="Base document">
-        {sources.length > 1 ? (
-          <div className="flex flex-wrap gap-6" role="radiogroup" aria-label="Copy from">
-            {sources.map((s) => (
-              <Radio
-                key={s.key}
-                name="copy-from"
-                checked={type === s.key}
-                disabled={!s.docs.length}
-                onChange={() => {
-                  setType(s.key);
-                  setDocId(s.docs[0]?.id ?? '');
-                  reset();
-                }}
-              >
-                {s.label} ({s.docs.length})
-              </Radio>
-            ))}
-          </div>
-        ) : null}
-        <Combobox
-          aria-label="Document"
-          options={source.docs.map((d) => ({ value: d.id, label: d.label, description: d.description, text: d.label }))}
-          value={docId || null}
-          onValueChange={(v) => {
-            setDocId(v ?? '');
-            reset();
-          }}
-        />
-        <Text variant="small" tone="muted">{source.hint}</Text>
-      </Section>
+    <EditPanel icon={icon} title={title} onCancel={onCancel} onDone={() => (doc && picks.length ? onCopy(type, doc.id, picks.filter((p) => p.qty > 0)) : onCancel())}>
+      {partyCard ? (
+        // Source-launched: one fixed document — show its real vendor/customer card, not a doc picker.
+        <>
+          {partyCard}
+          <Text variant="small" tone="muted">{source.hint}</Text>
+        </>
+      ) : (
+        <Section icon="description" title={sectionTitle}>
+          {sources.length > 1 ? (
+            <div className="flex flex-wrap gap-6" role="radiogroup" aria-label="Copy from">
+              {sources.map((s) => (
+                <Radio
+                  key={s.key}
+                  name="copy-from"
+                  checked={type === s.key}
+                  disabled={!s.docs.length}
+                  onChange={() => {
+                    setType(s.key);
+                    setDocId(s.docs[0]?.id ?? '');
+                    reset();
+                  }}
+                >
+                  {s.label} ({s.docs.length})
+                </Radio>
+              ))}
+            </div>
+          ) : null}
+          <Combobox
+            aria-label="Document"
+            options={source.docs.map((d) => ({ value: d.id, label: d.label, description: d.description, text: d.label }))}
+            value={docId || null}
+            onValueChange={(v) => {
+              setDocId(v ?? '');
+              reset();
+            }}
+          />
+          <Text variant="small" tone="muted">{source.hint}</Text>
+        </Section>
+      )}
       <DataTable
         icon="list_alt"
         title="Open lines"
