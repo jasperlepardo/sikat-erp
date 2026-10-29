@@ -264,8 +264,8 @@ export const SEED_RFQS: Rfq[] = [
     status: 'Closed',
     convertedToPoId: 'po-045',
     lines: [
-      rl('rfq-002-1', 'ACC-PWR20', 100, { requiredDate: '2026-10-03', unitPrice: 1680, quotedQty: 100, quotedDate: '2026-09-26', taxCode: 'IVAT', discountPct: 8 }),
-      rl('rfq-002-2', 'ACC-MAGSF1', 2, { requiredDate: '2026-10-03', unitPrice: 24 * 2410, quotedQty: 2, quotedDate: '2026-09-26', taxCode: 'IVAT' }),
+      rl('rfq-002-1', 'ACC-PWR20', 100, { requiredDate: '2026-10-03', unitPrice: 1680, quotedQty: 100, quotedDate: '2026-09-26', taxCode: 'IVAT', discountPct: 8, baseId: 'prq-003', baseLineId: 'prq-003-1' }),
+      rl('rfq-002-2', 'ACC-MAGSF1', 2, { requiredDate: '2026-10-03', unitPrice: 24 * 2410, quotedQty: 2, quotedDate: '2026-09-26', taxCode: 'IVAT', baseId: 'prq-003', baseLineId: 'prq-003-2' }),
     ],
     remarks: 'Techzone quoted on 26 Sep with the standard 8% discount on chargers. Ordered on 1 Oct.',
   }),
