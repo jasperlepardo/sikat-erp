@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Badge, Tabs, Text } from '@jasperlepardo/sikat-design-system';
+import { Chip, Tabs, Text } from '@jasperlepardo/sikat-design-system';
 import { DataTable } from '../../../components/form/DataTable';
 import type { Warehouse } from '../../../mocks/itemMasters';
 import { listItems } from '../../../services/items';
@@ -47,9 +47,9 @@ export function WarehouseContents({ warehouse, isNew, base }: { warehouse: Wareh
           }
           actions={
             scope ? (
-              <Badge variant="outline" onDismiss={() => setScope(null)} dismissLabel={`Show all of ${warehouse.code}`}>
+              <Chip onRemove={() => setScope(null)} removeLabel={`Show all of ${warehouse.code}`}>
                 {scope.label}
-              </Badge>
+              </Chip>
             ) : undefined
           }
           rows={rows}

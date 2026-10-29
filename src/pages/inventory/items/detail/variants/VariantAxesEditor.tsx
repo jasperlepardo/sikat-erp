@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import {
-  Badge,
+  Chip,
   Button,
   Icon,
   IconButton,
@@ -100,16 +100,15 @@ function AxisRow({ axis, attribute, taken, onUpdate, onRemove, disabled }: RowPr
       {axis.valueIds.length > 0 && (
         <div className="flex flex-wrap items-center gap-2">
           {axis.valueIds.map((id) => (
-            <Badge
+            <Chip
               key={id}
               intent="primary"
-              variant="outline"
               size="medium"
-              onDismiss={disabled ? undefined : () => removeValue(id)}
-              dismissLabel={`Remove ${labelOf(id)}`}
+              onRemove={disabled ? undefined : () => removeValue(id)}
+              removeLabel={`Remove ${labelOf(id)}`}
             >
               {labelOf(id)}
-            </Badge>
+            </Chip>
           ))}
         </div>
       )}
