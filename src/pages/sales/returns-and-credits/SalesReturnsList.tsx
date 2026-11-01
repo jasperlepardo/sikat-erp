@@ -21,7 +21,7 @@ import { arCmNumber, arCmTotal, listArCreditMemos } from '../../../services/arCr
 import { listSalesReturns, srNumber, srTotal } from '../../../services/salesReturns';
 import { taxCodes } from '../../../services/masterData';
 import { useAsync } from '../../../services/useAsync';
-import { ARCM_NOUN, ARCM_STATUS_INTENT, AR_CM_LIST_PATH, SR_LIST_PATH, SR_NOUN, SR_STATUS_INTENT } from '../paths';
+import { AR_CM_NOUN, AR_CM_STATUS_INTENT, AR_CM_LIST_PATH, SR_LIST_PATH, SR_NOUN, SR_STATUS_INTENT } from '../paths';
 
 type Kind = 'returns' | 'memos';
 type Status = 'Draft' | 'Not Confirmed' | 'Open' | 'Closed' | 'Cancelled';
@@ -48,7 +48,7 @@ export function SalesReturnsList({ kind }: { kind: Kind }) {
   const [query, setQuery] = useState('');
   const { resetPage, paginate } = useListPage();
   const path = kind === 'returns' ? SR_LIST_PATH : AR_CM_LIST_PATH;
-  const noun = kind === 'returns' ? SR_NOUN : ARCM_NOUN;
+  const noun = kind === 'returns' ? SR_NOUN : AR_CM_NOUN;
 
   const all: Row[] | undefined = useMemo(() => {
     if (!data) return undefined;
@@ -113,7 +113,7 @@ export function SalesReturnsList({ kind }: { kind: Kind }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [all, presets.filter, query, sort]);
 
-  const intent = kind === 'returns' ? SR_STATUS_INTENT : ARCM_STATUS_INTENT;
+  const intent = kind === 'returns' ? SR_STATUS_INTENT : AR_CM_STATUS_INTENT;
   const { visible: onPage, pagination } = paginate(rows);
 
   const srColumns: TableColumn<Row>[] = [
@@ -176,7 +176,7 @@ export function SalesReturnsList({ kind }: { kind: Kind }) {
             <Text tone="muted" className="p-4">
               {kind === 'returns'
                 ? `No ${SR_NOUN.many} yet. Start one from a delivery (More actions › Create ${SR_NOUN.one}), or with New ${SR_NOUN.one}.`
-                : `No ${ARCM_NOUN.many} yet. Start one from a sales return (More actions › Create ${ARCM_NOUN.one}), or with New ${ARCM_NOUN.one}.`}
+                : `No ${AR_CM_NOUN.many} yet. Start one from a sales return (More actions › Create ${AR_CM_NOUN.one}), or with New ${AR_CM_NOUN.one}.`}
             </Text>
           )}
         </Card>

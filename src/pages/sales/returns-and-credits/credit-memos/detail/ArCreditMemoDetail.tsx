@@ -76,7 +76,7 @@ import { AssignmentCard } from '../../../../../components/form/AssignmentCard';
 import { NO_SALES_EMPLOYEE } from '../../../../../mocks/salesOrders';
 import { ActivityTab } from '../../../../../components/activity/ActivityTab';
 import { neighbours, NotFound, siblingKeys, useDocTab, useReject } from '../../../../../components/form/DetailNav';
-import { ARCM_NOUN, ARCM_STATUS_INTENT, AR_CM_LIST_PATH } from '../../../paths';
+import { AR_CM_NOUN, AR_CM_STATUS_INTENT, AR_CM_LIST_PATH } from '../../../paths';
 import type { LinePick } from '../../../shared/copyHops';
 import { round2 } from '../../../../../services/num';
 
@@ -203,9 +203,9 @@ function ArCreditMemoForm() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, isNew]);
 
-  useDocTitle(draft?.docNum ? (isNew ? `New ${ARCM_NOUN.one}` : draft.status === 'Draft' ? `Draft ${ARCM_NOUN.one}` : arCmNumber(draft as ArCreditMemo)) : undefined);
+  useDocTitle(draft?.docNum ? (isNew ? `New ${AR_CM_NOUN.one}` : draft.status === 'Draft' ? `Draft ${AR_CM_NOUN.one}` : arCmNumber(draft as ArCreditMemo)) : undefined);
   if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading A/R credit memo…</Text>;
-  if (draft === null) return <NotFound icon="undo" title="A/R credit memo not found" backTo={AR_CM_LIST_PATH} backLabel={`Back to ${ARCM_NOUN.many}`} />;
+  if (draft === null) return <NotFound icon="undo" title="A/R credit memo not found" backTo={AR_CM_LIST_PATH} backLabel={`Back to ${AR_CM_NOUN.many}`} />;
 
   const added = draft.status !== 'Draft';
   const date = draft.postingDate || todayISO();
@@ -329,10 +329,10 @@ function ArCreditMemoForm() {
   const menu: MoreMenuItem[] = [
     ...(draft.status === 'Open' && openBalance > 0 && openInvoices.length ? [{ label: 'Apply credit to an invoice', icon: 'request_quote', onSelect: () => setApplying(true) }] : []),
     ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }] : []),
-    ...(draft.status === 'Open' || draft.status === 'Closed' ? [{ label: `Cancel ${ARCM_NOUN.one}`, icon: 'cancel', onSelect: cancelIt }] : []),
+    ...(draft.status === 'Open' || draft.status === 'Closed' ? [{ label: `Cancel ${AR_CM_NOUN.one}`, icon: 'cancel', onSelect: cancelIt }] : []),
   ];
 
-  const title = isNew ? `New ${ARCM_NOUN.one}` : added ? arCmNumber(draft as ArCreditMemo) : `Draft ${ARCM_NOUN.one}`;
+  const title = isNew ? `New ${AR_CM_NOUN.one}` : added ? arCmNumber(draft as ArCreditMemo) : `Draft ${AR_CM_NOUN.one}`;
   const sectionProps = { draft, update, errors, m, ctx };
   const view = salesView(draft.currency, fx, date, currencyView, setCurrencyView);
   const journalEntry = <JournalPreview journal={journal} accounts={m.accounts} />;
@@ -359,13 +359,13 @@ function ArCreditMemoForm() {
           <PageHeader
             variant="plain"
             icon="undo"
-            parent={{ noun: ARCM_NOUN, to: AR_CM_LIST_PATH }}
+            parent={{ noun: AR_CM_NOUN, to: AR_CM_LIST_PATH }}
             title={title}
             tabs={isNew ? undefined : <Tabs variant="outline" value={page} onValueChange={(v) => setPage(v as PageId)} items={[...PAGES]} />}
-            status={isNew ? undefined : <Badge size="small" intent={ARCM_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
+            status={isNew ? undefined : <Badge size="small" intent={AR_CM_STATUS_INTENT[draft.status]}>{draft.status}</Badge>}
             actions={
               <DetailActions
-                noun={ARCM_NOUN}
+                noun={AR_CM_NOUN}
                 listPath={AR_CM_LIST_PATH}
                 mode={docMode(draft.status, { canApprove: isApprover('ARCM') })}
                 needsApproval={!draft.approved}

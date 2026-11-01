@@ -8,7 +8,7 @@ import { approvalRules } from '../../../services/approvalRules';
 import { salesEmployees } from '../../../services/partnerMasters';
 import type { NamedEntry } from '../../../mocks/partnerMasters';
 import { cap } from '../../../components/form/noun';
-import { AR_NOUN, ARCM_NOUN, DN_NOUN, QT_NOUN, RC_NOUN, RI_NOUN, SO_NOUN, SR_NOUN } from '../../sales/paths';
+import { AR_NOUN, AR_CM_NOUN, DN_NOUN, QT_NOUN, RC_NOUN, RI_NOUN, SO_NOUN, SR_NOUN } from '../../sales/paths';
 
 const SALES_APPROVAL_ROWS: { docType: DocType; label: string; field: keyof SalesSettings }[] = [
   { docType: 'QT', label: cap(QT_NOUN.one), field: 'requireQuotationApproval' },
@@ -16,7 +16,7 @@ const SALES_APPROVAL_ROWS: { docType: DocType; label: string; field: keyof Sales
   { docType: 'DN', label: cap(DN_NOUN.one), field: 'requireDeliveryApproval' },
   { docType: 'ARINV', label: cap(AR_NOUN.one), field: 'requireArInvoiceApproval' },
   { docType: 'SR', label: cap(SR_NOUN.one), field: 'requireSalesReturnApproval' },
-  { docType: 'ARCM', label: cap(ARCM_NOUN.one), field: 'requireArCreditMemoApproval' },
+  { docType: 'ARCM', label: cap(AR_CM_NOUN.one), field: 'requireArCreditMemoApproval' },
   { docType: 'RC', label: cap(RC_NOUN.one), field: 'requireIncomingPaymentApproval' },
   { docType: 'ARRI', label: cap(RI_NOUN.one), field: 'requireArReserveInvoiceApproval' },
 ];

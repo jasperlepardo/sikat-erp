@@ -13,7 +13,7 @@ import { lineNet, lineTax, priceAfterDiscount } from '../../../../../services/sa
 import { warehouseOptions } from '../../../../inventory/transfers/TransferLines';
 import { editTaxCode } from '../../../../../services/taxRecalc';
 import { taxCodeOptions } from '../../../../../services/taxCodeOptions';
-import { AR_LIST_PATH, SR_LIST_PATH, ARCM_NOUN } from '../../../paths';
+import { AR_LIST_PATH, SR_LIST_PATH, AR_CM_NOUN } from '../../../paths';
 import { cap } from '../../../../../components/form/noun';
 import { asSoDraft, type DnDraft } from '../../../deliveries/detail/types';
 import { lineFromItem, type SoMasters } from '../../../sales-orders/detail/types';
@@ -123,7 +123,7 @@ export function arCmDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy }:
     columns,
     rows: view.converted ? lines.map((l) => ({ ...l, unitPrice: view.convert(l.unitPrice) })) : lines,
     icon: 'list_alt',
-    title: cap(ARCM_NOUN.lineLabel!),
+    title: cap(AR_CM_NOUN.lineLabel!),
     actions: <CurrencyToggle choices={view.choices} value={view.shown} onChange={view.onChange} />,
     description: errors.lines ?? view.note,
     sortableKeys: ['item'],

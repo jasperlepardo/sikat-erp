@@ -67,7 +67,7 @@ import { DocumentPayment, DocumentJournalEntry } from '../../../../components/fo
 import { apReserveInvoicePayment } from '../../../documentPaymentDefs';
 import { AssignmentCard } from '../../../../components/form/AssignmentCard';
 import { JournalPreview } from '../../../../components/form/JournalPreview';
-import { APRI_LIST_PATH, APRI_NOUN, AP_RI_STATUS_INTENT } from '../../paths';
+import { APRI_LIST_PATH, APRI_NOUN, APRI_STATUS_INTENT } from '../../paths';
 
 type TabId = 'contents' | 'logistics' | 'accounting';
 
@@ -308,7 +308,7 @@ function ApReserveInvoiceForm() {
           status={
             isNew ? undefined : (
               <div className="flex gap-1">
-                <Badge size="small" intent={AP_RI_STATUS_INTENT[draft.status]}>{draft.status}</Badge>
+                <Badge size="small" intent={APRI_STATUS_INTENT[draft.status]}>{draft.status}</Badge>
                 {draft.paymentBlock ? <Badge size="small" intent="warning" variant="outline">Payment block</Badge> : null}
               </div>
             )
