@@ -61,6 +61,7 @@ describe('formatFilter — every operator', () => {
     ['before', rule('postingDate', 'before', '2026-06-01'), 'postingDate < "2026-06-01"'],
     ['after', rule('postingDate', 'after', '2026-06-01'), 'postingDate > "2026-06-01"'],
     ['inLastDays', rule('postingDate', 'inLastDays', 7), 'postingDate > daysAgo(7)'],
+    ['inPeriod', rule('postingDate', 'inPeriod', 'month'), 'postingDate = period(month)'],
     ['in (single)', rule('status', 'in', ['Open']), 'status = "Open"'],
     ['in (many)', rule('status', 'in', ['Open', 'Draft']), '(status = "Open" OR status = "Draft")'],
     ['notIn (single)', rule('status', 'notIn', ['Open']), 'NOT status = "Open"'],
@@ -95,8 +96,8 @@ describe('formatFilter — every operator', () => {
 
 describe('parseFilter — every operator', () => {
   const cases: Array<[string, FilterGroup]> = [
-    ['status = "Open"', rule('status', 'is', 'Open')],
-    ['status != "Open"', rule('status', 'isNot', 'Open')],
+    ['status = "Open"', rule('status', 'in', ['Open'])],
+    ['status != "Open"', rule('status', 'notIn', ['Open'])],
     ['no:"INV"', rule('no', 'contains', 'INV')],
     ['NOT no:"INV"', rule('no', 'notContains', 'INV')],
     ['no = "INV*"', rule('no', 'startsWith', 'INV')],
@@ -109,6 +110,7 @@ describe('parseFilter — every operator', () => {
     ['postingDate < "2026-06-01"', rule('postingDate', 'before', '2026-06-01')],
     ['postingDate > "2026-06-01"', rule('postingDate', 'after', '2026-06-01')],
     ['postingDate > daysAgo(7)', rule('postingDate', 'inLastDays', 7)],
+    ['postingDate = period(month)', rule('postingDate', 'inPeriod', 'month')],
     ['(status = "Open" OR status = "Draft")', rule('status', 'in', ['Open', 'Draft'])],
     ['NOT (status = "Open" OR status = "Draft")', rule('status', 'notIn', ['Open', 'Draft'])],
     ['active = true', rule('active', 'isTrue')],
@@ -125,14 +127,14 @@ describe('parseFilter — every operator', () => {
   });
 
   it('is case-insensitive on field names and choice values', () => {
-    expect(parsed('STATUS = "open"')).toEqual(rule('status', 'is', 'Open'));
+    expect(parsed('STATUS = "open"')).toEqual(rule('status', 'in', ['Open']));
   });
 
   it('reads multiple AND rules and OR rules', () => {
     expect(parsed('status = "Open" AND total >= 1000')).toEqual({
       match: 'all',
       rules: [
-        { id: 'x', field: 'status', op: 'is', value: 'Open', value2: undefined },
+        { id: 'x', field: 'status', op: 'in', value: ['Open'], value2: undefined },
         { id: 'x', field: 'total', op: 'gte', value: 1000, value2: undefined },
       ],
     });

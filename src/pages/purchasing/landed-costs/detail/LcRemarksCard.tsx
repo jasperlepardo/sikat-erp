@@ -7,7 +7,7 @@ export function LcRemarksCard({ draft, update, readOnly }: LcSectionProps) {
   return (
     <Section icon="notes" title="Remarks">
       <FieldStack>
-        {h.area('remarks', 'Remarks', { rows: 3, disabled: readOnly })}
+        {h.area('remarks', 'Remarks', { rows: 3, readOnly: readOnly })}
       </FieldStack>
     </Section>
   );

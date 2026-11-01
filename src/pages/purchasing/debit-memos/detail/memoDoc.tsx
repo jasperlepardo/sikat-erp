@@ -1,5 +1,7 @@
 import { Button, Checkbox, Icon, Text } from '@jasperlepardo/sikat-design-system';
 import { type DocLinesProps } from '../../../../components/form/docLines/DocLines';
+import { MEMO_NOUN } from '../../paths';
+import { cap } from '../../../../components/form/noun';
 import { type PrefColumn } from '../../../../components/form/columnPrefs';
 import { purchCols, pick } from '../../shared/purchCols';
 import { costAccountOptions, lineHelpers, lineGlAccount, itemConfig } from '../../shared/purchLineHelpers';
@@ -22,6 +24,8 @@ import { formatAmount } from '../../../../services/format';
 import { formatDate } from '../../../../services/dates';
 import type { WithholdingLine } from '../../../../services/withholding';
 import { PurchTotalsFooter, PurchTotalNote, PurchTotalRow } from '../../shared/PurchTotalsFooter';
+import { CurrencyToggle, type PurchaseView } from '../../shared/purchaseView';
+import { grossPriceBinding, priceModeEnabled, priceModeHeader } from '../../../../components/form/priceMode';
 import { type CmSectionProps } from './types';
 
 const WITHHELD_LABEL: Record<string, string> = { 'Expanded (EWT)': 'EWT', 'Final (FWT)': 'Final tax', 'Withholding VAT': 'VAT', 'Percentage tax': 'Percentage tax' };
@@ -37,9 +41,14 @@ export interface MemoDocProps extends CmSectionProps {
 }
 
 /** Builds the A/P Credit Memo contents descriptor for the shared <DocLines>. */
-export function memoDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy, totals, withholding, credit, openBalance }: MemoDocProps): DocLinesProps<MemoLine> {
+export function memoDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy, totals, withholding, credit, openBalance }: MemoDocProps, view: PurchaseView): DocLinesProps<MemoLine> {
   const lines = draft.lines;
-  const code = draft.currency;
+  // Viewing in PHP is a read-only conversion: the prices stay in the document currency.
+  const converted = view.converted;
+  const locked = ctx.readOnly || converted;
+  const vTotals = converted
+    ? { beforeDiscount: view.convert(totals.beforeDiscount), discount: view.convert(totals.discount), tax: view.convert(totals.tax), total: view.convert(totals.total), reverseCharge: totals.reverseCharge ? view.convert(totals.reverseCharge) : undefined, freight: 0, rounding: 0 }
+    : { ...totals, freight: 0, rounding: 0 };
   const h = lineHelpers<MemoLine>({ items: m.items, lines, update, errors, postingDate: draft.postingDate, uoms: m.inv.uoms });
   const { itemOf, patch, err, lineKind, uomLabel, uomOptions } = h;
   const whOf = (whCode: string) => m.inv.warehouses.find((w) => w.code === whCode);
@@ -72,13 +81,14 @@ export function memoDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy, t
   };
 
   const cols = purchCols<MemoLine>({
-    patch, readOnly: ctx.readOnly, currency: code,
+    patch, readOnly: locked, currency: view.code,
     glAccountOf: (l) => lineGlAccount(itemOf(l), l, m.inv),
     glAccountOptions: (l) => costAccountOptions(m.inv.accounts, l.glAccount),
     lineNet,
     priceAfterDisc: priceAfterDiscount,
     grossAfterDisc: (l) => priceAfterDiscount(l) * (1 + taxRate(l) / 100),
     taxAmount: (l) => round2((lineNet(l) * taxRate(l)) / 100),
+    grossPrice: priceModeEnabled() ? grossPriceBinding(draft.priceMode ?? 'Net', taxRate, patch) : undefined,
     taxOptions: (l) => taxOptions(l.taxCode),
     vendorOptions: [],
     warehouseOptions: m.inv.warehouses.filter((w) => holdsStock(w)).map((w) => ({ value: w.code, label: w.code })),
@@ -159,14 +169,15 @@ export function memoDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy, t
     prefsKey: 'apcm',
     cardHeader: true,
     columns,
-    rows: lines,
+    rows: converted ? lines.map((l) => ({ ...l, unitPrice: view.convert(l.unitPrice) })) : lines,
     icon: 'list_alt',
-    title: 'Contents',
-    description: errors.lines ?? `What the vendor credits, in ${code}. Lines from an invoice send the goods back or adjust the price only; lines from a goods return just credit it.`,
+    title: cap(MEMO_NOUN.lineLabel!),
+    actions: <CurrencyToggle choices={view.choices} value={view.shown} onChange={view.onChange} />,
+    description: errors.lines ?? view.note,
     sortableKeys: ['item'],
     sortValue: (l, key) => (key === 'item' ? l.itemNo : String(l[key as keyof MemoLine] ?? '')).toLowerCase(),
-    readOnly: ctx.readOnly,
-    onRemove: (picked) => update({ lines: lines.filter((l) => !picked.includes(l)) }),
+    readOnly: locked,
+    onRemove: (picked) => update({ lines: lines.filter((l) => !picked.some((p) => p.id === l.id)) }),
     item: itemConfig(h, {
       resolve: (l) => { const it = itemOf(l); return it ? { itemNo: it.itemNo, name: l.name || it.name } : null; },
       onPick: (l, id) => { if (id) pickItem(l, id); else patch(l.id, { itemId: '', itemNo: '', name: '', description: '' }); },
@@ -180,33 +191,36 @@ export function memoDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy, t
         {draft.vendorId ? 'Copy from an A/P invoice or a goods return, or add lines.' : 'Pick a vendor first.'}
       </Text>
     ),
-    header: ctx.readOnly ? undefined : (
-      <div className="flex justify-end px-2">
-        <Button type="button" size="small" variant="outline" leadingIcon={<Icon size={16}>content_copy</Icon>} disabled={!canCopy} onClick={onCopyClick}>
-          Copy from
-        </Button>
+    header: locked ? undefined : (
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        {priceModeEnabled() ? priceModeHeader('memo-price-mode', draft.priceMode ?? 'Net', (m) => update({ priceMode: m })) : <span />}
+        <div className="flex justify-end px-2">
+          <Button type="button" size="small" variant="outline" leadingIcon={<Icon size={16}>content_copy</Icon>} disabled={!canCopy} onClick={onCopyClick}>
+            Copy from
+          </Button>
+        </div>
       </div>
     ),
     footer: (
       <PurchTotalsFooter
-        totals={{ ...totals, freight: 0, rounding: 0 }}
-        currency={code}
-        readOnly={ctx.readOnly}
+        totals={vTotals}
+        currency={view.code}
+        readOnly={locked}
         discountPct={draft.discountPct}
         onDiscountChange={(discountPct) => update({ discountPct })}
-        midRows={<PurchTotalRow label="Total down payment" value={-draft.downPayment} code={code} />}
+        midRows={<PurchTotalRow label="Total down payment" value={-view.convert(draft.downPayment)} code={view.code} />}
         totalLabel="Total credit"
         extraRows={
           <>
             {withholding.filter((w) => w.deducted).map((w) => (
-              <PurchTotalRow key={w.atc} label={`${WITHHELD_LABEL[w.kind] ?? 'Tax'} reversed — ${w.atc} (${w.rate}%)`} value={-w.amount} code={code} />
+              <PurchTotalRow key={w.atc} label={`${WITHHELD_LABEL[w.kind] ?? 'Tax'} reversed — ${w.atc} (${w.rate}%)`} value={-view.convert(w.amount)} code={view.code} />
             ))}
-            <PurchTotalRow label="Net credit" value={credit} code={code} strong />
-            <PurchTotalRow label="Applied amount" value={-draft.appliedAmount} code={code} />
-            <PurchTotalRow label="Open balance" value={openBalance} code={code} strong />
+            <PurchTotalRow label="Net credit" value={view.convert(credit)} code={view.code} strong />
+            <PurchTotalRow label="Applied amount" value={-view.convert(draft.appliedAmount)} code={view.code} />
+            <PurchTotalRow label="Open balance" value={view.convert(openBalance)} code={view.code} strong />
             {draft.applications.length ? (
               <PurchTotalNote>
-                Applied to {draft.applications.map((a) => `A/P invoice ${a.docNo} (${code} ${formatAmount(a.amount)}, ${formatDate(a.date)})`).join('; ')}.
+                Applied to {draft.applications.map((a) => `A/P invoice ${a.docNo} (${view.code} ${formatAmount(view.convert(a.amount))}, ${formatDate(a.date)})`).join('; ')}.
               </PurchTotalNote>
             ) : null}
           </>

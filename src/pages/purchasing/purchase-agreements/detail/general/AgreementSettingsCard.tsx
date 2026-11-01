@@ -1,5 +1,5 @@
-import { Section, FieldStack, Flags, ReadOnly, bind } from '../../../../../components/form/fields';
-import { paymentTermDef, salesEmployeeDef } from '../../../../settings/masterDefs';
+import { FieldOrientationCtx, Form, Section, Flags, ReadOnly, bind } from '../../../../../components/form/fields';
+import { paymentTermDef, projectDef } from '../../../../settings/masterDefs';
 import { activeOptions } from '../../../../../services/inventoryMasters';
 import type { PbaDraft, PbaMasters } from '../types';
 
@@ -10,19 +10,16 @@ const AGREEMENT_TYPE_OPTIONS = [
   { value: 'Volume', label: 'Volume' },
 ];
 
+const AGREEMENT_METHOD_OPTIONS = [
+  { value: 'Items', label: 'Items method' },
+  { value: 'Money', label: 'Money method' },
+];
+
 const PAYMENT_METHOD_OPTIONS = [
   { value: 'CASH', label: 'Cash' },
   { value: 'BANK', label: 'Bank transfer' },
   { value: 'CHECK', label: 'Check' },
   { value: 'GCASH', label: 'GCash' },
-];
-
-const PBA_STATUS_OPTIONS = [
-  { value: 'Draft', label: 'Draft' },
-  { value: 'Approved', label: 'Approved' },
-  { value: 'On Hold', label: 'On Hold' },
-  { value: 'Terminated', label: 'Terminated' },
-  { value: 'Closed', label: 'Closed' },
 ];
 
 interface Props {
@@ -31,43 +28,41 @@ interface Props {
   m: PbaMasters;
   /** Once added, the agreement's commercial settings lock. */
   readOnly: boolean;
-  /** At a terminal status (Closed/Terminated) the status itself locks too — no outgoing moves. */
-  terminal: boolean;
 }
 
-export function AgreementSettingsCard({ draft, update, m, readOnly, terminal }: Props) {
+export function AgreementSettingsCard({ draft, update, m, readOnly }: Props) {
   const f = bind(draft, update);
   return (
-    <Section icon="tune" title="Agreement Settings">
-      {/* Status drives the lifecycle, so it stays editable until a terminal status. */}
-      <FieldStack>
-        {f.choose('status', 'Status', PBA_STATUS_OPTIONS, { readOnly: terminal })}
-      </FieldStack>
-      <fieldset disabled={readOnly} className="contents">
-        <FieldStack>
-          {f.choose('agreementType', 'Agreement type', AGREEMENT_TYPE_OPTIONS, { required: true })}
-          {f.master('paymentTermId', 'Payment terms', paymentTermDef, { clearable: true, hint: 'Defaults from the vendor.' })}
-          {f.choose('paymentMethod', 'Payment method', PAYMENT_METHOD_OPTIONS, { clearable: true })}
-          {f.lookup('shippingType', 'Shipping type', activeOptions(m.inv.shipping, (s) => s.id, (s) => s.name, draft.shippingType), { clearable: true })}
-          {f.num('settlementProbability', 'Settlement probability %', { hint: 'Estimated likelihood of full settlement (0–100).', suffix: '%' })}
-          {f.master('ownerId', 'Owner', salesEmployeeDef, { clearable: true, placeholder: 'None' })}
+    <Section icon="event_note" title="Agreement">
+      <FieldOrientationCtx.Provider value="inline">
+        <Form.Group orientation="inline">
+          {f.choose('agreementType', 'Agreement type', AGREEMENT_TYPE_OPTIONS, { required: true, readOnly })}
+          {f.choose('agreementMethod', 'Agreement method', AGREEMENT_METHOD_OPTIONS, { required: true, readOnly, hint: 'Items method tracks quantities per line; Money method tracks a total value.' })}
+          {f.master('paymentTermId', 'Payment terms', paymentTermDef, { clearable: true, hint: 'Defaults from the vendor.', readOnly })}
+          {f.choose('paymentMethod', 'Payment method', PAYMENT_METHOD_OPTIONS, { clearable: true, readOnly })}
+          {f.lookup('shippingType', 'Shipping type', activeOptions(m.inv.shipping, (s) => s.id, (s) => s.name, draft.shippingType), { clearable: true, readOnly })}
+          {f.num('settlementProbability', 'Settlement probability %', { hint: 'Estimated likelihood of full settlement (0–100).', suffix: '%', readOnly })}
+          {f.master('projectId', 'Business partner project', projectDef, { clearable: true, readOnly })}
           <ReadOnly label="Ignore prices in agreement" value={draft.ignorePrices ? 'Yes — agreement prices excluded' : 'No'} hint="Controlled by Agreement Type." />
-        </FieldStack>
-        <Flags>
-          {f.check('renewal', 'Eligible for automatic renewal')}
-        </Flags>
-        {draft.renewal
-          ? (
-            <FieldStack>
-              {f.num('reminderDays', 'Reminder (days before expiry)', { hint: 'Alert this many days before the agreement ends.', suffix: 'days' })}
-            </FieldStack>
-          )
-          : null}
-      </fieldset>
-      {/* Remarks stay editable at every status. */}
-      <FieldStack>
-        {f.area('remarks', 'Remarks', { rows: 4 })}
-      </FieldStack>
+        </Form.Group>
+      </FieldOrientationCtx.Provider>
+      <Flags>
+        {f.check('renewal', 'Eligible for automatic renewal', { readOnly })}
+      </Flags>
+      {draft.renewal
+        ? (
+          <FieldOrientationCtx.Provider value="inline">
+            <Form.Group orientation="inline">
+              {f.num('reminderDays', 'Reminder (days before expiry)', { hint: 'Alert this many days before the agreement ends.', suffix: 'days', readOnly })}
+            </Form.Group>
+          </FieldOrientationCtx.Provider>
+        )
+        : null}
+      <FieldOrientationCtx.Provider value="inline">
+        <Form.Group orientation="inline">
+          {f.text('description', 'Description', { hint: 'Free-text description of the agreement.', readOnly })}
+        </Form.Group>
+      </FieldOrientationCtx.Provider>
     </Section>
   );
 }

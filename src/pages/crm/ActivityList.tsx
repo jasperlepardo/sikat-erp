@@ -4,32 +4,32 @@ import {
   Card,
   Icon,
   Panel,
-  Select,
   Table,
   TableContent,
   TableStatus,
-  Tabs,
   Text,
   type TableColumn,
-  type TableSort,
 } from '@jasperlepardo/sikat-design-system';
 import { PageHeader } from '../../components/form/PageHeader';
 import { blankActivity, LogMenu } from '../../components/activity/ActivityTab';
 import { ActivityPanel } from '../../components/activity/ActivityPanel';
+import { choiceField, dateField, masterField, textField } from '../../components/filter/fieldKit';
+import { EMPTY_FILTER, oneRule, type FilterField } from '../../components/filter/engine';
+import { useListPresets } from '../../components/filter/useListPresets';
+import { type BuiltInView } from '../../components/filter/useListViews';
 import { fillCardClass, useListPage } from '../../components/form/DataTable';
 import { useCollection } from '../../components/form/MasterLookup';
-import { ACTIVITY_ICON, ACTIVITY_KINDS, ACTIVITY_LABEL, type Activity, type ActivityLink } from '../../mocks/activities';
-import { activities, isOpenTask, isOverdue } from '../../services/activities';
+import { ACTIVITY_ICON, ACTIVITY_LABEL, type Activity, type ActivityLink } from '../../mocks/activities';
+import { activities, isOverdue } from '../../services/activities';
 import { formatDate, todayISO } from '../../services/dates';
 import { listItems } from '../../services/items';
 import { nameIn, salesEmployees } from '../../services/partnerMasters';
 import { listPartners } from '../../services/partners';
 import { useAsync } from '../../services/useAsync';
 import { useDocTitle } from '../../services/useDocTitle';
+import { salesEmployeeDef } from '../settings/masterDefs';
 import { purchaseDocNodes } from '../purchasing/shared/documentLinks';
 import { salesDocNodes } from '../sales/shared/salesDocumentLinks';
-
-type Filter = 'all' | 'open' | 'overdue';
 
 /** A record an activity links to, as shown: its number or name, and where it opens. */
 interface Shown {
@@ -37,6 +37,15 @@ interface Shown {
   sub?: string;
   href: string;
 }
+
+const ACTIVITY_STATUSES = ['Open', 'Overdue', 'Done', 'Logged'] as const;
+
+/** Built-in views mirror the old status tabs: all, open tasks (open + overdue), overdue. */
+const ACTIVITY_VIEWS: BuiltInView[] = [
+  { id: 'all', name: 'All activities', filter: EMPTY_FILTER },
+  { id: 'open', name: 'Open tasks', filter: oneRule('status', 'in', ['Open', 'Overdue']) },
+  { id: 'overdue', name: 'Overdue', filter: oneRule('status', 'in', ['Overdue']) },
+];
 
 const statusOf = (a: Activity, today: string) =>
   a.kind !== 'task' ? { label: 'Logged', intent: 'default' as const }
@@ -49,13 +58,10 @@ export function ActivityList() {
   useDocTitle('Activities');
   const navigate = useNavigate();
   const rows = useCollection(activities);
+  const all = useMemo(() => [...(rows ?? [])], [rows]);
   const employees = useCollection(salesEmployees);
-  const [filter, setFilter] = useState<Filter>('all');
-  const [kind, setKind] = useState('');
-  const [owner, setOwner] = useState('');
   const [query, setQuery] = useState('');
   const { resetPage, paginate } = useListPage();
-  const [sort, setSort] = useState<TableSort | null>({ key: 'date', direction: 'desc' });
   const [editing, setEditing] = useState<{ value: Activity; isNew: boolean } | null>(null);
 
   // Names and numbers for what activities link to, so the list never shows a raw id.
@@ -73,18 +79,40 @@ export function ActivityList() {
   const linkOf = (l: ActivityLink) => lookup?.get(`${l.kind}:${l.id}`);
   const partnerOf = (a: Activity) => (a.partnerId ? lookup?.get(`BP:${a.partnerId}`) : undefined);
 
+  const fields = useMemo<FilterField<Activity>[]>(
+    () => [
+      textField<Activity>('subject', 'Subject', (a) => a.subject),
+      textField<Activity>('notes', 'Notes', (a) => a.notes),
+      choiceField<Activity>('kind', 'Type', ACTIVITY_LABEL, (a) => a.kind),
+      choiceField<Activity>('status', 'Status', ACTIVITY_STATUSES, (a) => statusOf(a, today).label),
+      masterField<Activity>('owner', 'Owner', salesEmployeeDef, (a) => a.ownerId),
+      textField<Activity>('partner', 'Business partner', (a) => partnerOf(a)?.label),
+      dateField<Activity>('date', 'Date / due', (a) => a.dueDate || a.date),
+    ],
+    // partnerOf reads from lookup; rebuild the fields once names resolve.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [today, lookup],
+  );
+
+  const presets = useListPresets({
+    list: 'activities',
+    fields,
+    builtIns: ACTIVITY_VIEWS,
+    defaultSort: { key: 'date', direction: 'desc' },
+    rows: rows ? all : undefined,
+    onChange: resetPage,
+  });
+  const { sort, setSort } = presets;
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const list = (rows ?? []).filter(
+    const list = presets.apply(all).filter(
       (a) =>
-        (filter === 'all' || (filter === 'open' ? isOpenTask(a) : isOverdue(a, today))) &&
-        (!kind || a.kind === kind) &&
-        (!owner || a.ownerId === owner) &&
-        (!q ||
-          [a.subject, a.notes, partnerOf(a)?.label, ...a.links.map((l) => linkOf(l)?.label)]
-            .join(' ')
-            .toLowerCase()
-            .includes(q)),
+        !q ||
+        [a.subject, a.notes, partnerOf(a)?.label, ...a.links.map((l) => linkOf(l)?.label)]
+          .join(' ')
+          .toLowerCase()
+          .includes(q),
     );
     if (!sort) return list;
     const dir = sort.direction === 'asc' ? 1 : -1;
@@ -95,13 +123,7 @@ export function ActivityList() {
       : String(a[sort.key as keyof Activity] ?? '');
     return [...list].sort((a, b) => value(a).localeCompare(value(b)) * dir);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows, filter, kind, owner, query, sort, lookup, employees]);
-
-  const counts = {
-    all: rows?.length ?? 0,
-    open: rows?.filter(isOpenTask).length ?? 0,
-    overdue: rows?.filter((a) => isOverdue(a, today)).length ?? 0,
-  };
+  }, [all, presets.filter, query, sort, lookup, employees]);
 
   const columns: TableColumn<Activity>[] = [
     {
@@ -180,48 +202,11 @@ export function ActivityList() {
           resetPage();
         }}
         icon="event"
-        title="Activities"
+        title={presets.menu}
         actions={<LogMenu onPick={(k) => setEditing({ value: blankActivity(k, undefined), isNew: true })} />}
       />
       <Panel.Body className="flex flex-col gap-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <Tabs
-            value={filter}
-            onValueChange={(v) => {
-              setFilter(v as Filter);
-              resetPage();
-            }}
-            items={[
-              { value: 'all', label: 'All', badge: String(counts.all) },
-              { value: 'open', label: 'Open tasks', badge: String(counts.open) },
-              { value: 'overdue', label: 'Overdue', badge: String(counts.overdue) },
-            ]}
-          />
-          <div className="ml-auto flex flex-wrap gap-2">
-            <div className="w-44">
-              <Select
-                aria-label="Type"
-                options={[{ value: '', label: 'All types' }, ...ACTIVITY_KINDS.map((k) => ({ value: k, label: ACTIVITY_LABEL[k] }))]}
-                value={kind}
-                onValueChange={(v) => {
-                  setKind(v ?? '');
-                  resetPage();
-                }}
-              />
-            </div>
-            <div className="w-52">
-              <Select
-                aria-label="Owner"
-                options={[{ value: '', label: 'All owners' }, ...(employees ?? []).map((e) => ({ value: e.id, label: e.name }))]}
-                value={owner}
-                onValueChange={(v) => {
-                  setOwner(v ?? '');
-                  resetPage();
-                }}
-              />
-            </div>
-          </div>
-        </div>
+        {presets.bar(null)}
         <Card className={fillCardClass(onPage.length)}>
           {!rows || !lookup ? (
             <Text tone="muted" className="p-4">Loading activities…</Text>
@@ -237,12 +222,11 @@ export function ActivityList() {
               pagination={pagination}
             />
           ) : (
-            <Text tone="muted" className="p-4">
-              {query || kind || owner ? 'Nothing matches.' : filter === 'all' ? 'No activities yet.' : filter === 'open' ? 'No open tasks.' : 'Nothing overdue.'}
-            </Text>
+            <Text tone="muted" className="p-4">{rows.length ? 'Nothing matches.' : 'No activities yet.'}</Text>
           )}
         </Card>
       </Panel.Body>
+      {presets.panel}
       {editing ? <ActivityPanel value={editing.value} isNew={editing.isNew} onClose={() => setEditing(null)} /> : null}
     </Panel>
   );

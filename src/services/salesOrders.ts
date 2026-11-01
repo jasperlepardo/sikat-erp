@@ -63,11 +63,42 @@ export function soTotals(
   const beforeDiscount = round2(so.lines.reduce((n, l) => n + lineNet(l), 0));
   const discount = round2((beforeDiscount * so.discountPct) / 100);
   const freight = SALES_SETTINGS.manageFreightInDocuments ? round2(so.freight) : 0;
-  const tax = round2(so.lines.reduce((n, l) => n + lineTax(l, rateOf(l.taxCode), so.discountPct), 0) + (freight * rateOf(so.freightTaxCode)) / 100);
+  // Per-line + per-freight rounding (matches the per-line VAT arJournal posts, so footer tax = posted VAT).
+  const tax = round2(so.lines.reduce((n, l) => n + lineTax(l, rateOf(l.taxCode), so.discountPct), 0) + round2((freight * rateOf(so.freightTaxCode)) / 100));
   const raw = round2(beforeDiscount - discount + freight + tax);
   const step = so.rounding ? ROUNDING_STEP[rule] : 0;
   const total = step ? Math.round(raw / step) * step : raw;
   return { beforeDiscount, discount, freight, tax, rounding: round2(total - raw), total: round2(total) };
+}
+
+export interface VatBreakdown {
+  vatable: number;
+  zeroRated: number;
+  exempt: number;
+}
+
+/**
+ * The BIR invoice breakdown of the taxable base (after the document discount) into VATable,
+ * Zero-rated and VAT-exempt sales. Only meaningful for a VAT-registered seller with a mix of
+ * categories — a VAT-registered PH sales invoice must show the split.
+ */
+export function soVatBreakdown(
+  so: Pick<SalesOrder, 'lines' | 'discountPct'>,
+  codes: readonly TaxCode[],
+  rateOf: (taxCode: string) => number,
+): VatBreakdown {
+  const factor = 1 - so.discountPct / 100;
+  const categoryOf = (code: string) => codes.find((c) => c.code === code)?.category;
+  let vatable = 0;
+  let zeroRated = 0;
+  let exempt = 0;
+  for (const l of so.lines) {
+    const net = lineNet(l) * factor;
+    if (categoryOf(l.taxCode) === 'Zero-rated') zeroRated += net;
+    else if (rateOf(l.taxCode) > 0) vatable += net;
+    else exempt += net; // an Exempt (or any other 0% VAT) line is a VAT-exempt sale
+  }
+  return { vatable: round2(vatable), zeroRated: round2(zeroRated), exempt: round2(exempt) };
 }
 
 export interface SoWithholdingLine {

@@ -22,19 +22,22 @@ export function PayVendorRows({ draft, update, errors, m, fx, readOnly }: PaySec
   const code = draft.currency;
   const foreign = code !== 'PHP';
 
+  const selectColumn: TableColumn<PaymentRow> = {
+    key: 'selected',
+    header: '',
+    cell: (r) => (
+      <Checkbox
+        aria-label={`Pay ${r.docNo}`}
+        checked={r.selected}
+        disabled={blocked(r)}
+        onChange={(e) => patch(r.id, { selected: e.currentTarget.checked, amount: e.currentTarget.checked ? r.balanceDue : 0 })}
+      />
+    ),
+  };
+
   const columns: TableColumn<PaymentRow>[] = [
-    {
-      key: 'selected',
-      header: '',
-      cell: (r) => (
-        <Checkbox
-          aria-label={`Pay ${r.docNo}`}
-          checked={r.selected}
-          disabled={readOnly || blocked(r)}
-          onChange={(e) => patch(r.id, { selected: e.currentTarget.checked, amount: e.currentTarget.checked ? r.balanceDue : 0 })}
-        />
-      ),
-    },
+    // A posted payment can't be re-ticked, so drop the pick column entirely rather than leave an empty cell.
+    ...(readOnly ? [] : [selectColumn]),
     {
       key: 'docNo',
       header: 'Document',
@@ -112,16 +115,13 @@ export function PayVendorRows({ draft, update, errors, m, fx, readOnly }: PaySec
   ];
 
   return (
-    <div className="flex flex-col gap-2">
+    <>
       <DataTable
         variant="card"
         noPagination
         icon="receipt_long"
         title="Open documents"
-        description={
-          errors.rows ??
-          `${draft.payeeName ? `${draft.payeeName}'s` : "The vendor's"} open A/P invoices and down payment requests in ${code}, oldest due first. Tick what this payment settles; lower Total payment to pay part. * = overdue or blocked.`
-        }
+        description={errors.rows}
         rows={rows}
         getRowId={(r) => r.id}
         columns={columns}
@@ -161,7 +161,7 @@ export function PayVendorRows({ draft, update, errors, m, fx, readOnly }: PaySec
       <Text variant="small" tone="muted" className="px-1">
         Overall amount: {code} {formatAmount(overallAmount(draft))}
       </Text>
-    </div>
+    </>
   );
 }
 

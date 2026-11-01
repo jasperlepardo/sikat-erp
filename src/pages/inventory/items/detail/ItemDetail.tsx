@@ -430,7 +430,7 @@ function ItemForm() {
               />
 
               <div className="grid gap-4 lg:min-h-0 lg:flex-1 lg:grid-cols-12 lg:grid-rows-1">
-                <aside className="flex flex-col gap-2 lg:col-span-3 lg:min-h-0 lg:overflow-y-auto">
+                <aside className="flex flex-col gap-3 lg:col-span-3 lg:min-h-0 lg:overflow-y-auto">
                   <Section icon="inventory_2" title="Item">
                     <FieldStack>
                       {isNew ? (
@@ -613,7 +613,7 @@ function ItemForm() {
                   />
                 </aside>
 
-                <div className="flex min-w-0 flex-col gap-2 lg:col-span-9 lg:min-h-0 lg:overflow-y-auto">
+                <div className="flex min-w-0 flex-col gap-3 lg:col-span-9 lg:min-h-0 lg:overflow-y-auto">
                   {draft.parentItemId && parentItem && (
                     <div className="flex items-center gap-2 rounded-xl border border-[var(--color-border-default)] text-body px-3 py-2 text-sm">
                       <Icon size={16} className="shrink-0 text-muted">info</Icon>

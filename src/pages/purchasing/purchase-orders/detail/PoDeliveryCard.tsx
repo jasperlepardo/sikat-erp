@@ -1,5 +1,5 @@
 import { Text } from '@jasperlepardo/sikat-design-system';
-import { FieldStack, Flags, Section, bind } from '../../../../components/form/fields';
+import { FieldOrientationCtx, Form, Flags, Section, bind } from '../../../../components/form/fields';
 import { LANGUAGES } from '../../../../mocks/purchaseOrders';
 import { getPurchasingSettings } from '../../../../services/purchaseOrders';
 import { activeOptions } from '../../../../services/inventoryMasters';
@@ -10,20 +10,22 @@ export function PoDeliveryCard({ draft, update, m, ctx }: PoTabProps) {
   const warehouses = [...new Set(draft.lines.map((l) => l.warehouse).filter(Boolean))];
   return (
     <Section icon="route" title="Delivery">
-      <FieldStack>
-        {f.lookup(
-          'shippingType',
-          'Shipping type',
-          activeOptions(m.inv.shipping, (s) => s.id, (s) => s.name, draft.shippingType),
-          { clearable: true, hint: 'Defaults from the vendor.' },
-        )}
-        {getPurchasingSettings().multiLanguageSupport
-          ? f.pick('language', 'Language', LANGUAGES, { hint: "Prints the PO in the vendor's language." })
-          : null}
-      </FieldStack>
+      <FieldOrientationCtx.Provider value="inline">
+        <Form.Group orientation="inline">
+          {f.lookup(
+            'shippingType',
+            'Shipping type',
+            activeOptions(m.inv.shipping, (s) => s.id, (s) => s.name, draft.shippingType),
+            { clearable: true, hint: 'Defaults from the vendor.', readOnly: ctx.readOnly },
+          )}
+          {getPurchasingSettings().multiLanguageSupport
+            ? f.pick('language', 'Language', LANGUAGES, { hint: "Prints the PO in the vendor's language.", readOnly: ctx.readOnly })
+            : null}
+        </Form.Group>
+      </FieldOrientationCtx.Provider>
       <Flags>
-        {f.check('splitByWarehouse', 'Split purchase order', { disabled: ctx.added })}
-        {f.check('approved', 'Approved')}
+        {f.check('splitByWarehouse', 'Split purchase order', { readOnly: ctx.added })}
+        {f.check('approved', 'Approved', { readOnly: ctx.readOnly })}
       </Flags>
       <Text variant="small" tone="muted" className="mt-2">
         {ctx.added

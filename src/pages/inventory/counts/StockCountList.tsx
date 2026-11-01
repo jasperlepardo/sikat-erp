@@ -90,21 +90,25 @@ function useListState<T>({ sort, setSort }: { sort: TableSort | null; setSort: (
       return (x < y ? -1 : x > y ? 1 : 0) * dir;
     });
   };
-  const table = (caption: string, columns: TableColumn<T>[], rows: T[] | undefined, getRowId: (r: T) => string) => {
+  const table = (caption: string, columns: TableColumn<T>[], rows: T[] | undefined, getRowId: (r: T) => string, empty: ReactNode) => {
     if (!rows) return <Card><Text tone="muted" className="p-4">Loading…</Text></Card>;
     const { visible, pagination } = paginate(rows);
     return (
       <Card className={fillCardClass(visible.length)}>
-        <Table
-          caption={caption}
-          columns={columns}
-          rows={visible}
-          getRowId={getRowId}
-          sort={sort}
-          onSortChange={setSort}
-          layout="fill"
-          pagination={pagination}
-        />
+        {rows.length ? (
+          <Table
+            caption={caption}
+            columns={columns}
+            rows={visible}
+            getRowId={getRowId}
+            sort={sort}
+            onSortChange={setSort}
+            layout="fill"
+            pagination={pagination}
+          />
+        ) : (
+          <Text tone="muted" className="p-4">{empty}</Text>
+        )}
       </Card>
     );
   };
@@ -195,7 +199,7 @@ export function StockCountList() {
       filters={presets.bar(null)}
       panel={presets.panel}
     >
-      {list.table(cap(COUNT_NOUN.many), columns, rows, (c) => c.id)}
+      {list.table(cap(COUNT_NOUN.many), columns, rows, (c) => c.id, <>No {COUNT_NOUN.many} yet. Create one with New {COUNT_NOUN.one}.</>)}
     </CountsShell>
   );
 }
@@ -259,7 +263,7 @@ export function InventoryPostingList() {
       filters={presets.bar(null)}
       panel={presets.panel}
     >
-      {list.table(cap(POSTING_NOUN.many), columns, rows, (p) => p.id)}
+      {list.table(cap(POSTING_NOUN.many), columns, rows, (p) => p.id, <>No {POSTING_NOUN.many} yet. Post a stock count, or create one with New {POSTING_NOUN.one}.</>)}
     </CountsShell>
   );
 }

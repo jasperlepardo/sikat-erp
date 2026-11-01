@@ -129,7 +129,9 @@ export function JournalVoucherList() {
         ) : null}
         {presets.bar(null)}
         <Card className={fillCardClass(onPage.length)}>
-          {vouchers ? (
+          {!vouchers ? (
+            <Text tone="muted" className="p-4">Loading journal vouchers…</Text>
+          ) : vouchers.length ? (
             <Table
               caption={cap(JV_NOUN.many)}
               columns={columns}
@@ -141,7 +143,7 @@ export function JournalVoucherList() {
               pagination={pagination}
             />
           ) : (
-            <Text tone="muted" className="p-4">Loading journal vouchers…</Text>
+            <Text tone="muted" className="p-4">No {JV_NOUN.many} yet. Create one with New {JV_NOUN.one}.</Text>
           )}
         </Card>
       </Panel.Body>

@@ -1,17 +1,19 @@
 import { Button, Combobox, Icon, Text, TextField } from '@jasperlepardo/sikat-design-system';
 import { type DocLinesProps } from '../../../../components/form/docLines/DocLines';
+import { GR_NOUN } from '../../paths';
+import { cap } from '../../../../components/form/noun';
 import { purchCols, pick } from '../../shared/purchCols';
 import { costAccountOptions, lineHelpers, lineGlAccount, itemConfig, itemVendorOptions } from '../../shared/purchLineHelpers';
 import { countryDef, departmentDef, priceListDef, warrantyTemplateDef } from '../../../settings/masterDefs';
 import { isPriceListValid } from '../../../../services/priceLists';
 import { newGrLine, type GrLine } from '../../../../mocks/goodsReceipts';
 import { itemsPerUom } from '../../../../mocks/items';
-import { formatDate } from '../../../../services/dates';
 import { receivesFromVendors } from '../../../../mocks/itemMasters';
 import { getPurchasingSettings, lineNet, openQty, priceAfterDiscount } from '../../../../services/purchaseOrders';
 import { grInventoryQty, grOpenQty, grTotals } from '../../../../services/goodsReceipts';
 import { binOptions } from '../../../inventory/transfers/TransferLines';
 import { PurchTotalsFooter } from '../../shared/PurchTotalsFooter';
+import { CurrencyToggle, type PurchaseView } from '../../shared/purchaseView';
 import { defaultBin, lineFromItem, linePricing, type GrSectionProps } from './types';
 import { taxCodeOptions } from '../../../../services/taxCodeOptions';
 import { round2 } from '../../../../services/num';
@@ -23,10 +25,16 @@ export interface GrDocProps extends GrSectionProps {
 }
 
 /** Builds the Goods Receipt (GRPO) contents descriptor for the shared <DocLines>. */
-export function grDoc({ draft, update, errors, m, ctx, onCopyClick, copyableCount }: GrDocProps): DocLinesProps<GrLine> {
+export function grDoc({ draft, update, errors, m, ctx, onCopyClick, copyableCount }: GrDocProps, view: PurchaseView): DocLinesProps<GrLine> {
   const lines = draft.lines;
+  // Viewing in PHP is a read-only conversion: the prices stay in the document currency.
+  const converted = view.converted;
+  const locked = ctx.readOnly || converted;
   const docCurrency = m.currencies.find((c) => c.code === draft.currency);
   const totals = grTotals(draft, ctx.rateOf, docCurrency?.rounding, ctx.isReverseCharge);
+  const vTotals = converted
+    ? { ...totals, beforeDiscount: view.convert(totals.beforeDiscount), discount: view.convert(totals.discount), freight: view.convert(totals.freight), rounding: view.convert(totals.rounding ?? 0), tax: view.convert(totals.tax), total: view.convert(totals.total), reverseCharge: totals.reverseCharge ? view.convert(totals.reverseCharge) : undefined }
+    : totals;
   const showFreight = getPurchasingSettings().manageFreightInDocuments;
   const showRounding = getPurchasingSettings().roundingMethod === 'By Currency';
 
@@ -68,7 +76,7 @@ export function grDoc({ draft, update, errors, m, ctx, onCopyClick, copyableCoun
   // The per-field rendering lives in the shared registry; GR supplies its data/services
   // here and picks which columns + default visibility. Order mirrors PR / PQ / PO.
   const cols = purchCols<GrLine>({
-    patch, readOnly: ctx.readOnly, currency: draft.currency,
+    patch, readOnly: locked, currency: view.code,
     glAccountOf: (l) => lineGlAccount(itemOf(l), l, m.inv),
     glAccountOptions: (l) => costAccountOptions(m.inv.accounts, l.glAccount),
     lineNet,
@@ -128,14 +136,15 @@ export function grDoc({ draft, update, errors, m, ctx, onCopyClick, copyableCoun
     prefsKey: 'gr',
     cardHeader: true,
     columns,
-    rows: lines,
+    rows: converted ? lines.map((l) => ({ ...l, unitPrice: view.convert(l.unitPrice) })) : lines,
     icon: 'list_alt',
-    title: 'Contents',
-    description: errors.lines ?? `What arrived, in the purchasing unit. Prices are in ${draft.currency}${draft.currency === 'PHP' ? '' : `; totals in PHP at ${ctx.fx ? `${ctx.fx} (${ctx.fxSource}, ${formatDate(ctx.fxDate)})` : '—'}`}.`,
+    title: cap(GR_NOUN.lineLabel!),
+    actions: <CurrencyToggle choices={view.choices} value={view.shown} onChange={view.onChange} />,
+    description: errors.lines ?? view.note,
     sortableKeys: ['item'],
     sortValue: (l, key) => (key === 'item' ? l.itemNo : String(l[key as keyof GrLine] ?? '')).toLowerCase(),
-    readOnly: ctx.readOnly,
-    onRemove: (picked) => update({ lines: lines.filter((l) => !picked.includes(l)) }),
+    readOnly: locked,
+    onRemove: (picked) => update({ lines: lines.filter((l) => !picked.some((p) => p.id === l.id)) }),
     item: itemConfig(h, {
       resolve: (l) => { const it = itemOf(l); return it ? { itemNo: it.itemNo, name: l.name || it.name } : null; },
       onPick: (l, id) => { if (id) pickItem(l, id); else patch(l.id, { itemId: '', itemNo: '', name: '', description: '' }); },
@@ -153,7 +162,7 @@ export function grDoc({ draft, update, errors, m, ctx, onCopyClick, copyableCoun
             : 'No open purchase orders from this vendor. Add lines by hand.'}
       </Text>
     ),
-    header: ctx.readOnly ? undefined : (
+    header: locked ? undefined : (
       <div className="flex justify-end px-2">
         <Button type="button" size="small" variant="outline" leadingIcon={<Icon size={16}>content_copy</Icon>} disabled={!copyableCount} onClick={onCopyClick}>
           Copy from PO
@@ -162,9 +171,9 @@ export function grDoc({ draft, update, errors, m, ctx, onCopyClick, copyableCoun
     ),
     footer: (
       <PurchTotalsFooter
-        totals={totals}
-        currency={draft.currency}
-        readOnly={ctx.readOnly}
+        totals={vTotals}
+        currency={view.code}
+        readOnly={locked}
         discountPct={draft.discountPct}
         onDiscountChange={(discountPct) => update({ discountPct })}
         freightInput={showFreight ? (
@@ -188,7 +197,6 @@ export function grDoc({ draft, update, errors, m, ctx, onCopyClick, copyableCoun
           </div>
         ) : undefined}
         roundingLabel={showRounding ? `Rounding (${docCurrency?.rounding ?? 'No rounding'})` : undefined}
-        fx={draft.currency !== 'PHP' ? { rate: ctx.fx, source: ctx.fxSource } : undefined}
       />
     ),
   };

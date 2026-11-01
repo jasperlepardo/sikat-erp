@@ -7,19 +7,19 @@ import {
   Form,
   FormField,
   Link,
-  List,
   Panel,
   Select,
   Text,
 } from '@jasperlepardo/sikat-design-system';
 import { PageHeader } from '../../../components/form/PageHeader';
-import { Fields, ReadOnly, Section, bind, type Errors } from '../../../components/form/fields';
-import { StatusField } from '../../../components/form/StatusField';
+import { JournalPreview } from '../../../components/form/JournalPreview';
+import { Fields, FieldOrientationCtx, ReadOnly, Section, bind, type Errors } from '../../../components/form/fields';
+import { SeriesNoFields } from '../../../components/form/SeriesNoFields';
 import { type MoreMenuItem } from '../../../components/form/MoreMenu';
 import { DetailActions } from '../../../components/form/DetailActions';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../components/form/ProblemsAlert';
 import { CURRENT_USER_ID } from '../../../mocks/common';
-import { accountText, type Account } from '../../../mocks/chartOfAccounts';
+import { type Account } from '../../../mocks/chartOfAccounts';
 import type { ItemGroup } from '../../../mocks/itemMasters';
 import {
   DEFAULT_JOURNAL_REMARK,
@@ -27,8 +27,6 @@ import {
   blankTransfer,
   newTransferLine,
   type InventoryTransfer,
-  TRANSFER_STATUSES,
-  type TransferStatus,
 } from '../../../mocks/inventoryTransfers';
 import { formatAmount } from '../../../services/format';
 import { formatDate, todayISO } from '../../../services/dates';
@@ -37,7 +35,6 @@ import { isValidToday, listItems } from '../../../services/items';
 import {
   TransferPostError,
   getTransfer,
-  inventoryAccountFor,
   listTransfers,
   postTransfer,
   saveTransferDraft,
@@ -153,14 +150,6 @@ function TransferForm() {
   const whOf = (code: string) => m.warehouses.find((w) => w.code === code);
   const to = whOf(draft.toWarehouse);
   const journal = transferJournal(draft, m.items, m.groups);
-  const sharedAccounts = [
-    ...new Set(
-      draft.lines.flatMap((l) => {
-        const item = m.items.find((i) => i.id === l.itemId);
-        return item ? [inventoryAccountFor(item, draft.fromWarehouse, m.groups)] : [];
-      }),
-    ),
-  ];
 
   const update = (patch: Partial<TransferDraft>) => setDraft({ ...draft, ...patch });
   const h = bind(draft, update);
@@ -261,9 +250,6 @@ function TransferForm() {
     navigate(`${TRANSFER_LIST_PATH}/new`, { state: { copyFrom: copy } });
   };
 
-  // What picking each status in the Status dropdown does; the others can't be reached from here.
-  const statusMoves: Partial<Record<TransferStatus, () => void>> = draft.status === 'Draft' ? { Posted: () => submit(null) } : {};
-
   const menu: MoreMenuItem[] = [
     ...(posted && destinationsOf.length === 1 ? [{ label: 'Transfer back', icon: 'undo', onSelect: reverse }] : []),
     ...(!isNew ? [{ label: 'Duplicate', icon: 'content_copy', onSelect: duplicate }] : []),
@@ -354,31 +340,39 @@ function TransferForm() {
               </Section>
 
               <Section icon="tag" title="Document">
-                <Fields>
-                  <ReadOnly
-                    label="No."
-                    value={posted ? transferNumber(draft) : `${TRANSFER_SERIES.find((s) => s.id === draft.seriesId)?.name ?? 'Primary'} · next number`}
-                    hint={posted ? undefined : 'Assigned from the series when the transfer is posted.'}
-                  />
-                  <StatusField statuses={TRANSFER_STATUSES} intents={TRANSFER_STATUS_INTENT} value={draft.status} moves={statusMoves} hint="Draft until posted. Posting moves the stock and can't be undone." />
-                  {baseRequest ? (
-                    <ReadOnly
-                      label="Copied from"
-                      value={<Link href={`#${TRANSFER_REQUEST_LIST_PATH}/${baseRequest.id}`}>{transferRequestNumber(baseRequest)}</Link>}
-                      hint={posted ? 'The transfer request this fulfilled.' : "Posting lowers the request's open quantities."}
-                    />
-                  ) : null}
-                  {h.date('postingDate', 'Posting date', {
-                    required: true,
-                    error: errors.postingDate,
-                    hint: 'When the stock movement is recorded. Must be in an open period.',
-                  })}
-                  {h.date('documentDate', 'Document date', {
-                    required: true,
-                    error: errors.documentDate,
-                    hint: 'Usually the same as the posting date.',
-                  })}
-                </Fields>
+                <FieldOrientationCtx.Provider value="inline">
+                  <Form.Group orientation="inline">
+                    {posted ? null : (
+                      <SeriesNoFields
+                        series={TRANSFER_SERIES}
+                        seriesId={draft.seriesId}
+                        docNum={draft.docNum}
+                        number={transferNumber(draft)}
+                        noun="Transfer"
+                        readOnly
+                        onSeries={(seriesId) => update({ seriesId })}
+                        onNumber={(docNum) => update({ docNum })}
+                      />
+                    )}
+                    {baseRequest ? (
+                      <ReadOnly
+                        label="Copied from"
+                        value={<Link href={`#${TRANSFER_REQUEST_LIST_PATH}/${baseRequest.id}`}>{transferRequestNumber(baseRequest)}</Link>}
+                        hint={posted ? 'The transfer request this fulfilled.' : "Posting lowers the request's open quantities."}
+                      />
+                    ) : null}
+                    {h.date('postingDate', 'Posting date', {
+                      required: true,
+                      error: errors.postingDate,
+                      hint: 'When the stock movement is recorded. Must be in an open period.',
+                    })}
+                    {h.date('documentDate', 'Document date', {
+                      required: true,
+                      error: errors.documentDate,
+                      hint: 'Usually the same as the posting date.',
+                    })}
+                  </Form.Group>
+                </FieldOrientationCtx.Provider>
               </Section>
             </div>
 
@@ -391,7 +385,6 @@ function TransferForm() {
                 <fieldset disabled={posted} className="contents">
                   {h.master('salesEmployeeId', 'Sales employee', salesEmployeeDef)}
                 </fieldset>
-                {h.text('journalRemark', 'Journal remarks', { hint: 'Shown on the journal entry, if one is made.' })}
                 {h.area('remarks', 'Remarks', {
                   rows: 3,
                   hint: 'Why the stock is moving, and the transfer request no. if this fulfils one. Can be changed after posting.',
@@ -399,29 +392,11 @@ function TransferForm() {
               </Fields>
             </Section>
 
-            <Section icon="account_balance" title="Journal entry">
-              {journal.length ? (
-                <List.Group divider>
-                  {journal.map((j) => (
-                    <List.Item
-                      key={j.account}
-                      title={accountText(j.account, m.accounts)}
-                      content={
-                        <span className="whitespace-nowrap tabular-nums">
-                          {j.debit ? `Dr ${formatAmount(j.debit)}` : `Cr ${formatAmount(j.credit)}`}
-                        </span>
-                      }
-                    />
-                  ))}
-                </List.Group>
-              ) : (
-                <Text variant="small" tone="muted">
-                  {sharedAccounts.length
-                    ? `No journal entry: both warehouses post to ${sharedAccounts.map((a) => accountText(a, m.accounts)).join(', ')}, so the value only moves between warehouse records.`
-                    : 'Made only when the two warehouses use different inventory accounts. Add lines to see it.'}
-                </Text>
-              )}
-            </Section>
+            <JournalPreview
+              journal={journal}
+              accounts={m.accounts}
+              remarks={h.text('journalRemark', 'Journal remark', { hint: 'Shown on the journal entry, if one is made.' })}
+            />
           </div>
         </Panel.Body>
       </Panel>

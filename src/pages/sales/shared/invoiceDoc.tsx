@@ -2,6 +2,9 @@ import { Button, Icon, Link, Text } from '@jasperlepardo/sikat-design-system';
 import { type DocLinesProps } from '../../../components/form/docLines/DocLines';
 import { pick, type Vis } from '../../../components/form/docLines/pick';
 import { salesCols } from './salesCols';
+import { CurrencyToggle, type SalesView } from './salesView';
+import { grossPriceBinding, priceModeEnabled, priceModeHeader } from '../../../components/form/priceMode';
+import { type PriceMode } from '../../../mocks/common';
 import { lineHelpers, itemConfig } from './salesLineHelpers';
 import { itemsPerUom } from '../../../mocks/items';
 import { newArLine, type ArLine } from '../../../mocks/arInvoices';
@@ -19,7 +22,8 @@ import { taxCodeOptions } from '../../../services/taxCodeOptions';
 import { activeOptions } from '../../../services/inventoryMasters';
 import { formatAmount } from '../../../services/format';
 import { round2 } from '../../../services/num';
-import { DN_LIST_PATH, SO_LIST_PATH } from '../paths';
+import { DN_LIST_PATH, SO_LIST_PATH, AR_NOUN } from '../paths';
+import { cap } from '../../../components/form/noun';
 import { asSoDraft } from '../deliveries/detail/types';
 import { lineFromItem, linePricing, proposedServiceTaxCode } from '../sales-orders/detail/types';
 import type { ArSectionProps } from '../invoices/detail/types';
@@ -38,15 +42,18 @@ export type InvoiceDocProps =
   | (RiSectionProps & { kind: 'RI'; onCopyClick: () => void; canCopy: boolean });
 
 /** Builds the A/R Invoice (`kind="AR"`) or Reserve Invoice (`"RI"`) contents descriptor for <DocLines>. */
-export function invoiceDoc(props: InvoiceDocProps): DocLinesProps<InvoiceLine> {
+export function invoiceDoc(props: InvoiceDocProps, view: SalesView): DocLinesProps<InvoiceLine> {
   const { kind, errors, m, ctx, onCopyClick, canCopy } = props;
   const ar = kind === 'AR';
-  const draft = props.draft as unknown as { docType: string; currency: string; postingDate: string; customerId: string; lines: InvoiceLine[] };
+  const draft = props.draft as unknown as { docType: string; currency: string; postingDate: string; customerId: string; lines: InvoiceLine[]; priceMode?: PriceMode };
   const update = props.update as (patch: { lines: InvoiceLine[] }) => void;
+  const setPriceMode = props.update as (patch: { priceMode: PriceMode }) => void;
   const newLine = (patch: Partial<InvoiceLine>): InvoiceLine => (ar ? newArLine(patch as Partial<InvoiceLine>) : newRiLine(patch as Partial<RiLine>));
   const withholds = customerWithholds(ctx.customer);
   const service = draft.docType === 'Service';
   const ro = ctx.readOnly;
+  // Showing PHP is a read-only view: the prices stay in the document currency, only displayed converted.
+  const linesLocked = ro || view.converted;
   const lines = draft.lines;
   const so = asSoDraft(draft as never);
 
@@ -77,8 +84,8 @@ export function invoiceDoc(props: InvoiceDocProps): DocLinesProps<InvoiceLine> {
 
   const cols = salesCols<InvoiceLine>({
     patch,
-    readOnly: ro,
-    currency: draft.currency,
+    readOnly: linesLocked,
+    currency: view.code,
     fx: ctx.fx,
     invalid: (l, f) => Boolean(err(l, f)),
     lineKind: (l) => { const it = itemOf(l); return it ? (it.inventoryItem ? 'Item' : 'Service') : ''; },
@@ -129,6 +136,7 @@ export function invoiceDoc(props: InvoiceDocProps): DocLinesProps<InvoiceLine> {
       },
     },
     gross: { get: grossAfter, onChange: setGrossAfter },
+    grossPrice: priceModeEnabled() ? grossPriceBinding(draft.priceMode ?? 'Net', rate, patch) : undefined,
     tax: {
       options: (l) => taxCodeOptions(m.tax.codes, 'Sales', l.taxCode),
       value: (l) => l.taxCode,
@@ -174,26 +182,33 @@ export function invoiceDoc(props: InvoiceDocProps): DocLinesProps<InvoiceLine> {
     </div>
   );
 
+  const displayRows = (rows: InvoiceLine[]) => (view.converted ? rows.map((l) => ({ ...l, unitPrice: view.convert(l.unitPrice) })) : rows);
   const base: DocLinesProps<InvoiceLine> = {
     prefsKey: ar ? 'ar-si' : 'ri-si',
     cardHeader: true,
     columns,
-    rows: service ? lines : lines.filter((l) => !!l.itemId),
+    rows: displayRows(service ? lines : lines.filter((l) => !!l.itemId)),
     icon: 'list_alt',
-    title: 'Contents',
-    description: errors.lines ?? `Items billed, in the sales unit. Prices are in ${draft.currency}.`,
+    title: cap(AR_NOUN.lineLabel!),
+    actions: <CurrencyToggle choices={view.choices} value={view.shown} onChange={view.onChange} />,
+    description: errors.lines ?? view.note,
     sortableKeys: ['item'],
     sortValue: (l, key) => (key === 'item' ? l.itemNo : String(l[key as keyof InvoiceLine] ?? '')).toLowerCase(),
-    readOnly: ro,
-    onRemove: (picked) => update({ lines: lines.filter((l) => !picked.includes(l)) }),
+    readOnly: linesLocked,
+    onRemove: (picked) => update({ lines: lines.filter((l) => !picked.some((p) => p.id === l.id)) }),
     empty: <Text variant="small" tone="muted">No lines yet.</Text>,
-    header: ro ? undefined : copyButton,
+    header: linesLocked ? undefined : (
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        {priceModeEnabled() ? priceModeHeader(`${ar ? 'ar' : 'ri'}-price-mode`, draft.priceMode ?? 'Net', (mode) => setPriceMode({ priceMode: mode })) : <span />}
+        {copyButton}
+      </div>
+    ),
   };
 
   if (service) {
     return {
       ...base,
-      addRow: ro ? undefined : (
+      addRow: linesLocked ? undefined : (
         <Link leadingIcon={<Icon size={20}>add</Icon>} disabled={!draft.customerId} onClick={() => update({ lines: [...lines, newLine({ taxCode: proposedServiceTaxCode(ctx.customer, m, draft.postingDate), glAccount: '4030', priceSource: 'Manual', wtaxLiable: withholds })] })}>
           Add service line
         </Link>

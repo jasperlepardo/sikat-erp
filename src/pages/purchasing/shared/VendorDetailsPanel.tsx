@@ -1,13 +1,12 @@
 import { useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router';
-import { Button, CardField, FormField, Icon, IconButton, Panel, Select, SidePanel, Text, type CardFieldOption } from '@jasperlepardo/sikat-design-system';
+import { Button, CardField, Icon, IconButton, Panel, SidePanel, Text, type CardFieldOption } from '@jasperlepardo/sikat-design-system';
 import { PageHeader } from '../../../components/form/PageHeader';
 import { Fields, Section, bind } from '../../../components/form/fields';
 import { blankPostalAddress, formatAddress, type PostalAddress } from '../../../mocks/address';
 import { contactName, newAddress, type Partner, type PartnerAddress } from '../../../mocks/partners';
 import { savePartner } from '../../../services/partners';
-import type { Currency } from '../../../mocks/currencies';
 import { AddressFields } from '../../../components/form/AddressFields';
 import { AddressPanel } from '../../partners/detail/addresses';
 import { EditPanel } from '../../partners/detail/EditPanel';
@@ -27,7 +26,6 @@ interface VendorDetailsPanelProps<D extends VendorDraftBase> {
   draft: D;
   update: (patch: Partial<D>) => void;
   vendor: Partner | undefined;
-  currencies: Currency[];
   /** The whole panel is read-only (document closed/cancelled). */
   readOnly: boolean;
   open: boolean;
@@ -36,8 +34,6 @@ interface VendorDetailsPanelProps<D extends VendorDraftBase> {
   contactHint?: string;
   vendorRefHint?: string;
   vendorRefError?: string;
-  /** Currency field config — docs differ on when it locks and why. */
-  currency: { disabled: boolean; tooltip: ReactNode; error?: ReactNode; onChange?: (currency: string) => Partial<D> };
   addresses: VendorAddressField[];
   /** Muted note under the address pickers (e.g. "New addresses are saved to … right away"). */
   addressNote?: ReactNode;
@@ -45,8 +41,8 @@ interface VendorDetailsPanelProps<D extends VendorDraftBase> {
 
 /** The vendor side panel on a purchasing document: contact, document currency, and configurable delivery/billing addresses. */
 export function VendorDetailsPanel<D extends VendorDraftBase>({
-  draft, update, vendor, currencies, readOnly, open, onClose, onVendorSaved,
-  contactHint = "Defaults to the vendor's default contact.", vendorRefHint, vendorRefError, currency, addresses, addressNote,
+  draft, update, vendor, readOnly, open, onClose, onVendorSaved,
+  contactHint = "Defaults to the vendor's default contact.", vendorRefHint, vendorRefError, addresses, addressNote,
 }: VendorDetailsPanelProps<D>) {
   const navigate = useNavigate();
   // Bind the three shared fields through the base type; address keys are handled dynamically below.
@@ -98,30 +94,18 @@ export function VendorDetailsPanel<D extends VendorDraftBase>({
           }
         />
         <Panel.Body>
-          <fieldset disabled={readOnly} className="contents">
-            <Section icon="person" title="Contact">
-              <Fields cols={1}>
-                {h.lookup(
-                  'contactId',
-                  'Contact person',
-                  (vendor.contacts ?? []).filter((c) => c.active || c.id === draft.contactId).map((c) => ({ value: c.id, label: contactName(c) })),
-                  { clearable: true, hint: contactHint },
-                )}
-                {h.text('vendorRef', 'Vendor ref. no.', { hint: vendorRefHint, error: vendorRefError })}
-                <FormField label="Currency" required error={currency.error} tooltip={currency.tooltip}>
-                  {(p) => (
-                    <Select
-                      {...p}
-                      disabled={currency.disabled}
-                      options={currencies.filter((c) => c.active || c.code === draft.currency).map((c) => ({ value: c.code, label: c.code }))}
-                      value={draft.currency}
-                      onValueChange={(cur) => cur && update(currency.onChange ? currency.onChange(cur) : ({ currency: cur } as Partial<D>))}
-                    />
-                  )}
-                </FormField>
-              </Fields>
-            </Section>
-            {addresses.length > 0 ? (
+          <Section icon="person" title="Contact">
+            <Fields cols={1}>
+              {h.lookup(
+                'contactId',
+                'Contact person',
+                (vendor.contacts ?? []).filter((c) => c.active || c.id === draft.contactId).map((c) => ({ value: c.id, label: contactName(c) })),
+                { clearable: true, hint: contactHint, readOnly },
+              )}
+              {h.text('vendorRef', 'Vendor ref. no.', { hint: vendorRefHint, error: vendorRefError, readOnly })}
+            </Fields>
+          </Section>
+          {addresses.length > 0 ? (
             <Section icon="local_shipping" title="Delivery & billing">
               <Fields cols={1}>
                 {addresses.map((field) => {
@@ -167,8 +151,7 @@ export function VendorDetailsPanel<D extends VendorDraftBase>({
                 {addressNote && canAdd ? <Text variant="small" tone="muted">{addressNote}</Text> : null}
               </Fields>
             </Section>
-            ) : null}
-          </fieldset>
+          ) : null}
         </Panel.Body>
       </SidePanel>
       {editing

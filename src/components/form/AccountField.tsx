@@ -1,6 +1,6 @@
 import { Combobox } from '@jasperlepardo/sikat-design-system';
 import type { ReactNode } from 'react';
-import { CtxFormField as FormField } from './fields';
+import { CtxFormField as FormField, ReadOnly } from './fields';
 import { accountLabel, accountProblem, accountText, fitsRole, type Account, type AccountRole } from '../../mocks/chartOfAccounts';
 import { accounts as accountsCollection } from '../../services/masterData';
 import { useAsync } from '../../services/useAsync';
@@ -25,6 +25,7 @@ export function AccountField({
   error,
   hint,
   disabled,
+  readOnly,
 }: {
   label: string;
   role: AccountRole;
@@ -36,6 +37,7 @@ export function AccountField({
   error?: string;
   hint?: ReactNode;
   disabled?: boolean;
+  readOnly?: boolean;
 }) {
   const all = accounts ?? [];
   const options = [
@@ -48,6 +50,11 @@ export function AccountField({
 
   // Flag a stale account as soon as the form opens, not only on save.
   const problem = accounts && value ? accountProblem(value, role, all) : undefined;
+
+  // Stage-locked: show the account as a flat read-only value, like other locked fields.
+  if (readOnly) {
+    return <ReadOnly label={label} value={value ? accountText(value, accounts) : '—'} hint={hint} error={error ?? problem} />;
+  }
 
   return (
     <FormField label={label} required={required} error={error ?? problem} tooltip={hint}>

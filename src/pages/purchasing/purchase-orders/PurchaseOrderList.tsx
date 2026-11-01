@@ -3,6 +3,7 @@ import { useLocation } from 'react-router';
 import { formatDate } from '../../../services/dates';
 import {
   Alert,
+  Card,
   Panel,
   Table,
   TableAmount,
@@ -19,7 +20,7 @@ import { useAsync } from '../../../services/useAsync';
 import { dateField, linesField, masterField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { currencyDef, salesEmployeeDef } from '../../settings/masterDefs';
-import { useListPage } from '../../../components/form/DataTable';
+import { fillCardClass, useListPage } from '../../../components/form/DataTable';
 import { PageHeader } from '../../../components/form/PageHeader';
 import { cap } from '../../../components/form/noun';
 import { PO_LIST_PATH, PO_NOUN, PO_STATUS_INTENT } from '../paths';
@@ -130,7 +131,7 @@ export function PurchaseOrderList() {
           resetPage();
         }}
         icon="receipt_long"
-        title={presets.menu}
+        title={cap(PO_NOUN.many)}
         create={{ noun: PO_NOUN, to: PO_LIST_PATH }}
       />
       <Panel.Body className="flex flex-col gap-2">
@@ -139,21 +140,25 @@ export function PurchaseOrderList() {
             {notice}
           </Alert>
         ) : null}
-        {presets.bar(null)}
-        {orders ? (
-          <Table
-            caption={cap(PO_NOUN.many)}
-            columns={columns}
-            rows={visible}
-            getRowId={(po) => po.id}
-            sort={sort}
-            onSortChange={setSort}
-            layout="fill"
-            pagination={pagination}
-          />
-        ) : (
-          <Text tone="muted" className="p-4">Loading purchase orders…</Text>
-        )}
+        {presets.toolbar(null)}
+        <Card className={fillCardClass(visible.length)}>
+          {!orders ? (
+            <Text tone="muted" className="p-4">Loading purchase orders…</Text>
+          ) : orders.length ? (
+            <Table
+              caption={cap(PO_NOUN.many)}
+              columns={columns}
+              rows={visible}
+              getRowId={(po) => po.id}
+              sort={sort}
+              onSortChange={setSort}
+              layout="fill"
+              pagination={pagination}
+            />
+          ) : (
+            <Text tone="muted" className="p-4">No {PO_NOUN.many} yet. Start one from a purchase request or RFQ (More actions › Create {PO_NOUN.one}), or with New {PO_NOUN.one}.</Text>
+          )}
+        </Card>
       </Panel.Body>
       {presets.panel}
     </Panel>

@@ -8,23 +8,29 @@ import {
   Text,
 } from '@jasperlepardo/sikat-design-system';
 import { PageHeader } from '../../../../components/form/PageHeader';
-import { type Errors } from '../../../../components/form/fields';
+import { bind, type Errors } from '../../../../components/form/fields';
 import { type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { DetailActions } from '../../../../components/form/DetailActions';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
+import { JournalPreview } from '../../../../components/form/JournalPreview';
 import { NotFound, neighbours } from '../../../../components/form/DetailNav';
-import { blankLandedCost, type LandedCost, type LcStatus } from '../../../../mocks/landedCosts';
+import { blankLandedCost, type LandedCost } from '../../../../mocks/landedCosts';
 import {
   addLandedCost,
   cancelLandedCost,
   getLandedCost,
   landedCostTypes,
+  lcJournal,
   lcNumber,
   listLandedCosts,
   saveLcDraft,
 } from '../../../../services/landedCosts';
+import { snapshotItems } from '../../../../services/items';
+import { itemGroups } from '../../../../services/inventoryMasters';
+import { accounts } from '../../../../services/masterData';
 import { listGoodsReceipts } from '../../../../services/goodsReceipts';
+import { postingPeriodProblem } from '../../../../services/journalEntries';
 import { todayISO } from '../../../../services/dates';
 import { defaultJournalRemark } from '../../../../services/journalPatterns';
 import { listPartnersByRole } from '../../../../services/partners';
@@ -33,6 +39,8 @@ import { type LcDraft, type LcMasters, type LcSectionProps } from './types';
 import { VendorCard } from '../../shared/VendorCard';
 import { LcVendorDetailsPanel } from './LcVendorDetailsPanel';
 import { LcDocumentCard } from './LcDocumentCard';
+import { DocumentDates } from '../../../../components/form/DatesCard';
+import { landedCostDates } from '../../../documentDateDefs';
 import { LcItemsCard } from './LcItemsCard';
 import { LcCostsCard } from './LcCostsCard';
 import { LcVendorsCard } from './LcVendorsCard';
@@ -46,7 +54,8 @@ function validate(d: LcDraft, asDraft: boolean): Problem<TabId>[] {
   const { problems, need } = problemCollector<TabId>();
   need(d.vendorId, 'general', 'vendorId', 'Pick a vendor.');
   if (asDraft) return problems;
-  need(d.postingDate, 'general', 'postingDate', 'Posting date is required.');
+  const postingPeriod = postingPeriodProblem(d.postingDate);
+  need(!postingPeriod, 'general', 'postingDate', postingPeriod ?? '');
   need(d.lines.length > 0, 'items', 'lines', 'Add at least one item line (copy from a goods receipt).');
   need(
     d.costs.some((c) => c.amount > 0),
@@ -151,13 +160,6 @@ function LandedCostForm() {
     navigate(LC_LIST_PATH, { state: { notice: `Landed cost ${lcNumber(c)} cancelled.` } });
   };
 
-  const statusMoves: Partial<Record<LcStatus, () => void>> =
-    draft.status === 'Draft'
-      ? { Open: () => submit(null) }
-      : draft.status === 'Open'
-        ? { Cancelled: cancelIt }
-        : {};
-
   const menu: MoreMenuItem[] = [
     ...(draft.status === 'Open' ? [{ label: `Cancel ${LC_NOUN.one}`, icon: 'cancel', onSelect: cancelIt }] : []),
   ];
@@ -165,6 +167,8 @@ function LandedCostForm() {
   const title = isNew ? `New ${LC_NOUN.one}` : added ? lcNumber(draft) : `Draft ${LC_NOUN.one}`;
 
   const sectionProps: LcSectionProps = { draft, update, errors, m, readOnly };
+
+  const journal = lcJournal(draft, snapshotItems(), [...itemGroups.snapshot()]);
 
   return (
     <>
@@ -204,22 +208,21 @@ function LandedCostForm() {
             </Alert>
           ) : null}
 
-          <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
-            <div className="flex flex-col gap-2 lg:col-span-8">
-              <fieldset disabled={readOnly} className="contents">
-                <VendorCard
-                  vendors={m.vendors}
-                  vendorId={draft.vendorId}
-                  vendor={m.vendors.find((v) => v.id === draft.vendorId)}
-                  readOnly={readOnly}
-                  added={added}
-                  error={errors.vendorId}
-                  pickVendor={pickVendor}
-                  onOpenDetails={() => setVendorDetailsOpen(true)}
-                />
-                <LcItemsCard {...sectionProps} onLinesChange={(lines) => update({ lines })} />
-                <LcCostsCard {...sectionProps} />
-              </fieldset>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+            <div className="flex flex-col gap-3 lg:col-span-8">
+              <VendorCard
+                vendors={m.vendors}
+                vendorId={draft.vendorId}
+                vendor={m.vendors.find((v) => v.id === draft.vendorId)}
+                readOnly={readOnly}
+                added={added}
+                error={errors.vendorId}
+                pickVendor={pickVendor}
+                onOpenDetails={() => setVendorDetailsOpen(true)}
+              />
+              <LcItemsCard {...sectionProps} onLinesChange={(lines) => update({ lines })} />
+              <LcCostsCard {...sectionProps} />
+              <JournalPreview journal={journal} accounts={[...accounts.snapshot()]} remarks={bind(draft, update).text('journalRemark', 'Journal remark', { readOnly })} />
 
               <AttachmentsCard
                 attachments={draft.attachments}
@@ -228,13 +231,12 @@ function LandedCostForm() {
               />
             </div>
 
-            <aside className="flex flex-col gap-2 lg:col-span-4">
-              <fieldset disabled={readOnly} className="contents">
-                <LcDocumentCard {...sectionProps} statusMoves={statusMoves} />
-                <LcVendorsCard {...sectionProps} />
-                <LcGeneralCard {...sectionProps} />
-                <LcRemarksCard {...sectionProps} />
-              </fieldset>
+            <aside className="flex flex-col gap-3 lg:col-span-4">
+              <LcDocumentCard {...sectionProps} />
+              <DocumentDates def={landedCostDates} {...sectionProps} />
+              <LcVendorsCard {...sectionProps} />
+              <LcGeneralCard {...sectionProps} />
+              <LcRemarksCard {...sectionProps} />
             </aside>
           </div>
         </Panel.Body>

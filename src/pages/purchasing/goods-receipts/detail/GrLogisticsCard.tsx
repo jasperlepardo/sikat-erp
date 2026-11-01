@@ -1,4 +1,4 @@
-import { FieldStack, Section, bind } from '../../../../components/form/fields';
+import { FieldOrientationCtx, Form, Section, bind } from '../../../../components/form/fields';
 import { LANGUAGES } from '../../../../mocks/purchaseOrders';
 import { activeOptions } from '../../../../services/inventoryMasters';
 import { getPurchasingSettings } from '../../../../services/purchaseOrders';
@@ -19,15 +19,17 @@ export function GrLogistics({
   const f = bind(draft, update);
   return (
     <Section icon="local_shipping" title="Logistics">
-      <FieldStack>
-        {f.lookup(
-          'shippingType',
-          'Shipping type',
-          activeOptions(m.inv.shipping, (s) => s.id, (s) => s.name, draft.shippingType),
-          { clearable: true, hint: 'Defaults from the vendor or the PO.' },
-        )}
-        {getPurchasingSettings().multiLanguageSupport ? f.pick('language', 'Language', LANGUAGES, { hint: 'Language the receipt prints in.' }) : null}
-      </FieldStack>
+      <FieldOrientationCtx.Provider value="inline">
+        <Form.Group orientation="inline">
+          {f.lookup(
+            'shippingType',
+            'Shipping type',
+            activeOptions(m.inv.shipping, (s) => s.id, (s) => s.name, draft.shippingType),
+            { clearable: true, hint: 'Defaults from the vendor or the PO.' },
+          )}
+          {getPurchasingSettings().multiLanguageSupport ? f.pick('language', 'Language', LANGUAGES, { hint: 'Language the receipt prints in.' }) : null}
+        </Form.Group>
+      </FieldOrientationCtx.Provider>
     </Section>
   );
 }

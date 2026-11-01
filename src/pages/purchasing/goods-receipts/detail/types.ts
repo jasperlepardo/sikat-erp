@@ -37,6 +37,8 @@ export interface GrContext {
   isReverseCharge: (taxCode: string) => boolean;
   /** PHP per unit of the document currency: the rate on the posting date, or the one fixed when added. */
   fx: number;
+  /** The rate used, with the bulletin day and source it comes from, for the "Exchange rate" field. PHP → undefined. */
+  fxRate?: { rate: number; date: string; source: string };
   fxDate: string;
   fxSource: string;
   /** Added (open, closed or cancelled): only remarks change. */
@@ -61,6 +63,7 @@ export function buildGrContext(
     },
     isReverseCharge: (code) => vatNotPaidToVendor(m.tax.codes.find((x) => x.code === code)),
     fx: draft.currency === 'PHP' ? 1 : added ? draft.fxRate : (fxRate?.rate ?? 0),
+    fxRate: draft.currency === 'PHP' ? undefined : added ? { rate: draft.fxRate, date: draft.postingDate, source: '' } : fxRate,
     fxDate: added ? draft.postingDate : (fxRate?.date ?? ''),
     fxSource: fxRate?.source === 'BSP RERB' ? 'BSP' : added ? 'fixed when added' : 'manual',
     readOnly: added,

@@ -114,6 +114,24 @@ export function formatDocNum(
   return series.prefix ? `${series.prefix}${docNum}` : `${series.name} ${docNum}`;
 }
 
+/** The series' format with the running number shown as `####` — a preview of the next number's shape. */
+export function seriesPattern(series: Pick<DocumentSeries, 'name' | 'prefix' | 'segments'>, date?: string): string {
+  if (series.segments?.length) {
+    return series.segments.map((seg) => {
+      switch (seg.type) {
+        case 'literal': return seg.value ?? '';
+        case 'year': return date ? date.slice(0, 4) : new Date().getFullYear().toString();
+        case 'year_short': return date ? date.slice(2, 4) : String(new Date().getFullYear()).slice(2);
+        case 'month': return date ? date.slice(5, 7) : String(new Date().getMonth() + 1).padStart(2, '0');
+        case 'month_name': return date ? MONTH_NAMES[Number(date.slice(5, 7)) - 1] : MONTH_NAMES[new Date().getMonth()];
+        case 'sequence': return '#'.repeat(seg.padding ?? 4);
+        default: return '';
+      }
+    }).join('-');
+  }
+  return series.prefix ? `${series.prefix}####` : `${series.name} ####`;
+}
+
 /**
  * Find the first active series whose conditions all match the given context.
  * Returns undefined if no series matches. Falls back to the caller choosing the default.

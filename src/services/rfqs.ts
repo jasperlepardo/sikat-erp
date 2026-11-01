@@ -5,7 +5,7 @@ import { poTotals, type PoTotals } from './purchaseOrders';
 import type { RoundingRule } from '../mocks/currencies';
 import type { TaxCode } from '../mocks/taxes';
 import { rateAt, vatNotPaidToVendor } from '../mocks/taxes';
-import { round2 } from './num';
+import { lineNet } from './lineMath';
 
 const rfqs = createCollection<Rfq>('sikat-erp:rfqs:v1', SEED_RFQS, 'rfq', { audit: 'RFQ' });
 
@@ -26,8 +26,8 @@ export const rfqNumber = (q: Pick<Rfq, 'seriesId' | 'docNum' | 'postingDate'>) =
 
 // ── Line and document math ───────────────────────────────────────────────────
 
-export const lineNet = (l: Pick<RfqLine, 'quantity' | 'unitPrice' | 'discountPct'>) =>
-  round2(l.quantity * l.unitPrice * (1 - l.discountPct / 100));
+/** Re-export the shared line-net so RFQ/quote lines foot out exactly like orders. */
+export { lineNet };
 
 /** Footer totals in the document currency, using quantity as the volume basis. */
 export function rfqTotals(

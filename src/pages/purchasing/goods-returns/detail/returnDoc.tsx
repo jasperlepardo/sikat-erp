@@ -1,5 +1,7 @@
 import { Button, Icon, Text } from '@jasperlepardo/sikat-design-system';
 import { type DocLinesProps } from '../../../../components/form/docLines/DocLines';
+import { RETURN_NOUN } from '../../paths';
+import { cap } from '../../../../components/form/noun';
 import { purchCols, pick } from '../../shared/purchCols';
 import { costAccountOptions, lineHelpers, lineGlAccount, itemConfig } from '../../shared/purchLineHelpers';
 import { countryDef, departmentDef, priceListDef, warrantyTemplateDef } from '../../../settings/masterDefs';
@@ -18,6 +20,7 @@ import { taxCodeOptions } from '../../../../services/taxCodeOptions';
 import { round2 } from '../../../../services/num';
 import { returnTotals } from '../../../../services/goodsReturns';
 import { PurchTotalsFooter } from '../../shared/PurchTotalsFooter';
+import { CurrencyToggle, type PurchaseView } from '../../shared/purchaseView';
 
 type RetDraft = Pick<GoodsReturn, 'lines' | 'vendorId' | 'postingDate' | 'currency' | 'vendorName' | 'status' | 'discountPct' | 'freight' | 'freightTaxCode'>;
 
@@ -33,8 +36,15 @@ export interface ReturnDocProps {
 }
 
 /** Builds the Goods Return contents descriptor for the shared <DocLines>. */
-export function returnDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy }: ReturnDocProps): DocLinesProps<ReturnLine> {
+export function returnDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy }: ReturnDocProps, view: PurchaseView): DocLinesProps<ReturnLine> {
   const lines = draft.lines;
+  // Viewing in PHP is a read-only conversion: the prices stay in the document currency.
+  const converted = view.converted;
+  const locked = ctx.readOnly || converted;
+  const totals = returnTotals(draft, ctx.rateOf, ctx.isReverseCharge);
+  const vTotals = converted
+    ? { ...totals, beforeDiscount: view.convert(totals.beforeDiscount), discount: view.convert(totals.discount), freight: view.convert(totals.freight), rounding: view.convert(totals.rounding ?? 0), tax: view.convert(totals.tax), total: view.convert(totals.total), reverseCharge: totals.reverseCharge ? view.convert(totals.reverseCharge) : undefined }
+    : totals;
   const h = lineHelpers<ReturnLine>({ items: m.items, lines, update, errors, postingDate: draft.postingDate, uoms: m.inv.uoms });
   const { itemOf, patch, err, lineKind, uomLabel, uomOptions } = h;
   const whOf = (code: string) => m.inv.warehouses.find((w) => w.code === code);
@@ -71,7 +81,7 @@ export function returnDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy 
   };
 
   const cols = purchCols<ReturnLine>({
-    patch, readOnly: ctx.readOnly, currency: draft.currency,
+    patch, readOnly: locked, currency: view.code,
     glAccountOf: (l) => lineGlAccount(itemOf(l), l, m.inv),
     glAccountOptions: (l) => costAccountOptions(m.inv.accounts, l.glAccount),
     lineNet,
@@ -138,14 +148,15 @@ export function returnDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy 
     prefsKey: 'return',
     cardHeader: true,
     columns,
-    rows: lines,
+    rows: converted ? lines.map((l) => ({ ...l, unitPrice: view.convert(l.unitPrice) })) : lines,
     icon: 'list_alt',
-    title: 'Contents',
-    description: errors.lines ?? `What goes back, in the line's unit. Stock leaves at the cost it came in at; prices are in ${draft.currency} for the vendor's credit.`,
+    title: cap(RETURN_NOUN.lineLabel!),
+    actions: <CurrencyToggle choices={view.choices} value={view.shown} onChange={view.onChange} />,
+    description: errors.lines ?? view.note,
     sortableKeys: ['item'],
     sortValue: (l, key) => (key === 'item' ? l.itemNo : String(l[key as keyof ReturnLine] ?? '')).toLowerCase(),
-    readOnly: ctx.readOnly,
-    onRemove: (picked) => update({ lines: lines.filter((l) => !picked.includes(l)) }),
+    readOnly: locked,
+    onRemove: (picked) => update({ lines: lines.filter((l) => !picked.some((p) => p.id === l.id)) }),
     item: itemConfig(h, {
       resolve: (l) => { const it = itemOf(l); return it ? { itemNo: it.itemNo, name: l.name || it.name } : null; },
       onPick: (l, id) => { if (id) pickItem(l, id); else patch(l.id, { itemId: '', itemNo: '', name: '', description: '' }); },
@@ -161,7 +172,7 @@ export function returnDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy 
           : 'Pick a vendor first.'}
       </Text>
     ),
-    header: ctx.readOnly ? undefined : (
+    header: locked ? undefined : (
       <div className="flex justify-end px-2">
         <Button type="button" size="small" variant="outline" leadingIcon={<Icon size={16}>content_copy</Icon>} disabled={!canCopy} onClick={onCopyClick}>
           Copy from
@@ -170,9 +181,9 @@ export function returnDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy 
     ),
     footer: (
       <PurchTotalsFooter
-        totals={returnTotals(draft, ctx.rateOf, ctx.isReverseCharge)}
-        currency={draft.currency}
-        readOnly={ctx.readOnly}
+        totals={vTotals}
+        currency={view.code}
+        readOnly={locked}
         discountPct={draft.discountPct}
         onDiscountChange={(discountPct) => update({ discountPct })}
         totalLabel="Total credit"

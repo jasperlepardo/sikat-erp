@@ -41,6 +41,8 @@ export interface LineHelpers<T extends SalesLineLike> {
   patch: (id: string, p: Partial<T>) => void;
   err: (l: T, field: string) => string | undefined;
   itemOptions: (current: string) => { value: string; label: ReactNode; text: string }[];
+  /** The full set of addable items (salable + valid, within the doc's filter), for the advanced-search modal. */
+  candidateItems: Item[];
   uomOptions: (l: T) => { value: string; label: string }[];
   lines: T[];
   update: (patch: { lines: T[] }) => void;
@@ -66,6 +68,9 @@ export function lineHelpers<T extends SalesLineLike>(d: LineDeps<T>): LineHelper
         text: `${i.itemNo} ${i.name} ${i.description}`,
       }));
 
+  // The same predicate as the add-row picker (`itemOptions`), without the current-line clause.
+  const candidateItems = d.items.filter((i) => i.salesItem && isValidToday(i, d.postingDate) && (!d.itemWhere || d.itemWhere(i)));
+
   // Sales units only; the saved unit stays pickable even if it leaves the sales set.
   const uomOptions = (l: T) => {
     const item = itemOf(l);
@@ -74,7 +79,7 @@ export function lineHelpers<T extends SalesLineLike>(d: LineDeps<T>): LineHelper
     return opts.some((o) => o.value === l.uomCode) || !l.uomCode ? opts : [...opts, { value: l.uomCode, label: l.uomCode }];
   };
 
-  return { itemOf, patch, err, itemOptions, uomOptions, lines: d.lines, update: d.update };
+  return { itemOf, patch, err, itemOptions, candidateItems, uomOptions, lines: d.lines, update: d.update };
 }
 
 /**
@@ -95,6 +100,13 @@ export function itemConfig<T extends SalesLineLike>(
     onDescription: (l, v) => h.patch(l.id, { description: v } as Partial<T>),
     onAdd: (line) => h.update({ lines: [...h.lines, line] }),
     onRemoveLine: (l) => h.update({ lines: h.lines.filter((x) => x.id !== l.id) }),
+    search: { items: h.candidateItems },
+    // Build every picked line through the doc's own `fromItem`, then append in one update
+    // (never a per-item `onAdd` loop — each would read the same stale `h.lines`).
+    onAddMany: (ids) => {
+      const built = ids.map((id) => doc.fromItem(id)).filter(Boolean) as T[];
+      if (built.length) h.update({ lines: [...h.lines, ...built] });
+    },
     ...doc,
   };
 }

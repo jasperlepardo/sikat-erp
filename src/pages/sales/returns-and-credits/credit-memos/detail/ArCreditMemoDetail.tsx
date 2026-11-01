@@ -47,7 +47,7 @@ import { defaultJournalRemark } from '../../../../../services/journalPatterns';
 import { formatAmount } from '../../../../../services/format';
 import { loadInventoryMasters } from '../../../../../services/inventoryMasters';
 import { listItems } from '../../../../../services/items';
-import { postDocumentEntry, reverseDocumentEntry } from '../../../../../services/journalEntries';
+import { postDocumentEntry, postingPeriodProblem, reverseDocumentEntry } from '../../../../../services/journalEntries';
 import { companyTax, currencies, exchangeRates, taxCodes, taxGroups, withholdingGroups, withholdingTaxes, rateOn } from '../../../../../services/masterData';
 import { listPartnersByRole } from '../../../../../services/partners';
 import { logRejection } from '../../../../../services/approvalRules';
@@ -55,17 +55,25 @@ import { dueDateFor } from '../../../../../services/purchaseOrders';
 import { EditPanel } from '../../../../partners/detail/EditPanel';
 import { SalesDocumentFlow } from '../../../shared/SalesDocumentFlow';
 import { CustomerCard } from '../../../shared/CustomerCard';
+import { ReferencesCard } from '../../../shared/ReferencesCard';
 import { SalesTotalsFooter } from '../../../shared/TotalsFooter';
+import { salesView } from '../../../shared/salesView';
+import { amt, TotalsBar, TotalsNote, TotalsRow } from '../../../../../components/form/TotalsFooterParts';
 import { buildDnContext, type DnDraft, type DnMasters } from '../../../deliveries/detail/types';
 import { useDocTitle } from '../../../../../services/useDocTitle';
 import { type ArCmMasters, type SrContext } from '../../types';
 import { DocLines } from '../../../../../components/form/docLines/DocLines';
 import { CopyPanel, type CopySourceType } from '../../../../purchasing/shared/CopyPanel';
 import { arCmDoc } from './arCmDoc';
+import { ArCmDocumentCard } from './ArCmDocumentCard';
 import { ArCmCustomerDetailsPanel } from './ArCmCustomerDetailsPanel';
+import { DocumentJournalEntry, DocumentPayment } from '../../../../../components/form/PaymentCard';
+import { arCreditMemoPayment } from '../../../../documentPaymentDefs';
+import { JournalPreview } from '../../../../../components/form/JournalPreview';
 import { ReturnDatesCard } from '../../ReturnDatesCard';
 import { ReturnShipmentCard } from '../../ReturnShipmentCard';
-import { ReturnAssignmentCard } from '../../ReturnAssignmentCard';
+import { AssignmentCard } from '../../../../../components/form/AssignmentCard';
+import { NO_SALES_EMPLOYEE } from '../../../../../mocks/salesOrders';
 import { ActivityTab } from '../../../../../components/activity/ActivityTab';
 import { neighbours, NotFound, siblingKeys, useDocTab, useReject } from '../../../../../components/form/DetailNav';
 import { ARCM_NOUN, ARCM_STATUS_INTENT, AR_CM_LIST_PATH } from '../../../paths';
@@ -109,7 +117,8 @@ function validate(d: ArCmInput, fx: number, m: ArCmMasters, asDraft: boolean): P
   const { problems, need } = problemCollector<TabId>();
   need(d.customerId, 'header', 'customerId', 'Pick a customer.');
   if (asDraft) return problems;
-  need(d.postingDate, 'header', 'postingDate', 'Posting date is required.');
+  const postingPeriod = postingPeriodProblem(d.postingDate);
+  need(!postingPeriod, 'header', 'postingDate', postingPeriod ?? '');
   need(d.documentDate, 'header', 'documentDate', 'Document date is required.');
   need(fx > 0, 'header', 'currency', `No ${d.currency} exchange rate on or before ${d.postingDate}.`);
   need(d.controlAccount, 'header', 'controlAccount', 'Pick the control account.');
@@ -153,6 +162,7 @@ function ArCreditMemoForm() {
   const reject = useReject();
   const [applying, setApplying] = useState(false);
   const [customerDetailsOpen, setCustomerDetailsOpen] = useState(false);
+  const [currencyView, setCurrencyView] = useState('');
   const [copying, setCopying] = useState(false);
 
   useEffect(() => {
@@ -324,6 +334,8 @@ function ArCreditMemoForm() {
 
   const title = isNew ? `New ${ARCM_NOUN.one}` : added ? arCmNumber(draft as ArCreditMemo) : `Draft ${ARCM_NOUN.one}`;
   const sectionProps = { draft, update, errors, m, ctx };
+  const view = salesView(draft.currency, fx, date, currencyView, setCurrencyView);
+  const journalEntry = <JournalPreview journal={journal} accounts={m.accounts} />;
 
   const copyFromInvoice = (inv: ArInvoice, picks: { lineId: string; qty: number }[]) => {
     const newLines = arCreditMemoFromInvoice(inv, picks, m.items);
@@ -388,8 +400,8 @@ function ArCreditMemoForm() {
                 </Alert>
               ) : null}
 
-              <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
-                <div className="flex flex-col gap-2 lg:col-span-8">
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+                <div className="flex flex-col gap-3 lg:col-span-8">
                   <CustomerCard
                     customers={m.customers}
                     customerId={draft.customerId}
@@ -401,42 +413,48 @@ function ArCreditMemoForm() {
                     onOpenDetails={() => setCustomerDetailsOpen(true)}
                   />
                   <DocLines
-                    {...arCmDoc({ ...sectionProps, onCopyClick: () => setCopying(true), canCopy: invoices.length > 0 })}
+                    {...arCmDoc({ ...sectionProps, onCopyClick: () => setCopying(true), canCopy: invoices.length > 0 }, view)}
                     footer={
                       <SalesTotalsFooter
                         {...sectionProps}
+                        totals={totals}
+                        totalLabel="Total credit"
+                        view={view}
                         withholding={withholding.map((w) => ({ label: `${w.kind === 'Withholding VAT' ? 'VAT' : 'EWT'} withheld — ${w.atc} (${w.rate}%)`, amount: w.amount }))}
                         extraRows={
                           added ? (
                             <>
-                              <div className="flex items-center justify-between gap-4">
-                                <Text variant="small" tone="muted">Applied amount</Text>
-                                <Text variant="small" className="tabular-nums">{draft.appliedAmount ? `–${code} ${formatAmount(draft.appliedAmount)}` : '—'}</Text>
-                              </div>
+                              <TotalsRow label="Applied amount" value={draft.appliedAmount ? amt(-view.convert(draft.appliedAmount), view.code) : '—'} />
                               {draft.applications.length ? (
-                                <Text variant="small" tone="muted">
-                                  Applied to {draft.applications.map((a) => `A/R invoice ${a.docNo} (${code} ${formatAmount(a.amount)}, ${formatDate(a.date)})`).join('; ')}.
-                                </Text>
+                                <TotalsNote>
+                                  Applied to {draft.applications.map((a) => `A/R invoice ${a.docNo} (${amt(view.convert(a.amount), view.code)}, ${formatDate(a.date)})`).join('; ')}.
+                                </TotalsNote>
                               ) : null}
-                              <div className="flex items-baseline justify-between gap-4 border-t pt-1" style={{ borderColor: 'var(--color-border-neutral-subtle)' }}>
-                                <Text variant="small" weight="semibold" tone="heading">Open balance</Text>
-                                <Text variant="small" weight="semibold" tone="heading" className="tabular-nums">{code} {formatAmount(openBalance)}</Text>
-                              </div>
+                              <TotalsBar label="Open balance" value={amt(view.convert(openBalance), view.code)} />
                             </>
                           ) : null
                         }
                       />
                     }
                   />
-                  <fieldset disabled={added} className="contents">
-                    <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} emptyHint="Customer's return authorization, photos of defective goods." withDescription />
-                  </fieldset>
+                  <DocumentJournalEntry def={arCreditMemoPayment} posting={journalEntry} {...sectionProps} />
+                  <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} emptyHint="Customer's return authorization, photos of defective goods." withDescription />
                 </div>
 
-                <aside className="flex flex-col gap-2 lg:col-span-4">
+                <aside className="flex flex-col gap-3 lg:col-span-4">
+                  <ArCmDocumentCard {...sectionProps} />
                   <ReturnDatesCard {...sectionProps} readOnly={added} postingHint="When revenue and VAT reverse, and any goods come back in." />
+                  <DocumentPayment def={arCreditMemoPayment} posting={journalEntry} {...sectionProps} />
                   <ReturnShipmentCard draft={draft} update={update} readOnly={added} inv={m.inv} />
-                  <ReturnAssignmentCard draft={draft} update={update} readOnly={added} noun="credit memo" />
+                  <ReferencesCard {...sectionProps} />
+                  <AssignmentCard
+                    draft={draft}
+                    update={update}
+                    readOnly={added}
+                    person={{ key: 'salesEmployeeId', label: 'Sales employee', clearable: true, placeholder: NO_SALES_EMPLOYEE, hint: 'Defaults from the customer.' }}
+                    ownerHint="Owns the document."
+                    remarksHint="Can be changed after the credit memo is added."
+                  />
                 </aside>
               </div>
             </Panel.Body>

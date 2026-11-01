@@ -1,5 +1,7 @@
-import { Button, Icon, Text } from '@jasperlepardo/sikat-design-system';
+import { Button, Icon, Text, TextField } from '@jasperlepardo/sikat-design-system';
 import { type DocLinesProps } from '../../../../components/form/docLines/DocLines';
+import { DPR_NOUN } from '../../paths';
+import { cap } from '../../../../components/form/noun';
 import { purchCols, pick } from '../../shared/purchCols';
 import { costAccountOptions, lineHelpers, lineGlAccount, itemConfig } from '../../shared/purchLineHelpers';
 import { countryDef, departmentDef, priceListDef, warrantyTemplateDef } from '../../../settings/masterDefs';
@@ -12,6 +14,7 @@ import { grInventoryQty } from '../../../../services/goodsReceipts';
 import { docWithholding } from '../../../../services/withholding';
 import { lineFromItem, linePricing } from '../../goods-receipts/detail/types';
 import { PurchTotalsFooter, PurchTotalNote, PurchTotalRow } from '../../shared/PurchTotalsFooter';
+import { CurrencyToggle, type PurchaseView } from '../../shared/purchaseView';
 import { taxCodeOptions } from '../../../../services/taxCodeOptions';
 import { round2 } from '../../../../services/num';
 import { type DprSectionProps } from './types';
@@ -30,9 +33,15 @@ export interface DprDocProps extends DprSectionProps {
 }
 
 /** Builds the A/P Down Payment Request contents descriptor for the shared <DocLines>. */
-export function dprDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy }: DprDocProps): DocLinesProps<DprLine> {
-  const { lines, currency: code, postingDate, vendorId } = draft;
+export function dprDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy }: DprDocProps, view: PurchaseView): DocLinesProps<DprLine> {
+  const { lines, postingDate, vendorId } = draft;
+  // Viewing in PHP is a read-only conversion: the prices stay in the document currency.
+  const converted = view.converted;
+  const locked = ctx.readOnly || converted;
   const totals = dprTotals(draft, ctx.rateOf, ctx.isReverseCharge);
+  const vTotals = converted
+    ? { beforeDiscount: view.convert(totals.beforeDiscount), discount: view.convert(totals.discount), tax: view.convert(totals.tax), total: view.convert(totals.total), reverseCharge: totals.reverseCharge ? view.convert(totals.reverseCharge) : undefined, freight: 0, rounding: 0 }
+    : { ...totals, freight: 0, rounding: 0 };
   const balance = round2(totals.total - draft.appliedAmount);
   // Informational only: withholding is taken on the final invoice, never on the request — totals are unchanged.
   const withholding = docWithholding(draft as Parameters<typeof docWithholding>[0], ctx.vendor, m.items, m.tax, postingDate);
@@ -63,7 +72,7 @@ export function dprDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy }: 
   };
 
   const cols = purchCols<DprLine>({
-    patch, readOnly: ctx.readOnly, currency: code,
+    patch, readOnly: locked, currency: view.code,
     glAccountOf: (l) => lineGlAccount(itemOf(l), l, m.inv),
     glAccountOptions: (l) => costAccountOptions(m.inv.accounts, l.glAccount),
     lineNet,
@@ -104,14 +113,15 @@ export function dprDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy }: 
     prefsKey: 'dpr',
     cardHeader: true,
     columns,
-    rows: lines,
+    rows: converted ? lines.map((l) => ({ ...l, unitPrice: view.convert(l.unitPrice) })) : lines,
     icon: 'list_alt',
-    title: 'Contents',
-    description: errors.lines ?? `What the advance is for, at the full order price in ${code}. The DPM % in the totals sets how much of it is requested now.`,
+    title: cap(DPR_NOUN.lineLabel!),
+    actions: <CurrencyToggle choices={view.choices} value={view.shown} onChange={view.onChange} />,
+    description: errors.lines ?? view.note,
     sortableKeys: ['item'],
     sortValue: (l, key) => (key === 'item' ? l.itemNo : String(l[key as keyof DprLine] ?? '')).toLowerCase(),
-    readOnly: ctx.readOnly,
-    onRemove: (picked) => update({ lines: lines.filter((l) => !picked.includes(l)) }),
+    readOnly: locked,
+    onRemove: (picked) => update({ lines: lines.filter((l) => !picked.some((p) => p.id === l.id)) }),
     item: itemConfig(h, {
       resolve: (l) => { const it = itemOf(l); return it ? { itemNo: it.itemNo, name: l.name || it.name } : null; },
       onPick: (l, id) => { if (id) pickItem(l, id); else patch(l.id, { itemId: '', itemNo: '', name: '', description: '' }); },
@@ -122,10 +132,10 @@ export function dprDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy }: 
     }),
     empty: (
       <Text variant="small" tone={errors.lines ? 'danger' : 'muted'}>
-        {vendorId ? 'Search above to add a line, or copy from an open PO.' : 'Pick a vendor first.'}
+        {vendorId ? 'Search below to add a line, or copy from an open PO.' : 'Pick a vendor first.'}
       </Text>
     ),
-    header: ctx.readOnly ? undefined : (
+    header: locked ? undefined : (
       <div className="flex justify-end px-2">
         <Button type="button" size="small" variant="outline" leadingIcon={<Icon size={16}>content_copy</Icon>} disabled={!canCopy} onClick={onCopyClick}>
           Copy from PO
@@ -134,22 +144,31 @@ export function dprDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy }: 
     ),
     footer: (
       <PurchTotalsFooter
-        totals={{ ...totals, freight: 0, rounding: 0 }}
-        currency={code}
-        readOnly={ctx.readOnly}
+        totals={vTotals}
+        currency={view.code}
+        readOnly={locked}
         discountPct={draft.discountPct}
         onDiscountChange={(discountPct) => update({ discountPct })}
-        midRows={<PurchTotalRow label={`Down payment (${draft.dpmPct}%)`} value={totals.dpm} code={code} />}
+        midRows={
+          <PurchTotalRow
+            label={ctx.readOnly ? `Down payment (${draft.dpmPct}%)` : 'Down payment'}
+            value={view.convert(totals.dpm)}
+            code={view.code}
+            input={locked ? undefined : (
+              <TextField aria-label="Down payment %" type="number" min={0} className="w-24" suffix="%" value={String(draft.dpmPct)} onChange={(e) => update({ dpmPct: Math.min(100, Number(e.currentTarget.value)) })} />
+            )}
+          />
+        }
         extraRows={
           <>
-            <PurchTotalRow label="Applied amount" value={-draft.appliedAmount} code={code} />
-            <PurchTotalRow label="Balance due" value={balance} code={code} strong />
-            {ctx.readOnly && draft.appliedAmount ? (
-              <PurchTotalNote>Drawn on A/P invoices: {code} {formatAmount(draft.drawnAmount)} of {formatAmount(draft.appliedAmount)} paid.</PurchTotalNote>
+            <PurchTotalRow label="Applied amount" value={-view.convert(draft.appliedAmount)} code={view.code} />
+            <PurchTotalRow label="Balance due" value={view.convert(balance)} code={view.code} strong />
+            {ctx.readOnly && draft.drawnAmount > 0 ? (
+              <PurchTotalNote>Drawn on A/P invoices: {view.code} {formatAmount(view.convert(draft.drawnAmount))} of {formatAmount(view.convert(draft.appliedAmount))} paid.</PurchTotalNote>
             ) : null}
             {withholding.map((w) => (
               <PurchTotalNote key={w.atc}>
-                {WITHHELD_LABEL[w.kind] ?? 'Tax'} — {w.atc} ({w.rate}%): {code} {formatAmount(w.amount)} is withheld on the final invoice, not on this request.
+                {WITHHELD_LABEL[w.kind] ?? 'Tax'} — {w.atc} ({w.rate}%): {view.code} {formatAmount(view.convert(w.amount))} is withheld on the final invoice, not on this request.
               </PurchTotalNote>
             ))}
           </>

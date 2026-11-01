@@ -15,10 +15,10 @@ import { listItems, saveItems } from './items';
 import { round2 } from './num';
 
 /** Landed costs are accrued as a liability (owed to brokers / freight forwarders / customs) until invoiced. */
-export const LANDED_COST_ACCRUAL_ACCOUNT = '2030'; // Accrued Expenses
+const LANDED_COST_ACCRUAL_ACCOUNT = '2030'; // Accrued Expenses
 
 /** A landed cost is posted (capitalized) once it leaves Draft, until Cancelled. */
-export const lcPosted = (status: LandedCost['status']) => status !== 'Draft' && status !== 'Cancelled';
+const lcPosted = (status: LandedCost['status']) => status !== 'Draft' && status !== 'Cancelled';
 
 const lc = createCollection<LandedCost>('sikat-erp:landed-costs:v1', SEED_LANDED_COSTS, 'lc', { audit: 'LC' });
 export const landedCostTypes = createCollection<LandedCostType>('sikat-erp:lc-types', SEED_LC_TYPES, 'lct');

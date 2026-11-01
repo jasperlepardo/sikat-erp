@@ -126,7 +126,7 @@ export interface GoodsReceipt {
 }
 
 export const GR_SERIES: DocumentSeries[] = [
-  { id: 'grs-primary', name: 'Primary', prefix: '', firstNo: 1, manual: false, isDefault: true, active: true, segments: [{ type: 'literal', value: 'GR' }, { type: 'year' }, { type: 'sequence', padding: 4 }] },
+  { id: 'grs-primary', name: 'Goods Receipt', prefix: '', firstNo: 1, manual: false, isDefault: true, active: true, segments: [{ type: 'literal', value: 'GR' }, { type: 'year' }, { type: 'sequence', padding: 4 }] },
 ];
 
 /**

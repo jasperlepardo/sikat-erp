@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useLocation } from 'react-router';
 import {
   Alert,
+  Card,
   Panel,
   Table,
   TableContent,
@@ -12,7 +13,7 @@ import {
 import { PageHeader } from '../../../components/form/PageHeader';
 import { dateField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
-import { useListPage } from '../../../components/form/DataTable';
+import { fillCardClass, useListPage } from '../../../components/form/DataTable';
 import { PBA_STATUSES, type PurchaseBlanketAgreement } from '../../../mocks/purchaseBlanketAgreements';
 import { formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
@@ -133,26 +134,30 @@ export function PurchaseBlanketAgreementList() {
         searchValue={query}
         onSearchChange={(value) => { setQuery(value); resetPage(); }}
         icon="handshake"
-        title={presets.menu}
+        title={cap(PBA_NOUN.many)}
         create={{ noun: PBA_NOUN, to: PBA_LIST_PATH }}
       />
       <Panel.Body className="flex flex-col gap-2">
         {notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : null}
-        {presets.bar(null)}
-        {agreements ? (
-          <Table
-            caption={cap(PBA_NOUN.many)}
-            columns={columns}
-            rows={paginated}
-            getRowId={(pba) => pba.id}
-            sort={sort}
-            onSortChange={setSort}
-            layout="fill"
-            pagination={pagination}
-          />
-        ) : (
-          <Text tone="muted" className="p-4">Loading {PBA_NOUN.many}…</Text>
-        )}
+        {presets.toolbar(null)}
+        <Card className={fillCardClass(paginated.length)}>
+          {!agreements ? (
+            <Text tone="muted" className="p-4">Loading {PBA_NOUN.many}…</Text>
+          ) : agreements.length ? (
+            <Table
+              caption={cap(PBA_NOUN.many)}
+              columns={columns}
+              rows={paginated}
+              getRowId={(pba) => pba.id}
+              sort={sort}
+              onSortChange={setSort}
+              layout="fill"
+              pagination={pagination}
+            />
+          ) : (
+            <Text tone="muted" className="p-4">No {PBA_NOUN.many} yet. Create one with New {PBA_NOUN.one}.</Text>
+          )}
+        </Card>
       </Panel.Body>
       {presets.panel}
     </Panel>

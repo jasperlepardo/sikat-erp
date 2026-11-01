@@ -52,6 +52,8 @@ export interface RfqContext {
   rateOf: (taxCode: string) => number;
   isReverseCharge: (taxCode: string) => boolean;
   fx: number;
+  /** The rate used, with the bulletin day and source it comes from, for the "Exchange rate" field. PHP → undefined. */
+  fxRate?: { rate: number; date: string; source: string };
   fxDate: string;
   readOnly: boolean;
   added: boolean;
@@ -70,6 +72,7 @@ export function buildContext(draft: RfqDraft, m: RfqMasters): RfqContext {
     },
     isReverseCharge: (code) => vatNotPaidToVendor(m.tax.codes.find((x) => x.code === code)),
     fx: draft.currency === 'PHP' ? 1 : (fxRate?.rate ?? 0),
+    fxRate,
     fxDate: fxRate?.date ?? '',
     readOnly: draft.status === 'Closed' || draft.status === 'Cancelled',
     added: draft.status !== 'Draft',

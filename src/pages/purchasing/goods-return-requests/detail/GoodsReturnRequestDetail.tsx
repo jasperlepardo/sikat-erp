@@ -10,10 +10,10 @@ import { ProblemsAlert, problemCollector, type Problem } from '../../../../compo
 import { DocLines } from '../../../../components/form/docLines/DocLines';
 import { type Errors } from '../../../../components/form/fields';
 import { CURRENT_USER_ID } from '../../../../mocks/common';
-import { blankGoodsReturnRequest, type GoodsReturnRequest, type GrrStatus } from '../../../../mocks/goodsReturnRequests';
+import { blankGoodsReturnRequest, type GoodsReturnRequest } from '../../../../mocks/goodsReturnRequests';
 import { loadInventoryMasters } from '../../../../services/inventoryMasters';
 import { listItems } from '../../../../services/items';
-import { currencies, taxCodes, taxGroups, withholdingGroups, withholdingTaxes } from '../../../../services/masterData';
+import { currencies, exchangeRates, rateOn, taxCodes, taxGroups, withholdingGroups, withholdingTaxes } from '../../../../services/masterData';
 import { listPartnersByRole } from '../../../../services/partners';
 import { companyTax } from '../../../../services/masterData';
 import {
@@ -34,6 +34,10 @@ import { VendorDetailsPanel } from '../../shared/VendorDetailsPanel';
 import { CopyPanel } from '../../shared/CopyPanel';
 import { GRR_LIST_PATH, GRR_NOUN, GRR_STATUS_INTENT, RETURN_LIST_PATH } from '../../paths';
 import { grrDoc } from './grrDoc';
+import { purchaseView } from '../../shared/purchaseView';
+import { DocumentDates } from '../../../../components/form/DatesCard';
+import { AssignmentCard } from '../../../../components/form/AssignmentCard';
+import { goodsReturnRequestDates } from '../../../documentDateDefs';
 import { GrrDocumentCard } from './GrrDocumentCard';
 import { buildGrrContext, type GrrDraft, type GrrMasters } from './types';
 
@@ -81,6 +85,7 @@ function GrrForm() {
   const [copying, setCopying] = useState(false);
   const [creatingReturn, setCreatingReturn] = useState(false);
   const [vendorDetailsOpen, setVendorDetailsOpen] = useState(false);
+  const [currencyView, setCurrencyView] = useState('');
 
   const page = (PAGES.some((p) => p.value === tabParam) ? tabParam : 'details') as PageId;
   const setPage = useDocTab<PageId>(`${GRR_LIST_PATH}/${id}`, tabParam);
@@ -96,8 +101,9 @@ function GrrForm() {
       withholdingTaxes.list(),
       withholdingGroups.list(),
       currencies.list(),
-    ]).then(([vendors, items, inv, [company], codes, groups, withholding, wGroups, curs]) => {
-      setM({ vendors, items, inv, tax: { company, codes, groups, withholding, withholdingGroups: wGroups }, currencies: curs });
+      exchangeRates.list(),
+    ]).then(([vendors, items, inv, [company], codes, groups, withholding, wGroups, curs, rates]) => {
+      setM({ vendors, items, inv, tax: { company, codes, groups, withholding, withholdingGroups: wGroups }, currencies: curs, rates });
     });
     if (isNew || !id) return;
     let cancelled = false;
@@ -112,6 +118,8 @@ function GrrForm() {
   if (draft === null) return <NotFound icon="assignment_return" title="Goods return request not found" backTo={GRR_LIST_PATH} backLabel="Back to return requests" />;
 
   const ctx = buildGrrContext(draft);
+  const fx = draft.currency === 'PHP' ? 1 : (rateOn(m.rates, draft.currency, draft.postingDate)?.rate ?? 0);
+  const view = purchaseView(draft.currency, fx, draft.postingDate, currencyView, setCurrencyView);
   const { prevId, nextId } = neighbours(siblings, draft.id && (draft.docNum ? grrNumber(draft as GoodsReturnRequest) : draft.id));
   const errors: Errors = Object.fromEntries(problems.map((p) => [p.key, p.message]));
   const saved = draft as GoodsReturnRequest;
@@ -171,9 +179,6 @@ function GrrForm() {
     navigate(`${RETURN_LIST_PATH}/new`, { state: { fromGrr: saved.id, prefill: poDraft } });
   };
 
-  const transitions: Partial<Record<GrrStatus, () => void>> =
-    draft.status === 'Open' ? { Closed: closeIt } : {};
-
   const menu: MoreMenuItem[] = [
     ...(draft.status === 'Open' && draft.lines.some((l) => l.status === 'Open' && l.itemId)
       ? [{ label: 'Create goods return…', icon: 'assignment_return', onSelect: () => setCreatingReturn(true) }]
@@ -228,8 +233,8 @@ function GrrForm() {
                   {draft.closeDate ? `Closed ${formatDate(draft.closeDate)}.` : 'No further changes.'}
                 </Alert>
               ) : null}
-              <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
-                <div className="flex flex-col gap-2 lg:col-span-8">
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+                <div className="flex flex-col gap-3 lg:col-span-8">
                   <VendorCard
                     vendors={m.vendors}
                     vendorId={draft.vendorId}
@@ -241,13 +246,13 @@ function GrrForm() {
                     pickVendor={pickVendor}
                     onOpenDetails={() => setVendorDetailsOpen(true)}
                   />
-                  <DocLines {...grrDoc({ draft, update, errors, m, onCopyClick: () => setCopying(true), canCopy: Boolean(draft.vendorId) })} />
+                  <DocLines {...grrDoc({ draft, update, errors, m, onCopyClick: () => setCopying(true), canCopy: Boolean(draft.vendorId) }, view)} />
                   <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach photos of damage or supporting documents." />
                 </div>
-                <div className="flex flex-col gap-2 lg:col-span-4">
-                  <fieldset disabled={ctx.readOnly} className="contents">
-                    <GrrDocumentCard draft={draft} update={update} errors={errors} m={m} transitions={transitions} />
-                  </fieldset>
+                <div className="flex flex-col gap-3 lg:col-span-4">
+                  <GrrDocumentCard draft={draft} update={update} errors={errors} ctx={ctx} m={m} />
+                  <DocumentDates def={goodsReturnRequestDates} draft={draft} update={update} errors={errors} />
+                  <AssignmentCard draft={draft} update={update} readOnly={ctx.readOnly} person={{ key: 'buyerId', label: 'Buyer', hint: 'Who placed the order.' }} ownerHint="Owns the document (data access)." remarksHint="Can be changed after the request is added." />
                 </div>
               </div>
             </Panel.Body>
@@ -258,16 +263,10 @@ function GrrForm() {
         draft={draft}
         update={update}
         vendor={vendor}
-        currencies={m.currencies}
         readOnly={ctx.readOnly}
         open={vendorDetailsOpen}
         onClose={() => setVendorDetailsOpen(false)}
         vendorRefHint="The vendor's return authorization (RMA) no."
-        currency={{
-          disabled: ctx.added,
-          tooltip: "Defaults to the vendor's currency.",
-          error: errors.currency,
-        }}
         addresses={[]}
       />
       {copying

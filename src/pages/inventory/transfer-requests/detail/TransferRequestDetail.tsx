@@ -2,8 +2,8 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import { Alert, Badge, Combobox, Form, FormField, Panel, Text } from '@jasperlepardo/sikat-design-system';
 import { PageHeader } from '../../../../components/form/PageHeader';
-import { Fields, ReadOnly, Section, bind, type Errors } from '../../../../components/form/fields';
-import { StatusField } from '../../../../components/form/StatusField';
+import { Fields, FieldOrientationCtx, ReadOnly, Section, bind, type Errors } from '../../../../components/form/fields';
+import { SeriesNoFields } from '../../../../components/form/SeriesNoFields';
 import { type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { DetailActions } from '../../../../components/form/DetailActions';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
@@ -11,11 +11,9 @@ import { NotFound, neighbours } from '../../../../components/form/DetailNav';
 import { CURRENT_USER_ID } from '../../../../mocks/common';
 import {
   TRANSFER_REQUEST_SERIES,
-  TRANSFER_REQUEST_STATUSES,
   blankTransferRequest,
   newTransferRequestLine,
   type InventoryTransferRequest,
-  type TransferRequestStatus,
 } from '../../../../mocks/inventoryTransferRequests';
 import { DEFAULT_JOURNAL_REMARK, blankTransfer } from '../../../../mocks/inventoryTransfers';
 import { formatDate, todayISO } from '../../../../services/dates';
@@ -38,11 +36,6 @@ import { lineFromItem, warehouseOptions, type TransferDraft } from '../../transf
 import { ItrLinesCard } from './ItrLinesCard';
 import { transferredQty, type ItrDraft, type ItrMasters } from './types';
 import { TRANSFER_LIST_PATH, TRANSFER_NOUN, TRANSFER_REQUEST_LIST_PATH, TRANSFER_REQUEST_NOUN, TRANSFER_REQUEST_STATUS_INTENT } from '../../paths';
-
-const STATUS_HINT: Record<TransferRequestStatus, string> = {
-  Open: 'Waiting to be transferred. Closes when every line has been sent.',
-  Closed: 'Fully transferred or no longer needed. Nothing moved by closing it.',
-};
 
 type TabId = 'contents';
 
@@ -194,7 +187,6 @@ function TransferRequestForm() {
   };
 
   const canCopy = added && !closed && requestOpenQty(draft) > 0;
-  const moves: Partial<Record<TransferRequestStatus, () => void>> = added && !closed ? { Closed: closeIt } : {};
   const menu: MoreMenuItem[] = [
     ...(canCopy ? [{ label: `Create ${TRANSFER_NOUN.one}`, icon: 'move_down', onSelect: copyToTransfer }] : []),
     ...(added ? [{ label: 'Duplicate', icon: 'content_copy', onSelect: duplicate }] : []),
@@ -269,18 +261,26 @@ function TransferRequestForm() {
               </Section>
 
               <Section icon="tag" title="Document">
-                <Fields>
-                  <ReadOnly
-                    label="No."
-                    value={added ? transferRequestNumber(draft) : `${TRANSFER_REQUEST_SERIES.find((s) => s.id === draft.seriesId)?.name ?? 'Primary'} · next number`}
-                    hint={added ? undefined : 'Assigned from the series when the request is added.'}
-                  />
-                  <StatusField statuses={TRANSFER_REQUEST_STATUSES} intents={TRANSFER_REQUEST_STATUS_INTENT} value={draft.status} moves={moves} hint={STATUS_HINT[draft.status]} />
-                  {h.date('postingDate', 'Posting date', { required: true, error: errors.postingDate, hint: 'When the request is made.' })}
-                  {h.date('dueDate', 'Due date', { required: true, error: errors.dueDate, hint: 'When the destination needs the stock. Not enforced.' })}
-                  {h.date('documentDate', 'Document date', { required: true, error: errors.documentDate, hint: 'Usually the same as the posting date.' })}
-                  <ReadOnly label="Close date" value={draft.closeDate ? formatDate(draft.closeDate) : '—'} hint="Set when the request closes." />
-                </Fields>
+                <FieldOrientationCtx.Provider value="inline">
+                  <Form.Group orientation="inline">
+                    {added ? null : (
+                      <SeriesNoFields
+                        series={TRANSFER_REQUEST_SERIES}
+                        seriesId={draft.seriesId}
+                        docNum={draft.docNum}
+                        number={transferRequestNumber(draft)}
+                        noun="Request"
+                        readOnly
+                        onSeries={(seriesId) => update({ seriesId })}
+                        onNumber={(docNum) => update({ docNum })}
+                      />
+                    )}
+                    {h.date('postingDate', 'Posting date', { required: true, error: errors.postingDate, hint: 'When the request is made.' })}
+                    {h.date('dueDate', 'Due date', { required: true, error: errors.dueDate, hint: 'When the destination needs the stock. Not enforced.' })}
+                    {h.date('documentDate', 'Document date', { required: true, error: errors.documentDate, hint: 'Usually the same as the posting date.' })}
+                    <ReadOnly label="Close date" value={draft.closeDate ? formatDate(draft.closeDate) : '—'} hint="Set when the request closes." />
+                  </Form.Group>
+                </FieldOrientationCtx.Provider>
               </Section>
             </div>
 

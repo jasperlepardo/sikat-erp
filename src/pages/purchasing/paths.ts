@@ -21,7 +21,7 @@ import type { GrrStatus } from '../../mocks/goodsReturnRequests';
 import type { RfqStatus } from '../../mocks/rfqs';
 
 export const PO_LIST_PATH = '/purchasing/purchase-orders';
-export const PO_NOUN: Noun = { one: 'purchase order', many: 'purchase orders' };
+export const PO_NOUN: Noun = { one: 'purchase order', many: 'purchase orders', lineLabel: 'ordered items' };
 
 export const PO_STATUS_INTENT: Record<PoStatus, 'default' | 'primary' | 'warning' | 'success' | 'danger'> = {
   Draft: 'default',
@@ -32,7 +32,7 @@ export const PO_STATUS_INTENT: Record<PoStatus, 'default' | 'primary' | 'warning
 };
 
 export const PR_LIST_PATH = '/purchasing/purchase-requests';
-export const PR_NOUN: Noun = { one: 'purchase request', many: 'purchase requests' };
+export const PR_NOUN: Noun = { one: 'purchase request', many: 'purchase requests', lineLabel: 'requested items' };
 
 export const PR_STATUS_INTENT: Record<PrStatus, 'default' | 'primary' | 'success' | 'danger'> = {
   Open: 'primary',
@@ -40,7 +40,7 @@ export const PR_STATUS_INTENT: Record<PrStatus, 'default' | 'primary' | 'success
 };
 
 export const RFQ_LIST_PATH = '/purchasing/purchase-quotations';
-export const RFQ_NOUN: Noun = { one: 'purchase quotation', many: 'purchase quotations' };
+export const RFQ_NOUN: Noun = { one: 'purchase quotation', many: 'purchase quotations', lineLabel: 'quoted items' };
 
 export const RFQ_STATUS_INTENT: Record<RfqStatus, 'default' | 'primary' | 'success' | 'danger' | 'warning'> = {
   Draft: 'default',
@@ -51,7 +51,7 @@ export const RFQ_STATUS_INTENT: Record<RfqStatus, 'default' | 'primary' | 'succe
 };
 
 export const GR_LIST_PATH = '/purchasing/goods-receipts';
-export const GR_NOUN: Noun = { one: 'goods receipt', many: 'goods receipts' };
+export const GR_NOUN: Noun = { one: 'goods receipt', many: 'goods receipts', lineLabel: 'received items' };
 
 export const GR_STATUS_INTENT: Record<GrStatus, 'default' | 'primary' | 'success' | 'danger' | 'warning'> = {
   Draft: 'default',
@@ -62,7 +62,7 @@ export const GR_STATUS_INTENT: Record<GrStatus, 'default' | 'primary' | 'success
 };
 
 export const AP_LIST_PATH = '/purchasing/vendor-invoices';
-export const AP_NOUN: Noun = { one: 'A/P invoice', many: 'A/P invoices' };
+export const AP_NOUN: Noun = { one: 'A/P invoice', many: 'A/P invoices', lineLabel: 'invoiced items' };
 
 export const AP_STATUS_INTENT: Record<ApStatus, 'default' | 'primary' | 'success' | 'danger' | 'warning'> = {
   Draft: 'default',
@@ -73,7 +73,7 @@ export const AP_STATUS_INTENT: Record<ApStatus, 'default' | 'primary' | 'success
 };
 
 export const APRI_LIST_PATH = '/purchasing/reserve-invoices';
-export const APRI_NOUN: Noun = { one: 'A/P reserve invoice', many: 'A/P reserve invoices' };
+export const APRI_NOUN: Noun = { one: 'A/P reserve invoice', many: 'A/P reserve invoices', lineLabel: 'invoiced items' };
 
 export const AP_RI_STATUS_INTENT: Record<ApRiStatus, 'default' | 'primary' | 'success' | 'danger' | 'warning'> = {
   Draft: 'default',
@@ -94,9 +94,9 @@ export const PAYMENT_STATUS_INTENT: Record<PaymentStatus, 'default' | 'success' 
 };
 
 export const DPR_LIST_PATH = '/purchasing/down-payment-requests';
-export const DPR_NOUN: Noun = { one: 'A/P down payment request', many: 'A/P down payment requests' };
+export const DPR_NOUN: Noun = { one: 'A/P down payment request', many: 'A/P down payment requests', lineLabel: 'items' };
 export const DPI_LIST_PATH = '/purchasing/down-payment-invoices';
-export const DPI_NOUN: Noun = { one: 'A/P down payment invoice', many: 'A/P down payment invoices' };
+export const DPI_NOUN: Noun = { one: 'A/P down payment invoice', many: 'A/P down payment invoices', lineLabel: 'items' };
 export const DPI_STATUS_INTENT: Record<DpiStatus, 'default' | 'primary' | 'success' | 'danger' | 'warning'> = {
   Draft: 'default',
   'Not Confirmed': 'warning',
@@ -125,16 +125,16 @@ export const PBA_STATUS_INTENT: Record<PbaStatus, 'default' | 'primary' | 'succe
 };
 
 export const RETURN_LIST_PATH = '/purchasing/goods-returns';
-export const RETURN_NOUN: Noun = { one: 'goods return', many: 'goods returns' };
+export const RETURN_NOUN: Noun = { one: 'goods return', many: 'goods returns', lineLabel: 'returned items' };
 export const GRR_LIST_PATH = '/purchasing/goods-return-requests';
-export const GRR_NOUN: Noun = { one: 'goods return request', many: 'goods return requests' };
+export const GRR_NOUN: Noun = { one: 'goods return request', many: 'goods return requests', lineLabel: 'items to return' };
 export const GRR_STATUS_INTENT: Record<GrrStatus, 'default' | 'primary' | 'success'> = {
   Open: 'primary',
   Closed: 'success',
 };
 
 export const MEMO_LIST_PATH = '/purchasing/debit-memos';
-export const MEMO_NOUN: Noun = { one: 'A/P credit memo', many: 'A/P credit memos' };
+export const MEMO_NOUN: Noun = { one: 'A/P credit memo', many: 'A/P credit memos', lineLabel: 'credited items' };
 
 export const MEMO_STATUS_INTENT: Record<MemoStatus, 'default' | 'primary' | 'success' | 'danger' | 'warning'> = {
   Draft: 'default',
@@ -153,7 +153,7 @@ export const RETURN_STATUS_INTENT: Record<ReturnStatus, 'default' | 'primary' | 
 };
 
 export const LC_LIST_PATH = '/purchasing/landed-costs';
-export const LC_NOUN: Noun = { one: 'landed cost', many: 'landed costs' };
+export const LC_NOUN: Noun = { one: 'landed cost', many: 'landed costs', lineLabel: 'items' };
 
 export const LC_STATUS_INTENT: Record<LcStatus, StatusIntent> = {
   Draft: 'default',

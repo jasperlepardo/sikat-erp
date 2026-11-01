@@ -340,7 +340,7 @@ function ListView<T extends { id: string }>({
               layout="fill"
               {...(treeHeaderActions ? { headerActions: treeHeaderActions, expandedIds, onExpandedChange: setExpanded } : {})}
               {...(onSetActive ? { selectable: true, selectedIds: selected, onSelectionChange: setSelected } : {})}
-              {...(useTree ? { getSubRows } : {
+              {...(useTree ? { getSubRows } : filtered.length < PAGE_SIZES[0] ? {} : {
                 pagination: {
                   page: current,
                   pageSize,

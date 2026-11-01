@@ -19,6 +19,8 @@ import { formatDate } from '../../../../services/dates';
 import type { LandedCostLine } from '../../../../mocks/landedCosts';
 import type { GoodsReceipt, GrLine } from '../../../../mocks/goodsReceipts';
 import type { LcSectionProps } from './types';
+import { LC_NOUN } from '../../paths';
+import { cap } from '../../../../components/form/noun';
 
 const money = (n: number) => <span className="tabular-nums">{formatAmount(n)}</span>;
 
@@ -202,7 +204,7 @@ export function LcItemsCard({ draft, errors, m, readOnly, onLinesChange }: LcIte
         cardHeader
         prefsKey="lc"
         icon="inventory_2"
-        title="Items"
+        title={cap(LC_NOUN.lineLabel!)}
         columns={columns}
         rows={draft.lines}
         getRowId={(l) => l.id}

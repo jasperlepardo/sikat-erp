@@ -138,7 +138,7 @@ export interface JournalEntry {
 }
 
 export const JE_SERIES: DocumentSeries[] = [
-  { id: 'je-primary', name: 'Primary', prefix: '', firstNo: 12, manual: false, isDefault: true, active: true, segments: [{ type: 'literal', value: 'JE' }, { type: 'year' }, { type: 'sequence', padding: 4 }] },
+  { id: 'je-primary', name: 'Journal Entry', prefix: '', firstNo: 12, manual: false, isDefault: true, active: true, segments: [{ type: 'literal', value: 'JE' }, { type: 'year' }, { type: 'sequence', padding: 4 }] },
 ];
 
 export const newJeLine = (patch: Partial<JeLine> = {}): JeLine => ({

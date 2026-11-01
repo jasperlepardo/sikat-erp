@@ -36,49 +36,49 @@ export function LcVendorDetailsPanel({ draft, update, m, readOnly, vendor, open,
         }
       />
       <Panel.Body>
-        <fieldset disabled={readOnly} className="contents">
-          <Section icon="local_shipping" title="Shipping & customs">
-            <Fields cols={1}>
-              {broker && readOnly ? (
-                <ReadOnly label="Broker" value={draft.brokerName} description={draft.brokerCode} />
-              ) : (
-                <FormField label="Broker">
-                  {(p) => (
-                    <Combobox
-                      {...p}
-                      placeholder="Search brokers / forwarding agents"
-                      options={[{ value: '', label: 'None', text: '' }, ...m.vendors
-                        .filter((v) => v.status !== 'Inactive' || v.id === draft.brokerId)
-                        .map((v) => ({ value: v.id, label: v.name, subLabel: v.code, subLabelPlacement: 'top' as const, text: `${v.code} ${v.name}` }))]}
-                      value={draft.brokerId || null}
-                      onValueChange={(id) => {
-                        const b = m.vendors.find((v) => v.id === id);
-                        update({ brokerId: id ?? '', brokerCode: b?.code ?? '', brokerName: b?.name ?? '' });
-                      }}
-                    />
-                  )}
-                </FormField>
-              )}
-              <FormField label="Currency">
+        <Section icon="local_shipping" title="Shipping & customs">
+          <Fields cols={1}>
+            {broker && readOnly ? (
+              <ReadOnly label="Broker" value={draft.brokerName} description={draft.brokerCode} />
+            ) : (
+              <FormField label="Broker">
                 {(p) => (
-                  <Select
+                  <Combobox
                     {...p}
-                    disabled={readOnly}
-                    options={[{ value: 'PHP', label: 'PHP — Philippine Peso' }]}
-                    value={draft.currency}
-                    onValueChange={(currency) => update({ currency })}
+                    readOnly={readOnly}
+                    placeholder="Search brokers / forwarding agents"
+                    options={[{ value: '', label: 'None', text: '' }, ...m.vendors
+                      .filter((v) => v.status !== 'Inactive' || v.id === draft.brokerId)
+                      .map((v) => ({ value: v.id, label: v.name, subLabel: v.code, subLabelPlacement: 'top' as const, text: `${v.code} ${v.name}` }))]}
+                    value={draft.brokerId || null}
+                    onValueChange={(id) => {
+                      const b = m.vendors.find((v) => v.id === id);
+                      update({ brokerId: id ?? '', brokerCode: b?.code ?? '', brokerName: b?.name ?? '' });
+                    }}
                   />
                 )}
               </FormField>
-              <FormField label="Reference">
-                {(p) => <TextField {...p} value={draft.reference} disabled={readOnly} onChange={(e) => update({ reference: e.currentTarget.value })} />}
-              </FormField>
-              <FormField label="File no.">
-                {(p) => <TextField {...p} value={draft.fileNo} disabled={readOnly} onChange={(e) => update({ fileNo: e.currentTarget.value })} />}
-              </FormField>
-            </Fields>
-          </Section>
-        </fieldset>
+            )}
+            <FormField label="Currency">
+              {(p) => (
+                <Select
+                  {...p}
+                  readOnly={readOnly}
+                  disabled={readOnly}
+                  options={[{ value: 'PHP', label: 'PHP — Philippine Peso' }]}
+                  value={draft.currency}
+                  onValueChange={(currency) => update({ currency })}
+                />
+              )}
+            </FormField>
+            <FormField label="Reference">
+              {(p) => <TextField {...p} value={draft.reference} disabled={readOnly} onChange={(e) => update({ reference: e.currentTarget.value })} />}
+            </FormField>
+            <FormField label="File no.">
+              {(p) => <TextField {...p} value={draft.fileNo} disabled={readOnly} onChange={(e) => update({ fileNo: e.currentTarget.value })} />}
+            </FormField>
+          </Fields>
+        </Section>
       </Panel.Body>
     </SidePanel>
   );

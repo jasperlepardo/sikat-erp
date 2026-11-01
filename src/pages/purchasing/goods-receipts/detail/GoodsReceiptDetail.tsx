@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import { createPortal } from 'react-dom';
-import { postDocumentEntry, reverseDocumentEntry } from '../../../../services/journalEntries';
+import { postDocumentEntry, postingPeriodProblem, reverseDocumentEntry } from '../../../../services/journalEntries';
 import {
   Alert,
   Badge,
@@ -13,11 +13,12 @@ import {
 import { PageHeader } from '../../../../components/form/PageHeader';
 import { type Errors } from '../../../../components/form/fields';
 import { type MoreMenuItem } from '../../../../components/form/MoreMenu';
+import { JournalPreview } from '../../../../components/form/JournalPreview';
 import { DetailActions, docMode } from '../../../../components/form/DetailActions';
 import { isApprover, needsApproval } from '../../../../services/approval';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { CURRENT_USER_ID } from '../../../../mocks/common';
-import { blankGoodsReceipt, newGrLine, type GoodsReceipt, type GrLine, type GrStatus } from '../../../../mocks/goodsReceipts';
+import { blankGoodsReceipt, newGrLine, type GoodsReceipt, type GrLine } from '../../../../mocks/goodsReceipts';
 import { type Partner } from '../../../../mocks/partners';
 import { type PurchaseOrder } from '../../../../mocks/purchaseOrders';
 import { loadCurrentCompany } from '../../../../services/companies';
@@ -51,9 +52,11 @@ import { CopyPanel, type CopySourceType } from '../../shared/CopyPanel';
 import { CreateFromPanel, createHopMenuItems } from '../../shared/CreateFromPanel';
 import { GR_TO_AP, GR_TO_RETURN, type CopyHop, type LinePick } from '../../shared/copyHops';
 import { grDoc } from './grDoc';
+import { purchaseView } from '../../shared/purchaseView';
 import { DocumentFlow } from '../../shared/DocumentFlow';
 import { GrLogistics } from './GrLogisticsCard';
-import { GrAccounting } from './GrAccountingCard';
+import { DocumentPayment, DocumentJournalEntry } from '../../../../components/form/PaymentCard';
+import { goodsReceiptPayment } from '../../../documentPaymentDefs';
 import { buildGrContext, defaultPayTo, defaultShipTo, linesFromPo, type GrContext, type GrDraft, type GrMasters } from './types';
 import { receivingVendorAddressFields } from '../../shared/vendorAddresses';
 import { useDocTitle } from '../../../../services/useDocTitle';
@@ -61,10 +64,12 @@ import { ActivityTab } from '../../../../components/activity/ActivityTab';
 import { neighbours, NotFound, siblingKeys, useDocTab, useReject } from '../../../../components/form/DetailNav';
 import { VendorCard } from '../../shared/VendorCard';
 import { VendorDetailsPanel } from '../../shared/VendorDetailsPanel';
+import { DocumentDates } from '../../../../components/form/DatesCard';
+import { goodsReceiptDates } from '../../../documentDateDefs';
 import { GrDocumentCard } from './GrDocumentCard';
-import { GrTotalsCard } from './GrTotalsCard';
-import { GrJournalCard } from './GrJournalCard';
+import { AssignmentCard } from '../../../../components/form/AssignmentCard';
 import { ReferencesTable } from '../../shared/ReferencesTable';
+import { PurchReferencesCard } from '../../shared/PurchReferencesCard';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { GR_LIST_PATH, GR_NOUN, GR_STATUS_INTENT } from '../../paths';
 
@@ -86,7 +91,8 @@ function validate(d: GrDraft, ctx: GrContext, m: GrMasters, asDraft: boolean): P
   need(d.vendorId, 'header', 'vendorId', 'Pick a vendor.');
   if (asDraft) return problems;
 
-  need(d.postingDate, 'header', 'postingDate', 'Posting date is required.');
+  const postingPeriod = postingPeriodProblem(d.postingDate);
+  need(!postingPeriod, 'header', 'postingDate', postingPeriod ?? '');
   need(d.documentDate, 'header', 'documentDate', 'Document date is required.');
   need(!d.dueDate || d.dueDate >= d.postingDate, 'header', 'dueDate', 'Due date is before the posting date.');
   need(d.currency !== ALL_CURRENCIES, 'header', 'currency', 'Pick the document currency.');
@@ -151,6 +157,7 @@ function GoodsReceiptForm() {
   const [saving, setSaving] = useState(false);
   const reject = useReject();
   const [vendorDetailsOpen, setVendorDetailsOpen] = useState(false);
+  const [currencyView, setCurrencyView] = useState('');
   const [copying, setCopying] = useState(false);
   const [createHop, setCreateHop] = useState<CopyHop<GoodsReceipt> | null>(null);
 
@@ -311,8 +318,6 @@ function GoodsReceiptForm() {
     await recallGoodsReceipt(saved);
     navigate(GR_LIST_PATH, { state: { notice: `Goods receipt ${grNumber(saved)} rejected and returned to draft.` } });
   };
-  const statusMoves: Partial<Record<GrStatus, () => void>> = draft.status === 'Draft' ? (draft.approved ? { Open: () => submit(null) } : { 'Not Confirmed': () => submit(null) }) : draft.status === 'Not Confirmed' ? { Open: () => submit(null, false, { approved: true }) } : draft.status === 'Open' ? { Closed: closeIt, ...(!invoiced && !returned ? { Cancelled: cancelIt } : {}) } : {};
-
   const menu: MoreMenuItem[] = [
     ...(draft.status === 'Open' ? createHopMenuItems(saved, m.items, [GR_TO_AP, GR_TO_RETURN], setCreateHop) : []),
     ...(!isNew ? [{ label: 'Duplicate', icon: 'content_copy', onSelect: duplicate }] : []),
@@ -325,6 +330,8 @@ function GoodsReceiptForm() {
 
   const title = isNew ? `New ${GR_NOUN.one}` : added ? grNumber(draft) : `Draft ${GR_NOUN.one}`;
   const sectionProps = { draft, update, errors, m, ctx };
+  const view = purchaseView(draft.currency, ctx.fx, draft.postingDate, currencyView, setCurrencyView);
+  const journalEntry = <JournalPreview journal={journal} accounts={m.inv.accounts} />;
   const copyablePos = draft.vendorId ? receivablePos(m.orders, draft.vendorId).filter((po) => !ctx.based || po.currency === draft.currency) : [];
 
   return (
@@ -379,8 +386,8 @@ function GoodsReceiptForm() {
               </Alert>
             ) : null}
 
-            <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
-              <div className="flex flex-col gap-2 lg:col-span-8">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+              <div className="flex flex-col gap-3 lg:col-span-8">
                 <VendorCard
                   vendors={m.vendors}
                   vendorId={draft.vendorId}
@@ -393,16 +400,25 @@ function GoodsReceiptForm() {
                   pickVendor={pickVendor}
                   onOpenDetails={() => setVendorDetailsOpen(true)}
                 />
-                <DocLines {...grDoc({ ...sectionProps, onCopyClick: () => setCopying(true), copyableCount: copyablePos.length })} />
+                <DocLines {...grDoc({ ...sectionProps, onCopyClick: () => setCopying(true), copyableCount: copyablePos.length }, view)} />
+                <DocumentJournalEntry def={goodsReceiptPayment} posting={journalEntry} {...sectionProps} />
                 <ReferencesTable refs={draft.references} onChange={(references) => update({ references })} readOnly={ctx.readOnly} description="Other documents this receipt refers to, e.g. the vendor's delivery receipt or a courier waybill." />
                 <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach the vendor's delivery receipt, packing list or proof of receipt." />
               </div>
-              <div className="flex flex-col gap-2 lg:col-span-4">
-                <GrDocumentCard {...sectionProps} statusMoves={statusMoves} />
+              <div className="flex flex-col gap-3 lg:col-span-4">
+                <GrDocumentCard {...sectionProps} />
+                <DocumentDates def={goodsReceiptDates} {...sectionProps} />
                 <GrLogistics draft={draft} update={update} m={m} />
-                <GrAccounting {...sectionProps} />
-                <GrTotalsCard {...sectionProps} />
-                <GrJournalCard {...sectionProps} />
+                <PurchReferencesCard {...sectionProps} projectHint="Defaults from the vendor or the PO." orderNumberHint="The PO the lines were copied from. Blank for a receipt entered without one." />
+                <DocumentPayment def={goodsReceiptPayment} posting={journalEntry} {...sectionProps} />
+                <AssignmentCard
+                  draft={draft}
+                  update={update}
+                  readOnly={ctx.readOnly}
+                  person={{ key: "buyerId", label: "Buyer", hint: "Who bought the goods." }}
+                  ownerHint="Owns the document (data access)."
+                  remarksHint="Can be changed after the receipt is added."
+                />
               </div>
             </div>
           </Panel.Body>
@@ -413,20 +429,10 @@ function GoodsReceiptForm() {
       draft={draft}
       update={update}
       vendor={ctx.vendor}
-      currencies={m.currencies}
       readOnly={ctx.readOnly}
       open={vendorDetailsOpen}
       onClose={() => setVendorDetailsOpen(false)}
       vendorRefHint="The vendor's delivery receipt or waybill no."
-      currency={{
-        disabled: ctx.readOnly || ctx.based,
-        tooltip: ctx.based
-          ? 'Locked to the currency of the PO the lines came from.'
-          : ctx.vendor?.currency === ALL_CURRENCIES
-          ? 'This vendor takes all currencies — pick the document currency.'
-          : `Defaults to the vendor's currency (${ctx.vendor?.currency ?? '—'}).`,
-        error: errors.currency,
-      }}
       addresses={ctx.vendor ? receivingVendorAddressFields(m, ctx.vendor) : []}
     />
     {copying

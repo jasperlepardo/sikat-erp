@@ -30,7 +30,7 @@ import { createCollection } from './store';
 import { purchasingHistory } from './purchasingHistory';
 import { birForms, taxCodes } from './masterData';
 import { drawDownPayments, dprTotal, listDownPayments } from './apDownPayments';
-import { drawDownPaymentInvoices, dpiTotal, listDownPaymentInvoices } from './apDownPaymentInvoices';
+import { drawDownPaymentInvoices, dpiDrawable, dpiTotal, listDownPaymentInvoices } from './apDownPaymentInvoices';
 import { round2 } from './num';
 
 // Seeded withholding is stamped as if each was added under the seeded Settings.
@@ -63,6 +63,18 @@ export const apTotals = (
 /** Total payment due less withholding taken off and down payments: what the vendor is owed. */
 export const netDue = (total: number, withholding: WithholdingLine[], downPayment: number) =>
   round2(total - withholding.filter((w) => w.deducted).reduce((n, w) => n + w.amount, 0) - downPayment);
+
+/**
+ * Withholding on the final invoice, net of what its drawn down payment *invoices* already withheld.
+ * A DPI is an issued invoice, so it withholds on its share now; the final bill then withholds only on
+ * the rest. Down payment *requests* carry no withholding here, so they don't reduce it.
+ */
+export function trueUpWithholding(full: WithholdingLine[], draws: DownPaymentDraw[] = []): WithholdingLine[] {
+  const drawn = new Map<string, number>();
+  for (const d of draws) for (const w of d.withholding ?? []) drawn.set(w.atc, round2((drawn.get(w.atc) ?? 0) + w.amount));
+  if (!drawn.size) return full;
+  return full.map((w) => (drawn.has(w.atc) ? { ...w, amount: round2(w.amount - (drawn.get(w.atc) ?? 0)) } : w));
+}
 
 /** A document's total payment due (before withholding), with tax rates as of its posting date. */
 export const apTotal = (inv: ApInvoice, codes: TaxCode[]) =>
@@ -132,6 +144,10 @@ export function apJournal(
   add(FREIGHT_IN_ACCOUNT, freight);
   if (!reverse(inv.freightTaxCode)) add(vatAccount(inv.freightTaxCode), round2((freight * ctx.rateOf(inv.freightTaxCode)) / 100));
 
+  // A drawn down payment *invoice* already claimed input VAT on its share — credit it back so the
+  // final bill claims VAT only on the remainder (ctx.withholding is likewise already trued up).
+  for (const d of inv.drawnDownPayments ?? []) if (d.inputVatLc && d.vatAccount) add(d.vatAccount, -d.inputVatLc);
+
   const debits = round2([...totals.values()].reduce((n, v) => n + v, 0));
   let withheld = 0;
   for (const w of ctx.withholding.filter((x) => x.deducted)) {
@@ -139,7 +155,7 @@ export function apJournal(
     add(w.account || WITHHOLDING_PAYABLE[w.kind] || '2340', -amt);
     withheld += amt;
   }
-  // Down payments drawn clear the advance at the rate it was paid at; the vendor is owed the rest.
+  // Down payments drawn clear the (ex-VAT) advance at the rate it was paid at; the vendor is owed the rest.
   let drawn = 0;
   for (const d of inv.drawnDownPayments ?? []) {
     add(d.account, -d.amountLc);
@@ -231,13 +247,13 @@ export async function addApInvoice(input: ApInput, fx: number, due?: number): Pr
     if (qty > open) over.push({ lineId: line.id, message: `${line.itemNo}: billing ${qty} ${line.uomCode} but PO ${line.baseDocNo} has ${open} open.` });
   }
   if (over.length) throw new ApPostError(over.map((o) => o.lineId), over.map((o) => o.message).join(' '));
-  const [requests, dpiInvoices] = await Promise.all([listDownPayments(), listDownPaymentInvoices()]);
+  const [requests, dpiInvoices, drawCodes] = await Promise.all([listDownPayments(), listDownPaymentInvoices(), taxCodes.list()]);
   const overDrawn = (input.drawnDownPayments ?? []).filter((d) => {
     const dpr = requests.find((x) => x.id === d.requestId);
     const dpi = dpiInvoices.find((x) => x.id === d.requestId);
-    const r = dpr ?? dpi;
-    if (!r) return true;
-    const available = Math.max(0, Math.round((r.appliedAmount - r.drawnAmount) * 100) / 100);
+    if (!dpr && !dpi) return true;
+    // A DPI's drawable is its gross total (incl. VAT) less what's drawn; a request's is its net paid.
+    const available = dpi ? dpiDrawable(dpi, drawCodes) : Math.max(0, round2(dpr!.appliedAmount - dpr!.drawnAmount));
     return d.amount > available + 0.005;
   });
   if (overDrawn.length) throw new ApPostError([], `Down payment ${overDrawn.map((d) => d.docNo).join(', ')} doesn't have that much paid and undrawn any more.`);

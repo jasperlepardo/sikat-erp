@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, type ReactNode } from 'react';
+import { Children, useCallback, useMemo, useState, type ReactNode } from 'react';
 import { Button, Card, Icon, Table, Text, type TableColumn, type TableSort } from '@jasperlepardo/sikat-design-system';
 
 export interface DataTableProps<T> {
@@ -50,12 +50,13 @@ export const PAGE_SIZES = [10, 25, 50, 100, 250];
 export const DEFAULT_PAGE_SIZE = 50;
 
 /**
- * Classes for the Card around a `layout="fill"` list table. The 288px minimum stops the
- * table collapsing in a short window, but on a short list it would hold the card open
- * and the fill table would stretch, leaving empty space above the pagination. So it
- * applies only once the page has enough rows (6) to be that tall anyway.
+ * Classes for the Card around a `layout="fill"` list table. When there are rows the card
+ * grows to fill the panel body (`flex-1 min-h-0`) so the fill table stretches and its
+ * pagination bar pins to the bottom of the viewport — short lists leave empty space above
+ * it rather than floating the pagination up under the last row. With no rows (loading or
+ * empty state) the card stays compact so the empty message doesn't fill the whole panel.
  */
-export const fillCardClass = (rowsOnPage: number) => (rowsOnPage >= 6 ? 'flex-initial min-h-72' : 'flex-initial');
+export const fillCardClass = (rowsOnPage: number) => (rowsOnPage > 0 ? 'flex-1 min-h-0' : 'flex-initial');
 
 export const defaultSortValue = (row: unknown, key: string): string | number => {
   const v = (row as Record<string, unknown>)[key];
@@ -72,14 +73,18 @@ export function useListPage() {
   const paginate = useCallback(
     <T,>(rows: T[]) => ({
       visible: rows.slice((page - 1) * pageSize, page * pageSize),
-      pagination: {
-        page,
-        pageSize,
-        total: rows.length,
-        pageSizes: PAGE_SIZES,
-        onPageChange: setPage,
-        onPageSizeChange: (size: number) => { setPageSize(size); setPage(1); },
-      },
+      // Below the smallest page size there is only ever one page, so pagination is noise — hide it.
+      pagination:
+        rows.length < PAGE_SIZES[0]
+          ? undefined
+          : {
+              page,
+              pageSize,
+              total: rows.length,
+              pageSizes: PAGE_SIZES,
+              onPageChange: setPage,
+              onPageSizeChange: (size: number) => { setPageSize(size); setPage(1); },
+            },
     }),
     [page, pageSize],
   );
@@ -163,9 +168,11 @@ export function DataTable<T>({
       {actions}
     </div>
   );
-  // The span/add row fills the table width even when there are no data rows yet.
-  const spanRowCell = spanRow ? <div className="w-full [&>*]:w-full">{spanRow}</div> : undefined;
-  const hasTable = rows.length > 0 || Boolean(spanRow);
+  // The add row sits below the table, outside its horizontal scroll container, so it
+  // stays put and full-width no matter how wide (or scrolled) the columns are.
+  const addBlock = spanRow ? <div className="px-2 pt-2 pb-2 [&>*]:w-full">{spanRow}</div> : null;
+  const hasRows = rows.length > 0;
+  const hasTable = hasRows || Boolean(spanRow);
   const tableEl = (
     <Table
       // The card variant names the table in its header; no hidden caption.
@@ -177,7 +184,7 @@ export function DataTable<T>({
       onSortChange={setSort}
       layout="scroll"
       {...(onRemove ? { selectable: true, selectedIds: liveSelection, onSelectionChange: setSelected } : {})}
-      {...(!noPagination && {
+      {...(!noPagination && rows.length >= PAGE_SIZES[0] && {
         pagination: {
           page: current,
           pageSize,
@@ -190,17 +197,19 @@ export function DataTable<T>({
           },
         },
       })}
-      {...(spanRow ? { footerRow: spanRowCell } : {})}
       {...(getSubRows ? { getSubRows } : {})}
       {...(defaultExpandedIds ? { defaultExpandedIds } : {})}
     />
   );
-  const emptyState = <div className="px-2">{empty}</div>;
-  // Plain: the table and footer in their own Card. Card variant: see below.
+  const emptyState = <div className="px-2 py-2">{empty}</div>;
+  // Plain: the table, add row and footer in their own Card. The headers stay visible
+  // when empty, with the empty message below them. Card variant: see below.
   const table = hasTable ? (
     <Card>
       {tableEl}
-      {cardFooter}
+      {hasRows ? null : emptyState}
+      {addBlock}
+      {hasRows ? cardFooter : null}
     </Card>
   ) : emptyState;
 
@@ -210,7 +219,7 @@ export function DataTable<T>({
         <Card.Header icon={icon ? <Icon size={24}>{icon}</Icon> : undefined} actions={toolbar}>
           {title ?? ''}
         </Card.Header>
-        {description || children || !hasTable ? (
+        {description || Children.toArray(children).length > 0 ? (
           <Card.Content>
             {description ? (
               <Text variant="small" tone="muted">
@@ -218,12 +227,13 @@ export function DataTable<T>({
               </Text>
             ) : null}
             {children}
-            {hasTable ? null : emptyState}
           </Card.Content>
         ) : null}
-        {/* Outside the body: the table runs to the Card's edges, cancelling its padding. */}
-        {hasTable ? <div className="-mx-(--spacing-4)">{tableEl}</div> : null}
-        {hasTable ? cardFooter : null}
+        {/* Inset to match the Card's padding so the table lines up with the body content. */}
+        {hasTable ? tableEl : null}
+        {hasRows ? null : emptyState}
+        {addBlock}
+        {hasRows ? cardFooter : null}
       </Card>
     );
   }

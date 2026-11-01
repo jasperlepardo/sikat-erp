@@ -11,6 +11,8 @@ import { formatAmount } from '../../../services/format';
 import { isValidToday } from '../../../services/items';
 import { inStockAt, qtyByItem } from '../../../services/inventoryTransfers';
 import { LineItemText } from '../../../components/form/LineItemText';
+import { TRANSFER_NOUN } from '../paths';
+import { cap } from '../../../components/form/noun';
 
 export type TransferDraft = Omit<InventoryTransfer, 'id'> & { id?: string };
 
@@ -302,7 +304,7 @@ export function TransferLines({
       variant="card"
       noPagination
       icon="list_alt"
-      title="Contents"
+      title={cap(TRANSFER_NOUN.lineLabel!)}
       description={
         errors.lines ??
         'Items to move, in their inventory unit. Each line leaves from the From warehouse and goes to its own To warehouse (the header’s by default).'

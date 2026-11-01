@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react';
-import { Checkbox, Text, TextField, Tooltip } from '@jasperlepardo/sikat-design-system';
-import { formatAmount } from '../../../services/format';
+import { Checkbox, TextField, Tooltip } from '@jasperlepardo/sikat-design-system';
+import { amt, TotalsBar, TotalsRow } from '../../../components/form/TotalsFooterParts';
 import { SALES_SETTINGS } from '../../../mocks/salesOrders';
-import { soTotals, soWithholding } from '../../../services/salesOrders';
+import { soTotals, soVatBreakdown, soWithholding, type SoTotals } from '../../../services/salesOrders';
 import { determineTax } from '../../../services/taxDetermination';
 import type { Currency } from '../../../mocks/currencies';
 import type { Item } from '../../../mocks/items';
@@ -23,19 +23,31 @@ interface TotalsFooterProps {
   withholding?: { label: string; amount: number }[];
   /** Rows after the total and net, e.g. what's been applied and the balance due. */
   extraRows?: ReactNode;
+  /** The document's totals, computed once by the page (so the footer shows exactly what's posted/saved). */
+  totals: SoTotals;
+  /** Label for the strong total bar. Default "Total"; a credit memo passes "Total credit". */
+  totalLabel?: string;
+  /** Currency view: when its code differs from the document currency, amounts are converted and inputs lock. */
+  view?: { code: string; convert: (n: number) => number };
 }
 
 /** Subtotal, discount, freight, tax, total and withholding under a sales document's lines. */
-export function SalesTotalsFooter({ draft, update, ctx, m, withRounding, withholding, extraRows }: TotalsFooterProps) {
+export function SalesTotalsFooter({ draft, update, ctx, m, withRounding, withholding, extraRows, totals, totalLabel = 'Total', view }: TotalsFooterProps) {
   const doc = draft as unknown as SoTotalsInput;
 
+  // When a foreign-currency document is viewed in PHP, amounts convert and the inline editors lock.
+  const code = view?.code ?? draft.currency;
+  const conv = view?.convert ?? ((n: number) => n);
+  const converted = code !== draft.currency;
+  const ro = ctx.readOnly || converted;
 
   const customer = ctx.customer;
   const docCurrency = m.currencies.find((c) => c.code === draft.currency);
-  const totals = soTotals(doc, ctx.rateOf, docCurrency?.rounding);
+  // BIR invoice breakdown — only shown when a VAT-registered sale genuinely mixes categories.
+  const vat = soVatBreakdown(doc, m.tax.codes, ctx.rateOf);
+  const showVatBreakdown = vat.vatable > 0 && (vat.zeroRated > 0 || vat.exempt > 0);
   const withholdingLines = withholding ?? soWithholding({ ...doc, postingDate: draft.postingDate }, customer, m.items, m.tax).map((w) => ({ label: `${w.kind === 'Withholding VAT' ? 'VAT' : 'EWT'} withheld — ${w.atc} (${w.rate}%)`, amount: w.amount }));
   const withholdingTotal = withholdingLines.reduce((n, w) => n + w.amount, 0);
-  const totalLc = totals.total * ctx.fx;
   const taxNotes = [
     ...new Set(
       draft.lines.flatMap((l) => {
@@ -46,69 +58,51 @@ export function SalesTotalsFooter({ draft, update, ctx, m, withRounding, withhol
   ];
 
   return (
-    <fieldset disabled={ctx.readOnly} className="contents">
-      <div className="flex flex-col gap-1 px-2 py-1">
-        <div className="flex items-center justify-between gap-4">
-          <Text variant="small" tone="muted">Subtotal</Text>
-          <Text variant="small" className="tabular-nums">{draft.currency} {formatAmount(totals.beforeDiscount)}</Text>
-        </div>
-        {draft.discountPct > 0 ? (
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <Text variant="small" tone="muted">Discount</Text>
-              <TextField aria-label="Document discount %" type="number" min={0} className="w-20" suffix="%" value={String(draft.discountPct)} onChange={(e) => update({ discountPct: Math.min(100, Number(e.currentTarget.value)) })} />
-            </div>
-            <Text variant="small" className="tabular-nums">{totals.discount ? `–${draft.currency} ${formatAmount(totals.discount)}` : '—'}</Text>
-          </div>
-        ) : null}
-        {SALES_SETTINGS.manageFreightInDocuments && draft.freight > 0 ? (
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <Text variant="small" tone="muted">Freight</Text>
-              <TextField aria-label="Freight amount" type="number" min={0} className="w-24" prefix={draft.currency} value={String(draft.freight)} onChange={(e) => update({ freight: Number(e.currentTarget.value) })} />
-            </div>
-            <Text variant="small" className="tabular-nums">{draft.currency} {formatAmount(totals.freight)}</Text>
-          </div>
-        ) : null}
-        {withRounding ? (
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <Text variant="small" tone="muted">Rounding</Text>
-              <Checkbox aria-label="Apply rounding" checked={draft.rounding} onChange={(e) => update({ rounding: e.currentTarget.checked })}>{docCurrency?.rounding ?? 'No rounding'}</Checkbox>
-            </div>
-            <Text variant="small" className="tabular-nums">{totals.rounding ? `${draft.currency} ${formatAmount(totals.rounding)}` : '—'}</Text>
-          </div>
-        ) : null}
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-1">
-            <Text variant="small" tone="muted">Tax</Text>
-            {taxNotes.length > 0 && (
-              <Tooltip message={<div className="flex flex-col gap-1">{taxNotes.map((n) => <span key={n}>{n}</span>)}</div>} icon="info" />
-            )}
-          </div>
-          <Text variant="small" className="tabular-nums">{draft.currency} {formatAmount(totals.tax)}</Text>
-        </div>
-        <div className="flex items-baseline justify-between gap-4 border-t pt-1" style={{ borderColor: 'var(--color-border-neutral-subtle)' }}>
-          <Text variant="small" weight="semibold" tone="heading">Total</Text>
-          <Text variant="small" weight="semibold" tone="heading" className="tabular-nums">{draft.currency} {formatAmount(totals.total)}</Text>
-        </div>
-        {withholdingLines.map((w) => (
-          <div key={w.label} className="flex items-center justify-between gap-4">
-            <Text variant="small" tone="muted">{w.label}</Text>
-            <Text variant="small" tone="danger" className="tabular-nums">–{draft.currency} {formatAmount(w.amount)}</Text>
-          </div>
-        ))}
-        {withholdingLines.length > 0 && (
-          <div className="flex items-baseline justify-between gap-4 border-t pt-1" style={{ borderColor: 'var(--color-border-neutral-subtle)' }}>
-            <Text variant="small" weight="semibold" tone="heading">Net to receive</Text>
-            <Text variant="small" weight="semibold" tone="heading" className="tabular-nums">{draft.currency} {formatAmount(totals.total - withholdingTotal)}</Text>
-          </div>
-        )}
-        {extraRows}
-        {draft.currency !== 'PHP' ? (
-          <Text variant="small" tone="muted" className="text-right">≈ PHP {formatAmount(totalLc)}</Text>
-        ) : null}
-      </div>
-    </fieldset>
+    <div className="flex flex-col">
+      <TotalsRow label="Subtotal" value={amt(conv(totals.beforeDiscount), code)} />
+      {draft.discountPct > 0 ? (
+        <TotalsRow
+          label="Discount"
+          input={<TextField aria-label="Document discount %" type="number" min={0} className="w-20" suffix="%" readOnly={ro} value={String(draft.discountPct)} onChange={(e) => update({ discountPct: Math.min(100, Number(e.currentTarget.value)) })} />}
+          value={totals.discount ? amt(-conv(totals.discount), code) : '—'}
+        />
+      ) : null}
+      {SALES_SETTINGS.manageFreightInDocuments && draft.freight > 0 ? (
+        <TotalsRow
+          label="Freight"
+          input={converted ? undefined : <TextField aria-label="Freight amount" type="number" min={0} className="w-24" prefix={draft.currency} readOnly={ctx.readOnly} value={String(draft.freight)} onChange={(e) => update({ freight: Number(e.currentTarget.value) })} />}
+          value={amt(conv(totals.freight), code)}
+        />
+      ) : null}
+      {withRounding ? (
+        <TotalsRow
+          label="Rounding"
+          input={<Checkbox aria-label="Apply rounding" readOnly={ro} checked={draft.rounding} onChange={(e) => update({ rounding: e.currentTarget.checked })}>{docCurrency?.rounding ?? 'No rounding'}</Checkbox>}
+          value={totals.rounding ? amt(conv(totals.rounding), code) : '—'}
+        />
+      ) : null}
+      {showVatBreakdown ? (
+        <>
+          <TotalsRow label="VATable sales" value={amt(conv(vat.vatable), code)} />
+          {vat.zeroRated > 0 ? <TotalsRow label="Zero-rated sales" value={amt(conv(vat.zeroRated), code)} /> : null}
+          {vat.exempt > 0 ? <TotalsRow label="VAT-exempt sales" value={amt(conv(vat.exempt), code)} /> : null}
+        </>
+      ) : null}
+      <TotalsRow
+        label={showVatBreakdown ? 'VAT (12%)' : 'Tax'}
+        input={taxNotes.length > 0 ? <Tooltip message={<div className="flex flex-col gap-1">{taxNotes.map((n) => <span key={n}>{n}</span>)}</div>} icon="info" /> : undefined}
+        value={amt(conv(totals.tax), code)}
+      />
+      <TotalsBar label={totalLabel} value={amt(conv(totals.total), code)} />
+      {withholdingLines.length > 0 ? (
+        <>
+          {withholdingLines.map((w) => (
+            <TotalsRow key={w.label} label={w.label} tone="danger" value={amt(-conv(w.amount), code)} />
+          ))}
+          <TotalsBar label="Net to receive" value={amt(conv(totals.total - withholdingTotal), code)} />
+        </>
+      ) : null}
+      {extraRows}
+    </div>
   );
 }

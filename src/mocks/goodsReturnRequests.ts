@@ -48,6 +48,8 @@ export interface GoodsReturnRequest {
   lines: GrrLine[];
 
   // Footer
+  /** Document-level discount on the goods value, as a percent (mirrors the Goods Return). */
+  discountPct: number;
   ownerId: string;
   remarks: string;
   attachments: Attachment[];
@@ -56,7 +58,7 @@ export interface GoodsReturnRequest {
 export const GRR_SERIES: DocumentSeries[] = [
   {
     id: 'grr-primary',
-    name: 'Primary',
+    name: 'Goods Return Request',
     prefix: '',
     firstNo: 1,
     manual: false,
@@ -108,6 +110,7 @@ export function blankGoodsReturnRequest(today: string, buyerId: string): Omit<Go
     requiredDate: '',
     closeDate: '',
     lines: [],
+    discountPct: 0,
     ownerId: buyerId,
     remarks: '',
     attachments: [],
@@ -118,9 +121,9 @@ export function blankGoodsReturnRequest(today: string, buyerId: string): Omit<Go
 
 export const SEED_GOODS_RETURN_REQUESTS: Omit<GoodsReturnRequest, 'id'>[] = [
   {
-    vendorId: 'bp-017',
-    vendorCode: 'ASI-001',
-    vendorName: 'Acumen Systems Inc.',
+    vendorId: 'bp-016',
+    vendorCode: 'BP-0016',
+    vendorName: 'Luzon iDistribution Corp.',
     contactId: '',
     vendorRef: '',
     currency: 'PHP',
@@ -134,9 +137,9 @@ export const SEED_GOODS_RETURN_REQUESTS: Omit<GoodsReturnRequest, 'id'>[] = [
     lines: [
       newGrrLine({
         id: 'grl-seed-001',
-        itemId: 'itm-mac-mini-m4',
-        itemNo: 'MPCX4LL/A',
-        description: 'Mac mini (M4, Late 2025) — defective unit',
+        itemId: 'apl-0304',
+        itemNo: 'MAC-MINI-M6-16-256-SLV',
+        description: 'Mac mini, M6, 16GB, 256GB, Silver — defective unit',
         quantity: 1,
         openQty: 1,
         uomCode: 'pc',
@@ -146,12 +149,13 @@ export const SEED_GOODS_RETURN_REQUESTS: Omit<GoodsReturnRequest, 'id'>[] = [
         discountPct: 0,
         taxCode: 'SVAT',
         returnReason: RETURN_REASONS[0],
-        countryOfOriginCode: 'CN',
+        countryOfOriginCode: 'MY',
         warehouse: 'WH-MAIN',
         baseType: '',
         status: 'Open',
       }),
     ],
+    discountPct: 0,
     ownerId: '',
     remarks: 'Unit arrived with a cracked casing. Requesting return and replacement.',
     attachments: [],

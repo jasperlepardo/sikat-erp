@@ -121,6 +121,14 @@ export const SETTINGS_NAV: SideNavSection[] = [
         ],
       },
       {
+        id: 'settings/document-settings',
+        label: 'Document settings',
+        icon: icon('description'),
+        items: [
+          { id: 'settings/document-settings/settings', label: 'Document settings', icon: icon('tune') },
+        ],
+      },
+      {
         id: 'settings/purchasing',
         label: 'Purchasing',
         icon: icon('shopping_cart'),

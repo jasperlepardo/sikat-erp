@@ -20,7 +20,7 @@
  *   Central Bank Ind., Stamp No., Net procedure and the QR code. Distribution rules, commodity
  *   classification and serial numbers wait for their masters.
  */
-import type { DocumentSeries } from './common';
+import type { DocumentSeries, PriceMode } from './common';
 import type { WithholdingKind } from './taxes';
 import { SEED_GOODS_RECEIPTS, newGrLine, type GoodsReceipt, type GrLine } from './goodsReceipts';
 import { SEED_ITEMS } from './items';
@@ -52,16 +52,27 @@ export interface ApLine extends Omit<GrLine, 'invoicedQty'> {
 export interface DownPaymentDraw {
   requestId: string;
   docNo: string;
-  /** In the document currency. */
+  /** Gross down payment applied against this invoice, in the document currency. */
   amount: number;
-  /** PHP it clears from the advance account: the amount at the rate the request was paid at. */
+  /** PHP it clears from the advance account: the (ex-VAT) advance at the rate it was paid at. */
   amountLc: number;
   account: string;
+  /**
+   * Input VAT the down payment *invoice* already claimed on its share, in PHP. The final invoice
+   * credits it back so VAT is claimed once. Absent for down payment *requests* (VAT not yet claimed).
+   */
+  inputVatLc?: number;
+  /** The input VAT account the DPI debited — where inputVatLc is credited back. */
+  vatAccount?: string;
+  /** EWT the DPI already withheld on its share, per ATC, in document currency — trued up off the final invoice. */
+  withholding?: { atc: string; amount: number }[];
 }
 
 export interface ApInvoice extends Omit<GoodsReceipt, 'lines' | 'status'> {
   status: ApStatus;
   lines: ApLine[];
+  /** Net / Gross / Net-and-Gross price-entry mode (display only; stored unit price is always net). */
+  priceMode?: PriceMode;
 
   // Accounting
   /** The vendor's payable control account, or another picked for this invoice. */
@@ -87,7 +98,7 @@ export interface ApInvoice extends Omit<GoodsReceipt, 'lines' | 'status'> {
 }
 
 export const AP_SERIES: DocumentSeries[] = [
-  { id: 'aps-primary', name: 'Primary', prefix: '', firstNo: 1, manual: false, isDefault: true, active: true, segments: [{ type: 'literal', value: 'BILL' }, { type: 'year' }, { type: 'sequence', padding: 4 }] },
+  { id: 'aps-primary', name: 'A/P Invoice', prefix: '', firstNo: 1, manual: false, isDefault: true, active: true, segments: [{ type: 'literal', value: 'BILL' }, { type: 'year' }, { type: 'sequence', padding: 4 }] },
 ];
 
 /** A withholding tax as stamped on an added invoice: the 2307 line plus the account it credits. */
@@ -147,6 +158,7 @@ export function blankApInvoice(today: string, buyerId: string): Omit<ApInvoice, 
     buyerId: buyerId,
     ownerId: buyerId,
     remarks: '',
+    priceMode: 'Net',
     discountPct: 0,
     freight: 0,
     freightTaxCode: '',

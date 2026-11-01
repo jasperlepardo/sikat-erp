@@ -90,7 +90,7 @@ export interface PurchaseBlanketAgreement {
 export const PBA_SERIES: DocumentSeries[] = [
   {
     id: 'pba-primary',
-    name: 'Primary',
+    name: 'Purchase Blanket Agreement',
     prefix: '',
     firstNo: 1,
     manual: false,
@@ -308,7 +308,7 @@ const AGREEMENTS: PurchaseBlanketAgreement[] = [
   seedHeader('pba-004', 0, 'bp-013', {
     startDate: '2026-10-01',
     endDate: '2027-03-31',
-    signingDate: '2026-10-09',
+    signingDate: '2026-09-28',
     description: 'Techzone Accessories — H2 FY2026 accessories supply',
     vendorRef: 'TZA-SUPPLY-2026-H2',
     status: 'Draft',

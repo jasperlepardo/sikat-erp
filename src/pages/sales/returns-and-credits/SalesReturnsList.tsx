@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useLocation } from 'react-router';
 import {
   Alert,
+  Card,
   Panel,
   Table,
   TableContent,
@@ -11,7 +12,7 @@ import {
 } from '@jasperlepardo/sikat-design-system';
 import { dateField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
-import { useListPage } from '../../../components/form/DataTable';
+import { fillCardClass, useListPage } from '../../../components/form/DataTable';
 import { PageHeader } from '../../../components/form/PageHeader';
 import { cap } from '../../../components/form/noun';
 import { formatDate } from '../../../services/dates';
@@ -151,32 +152,34 @@ export function SalesReturnsList({ kind }: { kind: Kind }) {
         searchValue={query}
         onSearchChange={(value) => { setQuery(value); resetPage(); }}
         icon="assignment_return"
-        title={presets.menu}
+        title={cap(noun.many)}
         create={{ noun, to: path }}
       />
       <Panel.Body className="flex flex-col gap-2">
         {notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : null}
-        {presets.bar(null)}
-        {!all ? (
-          <Text tone="muted" className="p-4">Loading {noun.many}…</Text>
-        ) : all.length ? (
-          <Table
-            caption={cap(noun.many)}
-            columns={columns}
-            rows={onPage}
-            getRowId={(r) => r.id}
-            sort={sort}
-            onSortChange={setSort}
-            layout="fill"
-            pagination={pagination}
-          />
-        ) : (
-          <Text tone="muted" className="p-4">
-            {kind === 'returns'
-              ? `No ${SR_NOUN.many} yet. Start one from a delivery (⋯ › Create ${SR_NOUN.one}), or with New ${SR_NOUN.one}.`
-              : `No ${ARCM_NOUN.many} yet. Start one from a sales return (⋯ › Create ${ARCM_NOUN.one}), or with New ${ARCM_NOUN.one}.`}
-          </Text>
-        )}
+        {presets.toolbar(null)}
+        <Card className={fillCardClass(onPage.length)}>
+          {!all ? (
+            <Text tone="muted" className="p-4">Loading {noun.many}…</Text>
+          ) : all.length ? (
+            <Table
+              caption={cap(noun.many)}
+              columns={columns}
+              rows={onPage}
+              getRowId={(r) => r.id}
+              sort={sort}
+              onSortChange={setSort}
+              layout="fill"
+              pagination={pagination}
+            />
+          ) : (
+            <Text tone="muted" className="p-4">
+              {kind === 'returns'
+                ? `No ${SR_NOUN.many} yet. Start one from a delivery (More actions › Create ${SR_NOUN.one}), or with New ${SR_NOUN.one}.`
+                : `No ${ARCM_NOUN.many} yet. Start one from a sales return (More actions › Create ${ARCM_NOUN.one}), or with New ${ARCM_NOUN.one}.`}
+            </Text>
+          )}
+        </Card>
       </Panel.Body>
       {presets.panel}
     </Panel>

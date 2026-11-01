@@ -15,12 +15,13 @@ import { type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { DetailActions, docMode } from '../../../../components/form/DetailActions';
 import { isApprover, needsApproval } from '../../../../services/approval';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
-import { blankApReserveInvoice, type ApReserveInvoice, type ApRiLine, type ApRiStatus } from '../../../../mocks/apReserveInvoices';
+import { blankApReserveInvoice, type ApReserveInvoice, type ApRiLine } from '../../../../mocks/apReserveInvoices';
 import { CURRENT_USER_ID } from '../../../../mocks/common';
 import { type Partner } from '../../../../mocks/partners';
 import {
   addApReserveInvoice,
   apRiNumber,
+  apriJournal,
   apRiTotals,
   cancelApReserveInvoice,
   getApReserveInvoice,
@@ -38,12 +39,14 @@ import { loadInventoryMasters } from '../../../../services/inventoryMasters';
 import { listItems } from '../../../../services/items';
 import { companyTax, currencies, exchangeRates, taxCodes, taxGroups, withholdingGroups, withholdingTaxes } from '../../../../services/masterData';
 import { listPartnersByRole } from '../../../../services/partners';
+import { postingPeriodProblem } from '../../../../services/journalEntries';
 import { dueDateFor, listPurchaseOrders, openQty, poNumber } from '../../../../services/purchaseOrders';
 import { proposedTaxCode } from '../../purchase-orders/detail/types';
 import { GrLogistics } from '../../goods-receipts/detail/GrLogisticsCard';
 import { defaultPayTo } from '../../goods-receipts/detail/types';
 import { DocumentFlow } from '../../shared/DocumentFlow';
 import { ReferencesTable } from '../../shared/ReferencesTable';
+import { PurchReferencesCard } from '../../shared/PurchReferencesCard';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { neighbours, NotFound, siblingKeys, useDocTab } from '../../../../components/form/DetailNav';
@@ -54,12 +57,16 @@ import { VendorCard } from '../../shared/VendorCard';
 import { VendorDetailsPanel } from '../../shared/VendorDetailsPanel';
 import { receivingVendorAddressFields } from '../../shared/vendorAddresses';
 import { ApriDocumentCard } from './ApriDocumentCard';
+import { DocumentDates } from '../../../../components/form/DatesCard';
+import { apReserveInvoiceDates } from '../../../documentDateDefs';
 import { apriDoc } from './apriDoc';
+import { purchaseView } from '../../shared/purchaseView';
 import { DocLines } from '../../../../components/form/docLines/DocLines';
 import { CopyPanel } from '../../shared/CopyPanel';
-import { ApriAccountingCard } from './ApriAccountingCard';
-import { ApriTotalsCard } from './ApriTotalsCard';
-import { ApriJournalCard } from './ApriJournalCard';
+import { DocumentPayment, DocumentJournalEntry } from '../../../../components/form/PaymentCard';
+import { apReserveInvoicePayment } from '../../../documentPaymentDefs';
+import { AssignmentCard } from '../../../../components/form/AssignmentCard';
+import { JournalPreview } from '../../../../components/form/JournalPreview';
 import { APRI_LIST_PATH, APRI_NOUN, AP_RI_STATUS_INTENT } from '../../paths';
 
 type TabId = 'contents' | 'logistics' | 'accounting';
@@ -77,7 +84,8 @@ function validate(d: ApriDraft, asDraft: boolean): Problem<TabId>[] {
   const { problems, need } = problemCollector<TabId>();
   need(d.vendorId, 'header', 'vendorId', 'Pick a vendor.');
   if (asDraft) return problems;
-  need(d.postingDate, 'header', 'postingDate', 'Posting date is required.');
+  const postingPeriod = postingPeriodProblem(d.postingDate);
+  need(!postingPeriod, 'header', 'postingDate', postingPeriod ?? '');
   need(d.documentDate, 'header', 'documentDate', 'Document date is required.');
   need(d.dueDate, 'header', 'dueDate', 'Due date is required — pick payment terms or enter it.');
   need(!d.dueDate || d.dueDate >= d.postingDate, 'header', 'dueDate', 'Due date is before the posting date.');
@@ -118,6 +126,7 @@ function ApReserveInvoiceForm() {
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);
   const [vendorDetailsOpen, setVendorDetailsOpen] = useState(false);
+  const [currencyView, setCurrencyView] = useState('');
   const [copying, setCopying] = useState(false);
 
   useEffect(() => {
@@ -266,15 +275,6 @@ function ApReserveInvoiceForm() {
   const cancelIt = () => act(() => cancelApReserveInvoice(saved), 'cancelled');
   const recallIt = () => act(() => recallApReserveInvoice(saved), 'recalled to draft');
 
-  const statusMoves: Partial<Record<ApRiStatus, () => void>> =
-    draft.status === 'Draft'
-      ? draft.approved ? { Open: () => submit(null) } : { 'Not Confirmed': () => submit(null) }
-      : draft.status === 'Not Confirmed'
-        ? { Open: () => submit(null, false, { approved: true }) }
-        : draft.status === 'Open' && !draft.appliedAmount
-          ? { Cancelled: cancelIt }
-          : {};
-
   const menu: MoreMenuItem[] = [
     ...(!isNew ? [{ label: 'Duplicate', icon: 'content_copy', onSelect: duplicate }] : []),
     ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }] : []),
@@ -283,6 +283,12 @@ function ApReserveInvoiceForm() {
 
   const title = isNew ? `New ${APRI_NOUN.one}` : added ? apRiNumber(draft) : `Draft ${APRI_NOUN.one}`;
   const sectionProps = { draft, update, errors, m, ctx };
+  const view = purchaseView(draft.currency, ctx.fx, draft.postingDate, currencyView, setCurrencyView);
+
+  const journal = ctx.fx
+    ? apriJournal(draft, ctx.fx, { items: m.items, groups: m.inv.groups, codes: m.tax.codes, vendor: ctx.vendor, tax: m.tax })
+    : [];
+  const journalEntry = <JournalPreview journal={journal} accounts={m.accounts} />;
 
   // Open POs from the vendor that this invoice can bill (Copy from).
   const orders = draft.vendorId
@@ -341,8 +347,8 @@ function ApReserveInvoiceForm() {
                   : `Only remarks can change${draft.closeDate ? ` (${draft.status.toLowerCase()} ${formatDate(draft.closeDate)})` : ''}.`}
               </Alert>
             ) : null}
-            <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
-              <div className="flex flex-col gap-2 lg:col-span-8">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+              <div className="flex flex-col gap-3 lg:col-span-8">
                 <VendorCard
                   vendors={m.vendors}
                   vendorId={draft.vendorId}
@@ -355,16 +361,26 @@ function ApReserveInvoiceForm() {
                   pickVendor={pickVendor}
                   onOpenDetails={() => setVendorDetailsOpen(true)}
                 />
-                <DocLines {...apriDoc({ ...sectionProps, onCopyClick: () => setCopying(true), copyableCount: orders.length })} />
+                <DocLines {...apriDoc({ ...sectionProps, onCopyClick: () => setCopying(true), copyableCount: orders.length }, view)} />
+                <DocumentJournalEntry def={apReserveInvoicePayment} posting={journalEntry} {...sectionProps} />
                 <ReferencesTable refs={draft.references} onChange={(references) => update({ references })} readOnly={ctx.readOnly} description="Other documents this invoice refers to." />
                 <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach the vendor's invoice or supporting documents." />
               </div>
-              <div className="flex flex-col gap-2 lg:col-span-4">
-                <ApriDocumentCard {...sectionProps} statusMoves={statusMoves} />
+              <div className="flex flex-col gap-3 lg:col-span-4">
+                <ApriDocumentCard {...sectionProps} />
+                <DocumentDates def={apReserveInvoiceDates} {...sectionProps} />
                 <GrLogistics draft={draft as Parameters<typeof GrLogistics>[0]['draft']} update={update as Parameters<typeof GrLogistics>[0]['update']} m={m} />
-                <ApriAccountingCard {...sectionProps} />
-                <ApriTotalsCard {...sectionProps} />
-                <ApriJournalCard {...sectionProps} />
+                <PurchReferencesCard {...sectionProps} projectHint="Defaults from the vendor or the base PO." orderNumberHint="The PO(s) behind the lines." />
+                <DocumentPayment def={apReserveInvoicePayment} posting={journalEntry} {...sectionProps} />
+                <AssignmentCard
+                  draft={draft}
+                  update={update}
+                  readOnly={ctx.readOnly}
+                  person={{ key: 'buyerId', label: 'Buyer', hint: 'Who ordered the goods.' }}
+                  ownerHint="Owns the document (data access)."
+                  remarksHint="Can be changed after the invoice is added."
+                  paymentFlags
+                />
               </div>
             </div>
           </Panel.Body>
@@ -375,21 +391,11 @@ function ApReserveInvoiceForm() {
       draft={draft}
       update={update}
       vendor={ctx.vendor}
-      currencies={m.currencies}
       readOnly={ctx.readOnly}
       open={vendorDetailsOpen}
       onClose={() => setVendorDetailsOpen(false)}
       vendorRefHint="The vendor's invoice no."
       vendorRefError={errors.vendorRef}
-      currency={{
-        disabled: ctx.readOnly || ctx.based,
-        tooltip: ctx.based
-          ? 'Locked to the currency of the POs the lines came from.'
-          : ctx.vendor?.currency === ALL_CURRENCIES
-          ? 'This vendor takes all currencies — pick the document currency.'
-          : `Defaults to the vendor's currency (${ctx.vendor?.currency ?? '—'}).`,
-        error: errors.currency,
-      }}
       addresses={ctx.vendor ? receivingVendorAddressFields(m, ctx.vendor, { includeWarehouses: false, shipPlaceholder: 'Delivery address when goods arrive' }) : []}
     />
     {copying

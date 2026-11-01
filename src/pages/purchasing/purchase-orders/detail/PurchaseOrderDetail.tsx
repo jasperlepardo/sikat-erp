@@ -20,7 +20,6 @@ import { type Partner } from '../../../../mocks/partners';
 import {
   blankPurchaseOrder,
   newPoLine,
-  type PoStatus,
   type PurchaseOrder,
 } from '../../../../mocks/purchaseOrders';
 import { loadInventoryMasters } from '../../../../services/inventoryMasters';
@@ -36,6 +35,7 @@ import {
   findDuplicateVendorRef,
   getPurchaseOrder,
   getPurchasingSettings,
+  lineNet,
   listPurchaseOrders,
   poNumber,
   recallPurchaseOrder,
@@ -47,8 +47,16 @@ import { DocLines } from '../../../../components/form/docLines/DocLines';
 import { poDoc } from './poDoc';
 import { PoDeliveryCard } from './PoDeliveryCard';
 import { PoReceiptsTab, usePoReceiptDocs } from './PoReceiptsTab';
-import { PoJournalPaymentCard } from './PoJournalPaymentCard';
-import { PoDatesCard } from './PoDatesCard';
+import { DocumentDates } from '../../../../components/form/DatesCard';
+import { DocumentPayment, DocumentJournalEntry } from '../../../../components/form/PaymentCard';
+import { JournalPreview } from '../../../../components/form/JournalPreview';
+import { lineGlAccount } from '../../shared/purchLineHelpers';
+import { controlAccountOf } from '../../../../services/journalEntries';
+import { accounts } from '../../../../services/masterData';
+import { round2 } from '../../../../services/num';
+import { purchaseOrderDates } from '../../../documentDateDefs';
+import { purchaseOrderPayment } from '../../../documentPaymentDefs';
+import { PoReferencesCard } from './PoReferencesCard';
 import { ReferencesTable } from '../../shared/ReferencesTable';
 import { PoVendorQuickCreate } from './PoVendorQuickCreate';
 import { DocumentFlow } from '../../shared/DocumentFlow';
@@ -77,7 +85,7 @@ import { VendorDetailsPanel } from '../../shared/VendorDetailsPanel';
 import { CreateFromPanel, createHopMenuItems } from '../../shared/CreateFromPanel';
 import { PO_TO_GR, PO_TO_AP, PO_TO_APRI, type CopyHop } from '../../shared/copyHops';
 import { PoDocumentCard } from './PoDocumentCard';
-import { PoAssignmentCard } from './PoTotalsCard';
+import { AssignmentCard } from '../../../../components/form/AssignmentCard';
 import { DPI_LIST_PATH, DPR_LIST_PATH, PO_LIST_PATH, PO_NOUN, PO_STATUS_INTENT } from '../../paths';
 
 /** Everything that defaults from the vendor. Tax codes depend on the vendor's VAT status, so lines re-propose theirs. */
@@ -365,25 +373,35 @@ function PurchaseOrderForm() {
     ...(open && !received ? [{ label: 'Cancel purchase order', icon: 'cancel', onSelect: () => act(() => cancelPurchaseOrder(saved), 'cancelled') }] : []),
   ];
 
-  const transitions: Partial<Record<PoStatus, () => void>> =
-    draft.status === 'Draft'
-      ? draft.approved ? { Open: () => submit(null, false) } : { 'Not Confirmed': () => submit(null, false) }
-      : open
-        ? {
-            ...(draft.status === 'Not Confirmed' ? { Open: () => submit(null, false, { approved: true }) } : {}),
-            Closed: closeIt,
-            ...(!received ? { Cancelled: () => act(() => cancelPurchaseOrder(saved), 'cancelled') } : {}),
-          }
-        : {};
-
   const title = isNew ? `New ${PO_NOUN.one}` : draft.status === 'Draft' ? `Draft ${PO_NOUN.one}` : poNumber(draft);
   const sectionProps = { draft, update, errors, m, ctx };
+
+  // Indicative journal: a PO posts nothing itself, but shows what the goods receipt and A/P invoice
+  // would eventually book (Dr inventory/expense + input VAT / Cr the vendor) so an approver sees the impact.
+  const poVatAccount = (code: string) => m.tax.codes.find((c) => c.code === code)?.glAccount || '1410';
+  const poDiscFactor = 1 - draft.discountPct / 100;
+  const poJournalMap = new Map<string, number>();
+  const poJournalAdd = (account: string, amount: number) => { if (account && amount) poJournalMap.set(account, round2((poJournalMap.get(account) ?? 0) + amount)); };
+  for (const l of draft.lines) {
+    const item = m.items.find((i) => i.id === l.itemId);
+    if (!item) continue;
+    const net = round2(lineNet(l) * poDiscFactor * ctx.fx);
+    const gl = lineGlAccount(item, l, m.inv);
+    if (gl) poJournalAdd(gl.code, net);
+    if (!ctx.isReverseCharge(l.taxCode)) poJournalAdd(poVatAccount(l.taxCode), round2((net * ctx.rateOf(l.taxCode)) / 100));
+  }
+  const poJournalBalance = round2([...poJournalMap.values()].reduce((n, v) => n + v, 0));
+  if (poJournalBalance) poJournalAdd((ctx.vendor ? controlAccountOf(ctx.vendor) : '') || '2010', -poJournalBalance);
+  const poJournal = ctx.fx
+    ? [...poJournalMap.entries()].filter(([, n]) => n !== 0).map(([account, n]) => ({ account, debit: n > 0 ? n : 0, credit: n < 0 ? -n : 0 })).sort((a, b) => b.debit - a.debit)
+    : [];
+  const poJournalEntry = <JournalPreview journal={poJournal} accounts={[...accounts.snapshot()]} />;
 
 
   // The Item / Receipts switch sits at the top of the Contents card body, above that tab's description.
   const contentTabs = (
     <Tabs
-      variant="primary"
+      variant="solid"
       // The card body is a flex column, which would stretch the bar full width.
       className="w-fit max-w-full self-start"
       value={contentTab}
@@ -400,7 +418,7 @@ function PurchaseOrderForm() {
     header: (
       <>
         {contentTabs}
-        <Text variant="small" tone="muted">{lines.description}</Text>
+        {lines.description ? <Text variant="small" tone="muted">{lines.description}</Text> : null}
         {lines.header}
       </>
     ),
@@ -481,19 +499,28 @@ function PurchaseOrderForm() {
               </Alert>
             ) : null}
 
-            <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
-              <div className="flex flex-col gap-2 lg:col-span-8">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+              <div className="flex flex-col gap-3 lg:col-span-8">
                 <VendorCard vendors={m.vendors} vendorId={draft.vendorId} vendor={ctx.vendor} readOnly={ctx.readOnly} added={ctx.added} error={errors.vendorId} pickVendor={pickVendor} onNewVendor={() => setShowVendorCreate(true)} onOpenDetails={() => setVendorDetailsOpen(true)} />
                 {contentTab === 'item' ? <DocLines {...withTabsOnTop(poDoc(sectionProps))} /> : <PoReceiptsTab draft={draft} docs={receiptDocs} tabs={contentTabs} />}
+                <DocumentJournalEntry def={purchaseOrderPayment} posting={poJournalEntry} {...sectionProps} />
                 <ReferencesTable refs={draft.references} onChange={(references) => update({ references })} readOnly={ctx.readOnly} description="Other documents this PO refers to, or that refer to it." />
                 <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach the vendor's quotation, signed PO acknowledgement or order confirmation." />
               </div>
-              <div className="flex flex-col gap-2 lg:col-span-4">
-                <PoDocumentCard {...sectionProps} transitions={transitions} />
+              <div className="flex flex-col gap-3 lg:col-span-4">
+                <PoDocumentCard {...sectionProps} />
+                <DocumentDates def={purchaseOrderDates} {...sectionProps} />
+                <PoReferencesCard {...sectionProps} />
                 <PoDeliveryCard {...sectionProps} />
-                <PoJournalPaymentCard {...sectionProps} />
-                <PoDatesCard {...sectionProps} />
-                <PoAssignmentCard {...sectionProps} />
+                <DocumentPayment def={purchaseOrderPayment} posting={poJournalEntry} {...sectionProps} />
+                <AssignmentCard
+                  draft={draft}
+                  update={update}
+                  readOnly={ctx.readOnly}
+                  person={{ key: "buyerId", label: "Buyer", hint: "Who placed the order." }}
+                  ownerHint="Owns the document (data access)."
+                  remarksHint="Can be changed after the PO is added."
+                />
               </div>
             </div>
           </Panel.Body>
@@ -504,23 +531,12 @@ function PurchaseOrderForm() {
       draft={draft}
       update={update}
       vendor={ctx.vendor}
-      currencies={m.currencies}
       readOnly={ctx.readOnly}
       open={vendorDetailsOpen}
       onClose={() => setVendorDetailsOpen(false)}
       onVendorSaved={(v) => setM((prev) => prev && { ...prev, vendors: prev.vendors.map((x) => (x.id === v.id ? v : x)) })}
       vendorRefHint="The vendor's own reference, e.g. their sales order no."
       vendorRefError={errors.vendorRef}
-      currency={{
-        disabled: ctx.readOnly || draft.lines.some((l) => l.receivedQty > 0),
-        tooltip: draft.lines.some((l) => l.receivedQty > 0)
-          ? 'Locked: goods were already received on this PO.'
-          : ctx.vendor && ctx.vendor.currency !== ALL_CURRENCIES
-          ? "Defaults to the vendor's currency. You can override it before receiving goods."
-          : 'Pick the document currency for this order.',
-        error: errors.currency,
-        onChange: (currency) => ({ currency, currencyView: 'BP' as const }),
-      }}
       addresses={ctx.vendor ? vendorAddressFields(draft, m, ctx.vendor) : []}
     />
     {showVendorCreate && (

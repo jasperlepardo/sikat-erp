@@ -3,14 +3,14 @@ import { useLocation, useNavigate, useParams } from 'react-router';
 import { Alert, Badge, Button, Combobox, Form, Icon, IconButton, Panel, Select, Tabs, Text } from '@jasperlepardo/sikat-design-system';
 import { PageHeader } from '../../../components/form/PageHeader';
 import { AttachmentsCard } from '../../../components/form/AttachmentsCard';
-import { Fields, ReadOnly, Section, bind, type Errors } from '../../../components/form/fields';
-import { StatusField } from '../../../components/form/StatusField';
+import { Fields, FieldOrientationCtx, ReadOnly, Section, bind, type Errors } from '../../../components/form/fields';
+import { SeriesNoFields } from '../../../components/form/SeriesNoFields';
 import { type MoreMenuItem } from '../../../components/form/MoreMenu';
 import { DetailActions } from '../../../components/form/DetailActions';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../components/form/ProblemsAlert';
 import { useCollection } from '../../../components/form/MasterLookup';
 import { CURRENT_USER_ID } from '../../../mocks/common';
-import { COUNTING_TYPES, COUNT_SERIES, COUNT_STATUSES, blankCounting, newCountLine, newCounter, type Counter, type CounterType, type CountStatus } from '../../../mocks/inventoryCountings';
+import { COUNTING_TYPES, COUNT_SERIES, blankCounting, newCountLine, newCounter, type Counter, type CounterType } from '../../../mocks/inventoryCountings';
 import { todayISO } from '../../../services/dates';
 import { loadInventoryMasters } from '../../../services/inventoryMasters';
 import { listItems } from '../../../services/items';
@@ -159,9 +159,6 @@ function CountForm() {
     navigate(`${COUNT_LIST_PATH}/new`, { state: { copyFrom: copy } });
   };
 
-  // What picking each status in the Status dropdown does; the others can't be reached from here.
-  const statusMoves: Partial<Record<CountStatus, () => void>> = open && !isNew ? { Closed: () => submit(null, 'close') } : {};
-
   const menu: MoreMenuItem[] = [
     ...(!isNew ? [{ label: 'Duplicate as a recount', icon: 'content_copy', onSelect: () => recount() }] : []),
     ...(!isNew && summary.withVariance ? [{ label: 'Recount variances only', icon: 'replay', onSelect: () => recount('variances') }] : []),
@@ -227,18 +224,26 @@ function CountForm() {
           <fieldset disabled={!open} className="contents">
             <div className="grid grid-cols-1 gap-2 lg:grid-cols-3">
               <Section icon="tag" title="Document">
-                <Fields>
-                  <ReadOnly
-                    label="No."
-                    value={draft.docNum ? countNumber(draft) : `${COUNT_SERIES.find((s) => s.id === draft.seriesId)?.name ?? 'Primary'} · next number`}
-                    hint={draft.docNum ? `Series ${COUNT_SERIES.find((s) => s.id === draft.seriesId)?.name ?? 'Primary'}` : 'Assigned when the count is added.'}
-                  />
-                  <StatusField statuses={COUNT_STATUSES} intents={COUNT_STATUS_INTENT} value={draft.status} moves={statusMoves} hint="Closes once an Inventory Posting is made from it." />
-                  {h.date('countDate', 'Count date', { required: true, error: errors.countDate })}
-                  {h.text('countTime', 'Time', { required: true, error: errors.countTime, placeholder: 'HH:MM', hint: 'For movements on the count day.' })}
-                  {h.text('reference', 'Ref. 2', { placeholder: 'e.g. CS-MNL-2026-10', hint: 'Count sheet no.' })}
-                  {h.date('endOfFiscalYear', 'End of fiscal year', { hint: 'For a year-end count.' })}
-                </Fields>
+                <FieldOrientationCtx.Provider value="inline">
+                  <Form.Group orientation="inline">
+                    {draft.docNum ? null : (
+                      <SeriesNoFields
+                        series={COUNT_SERIES}
+                        seriesId={draft.seriesId}
+                        docNum={draft.docNum}
+                        number={countNumber(draft)}
+                        noun="Count"
+                        readOnly
+                        onSeries={(seriesId) => update({ seriesId })}
+                        onNumber={(docNum) => update({ docNum })}
+                      />
+                    )}
+                    {h.date('countDate', 'Count date', { required: true, error: errors.countDate })}
+                    {h.text('countTime', 'Time', { required: true, error: errors.countTime, placeholder: 'HH:MM', hint: 'For movements on the count day.' })}
+                    {h.text('reference', 'Ref. 2', { placeholder: 'e.g. CS-MNL-2026-10', hint: 'Count sheet no.' })}
+                    {h.date('endOfFiscalYear', 'End of fiscal year', { hint: 'For a year-end count.' })}
+                  </Form.Group>
+                </FieldOrientationCtx.Provider>
               </Section>
 
               <Section icon="groups" title="Counting">

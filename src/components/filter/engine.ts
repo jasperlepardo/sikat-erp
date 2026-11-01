@@ -23,6 +23,7 @@ export type Op =
   | 'before'
   | 'after'
   | 'inLastDays'
+  | 'inPeriod'
   | 'in'
   | 'notIn'
   | 'isTrue'
@@ -41,6 +42,8 @@ export interface FilterField<T> {
   /** Master list for 'master' fields — the value picker reuses `MasterLookup`. */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- a filter field can be over any master
   def?: MasterDef<any>;
+  /** Operator a freshly-added rule opens with. Defaults to the field type's first operator. */
+  defaultOp?: Op;
 }
 
 export interface Rule {
@@ -80,21 +83,27 @@ export const OP_LABEL: Record<Op, string> = {
   before: 'before',
   after: 'after',
   inLastDays: 'in the last (days)',
-  in: 'is any of',
-  notIn: 'is none of',
+  inPeriod: 'is',
+  in: 'is',
+  notIn: 'is not',
   isTrue: 'is yes',
   isFalse: 'is no',
   empty: 'is empty',
   notEmpty: 'is not empty',
 };
 
-/** Operators each field type offers, in menu order. The first is the default. */
+/**
+ * Operators each field type offers, in menu order. The first is the default.
+ * choice/master are multi-select only: `in` ("is") / `notIn` ("is not") against a
+ * list of values. (`is`/`isNot` stay in the Op union and `test()` for text/number/
+ * date and for reading back any older single-value rule.)
+ */
 export const OPERATORS_BY_TYPE: Record<FieldType, Op[]> = {
   text: ['contains', 'notContains', 'is', 'isNot', 'startsWith', 'empty', 'notEmpty'],
   number: ['is', 'isNot', 'gt', 'gte', 'lt', 'lte', 'between', 'empty', 'notEmpty'],
-  date: ['is', 'isNot', 'before', 'after', 'between', 'inLastDays', 'empty', 'notEmpty'],
-  choice: ['is', 'isNot', 'in', 'notIn', 'empty', 'notEmpty'],
-  master: ['is', 'isNot', 'in', 'notIn', 'empty', 'notEmpty'],
+  date: ['inPeriod', 'is', 'isNot', 'before', 'after', 'between', 'inLastDays', 'empty', 'notEmpty'],
+  choice: ['in', 'notIn'],
+  master: ['in', 'notIn'],
   boolean: ['isTrue', 'isFalse'],
 };
 
@@ -112,9 +121,10 @@ export const isMultiOp = (op: Op) => op === 'in' || op === 'notIn';
 let seq = 0;
 const ruleId = () => `r${Date.now().toString(36)}${(seq++).toString(36)}`;
 
-/** A fresh rule for a field, with its type's default operator. */
+/** A fresh rule for a field, with its field-specified or type-default operator. */
 export function newRule<T>(field: FilterField<T>): Rule {
-  return { id: ruleId(), field: field.key, op: OPERATORS_BY_TYPE[field.type][0] };
+  const op = field.defaultOp ?? OPERATORS_BY_TYPE[field.type][0];
+  return { id: ruleId(), field: field.key, op };
 }
 
 /** Switch a rule to another field, keeping the operator only if the new type allows it. */
@@ -158,6 +168,50 @@ function localDay(d = new Date()): string {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
 
+/** Relative date ranges for `inPeriod` — the Figma date quick-ranges. */
+export type Period = 'today' | 'week' | 'month' | 'quarter' | 'year';
+
+export const PERIODS: readonly { value: Period; label: string }[] = [
+  { value: 'today', label: 'Today' },
+  { value: 'week', label: 'This week' },
+  { value: 'month', label: 'This month' },
+  { value: 'quarter', label: 'This quarter' },
+  { value: 'year', label: 'This year' },
+];
+
+const PERIOD_LABEL: Record<Period, string> = {
+  today: 'today',
+  week: 'this week',
+  month: 'this month',
+  quarter: 'this quarter',
+  year: 'this year',
+};
+
+/**
+ * The `[start, end]` 'YYYY-MM-DD' range a period covers, relative to `today`.
+ * Pure given `today` — the `Date`s built from its parts are for calendar math, not "now".
+ * Weeks run Monday–Sunday.
+ */
+function periodRange(period: Period, today: string): [string, string] {
+  const [y, m, d] = today.split('-').map(Number);
+  switch (period) {
+    case 'today':
+      return [today, today];
+    case 'week': {
+      const dow = (new Date(y, m - 1, d).getDay() + 6) % 7; // Monday = 0
+      return [localDay(new Date(y, m - 1, d - dow)), localDay(new Date(y, m - 1, d - dow + 6))];
+    }
+    case 'month':
+      return [`${y}-${String(m).padStart(2, '0')}-01`, localDay(new Date(y, m, 0))];
+    case 'quarter': {
+      const qStart = Math.floor((m - 1) / 3) * 3 + 1;
+      return [`${y}-${String(qStart).padStart(2, '0')}-01`, localDay(new Date(y, qStart + 2, 0))];
+    }
+    case 'year':
+      return [`${y}-01-01`, `${y}-12-31`];
+  }
+}
+
 /** One scalar value against a positive-form operator. */
 function test(type: FieldType, op: Op, v: unknown, rule: Rule, today: string): boolean {
   switch (type) {
@@ -194,6 +248,10 @@ function test(type: FieldType, op: Op, v: unknown, rule: Rule, today: string): b
         case 'inLastDays': {
           const n = toNum(rule.value);
           return !Number.isNaN(n) && x <= today && x > addDays(today, -n);
+        }
+        case 'inPeriod': {
+          const [lo, hi] = periodRange(rule.value as Period, today);
+          return x >= lo && x <= hi;
         }
       }
       return false;
@@ -251,28 +309,51 @@ export function applyFilter<T>(rows: T[], group: FilterGroup, fields: FilterFiel
 
 // ---------- display ----------
 
-/** A value as the user would read it — option labels for choice fields. */
+/** Naive English plural for a field label — "Status" → "statuses", "Currency" → "currencies". */
+function plural(word: string): string {
+  if (/(s|x|z|ch|sh)$/i.test(word)) return `${word}es`;
+  if (/[^aeiou]y$/i.test(word)) return `${word.slice(0, -1)}ies`;
+  return `${word}s`;
+}
+
+/**
+ * A value as the user would read it — option labels for choice fields. A multi-select of more
+ * than five values collapses to a count ("7 statuses") instead of a long comma list.
+ */
 function formatValue<T>(field: FilterField<T>, value: unknown): string {
   const one = (v: unknown) =>
     field.type === 'number' && typeof v === 'number'
       ? v.toLocaleString('en-PH')
       : field.options?.find((o) => o.value === v)?.label ?? String(v ?? '');
-  return Array.isArray(value) ? value.map(one).join(', ') : one(value);
+  if (Array.isArray(value)) {
+    return value.length > 5 ? `${value.length} ${plural(field.label).toLowerCase()}` : value.map(one).join(', ');
+  }
+  return one(value);
+}
+
+/**
+ * A rule split into its two halves — the "field + operator" label and the value text —
+ * for the two-tone segmented filter chip. `value` is '' when the operator takes none.
+ */
+export function describeRuleParts<T>(rule: Rule, fields: FilterField<T>[]): { label: string; value: string } {
+  const field = fields.find((f) => f.key === rule.field);
+  if (!field) return { label: '', value: '' };
+  const head = `${field.label} ${OP_LABEL[rule.op]}`;
+  if (rule.op === 'inPeriod') return { label: `${field.label} is`, value: PERIOD_LABEL[rule.value as Period] ?? '' };
+  switch (valueArity(rule.op)) {
+    case 0: return { label: head, value: '' };
+    case 2: return { label: head, value: `${formatValue(field, rule.value)} and ${formatValue(field, rule.value2)}` };
+    default:
+      return rule.op === 'inLastDays'
+        ? { label: `${field.label} in the last`, value: `${rule.value} days` }
+        : { label: head, value: formatValue(field, rule.value) };
+  }
 }
 
 /** "Status is not Closed", "Total between 1,000 and 5,000" — for chips and summaries. */
 export function describeRule<T>(rule: Rule, fields: FilterField<T>[]): string {
-  const field = fields.find((f) => f.key === rule.field);
-  if (!field) return '';
-  const head = `${field.label} ${OP_LABEL[rule.op]}`;
-  switch (valueArity(rule.op)) {
-    case 0: return head;
-    case 2: return `${head} ${formatValue(field, rule.value)} and ${formatValue(field, rule.value2)}`;
-    default:
-      return rule.op === 'inLastDays'
-        ? `${field.label} in the last ${rule.value} days`
-        : `${head} ${formatValue(field, rule.value)}`;
-  }
+  const { label, value } = describeRuleParts(rule, fields);
+  return value ? `${label} ${value}` : label;
 }
 
 // ---------- URL state ----------

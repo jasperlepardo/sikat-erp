@@ -10,7 +10,7 @@ import { ProblemsAlert, problemCollector, type Problem } from '../../../../compo
 import { CURRENT_USER_ID } from '../../../../mocks/common';
 import { formatAddress } from '../../../../mocks/address';
 import type { Partner } from '../../../../mocks/partners';
-import { SALES_SETTINGS, blankSalesOrder, newSoLine, openCommitted, type SalesOrder, type SoLine } from '../../../../mocks/salesOrders';
+import { NO_SALES_EMPLOYEE, SALES_SETTINGS, blankSalesOrder, newSoLine, openCommitted, type SalesOrder, type SoLine } from '../../../../mocks/salesOrders';
 import { blankTransferRequest, newTransferRequestLine } from '../../../../mocks/inventoryTransferRequests';
 import { loadCurrentCompany } from '../../../../services/companies';
 import { formatDate, todayISO } from '../../../../services/dates';
@@ -23,7 +23,11 @@ import { listPartnersByRole } from '../../../../services/partners';
 import { BASE_PRICE_LIST_ID } from '../../../../services/priceLists';
 import { matchingSeries, soSeries } from '../../../../services/allSeries';
 import { termDays } from '../../../../services/purchaseOrders';
-import { cancelSalesOrder, closeSalesOrder, findDuplicateCustomerRef, getSalesOrder, listSalesOrders, openOrdersTotal, recallSalesOrder, saveSalesOrder, soDueDate, soNumber, soTotals } from '../../../../services/salesOrders';
+import { cancelSalesOrder, closeSalesOrder, findDuplicateCustomerRef, getSalesOrder, lineNet, listSalesOrders, openOrdersTotal, recallSalesOrder, saveSalesOrder, soDueDate, soNumber, soTotals } from '../../../../services/salesOrders';
+import { JournalPreview } from '../../../../components/form/JournalPreview';
+import { revenueAccountFor } from '../../../../services/itemAccounts';
+import { controlAccountOf } from '../../../../services/journalEntries';
+import { round2 } from '../../../../services/num';
 import { defaultJournalRemark } from '../../../../services/journalPatterns';
 import { logRejection } from '../../../../services/approvalRules';
 import { listDeliveries } from '../../../../services/deliveries';
@@ -34,13 +38,18 @@ import type { PoSuggestion } from '../../../purchasing/purchase-orders/detail/ty
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
 import { neighbours, NotFound, siblingKeys, useDocTab, useReject } from '../../../../components/form/DetailNav';
-import { SoDatesCard } from './SoDatesCard';
+import { DocumentDates } from '../../../../components/form/DatesCard';
+import { DocumentPayment, DocumentJournalEntry } from '../../../../components/form/PaymentCard';
+import { salesOrderDates } from '../../../documentDateDefs';
+import { salesOrderPayment } from '../../../documentPaymentDefs';
+import { SoDocumentCard } from './SoDocumentCard';
 import { SoSettingsCard } from './SoSettingsCard';
-import { BpChannelCard } from '../../shared/BpChannelCard';
-import { SoAssignmentCard } from './SoAssignmentCard';
+import { ReferencesCard } from '../../shared/ReferencesCard';
+import { AssignmentCard } from '../../../../components/form/AssignmentCard';
 import { SoAttachmentsCard } from './SoAttachmentsCard';
 import { CustomerCard } from '../../shared/CustomerCard';
 import { SalesTotalsFooter } from '../../shared/TotalsFooter';
+import { salesView } from '../../shared/salesView';
 import { CustomerDetailsPanel } from '../../shared/CustomerDetailsPanel';
 import { ReferencesTable } from '../../../purchasing/shared/ReferencesTable';
 import { SoAvailabilityPanel, type TransferGroup } from './SoAvailabilityPanel';
@@ -108,6 +117,7 @@ function SalesOrderForm() {
   const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
   const setPage = useDocTab<PageId>(`${SO_LIST_PATH}/${id}`, tabParam);
   const [contentTab, setContentTab] = useState<'item' | 'delivery'>('item');
+  const [currencyView, setCurrencyView] = useState('');
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [warning, setWarning] = useState<string>();
@@ -179,6 +189,24 @@ function SalesOrderForm() {
   const totals = soTotals(draft, ctx.rateOf, docCurrency?.rounding);
   const totalLc = totals.total * ctx.fx;
   const delivered = draft.lines.some((l) => l.deliveredQty > 0);
+
+  const vatAccount = (code: string) => m.tax.codes.find((c) => c.code === code)?.glAccount || '2310';
+  const soRevFactor = 1 - draft.discountPct / 100;
+  const soJournalMap = new Map<string, number>();
+  const soJournalAdd = (account: string, amount: number) => { if (account && amount) soJournalMap.set(account, round2((soJournalMap.get(account) ?? 0) + amount)); };
+  for (const l of draft.lines) {
+    const item = m.items.find((i) => i.id === l.itemId);
+    if (!item) continue;
+    const net = round2(lineNet(l) * soRevFactor * ctx.fx);
+    soJournalAdd(revenueAccountFor(item, m.inv.groups), -net);
+    soJournalAdd(vatAccount(l.taxCode), -round2((net * ctx.rateOf(l.taxCode)) / 100));
+  }
+  const soJournalBalance = round2([...soJournalMap.values()].reduce((n, v) => n + v, 0));
+  if (soJournalBalance) soJournalAdd(customer ? controlAccountOf(customer) : '1120', -soJournalBalance);
+  const soJournal = ctx.fx
+    ? [...soJournalMap.entries()].filter(([, n]) => n !== 0).map(([account, n]) => ({ account, debit: n > 0 ? n : 0, credit: n < 0 ? -n : 0 })).sort((a, b) => b.debit - a.debit)
+    : [];
+  const soJournalEntry = <JournalPreview journal={soJournal} accounts={m.accounts} />;
   const overCredit = SALES_SETTINGS.creditLimitCheck && customer && customer.creditLimit > 0 && openBalance + totalLc > customer.creditLimit && !ctx.readOnly;
 
   /** Tax codes re-proposed for the customer and date, except ones set by hand. */
@@ -436,6 +464,7 @@ function SalesOrderForm() {
           : `Draft ${SO_NOUN.one}`;
   const continueLabel = ctx.added ? 'Save changes' : draft.approved ? `Create ${SO_NOUN.one}` : 'Submit for approval';
   const tabProps = { draft, update, errors, m, ctx };
+  const view = salesView(draft.currency, ctx.fx, draft.postingDate, currencyView, setCurrencyView);
 
   return (
     <>
@@ -502,8 +531,8 @@ function SalesOrderForm() {
                 </Alert>
               ) : null}
 
-              <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
-                <div className="flex flex-col gap-2 lg:col-span-8">
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+                <div className="flex flex-col gap-3 lg:col-span-8">
                   <CustomerCard
                     customers={m.customers}
                     customerId={draft.customerId}
@@ -518,7 +547,7 @@ function SalesOrderForm() {
                     {...tabProps}
                     tabs={
                       <Tabs
-                        variant="primary"
+                        variant="solid"
                         value={contentTab}
                         onValueChange={(v) => setContentTab(v as 'item' | 'delivery')}
                         items={[
@@ -528,8 +557,10 @@ function SalesOrderForm() {
                       />
                     }
                     contentTab={contentTab}
-                    cardFooter={<SalesTotalsFooter {...tabProps} />}
+                    view={view}
+                    cardFooter={<SalesTotalsFooter {...tabProps} totals={totals} view={view} />}
                   />
+                  <DocumentJournalEntry def={salesOrderPayment} posting={soJournalEntry} {...tabProps} />
                   <ReferencesTable
                     refs={draft.references}
                     onChange={(references) => update({ references })}
@@ -539,11 +570,20 @@ function SalesOrderForm() {
                   <SoAttachmentsCard {...tabProps} />
                 </div>
 
-                <aside className="flex flex-col gap-2 lg:col-span-4">
-                  <SoDatesCard {...tabProps} />
+                <aside className="flex flex-col gap-3 lg:col-span-4">
+                  <SoDocumentCard {...tabProps} />
+                  <DocumentDates def={salesOrderDates} {...tabProps} />
                   <SoSettingsCard {...tabProps} />
-                  <BpChannelCard {...tabProps} placeholder="e.g. Lazada, Shopee, Apple online store" />
-                  <SoAssignmentCard {...tabProps} />
+                  <DocumentPayment def={salesOrderPayment} posting={soJournalEntry} {...tabProps} />
+                  <ReferencesCard {...tabProps} />
+                  <AssignmentCard
+                    draft={draft}
+                    update={update}
+                    readOnly={ctx.readOnly}
+                    person={{ key: 'salesEmployeeId', label: 'Sales employee', clearable: true, placeholder: NO_SALES_EMPLOYEE, hint: 'Defaults from the customer.' }}
+                    ownerHint="Owns the document."
+                    remarksHint="Can be changed after the order is added."
+                  />
                 </aside>
               </div>
             </Panel.Body>

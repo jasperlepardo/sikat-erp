@@ -1,5 +1,7 @@
 import { Button, Icon, Text } from '@jasperlepardo/sikat-design-system';
 import { type DocLinesProps } from '../../../../components/form/docLines/DocLines';
+import { GRR_NOUN } from '../../paths';
+import { cap } from '../../../../components/form/noun';
 import { purchCols, pick } from '../../shared/purchCols';
 import { costAccountOptions, lineHelpers, lineGlAccount, itemConfig } from '../../shared/purchLineHelpers';
 import { countryDef, departmentDef, priceListDef, warrantyTemplateDef } from '../../../settings/masterDefs';
@@ -7,7 +9,12 @@ import { newGrrLine, type GrrLine } from '../../../../mocks/goodsReturnRequests'
 import { itemsPerUom } from '../../../../mocks/items';
 import { holdsStock } from '../../../../mocks/itemMasters';
 import { lineNet, priceAfterDiscount } from '../../../../services/purchaseOrders';
+import { grrTotals } from '../../../../services/goodsReturnRequests';
 import { taxCodeOptions } from '../../../../services/taxCodeOptions';
+import { rateAt, vatNotPaidToVendor } from '../../../../mocks/taxes';
+import { round2 } from '../../../../services/num';
+import { PurchTotalsFooter } from '../../shared/PurchTotalsFooter';
+import { CurrencyToggle, type PurchaseView } from '../../shared/purchaseView';
 import type { GrrSectionProps } from './types';
 
 /** Props grrDoc needs beyond section spread: the Copy-from toolbar, panel hosted in detail. */
@@ -17,13 +24,28 @@ export interface GrrDocProps extends GrrSectionProps {
 }
 
 /** Builds the Goods Return Request contents descriptor for <DocLines>. */
-export function grrDoc({ draft, update, errors, m, onCopyClick, canCopy }: GrrDocProps): DocLinesProps<GrrLine> {
+export function grrDoc({ draft, update, errors, m, onCopyClick, canCopy }: GrrDocProps, view: PurchaseView): DocLinesProps<GrrLine> {
   const lines = draft.lines;
   const readOnly = draft.status === 'Closed';
+  // Viewing in PHP is a read-only conversion: the prices stay in the document currency.
+  const converted = view.converted;
+  const locked = readOnly || converted;
 
   const h = lineHelpers<GrrLine>({ items: m.items, lines, update, errors, postingDate: draft.postingDate, uoms: m.inv.uoms });
   const { itemOf, patch, err, lineKind, uomLabel, uomOptions } = h;
   const taxOptions = (current: string) => taxCodeOptions(m.tax.codes, 'Purchase', current);
+
+  // Tax rates as of the posting date, so the footer's VAT matches the per-line VAT.
+  const rateOf = (code: string) => {
+    const c = m.tax.codes.find((x) => x.code === code);
+    return c ? (rateAt(c, draft.postingDate) ?? 0) : 0;
+  };
+  const isReverseCharge = (code: string) => vatNotPaidToVendor(m.tax.codes.find((x) => x.code === code));
+  const taxRate = (l: GrrLine) => rateOf(l.taxCode);
+  const totals = grrTotals(draft, rateOf, isReverseCharge);
+  const vTotals = converted
+    ? { ...totals, beforeDiscount: view.convert(totals.beforeDiscount), discount: view.convert(totals.discount), freight: view.convert(totals.freight ?? 0), rounding: view.convert(totals.rounding ?? 0), tax: view.convert(totals.tax), total: view.convert(totals.total), reverseCharge: totals.reverseCharge ? view.convert(totals.reverseCharge) : undefined }
+    : totals;
 
   const pickItem = (l: GrrLine, itemId: string | null) => {
     if (!itemId) { patch(l.id, { itemId: '', itemNo: '', description: '' }); return; }
@@ -59,13 +81,13 @@ export function grrDoc({ draft, update, errors, m, onCopyClick, canCopy }: GrrDo
   };
 
   const cols = purchCols<GrrLine>({
-    patch, readOnly, currency: draft.currency,
+    patch, readOnly: locked, currency: view.code,
     glAccountOf: (l) => lineGlAccount(itemOf(l), l, m.inv),
     glAccountOptions: (l) => costAccountOptions(m.inv.accounts, l.glAccount),
     lineNet,
     priceAfterDisc: priceAfterDiscount,
-    grossAfterDisc: priceAfterDiscount,
-    taxAmount: () => 0,
+    grossAfterDisc: (l) => priceAfterDiscount(l) * (1 + taxRate(l) / 100),
+    taxAmount: (l) => round2((lineNet(l) * taxRate(l)) / 100),
     taxOptions: (l) => taxOptions(l.taxCode),
     vendorOptions: [],
     warehouseOptions: m.inv.warehouses.filter((w) => holdsStock(w)).map((w) => ({ value: w.code, label: w.code })),
@@ -100,14 +122,15 @@ export function grrDoc({ draft, update, errors, m, onCopyClick, canCopy }: GrrDo
     prefsKey: 'grr',
     cardHeader: true,
     columns,
-    rows: lines,
+    rows: converted ? lines.map((l) => ({ ...l, unitPrice: view.convert(l.unitPrice) })) : lines,
     icon: 'list_alt',
-    title: 'Contents',
-    description: errors.lines ?? 'Items to send back. No stock movement until the request is converted to a Goods Return.',
+    title: cap(GRR_NOUN.lineLabel!),
+    actions: <CurrencyToggle choices={view.choices} value={view.shown} onChange={view.onChange} />,
+    description: errors.lines ?? view.note,
     sortableKeys: ['item'],
     sortValue: (l, key) => (key === 'item' ? l.itemNo : String(l[key as keyof GrrLine] ?? '')).toLowerCase(),
-    readOnly,
-    onRemove: (picked) => update({ lines: lines.filter((l) => !picked.includes(l) || l.openQty < l.quantity) }),
+    readOnly: locked,
+    onRemove: (picked) => update({ lines: lines.filter((l) => !picked.some((p) => p.id === l.id) || l.openQty < l.quantity) }),
     item: itemConfig(h, {
       resolve: (l) => { const it = itemOf(l); return it ? { itemNo: it.itemNo, name: it.name } : null; },
       onPick: pickItem,
@@ -120,12 +143,21 @@ export function grrDoc({ draft, update, errors, m, onCopyClick, canCopy }: GrrDo
         {draft.vendorId ? 'Add lines for items to return, or copy from a goods receipt or invoice.' : 'Pick a vendor first.'}
       </Text>
     ),
-    header: readOnly ? undefined : (
+    header: locked ? undefined : (
       <div className="flex justify-end px-2">
         <Button type="button" size="small" variant="outline" leadingIcon={<Icon size={16}>content_copy</Icon>} disabled={!canCopy} onClick={onCopyClick}>
           Copy from
         </Button>
       </div>
+    ),
+    footer: (
+      <PurchTotalsFooter
+        totals={vTotals}
+        currency={view.code}
+        readOnly={locked}
+        discountPct={draft.discountPct}
+        onDiscountChange={(discountPct) => update({ discountPct })}
+      />
     ),
   };
 }

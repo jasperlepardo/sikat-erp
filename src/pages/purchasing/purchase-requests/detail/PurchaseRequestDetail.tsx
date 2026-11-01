@@ -18,7 +18,6 @@ import { ProblemsAlert, problemCollector, type Problem } from '../../../../compo
 import { CURRENT_USER_ID } from '../../../../mocks/common';
 import {
   blankPurchaseRequest,
-  type PrStatus,
   type PurchaseRequest,
 } from '../../../../mocks/purchaseRequests';
 import { blankPurchaseOrder, newPoLine } from '../../../../mocks/purchaseOrders';
@@ -43,9 +42,11 @@ import {
 import { RequesterCard } from '../../shared/RequesterCard';
 import { RequesterDetailsPanel } from '../../shared/RequesterDetailsPanel';
 import { PrDocumentCard } from './PrDocumentCard';
+import { DocumentDates } from '../../../../components/form/DatesCard';
+import { purchaseRequestDates } from '../../../documentDateDefs';
 import { DocLines } from '../../../../components/form/docLines/DocLines';
 import { prDoc } from './prDoc';
-import { PrTotalsCard } from './PrTotalsCard';
+import { AssignmentCard } from '../../../../components/form/AssignmentCard';
 import { PrVendorsCard } from './PrVendorsCard';
 import { FanOutRfqPanel, type VendorSend } from './FanOutRfqPanel';
 import { AwardPoPanel } from './AwardPoPanel';
@@ -319,15 +320,13 @@ function PurchaseRequestForm() {
     }
   };
 
-  const transitions: Partial<Record<PrStatus, () => void>> =
-    draft.status === 'Open' ? { Closed: closeIt } : {};
   const sectionProps = { draft, update, errors, m, ctx };
 
   // The Item / Comparison switch sits at the top of the Contents card body, as on a PO (Item / Receipts).
   const showComparison = ctx.added && quotes.rfqs.length > 0;
   const contentTabs = (
     <Tabs
-      variant="primary"
+      variant="solid"
       // The card body is a flex column, which would stretch the bar full width.
       className="w-fit max-w-full self-start"
       value={contentTab}
@@ -433,8 +432,8 @@ function PurchaseRequestForm() {
               </Alert>
             ) : null}
 
-            <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
-              <div className="flex flex-col gap-2 lg:col-span-8">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+              <div className="flex flex-col gap-3 lg:col-span-8">
                 <RequesterCard
                   employees={m.employees}
                   requesterId={draft.requesterId}
@@ -453,12 +452,16 @@ function PurchaseRequestForm() {
                 )}
                 <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach supporting documents, e.g. specs, approvals or quotes." />
               </div>
-              <div className="flex flex-col gap-2 lg:col-span-4">
-                <fieldset disabled={ctx.readOnly} className="contents">
-                  <PrDocumentCard {...sectionProps} transitions={transitions} />
-                  <PrVendorsCard {...sectionProps} />
-                  <PrTotalsCard {...sectionProps} />
-                </fieldset>
+              <div className="flex flex-col gap-3 lg:col-span-4">
+                <PrDocumentCard {...sectionProps} />
+                <DocumentDates def={purchaseRequestDates} {...sectionProps} />
+                <PrVendorsCard {...sectionProps} />
+                <AssignmentCard
+                  draft={draft}
+                  update={update}
+                  ownerHint="Owns the document (data access)."
+                  remarksHint="Can be changed after the request is added."
+                />
               </div>
             </div>
           </Panel.Body>

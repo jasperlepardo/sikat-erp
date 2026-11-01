@@ -9,6 +9,8 @@ import { lineTotal, postingTotal, postingVariance, sourcePrice, stockAfter, vari
 import { inStockAt } from '../../../services/inventoryTransfers';
 import { warehouseOptions } from '../transfers/TransferLines';
 import { AddItemsBar, FindBar, findRows, itemOptions, itemsPer, num, signed, uomOptions, type CountMasters } from './shared';
+import { POSTING_NOUN } from '../paths';
+import { cap } from '../../../components/form/noun';
 
 export type PostingDraft = Omit<InventoryPosting, 'id'> & { id?: string };
 
@@ -213,7 +215,7 @@ export function PostingLines({
       variant="card"
       noPagination
       icon="fact_check"
-      title="Contents"
+      title={cap(POSTING_NOUN.lineLabel!)}
       description={
         errors.lines ??
         `Adding the posting moves In Stock by each line’s variance (counted − In-Whse Qty on Count Date), valued at the price. Total: PHP ${formatAmount(postingTotal(draft))}.`

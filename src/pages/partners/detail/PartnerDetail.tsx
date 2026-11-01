@@ -365,7 +365,7 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
               />
 
               <div className="grid gap-4 lg:min-h-0 lg:flex-1 lg:grid-cols-12 lg:grid-rows-1">
-                <aside className="flex flex-col gap-2 lg:col-span-3 lg:min-h-0 lg:overflow-y-auto">
+                <aside className="flex flex-col gap-3 lg:col-span-3 lg:min-h-0 lg:overflow-y-auto">
                   <Section icon="badge" title="Business partner">
                     <FieldStack>
                       {isNew ? (
@@ -456,7 +456,7 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
                   )}
                 </aside>
 
-                <div className="flex min-w-0 flex-col gap-2 lg:col-span-9 lg:min-h-0 lg:overflow-y-auto">
+                <div className="flex min-w-0 flex-col gap-3 lg:col-span-9 lg:min-h-0 lg:overflow-y-auto">
 
                   <Tabs
                     value={tab}

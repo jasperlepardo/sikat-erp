@@ -24,7 +24,6 @@ import type { DocumentSeries } from './common';
 import { blankApInvoice, newApLine, type ApInvoice, type ApLine } from './apInvoices';
 
 export type MemoStatus = 'Draft' | 'Not Confirmed' | 'Open' | 'Closed' | 'Cancelled';
-export const MEMO_STATUSES: MemoStatus[] = ['Draft', 'Open', 'Closed', 'Cancelled'];
 
 type MemoBaseType = 'APINV' | 'GRET' | '';
 
@@ -52,7 +51,7 @@ export interface ApCreditMemo extends Omit<ApInvoice, 'lines' | 'status'> {
 }
 
 export const MEMO_SERIES: DocumentSeries[] = [
-  { id: 'cms-primary', name: 'Primary', prefix: '', firstNo: 5, manual: false, isDefault: true, active: true, segments: [{ type: 'literal', value: 'CM' }, { type: 'year' }, { type: 'sequence', padding: 4 }] },
+  { id: 'cms-primary', name: 'A/P Credit Memo', prefix: '', firstNo: 5, manual: false, isDefault: true, active: true, segments: [{ type: 'literal', value: 'CM' }, { type: 'year' }, { type: 'sequence', padding: 4 }] },
 ];
 
 export const newMemoLine = (patch: Partial<MemoLine> = {}): MemoLine => {

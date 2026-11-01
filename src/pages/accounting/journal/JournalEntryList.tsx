@@ -131,7 +131,9 @@ export function JournalEntryList() {
         ) : null}
         {presets.bar(null)}
         <Card className={fillCardClass(onPage.length)}>
-          {entries ? (
+          {!entries ? (
+            <Text tone="muted" className="p-4">Loading journal entries…</Text>
+          ) : entries.length ? (
             <Table
               caption={cap(JE_NOUN.many)}
               columns={columns}
@@ -143,7 +145,7 @@ export function JournalEntryList() {
               pagination={pagination}
             />
           ) : (
-            <Text tone="muted" className="p-4">Loading journal entries…</Text>
+            <Text tone="muted" className="p-4">No {JE_NOUN.many} yet. Most post automatically from documents; create a manual one with New {JE_NOUN.one}.</Text>
           )}
         </Card>
       </Panel.Body>

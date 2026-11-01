@@ -1,6 +1,10 @@
 /** Shapes shared by master data records. */
 import { employeeId } from './masters';
 
+/** How a document shows/enters line prices: VAT-exclusive, VAT-inclusive, or both. Display only — the stored unit price is always net. */
+export type PriceMode = 'Net' | 'Gross' | 'Net and Gross';
+export const PRICE_MODES: PriceMode[] = ['Net', 'Gross', 'Net and Gross'];
+
 /** A single routing condition for auto-selecting a document series. */
 export interface SeriesCondition {
   field: string; // e.g. 'businessType', 'bpGroupId', 'territoryId', 'currency', 'paymentMethod'

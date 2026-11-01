@@ -3,6 +3,8 @@ import { type DocLinesProps } from '../../../../components/form/docLines/DocLine
 import { pick } from '../../../../components/form/docLines/pick';
 import type { PrefColumn } from '../../../../components/form/columnPrefs';
 import { salesCols } from '../../shared/salesCols';
+import { CurrencyToggle, type SalesView } from '../../shared/salesView';
+import { grossPriceBinding, priceModeEnabled } from '../../../../components/form/priceMode';
 import { lineHelpers, itemConfig } from '../../shared/salesLineHelpers';
 import { itemsPerUom } from '../../../../mocks/items';
 import type { SoLine } from '../../../../mocks/salesOrders';
@@ -14,13 +16,15 @@ import { formatAmount } from '../../../../services/format';
 import { warehouseOptions } from '../../../inventory/transfers/TransferLines';
 import { editTaxCode } from '../../../../services/taxRecalc';
 import { taxCodeOptions } from '../../../../services/taxCodeOptions';
-import { BA_LIST_PATH } from '../../paths';
+import { BA_LIST_PATH, SO_NOUN, DN_NOUN } from '../../paths';
+import { cap } from '../../../../components/form/noun';
 import { availableIn, lineFromItem, linePricing, shortages, type SoTabProps } from './types';
 
 /** Builds the Sales Order Item-tab contents descriptor for the shared <DocLines>. */
-export function soDoc({ draft, update, errors, m, ctx, agreements }: SoTabProps & { agreements: BlanketAgreement[] }): DocLinesProps<SoLine> {
+export function soDoc({ draft, update, errors, m, ctx, agreements }: SoTabProps & { agreements: BlanketAgreement[] }, view: SalesView): DocLinesProps<SoLine> {
   const lines = draft.lines;
-  const linesLocked = ctx.readOnly || draft.status !== 'Draft';
+  // Showing PHP is a read-only view: the prices stay in the document currency, only displayed converted.
+  const linesLocked = ctx.readOnly || draft.status !== 'Draft' || view.converted;
   const h = lineHelpers<SoLine>({ items: m.items, lines, update, errors, postingDate: draft.postingDate });
   const { itemOf, patch, err } = h;
   const lc = (n: number) => formatAmount(n * ctx.fx);
@@ -78,9 +82,10 @@ export function soDoc({ draft, update, errors, m, ctx, agreements }: SoTabProps 
   const cols = salesCols<SoLine>({
     patch,
     readOnly: linesLocked,
-    currency: draft.currency,
+    currency: view.code,
     fx: ctx.fx,
     invalid: (l, f) => Boolean(err(l, f)),
+    grossPrice: priceModeEnabled() ? grossPriceBinding(draft.priceMode ?? 'Net', (l) => ctx.rateOf(l.taxCode), patch) : undefined,
     lineKind: (l) => { const it = itemOf(l); return it ? (it.inventoryItem ? 'Item' : 'Service') : ''; },
     taxAmount: taxOf,
     qty: (l) => l.quantity,
@@ -142,15 +147,16 @@ export function soDoc({ draft, update, errors, m, ctx, agreements }: SoTabProps 
     prefsKey: 'so',
     cardHeader: true,
     columns,
-    rows: lines,
+    rows: view.converted ? lines.map((l) => ({ ...l, unitPrice: view.convert(l.unitPrice) })) : lines,
     icon: 'list_alt',
-    title: 'Contents',
-    description: errors.lines ?? `Items ordered, in the sales unit. Prices are in ${draft.currency}.`,
+    title: cap(SO_NOUN.lineLabel!),
+    actions: <CurrencyToggle choices={view.choices} value={view.shown} onChange={view.onChange} />,
+    description: errors.lines ?? view.note,
     sortableKeys: ['item'],
     sortValue: (l, key) => (key === 'item' ? l.itemNo : String(l[key as keyof SoLine] ?? '')).toLowerCase(),
     readOnly: linesLocked,
     // Keep already-delivered lines even if selected for removal.
-    onRemove: (picked) => update({ lines: lines.filter((l) => !picked.includes(l) || l.deliveredQty > 0) }),
+    onRemove: (picked) => update({ lines: lines.filter((l) => !picked.some((p) => p.id === l.id) || l.deliveredQty > 0) }),
     item: itemConfig(h, {
       onPick: (l, id) => { const line = id ? fromItem(id, { id: l.id, quantity: l.quantity }) : undefined; patch(l.id, line ?? { itemId: '', itemNo: '', description: '' }); },
       fromItem: (id) => fromItem(id, {}),
@@ -172,10 +178,11 @@ export function soDeliveryDoc({ draft }: SoTabProps): DocLinesProps<SoLine> {
   ];
   return {
     prefsKey: 'so-delivery',
+    cardHeader: true,
     columns,
     rows: draft.lines.filter((l) => !!l.itemId),
     icon: 'local_shipping',
-    title: 'Contents',
+    title: cap(DN_NOUN.lineLabel!),
     readOnly: true,
     empty: <Text variant="small" tone="muted">No deliveries yet.</Text>,
   };

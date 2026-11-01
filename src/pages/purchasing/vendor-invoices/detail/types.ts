@@ -4,6 +4,7 @@ import type { GoodsReceipt, GrLine } from '../../../../mocks/goodsReceipts';
 import type { Item } from '../../../../mocks/items';
 import type { Account } from '../../../../mocks/chartOfAccounts';
 import type { DownPaymentRequest } from '../../../../mocks/apDownPayments';
+import type { DownPaymentInvoice } from '../../../../mocks/apDownPaymentInvoices';
 import type { ApInput } from '../../../../services/apInvoices';
 import { grNumber, grOpenQty } from '../../../../services/goodsReceipts';
 import type { GrContext, GrMasters } from '../../goods-receipts/detail/types';
@@ -15,6 +16,7 @@ export interface ApMasters extends GrMasters {
   receipts: GoodsReceipt[];
   accounts: Account[];
   downPayments: DownPaymentRequest[];
+  downPaymentInvoices: DownPaymentInvoice[];
 }
 
 export type ApContext = GrContext;

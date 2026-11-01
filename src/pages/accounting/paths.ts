@@ -6,7 +6,7 @@
 import type { Noun } from '../../components/form/noun';
 
 export const JE_LIST_PATH = '/accounting/journal-entries';
-export const JE_NOUN: Noun = { one: 'journal entry', many: 'journal entries' };
+export const JE_NOUN: Noun = { one: 'journal entry', many: 'journal entries', lineLabel: 'journal lines' };
 
 export const JE_STATUS_INTENT = { Posted: 'success', Reversed: 'default' } as const;
 

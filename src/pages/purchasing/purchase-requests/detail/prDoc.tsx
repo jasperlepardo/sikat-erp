@@ -1,5 +1,7 @@
 import { Text } from '@jasperlepardo/sikat-design-system';
 import { type DocLinesProps } from '../../../../components/form/docLines/DocLines';
+import { PR_NOUN } from '../../paths';
+import { cap } from '../../../../components/form/noun';
 import { purchCols, pick } from '../../shared/purchCols';
 import { costAccountOptions, lineHelpers, lineGlAccount, itemConfig, itemVendorOptions } from '../../shared/purchLineHelpers';
 import { summaryTypeHeader, purchFooter } from '../../shared/purchChrome';
@@ -102,8 +104,8 @@ export function prDoc({ draft, update, errors, m, ctx }: PrTabProps): DocLinesPr
     columns,
     rows: viewRows,
     icon: 'list_alt',
-    title: 'Contents',
-    description: errors.lines ?? 'Items or services requested — informational prices only, not binding. Amounts in PHP.',
+    title: cap(PR_NOUN.lineLabel!),
+    description: errors.lines,
     sortableKeys: ['item'],
     sortValue: (l, key) => (key === 'item' ? l.itemNo : String(l[key as keyof PrLine] ?? '')).toLowerCase(),
     readOnly: ro,
@@ -122,7 +124,7 @@ export function prDoc({ draft, update, errors, m, ctx }: PrTabProps): DocLinesPr
       errorText: (l) => err(l, 'item'),
       width: 'min-w-52',
     }),
-    empty: <Text variant="small" tone={errors.lines ? 'danger' : 'muted'}>No lines yet — search above to add one.</Text>,
+    empty: <Text variant="small" tone={errors.lines ? 'danger' : 'muted'}>No lines yet — search below to add one.</Text>,
     header: summaryTypeHeader({
       options: PR_SUMMARY_TYPES,
       value: draft.summaryType,
@@ -135,7 +137,7 @@ export function prDoc({ draft, update, errors, m, ctx }: PrTabProps): DocLinesPr
       currency: 'PHP',
       readOnly: ro,
       freight: { value: draft.freight, onChange: (v) => update({ freight: v }) },
-      totalLabel: 'Total payment due (estimate)',
+      totalLabel: 'Total (estimate)',
     }),
   };
 }

@@ -53,6 +53,7 @@ const PeopleSettingsPage = page(() => import('../pages/settings/MasterSettingsPa
 const EmployeeList = page(() => import('../pages/people/EmployeeList'), 'EmployeeList');
 const EmployeeDetail = page(() => import('../pages/people/detail/EmployeeDetail'), 'EmployeeDetail');
 const PurchasingSettingsPage = page(() => import('../pages/settings/purchasing/PurchasingSettingsPage'), 'PurchasingSettingsPage');
+const DocumentSettingsPage = page(() => import('../pages/settings/document-settings/DocumentSettingsPage'), 'DocumentSettingsPage');
 const DocumentNumberingPage = page(() => import('../pages/settings/document-numbering/DocumentNumberingPage'), 'DocumentNumberingPage');
 const JournalPatternsPage = page(() => import('../pages/settings/journal-patterns/JournalPatternsPage'), 'JournalPatternsPage');
 const WarehousesPage = page(() => import('../pages/inventory/WarehousesPage'), 'WarehousesPage');
@@ -227,6 +228,7 @@ export const router = createHashRouter(withPreload([
           { path: 'settings/document-numbering/:tab?/:recordId?', element: <DocumentNumberingPage /> },
           { path: 'settings/journal-patterns/:tab?/:recordId?', element: <JournalPatternsPage /> },
           { path: 'settings/purchasing/:tab?/:recordId?', element: <PurchasingSettingsPage /> },
+          { path: 'settings/document-settings/:tab?/:recordId?', element: <DocumentSettingsPage /> },
           { path: 'settings/sales-and-crm/:tab?/:recordId?', element: <SalesCrmSettingsPage /> },
           { path: 'settings/banking/:tab?/:recordId?', element: <BankingSettingsPage /> },
           { path: 'settings/company/:tab?/:recordId?', element: <CompanySettingsPage /> },

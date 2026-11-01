@@ -1,9 +1,11 @@
 import { useState, type ReactNode } from 'react';
-import { Combobox, Link, Text, TextField } from '@jasperlepardo/sikat-design-system';
+import { Button, Combobox, Icon, Link, Text, TextField } from '@jasperlepardo/sikat-design-system';
 import { DataTable } from '../DataTable';
+import { ItemSearchModal } from '../ItemSearchModal';
 import { useColumnPrefs, type PrefColumn } from '../columnPrefs';
 import { RowMenu } from '../RowMenu';
 import { LineItemText } from '../LineItemText';
+import type { Item } from '../../../mocks/items';
 
 /**
  * The minimal constraint the shared table and column builders need: a stable row id
@@ -51,6 +53,10 @@ export interface ItemCellConfig<T> {
   header?: string;
   width?: string;
   addPlaceholder?: string;
+  /** Candidate catalog for the "Advanced search" modal; omit to hide the button. */
+  search?: { items: Item[] };
+  /** Append several lines at once (from the advanced-search modal). */
+  onAddMany?: (itemIds: string[]) => void;
 }
 
 /**
@@ -124,6 +130,7 @@ export function DocLines<T extends DocLineBase>({
 }: DocLinesProps<T>) {
   const [editing, setEditing] = useState<Set<string>>(new Set());
   const [addKey, setAddKey] = useState(0);
+  const [searchOpen, setSearchOpen] = useState(false);
   const stopEditing = (id: string) => setEditing((s) => { const n = new Set(s); n.delete(id); return n; });
 
   // The shared item cell (first column): pick → edit description → read-only display.
@@ -162,8 +169,10 @@ export function DocLines<T extends DocLineBase>({
       }
     : null;
 
-  // The shared ⋯ actions column (last): Edit description / Change item / Remove line.
-  const actionsColumn: PrefColumn<T> | null = item
+  // The shared ⋯ actions column (last): Edit description / Change item / Remove line. When read-only
+  // its cells are all empty, so drop it rather than leave a vestigial column — unless it's also
+  // hosting the Columns menu (only when `cardHeader` is off; otherwise the menu sits in the toolbar).
+  const actionsColumn: PrefColumn<T> | null = item && !(readOnly && cardHeader)
     ? {
         key: 'actions',
         header: '',
@@ -198,20 +207,29 @@ export function DocLines<T extends DocLineBase>({
 
   const effectiveMenuColumn = cardHeader ? undefined : item ? 'actions' : menuColumn;
   const effectiveAddRow = item && !readOnly ? (
-    <Combobox
-      key={addKey}
-      aria-label="Search items to add a line"
-      placeholder={item.addPlaceholder ?? 'Search items to add a line…'}
-      disabled={item.addDisabled}
-      options={item.options('')}
-      value={null}
-      onValueChange={(id) => {
-        const line = id ? item.fromItem(id) : undefined;
-        if (!line) return;
-        item.onAdd(line);
-        setAddKey((k) => k + 1);
-      }}
-    />
+    <div className="flex items-center gap-2">
+      <div className="flex-1">
+        <Combobox
+          key={addKey}
+          aria-label="Search items to add a line"
+          placeholder={item.addPlaceholder ?? 'Search items to add a line…'}
+          disabled={item.addDisabled}
+          options={item.options('')}
+          value={null}
+          onValueChange={(id) => {
+            const line = id ? item.fromItem(id) : undefined;
+            if (!line) return;
+            item.onAdd(line);
+            setAddKey((k) => k + 1);
+          }}
+        />
+      </div>
+      {item.search ? (
+        <Button type="button" intent="default" variant="ghost" shape="pill" leadingIcon={<Icon size={20}>search</Icon>} disabled={item.addDisabled} onClick={() => setSearchOpen(true)}>
+          Advanced search
+        </Button>
+      ) : null}
+    </div>
   ) : addRow;
 
   const prefs = useColumnPrefs(prefsKey, allColumns);
@@ -222,6 +240,17 @@ export function DocLines<T extends DocLineBase>({
   const unsortable = sortableKeys
     ? visible.map((c) => c.key).filter((k) => !sortableKeys.includes(k))
     : undefined;
+
+  const modal = item?.search && searchOpen ? (
+    <ItemSearchModal
+      items={item.search.items}
+      onCancel={() => setSearchOpen(false)}
+      onAdd={(ids) => {
+        item.onAddMany?.(ids);
+        setSearchOpen(false);
+      }}
+    />
+  ) : null;
 
   const table = (
     <DataTable
@@ -245,12 +274,19 @@ export function DocLines<T extends DocLineBase>({
       {cardHeader ? header : null}
     </DataTable>
   );
-  if (cardHeader) return table;
+  if (cardHeader)
+    return (
+      <>
+        {table}
+        {modal}
+      </>
+    );
 
   return (
     <div className="flex flex-col gap-2">
       {header}
       {table}
+      {modal}
     </div>
   );
 }

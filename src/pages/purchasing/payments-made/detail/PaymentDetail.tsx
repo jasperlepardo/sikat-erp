@@ -1,12 +1,11 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { postDocumentEntry, reverseDocumentEntry } from '../../../../services/journalEntries';
+import { postDocumentEntry, postingPeriodProblem, reverseDocumentEntry } from '../../../../services/journalEntries';
 import {
   Alert,
   Badge,
   Form,
   FormField,
-  List,
   Panel,
   Radio,
   Select,
@@ -15,14 +14,16 @@ import {
 } from '@jasperlepardo/sikat-design-system';
 import { PageHeader } from '../../../../components/form/PageHeader';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
-import { Fields, FieldStack, ReadOnly, Section, bind, type Errors } from '../../../../components/form/fields';
-import { StatusField } from '../../../../components/form/StatusField';
+import { Fields, FieldOrientationCtx, FieldStack, Section, bind, type Errors } from '../../../../components/form/fields';
+import { DocumentCard } from '../../../../components/form/DocumentCard';
+import { DatesCard } from '../../../../components/form/DatesCard';
+import { DOC_DATE, dateRow } from '../../../../components/form/documentDates';
 import { type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { DetailActions, docMode } from '../../../../components/form/DetailActions';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { formatAddress } from '../../../../mocks/address';
-import { accountText } from '../../../../mocks/chartOfAccounts';
-import { FX_GAIN_ACCOUNT, FX_LOSS_ACCOUNT, PAYMENT_SERIES, PAYMENT_STATUSES, blankPayment, type OutgoingPayment, type PaymentStatus, type PaymentType } from '../../../../mocks/outgoingPayments';
+import { JournalPreview } from '../../../../components/form/JournalPreview';
+import { FX_GAIN_ACCOUNT, FX_LOSS_ACCOUNT, PAYMENT_SERIES, blankPayment, type OutgoingPayment, type PaymentType } from '../../../../mocks/outgoingPayments';
 import { type Partner } from '../../../../mocks/partners';
 import { listApInvoices } from '../../../../services/apInvoices';
 import { formatDate, todayISO } from '../../../../services/dates';
@@ -84,7 +85,8 @@ function validate(d: PaymentDraft, m: PayMasters, fx: number, asDraft: boolean):
   if (d.type === 'Vendor') need(d.vendorId, 'header', 'vendorId', 'Pick a vendor.');
   if (asDraft) return problems;
 
-  need(d.postingDate, 'header', 'postingDate', 'Posting date is required.');
+  const postingPeriod = postingPeriodProblem(d.postingDate);
+  need(!postingPeriod, 'header', 'postingDate', postingPeriod ?? '');
   need(d.documentDate, 'header', 'documentDate', 'Document date is required.');
   need(fx > 0, 'header', 'currency', `No ${d.currency} exchange rate on or before ${d.postingDate} — add it in Settings › Accounting & Tax › Exchange rates.`);
   if (d.type === 'Vendor') {
@@ -261,7 +263,6 @@ function PaymentForm() {
   };
   const recallIt = async () => { const p = await recallPayment(saved); navigate(PAYMENT_LIST_PATH, { state: { notice: `Payment ${paymentNumber(p)} recalled to draft.` } }); };
   const rejectIt = async (rejectionReason: string) => { await logRejection('PAY', saved.id, saved.vendorId, rejectionReason); await recallPayment(saved); navigate(PAYMENT_LIST_PATH, { state: { notice: `Payment ${paymentNumber(saved)} rejected and returned to draft.` } }); };
-  const statusMoves: Partial<Record<PaymentStatus, () => void>> = draft.status === 'Draft' ? (draft.approved ? { Posted: () => submit(null) } : { 'Not Confirmed': () => submit(null) }) : draft.status === 'Not Confirmed' ? { Posted: () => submit(null, false, { approved: true }) } : draft.status === 'Posted' ? { Cancelled: cancelIt } : {};
 
   const menu: MoreMenuItem[] = [
     ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }] : []),
@@ -327,50 +328,41 @@ function PaymentForm() {
               </Alert>
             ) : null}
 
-            <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
-              <div className="flex flex-col gap-2 lg:col-span-8">
-                <fieldset disabled={added} className="contents">
-                  {draft.type === 'Vendor' ? (
-                    <VendorCard
-                      vendors={m.vendors}
-                      vendorId={draft.vendorId}
-                      vendor={vendor}
-                      readOnly={added}
-                      added={added}
-                      error={errors.vendorId}
-                      tooltip="Picking one lists its open A/P invoices in its currency."
-                      pickVendor={pickVendor}
-                      onOpenDetails={() => setVendorDetailsOpen(true)}
-                    />
-                  ) : (
-                    <Section icon="account_tree" title="Payee">
-                      <Fields>
-                        {h.text('payeeName', 'To order of', { required: true, error: errors.payeeName, hint: 'Who the payment is to, e.g. Meralco.' })}
-                        {h.text('payTo', 'Pay to', { hint: 'Their address, for the check or transfer.' })}
-                        <FormField label="Doc. currency">
-                          {(p) => <Select {...p} options={activeOptions(m.currencies, (c) => c.code, (c) => `${c.code} — ${c.name}`, draft.currency)} value={draft.currency} onValueChange={(currency) => update({ currency })} />}
-                        </FormField>
-                      </Fields>
-                      {errors.currency ? <Text variant="small" tone="danger">{errors.currency}</Text> : null}
-                    </Section>
-                  )}
-                </fieldset>
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+              <div className="flex flex-col gap-3 lg:col-span-8">
+                {draft.type === 'Vendor' ? (
+                  <VendorCard
+                    vendors={m.vendors}
+                    vendorId={draft.vendorId}
+                    vendor={vendor}
+                    readOnly={added}
+                    added={added}
+                    error={errors.vendorId}
+                    tooltip="Picking one lists its open A/P invoices in its currency."
+                    pickVendor={pickVendor}
+                    onOpenDetails={() => setVendorDetailsOpen(true)}
+                  />
+                ) : (
+                  <Section icon="account_tree" title="Payee">
+                    <Fields>
+                      {h.text('payeeName', 'To order of', { required: true, error: errors.payeeName, hint: 'Who the payment is to, e.g. Meralco.', readOnly: added })}
+                      {h.text('payTo', 'Pay to', { hint: 'Their address, for the check or transfer.', readOnly: added })}
+                      <FormField label="Doc. currency">
+                        {(p) => <Select {...p} readOnly={added} options={activeOptions(m.currencies, (c) => c.code, (c) => `${c.code} — ${c.name}`, draft.currency)} value={draft.currency} onValueChange={(currency) => update({ currency })} />}
+                      </FormField>
+                    </Fields>
+                    {errors.currency ? <Text variant="small" tone="danger">{errors.currency}</Text> : null}
+                  </Section>
+                )}
 
                 {draft.type === 'Vendor' ? <PayVendorRows {...sectionProps} /> : <PayAccountRows {...sectionProps} />}
                 <PayMeansCard {...sectionProps} />
 
-                <Section icon="account_balance" title="Journal entry">
-                  {journal.length ? (
-                    <List.Group divider>
-                      {journal.map((j) => (
-                        <List.Item
-                          key={j.account}
-                          title={accountText(j.account, m.accounts)}
-                          content={<span className="whitespace-nowrap tabular-nums">{j.debit ? `Dr ${formatAmount(j.debit)}` : `Cr ${formatAmount(j.credit)}`}</span>}
-                        />
-                      ))}
-                    </List.Group>
-                  ) : null}
+                <JournalPreview
+                  journal={journal}
+                  accounts={m.accounts}
+                  remarks={h.text('journalRemark', 'Journal remark', { hint: 'Shown on the journal entry. Defaults to “Outgoing – vendor code”.', readOnly: added })}
+                >
                   {fxLine ? (
                     <Alert intent={fxLine.debit ? 'warning' : 'success'} variant="outline" title={`Realized exchange ${fxLine.debit ? 'loss' : 'gain'}: PHP ${formatAmount(fxLine.debit || fxLine.credit)}`}>
                       {paidInvoices.filter((r) => rowFxDifference(r, fx)).map((r) => (
@@ -380,69 +372,69 @@ function PaymentForm() {
                       ))}
                     </Alert>
                   ) : null}
-                  <Text variant="small" tone="muted">
-                    {journal.length
-                      ? `In PHP${code === 'PHP' ? '' : ` at ${fx}`}. Each invoice clears the vendor at the rate it was booked at; the payment means are credited at today's rate, and the difference is the realized exchange gain or loss.`
-                      : 'Made when the payment is added: Dr the vendor (or the G/L accounts) / Cr the payment means. Tick invoices and fill in the payment means to see it.'}
-                  </Text>
-                </Section>
+                </JournalPreview>
 
                 <ReferencesTable refs={draft.references} onChange={(references) => update({ references })} readOnly={added} description="Other documents this payment refers to." />
                 <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} emptyHint="Attach the deposit slip, transfer confirmation or the vendor's official receipt." />
               </div>
 
-              <aside className="flex flex-col gap-2 lg:col-span-4">
-                <fieldset disabled={added} className="contents">
-                  <Section icon="tag" title="Document">
-                    <FieldStack>
-                      {/* Narrow aside: once added the series is fixed, so show just the number. */}
-                      {added ? (
-                        <ReadOnly label="No." value={paymentNumber(draft)} />
-                      ) : (
-                        <FormField label="No." tooltip="Assigned from the series when the payment is added.">
-                          {() => (
-                            <div className="flex gap-1">
-                              <Select aria-label="Series" className="min-w-0 flex-1" options={PAYMENT_SERIES.map((s) => ({ value: s.id, label: s.name }))} value={draft.seriesId} onValueChange={(seriesId) => update({ seriesId })} />
-                              <span className="shrink-0 self-center whitespace-nowrap text-sm">{draft.docNum ? paymentNumber(draft) : <span className="text-placeholder">Next number</span>}</span>
-                            </div>
-                          )}
-                        </FormField>
-                      )}
-                      <StatusField statuses={PAYMENT_STATUSES} intents={PAYMENT_STATUS_INTENT} value={draft.status} moves={statusMoves} />
-                      {h.date('postingDate', 'Posting date', {
-                        required: true,
-                        error: errors.postingDate,
-                        hint: code === 'PHP' ? 'The day the payment is booked.' : `Sets the rate the ${code} is paid at: ${fx || '—'}. Invoices are cleared at the rate they were booked at.`,
-                      })}
-                      {h.date('documentDate', 'Document date', { required: true, error: errors.documentDate })}
-                      {h.date('dueDate', 'Due date', { hint: "The vendor row's due date: the payment means' dates, weighted by amount." })}
-                    </FieldStack>
-                  </Section>
-                </fieldset>
+              <aside className="flex flex-col gap-3 lg:col-span-4">
+                <DocumentCard
+                  series={added ? undefined : {
+                    rows: PAYMENT_SERIES,
+                    seriesId: draft.seriesId,
+                    docNum: draft.docNum,
+                    number: paymentNumber(draft),
+                    noun: 'Payment',
+                    error: errors.docNum,
+                    onSeries: (seriesId) => update({ seriesId, docNum: 0 }),
+                    onNumber: (docNum) => update({ docNum }),
+                  }}
+                  currency={{
+                    code: draft.currency,
+                    currencies: m.currencies,
+                    hint: "The vendor's currency — change it in the Payee card.",
+                    rate: draft.currency === 'PHP' ? undefined : added ? { rate: draft.fxRate, date: draft.postingDate, source: '' } : rateOn(m.rates, draft.currency, draft.postingDate),
+                    rateHint: 'From the posting date; sets how the payment converts to PHP.',
+                  }}
+                />
 
-                <fieldset disabled={added} className="contents">
-                  <Section icon="settings" title="Settings">
-                    <div className="flex flex-col gap-1" role="radiogroup" aria-label="Payment type">
-                      <Text variant="small" tone="muted">Pay to</Text>
-                      {(['Vendor', 'Account'] as PaymentType[]).map((t) => (
-                        <Radio key={t} name="payment-type" checked={draft.type === t} disabled={added} onChange={() => switchType(t)}>
-                          {t === 'Vendor' ? 'A vendor' : 'An account (no business partner)'}
-                        </Radio>
-                      ))}
-                    </div>
-                    <FieldStack>
-                      {h.master('projectId', 'Project', projectDef, { clearable: true })}
-                      {h.text('reference', 'Reference', { hint: 'Any extra reference, e.g. the vendor’s statement no.' })}
-                    </FieldStack>
-                  </Section>
-                </fieldset>
+                <DatesCard
+                  draft={draft}
+                  update={update}
+                  closeDate={draft.cancelDate}
+                  closeHint="Set when the payment is cancelled."
+                  dates={[
+                    dateRow(DOC_DATE.effective, {
+                      error: errors.postingDate,
+                      readOnly: added,
+                      hint: code === 'PHP' ? 'The day the payment is booked.' : `Sets the rate the ${code} is paid at: ${fx || '—'}. Invoices are cleared at the rate they were booked at.`,
+                    }),
+                    dateRow(DOC_DATE.due, { readOnly: added, hint: "The vendor row's due date: the payment means' dates, weighted by amount.", optional: true }),
+                    dateRow(DOC_DATE.document, { error: errors.documentDate, readOnly: added, hint: "The payment's reference date. Defaults to today." }),
+                  ]}
+                />
+
+                <Section icon="settings" title="Settings">
+                  <div className="flex flex-col gap-1" role="radiogroup" aria-label="Payment type">
+                    <Text variant="small" tone="muted">Pay to</Text>
+                    {(['Vendor', 'Account'] as PaymentType[]).map((t) => (
+                      <Radio key={t} name="payment-type" checked={draft.type === t} readOnly={added} disabled={added} onChange={() => switchType(t)}>
+                        {t === 'Vendor' ? 'A vendor' : 'An account (no business partner)'}
+                      </Radio>
+                    ))}
+                  </div>
+                  <FieldOrientationCtx.Provider value="inline">
+                    <Form.Group orientation="inline">
+                      {h.master('projectId', 'Project', projectDef, { clearable: true, readOnly: added })}
+                      {h.text('reference', 'Reference', { hint: 'Any extra reference, e.g. the vendor’s statement no.', readOnly: added })}
+                    </Form.Group>
+                  </FieldOrientationCtx.Provider>
+                </Section>
 
                 <Section icon="notes" title="Remarks">
                   <FieldStack>
                     {h.area('remarks', 'Remarks', { rows: 3, hint: 'Can be changed after the payment is added.' })}
-                    <fieldset disabled={added} className="contents">
-                      {h.text('journalRemark', 'Journal remarks', { hint: 'Shown on the journal entry. Defaults to “Outgoing – vendor code”.' })}
-                    </fieldset>
                   </FieldStack>
                 </Section>
               </aside>

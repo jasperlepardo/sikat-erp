@@ -125,12 +125,14 @@ function releases(hand: PurchaseOrder[]): PlannedOrder[] {
     if (low >= 0) continue;
     const vendorId = supplierOf(item);
     const key = `${receivedOn}|${vendorId}`;
+    const posting = addDays(item.validFrom, -10);
     const order = byRelease.get(key) ?? {
       id: `po-l${item.validFrom.slice(2).replace(/-/g, '')}-${vendorId.slice(3)}`,
       vendorId,
       kind: 'release' as const,
-      postingDate: addDays(item.validFrom, -10),
-      receivedOn,
+      // Dated no later than the as-of day, as receiptDate caps the hand-written orders' receipts.
+      postingDate: posting > SEED_AS_OF ? SEED_AS_OF : posting,
+      receivedOn: receivedOn > SEED_AS_OF ? SEED_AS_OF : receivedOn,
       lines: [],
     };
     order.lines.push({ itemId: item.id, units: -low });

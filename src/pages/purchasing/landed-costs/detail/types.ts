@@ -1,4 +1,4 @@
-import type { LandedCost, LcStatus } from '../../../../mocks/landedCosts';
+import type { LandedCost } from '../../../../mocks/landedCosts';
 import type { LandedCostType } from '../../../../mocks/landedCostTypes';
 import type { Partner } from '../../../../mocks/partners';
 import type { GoodsReceipt } from '../../../../mocks/goodsReceipts';
@@ -18,11 +18,3 @@ export interface LcSectionProps {
   m: LcMasters;
   readOnly: boolean;
 }
-
-
-
-export const LC_STATUS_HINT: Record<LcStatus, string> = {
-  Draft: 'Not yet posted.',
-  Open: 'Posted — costs allocated to the receipts.',
-  Cancelled: 'Cancelled.',
-};

@@ -99,7 +99,7 @@ function build(): PurchasingHistory {
       language: 'English', journalRemark: `A/P Down Payment – ${v.code}`, paymentTermId: p.paymentTermId, paymentMethod: v.defaultPaymentMethod, cashDiscountDays: 0,
       projectId: p.projectId, indicator: '', orderNumber: poRef(p), references: [], buyerId: p.buyerId, ownerId: p.ownerId,
       remarks: '', discountPct: p.discountPct, freight: 0, freightTaxCode: '', fxRate: fxOn(p.currency, date), controlAccount: v.payableAccount || '2010',
-      paymentBlock: false, maxCashDiscount: false, installments: 1, consolidatingBpId: '', paymentOrderRun: true, appliedAmount: 0, approved: true, attachments: [],
+      paymentBlock: false, maxCashDiscount: false, installments: 1, consolidatingBpId: '', priceMode: 'Net', paymentOrderRun: true, appliedAmount: 0, approved: true, attachments: [],
       dpmPct, paidLc: 0, drawnAmount: 0, downPaymentAccount: v.downPaymentClearingAccount || ADVANCES_TO_SUPPLIERS,
     };
   };
@@ -144,7 +144,7 @@ function build(): PurchasingHistory {
       language: 'English', journalRemark: `A/P Down Payment Invoice – ${v.code}`, paymentTermId: p.paymentTermId, paymentMethod: v.defaultPaymentMethod, cashDiscountDays: 0,
       projectId: p.projectId, indicator: '', orderNumber: poRef(p), references: [], buyerId: p.buyerId, ownerId: p.ownerId,
       remarks: '', discountPct: p.discountPct, freight: 0, freightTaxCode: '', fxRate: fxOn(p.currency, date), controlAccount: v.payableAccount || '2010',
-      paymentBlock: false, maxCashDiscount: false, installments: 1, consolidatingBpId: '', paymentOrderRun: true, appliedAmount: 0, approved: true, attachments: [],
+      paymentBlock: false, maxCashDiscount: false, installments: 1, consolidatingBpId: '', priceMode: 'Net', paymentOrderRun: true, appliedAmount: 0, approved: true, attachments: [],
       dpmPct, paidLc: 0, drawnAmount: 0, downPaymentAccount: v.downPaymentClearingAccount || ADVANCES_TO_SUPPLIERS,
     };
   };
@@ -152,16 +152,21 @@ function build(): PurchasingHistory {
     const t = poTotals({ ...d, freight: 0 }, rateOf(d.postingDate), undefined, reverse);
     return round2((t.beforeDiscount - t.discount) * (d.dpmPct / 100) + t.tax * (d.dpmPct / 100));
   };
-  /** A payment row paying a down payment invoice in full (settles the A/P it posted). */
+  /** EWT recognized on the invoiced down-payment share (withheld on the DPI, not deferred). */
+  const dpiWt = (d: DownPaymentInvoice) =>
+    round2(poWithholding(d, vendorOf(d.vendorId), ITEMS, TAX, d.postingDate, d.dpmPct / 100).filter((w) => w.deducted).reduce((n, w) => n + w.amount, 0));
+  /** What the vendor is actually paid on the down payment invoice: its total less the EWT withheld. */
+  const dpiNet = (d: DownPaymentInvoice) => round2(dpiTotal(d) - dpiWt(d));
+  /** A payment row paying a down payment invoice (settles the A/P it posted, net of its EWT). */
   const dpiRow = (d: DownPaymentInvoice): PaymentRow => {
-    const due = dpiTotal(d);
+    const due = dpiNet(d);
     return {
       id: `pr-${d.id}`, invoiceId: d.id, docNo: dpiNo(d), vendorRef: d.vendorRef, docDate: d.postingDate, dueDate: d.dueDate, total: due, wtAmount: 0, balanceDue: due,
       cashDiscountPct: 0, amount: due, invoiceFx: d.fxRate || 1, projectId: d.projectId, selected: true, docType: 'APDPI', account: d.downPaymentAccount,
     };
   };
-  /** Record a payment on a down payment invoice: what's paid, and the PHP the advance sits at. */
-  const paidDpi = (d: DownPaymentInvoice, p: OutgoingPayment) => Object.assign(d, { appliedAmount: dpiTotal(d), paidLc: round2(dpiTotal(d) * p.fxRate) });
+  /** Record a payment on a down payment invoice: what's paid to the vendor (net of EWT), at its rate. */
+  const paidDpi = (d: DownPaymentInvoice, p: OutgoingPayment) => Object.assign(d, { appliedAmount: dpiNet(d), paidLc: round2(dpiNet(d) * p.fxRate) });
 
   // ── Outgoing payments ───────────────────────────────────────────────────────
   let payNo = 0;

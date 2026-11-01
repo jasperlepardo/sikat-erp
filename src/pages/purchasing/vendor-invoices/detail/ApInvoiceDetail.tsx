@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { postDocumentEntry, reverseDocumentEntry } from '../../../../services/journalEntries';
+import { postDocumentEntry, postingPeriodProblem, reverseDocumentEntry } from '../../../../services/journalEntries';
 import {
   Alert,
   Badge,
@@ -11,12 +11,14 @@ import {
   Text,
 } from '@jasperlepardo/sikat-design-system';
 import { PageHeader } from '../../../../components/form/PageHeader';
+import { JournalPreview } from '../../../../components/form/JournalPreview';
 import { type Errors } from '../../../../components/form/fields';
 import { type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { DetailActions, docMode } from '../../../../components/form/DetailActions';
 import { isApprover, needsApproval } from '../../../../services/approval';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
-import { blankApInvoice, newApLine, type ApInvoice, type ApLine, type ApStatus } from '../../../../mocks/apInvoices';
+import { blankApInvoice, newApLine, type ApInvoice, type ApLine } from '../../../../mocks/apInvoices';
+import type { Item } from '../../../../mocks/items';
 import { CURRENT_USER_ID } from '../../../../mocks/common';
 import type { GoodsReceipt } from '../../../../mocks/goodsReceipts';
 import { type Partner } from '../../../../mocks/partners';
@@ -30,12 +32,15 @@ import {
   cancelApInvoice,
   findDuplicateInvoice,
   getApInvoice,
+  lineValueLc,
   listApInvoices,
   movesStock,
   netDue,
+  receiptValueLc,
   recallApInvoice,
   saveApDraft,
   saveApRemarks,
+  trueUpWithholding,
 } from '../../../../services/apInvoices';
 import { logRejection } from '../../../../services/approvalRules';
 import { transferBlock } from '../../../../services/binLocations';
@@ -44,6 +49,7 @@ import { formatDate, todayISO } from '../../../../services/dates';
 import { recalcLineTaxes } from '../../../../services/taxRecalc';
 import { defaultJournalRemark } from '../../../../services/journalPatterns';
 import { formatAmount } from '../../../../services/format';
+import { round2 } from '../../../../services/num';
 import { grNumber, grOpenQty, invoiceableReceipts, listGoodsReceipts, receivablePos } from '../../../../services/goodsReceipts';
 import { loadInventoryMasters } from '../../../../services/inventoryMasters';
 import { isValidToday, listItems } from '../../../../services/items';
@@ -55,11 +61,17 @@ import { proposedTaxCode } from '../../purchase-orders/detail/types';
 import { GrLogistics } from '../../goods-receipts/detail/GrLogisticsCard';
 import { buildGrContext, defaultPayTo, defaultShipTo, linesFromPo } from '../../goods-receipts/detail/types';
 import { DocumentFlow } from '../../shared/DocumentFlow';
-import { drawableAmount, listDownPayments } from '../../../../services/apDownPayments';
-import { ApAccountingCard as ApAccounting } from './ApAccountingCard';
+import { drawableAmount, dprNumber, listDownPayments, paidRate } from '../../../../services/apDownPayments';
+import { dpiDrawable, dpiNumber, dpiTotals, dpiWithholding, listDownPaymentInvoices } from '../../../../services/apDownPaymentInvoices';
+import { ADVANCES_TO_SUPPLIERS } from '../../../../mocks/apDownPayments';
+import { rateAt } from '../../../../mocks/taxes';
+import { DocumentPayment, DocumentJournalEntry } from '../../../../components/form/PaymentCard';
+import { apInvoicePayment } from '../../../documentPaymentDefs';
 import { ReferencesTable } from '../../shared/ReferencesTable';
+import { PurchReferencesCard } from '../../shared/PurchReferencesCard';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { apDoc } from './apDoc';
+import { purchaseView } from '../../shared/purchaseView';
 import { DocLines } from '../../../../components/form/docLines/DocLines';
 import { CopyPanel } from '../../shared/CopyPanel';
 import { CreateFromPanel, createHopMenuItems } from '../../shared/CreateFromPanel';
@@ -73,8 +85,9 @@ import { VendorCard } from '../../shared/VendorCard';
 import { VendorDetailsPanel } from '../../shared/VendorDetailsPanel';
 import { receivingVendorAddressFields } from '../../shared/vendorAddresses';
 import { ApDocumentCard } from './ApDocumentCard';
-import { ApTotalsCard } from './ApTotalsCard';
-import { ApJournalCard } from './ApJournalCard';
+import { DocumentDates } from '../../../../components/form/DatesCard';
+import { apInvoiceDates } from '../../../documentDateDefs';
+import { AssignmentCard } from '../../../../components/form/AssignmentCard';
 import { AP_LIST_PATH, AP_NOUN, AP_STATUS_INTENT, PAYMENT_LIST_PATH } from '../../paths';
 
 type TabId = 'contents' | 'logistics' | 'accounting';
@@ -94,7 +107,8 @@ function validate(d: ApDraft, ctx: ApContext, m: ApMasters, asDraft: boolean): P
   need(d.vendorId, 'header', 'vendorId', 'Pick a vendor.');
   if (asDraft) return problems;
 
-  need(d.postingDate, 'header', 'postingDate', 'Posting date is required.');
+  const postingPeriod = postingPeriodProblem(d.postingDate);
+  need(!postingPeriod, 'header', 'postingDate', postingPeriod ?? '');
   need(d.documentDate, 'header', 'documentDate', 'Document date is required.');
   need(d.dueDate, 'header', 'dueDate', 'Due date is required — pick payment terms or enter it.');
   need(!d.dueDate || d.dueDate >= d.postingDate, 'header', 'dueDate', 'Due date is before the posting date.');
@@ -167,6 +181,7 @@ function ApInvoiceForm() {
   const [saving, setSaving] = useState(false);
   const reject = useReject();
   const [vendorDetailsOpen, setVendorDetailsOpen] = useState(false);
+  const [currencyView, setCurrencyView] = useState('');
   const [copying, setCopying] = useState(false);
   const [drawing, setDrawing] = useState(false);
   const [createHop, setCreateHop] = useState<CopyHop<ApInvoice> | null>(null);
@@ -187,9 +202,10 @@ function ApInvoiceForm() {
       listPurchaseOrders(),
       listGoodsReceipts(),
       listDownPayments(),
-    ]).then(([vendors, items, inv, [company], codes, groups, withholding, wGroups, curs, rates, ours, orders, receipts, downPayments]) => {
+      listDownPaymentInvoices(),
+    ]).then(([vendors, items, inv, [company], codes, groups, withholding, wGroups, curs, rates, ours, orders, receipts, downPayments, downPaymentInvoices]) => {
       const masters: ApMasters = {
-        vendors, items, inv, tax: { company, codes, groups, withholding, withholdingGroups: wGroups }, currencies: curs, rates, company: ours, orders, receipts, accounts: inv.accounts, downPayments,
+        vendors, items, inv, tax: { company, codes, groups, withholding, withholdingGroups: wGroups }, currencies: curs, rates, company: ours, orders, receipts, accounts: inv.accounts, downPayments, downPaymentInvoices,
       };
       setM(masters);
       // Create A/P invoice from a receipt or PO: the lines the user picked, or — when navigated
@@ -226,7 +242,7 @@ function ApInvoiceForm() {
   const errors: Errors = Object.fromEntries(problems.map((p) => [p.key, p.message]));
   const docCurrency = m.currencies.find((c) => c.code === draft.currency);
   const totals = apTotals(draft, ctx.rateOf, docCurrency?.rounding, ctx.isReverseCharge);
-  const withholding = docWithholding(draft, vendor, m.items, m.tax, draft.postingDate);
+  const withholding = trueUpWithholding(docWithholding(draft, vendor, m.items, m.tax, draft.postingDate), draft.drawnDownPayments);
   const due = netDue(totals.total, withholding, draft.downPayment);
   const balance = Math.round((due - draft.appliedAmount) * 100) / 100;
   const journal = ctx.fx ? apJournal(draft, ctx.fx, { itemsById: new Map(m.items.map((i) => [i.id, i])), groups: m.inv.groups, codes: m.tax.codes, rateOf: ctx.rateOf, withholding }) : [];
@@ -364,8 +380,6 @@ function ApInvoiceForm() {
     await recallApInvoice(saved);
     navigate(AP_LIST_PATH, { state: { notice: `A/P invoice ${apNumber(saved)} rejected and returned to draft.` } });
   };
-  const statusMoves: Partial<Record<ApStatus, () => void>> = draft.status === 'Draft' ? (draft.approved ? { Open: () => submit(null) } : { 'Not Confirmed': () => submit(null) }) : draft.status === 'Not Confirmed' ? { Open: () => submit(null, false, { approved: true }) } : draft.status === 'Open' && !draft.appliedAmount ? { Cancelled: cancelIt } : {};
-
   const menu: MoreMenuItem[] = [
     ...(draft.status === 'Open' || draft.status === 'Closed'
       ? createHopMenuItems(saved, m.items, [AP_TO_RETURN, AP_TO_APCM], setCreateHop)
@@ -382,14 +396,68 @@ function ApInvoiceForm() {
 
   const title = isNew ? `New ${AP_NOUN.one}` : added ? apNumber(draft) : `Draft ${AP_NOUN.one}`;
   const sectionProps = { draft, update, errors, m, ctx };
+  const view = purchaseView(draft.currency, ctx.fx, draft.postingDate, currencyView, setCurrencyView);
+
+  // Preview of the journal entry made when the invoice is added, shown in the posting card.
+  const differences = ctx.fx
+    ? draft.lines
+        .filter((l) => l.baseType === 'GRPO')
+        .map((l) => ({ l, gr: m.receipts.find((r) => r.id === l.baseId), diff: Math.round((lineValueLc(l, draft, ctx.fx) - receiptValueLc(l)) * 100) / 100 }))
+        .filter((x) => x.diff)
+    : [];
+  const journalEntry = (
+    <JournalPreview journal={journal} accounts={m.accounts}>
+      {differences.length ? (
+        <Alert intent="warning" variant="outline" title="Billed at a different price or rate than received">
+          {differences.map(({ l, gr, diff }) => (
+            <div key={l.id}>
+              {l.itemNo}: receipt {l.baseDocNo}
+              {gr && gr.currency !== 'PHP' ? ` at ${gr.fxRate}, billed at ${ctx.fx}` : ''} — PHP {formatAmount(Math.abs(diff))} {diff > 0 ? 'more' : 'less'}, posted to{' '}
+              {differenceTarget(m.items.find((i) => i.id === l.itemId))}.
+            </div>
+          ))}
+        </Alert>
+      ) : null}
+    </JournalPreview>
+  );
 
   // Documents this invoice can bill (Copy from) and down payments it can draw.
   const sameCurrency = <T extends { currency: string }>(docs: T[]) => (ctx.based ? docs.filter((d) => d.currency === draft.currency) : docs);
   const receipts = draft.vendorId ? sameCurrency(invoiceableReceipts(m.receipts, draft.vendorId)) : [];
   const orders = draft.vendorId ? sameCurrency(receivablePos(m.orders, draft.vendorId)) : [];
-  const drawable = m.downPayments
-    .filter((d) => d.vendorId === draft.vendorId && d.currency === draft.currency && (d.status === 'Open' || (draft.drawnDownPayments ?? []).some((x) => x.requestId === d.id)))
-    .filter((d) => drawableAmount(d) > 0 || (draft.drawnDownPayments ?? []).some((x) => x.requestId === d.id));
+  const alreadyDrawn = (id: string) => (draft.drawnDownPayments ?? []).some((x) => x.requestId === id);
+  const forThisBill = (d: { vendorId: string; currency: string; status: string; id: string }) =>
+    d.vendorId === draft.vendorId && d.currency === draft.currency && (d.status === 'Open' || alreadyDrawn(d.id));
+  // Paid down payments this invoice can draw: requests (deferred) and invoices (which carry their own EWT/VAT).
+  const dprAdvances = m.downPayments
+    .filter(forThisBill)
+    .filter((d) => drawableAmount(d) > 0 || alreadyDrawn(d.id))
+    .map((d) => ({
+      id: d.id, docNo: dprNumber(d), postingDate: d.postingDate, orderNumber: d.orderNumber, available: drawableAmount(d),
+      toDraw: (amount: number) => ({ requestId: d.id, docNo: dprNumber(d), amount, amountLc: round2(amount * paidRate(d)), account: d.downPaymentAccount || ADVANCES_TO_SUPPLIERS }),
+    }));
+  const dpiAdvances = m.downPaymentInvoices
+    .filter(forThisBill)
+    .filter((d) => dpiDrawable(d, m.tax.codes) > 0 || alreadyDrawn(d.id))
+    .map((d) => {
+      const fx = d.fxRate || 1;
+      const rateOf = (c: string) => { const tc = m.tax.codes.find((x) => x.code === c); return tc ? (rateAt(tc, d.postingDate) ?? 0) : 0; };
+      const tot = dpiTotals(d, rateOf);
+      const wh = dpiWithholding(d, ctx.vendor, m.items, m.tax, d.postingDate).filter((w) => w.deducted);
+      const vatAccount = m.tax.codes.find((c) => c.code === d.lines[0]?.taxCode)?.glAccount || '1410';
+      return {
+        id: d.id, docNo: dpiNumber(d), postingDate: d.postingDate, orderNumber: d.orderNumber, available: dpiDrawable(d, m.tax.codes),
+        toDraw: (amount: number) => {
+          const frac = tot.total ? amount / tot.total : 0;
+          return {
+            requestId: d.id, docNo: dpiNumber(d), amount, account: d.downPaymentAccount || ADVANCES_TO_SUPPLIERS,
+            amountLc: round2(tot.dpm * frac * fx), inputVatLc: round2(tot.tax * frac * fx), vatAccount,
+            withholding: wh.map((w) => ({ atc: w.atc, amount: round2(w.amount * frac) })),
+          };
+        },
+      };
+    });
+  const advances = [...dprAdvances, ...dpiAdvances];
 
   return (
     <>
@@ -455,8 +523,8 @@ function ApInvoiceForm() {
               </Alert>
             ) : null}
 
-            <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
-              <div className="flex flex-col gap-2 lg:col-span-8">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+              <div className="flex flex-col gap-3 lg:col-span-8">
                 <VendorCard
                   vendors={m.vendors}
                   vendorId={draft.vendorId}
@@ -469,16 +537,26 @@ function ApInvoiceForm() {
                   pickVendor={pickVendor}
                   onOpenDetails={() => setVendorDetailsOpen(true)}
                 />
-                <DocLines {...apDoc({ ...sectionProps, onCopyClick: () => setCopying(true), copyableCount: receipts.length + orders.length, onDrawClick: () => setDrawing(true), drawableCount: drawable.length })} />
+                <DocLines {...apDoc({ ...sectionProps, onCopyClick: () => setCopying(true), copyableCount: receipts.length + orders.length, onDrawClick: () => setDrawing(true), drawableCount: advances.length }, view)} />
+                <DocumentJournalEntry def={apInvoicePayment} posting={journalEntry} {...sectionProps} />
                 <ReferencesTable refs={draft.references} onChange={(references) => update({ references })} readOnly={ctx.readOnly} description="Other documents this invoice refers to, e.g. the vendor's official receipt or statement of account." />
                 <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach the vendor's invoice, delivery receipt or statement of account." />
               </div>
-              <div className="flex flex-col gap-2 lg:col-span-4">
-                <ApDocumentCard {...sectionProps} statusMoves={statusMoves} />
+              <div className="flex flex-col gap-3 lg:col-span-4">
+                <ApDocumentCard {...sectionProps} />
+                <DocumentDates def={apInvoiceDates} {...sectionProps} />
                 <GrLogistics draft={draft} update={update} m={m} />
-                <ApAccounting {...sectionProps} />
-                <ApTotalsCard {...sectionProps} />
-                <ApJournalCard {...sectionProps} />
+                <PurchReferencesCard {...sectionProps} projectHint="Defaults from the vendor or the base document." orderNumberHint="The PO(s) behind the lines, directly or through their receipts." />
+                <DocumentPayment def={apInvoicePayment} posting={journalEntry} {...sectionProps} />
+                <AssignmentCard
+                  draft={draft}
+                  update={update}
+                  readOnly={ctx.readOnly}
+                  person={{ key: 'buyerId', label: 'Buyer', hint: 'Who bought the goods.' }}
+                  ownerHint="Owns the document (data access)."
+                  remarksHint="Can be changed after the invoice is added."
+                  paymentFlags
+                />
               </div>
             </div>
           </Panel.Body>
@@ -489,28 +567,18 @@ function ApInvoiceForm() {
       draft={draft}
       update={update}
       vendor={ctx.vendor}
-      currencies={m.currencies}
       readOnly={ctx.readOnly}
       open={vendorDetailsOpen}
       onClose={() => setVendorDetailsOpen(false)}
       vendorRefHint="The vendor's invoice no. — checked against their other bills so it isn't entered twice."
       vendorRefError={errors.vendorRef}
-      currency={{
-        disabled: ctx.readOnly || ctx.based,
-        tooltip: ctx.based
-          ? 'Locked to the currency of the documents the lines came from.'
-          : ctx.vendor?.currency === ALL_CURRENCIES
-          ? 'This vendor takes all currencies — pick the document currency.'
-          : `Defaults to the vendor's currency (${ctx.vendor?.currency ?? '—'}).`,
-        error: errors.currency,
-      }}
       addresses={ctx.vendor ? receivingVendorAddressFields(m, ctx.vendor) : []}
     />
     {drawing
       ? createPortal(
           <DrawPanel
             code={draft.currency}
-            requests={drawable}
+            advances={advances}
             current={draft.drawnDownPayments ?? []}
             max={Math.max(0, Math.round((totals.total - withholding.filter((w) => w.deducted).reduce((n, w) => n + w.amount, 0)) * 100) / 100)}
             onCancel={() => setDrawing(false)}
@@ -572,6 +640,12 @@ function ApInvoiceForm() {
     {createHop ? <CreateFromPanel source={saved} hop={createHop} items={m.items} partyCard={<VendorCard vendors={m.vendors} vendorId={saved.vendorId} vendor={ctx.vendor} readOnly={false} locked pickVendor={() => {}} />} onClose={() => setCreateHop(null)} /> : null}
     </>
   );
+}
+
+/** Where a price/rate difference between the bill and the receipt posts. */
+function differenceTarget(item: Item | undefined) {
+  if (!item?.inventoryItem) return "the item's cost account (it isn't stocked)";
+  return item.warehouses.reduce((n, w) => n + w.inStock, 0) > 0 ? 'inventory (the item cost re-averages)' : 'cost of sales (the stock is gone)';
 }
 
 /** What picking a vendor fills on the invoice. */

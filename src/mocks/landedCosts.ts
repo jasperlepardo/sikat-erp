@@ -6,7 +6,7 @@ export const LC_STATUSES: LcStatus[] = ['Draft', 'Open', 'Cancelled'];
 export const LC_SERIES: DocumentSeries[] = [
   {
     id: 'lcs-primary',
-    name: 'Primary',
+    name: 'Landed Cost',
     prefix: '',
     firstNo: 1,
     manual: false,

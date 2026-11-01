@@ -24,40 +24,38 @@ interface RequesterCardProps {
 /** A document's requester: picked as a card; the selected name links to the requester details side panel. */
 export function RequesterCard({ employees, requesterId, readOnly, locked = false, error, hint, tooltip, pickRequester, onOpenDetails }: RequesterCardProps) {
   return (
-    <fieldset disabled={readOnly} className="contents">
-      <Section icon="person" title="Requester">
-        <Fields>
-          <div className="md:col-span-2">
-            <CardField
-              aria-label="Requester"
-              required
-              placeholder="Search employees"
-              tooltip={tooltip}
-              hint={hint}
-              options={employees
-                .filter((e) => e.active || e.id === requesterId)
-                .map((e): CardFieldOption => {
-                  const detail = [e.code, e.jobTitle, e.email].filter(Boolean).join(' · ');
-                  return {
-                    value: e.id,
-                    label: employeeName(e),
-                    // First then last, whatever the display order ("Cruz, Juan" is still JC).
-                    icon: <Avatar initials={initialsOf(`${e.firstName} ${e.lastName}`)} icon="person" size={36} />,
-                    // The title opens the requester details side panel; in dropdown rows it flattens to plain text.
-                    texts: [
-                      { variant: 'small' as const, children: <Link onClick={(ev) => { ev.stopPropagation(); onOpenDetails(); }}>{employeeName(e)}</Link> },
-                      ...(detail ? [{ variant: 'caption' as const, children: detail }] : []),
-                    ],
-                  };
-                })}
-              value={requesterId}
-              onValueChange={(id) => pickRequester(id || null)}
-              readOnly={locked}
-            />
-            {error && <Text variant="small" tone="danger">{error}</Text>}
-          </div>
-        </Fields>
-      </Section>
-    </fieldset>
+    <Section icon="person" title="Requester">
+      <Fields>
+        <div className="md:col-span-2">
+          <CardField
+            aria-label="Requester"
+            required
+            placeholder="Search employees"
+            tooltip={tooltip}
+            hint={hint}
+            options={employees
+              .filter((e) => e.active || e.id === requesterId)
+              .map((e): CardFieldOption => {
+                const detail = [e.code, e.jobTitle, e.email].filter(Boolean).join(' · ');
+                return {
+                  value: e.id,
+                  label: employeeName(e),
+                  // First then last, whatever the display order ("Cruz, Juan" is still JC).
+                  icon: <Avatar initials={initialsOf(`${e.firstName} ${e.lastName}`)} icon="person" size={36} />,
+                  // The title opens the requester details side panel; in dropdown rows it flattens to plain text.
+                  texts: [
+                    { variant: 'small' as const, children: <Link onClick={(ev) => { ev.stopPropagation(); onOpenDetails(); }}>{employeeName(e)}</Link> },
+                    ...(detail ? [{ variant: 'caption' as const, children: detail }] : []),
+                  ],
+                };
+              })}
+            value={requesterId}
+            onValueChange={(id) => pickRequester(id || null)}
+            readOnly={readOnly || locked}
+          />
+          {error && <Text variant="small" tone="danger">{error}</Text>}
+        </div>
+      </Fields>
+    </Section>
   );
 }

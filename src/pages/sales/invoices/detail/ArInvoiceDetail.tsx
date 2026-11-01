@@ -7,6 +7,7 @@ import { type Errors } from '../../../../components/form/fields';
 import { type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { DetailActions, docMode } from '../../../../components/form/DetailActions';
 import { PageHeader } from '../../../../components/form/PageHeader';
+import { JournalPreview } from '../../../../components/form/JournalPreview';
 import { isApprover, needsApproval } from '../../../../services/approval';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { formatAddress } from '../../../../mocks/address';
@@ -16,6 +17,7 @@ import {
   ArPostError,
   addArInvoice,
   recallArInvoice,
+  arJournal,
   arNumber,
   arTotals,
   arWithholding,
@@ -37,7 +39,7 @@ import { listDeliveries, dnNumber } from '../../../../services/deliveries';
 import { formatAmount } from '../../../../services/format';
 import { loadInventoryMasters } from '../../../../services/inventoryMasters';
 import { isValidToday, listItems } from '../../../../services/items';
-import { controlAccountOf } from '../../../../services/journalEntries';
+import { controlAccountOf, postingPeriodProblem } from '../../../../services/journalEntries';
 import { accounts, companyTax, currencies, exchangeRates, taxCodes, taxGroups, withholdingGroups, withholdingTaxes } from '../../../../services/masterData';
 import { listPartnersByRole } from '../../../../services/partners';
 import { termDays } from '../../../../services/purchaseOrders';
@@ -50,15 +52,22 @@ import { CopyPanel, type CopySourceType } from '../../../purchasing/shared/CopyP
 import { CreateFromPanel, createHopMenuItems } from '../../../purchasing/shared/CreateFromPanel';
 import { AR_TO_ARCM, type CopyHop, type LinePick } from '../../shared/copyHops';
 import { invoiceDoc, type CopyPick } from '../../shared/invoiceDoc';
-import { ArDatesCard } from './ArDatesCard';
+import { DocumentDates } from '../../../../components/form/DatesCard';
+import { DocumentJournalEntry, DocumentPayment } from '../../../../components/form/PaymentCard';
+import { arInvoiceDates } from '../../../documentDateDefs';
+import { arInvoicePayment } from '../../../documentPaymentDefs';
+import { ArDocumentCard } from './ArDocumentCard';
 import { ArSettingsCard } from './ArSettingsCard';
-import { BpChannelCard } from '../../shared/BpChannelCard';
+import { ReferencesCard } from '../../shared/ReferencesCard';
 import { ArShipmentCard } from './ArShipmentCard';
-import { ArAssignmentCard } from './ArAssignmentCard';
+import { AssignmentCard } from '../../../../components/form/AssignmentCard';
+import { NO_SALES_EMPLOYEE } from '../../../../mocks/salesOrders';
 import { ArInstallmentsCard } from './ArInstallmentsCard';
 import { InvoiceCustomerDetailsPanel } from '../../shared/InvoiceCustomerDetailsPanel';
 import { CustomerCard } from '../../shared/CustomerCard';
 import { SalesTotalsFooter } from '../../shared/TotalsFooter';
+import { salesView } from '../../shared/salesView';
+import { amt, TotalsBar, TotalsRow } from '../../../../components/form/TotalsFooterParts';
 import { ReferencesTable } from '../../../purchasing/shared/ReferencesTable';
 import { arLineFromDelivery, arLineFromOrder, buildArContext, type ArContext, type ArDraft, type ArMasters } from './types';
 import { SalesDocumentFlow } from '../../shared/SalesDocumentFlow';
@@ -82,7 +91,8 @@ function validate(d: ArDraft, ctx: ArContext, m: ArMasters, asDraft: boolean): P
   const { problems, need } = problemCollector<TabId>();
   need(d.customerId, 'header', 'customerId', 'Pick a customer.');
   if (asDraft) return problems;
-  need(d.postingDate, 'header', 'postingDate', 'Posting date is required.');
+  const postingPeriod = postingPeriodProblem(d.postingDate);
+  need(!postingPeriod, 'header', 'postingDate', postingPeriod ?? '');
   need(d.documentDate, 'header', 'documentDate', 'Document date is required.');
   need(d.dueDate, 'header', 'dueDate', 'Due date is required.');
   need(!d.dueDate || d.dueDate >= d.postingDate, 'header', 'dueDate', 'Due date is before the posting date.');
@@ -129,6 +139,7 @@ function ArInvoiceForm() {
   const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
   const setPage = useDocTab<PageId>(`${AR_LIST_PATH}/${id}`, tabParam);
   const [customerDetailsOpen, setCustomerDetailsOpen] = useState(false);
+  const [currencyView, setCurrencyView] = useState('');
   const [copying, setCopying] = useState(false);
   const [createHop, setCreateHop] = useState<CopyHop<ArInvoice> | null>(null);
   const [siblings, setSiblings] = useState<string[]>([]);
@@ -294,11 +305,7 @@ function ArInvoiceForm() {
     const effectiveDraft = asDraft || (e !== null && draft.status === 'Draft' && !doc.approved);
     const found = validate(doc, ctx, m, effectiveDraft);
     setProblems(found);
-    if (found.length) {
-      // Payment and accounting fields live in the customer panel.
-      if (found.some((p) => p.tab === 'accounting') && customer) setCustomerDetailsOpen(true);
-      return;
-    }
+    if (found.length) return;
     setSaving(true);
     try {
       const a = effectiveDraft ? await saveArDraft(doc) : await addArInvoice(doc, ctx.fx, { codes: m.tax.codes, withholding: arWithholding(doc, customer, m.items, ctx.rateOf), roundingRule: docCurrency?.rounding });
@@ -338,6 +345,11 @@ function ArInvoiceForm() {
   ];
 
   const tabProps = { draft, update, errors, m, ctx };
+  const view = salesView(draft.currency, ctx.fx, draft.postingDate, currencyView, setCurrencyView);
+  // The "Journal entry" card: Dr the customer / Cr revenue and output VAT, less any withholding,
+  // with goods leaving stock at cost when delivered. Guarded on the exchange rate being known.
+  const journal = ctx.fx ? arJournal(draft, ctx.fx, { itemsById: new Map(m.items.map((i) => [i.id, i])), groups: m.inv.groups, codes: m.tax.codes, rateOf: ctx.rateOf, withholding }) : [];
+  const journalEntry = <JournalPreview journal={journal} accounts={m.accounts} />;
   // Copy-from sources: this customer's open deliveries with something left to bill, and open orders with something left.
   const mineCopy = (c: { customerId: string; currency: string }) => (!draft.customerId || c.customerId === draft.customerId) && (!ctx.based || c.currency === draft.currency);
   const copyDns = m.deliveries.filter((d) => d.status === 'Open' && mineCopy(d) && d.lines.some((l) => l.quantity > l.invoicedQty));
@@ -401,8 +413,8 @@ function ArInvoiceForm() {
               </Alert>
             ) : null}
 
-            <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
-              <div className="flex flex-col gap-2 lg:col-span-8">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+              <div className="flex flex-col gap-3 lg:col-span-8">
                 <CustomerCard
                   customers={m.customers}
                   customerId={draft.customerId}
@@ -415,30 +427,27 @@ function ArInvoiceForm() {
                 />
                 {/* Not in a disabled fieldset: the table locks its own inputs and keeps its column settings. */}
                 <DocLines
-                  {...invoiceDoc({ kind: 'AR', ...tabProps, onCopyClick: () => setCopying(true), canCopy: copyDns.length > 0 || copySos.length > 0 })}
+                  {...invoiceDoc({ kind: 'AR', ...tabProps, onCopyClick: () => setCopying(true), canCopy: copyDns.length > 0 || copySos.length > 0 }, view)}
                   footer={
                     <SalesTotalsFooter
                       {...tabProps}
+                      totals={totals}
                       withRounding
+                      view={view}
                       withholding={withholding.map((w) => ({ label: `${w.kind === 'Withholding VAT' ? 'VAT' : 'EWT'} withheld — ${w.atc} (${w.rate}%)`, amount: w.amount }))}
                       extraRows={
                         // Until something is applied, the total (or net to receive) is the balance due.
                         draft.appliedAmount ? (
                           <>
-                            <div className="flex items-center justify-between gap-4">
-                              <Text variant="small" tone="muted">Applied amount</Text>
-                              <Text variant="small" className="tabular-nums">–{draft.currency} {formatAmount(draft.appliedAmount)}</Text>
-                            </div>
-                            <div className="flex items-baseline justify-between gap-4 border-t pt-1" style={{ borderColor: 'var(--color-border-neutral-subtle)' }}>
-                              <Text variant="small" weight="semibold" tone="heading">Balance due</Text>
-                              <Text variant="small" weight="semibold" tone="heading" className="tabular-nums">{draft.currency} {formatAmount(balance)}</Text>
-                            </div>
+                            <TotalsRow label="Applied amount" value={amt(-view.convert(draft.appliedAmount), view.code)} />
+                            <TotalsBar label="Balance due" value={amt(view.convert(balance), view.code)} />
                           </>
                         ) : null
                       }
                     />
                   }
                 />
+                <DocumentJournalEntry def={arInvoicePayment} posting={journalEntry} {...tabProps} />
                 <ArInstallmentsCard draft={draft} balance={balance} />
                 <ReferencesTable
                   refs={draft.references}
@@ -449,12 +458,21 @@ function ArInvoiceForm() {
                 <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} emptyHint="The signed invoice, the customer's PO, Form 2307 when it arrives." withDescription />
               </div>
 
-              <aside className="flex flex-col gap-2 lg:col-span-4">
-                <ArDatesCard {...tabProps} />
+              <aside className="flex flex-col gap-3 lg:col-span-4">
+                <ArDocumentCard {...tabProps} />
+                <DocumentDates def={arInvoiceDates} {...tabProps} />
+                <DocumentPayment def={arInvoicePayment} posting={journalEntry} {...tabProps} />
                 <ArSettingsCard {...tabProps} />
-                <BpChannelCard {...tabProps} />
+                <ReferencesCard {...tabProps} />
                 <ArShipmentCard {...tabProps} />
-                <ArAssignmentCard {...tabProps} />
+                <AssignmentCard
+                  draft={draft}
+                  update={update}
+                  readOnly={ctx.readOnly}
+                  person={{ key: 'salesEmployeeId', label: 'Sales employee', clearable: true, placeholder: NO_SALES_EMPLOYEE, hint: 'Defaults from the customer.' }}
+                  ownerHint="Owns the document."
+                  remarksHint="Can be changed after the invoice is added."
+                />
               </aside>
             </div>
           </Panel.Body>

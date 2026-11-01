@@ -12,33 +12,32 @@ export function ArSettingsCard({ draft, update, ctx, m }: ArSectionProps) {
   const ships = draft.lines.some((l) => shipsStock(l, m.items));
   const shipped = m.accounts.find((a) => a.code === SHIPPED_GOODS_ACCOUNT);
   return (
-    <fieldset disabled={ctx.readOnly} className="contents">
-      <Section icon="settings" title="Settings">
-        <CtxFormField label="Item/Service type" hint={hasLines && !ctx.added ? 'Remove the lines to change it.' : undefined}>
-          {(p) => (
-            <Select
-              {...p}
-              disabled={ctx.added || hasLines}
-              options={(['Item', 'Service'] as SoDocType[]).map((t) => ({ value: t, label: t }))}
-              value={draft.docType}
-              onValueChange={(docType) => update({ docType: docType as SoDocType, lines: [] })}
-            />
-          )}
-        </CtxFormField>
-        {ctx.customer ? (
-          <Text variant="small" tone="muted">
-            {withholds ? `${ctx.customer.name} withholds tax — WTax liable lines default on.` : `${ctx.customer.name} doesn't withhold.`}
-          </Text>
-        ) : null}
-        <Flags>{h.check('useShippedGoodsAccount', 'Use shipped goods account', { disabled: !ships })}</Flags>
+    <Section icon="settings" title="Settings">
+      <CtxFormField label="Item/Service type" orientation="inline" hint={hasLines && !ctx.added ? 'Remove the lines to change it.' : undefined}>
+        {(p) => (
+          <Select
+            {...p}
+            disabled={ctx.added || hasLines}
+            readOnly={ctx.readOnly}
+            options={(['Item', 'Service'] as SoDocType[]).map((t) => ({ value: t, label: t }))}
+            value={draft.docType}
+            onValueChange={(docType) => update({ docType: docType as SoDocType, lines: [] })}
+          />
+        )}
+      </CtxFormField>
+      {ctx.customer ? (
         <Text variant="small" tone="muted">
-          {!ships
-            ? 'Only for stock this invoice ships itself — lines from a delivery were already costed by it.'
-            : draft.useShippedGoodsAccount
-              ? `The cost of the stock it ships goes to ${shipped ? `${shipped.code} ${shipped.name}` : SHIPPED_GOODS_ACCOUNT} instead of COGS.`
-              : 'The cost of the stock it ships goes to COGS.'}
+          {withholds ? `${ctx.customer.name} withholds tax — WTax liable lines default on.` : `${ctx.customer.name} doesn't withhold.`}
         </Text>
-      </Section>
-    </fieldset>
+      ) : null}
+      <Flags>{h.check('useShippedGoodsAccount', 'Use shipped goods account', { disabled: !ships, readOnly: ctx.readOnly })}</Flags>
+      <Text variant="small" tone="muted">
+        {!ships
+          ? 'Only for stock this invoice ships itself — lines from a delivery were already costed by it.'
+          : draft.useShippedGoodsAccount
+            ? `The cost of the stock it ships goes to ${shipped ? `${shipped.code} ${shipped.name}` : SHIPPED_GOODS_ACCOUNT} instead of COGS.`
+            : 'The cost of the stock it ships goes to COGS.'}
+      </Text>
+    </Section>
   );
 }

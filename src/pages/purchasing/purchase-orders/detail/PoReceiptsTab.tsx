@@ -14,9 +14,11 @@ import {
   AP_STATUS_INTENT,
   GR_LIST_PATH,
   GR_STATUS_INTENT,
+  PO_NOUN,
   RETURN_LIST_PATH,
   RETURN_STATUS_INTENT,
 } from '../../paths';
+import { cap } from '../../../../components/form/noun';
 
 type Intent = 'default' | 'primary' | 'success' | 'danger' | 'warning';
 
@@ -163,7 +165,7 @@ export function PoReceiptsTab({ draft, docs, tabs }: { draft: PoDraft; docs: PoR
     <DataTable
       variant="card"
       icon="list_alt"
-      title="Contents"
+      title={cap(PO_NOUN.lineLabel!)}
       noPagination
       rows={rows}
       getRowId={(r) => r.id}
@@ -264,7 +266,6 @@ export function PoReceiptsTab({ draft, docs, tabs }: { draft: PoDraft; docs: PoR
       ]}
     >
       {tabs}
-      <Text variant="small" tone="muted">What each line has received, invoiced and returned. Expand a line to see its documents.</Text>
     </DataTable>
   );
 }

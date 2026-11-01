@@ -70,7 +70,7 @@ export interface InventoryTransfer {
 }
 
 export const TRANSFER_SERIES: DocumentSeries[] = [
-  { id: 'its-primary', name: 'Primary', prefix: '', firstNo: 7, manual: false, isDefault: true, active: true, segments: [{ type: 'literal', value: 'IT' }, { type: 'year' }, { type: 'sequence', padding: 4 }] },
+  { id: 'its-primary', name: 'Inventory Transfer', prefix: '', firstNo: 7, manual: false, isDefault: true, active: true, segments: [{ type: 'literal', value: 'IT' }, { type: 'year' }, { type: 'sequence', padding: 4 }] },
 ];
 
 export const DEFAULT_JOURNAL_REMARK = 'Inventory Transfers –';

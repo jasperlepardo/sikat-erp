@@ -147,10 +147,10 @@ export interface InventoryPosting {
 }
 
 export const COUNT_SERIES: DocumentSeries[] = [
-  { id: 'ic-primary', name: 'Primary', prefix: '', firstNo: 4, manual: false, isDefault: true, active: true, segments: [{ type: 'literal', value: 'IC' }, { type: 'year' }, { type: 'sequence', padding: 4 }] },
+  { id: 'ic-primary', name: 'Stock Count', prefix: '', firstNo: 4, manual: false, isDefault: true, active: true, segments: [{ type: 'literal', value: 'IC' }, { type: 'year' }, { type: 'sequence', padding: 4 }] },
 ];
 export const POSTING_SERIES: DocumentSeries[] = [
-  { id: 'ip-primary', name: 'Primary', prefix: '', firstNo: 6, manual: false, isDefault: true, active: true, segments: [{ type: 'literal', value: 'IP' }, { type: 'year' }, { type: 'sequence', padding: 4 }] },
+  { id: 'ip-primary', name: 'Inventory Posting', prefix: '', firstNo: 6, manual: false, isDefault: true, active: true, segments: [{ type: 'literal', value: 'IP' }, { type: 'year' }, { type: 'sequence', padding: 4 }] },
 ];
 
 export const DEFAULT_POSTING_JOURNAL_REMARK = 'Inventory Posting';

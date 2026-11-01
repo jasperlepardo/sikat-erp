@@ -1,6 +1,6 @@
 import { useEffect, useState, useSyncExternalStore, type CSSProperties, type FormEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { Button, Combobox, Icon, IconButton, Panel, SidePanel, Text, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { Button, Combobox, Icon, IconButton, Panel, ReadOnly as ReadOnlyValue, SidePanel, Text, type TableColumn } from '@jasperlepardo/sikat-design-system';
 import { PageHeader } from './PageHeader';
 import type { Collection } from '../../services/store';
 import { MasterList, type ListRoute } from './MasterList';
@@ -202,6 +202,12 @@ export function MasterLookup<T extends MasterRow>({
   ];
   // A value saved before the list existed, or since renamed.
   if (value && rows && !options.some((o) => o.value === value)) options.push({ value, label: value, text: value });
+
+  // Locked: show the resolved label as a clean read-only value (no picker, no lock icon).
+  if (readOnly) {
+    const current = options.find((o) => o.value === value);
+    return <ReadOnlyValue value={value ? (current?.label ?? value) : '—'} />;
+  }
 
   const typed = query.trim();
   // Typed text that is already an entry needs no "+ Add", even when other entries contain it.

@@ -38,39 +38,37 @@ export function BaCustomerPanel({ customer, draft, update, readOnly, open, onClo
         }
       />
       <Panel.Body>
-        <fieldset disabled={readOnly} className="contents">
-          <Section icon="person" title="Contact">
-            <Fields cols={1}>
-              <CardField
-                label="Contact person"
-                options={(customer.contacts ?? [])
-                  .filter((c) => c.active || c.id === draft.contactId)
-                  .map((c) => ({
-                    value: c.id,
-                    label: contactName(c),
-                    icon: <Icon size={16}>person</Icon>,
-                    fields: [
-                      ...(c.position ? [{ label: 'Position', value: c.position }] : []),
-                      ...(c.mobile || c.tel1 ? [{ label: 'Phone', value: c.mobile || c.tel1 }] : []),
-                      ...(c.email ? [{ label: 'Email', value: c.email }] : []),
-                    ],
-                  }))}
-                value={draft.contactId}
-                onValueChange={(contactId) => update({ contactId: contactId ?? '' })}
-                placeholder="Select a contact person"
-                readOnly={readOnly}
-              />
-              {h.text('customerRef', 'Customer ref. no.', { hint: "The customer's own reference for this agreement." })}
-            </Fields>
-          </Section>
-          <Section icon="info" title="Details">
-            <Fields cols={1}>
-              <ReadOnly label="BP currency" value={draft.currency} hint="Set by the customer." />
-              <ReadOnly label="Telephone no." value={draft.phone || '—'} hint="From the customer record." />
-              <ReadOnly label="E-mail" value={draft.email || '—'} hint="From the customer record." />
-            </Fields>
-          </Section>
-        </fieldset>
+        <Section icon="person" title="Contact">
+          <Fields cols={1}>
+            <CardField
+              label="Contact person"
+              options={(customer.contacts ?? [])
+                .filter((c) => c.active || c.id === draft.contactId)
+                .map((c) => ({
+                  value: c.id,
+                  label: contactName(c),
+                  icon: <Icon size={16}>person</Icon>,
+                  fields: [
+                    ...(c.position ? [{ label: 'Position', value: c.position }] : []),
+                    ...(c.mobile || c.tel1 ? [{ label: 'Phone', value: c.mobile || c.tel1 }] : []),
+                    ...(c.email ? [{ label: 'Email', value: c.email }] : []),
+                  ],
+                }))}
+              value={draft.contactId}
+              onValueChange={(contactId) => update({ contactId: contactId ?? '' })}
+              placeholder="Select a contact person"
+              readOnly={readOnly}
+            />
+            {h.text('customerRef', 'Customer ref. no.', { hint: "The customer's own reference for this agreement.", readOnly })}
+          </Fields>
+        </Section>
+        <Section icon="info" title="Details">
+          <Fields cols={1}>
+            <ReadOnly label="BP currency" value={draft.currency} hint="Set by the customer." />
+            <ReadOnly label="Telephone no." value={draft.phone || '—'} hint="From the customer record." />
+            <ReadOnly label="E-mail" value={draft.email || '—'} hint="From the customer record." />
+          </Fields>
+        </Section>
       </Panel.Body>
     </SidePanel>
   );

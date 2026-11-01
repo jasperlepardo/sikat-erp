@@ -1,4 +1,4 @@
-import { FieldStack, Section, bind } from '../../../components/form/fields';
+import { FieldOrientationCtx, Form, Section, bind } from '../../../components/form/fields';
 import { activeOptions, type InventoryMasters } from '../../../services/inventoryMasters';
 
 interface ReturnFields {
@@ -15,12 +15,12 @@ interface Props {
 export function ReturnShipmentCard({ draft, update, readOnly, inv }: Props) {
   const h = bind(draft, update);
   return (
-    <fieldset disabled={readOnly} className="contents">
-      <Section icon="route" title="Shipment">
-        <FieldStack>
-          {h.lookup('shippingType', 'Shipping type', activeOptions(inv.shipping, (s) => s.id, (s) => s.name, draft.shippingType), { clearable: true })}
-        </FieldStack>
-      </Section>
-    </fieldset>
+    <Section icon="route" title="Shipment">
+      <FieldOrientationCtx.Provider value="inline">
+        <Form.Group orientation="inline">
+          {h.lookup('shippingType', 'Shipping type', activeOptions(inv.shipping, (s) => s.id, (s) => s.name, draft.shippingType), { clearable: true, readOnly })}
+        </Form.Group>
+      </FieldOrientationCtx.Provider>
+    </Section>
   );
 }

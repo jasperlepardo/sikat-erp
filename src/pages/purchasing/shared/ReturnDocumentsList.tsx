@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useLocation } from 'react-router';
 import {
   Alert,
+  Card,
   Panel,
   Table,
   TableAmount,
@@ -14,7 +15,7 @@ import { PageHeader } from '../../../components/form/PageHeader';
 import { dateField, masterField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { currencyDef } from '../../settings/masterDefs';
-import { useListPage } from '../../../components/form/DataTable';
+import { fillCardClass, useListPage } from '../../../components/form/DataTable';
 import { formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
 import { listCreditMemos, memoNumber, memoTotal } from '../../../services/apCreditMemos';
@@ -135,32 +136,34 @@ export function ReturnDocumentsList({ kind }: { kind: Kind }) {
           resetPage();
         }}
         icon="assignment_return"
-        title={presets.menu}
+        title={cap(noun.many)}
         create={{ noun, to: path }}
       />
       <Panel.Body className="flex flex-col gap-2">
         {notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : null}
-        {presets.bar(null)}
-        {!all ? (
-          <Text tone="muted" className="p-4">Loading…</Text>
-        ) : all.length ? (
-          <Table
-            caption={cap(noun.many)}
-            columns={columns}
-            rows={visible}
-            getRowId={(r) => r.id}
-            sort={sort}
-            onSortChange={setSort}
-            layout="fill"
-            pagination={pagination}
-          />
-        ) : (
-          <Text tone="muted" className="p-4">
-            {isReturns
-              ? 'No goods returns yet. Start one from a goods receipt or A/P invoice (More actions › Create goods return), or with New goods return.'
-              : 'No credit memos yet. Start one from an A/P invoice or goods return (More actions › Create A/P credit memo), or with New A/P credit memo.'}
-          </Text>
-        )}
+        {presets.toolbar(null)}
+        <Card className={fillCardClass(visible.length)}>
+          {!all ? (
+            <Text tone="muted" className="p-4">Loading…</Text>
+          ) : all.length ? (
+            <Table
+              caption={cap(noun.many)}
+              columns={columns}
+              rows={visible}
+              getRowId={(r) => r.id}
+              sort={sort}
+              onSortChange={setSort}
+              layout="fill"
+              pagination={pagination}
+            />
+          ) : (
+            <Text tone="muted" className="p-4">
+              {isReturns
+                ? 'No goods returns yet. Start one from a goods receipt or A/P invoice (More actions › Create goods return), or with New goods return.'
+                : 'No credit memos yet. Start one from an A/P invoice or goods return (More actions › Create A/P credit memo), or with New A/P credit memo.'}
+            </Text>
+          )}
+        </Card>
       </Panel.Body>
       {presets.panel}
     </Panel>

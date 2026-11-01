@@ -2,6 +2,8 @@
 export interface Noun {
   one: string;
   many: string;
+  /** Section title for the document's line-item table, lowercase (e.g. 'ordered items'); title-cased with cap() at render. */
+  lineLabel?: string;
 }
 
 /** Sentence case for a heading: capitalises the first letter only ("purchase orders" → "Purchase orders"). */

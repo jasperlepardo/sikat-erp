@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useLocation } from 'react-router';
 import {
   Alert,
+  Card,
   Panel,
   Table,
   TableAmount,
@@ -20,7 +21,7 @@ import { useAsync } from '../../../services/useAsync';
 import { dateField, linesField, masterField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { currencyDef, salesEmployeeDef } from '../../settings/masterDefs';
-import { useListPage } from '../../../components/form/DataTable';
+import { fillCardClass, useListPage } from '../../../components/form/DataTable';
 import { cap } from '../../../components/form/noun';
 import { GR_LIST_PATH, GR_NOUN, GR_STATUS_INTENT } from '../paths';
 
@@ -121,7 +122,7 @@ export function GoodsReceiptList() {
           resetPage();
         }}
         icon="inventory"
-        title={presets.menu}
+        title={cap(GR_NOUN.many)}
         create={{ noun: GR_NOUN, to: GR_LIST_PATH }}
       />
       <Panel.Body className="flex flex-col gap-2">
@@ -130,21 +131,25 @@ export function GoodsReceiptList() {
             {notice}
           </Alert>
         ) : null}
-        {presets.bar(null)}
-        {receipts ? (
-          <Table
-            caption={cap(GR_NOUN.many)}
-            columns={columns}
-            rows={visible}
-            getRowId={(gr) => gr.id}
-            sort={sort}
-            onSortChange={setSort}
-            layout="fill"
-            pagination={pagination}
-          />
-        ) : (
-          <Text tone="muted" className="p-4">Loading goods receipts…</Text>
-        )}
+        {presets.toolbar(null)}
+        <Card className={fillCardClass(visible.length)}>
+          {!receipts ? (
+            <Text tone="muted" className="p-4">Loading goods receipts…</Text>
+          ) : receipts.length ? (
+            <Table
+              caption={cap(GR_NOUN.many)}
+              columns={columns}
+              rows={visible}
+              getRowId={(gr) => gr.id}
+              sort={sort}
+              onSortChange={setSort}
+              layout="fill"
+              pagination={pagination}
+            />
+          ) : (
+            <Text tone="muted" className="p-4">No {GR_NOUN.many} yet. Start one from a purchase order (More actions › Create {GR_NOUN.one}), or with New {GR_NOUN.one}.</Text>
+          )}
+        </Card>
       </Panel.Body>
       {presets.panel}
     </Panel>

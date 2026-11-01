@@ -2,6 +2,7 @@ import { Button, Icon, Link, Text } from '@jasperlepardo/sikat-design-system';
 import { type DocLinesProps } from '../../../../components/form/docLines/DocLines';
 import { pick } from '../../../../components/form/docLines/pick';
 import { salesCols } from '../../shared/salesCols';
+import { CurrencyToggle, type SalesView } from '../../shared/salesView';
 import { lineHelpers, itemConfig } from '../../shared/salesLineHelpers';
 import { itemsPerUom } from '../../../../mocks/items';
 import { newDnLine, type DnLine } from '../../../../mocks/deliveries';
@@ -12,7 +13,8 @@ import { formatAmount } from '../../../../services/format';
 import { warehouseOptions } from '../../../inventory/transfers/TransferLines';
 import { editTaxCode } from '../../../../services/taxRecalc';
 import { taxCodeOptions } from '../../../../services/taxCodeOptions';
-import { SO_LIST_PATH } from '../../paths';
+import { SO_LIST_PATH, DN_NOUN } from '../../paths';
+import { cap } from '../../../../components/form/noun';
 import { lineFromItem, linePricing } from '../../sales-orders/detail/types';
 import { asSoDraft, type DnSectionProps } from './types';
 
@@ -23,9 +25,11 @@ export interface DnDocProps extends DnSectionProps {
 }
 
 /** Builds the Delivery contents descriptor for the shared <DocLines>. */
-export function dnDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy }: DnDocProps): DocLinesProps<DnLine> {
+export function dnDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy }: DnDocProps, view: SalesView): DocLinesProps<DnLine> {
   const lines = draft.lines;
   const ro = ctx.readOnly;
+  // Showing PHP is a read-only view: the prices stay in the document currency, only displayed converted.
+  const linesLocked = ro || view.converted;
   const so = asSoDraft(draft);
   const h = lineHelpers<DnLine>({ items: m.items, lines, update, errors, postingDate: draft.postingDate, itemWhere: (i) => i.inventoryItem });
   const { itemOf, patch, err } = h;
@@ -53,8 +57,8 @@ export function dnDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy }: D
 
   const cols = salesCols<DnLine>({
     patch,
-    readOnly: ro,
-    currency: draft.currency,
+    readOnly: linesLocked,
+    currency: view.code,
     fx: ctx.fx,
     invalid: (l, f) => Boolean(err(l, f)),
     lineKind: (l) => { const it = itemOf(l); return it ? (it.inventoryItem ? 'Item' : 'Service') : ''; },
@@ -126,14 +130,15 @@ export function dnDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy }: D
     prefsKey: 'dn',
     cardHeader: true,
     columns,
-    rows: lines,
+    rows: view.converted ? lines.map((l) => ({ ...l, unitPrice: view.convert(l.unitPrice) })) : lines,
     icon: 'list_alt',
-    title: 'Contents',
-    description: errors.lines ?? `Items shipped, in the line's unit. Prices are in ${draft.currency}.`,
+    title: cap(DN_NOUN.lineLabel!),
+    actions: <CurrencyToggle choices={view.choices} value={view.shown} onChange={view.onChange} />,
+    description: errors.lines ?? view.note,
     sortableKeys: ['item'],
     sortValue: (l, key) => (key === 'item' ? l.itemNo : String(l[key as keyof DnLine] ?? '')).toLowerCase(),
-    readOnly: ro,
-    onRemove: (picked) => update({ lines: lines.filter((l) => !picked.includes(l)) }),
+    readOnly: linesLocked,
+    onRemove: (picked) => update({ lines: lines.filter((l) => !picked.some((p) => p.id === l.id)) }),
     item: itemConfig(h, {
       onPick: (l, id) => { const line = id ? fromItem(id, { id: l.id, quantity: l.quantity }) : undefined; patch(l.id, line ?? { itemId: '', itemNo: '', description: '' }); },
       fromItem: (id) => fromItem(id, {}),
@@ -143,7 +148,7 @@ export function dnDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy }: D
       addPlaceholder: draft.customerId ? 'Search items to add a line…' : 'Pick a customer to add items',
     }),
     empty: <Text variant="small" tone={errors.lines ? 'danger' : 'muted'}>No lines yet.</Text>,
-    header: ro ? undefined : (
+    header: linesLocked ? undefined : (
       <div className="flex justify-end px-2">
         <Button type="button" size="small" variant="outline" leadingIcon={<Icon size={16}>content_copy</Icon>} disabled={!canCopy} onClick={onCopyClick}>
           Copy from sales order

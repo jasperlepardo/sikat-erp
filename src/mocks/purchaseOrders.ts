@@ -15,7 +15,7 @@
  *   change it.
  * - Return Reason is left out — it belongs to returns, not purchase orders.
  */
-import type { Attachment, DocumentSeries } from './common';
+import { type Attachment, type DocumentSeries, type PriceMode } from './common';
 import { pbaLineId, type PurchLine } from './purchLine';
 import { departmentId } from './peopleMasters';
 import { employeeId, plId, termId } from './masters';
@@ -34,8 +34,6 @@ export const PO_STATUSES: PoStatus[] = ['Draft', 'Open', 'Not Confirmed', 'Close
 
 /** Which currency amounts are shown in: local (PHP), system (USD) or the vendor's. */
 type CurrencyView = 'Local' | 'System' | 'BP';
-export type PriceMode = 'Net' | 'Gross' | 'Net and Gross';
-export const PRICE_MODES: PriceMode[] = ['Net', 'Gross', 'Net and Gross'];
 type RowStatus = 'Open' | 'Closed';
 
 export interface PoLine extends PurchLine {
@@ -149,7 +147,6 @@ export interface PurchaseOrder {
 
 export interface PurchasingSettings {
   id: string;
-  separateNetGrossPriceMode: boolean;
   manageFreightInDocuments: boolean;
   roundingMethod: 'By Currency' | 'No rounding';
   multiLanguageSupport: boolean;
@@ -169,7 +166,6 @@ export interface PurchasingSettings {
 
 export const SEED_PURCHASING_SETTINGS: PurchasingSettings[] = [{
   id: 'purchasing',
-  separateNetGrossPriceMode: true,
   manageFreightInDocuments: true,
   roundingMethod: 'By Currency',
   multiLanguageSupport: false,
@@ -536,8 +532,8 @@ const HAND_ORDERS: PurchaseOrder[] = [
 
   // ── Professionals, freelancers and agents ──────────────────────────────────
   svcPo('po-020', 17, 'bp-021', {
-    status: 'Not Confirmed', approved: false, postingDate: '2026-09-24', documentDate: '2026-09-24', deliveryDate: '2027-04-15', dueDate: '2027-04-30',
-    lines: [svc('po-020-1', 'SVC-AUDIT', 1, 450000, 'IVAT-S', { freeText: 'FY2026 financial statement audit', deliveryDate: '2027-04-15', departmentId: departmentId('Finance') })],
+    status: 'Not Confirmed', approved: false, postingDate: '2026-09-24', documentDate: '2026-09-24', deliveryDate: '2026-10-09', dueDate: '2026-10-23',
+    lines: [svc('po-020-1', 'SVC-AUDIT', 1, 450000, 'IVAT-S', { freeText: 'FY2026 financial statement audit', deliveryDate: '2026-10-09', departmentId: departmentId('Finance') })],
     remarks: 'Engagement letter signed; waiting for the CFO’s approval.',
   }),
   svcPo('po-021', 18, 'bp-033', {

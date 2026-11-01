@@ -38,7 +38,6 @@ export function purchFooter(cfg: {
   readOnly?: boolean;
   discount?: { value: number; onChange: (v: number) => void };
   freight?: { value: number; onChange: (v: number) => void; show?: boolean };
-  fx?: { rate: number; source: string };
   totalLabel?: string;
 }): ReactNode {
   const readOnly = cfg.readOnly ?? false;
@@ -64,7 +63,6 @@ export function purchFooter(cfg: {
       discountPct={cfg.discount?.value ?? 0}
       onDiscountChange={cfg.discount?.onChange ?? (() => {})}
       freightInput={freight}
-      fx={cfg.fx}
       totalLabel={cfg.totalLabel}
     />
   );

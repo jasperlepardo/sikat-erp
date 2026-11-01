@@ -33,6 +33,7 @@ const AIP_OP: Record<Op, string> = {
   before: '<',
   after: '>',
   inLastDays: '> daysAgo()',
+  inPeriod: '= period()',
   in: 'OR',
   notIn: 'NOT (OR)',
   isTrue: '= true',
@@ -66,6 +67,7 @@ function formatRule<T>(rule: Rule, field: FilterField<T>): string {
     case 'lte': return `${k} <= ${v}`;
     case 'between': return `(${k} >= ${v} AND ${k} <= ${literal(field, rule.value2)})`;
     case 'inLastDays': return `${k} > daysAgo(${Number(rule.value)})`;
+    case 'inPeriod': return `${k} = period(${rule.value})`;
     case 'in': case 'notIn': {
       const list = (Array.isArray(rule.value) ? rule.value : [rule.value]).map((w) => `${k} = ${literal(field, w)}`);
       const any = list.length > 1 ? `(${list.join(' OR ')})` : list[0];
@@ -283,6 +285,12 @@ function toRules<T>(fields: FilterField<T>[]) {
       if (!Number.isFinite(n) || n < 0) throw new FilterSyntaxError('daysAgo() takes a number of days, e.g. daysAgo(30).');
       return rule('inLastDays', n);
     }
+    if (field.type === 'date' && op === '=' && value.kind === 'call' && value.name === 'period') {
+      const p = value.args[0]?.kind === 'word' ? value.args[0].v : '';
+      if (!['today', 'week', 'month', 'quarter', 'year'].includes(p))
+        throw new FilterSyntaxError('period() takes today, week, month, quarter or year.');
+      return rule('inPeriod', p);
+    }
     if (op === ':') return rule('contains', scalar(field, value));
 
     // Wildcards on text: "abc*" starts with, "*abc*" contains.
@@ -295,9 +303,11 @@ function toRules<T>(fields: FilterField<T>[]) {
 
     const v = scalar(field, value);
     const date = field.type === 'date';
+    // choice/master are multi-select: a single equality is a one-element "is any of" list.
+    const multi = field.type === 'choice' || field.type === 'master';
     switch (op) {
-      case '=': return rule('is', v);
-      case '!=': return rule('isNot', v);
+      case '=': return multi ? rule('in', [v]) : rule('is', v);
+      case '!=': return multi ? rule('notIn', [v]) : rule('isNot', v);
       case '>': return rule(date ? 'after' : 'gt', v);
       case '<': return rule(date ? 'before' : 'lt', v);
       case '>=': return rule('gte', v);
@@ -323,9 +333,12 @@ function toRules<T>(fields: FilterField<T>[]) {
         return { id: ruleId(), field: field.key, op: check(field, 'between'), value: lo.value, value2: hi.value };
       }
     }
-    if (sameField && node.n === 'or' && parts.every((r) => r!.op === 'is')) {
+    // "status = "Open" OR status = "Draft"" → is any of. Each part is a single-value
+    // "in" (choice/master) or a legacy "is"; flatten them into one list.
+    if (sameField && node.n === 'or' && parts.every((r) => r!.op === 'in' || r!.op === 'is')) {
       const field = findField(parts[0]!.field);
-      return { id: ruleId(), field: field.key, op: check(field, 'in'), value: parts.map((r) => r!.value) };
+      const value = parts.flatMap((r) => (Array.isArray(r!.value) ? r!.value : [r!.value]));
+      return { id: ruleId(), field: field.key, op: check(field, 'in'), value };
     }
     throw new FilterSyntaxError(
       node.n === 'and'

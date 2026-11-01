@@ -38,8 +38,8 @@ import { SALES_MONTHS } from '../mocks/storeSales';
 import { SEED_AS_OF } from '../mocks/supplyPlan';
 import { SEED_COMPANY_TAX, SEED_TAX_CODES, SEED_TAX_GROUPS, SEED_WITHHOLDING, SEED_WITHHOLDING_GROUPS, rateAt } from '../mocks/taxes';
 import { memoJournal } from './apCreditMemos';
-import { dpiJournal } from './apDownPaymentInvoices';
-import { apJournal } from './apInvoices';
+import { dpiJournal, dpiWithholding } from './apDownPaymentInvoices';
+import { apJournal, trueUpWithholding } from './apInvoices';
 import { arCmJournal } from './arCreditMemos';
 import { arJournal, arWithholding } from './arInvoices';
 import { dnJournal } from './deliveries';
@@ -139,17 +139,18 @@ function build(): Ledger {
   for (const lcd of SEED_LANDED_COSTS.filter((x) => posted(x.status)))
     doc({ id: `je-lc-${lcd.id}`, date: lcd.postingDate, origin: 'LC', originNo: String(lcd.docNum), originId: lcd.id, remarks: lcd.journalRemark || 'Landed cost capitalized to inventory', lines: lcJournal(lcd, items, groups) });
   for (const inv of H.invoices.filter((x) => posted(x.status))) {
-    const withholding = poWithholding(inv, partner.get(inv.vendorId), items, TAX, inv.postingDate);
+    const withholding = trueUpWithholding(poWithholding(inv, partner.get(inv.vendorId), items, TAX, inv.postingDate), inv.drawnDownPayments);
     doc({
       id: `je-pu-${inv.id}`, date: inv.postingDate, origin: 'PU', originNo: String(inv.docNum), originId: inv.id, dueDate: inv.dueDate, remarks: inv.journalRemark,
       partnerId: inv.vendorId, controlAccount: inv.controlAccount, lines: apJournal(inv, inv.fxRate || 1, { itemsById, groups, codes, rateOf: rateOf(inv.postingDate), withholding }),
     });
   }
-  // A down payment *invoice* posts on its own when added: Dr Advances to Suppliers / Cr A/P Control.
+  // A down payment *invoice* posts on its own when added: Dr net Advances + input VAT / Cr EWT payable + A/P Control.
   for (const d of H.downPaymentInvoices.filter((x) => posted(x.status)))
     doc({
       id: `je-dpi-${d.id}`, date: d.postingDate, origin: 'PU', originNo: String(d.docNum), originId: d.id, dueDate: d.dueDate, remarks: d.journalRemark,
-      partnerId: d.vendorId, controlAccount: d.controlAccount, lines: dpiJournal(d, d.fxRate || 1, rateOf(d.postingDate)),
+      partnerId: d.vendorId, controlAccount: d.controlAccount,
+      lines: dpiJournal(d, d.fxRate || 1, { codes, rateOf: rateOf(d.postingDate), withholding: dpiWithholding(d, partner.get(d.vendorId), items, TAX, d.postingDate) }),
     });
   const billAccount = new Map([...H.invoices, ...H.downPayments, ...H.downPaymentInvoices].map((b) => [b.id, b.controlAccount]));
   for (const p of H.payments.filter((x) => posted(x.status)))
