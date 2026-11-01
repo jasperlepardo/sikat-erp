@@ -7,6 +7,7 @@ import { type Errors } from '../../../../components/form/fields';
 import { type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { DetailActions, docMode } from '../../../../components/form/DetailActions';
 import { PageHeader } from '../../../../components/form/PageHeader';
+import { DetailColumns } from '../../../../components/form/DetailColumns';
 import { isApprover, needsApproval } from '../../../../services/approval';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { CURRENT_USER_ID } from '../../../../mocks/common';
@@ -51,7 +52,7 @@ import { ReferencesCard } from '../../shared/ReferencesCard';
 import { DnShipmentCard } from './DnShipmentCard';
 import { AssignmentCard } from '../../../../components/form/AssignmentCard';
 import { CustomerCard } from '../../shared/CustomerCard';
-import { DnCustomerDetailsPanel } from './DnCustomerDetailsPanel';
+import { CustomerDetailsPanel } from '../../shared/CustomerDetailsPanel';
 import { ReferencesTable } from '../../../purchasing/shared/ReferencesTable';
 import { DN_LIST_PATH, DN_NOUN, DN_STATUS_INTENT } from '../../paths';
 
@@ -299,19 +300,22 @@ function DeliveryForm() {
             </Panel.Body>
           ) : null}
           {page === 'details' ? (
-            <Panel.Body className="flex flex-col gap-2">
-              <ProblemsAlert problems={problems} tabLabel={(t) => TAB_LABEL[t as TabId]} />
-              {reject.alert('Reject delivery', rejectIt)}
-              {ro ? (
-                <Alert intent="default" variant="outline" title={`This delivery is ${draft.status.toLowerCase()}`}>
-                  {draft.status === 'Cancelled'
-                    ? 'The stock came back, the order lines reopened and the journal entry was reversed.'
-                    : 'The stock is out and the journal entry is posted. Only remarks and attachments can change; to undo it, cancel the delivery.'}
-                </Alert>
-              ) : null}
-
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-                <div className="flex flex-col gap-3 lg:col-span-8">
+            <DetailColumns
+              header={
+                <>
+                  <ProblemsAlert problems={problems} tabLabel={(t) => TAB_LABEL[t as TabId]} />
+                  {reject.alert('Reject delivery', rejectIt)}
+                  {ro ? (
+                    <Alert intent="default" variant="outline" title={`This delivery is ${draft.status.toLowerCase()}`}>
+                      {draft.status === 'Cancelled'
+                        ? 'The stock came back, the order lines reopened and the journal entry was reversed.'
+                        : 'The stock is out and the journal entry is posted. Only remarks and attachments can change; to undo it, cancel the delivery.'}
+                    </Alert>
+                  ) : null}
+                </>
+              }
+              main={
+                <>
                   <CustomerCard
                     customers={m.customers}
                     customerId={draft.customerId}
@@ -337,9 +341,10 @@ function DeliveryForm() {
                     emptyHint="Signed delivery receipt, courier waybill, photos."
                     withDescription
                   />
-                </div>
-
-                <aside className="flex flex-col gap-3 lg:col-span-4">
+                </>
+              }
+              aside={
+                <>
                   <DnDocumentCard {...tabProps} />
                   <DocumentDates def={deliveryDates} {...tabProps} />
                   <DocumentPayment def={deliveryPayment} posting={journalEntry} {...tabProps} />
@@ -354,16 +359,21 @@ function DeliveryForm() {
                     ownerHint="Owns the document."
                     remarksHint="Can be changed after the delivery is added."
                   />
-                </aside>
-              </div>
-            </Panel.Body>
+                </>
+              }
+            />
           ) : null}
         </Panel>
       </Form>
-      <DnCustomerDetailsPanel
-        {...tabProps}
+      <CustomerDetailsPanel
+        customer={ctx.customer}
+        draft={draft}
+        update={update}
+        readOnly={ctx.readOnly}
+        noun="delivery"
         open={customerDetailsOpen}
         onClose={() => setCustomerDetailsOpen(false)}
+        orderNumberHint="Set by Copy from sales order."
       />
       {copying
         ? createPortal(

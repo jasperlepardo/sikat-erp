@@ -3,6 +3,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import { Alert, Badge, Form, Panel, Tabs, Text } from '@jasperlepardo/sikat-design-system';
 import { PageHeader } from '../../../../components/form/PageHeader';
+import { DetailColumns } from '../../../../components/form/DetailColumns';
 import { type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { DetailActions } from '../../../../components/form/DetailActions';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
@@ -226,15 +227,19 @@ function GrrForm() {
               <ActivityTab target={{ kind: 'GRR', id: saved.id ?? '' }} partnerId={draft.vendorId} />
             </Panel.Body>
           ) : (
-            <Panel.Body className="flex flex-col gap-2">
-              <ProblemsAlert problems={problems} tabLabel={() => 'Contents'} />
-              {ctx.readOnly ? (
-                <Alert intent="default" variant="outline" title="This request is closed">
-                  {draft.closeDate ? `Closed ${formatDate(draft.closeDate)}.` : 'No further changes.'}
-                </Alert>
-              ) : null}
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-                <div className="flex flex-col gap-3 lg:col-span-8">
+            <DetailColumns
+              header={
+                <>
+                  <ProblemsAlert problems={problems} tabLabel={() => 'Contents'} />
+                  {ctx.readOnly ? (
+                    <Alert intent="default" variant="outline" title="This request is closed">
+                      {draft.closeDate ? `Closed ${formatDate(draft.closeDate)}.` : 'No further changes.'}
+                    </Alert>
+                  ) : null}
+                </>
+              }
+              main={
+                <>
                   <VendorCard
                     vendors={m.vendors}
                     vendorId={draft.vendorId}
@@ -248,14 +253,16 @@ function GrrForm() {
                   />
                   <DocLines {...grrDoc({ draft, update, errors, m, onCopyClick: () => setCopying(true), canCopy: Boolean(draft.vendorId) }, view)} />
                   <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach photos of damage or supporting documents." />
-                </div>
-                <div className="flex flex-col gap-3 lg:col-span-4">
+                </>
+              }
+              aside={
+                <>
                   <GrrDocumentCard draft={draft} update={update} errors={errors} ctx={ctx} m={m} />
                   <DocumentDates def={goodsReturnRequestDates} draft={draft} update={update} errors={errors} />
                   <AssignmentCard draft={draft} update={update} readOnly={ctx.readOnly} person={{ key: 'buyerId', label: 'Buyer', hint: 'Who placed the order.' }} ownerHint="Owns the document (data access)." remarksHint="Can be changed after the request is added." />
-                </div>
-              </div>
-            </Panel.Body>
+                </>
+              }
+            />
           )}
         </Panel>
       </Form>

@@ -7,6 +7,7 @@ import { Section, type Errors } from '../../../../../components/form/fields';
 import { type MoreMenuItem } from '../../../../../components/form/MoreMenu';
 import { DetailActions, docMode } from '../../../../../components/form/DetailActions';
 import { PageHeader } from '../../../../../components/form/PageHeader';
+import { DetailColumns } from '../../../../../components/form/DetailColumns';
 import { isApprover, needsApproval } from '../../../../../services/approval';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../../components/form/ProblemsAlert';
 import { AttachmentsCard } from '../../../../../components/form/AttachmentsCard';
@@ -66,7 +67,7 @@ import { DocLines } from '../../../../../components/form/docLines/DocLines';
 import { CopyPanel, type CopySourceType } from '../../../../purchasing/shared/CopyPanel';
 import { arCmDoc } from './arCmDoc';
 import { ArCmDocumentCard } from './ArCmDocumentCard';
-import { ArCmCustomerDetailsPanel } from './ArCmCustomerDetailsPanel';
+import { CustomerDetailsPanel } from '../../../shared/CustomerDetailsPanel';
 import { DocumentJournalEntry, DocumentPayment } from '../../../../../components/form/PaymentCard';
 import { arCreditMemoPayment } from '../../../../documentPaymentDefs';
 import { JournalPreview } from '../../../../../components/form/JournalPreview';
@@ -389,19 +390,22 @@ function ArCreditMemoForm() {
               <ActivityTab target={{ kind: 'ARCM', id: draft.id ?? '' }} partnerId={draft.customerId} />
             </Panel.Body>
           ) : (
-            <Panel.Body className="flex flex-col gap-2">
-              <ProblemsAlert problems={problems} tabLabel={() => 'Details'} />
-              {reject.alert('Reject A/R credit memo', rejectIt)}
-              {added ? (
-                <Alert intent="default" variant="outline" title={draft.status === 'Open' ? `${code} ${formatAmount(openBalance)} of credit left to apply` : `This credit memo is ${draft.status.toLowerCase()}`}>
-                  {draft.status === 'Open'
-                    ? 'Apply it to another open invoice of this customer with ⋯ › Apply credit to an invoice. Only remarks can change.'
-                    : 'Only remarks can change.'}
-                </Alert>
-              ) : null}
-
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-                <div className="flex flex-col gap-3 lg:col-span-8">
+            <DetailColumns
+              header={
+                <>
+                  <ProblemsAlert problems={problems} tabLabel={() => 'Details'} />
+                  {reject.alert('Reject A/R credit memo', rejectIt)}
+                  {added ? (
+                    <Alert intent="default" variant="outline" title={draft.status === 'Open' ? `${code} ${formatAmount(openBalance)} of credit left to apply` : `This credit memo is ${draft.status.toLowerCase()}`}>
+                      {draft.status === 'Open'
+                        ? 'Apply it to another open invoice of this customer with ⋯ › Apply credit to an invoice. Only remarks can change.'
+                        : 'Only remarks can change.'}
+                    </Alert>
+                  ) : null}
+                </>
+              }
+              main={
+                <>
                   <CustomerCard
                     customers={m.customers}
                     customerId={draft.customerId}
@@ -439,9 +443,10 @@ function ArCreditMemoForm() {
                   />
                   <DocumentJournalEntry def={arCreditMemoPayment} posting={journalEntry} {...sectionProps} />
                   <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} emptyHint="Customer's return authorization, photos of defective goods." withDescription />
-                </div>
-
-                <aside className="flex flex-col gap-3 lg:col-span-4">
+                </>
+              }
+              aside={
+                <>
                   <ArCmDocumentCard {...sectionProps} />
                   <ReturnDatesCard {...sectionProps} readOnly={added} postingHint="When revenue and VAT reverse, and any goods come back in." />
                   <DocumentPayment def={arCreditMemoPayment} posting={journalEntry} {...sectionProps} />
@@ -455,13 +460,22 @@ function ArCreditMemoForm() {
                     ownerHint="Owns the document."
                     remarksHint="Can be changed after the credit memo is added."
                   />
-                </aside>
-              </div>
-            </Panel.Body>
+                </>
+              }
+            />
           )}
         </Panel>
       </Form>
-      <ArCmCustomerDetailsPanel {...sectionProps} open={customerDetailsOpen} onClose={() => setCustomerDetailsOpen(false)} />
+      <CustomerDetailsPanel
+        customer={ctx.customer}
+        draft={draft}
+        update={update}
+        readOnly={ctx.readOnly}
+        noun="credit memo"
+        open={customerDetailsOpen}
+        onClose={() => setCustomerDetailsOpen(false)}
+        orderNumberHint="Set by Copy from."
+      />
       {copying
         ? createPortal(
             <CopyPanel

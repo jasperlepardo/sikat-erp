@@ -12,6 +12,7 @@ import { type Errors } from '../../../../components/form/fields';
 import { type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { DetailActions, docMode } from '../../../../components/form/DetailActions';
 import { PageHeader } from '../../../../components/form/PageHeader';
+import { DetailColumns } from '../../../../components/form/DetailColumns';
 import { isApprover, needsApproval } from '../../../../services/approval';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
@@ -480,34 +481,39 @@ function PurchaseOrderForm() {
             <ActivityTab target={{ kind: 'PO', id: draft.id ?? '' }} partnerId={draft.vendorId} />
           </Panel.Body>
         ) : (
-          <Panel.Body className="flex flex-col gap-2">
-            <ProblemsAlert problems={problems} tabLabel={(t) => ({ contents: 'Contents', logistics: 'Logistics', accounting: 'Accounting' }[t])} />
-            {reject.alert('Reject purchase order', rejectIt)}
-            {dupWarning ? (
-              <Alert intent="warning" variant="outline" title="Duplicate vendor reference">
-                {dupWarning} Press {ctx.added ? 'Save changes' : draft.approved ? `Create ${PO_NOUN.one}` : 'Submit for approval'} again to keep it, or change the Vendor Ref. No.
-              </Alert>
-            ) : null}
-            {closeWarning ? (
-              <Alert intent="warning" variant="outline" title="Check before closing">
-                {closeWarning}
-              </Alert>
-            ) : null}
-            {ctx.readOnly ? (
-              <Alert intent="default" variant="outline" title={`This purchase order is ${draft.status.toLowerCase()}`}>
-                Only remarks can change{draft.closeDate ? ` (closed ${draft.closeDate})` : ''}.
-              </Alert>
-            ) : null}
-
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-              <div className="flex flex-col gap-3 lg:col-span-8">
+          <DetailColumns
+            header={
+              <>
+                <ProblemsAlert problems={problems} tabLabel={(t) => ({ contents: 'Contents', logistics: 'Logistics', accounting: 'Accounting' }[t])} />
+                {reject.alert('Reject purchase order', rejectIt)}
+                {dupWarning ? (
+                  <Alert intent="warning" variant="outline" title="Duplicate vendor reference">
+                    {dupWarning} Press {ctx.added ? 'Save changes' : draft.approved ? `Create ${PO_NOUN.one}` : 'Submit for approval'} again to keep it, or change the Vendor Ref. No.
+                  </Alert>
+                ) : null}
+                {closeWarning ? (
+                  <Alert intent="warning" variant="outline" title="Check before closing">
+                    {closeWarning}
+                  </Alert>
+                ) : null}
+                {ctx.readOnly ? (
+                  <Alert intent="default" variant="outline" title={`This purchase order is ${draft.status.toLowerCase()}`}>
+                    Only remarks can change{draft.closeDate ? ` (closed ${draft.closeDate})` : ''}.
+                  </Alert>
+                ) : null}
+              </>
+            }
+            main={
+              <>
                 <VendorCard vendors={m.vendors} vendorId={draft.vendorId} vendor={ctx.vendor} readOnly={ctx.readOnly} added={ctx.added} error={errors.vendorId} pickVendor={pickVendor} onNewVendor={() => setShowVendorCreate(true)} onOpenDetails={() => setVendorDetailsOpen(true)} />
                 {contentTab === 'item' ? <DocLines {...withTabsOnTop(poDoc(sectionProps))} /> : <PoReceiptsTab draft={draft} docs={receiptDocs} tabs={contentTabs} />}
                 <DocumentJournalEntry def={purchaseOrderPayment} posting={poJournalEntry} {...sectionProps} />
                 <ReferencesTable refs={draft.references} onChange={(references) => update({ references })} readOnly={ctx.readOnly} description="Other documents this PO refers to, or that refer to it." />
                 <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach the vendor's quotation, signed PO acknowledgement or order confirmation." />
-              </div>
-              <div className="flex flex-col gap-3 lg:col-span-4">
+              </>
+            }
+            aside={
+              <>
                 <PoDocumentCard {...sectionProps} />
                 <DocumentDates def={purchaseOrderDates} {...sectionProps} />
                 <PoReferencesCard {...sectionProps} />
@@ -521,9 +527,9 @@ function PurchaseOrderForm() {
                   ownerHint="Owns the document (data access)."
                   remarksHint="Can be changed after the PO is added."
                 />
-              </div>
-            </div>
-          </Panel.Body>
+              </>
+            }
+          />
         )}
       </Panel>
     </Form>

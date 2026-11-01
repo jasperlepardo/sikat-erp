@@ -10,6 +10,7 @@ import {
   Text,
 } from '@jasperlepardo/sikat-design-system';
 import { PageHeader } from '../../../../components/form/PageHeader';
+import { DetailColumns } from '../../../../components/form/DetailColumns';
 import { type Errors } from '../../../../components/form/fields';
 import { type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { DetailActions } from '../../../../components/form/DetailActions';
@@ -424,16 +425,19 @@ function PurchaseRequestForm() {
             <ActivityTab target={{ kind: 'PR', id: (draft as PurchaseRequest).id }} />
           </Panel.Body>
         ) : (
-          <Panel.Body className="flex flex-col gap-2">
-            <ProblemsAlert problems={problems} tabLabel={() => 'Contents'} />
-            {ctx.readOnly ? (
-              <Alert intent="default" variant="outline" title="This request is closed">
-                Only remarks can change{draft.closeDate ? ` (closed ${draft.closeDate})` : ''}.
-              </Alert>
-            ) : null}
-
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-              <div className="flex flex-col gap-3 lg:col-span-8">
+          <DetailColumns
+            header={
+              <>
+                <ProblemsAlert problems={problems} tabLabel={() => 'Contents'} />
+                {ctx.readOnly ? (
+                  <Alert intent="default" variant="outline" title="This request is closed">
+                    Only remarks can change{draft.closeDate ? ` (closed ${draft.closeDate})` : ''}.
+                  </Alert>
+                ) : null}
+              </>
+            }
+            main={
+              <>
                 <RequesterCard
                   employees={m.employees}
                   requesterId={draft.requesterId}
@@ -451,8 +455,10 @@ function PurchaseRequestForm() {
                   <DocLines {...(showComparison ? withTabsOnTop(prDoc(sectionProps)) : prDoc(sectionProps))} />
                 )}
                 <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach supporting documents, e.g. specs, approvals or quotes." />
-              </div>
-              <div className="flex flex-col gap-3 lg:col-span-4">
+              </>
+            }
+            aside={
+              <>
                 <PrDocumentCard {...sectionProps} />
                 <DocumentDates def={purchaseRequestDates} {...sectionProps} />
                 <PrVendorsCard {...sectionProps} />
@@ -462,9 +468,9 @@ function PurchaseRequestForm() {
                   ownerHint="Owns the document (data access)."
                   remarksHint="Can be changed after the request is added."
                 />
-              </div>
-            </div>
-          </Panel.Body>
+              </>
+            }
+          />
         )}
       </Panel>
     </Form>

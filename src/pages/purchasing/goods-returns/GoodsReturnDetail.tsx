@@ -10,6 +10,7 @@ import {
   Text,
 } from '@jasperlepardo/sikat-design-system';
 import { PageHeader } from '../../../components/form/PageHeader';
+import { DetailColumns } from '../../../components/form/DetailColumns';
 import { AttachmentsCard } from '../../../components/form/AttachmentsCard';
 import { type Errors } from '../../../components/form/fields';
 import { type MoreMenuItem } from '../../../components/form/MoreMenu';
@@ -336,19 +337,22 @@ function GoodsReturnForm() {
               <ActivityTab target={{ kind: 'GRET', id: draft.id ?? '' }} partnerId={draft.vendorId} />
             </Panel.Body>
           ) : (
-            <Panel.Body className="flex flex-col gap-2">
-              <ProblemsAlert problems={problems} tabLabel={(t) => ({ contents: 'Contents', logistics: 'Logistics', accounting: 'Accounting' })[t]} />
-              {reject.alert('Reject goods return', rejectIt)}
-              {added ? (
-                <Alert intent="default" variant="outline" title={draft.status === 'Open' ? "Waiting for the vendor's credit" : `This goods return is ${draft.status.toLowerCase()}`}>
-                  {draft.status === 'Open'
-                    ? 'The stock is out. These goods were already billed, so the vendor owes a credit: copy the return to an A/P credit memo. Only remarks and attachments can change.'
-                    : 'Only remarks and attachments can change.'}
-                </Alert>
-              ) : null}
-
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-                <div className="flex flex-col gap-3 lg:col-span-8">
+            <DetailColumns
+              header={
+                <>
+                  <ProblemsAlert problems={problems} tabLabel={(t) => ({ contents: 'Contents', logistics: 'Logistics', accounting: 'Accounting' })[t]} />
+                  {reject.alert('Reject goods return', rejectIt)}
+                  {added ? (
+                    <Alert intent="default" variant="outline" title={draft.status === 'Open' ? "Waiting for the vendor's credit" : `This goods return is ${draft.status.toLowerCase()}`}>
+                      {draft.status === 'Open'
+                        ? 'The stock is out. These goods were already billed, so the vendor owes a credit: copy the return to an A/P credit memo. Only remarks and attachments can change.'
+                        : 'Only remarks and attachments can change.'}
+                    </Alert>
+                  ) : null}
+                </>
+              }
+              main={
+                <>
                   <VendorCard
                     vendors={m.vendors}
                     vendorId={draft.vendorId}
@@ -375,8 +379,10 @@ function GoodsReturnForm() {
                   <DocumentJournalEntry def={goodsReturnPayment} posting={journalEntry} {...sectionProps} />
                   <ReferencesTable refs={draft.references} onChange={(references) => update({ references })} readOnly={added} description="Other documents this return refers to, e.g. the vendor's RMA or the original receipt." />
                   <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach the RMA, photos of the damage, or the courier waybill." />
-                </div>
-                <div className="flex flex-col gap-3 lg:col-span-4">
+                </>
+              }
+              aside={
+                <>
                   <GrDocumentCard {...sectionProps} />
                   <DocumentDates def={goodsReturnDates} {...sectionProps} />
                   <GrLogisticsCard {...sectionProps} addressOptions={addressOptions} />
@@ -390,9 +396,9 @@ function GoodsReturnForm() {
                     ownerHint="Owns the document (data access)."
                     remarksHint="Can be changed after the return is added."
                   />
-                </div>
-              </div>
-            </Panel.Body>
+                </>
+              }
+            />
           )}
         </Panel>
       </Form>

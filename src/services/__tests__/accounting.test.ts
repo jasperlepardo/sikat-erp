@@ -8,8 +8,9 @@ import {
   parseJeRows,
   controlAccountOf,
 } from '../journalEntries';
-import { CLOSED_THROUGH, FISCAL_YEAR_END, newJeLine, type JeLine } from '../../mocks/journalEntries';
+import { CLOSED_THROUGH, FISCAL_YEAR_END, newJeLine, type JeLine, type JournalEntry } from '../../mocks/journalEntries';
 import type { Account } from '../../mocks/chartOfAccounts';
+import type { ArInvoice } from '../../mocks/arInvoices';
 import type { Partner } from '../../mocks/partners';
 import type { TaxCode } from '../../mocks/taxes';
 import { voucherState, toJournalEntry } from '../journalVouchers';
@@ -97,7 +98,7 @@ describe('balancesOf', () => {
     const entries = [
       { lines: [line({ account: '1000', debit: 100 }), line({ account: '2000', credit: 100 })] },
       { lines: [line({ account: '1000', credit: 30 })] },
-    ] as any;
+    ] as JournalEntry[];
     const bal = balancesOf(entries, []);
     expect(bal.get('1000')).toBe(70);
     expect(bal.get('2000')).toBe(-100);
@@ -105,7 +106,7 @@ describe('balancesOf', () => {
 
   it('posts a manual BP row onto the partner control account', () => {
     const p = partner({ id: 'p1', roles: ['customer'], receivableAccount: '1120' });
-    const entries = [{ lines: [line({ account: '', partnerId: 'p1', debit: 500 })] }] as any;
+    const entries = [{ lines: [line({ account: '', partnerId: 'p1', debit: 500 })] }] as JournalEntry[];
     const bal = balancesOf(entries, [p]);
     expect(bal.get('1120')).toBe(500);
   });
@@ -469,13 +470,13 @@ describe('openForeignRows', () => {
     m.arInvoices = [
       { id: 'a1', status: 'Open', currency: 'PHP', postingDate: '2026-09-01', customerId: 'c1' },
       { id: 'a2', status: 'Draft', currency: 'USD', postingDate: '2026-09-01', customerId: 'c1' },
-    ] as any;
+    ] as ArInvoice[];
     expect(openForeignRows('2026-10-01', { USD: 59 }, m)).toHaveLength(0);
   });
 
   it('ignores documents posted after the run date', () => {
     const m = baseMasters();
-    m.arInvoices = [{ id: 'a1', status: 'Open', currency: 'USD', postingDate: '2026-11-01', customerId: 'c1' }] as any;
+    m.arInvoices = [{ id: 'a1', status: 'Open', currency: 'USD', postingDate: '2026-11-01', customerId: 'c1' }] as ArInvoice[];
     expect(openForeignRows('2026-10-01', { USD: 59 }, m)).toHaveLength(0);
   });
 });

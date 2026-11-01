@@ -10,6 +10,7 @@ import {
   Text,
 } from '@jasperlepardo/sikat-design-system';
 import { PageHeader } from '../../../components/form/PageHeader';
+import { DetailColumns } from '../../../components/form/DetailColumns';
 import { type Errors } from '../../../components/form/fields';
 import { JournalPreview } from '../../../components/form/JournalPreview';
 import { type MoreMenuItem } from '../../../components/form/MoreMenu';
@@ -345,19 +346,22 @@ function CreditMemoForm() {
               <ActivityTab target={{ kind: 'APCM', id: draft.id ?? '' }} partnerId={draft.vendorId} />
             </Panel.Body>
           ) : (
-          <Panel.Body className="flex flex-col gap-2">
-              <ProblemsAlert problems={problems} tabLabel={(t) => ({ contents: 'Contents', logistics: 'Logistics', accounting: 'Accounting' })[t]} />
-              {reject.alert('Reject A/P credit memo', rejectIt)}
-              {added ? (
-                <Alert intent="default" variant="outline" title={draft.status === 'Open' ? `${code} ${formatAmount(openBalance)} of credit left to apply` : `This credit memo is ${draft.status.toLowerCase()}`}>
-                  {draft.status === 'Open'
-                    ? 'Apply it to another open invoice of this vendor with More actions › Apply credit to an invoice. Only remarks, the payment block and the payment run flag can change.'
-                    : 'Only remarks can change.'}
-                </Alert>
-              ) : null}
-
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-                <div className="flex flex-col gap-3 lg:col-span-8">
+          <DetailColumns
+              header={
+                <>
+                  <ProblemsAlert problems={problems} tabLabel={(t) => ({ contents: 'Contents', logistics: 'Logistics', accounting: 'Accounting' })[t]} />
+                  {reject.alert('Reject A/P credit memo', rejectIt)}
+                  {added ? (
+                    <Alert intent="default" variant="outline" title={draft.status === 'Open' ? `${code} ${formatAmount(openBalance)} of credit left to apply` : `This credit memo is ${draft.status.toLowerCase()}`}>
+                      {draft.status === 'Open'
+                        ? 'Apply it to another open invoice of this vendor with More actions › Apply credit to an invoice. Only remarks, the payment block and the payment run flag can change.'
+                        : 'Only remarks can change.'}
+                    </Alert>
+                  ) : null}
+                </>
+              }
+              main={
+                <>
                   <VendorCard
                     vendors={m.vendors}
                     vendorId={draft.vendorId}
@@ -373,8 +377,10 @@ function CreditMemoForm() {
                   <DocumentJournalEntry def={debitMemoPayment} posting={journalEntry} {...sectionProps} />
                   <ReferencesTable refs={draft.references} onChange={(references) => update({ references })} readOnly={added} description="Other documents this credit memo refers to, e.g. the vendor's credit note." />
                   <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach the vendor's credit note or debit memo." />
-                </div>
-                <div className="flex flex-col gap-3 lg:col-span-4">
+                </>
+              }
+              aside={
+                <>
                   <CmDocumentCard {...sectionProps} />
                   <DocumentDates def={debitMemoDates} {...sectionProps} />
                   <CmLogisticsCard {...sectionProps} addressOptions={addressOptions} />
@@ -389,9 +395,9 @@ function CreditMemoForm() {
                     remarksHint="Can be changed after the memo is added."
                     paymentFlags
                   />
-                </div>
-              </div>
-            </Panel.Body>
+                </>
+              }
+            />
           )}
         </Panel>
       </Form>

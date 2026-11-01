@@ -13,6 +13,7 @@ import {
   Text,
 } from '@jasperlepardo/sikat-design-system';
 import { PageHeader } from '../../../../components/form/PageHeader';
+import { DetailColumns } from '../../../../components/form/DetailColumns';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { Fields, FieldOrientationCtx, FieldStack, Section, bind, type Errors } from '../../../../components/form/fields';
 import { DocumentCard } from '../../../../components/form/DocumentCard';
@@ -317,19 +318,22 @@ function PaymentForm() {
             <ActivityTab target={{ kind: 'PAY', id: draft.id ?? '' }} partnerId={draft.vendorId} />
           </Panel.Body>
         ) : (
-          <Panel.Body className="flex flex-col gap-2">
-            <ProblemsAlert problems={problems} tabLabel={(t) => ({ contents: 'Contents', means: 'Payment means' })[t]} />
-            {reject.alert('Reject outgoing payment', rejectIt)}
-            {added ? (
-              <Alert intent="default" variant="outline" title={draft.status === 'Posted' ? 'This payment is added' : `This payment was cancelled ${formatDate(draft.cancelDate)}`}>
-                {draft.status === 'Posted'
-                  ? 'The invoices it paid show it as applied. Only remarks and attachments can change; to undo it, cancel the payment.'
-                  : 'The invoices it paid are open again. Only remarks and attachments can change.'}
-              </Alert>
-            ) : null}
-
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-              <div className="flex flex-col gap-3 lg:col-span-8">
+          <DetailColumns
+            header={
+              <>
+                <ProblemsAlert problems={problems} tabLabel={(t) => ({ contents: 'Contents', means: 'Payment means' })[t]} />
+                {reject.alert('Reject outgoing payment', rejectIt)}
+                {added ? (
+                  <Alert intent="default" variant="outline" title={draft.status === 'Posted' ? 'This payment is added' : `This payment was cancelled ${formatDate(draft.cancelDate)}`}>
+                    {draft.status === 'Posted'
+                      ? 'The invoices it paid show it as applied. Only remarks and attachments can change; to undo it, cancel the payment.'
+                      : 'The invoices it paid are open again. Only remarks and attachments can change.'}
+                  </Alert>
+                ) : null}
+              </>
+            }
+            main={
+              <>
                 {draft.type === 'Vendor' ? (
                   <VendorCard
                     vendors={m.vendors}
@@ -376,9 +380,10 @@ function PaymentForm() {
 
                 <ReferencesTable refs={draft.references} onChange={(references) => update({ references })} readOnly={added} description="Other documents this payment refers to." />
                 <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} emptyHint="Attach the deposit slip, transfer confirmation or the vendor's official receipt." />
-              </div>
-
-              <aside className="flex flex-col gap-3 lg:col-span-4">
+              </>
+            }
+            aside={
+              <>
                 <DocumentCard
                   series={added ? undefined : {
                     rows: PAYMENT_SERIES,
@@ -437,9 +442,9 @@ function PaymentForm() {
                     {h.area('remarks', 'Remarks', { rows: 3, hint: 'Can be changed after the payment is added.' })}
                   </FieldStack>
                 </Section>
-              </aside>
-            </div>
-          </Panel.Body>
+              </>
+            }
+          />
         )}
       </Panel>
     </Form>

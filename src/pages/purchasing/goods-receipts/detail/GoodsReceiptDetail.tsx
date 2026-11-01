@@ -11,6 +11,7 @@ import {
   Text,
 } from '@jasperlepardo/sikat-design-system';
 import { PageHeader } from '../../../../components/form/PageHeader';
+import { DetailColumns } from '../../../../components/form/DetailColumns';
 import { type Errors } from '../../../../components/form/fields';
 import { type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { JournalPreview } from '../../../../components/form/JournalPreview';
@@ -375,19 +376,22 @@ function GoodsReceiptForm() {
             <ActivityTab target={{ kind: 'GRPO', id: draft.id ?? '' }} partnerId={draft.vendorId} />
           </Panel.Body>
         ) : (
-          <Panel.Body className="flex flex-col gap-2">
-            <ProblemsAlert problems={problems} tabLabel={(t) => ({ contents: 'Contents', logistics: 'Logistics', accounting: 'Accounting' })[t]} />
-            {reject.alert('Reject goods receipt', rejectIt)}
-            {added ? (
-              <Alert intent="default" variant="outline" title={draft.status === 'Open' ? 'This goods receipt is added' : `This goods receipt is ${draft.status.toLowerCase()}`}>
-                {draft.status === 'Open'
-                  ? 'The stock is in and the PO lines count it as received. Only remarks can change; to undo it, cancel the receipt.'
-                  : `Only remarks can change${draft.closeDate ? ` (${draft.status.toLowerCase()} ${formatDate(draft.closeDate)})` : ''}.`}
-              </Alert>
-            ) : null}
-
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-              <div className="flex flex-col gap-3 lg:col-span-8">
+          <DetailColumns
+            header={
+              <>
+                <ProblemsAlert problems={problems} tabLabel={(t) => ({ contents: 'Contents', logistics: 'Logistics', accounting: 'Accounting' })[t]} />
+                {reject.alert('Reject goods receipt', rejectIt)}
+                {added ? (
+                  <Alert intent="default" variant="outline" title={draft.status === 'Open' ? 'This goods receipt is added' : `This goods receipt is ${draft.status.toLowerCase()}`}>
+                    {draft.status === 'Open'
+                      ? 'The stock is in and the PO lines count it as received. Only remarks can change; to undo it, cancel the receipt.'
+                      : `Only remarks can change${draft.closeDate ? ` (${draft.status.toLowerCase()} ${formatDate(draft.closeDate)})` : ''}.`}
+                  </Alert>
+                ) : null}
+              </>
+            }
+            main={
+              <>
                 <VendorCard
                   vendors={m.vendors}
                   vendorId={draft.vendorId}
@@ -404,8 +408,10 @@ function GoodsReceiptForm() {
                 <DocumentJournalEntry def={goodsReceiptPayment} posting={journalEntry} {...sectionProps} />
                 <ReferencesTable refs={draft.references} onChange={(references) => update({ references })} readOnly={ctx.readOnly} description="Other documents this receipt refers to, e.g. the vendor's delivery receipt or a courier waybill." />
                 <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach the vendor's delivery receipt, packing list or proof of receipt." />
-              </div>
-              <div className="flex flex-col gap-3 lg:col-span-4">
+              </>
+            }
+            aside={
+              <>
                 <GrDocumentCard {...sectionProps} />
                 <DocumentDates def={goodsReceiptDates} {...sectionProps} />
                 <GrLogistics draft={draft} update={update} m={m} />
@@ -419,9 +425,9 @@ function GoodsReceiptForm() {
                   ownerHint="Owns the document (data access)."
                   remarksHint="Can be changed after the receipt is added."
                 />
-              </div>
-            </div>
-          </Panel.Body>
+              </>
+            }
+          />
         )}
       </Panel>
     </Form>

@@ -10,6 +10,7 @@ import {
   Text,
 } from '@jasperlepardo/sikat-design-system';
 import { PageHeader } from '../../../../components/form/PageHeader';
+import { DetailColumns } from '../../../../components/form/DetailColumns';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { JournalPreview } from '../../../../components/form/JournalPreview';
 import { type Errors } from '../../../../components/form/fields';
@@ -299,21 +300,24 @@ function DprForm() {
           ) : page !== 'details' ? (
             <Panel.Body><ActivityTab target={{ kind: 'DPR', id: draft.id ?? '' }} partnerId={draft.vendorId} /></Panel.Body>
           ) : (
-            <Panel.Body className="flex flex-col gap-2">
-              <ProblemsAlert problems={problems} tabLabel={(t) => ({ contents: 'Contents', logistics: 'Logistics', accounting: 'Accounting' })[t]} />
-              {reject.alert('Reject down payment request', rejectIt)}
-              {added ? (
-                <Alert intent="default" variant="outline" title={draft.status === 'Open' ? (balance > 0 ? `${code} ${formatAmount(balance)} still to pay` : `Paid — ${code} ${formatAmount(drawableAmount(saved))} left to draw`) : `This request is ${draft.status.toLowerCase()}`}>
-                  {draft.status === 'Open'
-                    ? balance > 0
-                      ? 'Pay it from Payments Made (or More actions › Pay). Nothing posts until it\'s paid.'
-                      : 'Draw it on the A/P invoice that bills the goods: the invoice\'s Total down payment.'
-                    : 'Only remarks, the payment block and the payment run flag can change.'}
-                </Alert>
-              ) : null}
-
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-                <div className="flex flex-col gap-3 lg:col-span-8">
+            <DetailColumns
+              header={
+                <>
+                  <ProblemsAlert problems={problems} tabLabel={(t) => ({ contents: 'Contents', logistics: 'Logistics', accounting: 'Accounting' })[t]} />
+                  {reject.alert('Reject down payment request', rejectIt)}
+                  {added ? (
+                    <Alert intent="default" variant="outline" title={draft.status === 'Open' ? (balance > 0 ? `${code} ${formatAmount(balance)} still to pay` : `Paid — ${code} ${formatAmount(drawableAmount(saved))} left to draw`) : `This request is ${draft.status.toLowerCase()}`}>
+                      {draft.status === 'Open'
+                        ? balance > 0
+                          ? 'Pay it from Payments Made (or More actions › Pay). Nothing posts until it\'s paid.'
+                          : 'Draw it on the A/P invoice that bills the goods: the invoice\'s Total down payment.'
+                        : 'Only remarks, the payment block and the payment run flag can change.'}
+                    </Alert>
+                  ) : null}
+                </>
+              }
+              main={
+                <>
                   <VendorCard
                     vendors={m.vendors}
                     vendorId={draft.vendorId}
@@ -328,8 +332,10 @@ function DprForm() {
                   <DocumentJournalEntry def={downPaymentRequestPayment} posting={journalEntry} {...sectionProps} />
                   <ReferencesTable refs={draft.references} onChange={(references) => update({ references })} readOnly={ctx.readOnly} description="Other documents this request refers to, e.g. the vendor's proforma invoice." />
                   <AttachmentsCard attachments={draft.attachments ?? []} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach the vendor's proforma invoice or quotation." />
-                </div>
-                <div className="flex flex-col gap-3 lg:col-span-4">
+                </>
+              }
+              aside={
+                <>
                   <DprDocumentCard {...sectionProps} />
                   <DocumentDates def={downPaymentRequestDates} {...sectionProps} />
                   <PurchReferencesCard {...sectionProps} orderNumberHint="The PO the lines were copied from." />
@@ -343,9 +349,9 @@ function DprForm() {
                     remarksHint="Can be changed after the request is added."
                     paymentFlags
                   />
-                </div>
-              </div>
-            </Panel.Body>
+                </>
+              }
+            />
           )}
         </Panel>
       </Form>

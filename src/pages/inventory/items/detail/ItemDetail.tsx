@@ -14,6 +14,7 @@ import {
   Text,
 } from '@jasperlepardo/sikat-design-system';
 import { PageHeader } from '../../../../components/form/PageHeader';
+import { DetailColumns } from '../../../../components/form/DetailColumns';
 import { FieldStack, Section, bind, type Errors } from '../../../../components/form/fields';
 import { type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { DetailActions } from '../../../../components/form/DetailActions';
@@ -421,16 +422,63 @@ function ItemForm() {
               )}
             </Panel.Body>
           ) : (
-            /* Side by side (lg), each column scrolls on its own; stacked, the body scrolls as one. */
-            <Panel.Body className="flex flex-col gap-2 lg:overflow-hidden!">
-              <ProblemsAlert
-                problems={problems}
-                tabLabel={(t) => (t === 'warehouses' ? 'Warehouses' : TABS.find((x) => x.value === t)?.label)}
-                onOpenTab={(t) => openProblem(t)}
-              />
-
-              <div className="grid gap-4 lg:min-h-0 lg:flex-1 lg:grid-cols-12 lg:grid-rows-1">
-                <aside className="flex flex-col gap-3 lg:col-span-3 lg:min-h-0 lg:overflow-y-auto">
+            /* Content (tabs) on the left; identity, vendors and manufacturers on the right. */
+            <DetailColumns
+              header={
+                <ProblemsAlert
+                  problems={problems}
+                  tabLabel={(t) => (t === 'warehouses' ? 'Warehouses' : TABS.find((x) => x.value === t)?.label)}
+                  onOpenTab={(t) => openProblem(t)}
+                />
+              }
+              main={
+                <>
+                  {draft.parentItemId && parentItem && (
+                    <div className="flex items-center gap-2 rounded-xl border border-[var(--color-border-default)] text-body px-3 py-2 text-sm">
+                      <Icon size={16} className="shrink-0 text-muted">info</Icon>
+                      <Text variant="small" tone="muted">
+                        Tax, UoMs, planning and other settings are inherited from{' '}
+                        <Link onClick={() => navigate(`${LIST_PATH}/${parentItem.id}`)}>
+                          {parentItem.name}
+                        </Link>
+                        . Changes to those fields here are overridden by the parent.
+                      </Text>
+                    </div>
+                  )}
+                  <Tabs
+                    value={tab}
+                    onValueChange={(v) => setTab(v as TabId)}
+                    items={TABS
+                      .filter((t) => t.value !== 'variants' || draft.variantAxes.length > 0)
+                      .map((t) => ({
+                        value: t.value,
+                        label: t.label,
+                        badge: problems.some((p) => p.tab === t.value) ? '!' : counts[t.value] ? String(counts[t.value]) : undefined,
+                      }))}
+                  />
+                  <ActiveTab
+                    draft={draft}
+                    update={(patch) => {
+                      // Linked defaults: customs group → duty %, commission group → commission %.
+                      const customs = inv.customs.find((c) => c.id === patch.customsGroup);
+                      const commission = inv.commissions.find((c) => c.id === patch.commissionGroup);
+                      update({
+                        ...patch,
+                        ...(customs ? { dutyPct: customs.duty } : {}),
+                        ...(commission ? { commissionPct: commission.pct } : {}),
+                      });
+                    }}
+                    errors={errors}
+                    vendors={vendors}
+                    inv={inv}
+                    tax={tax}
+                    lockedUomIds={lockedUomIds}
+                    onAddUomsFromGroup={() => setAddingFromGroup(true)}
+                  />
+                </>
+              }
+              aside={
+                <>
                   <Section icon="inventory_2" title="Item">
                     <FieldStack>
                       {isNew ? (
@@ -611,54 +659,9 @@ function ItemForm() {
                     inv={inv}
                     onOpen={(value, added) => setEditingManufacturer({ value, isNew: added })}
                   />
-                </aside>
-
-                <div className="flex min-w-0 flex-col gap-3 lg:col-span-9 lg:min-h-0 lg:overflow-y-auto">
-                  {draft.parentItemId && parentItem && (
-                    <div className="flex items-center gap-2 rounded-xl border border-[var(--color-border-default)] text-body px-3 py-2 text-sm">
-                      <Icon size={16} className="shrink-0 text-muted">info</Icon>
-                      <Text variant="small" tone="muted">
-                        Tax, UoMs, planning and other settings are inherited from{' '}
-                        <Link onClick={() => navigate(`${LIST_PATH}/${parentItem.id}`)}>
-                          {parentItem.name}
-                        </Link>
-                        . Changes to those fields here are overridden by the parent.
-                      </Text>
-                    </div>
-                  )}
-                  <Tabs
-                    value={tab}
-                    onValueChange={(v) => setTab(v as TabId)}
-                    items={TABS
-                      .filter((t) => t.value !== 'variants' || draft.variantAxes.length > 0)
-                      .map((t) => ({
-                        value: t.value,
-                        label: t.label,
-                        badge: problems.some((p) => p.tab === t.value) ? '!' : counts[t.value] ? String(counts[t.value]) : undefined,
-                      }))}
-                  />
-                  <ActiveTab
-                    draft={draft}
-                    update={(patch) => {
-                      // Linked defaults: customs group → duty %, commission group → commission %.
-                      const customs = inv.customs.find((c) => c.id === patch.customsGroup);
-                      const commission = inv.commissions.find((c) => c.id === patch.commissionGroup);
-                      update({
-                        ...patch,
-                        ...(customs ? { dutyPct: customs.duty } : {}),
-                        ...(commission ? { commissionPct: commission.pct } : {}),
-                      });
-                    }}
-                    errors={errors}
-                    vendors={vendors}
-                    inv={inv}
-                    tax={tax}
-                    lockedUomIds={lockedUomIds}
-                    onAddUomsFromGroup={() => setAddingFromGroup(true)}
-                  />
-                </div>
-              </div>
-            </Panel.Body>
+                </>
+              }
+            />
           )}
         </Panel>
       </Form>

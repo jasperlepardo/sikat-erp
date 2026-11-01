@@ -11,6 +11,7 @@ import {
   Text,
 } from '@jasperlepardo/sikat-design-system';
 import { PageHeader } from '../../../../components/form/PageHeader';
+import { DetailColumns } from '../../../../components/form/DetailColumns';
 import { JournalPreview } from '../../../../components/form/JournalPreview';
 import { type Errors } from '../../../../components/form/fields';
 import { type MoreMenuItem } from '../../../../components/form/MoreMenu';
@@ -507,24 +508,27 @@ function ApInvoiceForm() {
             <ActivityTab target={{ kind: 'APINV', id: draft.id ?? '' }} partnerId={draft.vendorId} />
           </Panel.Body>
         ) : (
-          <Panel.Body className="flex flex-col gap-2">
-            <ProblemsAlert problems={problems} tabLabel={(t) => ({ contents: 'Contents', logistics: 'Logistics', accounting: 'Accounting' })[t]} />
-            {reject.alert('Reject A/P invoice', rejectIt)}
-            {dupWarning ? (
-              <Alert intent="warning" variant="outline" title="Possible duplicate bill">
-                {dupWarning} Press Add again if it's a different bill, or change the Vendor Ref. No.
-              </Alert>
-            ) : null}
-            {added ? (
-              <Alert intent="default" variant="outline" title={draft.status === 'Open' ? 'This A/P invoice is added' : `This A/P invoice is ${draft.status.toLowerCase()}`}>
-                {draft.status === 'Open'
-                  ? `The vendor is owed ${draft.currency} ${formatAmount(balance)}. Only remarks, the payment block and the payment run flag can change; to undo it, cancel the invoice.`
-                  : `Only remarks can change${draft.closeDate ? ` (${draft.status.toLowerCase()} ${formatDate(draft.closeDate)})` : ''}.`}
-              </Alert>
-            ) : null}
-
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-              <div className="flex flex-col gap-3 lg:col-span-8">
+          <DetailColumns
+            header={
+              <>
+                <ProblemsAlert problems={problems} tabLabel={(t) => ({ contents: 'Contents', logistics: 'Logistics', accounting: 'Accounting' })[t]} />
+                {reject.alert('Reject A/P invoice', rejectIt)}
+                {dupWarning ? (
+                  <Alert intent="warning" variant="outline" title="Possible duplicate bill">
+                    {dupWarning} Press Add again if it's a different bill, or change the Vendor Ref. No.
+                  </Alert>
+                ) : null}
+                {added ? (
+                  <Alert intent="default" variant="outline" title={draft.status === 'Open' ? 'This A/P invoice is added' : `This A/P invoice is ${draft.status.toLowerCase()}`}>
+                    {draft.status === 'Open'
+                      ? `The vendor is owed ${draft.currency} ${formatAmount(balance)}. Only remarks, the payment block and the payment run flag can change; to undo it, cancel the invoice.`
+                      : `Only remarks can change${draft.closeDate ? ` (${draft.status.toLowerCase()} ${formatDate(draft.closeDate)})` : ''}.`}
+                  </Alert>
+                ) : null}
+              </>
+            }
+            main={
+              <>
                 <VendorCard
                   vendors={m.vendors}
                   vendorId={draft.vendorId}
@@ -541,8 +545,10 @@ function ApInvoiceForm() {
                 <DocumentJournalEntry def={apInvoicePayment} posting={journalEntry} {...sectionProps} />
                 <ReferencesTable refs={draft.references} onChange={(references) => update({ references })} readOnly={ctx.readOnly} description="Other documents this invoice refers to, e.g. the vendor's official receipt or statement of account." />
                 <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach the vendor's invoice, delivery receipt or statement of account." />
-              </div>
-              <div className="flex flex-col gap-3 lg:col-span-4">
+              </>
+            }
+            aside={
+              <>
                 <ApDocumentCard {...sectionProps} />
                 <DocumentDates def={apInvoiceDates} {...sectionProps} />
                 <GrLogistics draft={draft} update={update} m={m} />
@@ -557,9 +563,9 @@ function ApInvoiceForm() {
                   remarksHint="Can be changed after the invoice is added."
                   paymentFlags
                 />
-              </div>
-            </div>
-          </Panel.Body>
+              </>
+            }
+          />
         )}
       </Panel>
     </Form>

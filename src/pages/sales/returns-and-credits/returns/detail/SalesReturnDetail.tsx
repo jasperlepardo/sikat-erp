@@ -8,6 +8,7 @@ import { JournalPreview } from '../../../../../components/form/JournalPreview';
 import { type MoreMenuItem } from '../../../../../components/form/MoreMenu';
 import { DetailActions, docMode } from '../../../../../components/form/DetailActions';
 import { PageHeader } from '../../../../../components/form/PageHeader';
+import { DetailColumns } from '../../../../../components/form/DetailColumns';
 import { isApprover, needsApproval } from '../../../../../services/approval';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../../components/form/ProblemsAlert';
 import { formatAddress } from '../../../../../mocks/address';
@@ -62,7 +63,7 @@ import { DocumentPayment, DocumentJournalEntry } from '../../../../../components
 import { salesReturnPayment } from '../../../../documentPaymentDefs';
 import { AssignmentCard } from '../../../../../components/form/AssignmentCard';
 import { NO_SALES_EMPLOYEE } from '../../../../../mocks/salesOrders';
-import { SrCustomerDetailsPanel } from './SrCustomerDetailsPanel';
+import { CustomerDetailsPanel } from '../../../shared/CustomerDetailsPanel';
 import { ActivityTab } from '../../../../../components/activity/ActivityTab';
 import { neighbours, NotFound, siblingKeys, useDocTab, useReject } from '../../../../../components/form/DetailNav';
 import { SR_LIST_PATH, SR_NOUN, SR_STATUS_INTENT } from '../../../paths';
@@ -429,36 +430,39 @@ function SalesReturnForm() {
               <ActivityTab target={{ kind: 'SRT', id: draft.id ?? '' }} partnerId={draft.customerId} />
             </Panel.Body>
           ) : (
-            <Panel.Body className="flex flex-col gap-2">
-              <ProblemsAlert problems={problems} tabLabel={(t) => TAB_LABEL[t as TabId]} />
-              {reject.alert('Reject sales return', rejectIt)}
-              {linkingReplacement ? (
-                <Alert intent="default" variant="outline" title="Close with replacement delivery">
-                  <div className="flex flex-col gap-2">
-                    <Text variant="small" tone="muted">Pick the delivery that replaced the returned goods. The return will close without a credit memo.</Text>
-                    <Select
-                      value={replacementDnId}
-                      onValueChange={setReplacementDnId}
-                      placeholder="Pick a delivery…"
-                      options={replacementDeliveries.map((dn) => ({ value: dn.id, label: `${dnNumber(dn)} · ${dn.postingDate} · ${dn.status}` }))}
-                    />
-                    <div className="flex gap-2">
-                      <Button type="button" intent="primary" variant="solid" size="small" disabled={!replacementDnId} onClick={confirmReplacement}>Confirm</Button>
-                      <Button type="button" intent="white" variant="solid" size="small" onClick={() => setLinkingReplacement(false)}>Cancel</Button>
-                    </div>
-                  </div>
-                </Alert>
-              ) : null}
-              {added ? (
-                <Alert intent="default" variant="outline" title={draft.status === 'Open' ? 'Waiting for the customer credit' : `This sales return is ${draft.status.toLowerCase()}`}>
-                  {draft.status === 'Open'
-                    ? 'The stock is back in. Copy the return to an A/R credit memo to give the customer their credit. Only remarks and attachments can change.'
-                    : 'Only remarks and attachments can change.'}
-                </Alert>
-              ) : null}
-
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-                <div className="flex flex-col gap-3 lg:col-span-8">
+            <DetailColumns
+              header={
+                <>
+                  <ProblemsAlert problems={problems} tabLabel={(t) => TAB_LABEL[t as TabId]} />
+                  {reject.alert('Reject sales return', rejectIt)}
+                  {linkingReplacement ? (
+                    <Alert intent="default" variant="outline" title="Close with replacement delivery">
+                      <div className="flex flex-col gap-2">
+                        <Text variant="small" tone="muted">Pick the delivery that replaced the returned goods. The return will close without a credit memo.</Text>
+                        <Select
+                          value={replacementDnId}
+                          onValueChange={setReplacementDnId}
+                          placeholder="Pick a delivery…"
+                          options={replacementDeliveries.map((dn) => ({ value: dn.id, label: `${dnNumber(dn)} · ${dn.postingDate} · ${dn.status}` }))}
+                        />
+                        <div className="flex gap-2">
+                          <Button type="button" intent="primary" variant="solid" size="small" disabled={!replacementDnId} onClick={confirmReplacement}>Confirm</Button>
+                          <Button type="button" intent="white" variant="solid" size="small" onClick={() => setLinkingReplacement(false)}>Cancel</Button>
+                        </div>
+                      </div>
+                    </Alert>
+                  ) : null}
+                  {added ? (
+                    <Alert intent="default" variant="outline" title={draft.status === 'Open' ? 'Waiting for the customer credit' : `This sales return is ${draft.status.toLowerCase()}`}>
+                      {draft.status === 'Open'
+                        ? 'The stock is back in. Copy the return to an A/R credit memo to give the customer their credit. Only remarks and attachments can change.'
+                        : 'Only remarks and attachments can change.'}
+                    </Alert>
+                  ) : null}
+                </>
+              }
+              main={
+                <>
                   <CustomerCard
                     customers={m.customers}
                     customerId={draft.customerId}
@@ -472,9 +476,10 @@ function SalesReturnForm() {
                   <DocLines {...srDoc({ ...sectionProps, onCopyClick: () => setCopying(true), canCopy: availableDeliveries.length > 0 }, view)} />
                   <DocumentJournalEntry def={salesReturnPayment} posting={journalEntry} {...sectionProps} />
                   <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach the RMA, photos of damage, or the courier return waybill." />
-                </div>
-
-                <aside className="flex flex-col gap-3 lg:col-span-4">
+                </>
+              }
+              aside={
+                <>
                   <SrDocumentCard {...sectionProps} />
                   <ReturnDatesCard {...sectionProps} readOnly={added} postingHint="When the stock comes back in." dueHint="When the customer credit is due." />
                   <DocumentPayment def={salesReturnPayment} posting={journalEntry} {...sectionProps} />
@@ -488,13 +493,22 @@ function SalesReturnForm() {
                     ownerHint="Owns the document."
                     remarksHint="Can be changed after the return is added."
                   />
-                </aside>
-              </div>
-            </Panel.Body>
+                </>
+              }
+            />
           )}
         </Panel>
       </Form>
-      <SrCustomerDetailsPanel {...sectionProps} open={customerDetailsOpen} onClose={() => setCustomerDetailsOpen(false)} />
+      <CustomerDetailsPanel
+        customer={ctx.customer}
+        draft={draft}
+        update={update}
+        readOnly={ctx.readOnly}
+        noun="return"
+        open={customerDetailsOpen}
+        onClose={() => setCustomerDetailsOpen(false)}
+        orderNumberHint="Set by Copy from delivery."
+      />
       {copying
         ? createPortal(
             <CopyPanel
