@@ -1,22 +1,21 @@
 import { Combobox, Radio, Text, TextField } from '@jasperlepardo/sikat-design-system';
 import { type DocLinesProps } from '../../../../components/form/docLines/DocLines';
+import { PO_NOUN } from '../../paths';
+import { cap } from '../../../../components/form/noun';
 import { purchCols, pick } from '../../shared/purchCols';
 import { costAccountOptions, lineHelpers, lineGlAccount, itemConfig } from '../../shared/purchLineHelpers';
 import { countryDef, departmentDef, priceListDef, warrantyTemplateDef } from '../../../settings/masterDefs';
 import { isPriceListValid } from '../../../../services/priceLists';
-import {
-  PRICE_MODES,
-  newPoLine,
-  type PoLine,
-  type PriceMode,
-} from '../../../../mocks/purchaseOrders';
+import { newPoLine, type PoLine } from '../../../../mocks/purchaseOrders';
+import { PRICE_MODES, type PriceMode } from '../../../../mocks/common';
 import { itemsPerUom } from '../../../../mocks/items';
 import { formatAmount } from '../../../../services/format';
-import { formatDate } from '../../../../services/dates';
 import { receivesFromVendors } from '../../../../mocks/itemMasters';
+import { getDocumentSettings } from '../../../../services/documentSettings';
 import { getPurchasingSettings, grossPrice, inventoryQty, lineNet, poTotals, priceAfterDiscount } from '../../../../services/purchaseOrders';
 import { poWithholding } from '../../../../services/withholding';
 import { linePricing, lineFromItem, viewCurrency, type PoTabProps } from './types';
+import { CurrencyToggle, currencyChoices } from '../../shared/CurrencyToggle';
 import { PurchTotalsFooter, PurchTotalNote, PurchTotalRow } from '../../shared/PurchTotalsFooter';
 import { taxCodeOptions } from '../../../../services/taxCodeOptions';
 import { round2 } from '../../../../services/num';
@@ -37,9 +36,12 @@ export function poDoc({ draft, update, errors, m, ctx }: PoTabProps): DocLinesPr
   const withholdingLines = poWithholding(draft, ctx.vendor, m.items, m.tax, draft.postingDate);
   const withholdingTotal = withholdingLines.filter((w) => w.deducted).reduce((s, w) => s + w.amount, 0);
   const view = viewCurrency(draft, ctx, m);
+  // Viewing in PHP is a read-only conversion: the prices stay in the document currency.
+  const converted = view.code !== draft.currency;
+  const locked = linesLocked || converted;
   const showFreight = getPurchasingSettings().manageFreightInDocuments;
   const showRounding = getPurchasingSettings().roundingMethod === 'By Currency';
-  const priceModeOn = getPurchasingSettings().separateNetGrossPriceMode;
+  const priceModeOn = getDocumentSettings().separateNetGrossPriceMode;
   const vTotals = {
     beforeDiscount: view.convert(totals.beforeDiscount),
     discount: view.convert(totals.discount),
@@ -97,7 +99,7 @@ export function poDoc({ draft, update, errors, m, ctx }: PoTabProps): DocLinesPr
   // The per-field rendering lives in the shared registry; PO supplies its data/services
   // here and picks which columns + default visibility. Order mirrors PR / PQ.
   const cols = purchCols<PoLine>({
-    patch, readOnly: linesLocked, currency: draft.currency, qtyHeader: 'Ordered qty',
+    patch, readOnly: locked, currency: view.code, qtyHeader: 'Ordered qty',
     countryDef,
     warrantyDef: warrantyTemplateDef,
     itemWarranty: (l) => itemOf(l)?.warrantyTemplate ?? '',
@@ -147,14 +149,15 @@ export function poDoc({ draft, update, errors, m, ctx }: PoTabProps): DocLinesPr
     prefsKey: 'po',
     cardHeader: true,
     columns,
-    rows: lines,
+    rows: converted ? lines.map((l) => ({ ...l, unitPrice: view.convert(l.unitPrice) })) : lines,
     icon: 'list_alt',
-    title: 'Contents',
-    description: errors.lines ?? `Items to order, in the purchasing unit. Prices are in ${draft.currency}${draft.currency === 'PHP' ? '' : `; totals in PHP at ${ctx.fx ? `${ctx.fx} (${ctx.fxSource}, ${formatDate(ctx.fxDate)})` : '—'}`}.`,
+    title: cap(PO_NOUN.lineLabel!),
+    actions: <CurrencyToggle choices={currencyChoices(draft.currency)} value={view.code} onChange={(code) => update({ currencyView: code === 'PHP' ? 'Local' : 'BP' })} />,
+    description: errors.lines,
     sortableKeys: ['item'],
     sortValue: (l, key) => (key === 'item' ? l.itemNo : String(l[key as keyof PoLine] ?? '')).toLowerCase(),
-    readOnly: linesLocked,
-    onRemove: (picked) => update({ lines: lines.filter((l) => !picked.includes(l)) }),
+    readOnly: locked,
+    onRemove: (picked) => update({ lines: lines.filter((l) => !picked.some((p) => p.id === l.id)) }),
     item: itemConfig(h, {
       resolve: (l) => { const it = itemOf(l); return it ? { itemNo: it.itemNo, name: l.name || it.name } : null; },
       onPick: (l, id) => { if (id) pickItem(l, id); else patch(l.id, { itemId: '', itemNo: '', name: '', description: '' }); },
@@ -165,10 +168,10 @@ export function poDoc({ draft, update, errors, m, ctx }: PoTabProps): DocLinesPr
     }),
     empty: (
       <Text variant="small" tone={errors.lines ? 'danger' : 'muted'}>
-        {draft.vendorId ? 'No lines yet. Search above to add one.' : 'Pick a vendor first, then add lines.'}
+        {draft.vendorId ? 'No lines yet. Search below to add one.' : 'Pick a vendor first, then add lines.'}
       </Text>
     ),
-    header: priceModeOn && !linesLocked ? (
+    header: priceModeOn && !locked ? (
       <div className="flex flex-wrap items-center gap-6 px-2" role="radiogroup" aria-label="Price mode">
         <Text variant="small" tone="muted">Price mode</Text>
         {PRICE_MODES.map((mode: PriceMode) => (
@@ -228,11 +231,6 @@ export function poDoc({ draft, update, errors, m, ctx }: PoTabProps): DocLinesPr
             </PurchTotalNote>
           ))}
           <PurchTotalRow label="Net payment due" value={view.convert(totals.total - withholdingTotal)} code={view.code} strong />
-          {draft.currency !== 'PHP' && draft.currencyView === 'BP' && ctx.fx ? (
-            <PurchTotalNote>
-              ≈ PHP {formatAmount(totals.total * ctx.fx)} at {ctx.fx} ({formatDate(ctx.fxDate)} rate).
-            </PurchTotalNote>
-          ) : null}
         </>}
       />
     ),

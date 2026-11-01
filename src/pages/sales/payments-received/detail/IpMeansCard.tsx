@@ -2,9 +2,10 @@ import { Button, Checkbox, Combobox, DatePicker, Icon, Text, TextField, type Tab
 import { DataTable } from '../../../../components/form/DataTable';
 import { MasterLookup } from '../../../../components/form/MasterLookup';
 import type { Account } from '../../../../mocks/chartOfAccounts';
-import { INCOMING_DIFF_ALLOWED, newReceivedCard, newReceivedCheck, type IncomingMeans, type ReceivedCard, type ReceivedCheck } from '../../../../mocks/incomingPayments';
+import { newReceivedCard, newReceivedCheck, type IncomingMeans, type ReceivedCard, type ReceivedCheck } from '../../../../mocks/incomingPayments';
 import { formatDate } from '../../../../services/dates';
 import { formatAmount } from '../../../../services/format';
+import { amt, TotalsBar, TotalsRow } from '../../../../components/form/TotalsFooterParts';
 import { amountDue, meansTotal, paymentDifference, type IncomingInput } from '../../../../services/incomingPayments';
 import { banks as bankList, cardBrands, houseBankFor, nameIn } from '../../../../services/partnerMasters';
 import { cardBrandDef } from '../../../settings/masterDefs';
@@ -212,29 +213,18 @@ export function IncomingMeansSection({ draft, update, accounts, fx, readOnly }: 
   const diffTone = diff !== 0 && !withinAllowance ? 'danger' : 'heading';
 
   const footer = (
-    <div className="flex flex-col gap-1 px-2 py-1">
-      <div className="flex items-center justify-between gap-4">
-        <Text variant="small" tone="muted">Amount due</Text>
-        <Text variant="small" className="tabular-nums">{code} {formatAmount(due)}</Text>
-      </div>
-      <div className="flex items-center justify-between gap-4">
-        <Text variant="small" tone="muted">Received</Text>
-        <Text variant="small" className="tabular-nums">{code} {formatAmount(received)}</Text>
-      </div>
-      <div className="flex items-baseline justify-between gap-4 border-t pt-1" style={{ borderColor: 'var(--color-border-neutral-subtle)' }}>
-        <Text variant="small" weight="semibold" tone={diffTone}>{diffLabel}</Text>
-        <Text variant="small" weight="semibold" tone={diffTone} className="tabular-nums">{code} {formatAmount(diff)}</Text>
-      </div>
-      <Text variant="small" tone="muted">Up to PHP {formatAmount(INCOMING_DIFF_ALLOWED)} difference posts to Other Income or Miscellaneous Expense; more is an open balance and blocks adding.</Text>
+    <div className="flex flex-col">
+      <TotalsRow label="Amount due" value={amt(due, code)} />
+      <TotalsRow label="Received" value={amt(received, code)} />
+      <TotalsBar label={diffLabel} value={amt(diff, code)} tone={diffTone} />
     </div>
   );
 
   return (
     <DataTable<MeansRow>
-      variant="plain"
+      variant="card"
       icon="payments"
       title="Payment means"
-      description="How the money arrived. Each method debits its own account until deposited or reconciled."
       rows={rows}
       getRowId={(r) => r.id}
       columns={columns}

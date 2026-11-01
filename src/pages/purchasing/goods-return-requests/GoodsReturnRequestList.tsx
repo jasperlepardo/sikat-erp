@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useLocation } from 'react-router';
-import { Alert, Badge, Panel, Table, TableContent, Text, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { Alert, Badge, Card, Panel, Table, TableContent, Text, type TableColumn } from '@jasperlepardo/sikat-design-system';
 import { PageHeader } from '../../../components/form/PageHeader';
 import { GRR_STATUSES, type GoodsReturnRequest } from '../../../mocks/goodsReturnRequests';
 import { formatDate } from '../../../services/dates';
@@ -8,7 +8,7 @@ import { listGoodsReturnRequests, grrNumber } from '../../../services/goodsRetur
 import { useAsync } from '../../../services/useAsync';
 import { dateField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
-import { useListPage } from '../../../components/form/DataTable';
+import { fillCardClass, useListPage } from '../../../components/form/DataTable';
 import { cap } from '../../../components/form/noun';
 import { GRR_LIST_PATH, GRR_NOUN, GRR_STATUS_INTENT } from '../paths';
 
@@ -67,17 +67,21 @@ export function GoodsReturnRequestList() {
         searchValue={query}
         onSearchChange={(v) => { setQuery(v); resetPage(); }}
         icon="assignment_return"
-        title={presets.menu}
+        title={cap(GRR_NOUN.many)}
         create={{ noun: GRR_NOUN, to: GRR_LIST_PATH }}
       />
       <Panel.Body className="flex flex-col gap-2">
         {notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : null}
-        {presets.bar(null)}
-        {requests ? (
-          <Table caption={cap(GRR_NOUN.many)} columns={columns} rows={visible} getRowId={(r) => r.id} sort={sort} onSortChange={setSort} layout="fill" pagination={pagination} />
-        ) : (
-          <Text tone="muted" className="p-4">Loading goods return requests…</Text>
-        )}
+        {presets.toolbar(null)}
+        <Card className={fillCardClass(visible.length)}>
+          {!requests ? (
+            <Text tone="muted" className="p-4">Loading goods return requests…</Text>
+          ) : requests.length ? (
+            <Table caption={cap(GRR_NOUN.many)} columns={columns} rows={visible} getRowId={(r) => r.id} sort={sort} onSortChange={setSort} layout="fill" pagination={pagination} />
+          ) : (
+            <Text tone="muted" className="p-4">No {GRR_NOUN.many} yet. Start one from a goods receipt or A/P invoice (More actions › Create {GRR_NOUN.one}), or with New {GRR_NOUN.one}.</Text>
+          )}
+        </Card>
       </Panel.Body>
       {presets.panel}
     </Panel>

@@ -9,7 +9,7 @@ import type { TransferRequestStatus } from '../../mocks/inventoryTransferRequest
 import type { TransferStatus } from '../../mocks/inventoryTransfers';
 
 export const TRANSFER_LIST_PATH = '/inventory/inventory-transfers';
-export const TRANSFER_NOUN: Noun = { one: 'inventory transfer', many: 'inventory transfers' };
+export const TRANSFER_NOUN: Noun = { one: 'inventory transfer', many: 'inventory transfers', lineLabel: 'transferred items' };
 
 export const TRANSFER_STATUS_INTENT: Record<TransferStatus, 'default' | 'success'> = {
   Draft: 'default',
@@ -17,7 +17,7 @@ export const TRANSFER_STATUS_INTENT: Record<TransferStatus, 'default' | 'success
 };
 
 export const TRANSFER_REQUEST_LIST_PATH = '/inventory/transfer-requests';
-export const TRANSFER_REQUEST_NOUN: Noun = { one: 'transfer request', many: 'transfer requests' };
+export const TRANSFER_REQUEST_NOUN: Noun = { one: 'transfer request', many: 'transfer requests', lineLabel: 'items to transfer' };
 
 export const TRANSFER_REQUEST_STATUS_INTENT: Record<TransferRequestStatus, 'primary' | 'success'> = {
   Open: 'primary',
@@ -27,10 +27,10 @@ export const TRANSFER_REQUEST_STATUS_INTENT: Record<TransferRequestStatus, 'prim
 export const COUNT_STATUS_INTENT: Record<CountStatus, 'primary' | 'default'> = { Open: 'primary', Closed: 'default' };
 
 export const COUNT_LIST_PATH = '/inventory/stock-counts';
-export const COUNT_NOUN: Noun = { one: 'stock count', many: 'stock counts' };
+export const COUNT_NOUN: Noun = { one: 'stock count', many: 'stock counts', lineLabel: 'counted items' };
 
 export const POSTING_LIST_PATH = '/inventory/stock-counts/postings';
-export const POSTING_NOUN: Noun = { one: 'inventory posting', many: 'inventory postings' };
+export const POSTING_NOUN: Noun = { one: 'inventory posting', many: 'inventory postings', lineLabel: 'posted items' };
 
 export const ITEM_LIST_PATH = '/inventory/items';
 export const ITEM_NOUN: Noun = { one: 'item', many: 'items' };

@@ -19,7 +19,7 @@ import { needsApproval } from '../../../../services/approval';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
 import { CURRENT_USER_ID } from '../../../../mocks/common';
-import { blankBlanketAgreement, newBaLine, type BlanketAgreement } from '../../../../mocks/blanketAgreements';
+import { blankBlanketAgreement, newBaLine, type BlanketAgreement, type BaStatus } from '../../../../mocks/blanketAgreements';
 import { blankSalesOrder, newSoLine } from '../../../../mocks/salesOrders';
 import { formatDate, todayISO } from '../../../../services/dates';
 import { loadInventoryMasters } from '../../../../services/inventoryMasters';
@@ -32,7 +32,10 @@ import { CustomerCard } from '../../shared/CustomerCard';
 import { CopyPanel } from '../../../purchasing/shared/CopyPanel';
 import { SalesDocumentFlow } from '../../shared/SalesDocumentFlow';
 import { BaCustomerPanel } from './BaCustomerPanel';
-import { BaAgreementCard } from './BaAgreementCard';
+import { BaDocumentCard } from './BaDocumentCard';
+import { DocumentDates } from '../../../../components/form/DatesCard';
+import { AssignmentCard } from '../../../../components/form/AssignmentCard';
+import { salesAgreementDates } from '../../../documentDateDefs';
 import { GeneralTab } from './general';
 import { AgreementLinesCard } from '../../../../components/agreements/AgreementLinesCard';
 import { AgreementSummaryCard } from '../../../../components/agreements/AgreementSummaryCard';
@@ -162,9 +165,10 @@ function BaForm() {
     });
   };
 
-  const submit = async (e: FormEvent | null, asDraft = false) => {
+  const submit = async (e: FormEvent | null, opts: { asDraft?: boolean; status?: BaStatus } = {}) => {
     e?.preventDefault();
-    const doc: BaDraft = { ...draft };
+    const { asDraft = false, status } = opts;
+    const doc: BaDraft = status ? { ...draft, status } : { ...draft };
     const found = validate(doc);
     setProblems(found);
     if (found.length) return;
@@ -178,6 +182,17 @@ function BaForm() {
             : `Blanket agreement ${baNumber(ba)} ${isNew || draft.status === 'Draft' ? 'added' : 'updated'} — ${ba.customerName}.`,
         },
       });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  /** A status move from the header: save the record at its new status, then back to the list. */
+  const move = async (status: BaStatus, verb: string) => {
+    setSaving(true);
+    try {
+      const ba = await saveBlanketAgreement({ ...draft, status } as BaInput);
+      navigate(BA_LIST_PATH, { state: { notice: `Blanket agreement ${baNumber(ba)} ${verb} — ${ba.customerName}.` } });
     } finally {
       setSaving(false);
     }
@@ -238,6 +253,14 @@ function BaForm() {
       ? [{ label: 'Create sales order…', icon: 'shopping_bag', onSelect: () => setCreatingSo(true) }]
       : []),
     ...(!isNew ? [{ label: 'Duplicate', icon: 'content_copy', onSelect: duplicate }] : []),
+    ...(draft.status === 'On Hold' ? [{ label: 'Resume', icon: 'play_circle', onSelect: () => move('Approved', 'resumed') }] : []),
+    ...(draft.status === 'Approved' ? [{ label: 'Put on hold', icon: 'pause_circle', onSelect: () => move('On Hold', 'put on hold') }] : []),
+    ...(draft.status === 'Approved' || draft.status === 'On Hold'
+      ? [
+          { label: 'Close', icon: 'task_alt', onSelect: () => move('Closed', 'closed') },
+          { label: `Terminate ${BA_NOUN.one}`, icon: 'cancel', onSelect: () => move('Terminated', 'terminated') },
+        ]
+      : []),
   ];
 
   const title = isNew
@@ -248,7 +271,7 @@ function BaForm() {
 
   return (
     <>
-      <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
+      <Form className="flex-1" onSubmit={(e) => submit(e, added ? undefined : { status: 'Approved' })} noValidate>
         <Panel className="flex-1">
           <PageHeader
             variant="plain"
@@ -263,8 +286,8 @@ function BaForm() {
                 listPath={BA_LIST_PATH}
                 mode={draft.status === 'Draft' ? 'draft' : readOnly ? 'readonly' : 'open'}
                 busy={saving}
-                onDraft={() => submit(null, true)}
-                onSubmit={() => submit(null)}
+                onDraft={() => submit(null, { asDraft: true })}
+                onSubmit={() => submit(null, added ? undefined : { status: 'Approved' })}
                 menu={menu}
                 prevNext={isNew ? undefined : { path: BA_LIST_PATH, prevId, nextId }}
               />
@@ -300,36 +323,36 @@ function BaForm() {
                 </Alert>
               ) : null}
 
-              <fieldset disabled={readOnly} className="contents">
-                {draft.lines.length > 0 && (
-                  <AgreementSummaryCard side="sales" currency={draft.currency} totals={totals} settlementProbability={draft.settlementProbability} />
-                )}
-                <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
-                  <div className="flex flex-col gap-2 lg:col-span-8">
-                    <CustomerCard
-                      customers={m.customers}
-                      customerId={draft.customerId}
-                      customer={customer}
-                      onPickCustomer={pickCustomer}
-                      onOpenDetails={() => setCustomerDetailsOpen(true)}
-                      locked={!!(customer && added)}
-                      error={errors.customerId}
-                    />
-                    <AgreementLinesCard side="sales" draft={draft} update={update} m={m} readOnly={readOnly} newLine={newBaLine} />
-                    <AttachmentsCard
-                      attachments={draft.attachments}
-                      onChange={(attachments) => update({ attachments })}
-                      emptyHint="Signed agreement, customer's approval, or supporting documents."
-                      withDescription
-                    />
-                  </div>
-
-                  <aside className="flex flex-col gap-2 lg:col-span-4">
-                    <BaAgreementCard draft={draft} update={update} m={m} added={added} />
-                    <GeneralTab draft={draft} update={update} errors={errors} m={m} readOnly={readOnly} />
-                  </aside>
+              {draft.lines.length > 0 && (
+                <AgreementSummaryCard side="sales" currency={draft.currency} totals={totals} settlementProbability={draft.settlementProbability} />
+              )}
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+                <div className="flex flex-col gap-3 lg:col-span-8">
+                  <CustomerCard
+                    customers={m.customers}
+                    customerId={draft.customerId}
+                    customer={customer}
+                    onPickCustomer={pickCustomer}
+                    onOpenDetails={() => setCustomerDetailsOpen(true)}
+                    locked={!!(customer && added)}
+                    error={errors.customerId}
+                  />
+                  <AgreementLinesCard side="sales" draft={draft} update={update} m={m} readOnly={readOnly} newLine={newBaLine} />
+                  <AttachmentsCard
+                    attachments={draft.attachments}
+                    onChange={(attachments) => update({ attachments })}
+                    emptyHint="Signed agreement, customer's approval, or supporting documents."
+                    withDescription
+                  />
                 </div>
-              </fieldset>
+
+                <aside className="flex flex-col gap-3 lg:col-span-4">
+                  <BaDocumentCard draft={draft} update={update} m={m} added={added} />
+                  <DocumentDates def={salesAgreementDates} draft={draft} update={update} errors={errors} readOnly={readOnly} />
+                  <GeneralTab draft={draft} update={update} errors={errors} m={m} readOnly={readOnly} />
+                  <AssignmentCard draft={draft} update={update} ownerHint="Owns the document (data access)." remarksHint="Can be changed at any status." />
+                </aside>
+              </div>
             </Panel.Body>
           )}
         </Panel>

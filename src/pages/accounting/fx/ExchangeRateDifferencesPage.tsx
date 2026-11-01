@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Alert, Button, Checkbox, DatePicker, FormField, List, Panel, Text, TextField, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { Alert, Button, Checkbox, DatePicker, FormField, Panel, Text, TextField, type TableColumn } from '@jasperlepardo/sikat-design-system';
 import { PageHeader } from '../../../components/form/PageHeader';
 import { DataTable } from '../../../components/form/DataTable';
+import { JournalPreview } from '../../../components/form/JournalPreview';
 import { Fields, Section } from '../../../components/form/fields';
-import { accountText, type Account } from '../../../mocks/chartOfAccounts';
+import { type Account } from '../../../mocks/chartOfAccounts';
 import type { ErdRow, ErdRun } from '../../../mocks/exchangeRateDifferences';
 import { listApInvoices } from '../../../services/apInvoices';
 import { listArInvoices } from '../../../services/arInvoices';
@@ -194,24 +195,22 @@ export function ExchangeRateDifferencesPage() {
         />
 
         <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
-          <Section icon="account_balance" title="Journal entry">
-            {lines.length ? (
-              <List.Group divider>
-                {lines.map((l) => (
-                  <List.Item key={l.id} title={`${accountText(rowAccount(l, [...m.customers, ...m.vendors]), m.accounts)}${l.partnerId ? ` · ${[...m.customers, ...m.vendors].find((p) => p.id === l.partnerId)?.name ?? ''}` : ''}`} content={<span className="whitespace-nowrap tabular-nums">{l.debit ? `Dr ${formatAmount(l.debit)}` : `Cr ${formatAmount(l.credit)}`}</span>} />
-                ))}
-              </List.Group>
-            ) : (
-              <Text variant="small" tone="muted">Nothing to post: no ticked document has a difference at these rates.</Text>
-            )}
-            <Text variant="small" tone="muted">Dated {formatDate(date)}, trans. code FXRV, reversed on {formatDate(reversalDate)}.</Text>
-            <div>
-              <Button type="button" intent="primary" variant="solid" disabled={posting || !lines.length || Boolean(period)} onClick={post}>
+          <JournalPreview
+            journal={lines.map((l) => ({
+              id: l.id,
+              account: rowAccount(l, [...m.customers, ...m.vendors]),
+              debit: l.debit,
+              credit: l.credit,
+              sublabel: l.partnerId ? [...m.customers, ...m.vendors].find((p) => p.id === l.partnerId)?.name : undefined,
+            }))}
+            accounts={m.accounts}
+            actions={
+              <Button type="button" size="small" intent="primary" variant="solid" disabled={posting || !lines.length || Boolean(period)} onClick={post}>
                 {posting ? 'Posting…' : 'Post revaluation'}
               </Button>
-            </div>
-            {period ? <Text variant="small" tone="danger">{period}</Text> : null}
-          </Section>
+            }
+            footer={period ? <div className="px-4 py-1.5"><Text variant="small" tone="danger">{period}</Text></div> : null}
+          />
           <DataTable icon="history" title="Previous runs" rows={runs} getRowId={(r) => r.id} columns={runColumns} unsortable={runColumns.map((c) => c.key)} noPagination empty={<Text variant="small" tone="muted">No revaluations posted yet.</Text>} />
         </div>
       </Panel.Body>

@@ -86,10 +86,12 @@ export function lineWithholdings(
   items: readonly Item[],
   tax: TaxMasterData,
   date: string,
+  /** Fraction of each line's net to withhold on — a down payment invoice bills only its DPM share. */
+  share = 1,
 ): Map<string, WithholdingLine[]> {
   const out = new Map<string, WithholdingLine[]>();
   if (!vendor) return out;
-  const factor = 1 - po.discountPct / 100;
+  const factor = (1 - po.discountPct / 100) * share;
   for (const line of po.lines) {
     const item = items.find((i) => i.id === line.itemId);
     if (!item) continue;
@@ -116,9 +118,10 @@ export function poWithholding(
   items: readonly Item[],
   tax: TaxMasterData,
   date: string,
+  share = 1,
 ): WithholdingLine[] {
   const keyed = po.lines.map((l, i) => ({ ...l, id: String(i) }));
-  return totalWithholding([...lineWithholdings({ ...po, lines: keyed }, vendor, items, tax, date).values()].flat());
+  return totalWithholding([...lineWithholdings({ ...po, lines: keyed }, vendor, items, tax, date, share).values()].flat());
 }
 
 /** Settings › Accounting & Tax as seeded: what seeded documents were "added" under. */

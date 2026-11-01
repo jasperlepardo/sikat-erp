@@ -88,7 +88,7 @@ export interface BlanketAgreement {
 export const BA_SERIES: DocumentSeries[] = [
   {
     id: 'ba-primary',
-    name: 'Primary',
+    name: 'Sales Blanket Agreement',
     prefix: '',
     firstNo: 1,
     manual: false,

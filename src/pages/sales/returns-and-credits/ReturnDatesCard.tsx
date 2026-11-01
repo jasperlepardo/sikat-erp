@@ -1,5 +1,6 @@
-import { FieldStack, ReadOnly, Section, bind, type Errors } from '../../../components/form/fields';
-import { formatDate } from '../../../services/dates';
+import { DatesCard } from '../../../components/form/DatesCard';
+import { DOC_DATE, dateRow } from '../../../components/form/documentDates';
+import { type Errors } from '../../../components/form/fields';
 
 interface ReturnFields {
   postingDate: string;
@@ -18,17 +19,16 @@ interface Props {
 }
 
 export function ReturnDatesCard({ draft, update, readOnly, errors, postingHint, dueHint }: Props) {
-  const h = bind(draft, update);
   return (
-    <fieldset disabled={readOnly} className="contents">
-      <Section icon="calendar_today" title="Dates">
-        <FieldStack>
-          {h.date('postingDate', 'Posting date', { required: true, error: errors.postingDate, hint: postingHint })}
-          {h.date('dueDate', 'Due date', { hint: dueHint })}
-          {h.date('documentDate', 'Document date', { required: true, error: errors.documentDate })}
-          <ReadOnly label="Close date" value={draft.closeDate ? formatDate(draft.closeDate) : '—'} />
-        </FieldStack>
-      </Section>
-    </fieldset>
+    <DatesCard
+      draft={draft}
+      update={update}
+      closeDate={draft.closeDate}
+      dates={[
+        dateRow(DOC_DATE.effective, { error: errors.postingDate, readOnly, hint: postingHint }),
+        dateRow(DOC_DATE.due, { readOnly, hint: dueHint, optional: true }),
+        dateRow(DOC_DATE.document, { error: errors.documentDate, readOnly }),
+      ]}
+    />
   );
 }

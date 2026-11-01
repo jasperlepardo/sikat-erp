@@ -3,6 +3,7 @@ import { useLocation } from 'react-router';
 import { formatDate } from '../../../services/dates';
 import {
   Alert,
+  Card,
   Panel,
   Table,
   TableContent,
@@ -20,7 +21,7 @@ import { nameIn } from '../../../services/partnerMasters';
 import { branches, departments } from '../../../services/peopleMasters';
 import { dateField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
-import { useListPage } from '../../../components/form/DataTable';
+import { fillCardClass, useListPage } from '../../../components/form/DataTable';
 import { cap } from '../../../components/form/noun';
 import { PR_LIST_PATH, PR_NOUN, PR_STATUS_INTENT } from '../paths';
 
@@ -149,7 +150,7 @@ export function PurchaseRequestList() {
           resetPage();
         }}
         icon="inbox"
-        title={presets.menu}
+        title={cap(PR_NOUN.many)}
         create={{ noun: PR_NOUN, to: PR_LIST_PATH }}
       />
       <Panel.Body className="flex flex-col gap-2">
@@ -158,21 +159,25 @@ export function PurchaseRequestList() {
             {notice}
           </Alert>
         ) : null}
-        {presets.bar(null)}
-        {requests ? (
-          <Table
-            caption={cap(PR_NOUN.many)}
-            columns={columns}
-            rows={visible}
-            getRowId={(r) => r.id}
-            sort={sort}
-            onSortChange={setSort}
-            layout="fill"
-            pagination={pagination}
-          />
-        ) : (
-          <Text tone="muted" className="p-4">Loading purchase requests…</Text>
-        )}
+        {presets.toolbar(null)}
+        <Card className={fillCardClass(visible.length)}>
+          {!requests ? (
+            <Text tone="muted" className="p-4">Loading purchase requests…</Text>
+          ) : requests.length ? (
+            <Table
+              caption={cap(PR_NOUN.many)}
+              columns={columns}
+              rows={visible}
+              getRowId={(r) => r.id}
+              sort={sort}
+              onSortChange={setSort}
+              layout="fill"
+              pagination={pagination}
+            />
+          ) : (
+            <Text tone="muted" className="p-4">No {PR_NOUN.many} yet. Create one with New {PR_NOUN.one}.</Text>
+          )}
+        </Card>
       </Panel.Body>
       {presets.panel}
     </Panel>

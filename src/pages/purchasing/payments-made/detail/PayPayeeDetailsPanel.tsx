@@ -46,33 +46,32 @@ export function PayPayeeDetailsPanel({ draft, update, vendor, m, readOnly, open,
         }
       />
       <Panel.Body>
-        <fieldset disabled={readOnly} className="contents">
-          <Section icon="contacts" title="Payee details">
-            <Fields cols={1}>
-              {h.lookup('payTo', 'Pay to', payToOptions.length ? payToOptions : [{ value: draft.payTo, label: draft.payTo || '—' }], { hint: "The vendor's address the payment goes to." })}
-              {h.lookup(
-                'contactId',
-                'Contact person',
-                (vendor.contacts ?? []).filter((c) => c.active || c.id === draft.contactId).map((c) => ({ value: c.id, label: contactName(c) })),
-                { clearable: true },
-              )}
-              {vendor.currency === ALL_CURRENCIES ? (
-                <FormField label="Currency" tooltip="This vendor takes all currencies — open invoices in the currency picked are listed.">
-                  {(p) => (
-                    <Select
-                      {...p}
-                      options={activeOptions(m.currencies, (c) => c.code, (c) => `${c.code} — ${c.name}`, draft.currency)}
-                      value={draft.currency}
-                      onValueChange={(currency) => update({ currency, rows: openRows(m, draft.vendorId, currency) })}
-                    />
-                  )}
-                </FormField>
-              ) : (
-                <ReadOnly label="Currency" value={code} hint="The vendor's currency." />
-              )}
-            </Fields>
-          </Section>
-        </fieldset>
+        <Section icon="contacts" title="Payee details">
+          <Fields cols={1}>
+            {h.lookup('payTo', 'Pay to', payToOptions.length ? payToOptions : [{ value: draft.payTo, label: draft.payTo || '—' }], { hint: "The vendor's address the payment goes to.", readOnly })}
+            {h.lookup(
+              'contactId',
+              'Contact person',
+              (vendor.contacts ?? []).filter((c) => c.active || c.id === draft.contactId).map((c) => ({ value: c.id, label: contactName(c) })),
+              { clearable: true, readOnly },
+            )}
+            {vendor.currency === ALL_CURRENCIES ? (
+              <FormField label="Currency" tooltip="This vendor takes all currencies — open invoices in the currency picked are listed.">
+                {(p) => (
+                  <Select
+                    {...p}
+                    readOnly={readOnly}
+                    options={activeOptions(m.currencies, (c) => c.code, (c) => `${c.code} — ${c.name}`, draft.currency)}
+                    value={draft.currency}
+                    onValueChange={(currency) => update({ currency, rows: openRows(m, draft.vendorId, currency) })}
+                  />
+                )}
+              </FormField>
+            ) : (
+              <ReadOnly label="Currency" value={code} hint="The vendor's currency." />
+            )}
+          </Fields>
+        </Section>
       </Panel.Body>
     </SidePanel>
   );

@@ -32,14 +32,17 @@ export function IncomingDocuments({ draft, update, errors, fx, readOnly }: Props
   const due = amountDue(draft);
   const sequenceTotal = rows.filter((r) => r.selected).reduce((n, r) => n + r.amount, 0);
 
+  const pickColumn: TableColumn<IncomingRow> = {
+    key: 'pick',
+    header: '',
+    cell: (r) => (
+      <Checkbox aria-label={`Pay ${r.docNo}`} disabled={r.blocked || draft.addInSequence} checked={r.selected} onChange={(e) => patch(r.id, { selected: e.currentTarget.checked, amount: r.amount || r.balanceDue })} />
+    ),
+  };
+
   const columns: TableColumn<IncomingRow>[] = [
-    {
-      key: 'pick',
-      header: '',
-      cell: (r) => (
-        <Checkbox aria-label={`Pay ${r.docNo}`} disabled={readOnly || r.blocked || draft.addInSequence} checked={r.selected} onChange={(e) => patch(r.id, { selected: e.currentTarget.checked, amount: r.amount || r.balanceDue })} />
-      ),
-    },
+    // A posted payment can't be re-ticked, so drop the pick column entirely rather than leave an empty cell.
+    ...(readOnly ? [] : [pickColumn]),
     {
       key: 'docNo',
       header: 'Document',
@@ -104,13 +107,13 @@ export function IncomingDocuments({ draft, update, errors, fx, readOnly }: Props
   ];
 
   return (
-    <div className="flex flex-col gap-2">
+    <>
       <DataTable
         variant="card"
         noPagination
         icon="receipt_long"
         title="Open documents"
-        description={errors.rows ?? `The customer's open A/R invoices in ${code}, oldest due first. Tick what this payment settles; lower Total payment to pay part. * = overdue or blocked.`}
+        description={errors.rows}
         rows={rows}
         getRowId={(r) => r.id}
         columns={columns}
@@ -143,7 +146,7 @@ export function IncomingDocuments({ draft, update, errors, fx, readOnly }: Props
           {code !== 'PHP' && fx ? ` · PHP ${formatAmount(due * fx)}` : ''}
         </Text>
       </div>
-    </div>
+    </>
   );
 }
 

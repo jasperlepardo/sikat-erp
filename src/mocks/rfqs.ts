@@ -9,7 +9,7 @@
  * - Valid Until dates track whether the quote is still usable.
  * - No warehouse on lines — that is decided when the PO is created.
  */
-import type { Attachment, DocumentSeries } from './common';
+import type { Attachment, DocumentSeries, PriceMode } from './common';
 import type { PurchLine } from './purchLine';
 import type { PoReference } from './purchaseOrders';
 import { employeeId, plId, termId } from './masters';
@@ -86,7 +86,6 @@ export interface Rfq {
   paymentMethod: string;
   cashDiscountDays: number;
   projectId: string;
-  cancellationDate: string;
   indicator: string;
   orderNumber: string;
   references: PoReference[];
@@ -94,6 +93,8 @@ export interface Rfq {
   // Footer
   buyerId: string;
   ownerId: string;
+  /** Net / Gross / Net-and-Gross price-entry mode (display only; stored unit price is always net). */
+  priceMode?: PriceMode;
   discountPct: number;
   freight: number;
   freightTaxCode: string;
@@ -174,12 +175,12 @@ export function blankRfq(ownerId: string): Omit<Rfq, 'id'> {
     paymentMethod: 'BANK',
     cashDiscountDays: 0,
     projectId: '',
-    cancellationDate: '',
     indicator: '',
     orderNumber: '',
     references: [],
     buyerId: ownerId,
     ownerId,
+    priceMode: 'Net',
     discountPct: 0,
     freight: 0,
     freightTaxCode: 'IVAT',

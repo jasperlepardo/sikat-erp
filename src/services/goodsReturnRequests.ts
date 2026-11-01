@@ -8,6 +8,7 @@ import { createCollection } from './store';
 import { grrSeries, seriesLookup, formatDocNum } from './allSeries';
 import { todayISO } from './dates';
 import { round4 } from './num';
+import { poTotals } from './purchaseOrders';
 
 const seedGrrs = (): GoodsReturnRequest[] =>
   SEED_GOODS_RETURN_REQUESTS.map((r, i) => ({ ...r, id: `grr-${String(i + 1).padStart(3, '0')}` }));
@@ -40,6 +41,17 @@ export const grrNumber = (r: Pick<GoodsReturnRequest, 'seriesId' | 'docNum' | 'p
 export const openQty = (l: GrrLine) => Math.max(0, l.openQty);
 /** @public */
 export const drawnQty = (l: Pick<GrrLine, 'quantity' | 'openQty'>) => Math.max(0, l.quantity - l.openQty);
+
+/**
+ * Document totals for a goods return request, mirroring the Goods Return: goods value less the
+ * document discount, plus per-line VAT (reverse-charge lines excluded from tax). No freight — a
+ * return request doesn't carry shipping — so `poTotals` is fed `freight: 0`.
+ */
+export const grrTotals = (
+  r: Pick<GoodsReturnRequest, 'lines' | 'discountPct'>,
+  rateOf: (taxCode: string) => number,
+  isReverseCharge?: (taxCode: string) => boolean,
+) => poTotals({ lines: r.lines, discountPct: r.discountPct, freight: 0, freightTaxCode: '' }, rateOf, undefined, isReverseCharge);
 
 // ── Save ──────────────────────────────────────────────────────────────────────
 

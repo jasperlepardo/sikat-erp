@@ -42,6 +42,12 @@ const { seededLedger } = await import('../src/services/ledgerHistory');
 const { listItems } = await import('../src/services/items');
 const { poTotals } = await import('../src/services/purchaseOrders');
 const { poWithholding, withSeedWithholding } = await import('../src/services/withholding');
+const { dpiTotals } = await import('../src/services/apDownPaymentInvoices');
+
+const dpiRateOf = (date: string) => (code: string) => {
+  const c = SEED_TAX_CODES.find((x) => x.code === code);
+  return c ? (rateAt(c, date) ?? 0) : 0;
+};
 
 const failures: string[] = [];
 const check = (name: string, problems: string[]) => {
@@ -223,9 +229,15 @@ check('Nothing posts after the as-of day', L.entries.filter((e) => e.postingDate
   // Goods received not invoiced: what's received and neither billed nor sent back, at receipt cost.
   const grni = H.receipts.filter((g) => posted(g.status)).reduce((n, g) => n + g.lines.reduce((k, l) => k + l.unitCostLc * (l.itemsPerUnit || 1) * (l.quantity - l.invoicedQty - (l.returnedQty ?? 0)), 0), 0);
   check('Goods Received Not Invoiced (2025) equals what\'s received and not billed', near(-bal('2025'), grni, 5) ? [] : [`ledger ${-bal('2025')}, documents ${r2(grni)}`]);
-  // Requests post to 1150 when paid; invoices post to 1150 when added. Either way the undrawn balance sits there.
-  const undrawn = (d: { paidLc: number; drawnAmount: number; appliedAmount: number }) => d.paidLc - (d.drawnAmount ? d.paidLc * (d.drawnAmount / d.appliedAmount) : 0);
-  const advances = [...H.downPayments, ...H.downPaymentInvoices.filter((d) => posted(d.status))].reduce((n, d) => n + undrawn(d), 0);
+  // Requests post to 1150 when paid; invoices post to 1150 when added. A request posts its full paid
+  // amount; an invoice posts only its net (ex-VAT) advance — its input VAT and EWT are recognized
+  // separately on add. Either way the undrawn balance sits on 1150.
+  const undrawnFrac = (d: { drawnAmount: number; appliedAmount: number }) => (d.drawnAmount ? 1 - d.drawnAmount / d.appliedAmount : 1);
+  const dpiAdvance = (d: Parameters<typeof dpiTotals>[0] & { postingDate: string }) =>
+    dpiTotals(d, dpiRateOf(d.postingDate), (code) => vatNotPaidToVendor(SEED_TAX_CODES.find((x) => x.code === code))).dpm;
+  const advances =
+    H.downPayments.reduce((n, d) => n + d.paidLc * undrawnFrac(d), 0) +
+    H.downPaymentInvoices.filter((d) => posted(d.status)).reduce((n, d) => n + dpiAdvance(d) * undrawnFrac(d), 0);
   check('Advances to Suppliers (1150) equals the down payments paid and not drawn', near(bal('1150'), advances, 1) ? [] : [`ledger ${bal('1150')}, documents ${r2(advances)}`]);
 }
 // Inventory: the stock on hand at its cost. Moving-average costs round to the centavo per receipt,

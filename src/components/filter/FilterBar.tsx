@@ -2,6 +2,7 @@ import { type ReactNode } from 'react';
 import {
   Badge,
   Button,
+  Chip,
   Combobox,
   DatePicker,
   Icon,
@@ -62,16 +63,15 @@ export function FilterBar<T>({
       {showChips && active.length > 0 ? (
         <div className="flex flex-wrap items-center gap-2">
           {active.map((rule) => (
-            <Badge
+            <Chip
               key={rule.id}
               intent="primary"
-              variant="outline"
               size="medium"
-              onDismiss={() => removeRule(rule.id)}
-              dismissLabel={`Remove filter: ${describeRule(rule, fields)}`}
+              onRemove={() => removeRule(rule.id)}
+              removeLabel={`Remove filter: ${describeRule(rule, fields)}`}
             >
               {describeRule(rule, fields)}
-            </Badge>
+            </Chip>
           ))}
           {active.length > 1 ? (
             <Badge intent="default" variant="ghost" size="medium">

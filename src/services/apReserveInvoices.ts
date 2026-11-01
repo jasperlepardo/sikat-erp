@@ -8,7 +8,70 @@ import { listItems } from './items';
 import { birForms, taxCodes } from './masterData';
 import { getPartner } from './partners';
 import { withTaxFiling } from './taxRecalc';
-import { currentTaxData, stampWithholding, withSeedWithholding } from './withholding';
+import { currentTaxData, docWithholding, stampWithholding, withSeedWithholding } from './withholding';
+import { expenseAccountFor } from './goodsReceipts';
+import { inventoryAccountFor, type JournalLine } from './inventoryTransfers';
+import { rateAt, vatNotPaidToVendor, type TaxCode } from '../mocks/taxes';
+import { round2 } from './num';
+import type { Item } from '../mocks/items';
+import type { ItemGroup } from '../mocks/itemMasters';
+import type { Partner } from '../mocks/partners';
+import type { TaxMasterData } from './taxDetermination';
+
+const WITHHOLDING_PAYABLE: Record<string, string> = {
+  'Expanded (EWT)': '2340',
+  'Final (FWT)': '2345',
+  'Withholding VAT': '2330',
+  'Percentage tax': '2320',
+};
+
+/** Journal entry an A/P reserve invoice makes when added: Dr purchase accounts and Input VAT / Cr the vendor and any withholding tax. No stock moves (goods arrive on a later Goods Receipt). */
+export function apriJournal(
+  draft: ApRiInput,
+  fx: number,
+  { items, groups, codes, vendor, tax }: { items: Item[]; groups: ItemGroup[]; codes: TaxCode[]; vendor: Partner | undefined; tax: TaxMasterData },
+): JournalLine[] {
+  const vatAccount = (code: string) => codes.find((c) => c.code === code)?.glAccount || '1410';
+  const reverse = (code: string) => vatNotPaidToVendor(codes.find((c) => c.code === code));
+  const rateOf = (code: string) => { const c = codes.find((x) => x.code === code); return c ? (rateAt(c, draft.postingDate) ?? 0) : 0; };
+  const factor = 1 - draft.discountPct / 100;
+  const totals = new Map<string, number>();
+  const add = (account: string, amount: number) => {
+    if (account && amount) totals.set(account, round2((totals.get(account) ?? 0) + amount));
+  };
+
+  for (const l of draft.lines) {
+    const item = items.find((i) => i.id === l.itemId);
+    if (!item) continue;
+    const net = round2(l.unitPrice * l.quantity * (1 - l.discountPct / 100) * factor * fx);
+    const ownAccount = item.inventoryItem
+      ? inventoryAccountFor(item, l.warehouse, groups)
+      : expenseAccountFor(item, groups);
+    add(ownAccount, net);
+    if (!reverse(l.taxCode)) add(vatAccount(l.taxCode), round2((net * rateOf(l.taxCode)) / 100));
+  }
+
+  const withholding = docWithholding(
+    draft as Parameters<typeof docWithholding>[0],
+    vendor,
+    items,
+    tax,
+    draft.postingDate,
+  );
+  const debits = round2([...totals.values()].reduce((n, v) => n + v, 0));
+  let withheld = 0;
+  for (const w of withholding.filter((x) => x.deducted)) {
+    const amt = round2(w.amount * fx);
+    add(w.account || WITHHOLDING_PAYABLE[w.kind] || '2340', -amt);
+    withheld += amt;
+  }
+  if (debits) add(draft.controlAccount || '2010', -round2(debits - withheld));
+
+  return [...totals.entries()]
+    .filter(([, n]) => n !== 0)
+    .map(([account, n]): JournalLine => ({ account, debit: n > 0 ? n : 0, credit: n < 0 ? -n : 0 }))
+    .sort((a, b) => b.debit - a.debit || a.credit - b.credit);
+}
 
 // Seeded withholding is stamped as if each was added under the seeded Settings.
 const invoices = createCollection<ApReserveInvoice>(

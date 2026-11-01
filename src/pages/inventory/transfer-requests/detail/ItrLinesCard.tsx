@@ -8,6 +8,8 @@ import { openQty } from '../../../../services/inventoryTransferRequests';
 import { warehouseOptions } from '../../transfers/TransferLines';
 import { transferredQty, type ItrSectionProps } from './types';
 import { LineItemText } from '../../../../components/form/LineItemText';
+import { TRANSFER_REQUEST_NOUN } from '../../paths';
+import { cap } from '../../../../components/form/noun';
 
 const num = (v: string) => (v === '' ? 0 : Number(v));
 
@@ -148,7 +150,7 @@ export function ItrLinesCard({ draft, update, errors, m, readOnly }: ItrSectionP
     <DataTable
       noPagination
       icon="list_alt"
-      title="Contents"
+      title={cap(TRANSFER_REQUEST_NOUN.lineLabel!)}
       description={errors.lines ?? 'What the destination needs. Nothing moves until a transfer copied from this request is posted.'}
       rows={lines}
       getRowId={(l) => l.id}
@@ -174,7 +176,7 @@ export function ItrLinesCard({ draft, update, errors, m, readOnly }: ItrSectionP
           />
         )
       }
-      empty={<Text variant="small" tone={errors.lines ? 'danger' : 'muted'}>No lines yet — search above to add one.</Text>}
+      empty={<Text variant="small" tone={errors.lines ? 'danger' : 'muted'}>No lines yet — search below to add one.</Text>}
     />
   );
 }

@@ -1,8 +1,11 @@
 import { Text } from '@jasperlepardo/sikat-design-system';
 import { type DocLinesProps } from '../../../../components/form/docLines/DocLines';
+import { RFQ_NOUN } from '../../paths';
+import { cap } from '../../../../components/form/noun';
 import { purchCols, pick } from '../../shared/purchCols';
 import { costAccountOptions, lineHelpers, lineGlAccount, itemConfig, itemVendorOptions } from '../../shared/purchLineHelpers';
 import { purchFooter } from '../../shared/purchChrome';
+import { grossPriceBinding, priceModeEnabled, priceModeHeader } from '../../../../components/form/priceMode';
 import { countryDef, priceListDef, departmentDef, warrantyTemplateDef } from '../../../settings/masterDefs';
 import { isPriceListValid } from '../../../../services/priceLists';
 import { itemsPerUom } from '../../../../mocks/items';
@@ -97,6 +100,7 @@ export function rfqDoc(
     glAccountOf: (l) => lineGlAccount(itemOf(l), l, m.inv),
     glAccountOptions: (l) => costAccountOptions(m.inv.accounts, l.glAccount),
     lineNet, priceAfterDisc, grossAfterDisc, taxAmount, reverseChargeVat,
+    grossPrice: priceModeEnabled() ? grossPriceBinding(draft.priceMode ?? 'Net', taxRate, patch) : undefined,
     taxOptions: (l) => taxOptions(l.taxCode),
     vendorOptions: (l) => itemVendorOptions(itemOf(l), m.vendors, l.lineVendorId, draft.vendorId), warehouseOptions: warehouseOpts, blanketScope: { vendorId: draft.vendorId, date: draft.postingDate },
     vendorOf: (l) => m.vendors.find((v) => v.id === (l.lineVendorId || draft.vendorId)),
@@ -122,12 +126,11 @@ export function rfqDoc(
     columns,
     rows: lines,
     icon: 'format_list_bulleted',
-    title: 'Lines',
+    title: cap(RFQ_NOUN.lineLabel!),
+    header: priceModeEnabled() && !linesLocked ? priceModeHeader('rfq-price-mode', draft.priceMode ?? 'Net', (m) => update({ priceMode: m })) : undefined,
     actions: <CurrencyToggle choices={choices} value={shown} onChange={view.onChange} />,
-    description: converted
-      ? conv.factor
-        ? `Shown in ${conv.code} at the ${formatDate(conv.rate?.date ?? ctx.fxDate)} rate. Switch to ${draft.currency} to edit.`
-        : `No ${conv.code} rate on or before ${formatDate(draft.postingDate)}.`
+    description: converted && !conv.factor
+      ? `No ${conv.code} rate on or before ${formatDate(draft.postingDate)}.`
       : undefined,
     // All columns are unsortable on the quotation lines table.
     sortableKeys: [],
@@ -137,14 +140,13 @@ export function rfqDoc(
       onPick: (l, id) => { if (id) pickItem(l, id); else patch(l.id, { itemId: '', itemNo: '', description: '' }); },
       fromItem,
     }),
-    empty: <Text variant="small" tone="muted">No lines — search above to add items.</Text>,
+    empty: <Text variant="small" tone="muted">No lines — search below to add items.</Text>,
     footer: purchFooter({
       totals,
       currency: conv.code,
       readOnly: linesLocked,
       discount: { value: draft.discountPct, onChange: (d) => update({ discountPct: d }) },
       freight: { value: draft.freight, onChange: (v) => update({ freight: v }), show: showFreight },
-      fx: !converted && draft.currency !== 'PHP' && ctx.fx ? { rate: ctx.fx, source: formatDate(ctx.fxDate) } : undefined,
     }),
   };
 }

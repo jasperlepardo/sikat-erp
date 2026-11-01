@@ -10,6 +10,8 @@ import { nameIn, salesEmployees } from '../../../services/partnerMasters';
 import { inStockAt } from '../../../services/inventoryTransfers';
 import { warehouseOptions } from '../transfers/TransferLines';
 import { AddItemsBar, FindBar, findRows, itemOptions, itemsPer, num, signed, uomOptions, type CountMasters } from './shared';
+import { COUNT_NOUN } from '../paths';
+import { cap } from '../../../components/form/noun';
 
 export type CountingDraft = Omit<InventoryCounting, 'id'> & { id?: string };
 
@@ -285,7 +287,7 @@ export function CountLines({
       variant="card"
       noPagination
       icon="checklist"
-      title="Contents"
+      title={cap(COUNT_NOUN.lineLabel!)}
       description={
         errors.lines ??
         'Count first, then compare: In-Whse Qty is the book quantity when the line was added. Counted Qty is the UoM Counted Qty in the inventory unit. Nothing changes stock until an Inventory Posting is made from this count.'

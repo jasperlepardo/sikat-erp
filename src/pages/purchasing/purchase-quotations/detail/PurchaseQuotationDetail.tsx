@@ -18,7 +18,7 @@ import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { CURRENT_USER_ID } from '../../../../mocks/common';
 import { type Partner } from '../../../../mocks/partners';
-import { blankRfq, type Rfq, type RfqStatus } from '../../../../mocks/rfqs';
+import { blankRfq, type Rfq } from '../../../../mocks/rfqs';
 import { loadInventoryMasters } from '../../../../services/inventoryMasters';
 import { listItems } from '../../../../services/items';
 import { companyTax, currencies, exchangeRates, taxCodes, taxGroups, withholdingGroups, withholdingTaxes } from '../../../../services/masterData';
@@ -51,12 +51,15 @@ import { neighbours, NotFound, siblingKeys, useDocTab, useReject } from '../../.
 import { VendorCard } from '../../shared/VendorCard';
 import { VendorDetailsPanel } from '../../shared/VendorDetailsPanel';
 import { RfqDocumentCard } from './RfqDocumentCard';
-import { RfqAssignmentCard } from './RfqTotalsCard';
+import { AssignmentCard } from '../../../../components/form/AssignmentCard';
 import { DocLines } from '../../../../components/form/docLines/DocLines';
 import { rfqDoc } from './rfqDoc';
 import { RfqDeliveryCard } from './RfqDeliveryCard';
-import { RfqJournalPaymentCard } from './RfqJournalPaymentCard';
-import { RfqDatesCard } from './RfqDatesCard';
+import { DocumentDates } from '../../../../components/form/DatesCard';
+import { DocumentPayment } from '../../../../components/form/PaymentCard';
+import { rfqDates } from '../../../documentDateDefs';
+import { rfqPayment } from '../../../documentPaymentDefs';
+import { RfqReferencesCard } from './RfqReferencesCard';
 import { RFQ_LIST_PATH, RFQ_NOUN, RFQ_STATUS_INTENT } from '../../paths';
 
 type TabId = 'contents' | 'logistics' | 'accounting';
@@ -264,15 +267,6 @@ function RfqForm() {
     ] : []),
   ];
 
-  const transitions: Partial<Record<RfqStatus, () => void>> =
-    draft.status === 'Draft'
-      ? draft.approved ? { Open: () => submit(null, false) } : { 'Not Confirmed': () => submit(null, false) }
-      : draft.status === 'Not Confirmed'
-        ? { Open: () => submit(null, false, { approved: true }) }
-        : open
-          ? { Closed: () => act(() => closeRfq(saved), 'closed'), Cancelled: () => act(() => cancelRfq(saved), 'cancelled') }
-          : {};
-
   const title = isNew ? `New ${RFQ_NOUN.one}` : draft.status === 'Draft' ? `Draft ${RFQ_NOUN.one}` : rfqNumber(draft);
   const sectionProps = { draft, update, errors, m, ctx };
 
@@ -346,19 +340,27 @@ function RfqForm() {
                 </Alert>
               ) : null}
 
-              <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
-                <div className="flex flex-col gap-2 lg:col-span-8">
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+                <div className="flex flex-col gap-3 lg:col-span-8">
                   <VendorCard vendors={m.vendors} vendorId={draft.vendorId} vendor={ctx.vendor} readOnly={ctx.readOnly} added={ctx.added} error={errors.vendorId} pickVendor={pickVendor} onNewVendor={() => setShowVendorCreate(true)} onOpenDetails={() => setVendorDetailsOpen(true)} />
                   <DocLines {...rfqDoc(sectionProps, { value: currencyView, onChange: setCurrencyView })} />
                   <ReferencesTable refs={draft.references} onChange={(references) => update({ references })} readOnly={ctx.readOnly} description="Other documents this RFQ refers to — purchase requests, sales orders, contract references." />
                   <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach the vendor's quotation or price list." />
                 </div>
-                <div className="flex flex-col gap-2 lg:col-span-4">
-                  <RfqDocumentCard {...sectionProps} transitions={transitions} />
-                      <RfqDeliveryCard {...sectionProps} />
-                  <RfqJournalPaymentCard {...sectionProps} />
-                  <RfqDatesCard {...sectionProps} />
-                  <RfqAssignmentCard {...sectionProps} />
+                <div className="flex flex-col gap-3 lg:col-span-4">
+                  <RfqDocumentCard {...sectionProps} />
+                  <DocumentDates def={rfqDates} {...sectionProps} />
+                  <RfqReferencesCard {...sectionProps} />
+                  <RfqDeliveryCard {...sectionProps} />
+                  <DocumentPayment def={rfqPayment} {...sectionProps} />
+                  <AssignmentCard
+                    draft={draft}
+                    update={update}
+                    readOnly={ctx.readOnly}
+                    person={{ key: "buyerId", label: "Buyer", hint: "Who the RFQ is sent to / handled by." }}
+                    ownerHint="Owns the document (data access)."
+                    remarksHint="Can be changed after the RFQ is added."
+                  />
                 </div>
               </div>
             </Panel.Body>
@@ -369,17 +371,11 @@ function RfqForm() {
         draft={draft}
         update={update}
         vendor={ctx.vendor}
-        currencies={m.currencies}
         readOnly={ctx.readOnly}
         open={vendorDetailsOpen}
         onClose={() => setVendorDetailsOpen(false)}
         onVendorSaved={(v) => setM((prev) => prev && { ...prev, vendors: prev.vendors.map((x) => (x.id === v.id ? v : x)) })}
         vendorRefHint="The vendor's own reference or quote number."
-        currency={{
-          disabled: !!(ctx.vendor && ctx.added),
-          tooltip: ctx.vendor && ctx.vendor.currency !== ALL_CURRENCIES ? "Defaults to the vendor's currency." : 'Pick the document currency.',
-          error: errors.currency,
-        }}
         addresses={ctx.vendor ? vendorAddressFields(m, ctx.vendor) : []}
       />
       {showVendorCreate && (

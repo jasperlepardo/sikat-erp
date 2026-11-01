@@ -180,8 +180,8 @@ export function LcCostsCard({ draft, update, errors, readOnly }: LcSectionProps)
 
       <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2">
         <Fields>
-          {h.num('actualCustoms', 'Actual customs', { disabled: readOnly })}
-          {h.date('customsDate', 'Customs date', { disabled: readOnly })}
+          {h.num('actualCustoms', 'Actual customs', { readOnly: readOnly })}
+          {h.date('customsDate', 'Customs date', { readOnly: readOnly })}
           {h.check('customsAffectsInventory', 'Customs affects inventory cost')}
         </Fields>
         <div className="flex flex-col gap-1 text-sm text-right">

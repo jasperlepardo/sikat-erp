@@ -138,7 +138,9 @@ export function InventoryTransferList() {
         ) : null}
         {presets.bar(null)}
         <Card className={fillCardClass(onPage.length)}>
-          {transfers ? (
+          {!transfers ? (
+            <Text tone="muted" className="p-4">Loading transfers…</Text>
+          ) : transfers.length ? (
             <Table
               caption={cap(TRANSFER_NOUN.many)}
               columns={columns}
@@ -150,7 +152,7 @@ export function InventoryTransferList() {
               pagination={pagination}
             />
           ) : (
-            <Text tone="muted" className="p-4">Loading transfers…</Text>
+            <Text tone="muted" className="p-4">No {TRANSFER_NOUN.many} yet. Start one from a transfer request (More actions › Create {TRANSFER_NOUN.one}), or with New {TRANSFER_NOUN.one}.</Text>
           )}
         </Card>
       </Panel.Body>

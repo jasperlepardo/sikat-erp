@@ -60,7 +60,7 @@ export interface InventoryTransferRequest {
 }
 
 export const TRANSFER_REQUEST_SERIES: DocumentSeries[] = [
-  { id: 'itq-primary', name: 'Primary', prefix: '', firstNo: 1, manual: false, isDefault: true, active: true, segments: [{ type: 'literal', value: 'ITR' }, { type: 'year' }, { type: 'sequence', padding: 4 }] },
+  { id: 'itq-primary', name: 'Transfer Request', prefix: '', firstNo: 1, manual: false, isDefault: true, active: true, segments: [{ type: 'literal', value: 'ITR' }, { type: 'year' }, { type: 'sequence', padding: 4 }] },
 ];
 
 export const newTransferRequestLine = (patch: Partial<TransferRequestLine> = {}): TransferRequestLine => ({

@@ -95,6 +95,12 @@ describe('matches — date operators', () => {
     // today=2026-06-15; inLastDays n keeps rows with day > (today - n) and <= today.
     ['inLastDays 2', g('postingDate', 'inLastDays', 2), ['INV-001']],
     ['inLastDays 7', g('postingDate', 'inLastDays', 7), ['INV-001', 'INV-002']],
+    // today=2026-06-15 (a Monday) — relative ranges.
+    ['inPeriod today', g('postingDate', 'inPeriod', 'today'), []],
+    ['inPeriod week (Mon 06-15 … Sun 06-21)', g('postingDate', 'inPeriod', 'week'), []],
+    ['inPeriod month (June)', g('postingDate', 'inPeriod', 'month'), ['INV-001', 'INV-002']],
+    ['inPeriod quarter (Apr–Jun)', g('postingDate', 'inPeriod', 'quarter'), ['INV-001', 'INV-002']],
+    ['inPeriod year (2026)', g('postingDate', 'inPeriod', 'year'), ['INV-001', 'INV-002', 'CM-010']],
   ];
   it.each(cases)('%s', (_name, group, expected) => {
     expect(hits(group)).toEqual(expected);

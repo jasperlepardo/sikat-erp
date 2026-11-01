@@ -109,6 +109,37 @@ input[type='number'] {
 .sikat-field.w-72 { width: calc(var(--spacing) * 72); }
 .sikat-field.w-fit { width: fit-content; }
 
+/* The Table renders its pagination as a direct flex child of the column, so it stretches to
+   full width with the controls packed to the left. The design (Figma Table › Table Footer)
+   floats the pagination as a compact centered pill over the bottom of the table. On a fill
+   table (list pages) it floats over the scrolling rows, staying put as they scroll; the
+   scroller gets bottom room so the last rows clear the pill instead of hiding behind it.
+   Other tables just centre the in-flow pill. */
+.sikat-table > .sikat-pagination {
+  align-self: center;
+}
+.sikat-table--fill {
+  position: relative;
+}
+.sikat-table--fill > .sikat-pagination {
+  position: absolute;
+  bottom: var(--spacing-3);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+}
+/* Only reserve bottom room for the floating pill when it's actually there (a short list
+   under the smallest page size hides its pagination). */
+.sikat-table--fill:has(> .sikat-pagination) .sikat-table__scroller {
+  padding-bottom: calc(var(--spacing) * 18);
+}
+/* A list card whose table has no pagination (short list) shrinks to its content instead of
+   filling the panel — no empty space under a handful of rows, and nothing to pin a pill to.
+   (`fillCardClass` gives it flex-1 for the paginated case; this walks it back otherwise.) */
+.sikat-card:has(.sikat-table--fill):not(:has(.sikat-pagination)) {
+  flex: 0 1 auto;
+}
+
 /* Right-aligned (numeric) Table columns: the design system Table has no column align, so a
    column opts in with a `table-num` header and cell wrapper. The header flips so the label
    sits flush right and the sort control moves to its left. */
@@ -139,4 +170,12 @@ div.table-num .sikat-table-cell__stack {
 /* Sits on the line box's top, not its baseline — no descender gap under the button. */
 .row-actions {
   vertical-align: top;
+}
+/* Journal entry totals row: the whole <tr> reads as the totals-component bar — tertiary
+   surface + a top rule, edge-to-edge across every cell — keyed on the `data-journal-total`
+   marker JournalPreview renders in the row's account cell. Styling the row (not each cell)
+   keeps the bar continuous. */
+.sikat-table__row:has([data-journal-total]) > .sikat-table__td {
+  background-color: var(--color-bg-tertiary);
+  border-top: var(--border-width-1, 1px) solid var(--color-border-neutral-subtle);
 }

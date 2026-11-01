@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import {
   Badge,
+  Card,
   Panel,
   Table,
   TableAmount,
@@ -24,7 +25,7 @@ import { useAsync } from '../../services/useAsync';
 import { formatAmount } from '../../services/format';
 import { bpGroupName, leadSources, nameIn } from '../../services/partnerMasters';
 import { paymentTermName } from '../../services/purchaseOrders';
-import { useListPage } from '../../components/form/DataTable';
+import { fillCardClass, useListPage } from '../../components/form/DataTable';
 import { useListPresets } from '../../components/filter/useListPresets';
 import { ROLE_CONFIG, ROLE_ORDER, STAGE_INTENT, scopeConfig, scopeNoun, type PartnerScope } from './roles';
 import { partnerFilterFields, partnerViews } from './filterFields';
@@ -162,20 +163,24 @@ export function PartnerList({ scope }: { scope: PartnerScope }) {
       />
       <Panel.Body className="flex flex-col gap-2">
         {presets.bar(null)}
-        {partners ? (
-          <Table
-            caption={cap(noun.many)}
-            columns={columns}
-            rows={visible}
-            getRowId={(p) => p.id}
-            sort={sort}
-            onSortChange={setSort}
-            layout="fill"
-            pagination={pagination}
-          />
-        ) : (
-          <Text tone="muted" className="p-4">Loading {config.title.toLowerCase()}…</Text>
-        )}
+        <Card className={fillCardClass(visible.length)}>
+          {!partners ? (
+            <Text tone="muted" className="p-4">Loading {config.title.toLowerCase()}…</Text>
+          ) : partners.length ? (
+            <Table
+              caption={cap(noun.many)}
+              columns={columns}
+              rows={visible}
+              getRowId={(p) => p.id}
+              sort={sort}
+              onSortChange={setSort}
+              layout="fill"
+              pagination={pagination}
+            />
+          ) : (
+            <Text tone="muted" className="p-4">No {config.title.toLowerCase()} yet. Create one with New {noun.one}.</Text>
+          )}
+        </Card>
       </Panel.Body>
       {presets.panel}
     </Panel>

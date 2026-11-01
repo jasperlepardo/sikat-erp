@@ -32,6 +32,7 @@ export function dprTotals(
   rateOf: (taxCode: string) => number,
   isReverseCharge?: (taxCode: string) => boolean,
 ) {
+  // No currency rounding on a partial (DPM-share) document — the final invoice rounds the whole order.
   const full = poTotals({ ...d, freight: 0 }, rateOf, undefined, isReverseCharge);
   const share = d.dpmPct / 100;
   const base = round2((full.beforeDiscount - full.discount) * share);

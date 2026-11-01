@@ -51,6 +51,8 @@ export interface PoContext {
   isReverseCharge: (taxCode: string) => boolean;
   /** PHP per unit of the document currency on the posting date (1 for PHP, 0 when missing). */
   fx: number;
+  /** The rate used, with the bulletin day and source it comes from, for the "Exchange rate" field. PHP → undefined. */
+  fxRate?: { rate: number; date: string; source: string };
   /** The day `fx` comes from: the latest rate on or before the posting date ('' for PHP or none). */
   fxDate: string;
   /** Where that rate came from: "BSP" for the BSP bulletin, "manual" otherwise. */
@@ -82,6 +84,7 @@ export function buildContext(draft: PoDraft, m: PoMasters): PoContext {
     },
     isReverseCharge: (code) => vatNotPaidToVendor(m.tax.codes.find((x) => x.code === code)),
     fx: draft.currency === 'PHP' ? 1 : (fxRate?.rate ?? 0),
+    fxRate,
     fxDate: fxRate?.date ?? '',
     fxSource: fxRate?.source === 'BSP RERB' ? 'BSP' : 'manual',
     readOnly: draft.status === 'Closed' || draft.status === 'Cancelled',

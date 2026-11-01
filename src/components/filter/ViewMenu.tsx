@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Divider, Dropdown, DropdownItem, Icon, Text } from '@jasperlepardo/sikat-design-system';
+import { Button, Divider, Dropdown, DropdownItem, Icon, Text } from '@jasperlepardo/sikat-design-system';
 import type { ListView, ListViews } from './useListViews';
 
 /**
@@ -62,21 +62,18 @@ export function ViewMenu({
 
   return (
     <div ref={root} className="relative">
-      <button
+      <Button
         type="button"
+        intent="default"
+        variant="link"
+        size="small"
         aria-haspopup="menu"
         aria-expanded={open}
-        className="inline-flex items-center gap-1 text-left"
+        trailingIcon={<Icon size={20}>keyboard_arrow_down</Icon>}
         onClick={() => setOpen(!open)}
       >
-        <span>{current.name}</span>
-        {edited ? (
-          <Text as="span" variant="small" tone="muted">
-            · edited
-          </Text>
-        ) : null}
-        <Icon size={20}>keyboard_arrow_down</Icon>
-      </button>
+        {current.name}
+      </Button>
       {open ? (
         <Dropdown role="menu" style={{ left: 0, width: 300, maxHeight: '70vh' }}>
           {builtIns.map(item)}

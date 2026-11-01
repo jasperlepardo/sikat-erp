@@ -34,38 +34,36 @@ export function IncomingCustomerPanel({ customer, draft, update, errors, account
         }
       />
       <Panel.Body>
-        <fieldset disabled={readOnly} className="contents">
-          <Section icon="person" title="Contact">
-            <Fields cols={1}>
-              {h.text('customerName', 'Name', { hint: 'As printed on the receipt.' })}
-              <CardField
-                label="Contact person"
-                options={(customer.contacts ?? [])
-                  .filter((c) => c.active || c.id === draft.contactId)
-                  .map((c) => ({
-                    value: c.id,
-                    label: contactName(c),
-                    icon: <Icon size={16}>person</Icon>,
-                    fields: [
-                      ...(c.position ? [{ label: 'Position', value: c.position }] : []),
-                      ...(c.mobile || c.tel1 ? [{ label: 'Phone', value: c.mobile || c.tel1 }] : []),
-                      ...(c.email ? [{ label: 'Email', value: c.email }] : []),
-                    ],
-                  }))}
-                value={draft.contactId}
-                onValueChange={(contactId) => update({ contactId: contactId ?? '' })}
-                placeholder="Select a contact person"
-                readOnly={readOnly}
-              />
-              {h.area('billTo', 'Bill to', { rows: 3 })}
-            </Fields>
-          </Section>
-          <Section icon="account_balance" title="Accounting">
-            <Fields cols={1}>
-              {h.choose('controlAccount', 'Control account', activeOptions(accounts.filter((a) => a.control && a.drawer === 'Assets'), (a) => a.code, (a) => `${a.code} ${a.name}`, draft.controlAccount), { required: true, error: errors.controlAccount, hint: 'For the part not tied to an invoice (on account).' })}
-            </Fields>
-          </Section>
-        </fieldset>
+        <Section icon="person" title="Contact">
+          <Fields cols={1}>
+            {h.text('customerName', 'Name', { hint: 'As printed on the receipt.', readOnly })}
+            <CardField
+              label="Contact person"
+              options={(customer.contacts ?? [])
+                .filter((c) => c.active || c.id === draft.contactId)
+                .map((c) => ({
+                  value: c.id,
+                  label: contactName(c),
+                  icon: <Icon size={16}>person</Icon>,
+                  fields: [
+                    ...(c.position ? [{ label: 'Position', value: c.position }] : []),
+                    ...(c.mobile || c.tel1 ? [{ label: 'Phone', value: c.mobile || c.tel1 }] : []),
+                    ...(c.email ? [{ label: 'Email', value: c.email }] : []),
+                  ],
+                }))}
+              value={draft.contactId}
+              onValueChange={(contactId) => update({ contactId: contactId ?? '' })}
+              placeholder="Select a contact person"
+              readOnly={readOnly}
+            />
+            {h.area('billTo', 'Bill to', { rows: 3, readOnly })}
+          </Fields>
+        </Section>
+        <Section icon="account_balance" title="Accounting">
+          <Fields cols={1}>
+            {h.choose('controlAccount', 'Control account', activeOptions(accounts.filter((a) => a.control && a.drawer === 'Assets'), (a) => a.code, (a) => `${a.code} ${a.name}`, draft.controlAccount), { required: true, error: errors.controlAccount, hint: 'For the part not tied to an invoice (on account).', readOnly })}
+          </Fields>
+        </Section>
       </Panel.Body>
     </SidePanel>
   );

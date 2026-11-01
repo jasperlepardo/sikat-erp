@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useParams } from 'react-router';
 import { createPortal } from 'react-dom';
 import { Alert, Badge, Form, Panel, Tabs, Text } from '@jasperlepardo/sikat-design-system';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
+import { JournalPreview } from '../../../../components/form/JournalPreview';
 import { type Errors } from '../../../../components/form/fields';
 import { type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { DetailActions, docMode } from '../../../../components/form/DetailActions';
@@ -25,6 +26,7 @@ import {
   closeReserveInvoice,
   getReserveInvoice,
   listReserveInvoices,
+  riJournal,
   saveRiDraft,
   saveRiRemarks,
 } from '../../../../services/reserveInvoices';
@@ -36,7 +38,7 @@ import { defaultJournalRemark } from '../../../../services/journalPatterns';
 import { formatAmount } from '../../../../services/format';
 import { loadInventoryMasters } from '../../../../services/inventoryMasters';
 import { isValidToday, listItems } from '../../../../services/items';
-import { controlAccountOf } from '../../../../services/journalEntries';
+import { controlAccountOf, postingPeriodProblem } from '../../../../services/journalEntries';
 import { accounts, companyTax, currencies, exchangeRates, taxCodes, taxGroups, withholdingGroups, withholdingTaxes } from '../../../../services/masterData';
 import { listPartnersByRole } from '../../../../services/partners';
 import { termDays } from '../../../../services/purchaseOrders';
@@ -45,17 +47,25 @@ import { listSalesOrders, openQty, soDueDate, soNumber } from '../../../../servi
 import { soSeries } from '../../../../services/allSeries';
 import { ALL_CURRENCIES, proposedTaxCode } from '../../sales-orders/detail/types';
 import { CustomerCard } from '../../shared/CustomerCard';
+import { ReferencesCard } from '../../shared/ReferencesCard';
 import { SalesTotalsFooter } from '../../shared/TotalsFooter';
+import { salesView } from '../../shared/salesView';
+import { amt, TotalsBar, TotalsRow } from '../../../../components/form/TotalsFooterParts';
 import { ReferencesTable } from '../../../purchasing/shared/ReferencesTable';
 import { SalesDocumentFlow } from '../../shared/SalesDocumentFlow';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
 import { neighbours, NotFound, siblingKeys, useDocTab, useReject } from '../../../../components/form/DetailNav';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { buildRiContext, riLineFromOrder, type RiContext, type RiDraft, type RiMasters } from './types';
-import { RiDatesCard } from './RiCustomerCard';
+import { DocumentDates } from '../../../../components/form/DatesCard';
+import { DocumentJournalEntry, DocumentPayment } from '../../../../components/form/PaymentCard';
+import { arReserveInvoiceDates } from '../../../documentDateDefs';
+import { arReserveInvoicePayment } from '../../../documentPaymentDefs';
 import { RiShipmentCard } from './RiShipmentCard';
-import { RiAssignmentCard } from './RiAssignmentCard';
+import { AssignmentCard } from '../../../../components/form/AssignmentCard';
+import { NO_SALES_EMPLOYEE } from '../../../../mocks/salesOrders';
 import { RiAccountingCard } from './RiAccountingCard';
+import { RiDocumentCard } from './RiDocumentCard';
 import { DocLines } from '../../../../components/form/docLines/DocLines';
 import { CopyPanel, type CopySourceType } from '../../../purchasing/shared/CopyPanel';
 import { invoiceDoc, type CopyPickRi } from '../../shared/invoiceDoc';
@@ -77,7 +87,8 @@ function validate(d: RiDraft, ctx: RiContext, m: RiMasters, asDraft: boolean): P
   const { problems, need } = problemCollector<TabId>();
   need(d.customerId, 'header', 'customerId', 'Pick a customer.');
   if (asDraft) return problems;
-  need(d.postingDate, 'header', 'postingDate', 'Posting date is required.');
+  const postingPeriod = postingPeriodProblem(d.postingDate);
+  need(!postingPeriod, 'header', 'postingDate', postingPeriod ?? '');
   need(d.documentDate, 'header', 'documentDate', 'Document date is required.');
   need(d.dueDate, 'header', 'dueDate', 'Due date is required.');
   need(!d.dueDate || d.dueDate >= d.postingDate, 'header', 'dueDate', 'Due date is before the posting date.');
@@ -123,6 +134,7 @@ function ReserveInvoiceForm() {
   const page = (PAGES.some((p) => p.value === tabParam) ? tabParam : 'details') as PageId;
   const setPage = useDocTab<PageId>(`${RI_LIST_PATH}/${id}`, tabParam);
   const [customerDetailsOpen, setCustomerDetailsOpen] = useState(false);
+  const [currencyView, setCurrencyView] = useState('');
   const [copying, setCopying] = useState(false);
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
@@ -267,10 +279,7 @@ function ReserveInvoiceForm() {
     const effectiveDraft = asDraft || (e !== null && draft.status === 'Draft' && !doc.approved);
     const found = validate(doc, ctx, m, effectiveDraft);
     setProblems(found);
-    if (found.length) {
-      if (found.some((p) => p.tab === 'accounting') && customer) setCustomerDetailsOpen(true);
-      return;
-    }
+    if (found.length) return;
     setSaving(true);
     try {
       const items = await listItems();
@@ -323,6 +332,9 @@ function ReserveInvoiceForm() {
   ];
 
   const tabProps = { draft, update, errors, m, ctx };
+  const view = salesView(draft.currency, ctx.fx, draft.postingDate, currencyView, setCurrencyView);
+  const journal = ctx.fx ? riJournal(draft, ctx.fx, { items: m.items, groups: m.inv.groups, codes: m.tax.codes, rateOf: ctx.rateOf, withholding }) : [];
+  const journalEntry = <JournalPreview journal={journal} accounts={m.accounts} />;
   // Copy-from sources: this customer's open orders with something left to invoice.
   const mineCopy = (c: { customerId: string; currency: string }) => (!draft.customerId || c.customerId === draft.customerId) && (!ctx.based || c.currency === draft.currency);
   const copySos = m.orders.filter((o) => o.status === 'Open' && o.docType === draft.docType && mineCopy(o) && o.lines.some((l) => openQty(l) > 0));
@@ -384,8 +396,8 @@ function ReserveInvoiceForm() {
                     : "It's posted to the ledger. Only remarks and attachments can change; to undo it, cancel the reserve invoice."}
                 </Alert>
               ) : null}
-              <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
-                <div className="flex flex-col gap-2 lg:col-span-8">
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+                <div className="flex flex-col gap-3 lg:col-span-8">
                   <CustomerCard
                     customers={m.customers}
                     customerId={draft.customerId}
@@ -397,29 +409,26 @@ function ReserveInvoiceForm() {
                     onOpenDetails={() => setCustomerDetailsOpen(true)}
                   />
                   <DocLines
-                    {...invoiceDoc({ kind: 'RI', ...tabProps, onCopyClick: () => setCopying(true), canCopy: copySos.length > 0 })}
+                    {...invoiceDoc({ kind: 'RI', ...tabProps, onCopyClick: () => setCopying(true), canCopy: copySos.length > 0 }, view)}
                     footer={
                       <SalesTotalsFooter
                         {...tabProps}
+                        totals={totals}
                         withRounding
+                        view={view}
                         withholding={withholding.map((w) => ({ label: `${w.kind === 'Withholding VAT' ? 'VAT' : 'EWT'} withheld — ${w.atc} (${w.rate}%)`, amount: w.amount }))}
                         extraRows={
                           draft.appliedAmount ? (
                             <>
-                              <div className="flex items-center justify-between gap-4">
-                                <Text variant="small" tone="muted">Applied amount</Text>
-                                <Text variant="small" className="tabular-nums">–{draft.currency} {formatAmount(draft.appliedAmount)}</Text>
-                              </div>
-                              <div className="flex items-baseline justify-between gap-4 border-t pt-1" style={{ borderColor: 'var(--color-border-neutral-subtle)' }}>
-                                <Text variant="small" weight="semibold" tone="heading">Balance due</Text>
-                                <Text variant="small" weight="semibold" tone="heading" className="tabular-nums">{draft.currency} {formatAmount(balance)}</Text>
-                              </div>
+                              <TotalsRow label="Applied amount" value={amt(-view.convert(draft.appliedAmount), view.code)} />
+                              <TotalsBar label="Balance due" value={amt(view.convert(balance), view.code)} />
                             </>
                           ) : null
                         }
                       />
                     }
                   />
+                  <DocumentJournalEntry def={arReserveInvoicePayment} posting={journalEntry} {...tabProps} />
                   <ReferencesTable
                     refs={draft.references}
                     onChange={(references) => update({ references })}
@@ -433,11 +442,21 @@ function ReserveInvoiceForm() {
                     withDescription
                   />
                 </div>
-                <aside className="flex flex-col gap-2 lg:col-span-4">
-                  <RiDatesCard {...tabProps} />
+                <aside className="flex flex-col gap-3 lg:col-span-4">
+                  <RiDocumentCard {...tabProps} />
+                  <DocumentDates def={arReserveInvoiceDates} {...tabProps} />
+                  <DocumentPayment def={arReserveInvoicePayment} posting={journalEntry} {...tabProps} />
                   <RiAccountingCard {...tabProps} />
                   <RiShipmentCard {...tabProps} />
-                  <RiAssignmentCard {...tabProps} />
+                  <ReferencesCard {...tabProps} />
+                  <AssignmentCard
+                    draft={draft}
+                    update={update}
+                    readOnly={ctx.readOnly}
+                    person={{ key: 'salesEmployeeId', label: 'Sales employee', clearable: true, placeholder: NO_SALES_EMPLOYEE, hint: 'Defaults from the customer.' }}
+                    ownerHint="Owns the document."
+                    remarksHint="Can be changed after the invoice is added."
+                  />
                 </aside>
               </div>
             </Panel.Body>

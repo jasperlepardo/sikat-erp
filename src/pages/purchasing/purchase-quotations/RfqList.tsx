@@ -3,6 +3,7 @@ import { useLocation } from 'react-router';
 import { todayISO, formatDate } from '../../../services/dates';
 import {
   Alert,
+  Card,
   Panel,
   Table,
   TableAmount,
@@ -20,7 +21,7 @@ import { useAsync } from '../../../services/useAsync';
 import { dateField, linesField, masterField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { currencyDef, salesEmployeeDef } from '../../settings/masterDefs';
-import { useListPage } from '../../../components/form/DataTable';
+import { fillCardClass, useListPage } from '../../../components/form/DataTable';
 import { cap } from '../../../components/form/noun';
 import { RFQ_LIST_PATH, RFQ_NOUN, RFQ_STATUS_INTENT } from '../paths';
 
@@ -154,7 +155,7 @@ export function RfqList() {
           resetPage();
         }}
         icon="description"
-        title={presets.menu}
+        title={cap(RFQ_NOUN.many)}
         create={{ noun: RFQ_NOUN, to: RFQ_LIST_PATH }}
       />
       <Panel.Body className="flex flex-col gap-2">
@@ -163,23 +164,27 @@ export function RfqList() {
             {notice}
           </Alert>
         ) : null}
-        {presets.bar(null)}
-        {rfqs ? (
-          <Table
-            caption={cap(RFQ_NOUN.many)}
-            columns={columns}
-            rows={visible}
-            getRowId={(q) => q.id}
-            sort={sort}
-            onSortChange={setSort}
-            layout="fill"
-            pagination={pagination}
-          />
-        ) : (
-          <Text tone="muted" className="p-4">
-            Loading purchase quotations…
-          </Text>
-        )}
+        {presets.toolbar(null)}
+        <Card className={fillCardClass(visible.length)}>
+          {!rfqs ? (
+            <Text tone="muted" className="p-4">
+              Loading purchase quotations…
+            </Text>
+          ) : rfqs.length ? (
+            <Table
+              caption={cap(RFQ_NOUN.many)}
+              columns={columns}
+              rows={visible}
+              getRowId={(q) => q.id}
+              sort={sort}
+              onSortChange={setSort}
+              layout="fill"
+              pagination={pagination}
+            />
+          ) : (
+            <Text tone="muted" className="p-4">No {RFQ_NOUN.many} yet. Start one from a purchase request (More actions › Create {RFQ_NOUN.one}), or with New {RFQ_NOUN.one}.</Text>
+          )}
+        </Card>
       </Panel.Body>
       {presets.panel}
     </Panel>

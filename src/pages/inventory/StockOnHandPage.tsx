@@ -280,7 +280,9 @@ export function StockOnHandPage() {
           </Text>
         ) : null}
         <Card className={fillCardClass(onPage.length)}>
-          {items ? (
+          {!items ? (
+            <Text tone="muted" className="p-4">Loading stock…</Text>
+          ) : rows.length ? (
             <Table
               caption="Stock on hand"
               columns={columns}
@@ -298,7 +300,7 @@ export function StockOnHandPage() {
               pagination={pagination}
             />
           ) : (
-            <Text tone="muted" className="p-4">Loading stock…</Text>
+            <Text tone="muted" className="p-4">No stocked items to show. Adjust the warehouse or item-group filters, or add stocked items in Inventory › Items.</Text>
           )}
         </Card>
       </Panel.Body>

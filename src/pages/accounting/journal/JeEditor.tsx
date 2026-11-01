@@ -7,9 +7,7 @@ import {
   Button,
   Combobox,
   DatePicker,
-  FormField,
   Icon,
-  Select,
   Text,
   TextField,
   type TableColumn,
@@ -21,6 +19,7 @@ import { distributionRules } from '../../../services/costAccounting';
 import { projects } from '../../../services/partnerMasters';
 import { problemCollector, type Problem } from '../../../components/form/ProblemsAlert';
 import { Fields, Flags, ReadOnly, Section, bind, type Errors } from '../../../components/form/fields';
+import { SeriesNoFields } from '../../../components/form/SeriesNoFields';
 import { accountLabel, type Account } from '../../../mocks/chartOfAccounts';
 import {
   CLOSED_THROUGH,
@@ -41,10 +40,12 @@ import { pbaNumber, purchaseAgreementsCollection } from '../../../services/purch
 import type { TaxCode } from '../../../mocks/taxes';
 import { addDays, formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
-import { controlAccountOf, jeTotals, lineProblems, parseJeRows, postingPeriodProblem, rowAccount } from '../../../services/journalEntries';
+import { controlAccountOf, jeNumber, jeTotals, lineProblems, parseJeRows, postingPeriodProblem, rowAccount } from '../../../services/journalEntries';
 import { readXlsxText } from '../../../services/xlsx';
 import { projectDef } from '../../settings/masterDefs';
 import { activeOptions } from '../../../services/inventoryMasters';
+import { JE_NOUN } from '../paths';
+import { cap } from '../../../components/form/noun';
 
 /** An entry's fields, posted or not (status aside: a voucher entry has its own). */
 export type JeDraft = Omit<JournalEntry, 'id' | 'status'>;
@@ -113,14 +114,17 @@ export function JeHeaderSections({
       <Section icon="tag" title="Document">
         <Fields>
           {documentTop}
-          <FormField label="Number" tooltip={readOnly ? undefined : 'Assigned from the series when the entry is added. Permanent.'}>
-            {(p) => (
-              <div className="flex gap-1">
-                <Select aria-label="Series" className="w-32" disabled={readOnly} options={JE_SERIES.map((s) => ({ value: s.id, label: s.name }))} value={draft.seriesId} onValueChange={(seriesId) => update({ seriesId })} />
-                <TextField {...p} className="flex-1" readOnly placeholder="Next number" value={draft.number ? String(draft.number) : ''} />
-              </div>
-            )}
-          </FormField>
+          <SeriesNoFields
+            series={JE_SERIES}
+            seriesId={draft.seriesId}
+            docNum={draft.number}
+            number={jeNumber(draft)}
+            noun="JE"
+            error={errors.number}
+            readOnly={readOnly}
+            onSeries={(seriesId) => update({ seriesId, number: 0 })}
+            onNumber={(number) => update({ number })}
+          />
           <ReadOnly label="Trans. No." value={draft.transNo ? String(draft.transNo) : '—'} hint={transNoHint} />
           {h.date('postingDate', 'Posting date', {
             required: true,
@@ -128,7 +132,7 @@ export function JeHeaderSections({
             hint: `The period it hits. Open: ${formatDate(addDays(CLOSED_THROUGH, 1))} – ${formatDate(FISCAL_YEAR_END)}.`,
           })}
           {h.date('dueDate', 'Due date', { required: true, error: errors.dueDate, hint: 'For rows on a business partner.' })}
-          {h.date('documentDate', 'Doc. date', { required: true, error: errors.documentDate })}
+          {h.date('documentDate', 'Doc. date', { required: true, error: errors.documentDate, hint: 'The date for BIR / tax purposes.' })}
           <ReadOnly
             label="Origin"
             value={manual ? 'JE · this entry' : `${draft.origin} · ${ORIGIN_LABEL[draft.origin]} ${draft.originNo}`}
@@ -375,7 +379,7 @@ export function JeRowsTable({
       variant="card"
       noPagination
       icon="table_rows"
-      title="Contents"
+      title={cap(JE_NOUN.lineLabel!)}
       description={
         errors.lines ??
         `Debit PHP ${formatAmount(totals.debit)} · Credit PHP ${formatAmount(totals.credit)}${totals.difference ? ` · Difference PHP ${formatAmount(Math.abs(totals.difference))} — ${balanceRule}` : ' · balanced'}. A business partner row posts to its control account.`

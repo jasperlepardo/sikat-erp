@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import { Alert, Badge, Button, Form, Panel, Select, Tabs, Text } from '@jasperlepardo/sikat-design-system';
 import { AttachmentsCard } from '../../../../../components/form/AttachmentsCard';
 import { type Errors } from '../../../../../components/form/fields';
+import { JournalPreview } from '../../../../../components/form/JournalPreview';
 import { type MoreMenuItem } from '../../../../../components/form/MoreMenu';
 import { DetailActions, docMode } from '../../../../../components/form/DetailActions';
 import { PageHeader } from '../../../../../components/form/PageHeader';
@@ -23,7 +24,7 @@ import { defaultJournalRemark } from '../../../../../services/journalPatterns';
 import { dnNumber, dnOpenQty, listDeliveries } from '../../../../../services/deliveries';
 import { loadInventoryMasters } from '../../../../../services/inventoryMasters';
 import { listItems } from '../../../../../services/items';
-import { postDocumentEntry, reverseDocumentEntry } from '../../../../../services/journalEntries';
+import { postDocumentEntry, postingPeriodProblem, reverseDocumentEntry } from '../../../../../services/journalEntries';
 import { companyTax, currencies, exchangeRates, taxCodes, taxGroups, withholdingGroups, withholdingTaxes, rateOn } from '../../../../../services/masterData';
 import { listPartnersByRole } from '../../../../../services/partners';
 import { logRejection } from '../../../../../services/approvalRules';
@@ -44,6 +45,7 @@ import {
 } from '../../../../../services/salesReturns';
 import { SalesDocumentFlow } from '../../../shared/SalesDocumentFlow';
 import { CustomerCard } from '../../../shared/CustomerCard';
+import { ReferencesCard } from '../../../shared/ReferencesCard';
 import { buildDnContext, type DnDraft, type DnMasters } from '../../../deliveries/detail/types';
 import { useDocTitle } from '../../../../../services/useDocTitle';
 import { type SrContext, type SrDraft, type SrMasters } from '../../types';
@@ -52,9 +54,14 @@ import { CopyPanel, type CopySourceType } from '../../../../purchasing/shared/Co
 import { CreateFromPanel, createHopMenuItems } from '../../../../purchasing/shared/CreateFromPanel';
 import { SR_TO_ARCM, type CopyHop, type LinePick } from '../../../shared/copyHops';
 import { srDoc } from './srDoc';
+import { salesView } from '../../../shared/salesView';
+import { SrDocumentCard } from './SrDocumentCard';
 import { ReturnDatesCard } from '../../ReturnDatesCard';
 import { ReturnShipmentCard } from '../../ReturnShipmentCard';
-import { ReturnAssignmentCard } from '../../ReturnAssignmentCard';
+import { DocumentPayment, DocumentJournalEntry } from '../../../../../components/form/PaymentCard';
+import { salesReturnPayment } from '../../../../documentPaymentDefs';
+import { AssignmentCard } from '../../../../../components/form/AssignmentCard';
+import { NO_SALES_EMPLOYEE } from '../../../../../mocks/salesOrders';
 import { SrCustomerDetailsPanel } from './SrCustomerDetailsPanel';
 import { ActivityTab } from '../../../../../components/activity/ActivityTab';
 import { neighbours, NotFound, siblingKeys, useDocTab, useReject } from '../../../../../components/form/DetailNav';
@@ -119,7 +126,8 @@ function validate(d: Draft, fx: number, m: SrMasters, asDraft: boolean): Problem
   const { problems, need } = problemCollector<TabId>();
   need(d.customerId, 'contents', 'customerId', 'Pick a customer.');
   if (asDraft) return problems;
-  need(d.postingDate, 'accounting', 'postingDate', 'Posting date is required.');
+  const postingPeriod = postingPeriodProblem(d.postingDate);
+  need(!postingPeriod, 'accounting', 'postingDate', postingPeriod ?? '');
   need(d.documentDate, 'accounting', 'documentDate', 'Document date is required.');
   need(fx > 0, 'accounting', 'currency', `No ${d.currency} exchange rate on or before ${d.postingDate}.`);
   need(d.lines.length, 'contents', 'lines', 'Add at least one line, or copy from a delivery.');
@@ -162,6 +170,7 @@ function SalesReturnForm() {
   const [linkingReplacement, setLinkingReplacement] = useState(false);
   const [replacementDnId, setReplacementDnId] = useState('');
   const [customerDetailsOpen, setCustomerDetailsOpen] = useState(false);
+  const [currencyView, setCurrencyView] = useState('');
   const [copying, setCopying] = useState(false);
   const [createHop, setCreateHop] = useState<CopyHop<SalesReturn> | null>(null);
 
@@ -345,6 +354,9 @@ function SalesReturnForm() {
 
   const title = isNew ? `New ${SR_NOUN.one}` : added ? srNumber(draft) : `Draft ${SR_NOUN.one}`;
   const sectionProps = { draft, update, errors, m, ctx };
+  const view = salesView(draft.currency, fx, date, currencyView, setCurrencyView);
+  const journal = srJournal(draft, m.items, m.inv.groups);
+  const journalEntry = <JournalPreview journal={journal} accounts={m.accounts} />;
 
   const copyFromDelivery = (dn: Delivery, picks: { lineId: string; qty: number }[]) => {
     const lines = picks.map(({ lineId, qty }) => {
@@ -445,8 +457,8 @@ function SalesReturnForm() {
                 </Alert>
               ) : null}
 
-              <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
-                <div className="flex flex-col gap-2 lg:col-span-8">
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+                <div className="flex flex-col gap-3 lg:col-span-8">
                   <CustomerCard
                     customers={m.customers}
                     customerId={draft.customerId}
@@ -457,14 +469,25 @@ function SalesReturnForm() {
                     onPickCustomer={pickCustomer}
                     onOpenDetails={() => setCustomerDetailsOpen(true)}
                   />
-                  <DocLines {...srDoc({ ...sectionProps, onCopyClick: () => setCopying(true), canCopy: availableDeliveries.length > 0 })} />
+                  <DocLines {...srDoc({ ...sectionProps, onCopyClick: () => setCopying(true), canCopy: availableDeliveries.length > 0 }, view)} />
+                  <DocumentJournalEntry def={salesReturnPayment} posting={journalEntry} {...sectionProps} />
                   <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach the RMA, photos of damage, or the courier return waybill." />
                 </div>
 
-                <aside className="flex flex-col gap-2 lg:col-span-4">
+                <aside className="flex flex-col gap-3 lg:col-span-4">
+                  <SrDocumentCard {...sectionProps} />
                   <ReturnDatesCard {...sectionProps} readOnly={added} postingHint="When the stock comes back in." dueHint="When the customer credit is due." />
+                  <DocumentPayment def={salesReturnPayment} posting={journalEntry} {...sectionProps} />
                   <ReturnShipmentCard draft={draft} update={update} readOnly={added} inv={m.inv} />
-                  <ReturnAssignmentCard draft={draft} update={update} readOnly={added} noun="return" />
+                  <ReferencesCard {...sectionProps} />
+                  <AssignmentCard
+                    draft={draft}
+                    update={update}
+                    readOnly={added}
+                    person={{ key: 'salesEmployeeId', label: 'Sales employee', clearable: true, placeholder: NO_SALES_EMPLOYEE, hint: 'Defaults from the customer.' }}
+                    ownerHint="Owns the document."
+                    remarksHint="Can be changed after the return is added."
+                  />
                 </aside>
               </div>
             </Panel.Body>

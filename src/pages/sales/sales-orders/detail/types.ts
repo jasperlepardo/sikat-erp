@@ -40,6 +40,8 @@ export interface SoContext {
   rateOf: (taxCode: string) => number;
   /** PHP per unit of the document currency on the posting date (1 for PHP, 0 when missing). */
   fx: number;
+  /** The rate used, with the bulletin day and source it comes from, for the "Exchange rate" field. PHP → undefined. */
+  fxRate?: { rate: number; date: string; source: string };
   /** The company charges VAT (so VAT-inclusive list prices carry it). */
   vatRegistered: boolean;
   fxDate: string;
@@ -69,6 +71,7 @@ export function buildContext(draft: SoDraft, m: SoMasters, ownCommitted = new Ma
       return c ? (rateAt(c, date) ?? 0) : 0;
     },
     fx: draft.currency === 'PHP' ? 1 : (fxRate?.rate ?? 0),
+    fxRate,
     fxDate: fxRate?.date ?? '',
     vatRegistered: m.tax.company.vatRegistered,
     readOnly: draft.status === 'Closed' || draft.status === 'Cancelled',

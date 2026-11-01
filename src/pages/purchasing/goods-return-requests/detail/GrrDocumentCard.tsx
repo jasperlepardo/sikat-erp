@@ -1,27 +1,35 @@
-import { FieldStack, ReadOnly, Section, bind } from '../../../../components/form/fields';
-import { formatDate } from '../../../../services/dates';
-import type { GrrStatus } from '../../../../mocks/goodsReturnRequests';
-import { StatusField } from '../../../../components/form/StatusField';
-import { GRR_STATUS_INTENT } from '../../paths';
-import type { GrrSectionProps } from './types';
+import { DocumentCard } from '../../../../components/form/DocumentCard';
+import { grrSeries } from '../../../../services/allSeries';
+import { grrNumber } from '../../../../services/goodsReturnRequests';
+import type { GrrContext, GrrSectionProps } from './types';
 
-interface GrrDocumentCardProps extends GrrSectionProps {
-  transitions: Partial<Record<GrrStatus, () => void>>;
-}
+type Props = Pick<GrrSectionProps, 'draft' | 'update' | 'errors' | 'm'> & { ctx: GrrContext };
 
-const GRR_STATUSES = ['Open', 'Closed'] as const;
-
-export function GrrDocumentCard({ draft, update, errors, transitions }: GrrDocumentCardProps) {
-  const h = bind(draft, update);
+/** Series, number and currency. A return request carries no exchange rate. */
+export function GrrDocumentCard({ draft, update, errors, ctx, m }: Props) {
   return (
-    <Section icon="tag" title="Document">
-      <FieldStack>
-        <StatusField statuses={GRR_STATUSES} intents={GRR_STATUS_INTENT} value={draft.status} moves={transitions} />
-        {h.date('postingDate', 'Posting date', { required: true, error: errors.postingDate, hint: 'Defaults to today.' })}
-        {h.date('documentDate', 'Document date', { required: true, error: errors.documentDate })}
-        {h.date('requiredDate', 'Required date', { hint: 'When the goods should be ready to send back.' })}
-        <ReadOnly label="Close date" value={draft.closeDate ? formatDate(draft.closeDate) : '—'} />
-      </FieldStack>
-    </Section>
+    <DocumentCard
+      series={ctx.added ? undefined : {
+        rows: [...grrSeries.snapshot()],
+        seriesId: draft.seriesId,
+        docNum: draft.docNum,
+        number: grrNumber(draft),
+        noun: 'Request',
+        error: errors.docNum,
+        readOnly: ctx.readOnly,
+        onSeries: (seriesId) => update({ seriesId, docNum: 0 }),
+        onNumber: (docNum) => update({ docNum }),
+      }}
+      currency={{
+        code: draft.currency,
+        currencies: m.currencies,
+        onChange: (currency) => update({ currency }),
+        readOnly: ctx.added,
+        required: true,
+        error: errors.currency,
+        hint: "Defaults to the vendor's currency.",
+        showRate: false,
+      }}
+    />
   );
 }

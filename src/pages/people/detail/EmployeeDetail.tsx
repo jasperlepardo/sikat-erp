@@ -224,7 +224,7 @@ function EmployeeForm() {
             <ProblemsAlert problems={problems} tabLabel={(t) => TABS.find((x) => x.value === t)?.label} onOpenTab={(t) => setTab(t)} />
 
             <div className="grid gap-4 lg:min-h-0 lg:flex-1 lg:grid-cols-12 lg:grid-rows-1">
-              <aside className="flex flex-col gap-2 lg:col-span-3 lg:min-h-0 lg:overflow-y-auto">
+              <aside className="flex flex-col gap-3 lg:col-span-3 lg:min-h-0 lg:overflow-y-auto">
                 <Section icon="badge" title="Employee">
                   <FieldStack>
                     {isNew ? (
@@ -300,7 +300,7 @@ function EmployeeForm() {
                 </Section>
               </aside>
 
-              <div className="flex min-w-0 flex-col gap-2 lg:col-span-9 lg:min-h-0 lg:overflow-y-auto">
+              <div className="flex min-w-0 flex-col gap-3 lg:col-span-9 lg:min-h-0 lg:overflow-y-auto">
                 <Tabs
                   value={tab}
                   onValueChange={(v) => setTab(v as TabId)}

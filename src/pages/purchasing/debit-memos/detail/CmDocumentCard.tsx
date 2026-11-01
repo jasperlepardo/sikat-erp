@@ -1,41 +1,33 @@
-import { Select } from '@jasperlepardo/sikat-design-system';
-import { CtxFormField, ReadOnly, Section, SideFields, bind } from '../../../../components/form/fields';
-import { StatusField } from '../../../../components/form/StatusField';
-import { MEMO_SERIES, MEMO_STATUSES, type MemoStatus } from '../../../../mocks/apCreditMemos';
-import { formatDate } from '../../../../services/dates';
+import { DocumentCard } from '../../../../components/form/DocumentCard';
+import { memoSeries } from '../../../../services/allSeries';
 import { memoNumber } from '../../../../services/apCreditMemos';
 import type { CmSectionProps } from './types';
-import { MEMO_STATUS_INTENT } from '../../paths';
 
-interface CmDocumentCardProps extends CmSectionProps {
-  statusMoves: Partial<Record<MemoStatus, () => void>>;
-  locked: boolean;
-}
-
-export function CmDocumentCard({ draft, update, errors, statusMoves, locked }: CmDocumentCardProps) {
-  const h = bind(draft, update);
-
+/** Series, number, currency and exchange rate. The currency is the vendor's — change it in the vendor panel. */
+export function CmDocumentCard({ draft, update, errors, ctx, m }: CmSectionProps) {
   return (
-    <Section icon="tag" title="Document">
-      <SideFields>
-        {locked ? (
-          <ReadOnly label="No." value={memoNumber(draft)} />
-        ) : (
-          <CtxFormField label="No.">
-            {() => (
-              <div className="flex gap-1">
-                <Select aria-label="Series" className="min-w-0 flex-1" options={MEMO_SERIES.map((s) => ({ value: s.id, label: s.name }))} value={draft.seriesId} onValueChange={(seriesId) => update({ seriesId })} />
-                <span className="shrink-0 self-center whitespace-nowrap text-sm">{draft.docNum ? memoNumber(draft) : <span className="text-placeholder">Next number</span>}</span>
-              </div>
-            )}
-          </CtxFormField>
-        )}
-        <StatusField statuses={MEMO_STATUSES} intents={MEMO_STATUS_INTENT} value={draft.status} moves={statusMoves} hint="Open while credit is left to apply; Closed once all of it is applied." error={errors.status} />
-        {h.date('postingDate', 'Posting date', { required: true, error: errors.postingDate })}
-        {h.date('dueDate', 'Due date', { hint: 'When the credit is due, from the payment terms.' })}
-        {h.date('documentDate', 'Document date', { required: true, error: errors.documentDate, hint: "The date on the vendor's credit note." })}
-        <ReadOnly label="Close date" value={draft.closeDate ? formatDate(draft.closeDate) : '—'} />
-      </SideFields>
-    </Section>
+    <DocumentCard
+      series={ctx.readOnly ? undefined : {
+        rows: [...memoSeries.snapshot()],
+        seriesId: draft.seriesId,
+        docNum: draft.docNum,
+        number: memoNumber(draft),
+        noun: 'Credit memo',
+        error: errors.docNum,
+        onSeries: (seriesId) => update({ seriesId, docNum: 0 }),
+        onNumber: (docNum) => update({ docNum }),
+      }}
+      currency={{
+        code: draft.currency,
+        currencies: m.currencies,
+        onChange: (currency) => update({ currency }),
+        readOnly: ctx.readOnly || ctx.based,
+        required: true,
+        error: errors.currency,
+        hint: ctx.based ? "Locked to the base documents' currency." : "Defaults to the vendor's currency.",
+        rate: ctx.fxRate,
+        rateHint: 'From the posting date; sets how totals convert to PHP.',
+      }}
+    />
   );
 }

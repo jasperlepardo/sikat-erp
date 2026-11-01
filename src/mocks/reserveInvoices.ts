@@ -7,7 +7,7 @@
  *
  * This contrasts with the normal flow: Sales Order → Delivery → A/R Invoice.
  */
-import type { Attachment, DocumentSeries } from './common';
+import type { Attachment, DocumentSeries, PriceMode } from './common';
 import { employeeId, plId, termId } from './masters';
 import type { PoReference } from './purchaseOrders';
 import type { SoDocType } from './salesOrders';
@@ -90,6 +90,8 @@ export interface ReserveInvoice {
   // Footer
   salesEmployeeId: string;
   ownerId: string;
+  /** Net / Gross / Net-and-Gross price-entry mode (display only; stored unit price is always net). */
+  priceMode?: PriceMode;
   discountPct: number;
   freight: number;
   freightTaxCode: string;
@@ -186,6 +188,7 @@ export function blankReserveInvoice(today: string, ownerId: string): Omit<Reserv
     attachments: [],
     salesEmployeeId: '',
     ownerId,
+    priceMode: 'Net',
     discountPct: 0,
     freight: 0,
     freightTaxCode: 'OVAT',
@@ -301,7 +304,7 @@ export const SEED_RESERVE_INVOICES: ReserveInvoice[] = [
     customerRef: 'DepEd-Pasig-BAC-2026-112',
     currency: 'PHP',
     postingDate: '2026-10-02',
-    dueDate: '2026-10-31',
+    dueDate: '2026-12-01',
     documentDate: '2026-10-02',
     closeDate: '',
     docType: 'Item',
@@ -316,7 +319,7 @@ export const SEED_RESERVE_INVOICES: ReserveInvoice[] = [
     allowPartialDelivery: true,
     journalRemark: 'Reserve Invoice – BP-0009',
     projectId: '',
-    paymentTermId: termId('Net 30'),
+    paymentTermId: termId('Net 60'),
     paymentMethod: 'BANK',
     indicator: '',
     federalTaxId: '',
@@ -327,7 +330,7 @@ export const SEED_RESERVE_INVOICES: ReserveInvoice[] = [
     maxCashDiscount: false,
     installments: 1,
     dueMonths: 0,
-    dueDays: 30,
+    dueDays: 60,
     cashDiscountDays: 0,
     attachments: [],
     salesEmployeeId: employeeId('Dino Pascual'),

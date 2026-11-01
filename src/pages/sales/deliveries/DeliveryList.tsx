@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useLocation } from 'react-router';
 import {
   Alert,
+  Card,
   Panel,
   Table,
   TableContent,
@@ -13,7 +14,7 @@ import {
 import { dateField, linesField, masterField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { currencyDef, salesEmployeeDef } from '../../settings/masterDefs';
-import { useListPage } from '../../../components/form/DataTable';
+import { fillCardClass, useListPage } from '../../../components/form/DataTable';
 import { PageHeader } from '../../../components/form/PageHeader';
 import { cap } from '../../../components/form/noun';
 import { DN_STATUSES, type Delivery } from '../../../mocks/deliveries';
@@ -138,7 +139,7 @@ export function DeliveryList() {
           resetPage();
         }}
         icon="local_shipping"
-        title={presets.menu}
+        title={cap(DN_NOUN.many)}
         create={{ noun: DN_NOUN, to: DN_LIST_PATH }}
       />
       <Panel.Body className="flex flex-col gap-2">
@@ -147,21 +148,25 @@ export function DeliveryList() {
             {notice}
           </Alert>
         ) : null}
-        {presets.bar(null)}
-        {orders ? (
-          <Table
-            caption={cap(DN_NOUN.many)}
-            columns={columns}
-            rows={onPage}
-            getRowId={(so) => so.id}
-            sort={sort}
-            onSortChange={setSort}
-            layout="fill"
-            pagination={pagination}
-          />
-        ) : (
-          <Text tone="muted" className="p-4">Loading {DN_NOUN.many}…</Text>
-        )}
+        {presets.toolbar(null)}
+        <Card className={fillCardClass(onPage.length)}>
+          {!orders ? (
+            <Text tone="muted" className="p-4">Loading {DN_NOUN.many}…</Text>
+          ) : orders.length ? (
+            <Table
+              caption={cap(DN_NOUN.many)}
+              columns={columns}
+              rows={onPage}
+              getRowId={(so) => so.id}
+              sort={sort}
+              onSortChange={setSort}
+              layout="fill"
+              pagination={pagination}
+            />
+          ) : (
+            <Text tone="muted" className="p-4">No {DN_NOUN.many} yet. Start one from a sales order (More actions › Create {DN_NOUN.one}), or with New {DN_NOUN.one}.</Text>
+          )}
+        </Card>
       </Panel.Body>
       {presets.panel}
     </Panel>

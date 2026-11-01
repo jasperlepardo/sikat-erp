@@ -9,7 +9,7 @@
  * - Applied amount accumulates as receipts are closed against it; it closes when fully received.
  * - Journal on posting: Dr Purchase account + Input VAT / Cr Vendor Payable — no inventory entry.
  */
-import type { Attachment, DocumentSeries } from './common';
+import type { Attachment, DocumentSeries, PriceMode } from './common';
 import { pbaLineId } from './purchLine';
 import type { PoReference } from './purchaseOrders';
 import { newGrLine, type GrLine } from './goodsReceipts';
@@ -71,6 +71,8 @@ export interface ApReserveInvoice {
   consolidatingBpId: string;
 
   // Footer
+  /** Net / Gross / Net-and-Gross price-entry mode (display only; stored unit price is always net). */
+  priceMode?: PriceMode;
   discountPct: number;
   freight: number;
   freightTaxCode: string;
@@ -91,7 +93,7 @@ export interface ApReserveInvoice {
 export const AP_RI_SERIES: DocumentSeries[] = [
   {
     id: 'apri-primary',
-    name: 'Primary',
+    name: 'A/P Reserve Invoice',
     prefix: '',
     firstNo: 1,
     manual: false,
@@ -142,6 +144,7 @@ export function blankApReserveInvoice(today: string, buyerId: string): Omit<ApRe
     maxCashDiscount: false,
     installments: 1,
     consolidatingBpId: '',
+    priceMode: 'Net',
     discountPct: 0,
     freight: 0,
     freightTaxCode: '',

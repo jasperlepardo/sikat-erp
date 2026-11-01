@@ -33,11 +33,19 @@ export function useListViews<T>({
   fields,
   builtIns,
   defaultSort,
+  urlSync = true,
 }: {
   list: string;
   fields: FilterField<T>[];
   builtIns: BuiltInView[];
   defaultSort: TableSort | null;
+  /**
+   * Mirror the filter/view to the page URL. Turn OFF for an embedded filter (e.g. the
+   * item-search modal) so a selection doesn't rewrite the host page's URL — on a `/new/`
+   * detail page a replace-navigation mints a new `location.key` and remounts the form,
+   * closing the modal/popover mid-selection.
+   */
+  urlSync?: boolean;
 }) {
   const [params, setParams] = useSearchParams();
   const saved = useCollection(filterPresets);
@@ -52,22 +60,24 @@ export function useListViews<T>({
     [saved, list],
   );
 
-  const [viewId, setViewId] = useState(() => params.get('view') ?? builtIns[0].id);
+  const [viewId, setViewId] = useState(() => (urlSync ? params.get('view') : null) ?? builtIns[0].id);
   const current = views.find((v) => v.id === viewId);
 
   const [filter, setFilter] = useState<FilterGroup>(() => {
-    const fromUrl = params.get('filter');
-    const parsed = fromUrl ? parseFilter(fromUrl, fields) : undefined;
-    if (parsed?.ok) return parsed.filter;
-    // Links from before AIP-160 text carry the old compact JSON in `?f=`.
-    const legacy = params.get('f');
-    if (legacy) return decodeFilter(legacy);
+    if (urlSync) {
+      const fromUrl = params.get('filter');
+      const parsed = fromUrl ? parseFilter(fromUrl, fields) : undefined;
+      if (parsed?.ok) return parsed.filter;
+      // Links from before AIP-160 text carry the old compact JSON in `?f=`.
+      const legacy = params.get('f');
+      if (legacy) return decodeFilter(legacy);
+    }
     return builtIns.find((v) => v.id === viewId)?.filter ?? builtIns[0].filter;
   });
   const [sort, setSort] = useState<TableSort | null>(defaultSort);
 
   // A saved preset in the URL loads asynchronously: adopt its filter/sort once it arrives.
-  const [adopted, setAdopted] = useState(() => builtIns.some((v) => v.id === viewId));
+  const [adopted, setAdopted] = useState(() => !urlSync || builtIns.some((v) => v.id === viewId));
   useEffect(() => {
     if (adopted || saved === undefined) return;
     setAdopted(true);
@@ -88,6 +98,7 @@ export function useListViews<T>({
   const filterParam = encoded !== viewFilter ? formatFilter(filter, fields) : '';
   const viewParam = viewId === builtIns[0].id ? '' : viewId;
   useEffect(() => {
+    if (!urlSync) return;
     const next = new URLSearchParams(params);
     const put = (key: string, value: string) => (value ? next.set(key, value) : next.delete(key));
     put('view', viewParam);
@@ -96,7 +107,7 @@ export function useListViews<T>({
     // Only when it changes: even an unchanged replace is a navigation, and it drops the state the
     // page was opened with — the "saved" / "rejected" notice a detail page sends back to its list.
     if (next.toString() !== params.toString()) setParams(next, { replace: true });
-  }, [viewParam, filterParam, params, setParams]);
+  }, [urlSync, viewParam, filterParam, params, setParams]);
 
   const select = useCallback(
     (id: string) => {

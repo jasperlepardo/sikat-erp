@@ -10,7 +10,8 @@ import { formatAmount } from '../../../../../services/format';
 import { rateOn } from '../../../../../services/masterData';
 import { copiedQty } from '../../../../../services/purchaseRequests';
 import { lineNet, rfqNumber } from '../../../../../services/rfqs';
-import { RFQ_LIST_PATH, RFQ_STATUS_INTENT } from '../../../paths';
+import { RFQ_LIST_PATH, RFQ_STATUS_INTENT, PR_NOUN } from '../../../paths';
+import { cap } from '../../../../../components/form/noun';
 import { CurrencyToggle, amountsIn } from '../../../shared/CurrencyToggle';
 import { orderedByRfqLine, prLineFor } from '../../../shared/poFromRfq';
 import { layoutQuoteCols, quoteLineCols } from './quoteColumns';
@@ -223,7 +224,7 @@ export function ComparisonCard({
     <DataTable
       variant="card"
       icon="list_alt"
-      title="Contents"
+      title={cap(PR_NOUN.lineLabel!)}
       noPagination
       rows={lines}
       getRowId={(r) => r.id}

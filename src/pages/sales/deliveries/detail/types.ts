@@ -39,6 +39,7 @@ export function buildDnContext(d: DnDraft, m: DnMasters): DnContext {
     ...ctx,
     // Once added, the rate is the one fixed on the delivery.
     fx: added && d.currency !== 'PHP' ? d.fxRate : ctx.fx,
+    fxRate: added && d.currency !== 'PHP' ? { rate: d.fxRate, date: d.postingDate, source: '' } : ctx.fxRate,
     readOnly: added,
     added,
     based: d.lines.some((l) => l.baseId),

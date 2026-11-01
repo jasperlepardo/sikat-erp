@@ -2,6 +2,8 @@ import { Button, Icon, Text } from '@jasperlepardo/sikat-design-system';
 import { type DocLinesProps } from '../../../../../components/form/docLines/DocLines';
 import { pick } from '../../../../../components/form/docLines/pick';
 import { salesCols } from '../../../shared/salesCols';
+import { CurrencyToggle, type SalesView } from '../../../shared/salesView';
+import { grossPriceBinding, priceModeEnabled, priceModeHeader } from '../../../../../components/form/priceMode';
 import { lineHelpers, itemConfig } from '../../../shared/salesLineHelpers';
 import { itemsPerUom } from '../../../../../mocks/items';
 import { newArCmLine, type ArCmLine } from '../../../../../mocks/arCreditMemos';
@@ -11,7 +13,8 @@ import { lineNet, lineTax, priceAfterDiscount } from '../../../../../services/sa
 import { warehouseOptions } from '../../../../inventory/transfers/TransferLines';
 import { editTaxCode } from '../../../../../services/taxRecalc';
 import { taxCodeOptions } from '../../../../../services/taxCodeOptions';
-import { AR_LIST_PATH, SR_LIST_PATH } from '../../../paths';
+import { AR_LIST_PATH, SR_LIST_PATH, ARCM_NOUN } from '../../../paths';
+import { cap } from '../../../../../components/form/noun';
 import { asSoDraft, type DnDraft } from '../../../deliveries/detail/types';
 import { lineFromItem, type SoMasters } from '../../../sales-orders/detail/types';
 import type { ArCmSectionProps } from '../../types';
@@ -23,9 +26,11 @@ export interface ArCmDocProps extends ArCmSectionProps {
 }
 
 /** Builds the A/R Credit Memo contents descriptor for the shared <DocLines>. */
-export function arCmDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy }: ArCmDocProps): DocLinesProps<ArCmLine> {
+export function arCmDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy }: ArCmDocProps, view: SalesView): DocLinesProps<ArCmLine> {
   const lines = draft.lines;
   const ro = ctx.readOnly;
+  // Showing PHP is a read-only view: the prices stay in the document currency, only displayed converted.
+  const linesLocked = ro || view.converted;
   const h = lineHelpers<ArCmLine>({ items: m.items, lines, update, errors, postingDate: draft.postingDate });
   const { itemOf, patch, err } = h;
   const lc = (n: number) => formatAmount(n * ctx.fx);
@@ -46,8 +51,8 @@ export function arCmDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy }:
 
   const cols = salesCols<ArCmLine>({
     patch,
-    readOnly: ro,
-    currency: draft.currency,
+    readOnly: linesLocked,
+    currency: view.code,
     fx: ctx.fx,
     invalid: (l, f) => Boolean(err(l, f)),
     lineKind: (l) => { const it = itemOf(l); return it ? (it.inventoryItem ? 'Item' : 'Service') : ''; },
@@ -69,6 +74,7 @@ export function arCmDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy }:
       get: (l) => round2(l.unitPrice * (1 - l.discountPct / 100) * (1 + ctx.rateOf(l.taxCode) / 100)),
       onChange: (l, g) => { const netp = g / (1 + ctx.rateOf(l.taxCode) / 100); patch(l.id, { unitPrice: round2(l.discountPct < 100 ? netp / (1 - l.discountPct / 100) : netp), priceSource: 'Manual' }); },
     },
+    grossPrice: priceModeEnabled() ? grossPriceBinding(draft.priceMode ?? 'Net', (l) => ctx.rateOf(l.taxCode), patch) : undefined,
     priceListValue: (l) => l.priceListId,
     changePriceList: (l, id) => patch(l.id, { priceListId: id }),
     lineNet,
@@ -115,14 +121,15 @@ export function arCmDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy }:
     prefsKey: 'arcm',
     cardHeader: true,
     columns,
-    rows: lines,
+    rows: view.converted ? lines.map((l) => ({ ...l, unitPrice: view.convert(l.unitPrice) })) : lines,
     icon: 'list_alt',
-    title: 'Contents',
-    description: errors.lines ?? `Items credited, in the line's unit. Prices are in ${draft.currency}.`,
+    title: cap(ARCM_NOUN.lineLabel!),
+    actions: <CurrencyToggle choices={view.choices} value={view.shown} onChange={view.onChange} />,
+    description: errors.lines ?? view.note,
     sortableKeys: ['item'],
     sortValue: (l, key) => (key === 'item' ? l.itemNo : String(l[key as keyof ArCmLine] ?? '')).toLowerCase(),
-    readOnly: ro,
-    onRemove: (picked) => update({ lines: lines.filter((l) => !picked.includes(l)) }),
+    readOnly: linesLocked,
+    onRemove: (picked) => update({ lines: lines.filter((l) => !picked.some((p) => p.id === l.id)) }),
     item: itemConfig(h, {
       onPick: (l, id) => { const line = id ? fromItem(id, { id: l.id, quantity: l.quantity }) : undefined; patch(l.id, line ?? { itemId: '', itemNo: '', description: '' }); },
       fromItem: (id) => fromItem(id, {}),
@@ -132,11 +139,14 @@ export function arCmDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy }:
       addPlaceholder: draft.customerId ? 'Search items to add a line…' : 'Pick a customer to add items',
     }),
     empty: <Text variant="small" tone={errors.lines ? 'danger' : 'muted'}>No lines yet.</Text>,
-    header: ro ? undefined : (
-      <div className="flex justify-end px-2">
-        <Button type="button" size="small" variant="outline" leadingIcon={<Icon size={16}>content_copy</Icon>} disabled={!canCopy} onClick={onCopyClick}>
-          Copy from invoice
-        </Button>
+    header: linesLocked ? undefined : (
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        {priceModeEnabled() ? priceModeHeader('arcm-price-mode', draft.priceMode ?? 'Net', (mode) => update({ priceMode: mode })) : <span />}
+        <div className="flex justify-end px-2">
+          <Button type="button" size="small" variant="outline" leadingIcon={<Icon size={16}>content_copy</Icon>} disabled={!canCopy} onClick={onCopyClick}>
+            Copy from invoice
+          </Button>
+        </div>
       </div>
     ),
   };

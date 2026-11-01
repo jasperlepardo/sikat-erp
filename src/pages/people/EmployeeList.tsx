@@ -140,7 +140,9 @@ export function EmployeeList() {
       <Panel.Body className="flex flex-col gap-2">
         {presets.bar(null)}
         <Card className={fillCardClass(onPage.length)}>
-          {loaded ? (
+          {!loaded ? (
+            <Text tone="muted" className="p-4">Loading employees…</Text>
+          ) : loaded.length ? (
             <Table
               caption={cap(EMPLOYEE_NOUN.many)}
               columns={columns}
@@ -152,7 +154,7 @@ export function EmployeeList() {
               pagination={pagination}
             />
           ) : (
-            <Text tone="muted" className="p-4">Loading employees…</Text>
+            <Text tone="muted" className="p-4">No {EMPLOYEE_NOUN.many} yet. Create one with New {EMPLOYEE_NOUN.one}.</Text>
           )}
         </Card>
       </Panel.Body>

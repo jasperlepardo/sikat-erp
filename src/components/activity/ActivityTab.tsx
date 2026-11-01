@@ -180,10 +180,10 @@ function EntryRow({ entry: e, today, onOpen, onToggle }: { entry: FeedEntry; tod
           ) : (
             <Text variant="small" weight="medium">{e.title}</Text>
           )}
-          {e.status ? <Badge size="extra-small" variant="outline" intent={e.intent === 'default' ? 'default' : e.intent}>{e.status}</Badge> : null}
-          {a && isOverdue(a, today) ? <Badge size="extra-small" intent="danger">Overdue</Badge> : null}
-          {a && isOpenTask(a) && a.dueDate && !isOverdue(a, today) ? <Badge size="extra-small" variant="outline" intent="warning">Due {formatDate(a.dueDate)}</Badge> : null}
-          {a && a.kind === 'task' && a.done ? <Badge size="extra-small" variant="outline" intent="success">Done</Badge> : null}
+          {e.status ? <Badge size="small" variant="outline" intent={e.intent === 'default' ? 'default' : e.intent}>{e.status}</Badge> : null}
+          {a && isOverdue(a, today) ? <Badge size="small" intent="danger">Overdue</Badge> : null}
+          {a && isOpenTask(a) && a.dueDate && !isOverdue(a, today) ? <Badge size="small" variant="outline" intent="warning">Due {formatDate(a.dueDate)}</Badge> : null}
+          {a && a.kind === 'task' && a.done ? <Badge size="small" variant="outline" intent="success">Done</Badge> : null}
         </div>
         {e.detail ? (
           <Text variant="small" tone="muted" className="line-clamp-2">

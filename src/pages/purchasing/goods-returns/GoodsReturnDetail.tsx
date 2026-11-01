@@ -17,7 +17,7 @@ import { DetailActions, docMode } from '../../../components/form/DetailActions';
 import { isApprover, needsApproval } from '../../../services/approval';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../components/form/ProblemsAlert';
 import { CURRENT_USER_ID } from '../../../mocks/common';
-import { blankGoodsReturn, type GoodsReturn, type ReturnLine, type ReturnStatus } from '../../../mocks/goodsReturns';
+import { blankGoodsReturn, type GoodsReturn, type ReturnLine } from '../../../mocks/goodsReturns';
 import type { Partner } from '../../../mocks/partners';
 import { logRejection } from '../../../services/approvalRules';
 import { apNumber, returnableQty } from '../../../services/apInvoices';
@@ -42,7 +42,7 @@ import {
   saveReturnRemarks,
 } from '../../../services/goodsReturns';
 import { isValidToday } from '../../../services/items';
-import { postDocumentEntry, reverseDocumentEntry } from '../../../services/journalEntries';
+import { postDocumentEntry, postingPeriodProblem, reverseDocumentEntry } from '../../../services/journalEntries';
 import { dueDateFor } from '../../../services/purchaseOrders';
 import { buildGrContext } from '../goods-receipts/detail/types';
 import { CopyPanel } from '../shared/CopyPanel';
@@ -52,17 +52,22 @@ import { DocumentFlow } from '../shared/DocumentFlow';
 import { loadRetMasters, vendorAddressOptions, returnFromInvoice, returnFromReceipt, type RetMasters, type RetContext } from '../shared/returnsTypes';
 import { DocLines } from '../../../components/form/docLines/DocLines';
 import { returnDoc } from './detail/returnDoc';
+import { purchaseView } from '../shared/purchaseView';
 import { ActivityTab } from '../../../components/activity/ActivityTab';
 import { neighbours, NotFound, siblingKeys, useDocTab, useReject } from '../../../components/form/DetailNav';
 import { useDocTitle } from '../../../services/useDocTitle';
 import { VendorCard } from '../shared/VendorCard';
 import { VendorDetailsPanel } from '../shared/VendorDetailsPanel';
 import { GrDocumentCard } from './detail/GrDocumentCard';
-import { GrTotalsCard } from './detail/GrTotalsCard';
-import { GrJournalCard } from './detail/GrJournalCard';
+import { DocumentDates } from '../../../components/form/DatesCard';
+import { goodsReturnDates } from '../../documentDateDefs';
+import { AssignmentCard } from '../../../components/form/AssignmentCard';
+import { JournalPreview } from '../../../components/form/JournalPreview';
 import { GrLogisticsCard } from './detail/GrLogisticsCard';
-import { GrAccountingCard } from './detail/GrAccountingCard';
+import { DocumentPayment, DocumentJournalEntry } from '../../../components/form/PaymentCard';
+import { goodsReturnPayment } from '../../documentPaymentDefs';
 import { ReferencesTable } from '../shared/ReferencesTable';
+import { PurchReferencesCard } from '../shared/PurchReferencesCard';
 import { RETURN_LIST_PATH, RETURN_NOUN, RETURN_STATUS_INTENT } from '../paths';
 
 type Draft = Omit<GoodsReturn, 'id'> & { id?: string };
@@ -81,8 +86,10 @@ function validate(d: Draft, ctx: RetContext, m: RetMasters, asDraft: boolean): P
   const { problems, need } = problemCollector<TabId>();
   need(d.vendorId, 'header', 'vendorId', 'Pick a vendor.');
   if (asDraft) return problems;
-  need(d.postingDate, 'header', 'postingDate', 'Posting date is required.');
+  const postingPeriod = postingPeriodProblem(d.postingDate);
+  need(!postingPeriod, 'header', 'postingDate', postingPeriod ?? '');
   need(d.documentDate, 'header', 'documentDate', 'Document date is required.');
+  need(!d.dueDate || d.dueDate >= d.postingDate, 'header', 'dueDate', 'Due date is before the posting date.');
   need(ctx.fx > 0, 'header', 'currency', `No ${d.currency} exchange rate on or before ${d.postingDate}.`);
   need(d.shipTo, 'logistics', 'shipTo', "Ship to is required — the vendor's return address.");
   need(d.lines.length, 'contents', 'lines', 'Add at least one line, or copy from a goods receipt or A/P invoice.');
@@ -148,6 +155,7 @@ function GoodsReturnForm() {
   const [copying, setCopying] = useState(false);
   const [createHop, setCreateHop] = useState<CopyHop<GoodsReturn> | null>(null);
   const [vendorDetailsOpen, setVendorDetailsOpen] = useState(false);
+  const [currencyView, setCurrencyView] = useState('');
 
   useEffect(() => {
     loadRetMasters().then(async (masters) => {
@@ -277,8 +285,6 @@ function GoodsReturnForm() {
     await recallGoodsReturn(saved);
     navigate(RETURN_LIST_PATH, { state: { notice: `Goods return ${returnNumber(saved)} rejected and returned to draft.` } });
   };
-  const statusMoves: Partial<Record<ReturnStatus, () => void>> = draft.status === 'Draft' ? (draft.approved ? { Open: () => submit(null) } : { 'Not Confirmed': () => submit(null) }) : draft.status === 'Not Confirmed' ? { Open: () => submit(null, false, { approved: true }) } : draft.status === 'Open' || draft.status === 'Closed' ? { Cancelled: cancelIt } : {};
-
   const menu: MoreMenuItem[] = [
     ...(creditable ? createHopMenuItems(saved, m.items, [RETURN_TO_APCM], setCreateHop) : []),
     ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }] : []),
@@ -290,6 +296,8 @@ function GoodsReturnForm() {
   const title = isNew ? `New ${RETURN_NOUN.one}` : added ? returnNumber(draft) : `Draft ${RETURN_NOUN.one}`;
   const addressOptions = vendorAddressOptions(vendor);
   const sectionProps = { draft, update, errors, m, ctx };
+  const view = purchaseView(draft.currency, ctx.fx, draft.postingDate, currencyView, setCurrencyView);
+  const journalEntry = <JournalPreview journal={journal} accounts={m.accounts} />;
 
   return (
     <>
@@ -339,21 +347,19 @@ function GoodsReturnForm() {
                 </Alert>
               ) : null}
 
-              <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
-                <div className="flex flex-col gap-2 lg:col-span-8">
-                  <fieldset disabled={added} className="contents">
-                    <VendorCard
-                      vendors={m.vendors}
-                      vendorId={draft.vendorId}
-                      vendor={ctx.vendor}
-                      readOnly={added}
-                      locked={!!ctx.vendor && (added || ctx.based)}
-                      error={errors.vendorId}
-                      tooltip="The vendor the goods go back to."
-                      pickVendor={pickVendor}
-                      onOpenDetails={() => setVendorDetailsOpen(true)}
-                    />
-                  </fieldset>
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+                <div className="flex flex-col gap-3 lg:col-span-8">
+                  <VendorCard
+                    vendors={m.vendors}
+                    vendorId={draft.vendorId}
+                    vendor={ctx.vendor}
+                    readOnly={added}
+                    locked={!!ctx.vendor && (added || ctx.based)}
+                    error={errors.vendorId}
+                    tooltip="The vendor the goods go back to."
+                    pickVendor={pickVendor}
+                    onOpenDetails={() => setVendorDetailsOpen(true)}
+                  />
                   {/* Outside the disabled fieldset: the table manages its own read-only state, so its view controls (Columns menu) stay usable on added returns. */}
                   <DocLines
                       {...returnDoc({
@@ -364,21 +370,26 @@ function GoodsReturnForm() {
                         ctx,
                         onCopyClick: () => setCopying(true),
                         canCopy: sameCurrency(receipts).length + sameCurrency(invoices).length > 0,
-                      })}
+                      }, view)}
                     />
-                  <fieldset disabled={added} className="contents">
-                    <ReferencesTable refs={draft.references} onChange={(references) => update({ references })} readOnly={added} description="Other documents this return refers to, e.g. the vendor's RMA or the original receipt." />
-                  </fieldset>
+                  <DocumentJournalEntry def={goodsReturnPayment} posting={journalEntry} {...sectionProps} />
+                  <ReferencesTable refs={draft.references} onChange={(references) => update({ references })} readOnly={added} description="Other documents this return refers to, e.g. the vendor's RMA or the original receipt." />
                   <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach the RMA, photos of the damage, or the courier waybill." />
                 </div>
-                <div className="flex flex-col gap-2 lg:col-span-4">
-                  <fieldset disabled={added} className="contents">
-                    <GrDocumentCard {...sectionProps} statusMoves={statusMoves} locked={added} />
-                    <GrLogisticsCard {...sectionProps} addressOptions={addressOptions} />
-                    <GrAccountingCard {...sectionProps} readOnly={added} />
-                  </fieldset>
-                  <GrTotalsCard {...sectionProps} locked={added} />
-                  <GrJournalCard journal={journal} accounts={m.accounts} />
+                <div className="flex flex-col gap-3 lg:col-span-4">
+                  <GrDocumentCard {...sectionProps} />
+                  <DocumentDates def={goodsReturnDates} {...sectionProps} />
+                  <GrLogisticsCard {...sectionProps} addressOptions={addressOptions} />
+                  <PurchReferencesCard {...sectionProps} orderNumberHint="The PO behind the lines." />
+                  <DocumentPayment def={goodsReturnPayment} posting={journalEntry} {...sectionProps} />
+                  <AssignmentCard
+                    draft={draft}
+                    update={update}
+                    readOnly={added}
+                    person={{ key: "buyerId", label: "Buyer", hint: "Who bought the goods." }}
+                    ownerHint="Owns the document (data access)."
+                    remarksHint="Can be changed after the return is added."
+                  />
                 </div>
               </div>
             </Panel.Body>
@@ -389,16 +400,10 @@ function GoodsReturnForm() {
         draft={draft}
         update={update}
         vendor={ctx.vendor}
-        currencies={m.currencies}
         readOnly={added}
         open={vendorDetailsOpen}
         onClose={() => setVendorDetailsOpen(false)}
         vendorRefHint="The vendor's return authorization (RMA) no."
-        currency={{
-          disabled: added || ctx.based,
-          tooltip: ctx.based ? 'Locked to the currency of the documents the lines came from.' : "Defaults to the vendor's currency.",
-          error: errors.currency,
-        }}
         addresses={[]}
       />
       {copying

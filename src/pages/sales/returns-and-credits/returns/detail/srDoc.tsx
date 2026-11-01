@@ -2,6 +2,7 @@ import { Button, Icon, Text } from '@jasperlepardo/sikat-design-system';
 import { type DocLinesProps } from '../../../../../components/form/docLines/DocLines';
 import { pick } from '../../../../../components/form/docLines/pick';
 import { salesCols } from '../../../shared/salesCols';
+import { CurrencyToggle, type SalesView } from '../../../shared/salesView';
 import { lineHelpers, itemConfig } from '../../../shared/salesLineHelpers';
 import { itemsPerUom } from '../../../../../mocks/items';
 import { newSrLine, type SrLine } from '../../../../../mocks/salesReturns';
@@ -11,7 +12,8 @@ import { lineNet, lineTax, priceAfterDiscount } from '../../../../../services/sa
 import { warehouseOptions } from '../../../../inventory/transfers/TransferLines';
 import { editTaxCode } from '../../../../../services/taxRecalc';
 import { taxCodeOptions } from '../../../../../services/taxCodeOptions';
-import { DN_LIST_PATH } from '../../../paths';
+import { DN_LIST_PATH, SR_NOUN } from '../../../paths';
+import { cap } from '../../../../../components/form/noun';
 import { asSoDraft, type DnDraft } from '../../../deliveries/detail/types';
 import { lineFromItem, type SoMasters } from '../../../sales-orders/detail/types';
 import type { SrSectionProps } from '../../types';
@@ -23,9 +25,11 @@ export interface SrDocProps extends SrSectionProps {
 }
 
 /** Builds the Sales Return contents descriptor for the shared <DocLines>. */
-export function srDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy }: SrDocProps): DocLinesProps<SrLine> {
+export function srDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy }: SrDocProps, view: SalesView): DocLinesProps<SrLine> {
   const lines = draft.lines;
   const ro = ctx.readOnly;
+  // Showing PHP is a read-only view: the prices stay in the document currency, only displayed converted.
+  const linesLocked = ro || view.converted;
   const h = lineHelpers<SrLine>({ items: m.items, lines, update, errors, postingDate: draft.postingDate });
   const { itemOf, patch, err } = h;
   const lc = (n: number) => formatAmount(n * ctx.fx);
@@ -57,8 +61,8 @@ export function srDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy }: S
 
   const cols = salesCols<SrLine>({
     patch,
-    readOnly: ro,
-    currency: draft.currency,
+    readOnly: linesLocked,
+    currency: view.code,
     fx: ctx.fx,
     invalid: (l, f) => Boolean(err(l, f)),
     lineKind: (l) => { const it = itemOf(l); return it ? (it.inventoryItem ? 'Item' : 'Service') : ''; },
@@ -126,14 +130,15 @@ export function srDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy }: S
     prefsKey: 'sr',
     cardHeader: true,
     columns,
-    rows: lines,
+    rows: view.converted ? lines.map((l) => ({ ...l, unitPrice: view.convert(l.unitPrice) })) : lines,
     icon: 'list_alt',
-    title: 'Contents',
-    description: errors.lines ?? `Items returned, in the line's unit. Prices are in ${draft.currency}.`,
+    title: cap(SR_NOUN.lineLabel!),
+    actions: <CurrencyToggle choices={view.choices} value={view.shown} onChange={view.onChange} />,
+    description: errors.lines ?? view.note,
     sortableKeys: ['item'],
     sortValue: (l, key) => (key === 'item' ? l.itemNo : String(l[key as keyof SrLine] ?? '')).toLowerCase(),
-    readOnly: ro,
-    onRemove: (picked) => update({ lines: lines.filter((l) => !picked.includes(l)) }),
+    readOnly: linesLocked,
+    onRemove: (picked) => update({ lines: lines.filter((l) => !picked.some((p) => p.id === l.id)) }),
     item: itemConfig(h, {
       onPick: (l, id) => { const line = id ? fromItem(id, { id: l.id, quantity: l.quantity }) : undefined; patch(l.id, line ?? { itemId: '', itemNo: '', description: '' }); },
       fromItem: (id) => fromItem(id, {}),
@@ -143,7 +148,7 @@ export function srDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy }: S
       addPlaceholder: draft.customerId ? 'Search items to add a line…' : 'Pick a customer to add items',
     }),
     empty: <Text variant="small" tone={errors.lines ? 'danger' : 'muted'}>No lines yet.</Text>,
-    header: ro ? undefined : (
+    header: linesLocked ? undefined : (
       <div className="flex justify-end px-2">
         <Button type="button" size="small" variant="outline" leadingIcon={<Icon size={16}>content_copy</Icon>} disabled={!canCopy} onClick={onCopyClick}>
           Copy from delivery

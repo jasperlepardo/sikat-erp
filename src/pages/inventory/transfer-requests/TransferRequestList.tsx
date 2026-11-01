@@ -136,7 +136,9 @@ export function TransferRequestList() {
         ) : null}
         {presets.bar(null)}
         <Card className={fillCardClass(onPage.length)}>
-          {requests ? (
+          {!requests ? (
+            <Text tone="muted" className="p-4">Loading transfer requests…</Text>
+          ) : requests.length ? (
             <Table
               caption={cap(TRANSFER_REQUEST_NOUN.many)}
               columns={columns}
@@ -148,7 +150,7 @@ export function TransferRequestList() {
               pagination={pagination}
             />
           ) : (
-            <Text tone="muted" className="p-4">Loading transfer requests…</Text>
+            <Text tone="muted" className="p-4">No {TRANSFER_REQUEST_NOUN.many} yet. Create one with New {TRANSFER_REQUEST_NOUN.one}.</Text>
           )}
         </Card>
       </Panel.Body>

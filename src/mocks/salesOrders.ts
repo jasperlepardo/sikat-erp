@@ -21,7 +21,7 @@
  *   it when paying, it isn't part of the order total.
  */
 import type { SalesLine } from './salesLine';
-import { CURRENT_USER_ID, type Attachment, type DocumentSeries } from './common';
+import { CURRENT_USER_ID, type Attachment, type DocumentSeries, type PriceMode } from './common';
 import { plId, termId } from './masters';
 import { SEED_ITEMS, itemsPerUom } from './items';
 import { SEED_PARTNERS, formatAddress } from './partners';
@@ -109,6 +109,8 @@ export interface SalesOrder {
   // Footer
   salesEmployeeId: string;
   ownerId: string;
+  /** Net / Gross / Net-and-Gross price-entry mode (display only; stored unit price is always net). */
+  priceMode?: PriceMode;
   discountPct: number;
   freight: number;
   freightTaxCode: string;
@@ -240,6 +242,7 @@ export function blankSalesOrder(ownerId: string): Omit<SalesOrder, 'id'> {
     baseQuotationId: '',
     salesEmployeeId: '',
     ownerId: ownerId,
+    priceMode: 'Net',
     discountPct: 0,
     freight: 0,
     freightTaxCode: 'OVAT',

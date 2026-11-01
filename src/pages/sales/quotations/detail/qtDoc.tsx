@@ -12,11 +12,16 @@ import { formatAmount } from '../../../../services/format';
 import { editTaxCode } from '../../../../services/taxRecalc';
 import { taxCodeOptions } from '../../../../services/taxCodeOptions';
 import { lineFromItem, linePricing, type QtTabProps } from './types';
+import { grossPriceBinding, priceModeEnabled, priceModeHeader } from '../../../../components/form/priceMode';
+import { CurrencyToggle, type SalesView } from '../../shared/salesView';
+import { QT_NOUN } from '../../paths';
+import { cap } from '../../../../components/form/noun';
 
 /** Builds the Sales Quotation contents descriptor for the shared <DocLines>. */
-export function qtDoc({ draft, update, errors, m, ctx }: QtTabProps): DocLinesProps<QuoteLine> {
+export function qtDoc({ draft, update, errors, m, ctx }: QtTabProps, view: SalesView): DocLinesProps<QuoteLine> {
   const lines = draft.lines;
-  const linesLocked = ctx.readOnly || ctx.added;
+  // Showing PHP is a read-only view: the prices stay in the document currency, only displayed converted.
+  const linesLocked = ctx.readOnly || ctx.added || view.converted;
   const h = lineHelpers<QuoteLine>({ items: m.items, lines, update, errors, postingDate: draft.postingDate });
   const { itemOf, patch, err } = h;
 
@@ -42,7 +47,7 @@ export function qtDoc({ draft, update, errors, m, ctx }: QtTabProps): DocLinesPr
 
   const cols = salesCols<QuoteLine>({
     readOnly: linesLocked,
-    currency: draft.currency,
+    currency: view.code,
     fx: ctx.fx,
     invalid: (l, f) => Boolean(err(l, f)),
     qty: (l) => l.quantity,
@@ -71,6 +76,7 @@ export function qtDoc({ draft, update, errors, m, ctx }: QtTabProps): DocLinesPr
     lineKind: (l) => { const it = itemOf(l); return it ? (it.inventoryItem ? 'Item' : 'Service') : ''; },
     taxAmount: (l) => lineTax(l, ctx.rateOf(l.taxCode), 0),
     country: { value: (l) => l.countryOfOriginCode ?? '', onChange: (l, v) => patch(l.id, { countryOfOriginCode: v }) },
+    grossPrice: priceModeEnabled() ? grossPriceBinding(draft.priceMode ?? 'Net', (l) => ctx.rateOf(l.taxCode), patch) : undefined,
     patch,
   });
 
@@ -98,10 +104,12 @@ export function qtDoc({ draft, update, errors, m, ctx }: QtTabProps): DocLinesPr
     prefsKey: 'qt',
     cardHeader: true,
     columns,
-    rows: lines,
+    rows: view.converted ? lines.map((l) => ({ ...l, unitPrice: view.convert(l.unitPrice) })) : lines,
     icon: 'list_alt',
-    title: 'Contents',
-    description: errors.lines ?? `Items quoted, in the sales unit. Prices are in ${draft.currency}.`,
+    title: cap(QT_NOUN.lineLabel!),
+    header: priceModeEnabled() && !linesLocked ? priceModeHeader('qt-price-mode', draft.priceMode ?? 'Net', (mode) => update({ priceMode: mode })) : undefined,
+    actions: <CurrencyToggle choices={view.choices} value={view.shown} onChange={view.onChange} />,
+    description: errors.lines ?? view.note,
     sortableKeys: ['item'],
     sortValue: (l, key) => (key === 'item' ? l.itemNo : String(l[key as keyof QuoteLine] ?? '')).toLowerCase(),
     readOnly: linesLocked,
@@ -114,6 +122,6 @@ export function qtDoc({ draft, update, errors, m, ctx }: QtTabProps): DocLinesPr
       fromItem,
       errorText: (l) => err(l, 'item'),
     }),
-    empty: <Text variant="small" tone="muted">No lines yet — search above to add one.</Text>,
+    empty: <Text variant="small" tone="muted">No lines yet — search below to add one.</Text>,
   };
 }

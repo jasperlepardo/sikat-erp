@@ -24,7 +24,7 @@
  * - Left out: Return Reason and Summary Type (grid layout only), Central Bank Ind. and Deferred
  *   Tax (other localizations), Asset Value Date (no fixed assets yet), Payment Order Run (A/P).
  */
-import { CURRENT_USER_ID, type Attachment, type DocumentSeries } from './common';
+import { CURRENT_USER_ID, type Attachment, type DocumentSeries, type PriceMode } from './common';
 import { plId, termId } from './masters';
 import { SEED_DELIVERIES, type DnLine } from './deliveries';
 import { SEED_PARTNERS, formatAddress } from './partners';
@@ -120,6 +120,8 @@ export interface ArInvoice {
   // Footer
   salesEmployeeId: string;
   ownerId: string;
+  /** Net / Gross / Net-and-Gross price-entry mode (display only; stored unit price is always net). */
+  priceMode?: PriceMode;
   discountPct: number;
   freight: number;
   freightTaxCode: string;
@@ -236,6 +238,7 @@ export function blankArInvoice(today: string, ownerId: string): Omit<ArInvoice, 
     attachments: [],
     salesEmployeeId: '',
     ownerId: ownerId,
+    priceMode: 'Net',
     discountPct: 0,
     freight: 0,
     freightTaxCode: 'OVAT',
@@ -372,7 +375,7 @@ const invoices: ArInvoice[] = [
     remarks: 'USD invoice at the 10 Sep BSP rate. Half paid 22 Sep at that day’s rate (realized difference on the payment); the open half is revalued at month-end.',
   }),
   fromDelivery('ar-006', 5, 'dn-006', {
-    postingDate: '2026-10-06', documentDate: '2026-10-06', dueDate: '2026-11-05',
+    postingDate: '2026-10-06', documentDate: '2026-10-06', dueDate: '2026-12-05',
     wtaxLiable: true,
     remarks: 'First 24 of 40 iPads for DepEd Pasig. Government withholds 1% EWT and 5% VAT. Not yet paid.',
   }),

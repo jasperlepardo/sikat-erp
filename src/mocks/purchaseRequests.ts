@@ -2,7 +2,7 @@
  * Purchase requests. The earliest document in the purchasing workflow — an internal
  * request for goods or services before a vendor is chosen. Workflow: Open → Closed.
  */
-import type { Attachment, DocumentSeries } from './common';
+import type { Attachment, DocumentSeries, PriceMode } from './common';
 import type { PurchLine } from './purchLine';
 import { employeeId, plId } from './masters';
 import { SEED_ITEMS, mergedItems } from './items';
@@ -84,6 +84,8 @@ export interface PurchaseRequest {
 
   // Footer
   ownerId: string;
+  /** Net / Gross / Net-and-Gross price-entry mode (display only; stored unit price is always net). */
+  priceMode?: PriceMode;
   freight: number;
   remarks: string;
   attachments: Attachment[];
@@ -92,7 +94,7 @@ export interface PurchaseRequest {
 export const PR_SERIES: DocumentSeries[] = [
   {
     id: 'ser-pr-primary',
-    name: 'Primary',
+    name: 'Purchase Request',
     prefix: '',
     firstNo: 1,
     manual: false,
@@ -152,6 +154,7 @@ export function blankPurchaseRequest(today: string, requester: Employee | undefi
     summaryType: 'No Summary',
     lines: [],
     ownerId: requester?.salesEmployeeId ?? '',
+    priceMode: 'Net',
     freight: 0,
     remarks: '',
     attachments: [],

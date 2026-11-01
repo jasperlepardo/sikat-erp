@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useLocation } from 'react-router';
 import {
   Alert,
+  Card,
   Panel,
   Table,
   TableAmount,
@@ -21,7 +22,7 @@ import { useAsync } from '../../../services/useAsync';
 import { dateField, linesField, masterField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { currencyDef, salesEmployeeDef } from '../../settings/masterDefs';
-import { useListPage } from '../../../components/form/DataTable';
+import { fillCardClass, useListPage } from '../../../components/form/DataTable';
 import { cap } from '../../../components/form/noun';
 import { AP_LIST_PATH, AP_NOUN, AP_STATUS_INTENT } from '../paths';
 
@@ -125,7 +126,7 @@ export function ApInvoiceList() {
           resetPage();
         }}
         icon="request_quote"
-        title={presets.menu}
+        title={cap(AP_NOUN.many)}
         create={{ noun: AP_NOUN, to: AP_LIST_PATH }}
 
       />
@@ -135,21 +136,25 @@ export function ApInvoiceList() {
             {notice}
           </Alert>
         ) : null}
-        {presets.bar(null)}
-        {invoices ? (
-          <Table
-            caption={cap(AP_NOUN.many)}
-            columns={columns}
-            rows={visible}
-            getRowId={(inv) => inv.id}
-            sort={sort}
-            onSortChange={setSort}
-            layout="fill"
-            pagination={pagination}
-          />
-        ) : (
-          <Text tone="muted" className="p-4">Loading bills…</Text>
-        )}
+        {presets.toolbar(null)}
+        <Card className={fillCardClass(visible.length)}>
+          {!invoices ? (
+            <Text tone="muted" className="p-4">Loading bills…</Text>
+          ) : invoices.length ? (
+            <Table
+              caption={cap(AP_NOUN.many)}
+              columns={columns}
+              rows={visible}
+              getRowId={(inv) => inv.id}
+              sort={sort}
+              onSortChange={setSort}
+              layout="fill"
+              pagination={pagination}
+            />
+          ) : (
+            <Text tone="muted" className="p-4">No {AP_NOUN.many} yet. Start one from a purchase order or goods receipt (More actions › Create {AP_NOUN.one}), or with New {AP_NOUN.one}.</Text>
+          )}
+        </Card>
       </Panel.Body>
       {presets.panel}
     </Panel>

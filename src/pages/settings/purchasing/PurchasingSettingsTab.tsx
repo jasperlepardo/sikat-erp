@@ -82,7 +82,6 @@ export function PurchasingSettingsTab() {
             {f.pick('roundingMethod', 'Rounding method', [...ROUNDING_METHODS], {
               hint: '"By Currency" shows a rounding row in the PO footer using the document currency\'s rounding rule.',
             })}
-            {f.check('separateNetGrossPriceMode', 'Show separate Net / Gross price modes')}
             {f.check('manageFreightInDocuments', 'Manage freight on documents')}
             {f.check('multiLanguageSupport', 'Multi-language support')}
             {f.check('useBpCatalogNumbers', 'Use vendor catalog numbers on lines')}

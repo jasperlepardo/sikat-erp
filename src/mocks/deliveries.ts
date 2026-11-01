@@ -113,7 +113,7 @@ export interface Delivery {
 }
 
 export const DN_SERIES: DocumentSeries[] = [
-  { id: 'dns-primary', name: 'Primary', prefix: '', firstNo: 13, manual: false, isDefault: true, active: true, segments: [{ type: 'literal', value: 'DN' }, { type: 'year' }, { type: 'sequence', padding: 4 }] },
+  { id: 'dns-primary', name: 'Delivery', prefix: '', firstNo: 13, manual: false, isDefault: true, active: true, segments: [{ type: 'literal', value: 'DN' }, { type: 'year' }, { type: 'sequence', padding: 4 }] },
 ];
 
 export const newDnLine = (patch: Partial<DnLine> = {}): DnLine => ({

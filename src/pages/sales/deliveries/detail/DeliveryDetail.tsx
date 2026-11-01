@@ -12,15 +12,17 @@ import { ProblemsAlert, problemCollector, type Problem } from '../../../../compo
 import { CURRENT_USER_ID } from '../../../../mocks/common';
 import { formatAddress } from '../../../../mocks/address';
 import { blankDelivery, deliveryHeaderFrom, type Delivery } from '../../../../mocks/deliveries';
-import { type SalesOrder } from '../../../../mocks/salesOrders';
+import { NO_SALES_EMPLOYEE, type SalesOrder } from '../../../../mocks/salesOrders';
 import { loadCurrentCompany } from '../../../../services/companies';
 import { todayISO } from '../../../../services/dates';
 import { recalcLineTaxes } from '../../../../services/taxRecalc';
 import type { Partner } from '../../../../mocks/partners';
 import { defaultJournalRemark } from '../../../../services/journalPatterns';
-import { DnPostError, addDelivery, cancelDelivery, closeDelivery, dnNumber, getDelivery, listDeliveries, recallDelivery, saveDeliveryDraft, saveDeliveryNotes } from '../../../../services/deliveries';
+import { DnPostError, addDelivery, cancelDelivery, closeDelivery, dnJournal, dnNumber, getDelivery, listDeliveries, recallDelivery, saveDeliveryDraft, saveDeliveryNotes } from '../../../../services/deliveries';
+import { JournalPreview } from '../../../../components/form/JournalPreview';
 import { loadInventoryMasters } from '../../../../services/inventoryMasters';
 import { isValidToday, listItems } from '../../../../services/items';
+import { postingPeriodProblem } from '../../../../services/journalEntries';
 import { accounts, companyTax, currencies, exchangeRates, taxCodes, taxGroups, withholdingGroups, withholdingTaxes } from '../../../../services/masterData';
 import { listPartnersByRole } from '../../../../services/partners';
 import { termDays } from '../../../../services/purchaseOrders';
@@ -33,16 +35,21 @@ import { CopyPanel, type CopySourceType } from '../../../purchasing/shared/CopyP
 import { CreateFromPanel, createHopMenuItems } from '../../../purchasing/shared/CreateFromPanel';
 import { DN_TO_AR, DN_TO_SR, type CopyHop, type LinePick } from '../../shared/copyHops';
 import { dnDoc } from './dnDoc';
+import { salesView } from '../../shared/salesView';
 import { buildDnContext, dnLineFromOrder, type DnContext, type DnDraft, type DnMasters } from './types';
 import { SalesDocumentFlow } from '../../shared/SalesDocumentFlow';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
 import { neighbours, NotFound, siblingKeys, useDocTab, useReject } from '../../../../components/form/DetailNav';
-import { DnDatesCard } from './DnDatesCard';
+import { DocumentDates } from '../../../../components/form/DatesCard';
+import { DocumentPayment, DocumentJournalEntry } from '../../../../components/form/PaymentCard';
+import { deliveryDates } from '../../../documentDateDefs';
+import { deliveryPayment } from '../../../documentPaymentDefs';
+import { DnDocumentCard } from './DnDocumentCard';
 import { DnSettingsCard } from './DnSettingsCard';
-import { BpChannelCard } from '../../shared/BpChannelCard';
+import { ReferencesCard } from '../../shared/ReferencesCard';
 import { DnShipmentCard } from './DnShipmentCard';
-import { DnAssignmentCard } from './DnAssignmentCard';
+import { AssignmentCard } from '../../../../components/form/AssignmentCard';
 import { CustomerCard } from '../../shared/CustomerCard';
 import { DnCustomerDetailsPanel } from './DnCustomerDetailsPanel';
 import { ReferencesTable } from '../../../purchasing/shared/ReferencesTable';
@@ -62,7 +69,8 @@ function validate(d: DnDraft, ctx: DnContext, m: DnMasters, asDraft: boolean): P
   const { problems, need } = problemCollector<TabId>();
   need(d.customerId, 'header', 'customerId', 'Pick a customer.');
   if (asDraft) return problems;
-  need(d.postingDate, 'header', 'postingDate', 'Posting date is required.');
+  const postingPeriod = postingPeriodProblem(d.postingDate);
+  need(!postingPeriod, 'header', 'postingDate', postingPeriod ?? '');
   need(d.documentDate, 'header', 'documentDate', 'Document date is required.');
   need(ctx.fx > 0, 'header', 'currency', `No ${d.currency} exchange rate on or before ${d.postingDate}.`);
   need(d.lines.length, 'contents', 'lines', 'Add at least one line, or copy from a sales order.');
@@ -107,6 +115,7 @@ function DeliveryForm() {
   const [saving, setSaving] = useState(false);
   const reject = useReject();
   const [customerDetailsOpen, setCustomerDetailsOpen] = useState(false);
+  const [currencyView, setCurrencyView] = useState('');
   const [copying, setCopying] = useState(false);
   const [createHop, setCreateHop] = useState<CopyHop<Delivery> | null>(null);
 
@@ -242,6 +251,9 @@ function DeliveryForm() {
 
   const title = isNew ? `New ${DN_NOUN.one}` : draft.status === 'Draft' ? `Draft ${DN_NOUN.one}` : dnNumber(draft);
   const tabProps = { draft, update, errors, m, ctx };
+  const view = salesView(draft.currency, ctx.fx, draft.postingDate, currencyView, setCurrencyView);
+  const journal = dnJournal(draft, m.items, m.inv.groups);
+  const journalEntry = <JournalPreview journal={journal} accounts={m.accounts} />;
   // Open orders of this customer (or any customer, before one is picked) with something left to ship.
   const copyableOrders = m.orders.filter((o) => o.status === 'Open' && o.docType === 'Item' && (!draft.customerId || o.customerId === draft.customerId) && o.lines.some((l) => openQty(l) > 0) && (!ctx.based || o.currency === draft.currency));
 
@@ -298,8 +310,8 @@ function DeliveryForm() {
                 </Alert>
               ) : null}
 
-              <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
-                <div className="flex flex-col gap-2 lg:col-span-8">
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+                <div className="flex flex-col gap-3 lg:col-span-8">
                   <CustomerCard
                     customers={m.customers}
                     customerId={draft.customerId}
@@ -311,7 +323,8 @@ function DeliveryForm() {
                     onOpenDetails={() => setCustomerDetailsOpen(true)}
                   />
                   {/* Not in a disabled fieldset: the table locks its own inputs and keeps its column settings. */}
-                  <DocLines {...dnDoc({ ...tabProps, onCopyClick: () => setCopying(true), canCopy: copyableOrders.length > 0 })} />
+                  <DocLines {...dnDoc({ ...tabProps, onCopyClick: () => setCopying(true), canCopy: copyableOrders.length > 0 }, view)} />
+                  <DocumentJournalEntry def={deliveryPayment} posting={journalEntry} {...tabProps} />
                   <ReferencesTable
                     refs={draft.references}
                     onChange={(references) => update({ references })}
@@ -326,12 +339,21 @@ function DeliveryForm() {
                   />
                 </div>
 
-                <aside className="flex flex-col gap-2 lg:col-span-4">
-                  <DnDatesCard {...tabProps} />
+                <aside className="flex flex-col gap-3 lg:col-span-4">
+                  <DnDocumentCard {...tabProps} />
+                  <DocumentDates def={deliveryDates} {...tabProps} />
+                  <DocumentPayment def={deliveryPayment} posting={journalEntry} {...tabProps} />
                   <DnSettingsCard {...tabProps} />
-                  <BpChannelCard {...tabProps} />
+                  <ReferencesCard {...tabProps} />
                   <DnShipmentCard {...tabProps} />
-                  <DnAssignmentCard {...tabProps} />
+                  <AssignmentCard
+                    draft={draft}
+                    update={update}
+                    readOnly={ctx.readOnly}
+                    person={{ key: 'salesEmployeeId', label: 'Sales employee', clearable: true, placeholder: NO_SALES_EMPLOYEE, hint: 'Defaults from the customer.' }}
+                    ownerHint="Owns the document."
+                    remarksHint="Can be changed after the delivery is added."
+                  />
                 </aside>
               </div>
             </Panel.Body>

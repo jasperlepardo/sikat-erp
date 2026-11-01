@@ -1,14 +1,16 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { Alert, Badge, Combobox, Form, FormField, List, Panel, Tabs, Text } from '@jasperlepardo/sikat-design-system';
+import { Alert, Badge, Combobox, Form, FormField, Panel, Tabs, Text } from '@jasperlepardo/sikat-design-system';
 import { PageHeader } from '../../../components/form/PageHeader';
+import { JournalPreview } from '../../../components/form/JournalPreview';
 import { DetailActions } from '../../../components/form/DetailActions';
 import { AttachmentsCard } from '../../../components/form/AttachmentsCard';
-import { Fields, ReadOnly, Section, bind, type Errors } from '../../../components/form/fields';
+import { Fields, FieldOrientationCtx, ReadOnly, Section, bind, type Errors } from '../../../components/form/fields';
+import { SeriesNoFields } from '../../../components/form/SeriesNoFields';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../components/form/ProblemsAlert';
 import { useCollection } from '../../../components/form/MasterLookup';
-import { accountText, type Account } from '../../../mocks/chartOfAccounts';
-import { COUNT_VARIANCE_ACCOUNT, DEFAULT_POSTING_JOURNAL_REMARK, POSTING_SERIES, blankPosting, countedQty, type InventoryCounting, type PriceSource } from '../../../mocks/inventoryCountings';
+import { type Account } from '../../../mocks/chartOfAccounts';
+import { DEFAULT_POSTING_JOURNAL_REMARK, POSTING_SERIES, blankPosting, countedQty, type InventoryCounting, type PriceSource } from '../../../mocks/inventoryCountings';
 import { formatAmount } from '../../../services/format';
 import { formatDate, todayISO } from '../../../services/dates';
 import { loadInventoryMasters } from '../../../services/inventoryMasters';
@@ -235,18 +237,27 @@ function PostingForm() {
           <fieldset disabled={added} className="contents">
             <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
               <Section icon="tag" title="Document">
-                <Fields>
-                  <ReadOnly
-                    label="No."
-                    value={added ? postingNumber(draft) : `${POSTING_SERIES.find((s) => s.id === draft.seriesId)?.name ?? 'Primary'} · next number`}
-                    hint={added ? undefined : 'Assigned when the posting is added.'}
-                  />
-                  {h.date('postingDate', 'Posting date', { required: true, error: errors.postingDate, hint: 'When the adjustment hits the books.' })}
-                  {h.date('countDate', 'Count date', { required: true, error: errors.countDate, hint: count ? 'From the counting.' : undefined })}
-                  {h.text('countTime', 'Time', { required: true, error: errors.countTime, placeholder: 'HH:MM' })}
-                  {h.text('reference', 'Ref. 2', { placeholder: 'Count sheet no.' })}
-                  {h.date('endOfFiscalYear', 'End of fiscal year', { hint: 'For a year-end adjustment.' })}
-                </Fields>
+                <FieldOrientationCtx.Provider value="inline">
+                  <Form.Group orientation="inline">
+                    {added ? null : (
+                      <SeriesNoFields
+                        series={POSTING_SERIES}
+                        seriesId={draft.seriesId}
+                        docNum={draft.docNum}
+                        number={postingNumber(draft)}
+                        noun="Posting"
+                        readOnly
+                        onSeries={(seriesId) => update({ seriesId })}
+                        onNumber={(docNum) => update({ docNum })}
+                      />
+                    )}
+                    {h.date('postingDate', 'Posting date', { required: true, error: errors.postingDate, hint: 'When the adjustment hits the books.' })}
+                    {h.date('countDate', 'Count date', { required: true, error: errors.countDate, hint: count ? 'From the counting.' : undefined })}
+                    {h.text('countTime', 'Time', { required: true, error: errors.countTime, placeholder: 'HH:MM' })}
+                    {h.text('reference', 'Ref. 2', { placeholder: 'Count sheet no.' })}
+                    {h.date('endOfFiscalYear', 'End of fiscal year', { hint: 'For a year-end adjustment.' })}
+                  </Form.Group>
+                </FieldOrientationCtx.Provider>
               </Section>
 
               <Section icon="link" title="Source and valuation">
@@ -317,27 +328,14 @@ function PostingForm() {
             <Section icon="notes" title="Remarks">
               <Fields cols={1}>
                 {h.area('remarks', 'Remarks', { rows: 3, hint: 'Who approved the adjustment, and why large variances happened.' })}
-                {h.text('journalRemark', 'Journal remark', { hint: 'Shown on the journal entry.' })}
               </Fields>
             </Section>
 
-            <Section icon="account_balance" title="Journal entry">
-              {journal.length ? (
-                <List.Group divider>
-                  {journal.map((j) => (
-                    <List.Item
-                      key={j.account}
-                      title={accountText(j.account, m.accounts)}
-                      content={<span className="whitespace-nowrap tabular-nums">{j.debit ? `Dr ${formatAmount(j.debit)}` : `Cr ${formatAmount(j.credit)}`}</span>}
-                    />
-                  ))}
-                </List.Group>
-              ) : (
-                <Text variant="small" tone="muted">
-                  {`None until a line has a variance. Losses: Dr ${accountText(COUNT_VARIANCE_ACCOUNT, m.accounts)} / Cr Inventory; gains the reverse.`}
-                </Text>
-              )}
-            </Section>
+            <JournalPreview
+              journal={journal}
+              accounts={m.accounts}
+              remarks={h.text('journalRemark', 'Journal remark', { hint: 'Shown on the journal entry.' })}
+            />
           </div>
         </Panel.Body>
       </Panel>

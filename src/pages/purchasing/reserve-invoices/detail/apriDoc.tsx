@@ -1,17 +1,20 @@
 import { Button, Combobox, Icon, Text, TextField } from '@jasperlepardo/sikat-design-system';
 import { type DocLinesProps } from '../../../../components/form/docLines/DocLines';
+import { APRI_NOUN } from '../../paths';
+import { cap } from '../../../../components/form/noun';
 import { purchCols, pick } from '../../shared/purchCols';
 import { costAccountOptions, lineHelpers, lineGlAccount, itemConfig } from '../../shared/purchLineHelpers';
 import { departmentDef, priceListDef, countryDef, warrantyTemplateDef } from '../../../settings/masterDefs';
 import { itemsPerUom } from '../../../../mocks/items';
 import { type ApRiLine } from '../../../../mocks/apReserveInvoices';
 import { formatAmount } from '../../../../services/format';
-import { formatDate } from '../../../../services/dates';
 import { apRiTotals } from '../../../../services/apReserveInvoices';
 import { getPurchasingSettings, lineNet, openQty, priceAfterDiscount } from '../../../../services/purchaseOrders';
 import { grInventoryQty } from '../../../../services/goodsReceipts';
 import { docWithholding } from '../../../../services/withholding';
 import { PurchTotalsFooter, PurchTotalNote, PurchTotalRow } from '../../shared/PurchTotalsFooter';
+import { CurrencyToggle, type PurchaseView } from '../../shared/purchaseView';
+import { grossPriceBinding, priceModeEnabled, priceModeHeader } from '../../../../components/form/priceMode';
 import { taxCodeOptions } from '../../../../services/taxCodeOptions';
 import { round2 } from '../../../../services/num';
 import { riLineFromItem, type ApriSectionProps } from './types';
@@ -30,11 +33,17 @@ export interface ApriDocProps extends ApriSectionProps {
 }
 
 /** Builds the A/P Reserve Invoice contents descriptor for the shared <DocLines>. */
-export function apriDoc({ draft, update, errors, m, ctx, onCopyClick, copyableCount }: ApriDocProps): DocLinesProps<ApRiLine> {
+export function apriDoc({ draft, update, errors, m, ctx, onCopyClick, copyableCount }: ApriDocProps, view: PurchaseView): DocLinesProps<ApRiLine> {
   const lines = draft.lines;
   const code = draft.currency;
+  // Viewing in PHP is a read-only conversion: the prices stay in the document currency.
+  const converted = view.converted;
+  const locked = ctx.readOnly || converted;
   const docCurrency = m.currencies.find((c) => c.code === code);
   const totals = apRiTotals(draft, ctx.rateOf, docCurrency?.rounding, ctx.isReverseCharge);
+  const vTotals = converted
+    ? { ...totals, beforeDiscount: view.convert(totals.beforeDiscount), discount: view.convert(totals.discount), freight: view.convert(totals.freight), rounding: view.convert(totals.rounding ?? 0), tax: view.convert(totals.tax), total: view.convert(totals.total), reverseCharge: totals.reverseCharge ? view.convert(totals.reverseCharge) : undefined }
+    : totals;
   const withholding = docWithholding(draft as Parameters<typeof docWithholding>[0], ctx.vendor, m.items, m.tax, draft.postingDate);
   const balance = round2(totals.total - draft.appliedAmount);
   const showFreight = getPurchasingSettings().manageFreightInDocuments;
@@ -65,7 +74,7 @@ export function apriDoc({ draft, update, errors, m, ctx, onCopyClick, copyableCo
   };
 
   const cols = purchCols<ApRiLine>({
-    patch, readOnly: ctx.readOnly, currency: code,
+    patch, readOnly: locked, currency: view.code,
     glAccountOf: (l) => lineGlAccount(itemOf(l), l, m.inv),
     glAccountOptions: (l) => costAccountOptions(m.inv.accounts, l.glAccount),
     lineNet,
@@ -73,6 +82,7 @@ export function apriDoc({ draft, update, errors, m, ctx, onCopyClick, copyableCo
     grossAfterDisc: (l) => priceAfterDiscount(l) * (1 + taxRate(l) / 100),
     taxAmount: (l) => round2((lineNet(l) * taxRate(l)) / 100),
     reverseChargeVat,
+    grossPrice: priceModeEnabled() ? grossPriceBinding(draft.priceMode ?? 'Net', taxRate, patch) : undefined,
     taxOptions: (l) => taxOptions(l.taxCode),
     vendorOptions: [],
     warehouseOptions: [],
@@ -112,16 +122,15 @@ export function apriDoc({ draft, update, errors, m, ctx, onCopyClick, copyableCo
     prefsKey: 'apri',
     cardHeader: true,
     columns,
-    rows: lines,
+    rows: converted ? lines.map((l) => ({ ...l, unitPrice: view.convert(l.unitPrice) })) : lines,
     icon: 'list_alt',
-    title: 'Contents',
-    description:
-      errors.lines ??
-      `What the vendor billed ahead of delivery, in the purchasing unit. Prices are in ${code}${code === 'PHP' ? '' : `; totals in PHP at ${ctx.fx ? `${ctx.fx} (${ctx.fxSource}, ${formatDate(ctx.fxDate)})` : '—'}`}. No stock movement until the Goods Receipt is created.`,
+    title: cap(APRI_NOUN.lineLabel!),
+    actions: <CurrencyToggle choices={view.choices} value={view.shown} onChange={view.onChange} />,
+    description: errors.lines ?? view.note,
     sortableKeys: ['item'],
     sortValue: (l, key) => (key === 'item' ? l.itemNo : String(l[key as keyof ApRiLine] ?? '')).toLowerCase(),
-    readOnly: ctx.readOnly,
-    onRemove: (picked) => update({ lines: lines.filter((l) => !picked.includes(l)) }),
+    readOnly: locked,
+    onRemove: (picked) => update({ lines: lines.filter((l) => !picked.some((p) => p.id === l.id)) }),
     item: itemConfig(h, {
       resolve: (l) => { const it = itemOf(l); return it ? { itemNo: it.itemNo, name: l.name || it.name } : null; },
       onPick: (l, id) => { if (id) pickItem(l, id); else patch(l.id, { itemId: '', itemNo: '', name: '', description: '' }); },
@@ -139,18 +148,21 @@ export function apriDoc({ draft, update, errors, m, ctx, onCopyClick, copyableCo
             : 'No open POs from this vendor. Add lines by hand.'}
       </Text>
     ),
-    header: ctx.readOnly ? undefined : (
-      <div className="flex justify-end px-2">
-        <Button type="button" size="small" variant="outline" leadingIcon={<Icon size={16}>content_copy</Icon>} disabled={!copyableCount} onClick={onCopyClick}>
-          Copy from
-        </Button>
+    header: locked ? undefined : (
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        {priceModeEnabled() ? priceModeHeader('apri-price-mode', draft.priceMode ?? 'Net', (m) => update({ priceMode: m })) : <span />}
+        <div className="flex justify-end px-2">
+          <Button type="button" size="small" variant="outline" leadingIcon={<Icon size={16}>content_copy</Icon>} disabled={!copyableCount} onClick={onCopyClick}>
+            Copy from
+          </Button>
+        </div>
       </div>
     ),
     footer: (
       <PurchTotalsFooter
-        totals={totals}
-        currency={code}
-        readOnly={ctx.readOnly}
+        totals={vTotals}
+        currency={view.code}
+        readOnly={locked}
         discountPct={draft.discountPct}
         onDiscountChange={(discountPct) => update({ discountPct })}
         freightInput={showFreight ? (
@@ -163,18 +175,15 @@ export function apriDoc({ draft, update, errors, m, ctx, onCopyClick, copyableCo
         extraRows={
           <>
             {withholding.filter((w) => w.deducted).map((w) => (
-              <PurchTotalRow key={w.atc} label={`${WITHHELD_LABEL[w.kind] ?? 'Tax'} withheld — ${w.atc} (${w.rate}%)`} value={-w.amount} code={code} />
+              <PurchTotalRow key={w.atc} label={`${WITHHELD_LABEL[w.kind] ?? 'Tax'} withheld — ${w.atc} (${w.rate}%)`} value={-view.convert(w.amount)} code={view.code} />
             ))}
             {withholding.filter((w) => !w.deducted).map((w) => (
               <PurchTotalNote key={w.atc}>
-                VAT withheld — {w.atc} ({w.rate}%): {code} {formatAmount(w.amount)} remitted by you on BIR 1600-VT, not deducted from the vendor.
+                VAT withheld — {w.atc} ({w.rate}%): {view.code} {formatAmount(view.convert(w.amount))} remitted by you on BIR 1600-VT, not deducted from the vendor.
               </PurchTotalNote>
             ))}
-            <PurchTotalRow label="Applied amount" value={-draft.appliedAmount} code={code} />
-            <PurchTotalRow label="Balance due" value={balance} code={code} strong />
-            {code !== 'PHP' ? (
-              <PurchTotalNote>≈ PHP {formatAmount(balance * ctx.fx)} at {ctx.fx ? `${ctx.fx} (${ctx.fxSource})` : '—'}.</PurchTotalNote>
-            ) : null}
+            <PurchTotalRow label="Applied amount" value={-view.convert(draft.appliedAmount)} code={view.code} />
+            <PurchTotalRow label="Balance due" value={view.convert(balance)} code={view.code} strong />
           </>
         }
       />

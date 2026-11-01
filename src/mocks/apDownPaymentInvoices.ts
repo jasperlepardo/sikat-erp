@@ -35,7 +35,7 @@ export interface DownPaymentInvoice extends Omit<ApInvoice, 'lines' | 'status' |
 export const DPI_SERIES: DocumentSeries[] = [
   {
     id: 'dpi-primary',
-    name: 'Primary',
+    name: 'A/P Down Payment Invoice',
     prefix: '',
     firstNo: 1,
     manual: false,

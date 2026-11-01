@@ -211,7 +211,9 @@ export function ItemList({ basePath = '/inventory/items' }: { basePath?: string 
       <Panel.Body className="flex flex-col gap-2">
         {presets.bar(null)}
         <Card className={fillCardClass(visible.length)}>
-          {items ? (
+          {!items ? (
+            <Text tone="muted" className="p-4">Loading items…</Text>
+          ) : items.length ? (
             <Table
               caption={cap(ITEM_NOUN.many)}
               columns={columns}
@@ -223,7 +225,7 @@ export function ItemList({ basePath = '/inventory/items' }: { basePath?: string 
               pagination={pagination}
             />
           ) : (
-            <Text tone="muted" className="p-4">Loading items…</Text>
+            <Text tone="muted" className="p-4">No {ITEM_NOUN.many} yet. Create one with New {ITEM_NOUN.one}.</Text>
           )}
         </Card>
       </Panel.Body>

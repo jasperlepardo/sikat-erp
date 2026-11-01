@@ -11,7 +11,7 @@ import { isApprover, needsApproval } from '../../../../services/approval';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { DocLines } from '../../../../components/form/docLines/DocLines';
 import { formatAddress } from '../../../../mocks/address';
-import { ADVANCES_TO_SUPPLIERS, blankDownPaymentInvoice, newDpiLine, type DownPaymentInvoice, type DpiLine, type DpiStatus } from '../../../../mocks/apDownPaymentInvoices';
+import { ADVANCES_TO_SUPPLIERS, blankDownPaymentInvoice, newDpiLine, type DownPaymentInvoice, type DpiLine } from '../../../../mocks/apDownPaymentInvoices';
 import { CURRENT_USER_ID } from '../../../../mocks/common';
 import { type Partner } from '../../../../mocks/partners';
 import { type PurchaseOrder } from '../../../../mocks/purchaseOrders';
@@ -20,8 +20,10 @@ import {
   cancelDownPaymentInvoice,
   closeDownPaymentInvoice,
   dpiJournal,
+  dpiNetDue,
   dpiNumber,
   dpiTotals,
+  dpiWithholding,
   drawableAmount,
   getDownPaymentInvoice,
   listDownPaymentInvoices,
@@ -29,7 +31,7 @@ import {
   saveDpiDraft,
   saveDpiRemarks,
 } from '../../../../services/apDownPaymentInvoices';
-import { postDocumentEntry, reverseDocumentEntry } from '../../../../services/journalEntries';
+import { postDocumentEntry, postingPeriodProblem, reverseDocumentEntry } from '../../../../services/journalEntries';
 import { logRejection } from '../../../../services/approvalRules';
 import { loadCurrentCompany } from '../../../../services/companies';
 import { formatDate, todayISO } from '../../../../services/dates';
@@ -47,6 +49,7 @@ import { buildGrContext, linesFromPo } from '../../goods-receipts/detail/types';
 import { CopyPanel } from '../../shared/CopyPanel';
 import { DocumentFlow } from '../../shared/DocumentFlow';
 import { dpiDoc } from './dpiDoc';
+import { purchaseView } from '../../shared/purchaseView';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
 import { neighbours, NotFound, siblingKeys, useDocTab, useReject } from '../../../../components/form/DetailNav';
@@ -56,9 +59,13 @@ import { receivingVendorAddressFields } from '../../shared/vendorAddresses';
 import { ReferencesTable } from '../../shared/ReferencesTable';
 import { DPI_LIST_PATH, DPI_NOUN, DPI_STATUS_INTENT, PAYMENT_LIST_PATH } from '../../paths';
 import { type DpiDraft as Draft, type DpiMasters as Masters } from './types';
+import { DocumentDates } from '../../../../components/form/DatesCard';
+import { downPaymentInvoiceDates } from '../../../documentDateDefs';
 import { DpiDocumentCard } from './DpiDocumentCard';
-import { DpiAccountingCard } from './DpiAccountingCard';
-import { DpiTotalsCard } from './DpiTotalsCard';
+import { DocumentPayment, DocumentJournalEntry } from '../../../../components/form/PaymentCard';
+import { JournalPreview } from '../../../../components/form/JournalPreview';
+import { downPaymentInvoicePayment } from '../../../documentPaymentDefs';
+import { AssignmentCard } from '../../../../components/form/AssignmentCard';
 
 type TabId = 'contents' | 'logistics' | 'accounting';
 
@@ -74,8 +81,10 @@ function validate(d: Draft, fx: number, m: Masters, asDraft: boolean): Problem<T
   const { problems, need } = problemCollector<TabId>();
   need(d.vendorId, 'header', 'vendorId', 'Pick a vendor.');
   if (asDraft) return problems;
-  need(d.postingDate, 'header', 'postingDate', 'Posting date is required.');
+  const postingPeriod = postingPeriodProblem(d.postingDate);
+  need(!postingPeriod, 'header', 'postingDate', postingPeriod ?? '');
   need(d.documentDate, 'header', 'documentDate', 'Document date is required.');
+  need(!d.dueDate || d.dueDate >= d.postingDate, 'header', 'dueDate', 'Due date is before the posting date.');
   need(fx > 0, 'header', 'currency', `No ${d.currency} exchange rate on or before ${d.postingDate}.`);
   need(d.shipTo, 'logistics', 'shipTo', 'Ship to is required.');
   need(d.dpmPct > 0 && d.dpmPct <= 100, 'header', 'dpmPct', 'DPM % must be more than 0 and at most 100.');
@@ -120,6 +129,7 @@ function DpiForm() {
   const reject = useReject();
   const [copying, setCopying] = useState(false);
   const [vendorDetailsOpen, setVendorDetailsOpen] = useState(false);
+  const [currencyView, setCurrencyView] = useState('');
 
   useEffect(() => {
     Promise.all([
@@ -152,10 +162,11 @@ function DpiForm() {
   const { prevId, nextId } = neighbours(siblings, draft.id && (draft.docNum ? dpiNumber(draft as DownPaymentInvoice) : draft.id));
   const errors: Errors = Object.fromEntries(problems.map((p) => [p.key, p.message]));
   const totals = dpiTotals(draft, ctx.rateOf, ctx.isReverseCharge);
-  const balance = Math.round((totals.total - draft.appliedAmount) * 100) / 100;
+  const withholding = dpiWithholding(draft, vendor, m.items, m.tax, draft.postingDate);
+  const balance = Math.round((dpiNetDue(totals.total, withholding) - draft.appliedAmount) * 100) / 100;
   const code = draft.currency;
   const orders = draft.vendorId ? receivablePos(m.orders, draft.vendorId).filter((po) => !ctx.based || po.currency === code) : [];
-  const journal = fx ? dpiJournal(draft, fx, ctx.rateOf) : [];
+  const journal = fx ? dpiJournal(draft, fx, { codes: m.tax.codes, rateOf: ctx.rateOf, withholding }) : [];
 
   const retax = (lines: Draft['lines'], v: Partner | undefined, date: string) =>
     recalcLineTaxes(lines, (itemId) => {
@@ -179,6 +190,8 @@ function DpiForm() {
   };
 
   const sectionProps = { draft, update, errors, m, ctx };
+  const view = purchaseView(draft.currency, ctx.fx, draft.postingDate, currencyView, setCurrencyView);
+  const journalEntry = <JournalPreview journal={journal} accounts={m.accounts} />;
 
   const submit = async (e: FormEvent | null, asDraft = false, overrides: Partial<Draft> = {}) => {
     e?.preventDefault();
@@ -232,12 +245,6 @@ function DpiForm() {
   const closeIt = () => act(() => closeDownPaymentInvoice(saved), 'closed');
   const recallIt = () => act(() => recallDownPaymentInvoice(saved), 'recalled to draft');
   const rejectIt = async (rejectionReason: string) => { await logRejection('APDPI', saved.id, saved.vendorId, rejectionReason); await recallDownPaymentInvoice(saved); navigate(DPI_LIST_PATH, { state: { notice: `Down payment invoice ${dpiNumber(saved)} rejected.` } }); };
-  const statusMoves: Partial<Record<DpiStatus, () => void>> =
-    draft.status === 'Draft' ? (draft.approved ? { Open: () => submit(null) } : { 'Not Confirmed': () => submit(null) })
-    : draft.status === 'Not Confirmed' ? { Open: () => submit(null, false, { approved: true }) }
-    : draft.status === 'Open' ? { Closed: closeIt, ...(!draft.appliedAmount ? { Cancelled: cancelIt } : {}) }
-    : {};
-
   const menu: MoreMenuItem[] = [
     ...(draft.status === 'Open' && balance > 0 && !draft.paymentBlock
       ? [{ label: 'Pay', icon: 'payments', onSelect: () => navigate(`${PAYMENT_LIST_PATH}/new`, { state: { vendorId: draft.vendorId, invoiceIds: [saved.id] } }) }]
@@ -301,8 +308,8 @@ function DpiForm() {
                     : 'Only remarks, the payment block and the payment run flag can change.'}
                 </Alert>
               ) : null}
-              <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
-                <div className="flex flex-col gap-2 lg:col-span-8">
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+                <div className="flex flex-col gap-3 lg:col-span-8">
                   <VendorCard
                     vendors={m.vendors}
                     vendorId={draft.vendorId}
@@ -313,14 +320,24 @@ function DpiForm() {
                     pickVendor={pickVendor}
                     onOpenDetails={() => setVendorDetailsOpen(true)}
                   />
-                  <DocLines {...dpiDoc({ ...sectionProps, onCopyClick: () => setCopying(true), canCopy: orders.length > 0 })} />
+                  <DocLines {...dpiDoc({ ...sectionProps, onCopyClick: () => setCopying(true), canCopy: orders.length > 0 }, view)} />
+                  <DocumentJournalEntry def={downPaymentInvoicePayment} posting={journalEntry} {...sectionProps} />
                   <ReferencesTable refs={draft.references} onChange={(references) => update({ references })} readOnly={ctx.readOnly} description="Other documents this invoice refers to, e.g. the vendor's proforma invoice." />
                   <AttachmentsCard attachments={draft.attachments ?? []} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach the vendor's proforma or billing documents." />
                 </div>
-                <div className="flex flex-col gap-2 lg:col-span-4">
-                  <DpiDocumentCard {...sectionProps} statusMoves={statusMoves} />
-                  <DpiAccountingCard {...sectionProps} ctx={ctx} m={m} />
-                  <DpiTotalsCard {...sectionProps} />
+                <div className="flex flex-col gap-3 lg:col-span-4">
+                  <DpiDocumentCard {...sectionProps} />
+                  <DocumentDates def={downPaymentInvoiceDates} {...sectionProps} />
+                  <DocumentPayment def={downPaymentInvoicePayment} posting={journalEntry} {...sectionProps} />
+                  <AssignmentCard
+                    draft={draft}
+                    update={update}
+                    readOnly={ctx.readOnly}
+                    person={{ key: 'buyerId', label: 'Buyer', hint: 'Who placed the order.' }}
+                    ownerHint="Owns the document (data access)."
+                    remarksHint="Can be changed after the invoice is added."
+                    paymentFlags
+                  />
                 </div>
               </div>
             </Panel.Body>
@@ -331,12 +348,10 @@ function DpiForm() {
         draft={draft}
         update={update}
         vendor={ctx.vendor}
-        currencies={m.currencies}
         readOnly={ctx.readOnly}
         open={vendorDetailsOpen}
         onClose={() => setVendorDetailsOpen(false)}
         vendorRefHint="The vendor's proforma or billing no."
-        currency={{ disabled: ctx.readOnly || ctx.based, tooltip: undefined, error: errors.currency }}
         addresses={ctx.vendor ? receivingVendorAddressFields(m, ctx.vendor, { shipPlaceholder: 'Where the goods will be received', payPlaceholder: 'Vendor address for payment' }) : []}
       />
       {copying

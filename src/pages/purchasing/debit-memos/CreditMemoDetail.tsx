@@ -11,12 +11,13 @@ import {
 } from '@jasperlepardo/sikat-design-system';
 import { PageHeader } from '../../../components/form/PageHeader';
 import { type Errors } from '../../../components/form/fields';
+import { JournalPreview } from '../../../components/form/JournalPreview';
 import { type MoreMenuItem } from '../../../components/form/MoreMenu';
 import { DetailActions, docMode } from '../../../components/form/DetailActions';
 import { isApprover, needsApproval } from '../../../services/approval';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../components/form/ProblemsAlert';
 import { formatAddress } from '../../../mocks/address';
-import { blankCreditMemo, type ApCreditMemo, type MemoLine, type MemoStatus } from '../../../mocks/apCreditMemos';
+import { blankCreditMemo, type ApCreditMemo, type MemoLine } from '../../../mocks/apCreditMemos';
 import type { ApInvoice } from '../../../mocks/apInvoices';
 import type { GoodsReturn } from '../../../mocks/goodsReturns';
 import { CURRENT_USER_ID } from '../../../mocks/common';
@@ -48,7 +49,7 @@ import { defaultJournalRemark } from '../../../services/journalPatterns';
 import { formatAmount } from '../../../services/format';
 import { creditableReturns, returnNumber, returnOpenQty } from '../../../services/goodsReturns';
 import { isValidToday } from '../../../services/items';
-import { postDocumentEntry, reverseDocumentEntry } from '../../../services/journalEntries';
+import { postDocumentEntry, postingPeriodProblem, reverseDocumentEntry } from '../../../services/journalEntries';
 import { dueDateFor } from '../../../services/purchaseOrders';
 import { docWithholding } from '../../../services/withholding';
 import { buildGrContext } from '../goods-receipts/detail/types';
@@ -57,6 +58,7 @@ import { invoiceBalance } from '../payments-made/detail/types';
 import { loadRetMasters, vendorAddressOptions, type RetMasters, memoFromInvoice, memoFromReturn } from '../shared/returnsTypes';
 import type { LinePick } from '../shared/copyHops';
 import { memoDoc } from './detail/memoDoc';
+import { purchaseView } from '../shared/purchaseView';
 import { DocLines } from '../../../components/form/docLines/DocLines';
 import { neighbours, NotFound, siblingKeys, useDocTab, useReject } from '../../../components/form/DetailNav';
 import { DocumentFlow } from '../shared/DocumentFlow';
@@ -64,13 +66,16 @@ import { ActivityTab } from '../../../components/activity/ActivityTab';
 import { useDocTitle } from '../../../services/useDocTitle';
 import { VendorCard } from '../shared/VendorCard';
 import { VendorDetailsPanel } from '../shared/VendorDetailsPanel';
+import { DocumentDates } from '../../../components/form/DatesCard';
+import { debitMemoDates } from '../../documentDateDefs';
 import { CmDocumentCard } from './detail/CmDocumentCard';
-import { CmTotalsCard } from './detail/CmTotalsCard';
-import { CmJournalCard } from './detail/CmJournalCard';
+import { AssignmentCard } from '../../../components/form/AssignmentCard';
 import { ApplyCreditPanel } from './detail/ApplyCreditPanel';
 import { CmLogisticsCard } from './detail/CmLogisticsCard';
-import { CmAccountingCard } from './detail/CmAccountingCard';
+import { DocumentPayment, DocumentJournalEntry } from '../../../components/form/PaymentCard';
+import { debitMemoPayment } from '../../documentPaymentDefs';
 import { ReferencesTable } from '../shared/ReferencesTable';
+import { PurchReferencesCard } from '../shared/PurchReferencesCard';
 import { AttachmentsCard } from '../../../components/form/AttachmentsCard';
 import { MEMO_LIST_PATH, MEMO_NOUN, MEMO_STATUS_INTENT } from '../paths';
 import { round2 } from '../../../services/num';
@@ -87,8 +92,10 @@ function validate(d: Draft, fx: number, m: RetMasters, asDraft: boolean): Proble
   const { problems, need } = problemCollector<TabId>();
   need(d.vendorId, 'header', 'vendorId', 'Pick a vendor.');
   if (asDraft) return problems;
-  need(d.postingDate, 'header', 'postingDate', 'Posting date is required.');
+  const postingPeriod = postingPeriodProblem(d.postingDate);
+  need(!postingPeriod, 'header', 'postingDate', postingPeriod ?? '');
   need(d.documentDate, 'header', 'documentDate', 'Document date is required.');
+  need(!d.dueDate || d.dueDate >= d.postingDate, 'header', 'dueDate', 'Due date is before the posting date.');
   need(fx > 0, 'header', 'currency', `No ${d.currency} exchange rate on or before ${d.postingDate}.`);
   need(d.controlAccount, 'accounting', 'controlAccount', 'Pick the control account.');
   need(d.lines.length, 'contents', 'lines', 'Add at least one line, or copy from an A/P invoice or goods return.');
@@ -150,6 +157,7 @@ function CreditMemoForm() {
   const [copying, setCopying] = useState(false);
   const [applying, setApplying] = useState(false);
   const [vendorDetailsOpen, setVendorDetailsOpen] = useState(false);
+  const [currencyView, setCurrencyView] = useState('');
   // Tab state (hook) must stay above the loading/not-found early returns — rules of hooks.
   const page = (PAGES.some((p) => p.value === tabParam) ? tabParam : 'details') as PageId;
   const setPage = useDocTab<PageId>(`${MEMO_LIST_PATH}/${id}`, tabParam);
@@ -286,8 +294,6 @@ function CreditMemoForm() {
   };
   const recallIt = async () => { const m2 = await recallCreditMemo(saved); navigate(MEMO_LIST_PATH, { state: { notice: `A/P credit memo ${memoNumber(m2)} recalled to draft.` } }); };
   const rejectIt = async (rejectionReason: string) => { await logRejection('APCM', saved.id, saved.vendorId, rejectionReason); await recallCreditMemo(saved); navigate(MEMO_LIST_PATH, { state: { notice: `A/P credit memo ${memoNumber(saved)} rejected and returned to draft.` } }); };
-  const statusMoves: Partial<Record<MemoStatus, () => void>> = draft.status === 'Draft' ? (draft.approved ? { Open: () => submit(null) } : { 'Not Confirmed': () => submit(null) }) : draft.status === 'Not Confirmed' ? { Open: () => submit(null, false, { approved: true }) } : draft.status === 'Open' || draft.status === 'Closed' ? { Cancelled: cancelIt } : {};
-
   const menu: MoreMenuItem[] = [
     ...(draft.status === 'Open' && openBalance > 0 && openInvoices.length ? [{ label: 'Apply credit to an invoice', icon: 'request_quote', onSelect: () => setApplying(true) }] : []),
     ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }] : []),
@@ -298,8 +304,9 @@ function CreditMemoForm() {
 
   const title = isNew ? `New ${MEMO_NOUN.one}` : added ? memoNumber(draft) : `Draft ${MEMO_NOUN.one}`;
   const addressOptions = vendorAddressOptions(vendor);
-  const currencyTooltip = ctx.based ? `Locked to the base documents' currency; credited at ${baseInvoice ? `invoice ${apNumber(baseInvoice)}'s rate (${baseInvoice.fxRate})` : 'the posting date rate'}.` : undefined;
   const sectionProps = { draft, update, errors, m, ctx };
+  const view = purchaseView(draft.currency, ctx.fx, draft.postingDate, currencyView, setCurrencyView);
+  const journalEntry = <JournalPreview journal={journal} accounts={m.accounts} />;
 
   return (
     <>
@@ -349,35 +356,39 @@ function CreditMemoForm() {
                 </Alert>
               ) : null}
 
-              <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
-                <div className="flex flex-col gap-2 lg:col-span-8">
-                  <fieldset disabled={added} className="contents">
-                    <VendorCard
-                      vendors={m.vendors}
-                      vendorId={draft.vendorId}
-                      vendor={ctx.vendor}
-                      readOnly={ctx.readOnly}
-                      locked={!!ctx.vendor && (added || ctx.based)}
-                      error={errors.vendorId}
-                      pickVendor={pickVendor}
-                      onOpenDetails={() => setVendorDetailsOpen(true)}
-                    />
-                  </fieldset>
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+                <div className="flex flex-col gap-3 lg:col-span-8">
+                  <VendorCard
+                    vendors={m.vendors}
+                    vendorId={draft.vendorId}
+                    vendor={ctx.vendor}
+                    readOnly={ctx.readOnly}
+                    locked={!!ctx.vendor && (added || ctx.based)}
+                    error={errors.vendorId}
+                    pickVendor={pickVendor}
+                    onOpenDetails={() => setVendorDetailsOpen(true)}
+                  />
                   {/* Outside the fieldset: the lines lock themselves via ctx.readOnly, and the Columns menu stays usable once added. */}
-                  <DocLines {...memoDoc({ ...sectionProps, onCopyClick: () => setCopying(true), canCopy: invoices.length + returns.length > 0, totals, withholding, credit, openBalance })} />
-                  <fieldset disabled={added} className="contents">
-                    <ReferencesTable refs={draft.references} onChange={(references) => update({ references })} readOnly={added} description="Other documents this credit memo refers to, e.g. the vendor's credit note." />
-                  </fieldset>
+                  <DocLines {...memoDoc({ ...sectionProps, onCopyClick: () => setCopying(true), canCopy: invoices.length + returns.length > 0, totals, withholding, credit, openBalance }, view)} />
+                  <DocumentJournalEntry def={debitMemoPayment} posting={journalEntry} {...sectionProps} />
+                  <ReferencesTable refs={draft.references} onChange={(references) => update({ references })} readOnly={added} description="Other documents this credit memo refers to, e.g. the vendor's credit note." />
                   <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach the vendor's credit note or debit memo." />
                 </div>
-                <div className="flex flex-col gap-2 lg:col-span-4">
-                  <fieldset disabled={added} className="contents">
-                    <CmDocumentCard {...sectionProps} statusMoves={statusMoves} locked={added} />
-                    <CmLogisticsCard {...sectionProps} addressOptions={addressOptions} />
-                    <CmAccountingCard {...sectionProps} readOnly={added} />
-                  </fieldset>
-                  <CmTotalsCard {...sectionProps} locked={added} />
-                  <CmJournalCard journal={journal} accounts={m.accounts} code={code} fx={fx} />
+                <div className="flex flex-col gap-3 lg:col-span-4">
+                  <CmDocumentCard {...sectionProps} />
+                  <DocumentDates def={debitMemoDates} {...sectionProps} />
+                  <CmLogisticsCard {...sectionProps} addressOptions={addressOptions} />
+                  <PurchReferencesCard {...sectionProps} />
+                  <DocumentPayment def={debitMemoPayment} posting={journalEntry} {...sectionProps} />
+                  <AssignmentCard
+                    draft={draft}
+                    update={update}
+                    readOnly={added}
+                    person={{ key: 'buyerId', label: 'Buyer', hint: 'Who bought the goods.' }}
+                    ownerHint="Owns the document (data access)."
+                    remarksHint="Can be changed after the memo is added."
+                    paymentFlags
+                  />
                 </div>
               </div>
             </Panel.Body>
@@ -451,13 +462,11 @@ function CreditMemoForm() {
         draft={draft}
         update={update}
         vendor={ctx.vendor}
-        currencies={m.currencies}
         readOnly={ctx.readOnly}
         open={vendorDetailsOpen}
         onClose={() => setVendorDetailsOpen(false)}
         vendorRefHint="The vendor's credit note no."
         vendorRefError={errors.vendorRef}
-        currency={{ disabled: added || ctx.based, tooltip: currencyTooltip, error: errors.currency }}
         addresses={[]}
       />
     </>

@@ -25,7 +25,7 @@ import {
   qtNumber, qtTotals, recallQuotation, saveQuotationDraft, saveQuotationRemarks,
 } from '../../../../services/quotations';
 import { openOrdersTotal } from '../../../../services/salesOrders';
-import { SALES_SETTINGS, blankSalesOrder, newSoLine } from '../../../../mocks/salesOrders';
+import { NO_SALES_EMPLOYEE, SALES_SETTINGS, blankSalesOrder, newSoLine } from '../../../../mocks/salesOrders';
 import { logRejection } from '../../../../services/approvalRules';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { SalesDocumentFlow } from '../../shared/SalesDocumentFlow';
@@ -34,18 +34,27 @@ import { neighbours, NotFound, siblingKeys, useDocTab, useReject } from '../../.
 import { customerDefaults, linePricing, proposedTaxCode, type Draft, type QtContext, type QtMasters } from './types';
 import { BASE_PRICE_LIST_ID } from '../../../../services/priceLists';
 import { QtDocumentCard } from './QtDocumentCard';
+import { DocumentDates } from '../../../../components/form/DatesCard';
+import { quotationDates } from '../../../documentDateDefs';
 import { QtDeliveryCard } from './QtDeliveryCard';
-import { QtJournalPaymentCard } from './QtJournalPaymentCard';
-import { QtReferencesCard } from './QtReferencesCard';
+import { DocumentPayment, DocumentJournalEntry } from '../../../../components/form/PaymentCard';
+import { quotationPayment } from '../../../documentPaymentDefs';
+import { JournalPreview } from '../../../../components/form/JournalPreview';
+import { lineNet } from '../../../../services/lineMath';
+import { revenueAccountFor } from '../../../../services/itemAccounts';
+import { controlAccountOf } from '../../../../services/journalEntries';
+import { accounts } from '../../../../services/masterData';
+import { round2 } from '../../../../services/num';
 import { QtMoreCard } from './QtMoreCard';
-import { QtAssignmentCard } from './QtAssignmentCard';
-import { BpChannelCard } from '../../shared/BpChannelCard';
+import { AssignmentCard } from '../../../../components/form/AssignmentCard';
+import { ReferencesCard } from '../../shared/ReferencesCard';
 import { CustomerCard } from '../../shared/CustomerCard';
 import { CustomerDetailsPanel } from '../../shared/CustomerDetailsPanel';
 import { CopyPanel } from '../../../purchasing/shared/CopyPanel';
 import { DocLines } from '../../../../components/form/docLines/DocLines';
 import { qtDoc } from './qtDoc';
 import { SalesTotalsFooter } from '../../shared/TotalsFooter';
+import { salesView } from '../../shared/salesView';
 import { ReferencesTable } from '../../../purchasing/shared/ReferencesTable';
 import { QT_LIST_PATH, QT_NOUN, QT_STATUS_INTENT, SO_LIST_PATH } from '../../paths';
 
@@ -115,6 +124,7 @@ function QuotationForm() {
   const [saving, setSaving] = useState(false);
   const reject = useReject();
   const [customerDetailsOpen, setCustomerDetailsOpen] = useState(false);
+  const [currencyView, setCurrencyView] = useState('');
   const [copyFromNote, setCopyFromNote] = useState(false);
   const [creatingSo, setCreatingSo] = useState(false);
   const [openBalance, setOpenBalance] = useState(0);
@@ -144,7 +154,9 @@ function QuotationForm() {
   const readOnly = draft.status === 'Closed' || draft.status === 'Cancelled';
   const date = draft.postingDate || todayISO();
   const fxRate = draft.currency === 'PHP' ? undefined : rateOn(m.rates, draft.currency, date);
-  const fx = draft.currency === 'PHP' ? 1 : added ? 1 : (fxRate?.rate ?? 0);
+  // A quotation posts nothing, so it stamps no rate: the PHP equivalent always uses the
+  // posting-date rate (stable once added, since historical rates don't change).
+  const fx = draft.currency === 'PHP' ? 1 : (fxRate?.rate ?? 0);
   const vatRegistered = m.tax.company.vatRegistered;
   const rateOf = (taxCode: string) => {
     const c = m.tax.codes.find((x) => x.code === taxCode);
@@ -154,7 +166,9 @@ function QuotationForm() {
   const ctx: QtContext = { customer, fx, fxRate, rateOf, vatRegistered, readOnly, added };
   const { prevId, nextId } = neighbours(siblings, (draft as Quotation).id && (draft.docNum ? qtNumber(draft as Quotation) : (draft as Quotation).id));
   const errors: Errors = Object.fromEntries(problems.map((p) => [p.key, p.message]));
-  const totalLc = qtTotals(draft, rateOf).total * fx;
+  const docCurrency = m.currencies.find((c) => c.code === draft.currency);
+  const totals = qtTotals(draft, rateOf, docCurrency?.rounding);
+  const totalLc = totals.total * fx;
   // Only a heads-up here: the limit is enforced when the quotation is copied to an order.
   const overCredit = SALES_SETTINGS.creditLimitCheck && !!customer && customer.creditLimit > 0 && openBalance + totalLc > customer.creditLimit && !readOnly;
   const isExpired = draft.status === 'Open' && !!draft.validUntil && draft.validUntil < todayISO();
@@ -288,6 +302,27 @@ function QuotationForm() {
 
   const title = isNew ? `New ${QT_NOUN.one}` : added ? qtNumber(draft) : `Draft ${QT_NOUN.one}`;
   const tabProps = { draft, update, errors, m, ctx };
+  const view = salesView(draft.currency, fx, date, currencyView, setCurrencyView);
+
+  // Indicative journal: a quotation posts nothing itself, but shows what the A/R invoice would book
+  // if it's accepted (Dr the customer / Cr revenue + output VAT) so an approver can see the impact.
+  const qtVatAccount = (code: string) => m.tax.codes.find((c) => c.code === code)?.glAccount || '2310';
+  const qtRevFactor = 1 - draft.discountPct / 100;
+  const qtJournalMap = new Map<string, number>();
+  const qtJournalAdd = (account: string, amount: number) => { if (account && amount) qtJournalMap.set(account, round2((qtJournalMap.get(account) ?? 0) + amount)); };
+  for (const l of draft.lines) {
+    const item = m.items.find((i) => i.id === l.itemId);
+    if (!item) continue;
+    const net = round2(lineNet(l) * qtRevFactor * ctx.fx);
+    qtJournalAdd(revenueAccountFor(item, m.inv.groups), -net);
+    qtJournalAdd(qtVatAccount(l.taxCode), -round2((net * ctx.rateOf(l.taxCode)) / 100));
+  }
+  const qtJournalBalance = round2([...qtJournalMap.values()].reduce((n, v) => n + v, 0));
+  if (qtJournalBalance) qtJournalAdd(customer ? controlAccountOf(customer) : '1120', -qtJournalBalance);
+  const qtJournal = ctx.fx
+    ? [...qtJournalMap.entries()].filter(([, n]) => n !== 0).map(([account, n]) => ({ account, debit: n > 0 ? n : 0, credit: n < 0 ? -n : 0 })).sort((a, b) => b.debit - a.debit)
+    : [];
+  const qtJournalEntry = <JournalPreview journal={qtJournal} accounts={[...accounts.snapshot()]} />;
 
   return (
     <>
@@ -361,8 +396,8 @@ function QuotationForm() {
                 </Alert>
               ) : null}
 
-              <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
-                <div className="flex flex-col gap-2 lg:col-span-8">
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+                <div className="flex flex-col gap-3 lg:col-span-8">
                   <CustomerCard
                     customers={m.customers}
                     customerId={draft.customerId}
@@ -374,9 +409,10 @@ function QuotationForm() {
                     onOpenDetails={() => setCustomerDetailsOpen(true)}
                   />
                   <DocLines
-                    {...qtDoc(tabProps)}
-                    footer={<SalesTotalsFooter {...tabProps} ctx={{ ...ctx, readOnly: readOnly || added }} withholding={[]} withRounding />}
+                    {...qtDoc(tabProps, view)}
+                    footer={<SalesTotalsFooter {...tabProps} totals={totals} ctx={{ ...ctx, readOnly: readOnly || added }} withholding={[]} withRounding view={view} />}
                   />
+                  <DocumentJournalEntry def={quotationPayment} posting={qtJournalEntry} {...tabProps} />
                   <ReferencesTable
                     refs={draft.references}
                     onChange={(references) => update({ references })}
@@ -386,14 +422,21 @@ function QuotationForm() {
                   <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach the RFQ, specs sheet, or supporting documents." />
                 </div>
 
-                <aside className="flex flex-col gap-2 lg:col-span-4">
+                <aside className="flex flex-col gap-3 lg:col-span-4">
                   <QtDocumentCard {...tabProps} />
+                  <DocumentDates def={quotationDates} {...tabProps} />
                   <QtDeliveryCard {...tabProps} />
-                  <QtJournalPaymentCard {...tabProps} />
-                  <QtReferencesCard {...tabProps} />
-                  <BpChannelCard {...tabProps} placeholder="e.g. Lazada, Shopee, Apple online store" />
+                  <DocumentPayment def={quotationPayment} posting={qtJournalEntry} {...tabProps} />
+                  <ReferencesCard {...tabProps} />
                   <QtMoreCard {...tabProps} />
-                  <QtAssignmentCard {...tabProps} />
+                  <AssignmentCard
+                    draft={draft}
+                    update={update}
+                    readOnly={ctx.readOnly}
+                    person={{ key: 'salesEmployeeId', label: 'Sales employee', clearable: true, placeholder: NO_SALES_EMPLOYEE, hint: 'Defaults from the customer.' }}
+                    ownerHint="Owns the document."
+                    remarksHint="Can be changed after the quotation is added."
+                  />
                 </aside>
               </div>
             </Panel.Body>

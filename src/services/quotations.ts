@@ -1,4 +1,4 @@
-import { QT_SERIES, SEED_QUOTATIONS, type Quotation, type QuoteLine } from '../mocks/quotations';
+import { QT_SERIES, SEED_QUOTATIONS, type Quotation } from '../mocks/quotations';
 import { qtSeries, seriesLookup, formatDocNum } from './allSeries';
 import { createCollection } from './store';
 import { todayISO } from './dates';
@@ -6,7 +6,7 @@ import { soTotals } from './salesOrders';
 import type { RoundingRule } from '../mocks/currencies';
 import type { TaxCode } from '../mocks/taxes';
 import { rateAt } from '../mocks/taxes';
-import { round2 } from './num';
+import { lineNet } from './lineMath';
 
 const quotations = createCollection<Quotation>('sikat-erp:quotations', SEED_QUOTATIONS, 'qt', { audit: 'QT' });
 
@@ -20,13 +20,14 @@ export async function getQuotation(idOrNumber: string) {
 
 export type QtInput = Omit<Quotation, 'id'> & { id?: string };
 
-export const seriesOf = (id: string) => seriesLookup(qtSeries, id, QT_SERIES);
+const seriesOf = (id: string) => seriesLookup(qtSeries, id, QT_SERIES);
 export const qtNumber = (q: Pick<Quotation, 'seriesId' | 'docNum' | 'postingDate'>) =>
   formatDocNum(seriesOf(q.seriesId), q.docNum, q.postingDate);
 
 // ── Line and document math ───────────────────────────────────────────────────
 
-export const lineNet = (l: QuoteLine) => round2(l.quantity * l.unitPrice * (1 - l.discountPct / 100));
+/** Re-export the shared line-net so quotation lines foot out exactly like orders. */
+export { lineNet };
 
 export const qtTotals = (
   q: Pick<Quotation, 'lines' | 'discountPct' | 'freight' | 'freightTaxCode' | 'rounding'>,

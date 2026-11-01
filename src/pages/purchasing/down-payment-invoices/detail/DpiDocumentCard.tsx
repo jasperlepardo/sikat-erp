@@ -1,27 +1,34 @@
-import { FieldStack, ReadOnly, Section, bind } from '../../../../components/form/fields';
-import { formatDate } from '../../../../services/dates';
-import type { DpiStatus } from '../../../../mocks/apDownPaymentInvoices';
-import { StatusField } from '../../../../components/form/StatusField';
-import { DPI_STATUS_INTENT } from '../../paths';
+import { DocumentCard } from '../../../../components/form/DocumentCard';
+import { dpiSeries } from '../../../../services/allSeries';
+import { dpiNumber } from '../../../../services/apDownPaymentInvoices';
 import type { DpiSectionProps } from './types';
 
-const DPI_STATUSES: DpiStatus[] = ['Draft', 'Not Confirmed', 'Open', 'Closed', 'Cancelled'];
-
-interface DpiDocumentCardProps extends DpiSectionProps {
-  statusMoves: Partial<Record<DpiStatus, () => void>>;
-}
-
-export function DpiDocumentCard({ draft, update, errors, statusMoves }: DpiDocumentCardProps) {
-  const h = bind(draft, update);
+/** Series, number, currency and exchange rate. The currency is the vendor's — change it in the vendor panel. */
+export function DpiDocumentCard({ draft, update, errors, ctx, m }: DpiSectionProps) {
   return (
-    <Section icon="tag" title="Document">
-      <FieldStack>
-        <StatusField statuses={DPI_STATUSES} intents={DPI_STATUS_INTENT} value={draft.status} moves={statusMoves} />
-        {h.date('postingDate', 'Posting date', { required: true, error: errors.postingDate })}
-        {h.date('documentDate', 'Document date', { required: true, error: errors.documentDate })}
-        {h.date('dueDate', 'Due date', { required: true, error: errors.dueDate })}
-        <ReadOnly label="Close date" value={draft.closeDate ? formatDate(draft.closeDate) : '—'} />
-      </FieldStack>
-    </Section>
+    <DocumentCard
+      series={draft.status === 'Draft' ? {
+        rows: [...dpiSeries.snapshot()],
+        seriesId: draft.seriesId,
+        docNum: draft.docNum,
+        number: dpiNumber(draft),
+        noun: 'Invoice',
+        error: errors.docNum,
+        readOnly: ctx.readOnly,
+        onSeries: (seriesId) => update({ seriesId, docNum: 0 }),
+        onNumber: (docNum) => update({ docNum }),
+      } : undefined}
+      currency={{
+        code: draft.currency,
+        currencies: m.currencies,
+        onChange: (currency) => update({ currency }),
+        readOnly: ctx.readOnly || ctx.based,
+        required: true,
+        error: errors.currency,
+        hint: ctx.based ? 'Locked to the currency of the source document.' : "Defaults to the vendor's currency.",
+        rate: ctx.fxRate,
+        rateHint: 'From the posting date; sets how totals convert to PHP.',
+      }}
+    />
   );
 }

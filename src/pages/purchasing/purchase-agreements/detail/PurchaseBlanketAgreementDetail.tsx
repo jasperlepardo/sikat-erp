@@ -17,7 +17,7 @@ import { DetailActions } from '../../../../components/form/DetailActions';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
 import { CURRENT_USER_ID } from '../../../../mocks/common';
-import { blankPurchaseBlanketAgreement, newPbaLine, type PurchaseBlanketAgreement } from '../../../../mocks/purchaseBlanketAgreements';
+import { blankPurchaseBlanketAgreement, newPbaLine, type PurchaseBlanketAgreement, type PbaStatus } from '../../../../mocks/purchaseBlanketAgreements';
 import { blankPurchaseOrder, newPoLine } from '../../../../mocks/purchaseOrders';
 import { formatDate, todayISO } from '../../../../services/dates';
 import { loadInventoryMasters } from '../../../../services/inventoryMasters';
@@ -32,7 +32,10 @@ import { DocumentFlow } from '../../shared/DocumentFlow';
 import { VendorCard } from '../../shared/VendorCard';
 import { CopyPanel } from '../../shared/CopyPanel';
 import { VendorDetailsPanel } from '../../shared/VendorDetailsPanel';
-import { AgreementCard } from './AgreementCard';
+import { PbaDocumentCard } from './PbaDocumentCard';
+import { DocumentDates } from '../../../../components/form/DatesCard';
+import { AssignmentCard } from '../../../../components/form/AssignmentCard';
+import { purchaseAgreementDates } from '../../../documentDateDefs';
 import { GeneralTab } from './general';
 import { AgreementLinesCard } from '../../../../components/agreements/AgreementLinesCard';
 import { AgreementSummaryCard } from '../../../../components/agreements/AgreementSummaryCard';
@@ -154,14 +157,16 @@ function PbaForm() {
     update({ vendorId: v.id, vendorCode: v.code, vendorName: v.name, contactId: v.defaultContactId, currency: v.currency === 'All currencies' ? 'PHP' : v.currency, phone: phoneChannel?.value ?? '', email: emailChannel?.value ?? '', paymentTermId: v.vendorPaymentTermId });
   };
 
-  const submit = async (e: FormEvent | null, asDraft = false) => {
+  const submit = async (e: FormEvent | null, opts: { asDraft?: boolean; status?: PbaStatus } = {}) => {
     e?.preventDefault();
-    const found = validate(draft);
+    const { asDraft = false, status } = opts;
+    const payload = status ? { ...draft, status } : draft;
+    const found = validate(payload);
     setProblems(found);
     if (found.length) return;
     setSaving(true);
     try {
-      const pba = await savePurchaseBlanketAgreement(draft as PbaInput, { asDraft });
+      const pba = await savePurchaseBlanketAgreement(payload as PbaInput, { asDraft });
       navigate(PBA_LIST_PATH, {
         state: {
           notice: asDraft
@@ -169,6 +174,17 @@ function PbaForm() {
             : `Purchase blanket agreement ${pbaNumber(pba)} ${isNew || draft.status === 'Draft' ? 'added' : 'updated'} — ${pba.vendorName}.`,
         },
       });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  /** A status move from the header: save the record at its new status, then back to the list. */
+  const move = async (status: PbaStatus, verb: string) => {
+    setSaving(true);
+    try {
+      const pba = await savePurchaseBlanketAgreement({ ...draft, status } as PbaInput);
+      navigate(PBA_LIST_PATH, { state: { notice: `Purchase blanket agreement ${pbaNumber(pba)} ${verb} — ${pba.vendorName}.` } });
     } finally {
       setSaving(false);
     }
@@ -233,6 +249,14 @@ function PbaForm() {
       ? [{ label: 'Create purchase order…', icon: 'receipt_long', onSelect: () => setCreatingPo(true) }]
       : []),
     ...(!isNew ? [{ label: 'Duplicate', icon: 'content_copy', onSelect: duplicate }] : []),
+    ...(draft.status === 'On Hold' ? [{ label: 'Resume', icon: 'play_circle', onSelect: () => move('Approved', 'resumed') }] : []),
+    ...(draft.status === 'Approved' ? [{ label: 'Put on hold', icon: 'pause_circle', onSelect: () => move('On Hold', 'put on hold') }] : []),
+    ...(draft.status === 'Approved' || draft.status === 'On Hold'
+      ? [
+          { label: 'Close', icon: 'task_alt', onSelect: () => move('Closed', 'closed') },
+          { label: `Terminate ${PBA_NOUN.one}`, icon: 'cancel', onSelect: () => move('Terminated', 'terminated') },
+        ]
+      : []),
   ];
 
   const title = isNew
@@ -243,7 +267,7 @@ function PbaForm() {
 
   return (
     <>
-    <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
+    <Form className="flex-1" onSubmit={(e) => submit(e, added ? undefined : { status: 'Approved' })} noValidate>
       <Panel className="flex-1">
         <PageHeader
           variant="plain"
@@ -259,8 +283,8 @@ function PbaForm() {
               mode={!added ? 'draft' : terminal ? 'readonly' : 'open'}
               remarksOnly={terminal}
               busy={saving}
-              onDraft={() => submit(null, true)}
-              onSubmit={() => submit(null)}
+              onDraft={() => submit(null, { asDraft: true })}
+              onSubmit={() => submit(null, added ? undefined : { status: 'Approved' })}
               menu={menu}
               prevNext={isNew ? undefined : { path: PBA_LIST_PATH, prevId, nextId }}
             />
@@ -292,15 +316,17 @@ function PbaForm() {
                 {draft.status === 'Terminated' && draft.terminationDate
                   ? `Terminated on ${formatDate(draft.terminationDate)}. `
                   : ''}
-                {`Only ${terminal ? '' : 'its status, '}remarks and attachments can be changed.`}
+                {terminal
+                  ? 'Only remarks and attachments can be changed.'
+                  : 'Use the header actions to change its status; remarks and attachments stay editable.'}
               </Alert>
             ) : null}
 
             {draft.lines.length > 0 && (
               <AgreementSummaryCard side="purchase" currency={draft.currency} totals={totals} settlementProbability={draft.settlementProbability} />
             )}
-            <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
-              <div className="flex flex-col gap-2 lg:col-span-8">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+              <div className="flex flex-col gap-3 lg:col-span-8">
                 <VendorCard
                   vendors={m.vendors}
                   vendorId={draft.vendorId}
@@ -321,9 +347,11 @@ function PbaForm() {
                 />
               </div>
 
-              <aside className="flex flex-col gap-2 lg:col-span-4">
-                <AgreementCard draft={draft} update={update} m={m} added={added} readOnly={readOnly} />
-                <GeneralTab draft={draft} update={update} m={m} readOnly={readOnly} terminal={terminal} />
+              <aside className="flex flex-col gap-3 lg:col-span-4">
+                <PbaDocumentCard draft={draft} update={update} m={m} added={added} />
+                <DocumentDates def={purchaseAgreementDates} draft={draft} update={update} errors={errors} readOnly={readOnly} />
+                <GeneralTab draft={draft} update={update} m={m} readOnly={readOnly} />
+                <AssignmentCard draft={draft} update={update} readOnly={readOnly} ownerHint="Owns the document (data access)." remarksHint="Can be changed at any status." />
               </aside>
             </div>
           </Panel.Body>
@@ -334,12 +362,10 @@ function PbaForm() {
       draft={draft}
       update={update}
       vendor={vendor}
-      currencies={m.currencies}
       readOnly={readOnly}
       open={vendorDetailsOpen}
       onClose={() => setVendorDetailsOpen(false)}
       vendorRefHint="The vendor's own reference for this agreement."
-      currency={{ disabled: true, tooltip: "Set by the vendor's currency." }}
       addresses={[]}
     />
     {creatingPo

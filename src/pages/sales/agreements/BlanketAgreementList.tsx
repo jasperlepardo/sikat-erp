@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useLocation } from 'react-router';
 import {
   Alert,
+  Card,
   Panel,
   Table,
   TableContent,
@@ -11,7 +12,7 @@ import {
 } from '@jasperlepardo/sikat-design-system';
 import { dateField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
-import { useListPage } from '../../../components/form/DataTable';
+import { fillCardClass, useListPage } from '../../../components/form/DataTable';
 import { PageHeader } from '../../../components/form/PageHeader';
 import { cap } from '../../../components/form/noun';
 import { BA_STATUSES, type BlanketAgreement } from '../../../mocks/blanketAgreements';
@@ -134,26 +135,30 @@ export function BlanketAgreementList() {
         searchValue={query}
         onSearchChange={(value) => { setQuery(value); resetPage(); }}
         icon="description"
-        title={presets.menu}
+        title={cap(BA_NOUN.many)}
         create={{ noun: BA_NOUN, to: BA_LIST_PATH }}
       />
       <Panel.Body className="flex flex-col gap-2">
         {notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : null}
-        {presets.bar(null)}
-        {agreements ? (
-          <Table
-            caption={cap(BA_NOUN.many)}
-            columns={columns}
-            rows={paginated}
-            getRowId={(ba) => ba.id}
-            sort={sort}
-            onSortChange={setSort}
-            layout="fill"
-            pagination={pagination}
-          />
-        ) : (
-          <Text tone="muted" className="p-4">Loading {BA_NOUN.many}…</Text>
-        )}
+        {presets.toolbar(null)}
+        <Card className={fillCardClass(paginated.length)}>
+          {!agreements ? (
+            <Text tone="muted" className="p-4">Loading {BA_NOUN.many}…</Text>
+          ) : agreements.length ? (
+            <Table
+              caption={cap(BA_NOUN.many)}
+              columns={columns}
+              rows={paginated}
+              getRowId={(ba) => ba.id}
+              sort={sort}
+              onSortChange={setSort}
+              layout="fill"
+              pagination={pagination}
+            />
+          ) : (
+            <Text tone="muted" className="p-4">No {BA_NOUN.many} yet. Create one with New {BA_NOUN.one}.</Text>
+          )}
+        </Card>
       </Panel.Body>
       {presets.panel}
     </Panel>

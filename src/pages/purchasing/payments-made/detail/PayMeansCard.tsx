@@ -4,6 +4,7 @@ import { MasterLookup } from '../../../../components/form/MasterLookup';
 import { houseBankFor } from '../../../../services/partnerMasters';
 import { newCardRow, newCheckRow, type CardRow, type CheckRow, type PaymentMeans } from '../../../../mocks/outgoingPayments';
 import { formatAmount } from '../../../../services/format';
+import { amt, TotalsBar, TotalsRow } from '../../../../components/form/TotalsFooterParts';
 import { meansBalance, meansTotal, overallAmount } from '../../../../services/outgoingPayments';
 import { cardBrandDef } from '../../../settings/masterDefs';
 import { activeOptions } from '../../../../services/inventoryMasters';
@@ -212,27 +213,17 @@ export function PayMeansCard({ draft, update, m, readOnly }: PaySectionProps) {
   const columns = readOnly ? baseColumns : [...baseColumns, removeColumn];
 
   const footer = (
-    <div className="flex flex-col gap-1 px-2 py-1">
-      <div className="flex items-center justify-between gap-4">
-        <Text variant="small" tone="muted">Overall amount</Text>
-        <Text variant="small" className="tabular-nums">{code} {formatAmount(overallAmount(draft))}</Text>
-      </div>
-      <div className="flex items-center justify-between gap-4">
-        <Text variant="small" tone="muted">Bank charge</Text>
-        {readOnly ? (
-          <Text variant="small" className="tabular-nums">{code} {formatAmount(means.bankCharge)}</Text>
-        ) : (
+    <div className="flex flex-col">
+      <TotalsRow label="Overall amount" value={amt(overallAmount(draft), code)} />
+      <TotalsRow
+        label="Bank charge"
+        value={amt(means.bankCharge, code)}
+        input={readOnly ? undefined : (
           <TextField aria-label="Bank charge" type="number" min={0} className="w-32" prefix={code} value={String(means.bankCharge)} onChange={(e) => set({ bankCharge: round2(num(e.currentTarget.value)) })} />
         )}
-      </div>
-      <div className="flex items-center justify-between gap-4">
-        <Text variant="small" tone="muted">Paid</Text>
-        <Text variant="small" className="tabular-nums">{code} {formatAmount(meansTotal(means))}</Text>
-      </div>
-      <div className="flex items-baseline justify-between gap-4 border-t pt-1" style={{ borderColor: 'var(--color-border-neutral-subtle)' }}>
-        <Text variant="small" weight="semibold" tone={balance ? 'danger' : 'heading'}>Balance due</Text>
-        <Text variant="small" weight="semibold" tone={balance ? 'danger' : 'heading'} className="tabular-nums">{code} {formatAmount(balance)}</Text>
-      </div>
+      />
+      <TotalsRow label="Paid" value={amt(meansTotal(means), code)} />
+      <TotalsBar label="Balance due" value={amt(balance, code)} tone={balance ? 'danger' : 'heading'} />
     </div>
   );
 
@@ -241,7 +232,6 @@ export function PayMeansCard({ draft, update, m, readOnly }: PaySectionProps) {
       variant="card"
       icon="payments"
       title="Payment means"
-      description="How the money goes out. Each method credits its own account until it clears."
       rows={rows}
       getRowId={(r) => r.id}
       columns={columns}

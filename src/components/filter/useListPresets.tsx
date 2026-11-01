@@ -4,21 +4,25 @@ import { InvalidFilterError, filterRows } from '../../services/listQuery';
 import { formatFilter } from './aip160';
 import { EMPTY_FILTER, applyFilter, oneRule, type FilterField, type FilterGroup } from './engine';
 import { FilterBar } from './FilterBar';
+import { FilterToolbar } from './FilterToolbar';
 import { PresetPanel } from './PresetPanel';
 import { ViewMenu } from './ViewMenu';
 import { useListViews, type BuiltInView } from './useListViews';
 
 /**
  * Built-in presets from a status list — what a list's status tabs used to be:
- * "All A/R invoices", "Open A/R invoices"… `noun` is the plural shown after the status.
+ * "All A/R invoices", "Open A/R invoices"… `noun` is the plural shown after the
+ * status; pass `''` for status-only labels ("All", "Open") when the page title
+ * already names the entity.
  */
 export function statusViews(noun: string, statuses: readonly string[], field = 'status'): BuiltInView[] {
+  const name = (prefix: string) => (noun ? `${prefix} ${noun}` : prefix);
   return [
-    { id: 'all', name: `All ${noun}`, filter: EMPTY_FILTER },
+    { id: 'all', name: 'All', filter: EMPTY_FILTER },
     ...statuses.map((status) => ({
       id: status.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-      name: `${status} ${noun}`,
-      filter: oneRule(field, 'is', status),
+      name: name(status),
+      filter: oneRule(field, 'in', [status]),
     })),
   ];
 }
@@ -38,6 +42,7 @@ export function useListPresets<T>({
   defaultSort,
   rows,
   onChange,
+  urlSync,
 }: {
   /** Storage key for saved presets: 'ar-invoices', 'items'… */
   list: string;
@@ -48,8 +53,10 @@ export function useListPresets<T>({
   rows: T[] | undefined;
   /** Called when the filter or view changes — reset the table to page 1. */
   onChange?: () => void;
+  /** Mirror the filter/view to the page URL. Off for embedded use (e.g. a modal). Default true. */
+  urlSync?: boolean;
 }) {
-  const views = useListViews({ list, fields, builtIns, defaultSort });
+  const views = useListViews({ list, fields, builtIns, defaultSort, urlSync });
   const [panel, setPanel] = useState<'new' | 'edit' | null>(null);
 
   const setFilter = (next: FilterGroup) => {
@@ -92,6 +99,20 @@ export function useListPresets<T>({
     </FilterBar>
   );
 
+  /** The new chip-first toolbar: view selector + Add filter + chips + reset/save. */
+  const toolbar = (search?: ReactNode) => (
+    <FilterToolbar
+      fields={fields}
+      value={views.filter}
+      onChange={setFilter}
+      viewMenu={menu}
+      edited={views.edited}
+      onReset={views.reset}
+      onSaveView={() => setPanel('new')}
+      search={search}
+    />
+  );
+
   const query = formatFilter(views.filter, fields);
 
   const editing = panel === 'edit';
@@ -115,6 +136,7 @@ export function useListPresets<T>({
   return {
     menu,
     bar,
+    toolbar,
     panel: panelEl,
     filter: views.filter,
     sort: views.sort,

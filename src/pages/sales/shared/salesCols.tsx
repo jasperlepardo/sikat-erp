@@ -45,6 +45,8 @@ export interface ColBindings<T extends SalesLine> {
   serviceAmount?: { value: (l: T) => number; onChange: (l: T, v: number) => void; invalid?: (l: T) => boolean };
   // invoice-only item columns
   gross?: { get: (l: T) => number; onChange: (l: T, v: number) => void };
+  /** Net/Gross price-entry mode: renders net and/or gross *unit price* fields in the Unit price column. */
+  grossPrice?: { showNet: boolean; showGross: boolean; get: (l: T) => number; onChange: (l: T, v: number) => void };
   wtax?: { checked: (l: T) => boolean; disabled: boolean; onChange: (l: T, on: boolean) => void };
   commission?: { value: (l: T) => number; onChange: (l: T, v: number) => void };
   openForDelivery?: (l: T) => ReactNode;
@@ -184,6 +186,15 @@ function unitPriceCol<T extends SalesLine>(b: ColBindings<T>): PrefColumn<T> {
     cell: (l) => {
       if (!l.itemId) return null;
       if (b.readOnly) return priceReadOnly(b, l);
+      const gp = b.grossPrice;
+      if (gp) {
+        return (
+          <div className="flex flex-col items-end gap-1">
+            {gp.showNet ? <TextField aria-label="Unit price" type="number" min={0} invalid={b.invalid(l, 'unitPrice')} value={String(b.unitPrice(l))} className="w-28 [&_input]:text-right" onChange={(e) => b.onUnitPrice(l, num(e.currentTarget.value))} /> : null}
+            {gp.showGross ? <TextField aria-label="Gross price" type="number" min={0} value={String(gp.get(l))} className="w-28 [&_input]:text-right" onChange={(e) => gp.onChange(l, num(e.currentTarget.value))} /> : null}
+          </div>
+        );
+      }
       return <TextField aria-label="Unit price" type="number" min={0} invalid={b.invalid(l, 'unitPrice')} value={String(b.unitPrice(l))} className="ml-auto w-28 [&_input]:text-right" onChange={(e) => b.onUnitPrice(l, num(e.currentTarget.value))} />;
     },
   };

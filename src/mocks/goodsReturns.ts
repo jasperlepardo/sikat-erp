@@ -21,7 +21,6 @@ import type { Attachment, DocumentSeries } from './common';
 import { blankGoodsReceipt, newGrLine, type GoodsReceipt, type GrLine } from './goodsReceipts';
 
 export type ReturnStatus = 'Draft' | 'Not Confirmed' | 'Open' | 'Closed' | 'Cancelled';
-export const RETURN_STATUSES: ReturnStatus[] = ['Draft', 'Open', 'Closed', 'Cancelled'];
 
 /** Return reasons (SAP: Return Reason master). */
 export const RETURN_REASONS = ['Defective', 'Damaged in transit', 'Wrong item', 'Excess quantity', 'Expired / near expiry', 'Not as ordered', 'Other'];
@@ -46,7 +45,7 @@ export interface GoodsReturn extends Omit<GoodsReceipt, 'lines' | 'status'> {
 }
 
 export const RETURN_SERIES: DocumentSeries[] = [
-  { id: 'rts-primary', name: 'Primary', prefix: '', firstNo: 5, manual: false, isDefault: true, active: true, segments: [{ type: 'literal', value: 'RTN' }, { type: 'year' }, { type: 'sequence', padding: 4 }] },
+  { id: 'rts-primary', name: 'Goods Return', prefix: '', firstNo: 5, manual: false, isDefault: true, active: true, segments: [{ type: 'literal', value: 'RTN' }, { type: 'year' }, { type: 'sequence', padding: 4 }] },
 ];
 
 export const newReturnLine = (patch: Partial<ReturnLine> = {}): ReturnLine => {

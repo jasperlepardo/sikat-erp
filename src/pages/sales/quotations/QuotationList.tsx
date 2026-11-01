@@ -3,6 +3,7 @@ import { useLocation } from 'react-router';
 import {
   Alert,
   Badge,
+  Card,
   Panel,
   Table,
   TableContent,
@@ -12,7 +13,7 @@ import {
 } from '@jasperlepardo/sikat-design-system';
 import { dateField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
-import { useListPage } from '../../../components/form/DataTable';
+import { fillCardClass, useListPage } from '../../../components/form/DataTable';
 import { PageHeader } from '../../../components/form/PageHeader';
 import { cap } from '../../../components/form/noun';
 import { QUOTATION_STATUSES, type Quotation } from '../../../mocks/quotations';
@@ -108,26 +109,30 @@ export function QuotationList() {
         searchValue={query}
         onSearchChange={(value) => { setQuery(value); resetPage(); }}
         icon="request_quote"
-        title={presets.menu}
+        title={cap(QT_NOUN.many)}
         create={{ noun: QT_NOUN, to: QT_LIST_PATH }}
       />
       <Panel.Body className="flex flex-col gap-2">
         {notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : null}
-        {presets.bar(null)}
-        {quotes ? (
-          <Table
-            caption={cap(QT_NOUN.many)}
-            columns={columns}
-            rows={onPage}
-            getRowId={(q) => q.id}
-            sort={sort}
-            onSortChange={setSort}
-            layout="fill"
-            pagination={pagination}
-          />
-        ) : (
-          <Text tone="muted" className="p-4">Loading {QT_NOUN.many}…</Text>
-        )}
+        {presets.toolbar(null)}
+        <Card className={fillCardClass(onPage.length)}>
+          {!quotes ? (
+            <Text tone="muted" className="p-4">Loading {QT_NOUN.many}…</Text>
+          ) : quotes.length ? (
+            <Table
+              caption={cap(QT_NOUN.many)}
+              columns={columns}
+              rows={onPage}
+              getRowId={(q) => q.id}
+              sort={sort}
+              onSortChange={setSort}
+              layout="fill"
+              pagination={pagination}
+            />
+          ) : (
+            <Text tone="muted" className="p-4">No {QT_NOUN.many} yet. Create one with New {QT_NOUN.one}.</Text>
+          )}
+        </Card>
       </Panel.Body>
       {presets.panel}
     </Panel>

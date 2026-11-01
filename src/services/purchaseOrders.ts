@@ -78,10 +78,11 @@ export function poTotals(
   const factor = 1 - po.discountPct / 100;
   const discount = round2(beforeDiscount - beforeDiscount * factor);
   const freight = getPurchasingSettings().manageFreightInDocuments ? round2(po.freight) : 0;
-  const taxOf = (l: PricedLine) => (lineNet(l) * factor * rateOf(l.taxCode)) / 100;
+  // Round per line (like soTotals/lineTax) so the footer's VAT matches the per-line VAT apJournal posts.
+  const taxOf = (l: PricedLine) => round2((lineNet(l) * factor * rateOf(l.taxCode)) / 100);
   const lineTax = po.lines.filter((l) => !isReverseCharge(l.taxCode)).reduce((n, l) => n + taxOf(l), 0);
   // Freight on an import carries import VAT, paid to the Bureau of Customs like the goods' own.
-  const freightTax = (freight * rateOf(po.freightTaxCode)) / 100;
+  const freightTax = round2((freight * rateOf(po.freightTaxCode)) / 100);
   const freightReverse = isReverseCharge(po.freightTaxCode);
   const reverseCharge = round2(
     po.lines.filter((l) => isReverseCharge(l.taxCode)).reduce((n, l) => n + taxOf(l), 0) + (freightReverse ? freightTax : 0),

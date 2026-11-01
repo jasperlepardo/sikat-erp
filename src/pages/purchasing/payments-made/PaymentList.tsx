@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useLocation } from 'react-router';
 import {
   Alert,
+  Card,
   Panel,
   Table,
   TableAmount,
@@ -19,7 +20,7 @@ import { useAsync } from '../../../services/useAsync';
 import { choiceField, dateField, masterField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { currencyDef } from '../../settings/masterDefs';
-import { useListPage } from '../../../components/form/DataTable';
+import { fillCardClass, useListPage } from '../../../components/form/DataTable';
 import { cap } from '../../../components/form/noun';
 import { PAYMENT_LIST_PATH, PAYMENT_NOUN, PAYMENT_STATUS_INTENT } from '../paths';
 
@@ -119,7 +120,7 @@ export function PaymentList() {
           resetPage();
         }}
         icon="payments"
-        title={presets.menu}
+        title={cap(PAYMENT_NOUN.many)}
         create={{ noun: PAYMENT_NOUN, to: PAYMENT_LIST_PATH }}
       />
       <Panel.Body className="flex flex-col gap-2">
@@ -128,27 +129,29 @@ export function PaymentList() {
             {notice}
           </Alert>
         ) : null}
-        {presets.bar(null)}
-        {payments ? (
-          rows.length || payments.length ? (
-            <Table
-              caption={cap(PAYMENT_NOUN.many)}
-              columns={columns}
-              rows={visible}
-              getRowId={(p) => p.id}
-              sort={sort}
-              onSortChange={setSort}
-              layout="fill"
-              pagination={pagination}
-            />
+        {presets.toolbar(null)}
+        <Card className={fillCardClass(visible.length)}>
+          {payments ? (
+            rows.length || payments.length ? (
+              <Table
+                caption={cap(PAYMENT_NOUN.many)}
+                columns={columns}
+                rows={visible}
+                getRowId={(p) => p.id}
+                sort={sort}
+                onSortChange={setSort}
+                layout="fill"
+                pagination={pagination}
+              />
+            ) : (
+              <Text tone="muted" className="p-4">
+                No {PAYMENT_NOUN.many} yet. Pay a bill from Purchasing › Bills (More actions › Pay), from a vendor's Transactions tab, or with New {PAYMENT_NOUN.one}.
+              </Text>
+            )
           ) : (
-            <Text tone="muted" className="p-4">
-              No {PAYMENT_NOUN.many} yet. Pay a bill from Purchasing › Bills (More actions › Pay), from a vendor's Transactions tab, or with New {PAYMENT_NOUN.one}.
-            </Text>
-          )
-        ) : (
-          <Text tone="muted" className="p-4">Loading {PAYMENT_NOUN.many}…</Text>
-        )}
+            <Text tone="muted" className="p-4">Loading {PAYMENT_NOUN.many}…</Text>
+          )}
+        </Card>
       </Panel.Body>
       {presets.panel}
     </Panel>

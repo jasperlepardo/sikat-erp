@@ -5,16 +5,14 @@ import type { SoTabProps } from './types';
 export function SoSettingsCard({ draft, update, ctx }: SoTabProps) {
   const h = bind(draft, update);
   return (
-    <fieldset disabled={ctx.readOnly} className="contents">
-      <Section icon="settings" title="Settings">
-        <Flags>
-          {h.check('allowPartialDelivery', 'Allow partial delivery')}
-          {h.check('approved', 'Approved')}
-        </Flags>
-        <Text variant="small" tone="muted">
-          {draft.allowPartialDelivery ? 'Lines can be delivered in parts.' : 'Each line must be delivered in full in one go.'} Defaults from the customer.
-        </Text>
-      </Section>
-    </fieldset>
+    <Section icon="settings" title="Settings">
+      <Flags>
+        {h.check('allowPartialDelivery', 'Allow partial delivery', { readOnly: ctx.readOnly })}
+        {h.check('approved', 'Approved', { readOnly: ctx.readOnly })}
+      </Flags>
+      <Text variant="small" tone="muted">
+        {draft.allowPartialDelivery ? 'Lines can be delivered in parts.' : 'Each line must be delivered in full in one go.'} Defaults from the customer.
+      </Text>
+    </Section>
   );
 }

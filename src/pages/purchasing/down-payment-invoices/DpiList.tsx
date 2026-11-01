@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useLocation } from 'react-router';
-import { Alert, Badge, Panel, Table, TableContent, Text, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { Alert, Badge, Card, Panel, Table, TableContent, Text, type TableColumn } from '@jasperlepardo/sikat-design-system';
 import { PageHeader } from '../../../components/form/PageHeader';
 import { DPI_STATUSES, type DownPaymentInvoice } from '../../../mocks/apDownPaymentInvoices';
 import { formatDate } from '../../../services/dates';
@@ -11,7 +11,7 @@ import { useAsync } from '../../../services/useAsync';
 import { rateAt } from '../../../mocks/taxes';
 import { dateField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
-import { useListPage } from '../../../components/form/DataTable';
+import { fillCardClass, useListPage } from '../../../components/form/DataTable';
 import { cap } from '../../../components/form/noun';
 import { DPI_LIST_PATH, DPI_NOUN, DPI_STATUS_INTENT } from '../paths';
 
@@ -79,17 +79,21 @@ export function DpiList() {
         searchValue={query}
         onSearchChange={(v) => { setQuery(v); resetPage(); }}
         icon="receipt_long"
-        title={presets.menu}
+        title={cap(DPI_NOUN.many)}
         create={{ noun: DPI_NOUN, to: DPI_LIST_PATH }}
       />
       <Panel.Body className="flex flex-col gap-2">
         {notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : null}
-        {presets.bar(null)}
-        {invoices ? (
-          <Table caption={cap(DPI_NOUN.many)} columns={columns} rows={visible} getRowId={(d) => d.id} sort={sort} onSortChange={setSort} layout="fill" pagination={pagination} />
-        ) : (
-          <Text tone="muted" className="p-4">Loading {DPI_NOUN.many}…</Text>
-        )}
+        {presets.toolbar(null)}
+        <Card className={fillCardClass(visible.length)}>
+          {!invoices ? (
+            <Text tone="muted" className="p-4">Loading {DPI_NOUN.many}…</Text>
+          ) : invoices.length ? (
+            <Table caption={cap(DPI_NOUN.many)} columns={columns} rows={visible} getRowId={(d) => d.id} sort={sort} onSortChange={setSort} layout="fill" pagination={pagination} />
+          ) : (
+            <Text tone="muted" className="p-4">No {DPI_NOUN.many} yet. Start one from a purchase order (More actions › Create {DPI_NOUN.one}), or with New {DPI_NOUN.one}.</Text>
+          )}
+        </Card>
       </Panel.Body>
       {presets.panel}
     </Panel>

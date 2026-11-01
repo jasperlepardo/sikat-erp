@@ -1,4 +1,4 @@
-import { Badge, Combobox, Text } from '@jasperlepardo/sikat-design-system';
+import { Chip, Combobox, Text } from '@jasperlepardo/sikat-design-system';
 import { Section } from '../../../../components/form/fields';
 import { candidatesOf, vendorOptions } from '../../shared/rfqFromPr';
 import type { PrSectionProps } from './types';
@@ -20,15 +20,15 @@ export function PrVendorsCard({ draft, update, m, ctx }: PrSectionProps) {
         {ids.length ? (
           <div className="flex flex-wrap gap-1">
             {ids.map((id) => (
-              <Badge
+              <Chip
                 key={id}
                 size="medium"
                 intent="default"
                 variant="outline"
-                {...(ctx.readOnly ? {} : { onDismiss: () => set(ids.filter((x) => x !== id)), dismissLabel: `Remove ${nameOf(id)}` })}
+                {...(ctx.readOnly ? {} : { onRemove: () => set(ids.filter((x) => x !== id)), removeLabel: `Remove ${nameOf(id)}` })}
               >
                 {nameOf(id)}
-              </Badge>
+              </Chip>
             ))}
           </div>
         ) : (

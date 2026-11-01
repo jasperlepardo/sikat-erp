@@ -51,30 +51,29 @@ export function RequesterDetailsPanel<D extends RequesterDraftBase>({ draft, upd
         }
       />
       <Panel.Body>
-        <fieldset disabled={readOnly} className="contents">
-          <Section icon="badge" title="Requester">
-            <Fields cols={1}>
-              <ReadOnly label="Branch" value={draft.branchId ? nameIn(branches, draft.branchId) : '—'} hint="The requester's branch." />
-              <ReadOnly label="Department" value={draft.departmentId ? nameIn(departments, draft.departmentId) : '—'} hint="The requester's department. Charge costs to another department on the lines." />
-            </Fields>
-          </Section>
-          <Section icon="notifications" title="Notifications">
-            <Fields cols={1}>
-              <Flags>
-                <Checkbox
-                  checked={draft.notifyOnPo}
-                  onChange={(e) => {
-                    const notifyOnPo = e.currentTarget.checked;
-                    update({ notifyOnPo, ...(notifyOnPo && !draft.notifyEmail ? { notifyEmail: requester.email } : {}) } as Partial<D>);
-                  }}
-                >
-                  Send e-mail when PO or goods receipt is added
-                </Checkbox>
-              </Flags>
-              {draft.notifyOnPo ? h.text('notifyEmail', 'Email address', { hint: "Notification email. Defaults to the requester's email." }) : null}
-            </Fields>
-          </Section>
-        </fieldset>
+        <Section icon="badge" title="Requester">
+          <Fields cols={1}>
+            <ReadOnly label="Branch" value={draft.branchId ? nameIn(branches, draft.branchId) : '—'} hint="The requester's branch." />
+            <ReadOnly label="Department" value={draft.departmentId ? nameIn(departments, draft.departmentId) : '—'} hint="The requester's department. Charge costs to another department on the lines." />
+          </Fields>
+        </Section>
+        <Section icon="notifications" title="Notifications">
+          <Fields cols={1}>
+            <Flags>
+              <Checkbox
+                checked={draft.notifyOnPo}
+                readOnly={readOnly}
+                onChange={(e) => {
+                  const notifyOnPo = e.currentTarget.checked;
+                  update({ notifyOnPo, ...(notifyOnPo && !draft.notifyEmail ? { notifyEmail: requester.email } : {}) } as Partial<D>);
+                }}
+              >
+                Send e-mail when PO or goods receipt is added
+              </Checkbox>
+            </Flags>
+            {draft.notifyOnPo ? h.text('notifyEmail', 'Email address', { hint: "Notification email. Defaults to the requester's email.", readOnly }) : null}
+          </Fields>
+        </Section>
       </Panel.Body>
     </SidePanel>
   );

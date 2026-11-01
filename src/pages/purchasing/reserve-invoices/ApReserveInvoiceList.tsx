@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useLocation } from 'react-router';
 import {
   Alert,
+  Card,
   Panel,
   Table,
   TableAmount,
@@ -21,7 +22,7 @@ import { useAsync } from '../../../services/useAsync';
 import { dateField, linesField, masterField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { currencyDef, salesEmployeeDef } from '../../settings/masterDefs';
-import { useListPage } from '../../../components/form/DataTable';
+import { fillCardClass, useListPage } from '../../../components/form/DataTable';
 import { cap } from '../../../components/form/noun';
 import { APRI_LIST_PATH, APRI_NOUN, AP_RI_STATUS_INTENT } from '../paths';
 
@@ -137,7 +138,7 @@ export function ApReserveInvoiceList() {
           resetPage();
         }}
         icon="receipt_long"
-        title={presets.menu}
+        title={cap(APRI_NOUN.many)}
         create={{ noun: APRI_NOUN, to: APRI_LIST_PATH }}
       />
       <Panel.Body className="flex flex-col gap-2">
@@ -146,21 +147,25 @@ export function ApReserveInvoiceList() {
             {notice}
           </Alert>
         ) : null}
-        {presets.bar(null)}
-        {invoices ? (
-          <Table
-            caption={cap(APRI_NOUN.many)}
-            columns={columns}
-            rows={visible}
-            getRowId={(inv) => inv.id}
-            sort={sort}
-            onSortChange={setSort}
-            layout="fill"
-            pagination={pagination}
-          />
-        ) : (
-          <Text tone="muted" className="p-4">Loading A/P reserve invoices…</Text>
-        )}
+        {presets.toolbar(null)}
+        <Card className={fillCardClass(visible.length)}>
+          {!invoices ? (
+            <Text tone="muted" className="p-4">Loading A/P reserve invoices…</Text>
+          ) : invoices.length ? (
+            <Table
+              caption={cap(APRI_NOUN.many)}
+              columns={columns}
+              rows={visible}
+              getRowId={(inv) => inv.id}
+              sort={sort}
+              onSortChange={setSort}
+              layout="fill"
+              pagination={pagination}
+            />
+          ) : (
+            <Text tone="muted" className="p-4">No {APRI_NOUN.many} yet. Start one from a purchase order (More actions › Create {APRI_NOUN.one}), or with New {APRI_NOUN.one}.</Text>
+          )}
+        </Card>
       </Panel.Body>
       {presets.panel}
     </Panel>

@@ -11,7 +11,7 @@
  * - Closing or cancelling a quotation releases nothing (there was nothing committed).
  */
 import type { SalesLine } from './salesLine';
-import type { Attachment, DocumentSeries } from './common';
+import type { Attachment, DocumentSeries, PriceMode } from './common';
 import { CURRENT_USER_ID } from './common';
 import { plId, termId } from './masters';
 import type { PoReference } from './purchaseOrders';
@@ -85,6 +85,8 @@ export interface Quotation {
   // Footer
   salesEmployeeId: string;
   ownerId: string;
+  /** Net / Gross / Net-and-Gross price-entry mode (display only; stored unit price is always net). */
+  priceMode?: PriceMode;
   discountPct: number;
   freight: number;
   freightTaxCode: string;
@@ -176,6 +178,7 @@ export function blankQuotation(ownerId: string): Omit<Quotation, 'id'> {
     attachments: [],
     salesEmployeeId: '',
     ownerId,
+    priceMode: 'Net',
     discountPct: 0,
     freight: 0,
     freightTaxCode: 'OVAT',

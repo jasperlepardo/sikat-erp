@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useLocation } from 'react-router';
 import {
   Alert,
+  Card,
   Panel,
   Table,
   TableContent,
@@ -12,7 +13,7 @@ import {
 import { choiceField, dateField, masterField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { currencyDef } from '../../settings/masterDefs';
-import { useListPage } from '../../../components/form/DataTable';
+import { fillCardClass, useListPage } from '../../../components/form/DataTable';
 import { PageHeader } from '../../../components/form/PageHeader';
 import { cap } from '../../../components/form/noun';
 import { INCOMING_STATUSES, type IncomingPayment } from '../../../mocks/incomingPayments';
@@ -107,7 +108,7 @@ export function IncomingPaymentList() {
           resetPage();
         }}
         icon="savings"
-        title={presets.menu}
+        title={cap(RC_NOUN.many)}
         create={{ noun: RC_NOUN, to: RC_LIST_PATH }}
       />
       <Panel.Body className="flex flex-col gap-2">
@@ -116,21 +117,25 @@ export function IncomingPaymentList() {
             {notice}
           </Alert>
         ) : null}
-        {presets.bar(null)}
-        {orders ? (
-          <Table
-            caption={cap(RC_NOUN.many)}
-            columns={columns}
-            rows={onPage}
-            getRowId={(so) => so.id}
-            sort={sort}
-            onSortChange={setSort}
-            layout="fill"
-            pagination={pagination}
-          />
-        ) : (
-          <Text tone="muted" className="p-4">Loading {RC_NOUN.many}…</Text>
-        )}
+        {presets.toolbar(null)}
+        <Card className={fillCardClass(onPage.length)}>
+          {!orders ? (
+            <Text tone="muted" className="p-4">Loading {RC_NOUN.many}…</Text>
+          ) : orders.length ? (
+            <Table
+              caption={cap(RC_NOUN.many)}
+              columns={columns}
+              rows={onPage}
+              getRowId={(so) => so.id}
+              sort={sort}
+              onSortChange={setSort}
+              layout="fill"
+              pagination={pagination}
+            />
+          ) : (
+            <Text tone="muted" className="p-4">No {RC_NOUN.many} yet. Record one from an A/R invoice or a customer's Transactions tab, or with New {RC_NOUN.one}.</Text>
+          )}
+        </Card>
       </Panel.Body>
       {presets.panel}
     </Panel>

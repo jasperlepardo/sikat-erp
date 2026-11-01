@@ -120,64 +120,62 @@ export function CustomerDetailsPanel({ customer, draft, update, readOnly, noun, 
             </Card.Content>
           </Card>
         ) : null}
-        <fieldset disabled={readOnly} className="contents">
-          <Section icon="person" title="Contact">
-            <Fields cols={1}>
-              <CardField
-                label="Contact person"
-                options={(customer.contacts ?? [])
-                  .filter((c) => c.active || c.id === draft.contactId)
-                  .map((c) => ({
-                    value: c.id,
-                    label: contactName(c),
-                    icon: <Icon size={16}>person</Icon>,
-                    fields: [
-                      ...(c.position ? [{ label: 'Position', value: c.position }] : []),
-                      ...(c.mobile || c.tel1 ? [{ label: 'Phone', value: c.mobile || c.tel1 }] : []),
-                      ...(c.email ? [{ label: 'Email', value: c.email }] : []),
-                    ],
-                  }))}
-                value={draft.contactId}
-                onValueChange={(contactId) => update({ contactId: contactId ?? '' })}
-                placeholder="Select a contact person"
-                readOnly={readOnly}
-              />
-              {h.text('customerRef', 'Customer ref. no.', { hint: "The customer's own PO or reference number." })}
-            </Fields>
-          </Section>
-          <Section icon="local_shipping" title="Delivery & billing">
-            <Fields cols={1}>
-              <CardField
-                label="Ship to"
-                options={addrOptions(draft.shipTo, customer.defaultShipToId, 'default ship-to')}
-                value={addrPicked(draft.shipTo)}
-                onValueChange={(v) => fillAddr('shipTo', v)}
-                placeholder="Select a delivery address"
-                readOnly={readOnly}
-              />
-              <CardField
-                label="Bill to"
-                options={addrOptions(draft.billTo, customer.defaultBillToId, 'default bill-to')}
-                value={addrPicked(draft.billTo)}
-                onValueChange={(v) => fillAddr('billTo', v)}
-                placeholder="Select a billing address"
-                readOnly={readOnly}
-              />
-              {!customerAddresses.length ? (
-                <Text variant="small" tone="muted">
-                  {customer.name} has no addresses yet — add them on the customer record.
-                </Text>
-              ) : null}
-            </Fields>
-          </Section>
-          <Section icon="tune" title="Order details">
-            <Fields cols={1}>
-              {h.choose('indicator', 'Indicator', INDICATORS.map((v) => ({ value: v, label: v })), { clearable: true })}
-              {h.text('orderNumber', 'Order number', { hint: orderNumberHint })}
-            </Fields>
-          </Section>
-          {children}
-        </fieldset>
+        <Section icon="person" title="Contact">
+          <Fields cols={1}>
+            <CardField
+              label="Contact person"
+              options={(customer.contacts ?? [])
+                .filter((c) => c.active || c.id === draft.contactId)
+                .map((c) => ({
+                  value: c.id,
+                  label: contactName(c),
+                  icon: <Icon size={16}>person</Icon>,
+                  fields: [
+                    ...(c.position ? [{ label: 'Position', value: c.position }] : []),
+                    ...(c.mobile || c.tel1 ? [{ label: 'Phone', value: c.mobile || c.tel1 }] : []),
+                    ...(c.email ? [{ label: 'Email', value: c.email }] : []),
+                  ],
+                }))}
+              value={draft.contactId}
+              onValueChange={(contactId) => update({ contactId: contactId ?? '' })}
+              placeholder="Select a contact person"
+              readOnly={readOnly}
+            />
+            {h.text('customerRef', 'Customer ref. no.', { hint: "The customer's own PO or reference number.", readOnly })}
+          </Fields>
+        </Section>
+        <Section icon="local_shipping" title="Delivery & billing">
+          <Fields cols={1}>
+            <CardField
+              label="Ship to"
+              options={addrOptions(draft.shipTo, customer.defaultShipToId, 'default ship-to')}
+              value={addrPicked(draft.shipTo)}
+              onValueChange={(v) => fillAddr('shipTo', v)}
+              placeholder="Select a delivery address"
+              readOnly={readOnly}
+            />
+            <CardField
+              label="Bill to"
+              options={addrOptions(draft.billTo, customer.defaultBillToId, 'default bill-to')}
+              value={addrPicked(draft.billTo)}
+              onValueChange={(v) => fillAddr('billTo', v)}
+              placeholder="Select a billing address"
+              readOnly={readOnly}
+            />
+            {!customerAddresses.length ? (
+              <Text variant="small" tone="muted">
+                {customer.name} has no addresses yet — add them on the customer record.
+              </Text>
+            ) : null}
+          </Fields>
+        </Section>
+        <Section icon="tune" title="Order details">
+          <Fields cols={1}>
+            {h.choose('indicator', 'Indicator', INDICATORS.map((v) => ({ value: v, label: v })), { clearable: true, readOnly })}
+            {h.text('orderNumber', 'Order number', { hint: orderNumberHint, readOnly })}
+          </Fields>
+        </Section>
+        {children}
       </Panel.Body>
     </SidePanel>
   );

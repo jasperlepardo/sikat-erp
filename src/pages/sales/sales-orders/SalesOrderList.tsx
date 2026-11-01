@@ -2,18 +2,19 @@ import { useMemo, useState } from 'react';
 import { useLocation } from 'react-router';
 import {
   Alert,
+  Card,
   Panel,
   Table,
   TableContent,
   TableStatus,
   Text,
   Tooltip,
-  type TableColumn,
 } from '@jasperlepardo/sikat-design-system';
 import { dateField, linesField, masterField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { currencyDef, salesEmployeeDef } from '../../settings/masterDefs';
-import { useListPage } from '../../../components/form/DataTable';
+import { fillCardClass, useListPage } from '../../../components/form/DataTable';
+import { useListColumns, type ListColumn } from '../../../components/form/listColumns';
 import { PageHeader } from '../../../components/form/PageHeader';
 import { cap } from '../../../components/form/noun';
 import { SO_STATUSES, type SalesOrder } from '../../../mocks/salesOrders';
@@ -47,7 +48,7 @@ export function SalesOrderList() {
   const presets = useListPresets({
     list: 'sales-orders',
     fields,
-    builtIns: statusViews(SO_NOUN.many, SO_STATUSES),
+    builtIns: statusViews('', SO_STATUSES),
     defaultSort: { key: 'postingDate', direction: 'desc' },
     rows: orders,
     onChange: resetPage,
@@ -73,18 +74,20 @@ export function SalesOrderList() {
 
   const { visible: onPage, pagination } = paginate(rows);
 
-  const columns: TableColumn<SalesOrder>[] = [
+  const allColumns: ListColumn<SalesOrder>[] = [
     {
       key: 'docNum',
       header: 'No.',
       sortable: true,
+      locked: true,
       cell: (so) => (
         <TableContent href={`#${SO_LIST_PATH}/${so.docNum ? soNumber(so) : so.id}`} subcopy={so.customerRef ? `Customer ref. ${so.customerRef}` : undefined}>{soNumber(so)}</TableContent>
       ),
     },
     { key: 'customerName', header: 'Customer', sortable: true, cell: (so) => <TableContent subcopy={so.customerCode}>{so.customerName || '—'}</TableContent> },
+    { key: 'customerRef', header: 'Customer ref.', defaultHidden: true, cell: (so) => so.customerRef || '—' },
     { key: 'postingDate', header: 'Posting date', align: 'end', cell: (so) => formatDate(so.postingDate) },
-    { key: 'deliveryDate', header: 'Delivery date', align: 'end', cell: (so) => (so.deliveryDate ? formatDate(so.deliveryDate) : '—') },
+    { key: 'deliveryDate', header: 'Delivery date', align: 'end', defaultHidden: true, cell: (so) => (so.deliveryDate ? formatDate(so.deliveryDate) : '—') },
     {
       key: 'open',
       header: 'Open qty',
@@ -114,9 +117,11 @@ export function SalesOrderList() {
         );
       },
     },
+    { key: 'currency', header: 'Currency', defaultHidden: true, cell: (so) => so.currency },
     { key: 'total', header: 'Total', align: 'end', cell: (so) => `${so.currency} ${formatAmount(totalOf(so))}` },
     { key: 'status', header: 'Status', sortable: true, cell: (so) => <TableStatus intent={SO_STATUS_INTENT[so.status]}>{so.status}</TableStatus> },
   ];
+  const { columns, manager } = useListColumns('sales-orders', allColumns);
 
   return (
     <Panel className="flex-1">
@@ -130,7 +135,7 @@ export function SalesOrderList() {
           resetPage();
         }}
         icon="shopping_bag"
-        title={presets.menu}
+        title={cap(SO_NOUN.many)}
         create={{ noun: SO_NOUN, to: SO_LIST_PATH }}
       />
       <Panel.Body className="flex flex-col gap-2">
@@ -139,21 +144,28 @@ export function SalesOrderList() {
             {notice}
           </Alert>
         ) : null}
-        {presets.bar(null)}
-        {orders ? (
-          <Table
-            caption={cap(SO_NOUN.many)}
-            columns={columns}
-            rows={onPage}
-            getRowId={(so) => so.id}
-            sort={sort}
-            onSortChange={setSort}
-            layout="fill"
-            pagination={pagination}
-          />
-        ) : (
-          <Text tone="muted" className="p-4">Loading {SO_NOUN.many}…</Text>
-        )}
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1">{presets.toolbar(null)}</div>
+          {manager}
+        </div>
+        <Card className={fillCardClass(onPage.length)}>
+          {!orders ? (
+            <Text tone="muted" className="p-4">Loading {SO_NOUN.many}…</Text>
+          ) : orders.length ? (
+            <Table
+              caption={cap(SO_NOUN.many)}
+              columns={columns}
+              rows={onPage}
+              getRowId={(so) => so.id}
+              sort={sort}
+              onSortChange={setSort}
+              layout="fill"
+              pagination={pagination}
+            />
+          ) : (
+            <Text tone="muted" className="p-4">No {SO_NOUN.many} yet. Start one from a quotation (More actions › Create {SO_NOUN.one}), or with New {SO_NOUN.one}.</Text>
+          )}
+        </Card>
       </Panel.Body>
       {presets.panel}
     </Panel>

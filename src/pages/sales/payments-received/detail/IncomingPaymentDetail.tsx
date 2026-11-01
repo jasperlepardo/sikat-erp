@@ -1,8 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { Alert, Badge, Form, FormField, List, Panel, Select, Tabs, Text } from '@jasperlepardo/sikat-design-system';
+import { Alert, Badge, Form, FormField, Panel, Select, Tabs, Text } from '@jasperlepardo/sikat-design-system';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
-import { Section, type Errors } from '../../../../components/form/fields';
+import { Section, bind, type Errors } from '../../../../components/form/fields';
 import { type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { DetailActions, docMode } from '../../../../components/form/DetailActions';
 import { PageHeader } from '../../../../components/form/PageHeader';
@@ -10,7 +10,8 @@ import { isApprover, needsApproval } from '../../../../services/approval';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { formatAddress } from '../../../../mocks/address';
 import type { ArInvoice } from '../../../../mocks/arInvoices';
-import { accountText, type Account } from '../../../../mocks/chartOfAccounts';
+import { type Account } from '../../../../mocks/chartOfAccounts';
+import { JournalPreview } from '../../../../components/form/JournalPreview';
 import type { Currency, ExchangeRate } from '../../../../mocks/currencies';
 import { blankIncomingPayment, type IncomingPayment, type IncomingType } from '../../../../mocks/incomingPayments';
 import type { Item } from '../../../../mocks/items';
@@ -40,12 +41,14 @@ import {
   type IncomingInput,
 } from '../../../../services/incomingPayments';
 import { listItems } from '../../../../services/items';
-import { controlAccountOf, listJournalEntries } from '../../../../services/journalEntries';
+import { controlAccountOf, listJournalEntries, postingPeriodProblem } from '../../../../services/journalEntries';
 import { accounts as accountsCollection, currencies as currenciesCollection, exchangeRates, rateOn, taxCodes } from '../../../../services/masterData';
 import { listPartnersByRole } from '../../../../services/partners';
 import { logRejection } from '../../../../services/approvalRules';
 import { IncomingAccounts, IncomingDocuments } from './IpContentsCard';
 import { IncomingMeansSection } from './IpMeansCard';
+import { DocumentDates } from '../../../../components/form/DatesCard';
+import { paymentReceivedDates } from '../../../documentDateDefs';
 import { IncomingDocumentCard } from './IpDocumentCard';
 import { IncomingSettingsCard } from './IpSettingsCard';
 import { IncomingRemarksCard } from './IpRemarksCard';
@@ -83,7 +86,8 @@ function validate(d: IncomingInput, fx: number, asDraft: boolean): Problem<TabId
   const { problems, need } = problemCollector<TabId>();
   if (d.type === 'Customer') need(d.customerId, 'header', 'customerId', 'Pick a customer.');
   if (asDraft) return problems;
-  need(d.postingDate, 'header', 'postingDate', 'Posting date is required.');
+  const postingPeriod = postingPeriodProblem(d.postingDate);
+  need(!postingPeriod, 'header', 'postingDate', postingPeriod ?? '');
   need(d.documentDate, 'header', 'documentDate', 'Document date is required.');
   need(fx > 0, 'header', 'currency', `No ${d.currency} exchange rate on or before ${d.postingDate}.`);
   need(!incomingSeriesOf(d.seriesId).manual || d.docNum > 0, 'header', 'docNum', 'The Manual series needs the receipt number.');
@@ -317,8 +321,8 @@ function IncomingForm() {
               </Alert>
             ) : null}
 
-            <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
-              <div className="flex flex-col gap-2 lg:col-span-8">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+              <div className="flex flex-col gap-3 lg:col-span-8">
                 {draft.type === 'Customer' ? (
                   <CustomerCard
                     customers={m.customers}
@@ -339,7 +343,7 @@ function IncomingForm() {
                 )}
                 <IncomingMeansSection draft={draft} update={update} accounts={m.accounts} fx={fx} readOnly={ro} />
                 {errors.means ? <Text variant="small" tone="danger">{errors.means}</Text> : null}
-                <IncomingJournalCard journal={journal} accounts={m.accounts} />
+                <IncomingJournalCard journal={journal} accounts={m.accounts} draft={draft} update={update} readOnly={ro} />
                 <ReferencesTable
                   refs={draft.references}
                   onChange={(references) => update({ references })}
@@ -349,10 +353,11 @@ function IncomingForm() {
                 <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} emptyHint="Deposit slip, bank advice, scanned check, the customer's BIR Form 2307." withDescription />
               </div>
 
-              <aside className="flex flex-col gap-2 lg:col-span-4">
-                <IncomingDocumentCard draft={draft} update={update} errors={errors} readOnly={ro} />
+              <aside className="flex flex-col gap-3 lg:col-span-4">
+                <IncomingDocumentCard draft={draft} update={update} errors={errors} readOnly={ro} currencies={m.currencies} rate={draft.currency === 'PHP' ? undefined : added ? { rate: draft.fxRate, date: draft.postingDate, source: '' } : rateOn(m.rates, draft.currency, draft.postingDate)} />
+                <DocumentDates def={paymentReceivedDates} draft={draft} update={update} errors={errors} readOnly={ro} />
                 <IncomingSettingsCard draft={draft} update={update} readOnly={ro} onType={setType} />
-                <IncomingRemarksCard draft={draft} update={update} readOnly={ro} />
+                <IncomingRemarksCard draft={draft} update={update} />
               </aside>
             </div>
           </Panel.Body>
@@ -366,28 +371,21 @@ function IncomingForm() {
 
 function IncomingAccountCard({ currency, currencies, update, error, readOnly }: { currency: string; currencies: Currency[]; update: (p: { currency: string }) => void; error?: string; readOnly: boolean }) {
   return (
-    <fieldset disabled={readOnly} className="contents">
-      <Section icon="account_balance" title="Account payment">
-        <FormField label="Doc. currency" error={error}>
-          {(p) => <Select {...p} disabled={readOnly} options={activeOptions(currencies, (c) => c.code, (c) => `${c.code} — ${c.name}`, currency)} value={currency} onValueChange={(c) => c && update({ currency: c })} />}
-        </FormField>
-      </Section>
-    </fieldset>
+    <Section icon="account_balance" title="Account payment">
+      <FormField label="Doc. currency" error={error}>
+        {(p) => <Select {...p} disabled={readOnly} readOnly={readOnly} options={activeOptions(currencies, (c) => c.code, (c) => `${c.code} — ${c.name}`, currency)} value={currency} onValueChange={(c) => c && update({ currency: c })} />}
+      </FormField>
+    </Section>
   );
 }
 
-function IncomingJournalCard({ journal, accounts }: { journal: ReturnType<typeof incomingJournal>; accounts: Account[] }) {
+function IncomingJournalCard({ journal, accounts, draft, update, readOnly }: { journal: ReturnType<typeof incomingJournal>; accounts: Account[]; draft: IncomingInput; update: (patch: Partial<IncomingInput>) => void; readOnly: boolean }) {
+  const h = bind(draft, update);
   return (
-    <Section icon="account_balance" title="Journal entry">
-      {journal.length ? (
-        <List.Group divider>
-          {journal.map((j) => (
-            <List.Item key={j.account} title={accountText(j.account, accounts)} content={<span className="whitespace-nowrap tabular-nums">{j.debit ? `Dr ${formatAmount(j.debit)}` : `Cr ${formatAmount(j.credit)}`}</span>} />
-          ))}
-        </List.Group>
-      ) : (
-        <Text variant="small" tone="muted">Dr the payment means' accounts / Cr the customer (or the G/L lines), in PHP.</Text>
-      )}
-    </Section>
+    <JournalPreview
+      journal={journal}
+      accounts={accounts}
+      remarks={h.text('journalRemark', 'Journal remark', { hint: draft.type === 'Customer' ? 'Default: Incoming - customer code.' : 'Default: Incoming — the (last) account code.', readOnly })}
+    />
   );
 }
