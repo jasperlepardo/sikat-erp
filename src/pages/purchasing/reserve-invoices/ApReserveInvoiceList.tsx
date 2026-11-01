@@ -24,7 +24,7 @@ import { statusViews, useListPresets } from '../../../components/filter/useListP
 import { currencyDef, salesEmployeeDef } from '../../settings/masterDefs';
 import { fillCardClass, useListPage } from '../../../components/form/DataTable';
 import { cap } from '../../../components/form/noun';
-import { APRI_LIST_PATH, APRI_NOUN, AP_RI_STATUS_INTENT } from '../paths';
+import { APRI_LIST_PATH, APRI_NOUN, APRI_STATUS_INTENT } from '../paths';
 
 export function ApReserveInvoiceList() {
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
@@ -121,7 +121,7 @@ export function ApReserveInvoiceList() {
       cell: (inv) => (inv.orderNumber ? `PO ${inv.orderNumber}` : <span className="text-muted">Without PO</span>),
     },
     { key: 'total', header: 'Total', sortable: true, cell: (inv) => <TableAmount currency={inv.currency}>{formatAmount(totalOf(inv))}</TableAmount> },
-    { key: 'status', header: 'Status', sortable: true, cell: (inv) => <TableStatus intent={AP_RI_STATUS_INTENT[inv.status]}>{inv.status}</TableStatus> },
+    { key: 'status', header: 'Status', sortable: true, cell: (inv) => <TableStatus intent={APRI_STATUS_INTENT[inv.status]}>{inv.status}</TableStatus> },
   ];
 
   const { visible, pagination } = paginate(rows);

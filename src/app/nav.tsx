@@ -4,7 +4,7 @@ import { JE_NOUN, JV_NOUN } from '../pages/accounting/paths';
 import { COUNT_NOUN, ITEM_NOUN, POSTING_NOUN, TRANSFER_NOUN, TRANSFER_REQUEST_NOUN } from '../pages/inventory/paths';
 import { EMPLOYEE_NOUN } from '../pages/people/paths';
 import { AP_NOUN, APRI_NOUN, DPI_NOUN, DPR_NOUN, GR_NOUN, GRR_NOUN, LC_NOUN, MEMO_NOUN, PAYMENT_NOUN, PBA_NOUN, PO_NOUN, PR_NOUN, RETURN_NOUN, RFQ_NOUN } from '../pages/purchasing/paths';
-import { AR_NOUN, ARCM_NOUN, BA_NOUN, DN_NOUN, QT_NOUN, RC_NOUN, RI_NOUN, SO_NOUN, SR_NOUN } from '../pages/sales/paths';
+import { AR_NOUN, AR_CM_NOUN, BA_NOUN, DN_NOUN, QT_NOUN, RC_NOUN, RI_NOUN, SO_NOUN, SR_NOUN } from '../pages/sales/paths';
 
 /**
  * Sidebar, from the Sikat ERP navigation architecture (SAP B1's 590 menu entries
@@ -63,7 +63,7 @@ const APP_MODULES: SideNavItem[] = [
     [cap(AR_NOUN.many), 'receipt', 'sales/customer-invoices'],
     [cap(RI_NOUN.many), 'receipt_long', 'sales/reserve-invoices'],
     [cap(SR_NOUN.many), 'assignment_return'],
-    [cap(ARCM_NOUN.many), 'undo', 'sales/credit-memos'],
+    [cap(AR_CM_NOUN.many), 'undo', 'sales/credit-memos'],
     [cap(RC_NOUN.many), 'savings'],
     ['Collections', 'account_balance_wallet'],
     [cap(BA_NOUN.many), 'description', 'sales/agreements'],

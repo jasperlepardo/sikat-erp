@@ -13,7 +13,7 @@ import { coveredLines, type CoveredLine, type DocNode } from '../../purchasing/s
 import { listJournalEntries, jeNumber, jeTotals } from '../../../services/journalEntries';
 import { listBlanketAgreements, baNumber, baTotals } from '../../../services/blanketAgreements';
 import {
-  ARCM_STATUS_INTENT,
+  AR_CM_STATUS_INTENT,
   AR_CM_LIST_PATH,
   AR_LIST_PATH,
   AR_STATUS_INTENT,
@@ -169,7 +169,7 @@ const SOURCES: Record<SalesDocKind, () => Promise<DocNode[]>> = {
       href: `${AR_CM_LIST_PATH}/${arCmNumber(m)}`,
       date: m.postingDate,
       status: m.status,
-      intent: ARCM_STATUS_INTENT[m.status],
+      intent: AR_CM_STATUS_INTENT[m.status],
       currency: m.currency,
       total: arCmTotal(m, codes),
       partnerId: m.customerId,

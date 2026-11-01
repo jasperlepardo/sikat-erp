@@ -4,18 +4,20 @@
  * every chunk that links to it.
  */
 import type { Noun } from '../../components/form/noun';
+import type { StatusIntent } from '../../components/form/fields';
 import type { ArCmStatus } from '../../mocks/arCreditMemos';
 import type { ArStatus } from '../../mocks/reserveInvoices';
 import type { BaStatus } from '../../mocks/blanketAgreements';
 import type { DnStatus } from '../../mocks/deliveries';
 import type { IncomingStatus } from '../../mocks/incomingPayments';
+import type { QuotationStatus } from '../../mocks/quotations';
 import type { SoStatus } from '../../mocks/salesOrders';
 import type { SrStatus } from '../../mocks/salesReturns';
 
 export const QT_LIST_PATH = '/sales/quotations';
 export const QT_NOUN: Noun = { one: 'quotation', many: 'quotations', lineLabel: 'quoted items' };
 
-export const QT_STATUS_INTENT: Record<string, 'default' | 'primary' | 'success' | 'danger' | 'warning'> = {
+export const QT_STATUS_INTENT: Record<QuotationStatus, StatusIntent> = {
   Draft: 'default',
   'Not Confirmed': 'warning',
   Open: 'primary',
@@ -26,7 +28,7 @@ export const QT_STATUS_INTENT: Record<string, 'default' | 'primary' | 'success' 
 export const SO_LIST_PATH = '/sales/sales-orders';
 export const SO_NOUN: Noun = { one: 'sales order', many: 'sales orders', lineLabel: 'ordered items' };
 
-export const SO_STATUS_INTENT: Record<SoStatus, 'default' | 'primary' | 'success' | 'danger' | 'warning'> = {
+export const SO_STATUS_INTENT: Record<SoStatus, StatusIntent> = {
   Draft: 'default',
   'Not Confirmed': 'warning',
   Open: 'primary',
@@ -37,17 +39,17 @@ export const SO_STATUS_INTENT: Record<SoStatus, 'default' | 'primary' | 'success
 export const DN_LIST_PATH = '/sales/deliveries';
 export const DN_NOUN: Noun = { one: 'delivery', many: 'deliveries', lineLabel: 'delivered items' };
 
-export const DN_STATUS_INTENT: Record<DnStatus, 'default' | 'primary' | 'success' | 'danger' | 'warning'> = { Draft: 'default', 'Not Confirmed': 'warning', Open: 'primary', Closed: 'success', Cancelled: 'danger' };
+export const DN_STATUS_INTENT: Record<DnStatus, StatusIntent> = { Draft: 'default', 'Not Confirmed': 'warning', Open: 'primary', Closed: 'success', Cancelled: 'danger' };
 
 export const AR_LIST_PATH = '/sales/customer-invoices';
 export const AR_NOUN: Noun = { one: 'A/R invoice', many: 'A/R invoices', lineLabel: 'invoiced items' };
 
-export const AR_STATUS_INTENT: Record<ArStatus, 'default' | 'primary' | 'success' | 'danger' | 'warning'> = { Draft: 'default', 'Not Confirmed': 'warning', Open: 'primary', Closed: 'success', Cancelled: 'danger' };
+export const AR_STATUS_INTENT: Record<ArStatus, StatusIntent> = { Draft: 'default', 'Not Confirmed': 'warning', Open: 'primary', Closed: 'success', Cancelled: 'danger' };
 
 export const RI_LIST_PATH = '/sales/reserve-invoices';
 export const RI_NOUN: Noun = { one: 'A/R reserve invoice', many: 'A/R reserve invoices', lineLabel: 'invoiced items' };
 
-export const RI_STATUS_INTENT: Record<ArStatus, 'default' | 'primary' | 'success' | 'danger' | 'warning'> = {
+export const RI_STATUS_INTENT: Record<ArStatus, StatusIntent> = {
   Draft: 'default',
   'Not Confirmed': 'warning',
   Open: 'primary',
@@ -58,12 +60,12 @@ export const RI_STATUS_INTENT: Record<ArStatus, 'default' | 'primary' | 'success
 export const RC_LIST_PATH = '/sales/incoming-payments';
 export const RC_NOUN: Noun = { one: 'incoming payment', many: 'incoming payments' };
 
-export const RC_STATUS_INTENT: Record<IncomingStatus, 'default' | 'success' | 'danger' | 'warning'> = { Draft: 'default', 'Not Confirmed': 'warning', Posted: 'success', Cancelled: 'danger' };
+export const RC_STATUS_INTENT: Record<IncomingStatus, StatusIntent> = { Draft: 'default', 'Not Confirmed': 'warning', Posted: 'success', Cancelled: 'danger' };
 
 export const BA_LIST_PATH = '/sales/agreements';
 export const BA_NOUN: Noun = { one: 'sales blanket agreement', many: 'sales blanket agreements' };
 
-export const BA_STATUS_INTENT: Record<BaStatus, 'default' | 'primary' | 'success' | 'danger' | 'warning'> = {
+export const BA_STATUS_INTENT: Record<BaStatus, StatusIntent> = {
   Draft: 'default',
   Approved: 'primary',
   'On Hold': 'warning',
@@ -72,12 +74,12 @@ export const BA_STATUS_INTENT: Record<BaStatus, 'default' | 'primary' | 'success
 };
 
 export const AR_CM_LIST_PATH = '/sales/credit-memos';
-export const ARCM_NOUN: Noun = { one: 'A/R credit memo', many: 'A/R credit memos', lineLabel: 'credited items' };
+export const AR_CM_NOUN: Noun = { one: 'A/R credit memo', many: 'A/R credit memos', lineLabel: 'credited items' };
 
 export const SR_LIST_PATH = '/sales/sales-returns';
 export const SR_NOUN: Noun = { one: 'sales return', many: 'sales returns', lineLabel: 'returned items' };
 
-export const ARCM_STATUS_INTENT: Record<ArCmStatus, 'default' | 'primary' | 'success' | 'danger' | 'warning'> = {
+export const AR_CM_STATUS_INTENT: Record<ArCmStatus, StatusIntent> = {
   Draft: 'default',
   'Not Confirmed': 'warning',
   Open: 'primary',
@@ -85,7 +87,7 @@ export const ARCM_STATUS_INTENT: Record<ArCmStatus, 'default' | 'primary' | 'suc
   Cancelled: 'danger',
 };
 
-export const SR_STATUS_INTENT: Record<SrStatus, 'default' | 'primary' | 'success' | 'danger' | 'warning'> = {
+export const SR_STATUS_INTENT: Record<SrStatus, StatusIntent> = {
   Draft: 'default',
   'Not Confirmed': 'warning',
   Open: 'primary',

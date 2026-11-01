@@ -19,7 +19,7 @@ import { lineage, type LinkedDocument } from './lineage';
 import {
   APRI_LIST_PATH,
   AP_LIST_PATH,
-  AP_RI_STATUS_INTENT,
+  APRI_STATUS_INTENT,
   AP_STATUS_INTENT,
   DPR_LIST_PATH,
   DPR_STATUS_INTENT,
@@ -216,7 +216,7 @@ const SOURCES: Record<DocKind, () => Promise<DocNode[]>> = {
       href: `${APRI_LIST_PATH}/${inv.id}`,
       date: inv.postingDate,
       status: inv.status,
-      intent: AP_RI_STATUS_INTENT[inv.status],
+      intent: APRI_STATUS_INTENT[inv.status],
       currency: inv.currency,
       total: apRiTotals(inv, (code) => { const c = codes.find((x) => x.code === code); return c?.rates?.[0]?.rate ?? 0; }).total,
       partnerId: inv.vendorId,
