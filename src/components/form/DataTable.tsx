@@ -170,7 +170,7 @@ export function DataTable<T>({
   );
   // The add row sits below the table, outside its horizontal scroll container, so it
   // stays put and full-width no matter how wide (or scrolled) the columns are.
-  const addBlock = spanRow ? <div className="px-2 pt-2 pb-2 [&>*]:w-full">{spanRow}</div> : null;
+  const addBlock = spanRow ? <div className="px-2 pt-2 pb-2 *:w-full">{spanRow}</div> : null;
   const hasRows = rows.length > 0;
   const hasTable = hasRows || Boolean(spanRow);
   const tableEl = (
