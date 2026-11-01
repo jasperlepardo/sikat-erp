@@ -10,6 +10,7 @@ import {
   Text,
 } from '@jasperlepardo/sikat-design-system';
 import { PageHeader } from '../../../../components/form/PageHeader';
+import { DetailColumns } from '../../../../components/form/DetailColumns';
 import { type Errors } from '../../../../components/form/fields';
 import { type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { DetailActions, docMode } from '../../../../components/form/DetailActions';
@@ -331,23 +332,28 @@ function RfqForm() {
               )}
             </Panel.Body>
           ) : (
-            <Panel.Body className="flex flex-col gap-2">
-              <ProblemsAlert problems={problems} tabLabel={(t) => ({ contents: 'Contents', logistics: 'Logistics', accounting: 'Accounting' }[t])} />
-              {reject.alert('Reject purchase quotation', rejectIt)}
-              {ctx.readOnly ? (
-                <Alert intent="default" variant="outline" title={`This quotation is ${draft.status.toLowerCase()}`}>
-                  Only remarks can change{draft.convertedToPoId ? ` (converted to a purchase order)` : ''}.
-                </Alert>
-              ) : null}
-
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-                <div className="flex flex-col gap-3 lg:col-span-8">
+            <DetailColumns
+              header={
+                <>
+                  <ProblemsAlert problems={problems} tabLabel={(t) => ({ contents: 'Contents', logistics: 'Logistics', accounting: 'Accounting' }[t])} />
+                  {reject.alert('Reject purchase quotation', rejectIt)}
+                  {ctx.readOnly ? (
+                    <Alert intent="default" variant="outline" title={`This quotation is ${draft.status.toLowerCase()}`}>
+                      Only remarks can change{draft.convertedToPoId ? ` (converted to a purchase order)` : ''}.
+                    </Alert>
+                  ) : null}
+                </>
+              }
+              main={
+                <>
                   <VendorCard vendors={m.vendors} vendorId={draft.vendorId} vendor={ctx.vendor} readOnly={ctx.readOnly} added={ctx.added} error={errors.vendorId} pickVendor={pickVendor} onNewVendor={() => setShowVendorCreate(true)} onOpenDetails={() => setVendorDetailsOpen(true)} />
                   <DocLines {...rfqDoc(sectionProps, { value: currencyView, onChange: setCurrencyView })} />
                   <ReferencesTable refs={draft.references} onChange={(references) => update({ references })} readOnly={ctx.readOnly} description="Other documents this RFQ refers to — purchase requests, sales orders, contract references." />
                   <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach the vendor's quotation or price list." />
-                </div>
-                <div className="flex flex-col gap-3 lg:col-span-4">
+                </>
+              }
+              aside={
+                <>
                   <RfqDocumentCard {...sectionProps} />
                   <DocumentDates def={rfqDates} {...sectionProps} />
                   <RfqReferencesCard {...sectionProps} />
@@ -361,9 +367,9 @@ function RfqForm() {
                     ownerHint="Owns the document (data access)."
                     remarksHint="Can be changed after the RFQ is added."
                   />
-                </div>
-              </div>
-            </Panel.Body>
+                </>
+              }
+            />
           )}
         </Panel>
       </Form>

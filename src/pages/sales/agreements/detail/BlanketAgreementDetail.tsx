@@ -14,6 +14,7 @@ import { type Errors } from '../../../../components/form/fields';
 import { type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { DetailActions } from '../../../../components/form/DetailActions';
 import { PageHeader } from '../../../../components/form/PageHeader';
+import { DetailColumns } from '../../../../components/form/DetailColumns';
 import { cap } from '../../../../components/form/noun';
 import { needsApproval } from '../../../../services/approval';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
@@ -311,23 +312,27 @@ function BaForm() {
               <ActivityTab target={{ kind: 'BA', id: draft.id ?? '' }} partnerId={draft.customerId} />
             </Panel.Body>
           ) : (
-            <Panel.Body className="flex flex-col gap-2">
-              <ProblemsAlert problems={problems} tabLabel={(t) => TAB_LABEL[t as TabId] ?? t} />
+            <DetailColumns
+              header={
+                <>
+                  <ProblemsAlert problems={problems} tabLabel={(t) => TAB_LABEL[t as TabId] ?? t} />
 
-              {readOnly ? (
-                <Alert intent="default" variant="outline" title={`This agreement is ${draft.status.toLowerCase()}`}>
-                  {draft.status === 'Terminated' && draft.terminationDate
-                    ? `Terminated on ${formatDate(draft.terminationDate)}. `
-                    : ''}
-                  Only remarks and attachments can be changed.
-                </Alert>
-              ) : null}
+                  {readOnly ? (
+                    <Alert intent="default" variant="outline" title={`This agreement is ${draft.status.toLowerCase()}`}>
+                      {draft.status === 'Terminated' && draft.terminationDate
+                        ? `Terminated on ${formatDate(draft.terminationDate)}. `
+                        : ''}
+                      Only remarks and attachments can be changed.
+                    </Alert>
+                  ) : null}
 
-              {draft.lines.length > 0 && (
-                <AgreementSummaryCard side="sales" currency={draft.currency} totals={totals} settlementProbability={draft.settlementProbability} />
-              )}
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-                <div className="flex flex-col gap-3 lg:col-span-8">
+                  {draft.lines.length > 0 && (
+                    <AgreementSummaryCard side="sales" currency={draft.currency} totals={totals} settlementProbability={draft.settlementProbability} />
+                  )}
+                </>
+              }
+              main={
+                <>
                   <CustomerCard
                     customers={m.customers}
                     customerId={draft.customerId}
@@ -344,16 +349,17 @@ function BaForm() {
                     emptyHint="Signed agreement, customer's approval, or supporting documents."
                     withDescription
                   />
-                </div>
-
-                <aside className="flex flex-col gap-3 lg:col-span-4">
+                </>
+              }
+              aside={
+                <>
                   <BaDocumentCard draft={draft} update={update} m={m} added={added} />
                   <DocumentDates def={salesAgreementDates} draft={draft} update={update} errors={errors} readOnly={readOnly} />
                   <GeneralTab draft={draft} update={update} errors={errors} m={m} readOnly={readOnly} />
                   <AssignmentCard draft={draft} update={update} ownerHint="Owns the document (data access)." remarksHint="Can be changed at any status." />
-                </aside>
-              </div>
-            </Panel.Body>
+                </>
+              }
+            />
           )}
         </Panel>
       </Form>

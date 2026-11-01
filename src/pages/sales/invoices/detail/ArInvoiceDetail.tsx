@@ -7,6 +7,7 @@ import { type Errors } from '../../../../components/form/fields';
 import { type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { DetailActions, docMode } from '../../../../components/form/DetailActions';
 import { PageHeader } from '../../../../components/form/PageHeader';
+import { DetailColumns } from '../../../../components/form/DetailColumns';
 import { JournalPreview } from '../../../../components/form/JournalPreview';
 import { isApprover, needsApproval } from '../../../../services/approval';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
@@ -63,7 +64,7 @@ import { ArShipmentCard } from './ArShipmentCard';
 import { AssignmentCard } from '../../../../components/form/AssignmentCard';
 import { NO_SALES_EMPLOYEE } from '../../../../mocks/salesOrders';
 import { ArInstallmentsCard } from './ArInstallmentsCard';
-import { InvoiceCustomerDetailsPanel } from '../../shared/InvoiceCustomerDetailsPanel';
+import { CustomerDetailsPanel } from '../../shared/CustomerDetailsPanel';
 import { CustomerCard } from '../../shared/CustomerCard';
 import { SalesTotalsFooter } from '../../shared/TotalsFooter';
 import { salesView } from '../../shared/salesView';
@@ -402,19 +403,22 @@ function ArInvoiceForm() {
           </Panel.Body>
         ) : null}
         {page === 'details' ? (
-          <Panel.Body className="flex flex-col gap-2">
-            <ProblemsAlert problems={problems} tabLabel={(t) => TAB_LABEL[t as TabId]} />
-            {reject.alert('Reject A/R invoice', rejectIt)}
-            {ro ? (
-              <Alert intent="default" variant="outline" title={`This invoice is ${draft.status.toLowerCase()}`}>
-                {draft.status === 'Cancelled'
-                  ? 'Its journal entry was reversed, stock it shipped came back, and its deliveries and orders reopened.'
-                  : 'It’s posted to the ledger. Only remarks and attachments can change; to undo it, cancel the invoice.'}
-              </Alert>
-            ) : null}
-
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-              <div className="flex flex-col gap-3 lg:col-span-8">
+          <DetailColumns
+            header={
+              <>
+                <ProblemsAlert problems={problems} tabLabel={(t) => TAB_LABEL[t as TabId]} />
+                {reject.alert('Reject A/R invoice', rejectIt)}
+                {ro ? (
+                  <Alert intent="default" variant="outline" title={`This invoice is ${draft.status.toLowerCase()}`}>
+                    {draft.status === 'Cancelled'
+                      ? 'Its journal entry was reversed, stock it shipped came back, and its deliveries and orders reopened.'
+                      : 'It’s posted to the ledger. Only remarks and attachments can change; to undo it, cancel the invoice.'}
+                  </Alert>
+                ) : null}
+              </>
+            }
+            main={
+              <>
                 <CustomerCard
                   customers={m.customers}
                   customerId={draft.customerId}
@@ -456,9 +460,10 @@ function ArInvoiceForm() {
                   description="Link the delivery note, sales order, customer PO, or other source documents."
                 />
                 <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} emptyHint="The signed invoice, the customer's PO, Form 2307 when it arrives." withDescription />
-              </div>
-
-              <aside className="flex flex-col gap-3 lg:col-span-4">
+              </>
+            }
+            aside={
+              <>
                 <ArDocumentCard {...tabProps} />
                 <DocumentDates def={arInvoiceDates} {...tabProps} />
                 <DocumentPayment def={arInvoicePayment} posting={journalEntry} {...tabProps} />
@@ -473,13 +478,22 @@ function ArInvoiceForm() {
                   ownerHint="Owns the document."
                   remarksHint="Can be changed after the invoice is added."
                 />
-              </aside>
-            </div>
-          </Panel.Body>
+              </>
+            }
+          />
         ) : null}
       </Panel>
     </Form>
-    <InvoiceCustomerDetailsPanel {...tabProps} noun="invoice" remarkDefault="A/R Invoices – customer code" open={customerDetailsOpen} onClose={() => setCustomerDetailsOpen(false)} />
+    <CustomerDetailsPanel
+      customer={ctx.customer}
+      draft={draft}
+      update={update}
+      readOnly={ctx.readOnly}
+      noun="invoice"
+      open={customerDetailsOpen}
+      onClose={() => setCustomerDetailsOpen(false)}
+      orderNumberHint="Set by Copy from."
+    />
     {copying
       ? createPortal(
           <CopyPanel

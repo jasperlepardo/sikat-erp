@@ -5,6 +5,7 @@ import { type Errors } from '../../../../components/form/fields';
 import { type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { DetailActions, docMode } from '../../../../components/form/DetailActions';
 import { PageHeader } from '../../../../components/form/PageHeader';
+import { DetailColumns } from '../../../../components/form/DetailColumns';
 import { isApprover, needsApproval } from '../../../../services/approval';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { CURRENT_USER_ID } from '../../../../mocks/common';
@@ -512,27 +513,30 @@ function SalesOrderForm() {
             </Panel.Body>
           ) : null}
           {page === 'details' ? (
-            <Panel.Body className="flex flex-col gap-2">
-              <ProblemsAlert problems={problems} tabLabel={(t) => TAB_LABEL[t as TabId]} />
-              {reject.alert('Reject sales order', rejectIt)}
-              {warning ? (
-                <Alert intent="warning" variant="outline" title="Check before saving">
-                  {warning} Press {ctx.added ? 'Save changes' : draft.approved ? `Create ${SO_NOUN.one}` : 'Submit for approval'} again to save anyway.
-                </Alert>
-              ) : null}
-              {closeWarning ? (
-                <Alert intent="warning" variant="outline" title="Check before closing">
-                  {closeWarning}
-                </Alert>
-              ) : null}
-              {ctx.readOnly ? (
-                <Alert intent="default" variant="outline" title={`This sales order is ${draft.status.toLowerCase()}`}>
-                  Only remarks and attachments can change{draft.closeDate ? ` (${draft.status.toLowerCase()} ${formatDate(draft.closeDate)})` : ''}. Its committed stock has been released.
-                </Alert>
-              ) : null}
-
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-                <div className="flex flex-col gap-3 lg:col-span-8">
+            <DetailColumns
+              header={
+                <>
+                  <ProblemsAlert problems={problems} tabLabel={(t) => TAB_LABEL[t as TabId]} />
+                  {reject.alert('Reject sales order', rejectIt)}
+                  {warning ? (
+                    <Alert intent="warning" variant="outline" title="Check before saving">
+                      {warning} Press {ctx.added ? 'Save changes' : draft.approved ? `Create ${SO_NOUN.one}` : 'Submit for approval'} again to save anyway.
+                    </Alert>
+                  ) : null}
+                  {closeWarning ? (
+                    <Alert intent="warning" variant="outline" title="Check before closing">
+                      {closeWarning}
+                    </Alert>
+                  ) : null}
+                  {ctx.readOnly ? (
+                    <Alert intent="default" variant="outline" title={`This sales order is ${draft.status.toLowerCase()}`}>
+                      Only remarks and attachments can change{draft.closeDate ? ` (${draft.status.toLowerCase()} ${formatDate(draft.closeDate)})` : ''}. Its committed stock has been released.
+                    </Alert>
+                  ) : null}
+                </>
+              }
+              main={
+                <>
                   <CustomerCard
                     customers={m.customers}
                     customerId={draft.customerId}
@@ -568,9 +572,10 @@ function SalesOrderForm() {
                     description="Link the customer's PO, a quotation, or other source documents."
                   />
                   <SoAttachmentsCard {...tabProps} />
-                </div>
-
-                <aside className="flex flex-col gap-3 lg:col-span-4">
+                </>
+              }
+              aside={
+                <>
                   <SoDocumentCard {...tabProps} />
                   <DocumentDates def={salesOrderDates} {...tabProps} />
                   <SoSettingsCard {...tabProps} />
@@ -584,9 +589,9 @@ function SalesOrderForm() {
                     ownerHint="Owns the document."
                     remarksHint="Can be changed after the order is added."
                   />
-                </aside>
-              </div>
-            </Panel.Body>
+                </>
+              }
+            />
           ) : null}
         </Panel>
       </Form>

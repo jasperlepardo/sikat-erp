@@ -8,6 +8,7 @@ import { type Errors } from '../../../../components/form/fields';
 import { type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { DetailActions, docMode } from '../../../../components/form/DetailActions';
 import { PageHeader } from '../../../../components/form/PageHeader';
+import { DetailColumns } from '../../../../components/form/DetailColumns';
 import { cap } from '../../../../components/form/noun';
 import { isApprover, needsApproval } from '../../../../services/approval';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
@@ -69,7 +70,7 @@ import { RiDocumentCard } from './RiDocumentCard';
 import { DocLines } from '../../../../components/form/docLines/DocLines';
 import { CopyPanel, type CopySourceType } from '../../../purchasing/shared/CopyPanel';
 import { invoiceDoc, type CopyPickRi } from '../../shared/invoiceDoc';
-import { InvoiceCustomerDetailsPanel } from '../../shared/InvoiceCustomerDetailsPanel';
+import { CustomerDetailsPanel } from '../../shared/CustomerDetailsPanel';
 import { RI_LIST_PATH, RI_NOUN, RI_STATUS_INTENT } from '../../paths';
 import { customerWithholds } from '../../../../services/withholding';
 
@@ -386,18 +387,22 @@ function ReserveInvoiceForm() {
             </Panel.Body>
           ) : null}
           {page === 'details' ? (
-            <Panel.Body className="flex flex-col gap-2">
-              <ProblemsAlert problems={problems} tabLabel={(t) => TAB_LABEL[t as TabId]} />
-              {reject.alert(`Reject ${RI_NOUN.one}`, rejectIt)}
-              {ro ? (
-                <Alert intent="default" variant="outline" title={`This ${RI_NOUN.one} is ${draft.status.toLowerCase()}`}>
-                  {draft.status === 'Cancelled'
-                    ? 'Its journal entry was reversed. No stock movement was made by this document.'
-                    : "It's posted to the ledger. Only remarks and attachments can change; to undo it, cancel the reserve invoice."}
-                </Alert>
-              ) : null}
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-                <div className="flex flex-col gap-3 lg:col-span-8">
+            <DetailColumns
+              header={
+                <>
+                  <ProblemsAlert problems={problems} tabLabel={(t) => TAB_LABEL[t as TabId]} />
+                  {reject.alert(`Reject ${RI_NOUN.one}`, rejectIt)}
+                  {ro ? (
+                    <Alert intent="default" variant="outline" title={`This ${RI_NOUN.one} is ${draft.status.toLowerCase()}`}>
+                      {draft.status === 'Cancelled'
+                        ? 'Its journal entry was reversed. No stock movement was made by this document.'
+                        : "It's posted to the ledger. Only remarks and attachments can change; to undo it, cancel the reserve invoice."}
+                    </Alert>
+                  ) : null}
+                </>
+              }
+              main={
+                <>
                   <CustomerCard
                     customers={m.customers}
                     customerId={draft.customerId}
@@ -441,8 +446,10 @@ function ReserveInvoiceForm() {
                     emptyHint="The signed reserve invoice, the customer's PO, Form 2307 when it arrives."
                     withDescription
                   />
-                </div>
-                <aside className="flex flex-col gap-3 lg:col-span-4">
+                </>
+              }
+              aside={
+                <>
                   <RiDocumentCard {...tabProps} />
                   <DocumentDates def={arReserveInvoiceDates} {...tabProps} />
                   <DocumentPayment def={arReserveInvoicePayment} posting={journalEntry} {...tabProps} />
@@ -457,13 +464,22 @@ function ReserveInvoiceForm() {
                     ownerHint="Owns the document."
                     remarksHint="Can be changed after the invoice is added."
                   />
-                </aside>
-              </div>
-            </Panel.Body>
+                </>
+              }
+            />
           ) : null}
         </Panel>
       </Form>
-      <InvoiceCustomerDetailsPanel {...tabProps} noun={RI_NOUN.one} remarkDefault="Reserve Invoice – customer code" open={customerDetailsOpen} onClose={() => setCustomerDetailsOpen(false)} />
+      <CustomerDetailsPanel
+        customer={ctx.customer}
+        draft={draft}
+        update={update}
+        readOnly={ctx.readOnly}
+        noun={RI_NOUN.one}
+        open={customerDetailsOpen}
+        onClose={() => setCustomerDetailsOpen(false)}
+        orderNumberHint="Set by Copy from."
+      />
       {copying
         ? createPortal(
             <CopyPanel

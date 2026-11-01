@@ -7,6 +7,7 @@ import { type Errors } from '../../../../components/form/fields';
 import { type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { DetailActions, docMode } from '../../../../components/form/DetailActions';
 import { PageHeader } from '../../../../components/form/PageHeader';
+import { DetailColumns } from '../../../../components/form/DetailColumns';
 import { isApprover, needsApproval } from '../../../../services/approval';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { CURRENT_USER_ID } from '../../../../mocks/common';
@@ -374,30 +375,33 @@ function QuotationForm() {
               <ActivityTab target={{ kind: 'QT', id: draft.id ?? '' }} partnerId={draft.customerId} />
             </Panel.Body>
           ) : (
-            <Panel.Body className="flex flex-col gap-2">
-              <ProblemsAlert problems={problems} tabLabel={(t) => TAB_LABEL[t as TabId]} />
-              {reject.alert('Reject quotation', rejectIt)}
-              {copyFromNote ? (
-                <Alert intent="default" variant="outline" title="Nothing to copy from" onClose={() => setCopyFromNote(false)}>
-                  A quotation starts the sales flow, so there is no earlier document to copy from. Use Copy to (Create sales order) once it is open.
-                </Alert>
-              ) : null}
-              {added ? (
-                <Alert
-                  intent="default"
-                  variant="outline"
-                  title={draft.status === 'Open' ? (isExpired ? 'This quotation has expired' : 'Quotation is open') : `This quotation is ${draft.status.toLowerCase()}`}
-                >
-                  {draft.status === 'Open'
-                    ? (isExpired
-                      ? 'The valid until date has passed. Create a sales order or close it.'
-                      : 'Create a sales order when the customer confirms. Only remarks and attachments can change.')
-                    : 'Only remarks and attachments can change.'}
-                </Alert>
-              ) : null}
-
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-                <div className="flex flex-col gap-3 lg:col-span-8">
+            <DetailColumns
+              header={
+                <>
+                  <ProblemsAlert problems={problems} tabLabel={(t) => TAB_LABEL[t as TabId]} />
+                  {reject.alert('Reject quotation', rejectIt)}
+                  {copyFromNote ? (
+                    <Alert intent="default" variant="outline" title="Nothing to copy from" onClose={() => setCopyFromNote(false)}>
+                      A quotation starts the sales flow, so there is no earlier document to copy from. Use Copy to (Create sales order) once it is open.
+                    </Alert>
+                  ) : null}
+                  {added ? (
+                    <Alert
+                      intent="default"
+                      variant="outline"
+                      title={draft.status === 'Open' ? (isExpired ? 'This quotation has expired' : 'Quotation is open') : `This quotation is ${draft.status.toLowerCase()}`}
+                    >
+                      {draft.status === 'Open'
+                        ? (isExpired
+                          ? 'The valid until date has passed. Create a sales order or close it.'
+                          : 'Create a sales order when the customer confirms. Only remarks and attachments can change.')
+                        : 'Only remarks and attachments can change.'}
+                    </Alert>
+                  ) : null}
+                </>
+              }
+              main={
+                <>
                   <CustomerCard
                     customers={m.customers}
                     customerId={draft.customerId}
@@ -420,9 +424,10 @@ function QuotationForm() {
                     description="Link the customer's RFQ, a contract, or other source documents."
                   />
                   <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach the RFQ, specs sheet, or supporting documents." />
-                </div>
-
-                <aside className="flex flex-col gap-3 lg:col-span-4">
+                </>
+              }
+              aside={
+                <>
                   <QtDocumentCard {...tabProps} />
                   <DocumentDates def={quotationDates} {...tabProps} />
                   <QtDeliveryCard {...tabProps} />
@@ -437,9 +442,9 @@ function QuotationForm() {
                     ownerHint="Owns the document."
                     remarksHint="Can be changed after the quotation is added."
                   />
-                </aside>
-              </div>
-            </Panel.Body>
+                </>
+              }
+            />
           )}
         </Panel>
       </Form>

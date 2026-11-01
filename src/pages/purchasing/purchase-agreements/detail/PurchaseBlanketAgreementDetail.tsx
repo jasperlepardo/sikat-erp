@@ -10,6 +10,7 @@ import {
   Text,
 } from '@jasperlepardo/sikat-design-system';
 import { PageHeader } from '../../../../components/form/PageHeader';
+import { DetailColumns } from '../../../../components/form/DetailColumns';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { type Errors } from '../../../../components/form/fields';
 import { type MoreMenuItem } from '../../../../components/form/MoreMenu';
@@ -308,25 +309,29 @@ function PbaForm() {
             <ActivityTab target={{ kind: 'PBA', id: draft.id ?? '' }} partnerId={draft.vendorId} />
           </Panel.Body>
         ) : (
-          <Panel.Body className="flex flex-col gap-2">
-            <ProblemsAlert problems={problems} tabLabel={(t) => TAB_LABEL[t as TabId] ?? t} />
+          <DetailColumns
+            header={
+              <>
+                <ProblemsAlert problems={problems} tabLabel={(t) => TAB_LABEL[t as TabId] ?? t} />
 
-            {readOnly ? (
-              <Alert intent="default" variant="outline" title={`This agreement is ${draft.status.toLowerCase()}`}>
-                {draft.status === 'Terminated' && draft.terminationDate
-                  ? `Terminated on ${formatDate(draft.terminationDate)}. `
-                  : ''}
-                {terminal
-                  ? 'Only remarks and attachments can be changed.'
-                  : 'Use the header actions to change its status; remarks and attachments stay editable.'}
-              </Alert>
-            ) : null}
+                {readOnly ? (
+                  <Alert intent="default" variant="outline" title={`This agreement is ${draft.status.toLowerCase()}`}>
+                    {draft.status === 'Terminated' && draft.terminationDate
+                      ? `Terminated on ${formatDate(draft.terminationDate)}. `
+                      : ''}
+                    {terminal
+                      ? 'Only remarks and attachments can be changed.'
+                      : 'Use the header actions to change its status; remarks and attachments stay editable.'}
+                  </Alert>
+                ) : null}
 
-            {draft.lines.length > 0 && (
-              <AgreementSummaryCard side="purchase" currency={draft.currency} totals={totals} settlementProbability={draft.settlementProbability} />
-            )}
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-              <div className="flex flex-col gap-3 lg:col-span-8">
+                {draft.lines.length > 0 && (
+                  <AgreementSummaryCard side="purchase" currency={draft.currency} totals={totals} settlementProbability={draft.settlementProbability} />
+                )}
+              </>
+            }
+            main={
+              <>
                 <VendorCard
                   vendors={m.vendors}
                   vendorId={draft.vendorId}
@@ -345,16 +350,17 @@ function PbaForm() {
                   emptyHint="Signed agreement, vendor confirmation, or supporting documents."
                   withDescription
                 />
-              </div>
-
-              <aside className="flex flex-col gap-3 lg:col-span-4">
+              </>
+            }
+            aside={
+              <>
                 <PbaDocumentCard draft={draft} update={update} m={m} added={added} />
                 <DocumentDates def={purchaseAgreementDates} draft={draft} update={update} errors={errors} readOnly={readOnly} />
                 <GeneralTab draft={draft} update={update} m={m} readOnly={readOnly} />
                 <AssignmentCard draft={draft} update={update} readOnly={readOnly} ownerHint="Owns the document (data access)." remarksHint="Can be changed at any status." />
-              </aside>
-            </div>
-          </Panel.Body>
+              </>
+            }
+          />
         )}
       </Panel>
     </Form>

@@ -8,6 +8,7 @@ import {
   Text,
 } from '@jasperlepardo/sikat-design-system';
 import { PageHeader } from '../../../../components/form/PageHeader';
+import { DetailColumns } from '../../../../components/form/DetailColumns';
 import { bind, type Errors } from '../../../../components/form/fields';
 import { type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { DetailActions } from '../../../../components/form/DetailActions';
@@ -195,21 +196,24 @@ function LandedCostForm() {
           }
         />
 
-        <Panel.Body className="flex flex-col gap-2">
-          <ProblemsAlert
-            problems={problems}
-            tabLabel={(t) =>
-              ({ items: 'Items', costs: 'Costs', vendors: 'Vendors', general: 'General' })[t]
-            }
-          />
-          {added ? (
-            <Alert intent="default" variant="outline" title={`This landed cost is ${draft.status.toLowerCase()}`}>
-              Only attachments can change.
-            </Alert>
-          ) : null}
-
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-            <div className="flex flex-col gap-3 lg:col-span-8">
+        <DetailColumns
+          header={
+            <>
+              <ProblemsAlert
+                problems={problems}
+                tabLabel={(t) =>
+                  ({ items: 'Items', costs: 'Costs', vendors: 'Vendors', general: 'General' })[t]
+                }
+              />
+              {added ? (
+                <Alert intent="default" variant="outline" title={`This landed cost is ${draft.status.toLowerCase()}`}>
+                  Only attachments can change.
+                </Alert>
+              ) : null}
+            </>
+          }
+          main={
+            <>
               <VendorCard
                 vendors={m.vendors}
                 vendorId={draft.vendorId}
@@ -229,17 +233,18 @@ function LandedCostForm() {
                 onChange={(attachments) => update({ attachments })}
                 emptyHint="Attach shipping documents, customs declarations or insurance certificates."
               />
-            </div>
-
-            <aside className="flex flex-col gap-3 lg:col-span-4">
+            </>
+          }
+          aside={
+            <>
               <LcDocumentCard {...sectionProps} />
               <DocumentDates def={landedCostDates} {...sectionProps} />
               <LcVendorsCard {...sectionProps} />
               <LcGeneralCard {...sectionProps} />
               <LcRemarksCard {...sectionProps} />
-            </aside>
-          </div>
-        </Panel.Body>
+            </>
+          }
+        />
       </Panel>
     </Form>
     <LcVendorDetailsPanel

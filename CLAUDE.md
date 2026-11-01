@@ -162,11 +162,9 @@ const [errors, setErrors] = useState<Errors>({});
 
 ### Layout
 
-**Master records (Items, Partners):** `lg:col-span-3` aside (identity + subsidiary cards) + `lg:col-span-9` main (tabs).
+**Standard two-column body — `DetailColumns` (`components/form/DetailColumns.tsx`):** item detail and every purchasing/sales document render their body through `<DetailColumns header main aside />`. It owns the `Panel.Body`, the `lg:grid-cols-12` grid and the two columns: `main` is `lg:col-span-8` (content — CustomerCard/VendorCard + line table + journal + references + attachments), `aside` is `lg:col-span-4` (details/identity cards), `header` holds the alerts that stay fixed above the columns. Each column scrolls independently at `lg` (the body clips, the grid fills it, each column has its own `overflow-y-auto`), collapsing to one scrolling column below `lg`. Don't hand-roll the grid — use the component. Don't add padding to its `Panel.Body`: a utility overrides the design system's 16px panel padding and pushes content flush; the column `p-1`/`-m-1` pair reclaims shadow room inside each scroll clip.
 
-**Quotation / invoice:** `lg:col-span-8` (CustomerCard + ContentsTable) + `lg:col-span-4` (DetailsCard + AttachmentsCard).
-
-**Sales order:** `lg:col-span-3` aside (DatesCard, SettingsCard, etc.) + `lg:col-span-9` (CustomerCard + tabbed contents).
+**Partners** still uses a bespoke `lg:col-span-3` aside (identity + subsidiary cards) + `lg:col-span-9` main (tabs); it hasn't been moved onto `DetailColumns`.
 
 ### Document pages — `TabProps` / `DocContext`
 

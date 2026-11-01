@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import { Alert, Badge, Form, Panel, Tabs, Text } from '@jasperlepardo/sikat-design-system';
 import { PageHeader } from '../../../../components/form/PageHeader';
+import { DetailColumns } from '../../../../components/form/DetailColumns';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { type Errors } from '../../../../components/form/fields';
 import { type MoreMenuItem } from '../../../../components/form/MoreMenu';
@@ -296,20 +297,24 @@ function DpiForm() {
           ) : page !== 'details' ? (
             <Panel.Body><ActivityTab target={{ kind: 'APDPI', id: draft.id ?? '' }} partnerId={draft.vendorId} /></Panel.Body>
           ) : (
-            <Panel.Body className="flex flex-col gap-2">
-              <ProblemsAlert problems={problems} tabLabel={(t) => ({ contents: 'Contents', logistics: 'Logistics', accounting: 'Accounting' })[t]} />
-              {reject.alert('Reject down payment invoice', rejectIt)}
-              {added ? (
-                <Alert intent="default" variant="outline" title={draft.status === 'Open' ? (balance > 0 ? `${code} ${formatAmount(balance)} still to pay` : `Paid — ${code} ${formatAmount(drawableAmount(saved))} left to draw`) : `This invoice is ${draft.status.toLowerCase()}`}>
-                  {draft.status === 'Open'
-                    ? balance > 0
-                      ? 'Pay it from Outgoing Payments. The GL entry was posted when this invoice was added.'
-                      : 'Draw it on the A/P invoice that bills the goods: the invoice\'s Total down payment.'
-                    : 'Only remarks, the payment block and the payment run flag can change.'}
-                </Alert>
-              ) : null}
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-                <div className="flex flex-col gap-3 lg:col-span-8">
+            <DetailColumns
+              header={
+                <>
+                  <ProblemsAlert problems={problems} tabLabel={(t) => ({ contents: 'Contents', logistics: 'Logistics', accounting: 'Accounting' })[t]} />
+                  {reject.alert('Reject down payment invoice', rejectIt)}
+                  {added ? (
+                    <Alert intent="default" variant="outline" title={draft.status === 'Open' ? (balance > 0 ? `${code} ${formatAmount(balance)} still to pay` : `Paid — ${code} ${formatAmount(drawableAmount(saved))} left to draw`) : `This invoice is ${draft.status.toLowerCase()}`}>
+                      {draft.status === 'Open'
+                        ? balance > 0
+                          ? 'Pay it from Outgoing Payments. The GL entry was posted when this invoice was added.'
+                          : 'Draw it on the A/P invoice that bills the goods: the invoice\'s Total down payment.'
+                        : 'Only remarks, the payment block and the payment run flag can change.'}
+                    </Alert>
+                  ) : null}
+                </>
+              }
+              main={
+                <>
                   <VendorCard
                     vendors={m.vendors}
                     vendorId={draft.vendorId}
@@ -324,8 +329,10 @@ function DpiForm() {
                   <DocumentJournalEntry def={downPaymentInvoicePayment} posting={journalEntry} {...sectionProps} />
                   <ReferencesTable refs={draft.references} onChange={(references) => update({ references })} readOnly={ctx.readOnly} description="Other documents this invoice refers to, e.g. the vendor's proforma invoice." />
                   <AttachmentsCard attachments={draft.attachments ?? []} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach the vendor's proforma or billing documents." />
-                </div>
-                <div className="flex flex-col gap-3 lg:col-span-4">
+                </>
+              }
+              aside={
+                <>
                   <DpiDocumentCard {...sectionProps} />
                   <DocumentDates def={downPaymentInvoiceDates} {...sectionProps} />
                   <DocumentPayment def={downPaymentInvoicePayment} posting={journalEntry} {...sectionProps} />
@@ -338,9 +345,9 @@ function DpiForm() {
                     remarksHint="Can be changed after the invoice is added."
                     paymentFlags
                   />
-                </div>
-              </div>
-            </Panel.Body>
+                </>
+              }
+            />
           )}
         </Panel>
       </Form>

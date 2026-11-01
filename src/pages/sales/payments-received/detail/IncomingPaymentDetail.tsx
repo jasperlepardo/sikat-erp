@@ -6,6 +6,7 @@ import { Section, bind, type Errors } from '../../../../components/form/fields';
 import { type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { DetailActions, docMode } from '../../../../components/form/DetailActions';
 import { PageHeader } from '../../../../components/form/PageHeader';
+import { DetailColumns } from '../../../../components/form/DetailColumns';
 import { isApprover, needsApproval } from '../../../../services/approval';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { formatAddress } from '../../../../mocks/address';
@@ -308,21 +309,24 @@ function IncomingForm() {
           </Panel.Body>
         ) : null}
         {page === 'details' ? (
-          <Panel.Body className="flex flex-col gap-2">
-            <ProblemsAlert problems={problems} tabLabel={(t) => TAB_LABEL[t as TabId]} />
-            {reject.alert('Reject incoming payment', rejectIt)}
-            {added ? (
-              <Alert intent="default" variant="outline" title={draft.status === 'Cancelled' ? 'This payment is cancelled' : draft.status === 'Not Confirmed' ? 'This payment is waiting for approval' : 'This payment is posted'}>
-                {draft.status === 'Cancelled'
-                  ? `A reversing entry was posted on ${formatDate(draft.cancelDate)}, and the invoices it paid reopened.`
-                  : draft.status === 'Not Confirmed'
-                    ? 'Approve it to post it. Only remarks and attachments can change.'
-                    : `Journal entry ${draft.transNo}. Only remarks and attachments can change; to undo it, cancel it.`}
-              </Alert>
-            ) : null}
-
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-              <div className="flex flex-col gap-3 lg:col-span-8">
+          <DetailColumns
+            header={
+              <>
+                <ProblemsAlert problems={problems} tabLabel={(t) => TAB_LABEL[t as TabId]} />
+                {reject.alert('Reject incoming payment', rejectIt)}
+                {added ? (
+                  <Alert intent="default" variant="outline" title={draft.status === 'Cancelled' ? 'This payment is cancelled' : draft.status === 'Not Confirmed' ? 'This payment is waiting for approval' : 'This payment is posted'}>
+                    {draft.status === 'Cancelled'
+                      ? `A reversing entry was posted on ${formatDate(draft.cancelDate)}, and the invoices it paid reopened.`
+                      : draft.status === 'Not Confirmed'
+                        ? 'Approve it to post it. Only remarks and attachments can change.'
+                        : `Journal entry ${draft.transNo}. Only remarks and attachments can change; to undo it, cancel it.`}
+                  </Alert>
+                ) : null}
+              </>
+            }
+            main={
+              <>
                 {draft.type === 'Customer' ? (
                   <CustomerCard
                     customers={m.customers}
@@ -351,16 +355,17 @@ function IncomingForm() {
                   description="Link the A/R invoice, deposit slip, or other source documents."
                 />
                 <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} emptyHint="Deposit slip, bank advice, scanned check, the customer's BIR Form 2307." withDescription />
-              </div>
-
-              <aside className="flex flex-col gap-3 lg:col-span-4">
+              </>
+            }
+            aside={
+              <>
                 <IncomingDocumentCard draft={draft} update={update} errors={errors} readOnly={ro} currencies={m.currencies} rate={draft.currency === 'PHP' ? undefined : added ? { rate: draft.fxRate, date: draft.postingDate, source: '' } : rateOn(m.rates, draft.currency, draft.postingDate)} />
                 <DocumentDates def={paymentReceivedDates} draft={draft} update={update} errors={errors} readOnly={ro} />
                 <IncomingSettingsCard draft={draft} update={update} readOnly={ro} onType={setType} />
                 <IncomingRemarksCard draft={draft} update={update} />
-              </aside>
-            </div>
-          </Panel.Body>
+              </>
+            }
+          />
         ) : null}
       </Panel>
     </Form>
