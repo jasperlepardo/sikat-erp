@@ -3,6 +3,7 @@ import { createHashRouter, Navigate, type RouteObject } from 'react-router';
 import { AppShell } from './AppShell';
 import { PageError } from './PageError';
 import { ROLE_CONFIG, scopeConfig, type PartnerScope } from '../pages/partners/roles';
+import { SplitPage } from '../components/form/SplitPage';
 
 /**
  * A page loaded on first visit: each route is its own chunk, so the first screen doesn't download
@@ -24,6 +25,25 @@ function page<M extends Record<K, ComponentType<any>>, K extends keyof M & strin
     return <Component {...props} />;
   };
   return Object.assign(Page, { preload });
+}
+
+type PageComp = { preload: () => Promise<void> };
+
+/**
+ * Returns a JSX element for a split-page route. The element's component has a `preload` method
+ * that pre-fetches both the list and detail chunks, so `withPreload` can load them before the
+ * route renders (no Suspense flash on cold navigation).
+ */
+function splitRoute(
+  list: PageComp,
+  detail: PageComp,
+  listProps?: Record<string, unknown>,
+  detailProps?: Record<string, unknown>,
+) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const C = () => <SplitPage list={list as any} detail={detail as any} listProps={listProps} detailProps={detailProps} />;
+  C.preload = () => Promise.all([list.preload(), detail.preload()]).then(() => {});
+  return <C />;
 }
 
 /** Give every route whose element is a `page()` a `lazy` that loads its chunk before the route renders. */
@@ -82,7 +102,8 @@ const ArInvoiceDetail = page(() => import('../pages/sales/invoices/detail/ArInvo
 const IncomingPaymentList = page(() => import('../pages/sales/payments-received/IncomingPaymentList'), 'IncomingPaymentList');
 const IncomingPaymentDetail = page(() => import('../pages/sales/payments-received/detail/IncomingPaymentDetail'), 'IncomingPaymentDetail');
 const ArCreditMemoDetail = page(() => import('../pages/sales/returns-and-credits/credit-memos/detail/ArCreditMemoDetail'), 'ArCreditMemoDetail');
-const SalesReturnsList = page(() => import('../pages/sales/returns-and-credits/SalesReturnsList'), 'SalesReturnsList');
+const ArCreditMemoList = page(() => import('../pages/sales/returns-and-credits/ArCreditMemoList'), 'ArCreditMemoList');
+const SalesReturnList = page(() => import('../pages/sales/returns-and-credits/SalesReturnList'), 'SalesReturnList');
 const SalesReturnDetail = page(() => import('../pages/sales/returns-and-credits/returns/detail/SalesReturnDetail'), 'SalesReturnDetail');
 const RfqList = page(() => import('../pages/purchasing/purchase-quotations/RfqList'), 'RfqList');
 const RfqDetail = page(() => import('../pages/purchasing/purchase-quotations/detail/PurchaseQuotationDetail'), 'RfqDetail');
@@ -109,6 +130,8 @@ const LandedCostsList = page(() => import('../pages/purchasing/landed-costs/Land
 const LandedCostDetail = page(() => import('../pages/purchasing/landed-costs/detail/LandedCostDetail'), 'LandedCostDetail');
 const ReserveInvoiceList = page(() => import('../pages/sales/reserve-invoices/ReserveInvoiceList'), 'ReserveInvoiceList');
 const ReserveInvoiceDetail = page(() => import('../pages/sales/reserve-invoices/detail/ReserveInvoiceDetail'), 'ReserveInvoiceDetail');
+const DiList = page(() => import('../pages/sales/down-payment-invoices/DiList'), 'DiList');
+const DiDetail = page(() => import('../pages/sales/down-payment-invoices/detail/DiDetail'), 'DiDetail');
 const AccountingDashboard = page(() => import('../pages/accounting/AccountingDashboard'), 'AccountingDashboard');
 const ChartOfAccountsPage = page(() => import('../pages/accounting/ChartOfAccountsPage'), 'ChartOfAccountsPage');
 const JournalEntryList = page(() => import('../pages/accounting/journal/JournalEntryList'), 'JournalEntryList');
@@ -130,9 +153,10 @@ const ActivityList = page(() => import('../pages/crm/ActivityList'), 'ActivityLi
 /** Business Partners (all) plus Leads, Customers and Vendors: one list + form pair each. */
 const partnerRoutes = (['all', ...Object.keys(ROLE_CONFIG)] as PartnerScope[]).flatMap((scope) => {
   const path = scopeConfig(scope).basePath.slice(1);
+  const props = { scope };
   return [
-    { path, element: <PartnerList key={scope} scope={scope} /> },
-    { path: `${path}/:id/:tab?`, element: <PartnerDetail key={scope} scope={scope} /> },
+    { path, element: splitRoute(PartnerList, PartnerDetail, props, props) },
+    { path: `${path}/:id/:tab?`, element: splitRoute(PartnerList, PartnerDetail, props, props) },
   ];
 });
 
@@ -152,73 +176,98 @@ export const router = createHashRouter(withPreload([
           { path: 'approvals/pending-approvals', element: <ApprovalsPage /> },
           { path: 'crm/activities', element: <ActivityList /> },
           { path: 'inventory/dashboard', element: <InventoryDashboard /> },
-          { path: 'inventory/items', element: <ItemList /> },
-          { path: 'inventory/items/:id/:tab?', element: <ItemDetail /> },
+          { path: 'inventory/items', element: splitRoute(ItemList, ItemDetail) },
+          { path: 'inventory/items/:id/:tab?', element: splitRoute(ItemList, ItemDetail) },
           { path: 'inventory/stock-on-hand', element: <StockOnHandPage /> },
-          { path: 'inventory/inventory-transfers', element: <InventoryTransferList /> },
-          { path: 'inventory/inventory-transfers/:id', element: <InventoryTransferDetail /> },
-          { path: 'inventory/transfer-requests', element: <TransferRequestList /> },
-          { path: 'inventory/transfer-requests/:id', element: <TransferRequestDetail /> },
+          { path: 'inventory/inventory-transfers', element: splitRoute(InventoryTransferList, InventoryTransferDetail) },
+          { path: 'inventory/inventory-transfers/drafts', element: <InventoryTransferList draftsOnly /> },
+          { path: 'inventory/inventory-transfers/:id', element: splitRoute(InventoryTransferList, InventoryTransferDetail) },
+          { path: 'inventory/transfer-requests', element: splitRoute(TransferRequestList, TransferRequestDetail) },
+          { path: 'inventory/transfer-requests/:id', element: splitRoute(TransferRequestList, TransferRequestDetail) },
           { path: 'inventory/stock-counts', element: <StockCountList /> },
           { path: 'inventory/stock-counts/postings', element: <InventoryPostingList /> },
           { path: 'inventory/stock-counts/postings/:id', element: <InventoryPostingDetail /> },
           { path: 'inventory/stock-counts/:id', element: <StockCountDetail /> },
           ...partnerRoutes,
           { path: 'sales/dashboard', element: <SalesDashboard /> },
-          { path: 'sales/quotations', element: <QuotationList /> },
-          { path: 'sales/quotations/:id/:tab?', element: <QuotationDetail /> },
-          { path: 'sales/sales-orders', element: <SalesOrderList /> },
-          { path: 'sales/sales-orders/:id/:tab?', element: <SalesOrderDetail /> },
-          { path: 'sales/deliveries', element: <DeliveryList /> },
-          { path: 'sales/deliveries/:id/:tab?', element: <DeliveryDetail /> },
-          { path: 'sales/customer-invoices', element: <ArInvoiceList /> },
-          { path: 'sales/customer-invoices/:id/:tab?', element: <ArInvoiceDetail /> },
-          { path: 'sales/reserve-invoices', element: <ReserveInvoiceList /> },
-          { path: 'sales/reserve-invoices/:id/:tab?', element: <ReserveInvoiceDetail /> },
-          { path: 'sales/incoming-payments', element: <IncomingPaymentList /> },
-          { path: 'sales/incoming-payments/:id/:tab?', element: <IncomingPaymentDetail /> },
-          { path: 'sales/sales-returns', element: <SalesReturnsList kind="returns" /> },
-          { path: 'sales/sales-returns/:id/:tab?', element: <SalesReturnDetail /> },
-          { path: 'sales/credit-memos', element: <SalesReturnsList kind="memos" /> },
-          { path: 'sales/credit-memos/:id/:tab?', element: <ArCreditMemoDetail /> },
-          { path: 'sales/agreements', element: <BlanketAgreementList /> },
-          { path: 'sales/agreements/:id/:tab?', element: <BlanketAgreementDetail /> },
+          { path: 'sales/quotations', element: splitRoute(QuotationList, QuotationDetail) },
+          { path: 'sales/quotations/drafts', element: <QuotationList draftsOnly /> },
+          { path: 'sales/quotations/:id/:tab?', element: splitRoute(QuotationList, QuotationDetail) },
+          { path: 'sales/sales-orders', element: splitRoute(SalesOrderList, SalesOrderDetail) },
+          { path: 'sales/sales-orders/drafts', element: <SalesOrderList draftsOnly /> },
+          { path: 'sales/sales-orders/:id/:tab?', element: splitRoute(SalesOrderList, SalesOrderDetail) },
+          { path: 'sales/deliveries', element: splitRoute(DeliveryList, DeliveryDetail) },
+          { path: 'sales/deliveries/drafts', element: <DeliveryList draftsOnly /> },
+          { path: 'sales/deliveries/:id/:tab?', element: splitRoute(DeliveryList, DeliveryDetail) },
+          { path: 'sales/customer-invoices', element: splitRoute(ArInvoiceList, ArInvoiceDetail) },
+          { path: 'sales/customer-invoices/drafts', element: <ArInvoiceList draftsOnly /> },
+          { path: 'sales/customer-invoices/:id/:tab?', element: splitRoute(ArInvoiceList, ArInvoiceDetail) },
+          { path: 'sales/reserve-invoices', element: splitRoute(ReserveInvoiceList, ReserveInvoiceDetail) },
+          { path: 'sales/reserve-invoices/drafts', element: <ReserveInvoiceList draftsOnly /> },
+          { path: 'sales/reserve-invoices/:id/:tab?', element: splitRoute(ReserveInvoiceList, ReserveInvoiceDetail) },
+          { path: 'sales/down-payment-invoices', element: splitRoute(DiList, DiDetail) },
+          { path: 'sales/down-payment-invoices/drafts', element: <DiList draftsOnly /> },
+          { path: 'sales/down-payment-invoices/:id/:tab?', element: splitRoute(DiList, DiDetail) },
+          { path: 'sales/incoming-payments', element: splitRoute(IncomingPaymentList, IncomingPaymentDetail) },
+          { path: 'sales/incoming-payments/drafts', element: <IncomingPaymentList draftsOnly /> },
+          { path: 'sales/incoming-payments/:id/:tab?', element: splitRoute(IncomingPaymentList, IncomingPaymentDetail) },
+          { path: 'sales/sales-returns', element: splitRoute(SalesReturnList, SalesReturnDetail) },
+          { path: 'sales/sales-returns/drafts', element: <SalesReturnList draftsOnly /> },
+          { path: 'sales/sales-returns/:id/:tab?', element: splitRoute(SalesReturnList, SalesReturnDetail) },
+          { path: 'sales/credit-memos', element: splitRoute(ArCreditMemoList, ArCreditMemoDetail) },
+          { path: 'sales/credit-memos/drafts', element: <ArCreditMemoList draftsOnly /> },
+          { path: 'sales/credit-memos/:id/:tab?', element: splitRoute(ArCreditMemoList, ArCreditMemoDetail) },
+          { path: 'sales/agreements', element: splitRoute(BlanketAgreementList, BlanketAgreementDetail) },
+          { path: 'sales/agreements/drafts', element: <BlanketAgreementList draftsOnly /> },
+          { path: 'sales/agreements/:id/:tab?', element: splitRoute(BlanketAgreementList, BlanketAgreementDetail) },
           { path: 'purchasing/dashboard', element: <PurchaseDashboard /> },
-          { path: 'purchasing/purchase-requests', element: <PurchaseRequestList /> },
-          { path: 'purchasing/purchase-requests/:id/:tab?', element: <PurchaseRequestDetail /> },
-          { path: 'purchasing/purchase-quotations', element: <RfqList /> },
-          { path: 'purchasing/purchase-quotations/:id/:tab?', element: <RfqDetail /> },
-          { path: 'purchasing/purchase-orders', element: <PurchaseOrderList /> },
-          { path: 'purchasing/purchase-orders/:id/:tab?', element: <PurchaseOrderDetail /> },
-          { path: 'purchasing/goods-receipts', element: <GoodsReceiptList /> },
-          { path: 'purchasing/goods-receipts/:id/:tab?', element: <GoodsReceiptDetail /> },
+          { path: 'purchasing/purchase-requests', element: splitRoute(PurchaseRequestList, PurchaseRequestDetail) },
+          { path: 'purchasing/purchase-requests/:id/:tab?', element: splitRoute(PurchaseRequestList, PurchaseRequestDetail) },
+          { path: 'purchasing/purchase-quotations', element: splitRoute(RfqList, RfqDetail) },
+          { path: 'purchasing/purchase-quotations/drafts', element: <RfqList draftsOnly /> },
+          { path: 'purchasing/purchase-quotations/:id/:tab?', element: splitRoute(RfqList, RfqDetail) },
+          { path: 'purchasing/purchase-orders', element: splitRoute(PurchaseOrderList, PurchaseOrderDetail) },
+          // Static `/drafts` before `:id` so it isn't matched as a document id.
+          { path: 'purchasing/purchase-orders/drafts', element: <PurchaseOrderList draftsOnly /> },
+          { path: 'purchasing/purchase-orders/:id/:tab?', element: splitRoute(PurchaseOrderList, PurchaseOrderDetail) },
+          { path: 'purchasing/goods-receipts', element: splitRoute(GoodsReceiptList, GoodsReceiptDetail) },
+          { path: 'purchasing/goods-receipts/drafts', element: <GoodsReceiptList draftsOnly /> },
+          { path: 'purchasing/goods-receipts/:id/:tab?', element: splitRoute(GoodsReceiptList, GoodsReceiptDetail) },
 
 
 
-          { path: 'purchasing/vendor-invoices', element: <ApInvoiceList /> },
-          { path: 'purchasing/vendor-invoices/:id/:tab?', element: <ApInvoiceDetail /> },
-          { path: 'purchasing/reserve-invoices', element: <ApReserveInvoiceList /> },
-          { path: 'purchasing/reserve-invoices/:id/:tab?', element: <ApReserveInvoiceDetail /> },
-          { path: 'purchasing/down-payment-requests', element: <DprList /> },
-          { path: 'purchasing/down-payment-requests/:id/:tab?', element: <DprDetail /> },
-          { path: 'purchasing/down-payment-invoices', element: <DownPaymentInvoiceList /> },
-          { path: 'purchasing/down-payment-invoices/:id/:tab?', element: <DownPaymentInvoiceDetail /> },
-          { path: 'purchasing/outgoing-payments', element: <PaymentList /> },
-          { path: 'purchasing/outgoing-payments/:id/:tab?', element: <PaymentDetail /> },
+          { path: 'purchasing/vendor-invoices', element: splitRoute(ApInvoiceList, ApInvoiceDetail) },
+          { path: 'purchasing/vendor-invoices/drafts', element: <ApInvoiceList draftsOnly /> },
+          { path: 'purchasing/vendor-invoices/:id/:tab?', element: splitRoute(ApInvoiceList, ApInvoiceDetail) },
+          { path: 'purchasing/reserve-invoices', element: splitRoute(ApReserveInvoiceList, ApReserveInvoiceDetail) },
+          { path: 'purchasing/reserve-invoices/drafts', element: <ApReserveInvoiceList draftsOnly /> },
+          { path: 'purchasing/reserve-invoices/:id/:tab?', element: splitRoute(ApReserveInvoiceList, ApReserveInvoiceDetail) },
+          { path: 'purchasing/down-payment-requests', element: splitRoute(DprList, DprDetail) },
+          { path: 'purchasing/down-payment-requests/:id/:tab?', element: splitRoute(DprList, DprDetail) },
+          { path: 'purchasing/down-payment-invoices', element: splitRoute(DownPaymentInvoiceList, DownPaymentInvoiceDetail) },
+          { path: 'purchasing/down-payment-invoices/drafts', element: <DownPaymentInvoiceList draftsOnly /> },
+          { path: 'purchasing/down-payment-invoices/:id/:tab?', element: splitRoute(DownPaymentInvoiceList, DownPaymentInvoiceDetail) },
+          { path: 'purchasing/outgoing-payments', element: splitRoute(PaymentList, PaymentDetail) },
+          { path: 'purchasing/outgoing-payments/drafts', element: <PaymentList draftsOnly /> },
+          { path: 'purchasing/outgoing-payments/:id/:tab?', element: splitRoute(PaymentList, PaymentDetail) },
 
 
 
 
-          { path: 'purchasing/goods-return-requests', element: <GoodsReturnRequestList /> },
-          { path: 'purchasing/goods-return-requests/:id/:tab?', element: <GoodsReturnRequestDetail /> },
-          { path: 'purchasing/goods-returns', element: <GoodsReturnsList /> },
-          { path: 'purchasing/goods-returns/:id/:tab?', element: <GoodsReturnDetail /> },
-          { path: 'purchasing/debit-memos', element: <DebitMemosList /> },
-          { path: 'purchasing/debit-memos/:id/:tab?', element: <CreditMemoDetail /> },
-          { path: 'purchasing/agreements', element: <PurchaseBlanketAgreementList /> },
-          { path: 'purchasing/agreements/:id/:tab?', element: <PurchaseBlanketAgreementDetail /> },
-          { path: 'purchasing/landed-costs', element: <LandedCostsList /> },
-          { path: 'purchasing/landed-costs/:id/:tab?', element: <LandedCostDetail /> },
+          { path: 'purchasing/goods-return-requests', element: splitRoute(GoodsReturnRequestList, GoodsReturnRequestDetail) },
+          { path: 'purchasing/goods-return-requests/:id/:tab?', element: splitRoute(GoodsReturnRequestList, GoodsReturnRequestDetail) },
+          { path: 'purchasing/goods-returns', element: splitRoute(GoodsReturnsList, GoodsReturnDetail) },
+          { path: 'purchasing/goods-returns/drafts', element: <GoodsReturnsList draftsOnly /> },
+          { path: 'purchasing/goods-returns/:id/:tab?', element: splitRoute(GoodsReturnsList, GoodsReturnDetail) },
+          { path: 'purchasing/debit-memos', element: splitRoute(DebitMemosList, CreditMemoDetail) },
+          { path: 'purchasing/debit-memos/drafts', element: <DebitMemosList draftsOnly /> },
+          { path: 'purchasing/debit-memos/:id/:tab?', element: splitRoute(DebitMemosList, CreditMemoDetail) },
+          { path: 'purchasing/agreements', element: splitRoute(PurchaseBlanketAgreementList, PurchaseBlanketAgreementDetail) },
+          { path: 'purchasing/agreements/drafts', element: <PurchaseBlanketAgreementList draftsOnly /> },
+          { path: 'purchasing/agreements/:id/:tab?', element: splitRoute(PurchaseBlanketAgreementList, PurchaseBlanketAgreementDetail) },
+          { path: 'purchasing/landed-costs', element: splitRoute(LandedCostsList, LandedCostDetail) },
+          { path: 'purchasing/landed-costs/drafts', element: <LandedCostsList draftsOnly /> },
+          { path: 'purchasing/landed-costs/:id/:tab?', element: splitRoute(LandedCostsList, LandedCostDetail) },
           // Settings shell: redirect bare /settings to the first settings module.
           { path: 'settings', element: <Navigate to="/settings/company" replace /> },
           // Settings pages keep the tab and an opened record in the URL.
@@ -233,17 +282,17 @@ export const router = createHashRouter(withPreload([
           { path: 'settings/banking/:tab?/:recordId?', element: <BankingSettingsPage /> },
           { path: 'settings/company/:tab?/:recordId?', element: <CompanySettingsPage /> },
           { path: 'settings/people/:tab?/:recordId?', element: <PeopleSettingsPage /> },
-          { path: 'people/employees', element: <EmployeeList /> },
-          { path: 'people/employees/:id/:tab?', element: <EmployeeDetail /> },
+          { path: 'people/employees', element: splitRoute(EmployeeList, EmployeeDetail) },
+          { path: 'people/employees/:id/:tab?', element: splitRoute(EmployeeList, EmployeeDetail) },
           { path: 'inventory/warehouses-and-bins/:tab?/:recordId?', element: <WarehousesPage /> },
           { path: 'inventory/price-lists/:tab?/:recordId?', element: <PriceListsPage /> },
           { path: 'accounting/dashboard', element: <AccountingDashboard /> },
           { path: 'accounting/chart-of-accounts/:recordId?/:view?', element: <ChartOfAccountsPage /> },
-          { path: 'accounting/journal-entries', element: <JournalEntryList /> },
-          { path: 'accounting/journal-entries/:id/:tab?', element: <JournalEntryDetail /> },
+          { path: 'accounting/journal-entries', element: splitRoute(JournalEntryList, JournalEntryDetail) },
+          { path: 'accounting/journal-entries/:id/:tab?', element: splitRoute(JournalEntryList, JournalEntryDetail) },
           { path: 'accounting/exchange-rate-differences', element: <ExchangeRateDifferencesPage /> },
-          { path: 'accounting/journal-vouchers', element: <JournalVoucherList /> },
-          { path: 'accounting/journal-vouchers/:id', element: <JournalVoucherDetail /> },
+          { path: 'accounting/journal-vouchers', element: splitRoute(JournalVoucherList, JournalVoucherDetail) },
+          { path: 'accounting/journal-vouchers/:id', element: splitRoute(JournalVoucherList, JournalVoucherDetail) },
           { path: 'accounting/journal-vouchers/:id/entries/:entryId', element: <VoucherEntryDetail /> },
           { path: '*', element: <Placeholder /> },
         ],

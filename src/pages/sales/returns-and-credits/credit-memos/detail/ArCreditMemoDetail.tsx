@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import { Alert, Badge, Form, Panel, Tabs, Text, TextField, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { DocumentDetailSkeleton } from '../../../../../components/form/skeletons/DocumentDetailSkeleton';
 import { DataTable } from '../../../../../components/form/DataTable';
 import { Section, type Errors } from '../../../../../components/form/fields';
 import { type MoreMenuItem } from '../../../../../components/form/MoreMenu';
@@ -81,8 +82,6 @@ import { ARCM_NOUN, ARCM_STATUS_INTENT, AR_CM_LIST_PATH } from '../../../paths';
 import type { LinePick } from '../../../shared/copyHops';
 import { round2 } from '../../../../../services/num';
 
-type TabId = 'header';
-
 const PAGES = [
   { value: 'details', label: 'Details' },
   { value: 'transactions', label: 'Transactions' },
@@ -114,8 +113,8 @@ async function loadArCmMasters(): Promise<ArCmMasters> {
 const creditableInvoices = (m: ArCmMasters, customerId: string) =>
   m.invoices.filter((i) => i.customerId === customerId && (i.status === 'Open' || i.status === 'Closed'));
 
-function validate(d: ArCmInput, fx: number, m: ArCmMasters, asDraft: boolean): Problem<TabId>[] {
-  const { problems, need } = problemCollector<TabId>();
+function validate(d: ArCmInput, fx: number, m: ArCmMasters, asDraft: boolean): Problem[] {
+  const { problems, need } = problemCollector();
   need(d.customerId, 'header', 'customerId', 'Pick a customer.');
   if (asDraft) return problems;
   const postingPeriod = postingPeriodProblem(d.postingDate);
@@ -158,7 +157,7 @@ function ArCreditMemoForm() {
   const page = (PAGES.some(p => p.value === tabParam) ? tabParam : 'details') as PageId;
   const setPage = useDocTab<PageId>(`${AR_CM_LIST_PATH}/${id}`, tabParam);
   const [siblings, setSiblings] = useState<string[]>([]);
-  const [problems, setProblems] = useState<Problem<TabId>[]>([]);
+  const [problems, setProblems] = useState<Problem[]>([]);
   const [saving, setSaving] = useState(false);
   const reject = useReject();
   const [applying, setApplying] = useState(false);
@@ -205,7 +204,7 @@ function ArCreditMemoForm() {
   }, [id, isNew]);
 
   useDocTitle(draft?.docNum ? (isNew ? `New ${ARCM_NOUN.one}` : draft.status === 'Draft' ? `Draft ${ARCM_NOUN.one}` : arCmNumber(draft as ArCreditMemo)) : undefined);
-  if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading A/R credit memo…</Text>;
+  if (draft === undefined || !m) return <DocumentDetailSkeleton />;
   if (draft === null) return <NotFound icon="undo" title="A/R credit memo not found" backTo={AR_CM_LIST_PATH} backLabel={`Back to ${ARCM_NOUN.many}`} />;
 
   const added = draft.status !== 'Draft';
@@ -355,7 +354,7 @@ function ArCreditMemoForm() {
 
   return (
     <>
-      <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
+      <Form className="flex-1" onSubmit={(e) => e.preventDefault()} noValidate>
         <Panel className="flex-1">
           <PageHeader
             variant="plain"
@@ -369,6 +368,8 @@ function ArCreditMemoForm() {
                 noun={ARCM_NOUN}
                 listPath={AR_CM_LIST_PATH}
                 mode={docMode(draft.status, { canApprove: isApprover('ARCM') })}
+                draft={draft}
+                onRevert={setDraft}
                 needsApproval={!draft.approved}
                 remarksOnly={added}
                 busy={saving}
@@ -451,7 +452,7 @@ function ArCreditMemoForm() {
                   <ReturnDatesCard {...sectionProps} readOnly={added} postingHint="When revenue and VAT reverse, and any goods come back in." />
                   <DocumentPayment def={arCreditMemoPayment} posting={journalEntry} {...sectionProps} />
                   <ReturnShipmentCard draft={draft} update={update} readOnly={added} inv={m.inv} />
-                  <ReferencesCard {...sectionProps} />
+                  <ReferencesCard {...sectionProps} orderNumberHint="Set by Copy from." />
                   <AssignmentCard
                     draft={draft}
                     update={update}
@@ -467,6 +468,7 @@ function ArCreditMemoForm() {
         </Panel>
       </Form>
       <CustomerDetailsPanel
+        customerRefLabel="Customer debit note no."
         customer={ctx.customer}
         draft={draft}
         update={update}
@@ -474,7 +476,6 @@ function ArCreditMemoForm() {
         noun="credit memo"
         open={customerDetailsOpen}
         onClose={() => setCustomerDetailsOpen(false)}
-        orderNumberHint="Set by Copy from."
       />
       {copying
         ? createPortal(

@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import { createPortal } from 'react-dom';
 import { Alert, Badge, Button, Form, Panel, Select, Tabs, Text } from '@jasperlepardo/sikat-design-system';
+import { DocumentDetailSkeleton } from '../../../../../components/form/skeletons/DocumentDetailSkeleton';
 import { AttachmentsCard } from '../../../../../components/form/AttachmentsCard';
 import { type Errors } from '../../../../../components/form/fields';
 import { JournalPreview } from '../../../../../components/form/JournalPreview';
@@ -69,8 +70,8 @@ import { neighbours, NotFound, siblingKeys, useDocTab, useReject } from '../../.
 import { SR_LIST_PATH, SR_NOUN, SR_STATUS_INTENT } from '../../../paths';
 
 type Draft = SrDraft;
-type TabId = 'contents' | 'accounting';
-const TAB_LABEL: Record<TabId, string> = { contents: 'Contents', accounting: 'Dates' };
+type TabId = 'contents' | 'dates';
+const TAB_LABEL: Record<TabId, string> = { contents: 'Contents', dates: 'Dates' };
 
 const PAGES = [
   { value: 'details', label: 'Details' },
@@ -128,9 +129,9 @@ function validate(d: Draft, fx: number, m: SrMasters, asDraft: boolean): Problem
   need(d.customerId, 'contents', 'customerId', 'Pick a customer.');
   if (asDraft) return problems;
   const postingPeriod = postingPeriodProblem(d.postingDate);
-  need(!postingPeriod, 'accounting', 'postingDate', postingPeriod ?? '');
-  need(d.documentDate, 'accounting', 'documentDate', 'Document date is required.');
-  need(fx > 0, 'accounting', 'currency', `No ${d.currency} exchange rate on or before ${d.postingDate}.`);
+  need(!postingPeriod, 'dates', 'postingDate', postingPeriod ?? '');
+  need(d.documentDate, 'dates', 'documentDate', 'Document date is required.');
+  need(fx > 0, 'dates', 'currency', `No ${d.currency} exchange rate on or before ${d.postingDate}.`);
   need(d.lines.length, 'contents', 'lines', 'Add at least one line, or copy from a delivery.');
   for (const [i, l] of d.lines.entries()) {
     const n = `Line ${i + 1}`;
@@ -225,7 +226,7 @@ function SalesReturnForm() {
   }, [id, isNew]);
 
   useDocTitle(draft?.docNum ? (isNew ? `New ${SR_NOUN.one}` : draft.status === 'Draft' ? `Draft ${SR_NOUN.one}` : srNumber(draft)) : undefined);
-  if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading sales return…</Text>;
+  if (draft === undefined || !m) return <DocumentDetailSkeleton />;
   if (draft === null) return <NotFound icon="assignment_return" title="Sales return not found" backTo={SR_LIST_PATH} backLabel="Back to sales returns" />;
 
   const added = draft.status !== 'Draft';
@@ -395,7 +396,7 @@ function SalesReturnForm() {
 
   return (
     <>
-      <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
+      <Form className="flex-1" onSubmit={(e) => e.preventDefault()} noValidate>
         <Panel className="flex-1">
           <PageHeader
             variant="plain"
@@ -409,6 +410,8 @@ function SalesReturnForm() {
                 noun={SR_NOUN}
                 listPath={SR_LIST_PATH}
                 mode={docMode(draft.status, { canApprove: isApprover('SR') })}
+                draft={draft}
+                onRevert={setDraft}
                 needsApproval={!draft.approved}
                 remarksOnly={added}
                 busy={saving}
@@ -484,7 +487,7 @@ function SalesReturnForm() {
                   <ReturnDatesCard {...sectionProps} readOnly={added} postingHint="When the stock comes back in." dueHint="When the customer credit is due." />
                   <DocumentPayment def={salesReturnPayment} posting={journalEntry} {...sectionProps} />
                   <ReturnShipmentCard draft={draft} update={update} readOnly={added} inv={m.inv} />
-                  <ReferencesCard {...sectionProps} />
+                  <ReferencesCard {...sectionProps} orderNumberHint="Set by Copy from delivery." />
                   <AssignmentCard
                     draft={draft}
                     update={update}
@@ -500,6 +503,7 @@ function SalesReturnForm() {
         </Panel>
       </Form>
       <CustomerDetailsPanel
+        customerRefLabel="Customer RMA no."
         customer={ctx.customer}
         draft={draft}
         update={update}
@@ -507,7 +511,6 @@ function SalesReturnForm() {
         noun="return"
         open={customerDetailsOpen}
         onClose={() => setCustomerDetailsOpen(false)}
-        orderNumberHint="Set by Copy from delivery."
       />
       {copying
         ? createPortal(

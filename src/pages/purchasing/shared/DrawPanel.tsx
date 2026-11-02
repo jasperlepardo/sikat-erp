@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { Section } from '../../../../components/form/fields';
+import { Section } from '../../../components/form/fields';
 import { Text, TextField, type TableColumn } from '@jasperlepardo/sikat-design-system';
-import { DataTable } from '../../../../components/form/DataTable';
-import type { DownPaymentDraw } from '../../../../mocks/apInvoices';
-import { formatDate } from '../../../../services/dates';
-import { formatAmount } from '../../../../services/format';
-import { EditPanel } from '../../../partners/detail/EditPanel';
-import { round2 } from '../../../../services/num';
+import { DataTable } from '../../../components/form/DataTable';
+import type { DownPaymentDraw } from '../../../mocks/apInvoices';
+import { formatDate } from '../../../services/dates';
+import { formatAmount } from '../../../services/format';
+import { EditPanel } from '../../partners/detail/EditPanel';
+import { round2 } from '../../../services/num';
 
 /** A paid advance (down payment request or invoice) this bill can draw, and how to stamp the draw. */
 export interface DrawableAdvance {
@@ -86,7 +86,7 @@ export function DrawPanel({
         <Text variant="small" tone={tooMuch ? 'danger' : 'muted'}>
           {tooMuch
             ? `More than the ${code} ${formatAmount(max)} this invoice owes.`
-            : 'Paid advances only. What’s drawn comes off the net payment due and clears the advance account; an invoiced down payment also carries its EWT and input VAT, so this bill takes only the rest.'}
+            : 'Paid advances only. What\'s drawn comes off the net payment due and clears the advance account; an invoiced down payment also carries its EWT and input VAT, so this bill takes only the rest.'}
         </Text>
       </Section>
       <DataTable icon="savings" title="Paid down payments" rows={sorted} getRowId={(a) => a.id} columns={columns} unsortable={columns.map((c) => c.key)} noPagination empty={<Text variant="small" tone="muted">No paid down payments to draw.</Text>} />

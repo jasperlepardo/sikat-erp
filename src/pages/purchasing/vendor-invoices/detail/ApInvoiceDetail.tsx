@@ -8,8 +8,8 @@ import {
   Form,
   Panel,
   Tabs,
-  Text,
 } from '@jasperlepardo/sikat-design-system';
+import { DocumentDetailSkeleton } from '../../../../components/form/skeletons/DocumentDetailSkeleton';
 import { PageHeader } from '../../../../components/form/PageHeader';
 import { DetailColumns } from '../../../../components/form/DetailColumns';
 import { JournalPreview } from '../../../../components/form/JournalPreview';
@@ -77,7 +77,7 @@ import { DocLines } from '../../../../components/form/docLines/DocLines';
 import { CopyPanel } from '../../shared/CopyPanel';
 import { CreateFromPanel, createHopMenuItems } from '../../shared/CreateFromPanel';
 import { AP_TO_RETURN, AP_TO_APCM, type CopyHop, type LinePick } from '../../shared/copyHops';
-import { DrawPanel } from './DrawPanel';
+import { DrawPanel } from '../../shared/DrawPanel';
 import { linesFromReceipt, orderNumbersOf, toApLine, type ApContext, type ApDraft, type ApMasters } from './types';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
@@ -233,7 +233,7 @@ function ApInvoiceForm() {
   }, [id, isNew]);
 
   useDocTitle(draft?.docNum ? (isNew ? `New ${AP_NOUN.one}` : draft.status !== 'Draft' ? apNumber(draft) : `Draft ${AP_NOUN.one}`) : undefined);
-  if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading A/P invoice…</Text>;
+  if (draft === undefined || !m) return <DocumentDetailSkeleton />;
   if (draft === null) return <NotFound icon="request_quote" title="A/P invoice not found" backTo={AP_LIST_PATH} backLabel="Back to bills" />;
 
   const ctx = buildGrContext(draft, m);
@@ -305,7 +305,7 @@ function ApInvoiceForm() {
     if (!effectiveDraft && doc.approved && getPurchasingSettings().duplicateVendorRef !== 'Allow' && !dupWarning) {
       const dup = await findDuplicateInvoice(doc);
       if (dup) {
-        const message = `A/P invoice ${apNumber(dup)} from ${doc.vendorName} already has Vendor Ref. No. ${doc.vendorRef}.`;
+        const message = `A/P invoice ${apNumber(dup)} from ${doc.vendorName} already has vendor invoice no. ${doc.vendorRef}.`;
         if (getPurchasingSettings().duplicateVendorRef === 'Block') return setProblems([{ tab: 'header', key: 'vendorRef', message }]);
         return setDupWarning(message);
       }
@@ -462,7 +462,7 @@ function ApInvoiceForm() {
 
   return (
     <>
-    <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
+    <Form className="flex-1" onSubmit={(e) => e.preventDefault()} noValidate>
       <Panel className="flex-1">
         <PageHeader
           variant="plain"
@@ -483,6 +483,8 @@ function ApInvoiceForm() {
               noun={AP_NOUN}
               listPath={AP_LIST_PATH}
               mode={docMode(draft.status, { canApprove: isApprover('APINV') })}
+              draft={draft}
+              onRevert={setDraft}
               needsApproval={!draft.approved}
               remarksOnly={added}
               busy={saving}
@@ -515,7 +517,7 @@ function ApInvoiceForm() {
                 {reject.alert('Reject A/P invoice', rejectIt)}
                 {dupWarning ? (
                   <Alert intent="warning" variant="outline" title="Possible duplicate bill">
-                    {dupWarning} Press Add again if it's a different bill, or change the Vendor Ref. No.
+                    {dupWarning} Press Add again if it's a different bill, or change the vendor invoice no.
                   </Alert>
                 ) : null}
                 {added ? (
@@ -576,6 +578,7 @@ function ApInvoiceForm() {
       readOnly={ctx.readOnly}
       open={vendorDetailsOpen}
       onClose={() => setVendorDetailsOpen(false)}
+      vendorRefLabel="Vendor invoice no."
       vendorRefHint="The vendor's invoice no. — checked against their other bills so it isn't entered twice."
       vendorRefError={errors.vendorRef}
       addresses={ctx.vendor ? receivingVendorAddressFields(m, ctx.vendor) : []}

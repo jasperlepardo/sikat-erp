@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import { createPortal } from 'react-dom';
 import { Alert, Badge, Form, Panel, Tabs, Text } from '@jasperlepardo/sikat-design-system';
+import { DocumentDetailSkeleton } from '../../../../components/form/skeletons/DocumentDetailSkeleton';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { type Errors } from '../../../../components/form/fields';
 import { type MoreMenuItem } from '../../../../components/form/MoreMenu';
@@ -13,6 +14,8 @@ import { isApprover, needsApproval } from '../../../../services/approval';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { formatAddress } from '../../../../mocks/address';
 import { OR_SERIES_ID, blankArInvoice, type ArInvoice } from '../../../../mocks/arInvoices';
+import { CUSTOMER_DOWN_PAYMENTS } from '../../../../mocks/arDownPaymentInvoices';
+import { rateAt } from '../../../../mocks/taxes';
 import { CURRENT_USER_ID } from '../../../../mocks/common';
 import {
   ArPostError,
@@ -37,6 +40,9 @@ import type { Partner } from '../../../../mocks/partners';
 import { recalcLineTaxes } from '../../../../services/taxRecalc';
 import { defaultJournalRemark } from '../../../../services/journalPatterns';
 import { listDeliveries, dnNumber } from '../../../../services/deliveries';
+import { diDrawable, diNumber, diTotals, listArDownPaymentInvoices, paidRate } from '../../../../services/arDownPaymentInvoices';
+import { DrawPanel } from '../../shared/DrawPanel';
+import { round2 } from '../../../../services/num';
 import { formatAmount } from '../../../../services/format';
 import { loadInventoryMasters } from '../../../../services/inventoryMasters';
 import { isValidToday, listItems } from '../../../../services/items';
@@ -146,16 +152,17 @@ function ArInvoiceForm() {
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);
+  const [drawing, setDrawing] = useState(false);
   const reject = useReject();
 
   useEffect(() => {
     let cancelled = false;
     Promise.all([
       listPartnersByRole('customer'), listItems(), loadInventoryMasters(), companyTax.list(), taxCodes.list(), taxGroups.list(), withholdingTaxes.list(),
-      withholdingGroups.list(), currencies.list(), exchangeRates.list(), accounts.list(), loadCurrentCompany(), listSalesOrders(), listDeliveries(), soSeries.list(),
-    ]).then(([customers, items, inv, [company], codes, groups, withholding, wGroups, curs, rates, accts, ours, orders, deliveries, series]) => {
+      withholdingGroups.list(), currencies.list(), exchangeRates.list(), accounts.list(), loadCurrentCompany(), listSalesOrders(), listDeliveries(), soSeries.list(), listArDownPaymentInvoices(),
+    ]).then(([customers, items, inv, [company], codes, groups, withholding, wGroups, curs, rates, accts, ours, orders, deliveries, series, downPaymentInvoices]) => {
       if (cancelled) return;
-      const masters: ArMasters = { customers, items, inv, tax: { company, codes, groups, withholding, withholdingGroups: wGroups }, currencies: curs, rates, accounts: accts, company: ours, orders, deliveries, soSeries: series };
+      const masters: ArMasters = { customers, items, inv, tax: { company, codes, groups, withholding, withholdingGroups: wGroups }, currencies: curs, rates, accounts: accts, company: ours, orders, deliveries, soSeries: series, downPaymentInvoices };
       setM(masters);
       // From a delivery's or order's "Copy to A/R invoice": every open line at its open quantity.
       if (!isNew) return;
@@ -191,7 +198,7 @@ function ArInvoiceForm() {
   }, [id, isNew]);
 
   useDocTitle(draft?.docNum ? (isNew ? `New ${AR_NOUN.one}` : draft.status === 'Draft' ? `Draft ${AR_NOUN.one}` : arNumber(draft)) : undefined);
-  if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading {AR_NOUN.one}…</Text>;
+  if (draft === undefined || !m) return <DocumentDetailSkeleton />;
   if (draft === null) return <NotFound icon="receipt" title="A/R invoice not found" backTo={AR_LIST_PATH} backLabel={`Back to ${AR_NOUN.many}`} />;
 
   const ctx = buildArContext(draft, m);
@@ -202,7 +209,8 @@ function ArInvoiceForm() {
   const totals = arTotals(draft, ctx.rateOf, docCurrency?.rounding);
   const withholding = arWithholding(draft, customer, m.items, ctx.rateOf);
   const wtax = Math.round(withholding.reduce((n, w) => n + w.amount, 0) * 100) / 100;
-  const balance = balanceDue(totals.total, wtax, draft.appliedAmount);
+  const drawnDownPayment = round2(draft.downPayment ?? 0);
+  const balance = round2(balanceDue(totals.total, wtax, draft.appliedAmount) - drawnDownPayment);
   const { prevId, nextId } = neighbours(siblings, draft.id && (draft.docNum ? arNumber(draft as ArInvoice) : draft.id));
 
   /** Tax codes re-proposed for the customer and date, except ones set by hand or copied from a base document. */
@@ -335,7 +343,36 @@ function ArInvoiceForm() {
   const recallIt = () => act(() => recallArInvoice(saved), 'recalled to draft');
   const rejectIt = async (rejectionReason: string) => { await logRejection('ARINV', saved.id, saved.customerId, rejectionReason); await recallArInvoice(saved); navigate(AR_LIST_PATH, { state: { notice: `A/R invoice ${arNumber(saved)} rejected and returned to draft.` } }); };
 
+  // Paid A/R down payment invoices this invoice can draw: each carries its own output VAT, so the
+  // final bill clears the advance (Dr 2150) and reverses that VAT, charging the customer only the rest.
+  const alreadyDrawn = (id: string) => (draft.drawnDownPayments ?? []).some((x) => x.requestId === id);
+  const diAdvances = (m.downPaymentInvoices ?? [])
+    .filter((d) => d.customerId === draft.customerId && d.currency === draft.currency && (d.status === 'Open' || alreadyDrawn(d.id)))
+    .filter((d) => diDrawable(d, m.tax.codes) > 0 || alreadyDrawn(d.id))
+    .map((d) => {
+      const diFx = d.fxRate || 1;
+      const rateOf = (c: string) => { const tc = m.tax.codes.find((x) => x.code === c); return tc ? (rateAt(tc, d.postingDate) ?? 0) : 0; };
+      const tot = diTotals(d, rateOf);
+      const vatAccount = m.tax.codes.find((c) => c.code === d.lines[0]?.taxCode)?.glAccount || '2310';
+      return {
+        id: d.id, docNo: diNumber(d), postingDate: d.postingDate, orderNumber: d.orderNumber, available: diDrawable(d, m.tax.codes),
+        toDraw: (amount: number) => {
+          const frac = tot.total ? amount / tot.total : 0;
+          return {
+            requestId: d.id, docNo: diNumber(d), amount,
+            account: d.downPaymentAccount || CUSTOMER_DOWN_PAYMENTS,
+            amountLc: round2(tot.dpm * frac * (paidRate(d) || diFx)),
+            inputVatLc: round2(tot.tax * frac * (paidRate(d) || diFx)),
+            vatAccount,
+          };
+        },
+      };
+    });
+
   const menu: MoreMenuItem[] = [
+    ...(draft.status === 'Draft' && !ro && diAdvances.length
+      ? [{ label: 'Draw down payment', icon: 'savings', onSelect: () => setDrawing(true) }]
+      : []),
     ...(draft.status === 'Open' ? createHopMenuItems(saved, m.items, [AR_TO_ARCM], setCreateHop) : []),
     ...(draft.status === 'Open' && balance > 0 && !draft.paymentBlock
       ? [{ label: 'Receive payment', icon: 'savings', onSelect: () => navigate('/sales/incoming-payments/new', { state: { fromInvoice: draft.id } }) }]
@@ -359,7 +396,7 @@ function ArInvoiceForm() {
 
   return (
     <>
-    <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
+    <Form className="flex-1" onSubmit={(e) => e.preventDefault()} noValidate>
       <Panel className="flex-1">
         <PageHeader
           variant="plain"
@@ -373,6 +410,8 @@ function ArInvoiceForm() {
               noun={AR_NOUN}
               listPath={AR_LIST_PATH}
               mode={docMode(draft.status, { canApprove: isApprover('ARINV') })}
+              draft={draft}
+              onRevert={setDraft}
               needsApproval={!draft.approved}
               remarksOnly={ro}
               busy={saving}
@@ -440,10 +479,11 @@ function ArInvoiceForm() {
                       view={view}
                       withholding={withholding.map((w) => ({ label: `${w.kind === 'Withholding VAT' ? 'VAT' : 'EWT'} withheld — ${w.atc} (${w.rate}%)`, amount: w.amount }))}
                       extraRows={
-                        // Until something is applied, the total (or net to receive) is the balance due.
-                        draft.appliedAmount ? (
+                        // Until something is applied or drawn, the total (or net to receive) is the balance due.
+                        draft.appliedAmount || drawnDownPayment ? (
                           <>
-                            <TotalsRow label="Applied amount" value={amt(-view.convert(draft.appliedAmount), view.code)} />
+                            {drawnDownPayment ? <TotalsRow label="Total down payment" value={amt(-view.convert(drawnDownPayment), view.code)} /> : null}
+                            {draft.appliedAmount ? <TotalsRow label="Applied amount" value={amt(-view.convert(draft.appliedAmount), view.code)} /> : null}
                             <TotalsBar label="Balance due" value={amt(view.convert(balance), view.code)} />
                           </>
                         ) : null
@@ -468,7 +508,7 @@ function ArInvoiceForm() {
                 <DocumentDates def={arInvoiceDates} {...tabProps} />
                 <DocumentPayment def={arInvoicePayment} posting={journalEntry} {...tabProps} />
                 <ArSettingsCard {...tabProps} />
-                <ReferencesCard {...tabProps} />
+                <ReferencesCard {...tabProps} orderNumberHint="Set by Copy from." />
                 <ArShipmentCard {...tabProps} />
                 <AssignmentCard
                   draft={draft}
@@ -485,6 +525,7 @@ function ArInvoiceForm() {
       </Panel>
     </Form>
     <CustomerDetailsPanel
+      customerRefLabel="Customer PO no."
       customer={ctx.customer}
       draft={draft}
       update={update}
@@ -492,8 +533,23 @@ function ArInvoiceForm() {
       noun="invoice"
       open={customerDetailsOpen}
       onClose={() => setCustomerDetailsOpen(false)}
-      orderNumberHint="Set by Copy from."
     />
+    {drawing
+      ? createPortal(
+          <DrawPanel
+            code={draft.currency}
+            advances={diAdvances}
+            current={draft.drawnDownPayments ?? []}
+            max={Math.max(0, round2(totals.total - wtax))}
+            onCancel={() => setDrawing(false)}
+            onDone={(draws) => {
+              update({ drawnDownPayments: draws, downPayment: round2(draws.reduce((n, d) => n + d.amount, 0)) });
+              setDrawing(false);
+            }}
+          />,
+          document.body,
+        )
+      : null}
     {copying
       ? createPortal(
           <CopyPanel
