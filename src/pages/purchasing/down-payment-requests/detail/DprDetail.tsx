@@ -7,8 +7,8 @@ import {
   Form,
   Panel,
   Tabs,
-  Text,
 } from '@jasperlepardo/sikat-design-system';
+import { DocumentDetailSkeleton } from '../../../../components/form/skeletons/DocumentDetailSkeleton';
 import { PageHeader } from '../../../../components/form/PageHeader';
 import { DetailColumns } from '../../../../components/form/DetailColumns';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
@@ -159,7 +159,7 @@ function DprForm() {
   }, [id, isNew]);
 
   useDocTitle(draft?.docNum ? (isNew ? `New ${DPR_NOUN.one}` : draft.status !== 'Draft' ? dprNumber(draft) : `Draft ${DPR_NOUN.one}`) : undefined);
-  if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading down payment request…</Text>;
+  if (draft === undefined || !m) return <DocumentDetailSkeleton />;
   if (draft === null) return <NotFound icon="savings" title="Down payment request not found" backTo={DPR_LIST_PATH} backLabel="Back to down payment requests" />;
 
   const ctx = buildGrContext(draft, m);
@@ -260,7 +260,7 @@ function DprForm() {
 
   return (
     <>
-      <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
+      <Form className="flex-1" onSubmit={(e) => e.preventDefault()} noValidate>
         <Panel className="flex-1">
           <PageHeader
             variant="plain"
@@ -281,6 +281,8 @@ function DprForm() {
                 noun={DPR_NOUN}
                 listPath={DPR_LIST_PATH}
                 mode={docMode(draft.status, { canApprove: isApprover('DPR') })}
+                draft={draft}
+                onRevert={setDraft}
                 needsApproval={!draft.approved}
                 remarksOnly={added}
                 busy={saving}
@@ -362,6 +364,7 @@ function DprForm() {
         readOnly={ctx.readOnly}
         open={vendorDetailsOpen}
         onClose={() => setVendorDetailsOpen(false)}
+        vendorRefLabel="Vendor proforma no."
         vendorRefHint="The vendor's proforma or billing no."
         addresses={ctx.vendor ? receivingVendorAddressFields(m, ctx.vendor, { shipPlaceholder: 'Where the goods will be received', payPlaceholder: 'Vendor address for payment' }) : []}
       />

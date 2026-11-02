@@ -1,6 +1,7 @@
 import type { Errors } from '../../../../components/form/fields';
 import { formatAddress } from '../../../../mocks/address';
 import { newGrLine, type GrLine } from '../../../../mocks/goodsReceipts';
+import type { ApReserveInvoice } from '../../../../mocks/apReserveInvoices';
 import { vendorDeliveryLocation } from '../../../../mocks/itemMasters';
 import { itemsPerUom, type Item } from '../../../../mocks/items';
 import type { Partner } from '../../../../mocks/partners';
@@ -153,6 +154,50 @@ export function linesFromPo(po: PurchaseOrder, picks: { lineId: string; qty: num
         baseId: po.id,
         baseLineId: pl.id,
         baseDocNo: poNumber(po),
+      }),
+    ];
+  });
+}
+
+/**
+ * Goods-receipt lines that receive an A/P reserve invoice. The line keeps the reserve invoice's own
+ * PO base (so the PO draws down and the receipt clears GR/IR normally) and adds the reserve-invoice
+ * link (`apriId`/`apriLineId`) that drives its received-quantity counter. Receives each line's open qty.
+ */
+export function linesFromApri(apri: ApReserveInvoice, picks: { lineId: string; qty: number }[], m: PoMasters): GrLine[] {
+  return picks.flatMap(({ lineId, qty }) => {
+    const al = apri.lines.find((l) => l.id === lineId);
+    const item = al && m.items.find((i) => i.id === al.itemId);
+    if (!al || !item) return [];
+    const open = al.quantity - (al.receivedQty ?? 0);
+    return [
+      newGrLine({
+        itemId: al.itemId,
+        itemNo: al.itemNo,
+        name: al.name,
+        description: al.description,
+        quantity: Math.min(qty, open),
+        uomCode: al.uomCode,
+        uomName: al.uomName,
+        itemsPerUnit: al.itemsPerUnit,
+        warehouse: al.warehouse,
+        binId: al.warehouse ? defaultBin(item, al.warehouse, m) : '',
+        priceListId: al.priceListId,
+        unitPrice: al.unitPrice,
+        discountPct: al.discountPct,
+        taxCode: al.taxCode,
+        agreementId: al.agreementId,
+        agreementLineId: al.agreementLineId,
+        requisitionSlipNo: al.requisitionSlipNo,
+        freeText: al.freeText,
+        countryOfOriginCode: al.countryOfOriginCode ?? item.countryOfOriginCode,
+        warrantyTemplateId: al.warrantyTemplateId ?? item.warrantyTemplate,
+        glAccount: al.glAccount,
+        baseId: al.baseId,
+        baseLineId: al.baseLineId,
+        baseDocNo: al.baseDocNo,
+        apriId: apri.id,
+        apriLineId: al.id,
       }),
     ];
   });

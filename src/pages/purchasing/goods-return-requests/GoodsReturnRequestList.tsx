@@ -1,51 +1,24 @@
-import { useMemo, useState } from 'react';
 import { useLocation } from 'react-router';
-import { Alert, Badge, Card, Panel, Table, TableContent, Text, type TableColumn } from '@jasperlepardo/sikat-design-system';
-import { PageHeader } from '../../../components/form/PageHeader';
+import { Alert, Badge, TableContent, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { ListPage } from '../../../components/form/ListPage';
 import { GRR_STATUSES, type GoodsReturnRequest } from '../../../mocks/goodsReturnRequests';
 import { formatDate } from '../../../services/dates';
 import { listGoodsReturnRequests, grrNumber } from '../../../services/goodsReturnRequests';
 import { useAsync } from '../../../services/useAsync';
-import { dateField, statusField, textField } from '../../../components/filter/fieldKit';
-import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
-import { fillCardClass, useListPage } from '../../../components/form/DataTable';
-import { cap } from '../../../components/form/noun';
+import { dateField, partnerField, statusField, textField } from '../../../components/filter/fieldKit';
+import { statusViews } from '../../../components/filter/useListPresets';
 import { GRR_LIST_PATH, GRR_NOUN, GRR_STATUS_INTENT } from '../paths';
 
-export function GoodsReturnRequestList() {
+export function GoodsReturnRequestList({ compact, selectedId }: { compact?: boolean; selectedId?: string } = {}) {
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const requests = useAsync(listGoodsReturnRequests, []);
-  const [query, setQuery] = useState('');
-  const { resetPage, paginate } = useListPage();
 
   const fields = [
     textField<GoodsReturnRequest>('no', 'No.', grrNumber),
-    textField<GoodsReturnRequest>('vendor', 'Vendor', (r) => r.vendorName),
+    partnerField<GoodsReturnRequest>('vendor', 'Vendor', (r) => r.vendorId, (r) => r.vendorName, requests),
     dateField<GoodsReturnRequest>('postingDate', 'Posting date', (r) => r.postingDate),
     statusField<GoodsReturnRequest>(GRR_STATUSES),
   ];
-  const presets = useListPresets({
-    list: 'goods-return-requests',
-    fields,
-    builtIns: statusViews(GRR_NOUN.many, GRR_STATUSES),
-    defaultSort: { key: 'postingDate', direction: 'desc' },
-    rows: requests,
-    onChange: resetPage,
-  });
-  const { sort, setSort } = presets;
-
-  const rows = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const filtered = presets.apply(requests ?? []).filter((r) =>
-      !q || [grrNumber(r), r.vendorName, ...r.lines.map((l) => `${l.itemNo} ${l.description}`)].join(' ').toLowerCase().includes(q),
-    );
-    if (!sort) return filtered;
-    const dir = sort.direction === 'asc' ? 1 : -1;
-    const value = (r: GoodsReturnRequest): string | number =>
-      sort.key === 'docNum' ? r.docNum : String(r[sort.key as keyof GoodsReturnRequest] ?? '');
-    return [...filtered].sort((a, b) => { const x = value(a), y = value(b); return (x < y ? -1 : x > y ? 1 : 0) * dir; });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [requests, presets.filter, query, sort]);
 
   const columns: TableColumn<GoodsReturnRequest>[] = [
     { key: 'docNum', header: 'No.', sortable: true, cell: (r) => <TableContent href={`#${GRR_LIST_PATH}/${r.docNum ? grrNumber(r) : r.id}`}>{grrNumber(r)}</TableContent> },
@@ -56,34 +29,30 @@ export function GoodsReturnRequestList() {
     { key: 'status', header: 'Status', sortable: true, cell: (r) => <Badge size="small" intent={GRR_STATUS_INTENT[r.status]}>{r.status}</Badge> },
   ];
 
-  const { visible, pagination } = paginate(rows);
-
   return (
-    <Panel className="flex-1">
-      <PageHeader
-        showSearch
-        searchLabel={`Search ${GRR_NOUN.many}`}
-        searchPlaceholder="Search by no., vendor or item"
-        searchValue={query}
-        onSearchChange={(v) => { setQuery(v); resetPage(); }}
-        icon="assignment_return"
-        title={cap(GRR_NOUN.many)}
-        create={{ noun: GRR_NOUN, to: GRR_LIST_PATH }}
-      />
-      <Panel.Body className="flex flex-col gap-2">
-        {notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : null}
-        {presets.toolbar(null)}
-        <Card className={fillCardClass(visible.length)}>
-          {!requests ? (
-            <Text tone="muted" className="p-4">Loading goods return requests…</Text>
-          ) : requests.length ? (
-            <Table caption={cap(GRR_NOUN.many)} columns={columns} rows={visible} getRowId={(r) => r.id} sort={sort} onSortChange={setSort} layout="fill" pagination={pagination} />
-          ) : (
-            <Text tone="muted" className="p-4">No {GRR_NOUN.many} yet. Start one from a goods receipt or A/P invoice (More actions › Create {GRR_NOUN.one}), or with New {GRR_NOUN.one}.</Text>
-          )}
-        </Card>
-      </Panel.Body>
-      {presets.panel}
-    </Panel>
+    <ListPage
+      rows={requests}
+      columns={columns}
+      fields={fields}
+      noun={GRR_NOUN}
+      icon="assignment_return"
+      basePath={GRR_LIST_PATH}
+      listKey="goods-return-requests"
+      builtIns={statusViews(GRR_NOUN.many, GRR_STATUSES)}
+      defaultSort={{ key: 'postingDate', direction: 'desc' }}
+      search={{ placeholder: 'Search by no., vendor or item', label: `Search ${GRR_NOUN.many}` }}
+      header={notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : undefined}
+      emptyMessage={`No ${GRR_NOUN.many} yet. Start one from a goods receipt or A/P invoice (More actions › Create ${GRR_NOUN.one}), or with New ${GRR_NOUN.one}.`}
+      compact={compact}
+      selectedId={selectedId}
+      getRowId={(r) => r.docNum ? grrNumber(r) : r.id}
+      filterFn={(r, q) => !q || [grrNumber(r), r.vendorName, ...r.lines.map((l) => `${l.itemNo} ${l.description}`)].join(' ').toLowerCase().includes(q)}
+      sortFn={(a, b, sort) => {
+        const value = (r: GoodsReturnRequest): string | number =>
+          sort.key === 'docNum' ? r.docNum : String(r[sort.key as keyof GoodsReturnRequest] ?? '');
+        const x = value(a); const y = value(b);
+        return x < y ? -1 : x > y ? 1 : 0;
+      }}
+    />
   );
 }

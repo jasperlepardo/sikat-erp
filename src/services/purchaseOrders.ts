@@ -167,7 +167,7 @@ export async function savePurchaseOrder(input: PoInput, { asDraft = false } = {}
 
   if (getPurchasingSettings().duplicateVendorRef === 'Block') {
     const dup = await findDuplicateVendorRef(input);
-    if (dup) throw new PoSaveError('vendorRef', `Vendor Ref. No. ${input.vendorRef} is already on PO ${poNumber(dup)}.`);
+    if (dup) throw new PoSaveError('vendorRef', `Vendor sales order no. ${input.vendorRef} is already on PO ${poNumber(dup)}.`);
   }
 
   const inSeries = all.filter((o) => o.seriesId === series.id && o.id !== input.id && o.docNum);

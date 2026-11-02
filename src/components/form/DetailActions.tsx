@@ -1,8 +1,22 @@
 import { Button, type ButtonProps } from '@jasperlepardo/sikat-design-system';
+import { useRef } from 'react';
 import { useNavigate } from 'react-router';
 import { PrevNext } from './DetailNav';
 import { MoreMenu, type MoreMenuItem } from './MoreMenu';
 import type { Noun } from './noun';
+
+/**
+ * The first `draft` seen on this mount — the loaded record, since detail forms remount per record id —
+ * and whether the current draft differs from it. `dirty` is `undefined` when no draft is passed (don't
+ * gate): a "Save changes" / "Save as draft" button then stays hidden until the record is edited, and
+ * `baseline` is what Cancel reverts to.
+ */
+function useBaseline<T>(draft: T | undefined): { dirty: boolean | undefined; baseline: T | undefined } {
+  const ref = useRef<{ value: T; json: string } | null>(null);
+  if (draft === undefined) return { dirty: undefined, baseline: undefined };
+  if (ref.current === null) ref.current = { value: draft, json: JSON.stringify(draft) };
+  return { dirty: JSON.stringify(draft) !== ref.current.json, baseline: ref.current.value };
+}
 
 /**
  * Where a record stands, for its header buttons:
@@ -21,9 +35,9 @@ export const docMode = (status: string, { canApprove = true } = {}): DetailMode 
   : status === 'Closed' || status === 'Cancelled' ? 'readonly'
   : 'open';
 
-interface DetailActionsProps {
+interface DetailActionsProps<T> {
   noun: Noun;
-  /** Cancel goes back here. */
+  /** Where Cancel goes when there's nothing to revert (no `onRevert`, or no edits). */
   listPath: string;
   mode: DetailMode;
   /** In `draft`: the primary submits for approval instead of creating. */
@@ -49,18 +63,31 @@ interface DetailActionsProps {
   prevNext?: { path: string; prevId?: string; nextId?: string };
   /** Set by the header (it sizes everything in `actions`); passed on to each button. */
   size?: ButtonProps['size'];
+  /**
+   * The current form draft. When given, "Save changes" / "Save as draft" and Cancel stay hidden until
+   * the draft differs from the loaded record, so a page being viewed shows them only once it's edited.
+   */
+  draft?: T;
+  /**
+   * Resets the draft to the loaded record (usually `setDraft`). When given, Cancel reverts the edits
+   * in place instead of leaving to `listPath` — the Back arrow still handles going to the list.
+   */
+  onRevert?: (baseline: T) => void;
 }
 
 /**
- * A detail page's header buttons, left to right: Cancel · secondary · ⋯ · primary · Previous/Next.
+ * A detail page's header buttons, left to right: Previous/Next · ⋯ · Cancel · secondary · primary.
  * The labels follow the record's state, so every document reads the same.
  */
-export function DetailActions({
+export function DetailActions<T = unknown>({
   noun, listPath, mode, needsApproval = false, busy = false, onDraft, onSubmit, onApprove, onReject, remarksOnly = false,
-  primaryLabel, busyLabel, secondary, menu = [], prevNext, size,
-}: DetailActionsProps) {
+  primaryLabel, busyLabel, secondary, menu = [], prevNext, size, draft, onRevert,
+}: DetailActionsProps<T>) {
   const navigate = useNavigate();
   const button = { variant: 'solid', size, shape: 'pill', disabled: busy } as const;
+  const { dirty, baseline } = useBaseline(draft);
+  const onCancel =
+    onRevert && baseline !== undefined ? () => onRevert(baseline) : () => navigate(listPath);
 
   const primary =
     mode === 'draft'
@@ -77,25 +104,32 @@ export function DetailActions({
     : mode === 'pending' && onReject ? { label: 'Reject', onClick: onReject }
     : null);
 
+  // Only the plain "Save changes" / "Save as draft" buttons gate on edits; a custom primary
+  // (Post…) or an explicit secondary (Create posting…) is an action, so it always shows.
+  const isSaveChanges = (mode === 'open' || (mode === 'readonly' && remarksOnly)) && !primaryLabel;
+  const isSaveDraft = !secondary && mode === 'draft' && !!onDraft;
+  const showPrimary = primary && !(isSaveChanges && dirty === false);
+  const showSecond = second && !(isSaveDraft && dirty === false);
+
   return (
     <>
-      {mode === 'draft' || mode === 'open' ? (
-        <Button {...button} type="button" intent="white" disabled={false} onClick={() => navigate(listPath)}>
+      {prevNext ? <PrevNext {...prevNext} /> : null}
+      {menu.length ? <MoreMenu items={menu} button={size ? { size } : undefined} /> : null}
+      {(mode === 'draft' || mode === 'open') && dirty !== false ? (
+        <Button {...button} type="button" intent="white" disabled={false} onClick={onCancel}>
           Cancel
         </Button>
       ) : null}
-      {second ? (
-        <Button {...button} type="button" intent="white" disabled={busy || second.disabled} onClick={second.onClick}>
-          {second.label}
+      {showSecond ? (
+        <Button {...button} type="button" intent="white" disabled={busy || second!.disabled} onClick={second!.onClick}>
+          {second!.label}
         </Button>
       ) : null}
-      {menu.length ? <MoreMenu items={menu} button={size ? { size } : undefined} /> : null}
-      {primary ? (
-        <Button {...button} intent="primary" type={primary.run ? 'button' : 'submit'} onClick={primary.run}>
-          {busy ? (busyLabel ?? primary.busy) : primary.label}
+      {showPrimary ? (
+        <Button {...button} intent="primary" type={primary!.run ? 'button' : 'submit'} onClick={primary!.run}>
+          {busy ? (busyLabel ?? primary!.busy) : primary!.label}
         </Button>
       ) : null}
-      {prevNext ? <PrevNext {...prevNext} /> : null}
     </>
   );
 }

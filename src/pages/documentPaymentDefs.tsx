@@ -21,6 +21,7 @@ import type { QtTabProps } from './sales/quotations/detail/types';
 import type { SoTabProps } from './sales/sales-orders/detail/types';
 import type { ArSectionProps } from './sales/invoices/detail/types';
 import type { RiSectionProps } from './sales/reserve-invoices/detail/types';
+import type { DiSectionProps } from './sales/down-payment-invoices/detail/types';
 import type { DnSectionProps } from './sales/deliveries/detail/types';
 import type { ArCmSectionProps, SrSectionProps } from './sales/returns-and-credits/types';
 
@@ -50,8 +51,7 @@ export const purchaseOrderPayment: PaymentDef<PoTabProps['draft'], { ctx: PoTabP
     paymentTerm: { readOnly: ctx.readOnly, hint: 'Defaults from the vendor; sets the due date.' },
     paymentMethod: { readOnly: ctx.readOnly, hint: 'Defaults from the vendor.' },
     cashDiscountDays: { readOnly: ctx.readOnly, hint: 'Days added to the posting date before the early-payment discount window starts.' },
-    journalRemark: { readOnly: ctx.readOnly, hint: 'Defaults to "Purchase Orders – vendor code". With perpetual inventory, it\'s the journal entry\'s remark.' },
-    // BP project lives in the References card (aside), not the journal entry.
+    // A purchase order posts no journal of its own, so it carries no accounting fields.
   }),
 };
 
@@ -211,8 +211,7 @@ export const salesOrderPayment: PaymentDef<SoTabProps['draft'], { ctx: SoTabProp
     paymentTerm: { readOnly: ctx.readOnly, hint: 'Defaults from the customer; sets the due date.' },
     paymentMethod: { readOnly: ctx.readOnly, hint: 'Defaults from the customer.' },
     cashDiscountDays: { readOnly: ctx.readOnly, hint: 'Days added to the posting date before the early-payment discount window starts.' },
-    journalRemark: { readOnly: ctx.readOnly, hint: 'Defaults to "Sales Orders – customer code".' },
-    // BP project lives in the References card (aside), not the journal entry.
+    // A sales order posts no journal of its own, so it carries no accounting fields.
   }),
 };
 
@@ -244,6 +243,25 @@ export const arInvoicePayment: PaymentDef<ArSectionProps['draft'], { ctx: ArSect
 
 export const arReserveInvoicePayment: PaymentDef<RiSectionProps['draft'], { ctx: RiSectionProps['ctx']; m: RiSectionProps['m'] }> = {
   build: ({ errors, ctx, m }) => arInvoiceConfig(errors, ctx.readOnly, m.accounts, 'Reserve Invoice – customer code'),
+};
+
+export const arDownPaymentInvoicePayment: PaymentDef<DiSectionProps['draft'], { ctx: DiSectionProps['ctx']; m: DiSectionProps['m'] }> = {
+  build: ({ draft, errors, ctx, m }) => ({
+    paymentTerm: { readOnly: ctx.readOnly, hint: 'Defaults from the customer; sets the due date.' },
+    paymentMethod: { readOnly: ctx.readOnly, hint: 'Defaults from the customer.' },
+    journalRemark: { readOnly: ctx.readOnly },
+    account: {
+      role: 'receivable',
+      key: 'controlAccount',
+      label: 'Control account',
+      accounts: m.accounts,
+      required: true,
+      readOnly: ctx.readOnly,
+      error: errors.controlAccount,
+      hint: "The customer's receivable account — what the advance is owed on.",
+    },
+    reads: [{ label: 'Order No.', value: draft.orderNumber ?? '—' }],
+  }),
 };
 
 export const deliveryPayment: PaymentDef<DnSectionProps['draft'], { ctx: DnSectionProps['ctx'] }> = {

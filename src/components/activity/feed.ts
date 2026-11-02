@@ -53,12 +53,13 @@ const STEP: Record<string, { verb: string; icon: string }> = {
   SO: { verb: 'Ordered', icon: 'shopping_bag' },
   DN: { verb: 'Delivered', icon: 'local_shipping' },
   ARINV: { verb: 'Invoiced', icon: 'receipt' },
+  ARDI: { verb: 'Down payment invoiced', icon: 'receipt_long' },
   RCV: { verb: 'Payment received', icon: 'savings' },
   SRT: { verb: 'Returned by customer', icon: 'assignment_return' },
   ARCM: { verb: 'Credited', icon: 'assignment_return' },
 };
 
-const SALES_KINDS = new Set(['QT', 'BA', 'SO', 'DN', 'ARINV', 'RCV', 'ARCM', 'SRT']);
+const SALES_KINDS = new Set(['QT', 'BA', 'SO', 'DN', 'ARINV', 'ARDI', 'RCV', 'ARCM', 'SRT']);
 
 const verbOf = (d: DocNode) => (d.status === 'Draft' ? 'Draft saved' : STEP[d.kind]?.verb ?? 'Posted');
 const amount = (d: DocNode) => (d.total ? `${d.currency} ${formatAmount(d.total)}` : undefined);
@@ -105,10 +106,11 @@ async function partnerEntries(id: string): Promise<FeedEntry[]> {
 
 /** Every document with the item (or one of its variants) on a line, with what it moved. */
 async function itemEntries(ids: string[]): Promise<FeedEntry[]> {
+  const idSet = new Set(ids);
   const [nodes, partners] = await Promise.all([Promise.all([purchaseDocNodes(), salesDocNodes()]).then((n) => n.flat()), listPartners()]);
   const names = new Map(partners.map((p) => [p.id, p.name]));
   return nodes.flatMap((d, i) => {
-    const lines = d.items.filter((l) => l.itemId && ids.includes(l.itemId));
+    const lines = d.items.filter((l) => l.itemId && idSet.has(l.itemId));
     if (!lines.length) return [];
     // One entry per document: the same item on two rows adds up.
     const byItem = new Map<string, { quantity: number; uomCode: string; itemNo: string }>();

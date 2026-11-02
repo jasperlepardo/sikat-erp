@@ -12,6 +12,7 @@ import {
   Tabs,
   Text,
 } from '@jasperlepardo/sikat-design-system';
+import { DocumentDetailSkeleton } from '../../../../components/form/skeletons/DocumentDetailSkeleton';
 import { PageHeader } from '../../../../components/form/PageHeader';
 import { DetailColumns } from '../../../../components/form/DetailColumns';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
@@ -170,7 +171,7 @@ function PaymentForm() {
   }, [id, isNew]);
 
   useDocTitle(draft?.docNum ? (isNew ? `New ${PAYMENT_NOUN.one}` : draft.status !== 'Draft' ? paymentNumber(draft) : `Draft ${PAYMENT_NOUN.one}`) : undefined);
-  if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading payment…</Text>;
+  if (draft === undefined || !m) return <DocumentDetailSkeleton />;
   if (draft === null) return <NotFound icon="payments" title="Payment not found" backTo={PAYMENT_LIST_PATH} backLabel="Back to payments" />;
 
   const added = draft.status !== 'Draft';
@@ -283,7 +284,7 @@ function PaymentForm() {
 
   return (
     <>
-    <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
+    <Form className="flex-1" onSubmit={(e) => e.preventDefault()} noValidate>
       <Panel className="flex-1">
         <PageHeader
           variant="plain"
@@ -297,6 +298,8 @@ function PaymentForm() {
               noun={PAYMENT_NOUN}
               listPath={PAYMENT_LIST_PATH}
               mode={docMode(draft.status, { canApprove: isApprover('PMT') })}
+              draft={draft}
+              onRevert={setDraft}
               needsApproval={!draft.approved}
               remarksOnly={added}
               busy={saving}

@@ -1,43 +1,28 @@
-import { useMemo, useState } from 'react';
 import { useLocation } from 'react-router';
-import {
-  Alert,
-  Card,
-  Panel,
-  Table,
-  TableAmount,
-  TableContent,
-  TableStatus,
-  Text,
-  type TableColumn,
-} from '@jasperlepardo/sikat-design-system';
-import { PageHeader } from '../../../components/form/PageHeader';
-import { dateField, linesField, masterField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
-import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
-import { currencyDef, salesEmployeeDef } from '../../settings/masterDefs';
-import { fillCardClass, useListPage } from '../../../components/form/DataTable';
+import { Alert, TableAmount, TableContent, TableStatus, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { ListPage } from '../../../components/form/ListPage';
 import { DPR_STATUSES, type DownPaymentRequest } from '../../../mocks/apDownPayments';
 import { dprNumber, dprTotal, listDownPayments } from '../../../services/apDownPayments';
 import { formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
 import { taxCodes } from '../../../services/masterData';
 import { useAsync } from '../../../services/useAsync';
-import { cap } from '../../../components/form/noun';
+import { dateField, linesField, masterField, numberField, partnerField, statusField, textField } from '../../../components/filter/fieldKit';
+import { statusViews } from '../../../components/filter/useListPresets';
+import { currencyDef, salesEmployeeDef } from '../../settings/masterDefs';
 import { DPR_LIST_PATH, DPR_NOUN, DPR_STATUS_INTENT } from '../paths';
 
-/** Purchasing › Bills › Down payment requests: advances vendors asked for, paid and drawn. */
-export function DprList() {
+export function DprList({ compact, selectedId }: { compact?: boolean; selectedId?: string } = {}) {
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const data = useAsync(() => Promise.all([listDownPayments(), taxCodes.list()]), []);
-  const [query, setQuery] = useState('');
-  const { resetPage, paginate } = useListPage();
   const [requests, codes] = data ?? [undefined, []];
   const totalOf = (d: DownPaymentRequest) => dprTotal(d, codes);
+
   const fields = [
     textField<DownPaymentRequest>('no', 'No.', dprNumber),
-    textField<DownPaymentRequest>('vendor', 'Vendor', (d) => d.vendorName),
+    partnerField<DownPaymentRequest>('vendor', 'Vendor', (d) => d.vendorId, (d) => d.vendorName, requests),
     textField<DownPaymentRequest>('vendorCode', 'Vendor code', (d) => d.vendorCode),
-    textField<DownPaymentRequest>('vendorRef', 'Vendor ref.', (d) => d.vendorRef),
+    textField<DownPaymentRequest>('vendorRef', 'Vendor proforma no.', (d) => d.vendorRef),
     dateField<DownPaymentRequest>('postingDate', 'Posting date', (d) => d.postingDate),
     dateField<DownPaymentRequest>('dueDate', 'Due date', (d) => d.dueDate),
     textField<DownPaymentRequest>('order', 'Purchase order', (d) => d.orderNumber),
@@ -47,27 +32,6 @@ export function DprList() {
     masterField<DownPaymentRequest>('buyer', 'Buyer', salesEmployeeDef, (d) => d.buyerId),
     linesField<DownPaymentRequest>(),
   ];
-  const presets = useListPresets({
-    list: 'ap-down-payment-requests',
-    fields,
-    builtIns: statusViews(DPR_NOUN.many, DPR_STATUSES),
-    defaultSort: { key: 'postingDate', direction: 'desc' },
-    rows: requests,
-    onChange: resetPage,
-  });
-  const { sort, setSort } = presets;
-
-  const rows = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const filtered = presets.apply(requests ?? []).filter(
-      (d) => (!q || [dprNumber(d), d.vendorCode, d.vendorName, d.vendorRef, d.orderNumber, ...d.lines.map((l) => l.itemNo)].join(' ').toLowerCase().includes(q)),
-    );
-    if (!sort) return filtered;
-    const dir = sort.direction === 'asc' ? 1 : -1;
-    const value = (d: DownPaymentRequest): string | number => (sort.key === 'total' ? totalOf(d) : sort.key === 'docNum' ? d.docNum : String(d[sort.key as keyof DownPaymentRequest] ?? ''));
-    return [...filtered].sort((a, b) => (value(a) < value(b) ? -1 : value(a) > value(b) ? 1 : 0) * dir);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [requests, presets.filter, query, sort, codes]);
 
   const columns: TableColumn<DownPaymentRequest>[] = [
     { key: 'docNum', header: 'No.', sortable: true, cell: (d) => <TableContent href={`#${DPR_LIST_PATH}/${d.docNum ? dprNumber(d) : d.id}`} subcopy={d.vendorRef || undefined}>{dprNumber(d)}</TableContent> },
@@ -77,58 +41,34 @@ export function DprList() {
     { key: 'orderNumber', header: 'Purchase order', cell: (d) => (d.orderNumber ? `PO ${d.orderNumber}` : <span className="text-muted">Without PO</span>) },
     { key: 'dpmPct', header: 'DPM %', cell: (d) => `${d.dpmPct}%` },
     { key: 'total', header: 'Total payment due', sortable: true, cell: (d) => <TableAmount currency={d.currency}>{formatAmount(totalOf(d))}</TableAmount> },
-    {
-      key: 'paid',
-      header: 'Paid / drawn',
-      cell: (d) => (
-        <TableContent subcopy={d.drawnAmount ? `${formatAmount(d.drawnAmount)} drawn` : undefined}>
-          {d.appliedAmount ? (d.appliedAmount >= totalOf(d) - 0.005 ? 'Paid' : `${formatAmount(d.appliedAmount)} paid`) : 'Unpaid'}
-        </TableContent>
-      ),
-    },
+    { key: 'paid', header: 'Paid / drawn', cell: (d) => <TableContent subcopy={d.drawnAmount ? `${formatAmount(d.drawnAmount)} drawn` : undefined}>{d.appliedAmount ? (d.appliedAmount >= totalOf(d) - 0.005 ? 'Paid' : `${formatAmount(d.appliedAmount)} paid`) : 'Unpaid'}</TableContent> },
     { key: 'status', header: 'Status', sortable: true, cell: (d) => <TableStatus intent={DPR_STATUS_INTENT[d.status]}>{d.status}</TableStatus> },
   ];
 
-  const { visible, pagination } = paginate(rows);
-
   return (
-    <Panel className="flex-1">
-      <PageHeader
-        showSearch
-        searchLabel={`Search ${DPR_NOUN.many}`}
-        searchPlaceholder="Search by no., vendor, vendor ref., PO no. or item"
-        searchValue={query}
-        onSearchChange={(value) => {
-          setQuery(value);
-          resetPage();
-        }}
-        icon="request_quote"
-        title={cap(DPR_NOUN.many)}
-        create={{ noun: DPR_NOUN, to: DPR_LIST_PATH }}
-      />
-      <Panel.Body className="flex flex-col gap-2">
-        {notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : null}
-        {presets.toolbar(null)}
-        <Card className={fillCardClass(visible.length)}>
-          {!requests ? (
-            <Text tone="muted" className="p-4">Loading {DPR_NOUN.many}…</Text>
-          ) : requests.length ? (
-            <Table
-              caption={cap(DPR_NOUN.many)}
-              columns={columns}
-              rows={visible}
-              getRowId={(d) => d.id}
-              sort={sort}
-              onSortChange={setSort}
-              layout="fill"
-              pagination={pagination}
-            />
-          ) : (
-            <Text tone="muted" className="p-4">No {DPR_NOUN.many} yet. Start one from a purchase order (More actions › Create {DPR_NOUN.one}), or with New {DPR_NOUN.one}.</Text>
-          )}
-        </Card>
-      </Panel.Body>
-      {presets.panel}
-    </Panel>
+    <ListPage
+      rows={requests}
+      columns={columns}
+      fields={fields}
+      noun={DPR_NOUN}
+      icon="request_quote"
+      basePath={DPR_LIST_PATH}
+      listKey="ap-down-payment-requests"
+      builtIns={statusViews(DPR_NOUN.many, DPR_STATUSES)}
+      defaultSort={{ key: 'postingDate', direction: 'desc' }}
+      search={{ placeholder: 'Search by no., vendor, vendor ref., PO no. or item', label: `Search ${DPR_NOUN.many}` }}
+      header={notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : undefined}
+      emptyMessage={`No ${DPR_NOUN.many} yet. Start one from a purchase order (More actions › Create ${DPR_NOUN.one}), or with New ${DPR_NOUN.one}.`}
+      compact={compact}
+      selectedId={selectedId}
+      getRowId={(r) => r.docNum ? dprNumber(r) : r.id}
+      filterFn={(d, q) => !q || [dprNumber(d), d.vendorCode, d.vendorName, d.vendorRef, d.orderNumber, ...d.lines.map((l) => l.itemNo)].join(' ').toLowerCase().includes(q)}
+      sortFn={(a, b, sort) => {
+        const value = (d: DownPaymentRequest): string | number =>
+          sort.key === 'total' ? totalOf(d) : sort.key === 'docNum' ? d.docNum : String(d[sort.key as keyof DownPaymentRequest] ?? '');
+        const x = value(a); const y = value(b);
+        return x < y ? -1 : x > y ? 1 : 0;
+      }}
+    />
   );
 }

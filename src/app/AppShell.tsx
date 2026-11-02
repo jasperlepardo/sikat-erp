@@ -1,7 +1,7 @@
 import { Outlet, useLocation, useNavigate } from 'react-router';
 import { Navbar, Page, SideNav, Text, useHoverIntent, useTheme, type NavbarMenuItem } from '@jasperlepardo/sikat-design-system';
 import { Suspense, useEffect, useState } from 'react';
-import { APPS, appNav, firstPageOf, leafForPath, moduleOf, pathOf } from './nav';
+import { APPS, appNav, firstPageOf, leafForPath, moduleOf, openGroupFor, pathOf } from './nav';
 import { SETTINGS_NAV, settingsLeafForPath, settingsModuleOf } from './settingsNav';
 import { useCollection } from '../components/form/MasterLookup';
 import { companies, setCurrentCompanyId, useCurrentCompany } from '../services/companies';
@@ -29,11 +29,12 @@ export function AppShell() {
 
   // Main nav state
   const activeId = leafForPath(location.pathname)?.id;
-  const [mainOpenId, setMainOpenId] = useState<string | null>(() => moduleOf(activeId));
-  const activeModule = moduleOf(activeId);
+  const activeModule = moduleOf(activeId); // the app, for the app selector
+  const openGroup = openGroupFor(activeId); // the expandable parent, for the sidebar
+  const [mainOpenId, setMainOpenId] = useState<string | null>(() => openGroup);
   useEffect(() => {
-    if (activeModule) setMainOpenId(activeModule);
-  }, [activeModule]);
+    setMainOpenId(openGroup);
+  }, [openGroup]);
 
   // Current app: follows the route; Settings keeps the last one.
   const routeApp = APPS.some((a) => a.id === activeModule) ? activeModule : null;
@@ -123,7 +124,9 @@ export function AppShell() {
             activeId={activeId}
             openId={mainOpenId}
             onOpenChange={setMainOpenId}
-            onNavigate={(id) => navigate(pathOf(id))}
+            // A grouped parent has no page of its own; land on its first child (All) — reached only
+            // in the compact rail, since the expanded parent just toggles its submenu.
+            onNavigate={(id, item) => navigate(pathOf(item.items?.length ? item.items[0].id : id))}
             {...sideNavProps}
           />
         )}

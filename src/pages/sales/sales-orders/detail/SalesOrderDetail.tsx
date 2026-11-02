@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import { Alert, Badge, Form, Panel, Tabs, Text } from '@jasperlepardo/sikat-design-system';
+import { DocumentDetailSkeleton } from '../../../../components/form/skeletons/DocumentDetailSkeleton';
 import { type Errors } from '../../../../components/form/fields';
 import { type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { DetailActions, docMode } from '../../../../components/form/DetailActions';
@@ -24,15 +25,12 @@ import { listPartnersByRole } from '../../../../services/partners';
 import { BASE_PRICE_LIST_ID } from '../../../../services/priceLists';
 import { matchingSeries, soSeries } from '../../../../services/allSeries';
 import { termDays } from '../../../../services/purchaseOrders';
-import { cancelSalesOrder, closeSalesOrder, findDuplicateCustomerRef, getSalesOrder, lineNet, listSalesOrders, openOrdersTotal, recallSalesOrder, saveSalesOrder, soDueDate, soNumber, soTotals } from '../../../../services/salesOrders';
-import { JournalPreview } from '../../../../components/form/JournalPreview';
-import { revenueAccountFor } from '../../../../services/itemAccounts';
-import { controlAccountOf } from '../../../../services/journalEntries';
-import { round2 } from '../../../../services/num';
+import { cancelSalesOrder, closeSalesOrder, findDuplicateCustomerRef, getSalesOrder, listSalesOrders, openOrdersTotal, openQty, recallSalesOrder, saveSalesOrder, soDueDate, soNumber, soTotals } from '../../../../services/salesOrders';
 import { defaultJournalRemark } from '../../../../services/journalPatterns';
 import { logRejection } from '../../../../services/approvalRules';
 import { listDeliveries } from '../../../../services/deliveries';
 import { SoLinesCard } from './SoLinesCard';
+import { useSoDeliveryDocs } from './SoDeliveriesTab';
 import { SalesDocumentFlow } from '../../shared/SalesDocumentFlow';
 import { ALL_CURRENCIES, buildContext, linePricing, proposedTaxCode, shortages, type Shortage, type SoContext, type SoDraft, type SoMasters } from './types';
 import type { PoSuggestion } from '../../../purchasing/purchase-orders/detail/types';
@@ -40,7 +38,7 @@ import { useDocTitle } from '../../../../services/useDocTitle';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
 import { neighbours, NotFound, siblingKeys, useDocTab, useReject } from '../../../../components/form/DetailNav';
 import { DocumentDates } from '../../../../components/form/DatesCard';
-import { DocumentPayment, DocumentJournalEntry } from '../../../../components/form/PaymentCard';
+import { DocumentPayment } from '../../../../components/form/PaymentCard';
 import { salesOrderDates } from '../../../documentDateDefs';
 import { salesOrderPayment } from '../../../documentPaymentDefs';
 import { SoDocumentCard } from './SoDocumentCard';
@@ -54,7 +52,8 @@ import { salesView } from '../../shared/salesView';
 import { CustomerDetailsPanel } from '../../shared/CustomerDetailsPanel';
 import { ReferencesTable } from '../../../purchasing/shared/ReferencesTable';
 import { SoAvailabilityPanel, type TransferGroup } from './SoAvailabilityPanel';
-import { SO_LIST_PATH, SO_NOUN, SO_STATUS_INTENT } from '../../paths';
+import { DI_LIST_PATH, DI_NOUN, DN_NOUN, SO_LIST_PATH, SO_NOUN, SO_STATUS_INTENT } from '../../paths';
+import { cap } from '../../../../components/form/noun';
 import { CreateFromPanel, createHopMenuItems } from '../../../purchasing/shared/CreateFromPanel';
 import { SO_TO_DN, SO_TO_AR_GOODS, SO_TO_AR_SERVICES, type CopyHop } from '../../shared/copyHops';
 import { PO_LIST_PATH } from '../../../purchasing/paths';
@@ -128,6 +127,7 @@ function SalesOrderForm() {
   const [customerDetailsOpen, setCustomerDetailsOpen] = useState(false);
   const [createHop, setCreateHop] = useState<CopyHop<SalesOrder> | null>(null);
   const reject = useReject();
+  const deliveryDocs = useSoDeliveryDocs();
   const [openBalance, setOpenBalance] = useState(0);
   // What the order commits as saved — already in the items' Committed, so it's given back when checking stock.
   const [ownCommitted, setOwnCommitted] = useState(() => new Map<string, number>());
@@ -178,7 +178,7 @@ function SalesOrderForm() {
   }, [customerId, m]);
 
   useDocTitle(draft == null || !draft.docNum ? undefined : isNew ? `New ${SO_NOUN.one}` : draft.status === 'Draft' ? `Draft ${SO_NOUN.one}` : soNumber(draft));
-  if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading sales order…</Text>;
+  if (draft === undefined || !m) return <DocumentDetailSkeleton />;
   if (draft === null) return <NotFound icon="shopping_bag" title="Sales order not found" backTo={SO_LIST_PATH} backLabel="Back to sales orders" />;
 
   const ctx = buildContext(draft, m, ownCommitted);
@@ -191,23 +191,6 @@ function SalesOrderForm() {
   const totalLc = totals.total * ctx.fx;
   const delivered = draft.lines.some((l) => l.deliveredQty > 0);
 
-  const vatAccount = (code: string) => m.tax.codes.find((c) => c.code === code)?.glAccount || '2310';
-  const soRevFactor = 1 - draft.discountPct / 100;
-  const soJournalMap = new Map<string, number>();
-  const soJournalAdd = (account: string, amount: number) => { if (account && amount) soJournalMap.set(account, round2((soJournalMap.get(account) ?? 0) + amount)); };
-  for (const l of draft.lines) {
-    const item = m.items.find((i) => i.id === l.itemId);
-    if (!item) continue;
-    const net = round2(lineNet(l) * soRevFactor * ctx.fx);
-    soJournalAdd(revenueAccountFor(item, m.inv.groups), -net);
-    soJournalAdd(vatAccount(l.taxCode), -round2((net * ctx.rateOf(l.taxCode)) / 100));
-  }
-  const soJournalBalance = round2([...soJournalMap.values()].reduce((n, v) => n + v, 0));
-  if (soJournalBalance) soJournalAdd(customer ? controlAccountOf(customer) : '1120', -soJournalBalance);
-  const soJournal = ctx.fx
-    ? [...soJournalMap.entries()].filter(([, n]) => n !== 0).map(([account, n]) => ({ account, debit: n > 0 ? n : 0, credit: n < 0 ? -n : 0 })).sort((a, b) => b.debit - a.debit)
-    : [];
-  const soJournalEntry = <JournalPreview journal={soJournal} accounts={m.accounts} />;
   const overCredit = SALES_SETTINGS.creditLimitCheck && customer && customer.creditLimit > 0 && openBalance + totalLc > customer.creditLimit && !ctx.readOnly;
 
   /** Tax codes re-proposed for the customer and date, except ones set by hand. */
@@ -289,7 +272,7 @@ function SalesOrderForm() {
     if (!effectiveDraft && !warning) {
       const dup = await findDuplicateCustomerRef(doc);
       const credit = overCredit ? `This order takes ${doc.customerName} to PHP ${formatAmount(openBalance + totalLc)} open, over their PHP ${formatAmount(customer!.creditLimit)} credit limit.` : '';
-      const message = [dup ? `Order ${soNumber(dup)} from ${doc.customerName} already has Customer Ref. No. ${doc.customerRef}.` : '', credit].filter(Boolean).join(' ');
+      const message = [dup ? `Order ${soNumber(dup)} from ${doc.customerName} already has Customer PO no. ${doc.customerRef}.` : '', credit].filter(Boolean).join(' ');
       if (message) return setWarning(message);
     }
     setSaving(true);
@@ -434,6 +417,9 @@ function SalesOrderForm() {
 
   const menu: MoreMenuItem[] = [
     ...(draft.status === 'Open' ? createHopMenuItems(saved, m.items, [SO_TO_DN, SO_TO_AR_GOODS, SO_TO_AR_SERVICES], setCreateHop) : []),
+    ...(draft.status === 'Open' && draft.docType === 'Item' && draft.lines.some((l) => openQty(l) > 0)
+      ? [{ label: `Create ${DI_NOUN.one}`, icon: 'savings', onSelect: () => navigate(`${DI_LIST_PATH}/new`, { state: { fromSo: saved.id } }) }]
+      : []),
     ...(draft.status === 'Open'
       ? bySource.map(({ warehouse, rows }) => ({
           label: `Create stock transfer — from ${warehouseName(warehouse)}`,
@@ -469,7 +455,7 @@ function SalesOrderForm() {
 
   return (
     <>
-      <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
+      <Form className="flex-1" onSubmit={(e) => e.preventDefault()} noValidate>
         <Panel className="flex-1">
           <PageHeader
             variant="plain"
@@ -483,6 +469,8 @@ function SalesOrderForm() {
                 noun={SO_NOUN}
                 listPath={SO_LIST_PATH}
                 mode={docMode(draft.status, { canApprove: isApprover('SO') })}
+                draft={draft}
+                onRevert={setDraft}
                 needsApproval={!draft.approved}
                 remarksOnly={ctx.readOnly}
                 busy={saving}
@@ -547,24 +535,24 @@ function SalesOrderForm() {
                     onPickCustomer={pickCustomer}
                     onOpenDetails={() => setCustomerDetailsOpen(true)}
                   />
+                  <Tabs
+                    variant="solid"
+                    className="w-fit max-w-full self-start"
+                    value={contentTab}
+                    onValueChange={(v) => setContentTab(v as 'item' | 'delivery')}
+                    items={[
+                      { value: 'item', label: cap(SO_NOUN.lineLabel!) },
+                      { value: 'delivery', label: cap(DN_NOUN.many) },
+                    ]}
+                  />
                   <SoLinesCard
                     {...tabProps}
-                    tabs={
-                      <Tabs
-                        variant="solid"
-                        value={contentTab}
-                        onValueChange={(v) => setContentTab(v as 'item' | 'delivery')}
-                        items={[
-                          { value: 'item', label: 'Item' },
-                          { value: 'delivery', label: 'Delivery' },
-                        ]}
-                      />
-                    }
                     contentTab={contentTab}
                     view={view}
+                    docs={deliveryDocs}
+                    items={m.items}
                     cardFooter={<SalesTotalsFooter {...tabProps} totals={totals} view={view} />}
                   />
-                  <DocumentJournalEntry def={salesOrderPayment} posting={soJournalEntry} {...tabProps} />
                   <ReferencesTable
                     refs={draft.references}
                     onChange={(references) => update({ references })}
@@ -579,7 +567,7 @@ function SalesOrderForm() {
                   <SoDocumentCard {...tabProps} />
                   <DocumentDates def={salesOrderDates} {...tabProps} />
                   <SoSettingsCard {...tabProps} />
-                  <DocumentPayment def={salesOrderPayment} posting={soJournalEntry} {...tabProps} />
+                  <DocumentPayment def={salesOrderPayment} {...tabProps} />
                   <ReferencesCard {...tabProps} />
                   <AssignmentCard
                     draft={draft}
@@ -596,6 +584,7 @@ function SalesOrderForm() {
         </Panel>
       </Form>
       <CustomerDetailsPanel
+        customerRefLabel="Customer PO no."
         customer={customer}
         draft={draft}
         update={update}

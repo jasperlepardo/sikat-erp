@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import { TableContent, TableStatus, Text } from '@jasperlepardo/sikat-design-system';
 import { DataTable } from '../../../../../components/form/DataTable';
 import { useColumnPrefs, type PrefColumn } from '../../../../../components/form/columnPrefs';
@@ -10,8 +10,7 @@ import { formatAmount } from '../../../../../services/format';
 import { rateOn } from '../../../../../services/masterData';
 import { copiedQty } from '../../../../../services/purchaseRequests';
 import { lineNet, rfqNumber } from '../../../../../services/rfqs';
-import { RFQ_LIST_PATH, RFQ_STATUS_INTENT, PR_NOUN } from '../../../paths';
-import { cap } from '../../../../../components/form/noun';
+import { RFQ_LIST_PATH, RFQ_STATUS_INTENT } from '../../../paths';
 import { CurrencyToggle, amountsIn } from '../../../shared/CurrencyToggle';
 import { orderedByRfqLine, prLineFor } from '../../../shared/poFromRfq';
 import { layoutQuoteCols, quoteLineCols } from './quoteColumns';
@@ -56,21 +55,19 @@ function quoteGroups(pr: PurchaseRequest, rfqs: readonly Rfq[]) {
  * Quote comparison, laid out like a purchase order's Receipts: each request line, and under it one
  * row per quotation that answers it, with the quotation's line columns in its own order (the rest
  * in the Columns menu), its validity and status. Read-only: it is the Contents card's Comparison
- * view, and `tabs` is the Item / Comparison switch, shown at the top of that card.
+ * view; the Requested items / Comparison switch sits above the card, in the detail layout.
  */
 export function ComparisonCard({
   pr,
   m,
   rfqs,
   pos,
-  tabs,
 }: {
   pr: PurchaseRequest;
   m: PrMasters;
   rfqs: readonly Rfq[];
   /** Purchase orders, for how much was ordered from each quotation. */
   pos: readonly PurchaseOrder[];
-  tabs?: ReactNode;
 }) {
   // Every quote is shown in one currency, so they read side by side: pesos, or any quote's own.
   const [view, setView] = useState('PHP');
@@ -224,7 +221,7 @@ export function ComparisonCard({
     <DataTable
       variant="card"
       icon="list_alt"
-      title={cap(PR_NOUN.lineLabel!)}
+      title="Quotations"
       noPagination
       rows={lines}
       getRowId={(r) => r.id}
@@ -237,7 +234,6 @@ export function ComparisonCard({
       empty={<Text variant="small" tone="muted">No purchase quotations for this request yet. Use More actions › Create purchase quotations to ask vendors for quotes.</Text>}
       actions={<CurrencyToggle choices={choices} value={view} onChange={setView} />}
     >
-      {tabs}
       <Text variant="small" tone="muted">Each vendor's quotation for every item. Expand an item to see who quoted and at what price.</Text>
     </DataTable>
   );

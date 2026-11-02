@@ -7,8 +7,8 @@ import {
   Form,
   Panel,
   Tabs,
-  Text,
 } from '@jasperlepardo/sikat-design-system';
+import { DocumentDetailSkeleton } from '../../../../components/form/skeletons/DocumentDetailSkeleton';
 import { PageHeader } from '../../../../components/form/PageHeader';
 import { DetailColumns } from '../../../../components/form/DetailColumns';
 import { type Errors } from '../../../../components/form/fields';
@@ -68,7 +68,11 @@ import { DocumentPayment, DocumentJournalEntry } from '../../../../components/fo
 import { apReserveInvoicePayment } from '../../../documentPaymentDefs';
 import { AssignmentCard } from '../../../../components/form/AssignmentCard';
 import { JournalPreview } from '../../../../components/form/JournalPreview';
-import { APRI_LIST_PATH, APRI_NOUN, AP_RI_STATUS_INTENT } from '../../paths';
+import { APRI_LIST_PATH, APRI_NOUN, AP_RI_STATUS_INTENT, GR_LIST_PATH, GR_NOUN, GR_STATUS_INTENT } from '../../paths';
+import { cap } from '../../../../components/form/noun';
+import { LineRollup, type RollupDocRow } from '../../../../components/form/LineRollup';
+import { useAsync } from '../../../../services/useAsync';
+import { grNumber, listGoodsReceipts } from '../../../../services/goodsReceipts';
 
 type TabId = 'contents' | 'logistics' | 'accounting';
 
@@ -129,6 +133,8 @@ function ApReserveInvoiceForm() {
   const [vendorDetailsOpen, setVendorDetailsOpen] = useState(false);
   const [currencyView, setCurrencyView] = useState('');
   const [copying, setCopying] = useState(false);
+  const [contentTab, setContentTab] = useState<'item' | 'receipts'>('item');
+  const goodsReceiptsList = useAsync(listGoodsReceipts, []);
 
   useEffect(() => {
     Promise.all([
@@ -166,7 +172,7 @@ function ApReserveInvoiceForm() {
   }, [id, isNew]);
 
   useDocTitle(draft?.docNum ? (isNew ? `New ${APRI_NOUN.one}` : draft.status !== 'Draft' ? apRiNumber(draft) : `Draft ${APRI_NOUN.one}`) : undefined);
-  if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading A/P reserve invoice…</Text>;
+  if (draft === undefined || !m) return <DocumentDetailSkeleton />;
   if (draft === null) return <NotFound icon="request_quote" title="A/P reserve invoice not found" backTo={APRI_LIST_PATH} backLabel="Back to reserve invoices" />;
 
   const ctx = buildApriContext(draft, m);
@@ -277,6 +283,9 @@ function ApReserveInvoiceForm() {
   const recallIt = () => act(() => recallApReserveInvoice(saved), 'recalled to draft');
 
   const menu: MoreMenuItem[] = [
+    ...(draft.status === 'Open' && draft.lines.some((l) => l.itemId && l.quantity - (l.receivedQty ?? 0) > 0)
+      ? [{ label: 'Create goods receipt', icon: 'inventory', onSelect: () => navigate(`${GR_LIST_PATH}/new`, { state: { fromApri: saved.id } }) }]
+      : []),
     ...(!isNew ? [{ label: 'Duplicate', icon: 'content_copy', onSelect: duplicate }] : []),
     ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }] : []),
     ...(draft.status === 'Open' && !draft.appliedAmount ? [{ label: `Cancel ${APRI_NOUN.one}`, icon: 'cancel', onSelect: cancelIt }] : []),
@@ -296,9 +305,31 @@ function ApReserveInvoiceForm() {
     ? m.orders.filter((po) => po.vendorId === draft.vendorId && po.status === 'Open' && (!ctx.based || po.currency === draft.currency))
     : [];
 
+  // Second content tab: the goods receipts that fulfil this reserve invoice. The invoice and the
+  // receipts both descend from the same PO line (baseType 'PO'), so they share its baseId/baseLineId.
+  const counts = (d: { status: string }) => d.status !== 'Draft' && d.status !== 'Cancelled';
+  const grDocsFor = (l: ApRiLine): RollupDocRow[] =>
+    !l.baseId ? [] : (goodsReceiptsList ?? []).filter(counts).flatMap((gr) =>
+      gr.lines
+        .filter((gl) => gl.baseId === l.baseId && gl.baseLineId === l.baseLineId)
+        .map((gl): RollupDocRow => ({ id: `${gr.id}:${gl.id}`, no: grNumber(gr), href: `#${GR_LIST_PATH}/${gr.docNum ? grNumber(gr) : gr.id}`, date: gr.postingDate, status: gr.status, intent: GR_STATUS_INTENT[gr.status], quantity: gl.quantity, uomCode: gl.uomCode })));
+  const showRollups = !isNew && added && !!draft.id;
+  const contentTabs = (
+    <Tabs
+      variant="solid"
+      className="w-fit max-w-full self-start"
+      value={contentTab}
+      onValueChange={(v) => setContentTab(v as 'item' | 'receipts')}
+      items={[
+        { value: 'item', label: cap(APRI_NOUN.lineLabel!) },
+        { value: 'receipts', label: cap(GR_NOUN.many) },
+      ]}
+    />
+  );
+
   return (
     <>
-    <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
+    <Form className="flex-1" onSubmit={(e) => e.preventDefault()} noValidate>
       <Panel className="flex-1">
         <PageHeader
           variant="plain"
@@ -319,6 +350,8 @@ function ApReserveInvoiceForm() {
               noun={APRI_NOUN}
               listPath={APRI_LIST_PATH}
               mode={docMode(draft.status, { canApprove: isApprover('APRI') })}
+              draft={draft}
+              onRevert={setDraft}
               needsApproval={!draft.approved}
               remarksOnly={added}
               busy={saving}
@@ -366,7 +399,12 @@ function ApReserveInvoiceForm() {
                   pickVendor={pickVendor}
                   onOpenDetails={() => setVendorDetailsOpen(true)}
                 />
-                <DocLines {...apriDoc({ ...sectionProps, onCopyClick: () => setCopying(true), copyableCount: orders.length }, view)} />
+                {showRollups ? contentTabs : null}
+                {showRollups && contentTab === 'receipts' ? (
+                  <LineRollup title={cap(GR_NOUN.many)} lines={draft.lines.filter((l) => l.itemId)} loading={!goodsReceiptsList} docsFor={grDocsFor} empty="No goods receipts against this reserve invoice yet." />
+                ) : (
+                  <DocLines {...apriDoc({ ...sectionProps, onCopyClick: () => setCopying(true), copyableCount: orders.length }, view)} />
+                )}
                 <DocumentJournalEntry def={apReserveInvoicePayment} posting={journalEntry} {...sectionProps} />
                 <ReferencesTable refs={draft.references} onChange={(references) => update({ references })} readOnly={ctx.readOnly} description="Other documents this invoice refers to." />
                 <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach the vendor's invoice or supporting documents." />
@@ -401,6 +439,7 @@ function ApReserveInvoiceForm() {
       readOnly={ctx.readOnly}
       open={vendorDetailsOpen}
       onClose={() => setVendorDetailsOpen(false)}
+      vendorRefLabel="Vendor invoice no."
       vendorRefHint="The vendor's invoice no."
       vendorRefError={errors.vendorRef}
       addresses={ctx.vendor ? receivingVendorAddressFields(m, ctx.vendor, { includeWarehouses: false, shipPlaceholder: 'Delivery address when goods arrive' }) : []}

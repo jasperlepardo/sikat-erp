@@ -1,7 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import { todayISO } from '../../../services/dates';
-import { Badge, Button, Form, FormField, Panel, Select, Tabs, Text, type Option } from '@jasperlepardo/sikat-design-system';
+import { Badge, Button, Form, FormField, Panel, Select, Tabs, type Option } from '@jasperlepardo/sikat-design-system';
+import { PartnerDetailSkeleton } from '../../../components/form/skeletons/PartnerDetailSkeleton';
 import { PageHeader } from '../../../components/form/PageHeader';
 import { ActivityTab } from '../../../components/activity/ActivityTab';
 import { FieldStack, ReadOnly, Section, bind, type Errors } from '../../../components/form/fields';
@@ -91,7 +92,7 @@ function EmployeeForm() {
     };
   }, [id, isNew]);
 
-  if (draft === undefined) return <Text tone="muted" className="p-4">Loading employee…</Text>;
+  if (draft === undefined) return <PartnerDetailSkeleton />;
   if (draft === null) {
     return (
       <Panel className="flex-1">
@@ -132,8 +133,8 @@ function EmployeeForm() {
     return !found.length;
   };
 
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
+  const submit = async (e?: FormEvent) => {
+    e?.preventDefault();
     if (!check()) return;
     setSaving(true);
     try {
@@ -186,7 +187,7 @@ function EmployeeForm() {
   const title = isNew ? `New ${EMPLOYEE_NOUN.one}` : employeeName(draft) || draft.code;
 
   return (
-    <Form className="flex min-h-0 flex-1 flex-col" onSubmit={submit} noValidate>
+    <Form className="flex min-h-0 flex-1 flex-col" onSubmit={(e) => e.preventDefault()} noValidate>
       <Panel className="min-h-0 flex-1">
         <PageHeader
           variant="plain"
@@ -208,6 +209,9 @@ function EmployeeForm() {
               noun={EMPLOYEE_NOUN}
               listPath={EMPLOYEES_PATH}
               mode={isNew ? 'draft' : 'open'}
+              draft={draft}
+              onRevert={setDraft}
+              onSubmit={() => submit()}
               busy={saving}
               menu={menu}
               prevNext={isNew ? undefined : { path: EMPLOYEES_PATH, prevId, nextId }}

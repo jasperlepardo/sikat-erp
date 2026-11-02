@@ -7,8 +7,8 @@ import {
   Form,
   Panel,
   Tabs,
-  Text,
 } from '@jasperlepardo/sikat-design-system';
+import { DocumentDetailSkeleton } from '../../../components/form/skeletons/DocumentDetailSkeleton';
 import { PageHeader } from '../../../components/form/PageHeader';
 import { DetailColumns } from '../../../components/form/DetailColumns';
 import { AttachmentsCard } from '../../../components/form/AttachmentsCard';
@@ -191,7 +191,7 @@ function GoodsReturnForm() {
   }, [id, isNew]);
 
   useDocTitle(draft?.docNum ? (isNew ? `New ${RETURN_NOUN.one}` : draft.status !== 'Draft' ? returnNumber(draft) : `Draft ${RETURN_NOUN.one}`) : undefined);
-  if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading goods return…</Text>;
+  if (draft === undefined || !m) return <DocumentDetailSkeleton />;
   if (draft === null) return <NotFound icon="assignment_return" title="Goods return not found" backTo={RETURN_LIST_PATH} backLabel="Back to returns" />;
 
   const ctx = buildGrContext(draft, m);
@@ -302,7 +302,7 @@ function GoodsReturnForm() {
 
   return (
     <>
-      <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
+      <Form className="flex-1" onSubmit={(e) => e.preventDefault()} noValidate>
         <Panel className="flex-1">
           <PageHeader
             variant="plain"
@@ -316,6 +316,8 @@ function GoodsReturnForm() {
                 noun={RETURN_NOUN}
                 listPath={RETURN_LIST_PATH}
                 mode={docMode(draft.status, { canApprove: isApprover('GRET') })}
+                draft={draft}
+                onRevert={setDraft}
                 needsApproval={!draft.approved}
                 remarksOnly={added}
                 busy={saving}
@@ -409,6 +411,7 @@ function GoodsReturnForm() {
         readOnly={added}
         open={vendorDetailsOpen}
         onClose={() => setVendorDetailsOpen(false)}
+        vendorRefLabel="Vendor RMA no."
         vendorRefHint="The vendor's return authorization (RMA) no."
         addresses={[]}
       />

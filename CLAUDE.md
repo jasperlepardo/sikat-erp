@@ -164,7 +164,7 @@ const [errors, setErrors] = useState<Errors>({});
 
 **Standard two-column body — `DetailColumns` (`components/form/DetailColumns.tsx`):** item detail and every purchasing/sales document render their body through `<DetailColumns header main aside />`. It owns the `Panel.Body`, the `lg:grid-cols-12` grid and the two columns: `main` is `lg:col-span-8` (content — CustomerCard/VendorCard + line table + journal + references + attachments), `aside` is `lg:col-span-4` (details/identity cards), `header` holds the alerts that stay fixed above the columns. Each column scrolls independently at `lg` (the body clips, the grid fills it, each column has its own `overflow-y-auto`), collapsing to one scrolling column below `lg`. Don't hand-roll the grid — use the component. Don't add padding to its `Panel.Body`: a utility overrides the design system's 16px panel padding and pushes content flush; the column `p-1`/`-m-1` pair reclaims shadow room inside each scroll clip.
 
-**Partners** still uses a bespoke `lg:col-span-3` aside (identity + subsidiary cards) + `lg:col-span-9` main (tabs); it hasn't been moved onto `DetailColumns`.
+**Partners** uses `DetailColumns` with the same col-span-8/4 split as item and document pages: tabs (Settings, Payment run, Tax) go in `main`; the Business partner identity card + contacts, addresses, payment methods, attachments and agreements go in `aside`.
 
 ### Document pages — `TabProps` / `DocContext`
 
@@ -311,7 +311,7 @@ Every document and master record has an Activity tab. Timeline shows the documen
 - Page headers (`docs/page-header-plan.md`):
   - every page and side panel renders `PageHeader` (`components/form/PageHeader.tsx`), never the design system's `PanelHeader` (lint enforces it); buttons go in `actions` only;
   - list page: `title={presets.menu}`, search props, `create={{ noun: X_NOUN, to: X_LIST_PATH }}`; no tabs;
-  - detail page: `variant="plain"`, `parent={{ noun: X_NOUN, to: X_LIST_PATH }}`, title `New {one}` / `Draft {one}` / number, and `actions={<DetailActions … />}` (Cancel · secondary · ⋯ · primary · Prev/Next; labels from the record's `mode`: Save as draft, Submit for approval, Create {one}, Approve, Reject, Save changes — never Add / Update / a bare Save);
+  - detail page: `variant="plain"`, `parent={{ noun: X_NOUN, to: X_LIST_PATH }}`, title `New {one}` / `Draft {one}` / number, and `actions={<DetailActions … />}` (Prev/Next · ⋯ · Cancel · secondary · primary; labels from the record's `mode`: Save as draft, Submit for approval, Create {one}, Approve, Reject, Save changes — never Add / Update / a bare Save);
   - ⋯ items in order: Create {target} (never "Copy to …") · Pay · Duplicate · Recall · Close · Cancel {one} · Open journal entry; no "Open vendor" or "Open {base document}" (the partner card and the Transactions tab already link there);
   - side panel: `variant="plain"`, Close · Cancel · Save changes (or Create {one}).
 - Name each document once, as a `Noun` (`{ one, many }`) in its area's `paths.ts`; build every label from it with `cap()` (sentence case everywhere, sidebar included).

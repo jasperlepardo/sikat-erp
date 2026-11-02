@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import { Alert, Badge, Form, Panel, Tabs, Text } from '@jasperlepardo/sikat-design-system';
+import { DocumentDetailSkeleton } from '../../../../components/form/skeletons/DocumentDetailSkeleton';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { type Errors } from '../../../../components/form/fields';
 import { type MoreMenuItem } from '../../../../components/form/MoreMenu';
@@ -11,7 +12,7 @@ import { DetailColumns } from '../../../../components/form/DetailColumns';
 import { isApprover, needsApproval } from '../../../../services/approval';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { CURRENT_USER_ID } from '../../../../mocks/common';
-import { blankQuotation, type Quotation } from '../../../../mocks/quotations';
+import { blankQuotation, type Quotation, type QuoteLine } from '../../../../mocks/quotations';
 import { rateAt } from '../../../../mocks/taxes';
 import { loadCurrentCompany } from '../../../../services/companies';
 import { todayISO } from '../../../../services/dates';
@@ -25,7 +26,7 @@ import {
   addQuotation, cancelQuotation, closeQuotation, getQuotation, listQuotations,
   qtNumber, qtTotals, recallQuotation, saveQuotationDraft, saveQuotationRemarks,
 } from '../../../../services/quotations';
-import { openOrdersTotal } from '../../../../services/salesOrders';
+import { listSalesOrders, openOrdersTotal, soNumber } from '../../../../services/salesOrders';
 import { NO_SALES_EMPLOYEE, SALES_SETTINGS, blankSalesOrder, newSoLine } from '../../../../mocks/salesOrders';
 import { logRejection } from '../../../../services/approvalRules';
 import { useDocTitle } from '../../../../services/useDocTitle';
@@ -38,14 +39,8 @@ import { QtDocumentCard } from './QtDocumentCard';
 import { DocumentDates } from '../../../../components/form/DatesCard';
 import { quotationDates } from '../../../documentDateDefs';
 import { QtDeliveryCard } from './QtDeliveryCard';
-import { DocumentPayment, DocumentJournalEntry } from '../../../../components/form/PaymentCard';
+import { DocumentPayment } from '../../../../components/form/PaymentCard';
 import { quotationPayment } from '../../../documentPaymentDefs';
-import { JournalPreview } from '../../../../components/form/JournalPreview';
-import { lineNet } from '../../../../services/lineMath';
-import { revenueAccountFor } from '../../../../services/itemAccounts';
-import { controlAccountOf } from '../../../../services/journalEntries';
-import { accounts } from '../../../../services/masterData';
-import { round2 } from '../../../../services/num';
 import { QtMoreCard } from './QtMoreCard';
 import { AssignmentCard } from '../../../../components/form/AssignmentCard';
 import { ReferencesCard } from '../../shared/ReferencesCard';
@@ -57,7 +52,10 @@ import { qtDoc } from './qtDoc';
 import { SalesTotalsFooter } from '../../shared/TotalsFooter';
 import { salesView } from '../../shared/salesView';
 import { ReferencesTable } from '../../../purchasing/shared/ReferencesTable';
-import { QT_LIST_PATH, QT_NOUN, QT_STATUS_INTENT, SO_LIST_PATH } from '../../paths';
+import { QT_LIST_PATH, QT_NOUN, QT_STATUS_INTENT, SO_LIST_PATH, SO_NOUN, SO_STATUS_INTENT } from '../../paths';
+import { cap } from '../../../../components/form/noun';
+import { LineRollup, type RollupDocRow } from '../../../../components/form/LineRollup';
+import { useAsync } from '../../../../services/useAsync';
 
 type TabId = 'contents';
 const TAB_LABEL: Record<TabId, string> = { contents: 'Contents' };
@@ -129,6 +127,8 @@ function QuotationForm() {
   const [copyFromNote, setCopyFromNote] = useState(false);
   const [creatingSo, setCreatingSo] = useState(false);
   const [openBalance, setOpenBalance] = useState(0);
+  const [contentTab, setContentTab] = useState<'item' | 'orders'>('item');
+  const salesOrdersList = useAsync(listSalesOrders, []);
 
   useEffect(() => {
     loadQtMasters().then(setM);
@@ -148,7 +148,7 @@ function QuotationForm() {
 
   useDocTitle(draft?.docNum ? (isNew ? `New ${QT_NOUN.one}` : draft.status === 'Draft' ? `Draft ${QT_NOUN.one}` : qtNumber(draft)) : undefined);
 
-  if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading quotation…</Text>;
+  if (draft === undefined || !m) return <DocumentDetailSkeleton />;
   if (draft === null) return <NotFound icon="request_quote" title="Quotation not found" backTo={QT_LIST_PATH} backLabel="Back to quotations" />;
 
   const added = draft.status !== 'Draft';
@@ -245,6 +245,8 @@ function QuotationForm() {
       customerName: draft.customerName,
       contactId: draft.contactId,
       customerRef: draft.customerRef,
+      // Link the order back to this quotation so it shows in the quotation's Sales orders tab.
+      baseQuotationId: saved.id,
       currency: draft.currency,
       paymentTermId: draft.paymentTermId,
       paymentMethod: draft.paymentMethod,
@@ -305,29 +307,30 @@ function QuotationForm() {
   const tabProps = { draft, update, errors, m, ctx };
   const view = salesView(draft.currency, fx, date, currencyView, setCurrencyView);
 
-  // Indicative journal: a quotation posts nothing itself, but shows what the A/R invoice would book
-  // if it's accepted (Dr the customer / Cr revenue + output VAT) so an approver can see the impact.
-  const qtVatAccount = (code: string) => m.tax.codes.find((c) => c.code === code)?.glAccount || '2310';
-  const qtRevFactor = 1 - draft.discountPct / 100;
-  const qtJournalMap = new Map<string, number>();
-  const qtJournalAdd = (account: string, amount: number) => { if (account && amount) qtJournalMap.set(account, round2((qtJournalMap.get(account) ?? 0) + amount)); };
-  for (const l of draft.lines) {
-    const item = m.items.find((i) => i.id === l.itemId);
-    if (!item) continue;
-    const net = round2(lineNet(l) * qtRevFactor * ctx.fx);
-    qtJournalAdd(revenueAccountFor(item, m.inv.groups), -net);
-    qtJournalAdd(qtVatAccount(l.taxCode), -round2((net * ctx.rateOf(l.taxCode)) / 100));
-  }
-  const qtJournalBalance = round2([...qtJournalMap.values()].reduce((n, v) => n + v, 0));
-  if (qtJournalBalance) qtJournalAdd(customer ? controlAccountOf(customer) : '1120', -qtJournalBalance);
-  const qtJournal = ctx.fx
-    ? [...qtJournalMap.entries()].filter(([, n]) => n !== 0).map(([account, n]) => ({ account, debit: n > 0 ? n : 0, credit: n < 0 ? -n : 0 })).sort((a, b) => b.debit - a.debit)
-    : [];
-  const qtJournalEntry = <JournalPreview journal={qtJournal} accounts={[...accounts.snapshot()]} />;
+  // Second content tab: the sales orders created from this quotation (header link + item match).
+  const counts = (d: { status: string }) => d.status !== 'Draft' && d.status !== 'Cancelled';
+  const soDocsFor = (l: QuoteLine): RollupDocRow[] =>
+    (salesOrdersList ?? []).filter(counts).filter((so) => so.baseQuotationId === draft.id).flatMap((so) =>
+      so.lines
+        .filter((sl) => sl.itemId === l.itemId)
+        .map((sl): RollupDocRow => ({ id: `${so.id}:${sl.id}`, no: soNumber(so), href: `#${SO_LIST_PATH}/${so.docNum ? soNumber(so) : so.id}`, date: so.postingDate, status: so.status, intent: SO_STATUS_INTENT[so.status], quantity: sl.quantity, uomCode: sl.uomCode })));
+  const showRollups = !isNew && added && !!draft.id;
+  const contentTabs = (
+    <Tabs
+      variant="solid"
+      className="w-fit max-w-full self-start"
+      value={contentTab}
+      onValueChange={(v) => setContentTab(v as 'item' | 'orders')}
+      items={[
+        { value: 'item', label: cap(QT_NOUN.lineLabel!) },
+        { value: 'orders', label: cap(SO_NOUN.many) },
+      ]}
+    />
+  );
 
   return (
     <>
-      <Form className="flex-1" onSubmit={(e) => submit(e, !added)} noValidate>
+      <Form className="flex-1" onSubmit={(e) => e.preventDefault()} noValidate>
         <Panel className="flex-1">
           <PageHeader
             variant="plain"
@@ -349,6 +352,8 @@ function QuotationForm() {
                 noun={QT_NOUN}
                 listPath={QT_LIST_PATH}
                 mode={docMode(draft.status, { canApprove: isApprover('QT') })}
+                draft={draft}
+                onRevert={setDraft}
                 needsApproval={!draft.approved}
                 remarksOnly={readOnly}
                 busy={saving}
@@ -412,11 +417,15 @@ function QuotationForm() {
                     onPickCustomer={pickCustomer}
                     onOpenDetails={() => setCustomerDetailsOpen(true)}
                   />
-                  <DocLines
-                    {...qtDoc(tabProps, view)}
-                    footer={<SalesTotalsFooter {...tabProps} totals={totals} ctx={{ ...ctx, readOnly: readOnly || added }} withholding={[]} withRounding view={view} />}
-                  />
-                  <DocumentJournalEntry def={quotationPayment} posting={qtJournalEntry} {...tabProps} />
+                  {showRollups ? contentTabs : null}
+                  {showRollups && contentTab === 'orders' ? (
+                    <LineRollup title={cap(SO_NOUN.many)} lines={draft.lines.filter((l) => l.itemId)} loading={!salesOrdersList} docsFor={soDocsFor} empty="No sales orders from this quotation yet." />
+                  ) : (
+                    <DocLines
+                      {...qtDoc(tabProps, view)}
+                      footer={<SalesTotalsFooter {...tabProps} totals={totals} ctx={{ ...ctx, readOnly: readOnly || added }} withholding={[]} withRounding view={view} />}
+                    />
+                  )}
                   <ReferencesTable
                     refs={draft.references}
                     onChange={(references) => update({ references })}
@@ -431,8 +440,8 @@ function QuotationForm() {
                   <QtDocumentCard {...tabProps} />
                   <DocumentDates def={quotationDates} {...tabProps} />
                   <QtDeliveryCard {...tabProps} />
-                  <DocumentPayment def={quotationPayment} posting={qtJournalEntry} {...tabProps} />
-                  <ReferencesCard {...tabProps} />
+                  <DocumentPayment def={quotationPayment} {...tabProps} />
+                  <ReferencesCard {...tabProps} orderReadOnly={readOnly || added} />
                   <QtMoreCard {...tabProps} />
                   <AssignmentCard
                     draft={draft}
@@ -449,6 +458,7 @@ function QuotationForm() {
         </Panel>
       </Form>
       <CustomerDetailsPanel
+        customerRefLabel="Customer inquiry no."
         customer={customer}
         draft={draft}
         update={update}

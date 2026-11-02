@@ -70,10 +70,12 @@ describe('postTransfer (src/services/inventoryTransfers.ts)', () => {
 
   // Read live stock each time: these tests share the module-level items collection (no reset hook),
   // so pick whichever stocked WH-001 item currently has the most headroom rather than a fixed id.
+  // These assertions (conservation, doc number, shortage) are valuation-agnostic; the dedicated
+  // FIFO-layer behaviour is covered separately below, so any stocked inventory item works here.
   async function stockedItem() {
     const items = await listItems();
     const candidates = items
-      .filter((i) => i.inventoryItem && i.valuationMethod !== 'FIFO')
+      .filter((i) => i.inventoryItem)
       .map((i) => ({ item: i, have: i.warehouses.find((w) => w.code === SRC)?.inStock ?? 0 }))
       .filter((c) => c.have > 0)
       .sort((a, b) => b.have - a.have);

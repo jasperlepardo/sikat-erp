@@ -1,5 +1,6 @@
 import { arNumber, arTotal, listArInvoices } from '../../../services/arInvoices';
 import { cachedUntilChange } from '../../../services/store';
+import { diNumber, diTotal, listArDownPaymentInvoices } from '../../../services/arDownPaymentInvoices';
 import { arCmNumber, arCmTotal, listArCreditMemos } from '../../../services/arCreditMemos';
 import { dnNumber, dnTotal, listDeliveries } from '../../../services/deliveries';
 import { amountDue, listIncomingPayments, incomingNumber } from '../../../services/incomingPayments';
@@ -19,6 +20,8 @@ import {
   AR_STATUS_INTENT,
   BA_LIST_PATH,
   BA_STATUS_INTENT,
+  DI_LIST_PATH,
+  DI_STATUS_INTENT,
   DN_LIST_PATH,
   DN_STATUS_INTENT,
   QT_LIST_PATH,
@@ -32,7 +35,7 @@ import {
 } from '../paths';
 import { JE_LIST_PATH, JE_STATUS_INTENT } from '../../accounting/paths';
 
-export type SalesDocKind = 'QT' | 'SO' | 'DN' | 'ARINV' | 'RCV' | 'ARCM' | 'SRT' | 'JE' | 'BA';
+export type SalesDocKind = 'QT' | 'SO' | 'DN' | 'ARINV' | 'ARDI' | 'RCV' | 'ARCM' | 'SRT' | 'JE' | 'BA';
 
 export type { LinkedDocument };
 
@@ -134,7 +137,30 @@ const SOURCES: Record<SalesDocKind, () => Promise<DocNode[]>> = {
           id: b.baseId,
           lines: ar.lines.filter((l) => l.baseType === b.baseType && l.baseId === b.baseId) as CoveredLine[],
         })),
+        // A/R down payment invoices drawn on this invoice: the advance came before the final bill.
+        ...(ar.drawnDownPayments ?? []).map((d) => ({ kind: 'ARDI' as const, id: d.requestId, lines: [] as CoveredLine[], note: `Drew ${ar.currency} ${formatAmount(d.amount)}` })),
       ],
+    }));
+  },
+
+  ARDI: async () => {
+    const [invs, codes] = await Promise.all([listArDownPaymentInvoices(), taxCodes.list()]);
+    return invs.map((d) => ({
+      kind: 'ARDI' as const,
+      id: d.id,
+      type: 'A/R down payment invoice',
+      number: diNumber(d),
+      href: `${DI_LIST_PATH}/${d.id}`,
+      date: d.postingDate,
+      status: d.status,
+      intent: DI_STATUS_INTENT[d.status],
+      currency: d.currency,
+      total: diTotal(d, codes),
+      partnerId: d.customerId,
+      items: coveredLines(d.lines),
+      bases: [...new Set(d.lines.filter((l) => l.baseType === 'SO').map((l) => l.baseId))].map((soId) => ({
+        kind: 'SO' as const, id: soId, lines: d.lines.filter((l) => l.baseId === soId) as CoveredLine[],
+      })),
     }));
   },
 
@@ -155,7 +181,7 @@ const SOURCES: Record<SalesDocKind, () => Promise<DocNode[]>> = {
       items: [],
       bases: p.rows
         .filter((r) => r.selected && r.amount > 0)
-        .map((r) => ({ kind: 'ARINV' as const, id: r.invoiceId, lines: [], note: `Collected ${p.currency} ${formatAmount(r.amount)}` })),
+        .map((r) => ({ kind: (r.docType === 'ARDI' ? 'ARDI' : 'ARINV') as SalesDocKind, id: r.invoiceId, lines: [], note: `Collected ${p.currency} ${formatAmount(r.amount)}` })),
     }));
   },
 

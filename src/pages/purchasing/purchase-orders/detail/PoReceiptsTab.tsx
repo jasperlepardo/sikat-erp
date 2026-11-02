@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react';
 import { TableContent, TableStatus, Text } from '@jasperlepardo/sikat-design-system';
 import { DataTable } from '../../../../components/form/DataTable';
 import type { GoodsReturn, ReturnBaseType } from '../../../../mocks/goodsReturns';
@@ -13,8 +12,8 @@ import {
   AP_LIST_PATH,
   AP_STATUS_INTENT,
   GR_LIST_PATH,
+  GR_NOUN,
   GR_STATUS_INTENT,
-  PO_NOUN,
   RETURN_LIST_PATH,
   RETURN_STATUS_INTENT,
 } from '../../paths';
@@ -70,8 +69,7 @@ export function usePoReceiptDocs(): PoReceiptDocs | undefined {
   return receipts && invoices && goodsReturns ? { receipts, invoices, goodsReturns } : undefined;
 }
 
-/** `tabs`: the Item / Receipts switch, shown at the top of the card body. */
-export function PoReceiptsTab({ draft, docs, tabs }: { draft: PoDraft; docs: PoReceiptDocs | undefined; tabs: ReactNode }) {
+export function PoReceiptsTab({ draft, docs }: { draft: PoDraft; docs: PoReceiptDocs | undefined }) {
   const { receipts, invoices, goodsReturns } = docs ?? { receipts: [], invoices: [], goodsReturns: [] };
 
   // Goods returns copied from one receipt or invoice line.
@@ -165,7 +163,7 @@ export function PoReceiptsTab({ draft, docs, tabs }: { draft: PoDraft; docs: PoR
     <DataTable
       variant="card"
       icon="list_alt"
-      title={cap(PO_NOUN.lineLabel!)}
+      title={cap(GR_NOUN.many)}
       noPagination
       rows={rows}
       getRowId={(r) => r.id}
@@ -264,8 +262,6 @@ export function PoReceiptsTab({ draft, docs, tabs }: { draft: PoDraft; docs: PoR
             ),
         },
       ]}
-    >
-      {tabs}
-    </DataTable>
+    />
   );
 }

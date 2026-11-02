@@ -8,8 +8,8 @@ import {
   Form,
   Panel,
   Tabs,
-  Text,
 } from '@jasperlepardo/sikat-design-system';
+import { DocumentDetailSkeleton } from '../../../../components/form/skeletons/DocumentDetailSkeleton';
 import { PageHeader } from '../../../../components/form/PageHeader';
 import { DetailColumns } from '../../../../components/form/DetailColumns';
 import { type Errors } from '../../../../components/form/fields';
@@ -58,7 +58,8 @@ import { DocumentFlow } from '../../shared/DocumentFlow';
 import { GrLogistics } from './GrLogisticsCard';
 import { DocumentPayment, DocumentJournalEntry } from '../../../../components/form/PaymentCard';
 import { goodsReceiptPayment } from '../../../documentPaymentDefs';
-import { buildGrContext, defaultPayTo, defaultShipTo, linesFromPo, type GrContext, type GrDraft, type GrMasters } from './types';
+import { buildGrContext, defaultPayTo, defaultShipTo, linesFromApri, linesFromPo, type GrContext, type GrDraft, type GrMasters } from './types';
+import { getApReserveInvoice } from '../../../../services/apReserveInvoices';
 import { receivingVendorAddressFields } from '../../shared/vendorAddresses';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
@@ -72,7 +73,12 @@ import { AssignmentCard } from '../../../../components/form/AssignmentCard';
 import { ReferencesTable } from '../../shared/ReferencesTable';
 import { PurchReferencesCard } from '../../shared/PurchReferencesCard';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
-import { GR_LIST_PATH, GR_NOUN, GR_STATUS_INTENT } from '../../paths';
+import { AP_NOUN, GR_LIST_PATH, GR_NOUN, GR_STATUS_INTENT } from '../../paths';
+import { cap } from '../../../../components/form/noun';
+import { useAsync } from '../../../../services/useAsync';
+import { listApInvoices } from '../../../../services/apInvoices';
+import { listGoodsReturns } from '../../../../services/goodsReturns';
+import { GrInvoicesTab } from './GrInvoicesTab';
 
 type TabId = 'contents' | 'logistics' | 'accounting';
 
@@ -144,7 +150,7 @@ function GoodsReceiptForm() {
   const isNew = id === 'new';
   const navigate = useNavigate();
   const location = useLocation();
-  const state = location.state as { copyFrom?: GrDraft; fromPo?: string; picks?: LinePick[] } | null;
+  const state = location.state as { copyFrom?: GrDraft; fromPo?: string; fromApri?: string; picks?: LinePick[] } | null;
 
   const grApproved = !needsApproval('GRPO');
   const [draft, setDraft] = useState<GrDraft | null | undefined>(
@@ -161,6 +167,9 @@ function GoodsReceiptForm() {
   const [currencyView, setCurrencyView] = useState('');
   const [copying, setCopying] = useState(false);
   const [createHop, setCreateHop] = useState<CopyHop<GoodsReceipt> | null>(null);
+  const [contentTab, setContentTab] = useState<'item' | 'invoices'>('item');
+  const apInvoices = useAsync(listApInvoices, []);
+  const goodsReturnsList = useAsync(listGoodsReturns, []);
 
   useEffect(() => {
     Promise.all([
@@ -190,6 +199,26 @@ function GoodsReceiptForm() {
         // Rebuilt from the PO each time, so running the effect twice doesn't copy the lines twice.
         setDraft((d) => d && withPo({ ...d, ...vendorDefaults(vendor, d), lines: [], orderNumber: '' }, po, linesFromPo(po, picks, masters), masters));
       }
+      // Receive against an A/P reserve invoice: the invoice billed the goods; this receives them.
+      if (isNew && state?.fromApri) {
+        getApReserveInvoice(state.fromApri).then((apri) => {
+          if (!apri) return;
+          const vendor = vendors.find((v) => v.id === apri.vendorId);
+          const picks = apri.lines
+            .filter((l) => l.itemId && l.quantity - (l.receivedQty ?? 0) > 0)
+            .map((l) => ({ lineId: l.id, qty: l.quantity - (l.receivedQty ?? 0) }));
+          setDraft((d) => d && ({
+            ...d,
+            ...vendorDefaults(vendor, d),
+            currency: apri.currency,
+            paymentTermId: apri.paymentTermId,
+            paymentMethod: apri.paymentMethod,
+            projectId: apri.projectId,
+            orderNumber: apri.orderNumber,
+            lines: linesFromApri(apri, picks, masters),
+          }));
+        });
+      }
     });
     if (isNew || !id) return;
     let cancelled = false;
@@ -202,7 +231,7 @@ function GoodsReceiptForm() {
   }, [id, isNew]);
 
   useDocTitle(draft?.docNum ? (isNew ? `New ${GR_NOUN.one}` : draft.status !== 'Draft' ? grNumber(draft) : `Draft ${GR_NOUN.one}`) : undefined);
-  if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading goods receipt…</Text>;
+  if (draft === undefined || !m) return <DocumentDetailSkeleton />;
   if (draft === null) return <NotFound icon="inventory" title="Goods receipt not found" backTo={GR_LIST_PATH} backLabel="Back to goods receipts" />;
 
   const ctx = buildGrContext(draft, m);
@@ -335,9 +364,23 @@ function GoodsReceiptForm() {
   const journalEntry = <JournalPreview journal={journal} accounts={m.inv.accounts} />;
   const copyablePos = draft.vendorId ? receivablePos(m.orders, draft.vendorId).filter((po) => !ctx.based || po.currency === draft.currency) : [];
 
+  const showRollups = !isNew && added && !!draft.id;
+  const contentTabs = (
+    <Tabs
+      variant="solid"
+      className="w-fit max-w-full self-start"
+      value={contentTab}
+      onValueChange={(v) => setContentTab(v as 'item' | 'invoices')}
+      items={[
+        { value: 'item', label: cap(GR_NOUN.lineLabel!) },
+        { value: 'invoices', label: cap(AP_NOUN.many) },
+      ]}
+    />
+  );
+
   return (
     <>
-    <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
+    <Form className="flex-1" onSubmit={(e) => e.preventDefault()} noValidate>
       <Panel className="flex-1">
         <PageHeader
           variant="plain"
@@ -351,6 +394,8 @@ function GoodsReceiptForm() {
               noun={GR_NOUN}
               listPath={GR_LIST_PATH}
               mode={docMode(draft.status, { canApprove: isApprover('GRPO') })}
+              draft={draft}
+              onRevert={setDraft}
               needsApproval={!draft.approved}
               remarksOnly={added}
               busy={saving}
@@ -404,7 +449,12 @@ function GoodsReceiptForm() {
                   pickVendor={pickVendor}
                   onOpenDetails={() => setVendorDetailsOpen(true)}
                 />
-                <DocLines {...grDoc({ ...sectionProps, onCopyClick: () => setCopying(true), copyableCount: copyablePos.length }, view)} />
+                {showRollups ? contentTabs : null}
+                {showRollups && contentTab === 'invoices' ? (
+                  <GrInvoicesTab gr={draft} apInvoices={apInvoices} goodsReturns={goodsReturnsList} />
+                ) : (
+                  <DocLines {...grDoc({ ...sectionProps, onCopyClick: () => setCopying(true), copyableCount: copyablePos.length }, view)} />
+                )}
                 <DocumentJournalEntry def={goodsReceiptPayment} posting={journalEntry} {...sectionProps} />
                 <ReferencesTable refs={draft.references} onChange={(references) => update({ references })} readOnly={ctx.readOnly} description="Other documents this receipt refers to, e.g. the vendor's delivery receipt or a courier waybill." />
                 <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach the vendor's delivery receipt, packing list or proof of receipt." />
@@ -438,6 +488,7 @@ function GoodsReceiptForm() {
       readOnly={ctx.readOnly}
       open={vendorDetailsOpen}
       onClose={() => setVendorDetailsOpen(false)}
+      vendorRefLabel="Vendor delivery receipt no."
       vendorRefHint="The vendor's delivery receipt or waybill no."
       addresses={ctx.vendor ? receivingVendorAddressFields(m, ctx.vendor) : []}
     />

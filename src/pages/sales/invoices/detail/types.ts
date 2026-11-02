@@ -1,5 +1,6 @@
 import type { Errors } from '../../../../components/form/fields';
 import { newArLine, type ArLine } from '../../../../mocks/arInvoices';
+import type { ArDownPaymentInvoice } from '../../../../mocks/arDownPaymentInvoices';
 import type { Delivery, DnLine } from '../../../../mocks/deliveries';
 import type { SalesOrder, SoLine } from '../../../../mocks/salesOrders';
 import type { ArInput } from '../../../../services/arInvoices';
@@ -10,9 +11,10 @@ import { buildDnContext, type DnContext, type DnDraft, type DnMasters } from '..
 
 export type ArDraft = ArInput;
 
-/** The delivery form's master data, plus the deliveries to copy from. */
+/** The delivery form's master data, plus the deliveries to copy from and down payment invoices to draw. */
 export interface ArMasters extends DnMasters {
   deliveries: Delivery[];
+  downPaymentInvoices: ArDownPaymentInvoice[];
 }
 
 export type ArContext = DnContext;

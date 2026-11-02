@@ -1,21 +1,6 @@
-import { useMemo, useState } from 'react';
 import { useLocation } from 'react-router';
-import {
-  Alert,
-  Card,
-  Panel,
-  Table,
-  TableContent,
-  TableStatus,
-  Text,
-  type TableColumn,
-} from '@jasperlepardo/sikat-design-system';
-import { dateField, linesField, masterField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
-import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
-import { currencyDef, salesEmployeeDef } from '../../settings/masterDefs';
-import { fillCardClass, useListPage } from '../../../components/form/DataTable';
-import { PageHeader } from '../../../components/form/PageHeader';
-import { cap } from '../../../components/form/noun';
+import { Alert, TableContent, TableStatus, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { ListPage } from '../../../components/form/ListPage';
 import { AR_STATUSES, type ArInvoice } from '../../../mocks/arInvoices';
 import { formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
@@ -24,15 +9,16 @@ import { arNumber, arTotal, listArInvoices } from '../../../services/arInvoices'
 import { useAsync } from '../../../services/useAsync';
 import { listDeliveries } from '../../../services/deliveries';
 import { listSalesOrders, soNumber } from '../../../services/salesOrders';
+import { dateField, linesField, masterField, numberField, partnerField, statusField, textField } from '../../../components/filter/fieldKit';
+import { draftScope, draftSplit, scopeStatuses } from '../../../components/filter/useListPresets';
+import { currencyDef, salesEmployeeDef } from '../../settings/masterDefs';
 import { AR_LIST_PATH, AR_NOUN, AR_STATUS_INTENT } from '../paths';
 
-export function ArInvoiceList() {
+export function ArInvoiceList({ draftsOnly = false, compact, selectedId }: { draftsOnly?: boolean; compact?: boolean; selectedId?: string } = {}) {
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const data = useAsync(() => Promise.all([listArInvoices(), taxCodes.list(), listSalesOrders(), listDeliveries()]), []);
-  const [query, setQuery] = useState('');
-  const { resetPage, paginate } = useListPage();
   const [orders, codes, salesOrders, deliveries] = data ?? [undefined, [], [], []];
-  /** The sales orders an invoice bills, by number ("SO-2026-0021"): copied from the order, or from a delivery of it. */
+
   const baseOrders = (inv: ArInvoice) => {
     const ids = new Set<string>();
     for (const l of inv.lines) {
@@ -46,58 +32,24 @@ export function ArInvoiceList() {
     return [...ids].map((id) => salesOrders.find((o) => o.id === id)).filter((o) => o !== undefined).map(soNumber);
   };
   const totalOf = (so: ArInvoice) => arTotal(so, codes);
+
   const fields = [
     textField<ArInvoice>('no', 'No.', arNumber),
-    textField<ArInvoice>('customer', 'Customer', (d) => d.customerName),
+    partnerField<ArInvoice>('customer', 'Customer', (d) => d.customerId, (d) => d.customerName, orders),
     textField<ArInvoice>('customerCode', 'Customer code', (d) => d.customerCode),
-    textField<ArInvoice>('customerRef', 'Customer ref.', (d) => d.customerRef),
+    textField<ArInvoice>('customerRef', 'Customer PO no.', (d) => d.customerRef),
     dateField<ArInvoice>('postingDate', 'Posting date', (d) => d.postingDate),
     dateField<ArInvoice>('dueDate', 'Due date', (d) => d.dueDate),
     textField<ArInvoice>('order', 'Order', (d) => d.orderNumber),
     numberField<ArInvoice>('total', 'Total', totalOf),
-    statusField<ArInvoice>(AR_STATUSES),
+    statusField<ArInvoice>(scopeStatuses(draftsOnly, AR_STATUSES)),
     masterField<ArInvoice>('currency', 'Currency', currencyDef, (d) => d.currency),
     masterField<ArInvoice>('salesEmployee', 'Sales employee', salesEmployeeDef, (d) => d.salesEmployeeId),
     linesField<ArInvoice>(),
   ];
-  const presets = useListPresets({
-    list: 'ar-invoices',
-    fields,
-    builtIns: statusViews(AR_NOUN.many, AR_STATUSES),
-    defaultSort: { key: 'postingDate', direction: 'desc' },
-    rows: orders,
-    onChange: resetPage,
-  });
-  const { sort, setSort } = presets;
-
-  const rows = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const filtered = presets.apply(orders ?? []).filter(
-      (so) =>
-        (!q || [arNumber(so), so.customerCode, so.customerName, so.customerRef, so.orderNumber, ...so.lines.map((l) => `${l.itemNo} ${l.description}`)].join(' ').toLowerCase().includes(q)),
-    );
-    if (!sort) return filtered;
-    const dir = sort.direction === 'asc' ? 1 : -1;
-    const value = (so: ArInvoice): string | number => (sort.key === 'total' ? totalOf(so) : sort.key === 'docNum' ? so.docNum : String(so[sort.key as keyof ArInvoice] ?? ''));
-    return [...filtered].sort((a, b) => {
-      const x = value(a);
-      const y = value(b);
-      return (x < y ? -1 : x > y ? 1 : 0) * dir;
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orders, presets.filter, query, sort, codes]);
-
-  const { visible: onPage, pagination } = paginate(rows);
 
   const columns: TableColumn<ArInvoice>[] = [
-    {
-      key: 'docNum',
-      header: 'No.',
-      sortable: true,
-      cell: (so) => (
-        <TableContent href={`#${AR_LIST_PATH}/${so.docNum ? arNumber(so) : so.id}`} subcopy={so.customerRef ? `Customer ref. ${so.customerRef}` : undefined}>{arNumber(so)}</TableContent>
-      ),
-    },
+    { key: 'docNum', header: 'No.', sortable: true, cell: (so) => <TableContent href={`#${AR_LIST_PATH}/${so.docNum ? arNumber(so) : so.id}`} subcopy={so.customerRef ? `Customer PO no. ${so.customerRef}` : undefined}>{arNumber(so)}</TableContent> },
     { key: 'customerName', header: 'Customer', sortable: true, cell: (so) => <TableContent subcopy={so.customerCode}>{so.customerName || '—'}</TableContent> },
     { key: 'postingDate', header: 'Posting date', align: 'end', cell: (so) => formatDate(so.postingDate) },
     { key: 'orderNumber', header: 'Order', cell: (so) => baseOrders(so).join(', ') || so.orderNumber || '—' },
@@ -107,47 +59,30 @@ export function ArInvoiceList() {
   ];
 
   return (
-    <Panel className="flex-1">
-      <PageHeader
-        showSearch
-        searchLabel={`Search ${AR_NOUN.many}`}
-        searchPlaceholder="Search by invoice no., customer, order or item"
-        searchValue={query}
-        onSearchChange={(value) => {
-          setQuery(value);
-          resetPage();
-        }}
-        icon="receipt"
-        title={cap(AR_NOUN.many)}
-        create={{ noun: AR_NOUN, to: AR_LIST_PATH }}
-      />
-      <Panel.Body className="flex flex-col gap-2">
-        {notice ? (
-          <Alert intent="success" variant="outline" title="Saved">
-            {notice}
-          </Alert>
-        ) : null}
-        {presets.toolbar(null)}
-        <Card className={fillCardClass(onPage.length)}>
-          {!orders ? (
-            <Text tone="muted" className="p-4">Loading {AR_NOUN.many}…</Text>
-          ) : orders.length ? (
-            <Table
-              caption={cap(AR_NOUN.many)}
-              columns={columns}
-              rows={onPage}
-              getRowId={(so) => so.id}
-              sort={sort}
-              onSortChange={setSort}
-              layout="fill"
-              pagination={pagination}
-            />
-          ) : (
-            <Text tone="muted" className="p-4">No {AR_NOUN.many} yet. Start one from a sales order or delivery (More actions › Create {AR_NOUN.one}), or with New {AR_NOUN.one}.</Text>
-          )}
-        </Card>
-      </Panel.Body>
-      {presets.panel}
-    </Panel>
+    <ListPage
+      rows={orders}
+      columns={columns}
+      fields={fields}
+      noun={AR_NOUN}
+      icon="receipt"
+      basePath={AR_LIST_PATH}
+      listKey="ar-invoices"
+      builtIns={draftSplit(draftsOnly, AR_NOUN.many, AR_STATUSES)}
+      scope={draftScope(draftsOnly, AR_STATUSES)}
+      defaultSort={{ key: 'postingDate', direction: 'desc' }}
+      search={{ placeholder: 'Search by invoice no., customer, order or item', label: `Search ${AR_NOUN.many}` }}
+      header={notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : undefined}
+      emptyMessage={`No ${AR_NOUN.many} yet. Start one from a sales order or delivery (More actions › Create ${AR_NOUN.one}), or with New ${AR_NOUN.one}.`}
+      compact={compact}
+      selectedId={selectedId}
+      getRowId={(r) => r.docNum ? arNumber(r) : r.id}
+      filterFn={(so, q) => !q || [arNumber(so), so.customerCode, so.customerName, so.customerRef, so.orderNumber, ...so.lines.map((l) => `${l.itemNo} ${l.description}`)].join(' ').toLowerCase().includes(q)}
+      sortFn={(a, b, sort) => {
+        const value = (so: ArInvoice): string | number =>
+          sort.key === 'total' ? totalOf(so) : sort.key === 'docNum' ? so.docNum : String(so[sort.key as keyof ArInvoice] ?? '');
+        const x = value(a); const y = value(b);
+        return x < y ? -1 : x > y ? 1 : 0;
+      }}
+    />
   );
 }

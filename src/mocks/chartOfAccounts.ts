@@ -220,7 +220,13 @@ const CHART: Account[] = [
       ['1160', 'Allowance for Doubtful Accounts', ['contra']],
     ]],
     ['1300', 'Inventories', [
-      ['1310', 'Inventory – Merchandise'],
+      ['1310', 'Inventory – iPhone'],
+      ['1311', 'Inventory – iPad'],
+      ['1312', 'Inventory – Mac'],
+      ['1313', 'Inventory – Apple Watch'],
+      ['1314', 'Inventory – AirPods'],
+      ['1315', 'Inventory – Home & TV'],
+      ['1316', 'Inventory – Accessories'],
       ['1320', 'Inventory – Raw Materials'],
       ['1330', 'Inventory – Finished Goods'],
       ['1340', 'Goods in Transit'],
@@ -264,6 +270,7 @@ const CHART: Account[] = [
       ['2150', 'Customer Down Payments'],
       ['2155', 'Down Payments – Interim'],
       ['2160', 'Gift Certificates Outstanding'],
+      ['2165', 'Unearned Revenue – Reserve Invoices'],
     ]],
     ['2300', 'Taxes Payable', [
       ['2310', 'Output VAT Payable'],
@@ -297,7 +304,13 @@ const CHART: Account[] = [
   ]]),
 
   ...drawer('Revenue', ['4000', 'Revenue', [
-    ['4010', 'Sales – Merchandise'],
+    ['4010', 'Sales – iPhone'],
+    ['4011', 'Sales – iPad'],
+    ['4012', 'Sales – Mac'],
+    ['4013', 'Sales – Apple Watch'],
+    ['4014', 'Sales – AirPods'],
+    ['4015', 'Sales – Home & TV'],
+    ['4016', 'Sales – Accessories'],
     ['4020', 'Sales – Manufactured'],
     ['4030', 'Service Revenue'],
     ['4040', 'Sales Returns and Allowances', ['contra']],
@@ -305,7 +318,13 @@ const CHART: Account[] = [
   ]]),
 
   ...drawer('Cost of sales', ['5000', 'Cost of Sales', [
-    ['5010', 'COGS – Merchandise'],
+    ['5010', 'COGS – iPhone'],
+    ['5011', 'COGS – iPad'],
+    ['5012', 'COGS – Mac'],
+    ['5013', 'COGS – Apple Watch'],
+    ['5014', 'COGS – AirPods'],
+    ['5015', 'COGS – Home & TV'],
+    ['5016', 'COGS – Accessories'],
     ['5020', 'COGS – Manufactured'],
     ['5030', 'Cost of Services'],
     ['5040', 'Freight-in'],
@@ -388,7 +407,7 @@ const DOCUMENT_ONLY = ['1300', '1410', '1420', '1430', '2310', '2320', '2330'];
 const CONFIDENTIAL = ['6005', '2410'];
 /** Tax code proposed on manual postings. */
 const DEFAULT_TAX: Rule<string> = [
-  ['4010', 'OVAT'], ['4030', 'OVAT'],
+  ['4010', 'OVAT'], ['4011', 'OVAT'], ['4012', 'OVAT'], ['4013', 'OVAT'], ['4014', 'OVAT'], ['4015', 'OVAT'], ['4016', 'OVAT'], ['4030', 'OVAT'],
   // Store supplies are goods; freight and the operating expenses below are services.
   ['6230', 'IVAT'],
   ['5040', 'IVAT-S'],

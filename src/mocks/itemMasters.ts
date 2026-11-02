@@ -258,18 +258,18 @@ const group = (
   tax: TaxDefaults = GOODS_TAX,
 ): ItemGroup => ({ id: `ig-${prefix}`, name, prefix, valuationMethod, inventoryAccount, cogsAccount, revenueAccount, ...tax, active: true });
 
-const MERCH = ['1310', '5010', '4010'] as const;
 const NON_STOCK = ['', '5030', '4030'] as const;
 export const SEED_ITEM_GROUPS: ItemGroup[] = [
   // Apple Premium Reseller catalog (mocks/appleCatalog.ts).
-  group('iPhone', 'IPH', 'Serial/Batch', ...MERCH),
-  group('iPad', 'IPD', 'Serial/Batch', ...MERCH),
-  group('Mac', 'MAC', 'Serial/Batch', ...MERCH),
-  group('Apple Watch', 'AW', 'Serial/Batch', ...MERCH),
-  group('AirPods', 'APD', 'Serial/Batch', ...MERCH),
-  group('Home & TV', 'HOM', 'Serial/Batch', ...MERCH),
-  // FIFO: accessories come from several distributors at prices that move batch to batch.
-  group('Accessories', 'ACC', 'FIFO', ...MERCH),
+  // FIFO: stock is costed at the purchase price of the specific layers it draws from, oldest first.
+  // Each category has its own Inventory / COGS / Sales accounts (inventory, cogs, revenue).
+  group('iPhone', 'IPH', 'FIFO', '1310', '5010', '4010'),
+  group('iPad', 'IPD', 'FIFO', '1311', '5011', '4011'),
+  group('Mac', 'MAC', 'FIFO', '1312', '5012', '4012'),
+  group('Apple Watch', 'AW', 'FIFO', '1313', '5013', '4013'),
+  group('AirPods', 'APD', 'FIFO', '1314', '5014', '4014'),
+  group('Home & TV', 'HOM', 'FIFO', '1315', '5015', '4015'),
+  group('Accessories', 'ACC', 'FIFO', '1316', '5016', '4016'),
   group('AppleCare', 'ACP', 'Moving Average', ...NON_STOCK, SERVICE_TAX),
   group('Gift Certificates', 'GC', 'Moving Average', '', '5030', '2160', SERVICE_TAX),
   group('Services', 'SVC', 'Moving Average', ...NON_STOCK, SERVICE_TAX),

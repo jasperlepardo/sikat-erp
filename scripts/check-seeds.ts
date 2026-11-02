@@ -247,7 +247,8 @@ check('Nothing posts after the as-of day', L.entries.filter((e) => e.postingDate
   const fifo = S.layers.filter((l) => l.qty > 0).reduce((n, l) => n + l.qty * l.unitCost, 0);
   const average = items.filter((i) => i.inventoryItem && i.valuationMethod !== 'FIFO').reduce((n, i) => n + i.warehouses.reduce((k, w) => k + w.inStock, 0) * i.itemCost, 0);
   const value = fifo + average;
-  check('Inventory (1310) equals the stock on hand at cost (within 0.01%)', near(bal('1310'), value, value * 0.0001) ? [] : [`ledger ${bal('1310')}, stock ${r2(value)}`]);
+  const inv = bal('1310', '1311', '1312', '1313', '1314', '1315', '1316');
+  check('Inventory (1300 merchandise) equals the stock on hand at cost (within 0.01%)', near(inv, value, value * 0.0001) ? [] : [`ledger ${inv}, stock ${r2(value)}`]);
 }
 // Cash: no account below zero on any day.
 {
@@ -524,7 +525,7 @@ check('Nothing posts after the as-of day', L.entries.filter((e) => e.postingDate
 }
 
 const profit = -r2([...balance.entries()].filter(([a]) => a >= '4000').reduce((n, [, v]) => n + v, 0));
-console.log(`\n${L.entries.length} journal entries · revenue ${r2(-bal('4010', '4030', '4040', '4050')).toLocaleString()} · profit before tax ${profit.toLocaleString()} (1 Jan – ${SEED_AS_OF})`);
+console.log(`\n${L.entries.length} journal entries · revenue ${r2(-bal('4010', '4011', '4012', '4013', '4014', '4015', '4016', '4030', '4040', '4050')).toLocaleString()} · profit before tax ${profit.toLocaleString()} (1 Jan – ${SEED_AS_OF})`);
 if (failures.length) {
   console.log(`\n${failures.length} check(s) failed.`);
   process.exit(1);

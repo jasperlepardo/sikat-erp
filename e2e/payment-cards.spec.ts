@@ -43,16 +43,18 @@ test('A/R invoice: payment is inline in the form, not behind the customer drawer
   expect(errors, 'page or console errors').toEqual([]);
 });
 
-test('editing a payment-card field (journal remark) on an open PO saves and survives a reload', async ({ page }) => {
+test('editing a payment-card field (cash discount date offset) on an open PO saves and survives a reload', async ({ page }) => {
+  // A PO posts no journal of its own, so it carries no accounting fields (no journal remark);
+  // this edits a field the Payment card still owns to prove a payment-card edit persists.
   const errors = watchErrors(page);
   await open(page, 'purchasing/purchase-orders/po-060/details');
 
-  const marker = 'E2E payment-card check';
-  await page.getByLabel('Journal remark').fill(marker);
+  const marker = '7';
+  await page.getByLabel('Cash discount date offset').fill(marker);
   await page.getByRole('button', { name: 'Save changes', exact: true }).click();
   await expect(page).toHaveURL(/purchase-orders$/);
 
   await open(page, 'purchasing/purchase-orders/po-060/details');
-  await expect(page.getByLabel('Journal remark')).toHaveValue(marker);
+  await expect(page.getByLabel('Cash discount date offset')).toHaveValue(marker);
   expect(errors, 'page or console errors').toEqual([]);
 });

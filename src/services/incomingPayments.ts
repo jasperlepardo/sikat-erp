@@ -16,6 +16,8 @@ import type { Item } from '../mocks/items';
 import type { Partner } from '../mocks/partners';
 import type { TaxCode } from '../mocks/taxes';
 import { applyArPayments, arAmounts, arNumber, installmentSchedule, listArInvoices } from './arInvoices';
+import { applyDiPayments, diNumber, diTotal, listArDownPaymentInvoices } from './arDownPaymentInvoices';
+import type { ArDownPaymentInvoice } from '../mocks/arDownPaymentInvoices';
 import { todayISO } from './dates';
 import type { JournalLine } from './inventoryTransfers';
 import { postDocumentEntry, reverseDocumentEntry } from './journalEntries';
@@ -55,6 +57,8 @@ export interface OpenDocContext {
   customers: readonly Partner[];
   items: readonly Item[];
   codes: readonly TaxCode[];
+  /** Open A/R down payment invoices, so a customer payment can settle an advance too. Optional for callers that only pay invoices. */
+  downPaymentInvoices?: readonly ArDownPaymentInvoice[];
 }
 
 /**
@@ -64,6 +68,16 @@ export interface OpenDocContext {
 export function openRows(customerId: string, currency: string, invoices: readonly ArInvoice[], ctx: OpenDocContext): IncomingRow[] {
   const customer = ctx.customers.find((c) => c.id === customerId);
   const out: IncomingRow[] = [];
+  // Open A/R down payment invoices the customer still owes — settled like an ordinary invoice, one row each.
+  for (const d of (ctx.downPaymentInvoices ?? []).filter((x) => x.customerId === customerId && x.status === 'Open' && x.currency === currency).sort((a, b) => a.dueDate.localeCompare(b.dueDate))) {
+    const balance = round2(diTotal(d, [...ctx.codes]) - d.appliedAmount);
+    if (balance <= 0) continue;
+    out.push({
+      id: `${d.id}-1`, invoiceId: d.id, docNo: diNumber(d), installment: 0, installments: 1, docDate: d.postingDate,
+      dueDate: d.dueDate, total: balance, wtAmount: 0, balanceDue: balance, blocked: false, cashDiscountPct: 0, amount: balance,
+      invoiceFx: d.fxRate || 1, controlAccount: d.controlAccount || '1120', projectId: d.projectId, selected: false, docType: 'ARDI',
+    });
+  }
   for (const inv of invoices.filter((i) => i.customerId === customerId && i.status === 'Open' && i.currency === currency).sort((a, b) => a.dueDate.localeCompare(b.dueDate))) {
     const amt = arAmounts(inv, customer, ctx.items, ctx.codes);
     if (amt.balanceDue <= 0) continue;
@@ -187,9 +201,13 @@ export async function saveIncomingNotes(id: string, patch: Pick<IncomingPayment,
   return payments.save({ ...cur, ...patch });
 }
 
-/** What each invoice settles in this payment, with its net due — for applying to the invoices. */
+/** What each ordinary invoice settles in this payment, with its net due — for applying to the invoices. */
 const settlements = (p: Pick<IncomingPayment, 'rows'>, dueOf: (invoiceId: string) => number) =>
-  paidRows(p).map((r) => ({ invoiceId: r.invoiceId, amount: rowSettled(r), due: dueOf(r.invoiceId) }));
+  paidRows(p).filter((r) => r.docType !== 'ARDI').map((r) => ({ invoiceId: r.invoiceId, amount: rowSettled(r), due: dueOf(r.invoiceId) }));
+
+/** What each A/R down payment invoice settles in this payment — applied to the advance. */
+const diSettlements = (p: Pick<IncomingPayment, 'rows'>, fx: number) =>
+  paidRows(p).filter((r) => r.docType === 'ARDI').map((r) => ({ requestId: r.invoiceId, amount: rowSettled(r), amountLc: round2(rowSettled(r) * fx) }));
 
 /**
  * Add the payment. Invoice balances are re-checked as they are now (so two payments can't settle
@@ -198,13 +216,21 @@ const settlements = (p: Pick<IncomingPayment, 'rows'>, dueOf: (invoiceId: string
  */
 export async function addIncomingPayment(input: IncomingInput, fx: number, ctx: OpenDocContext): Promise<IncomingPayment> {
   const invoices = await listArInvoices();
+  const dis = ctx.downPaymentInvoices ?? (await listArDownPaymentInvoices());
   const customer = ctx.customers.find((c) => c.id === input.customerId);
   const amounts = new Map(invoices.map((i) => [i.id, arAmounts(i, customer, ctx.items, ctx.codes)]));
-  const byInvoice = new Map<string, number>();
-  for (const r of paidRows(input)) byInvoice.set(r.invoiceId, round2((byInvoice.get(r.invoiceId) ?? 0) + rowSettled(r)));
-  const over = [...byInvoice].filter(([id, amt]) => amt > (amounts.get(id)?.balanceDue ?? 0) + 0.005);
+  // A down payment invoice's still-collectible balance: its gross total less what's already applied.
+  const diBalance = (id: string) => { const d = dis.find((x) => x.id === id); return d ? round2(diTotal(d, [...ctx.codes]) - d.appliedAmount) : 0; };
+  const balanceOf = (r: { invoiceId: string; docType?: 'ARDI' }) => (r.docType === 'ARDI' ? diBalance(r.invoiceId) : amounts.get(r.invoiceId)?.balanceDue ?? 0);
+  const byInvoice = new Map<string, { amount: number; row: (typeof input.rows)[number] }>();
+  for (const r of paidRows(input)) byInvoice.set(r.invoiceId, { amount: round2((byInvoice.get(r.invoiceId)?.amount ?? 0) + rowSettled(r)), row: r });
+  const over = [...byInvoice].filter(([, { amount, row }]) => amount > balanceOf(row) + 0.005).map(([id, { amount }]) => [id, amount] as const);
   if (over.length) {
-    throw new IncomingPostError(over.map(([id, amt]) => `${arNumber(invoices.find((i) => i.id === id) ?? { seriesId: '', docNum: 0, postingDate: '' })}: settling ${amt} but only ${amounts.get(id)?.balanceDue ?? 0} is still due.`).join(' '));
+    throw new IncomingPostError(over.map(([id, amt]) => {
+      const di = dis.find((d) => d.id === id);
+      const docNo = di ? diNumber(di) : arNumber(invoices.find((i) => i.id === id) ?? { seriesId: '', docNum: 0, postingDate: '' });
+      return `${docNo}: settling ${amt} but only ${di ? diBalance(id) : amounts.get(id)?.balanceDue ?? 0} is still due.`;
+    }).join(' '));
   }
   const { diff, withinAllowance } = paymentDifference(input, fx);
   if (diff && !withinAllowance) throw new IncomingPostError(`Open balance of ${input.currency} ${Math.abs(diff).toLocaleString('en-PH', { minimumFractionDigits: 2 })}: the payment means ${diff > 0 ? 'exceed' : "don't cover"} the amount due by more than the allowed difference.`);
@@ -219,6 +245,7 @@ export async function addIncomingPayment(input: IncomingInput, fx: number, ctx: 
   }
 
   await applyArPayments(settlements(input, (id) => amounts.get(id)?.due ?? 0), 1);
+  await applyDiPayments(diSettlements(input, fx), 1);
   const saved = await payments.save({ ...input, rows: input.type === 'Customer' ? paidRows(input) : [], docNum, status: 'Posted', fxRate: fx });
   const entry = await postDocumentEntry({
     origin: 'RC',
@@ -248,6 +275,7 @@ export async function cancelIncomingPayment(p: IncomingPayment, on: 'current' | 
     return inv ? arAmounts(inv, customer, ctx.items, ctx.codes).due : 0;
   };
   await applyArPayments(settlements(p, dueOf), -1);
+  await applyDiPayments(diSettlements(p, p.fxRate || 1), -1);
   const date = on === 'original' ? p.postingDate : todayISO();
   await reverseDocumentEntry(p.id, date);
   return payments.save({ ...p, status: 'Cancelled', cancelDate: date, journalRemark: `${p.journalRemark} (Cancelled)` });

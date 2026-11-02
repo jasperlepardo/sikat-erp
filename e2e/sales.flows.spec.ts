@@ -67,6 +67,20 @@ async function waitLoaded(page: Page) {
   await expect(page.getByText(/Loading[^\n…]*…/)).toHaveCount(0, { timeout: 15_000 });
 }
 
+/**
+ * Settle the whole balance of a pre-ticked payment form in cash, then post. The cash-account combobox
+ * renders 0px tall inside its table cell (design-system quirk), so click its field shell instead,
+ * after scrolling it into view.
+ */
+async function payInCash(page: Page, createLabel: string) {
+  await page.getByRole('button', { name: 'Add cash' }).click();
+  const cashField = page.locator('.sikat-field', { has: page.getByRole('combobox', { name: 'Cash account' }) });
+  await cashField.scrollIntoViewIfNeeded();
+  await cashField.click();
+  await page.getByRole('option', { name: /Cash on Hand/ }).first().click();
+  await page.getByRole('button', { name: createLabel, exact: true }).click();
+}
+
 /** The success Alert shown on a list page after an action navigates to it. */
 const notice = (page: Page) => page.getByText('Saved', { exact: true }).locator('..');
 
@@ -268,6 +282,94 @@ test.describe('sales workflows', () => {
     await expect.poll(() => screenText(page), { timeout: 15_000 }).toContain('IPH-17-256-LAV');
     await postNew(page, /sales\/credit-memos$/);
     await expect(notice(page)).toBeVisible();
+
+    expect(await rawIds(page)).toEqual([]);
+    expect(errors).toEqual([]);
+  });
+
+  // The whole sales chain in one run, mirroring the purchasing PR→payment chain: quotation → sales
+  // order → delivery → A/R invoice → incoming payment. The per-link tests above each start from a
+  // different seed anchor; this joins them end to end from one quotation, so every hop is posted and
+  // carried through to a cash receipt that closes the invoice.
+  //
+  // Anchor: qt-007 — Open, PHP, customer Northgate Prime Malls (bp-002). It has two lines (an iPhone
+  // and a MagSafe accessory); we keep only the accessory (ACC-MAGSF2) and drop the iPhone, because the
+  // accessory is the line with stock on hand in WH-001 while the iPhone variant is out there. One cheap
+  // in-stock unit stays under the customer's credit limit and within free stock, so the order posts
+  // clean (no availability or credit-limit gate). The quotation line carries warehouse WH-001, which
+  // rides through the whole chain, so no warehouse is entered by hand.
+  test('quotation → sales order → delivery → A/R invoice → incoming payment, the whole chain @chain-full', async ({ page }) => {
+    const errors = watchErrors(page);
+
+    // Quotation → sales order. Copy the quotation, keeping only the in-stock accessory line at one unit.
+    await openStatus(page, 'sales/quotations/qt-007', 'Open');
+    await pickAction(page, 'Create sales order…');
+    await page.getByRole('checkbox', { name: 'Copy IPH-17-256-BLK' }).uncheck();
+    await page.getByRole('spinbutton', { name: 'Quantity of ACC-MAGSF2' }).fill('1');
+    await confirmCopy(page);
+    await expect(page).toHaveURL(/sales\/sales-orders\/new/);
+    await waitLoaded(page);
+    await expect.poll(() => screenText(page), { timeout: 15_000 }).toContain('ACC-MAGSF2');
+    await postNew(page, /sales\/sales-orders$/);
+    await expect(notice(page)).toBeVisible();
+
+    // The order just created for this customer (dated today, after the seed's 9 Oct cutoff).
+    const soId = await page.evaluate(async (custId) => {
+      const so = await import('/src/services/salesOrders.ts');
+      const d = await import('/src/services/dates.ts');
+      const today = d.todayISO();
+      return (await so.listSalesOrders()).find((o: { customerId: string; postingDate: string; id: string }) =>
+        o.customerId === custId && o.postingDate === today)?.id;
+    }, 'bp-002');
+    expect(soId).toBeTruthy();
+
+    // Sales order → delivery. The line comes across pre-filled with its warehouse; ship one unit.
+    await open(page, `sales/sales-orders/${soId}`);
+    await pickAction(page, 'Create delivery…');
+    await confirmCopy(page);
+    await expect(page).toHaveURL(/sales\/deliveries\/new/);
+    await waitLoaded(page);
+    await page.getByRole('spinbutton', { name: 'Quantity' }).first().fill('1');
+    await postNew(page, /sales\/deliveries$/);
+    await expect(notice(page)).toContainText('stock is out and the sales order lines are updated');
+
+    const dnId = await page.evaluate(async (base) => {
+      const dn = await import('/src/services/deliveries.ts');
+      return (await dn.listDeliveries()).find((r: { lines: { baseId: string }[]; id: string }) =>
+        r.lines.some((l) => l.baseId === base))?.id;
+    }, soId);
+    expect(dnId).toBeTruthy();
+
+    // Delivery → A/R invoice. The delivered line bills straight through.
+    await open(page, `sales/deliveries/${dnId}`);
+    await pickAction(page, 'Create A/R invoice…');
+    await confirmCopy(page);
+    await expect(page).toHaveURL(/sales\/customer-invoices\/new/);
+    await waitLoaded(page);
+    await postNew(page, /sales\/customer-invoices$/);
+    await expect(notice(page)).toBeVisible();
+
+    const invId = await page.evaluate(async (base) => {
+      const ar = await import('/src/services/arInvoices.ts');
+      return (await ar.listArInvoices()).find((i: { lines: { baseId: string }[]; id: string }) =>
+        i.lines.some((l) => l.baseId === base))?.id;
+    }, dnId);
+    expect(invId).toBeTruthy();
+
+    // A/R invoice → incoming payment. "Receive payment" opens the payment form with the invoice
+    // pre-ticked at its balance; receive it in full in cash — the invoice closes.
+    await open(page, `sales/customer-invoices/${invId}`);
+    await pickAction(page, 'Receive payment');
+    await expect(page).toHaveURL(/sales\/incoming-payments\/new/);
+    await waitLoaded(page);
+    // The customer may have several open invoices; "Receive payment" pre-ticks only ours, at its balance.
+    await expect(page.locator('input[type="checkbox"][aria-label^="Pay "]:checked')).toHaveCount(1, { timeout: 15_000 });
+    await payInCash(page, 'Create incoming payment');
+    await expect(page).toHaveURL(/sales\/incoming-payments$/);
+    await expect(notice(page)).toContainText('added');
+
+    // Paid in full → the A/R invoice is Closed.
+    await openStatus(page, `sales/customer-invoices/${invId}`, 'Closed');
 
     expect(await rawIds(page)).toEqual([]);
     expect(errors).toEqual([]);

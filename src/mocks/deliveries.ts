@@ -41,6 +41,13 @@ export interface DnLine extends SalesLine {
   /** The order's number, e.g. "Primary 410001", and the line's row number on it. */
   baseDocNo: string;
   baseRow: number;
+  /**
+   * Set when this delivery line fulfils an A/R reserve invoice: its id and line id.
+   * `baseId`/`baseLineId`/`baseType` still point at the SO (so the SO draws down normally); these add
+   * the reserve-invoice link for its open-quantity counter, the rollup, and revenue recognition.
+   */
+  riId?: string;
+  riLineId?: string;
   /** PHP per inventory unit the stock went out at, fixed when the delivery is added. */
   unitCostLc: number;
   /** Billed so far on A/R invoices, in the line's unit. */

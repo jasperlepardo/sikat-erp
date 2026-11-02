@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { Alert, Badge, Button, Form, Panel, Tabs, Text } from '@jasperlepardo/sikat-design-system';
+import { Alert, Badge, Button, Form, Panel, Tabs } from '@jasperlepardo/sikat-design-system';
+import { AccountingDetailSkeleton } from '../../../components/form/skeletons/AccountingDetailSkeleton';
 import { PageHeader } from '../../../components/form/PageHeader';
 import { AttachmentsCard } from '../../../components/form/AttachmentsCard';
 import { Fields, ReadOnly, Section, bind, type Errors } from '../../../components/form/fields';
@@ -74,7 +75,7 @@ function VoucherEntryForm() {
 
   const back = () => navigate(isNewVoucher || !voucher ? JV_LIST_PATH : `${JV_LIST_PATH}/${voucher.id}`);
 
-  if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading voucher entry…</Text>;
+  if (draft === undefined || !m) return <AccountingDetailSkeleton />;
   if (draft === null || (!isNewVoucher && !voucher)) {
     return (
       <Panel className="flex-1">
@@ -136,8 +137,8 @@ function VoucherEntryForm() {
     navigate(`${JV_LIST_PATH}/${voucher.id}`, { state: { notice: `Entry ${draft.transNo} deleted.` } });
   };
 
-  const submit = (e: FormEvent) => {
-    e.preventDefault();
+  const submit = (e?: FormEvent) => {
+    e?.preventDefault();
     if (!posted) void save();
   };
 
@@ -150,7 +151,7 @@ function VoucherEntryForm() {
   ];
 
   return (
-    <Form className="flex-1" onSubmit={submit} noValidate>
+    <Form className="flex-1" onSubmit={(e) => e.preventDefault()} noValidate>
       <Panel className="flex-1">
         <PageHeader
           variant="plain"
@@ -179,6 +180,9 @@ function VoucherEntryForm() {
               noun={JV_NOUN}
               listPath={isNewVoucher || !voucher ? JV_LIST_PATH : `${JV_LIST_PATH}/${voucher.id}`}
               mode={posted ? 'readonly' : 'open'}
+              draft={draft}
+              onRevert={setDraft}
+              onSubmit={() => submit()}
               primaryLabel={isNewVoucher ? 'Add to new voucher' : 'Save to voucher'}
               busy={saving}
               menu={menu}

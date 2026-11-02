@@ -7,7 +7,7 @@ import { lineHelpers, itemConfig } from '../../shared/salesLineHelpers';
 import { itemsPerUom } from '../../../../mocks/items';
 import { newDnLine, type DnLine } from '../../../../mocks/deliveries';
 import { dnInventoryQty } from '../../../../services/deliveries';
-import { lineTax, openQty, priceAfterDiscount, soNumber } from '../../../../services/salesOrders';
+import { lineNet, lineTax, openQty, priceAfterDiscount, soNumber } from '../../../../services/salesOrders';
 import { isPriceListValid } from '../../../../services/priceLists';
 import { formatAmount } from '../../../../services/format';
 import { warehouseOptions } from '../../../inventory/transfers/TransferLines';
@@ -89,7 +89,7 @@ export function dnDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy }: D
     changePriceList: (l, id) => reprice({ ...l, priceSource: '' }, { priceListId: id }),
     priceListWhere: (r) => isPriceListValid(r, draft.postingDate),
     priceListLocked: (l) => Boolean(l.baseId),
-    lineNet: () => 0,
+    lineNet,
     warehouse: {
       options: (l) => warehouseOptions(m.inv.warehouses, l.warehouse),
       value: (l) => l.warehouse,

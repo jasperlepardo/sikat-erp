@@ -15,7 +15,7 @@ export type ActivityTargetKind =
   | 'BP'
   | 'EMP'
   | 'PR' | 'RFQ' | 'PO' | 'GRPO' | 'APINV' | 'APRI' | 'PAY' | 'GRET' | 'GRR' | 'APCM' | 'DPR' | 'APDPI' | 'PBA' | 'LC' | 'RI'
-  | 'QT' | 'SO' | 'DN' | 'ARINV' | 'RCV' | 'ARCM' | 'SRT' | 'BA';
+  | 'QT' | 'SO' | 'DN' | 'ARINV' | 'ARDI' | 'RCV' | 'ARCM' | 'SRT' | 'BA';
 
 /** One record the activity shows on. */
 export interface ActivityLink {

@@ -14,6 +14,7 @@ import { AP_RI_SERIES } from '../mocks/apReserveInvoices';
 import { MEMO_SERIES } from '../mocks/apCreditMemos';
 import { DPR_SERIES } from '../mocks/apDownPayments';
 import { DPI_SERIES } from '../mocks/apDownPaymentInvoices';
+import { DI_SERIES } from '../mocks/arDownPaymentInvoices';
 import { AR_SERIES } from '../mocks/arInvoices';
 import { RI_SERIES } from '../mocks/reserveInvoices';
 import { LC_SERIES } from '../mocks/landedCosts';
@@ -47,6 +48,7 @@ export const apRiSeries = createCollection<DocumentSeries>('sikat-erp:ap-ri-seri
 export const memoSeries = createCollection<DocumentSeries>('sikat-erp:memo-series', MEMO_SERIES, 'cms');
 export const dprSeries = createCollection<DocumentSeries>('sikat-erp:dpr-series', DPR_SERIES, 'dps');
 export const dpiSeries = createCollection<DocumentSeries>('sikat-erp:dpi-series', DPI_SERIES, 'dpis');
+export const diSeries = createCollection<DocumentSeries>('sikat-erp:ar-di-series', DI_SERIES, 'ardis');
 export const outgoingPaymentSeries = createCollection<DocumentSeries>('sikat-erp:payment-series', PAYMENT_SERIES, 'ops');
 export const returnSeries = createCollection<DocumentSeries>('sikat-erp:return-series', RETURN_SERIES, 'rts');
 export const grrSeries = createCollection<DocumentSeries>('sikat-erp:grr-series', GRR_SERIES, 'grrs');

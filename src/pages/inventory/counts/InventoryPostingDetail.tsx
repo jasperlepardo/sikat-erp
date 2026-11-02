@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { Alert, Badge, Combobox, Form, FormField, Panel, Tabs, Text } from '@jasperlepardo/sikat-design-system';
+import { Alert, Badge, Combobox, Form, FormField, Panel, Tabs } from '@jasperlepardo/sikat-design-system';
+import { InventoryDocSkeleton } from '../../../components/form/skeletons/InventoryDocSkeleton';
 import { PageHeader } from '../../../components/form/PageHeader';
 import { JournalPreview } from '../../../components/form/JournalPreview';
 import { DetailActions } from '../../../components/form/DetailActions';
@@ -123,7 +124,7 @@ function PostingForm() {
     };
   }, [id, isNew, fromCountId]);
 
-  if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading posting…</Text>;
+  if (draft === undefined || !m) return <InventoryDocSkeleton />;
   if (draft === null) return <NotFound icon="fact_check" title="Posting not found" backTo={POSTING_LIST_PATH} backLabel="Back to inventory postings" />;
 
   const added = Boolean(draft.docNum);
@@ -156,8 +157,8 @@ function PostingForm() {
     setDraft(c ? postingFromCount(c, draft, m.items) : { ...draft, countingId: '', lines: [] });
   };
 
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
+  const submit = async (e?: FormEvent) => {
+    e?.preventDefault();
     if (added) {
       setSaving(true);
       const p = await savePostingRemarks(draft.id!, { remarks: draft.remarks, journalRemark: draft.journalRemark, attachments: draft.attachments });
@@ -191,7 +192,7 @@ function PostingForm() {
   };
 
   return (
-    <Form className="flex-1" onSubmit={submit} noValidate>
+    <Form className="flex-1" onSubmit={(e) => e.preventDefault()} noValidate>
       <Panel className="flex-1">
         <PageHeader
           variant="plain"
@@ -216,6 +217,9 @@ function PostingForm() {
               noun={POSTING_NOUN}
               listPath={POSTING_LIST_PATH}
               mode={added ? 'readonly' : 'draft'}
+              draft={draft}
+              onRevert={setDraft}
+              onSubmit={() => submit()}
               remarksOnly={added}
               busy={saving}
               prevNext={isNew ? undefined : { path: POSTING_LIST_PATH, prevId, nextId }}

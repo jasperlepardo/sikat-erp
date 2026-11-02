@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import { createPortal } from 'react-dom';
 import { Alert, Badge, Form, Panel, Tabs, Text } from '@jasperlepardo/sikat-design-system';
+import { DocumentDetailSkeleton } from '../../../../components/form/skeletons/DocumentDetailSkeleton';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { type Errors } from '../../../../components/form/fields';
 import { type MoreMenuItem } from '../../../../components/form/MoreMenu';
@@ -37,7 +38,9 @@ import { CreateFromPanel, createHopMenuItems } from '../../../purchasing/shared/
 import { DN_TO_AR, DN_TO_SR, type CopyHop, type LinePick } from '../../shared/copyHops';
 import { dnDoc } from './dnDoc';
 import { salesView } from '../../shared/salesView';
-import { buildDnContext, dnLineFromOrder, type DnContext, type DnDraft, type DnMasters } from './types';
+import { buildDnContext, dnLineFromOrder, dnLineFromRi, type DnContext, type DnDraft, type DnMasters } from './types';
+import { getReserveInvoice } from '../../../../services/reserveInvoices';
+import type { ReserveInvoice } from '../../../../mocks/reserveInvoices';
 import { SalesDocumentFlow } from '../../shared/SalesDocumentFlow';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
@@ -54,7 +57,12 @@ import { AssignmentCard } from '../../../../components/form/AssignmentCard';
 import { CustomerCard } from '../../shared/CustomerCard';
 import { CustomerDetailsPanel } from '../../shared/CustomerDetailsPanel';
 import { ReferencesTable } from '../../../purchasing/shared/ReferencesTable';
-import { DN_LIST_PATH, DN_NOUN, DN_STATUS_INTENT } from '../../paths';
+import { AR_NOUN, DN_LIST_PATH, DN_NOUN, DN_STATUS_INTENT } from '../../paths';
+import { cap } from '../../../../components/form/noun';
+import { useAsync } from '../../../../services/useAsync';
+import { listArInvoices } from '../../../../services/arInvoices';
+import { listSalesReturns } from '../../../../services/salesReturns';
+import { DnInvoicesTab } from './DnInvoicesTab';
 
 type TabId = 'contents';
 const TAB_LABEL: Record<TabId, string> = { contents: 'Contents' };
@@ -105,6 +113,7 @@ function DeliveryForm() {
   const location = useLocation();
   const fromOrder = (location.state as { fromOrder?: string; picks?: LinePick[] } | null)?.fromOrder;
   const fromPicks = (location.state as { fromOrder?: string; picks?: LinePick[] } | null)?.picks;
+  const fromReserveInvoice = (location.state as { fromReserveInvoice?: string } | null)?.fromReserveInvoice;
 
   const dnApproved = !needsApproval('DN');
   const [draft, setDraft] = useState<DnDraft | null | undefined>(isNew ? { ...blankDelivery(todayISO(), CURRENT_USER_ID), approved: dnApproved } : undefined);
@@ -119,6 +128,9 @@ function DeliveryForm() {
   const [currencyView, setCurrencyView] = useState('');
   const [copying, setCopying] = useState(false);
   const [createHop, setCreateHop] = useState<CopyHop<Delivery> | null>(null);
+  const [contentTab, setContentTab] = useState<'item' | 'invoices'>('item');
+  const arInvoices = useAsync(listArInvoices, []);
+  const salesReturnsList = useAsync(listSalesReturns, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -133,15 +145,18 @@ function DeliveryForm() {
       // The lines the user picked on the order, or — when navigated without picks — every open line.
       if (isNew && so) setDraft((d) => d && copyLines(d, so, fromPicks ?? so.lines.filter((l) => openQty(l) > 0).map((l) => ({ lineId: l.id, qty: openQty(l) }))));
     });
+    if (isNew && fromReserveInvoice) {
+      getReserveInvoice(fromReserveInvoice).then((ri) => { if (!cancelled && ri) setDraft((d) => d && copyFromRi(d, ri)); });
+    }
     if (!isNew && id) {
       getDelivery(id).then((dn) => !cancelled && setDraft(dn ?? null));
       listDeliveries().then((all) => !cancelled && setSiblings(siblingKeys(all, dnNumber)));
     }
     return () => { cancelled = true; };
-  }, [id, isNew, fromOrder, fromPicks]);
+  }, [id, isNew, fromOrder, fromPicks, fromReserveInvoice]);
 
   useDocTitle(draft?.docNum ? (isNew ? `New ${DN_NOUN.one}` : draft.status === 'Draft' ? `Draft ${DN_NOUN.one}` : dnNumber(draft)) : undefined);
-  if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading delivery…</Text>;
+  if (draft === undefined || !m) return <DocumentDetailSkeleton />;
   if (draft === null) return <NotFound icon="local_shipping" title="Delivery not found" backTo={DN_LIST_PATH} backLabel="Back to deliveries" />;
 
   const ctx = buildDnContext(draft, m);
@@ -168,6 +183,22 @@ function DeliveryForm() {
     const header = first ? { ...deliveryHeaderFrom(so), dueDate: soDueDate(d.postingDate, termDays(so.paymentTermId), so.dueMonths, so.dueDays) } : {};
     const numbers = [...new Set([...d.orderNumber.split(', ').filter(Boolean), soNumber(so)])].join(', ');
     return { ...d, ...header, orderNumber: numbers, lines: [...d.lines.filter((l) => l.itemId), ...added] };
+  }
+
+  /** New delivery fulfilling a reserve invoice: its customer header, plus each open line at its open qty. */
+  function copyFromRi(d: DnDraft, ri: ReserveInvoice): DnDraft {
+    const lines = ri.lines.filter((l) => l.itemId && l.openQtyForIt > 0).map((l) => dnLineFromRi(ri, l, l.openQtyForIt));
+    return {
+      ...d,
+      customerId: ri.customerId, customerCode: ri.customerCode, customerName: ri.customerName,
+      contactId: ri.contactId, currency: ri.currency, paymentTermId: ri.paymentTermId,
+      paymentMethod: ri.paymentMethod, salesEmployeeId: ri.salesEmployeeId, projectId: ri.projectId,
+      shippingType: ri.shippingType, federalTaxId: ri.federalTaxId, shipTo: ri.shipTo, billTo: ri.billTo,
+      discountPct: ri.discountPct,
+      journalRemark: defaultJournalRemark('deliveries', { entityCode: ri.customerCode, entityName: ri.customerName }),
+      orderNumber: ri.orderNumber,
+      lines,
+    };
   }
 
   const pickCustomer = (customerId: string | null) => {
@@ -258,9 +289,23 @@ function DeliveryForm() {
   // Open orders of this customer (or any customer, before one is picked) with something left to ship.
   const copyableOrders = m.orders.filter((o) => o.status === 'Open' && o.docType === 'Item' && (!draft.customerId || o.customerId === draft.customerId) && o.lines.some((l) => openQty(l) > 0) && (!ctx.based || o.currency === draft.currency));
 
+  const showRollups = !isNew && draft.status !== 'Draft' && !!draft.id;
+  const contentTabs = (
+    <Tabs
+      variant="solid"
+      className="w-fit max-w-full self-start"
+      value={contentTab}
+      onValueChange={(v) => setContentTab(v as 'item' | 'invoices')}
+      items={[
+        { value: 'item', label: cap(DN_NOUN.lineLabel!) },
+        { value: 'invoices', label: cap(AR_NOUN.many) },
+      ]}
+    />
+  );
+
   return (
     <>
-      <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
+      <Form className="flex-1" onSubmit={(e) => e.preventDefault()} noValidate>
         <Panel className="flex-1">
           <PageHeader
             variant="plain"
@@ -274,6 +319,8 @@ function DeliveryForm() {
                 noun={DN_NOUN}
                 listPath={DN_LIST_PATH}
                 mode={docMode(draft.status, { canApprove: isApprover('DN') })}
+                draft={draft}
+                onRevert={setDraft}
                 needsApproval={!draft.approved}
                 remarksOnly={ro}
                 busy={saving}
@@ -326,8 +373,12 @@ function DeliveryForm() {
                     onPickCustomer={pickCustomer}
                     onOpenDetails={() => setCustomerDetailsOpen(true)}
                   />
-                  {/* Not in a disabled fieldset: the table locks its own inputs and keeps its column settings. */}
-                  <DocLines {...dnDoc({ ...tabProps, onCopyClick: () => setCopying(true), canCopy: copyableOrders.length > 0 }, view)} />
+                  {showRollups ? contentTabs : null}
+                  {showRollups && contentTab === 'invoices' ? (
+                    <DnInvoicesTab dn={draft} arInvoices={arInvoices} salesReturns={salesReturnsList} />
+                  ) : (
+                    <DocLines {...dnDoc({ ...tabProps, onCopyClick: () => setCopying(true), canCopy: copyableOrders.length > 0 }, view)} />
+                  )}
                   <DocumentJournalEntry def={deliveryPayment} posting={journalEntry} {...tabProps} />
                   <ReferencesTable
                     refs={draft.references}
@@ -349,7 +400,7 @@ function DeliveryForm() {
                   <DocumentDates def={deliveryDates} {...tabProps} />
                   <DocumentPayment def={deliveryPayment} posting={journalEntry} {...tabProps} />
                   <DnSettingsCard {...tabProps} />
-                  <ReferencesCard {...tabProps} />
+                  <ReferencesCard {...tabProps} orderNumberHint="Set by Copy from sales order." />
                   <DnShipmentCard {...tabProps} />
                   <AssignmentCard
                     draft={draft}
@@ -366,6 +417,7 @@ function DeliveryForm() {
         </Panel>
       </Form>
       <CustomerDetailsPanel
+        customerRefLabel="Customer PO no."
         customer={ctx.customer}
         draft={draft}
         update={update}
@@ -373,7 +425,6 @@ function DeliveryForm() {
         noun="delivery"
         open={customerDetailsOpen}
         onClose={() => setCustomerDetailsOpen(false)}
-        orderNumberHint="Set by Copy from sales order."
       />
       {copying
         ? createPortal(

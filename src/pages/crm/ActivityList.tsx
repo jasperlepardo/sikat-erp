@@ -60,7 +60,7 @@ export function ActivityList() {
   const rows = useCollection(activities);
   const all = useMemo(() => [...(rows ?? [])], [rows]);
   const employees = useCollection(salesEmployees);
-  const [query, setQuery] = useState('');
+
   const { resetPage, paginate } = useListPage();
   const [editing, setEditing] = useState<{ value: Activity; isNew: boolean } | null>(null);
 
@@ -101,11 +101,12 @@ export function ActivityList() {
     defaultSort: { key: 'date', direction: 'desc' },
     rows: rows ? all : undefined,
     onChange: resetPage,
+    search: { placeholder: 'Search by subject, notes, partner or document', label: 'Search activities' },
   });
   const { sort, setSort } = presets;
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = presets.searchText;
     const list = presets.apply(all).filter(
       (a) =>
         !q ||
@@ -123,7 +124,7 @@ export function ActivityList() {
       : String(a[sort.key as keyof Activity] ?? '');
     return [...list].sort((a, b) => value(a).localeCompare(value(b)) * dir);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [all, presets.filter, query, sort, lookup, employees]);
+  }, [all, presets.filter, presets.searchText, sort, lookup, employees]);
 
   const columns: TableColumn<Activity>[] = [
     {
@@ -193,20 +194,12 @@ export function ActivityList() {
   return (
     <Panel className="flex-1">
       <PageHeader
-        showSearch
-        searchLabel="Search activities"
-        searchPlaceholder="Search by subject, notes, partner or document"
-        searchValue={query}
-        onSearchChange={(value) => {
-          setQuery(value);
-          resetPage();
-        }}
         icon="event"
-        title={presets.menu}
+        title="Activities"
         actions={<LogMenu onPick={(k) => setEditing({ value: blankActivity(k, undefined), isNew: true })} />}
       />
       <Panel.Body className="flex flex-col gap-2">
-        {presets.bar(null)}
+        {presets.toolbar()}
         <Card className={fillCardClass(onPage.length)}>
           {!rows || !lookup ? (
             <Text tone="muted" className="p-4">Loading activities…</Text>

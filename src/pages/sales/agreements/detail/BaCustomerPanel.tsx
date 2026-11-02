@@ -59,7 +59,7 @@ export function BaCustomerPanel({ customer, draft, update, readOnly, open, onClo
               placeholder="Select a contact person"
               readOnly={readOnly}
             />
-            {h.text('customerRef', 'Customer ref. no.', { hint: "The customer's own reference for this agreement.", readOnly })}
+            {h.text('customerRef', 'Customer agreement no.', { hint: "The customer's own reference for this agreement.", readOnly })}
           </Fields>
         </Section>
         <Section icon="info" title="Details">

@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { Alert, Badge, Form, Panel, Tabs, Text } from '@jasperlepardo/sikat-design-system';
+import { Alert, Badge, Form, Panel, Tabs } from '@jasperlepardo/sikat-design-system';
+import { AccountingDetailSkeleton } from '../../../components/form/skeletons/AccountingDetailSkeleton';
 import { PageHeader } from '../../../components/form/PageHeader';
 import { AttachmentsCard } from '../../../components/form/AttachmentsCard';
 import { Fields, Section, bind, type Errors } from '../../../components/form/fields';
@@ -66,7 +67,7 @@ function JournalEntryForm() {
     };
   }, [id, isNew]);
 
-  if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading journal entry…</Text>;
+  if (draft === undefined || !m) return <AccountingDetailSkeleton />;
   if (draft === null) return <NotFound icon="menu_book" title="Journal entry not found" backTo={JE_LIST_PATH} backLabel="Back to journal entries" />;
 
   const posted = Boolean(draft.number);
@@ -83,8 +84,8 @@ function JournalEntryForm() {
 
   const update = (patch: Partial<JeInput>) => setDraft({ ...draft, ...patch });
   const h = bind(draft, update);
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
+  const submit = async (e?: FormEvent) => {
+    e?.preventDefault();
     if (posted) {
       setSaving(true);
       const je = await saveJournalEntryNotes(draft.id!, { remarks: draft.remarks, attachments: draft.attachments });
@@ -146,7 +147,7 @@ function JournalEntryForm() {
   const title = isNew ? `New ${JE_NOUN.one}` : jeNumber(draft);
 
   return (
-    <Form className="flex-1" onSubmit={submit} noValidate>
+    <Form className="flex-1" onSubmit={(e) => e.preventDefault()} noValidate>
       <Panel className="flex-1">
         <PageHeader
           variant="plain"
@@ -171,6 +172,9 @@ function JournalEntryForm() {
               noun={JE_NOUN}
               listPath={JE_LIST_PATH}
               mode={posted ? 'readonly' : 'draft'}
+              draft={draft}
+              onRevert={setDraft}
+              onSubmit={() => submit()}
               remarksOnly={posted}
               busy={saving}
               menu={menu}

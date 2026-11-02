@@ -7,7 +7,8 @@ import { SEED_PARTNERS, type Partner } from '../mocks/partners';
 import { SEED_TAX_CODES, rateFrom, type TaxCode } from '../mocks/taxes';
 import type { TaxMasterData } from './taxDetermination';
 import { SEED_TAX, customerWithholding, customerWithholds, type CustomerWithholding } from './withholding';
-import { birForms } from './masterData';
+import { birForms, taxCodes } from './masterData';
+import { diTotal, drawArDownPaymentInvoices } from './arDownPaymentInvoices';
 import { withTaxFiling } from './taxRecalc';
 import { todayISO } from './dates';
 import { applyInvoiced, deliveryProblems, dnInventoryQty, listDeliveries } from './deliveries';
@@ -89,7 +90,7 @@ export const balanceDue = (total: number, withheld: number, applied: number) => 
  * `fixed` uses the costs saved on the lines (an added invoice) instead of today's item cost.
  */
 export function arJournal(
-  a: Pick<ArInvoice, 'lines' | 'discountPct' | 'freight' | 'freightTaxCode' | 'rounding' | 'controlAccount' | 'docType' | 'useShippedGoodsAccount'>,
+  a: Pick<ArInvoice, 'lines' | 'discountPct' | 'freight' | 'freightTaxCode' | 'rounding' | 'controlAccount' | 'docType' | 'useShippedGoodsAccount' | 'drawnDownPayments'>,
   fx: number,
   ctx: { itemsById: ReadonlyMap<string, Item>; groups: readonly ItemGroup[]; codes: readonly TaxCode[]; rateOf: (code: string) => number; withholding: ArWithholding[]; roundingRule?: Parameters<typeof soTotals>[2] },
   fixed = false,
@@ -126,7 +127,13 @@ export function arJournal(
     add(w.account, amt);
 
   }
-  // A/R takes whatever balances the entry: the total less what the customer withholds.
+  // Draw down customer advances: clear Customer Down Payments (Dr 2150) and reverse the output VAT the
+  // down payment invoice already charged, so VAT is charged once. The customer owes only the rest.
+  for (const d of a.drawnDownPayments ?? []) {
+    add(d.account, d.amountLc);
+    if (d.inputVatLc && d.vatAccount) add(d.vatAccount, d.inputVatLc);
+  }
+  // A/R takes whatever balances the entry: the total less what the customer withholds and drew down.
   const balance = round2([...totals.values()].reduce((n, v) => n + v, 0));
   if (balance) add(a.controlAccount || '1120', -balance);
 
@@ -250,6 +257,7 @@ export async function addArInvoice(input: ArInput, fx: number, ctx: { codes: rea
     controlAccount: saved.controlAccount,
     lines: arJournal(saved, fx, { itemsById: new Map(items.map((i) => [i.id, i])), groups: await itemGroups.list(), codes: ctx.codes, rateOf: rateFrom(ctx.codes, saved.postingDate), withholding: ctx.withholding, roundingRule: ctx.roundingRule }, true),
   });
+  await drawArDownPaymentInvoices((saved.drawnDownPayments ?? []).map((d) => ({ requestId: d.requestId, amount: d.amount })), (di) => diTotal(di, [...ctx.codes]), 1);
   return saved;
 }
 
@@ -268,6 +276,10 @@ export async function cancelArInvoice(a: ArInvoice) {
   await moveStock(a.lines, items, 1);
   await applyDelivered(a.lines.filter((l) => l.baseType === 'SO' && shipsStock(l, items)), -1);
   await applyInvoiced(a.lines.filter((l) => l.baseType === 'DN'), -1);
+  if (a.drawnDownPayments?.length) {
+    const codes = await taxCodes.list();
+    await drawArDownPaymentInvoices(a.drawnDownPayments.map((d) => ({ requestId: d.requestId, amount: d.amount })), (di) => diTotal(di, codes), -1);
+  }
 
   // FIFO: restore layers for non-DN lines that shipped stock (DN lines were handled by the delivery).
   const cancelFifoIds = new Set<string>();

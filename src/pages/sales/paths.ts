@@ -5,6 +5,7 @@
  */
 import type { Noun } from '../../components/form/noun';
 import type { ArCmStatus } from '../../mocks/arCreditMemos';
+import type { DiStatus } from '../../mocks/arDownPaymentInvoices';
 import type { ArStatus } from '../../mocks/reserveInvoices';
 import type { BaStatus } from '../../mocks/blanketAgreements';
 import type { DnStatus } from '../../mocks/deliveries';
@@ -48,6 +49,17 @@ export const RI_LIST_PATH = '/sales/reserve-invoices';
 export const RI_NOUN: Noun = { one: 'A/R reserve invoice', many: 'A/R reserve invoices', lineLabel: 'invoiced items' };
 
 export const RI_STATUS_INTENT: Record<ArStatus, 'default' | 'primary' | 'success' | 'danger' | 'warning'> = {
+  Draft: 'default',
+  'Not Confirmed': 'warning',
+  Open: 'primary',
+  Closed: 'success',
+  Cancelled: 'danger',
+};
+
+export const DI_LIST_PATH = '/sales/down-payment-invoices';
+export const DI_NOUN: Noun = { one: 'A/R down payment invoice', many: 'A/R down payment invoices', lineLabel: 'items' };
+
+export const DI_STATUS_INTENT: Record<DiStatus, 'default' | 'primary' | 'success' | 'danger' | 'warning'> = {
   Draft: 'default',
   'Not Confirmed': 'warning',
   Open: 'primary',

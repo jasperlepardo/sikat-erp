@@ -272,7 +272,7 @@ function BaForm() {
 
   return (
     <>
-      <Form className="flex-1" onSubmit={(e) => submit(e, added ? undefined : { status: 'Approved' })} noValidate>
+      <Form className="flex-1" onSubmit={(e) => e.preventDefault()} noValidate>
         <Panel className="flex-1">
           <PageHeader
             variant="plain"
@@ -286,6 +286,8 @@ function BaForm() {
                 noun={BA_NOUN}
                 listPath={BA_LIST_PATH}
                 mode={draft.status === 'Draft' ? 'draft' : readOnly ? 'readonly' : 'open'}
+                draft={draft}
+                onRevert={setDraft}
                 busy={saving}
                 onDraft={() => submit(null, { asDraft: true })}
                 onSubmit={() => submit(null, added ? undefined : { status: 'Approved' })}

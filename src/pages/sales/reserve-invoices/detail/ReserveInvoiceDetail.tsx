@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import { createPortal } from 'react-dom';
 import { Alert, Badge, Form, Panel, Tabs, Text } from '@jasperlepardo/sikat-design-system';
+import { DocumentDetailSkeleton } from '../../../../components/form/skeletons/DocumentDetailSkeleton';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { JournalPreview } from '../../../../components/form/JournalPreview';
 import { type Errors } from '../../../../components/form/fields';
@@ -13,7 +14,7 @@ import { cap } from '../../../../components/form/noun';
 import { isApprover, needsApproval } from '../../../../services/approval';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { formatAddress } from '../../../../mocks/address';
-import { blankReserveInvoice, type ReserveInvoice } from '../../../../mocks/reserveInvoices';
+import { blankReserveInvoice, type ReserveInvoice, type RiLine } from '../../../../mocks/reserveInvoices';
 import { CURRENT_USER_ID } from '../../../../mocks/common';
 import {
   RiPostError,
@@ -71,7 +72,10 @@ import { DocLines } from '../../../../components/form/docLines/DocLines';
 import { CopyPanel, type CopySourceType } from '../../../purchasing/shared/CopyPanel';
 import { invoiceDoc, type CopyPickRi } from '../../shared/invoiceDoc';
 import { CustomerDetailsPanel } from '../../shared/CustomerDetailsPanel';
-import { RI_LIST_PATH, RI_NOUN, RI_STATUS_INTENT } from '../../paths';
+import { DN_LIST_PATH, DN_NOUN, DN_STATUS_INTENT, RI_LIST_PATH, RI_NOUN, RI_STATUS_INTENT } from '../../paths';
+import { LineRollup, type RollupDocRow } from '../../../../components/form/LineRollup';
+import { useAsync } from '../../../../services/useAsync';
+import { dnNumber, listDeliveries } from '../../../../services/deliveries';
 import { customerWithholds } from '../../../../services/withholding';
 
 type TabId = 'contents' | 'accounting';
@@ -140,6 +144,8 @@ function ReserveInvoiceForm() {
   const [siblings, setSiblings] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);
+  const [contentTab, setContentTab] = useState<'item' | 'deliveries'>('item');
+  const deliveriesList = useAsync(listDeliveries, []);
   const reject = useReject();
 
   useEffect(() => {
@@ -167,7 +173,7 @@ function ReserveInvoiceForm() {
   }, [id, isNew]);
 
   useDocTitle(draft?.docNum ? (isNew ? `New ${RI_NOUN.one}` : draft.status === 'Draft' ? `Draft ${RI_NOUN.one}` : riNumber(draft)) : undefined);
-  if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading {RI_NOUN.one}…</Text>;
+  if (draft === undefined || !m) return <DocumentDetailSkeleton />;
   if (draft === null) return <NotFound icon="receipt_long" title={`${cap(RI_NOUN.one)} not found`} backTo={RI_LIST_PATH} backLabel={`Back to ${RI_NOUN.many}`} />;
 
   const ctx = buildRiContext(draft, m);
@@ -341,9 +347,31 @@ function ReserveInvoiceForm() {
   const copySos = m.orders.filter((o) => o.status === 'Open' && o.docType === draft.docType && mineCopy(o) && o.lines.some((l) => openQty(l) > 0));
   const title = isNew ? `New ${RI_NOUN.one}` : draft.status === 'Draft' ? `Draft ${RI_NOUN.one}` : riNumber(draft);
 
+  // Second content tab: the deliveries that fulfil this reserve invoice. The invoice and the
+  // deliveries both descend from the same SO line (baseType 'SO'), so they share its baseId/baseLineId.
+  const counts = (d: { status: string }) => d.status !== 'Draft' && d.status !== 'Cancelled';
+  const dnDocsFor = (l: RiLine): RollupDocRow[] =>
+    !l.baseId ? [] : (deliveriesList ?? []).filter(counts).flatMap((dn) =>
+      dn.lines
+        .filter((dl) => dl.baseId === l.baseId && dl.baseLineId === l.baseLineId)
+        .map((dl): RollupDocRow => ({ id: `${dn.id}:${dl.id}`, no: dnNumber(dn), href: `#${DN_LIST_PATH}/${dn.docNum ? dnNumber(dn) : dn.id}`, date: dn.postingDate, status: dn.status, intent: DN_STATUS_INTENT[dn.status], quantity: dl.quantity, uomCode: dl.uomCode })));
+  const showRollups = !isNew && draft.status !== 'Draft' && !!draft.id;
+  const contentTabs = (
+    <Tabs
+      variant="solid"
+      className="w-fit max-w-full self-start"
+      value={contentTab}
+      onValueChange={(v) => setContentTab(v as 'item' | 'deliveries')}
+      items={[
+        { value: 'item', label: cap(RI_NOUN.lineLabel!) },
+        { value: 'deliveries', label: cap(DN_NOUN.many) },
+      ]}
+    />
+  );
+
   return (
     <>
-      <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
+      <Form className="flex-1" onSubmit={(e) => e.preventDefault()} noValidate>
         <Panel className="flex-1">
           <PageHeader
             variant="plain"
@@ -357,6 +385,8 @@ function ReserveInvoiceForm() {
                 noun={RI_NOUN}
                 listPath={RI_LIST_PATH}
                 mode={docMode(draft.status, { canApprove: isApprover('ARRI') })}
+                draft={draft}
+                onRevert={setDraft}
                 needsApproval={!draft.approved}
                 remarksOnly={ro}
                 busy={saving}
@@ -413,26 +443,31 @@ function ReserveInvoiceForm() {
                     onPickCustomer={pickCustomer}
                     onOpenDetails={() => setCustomerDetailsOpen(true)}
                   />
-                  <DocLines
-                    {...invoiceDoc({ kind: 'RI', ...tabProps, onCopyClick: () => setCopying(true), canCopy: copySos.length > 0 }, view)}
-                    footer={
-                      <SalesTotalsFooter
-                        {...tabProps}
-                        totals={totals}
-                        withRounding
-                        view={view}
-                        withholding={withholding.map((w) => ({ label: `${w.kind === 'Withholding VAT' ? 'VAT' : 'EWT'} withheld — ${w.atc} (${w.rate}%)`, amount: w.amount }))}
-                        extraRows={
-                          draft.appliedAmount ? (
-                            <>
-                              <TotalsRow label="Applied amount" value={amt(-view.convert(draft.appliedAmount), view.code)} />
-                              <TotalsBar label="Balance due" value={amt(view.convert(balance), view.code)} />
-                            </>
-                          ) : null
-                        }
-                      />
-                    }
-                  />
+                  {showRollups ? contentTabs : null}
+                  {showRollups && contentTab === 'deliveries' ? (
+                    <LineRollup title={cap(DN_NOUN.many)} lines={draft.lines.filter((l) => l.itemId)} loading={!deliveriesList} docsFor={dnDocsFor} empty="No deliveries against this reserve invoice yet." />
+                  ) : (
+                    <DocLines
+                      {...invoiceDoc({ kind: 'RI', ...tabProps, onCopyClick: () => setCopying(true), canCopy: copySos.length > 0 }, view)}
+                      footer={
+                        <SalesTotalsFooter
+                          {...tabProps}
+                          totals={totals}
+                          withRounding
+                          view={view}
+                          withholding={withholding.map((w) => ({ label: `${w.kind === 'Withholding VAT' ? 'VAT' : 'EWT'} withheld — ${w.atc} (${w.rate}%)`, amount: w.amount }))}
+                          extraRows={
+                            draft.appliedAmount ? (
+                              <>
+                                <TotalsRow label="Applied amount" value={amt(-view.convert(draft.appliedAmount), view.code)} />
+                                <TotalsBar label="Balance due" value={amt(view.convert(balance), view.code)} />
+                              </>
+                            ) : null
+                          }
+                        />
+                      }
+                    />
+                  )}
                   <DocumentJournalEntry def={arReserveInvoicePayment} posting={journalEntry} {...tabProps} />
                   <ReferencesTable
                     refs={draft.references}
@@ -455,7 +490,7 @@ function ReserveInvoiceForm() {
                   <DocumentPayment def={arReserveInvoicePayment} posting={journalEntry} {...tabProps} />
                   <RiAccountingCard {...tabProps} />
                   <RiShipmentCard {...tabProps} />
-                  <ReferencesCard {...tabProps} />
+                  <ReferencesCard {...tabProps} orderNumberHint="Set by Copy from." />
                   <AssignmentCard
                     draft={draft}
                     update={update}
@@ -471,6 +506,7 @@ function ReserveInvoiceForm() {
         </Panel>
       </Form>
       <CustomerDetailsPanel
+        customerRefLabel="Customer PO no."
         customer={ctx.customer}
         draft={draft}
         update={update}
@@ -478,7 +514,6 @@ function ReserveInvoiceForm() {
         noun={RI_NOUN.one}
         open={customerDetailsOpen}
         onClose={() => setCustomerDetailsOpen(false)}
-        orderNumberHint="Set by Copy from."
       />
       {copying
         ? createPortal(

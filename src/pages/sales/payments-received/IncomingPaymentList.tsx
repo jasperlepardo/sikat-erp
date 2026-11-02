@@ -1,143 +1,72 @@
-import { useMemo, useState } from 'react';
 import { useLocation } from 'react-router';
-import {
-  Alert,
-  Card,
-  Panel,
-  Table,
-  TableContent,
-  TableStatus,
-  Text,
-  type TableColumn,
-} from '@jasperlepardo/sikat-design-system';
-import { choiceField, dateField, masterField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
-import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
-import { currencyDef } from '../../settings/masterDefs';
-import { fillCardClass, useListPage } from '../../../components/form/DataTable';
-import { PageHeader } from '../../../components/form/PageHeader';
-import { cap } from '../../../components/form/noun';
+import { Alert, TableContent, TableStatus, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { ListPage } from '../../../components/form/ListPage';
 import { INCOMING_STATUSES, type IncomingPayment } from '../../../mocks/incomingPayments';
 import { formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
 import { taxCodes } from '../../../services/masterData';
 import { amountDue, incomingNumber, listIncomingPayments } from '../../../services/incomingPayments';
 import { useAsync } from '../../../services/useAsync';
+import { choiceField, dateField, masterField, numberField, partnerField, statusField, textField } from '../../../components/filter/fieldKit';
+import { draftScope, draftSplit, scopeStatuses } from '../../../components/filter/useListPresets';
+import { currencyDef } from '../../settings/masterDefs';
 import { RC_LIST_PATH, RC_NOUN, RC_STATUS_INTENT } from '../paths';
 
-export function IncomingPaymentList() {
+export function IncomingPaymentList({ draftsOnly = false, compact, selectedId }: { draftsOnly?: boolean; compact?: boolean; selectedId?: string } = {}) {
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const data = useAsync(() => Promise.all([listIncomingPayments(), taxCodes.list()]), []);
-  const [query, setQuery] = useState('');
-  const { resetPage, paginate } = useListPage();
-  const [orders, codes] = data ?? [undefined, []];
-  const totalOf = (so: IncomingPayment) => amountDue(so);
+  const [orders] = data ?? [undefined];
+
   const fields = [
     textField<IncomingPayment>('no', 'No.', incomingNumber),
     choiceField<IncomingPayment>('type', 'Type', ['Customer', 'Account'], (d) => d.type),
-    textField<IncomingPayment>('customer', 'Customer', (d) => d.customerName),
+    partnerField<IncomingPayment>('customer', 'Customer', (d) => d.customerId, (d) => d.customerName, orders),
     textField<IncomingPayment>('customerCode', 'Customer code', (d) => d.customerCode),
     dateField<IncomingPayment>('postingDate', 'Posting date', (d) => d.postingDate),
     dateField<IncomingPayment>('dueDate', 'Due date', (d) => d.dueDate),
     textField<IncomingPayment>('reference', 'Reference', (d) => d.reference),
     textField<IncomingPayment>('invoice', 'Invoice no.', (d) => d.rows.map((r) => r.docNo)),
-    numberField<IncomingPayment>('total', 'Total', totalOf),
-    statusField<IncomingPayment>(INCOMING_STATUSES),
+    numberField<IncomingPayment>('total', 'Total', amountDue),
+    statusField<IncomingPayment>(scopeStatuses(draftsOnly, INCOMING_STATUSES)),
     masterField<IncomingPayment>('currency', 'Currency', currencyDef, (d) => d.currency),
     textField<IncomingPayment>('remarks', 'Remarks', (d) => d.remarks),
   ];
-  const presets = useListPresets({
-    list: 'incoming-payments',
-    fields,
-    builtIns: statusViews(RC_NOUN.many, INCOMING_STATUSES),
-    defaultSort: { key: 'postingDate', direction: 'desc' },
-    rows: orders,
-    onChange: resetPage,
-  });
-  const { sort, setSort } = presets;
-
-  const rows = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const filtered = presets.apply(orders ?? []).filter(
-      (so) =>
-        (!q || [incomingNumber(so), so.customerCode, so.customerName, so.reference, so.remarks, ...so.rows.map((r) => r.docNo)].join(' ').toLowerCase().includes(q)),
-    );
-    if (!sort) return filtered;
-    const dir = sort.direction === 'asc' ? 1 : -1;
-    const value = (so: IncomingPayment): string | number => (sort.key === 'total' ? totalOf(so) : sort.key === 'docNum' ? so.docNum : String(so[sort.key as keyof IncomingPayment] ?? ''));
-    return [...filtered].sort((a, b) => {
-      const x = value(a);
-      const y = value(b);
-      return (x < y ? -1 : x > y ? 1 : 0) * dir;
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orders, presets.filter, query, sort, codes]);
-
-  const { visible: onPage, pagination } = paginate(rows);
 
   const columns: TableColumn<IncomingPayment>[] = [
-    {
-      key: 'docNum',
-      header: 'No.',
-      sortable: true,
-      cell: (so) => (
-        <TableContent href={`#${RC_LIST_PATH}/${so.docNum ? incomingNumber(so) : so.id}`} subcopy={so.reference ? `Ref. ${so.reference}` : undefined}>{incomingNumber(so)}</TableContent>
-      ),
-    },
+    { key: 'docNum', header: 'No.', sortable: true, cell: (so) => <TableContent href={`#${RC_LIST_PATH}/${so.docNum ? incomingNumber(so) : so.id}`} subcopy={so.reference ? `Ref. ${so.reference}` : undefined}>{incomingNumber(so)}</TableContent> },
     { key: 'customerName', header: 'Customer', sortable: true, cell: (so) => <TableContent subcopy={so.type === 'Account' ? 'Account' : so.customerCode}>{so.customerName || (so.type === 'Account' ? so.accountRows.map((r) => r.account).join(', ') || '—' : '—')}</TableContent> },
     { key: 'postingDate', header: 'Posting date', align: 'end', cell: (so) => formatDate(so.postingDate) },
     { key: 'transNo', header: 'Trans. No.', cell: (so) => (so.transNo ? String(so.transNo) : '—') },
-    {
-      key: 'means',
-      header: 'Means',
-      cell: (so) =>
-        [so.means.transfer.amount ? 'Transfer' : '', so.means.cash.amount ? 'Cash' : '', so.means.checks.length ? `${so.means.checks.length} check${so.means.checks.length === 1 ? '' : 's'}` : '', so.means.cards.length ? 'Card' : ''].filter(Boolean).join(' · ') || '—',
-    },
-    { key: 'total', header: 'Total', align: 'end', cell: (so) => `${so.currency} ${formatAmount(totalOf(so))}` },
+    { key: 'means', header: 'Means', cell: (so) => [so.means.transfer.amount ? 'Transfer' : '', so.means.cash.amount ? 'Cash' : '', so.means.checks.length ? `${so.means.checks.length} check${so.means.checks.length === 1 ? '' : 's'}` : '', so.means.cards.length ? 'Card' : ''].filter(Boolean).join(' · ') || '—' },
+    { key: 'total', header: 'Total', align: 'end', cell: (so) => `${so.currency} ${formatAmount(amountDue(so))}` },
     { key: 'status', header: 'Status', sortable: true, cell: (so) => <TableStatus intent={RC_STATUS_INTENT[so.status]}>{so.status}</TableStatus> },
   ];
 
   return (
-    <Panel className="flex-1">
-      <PageHeader
-        showSearch
-        searchLabel={`Search ${RC_NOUN.many}`}
-        searchPlaceholder="Search by payment no., customer, reference or invoice"
-        searchValue={query}
-        onSearchChange={(value) => {
-          setQuery(value);
-          resetPage();
-        }}
-        icon="savings"
-        title={cap(RC_NOUN.many)}
-        create={{ noun: RC_NOUN, to: RC_LIST_PATH }}
-      />
-      <Panel.Body className="flex flex-col gap-2">
-        {notice ? (
-          <Alert intent="success" variant="outline" title="Saved">
-            {notice}
-          </Alert>
-        ) : null}
-        {presets.toolbar(null)}
-        <Card className={fillCardClass(onPage.length)}>
-          {!orders ? (
-            <Text tone="muted" className="p-4">Loading {RC_NOUN.many}…</Text>
-          ) : orders.length ? (
-            <Table
-              caption={cap(RC_NOUN.many)}
-              columns={columns}
-              rows={onPage}
-              getRowId={(so) => so.id}
-              sort={sort}
-              onSortChange={setSort}
-              layout="fill"
-              pagination={pagination}
-            />
-          ) : (
-            <Text tone="muted" className="p-4">No {RC_NOUN.many} yet. Record one from an A/R invoice or a customer's Transactions tab, or with New {RC_NOUN.one}.</Text>
-          )}
-        </Card>
-      </Panel.Body>
-      {presets.panel}
-    </Panel>
+    <ListPage
+      rows={orders}
+      columns={columns}
+      fields={fields}
+      noun={RC_NOUN}
+      icon="savings"
+      basePath={RC_LIST_PATH}
+      listKey="incoming-payments"
+      builtIns={draftSplit(draftsOnly, RC_NOUN.many, INCOMING_STATUSES)}
+      scope={draftScope(draftsOnly, INCOMING_STATUSES)}
+      defaultSort={{ key: 'postingDate', direction: 'desc' }}
+      search={{ placeholder: 'Search by payment no., customer, reference or invoice', label: `Search ${RC_NOUN.many}` }}
+      header={notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : undefined}
+      emptyMessage={`No ${RC_NOUN.many} yet. Record one from an A/R invoice or a customer's Transactions tab, or with New ${RC_NOUN.one}.`}
+      compact={compact}
+      selectedId={selectedId}
+      getRowId={(r) => r.docNum ? incomingNumber(r) : r.id}
+      filterFn={(so, q) => !q || [incomingNumber(so), so.customerCode, so.customerName, so.reference, so.remarks, ...so.rows.map((r) => r.docNo)].join(' ').toLowerCase().includes(q)}
+      sortFn={(a, b, sort) => {
+        const value = (so: IncomingPayment): string | number =>
+          sort.key === 'total' ? amountDue(so) : sort.key === 'docNum' ? so.docNum : String(so[sort.key as keyof IncomingPayment] ?? '');
+        const x = value(a); const y = value(b);
+        return x < y ? -1 : x > y ? 1 : 0;
+      }}
+    />
   );
 }

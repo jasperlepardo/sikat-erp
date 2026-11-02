@@ -12,9 +12,10 @@ import {
   Tabs,
   TextField,
   FormField,
-  Text,
 } from '@jasperlepardo/sikat-design-system';
+import { PartnerDetailSkeleton } from '../../../components/form/skeletons/PartnerDetailSkeleton';
 import { PageHeader } from '../../../components/form/PageHeader';
+import { DetailColumns } from '../../../components/form/DetailColumns';
 import { bpGroupDef, currencyDef } from '../../settings/masterDefs';
 import { RDOS } from '../../../mocks/taxes';
 import { LEAD_SOURCES, PARTNER_STATUSES, blankPartner, contactName, type ContactPerson, type PartnerAddress, type PartnerRole } from '../../../mocks/partners';
@@ -166,7 +167,7 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
   const config = scope === 'all' ? MASTER_CONFIG : ROLE_CONFIG[isNew ? (draft?.roles[0] ?? initialType) : scope];
   const setPage = useDocTab<PageId>(`${config.basePath}/${id}`, tabParam, { keepState: false });
 
-  if (draft === undefined) return <Text tone="muted" className="p-4">Loading {config.singular.toLowerCase()}…</Text>;
+  if (draft === undefined) return <PartnerDetailSkeleton />;
   if (draft === null) {
     return (
       <Panel className="flex-1">
@@ -265,8 +266,8 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
     }
   };
 
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
+  const submit = async (e?: FormEvent) => {
+    e?.preventDefault();
     if (!check()) return;
     if (await save()) navigate(config.basePath);
   };
@@ -303,7 +304,7 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
 
   return (
     <>
-      <Form className="flex min-h-0 flex-1 flex-col" onSubmit={submit} noValidate>
+      <Form className="flex min-h-0 flex-1 flex-col" onSubmit={(e) => e.preventDefault()} noValidate>
         <Panel className="min-h-0 flex-1">
           <PageHeader
             variant="plain"
@@ -339,6 +340,9 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
                 noun={noun}
                 listPath={config.basePath}
                 mode={isNew ? 'draft' : 'open'}
+                draft={draft}
+                onRevert={setDraft}
+                onSubmit={() => submit()}
                 busy={saving}
                 menu={menu}
                 prevNext={isNew ? undefined : { path: config.basePath, prevId, nextId }}
@@ -356,16 +360,30 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
               )}
             </Panel.Body>
           ) : (
-            /* Side by side (lg), each column scrolls on its own; stacked, the body scrolls as one. */
-            <Panel.Body className="flex flex-col gap-2 lg:overflow-hidden!">
-              <ProblemsAlert
-                problems={problems}
-                tabLabel={(t) => (t === 'addresses' ? 'Addresses' : TABS.find((x) => x.value === t)?.label)}
-                onOpenTab={(t) => openProblem(t)}
-              />
-
-              <div className="grid gap-4 lg:min-h-0 lg:flex-1 lg:grid-cols-12 lg:grid-rows-1">
-                <aside className="flex flex-col gap-3 lg:col-span-3 lg:min-h-0 lg:overflow-y-auto">
+            <DetailColumns
+              header={
+                <ProblemsAlert
+                  problems={problems}
+                  tabLabel={(t) => (t === 'addresses' ? 'Addresses' : TABS.find((x) => x.value === t)?.label)}
+                  onOpenTab={(t) => openProblem(t)}
+                />
+              }
+              main={
+                <>
+                  <Tabs
+                    value={tab}
+                    onValueChange={(v) => setTab(v as TabId)}
+                    items={TABS.map((t) => ({
+                      value: t.value,
+                      label: t.label,
+                      badge: problems.some((p) => p.tab === t.value) ? '!' : undefined,
+                    }))}
+                  />
+                  <ActiveTab draft={draft} update={update} errors={errors} />
+                </>
+              }
+              aside={
+                <>
                   <Section icon="badge" title="Business partner">
                     <FieldStack>
                       {isNew ? (
@@ -437,7 +455,6 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
                         </>
                       ) : null}
                       {h.text('statusRemarks', 'Status remarks', { ...beside, placeholder: 'Why the status changed' })}
-                      {/* Free text: label above, so the box gets the column's full width. */}
                       {h.area('generalRemarks', 'Remarks', { placeholder: 'Add a note about this partner', rows: 1 })}
                       {h.area('remarks', 'Internal remarks', {
                         placeholder: 'Add internal notes',
@@ -454,23 +471,9 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
                   {!isNew && draft.roles.includes('customer') && draft.id && (
                     <AgreementsSection partnerId={draft.id} />
                   )}
-                </aside>
-
-                <div className="flex min-w-0 flex-col gap-3 lg:col-span-9 lg:min-h-0 lg:overflow-y-auto">
-
-                  <Tabs
-                    value={tab}
-                    onValueChange={(v) => setTab(v as TabId)}
-                    items={TABS.map((t) => ({
-                      value: t.value,
-                      label: t.label,
-                      badge: problems.some((p) => p.tab === t.value) ? '!' : undefined,
-                    }))}
-                  />
-                  <ActiveTab draft={draft} update={update} errors={errors} />
-                </div>
-              </div>
-            </Panel.Body>
+                </>
+              }
+            />
           )}
         </Panel>
       </Form>

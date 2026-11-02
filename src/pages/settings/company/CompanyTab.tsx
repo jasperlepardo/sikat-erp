@@ -86,6 +86,8 @@ function CompanyDetail({ basePath, recordId }: { basePath: string; recordId: str
             noun={COMPANY_NOUN}
             listPath={basePath}
             mode={isNew ? 'draft' : 'open'}
+            draft={{ company: row, tax }}
+            onRevert={(b) => { setDraft(b.company); setTaxDraft(b.tax ?? null); }}
             busy={saving}
             onSubmit={save}
             prevNext={isNew ? undefined : { path: basePath, prevId, nextId }}

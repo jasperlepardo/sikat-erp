@@ -54,7 +54,6 @@ export function FilterBar<T>({
 }) {
   const active = activeRules(value, fields);
   const removeRule = (id: string) => onChange({ ...value, rules: value.rules.filter((r) => r.id !== id) });
-  // The search usually lives in the PanelHeader now — nothing to show without chips.
   if (children == null && !(showChips && active.length > 0)) return null;
 
   return (

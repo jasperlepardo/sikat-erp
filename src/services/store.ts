@@ -1,22 +1,15 @@
 import { CURRENT_USER } from '../mocks/common';
 import { filterRows, type ListQuery } from './listQuery';
 
-/**
- * A tiny fake "API" over seed data. Every call is async with a small delay so
- * screens handle loading states like they would against a real backend, and
- * writes persist to localStorage. Swap a collection for `fetch` calls later
- * without touching the UI.
- */
-const LATENCY_MS = 250;
-
-const wait = () => new Promise((r) => setTimeout(r, LATENCY_MS));
+/** A tiny fake "API" over seed data. Writes persist to localStorage. Swap a collection for `fetch` calls later without touching the UI. */
+const wait = () => Promise.resolve();
 
 /**
  * Bump whenever a file in `src/mocks` changes. Saved collections otherwise
  * shadow the seed forever, so a browser holding an older version drops every
  * `sikat-erp:` key on load and starts again from the current seed.
  */
-const SEED_VERSION = 122;
+const SEED_VERSION = 128;
 const VERSION_KEY = 'sikat-erp:seed-version';
 
 // Runs once at module load — before any collection below reads storage.

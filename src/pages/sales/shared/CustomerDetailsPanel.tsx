@@ -4,7 +4,6 @@ import { Card, CardField, Icon, IconButton, Panel, SidePanel, Text } from '@jasp
 import { PageHeader } from '../../../components/form/PageHeader';
 import { formatAddress, type PostalAddress } from '../../../mocks/address';
 import { contactName, type Partner, type PartnerAddress } from '../../../mocks/partners';
-import { INDICATORS } from '../../../mocks/purchaseOrders';
 import { countryName } from '../../../services/partnerMasters';
 import { formatAmount } from '../../../services/format';
 import { Fields, Section, bind } from '../../../components/form/fields';
@@ -15,8 +14,6 @@ interface CustomerDetailsFields {
   customerRef: string;
   shipTo: string;
   billTo: string;
-  indicator: string;
-  orderNumber: string;
 }
 
 interface CustomerDetailsPanelProps {
@@ -30,13 +27,15 @@ interface CustomerDetailsPanelProps {
   onClose: () => void;
   /** The credit bar; left out where the document adds nothing to what the customer owes (a delivery against an order). */
   credit?: { overCredit: boolean; openBalance: number; totalLc: number };
-  orderNumberHint?: string;
-  /** Sections only this document has, after Order details. */
+  /** Document-specific label for the customer's reference field (e.g. "Customer PO no."). */
+  customerRefLabel?: string;
+  customerRefHint?: string;
+  /** Sections only this document has, after Delivery & billing. */
   children?: ReactNode;
 }
 
-/** The customer side panel on a sales document: credit, contact, addresses and order details. */
-export function CustomerDetailsPanel({ customer, draft, update, readOnly, noun, open, onClose, credit, orderNumberHint = 'Internal or chain-store order reference.', children }: CustomerDetailsPanelProps) {
+/** The customer side panel on a sales document: credit, contact and addresses. */
+export function CustomerDetailsPanel({ customer, draft, update, readOnly, noun, open, onClose, credit, customerRefLabel = 'Customer ref. no.', customerRefHint = "The customer's own PO or reference number.", children }: CustomerDetailsPanelProps) {
   const navigate = useNavigate();
   if (!open || !customer) return null;
 
@@ -141,7 +140,7 @@ export function CustomerDetailsPanel({ customer, draft, update, readOnly, noun, 
               placeholder="Select a contact person"
               readOnly={readOnly}
             />
-            {h.text('customerRef', 'Customer ref. no.', { hint: "The customer's own PO or reference number.", readOnly })}
+            {h.text('customerRef', customerRefLabel, { hint: customerRefHint, readOnly })}
           </Fields>
         </Section>
         <Section icon="local_shipping" title="Delivery & billing">
@@ -167,12 +166,6 @@ export function CustomerDetailsPanel({ customer, draft, update, readOnly, noun, 
                 {customer.name} has no addresses yet — add them on the customer record.
               </Text>
             ) : null}
-          </Fields>
-        </Section>
-        <Section icon="tune" title="Order details">
-          <Fields cols={1}>
-            {h.choose('indicator', 'Indicator', INDICATORS.map((v) => ({ value: v, label: v })), { clearable: true, readOnly })}
-            {h.text('orderNumber', 'Order number', { hint: orderNumberHint, readOnly })}
           </Fields>
         </Section>
         {children}

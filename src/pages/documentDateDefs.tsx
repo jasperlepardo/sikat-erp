@@ -10,6 +10,7 @@ import type { SoTabProps } from './sales/sales-orders/detail/types';
 import type { DnSectionProps } from './sales/deliveries/detail/types';
 import type { ArSectionProps } from './sales/invoices/detail/types';
 import type { RiSectionProps } from './sales/reserve-invoices/detail/types';
+import type { DiSectionProps } from './sales/down-payment-invoices/detail/types';
 import type { PrSectionProps } from './purchasing/purchase-requests/detail/types';
 import type { GrSectionProps as GrReceiptProps } from './purchasing/goods-receipts/detail/types';
 import type { GrSectionProps as GrReturnProps } from './purchasing/goods-returns/detail/types';
@@ -89,6 +90,15 @@ export const arReserveInvoiceDates: DatesDef<RiSectionProps['draft'], { ctx: RiS
     dateRow(DOC_DATE.effective, { error: errors.postingDate, readOnly: ctx.readOnly, hint: 'When A/R, revenue, and VAT are posted (no stock movement).' }),
     dateRow(DOC_DATE.due, { required: true, error: errors.dueDate, readOnly: ctx.readOnly, hint: `From the payment terms (${paymentTermName(draft.paymentTermId)}).` }),
     dateRow(DOC_DATE.document, { error: errors.documentDate, readOnly: ctx.readOnly }),
+  ],
+};
+
+export const arDownPaymentInvoiceDates: DatesDef<DiSectionProps['draft'], { ctx: DiSectionProps['ctx'] }> = {
+  closeField: 'closeDate',
+  rows: ({ draft, errors, ctx }) => [
+    dateRow(DOC_DATE.effective, { required: true, error: errors.postingDate, readOnly: ctx.readOnly, hint: 'Sets the period, tax rates and the exchange rate the advance is booked at.' }),
+    dateRow(DOC_DATE.due, { error: errors.dueDate, readOnly: ctx.readOnly, hint: `When the advance is due (${paymentTermName(draft.paymentTermId)}).`, optional: true }),
+    dateRow(DOC_DATE.document, { error: errors.documentDate, readOnly: ctx.readOnly, hint: 'The date for records. Defaults to today.' }),
   ],
 };
 

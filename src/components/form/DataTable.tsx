@@ -137,7 +137,10 @@ export function DataTable<T>({
   const pages = Math.max(1, Math.ceil(sorted.length / pageSize));
   const current = Math.min(page, pages);
   const visible = noPagination ? sorted : sorted.slice((current - 1) * pageSize, current * pageSize);
-  const liveSelection = selected.filter((id) => rows.some((r) => getRowId(r) === id));
+  const liveSelection = useMemo(
+    () => selected.filter((id) => rows.some((r) => getRowId(r) === id)),
+    [selected, rows, getRowId],
+  );
 
   const toolbar = (
     <div className="flex flex-wrap items-center gap-1">
@@ -170,6 +173,11 @@ export function DataTable<T>({
   );
   // The add row sits below the table, outside its horizontal scroll container, so it
   // stays put and full-width no matter how wide (or scrolled) the columns are.
+  const mappedColumns = useMemo(
+    () => columns.map((c) => ({ sortable: !unsortable.includes(c.key), ...c })),
+    [columns, unsortable],
+  );
+
   const addBlock = spanRow ? <div className="px-2 pt-2 pb-2 *:w-full">{spanRow}</div> : null;
   const hasRows = rows.length > 0;
   const hasTable = hasRows || Boolean(spanRow);
@@ -177,7 +185,7 @@ export function DataTable<T>({
     <Table
       // The card variant names the table in its header; no hidden caption.
       {...(variant === 'card' ? {} : { caption: title })}
-      columns={columns.map((c) => ({ sortable: !unsortable.includes(c.key), ...c }))}
+      columns={mappedColumns}
       rows={visible}
       getRowId={getRowId}
       sort={sort}

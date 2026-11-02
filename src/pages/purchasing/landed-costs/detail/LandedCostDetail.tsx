@@ -5,8 +5,8 @@ import {
   Badge,
   Form,
   Panel,
-  Text,
 } from '@jasperlepardo/sikat-design-system';
+import { DocumentDetailSkeleton } from '../../../../components/form/skeletons/DocumentDetailSkeleton';
 import { PageHeader } from '../../../../components/form/PageHeader';
 import { DetailColumns } from '../../../../components/form/DetailColumns';
 import { bind, type Errors } from '../../../../components/form/fields';
@@ -110,7 +110,7 @@ function LandedCostForm() {
 
   useDocTitle(draft?.docNum ? (isNew ? `New ${LC_NOUN.one}` : draft.status !== 'Draft' ? lcNumber(draft) : `Draft ${LC_NOUN.one}`) : undefined);
 
-  if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading…</Text>;
+  if (draft === undefined || !m) return <DocumentDetailSkeleton />;
   if (draft === null)
     return <NotFound icon="calculate" title="Landed cost not found" backTo={LC_LIST_PATH} backLabel="Back to landed costs" />;
 
@@ -173,7 +173,7 @@ function LandedCostForm() {
 
   return (
     <>
-    <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
+    <Form className="flex-1" onSubmit={(e) => e.preventDefault()} noValidate>
       <Panel className="flex-1">
         <PageHeader
           variant="plain"
@@ -186,6 +186,8 @@ function LandedCostForm() {
               noun={LC_NOUN}
               listPath={LC_LIST_PATH}
               mode={added ? 'readonly' : 'draft'}
+              draft={draft}
+              onRevert={setDraft}
               remarksOnly={added}
               busy={saving}
               onDraft={() => submit(null, true)}

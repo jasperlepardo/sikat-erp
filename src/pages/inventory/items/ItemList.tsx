@@ -1,17 +1,13 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import {
-  Card,
-  Panel,
-  Table,
   TableAmount,
   TableContent,
   TableStatus,
   type TableColumn,
-  Text,
+  type TableSort,
 } from '@jasperlepardo/sikat-design-system';
-import { PageHeader } from '../../../components/form/PageHeader';
+import { ListPage } from '../../../components/form/ListPage';
 import { ITEM_NOUN } from '../paths';
-import { cap } from '../../../components/form/noun';
 import type { Item } from '../../../mocks/items';
 import { isValidToday, listItems, stockTotals } from '../../../services/items';
 import { useAsync } from '../../../services/useAsync';
@@ -19,9 +15,7 @@ import { formatAmount } from '../../../services/format';
 import { itemGroupName } from '../../../services/inventoryMasters';
 import { EMPTY_FILTER, oneRule } from '../../../components/filter/engine';
 import { boolField, numberField, textField } from '../../../components/filter/fieldKit';
-import { useListPresets } from '../../../components/filter/useListPresets';
 import type { BuiltInView } from '../../../components/filter/useListViews';
-import { fillCardClass, useListPage } from '../../../components/form/DataTable';
 
 const ITEM_VIEWS: BuiltInView[] = [
   { id: 'all', name: 'All items', filter: EMPTY_FILTER },
@@ -33,16 +27,20 @@ const ITEM_VIEWS: BuiltInView[] = [
 
 type StockTotals = { inStock: number; committed: number; ordered: number; available: number };
 
-/** Aggregate stock totals across all variants for parent items, or direct totals for standalone/variant items. */
 function effectiveStock(item: Item, variantStockMap: Map<string, StockTotals>): StockTotals {
   if (item.variantAxes.length > 0) return variantStockMap.get(item.id) ?? { inStock: 0, committed: 0, ordered: 0, available: 0 };
   return stockTotals(item);
 }
 
-export function ItemList({ basePath = '/inventory/items' }: { basePath?: string }) {
+const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
+
+export function ItemList({ basePath = '/inventory/items', compact = false, selectedId }: {
+  basePath?: string;
+  compact?: boolean;
+  selectedId?: string;
+}) {
   const items = useAsync(listItems, []);
 
-  // Aggregate stock totals for parent items, summed across all their variants.
   const variantStockMap = useMemo(() => {
     const map = new Map<string, StockTotals>();
     for (const i of items ?? []) {
@@ -59,7 +57,6 @@ export function ItemList({ basePath = '/inventory/items' }: { basePath?: string 
     return map;
   }, [items]);
 
-  // Variant descriptions indexed by parent id, for search matching.
   const variantSearchMap = useMemo(() => {
     const map = new Map<string, string>();
     for (const i of items ?? []) {
@@ -70,7 +67,6 @@ export function ItemList({ basePath = '/inventory/items' }: { basePath?: string 
     return map;
   }, [items]);
 
-  // Filter fields — stock fields use aggregate for parent items.
   const fields = useMemo(() => [
     textField<Item>('itemNo', 'Item no.', (i) => i.itemNo),
     textField<Item>('description', 'Description', (i) => i.description),
@@ -89,41 +85,7 @@ export function ItemList({ basePath = '/inventory/items' }: { basePath?: string 
     numberField<Item>('basePrice', 'Base price', (i) => i.basePrice),
   ], [variantStockMap]);
 
-  const [query, setQuery] = useState('');
-  const { resetPage, paginate } = useListPage();
-  const presets = useListPresets({
-    list: 'items',
-    fields,
-    builtIns: ITEM_VIEWS,
-    defaultSort: { key: 'description', direction: 'asc' },
-    rows: items,
-    onChange: resetPage,
-  });
-  const { sort, setSort } = presets;
-
-  const rows = useMemo(() => {
-    const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
-    const q = normalize(query);
-    const filtered = presets.apply(items ?? []).filter((i) => {
-      if (i.parentItemId) return false; // hide variants from list
-      if (!q) return true;
-      const own = normalize([i.itemNo, i.description, i.foreignName, itemGroupName(i.itemGroupId), i.gtin, ...i.barcodes.map((b) => b.barcode)].join(' '));
-      const variantText = normalize(variantSearchMap.get(i.id) ?? '');
-      return own.includes(q) || variantText.includes(q);
-    });
-    if (!sort) return filtered;
-    const dir = sort.direction === 'asc' ? 1 : -1;
-    return [...filtered].sort((a, b) => {
-      let x: string | number;
-      let y: string | number;
-      if (sort.key === 'inStock') { x = effectiveStock(a, variantStockMap).inStock; y = effectiveStock(b, variantStockMap).inStock; }
-      else if (sort.key === 'available') { x = effectiveStock(a, variantStockMap).available; y = effectiveStock(b, variantStockMap).available; }
-      else { const v = a[sort.key as keyof Item]; const w = b[sort.key as keyof Item]; x = typeof v === 'number' ? v : String(v ?? '').toLowerCase(); y = typeof w === 'number' ? w : String(w ?? '').toLowerCase(); }
-      return (x < y ? -1 : x > y ? 1 : 0) * dir;
-    });
-  }, [items, presets.filter, query, sort, variantStockMap, variantSearchMap]);
-
-  const columns: TableColumn<Item>[] = [
+  const allColumns = useMemo((): TableColumn<Item>[] => [
     {
       key: 'description',
       header: 'Item',
@@ -189,47 +151,46 @@ export function ItemList({ basePath = '/inventory/items' }: { basePath?: string 
         return <TableStatus intent="success">In stock</TableStatus>;
       },
     },
-  ];
+  ], [basePath, items, variantStockMap]);
 
-  const { visible, pagination } = paginate(rows);
+  const columns = useMemo(
+    () => compact ? allColumns.slice(0, 1) : allColumns,
+    [compact, allColumns],
+  );
+
+  const filterFn = useCallback((i: Item, q: string) => {
+    if (i.parentItemId) return false;
+    if (!q) return true;
+    const own = norm([i.itemNo, i.description, i.foreignName, itemGroupName(i.itemGroupId), i.gtin, ...i.barcodes.map((b) => b.barcode)].join(' '));
+    const variantText = norm(variantSearchMap.get(i.id) ?? '');
+    return own.includes(norm(q)) || variantText.includes(norm(q));
+  }, [variantSearchMap]);
+
+  const sortFn = useCallback((a: Item, b: Item, sort: TableSort) => {
+    let x: string | number;
+    let y: string | number;
+    if (sort.key === 'inStock') { x = effectiveStock(a, variantStockMap).inStock; y = effectiveStock(b, variantStockMap).inStock; }
+    else if (sort.key === 'available') { x = effectiveStock(a, variantStockMap).available; y = effectiveStock(b, variantStockMap).available; }
+    else { const v = a[sort.key as keyof Item]; const w = b[sort.key as keyof Item]; x = typeof v === 'number' ? v : String(v ?? '').toLowerCase(); y = typeof w === 'number' ? w : String(w ?? '').toLowerCase(); }
+    return x < y ? -1 : x > y ? 1 : 0;
+  }, [variantStockMap]);
 
   return (
-    <Panel className="flex-1">
-      <PageHeader
-        showSearch
-        searchLabel="Search items"
-        searchPlaceholder="Search by item no., description, group, barcode, or variant"
-        searchValue={query}
-        onSearchChange={(value) => {
-          setQuery(value);
-          resetPage();
-        }}
-        icon="inventory_2"
-        title={presets.menu}
-        create={{ noun: ITEM_NOUN, to: basePath }}
-      />
-      <Panel.Body className="flex flex-col gap-2">
-        {presets.bar(null)}
-        <Card className={fillCardClass(visible.length)}>
-          {!items ? (
-            <Text tone="muted" className="p-4">Loading items…</Text>
-          ) : items.length ? (
-            <Table
-              caption={cap(ITEM_NOUN.many)}
-              columns={columns}
-              rows={visible}
-              getRowId={(i) => i.id}
-              sort={sort}
-              onSortChange={setSort}
-              layout="fill"
-              pagination={pagination}
-            />
-          ) : (
-            <Text tone="muted" className="p-4">No {ITEM_NOUN.many} yet. Create one with New {ITEM_NOUN.one}.</Text>
-          )}
-        </Card>
-      </Panel.Body>
-      {presets.panel}
-    </Panel>
+    <ListPage
+      rows={items}
+      columns={columns}
+      fields={fields}
+      noun={ITEM_NOUN}
+      icon="inventory_2"
+      basePath={basePath}
+      listKey="items"
+      builtIns={ITEM_VIEWS}
+      defaultSort={{ key: 'description', direction: 'asc' }}
+      search={{ placeholder: 'Search by item no., description, group, barcode, or variant', label: 'Search items' }}
+      compact={compact}
+      selectedId={selectedId}
+      filterFn={filterFn}
+      sortFn={sortFn}
+    />
   );
 }

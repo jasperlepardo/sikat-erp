@@ -7,8 +7,8 @@ import {
   Form,
   Panel,
   Tabs,
-  Text,
 } from '@jasperlepardo/sikat-design-system';
+import { DocumentDetailSkeleton } from '../../../components/form/skeletons/DocumentDetailSkeleton';
 import { PageHeader } from '../../../components/form/PageHeader';
 import { DetailColumns } from '../../../components/form/DetailColumns';
 import { type Errors } from '../../../components/form/fields';
@@ -187,7 +187,7 @@ function CreditMemoForm() {
   }, [id, isNew]);
 
   useDocTitle(draft?.docNum ? (isNew ? `New ${MEMO_NOUN.one}` : draft.status !== 'Draft' ? memoNumber(draft) : `Draft ${MEMO_NOUN.one}`) : undefined);
-  if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading A/P credit memo…</Text>;
+  if (draft === undefined || !m) return <DocumentDetailSkeleton />;
   if (draft === null) return <NotFound icon="receipt" title="A/P credit memo not found" backTo={MEMO_LIST_PATH} backLabel="Back to credit memos" />;
 
   const base = buildGrContext(draft, m);
@@ -311,7 +311,7 @@ function CreditMemoForm() {
 
   return (
     <>
-      <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
+      <Form className="flex-1" onSubmit={(e) => e.preventDefault()} noValidate>
         <Panel className="flex-1">
           <PageHeader
             variant="plain"
@@ -325,6 +325,8 @@ function CreditMemoForm() {
                 noun={MEMO_NOUN}
                 listPath={MEMO_LIST_PATH}
                 mode={docMode(draft.status, { canApprove: isApprover('CM') })}
+                draft={draft}
+                onRevert={setDraft}
                 needsApproval={!draft.approved}
                 remarksOnly={added}
                 busy={saving}
@@ -471,6 +473,7 @@ function CreditMemoForm() {
         readOnly={ctx.readOnly}
         open={vendorDetailsOpen}
         onClose={() => setVendorDetailsOpen(false)}
+        vendorRefLabel="Vendor credit note no."
         vendorRefHint="The vendor's credit note no."
         vendorRefError={errors.vendorRef}
         addresses={[]}

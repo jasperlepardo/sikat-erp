@@ -13,6 +13,7 @@ import {
   TextField,
   Text,
 } from '@jasperlepardo/sikat-design-system';
+import { ItemDetailSkeleton } from '../../../../components/form/skeletons/ItemDetailSkeleton';
 import { PageHeader } from '../../../../components/form/PageHeader';
 import { DetailColumns } from '../../../../components/form/DetailColumns';
 import { FieldStack, Section, bind, type Errors } from '../../../../components/form/fields';
@@ -246,7 +247,7 @@ function ItemForm() {
     };
   }, [id, isNew]);
 
-  if (draft === undefined || !mastersReady) return <Text tone="muted" className="p-4">Loading item…</Text>;
+  if (draft === undefined || !mastersReady) return <ItemDetailSkeleton />;
   if (draft === null) return <NotFound icon="inventory_2" title="Item not found" backTo={LIST_PATH} backLabel="Back to items" />;
 
   // A new inventory UoM replaces the old one among the item's units.
@@ -317,8 +318,8 @@ function ItemForm() {
     setEditingVendor(null);
   };
 
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
+  const submit = async (e?: FormEvent) => {
+    e?.preventDefault();
     const found = validate(draft, isNew ? codeMode : 'manual', inv);
     setProblems(found);
     const first = found[0];
@@ -368,7 +369,7 @@ function ItemForm() {
 
   return (
     <>
-      <Form className="flex min-h-0 flex-1 flex-col" onSubmit={submit} noValidate>
+      <Form className="flex min-h-0 flex-1 flex-col" onSubmit={(e) => e.preventDefault()} noValidate>
         <Panel className="min-h-0 flex-1">
           <PageHeader
             variant="plain"
@@ -400,6 +401,9 @@ function ItemForm() {
                 noun={ITEM_NOUN}
                 listPath={LIST_PATH}
                 mode={isNew ? 'draft' : 'open'}
+                draft={draft}
+                onRevert={setDraft}
+                onSubmit={() => submit()}
                 busy={saving}
                 menu={menu}
                 prevNext={isNew ? undefined : { path: LIST_PATH, prevId, nextId }}

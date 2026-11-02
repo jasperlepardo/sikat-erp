@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import { Alert, Badge, Form, FormField, Panel, Select, Tabs, Text } from '@jasperlepardo/sikat-design-system';
+import { DocumentDetailSkeleton } from '../../../../components/form/skeletons/DocumentDetailSkeleton';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { Section, bind, type Errors } from '../../../../components/form/fields';
 import { type MoreMenuItem } from '../../../../components/form/MoreMenu';
@@ -11,6 +12,7 @@ import { isApprover, needsApproval } from '../../../../services/approval';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { formatAddress } from '../../../../mocks/address';
 import type { ArInvoice } from '../../../../mocks/arInvoices';
+import type { ArDownPaymentInvoice } from '../../../../mocks/arDownPaymentInvoices';
 import { type Account } from '../../../../mocks/chartOfAccounts';
 import { JournalPreview } from '../../../../components/form/JournalPreview';
 import type { Currency, ExchangeRate } from '../../../../mocks/currencies';
@@ -19,6 +21,7 @@ import type { Item } from '../../../../mocks/items';
 import { type Partner } from '../../../../mocks/partners';
 import type { TaxCode } from '../../../../mocks/taxes';
 import { listArInvoices } from '../../../../services/arInvoices';
+import { listArDownPaymentInvoices } from '../../../../services/arDownPaymentInvoices';
 import { formatDate, todayISO } from '../../../../services/dates';
 import { defaultJournalRemark } from '../../../../services/journalPatterns';
 import { formatAmount } from '../../../../services/format';
@@ -78,6 +81,7 @@ interface Masters {
   items: Item[];
   codes: TaxCode[];
   invoices: ArInvoice[];
+  downPaymentInvoices: ArDownPaymentInvoice[];
   accounts: Account[];
   currencies: Currency[];
   rates: ExchangeRate[];
@@ -122,7 +126,9 @@ function IncomingForm() {
   const isNew = id === 'new';
   const navigate = useNavigate();
   const location = useLocation();
-  const fromInvoice = (location.state as { fromInvoice?: string } | null)?.fromInvoice;
+  const fromState = location.state as { fromInvoice?: string; fromDi?: string } | null;
+  const fromInvoice = fromState?.fromInvoice;
+  const fromDi = fromState?.fromDi;
 
   const rcApproved = !needsApproval('RC');
   const [draft, setDraft] = useState<IncomingInput | null | undefined>(isNew ? { ...blankIncomingPayment(todayISO()), approved: rcApproved } : undefined);
@@ -138,13 +144,15 @@ function IncomingForm() {
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([listPartnersByRole('customer'), listItems(), taxCodes.list(), listArInvoices(), accountsCollection.list(), currenciesCollection.list(), exchangeRates.list()]).then(([customers, items, codes, invoices, accounts, currencies, rates]) => {
+    Promise.all([listPartnersByRole('customer'), listItems(), taxCodes.list(), listArInvoices(), listArDownPaymentInvoices(), accountsCollection.list(), currenciesCollection.list(), exchangeRates.list()]).then(([customers, items, codes, invoices, downPaymentInvoices, accounts, currencies, rates]) => {
       if (cancelled) return;
-      const masters = { customers, items, codes, invoices, accounts, currencies, rates };
+      const masters = { customers, items, codes, invoices, downPaymentInvoices, accounts, currencies, rates };
       setM(masters);
-      // From an invoice's "Copy to incoming payment": its customer, with that invoice ticked.
+      // From an invoice's or down payment invoice's "Receive payment": its customer, with that document ticked.
       const inv = isNew && fromInvoice ? invoices.find((i) => i.id === fromInvoice) : undefined;
+      const di = isNew && fromDi ? downPaymentInvoices.find((d) => d.id === fromDi) : undefined;
       if (inv) setDraft((d) => d && withCustomer(d, inv.customerId, masters, inv.id));
+      else if (di) setDraft((d) => d && withCustomer(d, di.customerId, masters, di.id));
     });
     if (!isNew && id) {
       getIncomingPayment(id).then((p) => !cancelled && setDraft(p ?? null));
@@ -158,7 +166,7 @@ function IncomingForm() {
   }, [id, isNew]);
 
   useDocTitle(draft?.docNum ? (isNew ? `New ${RC_NOUN.one}` : draft.status === 'Draft' ? `Draft ${RC_NOUN.one}` : incomingNumber(draft)) : undefined);
-  if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading {RC_NOUN.one}…</Text>;
+  if (draft === undefined || !m) return <DocumentDetailSkeleton />;
   if (draft === null) return <NotFound icon="savings" title="Incoming payment not found" backTo={RC_LIST_PATH} backLabel={`Back to ${RC_NOUN.many}`} />;
 
   const added = draft.status !== 'Draft';
@@ -265,7 +273,7 @@ function IncomingForm() {
 
   return (
     <>
-    <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
+    <Form className="flex-1" onSubmit={(e) => e.preventDefault()} noValidate>
       <Panel className="flex-1">
         <PageHeader
           variant="plain"
@@ -279,6 +287,8 @@ function IncomingForm() {
               noun={RC_NOUN}
               listPath={RC_LIST_PATH}
               mode={docMode(draft.status, { canApprove: isApprover('RC') })}
+              draft={draft}
+              onRevert={setDraft}
               needsApproval={!draft.approved}
               remarksOnly={ro}
               busy={saving}

@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { nameIn, salesEmployees } from '../../../services/partnerMasters';
 import { useLocation } from 'react-router';
 import {
@@ -10,7 +10,6 @@ import {
   TableContent,
   TableStatus,
   Text,
-  type PanelHeaderProps,
   type TableColumn,
   type TableSort,
 } from '@jasperlepardo/sikat-design-system';
@@ -28,7 +27,6 @@ import { useAsync } from '../../../services/useAsync';
 import { COUNT_LIST_PATH, COUNT_NOUN, COUNT_STATUS_INTENT, POSTING_LIST_PATH, POSTING_NOUN } from '../paths';
 
 type View = 'counts' | 'postings';
-type SearchProps = Pick<PanelHeaderProps, 'showSearch' | 'searchPlaceholder' | 'searchValue' | 'onSearchChange'>;
 
 /**
  * Stock counts, or the inventory postings made from them: each has its own route, sidebar entry and
@@ -37,7 +35,6 @@ type SearchProps = Pick<PanelHeaderProps, 'showSearch' | 'searchPlaceholder' | '
 function CountsShell({
   view,
   title,
-  search,
   filters,
   panel,
   children,
@@ -45,9 +42,7 @@ function CountsShell({
   view: View;
   /** The preset menu. */
   title: ReactNode;
-  /** The header search (from `list.search`). */
-  search: SearchProps;
-  /** The filter chips (`presets.bar`). */
+  /** The filter bar (`presets.bar`). */
   filters: ReactNode;
   /** The preset side panel. */
   panel: ReactNode;
@@ -60,7 +55,6 @@ function CountsShell({
       <PageHeader
         icon="inventory"
         title={title}
-        {...search}
         create={postings ? { noun: POSTING_NOUN, to: POSTING_LIST_PATH } : { noun: COUNT_NOUN, to: COUNT_LIST_PATH }}
       />
       <Panel.Body className="flex flex-col gap-2">
@@ -77,9 +71,8 @@ function CountsShell({
   );
 }
 
-/** Search box + sortable, paginated table, shared by both lists. Sort comes from the list's presets. */
-function useListState<T>({ sort, setSort }: { sort: TableSort | null; setSort: (sort: TableSort | null) => void }) {
-  const [query, setQuery] = useState('');
+/** Sortable, paginated table, shared by both lists. Sort + search come from the list's presets. */
+function useListState<T>({ sort, setSort, searchText }: { sort: TableSort | null; setSort: (sort: TableSort | null) => void; searchText: string }) {
   const { resetPage, paginate } = useListPage();
   const sortRows = (rows: T[], value: (row: T, key: string) => string | number) => {
     if (!sort) return rows;
@@ -112,16 +105,7 @@ function useListState<T>({ sort, setSort }: { sort: TableSort | null; setSort: (
       </Card>
     );
   };
-  const search = (placeholder: string): SearchProps => ({
-    showSearch: true,
-    searchPlaceholder: placeholder,
-    searchValue: query,
-    onSearchChange: (value) => {
-      setQuery(value);
-      resetPage();
-    },
-  });
-  return { query: query.trim().toLowerCase(), sortRows, table, search, resetPage };
+  return { query: searchText, sortRows, table, resetPage };
 }
 
 const COUNT_FIELDS = [
@@ -144,9 +128,8 @@ export function StockCountList() {
     builtIns: statusViews(COUNT_NOUN.many, COUNT_STATUSES),
     defaultSort: { key: 'countDate', direction: 'desc' },
     rows: counts,
-    onChange: () => {
-      list.resetPage();
-    },
+    onChange: () => { list.resetPage(); },
+    search: { placeholder: 'Search by count no., warehouse, counter, item or remarks', label: `Search ${COUNT_NOUN.many}` },
   });
   const list = useListState<InventoryCounting>(presets);
 
@@ -195,8 +178,7 @@ export function StockCountList() {
     <CountsShell
       view="counts"
       title={presets.menu}
-      search={list.search('Search by count no., warehouse, counter, item or remarks')}
-      filters={presets.bar(null)}
+      filters={presets.bar()}
       panel={presets.panel}
     >
       {list.table(cap(COUNT_NOUN.many), columns, rows, (c) => c.id, <>No {COUNT_NOUN.many} yet. Create one with New {COUNT_NOUN.one}.</>)}
@@ -226,9 +208,8 @@ export function InventoryPostingList() {
     builtIns: [{ id: 'all', name: `All ${POSTING_NOUN.many}`, filter: EMPTY_FILTER }],
     defaultSort: { key: 'postingDate', direction: 'desc' },
     rows: postings,
-    onChange: () => {
-      list.resetPage();
-    },
+    onChange: () => { list.resetPage(); },
+    search: { placeholder: 'Search by posting no., warehouse, item or remarks', label: `Search ${POSTING_NOUN.many}` },
   });
   const list = useListState<InventoryPosting>(presets);
 
@@ -259,8 +240,7 @@ export function InventoryPostingList() {
     <CountsShell
       view="postings"
       title={presets.menu}
-      search={list.search('Search by posting no., warehouse, item or remarks')}
-      filters={presets.bar(null)}
+      filters={presets.bar()}
       panel={presets.panel}
     >
       {list.table(cap(POSTING_NOUN.many), columns, rows, (p) => p.id, <>No {POSTING_NOUN.many} yet. Post a stock count, or create one with New {POSTING_NOUN.one}.</>)}

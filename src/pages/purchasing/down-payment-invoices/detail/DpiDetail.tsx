@@ -1,7 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { Alert, Badge, Form, Panel, Tabs, Text } from '@jasperlepardo/sikat-design-system';
+import { Alert, Badge, Form, Panel, Tabs } from '@jasperlepardo/sikat-design-system';
+import { DocumentDetailSkeleton } from '../../../../components/form/skeletons/DocumentDetailSkeleton';
 import { PageHeader } from '../../../../components/form/PageHeader';
 import { DetailColumns } from '../../../../components/form/DetailColumns';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
@@ -154,7 +155,7 @@ function DpiForm() {
   }, [id, isNew]);
 
   useDocTitle(draft?.docNum ? (isNew ? `New ${DPI_NOUN.one}` : draft.status !== 'Draft' ? dpiNumber(draft) : `Draft ${DPI_NOUN.one}`) : undefined);
-  if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading down payment invoice…</Text>;
+  if (draft === undefined || !m) return <DocumentDetailSkeleton />;
   if (draft === null) return <NotFound icon="receipt_long" title="Down payment invoice not found" backTo={DPI_LIST_PATH} backLabel="Back to down payment invoices" />;
 
   const ctx = buildGrContext(draft, m);
@@ -259,7 +260,7 @@ function DpiForm() {
 
   return (
     <>
-      <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
+      <Form className="flex-1" onSubmit={(e) => e.preventDefault()} noValidate>
         <Panel className="flex-1">
           <PageHeader
             variant="plain"
@@ -278,6 +279,8 @@ function DpiForm() {
                 noun={DPI_NOUN}
                 listPath={DPI_LIST_PATH}
                 mode={docMode(draft.status, { canApprove: isApprover('DPI') })}
+                draft={draft}
+                onRevert={setDraft}
                 needsApproval={!draft.approved}
                 remarksOnly={added}
                 busy={saving}
@@ -358,6 +361,7 @@ function DpiForm() {
         readOnly={ctx.readOnly}
         open={vendorDetailsOpen}
         onClose={() => setVendorDetailsOpen(false)}
+        vendorRefLabel="Vendor proforma no."
         vendorRefHint="The vendor's proforma or billing no."
         addresses={ctx.vendor ? receivingVendorAddressFields(m, ctx.vendor, { shipPlaceholder: 'Where the goods will be received', payPlaceholder: 'Vendor address for payment' }) : []}
       />

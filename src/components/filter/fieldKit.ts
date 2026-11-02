@@ -34,6 +34,30 @@ export const masterField = <T>(
   get: (row: T) => unknown,
 ): FilterField<T> => ({ key, label, type: 'master', def, get });
 
+/**
+ * Multi-select over a partner column (Customer / Vendor). Matched by id, labelled by name —
+ * the options are the partners that actually appear in `rows`, so the picker lists only partners
+ * with documents on this list rather than the whole address book. A stale saved id with no row
+ * still filters; its chip just falls back to the raw id (the partner was deleted).
+ */
+export const partnerField = <T>(
+  key: string,
+  label: string,
+  idOf: (row: T) => string,
+  nameOf: (row: T) => string,
+  rows: readonly T[] | undefined,
+): FilterField<T> => {
+  const seen = new Map<string, string>();
+  for (const row of rows ?? []) {
+    const id = idOf(row);
+    if (id && !seen.has(id)) seen.set(id, nameOf(row) || id);
+  }
+  const options = [...seen]
+    .map(([value, label]) => ({ value, label }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+  return { key, label, type: 'choice', options, get: idOf };
+};
+
 /** Document status, matching the list's built-in status presets. */
 export const statusField = <T extends { status: string }>(statuses: readonly string[]): FilterField<T> =>
   choiceField('status', 'Status', statuses, (row) => row.status);

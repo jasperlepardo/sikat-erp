@@ -10,9 +10,10 @@ import { getPartner } from './partners';
 import { withTaxFiling } from './taxRecalc';
 import { currentTaxData, docWithholding, stampWithholding, withSeedWithholding } from './withholding';
 import { expenseAccountFor } from './goodsReceipts';
-import { inventoryAccountFor, type JournalLine } from './inventoryTransfers';
+import { type JournalLine } from './inventoryTransfers';
+import { GRNI_ACCOUNT } from '../mocks/goodsReceipts';
 import { rateAt, vatNotPaidToVendor, type TaxCode } from '../mocks/taxes';
-import { round2 } from './num';
+import { round2, round4 } from './num';
 import type { Item } from '../mocks/items';
 import type { ItemGroup } from '../mocks/itemMasters';
 import type { Partner } from '../mocks/partners';
@@ -44,9 +45,10 @@ export function apriJournal(
     const item = items.find((i) => i.id === l.itemId);
     if (!item) continue;
     const net = round2(l.unitPrice * l.quantity * (1 - l.discountPct / 100) * factor * fx);
-    const ownAccount = item.inventoryItem
-      ? inventoryAccountFor(item, l.warehouse, groups)
-      : expenseAccountFor(item, groups);
+    // IAS 2: inventory is recognized at goods receipt, not at billing. A reserve invoice billed
+    // before the goods arrive parks the cost in GR/IR clearing; the goods receipt moves it to
+    // Inventory (Dr Inventory / Cr GR/IR). Non-stock lines expense as before.
+    const ownAccount = item.inventoryItem ? GRNI_ACCOUNT : expenseAccountFor(item, groups);
     add(ownAccount, net);
     if (!reverse(l.taxCode)) add(vatAccount(l.taxCode), round2((net * rateOf(l.taxCode)) / 100));
   }
@@ -121,6 +123,25 @@ export async function addApReserveInvoice(doc: ApRiInput): Promise<ApReserveInvo
 export async function cancelApReserveInvoice(inv: ApReserveInvoice): Promise<ApReserveInvoice> {
   if (inv.status !== 'Open') throw new Error('Only open reserve invoices can be cancelled.');
   return invoices.save({ ...inv, status: 'Cancelled', closeDate: todayISO() });
+}
+
+/**
+ * A goods receipt fulfils a reserve invoice: move each line's `receivedQty` by `sign` (back on a
+ * cancelled receipt). The invoice closes when every line is fully received, and reopens below it.
+ */
+export async function applyReceivedToApri(lines: { apriId: string; apriLineId: string; quantity: number }[], sign: 1 | -1) {
+  const ids = [...new Set(lines.map((l) => l.apriId))];
+  for (const id of ids) {
+    const inv = await invoices.get(id);
+    if (!inv) continue;
+    const next = inv.lines.map((al) => {
+      const qty = lines.filter((l) => l.apriId === id && l.apriLineId === al.id).reduce((n, l) => n + l.quantity, 0);
+      return qty ? { ...al, receivedQty: Math.max(0, round4((al.receivedQty ?? 0) + qty * sign)) } : al;
+    });
+    const received = next.every((al) => (al.receivedQty ?? 0) >= al.quantity);
+    const status = inv.status === 'Cancelled' ? inv.status : received && inv.status === 'Open' ? 'Closed' : inv.status;
+    await invoices.save({ ...inv, lines: next, status, closeDate: status === 'Closed' ? inv.closeDate || todayISO() : inv.closeDate });
+  }
 }
 
 export async function recallApReserveInvoice(inv: ApReserveInvoice): Promise<ApReserveInvoice> {

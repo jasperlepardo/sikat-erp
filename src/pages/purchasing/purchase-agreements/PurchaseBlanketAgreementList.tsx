@@ -1,165 +1,66 @@
-import { useMemo, useState } from 'react';
 import { useLocation } from 'react-router';
-import {
-  Alert,
-  Card,
-  Panel,
-  Table,
-  TableContent,
-  TableStatus,
-  Text,
-  type TableColumn,
-} from '@jasperlepardo/sikat-design-system';
-import { PageHeader } from '../../../components/form/PageHeader';
-import { dateField, statusField, textField } from '../../../components/filter/fieldKit';
-import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
-import { fillCardClass, useListPage } from '../../../components/form/DataTable';
+import { Alert, TableContent, TableStatus, Text, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { ListPage } from '../../../components/form/ListPage';
 import { PBA_STATUSES, type PurchaseBlanketAgreement } from '../../../mocks/purchaseBlanketAgreements';
 import { formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
 import { listPurchaseBlanketAgreements, pbaNumber, pbaTotals } from '../../../services/purchaseBlanketAgreements';
 import { useAsync } from '../../../services/useAsync';
 import { useDocTitle } from '../../../services/useDocTitle';
-import { cap } from '../../../components/form/noun';
+import { dateField, partnerField, statusField, textField } from '../../../components/filter/fieldKit';
+import { draftScope, draftSplit, scopeStatuses } from '../../../components/filter/useListPresets';
 import { PBA_LIST_PATH, PBA_NOUN, PBA_STATUS_INTENT } from '../paths';
 
-export function PurchaseBlanketAgreementList() {
+export function PurchaseBlanketAgreementList({ draftsOnly = false, compact, selectedId }: { draftsOnly?: boolean; compact?: boolean; selectedId?: string } = {}) {
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const agreements = useAsync(listPurchaseBlanketAgreements, []);
-  const [query, setQuery] = useState('');
-  const { resetPage, paginate } = useListPage();
   useDocTitle('Purchase Blanket Agreements');
 
   const totalOf = (pba: PurchaseBlanketAgreement) => pbaTotals(pba).plannedTotal;
 
   const fields = [
     textField<PurchaseBlanketAgreement>('no', 'No.', pbaNumber),
-    textField<PurchaseBlanketAgreement>('vendor', 'Vendor', (d) => d.vendorName),
-    textField<PurchaseBlanketAgreement>('vendorRef', 'Vendor ref.', (d) => d.vendorRef),
+    partnerField<PurchaseBlanketAgreement>('vendor', 'Vendor', (d) => d.vendorId, (d) => d.vendorName, agreements),
+    textField<PurchaseBlanketAgreement>('vendorRef', 'Vendor agreement no.', (d) => d.vendorRef),
     dateField<PurchaseBlanketAgreement>('startDate', 'Start date', (d) => d.startDate),
     dateField<PurchaseBlanketAgreement>('endDate', 'End date', (d) => d.endDate),
-    statusField<PurchaseBlanketAgreement>(PBA_STATUSES),
+    statusField<PurchaseBlanketAgreement>(scopeStatuses(draftsOnly, PBA_STATUSES)),
   ];
 
-  const presets = useListPresets({
-    list: 'purchase-blanket-agreements',
-    fields,
-    builtIns: statusViews(PBA_NOUN.many, PBA_STATUSES),
-    defaultSort: { key: 'startDate', direction: 'desc' },
-    rows: agreements,
-    onChange: resetPage,
-  });
-  const { sort, setSort } = presets;
-
-  const rows = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const filtered = presets.apply(agreements ?? []).filter(
-      (pba) =>
-        !q ||
-        [pbaNumber(pba), pba.vendorCode, pba.vendorName, pba.vendorRef, pba.description].join(' ').toLowerCase().includes(q),
-    );
-    if (!sort) return filtered;
-    const dir = sort.direction === 'asc' ? 1 : -1;
-    const value = (pba: PurchaseBlanketAgreement): string | number =>
-      sort.key === 'total' ? totalOf(pba) : String(pba[sort.key as keyof PurchaseBlanketAgreement] ?? '');
-    return [...filtered].sort((a, b) => {
-      const x = value(a);
-      const y = value(b);
-      return (x < y ? -1 : x > y ? 1 : 0) * dir;
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [agreements, presets.filter, query, sort]);
-
-  const { visible: paginated, pagination } = paginate(rows);
-
   const columns: TableColumn<PurchaseBlanketAgreement>[] = [
-    {
-      key: 'no',
-      header: 'No.',
-      sortable: true,
-      cell: (pba) => (
-        <TableContent href={`#${PBA_LIST_PATH}/${pba.docNum ? pbaNumber(pba) : pba.id}`}>
-          {pba.docNum ? pbaNumber(pba) : <Text tone="muted">Draft</Text>}
-        </TableContent>
-      ),
-    },
-    {
-      key: 'status',
-      header: 'Status',
-      sortable: true,
-      cell: (pba) => (
-        <TableStatus intent={PBA_STATUS_INTENT[pba.status]}>{pba.status}</TableStatus>
-      ),
-    },
-    {
-      key: 'vendor',
-      header: 'Vendor',
-      sortable: true,
-      cell: (pba) => <TableContent subcopy={pba.vendorCode}>{pba.vendorName || '—'}</TableContent>,
-    },
-    {
-      key: 'description',
-      header: 'Description',
-      cell: (pba) => pba.description || <Text tone="muted">—</Text>,
-    },
-    {
-      key: 'startDate',
-      header: 'Start date',
-      sortable: true,
-      cell: (pba) => formatDate(pba.startDate),
-    },
-    {
-      key: 'endDate',
-      header: 'End date',
-      sortable: true,
-      cell: (pba) => pba.endDate ? formatDate(pba.endDate) : <Text tone="muted">—</Text>,
-    },
-    {
-      key: 'total',
-      header: 'Planned total',
-      sortable: true,
-      cell: (pba) => {
-        const totals = pbaTotals(pba);
-        return <span className="tabular-nums">{pba.currency} {formatAmount(totals.plannedTotal)}</span>;
-      },
-    },
+    { key: 'no', header: 'No.', sortable: true, cell: (pba) => <TableContent href={`#${PBA_LIST_PATH}/${pba.docNum ? pbaNumber(pba) : pba.id}`}>{pba.docNum ? pbaNumber(pba) : <Text tone="muted">Draft</Text>}</TableContent> },
+    { key: 'status', header: 'Status', sortable: true, cell: (pba) => <TableStatus intent={PBA_STATUS_INTENT[pba.status]}>{pba.status}</TableStatus> },
+    { key: 'vendor', header: 'Vendor', sortable: true, cell: (pba) => <TableContent subcopy={pba.vendorCode}>{pba.vendorName || '—'}</TableContent> },
+    { key: 'description', header: 'Description', cell: (pba) => pba.description || <Text tone="muted">—</Text> },
+    { key: 'startDate', header: 'Start date', sortable: true, cell: (pba) => formatDate(pba.startDate) },
+    { key: 'endDate', header: 'End date', sortable: true, cell: (pba) => pba.endDate ? formatDate(pba.endDate) : <Text tone="muted">—</Text> },
+    { key: 'total', header: 'Planned total', sortable: true, cell: (pba) => { const totals = pbaTotals(pba); return <span className="tabular-nums">{pba.currency} {formatAmount(totals.plannedTotal)}</span>; } },
   ];
 
   return (
-    <Panel className="flex-1">
-      <PageHeader
-        showSearch
-        searchLabel={`Search ${PBA_NOUN.many}`}
-        searchPlaceholder="Search by no., vendor, or description"
-        searchValue={query}
-        onSearchChange={(value) => { setQuery(value); resetPage(); }}
-        icon="handshake"
-        title={cap(PBA_NOUN.many)}
-        create={{ noun: PBA_NOUN, to: PBA_LIST_PATH }}
-      />
-      <Panel.Body className="flex flex-col gap-2">
-        {notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : null}
-        {presets.toolbar(null)}
-        <Card className={fillCardClass(paginated.length)}>
-          {!agreements ? (
-            <Text tone="muted" className="p-4">Loading {PBA_NOUN.many}…</Text>
-          ) : agreements.length ? (
-            <Table
-              caption={cap(PBA_NOUN.many)}
-              columns={columns}
-              rows={paginated}
-              getRowId={(pba) => pba.id}
-              sort={sort}
-              onSortChange={setSort}
-              layout="fill"
-              pagination={pagination}
-            />
-          ) : (
-            <Text tone="muted" className="p-4">No {PBA_NOUN.many} yet. Create one with New {PBA_NOUN.one}.</Text>
-          )}
-        </Card>
-      </Panel.Body>
-      {presets.panel}
-    </Panel>
+    <ListPage
+      rows={agreements}
+      columns={columns}
+      fields={fields}
+      noun={PBA_NOUN}
+      icon="handshake"
+      basePath={PBA_LIST_PATH}
+      listKey="purchase-blanket-agreements"
+      builtIns={draftSplit(draftsOnly, PBA_NOUN.many, PBA_STATUSES)}
+      scope={draftScope(draftsOnly, PBA_STATUSES)}
+      defaultSort={{ key: 'startDate', direction: 'desc' }}
+      search={{ placeholder: 'Search by no., vendor, or description', label: `Search ${PBA_NOUN.many}` }}
+      header={notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : undefined}
+      compact={compact}
+      selectedId={selectedId}
+      getRowId={(r) => r.docNum ? pbaNumber(r) : r.id}
+      filterFn={(pba, q) => !q || [pbaNumber(pba), pba.vendorCode, pba.vendorName, pba.vendorRef, pba.description].join(' ').toLowerCase().includes(q)}
+      sortFn={(a, b, sort) => {
+        const value = (pba: PurchaseBlanketAgreement): string | number =>
+          sort.key === 'total' ? totalOf(pba) : String(pba[sort.key as keyof PurchaseBlanketAgreement] ?? '');
+        const x = value(a); const y = value(b);
+        return x < y ? -1 : x > y ? 1 : 0;
+      }}
+    />
   );
 }

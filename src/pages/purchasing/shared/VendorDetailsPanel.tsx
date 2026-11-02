@@ -32,6 +32,8 @@ interface VendorDetailsPanelProps<D extends VendorDraftBase> {
   onClose: () => void;
   onVendorSaved?: (v: Partner) => void;
   contactHint?: string;
+  /** Document-specific label for the vendor's reference field (e.g. "Vendor invoice no."). */
+  vendorRefLabel?: string;
   vendorRefHint?: string;
   vendorRefError?: string;
   addresses: VendorAddressField[];
@@ -42,7 +44,7 @@ interface VendorDetailsPanelProps<D extends VendorDraftBase> {
 /** The vendor side panel on a purchasing document: contact, document currency, and configurable delivery/billing addresses. */
 export function VendorDetailsPanel<D extends VendorDraftBase>({
   draft, update, vendor, readOnly, open, onClose, onVendorSaved,
-  contactHint = "Defaults to the vendor's default contact.", vendorRefHint, vendorRefError, addresses, addressNote,
+  contactHint = "Defaults to the vendor's default contact.", vendorRefLabel = 'Vendor ref. no.', vendorRefHint, vendorRefError, addresses, addressNote,
 }: VendorDetailsPanelProps<D>) {
   const navigate = useNavigate();
   // Bind the three shared fields through the base type; address keys are handled dynamically below.
@@ -102,7 +104,7 @@ export function VendorDetailsPanel<D extends VendorDraftBase>({
                 (vendor.contacts ?? []).filter((c) => c.active || c.id === draft.contactId).map((c) => ({ value: c.id, label: contactName(c) })),
                 { clearable: true, hint: contactHint, readOnly },
               )}
-              {h.text('vendorRef', 'Vendor ref. no.', { hint: vendorRefHint, error: vendorRefError, readOnly })}
+              {h.text('vendorRef', vendorRefLabel, { hint: vendorRefHint, error: vendorRefError, readOnly })}
             </Fields>
           </Section>
           {addresses.length > 0 ? (

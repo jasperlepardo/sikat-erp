@@ -11,7 +11,9 @@ import { inventoryAccountFor, type JournalLine } from './inventoryTransfers';
 import { listItems, saveItems } from './items';
 import { consumeLayers, logConsumption, restoreLayer, updateFifoCosts, type Taken } from './costLayers';
 import { postDocumentEntry, reverseDocumentEntry } from './journalEntries';
-import { applyDelivered, listSalesOrders, openQty as soOpenQty, soNumber, soTotals } from './salesOrders';
+import { applyDelivered, lineNet, listSalesOrders, openQty as soOpenQty, soNumber, soTotals } from './salesOrders';
+import { applyDeliveredToRi, DEFERRED_REVENUE_ACCOUNT, listReserveInvoices } from './reserveInvoices';
+import { revenueAccountFor } from './itemAccounts';
 import { createCollection } from './store';
 import { withLineCosts } from './stockHistory';
 import { round2, round4 } from './num';
@@ -74,6 +76,36 @@ export function dnJournal(d: Pick<Delivery, 'lines' | 'useShippedGoodsAccount'>,
     .filter(([, n]) => n !== 0)
     .map(([account, n]) => ({ account, debit: n > 0 ? n : 0, credit: n < 0 ? -n : 0 }))
     .sort((a, b) => b.debit - a.debit);
+}
+
+/**
+ * IFRS 15 revenue recognition for delivery lines that fulfil an A/R reserve invoice: move the
+ * delivered share of the reserve invoice's net from Unearned revenue (2165) to Revenue, at the
+ * amount the reserve invoice deferred (its net × its fx). Empty for an ordinary delivery.
+ */
+function riRevenueRecognition(
+  dnLines: readonly DnLine[],
+  ris: readonly { id: string; discountPct: number; fxRate: number; docType: string; lines: { id: string; glAccount?: string; quantity: number }[] }[],
+  items: readonly Item[],
+  groups: readonly ItemGroup[],
+): JournalLine[] {
+  const totals = new Map<string, number>();
+  const add = (account: string, amount: number) => account && totals.set(account, round2((totals.get(account) ?? 0) + amount));
+  for (const l of dnLines) {
+    if (!l.riId || !l.riLineId) continue;
+    const ri = ris.find((r) => r.id === l.riId);
+    const rl = ri?.lines.find((x) => x.id === l.riLineId);
+    const item = items.find((i) => i.id === l.itemId);
+    if (!ri || !rl || !rl.quantity) continue;
+    const deferred = round2(lineNet(rl as never) * (1 - ri.discountPct / 100) * (ri.fxRate || 1));
+    const recognized = round2(deferred * (l.quantity / rl.quantity));
+    if (!recognized) continue;
+    add(DEFERRED_REVENUE_ACCOUNT, recognized); // Dr — clear the contract liability
+    add(ri.docType === 'Service' ? rl.glAccount || '4030' : item ? revenueAccountFor(item, groups) : '4010', -recognized); // Cr Revenue
+  }
+  return [...totals.entries()]
+    .filter(([, n]) => n !== 0)
+    .map(([account, n]) => ({ account, debit: n > 0 ? n : 0, credit: n < 0 ? -n : 0 }));
 }
 
 /** Order lines' open quantity, by line id — what's left to deliver. */
@@ -185,9 +217,13 @@ export async function addDelivery(input: DnInput, fx: number): Promise<Delivery>
   }
   await saveItems(touched.values());
   await applyDelivered(lines.filter((l) => l.baseType === 'SO'), 1);
+  const riLines = lines.filter((l) => l.riId && l.riLineId);
+  if (riLines.length) await applyDeliveredToRi(riLines.map((l) => ({ riId: l.riId!, riLineId: l.riLineId!, quantity: l.quantity })), 1);
 
   const saved = await deliveries.save({ ...input, lines, docNum, status: 'Open', fxRate: fx });
   await logConsumption(saved.id, saved.postingDate, taken);
+  const groups = await itemGroups.list();
+  const ris = riLines.length ? await listReserveInvoices() : [];
   await postDocumentEntry({
     origin: 'DN',
     originNo: docNum,
@@ -195,7 +231,8 @@ export async function addDelivery(input: DnInput, fx: number): Promise<Delivery>
     postingDate: saved.postingDate,
     dueDate: saved.dueDate,
     remarks: saved.journalRemark,
-    lines: dnJournal(saved, items, await itemGroups.list(), true),
+    // COGS/inventory relief, plus IFRS 15 revenue recognition for any reserve-invoice lines.
+    lines: [...dnJournal(saved, items, groups, true), ...riRevenueRecognition(saved.lines, ris, items, groups)],
   });
 
   // FIFO: refresh itemCost from remaining layers after consumption.
@@ -247,6 +284,8 @@ export async function cancelDelivery(d: Delivery) {
   }
   await saveItems(touched.values());
   await applyDelivered(d.lines.filter((l) => l.baseType === 'SO'), -1);
+  const riLines = d.lines.filter((l) => l.riId && l.riLineId);
+  if (riLines.length) await applyDeliveredToRi(riLines.map((l) => ({ riId: l.riId!, riLineId: l.riLineId!, quantity: l.quantity })), -1);
 
   // FIFO: put the consumed stock back as a new layer at the cost it was taken out at.
   const fifoItemIds = new Set<string>();

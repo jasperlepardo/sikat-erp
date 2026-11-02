@@ -9,8 +9,8 @@ import {
   Link,
   Panel,
   Select,
-  Text,
 } from '@jasperlepardo/sikat-design-system';
+import { InventoryDocSkeleton } from '../../../components/form/skeletons/InventoryDocSkeleton';
 import { PageHeader } from '../../../components/form/PageHeader';
 import { JournalPreview } from '../../../components/form/JournalPreview';
 import { Fields, FieldOrientationCtx, ReadOnly, Section, bind, type Errors } from '../../../components/form/fields';
@@ -141,7 +141,7 @@ function TransferForm() {
   }, [id, isNew]);
 
   useDocTitle(draft ? (isNew ? `New ${TRANSFER_NOUN.one}` : draft.status === 'Posted' ? transferNumber(draft) : `Draft ${TRANSFER_NOUN.one}`) : undefined);
-  if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading transfer…</Text>;
+  if (draft === undefined || !m) return <InventoryDocSkeleton />;
   if (draft === null) return <NotFound icon="move_down" title="Transfer not found" backTo={TRANSFER_LIST_PATH} backLabel="Back to inventory transfers" />;
 
   const posted = draft.status === 'Posted';
@@ -258,7 +258,7 @@ function TransferForm() {
   const title = isNew ? `New ${TRANSFER_NOUN.one}` : posted ? transferNumber(draft) : `Draft ${TRANSFER_NOUN.one}`;
 
   return (
-    <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
+    <Form className="flex-1" onSubmit={(e) => e.preventDefault()} noValidate>
       <Panel className="flex-1">
         <PageHeader
           variant="plain"
@@ -272,6 +272,9 @@ function TransferForm() {
               noun={TRANSFER_NOUN}
               listPath={TRANSFER_LIST_PATH}
               mode={posted ? 'readonly' : 'draft'}
+              draft={draft}
+              onRevert={setDraft}
+              onSubmit={() => submit(null)}
               remarksOnly={posted}
               busy={saving}
               onDraft={() => submit(null, true)}

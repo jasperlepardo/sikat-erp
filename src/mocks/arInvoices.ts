@@ -29,6 +29,7 @@ import { plId, termId } from './masters';
 import { SEED_DELIVERIES, type DnLine } from './deliveries';
 import { SEED_PARTNERS, formatAddress } from './partners';
 import type { PoReference } from './purchaseOrders';
+import type { DownPaymentDraw } from './apInvoices';
 import { H1_SALES, SEED_SALES_ORDERS, seedSoNo, termDaysOf, type SoDocType } from './salesOrders';
 import { SEED_ITEMS } from './items';
 import type { WithholdingKind } from './taxes';
@@ -129,6 +130,10 @@ export interface ArInvoice {
   remarks: string;
   /** Paid so far by incoming payments, document currency. */
   appliedAmount: number;
+  /** Total customer down payment drawn against this invoice, in document currency. */
+  downPayment?: number;
+  /** The A/R down payment invoices drawn down on this invoice (clears Customer Down Payments 2150). */
+  drawnDownPayments?: DownPaymentDraw[];
   fxRate: number;
   approved: boolean;
   /** What the customer withholds, fixed when the invoice was added (one entry per ATC). Missing on drafts: worked out live. */

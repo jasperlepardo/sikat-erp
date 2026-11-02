@@ -1,23 +1,9 @@
-import { useMemo, useState } from 'react';
 import { useLocation } from 'react-router';
-import {
-  Alert,
-  Card,
-  Panel,
-  Table,
-  TableAmount,
-  TableContent,
-  TableStatus,
-  Text,
-  type TableColumn,
-} from '@jasperlepardo/sikat-design-system';
-import { PageHeader } from '../../../components/form/PageHeader';
-import { cap } from '../../../components/form/noun';
+import { Alert, TableAmount, TableContent, TableStatus, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { ListPage } from '../../../components/form/ListPage';
 import { EMPTY_FILTER, oneRule } from '../../../components/filter/engine';
 import { choiceField, dateField, numberField, textField } from '../../../components/filter/fieldKit';
-import { useListPresets } from '../../../components/filter/useListPresets';
 import type { BuiltInView } from '../../../components/filter/useListViews';
-import { fillCardClass, useListPage } from '../../../components/form/DataTable';
 import { ORIGIN_LABEL, type JournalEntry } from '../../../mocks/journalEntries';
 import { formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
@@ -32,9 +18,10 @@ const JE_VIEWS: BuiltInView[] = [
   { id: 'reversed', name: 'Reversed entries', filter: oneRule('status', 'is', 'Reversed') },
 ];
 
-export function JournalEntryList() {
+export function JournalEntryList({ compact, selectedId }: { compact?: boolean; selectedId?: string } = {}) {
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const entries = useAsync(listJournalEntries, []);
+
   const fields = [
     numberField<JournalEntry>('transNo', 'Trans. no.', (e) => e.transNo),
     textField<JournalEntry>('no', 'No.', jeNumber),
@@ -48,108 +35,39 @@ export function JournalEntryList() {
     numberField<JournalEntry>('amount', 'Amount', (e) => jeTotals(e.lines).debit),
     choiceField<JournalEntry>('status', 'Status', ['Posted', 'Reversed'], (e) => e.status),
   ];
-  const [query, setQuery] = useState('');
-  const { resetPage, paginate } = useListPage();
-  const presets = useListPresets({
-    list: 'journal-entries',
-    fields,
-    builtIns: JE_VIEWS,
-    defaultSort: { key: 'transNo', direction: 'desc' },
-    rows: entries,
-    onChange: resetPage,
-  });
-  const { sort, setSort } = presets;
-
-  const rows = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const filtered = presets.apply(entries ?? []).filter(
-      (e) =>
-        (!q ||
-          [jeNumber(e), e.origin, ORIGIN_LABEL[e.origin], e.originNo, e.remarks, e.ref1, e.ref2, e.ref3, e.transCode, ...e.lines.map((l) => `${l.account} ${l.remarks}`)]
-            .join(' ')
-            .toLowerCase()
-            .includes(q)),
-    );
-    if (!sort) return filtered;
-    const dir = sort.direction === 'asc' ? 1 : -1;
-    const value = (e: JournalEntry): string | number => (sort.key === 'amount' ? jeTotals(e.lines).debit : sort.key === 'transNo' ? e.transNo : String(e[sort.key as keyof JournalEntry] ?? ''));
-    return [...filtered].sort((a, b) => {
-      const x = value(a);
-      const y = value(b);
-      return (x < y ? -1 : x > y ? 1 : 0) * dir;
-    });
-  }, [entries, presets.filter, query, sort]);
-
-  const { visible: onPage, pagination } = paginate(rows);
 
   const columns: TableColumn<JournalEntry>[] = [
-    {
-      key: 'transNo',
-      header: 'No.',
-      sortable: true,
-      cell: (e) => (
-        <TableContent href={`#${JE_LIST_PATH}/${e.id}`} subcopy={`Trans. ${e.transNo}`}>{jeNumber(e)}</TableContent>
-      ),
-    },
+    { key: 'transNo', header: 'No.', sortable: true, cell: (e) => <TableContent href={`#${JE_LIST_PATH}/${e.id}`} subcopy={`Trans. ${e.transNo}`}>{jeNumber(e)}</TableContent> },
     { key: 'postingDate', header: 'Posting date', sortable: true, cell: (e) => formatDate(e.postingDate) },
-    {
-      key: 'origin',
-      header: 'Origin',
-      sortable: true,
-      cell: (e) => <TableContent subcopy={ORIGIN_LABEL[e.origin]}>{e.origin === 'JE' ? 'JE' : `${e.origin} ${e.originNo}`}</TableContent>,
-    },
+    { key: 'origin', header: 'Origin', sortable: true, cell: (e) => <TableContent subcopy={ORIGIN_LABEL[e.origin]}>{e.origin === 'JE' ? 'JE' : `${e.origin} ${e.originNo}`}</TableContent> },
     { key: 'remarks', header: 'Remarks', cell: (e) => <TableContent subcopy={[e.ref1, e.ref2].filter(Boolean).join(' · ') || undefined}>{e.remarks || '—'}</TableContent> },
     { key: 'amount', header: 'Amount', sortable: true, cell: (e) => <TableAmount currency="PHP">{formatAmount(jeTotals(e.lines).debit)}</TableAmount> },
-    {
-      key: 'status',
-      header: 'Status',
-      sortable: true,
-      cell: (e) => <TableStatus intent={JE_STATUS_INTENT[e.status]}>{e.reverses ? 'Reversal' : e.status}</TableStatus>,
-    },
+    { key: 'status', header: 'Status', sortable: true, cell: (e) => <TableStatus intent={JE_STATUS_INTENT[e.status]}>{e.reverses ? 'Reversal' : e.status}</TableStatus> },
   ];
 
   return (
-    <Panel className="flex-1">
-      <PageHeader
-        showSearch
-        searchLabel="Search journal entries"
-        searchPlaceholder="Search by number, origin, remarks, reference or account"
-        searchValue={query}
-        onSearchChange={(value) => {
-          setQuery(value);
-          resetPage();
-        }}
-        icon="menu_book"
-        title={presets.menu}
-        create={{ noun: JE_NOUN, to: JE_LIST_PATH }}
-      />
-      <Panel.Body className="flex flex-col gap-2">
-        {notice ? (
-          <Alert intent="success" variant="outline" title="Saved">
-            {notice}
-          </Alert>
-        ) : null}
-        {presets.bar(null)}
-        <Card className={fillCardClass(onPage.length)}>
-          {!entries ? (
-            <Text tone="muted" className="p-4">Loading journal entries…</Text>
-          ) : entries.length ? (
-            <Table
-              caption={cap(JE_NOUN.many)}
-              columns={columns}
-              rows={onPage}
-              getRowId={(e) => e.id}
-              sort={sort}
-              onSortChange={setSort}
-              layout="fill"
-              pagination={pagination}
-            />
-          ) : (
-            <Text tone="muted" className="p-4">No {JE_NOUN.many} yet. Most post automatically from documents; create a manual one with New {JE_NOUN.one}.</Text>
-          )}
-        </Card>
-      </Panel.Body>
-      {presets.panel}
-    </Panel>
+    <ListPage
+      rows={entries}
+      columns={columns}
+      fields={fields}
+      noun={JE_NOUN}
+      icon="menu_book"
+      basePath={JE_LIST_PATH}
+      listKey="journal-entries"
+      builtIns={JE_VIEWS}
+      defaultSort={{ key: 'transNo', direction: 'desc' }}
+      search={{ placeholder: 'Search by number, origin, remarks, reference or account', label: 'Search journal entries' }}
+      header={notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : undefined}
+      emptyMessage={`No ${JE_NOUN.many} yet. Most post automatically from documents; create a manual one with New ${JE_NOUN.one}.`}
+      compact={compact}
+      selectedId={selectedId}
+      filterFn={(e, q) => !q || [jeNumber(e), e.origin, ORIGIN_LABEL[e.origin], e.originNo, e.remarks, e.ref1, e.ref2, e.ref3, e.transCode, ...e.lines.map((l) => `${l.account} ${l.remarks}`)].join(' ').toLowerCase().includes(q)}
+      sortFn={(a, b, sort) => {
+        const value = (e: JournalEntry): string | number =>
+          sort.key === 'amount' ? jeTotals(e.lines).debit : sort.key === 'transNo' ? e.transNo : String(e[sort.key as keyof JournalEntry] ?? '');
+        const x = value(a); const y = value(b);
+        return x < y ? -1 : x > y ? 1 : 0;
+      }}
+    />
   );
 }

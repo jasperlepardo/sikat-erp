@@ -1,43 +1,28 @@
-import { useMemo, useState } from 'react';
 import { useLocation } from 'react-router';
-import {
-  Alert,
-  Card,
-  Panel,
-  Table,
-  TableAmount,
-  TableContent,
-  TableStatus,
-  type TableColumn,
-  Text,
-} from '@jasperlepardo/sikat-design-system';
-import { PageHeader } from '../../../components/form/PageHeader';
+import { Alert, TableAmount, TableContent, TableStatus, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { ListPage } from '../../../components/form/ListPage';
 import { PAYMENT_STATUSES, type OutgoingPayment } from '../../../mocks/outgoingPayments';
 import { formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
 import { listPayments, overallAmount, paymentNumber } from '../../../services/outgoingPayments';
 import { useAsync } from '../../../services/useAsync';
 import { choiceField, dateField, masterField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
-import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
+import { draftScope, draftSplit, scopeStatuses } from '../../../components/filter/useListPresets';
 import { currencyDef } from '../../settings/masterDefs';
-import { fillCardClass, useListPage } from '../../../components/form/DataTable';
-import { cap } from '../../../components/form/noun';
 import { PAYMENT_LIST_PATH, PAYMENT_NOUN, PAYMENT_STATUS_INTENT } from '../paths';
 
-/** How a payment went out, in words: "Bank transfer", "2 checks", "Cash + card". */
 const meansText = (p: OutgoingPayment) =>
   [
     p.means.transfer.amount ? 'Bank transfer' : '',
     p.means.cash.amount ? 'Cash' : '',
     p.means.checks.length ? (p.means.checks.length === 1 ? `Check ${p.means.checks[0].checkNo || ''}`.trim() : `${p.means.checks.length} checks`) : '',
     p.means.cards.length ? 'Credit card' : '',
-  ]
-    .filter(Boolean)
-    .join(' + ') || '—';
+  ].filter(Boolean).join(' + ') || '—';
 
-export function PaymentList() {
+export function PaymentList({ draftsOnly = false, compact, selectedId }: { draftsOnly?: boolean; compact?: boolean; selectedId?: string } = {}) {
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const payments = useAsync(listPayments, []);
+
   const fields = [
     textField<OutgoingPayment>('no', 'No.', paymentNumber),
     choiceField<OutgoingPayment>('type', 'Type', ['Vendor', 'Account'], (d) => d.type),
@@ -47,48 +32,13 @@ export function PaymentList() {
     textField<OutgoingPayment>('reference', 'Reference', (d) => d.reference),
     textField<OutgoingPayment>('invoice', 'Invoice no.', (d) => d.rows.map((r) => r.docNo)),
     numberField<OutgoingPayment>('amount', 'Amount', overallAmount),
-    statusField<OutgoingPayment>(PAYMENT_STATUSES),
+    statusField<OutgoingPayment>(scopeStatuses(draftsOnly, PAYMENT_STATUSES)),
     masterField<OutgoingPayment>('currency', 'Currency', currencyDef, (d) => d.currency),
     textField<OutgoingPayment>('remarks', 'Remarks', (d) => d.remarks),
   ];
-  const [query, setQuery] = useState('');
-  const { resetPage, paginate } = useListPage();
-  const presets = useListPresets({
-    list: 'outgoing-payments',
-    fields,
-    builtIns: statusViews(PAYMENT_NOUN.many, PAYMENT_STATUSES),
-    defaultSort: { key: 'postingDate', direction: 'desc' },
-    rows: payments,
-    onChange: resetPage,
-  });
-  const { sort, setSort } = presets;
-
-  const rows = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const filtered = presets.apply(payments ?? []).filter(
-      (p) =>
-        (!q || [paymentNumber(p), p.vendorCode, p.payeeName, p.reference, ...p.rows.map((r) => `${r.docNo} ${r.vendorRef}`)].join(' ').toLowerCase().includes(q)),
-    );
-    if (!sort) return filtered;
-    const dir = sort.direction === 'asc' ? 1 : -1;
-    const value = (p: OutgoingPayment): string | number =>
-      sort.key === 'amount' ? overallAmount(p) : sort.key === 'docNum' ? p.docNum : String(p[sort.key as keyof OutgoingPayment] ?? '');
-    return [...filtered].sort((a, b) => {
-      const x = value(a);
-      const y = value(b);
-      return (x < y ? -1 : x > y ? 1 : 0) * dir;
-    });
-  }, [payments, presets.filter, query, sort]);
 
   const columns: TableColumn<OutgoingPayment>[] = [
-    {
-      key: 'docNum',
-      header: 'No.',
-      sortable: true,
-      cell: (p) => (
-        <TableContent href={`#${PAYMENT_LIST_PATH}/${p.docNum ? paymentNumber(p) : p.id}`} subcopy={p.reference || undefined}>{paymentNumber(p)}</TableContent>
-      ),
-    },
+    { key: 'docNum', header: 'No.', sortable: true, cell: (p) => <TableContent href={`#${PAYMENT_LIST_PATH}/${p.docNum ? paymentNumber(p) : p.id}`} subcopy={p.reference || undefined}>{paymentNumber(p)}</TableContent> },
     { key: 'payeeName', header: 'Paid to', sortable: true, cell: (p) => <TableContent subcopy={p.type === 'Vendor' ? p.vendorCode : 'G/L accounts'}>{p.payeeName || '—'}</TableContent> },
     { key: 'postingDate', header: 'Posting date', sortable: true, cell: (p) => formatDate(p.postingDate) },
     {
@@ -106,54 +56,31 @@ export function PaymentList() {
     { key: 'status', header: 'Status', sortable: true, cell: (p) => <TableStatus intent={PAYMENT_STATUS_INTENT[p.status]}>{p.status}</TableStatus> },
   ];
 
-  const { visible, pagination } = paginate(rows);
-
   return (
-    <Panel className="flex-1">
-      <PageHeader
-        showSearch
-        searchLabel="Search payments"
-        searchPlaceholder="Search by payment no., payee, reference or invoice no."
-        searchValue={query}
-        onSearchChange={(value) => {
-          setQuery(value);
-          resetPage();
-        }}
-        icon="payments"
-        title={cap(PAYMENT_NOUN.many)}
-        create={{ noun: PAYMENT_NOUN, to: PAYMENT_LIST_PATH }}
-      />
-      <Panel.Body className="flex flex-col gap-2">
-        {notice ? (
-          <Alert intent="success" variant="outline" title="Saved">
-            {notice}
-          </Alert>
-        ) : null}
-        {presets.toolbar(null)}
-        <Card className={fillCardClass(visible.length)}>
-          {payments ? (
-            rows.length || payments.length ? (
-              <Table
-                caption={cap(PAYMENT_NOUN.many)}
-                columns={columns}
-                rows={visible}
-                getRowId={(p) => p.id}
-                sort={sort}
-                onSortChange={setSort}
-                layout="fill"
-                pagination={pagination}
-              />
-            ) : (
-              <Text tone="muted" className="p-4">
-                No {PAYMENT_NOUN.many} yet. Pay a bill from Purchasing › Bills (More actions › Pay), from a vendor's Transactions tab, or with New {PAYMENT_NOUN.one}.
-              </Text>
-            )
-          ) : (
-            <Text tone="muted" className="p-4">Loading {PAYMENT_NOUN.many}…</Text>
-          )}
-        </Card>
-      </Panel.Body>
-      {presets.panel}
-    </Panel>
+    <ListPage
+      rows={payments}
+      columns={columns}
+      fields={fields}
+      noun={PAYMENT_NOUN}
+      icon="payments"
+      basePath={PAYMENT_LIST_PATH}
+      listKey="outgoing-payments"
+      builtIns={draftSplit(draftsOnly, PAYMENT_NOUN.many, PAYMENT_STATUSES)}
+      scope={draftScope(draftsOnly, PAYMENT_STATUSES)}
+      defaultSort={{ key: 'postingDate', direction: 'desc' }}
+      search={{ placeholder: 'Search by payment no., payee, reference or invoice no.', label: 'Search payments' }}
+      header={notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : undefined}
+      emptyMessage={`No ${PAYMENT_NOUN.many} yet. Pay a bill from Purchasing › Bills (More actions › Pay), from a vendor's Transactions tab, or with New ${PAYMENT_NOUN.one}.`}
+      compact={compact}
+      selectedId={selectedId}
+      getRowId={(r) => r.docNum ? paymentNumber(r) : r.id}
+      filterFn={(p, q) => !q || [paymentNumber(p), p.vendorCode, p.payeeName, p.reference, ...p.rows.map((r) => `${r.docNo} ${r.vendorRef}`)].join(' ').toLowerCase().includes(q)}
+      sortFn={(a, b, sort) => {
+        const value = (p: OutgoingPayment): string | number =>
+          sort.key === 'amount' ? overallAmount(p) : sort.key === 'docNum' ? p.docNum : String(p[sort.key as keyof OutgoingPayment] ?? '');
+        const x = value(a); const y = value(b);
+        return x < y ? -1 : x > y ? 1 : 0;
+      }}
+    />
   );
 }

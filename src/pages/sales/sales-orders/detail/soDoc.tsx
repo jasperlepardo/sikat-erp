@@ -1,7 +1,6 @@
 import { Icon, IconButton, Link, Select, TableStatus, Text, Tooltip } from '@jasperlepardo/sikat-design-system';
 import { type DocLinesProps } from '../../../../components/form/docLines/DocLines';
 import { pick } from '../../../../components/form/docLines/pick';
-import type { PrefColumn } from '../../../../components/form/columnPrefs';
 import { salesCols } from '../../shared/salesCols';
 import { CurrencyToggle, type SalesView } from '../../shared/salesView';
 import { grossPriceBinding, priceModeEnabled } from '../../../../components/form/priceMode';
@@ -16,7 +15,7 @@ import { formatAmount } from '../../../../services/format';
 import { warehouseOptions } from '../../../inventory/transfers/TransferLines';
 import { editTaxCode } from '../../../../services/taxRecalc';
 import { taxCodeOptions } from '../../../../services/taxCodeOptions';
-import { BA_LIST_PATH, SO_NOUN, DN_NOUN } from '../../paths';
+import { BA_LIST_PATH, SO_NOUN } from '../../paths';
 import { cap } from '../../../../components/form/noun';
 import { availableIn, lineFromItem, linePricing, shortages, type SoTabProps } from './types';
 
@@ -169,21 +168,3 @@ export function soDoc({ draft, update, errors, m, ctx, agreements }: SoTabProps 
   };
 }
 
-/** Builds the Sales Order Delivery-tab contents descriptor — a read-only Ordered / Delivered view. */
-export function soDeliveryDoc({ draft }: SoTabProps): DocLinesProps<SoLine> {
-  const columns: PrefColumn<SoLine>[] = [
-    { key: 'item', header: 'Item / Description', cell: (l) => <div className="flex flex-col"><Text variant="caption">{l.itemNo}</Text><Text variant="small">{l.description}</Text></div> },
-    { key: 'ordered', header: 'Ordered', align: 'end', cell: (l) => <Text variant="small" className="whitespace-nowrap tabular-nums">{l.quantity.toLocaleString('en-PH')} {l.uomCode}</Text> },
-    { key: 'delivered', header: 'Delivered', align: 'end', cell: (l) => <Text variant="small" className="whitespace-nowrap tabular-nums">{l.deliveredQty ? `${l.deliveredQty.toLocaleString('en-PH')} ${l.uomCode}` : '—'}</Text> },
-  ];
-  return {
-    prefsKey: 'so-delivery',
-    cardHeader: true,
-    columns,
-    rows: draft.lines.filter((l) => !!l.itemId),
-    icon: 'local_shipping',
-    title: cap(DN_NOUN.lineLabel!),
-    readOnly: true,
-    empty: <Text variant="small" tone="muted">No deliveries yet.</Text>,
-  };
-}

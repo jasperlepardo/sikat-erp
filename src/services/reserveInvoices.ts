@@ -12,8 +12,10 @@ import { postDocumentEntry, reverseDocumentEntry } from './journalEntries';
 import { lineNet, soTotals } from './salesOrders';
 import { createCollection } from './store';
 import { customerWithholding, type CustomerWithholding } from './withholding';
-import { round2 } from './num';
-import { revenueAccountFor } from './itemAccounts';
+import { round2, round4 } from './num';
+
+/** IFRS 15 contract liability: net of reserve invoices billed before delivery, awaiting recognition. */
+export const DEFERRED_REVENUE_ACCOUNT = '2165';
 
 const reserveInvoices = createCollection<ReserveInvoice>('sikat-erp:reserve-invoices', SEED_RESERVE_INVOICES, 'ri', { audit: 'RI' });
 
@@ -74,9 +76,11 @@ export function riJournal(
   const vatAccount = (code: string) => ctx.codes.find((c) => c.code === code)?.glAccount || '2310';
   const factor = 1 - r.discountPct / 100;
   for (const l of r.lines) {
-    const item = ctx.items.find((i) => i.id === l.itemId);
     const net = round2(lineNet(l as never) * factor * fx);
-    add(r.docType === 'Service' ? l.glAccount || '4030' : item ? revenueAccountFor(item, ctx.groups) : '4010', -net);
+    // IFRS 15: billing before delivery recognizes no revenue yet — park the net in Unearned revenue
+    // (a contract liability). The delivery recognizes it (Dr 2165 / Cr Revenue). VAT is a tax-point
+    // event at invoice, so it still posts here.
+    add(DEFERRED_REVENUE_ACCOUNT, -net);
     add(vatAccount(l.taxCode), -round2((net * ctx.rateOf(l.taxCode)) / 100));
     // No stock movement for Reserve Invoices — inventory is relieved when a Delivery is created.
   }
@@ -162,6 +166,25 @@ export async function addReserveInvoice(
 /** Close: nothing more is expected on it. */
 export async function closeReserveInvoice(r: ReserveInvoice) {
   return reserveInvoices.save({ ...r, status: 'Closed', closeDate: todayISO() });
+}
+
+/**
+ * A delivery fulfils a reserve invoice: move each line's `openQtyForIt` by `sign` (back on a
+ * cancelled delivery). The invoice closes when every line is fully delivered, and reopens below it.
+ */
+export async function applyDeliveredToRi(lines: { riId: string; riLineId: string; quantity: number }[], sign: 1 | -1) {
+  const ids = [...new Set(lines.map((l) => l.riId))];
+  for (const id of ids) {
+    const ri = await reserveInvoices.get(id);
+    if (!ri) continue;
+    const next = ri.lines.map((rl) => {
+      const qty = lines.filter((l) => l.riId === id && l.riLineId === rl.id).reduce((n, l) => n + l.quantity, 0);
+      return qty ? { ...rl, openQtyForIt: Math.max(0, round4(rl.openQtyForIt - qty * sign)) } : rl;
+    });
+    const delivered = next.every((rl) => rl.openQtyForIt <= 0);
+    const status = ri.status === 'Cancelled' ? ri.status : delivered && ri.status === 'Open' ? 'Closed' : ri.status;
+    await reserveInvoices.save({ ...ri, lines: next, status, closeDate: status === 'Closed' ? ri.closeDate || todayISO() : ri.closeDate });
+  }
 }
 
 /** Cancel a Reserve Invoice: reverses the journal entry. No stock to restore. */

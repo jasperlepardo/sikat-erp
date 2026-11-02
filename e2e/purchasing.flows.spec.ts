@@ -96,6 +96,28 @@ async function poStatus(page: Page, id: string) {
   }, id);
 }
 
+/** An A/P invoice's status via the live service, by id. */
+async function apStatus(page: Page, id: string) {
+  return page.evaluate(async (invId) => {
+    const ap = await import('/src/services/apInvoices.ts');
+    return (await ap.getApInvoice(invId))?.status;
+  }, id);
+}
+
+/**
+ * Settle the whole balance of a pre-ticked payment form in cash, then post. The combobox button
+ * renders 0px tall inside its table cell (design-system quirk), so click its field shell instead,
+ * after scrolling it into view — same workaround as the sales incoming-payment flow.
+ */
+async function payInCash(page: Page, createLabel: string) {
+  await page.getByRole('button', { name: 'Add cash' }).click();
+  const cashField = page.locator('.sikat-field', { has: page.getByRole('combobox', { name: 'Cash account' }) });
+  await cashField.scrollIntoViewIfNeeded();
+  await cashField.click();
+  await page.getByRole('option', { name: /Cash on Hand/ }).first().click();
+  await page.getByRole('button', { name: createLabel, exact: true }).click();
+}
+
 // ──────────────────────────────────────────────────────────────────────────────
 // 1. The chain: PR → RFQ → PO → goods receipt → vendor invoice.
 //    PO → GR → AP is driven end-to-end; the PR/RFQ heads are asserted shallowly
@@ -196,6 +218,102 @@ test('US-PUR-025: a purchase request compares its vendors\' quotes per item @com
   await expect(body).toContainText('Apple South Asia Pte. Ltd.');
   await expect(body).toContainText('Luzon iDistribution Corp.');
   await expect(page.getByRole('link', { name: 'RFQ-2026-0001' }).first()).toBeVisible();
+
+  expect(await rawIds(page)).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// 1b. The whole purchasing chain in one run, from the head: purchase request → purchase order
+//     → goods receipt → A/P invoice → outgoing payment. Where the per-link tests above start from
+//     a seed PO (po-060) and the @chain-head test only asserts the PR's "Create …" action pre-fills,
+//     this joins both ends so the PR→PO seam is actually posted and carried through to a cash
+//     payment that closes the invoice.
+//
+//     Anchor: prq-002 — the one Open purchase request with NO quotes (so its menu offers a single
+//     "Create purchase order…", no "from a quote" award variant) and no PO awarded from it yet, so
+//     all its lines are fully open. Its lines carry warehouse WH-001 (inventory items), which rides
+//     through PR → PO → goods receipt, so no warehouse has to be entered by hand. A request is
+//     pre-vendor, so the PO needs a vendor (Luzon iDistribution, PHP — avoids FX) and a delivery
+//     date picked before it can post.
+// ──────────────────────────────────────────────────────────────────────────────
+
+const PR_FULL = 'prq-002';
+const PR_FULL_VENDOR = 'Luzon iDistribution Corp.';
+
+test('US-PUR-024/040: purchase request → PO → goods receipt → A/P invoice → outgoing payment, the whole chain @chain-full', async ({ page }) => {
+  const errors = watchErrors(page);
+
+  // PR → PO. "Create purchase order…" copies the request's open lines into a new PO; the buyer picks
+  // the vendor (which sets currency, terms and addresses) and a delivery date, then posts.
+  await open(page, `purchasing/purchase-requests/${PR_FULL}`);
+  await moreMenu(page, 'Create purchase order…');
+  await confirmCopy(page);
+  await expect(page).toHaveURL(/purchase-orders\/new/);
+  await pickVendor(page, /Luzon iDistribution/);
+  // Delivery date is required on a PO — pick today's cell (delivery may equal the posting date).
+  await page.getByRole('combobox', { name: 'Delivery date' }).click();
+  await page.getByRole('gridcell').and(page.locator('[aria-current="date"]')).click();
+  await expect(page.getByRole('combobox', { name: 'Delivery date' })).not.toHaveValue('');
+  await addButton(page).click();
+  await expectListed(page, /purchase-orders$/);
+  await expect(page.getByText('Saved', { exact: true })).toBeVisible();
+
+  // Find the PO just created from this request (its header links back via basePrId).
+  const poId = await page.evaluate(async (prId) => {
+    const po = await import('/src/services/purchaseOrders.ts');
+    return (await po.listPurchaseOrders()).find((p: { basePrId?: string; id: string }) => p.basePrId === prId)?.id;
+  }, PR_FULL);
+  expect(poId).toBeTruthy();
+
+  // PO → goods receipt. The lines come across pre-ticked with their warehouse already set, so the
+  // receipt posts straight through — stock comes in and the PO closes (whole quantity received).
+  await open(page, `purchasing/purchase-orders/${poId}`);
+  await moreMenu(page, 'Create goods receipt');
+  await confirmCopy(page);
+  await expect(page).toHaveURL(/goods-receipts\/new/);
+  await expect(page.locator('body')).toContainText(PR_FULL_VENDOR);
+  await addButton(page).click();
+  await expectNotice(page, /goods-receipts$/, /stock is in/);
+  await expect.poll(() => poStatus(page, poId as string), { timeout: 15_000 }).toBe('Closed');
+
+  const grId = await page.evaluate(async (base) => {
+    const gr = await import('/src/services/goodsReceipts.ts');
+    return (await gr.listGoodsReceipts()).find((r: { lines: { baseId: string }[]; id: string }) =>
+      r.lines.some((l) => l.baseId === base))?.id;
+  }, poId);
+  expect(grId).toBeTruthy();
+
+  // GR → A/P invoice. Billing the receipt posts an Open invoice.
+  await open(page, `purchasing/goods-receipts/${grId}`);
+  await moreMenu(page, 'Create A/P invoice');
+  await confirmCopy(page);
+  await expect(page).toHaveURL(/vendor-invoices\/new/);
+  await expect(page.locator('body')).toContainText(PR_FULL_VENDOR);
+  await addButton(page).click();
+  await expectListed(page, /vendor-invoices$/);
+  await expect(page.getByText('Saved', { exact: true })).toBeVisible();
+
+  const invId = await page.evaluate(async (base) => {
+    const ap = await import('/src/services/apInvoices.ts');
+    return (await ap.listApInvoices()).find((i: { lines: { baseId: string }[]; id: string }) =>
+      i.lines.some((l) => l.baseId === base))?.id;
+  }, grId);
+  expect(invId).toBeTruthy();
+
+  // A/P invoice → outgoing payment. "Pay" opens the payment form with the invoice pre-ticked at its
+  // balance due; pay it in full in cash — the invoice closes.
+  await open(page, `purchasing/vendor-invoices/${invId}`);
+  await moreMenu(page, /^Pay$/);
+  await expect(page).toHaveURL(/outgoing-payments\/new/);
+  // The vendor has several open invoices; "Pay" pre-ticks only the one we came from, at its balance.
+  await expect(page.locator('input[type="checkbox"][aria-label^="Pay "]:checked')).toHaveCount(1, { timeout: 15_000 });
+  await payInCash(page, 'Create outgoing payment');
+  await expectListed(page, /outgoing-payments$/);
+  await expect(page.getByText('Saved', { exact: true })).toBeVisible();
+
+  // Paid in full → the A/P invoice is Closed.
+  await expect.poll(() => apStatus(page, invId as string), { timeout: 15_000 }).toBe('Closed');
 
   expect(await rawIds(page)).toEqual([]);
   expect(errors).toEqual([]);

@@ -1,7 +1,8 @@
 import { createPortal } from 'react-dom';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { Alert, Badge, Form, Panel, Tabs, Text } from '@jasperlepardo/sikat-design-system';
+import { Alert, Badge, Form, Panel, Tabs } from '@jasperlepardo/sikat-design-system';
+import { DocumentDetailSkeleton } from '../../../../components/form/skeletons/DocumentDetailSkeleton';
 import { PageHeader } from '../../../../components/form/PageHeader';
 import { DetailColumns } from '../../../../components/form/DetailColumns';
 import { type MoreMenuItem } from '../../../../components/form/MoreMenu';
@@ -33,7 +34,11 @@ import { ActivityTab } from '../../../../components/activity/ActivityTab';
 import { VendorCard } from '../../shared/VendorCard';
 import { VendorDetailsPanel } from '../../shared/VendorDetailsPanel';
 import { CopyPanel } from '../../shared/CopyPanel';
-import { GRR_LIST_PATH, GRR_NOUN, GRR_STATUS_INTENT, RETURN_LIST_PATH } from '../../paths';
+import { GRR_LIST_PATH, GRR_NOUN, GRR_STATUS_INTENT, RETURN_LIST_PATH, RETURN_NOUN, RETURN_STATUS_INTENT } from '../../paths';
+import { cap } from '../../../../components/form/noun';
+import { LineRollup, type RollupDocRow } from '../../../../components/form/LineRollup';
+import { useAsync } from '../../../../services/useAsync';
+import { listGoodsReturns, returnNumber } from '../../../../services/goodsReturns';
 import { grrDoc } from './grrDoc';
 import { purchaseView } from '../../shared/purchaseView';
 import { DocumentDates } from '../../../../components/form/DatesCard';
@@ -87,6 +92,8 @@ function GrrForm() {
   const [creatingReturn, setCreatingReturn] = useState(false);
   const [vendorDetailsOpen, setVendorDetailsOpen] = useState(false);
   const [currencyView, setCurrencyView] = useState('');
+  const [contentTab, setContentTab] = useState<'item' | 'returns'>('item');
+  const goodsReturnsList = useAsync(listGoodsReturns, []);
 
   const page = (PAGES.some((p) => p.value === tabParam) ? tabParam : 'details') as PageId;
   const setPage = useDocTab<PageId>(`${GRR_LIST_PATH}/${id}`, tabParam);
@@ -115,7 +122,7 @@ function GrrForm() {
 
   useDocTitle(draft?.docNum ? (isNew ? `New ${GRR_NOUN.one}` : grrNumber(draft as GoodsReturnRequest)) : undefined);
 
-  if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading goods return request…</Text>;
+  if (draft === undefined || !m) return <DocumentDetailSkeleton />;
   if (draft === null) return <NotFound icon="assignment_return" title="Goods return request not found" backTo={GRR_LIST_PATH} backLabel="Back to return requests" />;
 
   const ctx = buildGrrContext(draft);
@@ -191,9 +198,33 @@ function GrrForm() {
 
   const title = isNew ? `New ${GRR_NOUN.one}` : draft.docNum ? grrNumber(draft as GoodsReturnRequest) : `Draft ${GRR_NOUN.one}`;
 
+  // Second content tab: each requested line's downstream goods returns (linked by grrLineId).
+  const counts = (d: { status: string }) => d.status !== 'Draft' && d.status !== 'Cancelled';
+  const rollupLines = draft.lines
+    .filter((l) => l.itemId)
+    .map((l) => ({ id: l.id, itemNo: l.itemNo, description: l.description, quantity: l.quantity, uomCode: l.uomCode }));
+  const returnDocsFor = (lineId: string): RollupDocRow[] =>
+    (goodsReturnsList ?? []).filter(counts).filter((r) => r.baseGrrId === draft.id).flatMap((r) =>
+      r.lines
+        .filter((rl) => rl.grrLineId === lineId)
+        .map((rl): RollupDocRow => ({ id: rl.id, no: returnNumber(r), href: `#${RETURN_LIST_PATH}/${r.docNum ? returnNumber(r) : r.id}`, date: r.postingDate, status: r.status, intent: RETURN_STATUS_INTENT[r.status], quantity: rl.quantity, uomCode: rl.uomCode })));
+  const showRollups = !isNew && ctx.added && !!draft.id;
+  const contentTabs = (
+    <Tabs
+      variant="solid"
+      className="w-fit max-w-full self-start"
+      value={contentTab}
+      onValueChange={(v) => setContentTab(v as 'item' | 'returns')}
+      items={[
+        { value: 'item', label: cap(GRR_NOUN.lineLabel!) },
+        { value: 'returns', label: cap(RETURN_NOUN.many) },
+      ]}
+    />
+  );
+
   return (
     <>
-      <Form className="flex-1" onSubmit={submit} noValidate>
+      <Form className="flex-1" onSubmit={(e) => e.preventDefault()} noValidate>
         <Panel className="flex-1">
           <PageHeader
             variant="plain"
@@ -209,6 +240,8 @@ function GrrForm() {
                 noun={GRR_NOUN}
                 listPath={GRR_LIST_PATH}
                 mode={!ctx.added ? 'draft' : ctx.readOnly ? 'readonly' : 'open'}
+                draft={draft}
+                onRevert={setDraft}
                 remarksOnly={ctx.readOnly}
                 busy={saving}
                 onSubmit={() => submit(null)}
@@ -251,7 +284,12 @@ function GrrForm() {
                     pickVendor={pickVendor}
                     onOpenDetails={() => setVendorDetailsOpen(true)}
                   />
-                  <DocLines {...grrDoc({ draft, update, errors, m, onCopyClick: () => setCopying(true), canCopy: Boolean(draft.vendorId) }, view)} />
+                  {showRollups ? contentTabs : null}
+                  {showRollups && contentTab === 'returns' ? (
+                    <LineRollup title={cap(RETURN_NOUN.many)} lines={rollupLines} loading={!goodsReturnsList} docsFor={(l) => returnDocsFor(l.id)} empty="No goods returns created from this request yet." />
+                  ) : (
+                    <DocLines {...grrDoc({ draft, update, errors, m, onCopyClick: () => setCopying(true), canCopy: Boolean(draft.vendorId) }, view)} />
+                  )}
                   <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach photos of damage or supporting documents." />
                 </>
               }
@@ -273,6 +311,7 @@ function GrrForm() {
         readOnly={ctx.readOnly}
         open={vendorDetailsOpen}
         onClose={() => setVendorDetailsOpen(false)}
+        vendorRefLabel="Vendor RMA no."
         vendorRefHint="The vendor's return authorization (RMA) no."
         addresses={[]}
       />

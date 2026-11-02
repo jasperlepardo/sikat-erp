@@ -1,24 +1,13 @@
-import { useMemo, useState } from 'react';
-import {
-  Card,
-  Panel,
-  Table,
-  TableContent,
-  TableStatus,
-  Text,
-  type TableColumn,
-} from '@jasperlepardo/sikat-design-system';
-import { PageHeader } from '../../components/form/PageHeader';
-import { cap } from '../../components/form/noun';
+import { useMemo } from 'react';
+import { TableContent, TableStatus, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { ListPage } from '../../components/form/ListPage';
 import type { Employee } from '../../mocks/employees';
 import { employeeName, employeeNameOf, employees } from '../../services/employees';
 import { nameIn } from '../../services/partnerMasters';
 import { branches, departments, positions } from '../../services/peopleMasters';
 import { useCollection } from '../../components/form/MasterLookup';
-import { fillCardClass, useListPage } from '../../components/form/DataTable';
 import { EMPTY_FILTER, oneRule } from '../../components/filter/engine';
 import { choiceField, textField } from '../../components/filter/fieldKit';
-import { useListPresets } from '../../components/filter/useListPresets';
 import type { BuiltInView } from '../../components/filter/useListViews';
 import { EMPLOYEES_PATH, EMPLOYEE_NOUN } from './paths';
 
@@ -41,7 +30,6 @@ const VIEWS: BuiltInView[] = [
   { id: 'inactive', name: 'Inactive employees', filter: oneRule('status', 'is', 'Inactive') },
 ];
 
-/** Sort key → comparable text. */
 function sortValue(e: Employee, key: string): string {
   if (key === 'name') return employeeName(e).toLowerCase();
   if (key === 'department') return name(departments, e.departmentId);
@@ -51,54 +39,16 @@ function sortValue(e: Employee, key: string): string {
   return typeof value === 'string' ? value : '';
 }
 
-/** People › Employees: Employee Master Data. */
-export function EmployeeList() {
+export function EmployeeList({ compact, selectedId }: { compact?: boolean; selectedId?: string } = {}) {
   const loaded = useCollection(employees);
   const all = useMemo(() => [...(loaded ?? [])], [loaded]);
-  // The lookups below read these lists; subscribing re-renders the table after a rename in Settings.
   useCollection(departments);
   useCollection(branches);
   useCollection(positions);
-  const [query, setQuery] = useState('');
-  const { resetPage, paginate } = useListPage();
-  const presets = useListPresets({
-    list: 'employees',
-    fields: FIELDS,
-    builtIns: VIEWS,
-    defaultSort: { key: 'name', direction: 'asc' },
-    rows: loaded ? all : undefined,
-    onChange: resetPage,
-  });
-  const { sort, setSort } = presets;
-
-  const rows = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const filtered = presets.apply(all).filter(
-      (e) => !q || `${e.code} ${e.firstName} ${e.middleName} ${e.lastName} ${e.jobTitle} ${e.email}`.toLowerCase().includes(q),
-    );
-    if (!sort) return filtered;
-    const dir = sort.direction === 'asc' ? 1 : -1;
-    return [...filtered].sort((a, b) => sortValue(a, sort.key).localeCompare(sortValue(b, sort.key)) * dir);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [all, presets.filter, query, sort]);
-
-  const { visible: onPage, pagination } = paginate(rows);
 
   const columns: TableColumn<Employee>[] = [
-    {
-      key: 'name',
-      header: 'Employee',
-      sortable: true,
-      cell: (e) => (
-        <TableContent href={`#${EMPLOYEES_PATH}/${e.id}`} subcopy={e.code}>{employeeName(e)}</TableContent>
-      ),
-    },
-    {
-      key: 'jobTitle',
-      header: 'Job title',
-      sortable: true,
-      cell: (e) => <TableContent subcopy={name(positions, e.positionId)}>{e.jobTitle || '—'}</TableContent>,
-    },
+    { key: 'name', header: 'Employee', sortable: true, cell: (e) => <TableContent href={`#${EMPLOYEES_PATH}/${e.id}`} subcopy={e.code}>{employeeName(e)}</TableContent> },
+    { key: 'jobTitle', header: 'Job title', sortable: true, cell: (e) => <TableContent subcopy={name(positions, e.positionId)}>{e.jobTitle || '—'}</TableContent> },
     { key: 'department', header: 'Department', sortable: true, cell: (e) => name(departments, e.departmentId) || '—' },
     { key: 'branch', header: 'Branch', sortable: true, cell: (e) => name(branches, e.branchId) || '—' },
     {
@@ -110,55 +60,26 @@ export function EmployeeList() {
         return m ? <TableContent initials={initials(m)}>{employeeName(m)}</TableContent> : '—';
       },
     },
-    {
-      key: 'contact',
-      header: 'Contact',
-      cell: (e) => <TableContent subcopy={e.mobilePhone}>{e.email || '—'}</TableContent>,
-    },
-    {
-      key: 'status',
-      header: 'Status',
-      cell: (e) => <TableStatus intent={e.active ? 'success' : 'default'}>{e.active ? 'Active' : 'Inactive'}</TableStatus>,
-    },
+    { key: 'contact', header: 'Contact', cell: (e) => <TableContent subcopy={e.mobilePhone}>{e.email || '—'}</TableContent> },
+    { key: 'status', header: 'Status', cell: (e) => <TableStatus intent={e.active ? 'success' : 'default'}>{e.active ? 'Active' : 'Inactive'}</TableStatus> },
   ];
 
   return (
-    <Panel className="flex-1">
-      <PageHeader
-        icon="badge"
-        title={presets.menu}
-        showSearch
-        searchLabel="Search employees"
-        searchPlaceholder="Search by name, code, job title or e-mail"
-        searchValue={query}
-        onSearchChange={(value) => {
-          setQuery(value);
-          resetPage();
-        }}
-        create={{ noun: EMPLOYEE_NOUN, to: EMPLOYEES_PATH }}
-      />
-      <Panel.Body className="flex flex-col gap-2">
-        {presets.bar(null)}
-        <Card className={fillCardClass(onPage.length)}>
-          {!loaded ? (
-            <Text tone="muted" className="p-4">Loading employees…</Text>
-          ) : loaded.length ? (
-            <Table
-              caption={cap(EMPLOYEE_NOUN.many)}
-              columns={columns}
-              rows={onPage}
-              getRowId={(e) => e.id}
-              sort={sort}
-              onSortChange={setSort}
-              layout="fill"
-              pagination={pagination}
-            />
-          ) : (
-            <Text tone="muted" className="p-4">No {EMPLOYEE_NOUN.many} yet. Create one with New {EMPLOYEE_NOUN.one}.</Text>
-          )}
-        </Card>
-      </Panel.Body>
-      {presets.panel}
-    </Panel>
+    <ListPage
+      rows={loaded ? all : undefined}
+      columns={columns}
+      fields={FIELDS}
+      noun={EMPLOYEE_NOUN}
+      icon="badge"
+      basePath={EMPLOYEES_PATH}
+      listKey="employees"
+      builtIns={VIEWS}
+      defaultSort={{ key: 'name', direction: 'asc' }}
+      search={{ placeholder: 'Search by name, code, job title or e-mail', label: 'Search employees' }}
+      compact={compact}
+      selectedId={selectedId}
+      filterFn={(e, q) => !q || `${e.code} ${e.firstName} ${e.middleName} ${e.lastName} ${e.jobTitle} ${e.email}`.toLowerCase().includes(q)}
+      sortFn={(a, b, sort) => sortValue(a, sort.key).localeCompare(sortValue(b, sort.key))}
+    />
   );
 }

@@ -9,6 +9,7 @@ import {
   Tabs,
   Text,
 } from '@jasperlepardo/sikat-design-system';
+import { DocumentDetailSkeleton } from '../../../../components/form/skeletons/DocumentDetailSkeleton';
 import { PageHeader } from '../../../../components/form/PageHeader';
 import { DetailColumns } from '../../../../components/form/DetailColumns';
 import { type Errors } from '../../../../components/form/fields';
@@ -19,12 +20,12 @@ import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
 import { CURRENT_USER_ID } from '../../../../mocks/common';
 import { type Partner } from '../../../../mocks/partners';
-import { blankRfq, type Rfq } from '../../../../mocks/rfqs';
+import { blankRfq, type Rfq, type RfqLine } from '../../../../mocks/rfqs';
 import { loadInventoryMasters } from '../../../../services/inventoryMasters';
 import { listItems } from '../../../../services/items';
 import { companyTax, currencies, exchangeRates, taxCodes, taxGroups, withholdingGroups, withholdingTaxes } from '../../../../services/masterData';
 import { listPartnersByRole } from '../../../../services/partners';
-import { listPurchaseOrders } from '../../../../services/purchaseOrders';
+import { listPurchaseOrders, poNumber } from '../../../../services/purchaseOrders';
 import { loadCurrentCompany } from '../../../../services/companies';
 import { addRfq, cancelRfq, closeRfq, getRfq, listRfqs, recallRfq, rfqNumber, saveRfqDraft, seriesOf } from '../../../../services/rfqs';
 import { logRejection } from '../../../../services/approvalRules';
@@ -61,7 +62,9 @@ import { DocumentPayment } from '../../../../components/form/PaymentCard';
 import { rfqDates } from '../../../documentDateDefs';
 import { rfqPayment } from '../../../documentPaymentDefs';
 import { RfqReferencesCard } from './RfqReferencesCard';
-import { RFQ_LIST_PATH, RFQ_NOUN, RFQ_STATUS_INTENT } from '../../paths';
+import { PO_LIST_PATH, PO_NOUN, PO_STATUS_INTENT, RFQ_LIST_PATH, RFQ_NOUN, RFQ_STATUS_INTENT } from '../../paths';
+import { cap } from '../../../../components/form/noun';
+import { LineRollup, type RollupDocRow } from '../../../../components/form/LineRollup';
 
 type TabId = 'contents' | 'logistics' | 'accounting';
 
@@ -129,6 +132,7 @@ function RfqForm() {
   const [creatingPo, setCreatingPo] = useState(false);
   // The currency the lines and totals are shown in ('' = the document's own). Not saved.
   const [currencyView, setCurrencyView] = useState('');
+  const [contentTab, setContentTab] = useState<'item' | 'orders'>('item');
   const reject = useReject();
 
   useEffect(() => {
@@ -167,7 +171,7 @@ function RfqForm() {
       : undefined,
   );
 
-  if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading purchase quotation…</Text>;
+  if (draft === undefined || !m) return <DocumentDetailSkeleton />;
   if (draft === null) return <NotFound icon="description" title="Purchase quotation not found" backTo={RFQ_LIST_PATH} backLabel="Back to purchase quotations" />;
 
   const ctx = buildContext(draft, m);
@@ -271,9 +275,32 @@ function RfqForm() {
   const title = isNew ? `New ${RFQ_NOUN.one}` : draft.status === 'Draft' ? `Draft ${RFQ_NOUN.one}` : rfqNumber(draft);
   const sectionProps = { draft, update, errors, m, ctx };
 
+  // Second content tab: the purchase orders each quoted line was ordered on. A PO built from this
+  // quotation carries `baseRfqId`; its line keeps the quotation's base line id (the PR line, when the
+  // RFQ came from one), so match on that — falling back to item — exactly as the draw-down does.
+  const counts = (d: { status: string }) => d.status !== 'Draft' && d.status !== 'Cancelled';
+  const poDocsFor = (rl: RfqLine): RollupDocRow[] =>
+    m.pos.filter(counts).filter((po) => po.baseRfqId === draft.id).flatMap((po) =>
+      po.lines
+        .filter((pl) => (pl.baseLineId && rl.baseLineId === pl.baseLineId) || pl.itemId === rl.itemId)
+        .map((pl): RollupDocRow => ({ id: `${po.id}:${pl.id}`, no: poNumber(po), href: `#${PO_LIST_PATH}/${po.docNum ? poNumber(po) : po.id}`, date: po.postingDate, status: po.status, intent: PO_STATUS_INTENT[po.status], quantity: pl.quantity, uomCode: pl.uomCode })));
+  const showRollups = !isNew && ctx.added && !!draft.id;
+  const contentTabs = (
+    <Tabs
+      variant="solid"
+      className="w-fit max-w-full self-start"
+      value={contentTab}
+      onValueChange={(v) => setContentTab(v as 'item' | 'orders')}
+      items={[
+        { value: 'item', label: cap(RFQ_NOUN.lineLabel!) },
+        { value: 'orders', label: cap(PO_NOUN.many) },
+      ]}
+    />
+  );
+
   return (
     <>
-      <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
+      <Form className="flex-1" onSubmit={(e) => e.preventDefault()} noValidate>
         <Panel className="flex-1">
           <PageHeader
             variant="plain"
@@ -306,6 +333,8 @@ function RfqForm() {
                 noun={RFQ_NOUN}
                 listPath={RFQ_LIST_PATH}
                 mode={docMode(draft.status, { canApprove: isApprover('RFQ') })}
+                draft={draft}
+                onRevert={setDraft}
                 needsApproval={!draft.approved}
                 remarksOnly={ctx.readOnly}
                 busy={saving}
@@ -347,7 +376,12 @@ function RfqForm() {
               main={
                 <>
                   <VendorCard vendors={m.vendors} vendorId={draft.vendorId} vendor={ctx.vendor} readOnly={ctx.readOnly} added={ctx.added} error={errors.vendorId} pickVendor={pickVendor} onNewVendor={() => setShowVendorCreate(true)} onOpenDetails={() => setVendorDetailsOpen(true)} />
-                  <DocLines {...rfqDoc(sectionProps, { value: currencyView, onChange: setCurrencyView })} />
+                  {showRollups ? contentTabs : null}
+                  {showRollups && contentTab === 'orders' ? (
+                    <LineRollup title={cap(PO_NOUN.many)} lines={draft.lines.filter((l) => l.itemId)} loading={false} docsFor={poDocsFor} empty="No purchase orders from this quotation yet." />
+                  ) : (
+                    <DocLines {...rfqDoc(sectionProps, { value: currencyView, onChange: setCurrencyView })} />
+                  )}
                   <ReferencesTable refs={draft.references} onChange={(references) => update({ references })} readOnly={ctx.readOnly} description="Other documents this RFQ refers to — purchase requests, sales orders, contract references." />
                   <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach the vendor's quotation or price list." />
                 </>
@@ -381,6 +415,7 @@ function RfqForm() {
         open={vendorDetailsOpen}
         onClose={() => setVendorDetailsOpen(false)}
         onVendorSaved={(v) => setM((prev) => prev && { ...prev, vendors: prev.vendors.map((x) => (x.id === v.id ? v : x)) })}
+        vendorRefLabel="Vendor quote no."
         vendorRefHint="The vendor's own reference or quote number."
         addresses={ctx.vendor ? vendorAddressFields(m, ctx.vendor) : []}
       />

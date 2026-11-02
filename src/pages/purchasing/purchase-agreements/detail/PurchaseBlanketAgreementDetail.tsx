@@ -268,7 +268,7 @@ function PbaForm() {
 
   return (
     <>
-    <Form className="flex-1" onSubmit={(e) => submit(e, added ? undefined : { status: 'Approved' })} noValidate>
+    <Form className="flex-1" onSubmit={(e) => e.preventDefault()} noValidate>
       <Panel className="flex-1">
         <PageHeader
           variant="plain"
@@ -282,6 +282,8 @@ function PbaForm() {
               noun={PBA_NOUN}
               listPath={PBA_LIST_PATH}
               mode={!added ? 'draft' : terminal ? 'readonly' : 'open'}
+              draft={draft}
+              onRevert={setDraft}
               remarksOnly={terminal}
               busy={saving}
               onDraft={() => submit(null, { asDraft: true })}
@@ -371,6 +373,7 @@ function PbaForm() {
       readOnly={readOnly}
       open={vendorDetailsOpen}
       onClose={() => setVendorDetailsOpen(false)}
+      vendorRefLabel="Vendor agreement no."
       vendorRefHint="The vendor's own reference for this agreement."
       addresses={[]}
     />

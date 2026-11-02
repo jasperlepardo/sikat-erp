@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import { Alert, Badge, Button, Combobox, Form, Icon, IconButton, Panel, Select, Tabs, Text } from '@jasperlepardo/sikat-design-system';
+import { InventoryDocSkeleton } from '../../../components/form/skeletons/InventoryDocSkeleton';
 import { PageHeader } from '../../../components/form/PageHeader';
 import { AttachmentsCard } from '../../../components/form/AttachmentsCard';
 import { Fields, FieldOrientationCtx, ReadOnly, Section, bind, type Errors } from '../../../components/form/fields';
@@ -99,7 +100,7 @@ function CountForm() {
     };
   }, [id, isNew]);
 
-  if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading count…</Text>;
+  if (draft === undefined || !m) return <InventoryDocSkeleton />;
   if (draft === null) return <NotFound icon="inventory" title="Count not found" backTo={COUNT_LIST_PATH} backLabel="Back to stock counts" />;
 
   const open = draft.status === 'Open';
@@ -166,7 +167,7 @@ function CountForm() {
   ];
 
   return (
-    <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
+    <Form className="flex-1" onSubmit={(e) => e.preventDefault()} noValidate>
       <Panel className="flex-1">
         <PageHeader
           variant="plain"
@@ -191,6 +192,9 @@ function CountForm() {
               noun={COUNT_NOUN}
               listPath={COUNT_LIST_PATH}
               mode={isNew ? 'draft' : open ? 'open' : 'readonly'}
+              draft={draft}
+              onRevert={setDraft}
+              onSubmit={() => submit(null)}
               remarksOnly={!open}
               busy={saving}
               secondary={open ? { label: `Create ${POSTING_NOUN.one}`, onClick: () => submit(null, 'copy'), disabled: !summary.counted } : undefined}

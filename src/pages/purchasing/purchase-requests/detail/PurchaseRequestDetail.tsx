@@ -7,8 +7,8 @@ import {
   Form,
   Panel,
   Tabs,
-  Text,
 } from '@jasperlepardo/sikat-design-system';
+import { DocumentDetailSkeleton } from '../../../../components/form/skeletons/DocumentDetailSkeleton';
 import { PageHeader } from '../../../../components/form/PageHeader';
 import { DetailColumns } from '../../../../components/form/DetailColumns';
 import { type Errors } from '../../../../components/form/fields';
@@ -63,6 +63,7 @@ import { todayISO } from '../../../../services/dates';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { neighbours, NotFound, useDocTab } from '../../../../components/form/DetailNav';
 import { PO_LIST_PATH, PO_NOUN, PR_LIST_PATH, PR_NOUN, PR_STATUS_INTENT, RFQ_NOUN } from '../../paths';
+import { cap } from '../../../../components/form/noun';
 
 type TabId = 'contents';
 
@@ -167,7 +168,7 @@ function PurchaseRequestForm() {
   const docTitle = draft?.docNum ? (isNew ? `New ${PR_NOUN.one}` : prNumber(draft as PurchaseRequest)) : undefined;
   useDocTitle(docTitle);
 
-  if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading purchase request…</Text>;
+  if (draft === undefined || !m) return <DocumentDetailSkeleton />;
   if (draft === null) return <NotFound icon="inbox" title="Purchase request not found" backTo={PR_LIST_PATH} backLabel="Back to requests" />;
 
   const ctx = buildContext(draft, m);
@@ -323,32 +324,21 @@ function PurchaseRequestForm() {
 
   const sectionProps = { draft, update, errors, m, ctx };
 
-  // The Item / Comparison switch sits at the top of the Contents card body, as on a PO (Item / Receipts).
+  // The Requested items / Comparison switch sits between the requester card and the lines
+  // table, as on a PO (Ordered items / Receipts). The first tab is named after the table.
   const showComparison = ctx.added && quotes.rfqs.length > 0;
   const contentTabs = (
     <Tabs
       variant="solid"
-      // The card body is a flex column, which would stretch the bar full width.
       className="w-fit max-w-full self-start"
       value={contentTab}
       onValueChange={(v) => setContentTab(v as 'item' | 'comparison')}
       items={[
-        { value: 'item', label: 'Item' },
-        { value: 'comparison', label: 'Comparison' },
+        { value: 'item', label: cap(PR_NOUN.lineLabel!) },
+        { value: 'comparison', label: 'Quotations' },
       ]}
     />
   );
-  const withTabsOnTop = (lines: ReturnType<typeof prDoc>): ReturnType<typeof prDoc> => ({
-    ...lines,
-    description: undefined,
-    header: (
-      <>
-        {contentTabs}
-        <Text variant="small" tone="muted">{lines.description}</Text>
-        {lines.header}
-      </>
-    ),
-  });
 
   const menu: MoreMenuItem[] = [
     ...(draft.status === 'Open' && draft.lines.some((l) => l.status === 'Open' && l.itemId)
@@ -372,7 +362,7 @@ function PurchaseRequestForm() {
 
   return (
     <>
-    <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
+    <Form className="flex-1" onSubmit={(e) => e.preventDefault()} noValidate>
       <Panel className="flex-1">
         <PageHeader
           variant="plain"
@@ -400,6 +390,8 @@ function PurchaseRequestForm() {
               noun={PR_NOUN}
               listPath={PR_LIST_PATH}
               mode={!ctx.added ? 'draft' : ctx.readOnly ? 'readonly' : 'open'}
+              draft={draft}
+              onRevert={setDraft}
               remarksOnly={ctx.readOnly}
               busy={saving}
               onSubmit={() => submit(null)}
@@ -449,10 +441,11 @@ function PurchaseRequestForm() {
                   pickRequester={pickRequester}
                   onOpenDetails={() => setRequesterDetailsOpen(true)}
                 />
+                {showComparison ? contentTabs : null}
                 {showComparison && contentTab === 'comparison' ? (
-                  <ComparisonTab pr={saved} m={m} rfqs={quotes.rfqs} pos={quotes.pos} tabs={contentTabs} />
+                  <ComparisonTab pr={saved} m={m} rfqs={quotes.rfqs} pos={quotes.pos} />
                 ) : (
-                  <DocLines {...(showComparison ? withTabsOnTop(prDoc(sectionProps)) : prDoc(sectionProps))} />
+                  <DocLines {...prDoc(sectionProps)} />
                 )}
                 <AttachmentsCard attachments={draft.attachments} onChange={(attachments) => update({ attachments })} withDescription emptyHint="Attach supporting documents, e.g. specs, approvals or quotes." />
               </>

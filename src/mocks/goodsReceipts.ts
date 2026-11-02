@@ -63,6 +63,13 @@ export interface GrLine extends PurchLine {
   baseLineId: string;
   /** The PO's number when copied, e.g. "Primary 260002", for display. */
   baseDocNo: string;
+  /**
+   * Set when this receipt line is received against an A/P reserve invoice: its id and line id.
+   * `baseId`/`baseLineId` still point at the PO (so the PO draws down normally); these add the
+   * reserve-invoice link for its received-quantity counter and the reserve-invoice rollup.
+   */
+  apriId?: string;
+  apriLineId?: string;
   /** PHP per inventory unit the stock came in at, fixed when the receipt is added. */
   unitCostLc: number;
   /** Billed so far on A/P invoices copied from this line, in the line's unit. */

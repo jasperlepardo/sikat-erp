@@ -19,6 +19,7 @@ import { addLayer, removeLayersBySource, updateFifoCosts } from './costLayers';
 import { lineNet, listPurchaseOrders, openQty, poTotals, priceAfterDiscount, saveReceivedQuantities } from './purchaseOrders';
 import { createCollection } from './store';
 import { purchasingHistory } from './purchasingHistory';
+import { applyReceivedToApri } from './apReserveInvoices';
 import { round2, round4 } from './num';
 
 const receipts = createCollection<GoodsReceipt>('sikat-erp:goods-receipts:v7', () => purchasingHistory().receipts, 'gr', { audit: 'GRPO' });
@@ -251,6 +252,8 @@ export async function addGoodsReceipt(input: GrInput, fx: number): Promise<Goods
   const lines = input.lines.map((l) => ({ ...l, unitCostLc: unitCostLc(l, input, fx) }));
   await saveItems(applyStock(lines, items, 1));
   for (const po of applyToOrders(lines, pos, 1)) await saveReceivedQuantities(po);
+  const apriLines = lines.filter((l) => l.apriId && l.apriLineId);
+  if (apriLines.length) await applyReceivedToApri(apriLines.map((l) => ({ apriId: l.apriId!, apriLineId: l.apriLineId!, quantity: l.quantity })), 1);
 
   const saved = await receipts.save({ ...input, lines: withBinCodes(lines), docNum, status: 'Open', fxRate: fx });
 
@@ -350,6 +353,8 @@ export async function cancelGoodsReceipt(gr: GoodsReceipt) {
 
   await saveItems(applyStock(gr.lines, items, -1));
   for (const po of applyToOrders(gr.lines, pos, -1)) await saveReceivedQuantities(po);
+  const apriLines = gr.lines.filter((l) => l.apriId && l.apriLineId);
+  if (apriLines.length) await applyReceivedToApri(apriLines.map((l) => ({ apriId: l.apriId!, apriLineId: l.apriLineId!, quantity: l.quantity })), -1);
 
   // FIFO: zero out the layers this receipt created, then refresh itemCost.
   await removeLayersBySource(gr.id);

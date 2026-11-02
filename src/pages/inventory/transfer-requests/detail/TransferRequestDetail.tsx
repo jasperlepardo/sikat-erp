@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { Alert, Badge, Combobox, Form, FormField, Panel, Text } from '@jasperlepardo/sikat-design-system';
+import { Alert, Badge, Combobox, Form, FormField, Panel } from '@jasperlepardo/sikat-design-system';
+import { InventoryDocSkeleton } from '../../../../components/form/skeletons/InventoryDocSkeleton';
 import { PageHeader } from '../../../../components/form/PageHeader';
 import { Fields, FieldOrientationCtx, ReadOnly, Section, bind, type Errors } from '../../../../components/form/fields';
 import { SeriesNoFields } from '../../../../components/form/SeriesNoFields';
@@ -94,7 +95,7 @@ function TransferRequestForm() {
   }, [id, isNew]);
 
   useDocTitle(draft ? (isNew ? `New ${TRANSFER_REQUEST_NOUN.one}` : transferRequestNumber(draft)) : undefined);
-  if (draft === undefined || !m) return <Text tone="muted" className="p-4">Loading transfer request…</Text>;
+  if (draft === undefined || !m) return <InventoryDocSkeleton />;
   if (draft === null) return <NotFound icon="move_up" title="Transfer request not found" backTo={TRANSFER_REQUEST_LIST_PATH} backLabel="Back to transfer requests" />;
 
   const added = draft.docNum > 0;
@@ -200,7 +201,7 @@ function TransferRequestForm() {
     : transferRequestNumber(draft);
 
   return (
-    <Form className="flex-1" onSubmit={(e) => submit(e)} noValidate>
+    <Form className="flex-1" onSubmit={(e) => e.preventDefault()} noValidate>
       <Panel className="flex-1">
         <PageHeader
           variant="plain"
@@ -213,6 +214,9 @@ function TransferRequestForm() {
               noun={TRANSFER_REQUEST_NOUN}
               listPath={TRANSFER_REQUEST_LIST_PATH}
               mode={!added ? 'draft' : closed ? 'readonly' : 'open'}
+              draft={draft}
+              onRevert={setDraft}
+              onSubmit={() => submit(null)}
               busy={saving}
               menu={menu}
               prevNext={isNew ? undefined : { path: TRANSFER_REQUEST_LIST_PATH, prevId, nextId }}

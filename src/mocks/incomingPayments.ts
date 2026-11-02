@@ -60,6 +60,8 @@ export interface IncomingRow {
   controlAccount: string;
   projectId: string;
   selected: boolean;
+  /** 'ARDI' for an A/R down payment invoice being settled; absent for an ordinary A/R invoice. */
+  docType?: 'ARDI';
 }
 
 export interface IncomingAccountRow {

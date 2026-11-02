@@ -1,5 +1,6 @@
 import type { Errors } from '../../../../components/form/fields';
 import { newDnLine, type DnLine } from '../../../../mocks/deliveries';
+import type { ReserveInvoice, RiLine } from '../../../../mocks/reserveInvoices';
 import type { SalesOrder, SoLine } from '../../../../mocks/salesOrders';
 import type { DnInput } from '../../../../services/deliveries';
 import { soNumber } from '../../../../services/salesOrders';
@@ -67,4 +68,33 @@ export const dnLineFromOrder = (so: SalesOrder, l: SoLine, quantity: number): Dn
     baseLineId: l.id,
     baseDocNo: soNumber(so),
     baseRow: so.lines.indexOf(l) + 1,
+  });
+
+/**
+ * A delivery line that fulfils an A/R reserve invoice. It keeps the reserve invoice's own SO base
+ * (so the sales order draws down normally) and adds the reserve-invoice link (`riId`/`riLineId`) that
+ * drives its open-quantity counter and the IFRS 15 revenue recognition posted with the delivery.
+ */
+export const dnLineFromRi = (ri: ReserveInvoice, l: RiLine, quantity: number): DnLine =>
+  newDnLine({
+    itemId: l.itemId,
+    itemNo: l.itemNo,
+    description: l.description,
+    quantity,
+    uomCode: l.uomCode,
+    uomName: l.uomName,
+    itemsPerUnit: l.itemsPerUnit,
+    warehouse: l.warehouse,
+    priceListId: l.priceListId,
+    unitPrice: l.unitPrice,
+    discountPct: l.discountPct,
+    priceSource: l.priceSource,
+    taxCode: l.taxCode,
+    baseType: l.baseType,
+    baseId: l.baseId,
+    baseLineId: l.baseLineId,
+    baseDocNo: l.baseDocNo,
+    baseRow: l.baseRow,
+    riId: ri.id,
+    riLineId: l.id,
   });

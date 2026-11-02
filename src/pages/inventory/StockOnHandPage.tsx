@@ -95,7 +95,6 @@ export function StockOnHandPage() {
   const data = useAsync(() => Promise.all([listItems(), loadInventoryMasters()]), []);
   const [warehouse, setWarehouse] = useState('');
   const [group, setGroup] = useState(ALL_GROUPS);
-  const [query, setQuery] = useState('');
   /** Selected warehouse rows; the Table checks an item row when all its warehouses are. */
   const [selected, setSelected] = useState<string[]>([]);
   const [expandedIds, setExpanded] = useState<string[]>([]);
@@ -144,11 +143,12 @@ export function StockOnHandPage() {
     defaultSort: { key: 'item', direction: 'asc' },
     rows: items ? base : undefined,
     onChange: resetPage,
+    search: { placeholder: 'Search by item no., name, warehouse or bin', label: 'Search stock' },
   });
   const { sort, setSort } = presets;
 
   const rows = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = presets.searchText;
     const filtered = presets.apply(base).filter(
       (r) =>
         !q ||
@@ -172,7 +172,7 @@ export function StockOnHandPage() {
     const sortTree = (list: Row[]): Row[] => list.map((r) => ({ ...r, children: r.children && sortTree(r.children) })).sort(byKey);
     return sortTree(filtered);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [base, presets.filter, query, sort, inv]);
+  }, [base, presets.filter, presets.searchText, sort, inv]);
 
   const { visible: onPage, pagination } = paginate(rows);
   const totals = rows.reduce(
@@ -238,11 +238,6 @@ export function StockOnHandPage() {
       <PageHeader
         icon="inventory"
         title={presets.menu}
-        showSearch
-        searchLabel="Search stock"
-        searchPlaceholder="Search by item no., name, warehouse or bin"
-        searchValue={query}
-        onSearchChange={(v) => { setQuery(v); resetPage(); }}
       />
       <Panel.Body className="flex flex-col gap-2">
         {presets.bar(
@@ -268,7 +263,7 @@ export function StockOnHandPage() {
         )}
         {items ? (
           <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-            <Stat icon="category" label="Items" value={qty(rows.length)} sub={warehouse || group !== ALL_GROUPS || query ? 'Matching the filters' : 'Stocked items'} />
+            <Stat icon="category" label="Items" value={qty(rows.length)} sub={warehouse || group !== ALL_GROUPS || presets.searchText ? 'Matching the filters' : 'Stocked items'} />
             <Stat icon="inventory_2" label="In stock" value={qty(totals.inStock)} sub="Units on hand, inventory UoM" />
             <Stat icon="task_alt" label="Available" value={qty(totals.available)} sub={`${qty(totals.committed)} committed · ${qty(totals.ordered)} ordered`} />
             <Stat icon="payments" label="Value at cost" value={`PHP ${formatAmount(totals.value)}`} sub="In stock × item cost" />

@@ -50,14 +50,16 @@ export function useListViews<T>({
   const [params, setParams] = useSearchParams();
   const saved = useCollection(filterPresets);
 
+  // The All ↔ Drafts sub-tabs reuse one list component with different built-in sets, so the built-ins
+  // are no longer static per list — track them by id so `views` recomputes when the set changes.
+  const builtInKey = builtIns.map((v) => v.id).join(',');
   const views = useMemo<ListView[]>(
     () => [
       ...builtIns.map((v) => ({ ...v, sort: v.sort ?? defaultSort, builtIn: true })),
       ...(saved ?? []).filter((p) => p.list === list).map((p) => ({ ...p, builtIn: false })),
     ],
-    // builtIns / defaultSort are static per list.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [saved, list],
+    [saved, list, builtInKey],
   );
 
   const [viewId, setViewId] = useState(() => (urlSync ? params.get('view') : null) ?? builtIns[0].id);
@@ -90,12 +92,27 @@ export function useListViews<T>({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [saved, adopted]);
 
-  const viewFilter = encodeFilter(current?.filter ?? { match: 'all', rules: [] });
-  const encoded = encodeFilter(filter);
+  // When the page swaps its built-in set (the All ↔ Drafts sub-tabs reuse the same list component,
+  // so React keeps this state rather than remounting), a selected view that no longer exists snaps
+  // back to the default — otherwise its stale `?view=` lingers on the other sub-tab's URL. Done in
+  // render (not an effect) so the invalid view never reaches the URL-sync effect below.
+  if (saved !== undefined && adopted && !views.some((v) => v.id === viewId)) {
+    setViewId(builtIns[0].id);
+    setFilter(builtIns[0].filter);
+  }
+
+  const viewFilter = useMemo(
+    () => encodeFilter(current?.filter ?? { match: 'all', rules: [] }),
+    [current],
+  );
+  const encoded = useMemo(() => encodeFilter(filter), [filter]);
   const edited = !!current && (encoded !== viewFilter || !sameSort(sort, current.sort));
 
   // Mirror the view and any unsaved filter to the URL.
-  const filterParam = encoded !== viewFilter ? formatFilter(filter, fields) : '';
+  const filterParam = useMemo(
+    () => (encoded !== viewFilter ? formatFilter(filter, fields) : ''),
+    [encoded, viewFilter, filter, fields],
+  );
   const viewParam = viewId === builtIns[0].id ? '' : viewId;
   useEffect(() => {
     if (!urlSync) return;

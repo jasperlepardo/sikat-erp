@@ -1,4 +1,4 @@
-import { CardField, Icon, Text, type CardFieldOption } from '@jasperlepardo/sikat-design-system';
+import { CardField, Icon, Link, Text, type CardFieldOption } from '@jasperlepardo/sikat-design-system';
 import { Section } from '../../../components/form/fields';
 import type { Partner } from '../../../mocks/partners';
 import { PartnerAvatar } from '../../../components/PartnerAvatar';
@@ -17,20 +17,28 @@ interface CustomerCardProps {
   overCredit?: boolean;
 }
 
-const option = (c: Partner): CardFieldOption => ({
-  value: c.id,
-  label: c.name,
-  icon: <PartnerAvatar partner={c} size={40} />,
-  fields: [
-    { label: 'Code', value: c.code },
-    ...(c.tin ? [{ label: 'TIN', value: c.tin }] : []),
-  ],
-});
+const option = (c: Partner, onOpenDetails?: () => void): CardFieldOption => {
+  const detail = [c.code, c.tin ?? ''].filter(Boolean).join(' · ');
+  return {
+    value: c.id,
+    label: c.name,
+    icon: <PartnerAvatar partner={c} size={40} />,
+    texts: onOpenDetails ? [
+      { variant: 'small' as const, children: <Link onClick={(e) => { e.stopPropagation(); onOpenDetails(); }}>{c.name}</Link> },
+      ...(detail ? [{ variant: 'caption' as const, children: detail }] : []),
+    ] : undefined,
+    fields: onOpenDetails ? undefined : [
+      { label: 'Code', value: c.code },
+      ...(c.tin ? [{ label: 'TIN', value: c.tin }] : []),
+    ],
+    href: onOpenDetails ? undefined : `#/sales/customers/${c.id}`,
+  };
+};
 
-/** A sales document's customer: picked as a card with code and TIN; the card's pencil opens the details panel. */
+/** A sales document's customer: picked as a card whose name links to the details panel (or the customer record). */
 export function CustomerCard({ customers, customer, onPickCustomer, onOpenDetails, locked, error, hint, overCredit }: CustomerCardProps) {
   // Keep the picked customer selectable even once it's been deactivated.
-  const options = customers.filter((c) => c.status !== 'Inactive' || c.id === customer?.id).map(option);
+  const options = customers.filter((c) => c.status !== 'Inactive' || c.id === customer?.id).map((c) => option(c, onOpenDetails));
   return (
     <Section icon="person" title="Customer">
       <div>
