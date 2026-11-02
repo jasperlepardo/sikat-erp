@@ -122,7 +122,7 @@ export function ListPage<T>({
             {toolbarExtra}
           </div>
         ) : presets.toolbar()}
-        <Card className={fillCardClass(visible.length)}>
+        <Card className={`${fillCardClass(visible.length)}${compact ? ' overflow-x-hidden [&_.sikat-table__td]:whitespace-normal [&_.sikat-table__td]:h-auto' : ''}`}>
           {!rows ? (
             <Text tone="muted" className="p-4">Loading {noun.many}…</Text>
           ) : rows.length > 0 ? (

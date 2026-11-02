@@ -1,7 +1,7 @@
 import { Outlet, useLocation, useNavigate } from 'react-router';
 import { Navbar, Page, SideNav, Text, useHoverIntent, useTheme, type NavbarMenuItem } from '@jasperlepardo/sikat-design-system';
 import { Suspense, useEffect, useState } from 'react';
-import { APPS, appNav, firstPageOf, leafForPath, moduleOf, openGroupFor, pathOf } from './nav';
+import { APPS, appNav, firstChildOf, firstPageOf, leafForPath, moduleOf, openGroupFor, pathOf } from './nav';
 import { SETTINGS_NAV, settingsLeafForPath, settingsModuleOf } from './settingsNav';
 import { useCollection } from '../components/form/MasterLookup';
 import { companies, setCurrentCompanyId, useCurrentCompany } from '../services/companies';
@@ -123,7 +123,11 @@ export function AppShell() {
             sections={appNav(appId)}
             activeId={activeId}
             openId={mainOpenId}
-            onOpenChange={setMainOpenId}
+            onOpenChange={(id) => {
+              setMainOpenId(id);
+              const first = id && firstChildOf(id);
+              if (first) navigate(pathOf(first));
+            }}
             // A grouped parent has no page of its own; land on its first child (All) — reached only
             // in the compact rail, since the expanded parent just toggles its submenu.
             onNavigate={(id, item) => navigate(pathOf(item.items?.length ? item.items[0].id : id))}

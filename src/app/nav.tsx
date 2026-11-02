@@ -294,6 +294,14 @@ export const pathOf = (id: string) => `/${id}`;
 /** Where switching to an app lands: its Dashboard. */
 export const firstPageOf = (appId: string) => pathOf(appModule(appId).items?.[0]?.id ?? appId);
 
+/** The first child route of a nav group — used to navigate when a parent is clicked to expand. */
+export function firstChildOf(groupId: string): string | undefined {
+  for (const groups of Object.values(APP_GROUPS))
+    for (const g of groups)
+      if (g.id === groupId) return g.children[0][1];
+  return undefined;
+}
+
 /** The app a leaf belongs to, e.g. 'inventory' for 'inventory/items' (and 'purchasing/…/drafts'). */
 export function moduleOf(leafId: string | undefined): string | null {
   if (!leafId) return null;

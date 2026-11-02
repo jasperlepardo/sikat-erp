@@ -164,7 +164,7 @@ const [errors, setErrors] = useState<Errors>({});
 
 **Standard two-column body — `DetailColumns` (`components/form/DetailColumns.tsx`):** item detail and every purchasing/sales document render their body through `<DetailColumns header main aside />`. It owns the `Panel.Body`, the `lg:grid-cols-12` grid and the two columns: `main` is `lg:col-span-8` (content — CustomerCard/VendorCard + line table + journal + references + attachments), `aside` is `lg:col-span-4` (details/identity cards), `header` holds the alerts that stay fixed above the columns. Each column scrolls independently at `lg` (the body clips, the grid fills it, each column has its own `overflow-y-auto`), collapsing to one scrolling column below `lg`. Don't hand-roll the grid — use the component. Don't add padding to its `Panel.Body`: a utility overrides the design system's 16px panel padding and pushes content flush; the column `p-1`/`-m-1` pair reclaims shadow room inside each scroll clip.
 
-**Partners** uses `DetailColumns` with the same col-span-8/4 split as item and document pages: tabs (Settings, Payment run, Tax) go in `main`; the Business partner identity card + contacts, addresses, payment methods, attachments and agreements go in `aside`.
+**Partners** uses `DetailColumns` with the same col-span-8/4 split as item and document pages: the Business partner identity card + tabs (Settings, Payment run, Tax) go in `main`; contacts, addresses, payment methods, attachments and agreements go in `aside`.
 
 ### Document pages — `TabProps` / `DocContext`
 

@@ -32,7 +32,7 @@ import { SettingsTab } from './settings';
 import { TransactionsTab } from './transactions';
 import { TaxTab } from './tax';
 import { VendorItemsTab } from './vendor-items';
-import { FieldStack, Section, bind, type DefaultKey, type DefaultPicks, type DefaultRole, type Draft, type Errors } from './fields';
+import { Fields, Section, bind, type DefaultKey, type DefaultPicks, type DefaultRole, type Draft, type Errors } from './fields';
 import { DetailActions } from '../../../components/form/DetailActions';
 import type { Noun } from '../../../components/form/noun';
 import { ProblemsAlert, problemCollector, type Problem as ProblemBase } from '../../../components/form/ProblemsAlert';
@@ -370,22 +370,8 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
               }
               main={
                 <>
-                  <Tabs
-                    value={tab}
-                    onValueChange={(v) => setTab(v as TabId)}
-                    items={TABS.map((t) => ({
-                      value: t.value,
-                      label: t.label,
-                      badge: problems.some((p) => p.tab === t.value) ? '!' : undefined,
-                    }))}
-                  />
-                  <ActiveTab draft={draft} update={update} errors={errors} />
-                </>
-              }
-              aside={
-                <>
                   <Section icon="badge" title="Business partner">
-                    <FieldStack>
+                    <Fields cols={2}>
                       {isNew ? (
                         <FormField orientation="responsive" label="Numbering" tooltip="Auto assigns the next BP code.">
                           {(p) => (
@@ -461,8 +447,22 @@ function PartnerForm({ scope }: { scope: PartnerScope }) {
                         rows: 1,
                         hint: 'Not printed on documents sent to the partner.',
                       })}
-                    </FieldStack>
+                    </Fields>
                   </Section>
+                  <Tabs
+                    value={tab}
+                    onValueChange={(v) => setTab(v as TabId)}
+                    items={TABS.map((t) => ({
+                      value: t.value,
+                      label: t.label,
+                      badge: problems.some((p) => p.tab === t.value) ? '!' : undefined,
+                    }))}
+                  />
+                  <ActiveTab draft={draft} update={update} errors={errors} />
+                </>
+              }
+              aside={
+                <>
                   <ContactChannelsFields draft={draft} update={update} errors={errors} />
                   <ContactsCards draft={draft} update={update} onOpen={(value, added) => setEditing({ kind: 'contact', value, isNew: added })} />
                   <AddressesCards draft={draft} update={update} onOpen={(value, added) => setEditing({ kind: 'address', value, isNew: added })} />
