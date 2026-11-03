@@ -63,12 +63,16 @@ export const defaultSortValue = (row: unknown, key: string): string | number => 
   return typeof v === 'number' ? v : typeof v === 'boolean' ? Number(v) : String(v ?? '').toLowerCase();
 };
 
-/** Manages pagination state for a list page. Returns `resetPage` and `paginate(rows)`. */
+/** Manages pagination state for a list page. Returns `resetPage`, `showIndex(i)` and `paginate(rows)`. */
 export function useListPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
 
   const resetPage = useCallback(() => setPage(1), []);
+  /** Turns to the page that holds the row at `index` (0-based, in the paginated order). */
+  const showIndex = useCallback((index: number) => {
+    if (index >= 0) setPage(Math.floor(index / pageSize) + 1);
+  }, [pageSize]);
 
   const paginate = useCallback(
     <T,>(rows: T[]) => ({
@@ -89,7 +93,7 @@ export function useListPage() {
     [page, pageSize],
   );
 
-  return { resetPage, paginate };
+  return { resetPage, showIndex, paginate };
 }
 
 /**

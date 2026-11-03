@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { Card, Icon, IconButton, Panel, Table, Text, type TableColumn, type TableSort } from '@jasperlepardo/sikat-design-system';
 import { useNavigate } from 'react-router';
 import { PageHeader } from './PageHeader';
@@ -73,7 +73,7 @@ export function ListPage<T>({
   sortFn,
 }: ListPageProps<T>) {
   const navigate = useNavigate();
-  const { resetPage, paginate } = useListPage();
+  const { resetPage, showIndex, paginate } = useListPage();
   const presets = useListPresets({ list: listKey, fields, builtIns, defaultSort, rows, onChange: resetPage, search, scope });
   const { sort, setSort } = presets;
 
@@ -102,6 +102,19 @@ export function ListPage<T>({
 
   const rowId = getRowId ?? ((r: T) => (r as { id: string }).id);
   const { visible, pagination } = paginate(sorted);
+
+  // Beside an open record, turn to the page that holds it, so Previous / Next past the page
+  // edge keeps the highlighted row in view. Only when the open record changes (or first loads),
+  // so paging the list by hand while a record is open isn't undone.
+  const followed = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (!selectedId || !rows || followed.current === selectedId) return;
+    const at = sorted.findIndex((r) => rowId(r) === selectedId);
+    if (at < 0) return;
+    followed.current = selectedId;
+    showIndex(at);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId, rows, sorted, showIndex]);
 
   return (
     <Panel className="flex-1">
