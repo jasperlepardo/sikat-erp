@@ -207,7 +207,7 @@ function ChoiceBody({ options, rule, onChange }: { options: Option[]; rule: Rule
         })}
         {options.length === 0 ? <Text tone="muted" className="px-2 py-1.5">No options</Text> : null}
       </div>
-      <Divider />
+      <Divider className="mx-2 !w-auto" />
       {op('in', 'Is')}
       {op('notIn', 'Is not')}
     </div>

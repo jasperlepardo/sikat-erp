@@ -11,7 +11,7 @@ import { listPurchaseRequests, prNumber, prTotals } from '../../../services/purc
 import { useAsync } from '../../../services/useAsync';
 import { nameIn } from '../../../services/partnerMasters';
 import { branches, departments } from '../../../services/peopleMasters';
-import { dateField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
+import { choiceField, dateField, numberField, partnerField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews } from '../../../components/filter/useListPresets';
 import { PR_LIST_PATH, PR_NOUN, PR_STATUS_INTENT } from '../paths';
 import { cap } from '../../../components/form/noun';
@@ -24,10 +24,12 @@ export function PurchaseRequestList({ compact, selectedId }: { compact?: boolean
   const totalOf = (pr: PurchaseRequest) => prTotals(pr, rateFrom(codes, pr.postingDate)).total;
   const branchOf = (r: PurchaseRequest) => (r.branchId ? nameIn(branches, r.branchId) : '');
 
+  const uniqueRequesters = [...new Set((requests ?? []).map((r) => r.requesterName).filter(Boolean))].sort();
+
   const fields = [
     textField<PurchaseRequest>('no', `${cap(PR_NOUN.one)} no.`, prNumber),
-    textField<PurchaseRequest>('requester', 'Requester', (r) => r.requesterName),
-    textField<PurchaseRequest>('branch', 'Branch', branchOf),
+    choiceField<PurchaseRequest>('requester', 'Requester', uniqueRequesters, (r) => r.requesterName),
+    partnerField<PurchaseRequest>('branch', 'Branch', (r) => r.branchId ?? '', branchOf, requests),
     dateField<PurchaseRequest>('postingDate', 'Request date', (r) => r.postingDate),
     dateField<PurchaseRequest>('requiredDate', 'Required date', (r) => r.requiredDate),
     numberField<PurchaseRequest>('total', 'Total', totalOf),
