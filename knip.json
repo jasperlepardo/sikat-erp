@@ -4,12 +4,9 @@
     "scripts/*.{ts,mjs}"
   ],
   "project": [
-    "src/**/*.{ts,tsx}",
+    "src/**/*.{ts,tsx,css}",
     "scripts/**/*.{ts,mjs}",
     "e2e/**/*.ts"
-  ],
-  "ignoreDependencies": [
-    "tailwindcss"
   ],
   "ignoreUnresolved": [
     "^/src/"
