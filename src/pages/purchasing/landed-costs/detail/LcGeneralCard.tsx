@@ -7,8 +7,8 @@ export function LcGeneralCard({ draft, update, m, readOnly }: LcSectionProps) {
 
   return (
     <Section icon="info" title="General">
-      <FieldOrientationCtx.Provider value="inline">
-        <Form.Group orientation="inline">
+      <FieldOrientationCtx.Provider value="stacked">
+        <Form.Group orientation="stacked">
           <CtxFormField label="Broker" tooltip="Customs broker or freight forwarder handling clearance.">
             {(p) => (
               <Combobox

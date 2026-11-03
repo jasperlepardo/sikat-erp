@@ -13,7 +13,7 @@ export function ArSettingsCard({ draft, update, ctx, m }: ArSectionProps) {
   const shipped = m.accounts.find((a) => a.code === SHIPPED_GOODS_ACCOUNT);
   return (
     <Section icon="settings" title="Settings">
-      <CtxFormField label="Item/Service type" orientation="inline" hint={hasLines && !ctx.added ? 'Remove the lines to change it.' : undefined}>
+      <CtxFormField label="Item/Service type" orientation="stacked" hint={hasLines && !ctx.added ? 'Remove the lines to change it.' : undefined}>
         {(p) => (
           <Select
             {...p}

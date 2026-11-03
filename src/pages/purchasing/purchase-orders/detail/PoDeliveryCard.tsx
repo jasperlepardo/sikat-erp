@@ -10,8 +10,8 @@ export function PoDeliveryCard({ draft, update, m, ctx }: PoTabProps) {
   const warehouses = [...new Set(draft.lines.map((l) => l.warehouse).filter(Boolean))];
   return (
     <Section icon="route" title="Delivery">
-      <FieldOrientationCtx.Provider value="inline">
-        <Form.Group orientation="inline">
+      <FieldOrientationCtx.Provider value="stacked">
+        <Form.Group orientation="stacked">
           {f.lookup(
             'shippingType',
             'Shipping type',

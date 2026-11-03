@@ -1,3 +1,4 @@
+import { StatusNotice } from '../../../components/form/StatusNotice';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import { Alert, Badge, Button, Combobox, Form, Icon, IconButton, Panel, Select, Tabs, Text } from '@jasperlepardo/sikat-design-system';
@@ -206,7 +207,7 @@ function CountForm() {
         <Panel.Body className="flex flex-col gap-2">
           <ProblemsAlert problems={problems} tabLabel={(t) => (t === 'attachments' ? 'Attachments' : t === 'contents' ? 'Contents' : undefined)} />
           {!open ? (
-            <Alert intent="default" variant="outline" title="This count is closed">
+            <StatusNotice resetKey={`${draft.id}:${draft.status}`} title="This count is closed">
               {draft.postingId ? (
                 <>
                   Its variances were posted by{' '}
@@ -218,7 +219,7 @@ function CountForm() {
               ) : (
                 "It was closed without a posting, so stock wasn't changed. Only remarks and attachments can change."
               )}
-            </Alert>
+            </StatusNotice>
           ) : summary.disagreements ? (
             <Alert intent="warning" variant="outline" title={`Counters differ on ${summary.disagreements} line${summary.disagreements === 1 ? '' : 's'}`}>
               Recount those lines and enter the agreed quantity before copying to an inventory posting.

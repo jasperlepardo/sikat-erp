@@ -7,6 +7,14 @@ const InSplitDetail = createContext(false);
 /** True inside the detail column of a split page, where the header closes the record instead of going back. */
 export const useInSplitDetail = () => useContext(InSplitDetail);
 
+const InSplitList = createContext(false);
+
+/**
+ * True for the compact list beside an open record. The URL there is the record's, so the list
+ * neither reads nor writes its `?view=` / `?filter=` — it carries them over through `listMemory`.
+ */
+export const useInSplitList = () => useContext(InSplitList);
+
 interface SplitPageProps {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   list: ComponentType<any>;
@@ -37,7 +45,9 @@ export function SplitPage({ list: List, detail: Detail, listProps, detailProps }
   return (
     <div className="grid grid-cols-12 grid-rows-1 gap-2 flex-1 min-h-0 overflow-hidden">
       <div className="col-span-3 flex flex-col min-h-0 overflow-hidden">
-        <List compact selectedId={id} {...(listProps ?? {})} />
+        <InSplitList.Provider value>
+          <List compact selectedId={id} {...(listProps ?? {})} />
+        </InSplitList.Provider>
       </div>
       <div
         className="col-span-9 flex flex-col min-h-0 overflow-hidden *:min-h-0"

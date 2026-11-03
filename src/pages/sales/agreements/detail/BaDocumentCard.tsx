@@ -16,8 +16,8 @@ export function BaDocumentCard({ draft, update, m, added }: Props) {
   if (added) return null;
   return (
     <Section icon="tag" title="Document">
-      <FieldOrientationCtx.Provider value="inline">
-        <Form.Group orientation="inline">
+      <FieldOrientationCtx.Provider value="stacked">
+        <Form.Group orientation="stacked">
           <SeriesNoFields
             series={[...m.baSeries]}
             seriesId={draft.seriesId}

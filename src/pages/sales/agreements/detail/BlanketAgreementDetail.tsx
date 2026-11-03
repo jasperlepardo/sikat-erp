@@ -1,8 +1,8 @@
+import { StatusNotice } from '../../../../components/form/StatusNotice';
 import { useEffect, useState, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import {
-  Alert,
   Badge,
   Form,
   Panel,
@@ -320,12 +320,12 @@ function BaForm() {
                   <ProblemsAlert problems={problems} tabLabel={(t) => TAB_LABEL[t as TabId] ?? t} />
 
                   {readOnly ? (
-                    <Alert intent="default" variant="outline" title={`This agreement is ${draft.status.toLowerCase()}`}>
+                    <StatusNotice resetKey={`${draft.id}:${draft.status}`} title={`This agreement is ${draft.status.toLowerCase()}`}>
                       {draft.status === 'Terminated' && draft.terminationDate
                         ? `Terminated on ${formatDate(draft.terminationDate)}. `
                         : ''}
                       Only remarks and attachments can be changed.
-                    </Alert>
+                    </StatusNotice>
                   ) : null}
 
                   {draft.lines.length > 0 && (

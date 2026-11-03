@@ -1,3 +1,4 @@
+import { StatusNotice } from '../../../../../components/form/StatusNotice';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import { createPortal } from 'react-dom';
@@ -455,12 +456,10 @@ function SalesReturnForm() {
                       </div>
                     </Alert>
                   ) : null}
-                  {added ? (
-                    <Alert intent="default" variant="outline" title={draft.status === 'Open' ? 'Waiting for the customer credit' : `This sales return is ${draft.status.toLowerCase()}`}>
-                      {draft.status === 'Open'
-                        ? 'The stock is back in. Copy the return to an A/R credit memo to give the customer their credit. Only remarks and attachments can change.'
-                        : 'Only remarks and attachments can change.'}
-                    </Alert>
+                  {added && draft.status !== 'Open' ? (
+                    <StatusNotice resetKey={`${draft.id}:${draft.status}`} title={`This sales return is ${draft.status.toLowerCase()}`}>
+                      Only remarks and attachments can change.
+                    </StatusNotice>
                   ) : null}
                 </>
               }

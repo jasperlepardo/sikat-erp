@@ -16,8 +16,8 @@ export function ReturnShipmentCard({ draft, update, readOnly, inv }: Props) {
   const h = bind(draft, update);
   return (
     <Section icon="route" title="Shipment">
-      <FieldOrientationCtx.Provider value="inline">
-        <Form.Group orientation="inline">
+      <FieldOrientationCtx.Provider value="stacked">
+        <Form.Group orientation="stacked">
           {h.lookup('shippingType', 'Shipping type', activeOptions(inv.shipping, (s) => s.id, (s) => s.name, draft.shippingType), { clearable: true, readOnly })}
         </Form.Group>
       </FieldOrientationCtx.Provider>

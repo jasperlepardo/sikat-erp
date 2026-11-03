@@ -9,8 +9,8 @@ export function RfqReferencesCard({ draft, update, m }: RfqTabProps) {
   const f = bind(draft, update);
   return (
     <Section icon="bookmark" title="References">
-      <FieldOrientationCtx.Provider value="inline">
-        <Form.Group orientation="inline">
+      <FieldOrientationCtx.Provider value="stacked">
+        <Form.Group orientation="stacked">
           {f.choose('indicator', 'Indicator', asOptions(INDICATORS), { clearable: true })}
           <ReadOnly
             label="Federal tax ID"

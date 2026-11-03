@@ -54,7 +54,7 @@ export function PurchaseRequestList({ compact, selectedId }: { compact?: boolean
       icon="inbox"
       basePath={PR_LIST_PATH}
       listKey="purchase-requests"
-      builtIns={statusViews(PR_NOUN.many, PR_STATUSES)}
+      builtIns={statusViews(PR_STATUSES)}
       defaultSort={{ key: 'postingDate', direction: 'desc' }}
       search={{ placeholder: 'Search by request no., requester, branch or item', label: 'Search purchase requests' }}
       header={notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : undefined}

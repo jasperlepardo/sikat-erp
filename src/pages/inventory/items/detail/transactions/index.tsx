@@ -17,9 +17,8 @@ import { useListPage } from '../../../../../components/form/DataTable';
 import { Stat } from '../../../../../components/Stat';
 import { formatAmount } from '../../../../../services/format';
 import { useAsync } from '../../../../../services/useAsync';
-import { DOC_SOURCES, type DocType } from '../../../../partners/detail/partnerDocuments';
 import { listVariants } from '../../../../../services/items';
-import { docTypesFor, isBuilt, listItemDocuments, type ItemDocument } from '../itemDocuments';
+import { ITEM_DOC_SOURCES, docTypesFor, listItemDocuments, type ItemDocType, type ItemDocument } from '../itemDocuments';
 import { variantValueLabels, type Draft } from '../types';
 import { todayISO, formatDate } from '../../../../../services/dates';
 
@@ -31,15 +30,13 @@ const qty = (n: number) => n.toLocaleString('en-PH');
 const rowsLabel = (n: number) => `${n} document row${n === 1 ? '' : 's'}`;
 
 /**
- * Every document row the item is on — purchase requests, RFQs, POs, quotations, sales orders —
- * in one list. Types without a module yet show as "not built".
+ * Every document row the item is on — purchasing (requests to credit memos) and sales (quotations
+ * to A/R invoices) — in one list. The same documents the Activity tab shows, one row per line.
  */
 export function TransactionsTab({ draft }: { draft: Draft }) {
   const isParent = draft.variantAxes.length > 0;
-  // For parent items: load all variants and aggregate their transactions across all doc types.
-  // For regular items: use just the item's own id filtered by its purchase/sales roles.
-  const allTypes = (Object.keys(DOC_SOURCES) as DocType[]).filter((t) => t !== 'PAY' && t !== 'DPR');
-  const types = isParent ? allTypes : docTypesFor(draft);
+  // A parent item lists its variants' rows across every type; any other item its own, by its purchase/sales roles.
+  const types = docTypesFor(draft);
   const variants = useAsync(() => (isParent && draft.id ? listVariants(draft.id) : Promise.resolve([])), [draft.id, isParent]);
   const docs = useAsync(
     () => {
@@ -52,8 +49,8 @@ export function TransactionsTab({ draft }: { draft: Draft }) {
     },
     [draft.id, isParent, variants?.map((v) => v.id).join(), types.join()],
   );
-  const [filter, setFilter] = useState<Filter>('open');
-  const [type, setType] = useState<DocType | 'all'>('all');
+  const [filter, setFilter] = useState<Filter>('all');
+  const [type, setType] = useState<ItemDocType | 'all'>('all');
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<TableSort | null>({ key: 'date', direction: 'desc' });
   const { resetPage, paginate } = useListPage();
@@ -70,7 +67,7 @@ export function TransactionsTab({ draft }: { draft: Draft }) {
   const overdue = ofType.filter(isOverdue);
   const q = query.trim().toLowerCase();
   const rows = (filter === 'all' ? ofType : filter === 'open' ? open : overdue).filter(
-    (d) => !q || [d.number, d.subcopy, DOC_SOURCES[d.type].label, d.status].join(' ').toLowerCase().includes(q),
+    (d) => !q || [d.number, d.subcopy, ITEM_DOC_SOURCES[d.type].label, d.status].join(' ').toLowerCase().includes(q),
   );
   const dir = sort?.direction === 'asc' ? 1 : -1;
   const sortKey = sort?.key as keyof ItemDocument | undefined;
@@ -81,10 +78,14 @@ export function TransactionsTab({ draft }: { draft: Draft }) {
         return (x < y ? -1 : x > y ? 1 : 0) * dir;
       })
     : rows;
-  /** Open quantity in the inventory unit, e.g. "120 pc". */
-  const sum = (list: ItemDocument[]) => `${qty(list.reduce((n, d) => n + d.openInventoryQty, 0))} ${draft.inventoryUom}`;
+  /** Open quantity in the inventory unit, e.g. "120 pc", split into "120 pc in · 30 pc out" when both ways are open. */
+  const sum = (list: ItemDocument[]) => {
+    const of = (dir: ItemDocument['direction']) => list.filter((d) => d.direction === dir).reduce((n, d) => n + d.openInventoryQty, 0);
+    const [inQty, outQty] = [of('in'), of('out')];
+    if (inQty && outQty) return `${qty(inQty)} ${draft.inventoryUom} in · ${qty(outQty)} out`;
+    return `${qty(inQty + outQty)} ${draft.inventoryUom}`;
+  };
   const nextDue = [...open].filter((d) => d.dueDate).sort((a, b) => a.dueDate.localeCompare(b.dueDate))[0];
-  const notBuilt = types.filter((t) => !isBuilt(t)).map((t) => DOC_SOURCES[t].label.toLowerCase());
 
   const columns: TableColumn<ItemDocument>[] = [
     ...(isParent ? [{
@@ -96,7 +97,7 @@ export function TransactionsTab({ draft }: { draft: Draft }) {
       key: 'number',
       header: 'Document',
       cell: (d) => (
-        <TableContent href={`#${d.href}`} subcopy={[DOC_SOURCES[d.type].label, d.subcopy].filter(Boolean).join(' · ')}>{d.number}</TableContent>
+        <TableContent href={`#${d.href}`} subcopy={[ITEM_DOC_SOURCES[d.type].label, d.subcopy].filter(Boolean).join(' · ')}>{d.number}</TableContent>
       ),
     },
     { key: 'date', header: 'Date', cell: (d) => formatDate(d.date) },
@@ -137,10 +138,10 @@ export function TransactionsTab({ draft }: { draft: Draft }) {
             <div className="w-56">
               <Select
                 aria-label="Document type"
-                options={[{ value: 'all', label: 'All document types' }, ...types.map((t) => ({ value: t, label: DOC_SOURCES[t].label }))]}
+                options={[{ value: 'all', label: 'All document types' }, ...types.map((t) => ({ value: t, label: ITEM_DOC_SOURCES[t].label }))]}
                 value={type}
                 onValueChange={(v) => {
-                  setType((v || 'all') as DocType | 'all');
+                  setType((v || 'all') as ItemDocType | 'all');
                   resetPage();
                 }}
               />
@@ -192,11 +193,6 @@ export function TransactionsTab({ draft }: { draft: Draft }) {
           </Card>
         </Card.Content>
       </Card>
-      {notBuilt.length ? (
-        <Text variant="small" tone="muted" className="px-2">
-          Not built yet, so not listed: {notBuilt.join(', ')}.
-        </Text>
-      ) : null}
     </div>
   );
 }

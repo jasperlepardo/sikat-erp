@@ -29,8 +29,8 @@ export function PurchReferencesCard<D extends { projectId: string; indicator: st
   const f = bind(draft, update);
   return (
     <Section icon="bookmark" title="References">
-      <FieldOrientationCtx.Provider value="inline">
-        <Form.Group orientation="inline">
+      <FieldOrientationCtx.Provider value="stacked">
+        <Form.Group orientation="stacked">
           {f.master('projectId' as KeysOf<D, string>, 'BP project', projectDef, { clearable: true, hint: projectHint, readOnly: ctx.readOnly })}
           {f.choose('indicator' as KeysOf<D, string>, 'Indicator', asOptions(INDICATORS), { clearable: true, readOnly: ctx.readOnly })}
           <ReadOnly

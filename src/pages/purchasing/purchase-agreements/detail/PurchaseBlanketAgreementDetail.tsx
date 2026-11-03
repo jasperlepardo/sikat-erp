@@ -1,8 +1,8 @@
+import { StatusNotice } from '../../../../components/form/StatusNotice';
 import { useEffect, useState, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import {
-  Alert,
   Badge,
   Form,
   Panel,
@@ -316,15 +316,13 @@ function PbaForm() {
               <>
                 <ProblemsAlert problems={problems} tabLabel={(t) => TAB_LABEL[t as TabId] ?? t} />
 
-                {readOnly ? (
-                  <Alert intent="default" variant="outline" title={`This agreement is ${draft.status.toLowerCase()}`}>
+                {terminal ? (
+                  <StatusNotice resetKey={`${draft.id}:${draft.status}`} title={`This agreement is ${draft.status.toLowerCase()}`}>
                     {draft.status === 'Terminated' && draft.terminationDate
                       ? `Terminated on ${formatDate(draft.terminationDate)}. `
                       : ''}
-                    {terminal
-                      ? 'Only remarks and attachments can be changed.'
-                      : 'Use the header actions to change its status; remarks and attachments stay editable.'}
-                  </Alert>
+                    Only remarks and attachments can be changed.
+                  </StatusNotice>
                 ) : null}
 
                 {draft.lines.length > 0 && (

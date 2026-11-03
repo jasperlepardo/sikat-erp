@@ -1,3 +1,4 @@
+import { StatusNotice } from '../../../../components/form/StatusNotice';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import { Alert, Badge, Form, Panel, Tabs, Text } from '@jasperlepardo/sikat-design-system';
@@ -517,9 +518,9 @@ function SalesOrderForm() {
                     </Alert>
                   ) : null}
                   {ctx.readOnly ? (
-                    <Alert intent="default" variant="outline" title={`This sales order is ${draft.status.toLowerCase()}`}>
+                    <StatusNotice resetKey={`${draft.id}:${draft.status}`} title={`This sales order is ${draft.status.toLowerCase()}`}>
                       Only remarks and attachments can change{draft.closeDate ? ` (${draft.status.toLowerCase()} ${formatDate(draft.closeDate)})` : ''}. Its committed stock has been released.
-                    </Alert>
+                    </StatusNotice>
                   ) : null}
                 </>
               }

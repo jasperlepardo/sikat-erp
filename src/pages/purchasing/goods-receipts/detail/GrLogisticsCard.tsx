@@ -19,8 +19,8 @@ export function GrLogistics({
   const f = bind(draft, update);
   return (
     <Section icon="local_shipping" title="Logistics">
-      <FieldOrientationCtx.Provider value="inline">
-        <Form.Group orientation="inline">
+      <FieldOrientationCtx.Provider value="stacked">
+        <Form.Group orientation="stacked">
           {f.lookup(
             'shippingType',
             'Shipping type',

@@ -66,9 +66,6 @@ export function PurchaseHistoryCard({ draft }: { draft: Draft }) {
   });
   const batches = [...oldestFirst].reverse();
 
-  const bought = oldestFirst.reduce((n, b) => n + b.quantity, 0);
-  const average = bought ? oldestFirst.reduce((n, b) => n + b.quantity * b.cost, 0) / bought : 0;
-  const costs = oldestFirst.map((b) => b.cost);
   const peso = (n: number) => `₱${formatAmount(n)}`;
 
   const priceColumn: TableColumn<Batch> = {
@@ -113,15 +110,13 @@ export function PurchaseHistoryCard({ draft }: { draft: Draft }) {
   return (
     <Card>
       <Card.Header icon={<Icon size={24}>history</Icon>}>Purchase history</Card.Header>
-      <Card.Content>
-        <Text variant="small" tone="muted">
-          {batches.length
-            ? `${batches.length} batch${batches.length === 1 ? '' : 'es'}, ${qty(bought)} ${draft.inventoryUom} bought. Last ${peso(oldestFirst.at(-1)!.cost)}, low ${peso(Math.min(...costs))}, high ${peso(Math.max(...costs))}, average ${peso(average)} per ${draft.inventoryUom}.` +
-              (fifo ? ' On hand is what’s left of each batch: FIFO sells the oldest first.' : '')
-            : 'Not bought yet. Each goods receipt adds a batch here.'}
-        </Text>
-      </Card.Content>
-      {batches.length ? <Table caption="Purchase history" columns={columns} rows={batches} getRowId={(b) => b.id} layout="scroll" /> : null}
+      {batches.length ? (
+        <Table caption="Purchase history" columns={columns} rows={batches} getRowId={(b) => b.id} scroll />
+      ) : (
+        <Card.Content>
+          <Text variant="small" tone="muted">Not bought yet. Each goods receipt adds a batch here.</Text>
+        </Card.Content>
+      )}
     </Card>
   );
 }

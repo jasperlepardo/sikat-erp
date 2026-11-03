@@ -58,7 +58,7 @@ export function JournalVoucherList({ compact, selectedId }: { compact?: boolean;
       basePath={JV_LIST_PATH}
       createPath={`${JV_LIST_PATH}/new/entries`}
       listKey="journal-vouchers"
-      builtIns={statusViews(JV_NOUN.many, ['Open', 'Closed'])}
+      builtIns={statusViews(['Open', 'Closed'])}
       defaultSort={{ key: 'voucherNo', direction: 'desc' }}
       search={{ placeholder: 'Search by voucher number, remarks, reference, account or who created it', label: 'Search journal vouchers' }}
       header={notice ? <Alert intent="success" variant="outline" title="Done">{notice}</Alert> : undefined}

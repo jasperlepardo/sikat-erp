@@ -1,8 +1,8 @@
+import { StatusNotice } from '../../../components/form/StatusNotice';
 import { useEffect, useState, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import {
-  Alert,
   Badge,
   Form,
   Panel,
@@ -344,12 +344,10 @@ function GoodsReturnForm() {
                 <>
                   <ProblemsAlert problems={problems} tabLabel={(t) => ({ contents: 'Contents', logistics: 'Logistics', accounting: 'Accounting' })[t]} />
                   {reject.alert('Reject goods return', rejectIt)}
-                  {added ? (
-                    <Alert intent="default" variant="outline" title={draft.status === 'Open' ? "Waiting for the vendor's credit" : `This goods return is ${draft.status.toLowerCase()}`}>
-                      {draft.status === 'Open'
-                        ? 'The stock is out. These goods were already billed, so the vendor owes a credit: copy the return to an A/P credit memo. Only remarks and attachments can change.'
-                        : 'Only remarks and attachments can change.'}
-                    </Alert>
+                  {added && draft.status !== 'Open' ? (
+                    <StatusNotice resetKey={`${draft.id}:${draft.status}`} title={`This goods return is ${draft.status.toLowerCase()}`}>
+                      Only remarks and attachments can change.
+                    </StatusNotice>
                   ) : null}
                 </>
               }

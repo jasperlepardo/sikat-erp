@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router';
+import { useLocation, useSearchParams } from 'react-router';
 import type { TableSort } from '@jasperlepardo/sikat-design-system';
 import { filterPresets, type FilterPreset } from '../../services/filterPresets';
 import { useCollection } from '../form/MasterLookup';
+import { useInSplitList } from '../form/SplitPage';
 import { formatFilter, parseFilter } from './aip160';
 import { decodeFilter, encodeFilter, type FilterField, type FilterGroup } from './engine';
+import { listMemoryKey, recallList, rememberList } from './listMemory';
 
 /** A list view: a built-in preset (declared in code) or a saved one. */
 export interface ListView {
@@ -27,6 +29,10 @@ const sameSort = (a: TableSort | null, b: TableSort | null) =>
  * URL: `?view=<id>` is the picked view; `?filter=…` holds the filter as AIP-160 text
  * (`status = "Open" AND total > 1000`) only while it differs from the view's — so a filtered
  * list can be bookmarked, survives a refresh, and can be edited by hand in the address bar.
+ *
+ * Memory (`listMemory`): the view, filter and sort are also kept per list for the session. A list
+ * URL without `?view=` / `?filter=` restores them, and the compact list beside an open record uses
+ * only the memory — so opening a record, stepping through records and closing it keep the filter.
  */
 export function useListViews<T>({
   list,
@@ -48,11 +54,23 @@ export function useListViews<T>({
   urlSync?: boolean;
 }) {
   const [params, setParams] = useSearchParams();
+  const location = useLocation();
   const saved = useCollection(filterPresets);
+  // Beside an open record the URL is the record's: carry the list's state through memory alone.
+  const remember = urlSync;
+  const inSplit = useInSplitList();
+  urlSync = urlSync && !inSplit;
 
   // The All ↔ Drafts sub-tabs reuse one list component with different built-in sets, so the built-ins
   // are no longer static per list — track them by id so `views` recomputes when the set changes.
   const builtInKey = builtIns.map((v) => v.id).join(',');
+  const memoryKey = listMemoryKey(list, builtIns.map((v) => v.id));
+  // The URL wins when it names a view or filter; otherwise pick up where this list was left.
+  const [recalled] = useState(() => {
+    if (!remember) return undefined;
+    if (urlSync && (params.has('view') || params.has('filter') || params.has('f'))) return undefined;
+    return recallList(memoryKey);
+  });
   const views = useMemo<ListView[]>(
     () => [
       ...builtIns.map((v) => ({ ...v, sort: v.sort ?? defaultSort, builtIn: true })),
@@ -62,10 +80,11 @@ export function useListViews<T>({
     [saved, list, builtInKey],
   );
 
-  const [viewId, setViewId] = useState(() => (urlSync ? params.get('view') : null) ?? builtIns[0].id);
+  const [viewId, setViewId] = useState(() => recalled?.viewId ?? (urlSync ? params.get('view') : null) ?? builtIns[0].id);
   const current = views.find((v) => v.id === viewId);
 
   const [filter, setFilter] = useState<FilterGroup>(() => {
+    if (recalled) return recalled.filter;
     if (urlSync) {
       const fromUrl = params.get('filter');
       const parsed = fromUrl ? parseFilter(fromUrl, fields) : undefined;
@@ -76,10 +95,11 @@ export function useListViews<T>({
     }
     return builtIns.find((v) => v.id === viewId)?.filter ?? builtIns[0].filter;
   });
-  const [sort, setSort] = useState<TableSort | null>(defaultSort);
+  const [sort, setSort] = useState<TableSort | null>(() => (recalled ? recalled.sort : defaultSort));
 
   // A saved preset in the URL loads asynchronously: adopt its filter/sort once it arrives.
-  const [adopted, setAdopted] = useState(() => !urlSync || builtIns.some((v) => v.id === viewId));
+  // A remembered view comes with its own filter and sort, so there is nothing to adopt.
+  const [adopted, setAdopted] = useState(() => !urlSync || !!recalled || builtIns.some((v) => v.id === viewId));
   useEffect(() => {
     if (adopted || saved === undefined) return;
     setAdopted(true);
@@ -123,8 +143,13 @@ export function useListViews<T>({
     next.delete('f');
     // Only when it changes: even an unchanged replace is a navigation, and it drops the state the
     // page was opened with — the "saved" / "rejected" notice a detail page sends back to its list.
-    if (next.toString() !== params.toString()) setParams(next, { replace: true });
-  }, [urlSync, viewParam, filterParam, params, setParams]);
+    // Keep that state when the restored filter is written back on arrival.
+    if (next.toString() !== params.toString()) setParams(next, { replace: true, state: location.state });
+  }, [urlSync, viewParam, filterParam, params, setParams, location.state]);
+
+  useEffect(() => {
+    if (remember && adopted) rememberList(memoryKey, { viewId, filter, sort });
+  }, [remember, adopted, memoryKey, viewId, filter, sort]);
 
   const select = useCallback(
     (id: string) => {
@@ -171,6 +196,7 @@ export function useListViews<T>({
   const reset = () => current && select(current.id);
 
   return {
+    memoryKey: remember ? memoryKey : undefined,
     views,
     current: current ?? views[0],
     filter,

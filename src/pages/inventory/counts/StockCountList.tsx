@@ -125,7 +125,7 @@ export function StockCountList() {
   const presets = useListPresets({
     list: 'stock-counts',
     fields: COUNT_FIELDS,
-    builtIns: statusViews(COUNT_NOUN.many, COUNT_STATUSES),
+    builtIns: statusViews(COUNT_STATUSES),
     defaultSort: { key: 'countDate', direction: 'desc' },
     rows: counts,
     onChange: () => { list.resetPage(); },
@@ -206,7 +206,7 @@ export function InventoryPostingList() {
       numberField<InventoryPosting>('total', 'Total', postingTotal),
       linesField<InventoryPosting>(),
     ],
-    builtIns: [{ id: 'all', name: `All ${POSTING_NOUN.many}`, filter: EMPTY_FILTER }],
+    builtIns: [{ id: 'all', name: 'All', filter: EMPTY_FILTER }],
     defaultSort: { key: 'postingDate', direction: 'desc' },
     rows: postings,
     onChange: () => { list.resetPage(); },

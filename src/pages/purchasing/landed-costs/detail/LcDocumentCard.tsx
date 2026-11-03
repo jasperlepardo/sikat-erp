@@ -9,8 +9,8 @@ export function LcDocumentCard({ draft, update, readOnly }: LcSectionProps) {
   if (readOnly) return null;
   return (
     <Section icon="tag" title="Document">
-      <FieldOrientationCtx.Provider value="inline">
-        <Form.Group orientation="inline">
+      <FieldOrientationCtx.Provider value="stacked">
+        <Form.Group orientation="stacked">
           <SeriesNoFields
             series={[...lcSeries.snapshot()]}
             seriesId={draft.seriesId}

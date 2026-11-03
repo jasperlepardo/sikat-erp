@@ -30,8 +30,8 @@ export function IncomingSettingsCard({ draft, update, readOnly, onType }: Props)
         ))}
         <Text variant="small" tone="muted">Vendor refunds (against A/P credit memos) aren&apos;t built yet.</Text>
       </div>
-      <FieldOrientationCtx.Provider value="inline">
-        <Form.Group orientation="inline">
+      <FieldOrientationCtx.Provider value="stacked">
+        <Form.Group orientation="stacked">
           {h.master('projectId', 'Project', projectDef, { clearable: true, readOnly })}
           {h.lookup('blanketAgreementId', 'Blanket agreement', agreements, { clearable: true, placeholder: 'None', readOnly })}
           {h.text('reference', 'Reference', { hint: draft.type === 'Customer' ? "The customer's reference for this payment." : undefined, readOnly })}

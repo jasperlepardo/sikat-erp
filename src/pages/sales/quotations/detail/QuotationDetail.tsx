@@ -1,7 +1,8 @@
+import { StatusNotice } from '../../../../components/form/StatusNotice';
 import { useEffect, useState, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { Alert, Badge, Form, Panel, Tabs, Text } from '@jasperlepardo/sikat-design-system';
+import { Badge, Form, Panel, Tabs, Text } from '@jasperlepardo/sikat-design-system';
 import { DocumentDetailSkeleton } from '../../../../components/form/skeletons/DocumentDetailSkeleton';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { type Errors } from '../../../../components/form/fields';
@@ -379,18 +380,15 @@ function QuotationForm() {
                 <>
                   <ProblemsAlert problems={problems} tabLabel={(t) => TAB_LABEL[t as TabId]} />
                   {reject.alert('Reject quotation', rejectIt)}
-                  {added ? (
-                    <Alert
-                      intent="default"
-                      variant="outline"
-                      title={draft.status === 'Open' ? (isExpired ? 'This quotation has expired' : 'Quotation is open') : `This quotation is ${draft.status.toLowerCase()}`}
+                  {added && (draft.status !== 'Open' || isExpired) ? (
+                    <StatusNotice
+                      resetKey={`${draft.id}:${draft.status}:${isExpired}`}
+                      title={isExpired ? 'This quotation has expired' : `This quotation is ${draft.status.toLowerCase()}`}
                     >
-                      {draft.status === 'Open'
-                        ? (isExpired
-                          ? 'The valid until date has passed. Create a sales order or close it.'
-                          : 'Create a sales order when the customer confirms. Only remarks and attachments can change.')
+                      {isExpired
+                        ? 'The valid until date has passed. Create a sales order or close it.'
                         : 'Only remarks and attachments can change.'}
-                    </Alert>
+                    </StatusNotice>
                   ) : null}
                 </>
               }

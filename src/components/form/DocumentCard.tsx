@@ -59,8 +59,8 @@ export function DocumentCard({ series, currency, extra, icon = 'tag', title = 'D
   if (!series && !currency && !extra) return null;
   return (
     <Section icon={icon} title={title}>
-      <FieldOrientationCtx.Provider value="inline">
-        <Form.Group orientation="inline">
+      <FieldOrientationCtx.Provider value="stacked">
+        <Form.Group orientation="stacked">
           {series && (
             <SeriesNoFields
               series={series.rows}

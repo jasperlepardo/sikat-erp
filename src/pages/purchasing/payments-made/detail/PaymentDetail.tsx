@@ -1,3 +1,4 @@
+import { StatusNotice } from '../../../../components/form/StatusNotice';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import { postDocumentEntry, postingPeriodProblem, reverseDocumentEntry } from '../../../../services/journalEntries';
@@ -326,12 +327,10 @@ function PaymentForm() {
               <>
                 <ProblemsAlert problems={problems} tabLabel={(t) => ({ contents: 'Contents', means: 'Payment means' })[t]} />
                 {reject.alert('Reject outgoing payment', rejectIt)}
-                {added ? (
-                  <Alert intent="default" variant="outline" title={draft.status === 'Posted' ? 'This payment is added' : `This payment was cancelled ${formatDate(draft.cancelDate)}`}>
-                    {draft.status === 'Posted'
-                      ? 'The invoices it paid show it as applied. Only remarks and attachments can change; to undo it, cancel the payment.'
-                      : 'The invoices it paid are open again. Only remarks and attachments can change.'}
-                  </Alert>
+                {added && draft.status !== 'Posted' ? (
+                  <StatusNotice resetKey={`${draft.id}:${draft.status}`} title={`This payment was cancelled ${formatDate(draft.cancelDate)}`}>
+                    The invoices it paid are open again. Only remarks and attachments can change.
+                  </StatusNotice>
                 ) : null}
               </>
             }
@@ -432,8 +431,8 @@ function PaymentForm() {
                       </Radio>
                     ))}
                   </div>
-                  <FieldOrientationCtx.Provider value="inline">
-                    <Form.Group orientation="inline">
+                  <FieldOrientationCtx.Provider value="stacked">
+                    <Form.Group orientation="stacked">
                       {h.master('projectId', 'Project', projectDef, { clearable: true, readOnly: added })}
                       {h.text('reference', 'Reference', { hint: 'Any extra reference, e.g. the vendor’s statement no.', readOnly: added })}
                     </Form.Group>

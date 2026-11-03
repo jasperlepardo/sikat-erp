@@ -74,10 +74,13 @@
 }
 
 /* Trial: all-caps table headers, with a little tracking so the caps don't crowd.
-   Display only — the header text stays sentence case for screen readers and tests. */
+   Display only — the header text stays sentence case for screen readers and tests.
+   The design system only shades the header row in the fill / scroll layouts (where it's sticky);
+   shade it on every table, so one that grows to its rows (e.g. Purchase history) matches. */
 .sikat-table__th {
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  background-color: var(--color-bg-tertiary);
 }
 
 /* Remove number input spinners globally. */

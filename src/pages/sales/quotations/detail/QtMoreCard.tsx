@@ -9,8 +9,8 @@ export function QtMoreCard({ draft, update, ctx }: QtTabProps) {
   const f = bind(draft, update);
   return (
     <Section icon="tune" title="More">
-      <FieldOrientationCtx.Provider value="inline">
-        <Form.Group orientation="inline">
+      <FieldOrientationCtx.Provider value="stacked">
+        <Form.Group orientation="stacked">
           {f.choose('summaryType', 'Summary type', SUMMARY_TYPES, { hint: 'How lines group on the printed quotation.', readOnly: ctx.readOnly })}
           {f.choose('createQrCodeFrom', 'Create QR code from', QR_SOURCES, { clearable: true, readOnly: ctx.readOnly })}
           {f.text('centralBankIndicator', 'Central bank indicator', { hint: 'Balance-of-payments reporting code.', readOnly: ctx.readOnly })}

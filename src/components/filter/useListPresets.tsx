@@ -1,6 +1,7 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Button, Icon, TextField, type TableSort } from '@jasperlepardo/sikat-design-system';
 import { InvalidFilterError, filterRows } from '../../services/listQuery';
+import { recallList, rememberList } from './listMemory';
 import { formatFilter } from './aip160';
 import { EMPTY_FILTER, applyFilter, oneRule, type FilterField, type FilterGroup } from './engine';
 import { FilterBar } from './FilterBar';
@@ -11,17 +12,14 @@ import { useListViews, type BuiltInView } from './useListViews';
 
 /**
  * Built-in presets from a status list — what a list's status tabs used to be:
- * "All A/R invoices", "Open A/R invoices"… `noun` is the plural shown after the
- * status; pass `''` for status-only labels ("All", "Open") when the page title
- * already names the entity.
+ * "All", "Open", "Closed"… The page title already names the entity.
  */
-export function statusViews(noun: string, statuses: readonly string[], field = 'status'): BuiltInView[] {
-  const name = (prefix: string) => (noun ? `${prefix} ${noun}` : prefix);
+export function statusViews(statuses: readonly string[], field = 'status'): BuiltInView[] {
   return [
     { id: 'all', name: 'All', filter: EMPTY_FILTER },
     ...statuses.map((status) => ({
       id: status.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-      name: name(status),
+      name: status,
       filter: oneRule(field, 'in', [status]),
     })),
   ];
@@ -33,7 +31,7 @@ export function statusViews(noun: string, statuses: readonly string[], field = '
  * "Official" is everything posted/committed (Open, Posted, Approved, On Hold, Closed, Cancelled,
  * Terminated). The Drafts ↔ All split is an invisible page *scope* (`draftScope`, applied via
  * `useListPresets`'s `scope`), NOT a status filter — so it never shows as a removable chip. The views
- * (`draftSplit`) are just the in-scope status options, with an empty default ("All" / "Draft {noun}").
+ * (`draftSplit`) are just the in-scope status options, with an empty default ("All" / "Draft").
  */
 const NON_OFFICIAL = ['Draft', 'Not Confirmed'];
 /** The statuses a Drafts/All sub-tab is bounded to: non-official (Draft + Not Confirmed) when
@@ -51,13 +49,12 @@ export function draftScope(draftsOnly: boolean, statuses: readonly string[], fie
  * status set — Draft + Not Confirmed — is the invisible scope). The All sub-tab is an empty "All"
  * default plus one quick view per official status.
  */
-export function draftSplit(draftsOnly: boolean, noun: string, statuses: readonly string[], field = 'status'): BuiltInView[] {
+export function draftSplit(draftsOnly: boolean, statuses: readonly string[], field = 'status'): BuiltInView[] {
   if (draftsOnly) return [{ id: 'all', name: 'Draft', filter: EMPTY_FILTER }];
-  const name = (prefix: string) => (noun ? `${prefix} ${noun}` : prefix);
   const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-');
   return [
-    { id: 'all', name: name('All'), filter: EMPTY_FILTER },
-    ...scopeStatuses(false, statuses).map((status) => ({ id: slug(status), name: name(status), filter: oneRule(field, 'in', [status]) })),
+    { id: 'all', name: 'All', filter: EMPTY_FILTER },
+    ...scopeStatuses(false, statuses).map((status) => ({ id: slug(status), name: status, filter: oneRule(field, 'in', [status]) })),
   ];
 }
 
@@ -100,7 +97,11 @@ export function useListPresets<T>({
 }) {
   const views = useListViews({ list, fields, builtIns, defaultSort, urlSync });
   const [panel, setPanel] = useState<'new' | 'edit' | null>(null);
-  const [rawSearch, setRawSearch] = useState('');
+  // The search text carries over to an opened record and back, like the filter (see `listMemory`).
+  const [rawSearch, setRawSearch] = useState(() => (views.memoryKey && recallList(views.memoryKey)?.search) || '');
+  useEffect(() => {
+    if (views.memoryKey) rememberList(views.memoryKey, { search: rawSearch });
+  }, [views.memoryKey, rawSearch]);
   const searchText = rawSearch.trim().toLowerCase();
   // Rows already narrowed to the scope — the baseline for both counts and `apply`.
   const scopedRows = useMemo(

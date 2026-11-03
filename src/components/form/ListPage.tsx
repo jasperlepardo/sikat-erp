@@ -7,6 +7,7 @@ import { fillCardClass, useListPage } from './DataTable';
 import type { FilterField, FilterGroup } from '../filter/engine';
 import type { BuiltInView } from '../filter/useListViews';
 import { useListPresets } from '../filter/useListPresets';
+import { publishListOrder } from './listOrder';
 
 interface ListPageProps<T> {
   /** Raw rows from the data layer (undefined while loading). */
@@ -102,6 +103,12 @@ export function ListPage<T>({
 
   const rowId = getRowId ?? ((r: T) => (r as { id: string }).id);
   const { visible, pagination } = paginate(sorted);
+
+  // The order Previous / Next on a record follows: every filtered, sorted row, not just this page.
+  useEffect(() => {
+    if (rows) publishListOrder(basePath, sorted.map(rowId));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, sorted, basePath]);
 
   // Beside an open record, turn to the page that holds it, so Previous / Next past the page
   // edge keeps the highlighted row in view. Only when the open record changes (or first loads),

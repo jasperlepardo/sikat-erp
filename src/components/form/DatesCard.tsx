@@ -53,8 +53,8 @@ export function DatesCard<T>({ draft, update, dates, closeDate, closeHint, child
   const addable = dates.filter((d) => d.optional && !d.readOnly && !hasValue(d.key) && !revealed.has(d.key));
   return (
     <Section icon={icon} title={title}>
-      <FieldOrientationCtx.Provider value="inline">
-        <Form.Group orientation="inline">
+      <FieldOrientationCtx.Provider value="stacked">
+        <Form.Group orientation="stacked">
           {shown.map((d) => (
             <div key={String(d.key)}>
               {h.date(d.key as KeysOf<T, string>, d.label, { required: d.required, error: d.error, readOnly: d.readOnly, hint: d.hint })}

@@ -45,7 +45,7 @@ export function TransferRequestList({ compact, selectedId }: { compact?: boolean
       icon="move_up"
       basePath={TRANSFER_REQUEST_LIST_PATH}
       listKey="inventory-transfer-requests"
-      builtIns={statusViews(TRANSFER_REQUEST_NOUN.many, TRANSFER_REQUEST_STATUSES)}
+      builtIns={statusViews(TRANSFER_REQUEST_STATUSES)}
       defaultSort={{ key: 'dueDate', direction: 'asc' }}
       search={{ placeholder: 'Search by request no., warehouse, item or remarks', label: 'Search transfer requests' }}
       header={notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : undefined}

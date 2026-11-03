@@ -1,6 +1,7 @@
+import { StatusNotice } from '../../../../components/form/StatusNotice';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { Alert, Badge, Form, FormField, Panel, Select, Tabs, Text } from '@jasperlepardo/sikat-design-system';
+import { Badge, Form, FormField, Panel, Select, Tabs, Text } from '@jasperlepardo/sikat-design-system';
 import { DocumentDetailSkeleton } from '../../../../components/form/skeletons/DocumentDetailSkeleton';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { Section, bind, type Errors } from '../../../../components/form/fields';
@@ -324,14 +325,12 @@ function IncomingForm() {
               <>
                 <ProblemsAlert problems={problems} tabLabel={(t) => TAB_LABEL[t as TabId]} />
                 {reject.alert('Reject incoming payment', rejectIt)}
-                {added ? (
-                  <Alert intent="default" variant="outline" title={draft.status === 'Cancelled' ? 'This payment is cancelled' : draft.status === 'Not Confirmed' ? 'This payment is waiting for approval' : 'This payment is posted'}>
+                {added && (draft.status === 'Cancelled' || draft.status === 'Not Confirmed') ? (
+                  <StatusNotice resetKey={`${draft.id}:${draft.status}`} title={draft.status === 'Cancelled' ? 'This payment is cancelled' : 'This payment is waiting for approval'}>
                     {draft.status === 'Cancelled'
                       ? `A reversing entry was posted on ${formatDate(draft.cancelDate)}, and the invoices it paid reopened.`
-                      : draft.status === 'Not Confirmed'
-                        ? 'Approve it to post it. Only remarks and attachments can change.'
-                        : `Journal entry ${draft.transNo}. Only remarks and attachments can change; to undo it, cancel it.`}
-                  </Alert>
+                      : 'Approve it to post it. Only remarks and attachments can change.'}
+                  </StatusNotice>
                 ) : null}
               </>
             }

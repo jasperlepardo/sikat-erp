@@ -33,8 +33,8 @@ export function AssignmentCard<T>({ draft, update, readOnly, person, ownerHint, 
   const h = bind(draft, update);
   return (
     <Section icon="person_search" title="Assignment">
-      <FieldOrientationCtx.Provider value="inline">
-        <Form.Group orientation="inline">
+      <FieldOrientationCtx.Provider value="stacked">
+        <Form.Group orientation="stacked">
           {person
             ? h.master(person.key as KeysOf<T, string>, person.label, salesEmployeeDef, { clearable: person.clearable, placeholder: person.placeholder, hint: person.hint, readOnly })
             : null}

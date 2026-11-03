@@ -1,7 +1,8 @@
+import { StatusNotice } from '../../../../components/form/StatusNotice';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import { createPortal } from 'react-dom';
-import { Alert, Badge, Form, Panel, Tabs, Text } from '@jasperlepardo/sikat-design-system';
+import { Badge, Form, Panel, Tabs, Text } from '@jasperlepardo/sikat-design-system';
 import { DocumentDetailSkeleton } from '../../../../components/form/skeletons/DocumentDetailSkeleton';
 import { AttachmentsCard } from '../../../../components/form/AttachmentsCard';
 import { type Errors } from '../../../../components/form/fields';
@@ -352,12 +353,12 @@ function DeliveryForm() {
                 <>
                   <ProblemsAlert problems={problems} tabLabel={(t) => TAB_LABEL[t as TabId]} />
                   {reject.alert('Reject delivery', rejectIt)}
-                  {ro ? (
-                    <Alert intent="default" variant="outline" title={`This delivery is ${draft.status.toLowerCase()}`}>
+                  {ro && draft.status !== 'Open' ? (
+                    <StatusNotice resetKey={`${draft.id}:${draft.status}`} title={`This delivery is ${draft.status.toLowerCase()}`}>
                       {draft.status === 'Cancelled'
                         ? 'The stock came back, the order lines reopened and the journal entry was reversed.'
                         : 'The stock is out and the journal entry is posted. Only remarks and attachments can change; to undo it, cancel the delivery.'}
-                    </Alert>
+                    </StatusNotice>
                   ) : null}
                 </>
               }

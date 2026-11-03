@@ -40,7 +40,7 @@ export function GoodsReturnRequestList({ compact, selectedId }: { compact?: bool
       icon="assignment_return"
       basePath={GRR_LIST_PATH}
       listKey="goods-return-requests"
-      builtIns={statusViews(GRR_NOUN.many, GRR_STATUSES)}
+      builtIns={statusViews(GRR_STATUSES)}
       defaultSort={{ key: 'postingDate', direction: 'desc' }}
       search={{ placeholder: 'Search by no., vendor or item', label: `Search ${GRR_NOUN.many}` }}
       header={notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : undefined}

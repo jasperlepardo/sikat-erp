@@ -35,8 +35,8 @@ export function AgreementSettingsCard({ draft, update, errors: _errors, m, readO
   const f = bind(draft, update);
   return (
     <Section icon="event_note" title="Agreement">
-      <FieldOrientationCtx.Provider value="inline">
-        <Form.Group orientation="inline">
+      <FieldOrientationCtx.Provider value="stacked">
+        <Form.Group orientation="stacked">
           {f.choose('agreementType', 'Agreement type', AGREEMENT_TYPE_OPTIONS, { required: true })}
           {f.choose('agreementMethod', 'Agreement method', AGREEMENT_METHOD_OPTIONS, { required: true, hint: 'Items method tracks quantities per line; Money method tracks a total value.' })}
           {f.master('paymentTermId', 'Payment terms', paymentTermDef, { clearable: true, hint: 'Defaults from the customer.' })}
@@ -51,14 +51,14 @@ export function AgreementSettingsCard({ draft, update, errors: _errors, m, readO
         {f.check('renewal', 'Eligible for automatic renewal')}
       </Flags>
       {draft.renewal ? (
-        <FieldOrientationCtx.Provider value="inline">
-          <Form.Group orientation="inline">
+        <FieldOrientationCtx.Provider value="stacked">
+          <Form.Group orientation="stacked">
             {f.num('reminderDays', 'Reminder (days before expiry)', { hint: 'Alert this many days before the agreement ends.', suffix: 'days' })}
           </Form.Group>
         </FieldOrientationCtx.Provider>
       ) : null}
-      <FieldOrientationCtx.Provider value="inline">
-        <Form.Group orientation="inline">
+      <FieldOrientationCtx.Provider value="stacked">
+        <Form.Group orientation="stacked">
           {f.text('description', 'Description', { hint: 'Free-text description of the agreement.' })}
         </Form.Group>
       </FieldOrientationCtx.Provider>

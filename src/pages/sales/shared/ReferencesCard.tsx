@@ -20,8 +20,8 @@ export function ReferencesCard({ draft, update, ctx, placeholder = 'e.g. Lazada,
   const orderLocked = orderReadOnly ?? ctx.readOnly;
   return (
     <Section icon="description" title="References">
-      <FieldOrientationCtx.Provider value="inline">
-        <Form.Group orientation="inline">
+      <FieldOrientationCtx.Provider value="stacked">
+        <Form.Group orientation="stacked">
           {h.text('federalTaxId', 'Federal tax ID', { hint: "Defaults to the customer's TIN.", readOnly: ctx.readOnly })}
           {h.master('projectId', 'BP project', projectDef, { clearable: true, hint: 'Defaults from the customer.', readOnly: ctx.readOnly })}
           {h.text('bpChannelName', 'BP channel name', { placeholder, hint: 'The marketplace or channel the order came through.', readOnly: ctx.readOnly })}

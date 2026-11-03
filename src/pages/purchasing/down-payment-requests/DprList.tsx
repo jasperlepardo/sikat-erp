@@ -56,7 +56,7 @@ export function DprList({ compact, selectedId }: { compact?: boolean; selectedId
       icon="request_quote"
       basePath={DPR_LIST_PATH}
       listKey="ap-down-payment-requests"
-      builtIns={statusViews(DPR_NOUN.many, DPR_STATUSES)}
+      builtIns={statusViews(DPR_STATUSES)}
       defaultSort={{ key: 'postingDate', direction: 'desc' }}
       search={{ placeholder: 'Search by no., vendor, vendor ref., PO no. or item', label: `Search ${DPR_NOUN.many}` }}
       header={notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : undefined}

@@ -9,8 +9,8 @@ export function RiShipmentCard({ draft, update, ctx, m }: RiSectionProps) {
   const h = bind(draft, update);
   return (
     <Section icon="route" title="Shipment & collection">
-      <FieldOrientationCtx.Provider value="inline">
-        <Form.Group orientation="inline">
+      <FieldOrientationCtx.Provider value="stacked">
+        <Form.Group orientation="stacked">
           {h.lookup('shippingType', 'Shipping type', activeOptions(m.inv.shipping, (s) => s.id, (s) => s.name, draft.shippingType), { clearable: true, readOnly: ctx.readOnly })}
           {SALES_SETTINGS.multiLanguageSupport ? h.pick('language', 'Language', LANGUAGES, { readOnly: ctx.readOnly }) : null}
           {h.text('trackingNo', 'Tracking no.', { hint: 'Pre-fill when the delivery date is known.', readOnly: ctx.readOnly })}

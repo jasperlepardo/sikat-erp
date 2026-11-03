@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import type { DocumentSeries } from '../../mocks/common';
-import { formatDocNum, matchingSeries, seriesLookup, poSeries } from '../allSeries';
+import { formatDocNum, matchingSeries, seriesLookup, seriesPattern, poSeries } from '../allSeries';
 import { PO_SERIES } from '../../mocks/purchaseOrders';
 
 /** A full DocumentSeries with sensible defaults, overridable per test. */
@@ -149,5 +149,38 @@ describe('seriesLookup against the real poSeries collection', () => {
   it('resolves the seeded default when given an unknown id', () => {
     const resolved = seriesLookup(poSeries, 'missing', PO_SERIES);
     expect(resolved.id).toBe(PO_SERIES.find((s) => s.isDefault)!.id);
+  });
+});
+
+describe('seriesPattern', () => {
+  const segmented = series({
+    segments: [
+      { type: 'literal', value: 'PO' },
+      { type: 'year' },
+      { type: 'year_short' },
+      { type: 'month' },
+      { type: 'month_name' },
+      { type: 'sequence' },
+      { type: 'literal' },
+      { type: 'unknown' as never },
+    ],
+  });
+
+  it('shows the running number as #### between the date parts of the given date', () => {
+    expect(seriesPattern(segmented, '2026-10-10')).toBe('PO-2026-26-10-OCT-####--');
+  });
+
+  it('uses the frozen clock (June 2026) when no date is given, and honours sequence padding', () => {
+    expect(seriesPattern(segmented)).toBe('PO-2026-26-06-JUN-####--');
+    expect(seriesPattern(series({ segments: [{ type: 'sequence', padding: 6 }] }))).toBe('######');
+  });
+
+  it('without segments, is the prefix or the series name before ####', () => {
+    expect(seriesPattern(series({ prefix: 'GR-' }))).toBe('GR-####');
+    expect(seriesPattern(series({ name: 'Manual', prefix: '' }))).toBe('Manual ####');
+  });
+
+  it('formats an unknown segment type as empty text', () => {
+    expect(formatDocNum(series({ segments: [{ type: 'literal', value: 'X' }, { type: 'unknown' as never }] }), 3, '2026-01-01')).toBe('X-');
   });
 });

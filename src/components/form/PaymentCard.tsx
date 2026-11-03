@@ -103,8 +103,8 @@ function journalFieldsOf<T>(cfg: PaymentConfig<T>, draft: T, update: (patch: Par
     </>
   );
   return inline ? (
-    <FieldOrientationCtx.Provider value="inline">
-      <Form.Group orientation="inline">{body}</Form.Group>
+    <FieldOrientationCtx.Provider value="stacked">
+      <Form.Group orientation="stacked">{body}</Form.Group>
     </FieldOrientationCtx.Provider>
   ) : (
     <Fields cols={2}>{body}</Fields>
@@ -137,8 +137,8 @@ function PaymentCard<T>({ draft, update, cfg }: { draft: T; update: (patch: Part
     <>
       {hasPayment ? (
         <Section icon="payments" title="Payment">
-          <FieldOrientationCtx.Provider value="inline">
-            <Form.Group orientation="inline">
+          <FieldOrientationCtx.Provider value="stacked">
+            <Form.Group orientation="stacked">
               {cfg.paymentTerm ? f.master('paymentTermId' as KeysOf<T, string>, cfg.paymentTerm.label ?? 'Payment terms', paymentTermDef, { hint: cfg.paymentTerm.hint, readOnly: cfg.paymentTerm.readOnly, error: cfg.paymentTerm.error }) : null}
               {cfg.paymentMethod ? f.lookup('paymentMethod' as KeysOf<T, string>, cfg.paymentMethod.label ?? 'Payment method', methodOptions, { hint: cfg.paymentMethod.hint, readOnly: cfg.paymentMethod.readOnly, error: cfg.paymentMethod.error }) : null}
               {cfg.cashDiscountDays ? f.num('cashDiscountDays' as KeysOf<T, number>, cfg.cashDiscountDays.label ?? 'Cash discount date offset', { suffix: 'days', hint: cfg.cashDiscountDays.hint, readOnly: cfg.cashDiscountDays.readOnly, error: cfg.cashDiscountDays.error }) : null}

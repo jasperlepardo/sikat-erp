@@ -14,7 +14,7 @@ import {
   salesEmployeeDef,
   territoryDef,
 } from '../settings/masterDefs';
-import { ROLE_CONFIG, ROLE_ORDER, scopeConfig, type PartnerScope } from './roles';
+import { ROLE_CONFIG, ROLE_ORDER, type PartnerScope } from './roles';
 
 const status: FilterField<Partner> = {
   key: 'status',
@@ -78,13 +78,12 @@ export const partnerFilterFields = (scope: PartnerScope) => FIELDS[scope];
 
 /** Built-in presets for a partner list — what its tabs used to be. */
 export function partnerViews(scope: PartnerScope): BuiltInView[] {
-  const noun = scopeConfig(scope).title.toLowerCase();
-  if (scope === 'lead') return statusViews(noun, LEAD_STAGES, 'stage');
+  if (scope === 'lead') return statusViews(LEAD_STAGES, 'stage');
   if (scope === 'all')
     return [
-      { id: 'all', name: `All ${noun}`, filter: EMPTY_FILTER },
+      { id: 'all', name: 'All', filter: EMPTY_FILTER },
       ...ROLE_ORDER.map((r) => ({ id: r, name: ROLE_CONFIG[r].title, filter: oneRule('roles', 'is', r) })),
-      { id: 'inactive', name: `Inactive ${noun}`, filter: oneRule('status', 'is', 'Inactive') },
+      { id: 'inactive', name: 'Inactive', filter: oneRule('status', 'is', 'Inactive') },
     ];
-  return statusViews(noun, ['Active', 'Inactive']);
+  return statusViews(['Active', 'Inactive']);
 }

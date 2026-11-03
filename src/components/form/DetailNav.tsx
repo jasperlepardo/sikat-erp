@@ -1,7 +1,8 @@
 import { Alert, Button, ButtonGroup, IconButton, Panel, TextField, panelHeaderIcons } from '@jasperlepardo/sikat-design-system';
 import { PageHeader } from './PageHeader';
 import { useEffect, useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router';
+import { useLocation, useNavigate, useParams } from 'react-router';
+import { useListOrder } from './listOrder';
 
 /**
  * A document page's tabs in the URL (`<path>/<tab>`): returns the setter that switches tab in place.
@@ -61,9 +62,16 @@ export function neighbours(siblings: readonly string[], key: string | undefined)
   };
 }
 
-/** Previous / Next in a detail page's header: open the record before or after this one, under `path`. */
-export function PrevNext({ path, prevId, nextId }: { path: string; prevId?: string; nextId?: string }) {
+/**
+ * Previous / Next in a detail page's header: open the record before or after this one, under `path`.
+ * While the record is in the list's filtered, sorted order (`listOrder`), it steps through that order;
+ * otherwise (opened from elsewhere, or filtered out) through the page's own `prevId` / `nextId`.
+ */
+export function PrevNext({ path, ...all }: { path: string; prevId?: string; nextId?: string }) {
   const navigate = useNavigate();
+  const { id } = useParams();
+  const order = useListOrder(path);
+  const { prevId, nextId } = id && order?.includes(id) ? neighbours(order, id) : all;
   return (
     <ButtonGroup type="enclosed" intent="white" buttonIntent="default" buttonVariant="link">
       <IconButton type="button" label="Previous" size="small" shape="pill" disabled={!prevId} onClick={() => navigate(`${path}/${prevId}`)}>

@@ -10,8 +10,8 @@ export function PoReferencesCard({ draft, update, m, ctx }: PoTabProps) {
   const f = bind(draft, update);
   return (
     <Section icon="bookmark" title="References">
-      <FieldOrientationCtx.Provider value="inline">
-        <Form.Group orientation="inline">
+      <FieldOrientationCtx.Provider value="stacked">
+        <Form.Group orientation="stacked">
           {f.master('projectId', 'BP project', projectDef, { clearable: true, hint: 'Defaults from the vendor.', readOnly: ctx.readOnly })}
           {f.choose('indicator', 'Indicator', asOptions(INDICATORS), { clearable: true, readOnly: ctx.readOnly })}
           <ReadOnly
