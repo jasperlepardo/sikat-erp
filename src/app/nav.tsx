@@ -1,4 +1,5 @@
 import { Icon, type NavbarMenuItem, type SideNavItem, type SideNavSection } from '@jasperlepardo/sikat-design-system';
+import { isValidElement, type ReactNode } from 'react';
 import { cap } from '../components/form/noun';
 import { JE_NOUN, JV_NOUN } from '../pages/accounting/paths';
 import { COUNT_NOUN, ITEM_NOUN, POSTING_NOUN, TRANSFER_NOUN, TRANSFER_LIST_PATH, TRANSFER_REQUEST_NOUN } from '../pages/inventory/paths';
@@ -290,6 +291,16 @@ const GROUP_LEAVES: SideNavItem[] = Object.values(APP_GROUPS)
 const LEAVES = [...NAV.flatMap((s) => s.items.flatMap((i) => (i.items?.length ? i.items : [i]))), ...GROUP_LEAVES];
 
 export const pathOf = (id: string) => `/${id}`;
+
+/** The glyph inside a nav icon (`<Icon>receipt</Icon>` → 'receipt'). */
+export const glyphOf = (node: ReactNode): string =>
+  isValidElement<{ children?: unknown }>(node) && typeof node.props.children === 'string' ? node.props.children : 'article';
+
+/** Every app page with its app's name, for global search. */
+export const navPages = () =>
+  APP_MODULES.flatMap((app) =>
+    (app.items ?? []).map((page) => ({ id: page.id, label: page.label, glyph: glyphOf(page.icon), app: app.label })),
+  );
 
 /** Where switching to an app lands: its Dashboard. */
 export const firstPageOf = (appId: string) => pathOf(appModule(appId).items?.[0]?.id ?? appId);

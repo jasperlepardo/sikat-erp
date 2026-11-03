@@ -1,11 +1,19 @@
 import { Outlet, useLocation, useNavigate } from 'react-router';
 import { Navbar, Page, SideNav, Text, useHoverIntent, useTheme, type NavbarMenuItem } from '@jasperlepardo/sikat-design-system';
-import { Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { APPS, appNav, firstChildOf, firstPageOf, leafForPath, moduleOf, openGroupFor, pathOf } from './nav';
 import { SETTINGS_NAV, settingsLeafForPath, settingsModuleOf } from './settingsNav';
 import { useCollection } from '../components/form/MasterLookup';
 import { companies, setCurrentCompanyId, useCurrentCompany } from '../services/companies';
 import { DateSettings } from './DateSettings';
+import { CreateMenu } from '../components/search/CreateMenu';
+
+/** Results under the navbar search field, loaded on first open so its index code stays out of the shell. */
+const GlobalSearch = lazy(() => import('../components/search/GlobalSearch'));
+
+/** True while typing in a field, where `/` is a character, not a shortcut. */
+const isTyping = (target: EventTarget | null) =>
+  target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName));
 
 /** Settings is an app peer to CRM / Sales / Purchasing: it shows in the app selector and as the header name. */
 const SETTINGS_APP: NavbarMenuItem = { id: 'settings', label: 'Settings' };
@@ -22,6 +30,48 @@ export function AppShell() {
     .map((c) => ({ id: c.id, label: c.name }));
 
   const isSettings = location.pathname.startsWith('/settings');
+
+  // Global search lives in the navbar field; results drop down under it.
+  // ⌘K / Ctrl+K focuses the field (or leaves it); `/` focuses it when not typing in a field.
+  const [searchInput, setSearchInput] = useState<HTMLInputElement | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const closeSearch = useCallback(() => setSearchOpen(false), []);
+  useEffect(() => {
+    const input = document.querySelector<HTMLInputElement>('.sikat-navbar__search input');
+    if (!input) return;
+    setSearchInput(input);
+    const onFocus = () => setSearchOpen(true);
+    input.addEventListener('focus', onFocus);
+    return () => input.removeEventListener('focus', onFocus);
+  }, []);
+  useEffect(() => {
+    if (!searchInput) return;
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        if (document.activeElement === searchInput) {
+          searchInput.blur();
+          setSearchOpen(false);
+        } else {
+          searchInput.focus();
+          searchInput.select();
+        }
+      } else if (e.key === '/' && !e.metaKey && !e.ctrlKey && !e.altKey && !isTyping(e.target)) {
+        e.preventDefault();
+        searchInput.focus();
+        searchInput.select();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [searchInput]);
+
+  // The navbar + button opens a menu of "New …" commands under it.
+  const [createButton, setCreateButton] = useState<HTMLElement | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const closeCreate = useCallback(() => setCreateOpen(false), []);
+  useEffect(() => setCreateButton(document.querySelector<HTMLElement>('.sikat-navbar__create')), []);
 
   // Navbar toggle slides the side nav out; hovering the toggle (or the bar) peeks it back as an overlay.
   const [navExpanded, setNavExpanded] = useState(true);
@@ -107,7 +157,19 @@ export function AppShell() {
         avatar={<span className="grid size-full place-items-center bg-primary text-sm font-semibold text-heading_on-primary">JL</span>}
         accountItems={accountItems}
         onSettingsClick={() => navigate('/settings')}
+        onCreateClick={() => setCreateOpen((open) => !open)}
+        searchPlaceholder="Search documents, partners, items…"
+        onSearchChange={(value) => {
+          setSearchQuery(value);
+          if (document.activeElement === searchInput) setSearchOpen(true);
+        }}
       />
+      {searchOpen && searchInput ? (
+        <Suspense fallback={null}>
+          <GlobalSearch input={searchInput} query={searchQuery} onClose={closeSearch} />
+        </Suspense>
+      ) : null}
+      {createOpen && createButton ? <CreateMenu button={createButton} appId={currentAppId} onClose={closeCreate} /> : null}
       <div className="flex flex-1">
         {isSettings ? (
           <SideNav
