@@ -76,13 +76,13 @@ export const DOC_PATTERN_TYPES: DocPatternConfig[] = [
   { key: 'sales-orders',          label: 'Sales Orders',          icon: 'storefront',       collection: soPatterns,   variables: SALES,             sample: { ...CUSTOMER, docNo: 'SO-2026-00015' } },
   { key: 'deliveries',            label: 'Deliveries',            icon: 'local_shipping',   collection: dnPatterns,   variables: SALES,             sample: { ...CUSTOMER, docNo: 'DN-2026-00015' } },
   { key: 'ar-invoices',           label: 'AR Invoices',           icon: 'request_quote',    collection: arPatterns,   variables: SALES,             sample: { ...CUSTOMER, docNo: 'SI-2026-00015' } },
-  { key: 'reserve-invoices',      label: 'Reserve Invoices',      icon: 'receipt_long',     collection: riPatterns,   variables: SALES,             sample: { ...CUSTOMER, docNo: 'RI-2026-00001' } },
+  { key: 'reserve-invoices',      label: 'Reserve Invoices',      icon: 'receipt_long',     collection: riPatterns,   variables: SALES,             sample: { ...CUSTOMER, docNo: 'RI-2026-0001' } },
   { key: 'incoming-payments',     label: 'Incoming Payments',     icon: 'arrow_circle_down', collection: ipPatterns,  variables: PAYMENTS_SALES,    sample: { ...CUSTOMER, docNo: 'RC-2026-00015' } },
   { key: 'inventory-transfers',   label: 'Inventory Transfers',   icon: 'swap_horiz',       collection: itPatterns,   variables: [...DOC_VARS, ...INVENTORY_VARS], sample: { docNo: 'IT-2026-00015', fromWarehouse: 'WH-001', toWarehouse: 'WH-002' } },
   { key: 'stock-counts',          label: 'Stock Counts',          icon: 'fact_check',       collection: scPatterns,   variables: [...DOC_VARS, ...REFERENCE_VARS], sample: { docNo: 'SC-2026-00015', reference: 'Month-end count' } },
   { key: 'inventory-postings',    label: 'Inventory Postings',    icon: 'post_add',         collection: ispPatterns,  variables: [...DOC_VARS, ...REFERENCE_VARS], sample: { docNo: 'IP-2026-00015', reference: 'Opening stock adjustment' } },
   { key: 'journal-entries',       label: 'Journal Entries',       icon: 'menu_book',        collection: jePatterns,   variables: [...DOC_VARS],     sample: { docNo: 'JE-2026-00015' } },
-  { key: 'landed-costs',          label: 'Landed Costs',          icon: 'calculate',        collection: lcPatterns,   variables: PURCHASING,        sample: { ...VENDOR, docNo: 'LC-2026-00001' } },
+  { key: 'landed-costs',          label: 'Landed Costs',          icon: 'calculate',        collection: lcPatterns,   variables: PURCHASING,        sample: { ...VENDOR, docNo: 'LC-2026-0001' } },
 ];
 
 export function defaultJournalRemark(docTypeKey: string, context: JournalContext): string {

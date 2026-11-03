@@ -336,9 +336,11 @@ const PAYMENTS: IncomingPayment[] = [
 
 // ── January–June corporate collections ───────────────────────────────────────
 // Each invoice paid in full by transfer on its due date (mocks/arInvoices.ts).
+// The customer's own payment reference starts with their initials, like the hand-written ones above.
+const PAYER_PREFIX: Record<string, string> = { 'bp-002': 'NPM', 'bp-003': 'BSB', 'bp-004': 'CGS', 'bp-005': 'MPAS', 'bp-007': 'GNB', 'bp-044': 'KVA' };
 const H1_COLLECTIONS: IncomingPayment[] = H1_SALES.map((p) => {
   const inv = SEED_AR_INVOICES.find((a) => a.id === `ar-${p.id}`)!;
-  return customerPayment(`rc-${p.id}`, 0, inv.id, { postingDate: inv.dueDate, documentDate: inv.dueDate, dueDate: inv.dueDate, reference: `${inv.customerCode}-PAY-${inv.dueDate.slice(5).replace('-', '')}` }, {
+  return customerPayment(`rc-${p.id}`, 0, inv.id, { postingDate: inv.dueDate, documentDate: inv.dueDate, dueDate: inv.dueDate, reference: `${PAYER_PREFIX[inv.customerId] ?? 'CUST'}-PAY-${inv.dueDate.slice(5).replace('-', '')}` }, {
     transfer: { account: '1015', date: inv.dueDate, reference: `BDO RTGS ${inv.dueDate.replace(/-/g, '')}${p.id.slice(1)}`, amount: total(inv.id) },
   });
 });

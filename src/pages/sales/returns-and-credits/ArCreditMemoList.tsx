@@ -24,6 +24,7 @@ interface Row {
   customerName: string;
   postingDate: string;
   basedOn: string;
+  reasons: string;
   currency: string;
   total: number;
   applied: number;
@@ -45,6 +46,7 @@ export function ArCreditMemoList({ draftsOnly = false, compact, selectedId }: { 
     customerName: m.customerName,
     postingDate: m.postingDate,
     basedOn: [...new Set(m.lines.filter((l) => l.baseDocNo).map((l) => l.baseDocNo).filter(Boolean))].join(', '),
+    reasons: [...new Set(m.lines.map((l) => l.returnReason).filter(Boolean))].join(', '),
     currency: m.currency,
     total: arCmTotal(m, codes),
     applied: m.appliedAmount,
@@ -58,7 +60,8 @@ export function ArCreditMemoList({ draftsOnly = false, compact, selectedId }: { 
     textField<Row>('customerCode', 'Customer code', (r) => r.customerCode),
     dateField<Row>('postingDate', 'Posting date', (r) => r.postingDate),
     textField<Row>('basedOn', 'Based on', (r) => r.basedOn),
-    numberField<Row>('total', 'Total', (r) => r.total),
+    textField<Row>('reason', 'Reason', (r) => r.reasons),
+    numberField<Row>('total', 'Total credit', (r) => r.total),
     statusField<Row>(scopeStatuses(draftsOnly, STATUSES)),
   ];
 
@@ -68,13 +71,14 @@ export function ArCreditMemoList({ draftsOnly = false, compact, selectedId }: { 
     { key: 'customerName', header: 'Customer', cell: (r) => r.customerName || '—' },
     { key: 'status', header: 'Status', cell: (r) => <TableStatus intent={ARCM_STATUS_INTENT[r.status]}>{r.status}</TableStatus> },
     { key: 'postingDate', header: 'Posting date', align: 'end', cell: (r) => formatDate(r.postingDate) },
-    { key: 'total', header: 'Total', align: 'end', cell: (r) => formatMoney(r.total, r.currency) },
+    { key: 'reasons', header: 'Reason', defaultHidden: true, cell: (r) => r.reasons || '—' },
+    { key: 'total', header: 'Total credit', align: 'end', cell: (r) => formatMoney(r.total, r.currency) },
     {
       key: 'applied',
       header: 'Applied',
       align: 'end',
       // Nothing applied yet: a muted dash, so applied memos stand out.
-      cell: (r) => (r.applied ? formatMoney(r.applied, r.currency) : <span className="text-caption">-</span>),
+      cell: (r) => (r.applied ? formatMoney(r.applied, r.currency) : <span className="text-caption">—</span>),
     },
   ];
   const { columns, manager } = useListColumns('ar-credit-memos', allColumns);

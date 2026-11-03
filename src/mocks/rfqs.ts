@@ -251,7 +251,7 @@ const stillValid = (q: Rfq): Rfq =>
 
 export const SEED_RFQS: Rfq[] = [
   // ── Luzon iDistribution: holiday iPhone 18 Pro allocation ─────────────────
-  rfq('rfq-001', 1, 'bp-016', {
+  rfq('rfq-001', 3, 'bp-016', {
     postingDate: '2026-09-18', documentDate: '2026-09-18', validUntil: '2026-10-18',
     basePrId: 'prq-001',
     requiredDate: '2026-10-15',
@@ -265,7 +265,7 @@ export const SEED_RFQS: Rfq[] = [
   }),
 
   // ── Techzone: October chargers and MagSafe (from prq-003, converted → po-045) ──
-  rfq('rfq-002', 2, 'bp-013', {
+  rfq('rfq-002', 5, 'bp-013', {
     postingDate: '2026-09-24', documentDate: '2026-09-24', validUntil: '2026-10-24',
     basePrId: 'prq-003',
     requiredDate: '2026-10-03',
@@ -280,7 +280,7 @@ export const SEED_RFQS: Rfq[] = [
   }),
 
   // ── Apple South Asia: iPad Pro import quote (converted → po-039) ───────────
-  rfq('rfq-003', 3, 'bp-017', {
+  rfq('rfq-003', 2, 'bp-017', {
     postingDate: '2026-09-05', documentDate: '2026-09-05', validUntil: '2026-10-05',
     requiredDate: '2026-09-22', shipTo: MNL_SHIP_TO,
     currency: 'USD',
@@ -295,7 +295,7 @@ export const SEED_RFQS: Rfq[] = [
   }),
 
   // ── Luzon iDistribution: MacBook Air for B2B pipeline ──────────────────────
-  rfq('rfq-004', 4, 'bp-016', {
+  rfq('rfq-004', 6, 'bp-016', {
     postingDate: '2026-09-28', documentDate: '2026-09-28', validUntil: '2026-10-28',
     requiredDate: '2026-10-20',
     shipTo: MNL_SHIP_TO,
@@ -308,7 +308,7 @@ export const SEED_RFQS: Rfq[] = [
   }),
 
   // ── AWS: annual cloud services renewal ─────────────────────────────────────
-  rfq('rfq-005', 5, 'bp-015', {
+  rfq('rfq-005', 7, 'bp-015', {
     postingDate: '2026-10-01', documentDate: '2026-10-01', validUntil: '2026-11-01',
     requiredDate: '2026-10-15',
     shipTo: COMPANY_ADDRESS, shippingType: '',
@@ -322,7 +322,7 @@ export const SEED_RFQS: Rfq[] = [
   }),
 
   // ── Cancelled: alternate allocation that didn't materialize ───────────────
-  rfq('rfq-006', 6, 'bp-016', {
+  rfq('rfq-006', 1, 'bp-016', {
     status: 'Cancelled',
     postingDate: '2026-08-15', documentDate: '2026-08-15', validUntil: '2026-09-15',
     requiredDate: '2026-09-01', shipTo: MNL_SHIP_TO,
@@ -346,7 +346,7 @@ export const SEED_RFQS: Rfq[] = [
   }),
 
   // ── Apple South Asia: second quote on the holiday iPhone request, to compare with Luzon ──
-  rfq('rfq-008', 7, 'bp-017', {
+  rfq('rfq-008', 4, 'bp-017', {
     postingDate: '2026-09-18', documentDate: '2026-09-18', validUntil: '2026-10-18',
     basePrId: 'prq-001',
     requiredDate: '2026-10-15',

@@ -180,6 +180,17 @@ export function blankApInvoice(today: string, buyerId: string): Omit<ApInvoice, 
 // One invoice for every receipt billed in full, at the receipt's prices and rate. Payments,
 // credits and down payments against them are seeded in services/purchasingHistory.ts.
 
+// The vendor's own invoice prefix: the abbreviation its other seeded references use, else its initials.
+const VENDOR_PREFIX: Record<string, string> = { 'bp-016': 'LID', 'bp-013': 'TZ', 'bp-017': 'ASA' };
+const LEGAL = /^(inc|corp|co|ltd|llc|limited|pte|engr|&|–)\.?,?$/i;
+const vendorPrefix = (id: string, name: string) => {
+  if (VENDOR_PREFIX[id]) return VENDOR_PREFIX[id];
+  const words = name.split(/\s+/).filter((w) => !LEGAL.test(w));
+  // One word (OpenAI): its capitals.
+  if (words.length === 1) return words[0].replace(/[^A-Z]/g, '') || words[0].slice(0, 3).toUpperCase();
+  return words.slice(0, 4).map((w) => w[0].toUpperCase()).join('');
+};
+
 const termDays = (termId: string) => SEED_PAYMENT_TERMS.find((t) => t.id === termId)?.days ?? 0;
 
 /**
@@ -195,7 +206,7 @@ export function billFromReceipt(gr: GoodsReceipt, n: number, posting: string, bi
     vendorCode: gr.vendorCode,
     vendorName: gr.vendorName,
     contactId: gr.contactId,
-    vendorRef: `SI-${String(40100 + n * 7)}`,
+    vendorRef: `${vendorPrefix(gr.vendorId, gr.vendorName)}-INV-${40100 + n * 7}`,
     currency: gr.currency,
     docNum: 1 + n,
     status: 'Open',

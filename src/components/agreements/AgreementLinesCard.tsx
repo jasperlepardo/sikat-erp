@@ -148,8 +148,8 @@ export function AgreementLinesCard<L extends Line>({ side, draft, update, m, rea
     { key: 'cumulativeOrderedQty', header: 'Ordered qty', align: 'end', optional: true, defaultHidden: false, cell: (l) => (l.itemId ? count(l.cumulativeCommittedQty + l.cumulativeQty) : null) },
     { key: 'cumulativeOrderedAmountLC', header: cur('Ordered amt'), align: 'end', optional: true, defaultHidden: true, cell: (l) => (l.itemId ? money(l.cumulativeCommittedAmountLC + l.cumulativeAmountLC) : null) },
 
-    { key: 'cumulativeQty', header: purchase ? 'Received qty' : 'Cumulative qty', align: 'end', optional: true, defaultHidden: false, cell: (l) => (l.itemId ? count(l.cumulativeQty) : null) },
-    { key: 'cumulativeAmountLC', header: cur('Cumulative amt'), align: 'end', optional: true, defaultHidden: false, cell: (l) => (l.itemId ? money(l.cumulativeAmountLC) : null) },
+    { key: 'cumulativeQty', header: purchase ? 'Received qty' : 'Delivered qty', align: 'end', optional: true, defaultHidden: false, cell: (l) => (l.itemId ? count(l.cumulativeQty) : null) },
+    { key: 'cumulativeAmountLC', header: cur(purchase ? 'Received amt' : 'Delivered amt'), align: 'end', optional: true, defaultHidden: false, cell: (l) => (l.itemId ? money(l.cumulativeAmountLC) : null) },
 
     { key: 'openQty', header: 'Open qty', align: 'end', optional: true, defaultHidden: false, cell: (l) => (l.itemId ? count(openQty(l)) : null) },
     { key: 'openAmountLC', header: cur('Open amt'), align: 'end', optional: true, defaultHidden: false, cell: (l) => (l.itemId ? money(openAmountLC(l)) : null) },

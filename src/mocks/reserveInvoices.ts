@@ -10,8 +10,11 @@
 import type { Attachment, DocumentSeries, PriceMode } from './common';
 import { employeeId, plId, termId } from './masters';
 import type { PoReference } from './purchaseOrders';
-import type { SoDocType } from './salesOrders';
+import { SEED_SALES_ORDERS, seedSoNo, type SoDocType } from './salesOrders';
 import type { DnLine } from './deliveries';
+
+/** DepEd Pasig's award order (so-002), which the second reserve invoice bills. */
+const DEPED_SO_NO = seedSoNo(SEED_SALES_ORDERS.find((o) => o.id === 'so-002')!);
 
 export type ArStatus = 'Draft' | 'Not Confirmed' | 'Open' | 'Closed' | 'Cancelled';
 export const RI_STATUSES: ArStatus[] = ['Draft', 'Not Confirmed', 'Open', 'Closed', 'Cancelled'];
@@ -112,7 +115,7 @@ export const RI_SERIES: DocumentSeries[] = [
     manual: false,
     isDefault: true,
     active: true,
-    segments: [{ type: 'literal', value: 'RI' }, { type: 'year' }, { type: 'sequence', padding: 5 }],
+    segments: [{ type: 'literal', value: 'RI' }, { type: 'year' }, { type: 'sequence', padding: 4 }],
   },
 ];
 
@@ -323,7 +326,7 @@ export const SEED_RESERVE_INVOICES: ReserveInvoice[] = [
     paymentMethod: 'BANK',
     indicator: '',
     federalTaxId: '',
-    orderNumber: 'SO-2026-470001',
+    orderNumber: DEPED_SO_NO,
     references: [],
     controlAccount: '1120',
     paymentBlock: false,
@@ -360,7 +363,7 @@ export const SEED_RESERVE_INVOICES: ReserveInvoice[] = [
         baseType: 'SO',
         baseId: 'so-002',
         baseLineId: 'so-002-1',
-        baseDocNo: 'SO-2026-470001',
+        baseDocNo: DEPED_SO_NO,
       }),
     ],
   },

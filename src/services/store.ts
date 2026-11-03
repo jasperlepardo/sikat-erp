@@ -9,7 +9,7 @@ const wait = () => Promise.resolve();
  * shadow the seed forever, so a browser holding an older version drops every
  * `sikat-erp:` key on load and starts again from the current seed.
  */
-const SEED_VERSION = 132;
+const SEED_VERSION = 139;
 const VERSION_KEY = 'sikat-erp:seed-version';
 
 // Runs once at module load — before any collection below reads storage.

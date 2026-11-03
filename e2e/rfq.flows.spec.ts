@@ -20,8 +20,8 @@ import { open, rawIds, screenText, watchErrors } from './helpers';
  *                prq-001-1 IPH-18P-256-BLK  20
  *                prq-001-2 IPH-18P-256-SLV  20
  *                prq-001-3 IPH-18PM-512-GLC 10
- *  - RFQ-2026-0001 (rfq-001) — Luzon's Open quote on prq-001: 20 / 15 / 10.
- *  - RFQ-2026-0007 (rfq-008) — Apple's Open quote on prq-001: 12 / 20 / 0 (Pro Max still awaiting).
+ *  - RFQ-2026-0003 (rfq-001) — Luzon's Open quote on prq-001: 20 / 15 / 10.
+ *  - RFQ-2026-0004 (rfq-008) — Apple's Open quote on prq-001: 12 / 20 / 0 (Pro Max still awaiting).
  *
  * Each test runs on a fresh browser context (empty localStorage → seed data), so prq-001 can be
  * mutated independently. Reuses open/watchErrors/rawIds/screenText from helpers.ts.

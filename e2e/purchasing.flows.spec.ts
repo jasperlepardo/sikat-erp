@@ -197,7 +197,7 @@ test('US-PUR-024: purchase request and RFQ offer a "Create …" action into the 
   }
 
   // An open RFQ offers "Create purchase order", and it pre-fills a new PO for the same vendor.
-  await open(page, 'purchasing/purchase-quotations/RFQ-2026-0001');
+  await open(page, 'purchasing/purchase-quotations/RFQ-2026-0003');
   await moreMenu(page, 'Create purchase order');
   await confirmCopy(page);
   await expect(page).toHaveURL(/purchase-orders\/new/);
@@ -217,7 +217,7 @@ test('US-PUR-025: a purchase request compares its vendors\' quotes per item @com
   const body = page.locator('body');
   await expect(body).toContainText('Apple South Asia Pte. Ltd.');
   await expect(body).toContainText('Luzon iDistribution Corp.');
-  await expect(page.getByRole('link', { name: 'RFQ-2026-0001' }).first()).toBeVisible();
+  await expect(page.getByRole('link', { name: 'RFQ-2026-0003' }).first()).toBeVisible();
 
   expect(await rawIds(page)).toEqual([]);
   expect(errors).toEqual([]);

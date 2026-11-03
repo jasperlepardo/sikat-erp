@@ -152,8 +152,8 @@ export const SEED_SALES_SETTINGS: SalesSettings[] = [{
 
 export const SO_SERIES: DocumentSeries[] = [
   { id: 'sos-primary', name: 'Commercial', prefix: '', firstNo: 17, manual: false, isDefault: true, active: true, segments: [{ type: 'literal', value: 'SO' }, { type: 'year' }, { type: 'sequence', padding: 4 }] },
-  { id: 'sos-gov', name: 'Government (PhilGEPS)', prefix: '', firstNo: 1, manual: false, isDefault: false, active: true, conditions: [{ field: 'businessType', value: 'Government' }], segments: [{ type: 'literal', value: 'SO' }, { type: 'year' }, { type: 'sequence', padding: 4 }] },
-  { id: 'sos-coop', name: 'Cooperative', prefix: '', firstNo: 1, manual: false, isDefault: false, active: true, conditions: [{ field: 'businessType', value: 'Cooperative' }], segments: [{ type: 'literal', value: 'SO' }, { type: 'year' }, { type: 'sequence', padding: 4 }] },
+  { id: 'sos-gov', name: 'Government (PhilGEPS)', prefix: '', firstNo: 1, manual: false, isDefault: false, active: true, conditions: [{ field: 'businessType', value: 'Government' }], segments: [{ type: 'literal', value: 'SOG' }, { type: 'year' }, { type: 'sequence', padding: 4 }] },
+  { id: 'sos-coop', name: 'Cooperative', prefix: '', firstNo: 1, manual: false, isDefault: false, active: true, conditions: [{ field: 'businessType', value: 'Cooperative' }], segments: [{ type: 'literal', value: 'SOC' }, { type: 'year' }, { type: 'sequence', padding: 4 }] },
 ];
 
 /** Placeholder shown when a document has no sales employee (stored as ''), as SAP B1 labels it. */
@@ -389,7 +389,7 @@ const HAND_ORDERS: SalesOrder[] = [
       line('so-001-2', 'apl-0240', 8, { priceListId: plId('Wholesale'), unitPrice: round2(94750 / 1.12), discountPct: 6, priceSource: 'Special price: 6% off Wholesale', deliveredQty: 8, status: 'Closed', agreementId: 'ba-001', agreementLineId: 'ba-001-2' }),
     ],
   }),
-  header('so-002', 470001, 'bp-009', { // sos-gov series, docNum unchanged
+  header('so-002', 0, 'bp-009', {
     seriesId: 'sos-gov',
     postingDate: '2026-09-30',
     documentDate: '2026-09-30',
@@ -466,12 +466,12 @@ const HAND_ORDERS: SalesOrder[] = [
     lines: [line('so-010-1', 'apl-0361', 36, { priceListId: plId('Wholesale'), discountPct: 5, priceSource: 'Discount group Customers – Trade × Accessories: 5%' })],
   }),
   // Sales that explain where received stock went (with the deliveries in mocks/deliveries.ts).
-  header('so-012', 470002, 'bp-009', { // sos-gov series, docNum unchanged
+  header('so-012', 0, 'bp-009', {
     seriesId: 'sos-gov',
     postingDate: '2026-09-04',
     documentDate: '2026-09-04',
     deliveryDate: '2026-10-06',
-    customerRef: 'SO-2026-0412',
+    customerRef: 'DepEd-Pasig-PO-26-0355',
     remarks: 'DepEd Pasig — 40 iPads for teachers (PhilGEPS award). First 24 delivered 6 Oct; the rest on PO-2026-0006.',
     lines: [line('so-012-1', 'apl-0080', 40, { priceListId: plId('Government'), unitPrice: round2(75041 / 1.12), priceSource: 'Government', deliveredQty: 24 })],
   }),
@@ -547,18 +547,17 @@ const H1_ORDERS: SalesOrder[] = H1_SALES.map((p) =>
 );
 
 /** An order's number as its series formats it: SO-2026-0001. */
-export const seedSoNo = (so: Pick<SalesOrder, 'docNum' | 'postingDate'>) => `SO-${so.postingDate.slice(0, 4)}-${String(so.docNum).padStart(4, '0')}`;
+const soLiteral = (seriesId: string) => SO_SERIES.find((s) => s.id === seriesId)?.segments?.find((g) => g.type === 'literal')?.value ?? 'SO';
+export const seedSoNo = (so: Pick<SalesOrder, 'seriesId' | 'docNum' | 'postingDate'>) => `${soLiteral(so.seriesId)}-${so.postingDate.slice(0, 4)}-${String(so.docNum).padStart(4, '0')}`;
 
 /**
- * Every seeded order, numbered per series in date order (drafts have no number). Government
- * orders keep their PhilGEPS-assigned numbers.
+ * Every seeded order, numbered per series in date order (drafts have no number).
  */
 export const SEED_SALES_ORDERS: SalesOrder[] = (() => {
   const next = new Map<string, number>();
   return [...HAND_ORDERS, ...H1_ORDERS]
     .sort((a, b) => a.postingDate.localeCompare(b.postingDate) || a.id.localeCompare(b.id))
     .map((so) => {
-      if (so.seriesId === 'sos-gov') return so;
       if (so.status === 'Draft') return { ...so, docNum: 0 };
       const n = (next.get(so.seriesId) ?? 0) + 1;
       next.set(so.seriesId, n);

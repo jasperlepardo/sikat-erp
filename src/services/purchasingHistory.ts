@@ -285,7 +285,7 @@ function build(): PurchasingHistory {
   g7l.returnedQty = 1;
   const { invoicedQty: _i, returnedQty: _r, id: _id, ...g7base } = g7l;
   returns.push({
-    ...structuredClone(g7), id: 'rt-001', seriesId: RETURN_SERIES[0].id, docNum: 1, status: 'Closed', postingDate: '2026-10-02', documentDate: '2026-10-02', dueDate: '2026-10-02', closeDate: '2026-10-02',
+    ...structuredClone(g7), id: 'rt-001', seriesId: RETURN_SERIES[0].id, docNum: 4, status: 'Closed', postingDate: '2026-10-02', documentDate: '2026-10-02', dueDate: '2026-10-02', closeDate: '2026-10-02',
     vendorRef: 'RMA-LID-2610-014', journalRemark: `Goods Returns – ${g7.vendorCode}`, consolidatingBpId: '', attachments: [], remarks: 'Dead on arrival — no display on power-up.',
     lines: [retLine({ ...g7base, id: 'rl-seed-1', quantity: 1, baseType: 'GRPO', baseId: g7.id, baseLineId: g7l.id, baseDocNo: grNo(g7), returnReason: 'Defective', countryOfOriginCode: '' })],
   });
@@ -296,7 +296,7 @@ function build(): PurchasingHistory {
   const { returnedQty: _q, receiptCostLc: _rc, bpCatalogNo: _bp, baseType: _bt, id: _bid, ...b6base } = b6l;
   const crushed = retLine({ ...b6base, id: 'rl-seed-2', quantity: 2, baseType: 'APINV', baseId: b6.id, baseLineId: b6l.id, baseDocNo: apNo(b6), returnReason: 'Damaged in transit', creditedQty: 2 });
   returns.push({
-    ...structuredClone(receipts.find((r) => r.id === b6l.baseId)!), id: 'rt-002', seriesId: RETURN_SERIES[0].id, docNum: 2, status: 'Closed', postingDate: '2026-09-25', documentDate: '2026-09-25', dueDate: '2026-09-25', closeDate: '2026-09-27',
+    ...structuredClone(receipts.find((r) => r.id === b6l.baseId)!), id: 'rt-002', seriesId: RETURN_SERIES[0].id, docNum: 3, status: 'Closed', postingDate: '2026-09-25', documentDate: '2026-09-25', dueDate: '2026-09-25', closeDate: '2026-09-27',
     vendorRef: 'RMA-LID-2609-088', journalRemark: `Goods Returns – ${b6.vendorCode}`, consolidatingBpId: '', attachments: [], remarks: 'Two units arrived with crushed boxes; vendor authorized the return.',
     orderNumber: b6.orderNumber, lines: [crushed],
   });
@@ -307,9 +307,9 @@ function build(): PurchasingHistory {
     ...structuredClone(bill), id, seriesId: MEMO_SERIES[0].id, docNum, status: 'Open', postingDate: date, documentDate: date, dueDate: date, closeDate: '',
     vendorRef, journalRemark: `A/P Credit Memo – ${bill.vendorCode}`, remarks, lines, applications: [], appliedAmount: 0, downPayment: 0, paymentOrderRun: false,
   });
-  // Luzon's credit note for the two crushed iPhones, copied from return RTN-2026-0002 and applied to the po-001 bill.
-  const m1Line = newMemoLine({ ...b6base, id: 'ml-seed-1', quantity: 2, baseType: 'GRET', baseId: 'rt-002', baseLineId: crushed.id, baseDocNo: 'RTN-2026-0002', returnGoods: false, invoiceId: b6.id, returnReason: 'Damaged in transit' });
-  const m1 = memoOf('cm-001', 1, b6, '2026-09-27', [m1Line], 'CN-LID-2609-031', 'Credit for return RTN-2026-0002.');
+  // Luzon's credit note for the two crushed iPhones, copied from return RTN-2026-0003 and applied to the po-001 bill.
+  const m1Line = newMemoLine({ ...b6base, id: 'ml-seed-1', quantity: 2, baseType: 'GRET', baseId: 'rt-002', baseLineId: crushed.id, baseDocNo: 'RTN-2026-0003', returnGoods: false, invoiceId: b6.id, returnReason: 'Damaged in transit' });
+  const m1 = memoOf('cm-001', 3, b6, '2026-09-27', [m1Line], 'CN-LID-2609-031', 'Credit for return RTN-2026-0003.');
   const m1Credit = amounts(m1).net;
   settle(b6, m1Credit, m1.postingDate);
   Object.assign(m1, { appliedAmount: m1Credit, applications: [{ invoiceId: b6.id, docNo: apNo(b6), amount: m1Credit, date: m1.postingDate }], status: 'Closed', closeDate: m1.postingDate });
@@ -317,7 +317,7 @@ function build(): PurchasingHistory {
   // Techzone's 5% volume rebate on the September cables — the bill was already paid, so the credit waits to be applied.
   const cables = techzone.lines.find((l) => l.itemNo === 'ACC-CBL1M')!;
   const { returnedQty: _q2, baseType: _bt2, id: _cid, ...cableBase } = cables;
-  const m2 = memoOf('cm-002', 2, techzone, '2026-10-03', [newMemoLine({ ...cableBase, id: 'ml-seed-2', unitPrice: round2(cables.unitPrice * 0.05), baseType: 'APINV', baseId: techzone.id, baseLineId: cables.id, baseDocNo: apNo(techzone), returnGoods: false, invoiceId: techzone.id, returnReason: 'Other', freeText: '5% volume rebate, September' })], 'CN-TZ-2610-004', 'Volume rebate on USB-C cables.');
+  const m2 = memoOf('cm-002', 4, techzone, '2026-10-03', [newMemoLine({ ...cableBase, id: 'ml-seed-2', unitPrice: round2(cables.unitPrice * 0.05), baseType: 'APINV', baseId: techzone.id, baseLineId: cables.id, baseDocNo: apNo(techzone), returnGoods: false, invoiceId: techzone.id, returnReason: 'Other', freeText: '5% volume rebate, September' })], 'CN-TZ-2610-004', 'Volume rebate on USB-C cables.');
   memos.push(m2);
 
   // ── Store replenishment returns (mocks/retailHistory.ts) ────────────────────

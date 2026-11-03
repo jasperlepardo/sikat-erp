@@ -473,7 +473,6 @@ const POS_INVOICES: ArInvoice[] = STORE_SALES.map((sale, n) => {
     customerCode: c.code,
     customerName: c.name,
     contactId: c.defaultContactId,
-    customerRef: `${sale.store}-${sale.month}`,
     paymentTermId: termId('COD'),
     paymentMethod: 'CASH',
     shipTo: `${store.name}`,

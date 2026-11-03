@@ -18,7 +18,7 @@ export function BlanketAgreementList({ draftsOnly = false, compact, selectedId }
   const agreements = useAsync(listBlanketAgreements, []);
   useDocTitle('Blanket Agreements');
 
-  /** The same amounts as the detail page's Summary card. Committed = still committed + already fulfilled. */
+  /** The same amounts as the detail page's Summary card. Ordered = still on order + already delivered. */
   const amountOf = (ba: BlanketAgreement, key: string): number => {
     const t = baTotals(ba);
     return key === 'total' ? t.plannedTotal
@@ -45,8 +45,8 @@ export function BlanketAgreementList({ draftsOnly = false, compact, selectedId }
     { key: 'startDate', header: 'Start date', align: 'end', cell: (ba) => formatDate(ba.startDate) },
     { key: 'endDate', header: 'End date', align: 'end', defaultHidden: true, cell: (ba) => ba.endDate ? formatDate(ba.endDate) : <Text tone="muted">—</Text> },
     { key: 'total', header: 'Planned total', align: 'end', cell: (ba) => formatMoney(amountOf(ba, 'total'), ba.currency) },
-    { key: 'committed', header: 'Committed', align: 'end', cell: (ba) => formatMoney(amountOf(ba, 'committed'), ba.currency) },
-    { key: 'fulfilled', header: 'Fulfilled', align: 'end', cell: (ba) => formatMoney(amountOf(ba, 'fulfilled'), ba.currency) },
+    { key: 'committed', header: 'Ordered', align: 'end', cell: (ba) => formatMoney(amountOf(ba, 'committed'), ba.currency) },
+    { key: 'fulfilled', header: 'Delivered', align: 'end', cell: (ba) => formatMoney(amountOf(ba, 'fulfilled'), ba.currency) },
     { key: 'open', header: 'Open', align: 'end', cell: (ba) => formatMoney(amountOf(ba, 'open'), ba.currency) },
   ];
   const { columns, manager } = useListColumns('blanket-agreements', allColumns);

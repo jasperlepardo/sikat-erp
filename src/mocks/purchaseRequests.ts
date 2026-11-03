@@ -229,7 +229,7 @@ export const SEED_PURCHASE_REQUESTS: PurchaseRequest[] = [
   }),
   // Head-office buying: Purchasing restocks the central warehouse. Stores ask WH-001 for stock
   // with a transfer request instead (Cebu's MacBooks: mocks/inventoryTransferRequests.ts).
-  pr('prq-002', 2, {
+  pr('prq-002', 3, {
     requesterId: hemId('Carla Uy'),
     requesterName: 'Carla Uy',
     ownerId: employeeId('Carla Uy'),
@@ -250,7 +250,7 @@ export const SEED_PURCHASE_REQUESTS: PurchaseRequest[] = [
     ],
     remarks: 'Back-to-school MacBook Air for the central warehouse; stores draw on it by transfer request.',
   }),
-  pr('prq-003', 3, {
+  pr('prq-003', 2, {
     requesterId: hemId('Jasper L.'),
     requesterName: 'Jasper L.',
     ownerId: employeeId('Jasper L.'),

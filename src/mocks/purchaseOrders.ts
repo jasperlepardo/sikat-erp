@@ -477,7 +477,7 @@ const HAND_ORDERS: PurchaseOrder[] = [
       // AppleCare+ is a service: same input VAT, but 2% EWT instead of 1% on goods.
       svc('po-009-2', 'ACP-IPD-2Y', 40, 4200, 'IVAT-S', { warehouse: '', deliveryDate: '2026-10-05' }),
     ],
-    references: [{ id: 'po-009-r1', docType: 'Sales order', docNo: 'SO-2026-0412', docDate: '2026-09-19', remarks: 'DepEd Pasig — 40 iPads for teachers (PhilGEPS award)' }],
+    references: [{ id: 'po-009-r1', docType: 'Sales order', docNo: 'SOG-2026-0001', docDate: '2026-09-19', remarks: 'DepEd Pasig — 40 iPads for teachers (PhilGEPS award)' }],
     remarks: 'DepEd Pasig iPad rollout. 24 of 40 received; balance on 5 Oct.',
   }),
   po('po-010', 7, {
@@ -624,8 +624,8 @@ const HAND_ORDERS: PurchaseOrder[] = [
     postingDate: '2026-09-30', documentDate: '2026-09-30', deliveryDate: '2026-10-14', dueDate: '2026-10-30', projectId: 'prj-002',
     vendorRef: 'ASA-PH-2026-10-0081', baseRfqId: 'rfq-003',
     lines: [{ ...importLine('po-039-1', 'IPD-PRO-11-256-SG-WF-SBK', 120), deliveryDate: '2026-10-14' }],
-    references: [{ id: 'po-039-r1', docType: 'Sales order', docNo: 'SO-2026-470001', docDate: '2026-09-30', remarks: 'DepEd Pasig — 120 iPad Pro, 4 on hand' }],
-    remarks: 'Direct import for the DepEd Pasig award (SO-2026-470001). Ships with the next Apple allocation; 4 already on hand stay as buffer.',
+    references: [{ id: 'po-039-r1', docType: 'Sales order', docNo: 'SOG-2026-0002', docDate: '2026-09-30', remarks: 'DepEd Pasig — 120 iPad Pro, 4 on hand' }],
+    remarks: 'Direct import for the DepEd Pasig award (SOG-2026-0002). Ships with the next Apple allocation; 4 already on hand stay as buffer.',
   }),
   // Ordered for the 20W adapter (apl-0361): 40 bought, 10 received, 30 still to come.
   po('po-040', 35, {
@@ -702,7 +702,7 @@ const HAND_ORDERS: PurchaseOrder[] = [
     vendorPo(o.id, o.no, o.vendor, {
       status: 'Closed', shipTo: MNL_SHIP_TO, shippingType: 'sh-own',
       postingDate: o.on, documentDate: o.on, deliveryDate: o.in, closeDate: o.in, dueDate: addDays(o.in, 30),
-      vendorRef: `${o.vendor === 'bp-013' ? 'TZ' : 'LID'}-SO-${o.no - 200000}`,
+      vendorRef: o.vendor === 'bp-013' ? `TZ-SO-${43000 + o.no * 20}` : `LID-SO-${550000 + o.no * 100}`,
       lines: (o.lines as [string, number, number][]).map(([itemNo, qty, price], i) =>
         line(`${o.id}-${i + 1}`, itemNo, qty, { receivedQty: qty, status: 'Closed', deliveryDate: o.in, unitPrice: price }),
       ),
@@ -865,6 +865,6 @@ export const SEED_PURCHASE_ORDERS: PurchaseOrder[] = (() => {
     const so = SEED_SALES_ORDERS.find((o) => o.id === forOrder[p.id]);
     if (!so) return p;
     const no = seedSoNo(so);
-    return { ...p, remarks: p.remarks.replace(/SO-2026-\d+/g, no), references: p.references.map((r) => (r.docType === 'Sales order' ? { ...r, docNo: no } : r)) };
+    return { ...p, remarks: p.remarks.replace(/\bSO[GC]?-2026-\d+/g, no), references: p.references.map((r) => (r.docType === 'Sales order' ? { ...r, docNo: no } : r)) };
   });
 })();

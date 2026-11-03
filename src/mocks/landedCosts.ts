@@ -12,7 +12,7 @@ export const LC_SERIES: DocumentSeries[] = [
     manual: false,
     isDefault: true,
     active: true,
-    segments: [{ type: 'literal', value: 'LC' }, { type: 'year' }, { type: 'sequence', padding: 5 }],
+    segments: [{ type: 'literal', value: 'LC' }, { type: 'year' }, { type: 'sequence', padding: 4 }],
   },
 ];
 
