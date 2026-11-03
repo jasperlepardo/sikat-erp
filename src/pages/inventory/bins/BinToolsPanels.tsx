@@ -164,14 +164,15 @@ export function GenerateBinsPanel({ warehouse: initial, onCancel, onDone }: { wa
     altSortCode: '{SEQ:3}',
   });
   const [saving, setSaving] = useState(false);
-  const subs = useCollection(binSublevels) ?? [];
-  const bins = useCollection(binLocations) ?? [];
+  // Undefined while loading: default inside the memo, so a fresh [] doesn't change its deps every render.
+  const subs = useCollection(binSublevels);
+  const bins = useCollection(binLocations);
   const f = bind(d, (p) => setD((x) => ({ ...x, ...p })));
 
   const plan = useMemo(
     () =>
       warehouse
-        ? planGeneration({ warehouse, ranges, defaults: d, patterns }, subs, bins)
+        ? planGeneration({ warehouse, ranges, defaults: d, patterns }, subs ?? [], bins ?? [])
         : { add: [], skipped: [] },
     [warehouse, ranges, d, patterns, subs, bins],
   );

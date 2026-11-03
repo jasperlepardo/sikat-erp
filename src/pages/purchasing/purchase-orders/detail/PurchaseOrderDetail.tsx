@@ -227,7 +227,8 @@ function PurchaseOrderForm() {
     let cancelled = false;
     getPurchaseOrder(id).then((po) => !cancelled && setDraft(po ?? null));
     return () => { cancelled = true; };
-  }, [id, isNew]);
+    // `suggest` is this history entry's state: it doesn't change while the page is open.
+  }, [id, isNew, suggest]);
 
   useDocTitle(draft?.docNum ? (isNew ? `New ${PO_NOUN.one}` : draft.status === 'Draft' ? `Draft ${PO_NOUN.one}` : poNumber(draft)) : undefined);
   if (draft === undefined || !m) return <DocumentDetailSkeleton />;

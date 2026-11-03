@@ -78,7 +78,8 @@ export function ActivityTab({ target, partnerId = '' }: { target: FeedTarget; pa
     const owner = (id: string) => (employees ? nameIn(salesEmployees, id) : '');
     return sortFeed([...(system ?? []), ...auditEntries(target, log ?? []), ...activityEntries(target, acts ?? [], owner)]);
     // `target` is rebuilt each render; its parts are the real dependencies.
-  },[system, log, acts, employees, target.kind, target.id, idsKey]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [system, log, acts, employees, target.kind, target.id, idsKey]);
 
   const counts = {
     all: entries.length,

@@ -28,23 +28,23 @@ export function TaxTab({ draft, update, errors }: TabProps) {
   // · digital services (RA 12023) implies non-resident
   // · a non-resident is outside the VAT system unless it's a digital service provider registered with BIR
   const alwaysResident = draft.businessType === 'Cooperative' || draft.businessType === 'Government';
+  const { businessType, nonResident: isNonResident, nonResidentDigitalServices: isDigital, vatRegistered: isVat } = draft;
+  // Runs after every edit; it only patches when a rule changes a value, so it settles at once.
   useEffect(() => {
-    let { nonResident, nonResidentDigitalServices, vatRegistered } = draft;
-    if (NON_RESIDENT_TYPES.includes(draft.businessType)) nonResident = true;
-    else if (RESIDENT_CORPORATE_TYPES.includes(draft.businessType) || alwaysResident) {
+    let nonResident = isNonResident;
+    let nonResidentDigitalServices = isDigital;
+    let vatRegistered = isVat;
+    if (NON_RESIDENT_TYPES.includes(businessType)) nonResident = true;
+    else if (RESIDENT_CORPORATE_TYPES.includes(businessType) || alwaysResident) {
       nonResident = false;
       nonResidentDigitalServices = false;
     } else if (nonResidentDigitalServices) nonResident = true;
     if (!nonResident) nonResidentDigitalServices = false;
     if (nonResident && !nonResidentDigitalServices) vatRegistered = false;
-    if (
-      nonResident !== draft.nonResident ||
-      nonResidentDigitalServices !== draft.nonResidentDigitalServices ||
-      vatRegistered !== draft.vatRegistered
-    ) {
+    if (nonResident !== isNonResident || nonResidentDigitalServices !== isDigital || vatRegistered !== isVat) {
       update({ nonResident, nonResidentDigitalServices, vatRegistered });
     }
-  }, [draft.businessType, draft.nonResident, draft.nonResidentDigitalServices, draft.vatRegistered]);
+  }, [businessType, isNonResident, isDigital, isVat, alwaysResident, update]);
 
   // ── Derived option lists ───────────────────────────────────────────────────
   const payee = ['Individual', 'Sole proprietorship'].includes(draft.businessType) ? 'Individual' : 'Corporate';

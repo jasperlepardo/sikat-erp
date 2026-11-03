@@ -79,11 +79,11 @@ export function ListPage<T>({
 
   // Apply preset filter then optional domain/search filter.
   // Deps use presets.filter + presets.searchText (state values), not presets.apply (new fn each render).
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const filtered = useMemo(() => {
     const applied = presets.apply(rows ?? []);
     if (!filterFn) return applied;
     return applied.filter((row) => filterFn(row, presets.searchText));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, presets.filter, presets.searchText, filterFn]);
 
   const sorted = useMemo(() => {
