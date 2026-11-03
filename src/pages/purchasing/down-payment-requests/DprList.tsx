@@ -1,6 +1,7 @@
 import { useLocation } from 'react-router';
-import { Alert, TableAmount, TableContent, TableStatus, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { Alert, TableAmount, TableContent, TableStatus } from '@jasperlepardo/sikat-design-system';
 import { ListPage } from '../../../components/form/ListPage';
+import { useListColumns, type ListColumn } from '../../../components/form/listColumns';
 import { DPR_STATUSES, type DownPaymentRequest } from '../../../mocks/apDownPayments';
 import { dprNumber, dprTotal, listDownPayments } from '../../../services/apDownPayments';
 import { formatDate } from '../../../services/dates';
@@ -33,17 +34,18 @@ export function DprList({ compact, selectedId }: { compact?: boolean; selectedId
     linesField<DownPaymentRequest>(),
   ];
 
-  const columns: TableColumn<DownPaymentRequest>[] = [
-    { key: 'docNum', header: 'No.', sortable: true, cell: (d) => <TableContent href={`#${DPR_LIST_PATH}/${d.docNum ? dprNumber(d) : d.id}`} subcopy={d.vendorRef || undefined}>{dprNumber(d)}</TableContent> },
+  const allColumns: ListColumn<DownPaymentRequest>[] = [
+    { key: 'docNum', header: 'No.', sortable: true, locked: true, cell: (d) => <TableContent href={`#${DPR_LIST_PATH}/${d.docNum ? dprNumber(d) : d.id}`} subcopy={d.vendorRef || undefined}>{dprNumber(d)}</TableContent> },
     { key: 'vendorName', header: 'Vendor', sortable: true, cell: (d) => <TableContent subcopy={d.vendorCode}>{d.vendorName || '—'}</TableContent> },
     { key: 'postingDate', header: 'Posting date', sortable: true, cell: (d) => formatDate(d.postingDate) },
     { key: 'dueDate', header: 'Due date', sortable: true, cell: (d) => (d.dueDate ? formatDate(d.dueDate) : '—') },
-    { key: 'orderNumber', header: 'Purchase order', cell: (d) => (d.orderNumber ? `PO ${d.orderNumber}` : <span className="text-muted">Without PO</span>) },
-    { key: 'dpmPct', header: 'DPM %', cell: (d) => `${d.dpmPct}%` },
+    { key: 'orderNumber', header: 'Purchase order', defaultHidden: true, cell: (d) => (d.orderNumber ? `PO ${d.orderNumber}` : <span className="text-muted">Without PO</span>) },
+    { key: 'dpmPct', header: 'DPM %', defaultHidden: true, cell: (d) => `${d.dpmPct}%` },
     { key: 'total', header: 'Total payment due', sortable: true, cell: (d) => <TableAmount currency={d.currency}>{formatAmount(totalOf(d))}</TableAmount> },
     { key: 'paid', header: 'Paid / drawn', cell: (d) => <TableContent subcopy={d.drawnAmount ? `${formatAmount(d.drawnAmount)} drawn` : undefined}>{d.appliedAmount ? (d.appliedAmount >= totalOf(d) - 0.005 ? 'Paid' : `${formatAmount(d.appliedAmount)} paid`) : 'Unpaid'}</TableContent> },
     { key: 'status', header: 'Status', sortable: true, cell: (d) => <TableStatus intent={DPR_STATUS_INTENT[d.status]}>{d.status}</TableStatus> },
   ];
+  const { columns, manager } = useListColumns('ap-down-payment-requests', allColumns);
 
   return (
     <ListPage
@@ -59,6 +61,7 @@ export function DprList({ compact, selectedId }: { compact?: boolean; selectedId
       search={{ placeholder: 'Search by no., vendor, vendor ref., PO no. or item', label: `Search ${DPR_NOUN.many}` }}
       header={notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : undefined}
       emptyMessage={`No ${DPR_NOUN.many} yet. Start one from a purchase order (More actions › Create ${DPR_NOUN.one}), or with New ${DPR_NOUN.one}.`}
+      toolbarExtra={manager}
       compact={compact}
       selectedId={selectedId}
       getRowId={(r) => r.docNum ? dprNumber(r) : r.id}

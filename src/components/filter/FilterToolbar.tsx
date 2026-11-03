@@ -21,6 +21,7 @@ export function FilterToolbar<T>({
   onReset,
   onSaveView,
   search,
+  trailing,
 }: {
   fields: FilterField<T>[];
   value: FilterGroup;
@@ -34,6 +35,8 @@ export function FilterToolbar<T>({
   onSaveView: () => void;
   /** The free-text search field, shown above the toolbar row. */
   search?: ReactNode;
+  /** Trailing content inside the chip row (e.g. column manager). */
+  trailing?: ReactNode;
 }) {
   const [openRuleId, setOpenRuleId] = useState<string | null>(null);
 
@@ -72,6 +75,7 @@ export function FilterToolbar<T>({
             </IconButton>
           </div>
         ) : null}
+        {trailing ? <div className="ml-auto">{trailing}</div> : null}
       </div>
     </div>
   );

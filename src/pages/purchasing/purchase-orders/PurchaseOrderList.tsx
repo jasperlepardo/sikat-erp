@@ -1,6 +1,7 @@
 import { useLocation } from 'react-router';
-import { Alert, TableAmount, TableContent, TableStatus, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { Alert, TableAmount, TableContent, TableStatus } from '@jasperlepardo/sikat-design-system';
 import { ListPage } from '../../../components/form/ListPage';
+import { useListColumns, type ListColumn } from '../../../components/form/listColumns';
 import { PO_STATUSES, type PurchaseOrder } from '../../../mocks/purchaseOrders';
 import { formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
@@ -32,11 +33,11 @@ export function PurchaseOrderList({ draftsOnly = false, compact, selectedId }: {
     linesField<PurchaseOrder>(),
   ];
 
-  const columns: TableColumn<PurchaseOrder>[] = [
-    { key: 'docNum', header: 'No.', sortable: true, cell: (po) => <TableContent href={`#${PO_LIST_PATH}/${po.docNum ? poNumber(po) : po.id}`} subcopy={po.vendorRef ? `Vendor sales order no. ${po.vendorRef}` : undefined}>{poNumber(po)}</TableContent> },
+  const allColumns: ListColumn<PurchaseOrder>[] = [
+    { key: 'docNum', header: 'No.', sortable: true, locked: true, cell: (po) => <TableContent href={`#${PO_LIST_PATH}/${po.docNum ? poNumber(po) : po.id}`} subcopy={po.vendorRef ? `Vendor sales order no. ${po.vendorRef}` : undefined}>{poNumber(po)}</TableContent> },
     { key: 'vendorName', header: 'Vendor', sortable: true, cell: (po) => <TableContent subcopy={po.vendorCode}>{po.vendorName || '—'}</TableContent> },
     { key: 'postingDate', header: 'Posting date', sortable: true, cell: (po) => formatDate(po.postingDate) },
-    { key: 'deliveryDate', header: 'Delivery date', sortable: true, cell: (po) => (po.deliveryDate ? formatDate(po.deliveryDate) : '—') },
+    { key: 'deliveryDate', header: 'Delivery date', sortable: true, defaultHidden: true, cell: (po) => (po.deliveryDate ? formatDate(po.deliveryDate) : '—') },
     {
       key: 'received',
       header: 'Received',
@@ -49,6 +50,7 @@ export function PurchaseOrderList({ draftsOnly = false, compact, selectedId }: {
     { key: 'total', header: 'Total', sortable: true, cell: (po) => <TableAmount currency={po.currency}>{formatAmount(totalOf(po))}</TableAmount> },
     { key: 'status', header: 'Status', sortable: true, cell: (po) => <TableStatus intent={PO_STATUS_INTENT[po.status]}>{po.status}</TableStatus> },
   ];
+  const { columns, manager } = useListColumns('purchase-orders', allColumns);
 
   return (
     <ListPage
@@ -65,6 +67,7 @@ export function PurchaseOrderList({ draftsOnly = false, compact, selectedId }: {
       search={{ placeholder: 'Search by PO no., vendor, vendor ref. or item', label: 'Search purchase orders' }}
       header={notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : undefined}
       emptyMessage={`No ${PO_NOUN.many} yet. Start one from a purchase request or RFQ (More actions › Create ${PO_NOUN.one}), or with New ${PO_NOUN.one}.`}
+      toolbarExtra={manager}
       compact={compact}
       selectedId={selectedId}
       getRowId={(r) => r.docNum ? poNumber(r) : r.id}

@@ -1,6 +1,7 @@
 import { useLocation } from 'react-router';
-import { Alert, TableAmount, TableContent, TableStatus, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { Alert, TableAmount, TableContent, TableStatus } from '@jasperlepardo/sikat-design-system';
 import { ListPage } from '../../../components/form/ListPage';
+import { useListColumns, type ListColumn } from '../../../components/form/listColumns';
 import { TRANSFER_STATUSES, type InventoryTransfer } from '../../../mocks/inventoryTransfers';
 import { formatAmount } from '../../../services/format';
 import { formatDate } from '../../../services/dates';
@@ -27,14 +28,15 @@ export function InventoryTransferList({ draftsOnly = false, compact, selectedId 
     linesField<InventoryTransfer>(),
   ];
 
-  const columns: TableColumn<InventoryTransfer>[] = [
-    { key: 'docNum', header: 'No.', sortable: true, cell: (t) => <TableContent href={`#${TRANSFER_LIST_PATH}/${t.id}`}>{transferNumber(t)}</TableContent> },
+  const allColumns: ListColumn<InventoryTransfer>[] = [
+    { key: 'docNum', header: 'No.', sortable: true, locked: true, cell: (t) => <TableContent href={`#${TRANSFER_LIST_PATH}/${t.id}`}>{transferNumber(t)}</TableContent> },
     { key: 'fromWarehouse', header: 'From → To', sortable: true, cell: (t) => <TableContent subcopy={t.remarks || undefined}>{t.fromWarehouse} → {destinations(t).join(', ') || '—'}</TableContent> },
     { key: 'postingDate', header: 'Posting date', sortable: true, cell: (t) => formatDate(t.postingDate) },
     { key: 'qty', header: 'Quantity', cell: (t) => <TableContent subcopy={`${t.lines.length} line${t.lines.length === 1 ? '' : 's'}`}>{transferQty(t).toLocaleString('en-PH')}</TableContent> },
     { key: 'value', header: 'Value at cost', sortable: true, cell: (t) => <TableAmount currency="PHP">{formatAmount(transferValue(t))}</TableAmount> },
     { key: 'status', header: 'Status', sortable: true, cell: (t) => <TableStatus intent={TRANSFER_STATUS_INTENT[t.status]}>{t.status}</TableStatus> },
   ];
+  const { columns, manager } = useListColumns('inventory-transfers', allColumns);
 
   return (
     <ListPage
@@ -51,6 +53,7 @@ export function InventoryTransferList({ draftsOnly = false, compact, selectedId 
       search={{ placeholder: 'Search by transfer no., warehouse, item or remarks', label: 'Search transfers' }}
       header={notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : undefined}
       emptyMessage={`No ${TRANSFER_NOUN.many} yet. Start one from a transfer request (More actions › Create ${TRANSFER_NOUN.one}), or with New ${TRANSFER_NOUN.one}.`}
+      toolbarExtra={manager}
       compact={compact}
       selectedId={selectedId}
       filterFn={(t, q) => !q || [transferNumber(t), t.fromWarehouse, ...destinations(t), t.remarks, ...t.lines.map((l) => `${l.itemNo} ${l.description}`)].join(' ').toLowerCase().includes(q)}

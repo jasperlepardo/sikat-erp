@@ -1,6 +1,7 @@
 import { useLocation } from 'react-router';
-import { Alert, TableAmount, TableContent, TableStatus, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { Alert, TableAmount, TableContent, TableStatus } from '@jasperlepardo/sikat-design-system';
 import { ListPage } from '../../../components/form/ListPage';
+import { useListColumns, type ListColumn } from '../../../components/form/listColumns';
 import { PAYMENT_STATUSES, type OutgoingPayment } from '../../../mocks/outgoingPayments';
 import { formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
@@ -37,8 +38,8 @@ export function PaymentList({ draftsOnly = false, compact, selectedId }: { draft
     textField<OutgoingPayment>('remarks', 'Remarks', (d) => d.remarks),
   ];
 
-  const columns: TableColumn<OutgoingPayment>[] = [
-    { key: 'docNum', header: 'No.', sortable: true, cell: (p) => <TableContent href={`#${PAYMENT_LIST_PATH}/${p.docNum ? paymentNumber(p) : p.id}`} subcopy={p.reference || undefined}>{paymentNumber(p)}</TableContent> },
+  const allColumns: ListColumn<OutgoingPayment>[] = [
+    { key: 'docNum', header: 'No.', sortable: true, locked: true, cell: (p) => <TableContent href={`#${PAYMENT_LIST_PATH}/${p.docNum ? paymentNumber(p) : p.id}`} subcopy={p.reference || undefined}>{paymentNumber(p)}</TableContent> },
     { key: 'payeeName', header: 'Paid to', sortable: true, cell: (p) => <TableContent subcopy={p.type === 'Vendor' ? p.vendorCode : 'G/L accounts'}>{p.payeeName || '—'}</TableContent> },
     { key: 'postingDate', header: 'Posting date', sortable: true, cell: (p) => formatDate(p.postingDate) },
     {
@@ -51,10 +52,11 @@ export function PaymentList({ draftsOnly = false, compact, selectedId }: { draft
           : [paid.length ? `${paid.length} invoice${paid.length === 1 ? '' : 's'}` : '', p.onAccount ? 'on account' : ''].filter(Boolean).join(' + ') || '—';
       },
     },
-    { key: 'means', header: 'Means', cell: meansText },
+    { key: 'means', header: 'Means', defaultHidden: true, cell: meansText },
     { key: 'amount', header: 'Amount', sortable: true, cell: (p) => <TableAmount currency={p.currency}>{formatAmount(overallAmount(p))}</TableAmount> },
     { key: 'status', header: 'Status', sortable: true, cell: (p) => <TableStatus intent={PAYMENT_STATUS_INTENT[p.status]}>{p.status}</TableStatus> },
   ];
+  const { columns, manager } = useListColumns('outgoing-payments', allColumns);
 
   return (
     <ListPage
@@ -71,6 +73,7 @@ export function PaymentList({ draftsOnly = false, compact, selectedId }: { draft
       search={{ placeholder: 'Search by payment no., payee, reference or invoice no.', label: 'Search payments' }}
       header={notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : undefined}
       emptyMessage={`No ${PAYMENT_NOUN.many} yet. Pay a bill from Purchasing › Bills (More actions › Pay), from a vendor's Transactions tab, or with New ${PAYMENT_NOUN.one}.`}
+      toolbarExtra={manager}
       compact={compact}
       selectedId={selectedId}
       getRowId={(r) => r.docNum ? paymentNumber(r) : r.id}

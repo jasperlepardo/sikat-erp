@@ -3,9 +3,9 @@ import {
   TableAmount,
   TableContent,
   TableStatus,
-  type TableColumn,
 } from '@jasperlepardo/sikat-design-system';
 import { ListPage } from '../../components/form/ListPage';
+import { useListColumns, type ListColumn } from '../../components/form/listColumns';
 import type { Partner } from '../../mocks/partners';
 import {
   defaultBillTo,
@@ -41,7 +41,7 @@ export function PartnerList({ scope, compact, selectedId }: {
   const noun = scopeNoun(scope);
   const partners = useAsync(() => (scope === 'all' ? listPartners() : listPartnersByRole(scope)), [scope]);
 
-  const roleColumn: TableColumn<Partner> =
+  const roleColumn: ListColumn<Partner> =
     scope === 'all'
       ? { key: 'bpGroupId', header: 'Group', sortable: true, cell: (p) => bpGroupName(p.bpGroupId) }
       : scope === 'lead'
@@ -50,8 +50,8 @@ export function PartnerList({ scope, compact, selectedId }: {
         ? { key: 'creditLimit', header: 'Credit limit', cell: (p) => <TableContent subcopy={paymentTermName(p.customerPaymentTermId)}><TableAmount currency="PHP">{formatAmount(p.creditLimit ?? 0)}</TableAmount></TableContent> }
         : { key: 'vendorPaymentTermId', header: 'Payment terms', sortable: true, cell: (p) => (p.vendorPaymentTermId ? paymentTermName(p.vendorPaymentTermId) : '—') };
 
-  const columns: TableColumn<Partner>[] = [
-    { key: 'name', header: config.singular, sortable: true, cell: (p) => <TableContent href={`#${config.basePath}/${p.id}`} subcopy={p.code}>{p.name}</TableContent> },
+  const allColumns: ListColumn<Partner>[] = [
+    { key: 'name', header: config.singular, sortable: true, locked: true, cell: (p) => <TableContent href={`#${config.basePath}/${p.id}`} subcopy={p.code}>{p.name}</TableContent> },
     {
       key: 'contact',
       header: 'Contact',
@@ -85,6 +85,8 @@ export function PartnerList({ scope, compact, selectedId }: {
     },
   ];
 
+  const { columns, manager } = useListColumns(scope, allColumns);
+
   return (
     <ListPage
       rows={partners}
@@ -97,6 +99,7 @@ export function PartnerList({ scope, compact, selectedId }: {
       builtIns={partnerViews(scope)}
       defaultSort={{ key: 'name', direction: 'asc' }}
       search={{ placeholder: 'Search by name, code, contact, or city', label: `Search ${config.title.toLowerCase()}` }}
+      toolbarExtra={manager}
       compact={compact}
       selectedId={selectedId}
       filterFn={(p, q) => !q || `${p.code} ${p.name} ${p.aliasName} ${defaultContactName(p)} ${defaultBillTo(p)?.city ?? ''}`.toLowerCase().includes(q)}

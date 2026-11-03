@@ -1,6 +1,7 @@
 import { useLocation } from 'react-router';
-import { Alert, TableContent, TableStatus, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { Alert, TableContent, TableStatus } from '@jasperlepardo/sikat-design-system';
 import { ListPage } from '../../../components/form/ListPage';
+import { useListColumns, type ListColumn } from '../../../components/form/listColumns';
 import { RI_STATUSES, type ReserveInvoice } from '../../../mocks/reserveInvoices';
 import { rateAt, type TaxCode } from '../../../mocks/taxes';
 import { formatDate } from '../../../services/dates';
@@ -39,15 +40,16 @@ export function ReserveInvoiceList({ draftsOnly = false, compact, selectedId }: 
     linesField<ReserveInvoice>(),
   ];
 
-  const columns: TableColumn<ReserveInvoice>[] = [
-    { key: 'docNum', header: 'No.', sortable: true, cell: (r) => <TableContent href={`#${RI_LIST_PATH}/${r.docNum ? riNumber(r) : r.id}`} subcopy={r.customerRef ? `Customer PO no. ${r.customerRef}` : undefined}>{riNumber(r)}</TableContent> },
+  const allColumns: ListColumn<ReserveInvoice>[] = [
+    { key: 'docNum', header: 'No.', sortable: true, locked: true, cell: (r) => <TableContent href={`#${RI_LIST_PATH}/${r.docNum ? riNumber(r) : r.id}`} subcopy={r.customerRef ? `Customer PO no. ${r.customerRef}` : undefined}>{riNumber(r)}</TableContent> },
     { key: 'customerName', header: 'Customer', sortable: true, cell: (r) => <TableContent subcopy={r.customerCode}>{r.customerName || '—'}</TableContent> },
     { key: 'postingDate', header: 'Posting date', align: 'end', cell: (r) => formatDate(r.postingDate) },
-    { key: 'orderNumber', header: 'Order', cell: (r) => r.orderNumber || '—' },
+    { key: 'orderNumber', header: 'Order', defaultHidden: true, cell: (r) => r.orderNumber || '—' },
     { key: 'dueDate', header: 'Due date', align: 'end', cell: (r) => formatDate(r.dueDate) },
     { key: 'total', header: 'Total', align: 'end', cell: (r) => `${r.currency} ${formatAmount(totalOf(r))}` },
     { key: 'status', header: 'Status', sortable: true, cell: (r) => <TableStatus intent={RI_STATUS_INTENT[r.status]}>{r.status}</TableStatus> },
   ];
+  const { columns, manager } = useListColumns('reserve-invoices', allColumns);
 
   return (
     <ListPage
@@ -64,6 +66,7 @@ export function ReserveInvoiceList({ draftsOnly = false, compact, selectedId }: 
       search={{ placeholder: 'Search by invoice no., customer, order or item', label: `Search ${RI_NOUN.many}` }}
       header={notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : undefined}
       emptyMessage={`No ${RI_NOUN.many} yet. Start one from a sales order (More actions › Create ${RI_NOUN.one}), or with New ${RI_NOUN.one}.`}
+      toolbarExtra={manager}
       compact={compact}
       selectedId={selectedId}
       getRowId={(r) => r.docNum ? riNumber(r) : r.id}

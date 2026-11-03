@@ -10,9 +10,9 @@ import {
   TableContent,
   TableStatus,
   Text,
-  type TableColumn,
   type TableSort,
 } from '@jasperlepardo/sikat-design-system';
+import { useListColumns, type ListColumn } from '../../../components/form/listColumns';
 import { PageHeader } from '../../../components/form/PageHeader';
 import { cap } from '../../../components/form/noun';
 import { fillCardClass, useListPage } from '../../../components/form/DataTable';
@@ -83,7 +83,7 @@ function useListState<T>({ sort, setSort, searchText }: { sort: TableSort | null
       return (x < y ? -1 : x > y ? 1 : 0) * dir;
     });
   };
-  const table = (caption: string, columns: TableColumn<T>[], rows: T[] | undefined, getRowId: (r: T) => string, empty: ReactNode) => {
+  const table = (caption: string, columns: ListColumn<T>[], rows: T[] | undefined, getRowId: (r: T) => string, empty: ReactNode) => {
     if (!rows) return <Card><Text tone="muted" className="p-4">Loading…</Text></Card>;
     const { visible, pagination } = paginate(rows);
     return (
@@ -147,8 +147,8 @@ export function StockCountList() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [counts, presets.filter, list.query, list.sortRows]);
 
-  const columns: TableColumn<InventoryCounting>[] = [
-    { key: 'docNum', header: 'No.', sortable: true, cell: (c) => <TableContent href={`#${COUNT_LIST_PATH}/${c.id}`}>{countNumber(c)}</TableContent> },
+  const allColumns: ListColumn<InventoryCounting>[] = [
+    { key: 'docNum', header: 'No.', sortable: true, locked: true, cell: (c) => <TableContent href={`#${COUNT_LIST_PATH}/${c.id}`}>{countNumber(c)}</TableContent> },
     { key: 'warehouses', header: 'Warehouse', cell: (c) => <TableContent subcopy={c.remarks || undefined}>{countWarehouses(c).join(', ') || '—'}</TableContent> },
     { key: 'countDate', header: 'Count date', sortable: true, cell: (c) => `${formatDate(c.countDate)} ${c.countTime}` },
     {
@@ -173,12 +173,13 @@ export function StockCountList() {
     },
     { key: 'status', header: 'Status', sortable: true, cell: (c) => <TableStatus intent={COUNT_STATUS_INTENT[c.status]}>{c.status}</TableStatus> },
   ];
+  const { columns, manager } = useListColumns('stock-counts', allColumns);
 
   return (
     <CountsShell
       view="counts"
       title={presets.menu}
-      filters={presets.bar()}
+      filters={presets.toolbar(undefined, manager)}
       panel={presets.panel}
     >
       {list.table(cap(COUNT_NOUN.many), columns, rows, (c) => c.id, <>No {COUNT_NOUN.many} yet. Create one with New {COUNT_NOUN.one}.</>)}
@@ -227,20 +228,21 @@ export function InventoryPostingList() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [postings, presets.filter, list.query, list.sortRows]);
 
-  const columns: TableColumn<InventoryPosting>[] = [
-    { key: 'docNum', header: 'No.', sortable: true, cell: (p) => <TableContent href={`#${POSTING_LIST_PATH}/${p.id}`}>{postingNumber(p)}</TableContent> },
+  const allColumns: ListColumn<InventoryPosting>[] = [
+    { key: 'docNum', header: 'No.', sortable: true, locked: true, cell: (p) => <TableContent href={`#${POSTING_LIST_PATH}/${p.id}`}>{postingNumber(p)}</TableContent> },
     { key: 'warehouses', header: 'Warehouse', cell: (p) => <TableContent subcopy={p.remarks || undefined}>{countWarehouses(p).join(', ') || '—'}</TableContent> },
     { key: 'postingDate', header: 'Posting date', sortable: true, cell: (p) => formatDate(p.postingDate) },
     { key: 'count', header: 'From count', cell: (p) => (countOf(p) ? countNumber(countOf(p)!) : '— Direct') },
     { key: 'lines', header: 'Lines', cell: (p) => String(p.lines.length) },
     { key: 'total', header: 'Total', sortable: true, cell: (p) => <TableAmount currency="PHP">{formatAmount(postingTotal(p))}</TableAmount> },
   ];
+  const { columns, manager } = useListColumns('inventory-postings', allColumns);
 
   return (
     <CountsShell
       view="postings"
       title={presets.menu}
-      filters={presets.bar()}
+      filters={presets.toolbar(undefined, manager)}
       panel={presets.panel}
     >
       {list.table(cap(POSTING_NOUN.many), columns, rows, (p) => p.id, <>No {POSTING_NOUN.many} yet. Post a stock count, or create one with New {POSTING_NOUN.one}.</>)}

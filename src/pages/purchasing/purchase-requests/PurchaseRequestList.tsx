@@ -1,6 +1,7 @@
 import { useLocation } from 'react-router';
-import { Alert, TableContent, TableStatus, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { Alert, TableContent, TableStatus } from '@jasperlepardo/sikat-design-system';
 import { ListPage } from '../../../components/form/ListPage';
+import { useListColumns, type ListColumn } from '../../../components/form/listColumns';
 import { PR_STATUSES, type PurchaseRequest } from '../../../mocks/purchaseRequests';
 import { rateFrom } from '../../../mocks/taxes';
 import { formatDate } from '../../../services/dates';
@@ -32,16 +33,17 @@ export function PurchaseRequestList({ compact, selectedId }: { compact?: boolean
     statusField<PurchaseRequest>(PR_STATUSES),
   ];
 
-  const columns: TableColumn<PurchaseRequest>[] = [
-    { key: 'docNum', header: 'No.', sortable: true, cell: (r) => <TableContent href={`#${PR_LIST_PATH}/${r.docNum ? prNumber(r) : r.id}`}>{prNumber(r)}</TableContent> },
+  const allColumns: ListColumn<PurchaseRequest>[] = [
+    { key: 'docNum', header: 'No.', sortable: true, locked: true, cell: (r) => <TableContent href={`#${PR_LIST_PATH}/${r.docNum ? prNumber(r) : r.id}`}>{prNumber(r)}</TableContent> },
     { key: 'requesterName', header: 'Requester', sortable: true, cell: (r) => <TableContent subcopy={branchOf(r)}>{r.requesterName || '—'}</TableContent> },
-    { key: 'departmentId', header: 'Department', cell: (r) => (r.departmentId ? nameIn(departments, r.departmentId) : '—') },
+    { key: 'departmentId', header: 'Department', defaultHidden: true, cell: (r) => (r.departmentId ? nameIn(departments, r.departmentId) : '—') },
     { key: 'postingDate', header: 'Posting date', sortable: true, cell: (r) => formatDate(r.postingDate) },
     { key: 'requiredDate', header: 'Required by', sortable: true, cell: (r) => (r.requiredDate ? formatDate(r.requiredDate) : '—') },
     { key: 'lines', header: 'Lines', cell: (r) => <TableContent subcopy={`${r.lines.filter((l) => l.status === 'Open').length} open`}>{r.lines.length}</TableContent> },
     { key: 'total', header: 'Est. total', sortable: true, cell: (r) => <span className="tabular-nums">PHP {formatAmount(totalOf(r))}</span> },
     { key: 'status', header: 'Status', sortable: true, cell: (r) => <TableStatus intent={PR_STATUS_INTENT[r.status]}>{r.status}</TableStatus> },
   ];
+  const { columns, manager } = useListColumns('purchase-requests', allColumns);
 
   return (
     <ListPage
@@ -56,6 +58,7 @@ export function PurchaseRequestList({ compact, selectedId }: { compact?: boolean
       defaultSort={{ key: 'postingDate', direction: 'desc' }}
       search={{ placeholder: 'Search by request no., requester, branch or item', label: 'Search purchase requests' }}
       header={notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : undefined}
+      toolbarExtra={manager}
       compact={compact}
       selectedId={selectedId}
       getRowId={(r) => r.docNum ? prNumber(r) : r.id}

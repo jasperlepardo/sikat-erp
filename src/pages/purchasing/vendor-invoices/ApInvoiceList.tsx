@@ -1,6 +1,7 @@
 import { useLocation } from 'react-router';
-import { Alert, TableAmount, TableContent, TableStatus, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { Alert, TableAmount, TableContent, TableStatus } from '@jasperlepardo/sikat-design-system';
 import { ListPage } from '../../../components/form/ListPage';
+import { useListColumns, type ListColumn } from '../../../components/form/listColumns';
 import { AP_STATUSES, type ApInvoice } from '../../../mocks/apInvoices';
 import { todayISO, formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
@@ -34,15 +35,16 @@ export function ApInvoiceList({ draftsOnly = false, compact, selectedId }: { dra
     linesField<ApInvoice>(),
   ];
 
-  const columns: TableColumn<ApInvoice>[] = [
-    { key: 'docNum', header: 'No.', sortable: true, cell: (inv) => <TableContent href={`#${AP_LIST_PATH}/${inv.docNum ? apNumber(inv) : inv.id}`} subcopy={inv.vendorRef ? `Vendor invoice no. ${inv.vendorRef}` : undefined}>{apNumber(inv)}</TableContent> },
+  const allColumns: ListColumn<ApInvoice>[] = [
+    { key: 'docNum', header: 'No.', sortable: true, locked: true, cell: (inv) => <TableContent href={`#${AP_LIST_PATH}/${inv.docNum ? apNumber(inv) : inv.id}`} subcopy={inv.vendorRef ? `Vendor invoice no. ${inv.vendorRef}` : undefined}>{apNumber(inv)}</TableContent> },
     { key: 'vendorName', header: 'Vendor', sortable: true, cell: (inv) => <TableContent subcopy={inv.vendorCode}>{inv.vendorName || '—'}</TableContent> },
     { key: 'postingDate', header: 'Posting date', sortable: true, cell: (inv) => formatDate(inv.postingDate) },
     { key: 'dueDate', header: 'Due date', sortable: true, cell: (inv) => <TableContent subcopy={inv.status === 'Open' && inv.dueDate && inv.dueDate < today ? 'Overdue' : inv.paymentBlock ? 'Payment block' : undefined}>{inv.dueDate ? formatDate(inv.dueDate) : '—'}</TableContent> },
-    { key: 'orderNumber', header: 'Purchase order', sortable: true, cell: (inv) => (inv.orderNumber ? `PO ${inv.orderNumber}` : <span className="text-muted">Without PO</span>) },
+    { key: 'orderNumber', header: 'Purchase order', sortable: true, defaultHidden: true, cell: (inv) => (inv.orderNumber ? `PO ${inv.orderNumber}` : <span className="text-muted">Without PO</span>) },
     { key: 'total', header: 'Total', sortable: true, cell: (inv) => <TableAmount currency={inv.currency}>{formatAmount(totalOf(inv))}</TableAmount> },
     { key: 'status', header: 'Status', sortable: true, cell: (inv) => <TableStatus intent={AP_STATUS_INTENT[inv.status]}>{inv.status}</TableStatus> },
   ];
+  const { columns, manager } = useListColumns('ap-invoices', allColumns);
 
   return (
     <ListPage
@@ -59,6 +61,7 @@ export function ApInvoiceList({ draftsOnly = false, compact, selectedId }: { dra
       search={{ placeholder: 'Search by invoice no., vendor, vendor invoice no., PO or receipt no., or item', label: 'Search bills' }}
       header={notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : undefined}
       emptyMessage={`No ${AP_NOUN.many} yet. Start one from a purchase order or goods receipt (More actions › Create ${AP_NOUN.one}), or with New ${AP_NOUN.one}.`}
+      toolbarExtra={manager}
       compact={compact}
       selectedId={selectedId}
       getRowId={(r) => r.docNum ? apNumber(r) : r.id}

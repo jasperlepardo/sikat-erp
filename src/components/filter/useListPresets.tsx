@@ -164,7 +164,7 @@ export function useListPresets<T>({
   );
 
   /** The new chip-first toolbar: view selector + Add filter + chips + reset/save. */
-  const toolbar = (extra?: ReactNode) => (
+  const toolbar = (extra?: ReactNode, trailing?: ReactNode) => (
     <FilterToolbar
       fields={fields}
       value={views.filter}
@@ -174,6 +174,7 @@ export function useListPresets<T>({
       onReset={views.reset}
       onSaveView={() => setPanel('new')}
       search={searchEl || extra ? <>{searchEl}{extra}</> : undefined}
+      trailing={trailing}
     />
   );
 

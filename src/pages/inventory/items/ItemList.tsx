@@ -3,10 +3,10 @@ import {
   TableAmount,
   TableContent,
   TableStatus,
-  type TableColumn,
   type TableSort,
 } from '@jasperlepardo/sikat-design-system';
 import { ListPage } from '../../../components/form/ListPage';
+import { useListColumns, type ListColumn } from '../../../components/form/listColumns';
 import { ITEM_NOUN } from '../paths';
 import type { Item } from '../../../mocks/items';
 import { isValidToday, listItems, stockTotals } from '../../../services/items';
@@ -85,9 +85,10 @@ export function ItemList({ basePath = '/inventory/items', compact = false, selec
     numberField<Item>('basePrice', 'Base price', (i) => i.basePrice),
   ], [variantStockMap]);
 
-  const allColumns = useMemo((): TableColumn<Item>[] => [
+  const allColumns = useMemo((): ListColumn<Item>[] => [
     {
       key: 'description',
+      locked: true,
       header: 'Item',
       sortable: true,
       cell: (i) => (
@@ -153,10 +154,7 @@ export function ItemList({ basePath = '/inventory/items', compact = false, selec
     },
   ], [basePath, items, variantStockMap]);
 
-  const columns = useMemo(
-    () => compact ? allColumns.slice(0, 1) : allColumns,
-    [compact, allColumns],
-  );
+  const { columns, manager } = useListColumns('items', allColumns);
 
   const filterFn = useCallback((i: Item, q: string) => {
     if (i.parentItemId) return false;
@@ -187,6 +185,7 @@ export function ItemList({ basePath = '/inventory/items', compact = false, selec
       builtIns={ITEM_VIEWS}
       defaultSort={{ key: 'description', direction: 'asc' }}
       search={{ placeholder: 'Search by item no., description, group, barcode, or variant', label: 'Search items' }}
+      toolbarExtra={manager}
       compact={compact}
       selectedId={selectedId}
       filterFn={filterFn}

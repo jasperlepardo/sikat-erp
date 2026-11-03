@@ -1,6 +1,7 @@
 import { useLocation } from 'react-router';
-import { Alert, TableContent, TableStatus, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { Alert, TableContent, TableStatus } from '@jasperlepardo/sikat-design-system';
 import { ListPage } from '../../../components/form/ListPage';
+import { useListColumns, type ListColumn } from '../../../components/form/listColumns';
 import { INCOMING_STATUSES, type IncomingPayment } from '../../../mocks/incomingPayments';
 import { formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
@@ -32,15 +33,16 @@ export function IncomingPaymentList({ draftsOnly = false, compact, selectedId }:
     textField<IncomingPayment>('remarks', 'Remarks', (d) => d.remarks),
   ];
 
-  const columns: TableColumn<IncomingPayment>[] = [
-    { key: 'docNum', header: 'No.', sortable: true, cell: (so) => <TableContent href={`#${RC_LIST_PATH}/${so.docNum ? incomingNumber(so) : so.id}`} subcopy={so.reference ? `Ref. ${so.reference}` : undefined}>{incomingNumber(so)}</TableContent> },
+  const allColumns: ListColumn<IncomingPayment>[] = [
+    { key: 'docNum', header: 'No.', sortable: true, locked: true, cell: (so) => <TableContent href={`#${RC_LIST_PATH}/${so.docNum ? incomingNumber(so) : so.id}`} subcopy={so.reference ? `Ref. ${so.reference}` : undefined}>{incomingNumber(so)}</TableContent> },
     { key: 'customerName', header: 'Customer', sortable: true, cell: (so) => <TableContent subcopy={so.type === 'Account' ? 'Account' : so.customerCode}>{so.customerName || (so.type === 'Account' ? so.accountRows.map((r) => r.account).join(', ') || '—' : '—')}</TableContent> },
     { key: 'postingDate', header: 'Posting date', align: 'end', cell: (so) => formatDate(so.postingDate) },
-    { key: 'transNo', header: 'Trans. No.', cell: (so) => (so.transNo ? String(so.transNo) : '—') },
+    { key: 'transNo', header: 'Trans. No.', defaultHidden: true, cell: (so) => (so.transNo ? String(so.transNo) : '—') },
     { key: 'means', header: 'Means', cell: (so) => [so.means.transfer.amount ? 'Transfer' : '', so.means.cash.amount ? 'Cash' : '', so.means.checks.length ? `${so.means.checks.length} check${so.means.checks.length === 1 ? '' : 's'}` : '', so.means.cards.length ? 'Card' : ''].filter(Boolean).join(' · ') || '—' },
     { key: 'total', header: 'Total', align: 'end', cell: (so) => `${so.currency} ${formatAmount(amountDue(so))}` },
     { key: 'status', header: 'Status', sortable: true, cell: (so) => <TableStatus intent={RC_STATUS_INTENT[so.status]}>{so.status}</TableStatus> },
   ];
+  const { columns, manager } = useListColumns('incoming-payments', allColumns);
 
   return (
     <ListPage
@@ -57,6 +59,7 @@ export function IncomingPaymentList({ draftsOnly = false, compact, selectedId }:
       search={{ placeholder: 'Search by payment no., customer, reference or invoice', label: `Search ${RC_NOUN.many}` }}
       header={notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : undefined}
       emptyMessage={`No ${RC_NOUN.many} yet. Record one from an A/R invoice or a customer's Transactions tab, or with New ${RC_NOUN.one}.`}
+      toolbarExtra={manager}
       compact={compact}
       selectedId={selectedId}
       getRowId={(r) => r.docNum ? incomingNumber(r) : r.id}

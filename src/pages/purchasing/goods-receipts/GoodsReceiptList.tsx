@@ -1,6 +1,7 @@
 import { useLocation } from 'react-router';
-import { Alert, TableAmount, TableContent, TableStatus, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { Alert, TableAmount, TableContent, TableStatus } from '@jasperlepardo/sikat-design-system';
 import { ListPage } from '../../../components/form/ListPage';
+import { useListColumns, type ListColumn } from '../../../components/form/listColumns';
 import { GR_STATUSES, type GoodsReceipt } from '../../../mocks/goodsReceipts';
 import { formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
@@ -32,8 +33,8 @@ export function GoodsReceiptList({ draftsOnly = false, compact, selectedId }: { 
     linesField<GoodsReceipt>(),
   ];
 
-  const columns: TableColumn<GoodsReceipt>[] = [
-    { key: 'docNum', header: 'No.', sortable: true, cell: (gr) => <TableContent href={`#${GR_LIST_PATH}/${gr.docNum ? grNumber(gr) : gr.id}`} subcopy={gr.vendorRef ? `Vendor delivery receipt no. ${gr.vendorRef}` : undefined}>{grNumber(gr)}</TableContent> },
+  const allColumns: ListColumn<GoodsReceipt>[] = [
+    { key: 'docNum', header: 'No.', sortable: true, locked: true, cell: (gr) => <TableContent href={`#${GR_LIST_PATH}/${gr.docNum ? grNumber(gr) : gr.id}`} subcopy={gr.vendorRef ? `Vendor delivery receipt no. ${gr.vendorRef}` : undefined}>{grNumber(gr)}</TableContent> },
     { key: 'vendorName', header: 'Vendor', sortable: true, cell: (gr) => <TableContent subcopy={gr.vendorCode}>{gr.vendorName || '—'}</TableContent> },
     { key: 'postingDate', header: 'Posting date', sortable: true, cell: (gr) => formatDate(gr.postingDate) },
     { key: 'orderNumber', header: 'Purchase order', sortable: true, cell: (gr) => (gr.orderNumber ? `PO ${gr.orderNumber}` : <span className="text-muted">Without PO</span>) },
@@ -41,6 +42,7 @@ export function GoodsReceiptList({ draftsOnly = false, compact, selectedId }: { 
     { key: 'total', header: 'Total', sortable: true, cell: (gr) => <TableAmount currency={gr.currency}>{formatAmount(totalOf(gr))}</TableAmount> },
     { key: 'status', header: 'Status', sortable: true, cell: (gr) => <TableStatus intent={GR_STATUS_INTENT[gr.status]}>{gr.status}</TableStatus> },
   ];
+  const { columns, manager } = useListColumns('goods-receipts', allColumns);
 
   return (
     <ListPage
@@ -57,6 +59,7 @@ export function GoodsReceiptList({ draftsOnly = false, compact, selectedId }: { 
       search={{ placeholder: 'Search by receipt no., vendor, vendor ref., PO no. or item', label: 'Search goods receipts' }}
       header={notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : undefined}
       emptyMessage={`No ${GR_NOUN.many} yet. Start one from a purchase order (More actions › Create ${GR_NOUN.one}), or with New ${GR_NOUN.one}.`}
+      toolbarExtra={manager}
       compact={compact}
       selectedId={selectedId}
       getRowId={(r) => r.docNum ? grNumber(r) : r.id}

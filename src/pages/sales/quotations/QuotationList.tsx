@@ -1,6 +1,7 @@
 import { useLocation } from 'react-router';
-import { Alert, Badge, TableContent, TableStatus, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { Alert, Badge, TableContent, TableStatus } from '@jasperlepardo/sikat-design-system';
 import { ListPage } from '../../../components/form/ListPage';
+import { useListColumns, type ListColumn } from '../../../components/form/listColumns';
 import { QUOTATION_STATUSES, type Quotation } from '../../../mocks/quotations';
 import { todayISO, formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
@@ -29,8 +30,8 @@ export function QuotationList({ draftsOnly = false, compact, selectedId }: { dra
     statusField<Quotation>(scopeStatuses(draftsOnly, QUOTATION_STATUSES)),
   ];
 
-  const columns: TableColumn<Quotation>[] = [
-    { key: 'docNum', header: 'No.', sortable: true, cell: (q) => <TableContent href={`#${QT_LIST_PATH}/${q.docNum ? qtNumber(q) : q.id}`} subcopy={q.customerRef || undefined}>{qtNumber(q)}</TableContent> },
+  const allColumns: ListColumn<Quotation>[] = [
+    { key: 'docNum', header: 'No.', sortable: true, locked: true, cell: (q) => <TableContent href={`#${QT_LIST_PATH}/${q.docNum ? qtNumber(q) : q.id}`} subcopy={q.customerRef || undefined}>{qtNumber(q)}</TableContent> },
     { key: 'customerName', header: 'Customer', sortable: true, cell: (q) => <TableContent subcopy={q.customerCode}>{q.customerName || '—'}</TableContent> },
     { key: 'postingDate', header: 'Posting date', align: 'end', cell: (q) => formatDate(q.postingDate) },
     {
@@ -51,6 +52,7 @@ export function QuotationList({ draftsOnly = false, compact, selectedId }: { dra
     { key: 'total', header: 'Total', align: 'end', cell: (q) => `${q.currency} ${formatAmount(totalOf(q))}` },
     { key: 'status', header: 'Status', sortable: true, cell: (q) => <TableStatus intent={QT_STATUS_INTENT[q.status]}>{q.status}</TableStatus> },
   ];
+  const { columns, manager } = useListColumns('quotations', allColumns);
 
   return (
     <ListPage
@@ -66,6 +68,7 @@ export function QuotationList({ draftsOnly = false, compact, selectedId }: { dra
       defaultSort={{ key: 'postingDate', direction: 'desc' }}
       search={{ placeholder: 'Search by no., customer, or item', label: `Search ${QT_NOUN.many}` }}
       header={notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : undefined}
+      toolbarExtra={manager}
       compact={compact}
       selectedId={selectedId}
       getRowId={(r) => r.docNum ? qtNumber(r) : r.id}

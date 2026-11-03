@@ -1,6 +1,7 @@
 import { useLocation } from 'react-router';
-import { Alert, TableContent, TableStatus, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { Alert, TableContent, TableStatus } from '@jasperlepardo/sikat-design-system';
 import { ListPage } from '../../../components/form/ListPage';
+import { useListColumns, type ListColumn } from '../../../components/form/listColumns';
 import { TRANSFER_REQUEST_STATUSES, type InventoryTransferRequest } from '../../../mocks/inventoryTransferRequests';
 import { formatDate } from '../../../services/dates';
 import { listTransferRequests, requestDestinations, requestOpenQty, requestedQty, transferRequestNumber } from '../../../services/inventoryTransferRequests';
@@ -26,13 +27,14 @@ export function TransferRequestList({ compact, selectedId }: { compact?: boolean
     linesField<InventoryTransferRequest>(),
   ];
 
-  const columns: TableColumn<InventoryTransferRequest>[] = [
-    { key: 'docNum', header: 'No.', sortable: true, cell: (r) => <TableContent href={`#${TRANSFER_REQUEST_LIST_PATH}/${r.id}`}>{transferRequestNumber(r)}</TableContent> },
+  const allColumns: ListColumn<InventoryTransferRequest>[] = [
+    { key: 'docNum', header: 'No.', sortable: true, locked: true, cell: (r) => <TableContent href={`#${TRANSFER_REQUEST_LIST_PATH}/${r.id}`}>{transferRequestNumber(r)}</TableContent> },
     { key: 'fromWarehouse', header: 'From → To', sortable: true, cell: (r) => <TableContent subcopy={r.remarks || undefined}>{r.fromWarehouse} → {requestDestinations(r).join(', ') || '—'}</TableContent> },
     { key: 'dueDate', header: 'Due date', sortable: true, cell: (r) => (r.dueDate ? formatDate(r.dueDate) : '—') },
     { key: 'openQty', header: 'Open quantity', sortable: true, cell: (r) => <TableContent subcopy={`of ${requestedQty(r).toLocaleString('en-PH')} requested`}>{requestOpenQty(r).toLocaleString('en-PH')}</TableContent> },
     { key: 'status', header: 'Status', sortable: true, cell: (r) => <TableStatus intent={TRANSFER_REQUEST_STATUS_INTENT[r.status]}>{r.status}</TableStatus> },
   ];
+  const { columns, manager } = useListColumns('inventory-transfer-requests', allColumns);
 
   return (
     <ListPage
@@ -47,6 +49,7 @@ export function TransferRequestList({ compact, selectedId }: { compact?: boolean
       defaultSort={{ key: 'dueDate', direction: 'asc' }}
       search={{ placeholder: 'Search by request no., warehouse, item or remarks', label: 'Search transfer requests' }}
       header={notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : undefined}
+      toolbarExtra={manager}
       compact={compact}
       selectedId={selectedId}
       filterFn={(r, q) => !q || [transferRequestNumber(r), r.fromWarehouse, ...requestDestinations(r), r.ref2, r.remarks, ...r.lines.map((l) => `${l.itemNo} ${l.description}`)].join(' ').toLowerCase().includes(q)}

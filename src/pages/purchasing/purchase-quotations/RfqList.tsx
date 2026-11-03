@@ -1,6 +1,7 @@
 import { useLocation } from 'react-router';
-import { Alert, TableAmount, TableContent, TableStatus, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { Alert, TableAmount, TableContent, TableStatus } from '@jasperlepardo/sikat-design-system';
 import { ListPage } from '../../../components/form/ListPage';
+import { useListColumns, type ListColumn } from '../../../components/form/listColumns';
 import { RFQ_STATUSES, type Rfq } from '../../../mocks/rfqs';
 import { todayISO, formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
@@ -33,8 +34,8 @@ export function RfqList({ draftsOnly = false, compact, selectedId }: { draftsOnl
     linesField<Rfq>(),
   ];
 
-  const columns: TableColumn<Rfq>[] = [
-    { key: 'docNum', header: 'No.', sortable: true, cell: (rfq) => <TableContent href={`#${RFQ_LIST_PATH}/${rfq.docNum ? rfqNumber(rfq) : rfq.id}`} subcopy={rfq.vendorRef ? `Vendor quote no. ${rfq.vendorRef}` : undefined}>{rfqNumber(rfq)}</TableContent> },
+  const allColumns: ListColumn<Rfq>[] = [
+    { key: 'docNum', header: 'No.', sortable: true, locked: true, cell: (rfq) => <TableContent href={`#${RFQ_LIST_PATH}/${rfq.docNum ? rfqNumber(rfq) : rfq.id}`} subcopy={rfq.vendorRef ? `Vendor quote no. ${rfq.vendorRef}` : undefined}>{rfqNumber(rfq)}</TableContent> },
     { key: 'vendorName', header: 'Vendor', sortable: true, cell: (rfq) => <TableContent subcopy={rfq.vendorCode}>{rfq.vendorName || '—'}</TableContent> },
     { key: 'postingDate', header: 'Posting date', sortable: true, cell: (rfq) => formatDate(rfq.postingDate) },
     {
@@ -58,6 +59,7 @@ export function RfqList({ draftsOnly = false, compact, selectedId }: { draftsOnl
     { key: 'total', header: 'Total', sortable: true, cell: (rfq) => <TableAmount currency={rfq.currency}>{formatAmount(totalOf(rfq))}</TableAmount> },
     { key: 'status', header: 'Status', sortable: true, cell: (rfq) => <TableStatus intent={RFQ_STATUS_INTENT[rfq.status]}>{rfq.status}</TableStatus> },
   ];
+  const { columns, manager } = useListColumns('purchase-quotations', allColumns);
 
   return (
     <ListPage
@@ -74,6 +76,7 @@ export function RfqList({ draftsOnly = false, compact, selectedId }: { draftsOnl
       search={{ placeholder: 'Search by RFQ no., vendor, ref. or item', label: 'Search purchase quotations' }}
       header={notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : undefined}
       emptyMessage={`No ${RFQ_NOUN.many} yet. Start one from a purchase request (More actions › Create ${RFQ_NOUN.one}), or with New ${RFQ_NOUN.one}.`}
+      toolbarExtra={manager}
       compact={compact}
       selectedId={selectedId}
       getRowId={(r) => r.docNum ? rfqNumber(r) : r.id}

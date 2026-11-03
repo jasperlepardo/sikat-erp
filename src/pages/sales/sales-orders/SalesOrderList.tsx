@@ -1,5 +1,5 @@
 import { useLocation } from 'react-router';
-import { Alert, TableContent, TableStatus, Tooltip, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { Alert, TableContent, TableStatus, Tooltip } from '@jasperlepardo/sikat-design-system';
 import { ListPage } from '../../../components/form/ListPage';
 import { useListColumns, type ListColumn } from '../../../components/form/listColumns';
 import { SO_STATUSES, type SalesOrder } from '../../../mocks/salesOrders';
@@ -64,7 +64,7 @@ export function SalesOrderList({ draftsOnly = false, compact, selectedId }: { dr
   return (
     <ListPage
       rows={orders}
-      columns={columns as TableColumn<SalesOrder>[]}
+      columns={columns}
       fields={fields}
       noun={SO_NOUN}
       icon="shopping_bag"

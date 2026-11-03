@@ -1,6 +1,7 @@
 import { useLocation } from 'react-router';
-import { Alert, Badge, TableContent, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { Alert, Badge, TableContent } from '@jasperlepardo/sikat-design-system';
 import { ListPage } from '../../../components/form/ListPage';
+import { useListColumns, type ListColumn } from '../../../components/form/listColumns';
 import { DPI_STATUSES, type DownPaymentInvoice } from '../../../mocks/apDownPaymentInvoices';
 import { formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
@@ -31,14 +32,15 @@ export function DpiList({ draftsOnly = false, compact, selectedId }: { draftsOnl
     statusField<DownPaymentInvoice>(scopeStatuses(draftsOnly, DPI_STATUSES)),
   ];
 
-  const columns: TableColumn<DownPaymentInvoice>[] = [
-    { key: 'docNum', header: 'No.', sortable: true, cell: (d) => <TableContent href={`#${DPI_LIST_PATH}/${d.id}`}>{dpiNumber(d)}</TableContent> },
+  const allColumns: ListColumn<DownPaymentInvoice>[] = [
+    { key: 'docNum', header: 'No.', sortable: true, locked: true, cell: (d) => <TableContent href={`#${DPI_LIST_PATH}/${d.id}`}>{dpiNumber(d)}</TableContent> },
     { key: 'vendorName', header: 'Vendor', sortable: true, cell: (d) => <TableContent subcopy={d.vendorCode}>{d.vendorName || '—'}</TableContent> },
     { key: 'postingDate', header: 'Posting date', sortable: true, cell: (d) => formatDate(d.postingDate) },
-    { key: 'dueDate', header: 'Due date', cell: (d) => d.dueDate ? formatDate(d.dueDate) : '—' },
+    { key: 'dueDate', header: 'Due date', defaultHidden: true, cell: (d) => d.dueDate ? formatDate(d.dueDate) : '—' },
     { key: 'total', header: 'Total', sortable: true, cell: (d) => <span className="tabular-nums">{d.currency} {formatAmount(totalOf(d))}</span> },
     { key: 'status', header: 'Status', sortable: true, cell: (d) => <Badge size="small" intent={DPI_STATUS_INTENT[d.status]}>{d.status}</Badge> },
   ];
+  const { columns, manager } = useListColumns('down-payment-invoices', allColumns);
 
   return (
     <ListPage
@@ -55,6 +57,7 @@ export function DpiList({ draftsOnly = false, compact, selectedId }: { draftsOnl
       search={{ placeholder: 'Search by no. or vendor', label: `Search ${DPI_NOUN.many}` }}
       header={notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : undefined}
       emptyMessage={`No ${DPI_NOUN.many} yet. Start one from a purchase order (More actions › Create ${DPI_NOUN.one}), or with New ${DPI_NOUN.one}.`}
+      toolbarExtra={manager}
       compact={compact}
       selectedId={selectedId}
       filterFn={(d, q) => !q || [dpiNumber(d), d.vendorName].join(' ').toLowerCase().includes(q)}

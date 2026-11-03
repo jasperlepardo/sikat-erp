@@ -8,9 +8,9 @@ import {
   TableContent,
   TableStatus,
   Text,
-  type TableColumn,
 } from '@jasperlepardo/sikat-design-system';
 import { PageHeader } from '../../components/form/PageHeader';
+import { useListColumns, type ListColumn } from '../../components/form/listColumns';
 import { blankActivity, LogMenu } from '../../components/activity/ActivityTab';
 import { ActivityPanel } from '../../components/activity/ActivityPanel';
 import { choiceField, dateField, masterField, textField } from '../../components/filter/fieldKit';
@@ -126,11 +126,12 @@ export function ActivityList() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [all, presets.filter, presets.searchText, sort, lookup, employees]);
 
-  const columns: TableColumn<Activity>[] = [
+  const allColumns: ListColumn<Activity>[] = [
     {
       key: 'subject',
       header: 'Activity',
       sortable: true,
+      locked: true,
       cell: (a) => (
         <div className="flex items-center gap-2">
           <Icon size={20}>{ACTIVITY_ICON[a.kind]}</Icon>
@@ -167,7 +168,7 @@ export function ActivityList() {
         );
       },
     },
-    { key: 'owner', header: 'Owner', sortable: true, cell: (a) => ownerName(a.ownerId) || '—' },
+    { key: 'owner', header: 'Owner', sortable: true, defaultHidden: true, cell: (a) => ownerName(a.ownerId) || '—' },
     {
       key: 'date',
       header: 'Date / due',
@@ -189,6 +190,7 @@ export function ActivityList() {
     },
   ];
 
+  const { columns, manager } = useListColumns('activities', allColumns);
   const { visible: onPage, pagination } = paginate(filtered);
 
   return (
@@ -199,7 +201,7 @@ export function ActivityList() {
         actions={<LogMenu onPick={(k) => setEditing({ value: blankActivity(k, undefined), isNew: true })} />}
       />
       <Panel.Body className="flex flex-col gap-2">
-        {presets.toolbar()}
+        {presets.toolbar(undefined, manager)}
         <Card className={fillCardClass(onPage.length)}>
           {!rows || !lookup ? (
             <Text tone="muted" className="p-4">Loading activities…</Text>

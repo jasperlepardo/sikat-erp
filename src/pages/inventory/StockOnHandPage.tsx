@@ -9,9 +9,9 @@ import {
   TableContent,
   TableStatus,
   Text,
-  type TableColumn,
 } from '@jasperlepardo/sikat-design-system';
 import { PageHeader } from '../../components/form/PageHeader';
+import { useListColumns, type ListColumn } from '../../components/form/listColumns';
 import type { Item } from '../../mocks/items';
 import { formatAmount } from '../../services/format';
 import { itemGroupName, loadInventoryMasters } from '../../services/inventoryMasters';
@@ -190,12 +190,13 @@ export function StockOnHandPage() {
   const qty = (n: number) => n.toLocaleString('en-PH');
   const cellQty = (n: number) => (n ? qty(n) : DASH);
 
-  const columns: TableColumn<Row>[] = [
+  const allColumns: ListColumn<Row>[] = [
     {
       key: 'item',
       header: 'Item / Warehouse / Bin',
       expandToggle: true,
       sortable: true,
+      locked: true,
       // Cells don't wrap, so a long name would widen the column and push Status off the card:
       // let the name wrap, so it stays on one line while the card has room and wraps when it doesn't.
       cell: (r) => <TableContent href={`#${ITEMS_PATH}/${r.item.id}`}>{rowLabel(r)}</TableContent>,
@@ -231,7 +232,7 @@ export function StockOnHandPage() {
       },
     },
   ];
-
+  const { columns, manager } = useListColumns('stock-on-hand', allColumns);
 
   return (
     <Panel className="flex-1">
@@ -240,7 +241,7 @@ export function StockOnHandPage() {
         title={presets.menu}
       />
       <Panel.Body className="flex flex-col gap-2">
-        {presets.bar(
+        {presets.toolbar(
           <div className="flex gap-2">
             <div className="w-64">
               <Combobox
@@ -260,6 +261,7 @@ export function StockOnHandPage() {
               onValueChange={(v) => { setGroup(v); resetPage(); }}
             />
           </div>,
+          manager,
         )}
         {items ? (
           <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">

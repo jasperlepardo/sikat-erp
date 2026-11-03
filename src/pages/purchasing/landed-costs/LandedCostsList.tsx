@@ -1,7 +1,8 @@
 import { useMemo } from 'react';
 import { useLocation } from 'react-router';
-import { Alert, TableContent, TableStatus, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { Alert, TableContent, TableStatus } from '@jasperlepardo/sikat-design-system';
 import { ListPage } from '../../../components/form/ListPage';
+import { useListColumns, type ListColumn } from '../../../components/form/listColumns';
 import { LC_STATUSES } from '../../../mocks/landedCosts';
 import type { LcStatus } from '../../../mocks/landedCosts';
 import { formatDate } from '../../../services/dates';
@@ -40,14 +41,15 @@ export function LandedCostsList({ draftsOnly = false, compact, selectedId }: { d
     statusField<Row>(scopeStatuses(draftsOnly, LC_STATUSES)),
   ];
 
-  const columns: TableColumn<Row>[] = [
-    { key: 'docNum', header: 'No.', sortable: true, cell: (r) => <TableContent href={`#${LC_LIST_PATH}/${r.docNum ? r.number : r.id}`} subcopy={r.reference || undefined}>{r.number}</TableContent> },
+  const allColumns: ListColumn<Row>[] = [
+    { key: 'docNum', header: 'No.', sortable: true, locked: true, cell: (r) => <TableContent href={`#${LC_LIST_PATH}/${r.docNum ? r.number : r.id}`} subcopy={r.reference || undefined}>{r.number}</TableContent> },
     { key: 'vendorName', header: 'Vendor', sortable: true, cell: (r) => <TableContent subcopy={r.vendorCode}>{r.vendorName || '—'}</TableContent> },
     { key: 'postingDate', header: 'Posting date', sortable: true, cell: (r) => formatDate(r.postingDate) },
-    { key: 'fileNo', header: 'File no.', cell: (r) => r.fileNo || '—' },
+    { key: 'fileNo', header: 'File no.', defaultHidden: true, cell: (r) => r.fileNo || '—' },
     { key: 'total', header: 'Total costs', sortable: true, cell: (r) => <span className="tabular-nums">{formatAmount(r.total)}</span> },
     { key: 'status', header: 'Status', sortable: true, cell: (r) => <TableStatus intent={LC_STATUS_INTENT[r.status]}>{r.status}</TableStatus> },
   ];
+  const { columns, manager } = useListColumns('landed-costs', allColumns);
 
   return (
     <ListPage
@@ -64,6 +66,7 @@ export function LandedCostsList({ draftsOnly = false, compact, selectedId }: { d
       search={{ placeholder: 'Search by no., vendor, reference or file no.', label: 'Search' }}
       header={notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : undefined}
       emptyMessage="No landed costs yet. Create one to allocate import costs (freight, customs, insurance) to received inventory."
+      toolbarExtra={manager}
       compact={compact}
       selectedId={selectedId}
       getRowId={(r) => r.docNum ? r.number : r.id}

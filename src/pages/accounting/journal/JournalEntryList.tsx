@@ -1,6 +1,7 @@
 import { useLocation } from 'react-router';
-import { Alert, TableAmount, TableContent, TableStatus, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { Alert, TableAmount, TableContent, TableStatus } from '@jasperlepardo/sikat-design-system';
 import { ListPage } from '../../../components/form/ListPage';
+import { useListColumns, type ListColumn } from '../../../components/form/listColumns';
 import { EMPTY_FILTER, oneRule } from '../../../components/filter/engine';
 import { choiceField, dateField, numberField, textField } from '../../../components/filter/fieldKit';
 import type { BuiltInView } from '../../../components/filter/useListViews';
@@ -36,14 +37,15 @@ export function JournalEntryList({ compact, selectedId }: { compact?: boolean; s
     choiceField<JournalEntry>('status', 'Status', ['Posted', 'Reversed'], (e) => e.status),
   ];
 
-  const columns: TableColumn<JournalEntry>[] = [
-    { key: 'transNo', header: 'No.', sortable: true, cell: (e) => <TableContent href={`#${JE_LIST_PATH}/${e.id}`} subcopy={`Trans. ${e.transNo}`}>{jeNumber(e)}</TableContent> },
+  const allColumns: ListColumn<JournalEntry>[] = [
+    { key: 'transNo', header: 'No.', sortable: true, locked: true, cell: (e) => <TableContent href={`#${JE_LIST_PATH}/${e.id}`} subcopy={`Trans. ${e.transNo}`}>{jeNumber(e)}</TableContent> },
     { key: 'postingDate', header: 'Posting date', sortable: true, cell: (e) => formatDate(e.postingDate) },
     { key: 'origin', header: 'Origin', sortable: true, cell: (e) => <TableContent subcopy={ORIGIN_LABEL[e.origin]}>{e.origin === 'JE' ? 'JE' : `${e.origin} ${e.originNo}`}</TableContent> },
     { key: 'remarks', header: 'Remarks', cell: (e) => <TableContent subcopy={[e.ref1, e.ref2].filter(Boolean).join(' · ') || undefined}>{e.remarks || '—'}</TableContent> },
     { key: 'amount', header: 'Amount', sortable: true, cell: (e) => <TableAmount currency="PHP">{formatAmount(jeTotals(e.lines).debit)}</TableAmount> },
     { key: 'status', header: 'Status', sortable: true, cell: (e) => <TableStatus intent={JE_STATUS_INTENT[e.status]}>{e.reverses ? 'Reversal' : e.status}</TableStatus> },
   ];
+  const { columns, manager } = useListColumns('journal-entries', allColumns);
 
   return (
     <ListPage
@@ -59,6 +61,7 @@ export function JournalEntryList({ compact, selectedId }: { compact?: boolean; s
       search={{ placeholder: 'Search by number, origin, remarks, reference or account', label: 'Search journal entries' }}
       header={notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : undefined}
       emptyMessage={`No ${JE_NOUN.many} yet. Most post automatically from documents; create a manual one with New ${JE_NOUN.one}.`}
+      toolbarExtra={manager}
       compact={compact}
       selectedId={selectedId}
       filterFn={(e, q) => !q || [jeNumber(e), e.origin, ORIGIN_LABEL[e.origin], e.originNo, e.remarks, e.ref1, e.ref2, e.ref3, e.transCode, ...e.lines.map((l) => `${l.account} ${l.remarks}`)].join(' ').toLowerCase().includes(q)}

@@ -1,6 +1,7 @@
 import { useLocation } from 'react-router';
-import { Alert, TableAmount, TableContent, TableStatus, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { Alert, TableAmount, TableContent, TableStatus } from '@jasperlepardo/sikat-design-system';
 import { ListPage } from '../../../components/form/ListPage';
+import { useListColumns, type ListColumn } from '../../../components/form/listColumns';
 import { boolField, choiceField, dateField, numberField, textField } from '../../../components/filter/fieldKit';
 import { statusViews } from '../../../components/filter/useListPresets';
 import type { JournalVoucher } from '../../../mocks/journalVouchers';
@@ -29,8 +30,8 @@ export function JournalVoucherList({ compact, selectedId }: { compact?: boolean;
     boolField<JournalVoucher>('partlyPosted', 'Partly posted', (v) => voucherState(v).label === 'Partly posted'),
   ];
 
-  const columns: TableColumn<JournalVoucher>[] = [
-    { key: 'voucherNo', header: 'Voucher No.', sortable: true, cell: (v) => <TableContent href={`#${JV_LIST_PATH}/${v.id}`}>{v.voucherNo}</TableContent> },
+  const allColumns: ListColumn<JournalVoucher>[] = [
+    { key: 'voucherNo', header: 'Voucher No.', sortable: true, locked: true, cell: (v) => <TableContent href={`#${JV_LIST_PATH}/${v.id}`}>{v.voucherNo}</TableContent> },
     {
       key: 'entries',
       header: 'Entries',
@@ -45,6 +46,7 @@ export function JournalVoucherList({ compact, selectedId }: { compact?: boolean;
     { key: 'createdOn', header: 'Created', sortable: true, cell: (v) => <TableContent subcopy={v.createdBy}>{formatDate(v.createdOn)}</TableContent> },
     { key: 'status', header: 'Status', sortable: true, cell: (v) => { const s = voucherState(v); return <TableStatus intent={s.intent}>{s.label}</TableStatus>; } },
   ];
+  const { columns, manager } = useListColumns('journal-vouchers', allColumns);
 
   return (
     <ListPage
@@ -60,6 +62,7 @@ export function JournalVoucherList({ compact, selectedId }: { compact?: boolean;
       defaultSort={{ key: 'voucherNo', direction: 'desc' }}
       search={{ placeholder: 'Search by voucher number, remarks, reference, account or who created it', label: 'Search journal vouchers' }}
       header={notice ? <Alert intent="success" variant="outline" title="Done">{notice}</Alert> : undefined}
+      toolbarExtra={manager}
       compact={compact}
       selectedId={selectedId}
       filterFn={(v, q) => !q || [String(v.voucherNo), v.createdBy, ...v.entries.flatMap((e) => [e.remarks, e.ref1, e.ref2, e.ref3, ...e.lines.map((l) => `${l.account} ${l.remarks}`)])].join(' ').toLowerCase().includes(q)}

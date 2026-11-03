@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
-import { TableContent, TableStatus, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { TableContent, TableStatus } from '@jasperlepardo/sikat-design-system';
 import { ListPage } from '../../components/form/ListPage';
+import { useListColumns, type ListColumn } from '../../components/form/listColumns';
 import type { Employee } from '../../mocks/employees';
 import { employeeName, employeeNameOf, employees } from '../../services/employees';
 import { nameIn } from '../../services/partnerMasters';
@@ -46,8 +47,8 @@ export function EmployeeList({ compact, selectedId }: { compact?: boolean; selec
   useCollection(branches);
   useCollection(positions);
 
-  const columns: TableColumn<Employee>[] = [
-    { key: 'name', header: 'Employee', sortable: true, cell: (e) => <TableContent href={`#${EMPLOYEES_PATH}/${e.id}`} subcopy={e.code}>{employeeName(e)}</TableContent> },
+  const allColumns: ListColumn<Employee>[] = [
+    { key: 'name', header: 'Employee', sortable: true, locked: true, cell: (e) => <TableContent href={`#${EMPLOYEES_PATH}/${e.id}`} subcopy={e.code}>{employeeName(e)}</TableContent> },
     { key: 'jobTitle', header: 'Job title', sortable: true, cell: (e) => <TableContent subcopy={name(positions, e.positionId)}>{e.jobTitle || '—'}</TableContent> },
     { key: 'department', header: 'Department', sortable: true, cell: (e) => name(departments, e.departmentId) || '—' },
     { key: 'branch', header: 'Branch', sortable: true, cell: (e) => name(branches, e.branchId) || '—' },
@@ -60,9 +61,11 @@ export function EmployeeList({ compact, selectedId }: { compact?: boolean; selec
         return m ? <TableContent initials={initials(m)}>{employeeName(m)}</TableContent> : '—';
       },
     },
-    { key: 'contact', header: 'Contact', cell: (e) => <TableContent subcopy={e.mobilePhone}>{e.email || '—'}</TableContent> },
+    { key: 'contact', header: 'Contact', defaultHidden: true, cell: (e) => <TableContent subcopy={e.mobilePhone}>{e.email || '—'}</TableContent> },
     { key: 'status', header: 'Status', cell: (e) => <TableStatus intent={e.active ? 'success' : 'default'}>{e.active ? 'Active' : 'Inactive'}</TableStatus> },
   ];
+
+  const { columns, manager } = useListColumns('employees', allColumns);
 
   return (
     <ListPage
@@ -76,6 +79,7 @@ export function EmployeeList({ compact, selectedId }: { compact?: boolean; selec
       builtIns={VIEWS}
       defaultSort={{ key: 'name', direction: 'asc' }}
       search={{ placeholder: 'Search by name, code, job title or e-mail', label: 'Search employees' }}
+      toolbarExtra={manager}
       compact={compact}
       selectedId={selectedId}
       filterFn={(e, q) => !q || `${e.code} ${e.firstName} ${e.middleName} ${e.lastName} ${e.jobTitle} ${e.email}`.toLowerCase().includes(q)}

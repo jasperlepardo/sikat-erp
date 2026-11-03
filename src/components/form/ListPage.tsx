@@ -116,12 +116,7 @@ export function ListPage<T>({
       />
       <Panel.Body className={`flex flex-col gap-2${compact ? ' overflow-x-hidden' : ''}`}>
         {header}
-        {toolbarExtra && !compact ? (
-          <div className="flex items-start justify-between gap-2">
-            <div className="flex-1">{presets.toolbar()}</div>
-            {toolbarExtra}
-          </div>
-        ) : presets.toolbar()}
+        {presets.toolbar(undefined, !compact ? toolbarExtra : undefined)}
         <Card className={`${fillCardClass(visible.length)}${compact ? ' overflow-x-hidden [&_.sikat-table__td]:whitespace-normal [&_.sikat-table__td]:h-auto' : ''}`}>
           {!rows ? (
             <Text tone="muted" className="p-4">Loading {noun.many}…</Text>

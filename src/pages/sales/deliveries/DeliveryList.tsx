@@ -1,6 +1,7 @@
 import { useLocation } from 'react-router';
-import { Alert, TableContent, TableStatus, Tooltip, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { Alert, TableContent, TableStatus, Tooltip } from '@jasperlepardo/sikat-design-system';
 import { ListPage } from '../../../components/form/ListPage';
+import { useListColumns, type ListColumn } from '../../../components/form/listColumns';
 import { DN_STATUSES, type Delivery } from '../../../mocks/deliveries';
 import { formatDate } from '../../../services/dates';
 import { formatAmount } from '../../../services/format';
@@ -40,11 +41,11 @@ export function DeliveryList({ draftsOnly = false, compact, selectedId }: { draf
     linesField<Delivery>(),
   ];
 
-  const columns: TableColumn<Delivery>[] = [
-    { key: 'docNum', header: 'No.', sortable: true, cell: (so) => <TableContent href={`#${DN_LIST_PATH}/${so.docNum ? dnNumber(so) : so.id}`} subcopy={so.customerRef ? `Customer PO no. ${so.customerRef}` : undefined}>{dnNumber(so)}</TableContent> },
+  const allColumns: ListColumn<Delivery>[] = [
+    { key: 'docNum', header: 'No.', sortable: true, locked: true, cell: (so) => <TableContent href={`#${DN_LIST_PATH}/${so.docNum ? dnNumber(so) : so.id}`} subcopy={so.customerRef ? `Customer PO no. ${so.customerRef}` : undefined}>{dnNumber(so)}</TableContent> },
     { key: 'customerName', header: 'Customer', sortable: true, cell: (so) => <TableContent subcopy={so.customerCode}>{so.customerName || '—'}</TableContent> },
     { key: 'postingDate', header: 'Posting date', align: 'end', cell: (so) => formatDate(so.postingDate) },
-    { key: 'trackingNo', header: 'Tracking no.', cell: (so) => so.trackingNo || '—' },
+    { key: 'trackingNo', header: 'Tracking no.', defaultHidden: true, cell: (so) => so.trackingNo || '—' },
     {
       key: 'qty',
       header: 'Shipped',
@@ -62,6 +63,7 @@ export function DeliveryList({ draftsOnly = false, compact, selectedId }: { draf
     { key: 'total', header: 'Total', align: 'end', cell: (so) => `${so.currency} ${formatAmount(totalOf(so))}` },
     { key: 'status', header: 'Status', sortable: true, cell: (so) => <TableStatus intent={DN_STATUS_INTENT[so.status]}>{so.status}</TableStatus> },
   ];
+  const { columns, manager } = useListColumns('deliveries', allColumns);
 
   return (
     <ListPage
@@ -78,6 +80,7 @@ export function DeliveryList({ draftsOnly = false, compact, selectedId }: { draf
       search={{ placeholder: 'Search by delivery no., customer, order, tracking no. or item', label: `Search ${DN_NOUN.many}` }}
       header={notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : undefined}
       emptyMessage={`No ${DN_NOUN.many} yet. Start one from a sales order (More actions › Create ${DN_NOUN.one}), or with New ${DN_NOUN.one}.`}
+      toolbarExtra={manager}
       compact={compact}
       selectedId={selectedId}
       getRowId={(r) => r.docNum ? dnNumber(r) : r.id}

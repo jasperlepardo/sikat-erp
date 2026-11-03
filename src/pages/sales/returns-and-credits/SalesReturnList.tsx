@@ -1,6 +1,7 @@
 import { useLocation } from 'react-router';
-import { Alert, TableContent, TableStatus, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { Alert, TableContent, TableStatus } from '@jasperlepardo/sikat-design-system';
 import { ListPage } from '../../../components/form/ListPage';
+import { useListColumns, type ListColumn } from '../../../components/form/listColumns';
 import { dateField, numberField, partnerField, statusField, textField } from '../../../components/filter/fieldKit';
 import { draftScope, draftSplit, scopeStatuses } from '../../../components/filter/useListPresets';
 import { formatDate } from '../../../services/dates';
@@ -58,14 +59,15 @@ export function SalesReturnList({ draftsOnly = false, compact, selectedId }: { d
     statusField<Row>(scopeStatuses(draftsOnly, STATUSES)),
   ];
 
-  const columns: TableColumn<Row>[] = [
-    { key: 'docNum', header: 'No.', sortable: true, cell: (r) => <TableContent href={`#${SR_LIST_PATH}/${r.docNum ? r.number : r.id}`}>{r.number}</TableContent> },
+  const allColumns: ListColumn<Row>[] = [
+    { key: 'docNum', header: 'No.', sortable: true, locked: true, cell: (r) => <TableContent href={`#${SR_LIST_PATH}/${r.docNum ? r.number : r.id}`}>{r.number}</TableContent> },
     { key: 'customerName', header: 'Customer', sortable: true, cell: (r) => <TableContent subcopy={r.customerCode}>{r.customerName || '—'}</TableContent> },
     { key: 'postingDate', header: 'Posting date', align: 'end', cell: (r) => formatDate(r.postingDate) },
     { key: 'basedOn', header: 'Based on', cell: (r) => r.basedOn || <span className="text-muted">Entered by hand</span> },
     { key: 'total', header: 'Total', align: 'end', cell: (r) => `${r.currency} ${formatAmount(r.total)}` },
     { key: 'status', header: 'Status', sortable: true, cell: (r) => <TableStatus intent={SR_STATUS_INTENT[r.status]}>{r.status}</TableStatus> },
   ];
+  const { columns, manager } = useListColumns('sales-returns', allColumns);
 
   return (
     <ListPage
@@ -82,6 +84,7 @@ export function SalesReturnList({ draftsOnly = false, compact, selectedId }: { d
       search={{ placeholder: 'Search by no., customer, or item', label: `Search ${SR_NOUN.many}` }}
       header={notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : undefined}
       emptyMessage={`No ${SR_NOUN.many} yet. Start one from a delivery (More actions › Create ${SR_NOUN.one}), or with New ${SR_NOUN.one}.`}
+      toolbarExtra={manager}
       compact={compact}
       selectedId={selectedId}
       getRowId={(r) => r.docNum ? r.number : r.id}

@@ -1,6 +1,7 @@
 import { useLocation } from 'react-router';
-import { Alert, Badge, TableContent, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { Alert, Badge, TableContent } from '@jasperlepardo/sikat-design-system';
 import { ListPage } from '../../../components/form/ListPage';
+import { useListColumns, type ListColumn } from '../../../components/form/listColumns';
 import { GRR_STATUSES, type GoodsReturnRequest } from '../../../mocks/goodsReturnRequests';
 import { formatDate } from '../../../services/dates';
 import { listGoodsReturnRequests, grrNumber } from '../../../services/goodsReturnRequests';
@@ -20,14 +21,15 @@ export function GoodsReturnRequestList({ compact, selectedId }: { compact?: bool
     statusField<GoodsReturnRequest>(GRR_STATUSES),
   ];
 
-  const columns: TableColumn<GoodsReturnRequest>[] = [
-    { key: 'docNum', header: 'No.', sortable: true, cell: (r) => <TableContent href={`#${GRR_LIST_PATH}/${r.docNum ? grrNumber(r) : r.id}`}>{grrNumber(r)}</TableContent> },
+  const allColumns: ListColumn<GoodsReturnRequest>[] = [
+    { key: 'docNum', header: 'No.', sortable: true, locked: true, cell: (r) => <TableContent href={`#${GRR_LIST_PATH}/${r.docNum ? grrNumber(r) : r.id}`}>{grrNumber(r)}</TableContent> },
     { key: 'vendorName', header: 'Vendor', sortable: true, cell: (r) => r.vendorName || '—' },
     { key: 'postingDate', header: 'Posting date', sortable: true, cell: (r) => formatDate(r.postingDate) },
-    { key: 'requiredDate', header: 'Required by', cell: (r) => r.requiredDate ? formatDate(r.requiredDate) : '—' },
+    { key: 'requiredDate', header: 'Required by', defaultHidden: true, cell: (r) => r.requiredDate ? formatDate(r.requiredDate) : '—' },
     { key: 'lines', header: 'Lines', cell: (r) => <TableContent subcopy={`${r.lines.filter((l) => l.status === 'Open').length} open`}>{r.lines.length}</TableContent> },
     { key: 'status', header: 'Status', sortable: true, cell: (r) => <Badge size="small" intent={GRR_STATUS_INTENT[r.status]}>{r.status}</Badge> },
   ];
+  const { columns, manager } = useListColumns('goods-return-requests', allColumns);
 
   return (
     <ListPage
@@ -43,6 +45,7 @@ export function GoodsReturnRequestList({ compact, selectedId }: { compact?: bool
       search={{ placeholder: 'Search by no., vendor or item', label: `Search ${GRR_NOUN.many}` }}
       header={notice ? <Alert intent="success" variant="outline" title="Saved">{notice}</Alert> : undefined}
       emptyMessage={`No ${GRR_NOUN.many} yet. Start one from a goods receipt or A/P invoice (More actions › Create ${GRR_NOUN.one}), or with New ${GRR_NOUN.one}.`}
+      toolbarExtra={manager}
       compact={compact}
       selectedId={selectedId}
       getRowId={(r) => r.docNum ? grrNumber(r) : r.id}
