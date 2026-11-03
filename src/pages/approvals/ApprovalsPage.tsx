@@ -112,7 +112,7 @@ export function ApprovalsPage() {
       ),
     },
     { key: 'partner', header: 'Partner', cell: (p) => <TableContent href={`#${p.path}`}>{p.partnerName}</TableContent> },
-    { key: 'date', header: 'Date', cell: (p) => formatDate(p.postingDate) },
+    { key: 'date', header: 'Date', align: 'end', cell: (p) => formatDate(p.postingDate) },
     {
       key: 'approver',
       header: 'Approver',

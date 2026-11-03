@@ -19,7 +19,7 @@ import { SEED_ITEMS, mergedItems } from '../mocks/items';
 const ITEMS = mergedItems(SEED_ITEMS);
 import { blankMeans, blankPayment, newAccountRow, newCheckRow, type OutgoingPayment, type PaymentRow } from '../mocks/outgoingPayments';
 import { SEED_PARTNERS } from '../mocks/partners';
-import { SEED_PURCHASE_ORDERS, type PurchaseOrder } from '../mocks/purchaseOrders';
+import { SEED_PURCHASE_ORDERS, seedPoNo, type PurchaseOrder } from '../mocks/purchaseOrders';
 import { SEED_AS_OF } from '../mocks/supplyPlan';
 import { RETAIL_RETURNS } from '../mocks/retailHistory';
 import { SEED_COMPANY_TAX, SEED_TAX_CODES, SEED_TAX_GROUPS, SEED_WITHHOLDING, SEED_WITHHOLDING_GROUPS, rateAt, vatNotPaidToVendor } from '../mocks/taxes';
@@ -81,7 +81,7 @@ function build(): PurchasingHistory {
 
   // ── Down payment requests ───────────────────────────────────────────────────
   // Built here, ahead of the payments that pay them; numbered in date order.
-  const poRef = (p: PurchaseOrder) => `${p.seriesId === 'ser-import' ? 'Import' : 'Primary'} ${p.docNum}`;
+  const poRef = seedPoNo;
   const dprLines = (p: PurchaseOrder) =>
     p.lines.map((l, i) =>
       newDprLine({

@@ -3,8 +3,8 @@ import { Alert, TableContent, TableStatus } from '@jasperlepardo/sikat-design-sy
 import { ListPage } from '../../../components/form/ListPage';
 import { useListColumns, type ListColumn } from '../../../components/form/listColumns';
 import { AR_STATUSES, type ArInvoice } from '../../../mocks/arInvoices';
-import { formatDate } from '../../../services/dates';
-import { formatAmount } from '../../../services/format';
+import { dueIn, formatDate, todayISO } from '../../../services/dates';
+import { formatMoney } from '../../../services/format';
 import { taxCodes } from '../../../services/masterData';
 import { arNumber, arTotal, listArInvoices } from '../../../services/arInvoices';
 import { useAsync } from '../../../services/useAsync';
@@ -14,6 +14,7 @@ import { dateField, linesField, masterField, numberField, partnerField, statusFi
 import { draftScope, draftSplit, scopeStatuses } from '../../../components/filter/useListPresets';
 import { currencyDef, salesEmployeeDef } from '../../settings/masterDefs';
 import { AR_LIST_PATH, AR_NOUN, AR_STATUS_INTENT } from '../paths';
+import { cap } from '../../../components/form/noun';
 
 export function ArInvoiceList({ draftsOnly = false, compact, selectedId }: { draftsOnly?: boolean; compact?: boolean; selectedId?: string } = {}) {
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
@@ -35,13 +36,13 @@ export function ArInvoiceList({ draftsOnly = false, compact, selectedId }: { dra
   const totalOf = (so: ArInvoice) => arTotal(so, codes);
 
   const fields = [
-    textField<ArInvoice>('no', 'No.', arNumber),
+    textField<ArInvoice>('no', `${cap(AR_NOUN.one)} no.`, arNumber),
     partnerField<ArInvoice>('customer', 'Customer', (d) => d.customerId, (d) => d.customerName, orders),
     textField<ArInvoice>('customerCode', 'Customer code', (d) => d.customerCode),
     textField<ArInvoice>('customerRef', 'Customer PO no.', (d) => d.customerRef),
     dateField<ArInvoice>('postingDate', 'Posting date', (d) => d.postingDate),
     dateField<ArInvoice>('dueDate', 'Due date', (d) => d.dueDate),
-    textField<ArInvoice>('order', 'Order', (d) => d.orderNumber),
+    textField<ArInvoice>('order', 'Sales order', (d) => d.orderNumber),
     numberField<ArInvoice>('total', 'Total', totalOf),
     statusField<ArInvoice>(scopeStatuses(draftsOnly, AR_STATUSES)),
     masterField<ArInvoice>('currency', 'Currency', currencyDef, (d) => d.currency),
@@ -49,14 +50,29 @@ export function ArInvoiceList({ draftsOnly = false, compact, selectedId }: { dra
     linesField<ArInvoice>(),
   ];
 
+  const today = todayISO();
   const allColumns: ListColumn<ArInvoice>[] = [
-    { key: 'docNum', header: 'No.', sortable: true, locked: true, cell: (so) => <TableContent href={`#${AR_LIST_PATH}/${so.docNum ? arNumber(so) : so.id}`} subcopy={so.customerRef ? `Customer PO no. ${so.customerRef}` : undefined}>{arNumber(so)}</TableContent> },
-    { key: 'customerName', header: 'Customer', sortable: true, cell: (so) => <TableContent subcopy={so.customerCode}>{so.customerName || '—'}</TableContent> },
+    { key: 'docNum', header: `${cap(AR_NOUN.one)} no.`, locked: true, cell: (so) => <TableContent href={`#${AR_LIST_PATH}/${so.docNum ? arNumber(so) : so.id}`}>{arNumber(so)}</TableContent> },
+    { key: 'customerRef', header: 'Customer PO no.', cell: (so) => so.customerRef || '—' },
+    { key: 'customerName', header: 'Customer', cell: (so) => so.customerName || '—' },
+    { key: 'status', header: 'Status', cell: (so) => <TableStatus intent={AR_STATUS_INTENT[so.status]}>{so.status}</TableStatus> },
     { key: 'postingDate', header: 'Posting date', align: 'end', cell: (so) => formatDate(so.postingDate) },
-    { key: 'orderNumber', header: 'Order', defaultHidden: true, cell: (so) => baseOrders(so).join(', ') || so.orderNumber || '—' },
-    { key: 'dueDate', header: 'Due date', align: 'end', cell: (so) => formatDate(so.dueDate) },
-    { key: 'total', header: 'Total', align: 'end', cell: (so) => `${so.currency} ${formatAmount(totalOf(so))}` },
-    { key: 'status', header: 'Status', sortable: true, cell: (so) => <TableStatus intent={AR_STATUS_INTENT[so.status]}>{so.status}</TableStatus> },
+    { key: 'orderNumber', header: 'Sales order', defaultHidden: true, cell: (so) => baseOrders(so).join(', ') || so.orderNumber || '—' },
+    {
+      key: 'dueDate',
+      header: 'Due date',
+      align: 'end',
+      cell: (so) => (so.dueDate ? formatDate(so.dueDate) : '—'),
+    },
+    {
+      key: 'dueIn',
+      header: 'Due',
+      cell: (so) => {
+        const due = so.status === 'Open' && so.dueDate ? dueIn(so.dueDate, today) : undefined;
+        return due ? <span className={due.overdue ? 'text-danger' : undefined}>{due.text}</span> : '—';
+      },
+    },
+    { key: 'total', header: 'Total', align: 'end', cell: (so) => formatMoney(totalOf(so), so.currency) },
   ];
   const { columns, manager } = useListColumns('ar-invoices', allColumns);
 

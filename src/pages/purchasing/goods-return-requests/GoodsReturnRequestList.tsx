@@ -1,5 +1,5 @@
 import { useLocation } from 'react-router';
-import { Alert, Badge, TableContent } from '@jasperlepardo/sikat-design-system';
+import { Alert, TableContent, TableStatus } from '@jasperlepardo/sikat-design-system';
 import { ListPage } from '../../../components/form/ListPage';
 import { useListColumns, type ListColumn } from '../../../components/form/listColumns';
 import { GRR_STATUSES, type GoodsReturnRequest } from '../../../mocks/goodsReturnRequests';
@@ -9,25 +9,25 @@ import { useAsync } from '../../../services/useAsync';
 import { dateField, partnerField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews } from '../../../components/filter/useListPresets';
 import { GRR_LIST_PATH, GRR_NOUN, GRR_STATUS_INTENT } from '../paths';
+import { cap } from '../../../components/form/noun';
 
 export function GoodsReturnRequestList({ compact, selectedId }: { compact?: boolean; selectedId?: string } = {}) {
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const requests = useAsync(listGoodsReturnRequests, []);
 
   const fields = [
-    textField<GoodsReturnRequest>('no', 'No.', grrNumber),
+    textField<GoodsReturnRequest>('no', `${cap(GRR_NOUN.one)} no.`, grrNumber),
     partnerField<GoodsReturnRequest>('vendor', 'Vendor', (r) => r.vendorId, (r) => r.vendorName, requests),
-    dateField<GoodsReturnRequest>('postingDate', 'Posting date', (r) => r.postingDate),
+    dateField<GoodsReturnRequest>('postingDate', 'Request date', (r) => r.postingDate),
     statusField<GoodsReturnRequest>(GRR_STATUSES),
   ];
 
   const allColumns: ListColumn<GoodsReturnRequest>[] = [
-    { key: 'docNum', header: 'No.', sortable: true, locked: true, cell: (r) => <TableContent href={`#${GRR_LIST_PATH}/${r.docNum ? grrNumber(r) : r.id}`}>{grrNumber(r)}</TableContent> },
-    { key: 'vendorName', header: 'Vendor', sortable: true, cell: (r) => r.vendorName || '—' },
-    { key: 'postingDate', header: 'Posting date', sortable: true, cell: (r) => formatDate(r.postingDate) },
-    { key: 'requiredDate', header: 'Required by', defaultHidden: true, cell: (r) => r.requiredDate ? formatDate(r.requiredDate) : '—' },
-    { key: 'lines', header: 'Lines', cell: (r) => <TableContent subcopy={`${r.lines.filter((l) => l.status === 'Open').length} open`}>{r.lines.length}</TableContent> },
-    { key: 'status', header: 'Status', sortable: true, cell: (r) => <Badge size="small" intent={GRR_STATUS_INTENT[r.status]}>{r.status}</Badge> },
+    { key: 'docNum', header: `${cap(GRR_NOUN.one)} no.`, locked: true, cell: (r) => <TableContent href={`#${GRR_LIST_PATH}/${r.docNum ? grrNumber(r) : r.id}`}>{grrNumber(r)}</TableContent> },
+    { key: 'vendorName', header: 'Vendor', cell: (r) => r.vendorName || '—' },
+    { key: 'postingDate', header: 'Request date', align: 'end', cell: (r) => formatDate(r.postingDate) },
+    { key: 'requiredDate', header: 'Required by', align: 'end', defaultHidden: true, cell: (r) => r.requiredDate ? formatDate(r.requiredDate) : '—' },
+    { key: 'status', header: 'Status', cell: (r) => <TableStatus intent={GRR_STATUS_INTENT[r.status]}>{r.status}</TableStatus> },
   ];
   const { columns, manager } = useListColumns('goods-return-requests', allColumns);
 

@@ -44,9 +44,9 @@ export function PurchaseDashboard() {
     {
       key: 'vendorName',
       header: 'Vendor',
-      cell: (po) => <TableContent subcopy={po.vendorCode}>{po.vendorName || '—'}</TableContent>,
+      cell: (po) => po.vendorName || '—',
     },
-    { key: 'postingDate', header: 'Date', cell: (po) => formatDate(po.postingDate) },
+    { key: 'postingDate', header: 'Date', align: 'end', cell: (po) => formatDate(po.postingDate) },
     { key: 'total', header: 'Total', cell: (po) => <TableAmount currency={po.currency}>{formatAmount(poTotal(po, codes))}</TableAmount> },
     { key: 'status', header: 'Status', cell: (po) => <TableStatus intent={PO_STATUS_INTENT[po.status]}>{po.status}</TableStatus> },
   ];
@@ -60,9 +60,9 @@ export function PurchaseDashboard() {
     {
       key: 'vendorName',
       header: 'Vendor',
-      cell: (a) => <TableContent subcopy={a.vendorCode}>{a.vendorName || '—'}</TableContent>,
+      cell: (a) => a.vendorName || '—',
     },
-    { key: 'dueDate', header: 'Due date', cell: (a) => formatDate(a.dueDate) },
+    { key: 'dueDate', header: 'Due date', align: 'end', cell: (a) => formatDate(a.dueDate) },
     { key: 'total', header: 'Total', cell: (a) => <TableAmount currency={a.currency}>{formatAmount(apTotal(a, codes))}</TableAmount> },
     { key: 'status', header: 'Status', cell: (a) => <TableStatus intent={AP_STATUS_INTENT[a.status]}>{a.status}</TableStatus> },
   ];

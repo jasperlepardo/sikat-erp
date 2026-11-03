@@ -1,4 +1,3 @@
-import { StatusNotice } from '../../../../components/form/StatusNotice';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import { createPortal } from 'react-dom';
@@ -448,13 +447,6 @@ function ArInvoiceForm() {
               <>
                 <ProblemsAlert problems={problems} tabLabel={(t) => TAB_LABEL[t as TabId]} />
                 {reject.alert('Reject A/R invoice', rejectIt)}
-                {ro && draft.status !== 'Open' ? (
-                  <StatusNotice resetKey={`${draft.id}:${draft.status}`} title={`This invoice is ${draft.status.toLowerCase()}`}>
-                    {draft.status === 'Cancelled'
-                      ? 'Its journal entry was reversed, stock it shipped came back, and its deliveries and orders reopened.'
-                      : "It's posted to the ledger. Only remarks and attachments can change; to undo it, cancel the invoice."}
-                  </StatusNotice>
-                ) : null}
               </>
             }
             main={

@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { Alert, Badge, Form, Panel, Tabs } from '@jasperlepardo/sikat-design-system';
+import { Badge, Form, Panel, Tabs } from '@jasperlepardo/sikat-design-system';
 import { DocumentDetailSkeleton } from '../../../../components/form/skeletons/DocumentDetailSkeleton';
 import { PageHeader } from '../../../../components/form/PageHeader';
 import { DetailColumns } from '../../../../components/form/DetailColumns';
@@ -26,7 +26,6 @@ import {
   dpiNumber,
   dpiTotals,
   dpiWithholding,
-  drawableAmount,
   getDownPaymentInvoice,
   listDownPaymentInvoices,
   recallDownPaymentInvoice,
@@ -305,15 +304,6 @@ function DpiForm() {
                 <>
                   <ProblemsAlert problems={problems} tabLabel={(t) => ({ contents: 'Contents', logistics: 'Logistics', accounting: 'Accounting' })[t]} />
                   {reject.alert('Reject down payment invoice', rejectIt)}
-                  {added ? (
-                    <Alert intent="default" variant="outline" title={draft.status === 'Open' ? (balance > 0 ? `${code} ${formatAmount(balance)} still to pay` : `Paid — ${code} ${formatAmount(drawableAmount(saved))} left to draw`) : `This invoice is ${draft.status.toLowerCase()}`}>
-                      {draft.status === 'Open'
-                        ? balance > 0
-                          ? 'Pay it from Outgoing Payments. The GL entry was posted when this invoice was added.'
-                          : 'Draw it on the A/P invoice that bills the goods: the invoice\'s Total down payment.'
-                        : 'Only remarks, the payment block and the payment run flag can change.'}
-                    </Alert>
-                  ) : null}
                 </>
               }
               main={
@@ -361,8 +351,8 @@ function DpiForm() {
         readOnly={ctx.readOnly}
         open={vendorDetailsOpen}
         onClose={() => setVendorDetailsOpen(false)}
-        vendorRefLabel="Vendor proforma no."
-        vendorRefHint="The vendor's proforma or billing no."
+        vendorRefLabel="Vendor invoice no."
+        vendorRefHint="The no. on the vendor's down payment invoice."
         addresses={ctx.vendor ? receivingVendorAddressFields(m, ctx.vendor, { shipPlaceholder: 'Where the goods will be received', payPlaceholder: 'Vendor address for payment' }) : []}
       />
       {copying
@@ -377,7 +367,7 @@ function DpiForm() {
                   hint: "The advance is figured on these lines. The PO's quantities don't change.",
                   docs: orders.map((po) => ({
                     id: po.id,
-                    label: `PO ${poNumber(po)}`,
+                    label: `${poNumber(po)}`,
                     description: `Delivery ${formatDate(po.deliveryDate)} · ${po.currency}`,
                     lines: po.lines.filter((l) => l.status === 'Open').map((l) => ({ id: l.id, itemNo: l.itemNo, name: l.name, description: l.description, warehouse: l.warehouse, total: `${l.quantity} ${l.uomCode}`, open: openQty(l) || l.quantity })),
                   })),

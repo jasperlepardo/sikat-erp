@@ -59,7 +59,7 @@ type PageId = (typeof PAGES)[number]['value'];
 function validate(d: GrrDraft): Problem<TabId>[] {
   const { problems, need } = problemCollector<TabId>();
   need(d.vendorId, 'header', 'vendorId', 'Pick a vendor.');
-  need(d.postingDate, 'header', 'postingDate', 'Posting date is required.');
+  need(d.postingDate, 'header', 'postingDate', 'Request date is required.');
   need(d.lines.length, 'contents', 'lines', 'Add at least one line.');
   for (const [i, l] of d.lines.entries()) {
     const n = `Line ${i + 1}`;

@@ -2,7 +2,6 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import {
-  Alert,
   Badge,
   Form,
   Panel,
@@ -29,7 +28,6 @@ import {
   closeDownPayment,
   dprNumber,
   dprTotals,
-  drawableAmount,
   getDownPayment,
   listDownPayments,
   recallDownPayment,
@@ -87,9 +85,9 @@ function validate(d: Draft, fx: number, m: Masters, asDraft: boolean): Problem<T
   const { problems, need } = problemCollector<TabId>();
   need(d.vendorId, 'header', 'vendorId', 'Pick a vendor.');
   if (asDraft) return problems;
-  need(d.postingDate, 'header', 'postingDate', 'Posting date is required.');
+  need(d.postingDate, 'header', 'postingDate', 'Request date is required.');
   need(d.documentDate, 'header', 'documentDate', 'Document date is required.');
-  need(!d.dueDate || d.dueDate >= d.postingDate, 'header', 'dueDate', 'Due date is before the posting date.');
+  need(!d.dueDate || d.dueDate >= d.postingDate, 'header', 'dueDate', 'Due date is before the request date.');
   need(fx > 0, 'header', 'currency', `No ${d.currency} exchange rate on or before ${d.postingDate}.`);
   need(d.shipTo, 'logistics', 'shipTo', 'Ship to is required.');
   need(d.dpmPct > 0 && d.dpmPct <= 100, 'header', 'dpmPct', 'DPM % must be more than 0 and at most 100.');
@@ -307,15 +305,6 @@ function DprForm() {
                 <>
                   <ProblemsAlert problems={problems} tabLabel={(t) => ({ contents: 'Contents', logistics: 'Logistics', accounting: 'Accounting' })[t]} />
                   {reject.alert('Reject down payment request', rejectIt)}
-                  {added ? (
-                    <Alert intent="default" variant="outline" title={draft.status === 'Open' ? (balance > 0 ? `${code} ${formatAmount(balance)} still to pay` : `Paid — ${code} ${formatAmount(drawableAmount(saved))} left to draw`) : `This request is ${draft.status.toLowerCase()}`}>
-                      {draft.status === 'Open'
-                        ? balance > 0
-                          ? 'Pay it from Payments Made (or More actions › Pay). Nothing posts until it\'s paid.'
-                          : 'Draw it on the A/P invoice that bills the goods: the invoice\'s Total down payment.'
-                        : 'Only remarks, the payment block and the payment run flag can change.'}
-                    </Alert>
-                  ) : null}
                 </>
               }
               main={
@@ -380,7 +369,7 @@ function DprForm() {
                   hint: "The advance is figured on these lines. The PO's quantities don't change.",
                   docs: orders.map((po) => ({
                     id: po.id,
-                    label: `PO ${poNumber(po)}`,
+                    label: `${poNumber(po)}`,
                     description: `Delivery ${formatDate(po.deliveryDate)} · ${po.currency}`,
                     lines: po.lines.filter((l) => l.status === 'Open').map((l) => ({ id: l.id, itemNo: l.itemNo, name: l.name, description: l.description, warehouse: l.warehouse, total: `${l.quantity} ${l.uomCode}`, open: openQty(l) || l.quantity })),
                   })),

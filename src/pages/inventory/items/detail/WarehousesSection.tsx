@@ -185,7 +185,7 @@ function WarehouseTransactions({ itemId, warehouse, uom }: { itemId: string; war
         </TableContent>
       ),
     },
-    { key: 'date', header: 'Date', cell: (d) => <span className="whitespace-nowrap">{d.date}</span> },
+    { key: 'date', header: 'Date', align: 'end', cell: (d) => <span className="whitespace-nowrap">{d.date}</span> },
     { key: 'status', header: 'Status', cell: (d) => (d.status ? <TableStatus intent={d.intent}>{d.status}</TableStatus> : null) },
     { key: 'quantity', header: 'Quantity', cell: amount },
   ];

@@ -1,16 +1,17 @@
 import { useLocation } from 'react-router';
-import { Alert, TableAmount, TableContent, TableStatus } from '@jasperlepardo/sikat-design-system';
+import { Alert, TableContent, TableStatus } from '@jasperlepardo/sikat-design-system';
 import { ListPage } from '../../../components/form/ListPage';
 import { useListColumns, type ListColumn } from '../../../components/form/listColumns';
 import { PAYMENT_STATUSES, type OutgoingPayment } from '../../../mocks/outgoingPayments';
 import { formatDate } from '../../../services/dates';
-import { formatAmount } from '../../../services/format';
+import { formatMoney } from '../../../services/format';
 import { listPayments, overallAmount, paymentNumber } from '../../../services/outgoingPayments';
 import { useAsync } from '../../../services/useAsync';
 import { choiceField, dateField, masterField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
 import { draftScope, draftSplit, scopeStatuses } from '../../../components/filter/useListPresets';
 import { currencyDef } from '../../settings/masterDefs';
 import { PAYMENT_LIST_PATH, PAYMENT_NOUN, PAYMENT_STATUS_INTENT } from '../paths';
+import { cap } from '../../../components/form/noun';
 
 const meansText = (p: OutgoingPayment) =>
   [
@@ -25,7 +26,7 @@ export function PaymentList({ draftsOnly = false, compact, selectedId }: { draft
   const payments = useAsync(listPayments, []);
 
   const fields = [
-    textField<OutgoingPayment>('no', 'No.', paymentNumber),
+    textField<OutgoingPayment>('no', `${cap(PAYMENT_NOUN.one)} no.`, paymentNumber),
     choiceField<OutgoingPayment>('type', 'Type', ['Vendor', 'Account'], (d) => d.type),
     textField<OutgoingPayment>('payee', 'Paid to', (d) => d.payeeName),
     textField<OutgoingPayment>('vendorCode', 'Vendor code', (d) => d.vendorCode),
@@ -39,12 +40,11 @@ export function PaymentList({ draftsOnly = false, compact, selectedId }: { draft
   ];
 
   const allColumns: ListColumn<OutgoingPayment>[] = [
-    { key: 'docNum', header: 'No.', sortable: true, locked: true, cell: (p) => <TableContent href={`#${PAYMENT_LIST_PATH}/${p.docNum ? paymentNumber(p) : p.id}`} subcopy={p.reference || undefined}>{paymentNumber(p)}</TableContent> },
-    { key: 'payeeName', header: 'Paid to', sortable: true, cell: (p) => <TableContent subcopy={p.type === 'Vendor' ? p.vendorCode : 'G/L accounts'}>{p.payeeName || '—'}</TableContent> },
-    { key: 'postingDate', header: 'Posting date', sortable: true, cell: (p) => formatDate(p.postingDate) },
+    { key: 'docNum', header: `${cap(PAYMENT_NOUN.one)} no.`, locked: true, cell: (p) => <TableContent href={`#${PAYMENT_LIST_PATH}/${p.docNum ? paymentNumber(p) : p.id}`}>{paymentNumber(p)}</TableContent> },
+    { key: 'reference', header: 'Reference', cell: (p) => p.reference || '—' },
     {
       key: 'invoices',
-      header: 'Paid',
+      header: 'Applied to',
       cell: (p) => {
         const paid = p.rows.filter((r) => r.selected && r.amount > 0);
         return p.type === 'Account'
@@ -52,9 +52,11 @@ export function PaymentList({ draftsOnly = false, compact, selectedId }: { draft
           : [paid.length ? `${paid.length} invoice${paid.length === 1 ? '' : 's'}` : '', p.onAccount ? 'on account' : ''].filter(Boolean).join(' + ') || '—';
       },
     },
+    { key: 'payeeName', header: 'Paid to', cell: (p) => p.payeeName || '—' },
+    { key: 'status', header: 'Status', cell: (p) => <TableStatus intent={PAYMENT_STATUS_INTENT[p.status]}>{p.status}</TableStatus> },
+    { key: 'postingDate', header: 'Posting date', align: 'end', cell: (p) => formatDate(p.postingDate) },
     { key: 'means', header: 'Means', defaultHidden: true, cell: meansText },
-    { key: 'amount', header: 'Amount', sortable: true, cell: (p) => <TableAmount currency={p.currency}>{formatAmount(overallAmount(p))}</TableAmount> },
-    { key: 'status', header: 'Status', sortable: true, cell: (p) => <TableStatus intent={PAYMENT_STATUS_INTENT[p.status]}>{p.status}</TableStatus> },
+    { key: 'amount', header: 'Amount', align: 'end', cell: (p) => formatMoney(overallAmount(p), p.currency) },
   ];
   const { columns, manager } = useListColumns('outgoing-payments', allColumns);
 

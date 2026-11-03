@@ -4,43 +4,47 @@ import { ListPage } from '../../../components/form/ListPage';
 import { useListColumns, type ListColumn } from '../../../components/form/listColumns';
 import { INCOMING_STATUSES, type IncomingPayment } from '../../../mocks/incomingPayments';
 import { formatDate } from '../../../services/dates';
-import { formatAmount } from '../../../services/format';
-import { taxCodes } from '../../../services/masterData';
+import { formatMoney } from '../../../services/format';
+import { accounts, taxCodes } from '../../../services/masterData';
+import { accountText } from '../../../mocks/chartOfAccounts';
+import { useCollection } from '../../../components/form/MasterLookup';
 import { amountDue, incomingNumber, listIncomingPayments } from '../../../services/incomingPayments';
 import { useAsync } from '../../../services/useAsync';
 import { choiceField, dateField, masterField, numberField, partnerField, statusField, textField } from '../../../components/filter/fieldKit';
 import { draftScope, draftSplit, scopeStatuses } from '../../../components/filter/useListPresets';
 import { currencyDef } from '../../settings/masterDefs';
 import { RC_LIST_PATH, RC_NOUN, RC_STATUS_INTENT } from '../paths';
+import { cap } from '../../../components/form/noun';
 
 export function IncomingPaymentList({ draftsOnly = false, compact, selectedId }: { draftsOnly?: boolean; compact?: boolean; selectedId?: string } = {}) {
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const data = useAsync(() => Promise.all([listIncomingPayments(), taxCodes.list()]), []);
   const [orders] = data ?? [undefined];
+  const accountRows = useCollection(accounts);
 
   const fields = [
-    textField<IncomingPayment>('no', 'No.', incomingNumber),
+    textField<IncomingPayment>('no', `${cap(RC_NOUN.one)} no.`, incomingNumber),
     choiceField<IncomingPayment>('type', 'Type', ['Customer', 'Account'], (d) => d.type),
-    partnerField<IncomingPayment>('customer', 'Customer', (d) => d.customerId, (d) => d.customerName, orders),
+    partnerField<IncomingPayment>('customer', 'Received from', (d) => d.customerId, (d) => d.customerName, orders),
     textField<IncomingPayment>('customerCode', 'Customer code', (d) => d.customerCode),
     dateField<IncomingPayment>('postingDate', 'Posting date', (d) => d.postingDate),
     dateField<IncomingPayment>('dueDate', 'Due date', (d) => d.dueDate),
     textField<IncomingPayment>('reference', 'Reference', (d) => d.reference),
     textField<IncomingPayment>('invoice', 'Invoice no.', (d) => d.rows.map((r) => r.docNo)),
-    numberField<IncomingPayment>('total', 'Total', amountDue),
+    numberField<IncomingPayment>('total', 'Amount', amountDue),
     statusField<IncomingPayment>(scopeStatuses(draftsOnly, INCOMING_STATUSES)),
     masterField<IncomingPayment>('currency', 'Currency', currencyDef, (d) => d.currency),
     textField<IncomingPayment>('remarks', 'Remarks', (d) => d.remarks),
   ];
 
   const allColumns: ListColumn<IncomingPayment>[] = [
-    { key: 'docNum', header: 'No.', sortable: true, locked: true, cell: (so) => <TableContent href={`#${RC_LIST_PATH}/${so.docNum ? incomingNumber(so) : so.id}`} subcopy={so.reference ? `Ref. ${so.reference}` : undefined}>{incomingNumber(so)}</TableContent> },
-    { key: 'customerName', header: 'Customer', sortable: true, cell: (so) => <TableContent subcopy={so.type === 'Account' ? 'Account' : so.customerCode}>{so.customerName || (so.type === 'Account' ? so.accountRows.map((r) => r.account).join(', ') || '—' : '—')}</TableContent> },
+    { key: 'docNum', header: `${cap(RC_NOUN.one)} no.`, locked: true, cell: (so) => <TableContent href={`#${RC_LIST_PATH}/${so.docNum ? incomingNumber(so) : so.id}`}>{incomingNumber(so)}</TableContent> },
+    { key: 'reference', header: 'Reference', cell: (so) => so.reference || '—' },
+    { key: 'customerName', header: 'Received from', cell: (so) => so.type === 'Account' ? so.customerName || so.accountRows.map((r) => accountText(r.account, accountRows?.slice())).join(', ') || '—' : so.customerName || '—' },
+    { key: 'status', header: 'Status', cell: (so) => <TableStatus intent={RC_STATUS_INTENT[so.status]}>{so.status}</TableStatus> },
     { key: 'postingDate', header: 'Posting date', align: 'end', cell: (so) => formatDate(so.postingDate) },
-    { key: 'transNo', header: 'Trans. No.', defaultHidden: true, cell: (so) => (so.transNo ? String(so.transNo) : '—') },
-    { key: 'means', header: 'Means', cell: (so) => [so.means.transfer.amount ? 'Transfer' : '', so.means.cash.amount ? 'Cash' : '', so.means.checks.length ? `${so.means.checks.length} check${so.means.checks.length === 1 ? '' : 's'}` : '', so.means.cards.length ? 'Card' : ''].filter(Boolean).join(' · ') || '—' },
-    { key: 'total', header: 'Total', align: 'end', cell: (so) => `${so.currency} ${formatAmount(amountDue(so))}` },
-    { key: 'status', header: 'Status', sortable: true, cell: (so) => <TableStatus intent={RC_STATUS_INTENT[so.status]}>{so.status}</TableStatus> },
+    { key: 'transNo', header: 'Trans. no.', defaultHidden: true, cell: (so) => (so.transNo ? String(so.transNo) : '—') },
+    { key: 'total', header: 'Amount', align: 'end', cell: (so) => formatMoney(amountDue(so), so.currency) },
   ];
   const { columns, manager } = useListColumns('incoming-payments', allColumns);
 

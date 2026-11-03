@@ -135,7 +135,7 @@ export function VendorItemsTab({ draft }: { draft: Draft }) {
         {found.length ? (
           <Table
             caption="Items supplied"
-            columns={columns.map((c) => ({ sortable: true, ...c }))}
+            columns={columns.map((c) => ({ ...c }))}
             rows={visible}
             getRowId={(r) => r.id}
             sort={sort}

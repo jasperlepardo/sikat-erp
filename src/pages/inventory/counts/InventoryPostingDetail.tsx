@@ -228,11 +228,7 @@ function PostingForm() {
         />
         <Panel.Body className="flex flex-col gap-2">
           <ProblemsAlert problems={problems} tabLabel={(t) => (t === 'attachments' ? 'Attachments' : t === 'contents' ? 'Contents' : undefined)} />
-          {added ? (
-            <Alert intent="default" variant="outline" title="This posting is added">
-              Stock and the journal entry are posted. Only remarks, journal remarks and attachments can change. To correct it, count again and post the difference.
-            </Alert>
-          ) : (
+          {added ? null : (
             <Alert intent="warning" variant="outline" title="Adding this changes stock">
               Review the variances first — large ones may need a recount or Finance approval. Note who approved it in Remarks.
             </Alert>

@@ -6,12 +6,38 @@ import type { RoundingRule } from '../mocks/currencies';
 import type { TaxCode } from '../mocks/taxes';
 import { rateAt, vatNotPaidToVendor } from '../mocks/taxes';
 import { lineNet } from './lineMath';
+import { todayISO } from './dates';
 
 const rfqs = createCollection<Rfq>('sikat-erp:rfqs:v1', SEED_RFQS, 'rfq', { audit: 'RFQ' });
 
 export { rfqSeries };
-export const listRfqs = rfqs.list;
+
+// ── Expiry ───────────────────────────────────────────────────────────────────
+// An Open quotation past its valid-until date is Expired: it can't become a purchase order until
+// the vendor confirms the price still holds and the buyer moves the date on (which reopens it).
+
+/** The status a numbered quotation should have on `today`: Open ↔ Expired by its valid-until date. */
+export const rfqStatusOn = (q: Pick<Rfq, 'status' | 'validUntil'>, today: string): RfqStatus =>
+  q.status === 'Open' && q.validUntil && q.validUntil < today ? 'Expired'
+  : q.status === 'Expired' && (!q.validUntil || q.validUntil >= today) ? 'Open'
+  : q.status;
+
+/**
+ * The expiry run a server would do overnight: Open quotations past their date turn Expired, in one
+ * write (logged in each one's Activity). Runs before every read, so a quote lapses the day after.
+ */
+export async function expireRfqs(today = todayISO()): Promise<void> {
+  const due = rfqs.snapshot().filter((q) => q.status === 'Open' && rfqStatusOn(q, today) === 'Expired');
+  if (due.length) await rfqs.saveMany(due.map((q) => ({ ...q, status: 'Expired' as const })));
+}
+
+export async function listRfqs(): Promise<Rfq[]> {
+  await expireRfqs();
+  return rfqs.list();
+}
+
 export async function getRfq(idOrNumber: string) {
+  await expireRfqs();
   const direct = await rfqs.get(idOrNumber);
   if (direct) return direct;
   const all = await rfqs.list();
@@ -72,9 +98,14 @@ const nextDocNum = (all: readonly Rfq[], seriesId: string) => {
   return Math.max(series.firstNo - 1, ...all.filter((q) => q.seriesId === series.id && q.docNum).map((q) => q.docNum)) + 1;
 };
 
+/**
+ * Add a quotation, or save changes to one already added: it keeps its number, and an approved one is
+ * Open or Expired by its valid-until date, so moving the date on reopens an expired quote.
+ */
 export async function addRfq(input: RfqInput): Promise<Rfq> {
-  const docNum = nextDocNum(await rfqs.list(), input.seriesId);
-  return rfqs.save({ ...input, docNum, status: input.approved ? 'Open' : 'Not Confirmed' });
+  const docNum = input.docNum || nextDocNum(await rfqs.list(), input.seriesId);
+  const status = input.approved ? rfqStatusOn({ status: 'Open', validUntil: input.validUntil }, todayISO()) : 'Not Confirmed';
+  return rfqs.save({ ...input, docNum, status });
 }
 
 /**
@@ -87,14 +118,15 @@ export async function addRfqs(inputs: RfqInput[]): Promise<Rfq[]> {
   const numbered = inputs.map((input) => {
     const docNum = next.get(input.seriesId) ?? nextDocNum(all, input.seriesId);
     next.set(input.seriesId, docNum + 1);
-    return { ...input, docNum, status: (input.approved ? 'Open' : 'Not Confirmed') as RfqStatus };
+    const status = input.approved ? rfqStatusOn({ status: 'Open', validUntil: input.validUntil }, todayISO()) : 'Not Confirmed';
+    return { ...input, docNum, status };
   });
   return rfqs.saveMany(numbered);
 }
 
 /** The live (not cancelled) RFQs raised from a purchase request. */
 export async function listRfqsForPr(prId: string): Promise<Rfq[]> {
-  return (await rfqs.list()).filter((q) => q.basePrId === prId && q.status !== 'Cancelled');
+  return (await listRfqs()).filter((q) => q.basePrId === prId && q.status !== 'Cancelled');
 }
 
 export async function closeRfq(q: Rfq): Promise<Rfq> {

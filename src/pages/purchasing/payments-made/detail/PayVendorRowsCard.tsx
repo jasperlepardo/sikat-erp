@@ -54,7 +54,7 @@ export function PayVendorRows({ draft, update, errors, m, fx, readOnly }: PaySec
         </div>
       ),
     },
-    { key: 'docDate', header: 'Date', cell: (r) => formatDate(r.docDate) },
+    { key: 'docDate', header: 'Date', align: 'end', cell: (r) => formatDate(r.docDate) },
     {
       key: 'overdue',
       header: 'Overdue days',

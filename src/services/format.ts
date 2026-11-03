@@ -4,6 +4,9 @@ const number = new Intl.NumberFormat('en-PH', { minimumFractionDigits: 2, maximu
 
 export const formatAmount = (value: number) => number.format(value);
 
+/** An amount with its currency, as list tables show it: "PHP 1,234.56". */
+export const formatMoney = (value: number, currency = 'PHP') => `${currency} ${formatAmount(value)}`;
+
 /** The document FX for the "Exchange rate" field: "1 USD = 56.50 PHP (BSP, 9 Oct 2026)". PHP → "—". */
 export function formatExchangeRate(currency: string, fx: number, opts: { date?: string; source?: string } = {}) {
   if (currency === 'PHP') return '—';

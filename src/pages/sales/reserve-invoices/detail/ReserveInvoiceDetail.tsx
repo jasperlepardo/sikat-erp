@@ -1,4 +1,3 @@
-import { StatusNotice } from '../../../../components/form/StatusNotice';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import { createPortal } from 'react-dom';
@@ -423,13 +422,6 @@ function ReserveInvoiceForm() {
                 <>
                   <ProblemsAlert problems={problems} tabLabel={(t) => TAB_LABEL[t as TabId]} />
                   {reject.alert(`Reject ${RI_NOUN.one}`, rejectIt)}
-                  {ro && draft.status !== 'Open' ? (
-                    <StatusNotice resetKey={`${draft.id}:${draft.status}`} title={`This ${RI_NOUN.one} is ${draft.status.toLowerCase()}`}>
-                      {draft.status === 'Cancelled'
-                        ? 'Its journal entry was reversed. No stock movement was made by this document.'
-                        : "It's posted to the ledger. Only remarks and attachments can change; to undo it, cancel the reserve invoice."}
-                    </StatusNotice>
-                  ) : null}
                 </>
               }
               main={

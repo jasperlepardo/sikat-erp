@@ -31,7 +31,6 @@ export interface MasterListProps<T extends { id: string }> {
   /** One line under the title: what the list is for. */
   description?: ReactNode;
   rows: readonly T[] | undefined;
-  /** Columns are sortable unless they set `sortable: false`. */
   columns: TableColumn<T>[];
   /** Text the search box matches against. */
   searchText: (row: T) => string;
@@ -121,7 +120,7 @@ export interface ListRoute {
 
 /**
  * A master-data list in the design system's Table pattern — the Table sits
- * directly in a Card, with sortable headers, row selection, the row "…" action
+ * directly in a Card, with row selection, the row "…" action
  * and pagination. Rows open on their own page (`${basePath}/${id}`, or `/new`).
  * Rows are deactivated rather than deleted, since documents may reference them.
  */
@@ -241,7 +240,6 @@ function ListView<T extends { id: string }>({
 
   // The first column opens the row, like the name links on the other lists.
   const tableColumns: TableColumn<T>[] = columns.map((c, i) => ({
-    sortable: true,
     ...c,
     ...(i === 0
       ? {

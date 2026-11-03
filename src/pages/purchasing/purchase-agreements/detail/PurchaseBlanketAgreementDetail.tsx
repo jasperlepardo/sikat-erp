@@ -1,4 +1,3 @@
-import { StatusNotice } from '../../../../components/form/StatusNotice';
 import { useEffect, useState, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate, useParams } from 'react-router';
@@ -20,7 +19,7 @@ import { ActivityTab } from '../../../../components/activity/ActivityTab';
 import { CURRENT_USER_ID } from '../../../../mocks/common';
 import { blankPurchaseBlanketAgreement, newPbaLine, type PurchaseBlanketAgreement, type PbaStatus } from '../../../../mocks/purchaseBlanketAgreements';
 import { blankPurchaseOrder, newPoLine } from '../../../../mocks/purchaseOrders';
-import { formatDate, todayISO } from '../../../../services/dates';
+import { todayISO } from '../../../../services/dates';
 import { loadInventoryMasters } from '../../../../services/inventoryMasters';
 import { listItems } from '../../../../services/items';
 import { listPartnersByRole } from '../../../../services/partners';
@@ -316,14 +315,6 @@ function PbaForm() {
               <>
                 <ProblemsAlert problems={problems} tabLabel={(t) => TAB_LABEL[t as TabId] ?? t} />
 
-                {terminal ? (
-                  <StatusNotice resetKey={`${draft.id}:${draft.status}`} title={`This agreement is ${draft.status.toLowerCase()}`}>
-                    {draft.status === 'Terminated' && draft.terminationDate
-                      ? `Terminated on ${formatDate(draft.terminationDate)}. `
-                      : ''}
-                    Only remarks and attachments can be changed.
-                  </StatusNotice>
-                ) : null}
 
                 {draft.lines.length > 0 && (
                   <AgreementSummaryCard side="purchase" currency={draft.currency} totals={totals} settlementProbability={draft.settlementProbability} />

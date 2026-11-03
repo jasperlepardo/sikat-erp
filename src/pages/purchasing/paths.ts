@@ -46,6 +46,7 @@ export const RFQ_STATUS_INTENT: Record<RfqStatus, 'default' | 'primary' | 'succe
   Draft: 'default',
   'Not Confirmed': 'warning',
   Open: 'primary',
+  Expired: 'warning',
   Closed: 'success',
   Cancelled: 'danger',
 };

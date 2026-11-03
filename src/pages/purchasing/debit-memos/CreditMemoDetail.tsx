@@ -2,7 +2,6 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import {
-  Alert,
   Badge,
   Form,
   Panel,
@@ -353,13 +352,6 @@ function CreditMemoForm() {
                 <>
                   <ProblemsAlert problems={problems} tabLabel={(t) => ({ contents: 'Contents', logistics: 'Logistics', accounting: 'Accounting' })[t]} />
                   {reject.alert('Reject A/P credit memo', rejectIt)}
-                  {added ? (
-                    <Alert intent="default" variant="outline" title={draft.status === 'Open' ? `${code} ${formatAmount(openBalance)} of credit left to apply` : `This credit memo is ${draft.status.toLowerCase()}`}>
-                      {draft.status === 'Open'
-                        ? 'Apply it to another open invoice of this vendor with More actions › Apply credit to an invoice. Only remarks, the payment block and the payment run flag can change.'
-                        : 'Only remarks can change.'}
-                    </Alert>
-                  ) : null}
                 </>
               }
               main={

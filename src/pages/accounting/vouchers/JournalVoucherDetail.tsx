@@ -114,7 +114,7 @@ export function JournalVoucherDetail() {
       header: 'Trans. No.',
       cell: (e) => <TableContent href={`#${entryPath(voucher.id, e.id)}`}>{e.transNo}</TableContent>,
     },
-    { key: 'postingDate', header: 'Posting date', cell: (e) => formatDate(e.postingDate) },
+    { key: 'postingDate', header: 'Posting date', align: 'end', cell: (e) => formatDate(e.postingDate) },
     {
       key: 'remarks',
       header: 'Remarks',

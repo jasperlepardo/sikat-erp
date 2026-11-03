@@ -387,7 +387,7 @@ export const TREATY_RATES: Record<string, Record<TreatyIncomeType, number>> = {
   ZW: { Dividends: 10, Interest: 10, Royalties: 10, 'Technical fees': 0  }, // Zimbabwe
 };
 
-/** The company's own tax registration (Settings › Accounting & Tax › Company tax profile). */
+/** The company's own tax registration (Settings › Company › Companies, Tax section). */
 /**
  * What the company does with the goods it sells. Excise is paid where goods enter the market:
  * by the manufacturer before removal from the plant (NIRC Sec. 130) or by the importer before
@@ -434,7 +434,8 @@ export const SEED_COMPANY_TAX: CompanyTaxProfile[] = [
   {
     id: 'company',
     registeredName: 'Power Mac Center, Inc.',
-    tin: '',
+    // A made-up demo TIN in the BIR format (head office branch 000), not the company's real one.
+    tin: '123-456-789-000',
     rdoCode: '',
     vatRegistered: true,
     topWithholdingAgent: true,

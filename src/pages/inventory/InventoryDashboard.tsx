@@ -48,7 +48,7 @@ export function InventoryDashboard() {
         </TableContent>
       ),
     },
-    { key: 'postingDate', header: 'Date', cell: (t) => formatDate(t.postingDate) },
+    { key: 'postingDate', header: 'Date', align: 'end', cell: (t) => formatDate(t.postingDate) },
     { key: 'value', header: 'Value', cell: (t) => <TableAmount currency="PHP">{formatAmount(transferValue(t))}</TableAmount> },
     { key: 'status', header: 'Status', cell: (t) => <TableStatus intent={TRANSFER_STATUS_INTENT[t.status]}>{t.status}</TableStatus> },
   ];

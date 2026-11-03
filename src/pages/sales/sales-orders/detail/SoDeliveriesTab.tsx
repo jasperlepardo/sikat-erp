@@ -182,6 +182,7 @@ export function SoDeliveriesTab({
         {
           key: 'date',
           header: 'Date',
+          align: 'end',
           cell: (r) =>
             r.kind === 'line' ? null : (
               <Text variant="small" className="whitespace-nowrap">{formatDate(r.date)}</Text>

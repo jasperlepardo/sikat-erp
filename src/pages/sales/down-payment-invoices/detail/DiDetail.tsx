@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { Alert, Badge, Form, Panel, Tabs, Text } from '@jasperlepardo/sikat-design-system';
+import { Badge, Form, Panel, Tabs, Text } from '@jasperlepardo/sikat-design-system';
 import { DocumentDetailSkeleton } from '../../../../components/form/skeletons/DocumentDetailSkeleton';
 import { PageHeader } from '../../../../components/form/PageHeader';
 import { DetailColumns } from '../../../../components/form/DetailColumns';
@@ -21,7 +21,6 @@ import {
   addArDownPaymentInvoice,
   cancelArDownPaymentInvoice,
   closeArDownPaymentInvoice,
-  diDrawable,
   diJournal,
   diNumber,
   diTotals,
@@ -371,17 +370,6 @@ function DiForm() {
                 <>
                   <ProblemsAlert problems={problems} tabLabel={(t) => TAB_LABEL[t as TabId]} />
                   {reject.alert(`Reject ${DI_NOUN.one}`, rejectIt)}
-                  {added ? (
-                    <Alert intent="default" variant="outline" title={draft.status === 'Open' ? (balance > 0 ? `${draft.currency} ${formatAmount(balance)} still to collect` : `Paid — ${draft.currency} ${formatAmount(diDrawable(saved, [...m.tax.codes]))} left to draw`) : `This ${DI_NOUN.one} is ${draft.status.toLowerCase()}`}>
-                      {draft.status === 'Open'
-                        ? balance > 0
-                          ? 'Receive it from Incoming Payments. The GL entry was posted when this invoice was added.'
-                          : "Draw it on the A/R invoice that bills the goods: the invoice's Total down payment."
-                        : draft.status === 'Cancelled'
-                          ? 'Its journal entry was reversed.'
-                          : 'Only remarks can change.'}
-                    </Alert>
-                  ) : null}
                 </>
               }
               main={

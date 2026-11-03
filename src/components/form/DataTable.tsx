@@ -12,7 +12,7 @@ export interface DataTableProps<T> {
   getRowId: (row: T) => string;
   /** Value a column sorts by; defaults to the row field named by the column key. */
   sortValue?: (row: T, key: string) => string | number;
-  /** Keys of columns that shouldn't sort (e.g. action buttons). Columns with `sortable: false` also don't. */
+  /** Unused while table headers don't sort (every column is unsortable); kept so callers needn't change. */
   unsortable?: string[];
   /** Makes rows selectable with a "Remove selected" button. */
   onRemove?: (rows: T[]) => void;
@@ -98,7 +98,7 @@ export function useListPage() {
 
 /**
  * A titled table in the design system's Table pattern: the Table sits directly in
- * a Card, with sortable headers and pagination, and optional row selection.
+ * a Card, with pagination, and optional row selection.
  */
 export function DataTable<T>({
   icon,
@@ -109,7 +109,6 @@ export function DataTable<T>({
   columns,
   getRowId,
   sortValue = defaultSortValue,
-  unsortable = [],
   onRemove,
   empty,
   pageSize: initialPageSize = DEFAULT_PAGE_SIZE,
@@ -178,8 +177,9 @@ export function DataTable<T>({
   // The add row sits below the table, outside its horizontal scroll container, so it
   // stays put and full-width no matter how wide (or scrolled) the columns are.
   const mappedColumns = useMemo(
-    () => columns.map((c) => ({ sortable: !unsortable.includes(c.key), ...c })),
-    [columns, unsortable],
+    // Headers don't sort: the list's own order stands.
+    () => columns.map((c) => ({ ...c, sortable: false })),
+    [columns],
   );
 
   const addBlock = spanRow ? <div className="px-2 pt-2 pb-2 *:w-full">{spanRow}</div> : null;

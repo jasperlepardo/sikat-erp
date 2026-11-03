@@ -4,8 +4,8 @@ import { ListPage } from '../../../components/form/ListPage';
 import { useListColumns, type ListColumn } from '../../../components/form/listColumns';
 import { RI_STATUSES, type ReserveInvoice } from '../../../mocks/reserveInvoices';
 import { rateAt, type TaxCode } from '../../../mocks/taxes';
-import { formatDate } from '../../../services/dates';
-import { formatAmount } from '../../../services/format';
+import { formatDate, dueIn, todayISO } from '../../../services/dates';
+import { formatMoney } from '../../../services/format';
 import { taxCodes } from '../../../services/masterData';
 import { riNumber, riTotals, listReserveInvoices } from '../../../services/reserveInvoices';
 import { useAsync } from '../../../services/useAsync';
@@ -13,6 +13,7 @@ import { dateField, linesField, masterField, numberField, partnerField, statusFi
 import { draftScope, draftSplit, scopeStatuses } from '../../../components/filter/useListPresets';
 import { currencyDef, salesEmployeeDef } from '../../settings/masterDefs';
 import { RI_LIST_PATH, RI_NOUN, RI_STATUS_INTENT } from '../paths';
+import { cap } from '../../../components/form/noun';
 
 const rateOfOn = (codes: readonly TaxCode[], date: string) => (code: string) => {
   const c = codes.find((x) => x.code === code);
@@ -26,13 +27,13 @@ export function ReserveInvoiceList({ draftsOnly = false, compact, selectedId }: 
   const totalOf = (r: ReserveInvoice) => riTotals(r, rateOfOn(codes, r.postingDate)).total;
 
   const fields = [
-    textField<ReserveInvoice>('no', 'No.', riNumber),
+    textField<ReserveInvoice>('no', `${cap(RI_NOUN.one)} no.`, riNumber),
     partnerField<ReserveInvoice>('customer', 'Customer', (r) => r.customerId, (r) => r.customerName, rows_),
     textField<ReserveInvoice>('customerCode', 'Customer code', (r) => r.customerCode),
     textField<ReserveInvoice>('customerRef', 'Customer PO no.', (r) => r.customerRef),
     dateField<ReserveInvoice>('postingDate', 'Posting date', (r) => r.postingDate),
     dateField<ReserveInvoice>('dueDate', 'Due date', (r) => r.dueDate),
-    textField<ReserveInvoice>('order', 'Order', (r) => r.orderNumber),
+    textField<ReserveInvoice>('order', 'Sales order', (r) => r.orderNumber),
     numberField<ReserveInvoice>('total', 'Total', totalOf),
     statusField<ReserveInvoice>(scopeStatuses(draftsOnly, RI_STATUSES)),
     masterField<ReserveInvoice>('currency', 'Currency', currencyDef, (r) => r.currency),
@@ -40,14 +41,24 @@ export function ReserveInvoiceList({ draftsOnly = false, compact, selectedId }: 
     linesField<ReserveInvoice>(),
   ];
 
+  const today = todayISO();
   const allColumns: ListColumn<ReserveInvoice>[] = [
-    { key: 'docNum', header: 'No.', sortable: true, locked: true, cell: (r) => <TableContent href={`#${RI_LIST_PATH}/${r.docNum ? riNumber(r) : r.id}`} subcopy={r.customerRef ? `Customer PO no. ${r.customerRef}` : undefined}>{riNumber(r)}</TableContent> },
-    { key: 'customerName', header: 'Customer', sortable: true, cell: (r) => <TableContent subcopy={r.customerCode}>{r.customerName || '—'}</TableContent> },
+    { key: 'docNum', header: `${cap(RI_NOUN.one)} no.`, locked: true, cell: (r) => <TableContent href={`#${RI_LIST_PATH}/${r.docNum ? riNumber(r) : r.id}`}>{riNumber(r)}</TableContent> },
+    { key: 'customerRef', header: 'Customer PO no.', cell: (r) => r.customerRef || '—' },
+    { key: 'customerName', header: 'Customer', cell: (r) => r.customerName || '—' },
+    { key: 'status', header: 'Status', cell: (r) => <TableStatus intent={RI_STATUS_INTENT[r.status]}>{r.status}</TableStatus> },
     { key: 'postingDate', header: 'Posting date', align: 'end', cell: (r) => formatDate(r.postingDate) },
-    { key: 'orderNumber', header: 'Order', defaultHidden: true, cell: (r) => r.orderNumber || '—' },
-    { key: 'dueDate', header: 'Due date', align: 'end', cell: (r) => formatDate(r.dueDate) },
-    { key: 'total', header: 'Total', align: 'end', cell: (r) => `${r.currency} ${formatAmount(totalOf(r))}` },
-    { key: 'status', header: 'Status', sortable: true, cell: (r) => <TableStatus intent={RI_STATUS_INTENT[r.status]}>{r.status}</TableStatus> },
+    { key: 'orderNumber', header: 'Sales order', defaultHidden: true, cell: (r) => r.orderNumber || <span className="text-muted">Without SO</span> },
+    { key: 'dueDate', header: 'Due date', align: 'end', cell: (r) => (r.dueDate ? formatDate(r.dueDate) : '—') },
+    {
+      key: 'dueIn',
+      header: 'Due',
+      cell: (r) => {
+        const due = r.status === 'Open' && r.dueDate ? dueIn(r.dueDate, today) : undefined;
+        return due ? <span className={due.overdue ? 'text-danger' : undefined}>{due.text}</span> : '—';
+      },
+    },
+    { key: 'total', header: 'Total', align: 'end', cell: (r) => formatMoney(totalOf(r), r.currency) },
   ];
   const { columns, manager } = useListColumns('reserve-invoices', allColumns);
 

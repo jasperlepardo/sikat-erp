@@ -45,9 +45,9 @@ function validate(d: ItrDraft, m: ItrMasters): Problem<TabId>[] {
   need(d.fromWarehouse, 'header', 'fromWarehouse', 'Pick the From warehouse.');
   need(d.toWarehouse, 'header', 'toWarehouse', 'Pick the To warehouse.');
   need(!d.toWarehouse || d.toWarehouse !== d.fromWarehouse, 'header', 'toWarehouse', 'From and To warehouse are the same — a transfer needs two warehouses.');
-  need(d.postingDate, 'header', 'postingDate', 'Posting date is required.');
+  need(d.postingDate, 'header', 'postingDate', 'Request date is required.');
   need(d.dueDate, 'header', 'dueDate', 'Due date is required — when the stock is needed.');
-  need(!d.dueDate || !d.postingDate || d.dueDate >= d.postingDate, 'header', 'dueDate', 'Due date is before the posting date.');
+  need(!d.dueDate || !d.postingDate || d.dueDate >= d.postingDate, 'header', 'dueDate', 'Due date is before the request date.');
   need(d.documentDate, 'header', 'documentDate', 'Document date is required.');
   need(d.lines.length, 'contents', 'lines', 'Add at least one line.');
   for (const [i, l] of d.lines.entries()) {
@@ -279,9 +279,9 @@ function TransferRequestForm() {
                         onNumber={(docNum) => update({ docNum })}
                       />
                     )}
-                    {h.date('postingDate', 'Posting date', { required: true, error: errors.postingDate, hint: 'When the request is made.' })}
+                    {h.date('postingDate', 'Request date', { required: true, error: errors.postingDate, hint: 'When the request is made.' })}
                     {h.date('dueDate', 'Due date', { required: true, error: errors.dueDate, hint: 'When the destination needs the stock. Not enforced.' })}
-                    {h.date('documentDate', 'Document date', { required: true, error: errors.documentDate, hint: 'Usually the same as the posting date.' })}
+                    {h.date('documentDate', 'Document date', { required: true, error: errors.documentDate, hint: 'Usually the same as the request date.' })}
                     <ReadOnly label="Close date" value={draft.closeDate ? formatDate(draft.closeDate) : '—'} hint="Set when the request closes." />
                   </Form.Group>
                 </FieldOrientationCtx.Provider>

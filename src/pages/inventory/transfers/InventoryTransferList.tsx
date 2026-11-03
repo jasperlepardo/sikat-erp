@@ -1,9 +1,9 @@
 import { useLocation } from 'react-router';
-import { Alert, TableAmount, TableContent, TableStatus } from '@jasperlepardo/sikat-design-system';
+import { Alert, TableContent, TableStatus } from '@jasperlepardo/sikat-design-system';
 import { ListPage } from '../../../components/form/ListPage';
 import { useListColumns, type ListColumn } from '../../../components/form/listColumns';
 import { TRANSFER_STATUSES, type InventoryTransfer } from '../../../mocks/inventoryTransfers';
-import { formatAmount } from '../../../services/format';
+import { formatMoney } from '../../../services/format';
 import { formatDate } from '../../../services/dates';
 import { destinations, listTransfers, transferNumber, transferQty, transferValue } from '../../../services/inventoryTransfers';
 import { useAsync } from '../../../services/useAsync';
@@ -11,12 +11,13 @@ import { dateField, linesField, masterField, numberField, statusField, textField
 import { draftScope, draftSplit, scopeStatuses } from '../../../components/filter/useListPresets';
 import { salesEmployeeDef } from '../../settings/masterDefs';
 import { TRANSFER_LIST_PATH, TRANSFER_NOUN, TRANSFER_STATUS_INTENT } from '../paths';
+import { cap } from '../../../components/form/noun';
 
 export function InventoryTransferList({ draftsOnly = false, compact, selectedId }: { draftsOnly?: boolean; compact?: boolean; selectedId?: string } = {}) {
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const transfers = useAsync(listTransfers, []);
   const fields = [
-    textField<InventoryTransfer>('no', 'No.', transferNumber),
+    textField<InventoryTransfer>('no', `${cap(TRANSFER_NOUN.one)} no.`, transferNumber),
     textField<InventoryTransfer>('from', 'From warehouse', (d) => d.fromWarehouse),
     textField<InventoryTransfer>('to', 'To warehouse', destinations),
     dateField<InventoryTransfer>('postingDate', 'Posting date', (d) => d.postingDate),
@@ -29,12 +30,12 @@ export function InventoryTransferList({ draftsOnly = false, compact, selectedId 
   ];
 
   const allColumns: ListColumn<InventoryTransfer>[] = [
-    { key: 'docNum', header: 'No.', sortable: true, locked: true, cell: (t) => <TableContent href={`#${TRANSFER_LIST_PATH}/${t.id}`}>{transferNumber(t)}</TableContent> },
-    { key: 'fromWarehouse', header: 'From → To', sortable: true, cell: (t) => <TableContent subcopy={t.remarks || undefined}>{t.fromWarehouse} → {destinations(t).join(', ') || '—'}</TableContent> },
-    { key: 'postingDate', header: 'Posting date', sortable: true, cell: (t) => formatDate(t.postingDate) },
-    { key: 'qty', header: 'Quantity', cell: (t) => <TableContent subcopy={`${t.lines.length} line${t.lines.length === 1 ? '' : 's'}`}>{transferQty(t).toLocaleString('en-PH')}</TableContent> },
-    { key: 'value', header: 'Value at cost', sortable: true, cell: (t) => <TableAmount currency="PHP">{formatAmount(transferValue(t))}</TableAmount> },
-    { key: 'status', header: 'Status', sortable: true, cell: (t) => <TableStatus intent={TRANSFER_STATUS_INTENT[t.status]}>{t.status}</TableStatus> },
+    { key: 'docNum', header: `${cap(TRANSFER_NOUN.one)} no.`, locked: true, cell: (t) => <TableContent href={`#${TRANSFER_LIST_PATH}/${t.id}`}>{transferNumber(t)}</TableContent> },
+    { key: 'fromWarehouse', header: 'From → To', cell: (t) => <TableContent subcopy={t.remarks || undefined}>{t.fromWarehouse} → {destinations(t).join(', ') || '—'}</TableContent> },
+    { key: 'postingDate', header: 'Posting date', align: 'end', cell: (t) => formatDate(t.postingDate) },
+    { key: 'qty', header: 'Quantity', align: 'end', cell: (t) => transferQty(t).toLocaleString('en-PH') },
+    { key: 'value', header: 'Value at cost', align: 'end', cell: (t) => formatMoney(transferValue(t)) },
+    { key: 'status', header: 'Status', cell: (t) => <TableStatus intent={TRANSFER_STATUS_INTENT[t.status]}>{t.status}</TableStatus> },
   ];
   const { columns, manager } = useListColumns('inventory-transfers', allColumns);
 

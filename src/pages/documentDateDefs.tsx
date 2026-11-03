@@ -55,9 +55,10 @@ export const quotationDates: DatesDef<QtDraft, { ctx: QtContext }> = {
 };
 
 export const salesOrderDates: DatesDef<SoTabProps['draft'], { ctx: SoTabProps['ctx'] }> = {
+  closeField: 'closeDate',
   rows: ({ draft: _draft, errors, ctx }) => [
-    dateRow(DOC_DATE.effective, { error: errors.postingDate, readOnly: ctx.added, hint: 'Sets the exchange rate, tax rates and which prices apply.' }),
-    dateRow(DOC_DATE.due, { error: errors.dueDate, readOnly: ctx.readOnly, hint: 'Posting date + the payment terms. Change it to override.', optional: true }),
+    dateRow(DOC_DATE.effective, { label: 'Order date', error: errors.postingDate, readOnly: ctx.added, hint: 'Sets the exchange rate, tax rates and which prices apply.' }),
+    dateRow(DOC_DATE.due, { error: errors.dueDate, readOnly: ctx.readOnly, hint: 'Order date + the payment terms. Change it to override.', optional: true }),
     dateRow(DOC_DATE.document, { error: errors.documentDate, readOnly: ctx.readOnly, hint: 'The date for records. Defaults to today.' }),
     dateRow(DOC_DATE.delivery, { error: errors.deliveryDate, readOnly: ctx.readOnly, hint: 'When the customer expects delivery.', optional: true }),
     dateRow(DOC_DATE.required, { error: errors.requiredDate, readOnly: ctx.readOnly, hint: 'When the customer needs it — for planning.', optional: true }),
@@ -118,7 +119,7 @@ export const purchaseRequestDates: DatesDef<PrSectionProps['draft']> = {
   closeField: 'closeDate',
   closeHint: 'Set when the request is closed.',
   rows: ({ errors }) => [
-    dateRow(DOC_DATE.effective, { required: true, error: errors.postingDate, hint: 'When the request is raised. Defaults to today.' }),
+    dateRow(DOC_DATE.effective, { label: 'Request date', required: true, error: errors.postingDate, hint: 'When the request is raised. Defaults to today.' }),
     dateRow(DOC_DATE.document, { required: true, error: errors.documentDate, hint: 'The date for records. Defaults to today.' }),
     dateRow(DOC_DATE.required, { hint: 'When the items or services are needed. Cascades to new lines.', optional: true }),
     dateRow(DOC_DATE.validUntil, { hint: 'Date the request lapses if unfulfilled.', optional: true }),
@@ -147,7 +148,7 @@ export const goodsReturnDates: DatesDef<GrReturnProps['draft']> = {
 export const goodsReturnRequestDates: DatesDef<GrrSectionProps['draft']> = {
   closeField: 'closeDate',
   rows: ({ errors }) => [
-    dateRow(DOC_DATE.effective, { error: errors.postingDate, hint: 'When the request is raised. Defaults to today.' }),
+    dateRow(DOC_DATE.effective, { label: 'Request date', error: errors.postingDate, hint: 'When the request is raised. Defaults to today.' }),
     dateRow(DOC_DATE.document, { error: errors.documentDate, hint: 'The date for records. Defaults to today.' }),
     dateRow(DOC_DATE.required, { hint: 'When the goods should be ready to send back.', optional: true }),
   ],
@@ -176,7 +177,7 @@ export const apReserveInvoiceDates: DatesDef<ApriSectionProps['draft'], { ctx: A
 export const downPaymentRequestDates: DatesDef<DprSectionProps['draft'], { ctx: DprSectionProps['ctx'] }> = {
   closeField: 'closeDate',
   rows: ({ errors, ctx }) => [
-    dateRow(DOC_DATE.effective, { required: true, error: errors.postingDate, readOnly: ctx.readOnly, hint: 'When the advance is requested. Defaults to today.' }),
+    dateRow(DOC_DATE.effective, { label: 'Request date', required: true, error: errors.postingDate, readOnly: ctx.readOnly, hint: 'When the advance is requested. Defaults to today.' }),
     dateRow(DOC_DATE.due, { hint: 'When the vendor wants the advance, from the payment terms.', readOnly: ctx.readOnly, optional: true }),
     dateRow(DOC_DATE.document, { required: true, error: errors.documentDate, readOnly: ctx.readOnly, hint: 'The date for records. Defaults to today.' }),
   ],
@@ -218,7 +219,7 @@ export const purchaseOrderDates: DatesDef<PoTabProps['draft'], { ctx: PoTabProps
   rows: ({ draft, errors, ctx }) => {
     const postingMoved = draft.postingDate && draft.postingDate !== todayISO() && !ctx.added;
     return [
-      dateRow(DOC_DATE.effective, { error: errors.postingDate, readOnly: ctx.added, hint: postingMoved ? '⚠ Not today: this breaks the continuity of document numbers and dates.' : 'Defaults to today. Sets the exchange rate and tax rates used.' }),
+      dateRow(DOC_DATE.effective, { label: 'Order date', error: errors.postingDate, readOnly: ctx.added, hint: postingMoved ? '⚠ Not today: this breaks the continuity of document numbers and dates.' : 'Defaults to today. Sets the exchange rate and tax rates used.' }),
       dateRow(DOC_DATE.due, { error: errors.dueDate, readOnly: ctx.readOnly, hint: 'When payment is due. The goods receipt and A/P invoice take it.', optional: true }),
       dateRow(DOC_DATE.document, { error: errors.documentDate, readOnly: ctx.readOnly, hint: 'The date for records. Defaults to today.' }),
       dateRow(DOC_DATE.delivery, { required: true, error: errors.deliveryDate, readOnly: ctx.readOnly, hint: 'When the items should arrive. Lines take it unless they have their own.' }),
@@ -237,7 +238,7 @@ export const rfqDates: DatesDef<RfqTabProps['draft'], { ctx: RfqTabProps['ctx'] 
   rows: ({ draft, errors, ctx }) => {
     const postingMoved = draft.postingDate && draft.postingDate !== todayISO() && !ctx.added;
     return [
-      dateRow(DOC_DATE.effective, { error: errors.postingDate, readOnly: ctx.added, hint: postingMoved ? '⚠ Not today: this breaks the continuity of document numbers and dates.' : 'When the RFQ is issued. Defaults to today.' }),
+      dateRow(DOC_DATE.effective, { label: 'Quotation date', error: errors.postingDate, readOnly: ctx.added, hint: postingMoved ? '⚠ Not today: this breaks the continuity of document numbers and dates.' : 'When the request for quotation is sent. Defaults to today.' }),
       dateRow(DOC_DATE.document, { error: errors.documentDate, hint: 'The date for records. Defaults to today.' }),
       dateRow(DOC_DATE.required, { hint: 'When the items are needed. Cascades to new lines.', optional: true }),
       dateRow(DOC_DATE.validUntil, { hint: 'Expiry date for the quoted prices.', optional: true }),

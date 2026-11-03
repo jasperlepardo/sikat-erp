@@ -195,32 +195,28 @@ export function StockOnHandPage() {
       key: 'item',
       header: 'Item / Warehouse / Bin',
       expandToggle: true,
-      sortable: true,
       locked: true,
       // Cells don't wrap, so a long name would widen the column and push Status off the card:
       // let the name wrap, so it stays on one line while the card has room and wraps when it doesn't.
       cell: (r) => <TableContent href={`#${ITEMS_PATH}/${r.item.id}`}>{rowLabel(r)}</TableContent>,
     },
-    { key: 'inStock', header: numHeader('In stock'), sortable: true, cell: (r) => num(r.inStock ? <>{qty(r.inStock)}{affix(r.item.inventoryUom)}</> : DASH) },
-    { key: 'committed', header: numHeader('Committed'), sortable: true, cell: (r) => (r.bin ? null : num(cellQty(r.committed))) },
-    { key: 'ordered', header: numHeader('Ordered'), sortable: true, cell: (r) => (r.bin ? null : num(cellQty(r.ordered))) },
+    { key: 'inStock', header: numHeader('In stock'), cell: (r) => num(r.inStock ? <>{qty(r.inStock)}{affix(r.item.inventoryUom)}</> : DASH) },
+    { key: 'committed', header: numHeader('Committed'), cell: (r) => (r.bin ? null : num(cellQty(r.committed))) },
+    { key: 'ordered', header: numHeader('Ordered'), cell: (r) => (r.bin ? null : num(cellQty(r.ordered))) },
     {
       key: 'available',
       header: numHeader('Available'),
-      sortable: true,
       cell: (r) => (r.bin ? null : num(cellQty(r.available))),
     },
     {
       key: 'minStock',
       header: numHeader('Minimum'),
-      sortable: true,
       // The minimum is set per item, so warehouse rows leave it blank.
       cell: (r) => (r.warehouse ? null : num(cellQty(r.item.minStock))),
     },
     {
       key: 'value',
       header: numHeader('Value at cost'),
-      sortable: true,
       cell: (r) => num(r.value ? <>{affix('PHP')}{formatAmount(r.value)}</> : DASH),
     },
     {

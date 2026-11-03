@@ -14,7 +14,7 @@ export function RfqReferencesCard({ draft, update, m }: RfqTabProps) {
           {f.choose('indicator', 'Indicator', asOptions(INDICATORS), { clearable: true })}
           <ReadOnly
             label="Federal tax ID"
-            value={m.tax.company.tin || <span className="opacity-50">Not set — Settings › Accounting & Tax › Company tax profile</span>}
+            value={m.tax.company.tin || <span className="opacity-50">Not set — Settings › Company › Companies</span>}
             hint={`${m.tax.company.registeredName}'s TIN.`}
           />
           {f.text('orderNumber', 'Order number', { hint: 'Chain-store order number for cross-referencing.' })}

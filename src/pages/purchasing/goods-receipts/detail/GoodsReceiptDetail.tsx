@@ -3,7 +3,6 @@ import { useLocation, useNavigate, useParams } from 'react-router';
 import { createPortal } from 'react-dom';
 import { postDocumentEntry, postingPeriodProblem, reverseDocumentEntry } from '../../../../services/journalEntries';
 import {
-  Alert,
   Badge,
   Form,
   Panel,
@@ -133,7 +132,7 @@ function validate(d: GrDraft, ctx: GrContext, m: GrMasters, asDraft: boolean): P
   for (const [baseLineId, qty] of receiving) {
     const l = d.lines.find((x) => x.baseLineId === baseLineId)!;
     const pl = m.orders.find((p) => p.id === l.baseId)?.lines.find((x) => x.id === baseLineId);
-    need(!pl || qty <= openQty(pl), 'contents', `line:${l.id}:quantity`, `${l.itemNo}: receiving ${qty} ${l.uomCode}, but PO ${l.baseDocNo} has only ${pl ? openQty(pl) : 0} open.`);
+    need(!pl || qty <= openQty(pl), 'contents', `line:${l.id}:quantity`, `${l.itemNo}: receiving ${qty} ${l.uomCode}, but ${l.baseDocNo} has only ${pl ? openQty(pl) : 0} open.`);
   }
   return problems;
 }
@@ -426,13 +425,6 @@ function GoodsReceiptForm() {
               <>
                 <ProblemsAlert problems={problems} tabLabel={(t) => ({ contents: 'Contents', logistics: 'Logistics', accounting: 'Accounting' })[t]} />
                 {reject.alert('Reject goods receipt', rejectIt)}
-                {added ? (
-                  <Alert intent="default" variant="outline" title={draft.status === 'Open' ? 'This goods receipt is added' : `This goods receipt is ${draft.status.toLowerCase()}`}>
-                    {draft.status === 'Open'
-                      ? 'The stock is in and the PO lines count it as received. Only remarks can change; to undo it, cancel the receipt.'
-                      : `Only remarks can change${draft.closeDate ? ` (${draft.status.toLowerCase()} ${formatDate(draft.closeDate)})` : ''}.`}
-                  </Alert>
-                ) : null}
               </>
             }
             main={

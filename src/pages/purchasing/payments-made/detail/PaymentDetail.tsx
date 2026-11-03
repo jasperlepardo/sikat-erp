@@ -1,4 +1,3 @@
-import { StatusNotice } from '../../../../components/form/StatusNotice';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import { postDocumentEntry, postingPeriodProblem, reverseDocumentEntry } from '../../../../services/journalEntries';
@@ -29,7 +28,7 @@ import { JournalPreview } from '../../../../components/form/JournalPreview';
 import { FX_GAIN_ACCOUNT, FX_LOSS_ACCOUNT, PAYMENT_SERIES, blankPayment, type OutgoingPayment, type PaymentType } from '../../../../mocks/outgoingPayments';
 import { type Partner } from '../../../../mocks/partners';
 import { listApInvoices } from '../../../../services/apInvoices';
-import { formatDate, todayISO } from '../../../../services/dates';
+import { todayISO } from '../../../../services/dates';
 import { defaultJournalRemark } from '../../../../services/journalPatterns';
 import { formatAmount } from '../../../../services/format';
 import { cardBrands } from '../../../../services/partnerMasters';
@@ -327,11 +326,6 @@ function PaymentForm() {
               <>
                 <ProblemsAlert problems={problems} tabLabel={(t) => ({ contents: 'Contents', means: 'Payment means' })[t]} />
                 {reject.alert('Reject outgoing payment', rejectIt)}
-                {added && draft.status !== 'Posted' ? (
-                  <StatusNotice resetKey={`${draft.id}:${draft.status}`} title={`This payment was cancelled ${formatDate(draft.cancelDate)}`}>
-                    The invoices it paid are open again. Only remarks and attachments can change.
-                  </StatusNotice>
-                ) : null}
               </>
             }
             main={

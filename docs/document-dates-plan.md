@@ -18,7 +18,7 @@ The goal is the **item-card property**: from the moment a document is created, i
 | **Renderer** | One shared `<DatesCard>` component owns the Section, layout, `bind()` wiring and the Close-date row | Removes the `Section`/`FieldStack`/`ReadOnly` boilerplate re-declared in ~23 files |
 | **Split mixed cards** | Dates come **out** of every "Document" card into a dedicated Dates card, on every page | Full consistency — every document shows a **Document** card then a **Dates** card, like the item card's grouped sections |
 | **Static vs dynamic** | Registry holds the static identity (key · label · hint · required); the document supplies the dynamic bits (`error`, `readOnly`, and dynamic hints) at the call site | `readOnly` depends on `ctx.added` vs `ctx.readOnly` per doc; some hints interpolate payment-term names — these can't live in a static registry |
-| **Overrides** | A document may override a role's `label` or `hint` where it genuinely differs (e.g. Quotation date, vendor-invoice-specific hint) | The default keeps most docs honest; the override preserves the few meaningful differences |
+| **Overrides** | A document may override a role's `label` or `hint` where it genuinely differs (e.g. vendor-invoice-specific hint). Documents that post nothing name the effective date after themselves: **Quotation date** (sales and purchase quotations), **Order date** (sales and purchase orders), **Request date** (purchase, down payment, goods return and transfer requests). The list column and filter use the same label | The default keeps most docs honest; "Posting date" on a document that posts nothing misleads |
 
 ---
 

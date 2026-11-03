@@ -498,7 +498,7 @@ const HAND_ORDERS: PurchaseOrder[] = [
     lines: [svc('po-012-1', 'RNT-CEB', 1, 95000, 'NVAT', { freeText: 'Cebu store, October 2026', deliveryDate: '2026-10-01', departmentId: departmentId('Operations') })],
   }),
   svcPo('po-013', 10, 'bp-014', {
-    status: 'Closed', postingDate: '2026-09-01', documentDate: '2026-09-01', deliveryDate: '2026-09-30', closeDate: '2026-09-28', dueDate: '2026-10-15',
+    status: 'Closed', postingDate: '2026-09-01', documentDate: '2026-09-01', deliveryDate: '2026-09-30', closeDate: '2026-09-30', dueDate: '2026-10-15',
     lines: [svc('po-013-1', 'SVC-SECURITY', 2, 92000, 'IVAT-S', { receivedQty: 2, status: 'Closed', freeText: 'Pasig and Muntinlupa stores, September', deliveryDate: '2026-09-30', departmentId: departmentId('Operations') })],
   }),
   svcPo('po-014', 11, 'bp-034', {
@@ -577,7 +577,7 @@ const HAND_ORDERS: PurchaseOrder[] = [
     lines: [svc('po-029-1', 'SVC-ADS-DIGITAL', 1, 250000, 'IVAT-S', { freeText: 'Search and YouTube — iPhone 18 launch', deliveryDate: '2026-09-30', departmentId: departmentId('Marketing') })],
   }),
   svcPo('po-030', 26, 'bp-020', {
-    status: 'Closed', postingDate: '2026-09-01', documentDate: '2026-09-01', deliveryDate: '2026-09-30', closeDate: '2026-09-28', dueDate: '2026-09-01', paymentMethod: 'CARD',
+    status: 'Closed', postingDate: '2026-09-01', documentDate: '2026-09-01', deliveryDate: '2026-09-30', closeDate: '2026-09-30', dueDate: '2026-09-01', paymentMethod: 'CARD',
     lines: [svc('po-030-1', 'SVC-ADS-DIGITAL', 1, 180000, 'IVAT-S', { receivedQty: 1, status: 'Closed', freeText: 'Facebook and Instagram — iPhone 18 launch', deliveryDate: '2026-09-30', departmentId: departmentId('Marketing') })],
   }),
   svcPo('po-031', 27, 'bp-029', {

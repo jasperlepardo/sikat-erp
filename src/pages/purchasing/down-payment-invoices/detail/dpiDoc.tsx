@@ -92,7 +92,7 @@ export function dpiDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy }: 
     unitCost: (l) => itemOf(l)?.itemCost ?? 0,
     warrantyDef: warrantyTemplateDef,
     itemWarranty: (l) => itemOf(l)?.warrantyTemplate ?? '',
-    baseDoc: (l) => (l.baseType === 'PO' ? { href: `#/purchasing/purchase-orders/${l.baseId}`, label: `PO ${l.baseDocNo}` } : l.baseType === 'DPR' ? { href: `#/purchasing/down-payment-requests/${l.baseId}`, label: `DPR ${l.baseDocNo}` } : null),
+    baseDoc: (l) => (l.baseType === 'PO' ? { href: `#/purchasing/purchase-orders/${l.baseId}`, label: `${l.baseDocNo}` } : l.baseType === 'DPR' ? { href: `#/purchasing/down-payment-requests/${l.baseId}`, label: `DPR ${l.baseDocNo}` } : null),
   });
 
   const columns = pick(cols, [

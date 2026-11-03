@@ -1,10 +1,10 @@
 import { useLocation } from 'react-router';
-import { Alert, TableAmount, TableContent, TableStatus } from '@jasperlepardo/sikat-design-system';
+import { Alert, TableContent, TableStatus } from '@jasperlepardo/sikat-design-system';
 import { ListPage } from '../../../components/form/ListPage';
 import { useListColumns, type ListColumn } from '../../../components/form/listColumns';
 import { RFQ_STATUSES, type Rfq } from '../../../mocks/rfqs';
-import { todayISO, formatDate } from '../../../services/dates';
-import { formatAmount } from '../../../services/format';
+import { formatDate } from '../../../services/dates';
+import { formatMoney } from '../../../services/format';
 import { taxCodes } from '../../../services/masterData';
 import { listRfqs, rfqNumber, rfqTotal } from '../../../services/rfqs';
 import { useAsync } from '../../../services/useAsync';
@@ -12,20 +12,20 @@ import { dateField, linesField, masterField, numberField, partnerField, statusFi
 import { draftScope, draftSplit, scopeStatuses } from '../../../components/filter/useListPresets';
 import { currencyDef, salesEmployeeDef } from '../../settings/masterDefs';
 import { RFQ_LIST_PATH, RFQ_NOUN, RFQ_STATUS_INTENT } from '../paths';
+import { cap } from '../../../components/form/noun';
 
 export function RfqList({ draftsOnly = false, compact, selectedId }: { draftsOnly?: boolean; compact?: boolean; selectedId?: string } = {}) {
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const data = useAsync(() => Promise.all([listRfqs(), taxCodes.list()]), []);
   const [rfqs, codes] = data ?? [undefined, []];
   const totalOf = (q: Rfq) => rfqTotal(q, codes);
-  const today = todayISO();
 
   const fields = [
-    textField<Rfq>('no', 'No.', rfqNumber),
+    textField<Rfq>('no', `${cap(RFQ_NOUN.one)} no.`, rfqNumber),
     partnerField<Rfq>('vendor', 'Vendor', (d) => d.vendorId, (d) => d.vendorName, rfqs),
     textField<Rfq>('vendorCode', 'Vendor code', (d) => d.vendorCode),
     textField<Rfq>('vendorRef', 'Vendor quote no.', (d) => d.vendorRef),
-    dateField<Rfq>('postingDate', 'Posting date', (d) => d.postingDate),
+    dateField<Rfq>('postingDate', 'Quotation date', (d) => d.postingDate),
     dateField<Rfq>('validUntil', 'Valid until', (d) => d.validUntil),
     numberField<Rfq>('total', 'Total', totalOf),
     statusField<Rfq>(scopeStatuses(draftsOnly, RFQ_STATUSES)),
@@ -35,29 +35,21 @@ export function RfqList({ draftsOnly = false, compact, selectedId }: { draftsOnl
   ];
 
   const allColumns: ListColumn<Rfq>[] = [
-    { key: 'docNum', header: 'No.', sortable: true, locked: true, cell: (rfq) => <TableContent href={`#${RFQ_LIST_PATH}/${rfq.docNum ? rfqNumber(rfq) : rfq.id}`} subcopy={rfq.vendorRef ? `Vendor quote no. ${rfq.vendorRef}` : undefined}>{rfqNumber(rfq)}</TableContent> },
-    { key: 'vendorName', header: 'Vendor', sortable: true, cell: (rfq) => <TableContent subcopy={rfq.vendorCode}>{rfq.vendorName || '—'}</TableContent> },
-    { key: 'postingDate', header: 'Posting date', sortable: true, cell: (rfq) => formatDate(rfq.postingDate) },
+    { key: 'docNum', header: `${cap(RFQ_NOUN.one)} no.`, locked: true, cell: (rfq) => <TableContent href={`#${RFQ_LIST_PATH}/${rfq.docNum ? rfqNumber(rfq) : rfq.id}`}>{rfqNumber(rfq)}</TableContent> },
+    { key: 'vendorRef', header: 'Vendor quote no.', cell: (rfq) => rfq.vendorRef || '—' },
+    { key: 'vendorName', header: 'Vendor', cell: (rfq) => rfq.vendorName || '—' },
+    { key: 'status', header: 'Status', cell: (rfq) => <TableStatus intent={RFQ_STATUS_INTENT[rfq.status]}>{rfq.status}</TableStatus> },
+    { key: 'postingDate', header: 'Quotation date', align: 'end', cell: (rfq) => formatDate(rfq.postingDate) },
     {
       key: 'validUntil',
       header: 'Valid until',
-      sortable: true,
+      align: 'end',
       cell: (rfq) =>
-        !rfq.validUntil ? '—' : rfq.status === 'Open' && rfq.validUntil < today ? (
-          <TableContent subcopy="Expired"><span className="text-danger">{formatDate(rfq.validUntil)}</span></TableContent>
+        !rfq.validUntil ? '—' : rfq.status === 'Expired' ? (
+          <span className="text-danger">{formatDate(rfq.validUntil)}</span>
         ) : formatDate(rfq.validUntil),
     },
-    {
-      key: 'lines',
-      header: 'Lines',
-      cell: (rfq) => {
-        const total = rfq.lines.length;
-        const quoted = rfq.lines.filter((l) => l.quotedQty > 0 || l.quotedDate).length;
-        return <TableContent subcopy={total ? `${quoted} of ${total} quoted` : undefined}>{total} {total === 1 ? 'line' : 'lines'}</TableContent>;
-      },
-    },
-    { key: 'total', header: 'Total', sortable: true, cell: (rfq) => <TableAmount currency={rfq.currency}>{formatAmount(totalOf(rfq))}</TableAmount> },
-    { key: 'status', header: 'Status', sortable: true, cell: (rfq) => <TableStatus intent={RFQ_STATUS_INTENT[rfq.status]}>{rfq.status}</TableStatus> },
+    { key: 'total', header: 'Total', align: 'end', cell: (rfq) => formatMoney(totalOf(rfq), rfq.currency) },
   ];
   const { columns, manager } = useListColumns('purchase-quotations', allColumns);
 

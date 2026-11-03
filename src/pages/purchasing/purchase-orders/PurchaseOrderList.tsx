@@ -1,17 +1,18 @@
 import { useLocation } from 'react-router';
-import { Alert, TableAmount, TableContent, TableStatus } from '@jasperlepardo/sikat-design-system';
+import { Alert, TableContent, TableStatus } from '@jasperlepardo/sikat-design-system';
 import { ListPage } from '../../../components/form/ListPage';
 import { useListColumns, type ListColumn } from '../../../components/form/listColumns';
 import { PO_STATUSES, type PurchaseOrder } from '../../../mocks/purchaseOrders';
 import { formatDate } from '../../../services/dates';
-import { formatAmount } from '../../../services/format';
+import { formatMoney } from '../../../services/format';
 import { taxCodes } from '../../../services/masterData';
-import { listPurchaseOrders, openQty, poNumber, poTotal } from '../../../services/purchaseOrders';
+import { listPurchaseOrders, poNumber, poTotal } from '../../../services/purchaseOrders';
 import { useAsync } from '../../../services/useAsync';
 import { dateField, linesField, masterField, numberField, partnerField, statusField, textField } from '../../../components/filter/fieldKit';
 import { draftScope, draftSplit, scopeStatuses } from '../../../components/filter/useListPresets';
 import { currencyDef, salesEmployeeDef } from '../../settings/masterDefs';
 import { PO_LIST_PATH, PO_NOUN, PO_STATUS_INTENT } from '../paths';
+import { cap } from '../../../components/form/noun';
 
 export function PurchaseOrderList({ draftsOnly = false, compact, selectedId }: { draftsOnly?: boolean; compact?: boolean; selectedId?: string } = {}) {
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
@@ -20,11 +21,11 @@ export function PurchaseOrderList({ draftsOnly = false, compact, selectedId }: {
   const totalOf = (po: PurchaseOrder) => poTotal(po, codes);
 
   const fields = [
-    textField<PurchaseOrder>('no', 'No.', poNumber),
+    textField<PurchaseOrder>('no', `${cap(PO_NOUN.one)} no.`, poNumber),
     partnerField<PurchaseOrder>('vendor', 'Vendor', (d) => d.vendorId, (d) => d.vendorName, orders),
     textField<PurchaseOrder>('vendorCode', 'Vendor code', (d) => d.vendorCode),
     textField<PurchaseOrder>('vendorRef', 'Vendor sales order no.', (d) => d.vendorRef),
-    dateField<PurchaseOrder>('postingDate', 'Posting date', (d) => d.postingDate),
+    dateField<PurchaseOrder>('postingDate', 'Order date', (d) => d.postingDate),
     dateField<PurchaseOrder>('deliveryDate', 'Delivery date', (d) => d.deliveryDate),
     numberField<PurchaseOrder>('total', 'Total', totalOf),
     statusField<PurchaseOrder>(scopeStatuses(draftsOnly, PO_STATUSES)),
@@ -34,21 +35,13 @@ export function PurchaseOrderList({ draftsOnly = false, compact, selectedId }: {
   ];
 
   const allColumns: ListColumn<PurchaseOrder>[] = [
-    { key: 'docNum', header: 'No.', sortable: true, locked: true, cell: (po) => <TableContent href={`#${PO_LIST_PATH}/${po.docNum ? poNumber(po) : po.id}`} subcopy={po.vendorRef ? `Vendor sales order no. ${po.vendorRef}` : undefined}>{poNumber(po)}</TableContent> },
-    { key: 'vendorName', header: 'Vendor', sortable: true, cell: (po) => <TableContent subcopy={po.vendorCode}>{po.vendorName || '—'}</TableContent> },
-    { key: 'postingDate', header: 'Posting date', sortable: true, cell: (po) => formatDate(po.postingDate) },
-    { key: 'deliveryDate', header: 'Delivery date', sortable: true, defaultHidden: true, cell: (po) => (po.deliveryDate ? formatDate(po.deliveryDate) : '—') },
-    {
-      key: 'received',
-      header: 'Received',
-      cell: (po) => {
-        const ordered = po.lines.reduce((n, l) => n + l.quantity, 0);
-        const left = po.lines.reduce((n, l) => n + openQty(l), 0);
-        return <TableContent subcopy={`${po.lines.length} line${po.lines.length === 1 ? '' : 's'}`}>{ordered - left} of {ordered}</TableContent>;
-      },
-    },
-    { key: 'total', header: 'Total', sortable: true, cell: (po) => <TableAmount currency={po.currency}>{formatAmount(totalOf(po))}</TableAmount> },
-    { key: 'status', header: 'Status', sortable: true, cell: (po) => <TableStatus intent={PO_STATUS_INTENT[po.status]}>{po.status}</TableStatus> },
+    { key: 'docNum', header: `${cap(PO_NOUN.one)} no.`, locked: true, cell: (po) => <TableContent href={`#${PO_LIST_PATH}/${po.docNum ? poNumber(po) : po.id}`}>{poNumber(po)}</TableContent> },
+    { key: 'vendorRef', header: 'Vendor sales order no.', cell: (po) => po.vendorRef || '—' },
+    { key: 'vendorName', header: 'Vendor', cell: (po) => po.vendorName || '—' },
+    { key: 'status', header: 'Status', cell: (po) => <TableStatus intent={PO_STATUS_INTENT[po.status]}>{po.status}</TableStatus> },
+    { key: 'postingDate', header: 'Order date', align: 'end', cell: (po) => formatDate(po.postingDate) },
+    { key: 'deliveryDate', header: 'Delivery date', align: 'end', cell: (po) => (po.deliveryDate ? formatDate(po.deliveryDate) : '—') },
+    { key: 'total', header: 'Total', align: 'end', cell: (po) => formatMoney(totalOf(po), po.currency) },
   ];
   const { columns, manager } = useListColumns('purchase-orders', allColumns);
 

@@ -43,7 +43,7 @@ export function AccountingDashboard() {
         <TableContent href={`#${JE_LIST_PATH}/${e.id}`} subcopy={`Trans. ${e.transNo}`}>{jeNumber(e)}</TableContent>
       ),
     },
-    { key: 'postingDate', header: 'Date', cell: (e) => formatDate(e.postingDate) },
+    { key: 'postingDate', header: 'Date', align: 'end', cell: (e) => formatDate(e.postingDate) },
     {
       key: 'origin',
       header: 'Origin',
@@ -76,7 +76,7 @@ export function AccountingDashboard() {
       },
     },
     { key: 'amount', header: 'Debits', cell: (v) => <TableAmount currency="PHP">{formatAmount(debitOf(v))}</TableAmount> },
-    { key: 'createdOn', header: 'Created', cell: (v) => formatDate(v.createdOn) },
+    { key: 'createdOn', header: 'Created', align: 'end', cell: (v) => formatDate(v.createdOn) },
     { key: 'status', header: 'Status', cell: (v) => { const s = voucherState(v); return <TableStatus intent={s.intent}>{s.label}</TableStatus>; } },
   ];
 

@@ -96,7 +96,7 @@ export function dprDoc({ draft, update, errors, m, ctx, onCopyClick, canCopy }: 
     unitCost: (l) => itemOf(l)?.itemCost ?? 0,
     warrantyDef: warrantyTemplateDef,
     itemWarranty: (l) => itemOf(l)?.warrantyTemplate ?? '',
-    baseDoc: (l) => (l.baseType ? { href: `#/purchasing/purchase-orders/${l.baseId}`, label: `PO ${l.baseDocNo}` } : null),
+    baseDoc: (l) => (l.baseType ? { href: `#/purchasing/purchase-orders/${l.baseId}`, label: `${l.baseDocNo}` } : null),
   });
 
   const columns = pick(cols, [

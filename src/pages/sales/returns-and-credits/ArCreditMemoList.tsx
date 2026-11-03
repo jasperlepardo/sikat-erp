@@ -5,12 +5,13 @@ import { useListColumns, type ListColumn } from '../../../components/form/listCo
 import { dateField, numberField, partnerField, statusField, textField } from '../../../components/filter/fieldKit';
 import { draftScope, draftSplit, scopeStatuses } from '../../../components/filter/useListPresets';
 import { formatDate } from '../../../services/dates';
-import { formatAmount } from '../../../services/format';
+import { formatMoney } from '../../../services/format';
 import { arCmNumber, arCmTotal, listArCreditMemos } from '../../../services/arCreditMemos';
 import { taxCodes } from '../../../services/masterData';
 import { useAsync } from '../../../services/useAsync';
 import type { ArCmStatus } from '../../../mocks/arCreditMemos';
 import { AR_CM_LIST_PATH, ARCM_NOUN, ARCM_STATUS_INTENT } from '../paths';
+import { cap } from '../../../components/form/noun';
 
 const STATUSES: ArCmStatus[] = ['Draft', 'Not Confirmed', 'Open', 'Closed', 'Cancelled'];
 
@@ -52,7 +53,7 @@ export function ArCreditMemoList({ draftsOnly = false, compact, selectedId }: { 
   }));
 
   const fields = [
-    textField<Row>('no', 'No.', (r) => r.number),
+    textField<Row>('no', `${cap(ARCM_NOUN.one)} no.`, (r) => r.number),
     partnerField<Row>('customer', 'Customer', (r) => r.customerId, (r) => r.customerName, rows),
     textField<Row>('customerCode', 'Customer code', (r) => r.customerCode),
     dateField<Row>('postingDate', 'Posting date', (r) => r.postingDate),
@@ -62,19 +63,19 @@ export function ArCreditMemoList({ draftsOnly = false, compact, selectedId }: { 
   ];
 
   const allColumns: ListColumn<Row>[] = [
-    { key: 'docNum', header: 'No.', sortable: true, locked: true, cell: (r) => <TableContent href={`#${AR_CM_LIST_PATH}/${r.docNum ? r.number : r.id}`}>{r.number}</TableContent> },
-    { key: 'customerName', header: 'Customer', sortable: true, cell: (r) => <TableContent subcopy={r.customerCode}>{r.customerName || '—'}</TableContent> },
+    { key: 'docNum', header: `${cap(ARCM_NOUN.one)} no.`, locked: true, cell: (r) => <TableContent href={`#${AR_CM_LIST_PATH}/${r.docNum ? r.number : r.id}`}>{r.number}</TableContent> },
+    { key: 'basedOn', header: 'Based on', cell: (r) => r.basedOn || <span className="text-muted">Entered by hand</span> },
+    { key: 'customerName', header: 'Customer', cell: (r) => r.customerName || '—' },
+    { key: 'status', header: 'Status', cell: (r) => <TableStatus intent={ARCM_STATUS_INTENT[r.status]}>{r.status}</TableStatus> },
     { key: 'postingDate', header: 'Posting date', align: 'end', cell: (r) => formatDate(r.postingDate) },
-    { key: 'basedOn', header: 'Based on', cell: (r) => r.basedOn || '—' },
-    { key: 'total', header: 'Total', align: 'end', cell: (r) => `${r.currency} ${formatAmount(r.total)}` },
+    { key: 'total', header: 'Total', align: 'end', cell: (r) => formatMoney(r.total, r.currency) },
     {
       key: 'applied',
       header: 'Applied',
       align: 'end',
       // Nothing applied yet: a muted dash, so applied memos stand out.
-      cell: (r) => (r.applied ? `${r.currency} ${formatAmount(r.applied)}` : <span className="text-caption">-</span>),
+      cell: (r) => (r.applied ? formatMoney(r.applied, r.currency) : <span className="text-caption">-</span>),
     },
-    { key: 'status', header: 'Status', sortable: true, cell: (r) => <TableStatus intent={ARCM_STATUS_INTENT[r.status]}>{r.status}</TableStatus> },
   ];
   const { columns, manager } = useListColumns('ar-credit-memos', allColumns);
 

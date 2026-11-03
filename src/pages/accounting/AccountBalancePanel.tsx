@@ -51,7 +51,7 @@ export function AccountBalancePanel({ account, all, onClose }: { account: Accoun
   const nameOf = (code: string) => all.find((a) => a.code === code)?.name ?? code;
 
   const columns: TableColumn<Posting>[] = [
-    { key: 'date', header: 'Posting date', cell: (p) => formatDate(p.je.postingDate) },
+    { key: 'date', header: 'Posting date', align: 'end', cell: (p) => formatDate(p.je.postingDate) },
     {
       key: 'entry',
       header: 'Entry',

@@ -115,7 +115,7 @@ const reviewDef: HistoryDef<Review> = {
   description: 'Performance reviews, with the reviewing manager and grade.',
   blank: () => ({ id: newId('rev'), date: '', description: '', managerId: '', grade: '', remarks: '' }),
   columns: (nameOf) => [
-    { key: 'date', header: 'Date', cell: (r) => date(r.date) },
+    { key: 'date', header: 'Date', align: 'end', cell: (r) => date(r.date) },
     { key: 'description', header: 'Review', cell: (r) => r.description || '—' },
     { key: 'managerId', header: 'Manager', cell: (r) => (r.managerId ? nameOf(r.managerId) : '—') },
     { key: 'grade', header: 'Grade', cell: (r) => r.grade || '—' },

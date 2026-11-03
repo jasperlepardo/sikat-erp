@@ -1,10 +1,10 @@
 import { useLocation } from 'react-router';
-import { Alert, TableAmount, TableContent, TableStatus } from '@jasperlepardo/sikat-design-system';
+import { Alert, TableContent, TableStatus } from '@jasperlepardo/sikat-design-system';
 import { ListPage } from '../../../components/form/ListPage';
 import { useListColumns, type ListColumn } from '../../../components/form/listColumns';
 import { AP_RI_STATUSES, type ApReserveInvoice } from '../../../mocks/apReserveInvoices';
-import { todayISO, formatDate } from '../../../services/dates';
-import { formatAmount } from '../../../services/format';
+import { todayISO, formatDate, dueIn } from '../../../services/dates';
+import { formatMoney } from '../../../services/format';
 import { apRiNumber, apRiTotals, listApReserveInvoices } from '../../../services/apReserveInvoices';
 import { taxCodes } from '../../../services/masterData';
 import { useAsync } from '../../../services/useAsync';
@@ -12,6 +12,7 @@ import { dateField, linesField, masterField, numberField, partnerField, statusFi
 import { draftScope, draftSplit, scopeStatuses } from '../../../components/filter/useListPresets';
 import { currencyDef, salesEmployeeDef } from '../../settings/masterDefs';
 import { APRI_LIST_PATH, APRI_NOUN, AP_RI_STATUS_INTENT } from '../paths';
+import { cap } from '../../../components/form/noun';
 
 export function ApReserveInvoiceList({ draftsOnly = false, compact, selectedId }: { draftsOnly?: boolean; compact?: boolean; selectedId?: string } = {}) {
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
@@ -25,7 +26,7 @@ export function ApReserveInvoiceList({ draftsOnly = false, compact, selectedId }
   const today = todayISO();
 
   const fields = [
-    textField<ApReserveInvoice>('no', 'No.', apRiNumber),
+    textField<ApReserveInvoice>('no', `${cap(APRI_NOUN.one)} no.`, apRiNumber),
     partnerField<ApReserveInvoice>('vendor', 'Vendor', (d) => d.vendorId, (d) => d.vendorName, invoices),
     textField<ApReserveInvoice>('vendorCode', 'Vendor code', (d) => d.vendorCode),
     textField<ApReserveInvoice>('vendorRef', 'Vendor invoice no.', (d) => d.vendorRef),
@@ -40,13 +41,23 @@ export function ApReserveInvoiceList({ draftsOnly = false, compact, selectedId }
   ];
 
   const allColumns: ListColumn<ApReserveInvoice>[] = [
-    { key: 'docNum', header: 'No.', sortable: true, locked: true, cell: (inv) => <TableContent href={`#${APRI_LIST_PATH}/${inv.docNum ? apRiNumber(inv) : inv.id}`} subcopy={inv.vendorRef ? `Vendor invoice no. ${inv.vendorRef}` : undefined}>{apRiNumber(inv)}</TableContent> },
-    { key: 'vendorName', header: 'Vendor', sortable: true, cell: (inv) => <TableContent subcopy={inv.vendorCode}>{inv.vendorName || '—'}</TableContent> },
-    { key: 'postingDate', header: 'Posting date', sortable: true, cell: (inv) => formatDate(inv.postingDate) },
-    { key: 'dueDate', header: 'Due date', sortable: true, cell: (inv) => <TableContent subcopy={inv.status === 'Open' && inv.dueDate && inv.dueDate < today ? 'Overdue' : inv.paymentBlock ? 'Payment block' : undefined}>{inv.dueDate ? formatDate(inv.dueDate) : '—'}</TableContent> },
-    { key: 'orderNumber', header: 'Purchase order', sortable: true, defaultHidden: true, cell: (inv) => (inv.orderNumber ? `PO ${inv.orderNumber}` : <span className="text-muted">Without PO</span>) },
-    { key: 'total', header: 'Total', sortable: true, cell: (inv) => <TableAmount currency={inv.currency}>{formatAmount(totalOf(inv))}</TableAmount> },
-    { key: 'status', header: 'Status', sortable: true, cell: (inv) => <TableStatus intent={AP_RI_STATUS_INTENT[inv.status]}>{inv.status}</TableStatus> },
+    { key: 'docNum', header: `${cap(APRI_NOUN.one)} no.`, locked: true, cell: (inv) => <TableContent href={`#${APRI_LIST_PATH}/${inv.docNum ? apRiNumber(inv) : inv.id}`}>{apRiNumber(inv)}</TableContent> },
+    { key: 'vendorRef', header: 'Vendor invoice no.', cell: (inv) => inv.vendorRef || '—' },
+    { key: 'vendorName', header: 'Vendor', cell: (inv) => inv.vendorName || '—' },
+    { key: 'status', header: 'Status', cell: (inv) => <TableStatus intent={AP_RI_STATUS_INTENT[inv.status]}>{inv.status}</TableStatus> },
+    { key: 'postingDate', header: 'Posting date', align: 'end', cell: (inv) => formatDate(inv.postingDate) },
+    { key: 'dueDate', header: 'Due date', align: 'end', cell: (inv) => (inv.dueDate ? formatDate(inv.dueDate) : '—') },
+    {
+      key: 'dueIn',
+      header: 'Due',
+      cell: (inv) => {
+        const due = inv.status === 'Open' && inv.dueDate ? dueIn(inv.dueDate, today) : undefined;
+        if (!due) return inv.paymentBlock ? 'Payment block' : '—';
+        return <TableContent subcopy={inv.paymentBlock ? 'Payment block' : undefined}><span className={due.overdue ? 'text-danger' : undefined}>{due.text}</span></TableContent>;
+      },
+    },
+    { key: 'orderNumber', header: 'Purchase order', defaultHidden: true, cell: (inv) => (inv.orderNumber ? `${inv.orderNumber}` : <span className="text-muted">Without PO</span>) },
+    { key: 'total', header: 'Total', align: 'end', cell: (inv) => formatMoney(totalOf(inv), inv.currency) },
   ];
   const { columns, manager } = useListColumns('ap-reserve-invoices', allColumns);
 

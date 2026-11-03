@@ -57,7 +57,7 @@ export function IncomingDocuments({ draft, update, errors, fx, readOnly }: Props
         </div>
       ),
     },
-    { key: 'date', header: 'Date', cell: (r) => <Text variant="small" className="whitespace-nowrap">{formatDate(r.docDate)}</Text> },
+    { key: 'date', header: 'Date', align: 'end', cell: (r) => <Text variant="small" className="whitespace-nowrap">{formatDate(r.docDate)}</Text> },
     {
       key: 'overdue',
       header: 'Overdue days',

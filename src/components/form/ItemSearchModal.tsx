@@ -74,19 +74,16 @@ export function ItemSearchModal({
     {
       key: 'description',
       header: 'Item',
-      sortable: true,
       cell: (i) => <TableContent subcopy={i.itemNo}>{i.description || i.name}</TableContent>,
     },
     {
       key: 'itemGroupId',
       header: 'Group',
-      sortable: true,
       cell: (i) => <TableContent subcopy={i.itemType === 'Items' ? undefined : i.itemType}>{itemGroupName(i.itemGroupId)}</TableContent>,
     },
     {
       key: 'basePrice',
       header: 'Base price',
-      sortable: true,
       cell: (i) => <TableAmount currency="PHP">{formatAmount(i.basePrice)}</TableAmount>,
     },
     {

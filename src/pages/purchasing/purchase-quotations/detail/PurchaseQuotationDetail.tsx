@@ -45,7 +45,7 @@ import {
   type RfqDraft,
   type RfqMasters,
 } from './types';
-import { todayISO } from '../../../../services/dates';
+import { formatDate, todayISO } from '../../../../services/dates';
 import { recalcLineTaxes } from '../../../../services/taxRecalc';
 import { useDocTitle } from '../../../../services/useDocTitle';
 import { ActivityTab } from '../../../../components/activity/ActivityTab';
@@ -82,7 +82,7 @@ function validate(d: RfqDraft, asDraft: boolean): Problem<TabId>[] {
 
   const series = seriesOf(d.seriesId);
   need(!series.manual || d.docNum > 0, 'header', 'docNum', `The ${series.name} series is manual — enter the RFQ number.`);
-  need(d.postingDate, 'header', 'postingDate', 'Posting date is required.');
+  need(d.postingDate, 'header', 'postingDate', 'Quotation date is required.');
   need(d.documentDate, 'header', 'documentDate', 'Document date is required.');
   need(d.currency !== ALL_CURRENCIES, 'header', 'currency', 'Pick the document currency.');
 
@@ -255,6 +255,8 @@ function RfqForm() {
 
   const saved = draft as Rfq;
   const open = draft.status === 'Open';
+  // An expired quote can still be closed or cancelled; moving its valid-until date on reopens it.
+  const live = open || draft.status === 'Expired';
   const recallIt = () => act(() => recallRfq(saved), 'recalled to draft');
   const rejectIt = async (rejectionReason: string) => {
     await logRejection('RFQ', saved.id, saved.vendorId, rejectionReason);
@@ -266,7 +268,7 @@ function RfqForm() {
     ...(open && draft.lines.some((l) => l.itemId && (l.quotedQty || l.quantity) > 0) ? [{ label: 'Create purchase order…', icon: 'shopping_cart', onSelect: () => setCreatingPo(true) }] : []),
     ...(!isNew ? [{ label: 'Duplicate', icon: 'content_copy', onSelect: duplicate }] : []),
     ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }] : []),
-    ...(open ? [
+    ...(live ? [
       { label: 'Close', icon: 'task_alt', onSelect: () => act(() => closeRfq(saved), 'closed') },
       { label: `Cancel ${RFQ_NOUN.one}`, icon: 'cancel', onSelect: () => act(() => cancelRfq(saved), 'cancelled') },
     ] : []),
@@ -322,9 +324,6 @@ function RfqForm() {
                 <div className="flex gap-1">
                   <Badge size="small" intent={RFQ_STATUS_INTENT[draft.status]}>{draft.status}</Badge>
                   {draft.convertedToPoId ? <Badge size="small" variant="outline">Converted</Badge> : null}
-                  {draft.validUntil && draft.validUntil < todayISO() && draft.status === 'Open' ? (
-                    <Badge size="small" intent="warning">Expired</Badge>
-                  ) : null}
                 </div>
               )
             }
@@ -366,9 +365,9 @@ function RfqForm() {
                 <>
                   <ProblemsAlert problems={problems} tabLabel={(t) => ({ contents: 'Contents', logistics: 'Logistics', accounting: 'Accounting' }[t])} />
                   {reject.alert('Reject purchase quotation', rejectIt)}
-                  {ctx.readOnly ? (
-                    <Alert intent="default" variant="outline" title={`This quotation is ${draft.status.toLowerCase()}`}>
-                      Only remarks can change{draft.convertedToPoId ? ` (converted to a purchase order)` : ''}.
+                  {draft.status === 'Expired' ? (
+                    <Alert intent="warning" variant="outline" title={`This quotation expired on ${formatDate(draft.validUntil)}`}>
+                      It can't become a purchase order. If the vendor confirms the prices still hold, set a later valid-until date and save to reopen it; otherwise close it.
                     </Alert>
                   ) : null}
                 </>

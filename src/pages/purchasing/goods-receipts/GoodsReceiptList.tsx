@@ -1,10 +1,10 @@
 import { useLocation } from 'react-router';
-import { Alert, TableAmount, TableContent, TableStatus } from '@jasperlepardo/sikat-design-system';
+import { Alert, TableContent, TableStatus } from '@jasperlepardo/sikat-design-system';
 import { ListPage } from '../../../components/form/ListPage';
 import { useListColumns, type ListColumn } from '../../../components/form/listColumns';
 import { GR_STATUSES, type GoodsReceipt } from '../../../mocks/goodsReceipts';
 import { formatDate } from '../../../services/dates';
-import { formatAmount } from '../../../services/format';
+import { formatMoney } from '../../../services/format';
 import { grNumber, grTotal, listGoodsReceipts } from '../../../services/goodsReceipts';
 import { taxCodes } from '../../../services/masterData';
 import { useAsync } from '../../../services/useAsync';
@@ -12,6 +12,7 @@ import { dateField, linesField, masterField, numberField, partnerField, statusFi
 import { draftScope, draftSplit, scopeStatuses } from '../../../components/filter/useListPresets';
 import { currencyDef, salesEmployeeDef } from '../../settings/masterDefs';
 import { GR_LIST_PATH, GR_NOUN, GR_STATUS_INTENT } from '../paths';
+import { cap } from '../../../components/form/noun';
 
 export function GoodsReceiptList({ draftsOnly = false, compact, selectedId }: { draftsOnly?: boolean; compact?: boolean; selectedId?: string } = {}) {
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
@@ -20,7 +21,7 @@ export function GoodsReceiptList({ draftsOnly = false, compact, selectedId }: { 
   const totalOf = (gr: GoodsReceipt) => grTotal(gr, codes);
 
   const fields = [
-    textField<GoodsReceipt>('no', 'No.', grNumber),
+    textField<GoodsReceipt>('no', `${cap(GR_NOUN.one)} no.`, grNumber),
     partnerField<GoodsReceipt>('vendor', 'Vendor', (d) => d.vendorId, (d) => d.vendorName, receipts),
     textField<GoodsReceipt>('vendorCode', 'Vendor code', (d) => d.vendorCode),
     textField<GoodsReceipt>('vendorRef', 'Vendor delivery receipt no.', (d) => d.vendorRef),
@@ -34,13 +35,13 @@ export function GoodsReceiptList({ draftsOnly = false, compact, selectedId }: { 
   ];
 
   const allColumns: ListColumn<GoodsReceipt>[] = [
-    { key: 'docNum', header: 'No.', sortable: true, locked: true, cell: (gr) => <TableContent href={`#${GR_LIST_PATH}/${gr.docNum ? grNumber(gr) : gr.id}`} subcopy={gr.vendorRef ? `Vendor delivery receipt no. ${gr.vendorRef}` : undefined}>{grNumber(gr)}</TableContent> },
-    { key: 'vendorName', header: 'Vendor', sortable: true, cell: (gr) => <TableContent subcopy={gr.vendorCode}>{gr.vendorName || '—'}</TableContent> },
-    { key: 'postingDate', header: 'Posting date', sortable: true, cell: (gr) => formatDate(gr.postingDate) },
-    { key: 'orderNumber', header: 'Purchase order', sortable: true, cell: (gr) => (gr.orderNumber ? `PO ${gr.orderNumber}` : <span className="text-muted">Without PO</span>) },
-    { key: 'quantity', header: 'Quantity', cell: (gr) => <TableContent subcopy={`${gr.lines.length} line${gr.lines.length === 1 ? '' : 's'}`}>{gr.lines.reduce((n, l) => n + l.quantity, 0).toLocaleString('en-PH')}</TableContent> },
-    { key: 'total', header: 'Total', sortable: true, cell: (gr) => <TableAmount currency={gr.currency}>{formatAmount(totalOf(gr))}</TableAmount> },
-    { key: 'status', header: 'Status', sortable: true, cell: (gr) => <TableStatus intent={GR_STATUS_INTENT[gr.status]}>{gr.status}</TableStatus> },
+    { key: 'docNum', header: `${cap(GR_NOUN.one)} no.`, locked: true, cell: (gr) => <TableContent href={`#${GR_LIST_PATH}/${gr.docNum ? grNumber(gr) : gr.id}`}>{grNumber(gr)}</TableContent> },
+    { key: 'vendorRef', header: 'Vendor delivery receipt no.', cell: (gr) => gr.vendorRef || '—' },
+    { key: 'orderNumber', header: 'Purchase order', cell: (gr) => (gr.orderNumber ? `${gr.orderNumber}` : <span className="text-muted">Without PO</span>) },
+    { key: 'vendorName', header: 'Vendor', cell: (gr) => gr.vendorName || '—' },
+    { key: 'status', header: 'Status', cell: (gr) => <TableStatus intent={GR_STATUS_INTENT[gr.status]}>{gr.status}</TableStatus> },
+    { key: 'postingDate', header: 'Posting date', align: 'end', cell: (gr) => formatDate(gr.postingDate) },
+    { key: 'total', header: 'Total', align: 'end', cell: (gr) => formatMoney(totalOf(gr), gr.currency) },
   ];
   const { columns, manager } = useListColumns('goods-receipts', allColumns);
 

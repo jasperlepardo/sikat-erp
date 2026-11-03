@@ -1,17 +1,18 @@
 import { useLocation } from 'react-router';
-import { Alert, TableAmount, TableContent, TableStatus } from '@jasperlepardo/sikat-design-system';
+import { Alert, TableContent, TableStatus } from '@jasperlepardo/sikat-design-system';
 import { ListPage } from '../../../components/form/ListPage';
 import { useListColumns, type ListColumn } from '../../../components/form/listColumns';
 import { dateField, masterField, numberField, partnerField, statusField, textField } from '../../../components/filter/fieldKit';
 import { draftScope, draftSplit, scopeStatuses } from '../../../components/filter/useListPresets';
 import { currencyDef } from '../../settings/masterDefs';
 import { formatDate } from '../../../services/dates';
-import { formatAmount } from '../../../services/format';
+import { formatMoney } from '../../../services/format';
 import { listCreditMemos, memoNumber, memoTotal } from '../../../services/apCreditMemos';
 import { taxCodes } from '../../../services/masterData';
 import { useAsync } from '../../../services/useAsync';
 import type { MemoStatus } from '../../../mocks/apCreditMemos';
 import { MEMO_LIST_PATH, MEMO_NOUN, MEMO_STATUS_INTENT } from '../paths';
+import { cap } from '../../../components/form/noun';
 
 const STATUSES: MemoStatus[] = ['Draft', 'Not Confirmed', 'Open', 'Closed', 'Cancelled'];
 
@@ -46,7 +47,7 @@ export function DebitMemosList({ draftsOnly = false, compact, selectedId }: { dr
     vendorCode: c.vendorCode,
     vendorName: c.vendorName,
     postingDate: c.postingDate,
-    base: [...new Set(c.lines.map((l) => l.baseDocNo && `${l.baseType === 'GRET' ? 'Return' : 'A/P invoice'} ${l.baseDocNo}`).filter(Boolean))].join(', '),
+    base: [...new Set(c.lines.map((l) => l.baseDocNo).filter(Boolean))].join(', '),
     reasons: [...new Set(c.lines.map((l) => l.returnReason).filter(Boolean))].join(', '),
     currency: c.currency,
     total: memoTotal(c, codes),
@@ -55,10 +56,10 @@ export function DebitMemosList({ draftsOnly = false, compact, selectedId }: { dr
   }));
 
   const fields = [
-    textField<Row>('no', 'No.', (r) => r.number),
+    textField<Row>('no', `${cap(MEMO_NOUN.one)} no.`, (r) => r.number),
     partnerField<Row>('vendor', 'Vendor', (r) => r.vendorId, (r) => r.vendorName, rows),
     textField<Row>('vendorCode', 'Vendor code', (r) => r.vendorCode),
-    textField<Row>('ref', 'Vendor ref.', (r) => r.ref),
+    textField<Row>('ref', 'Vendor credit note no.', (r) => r.ref),
     dateField<Row>('postingDate', 'Posting date', (r) => r.postingDate),
     textField<Row>('base', 'Based on', (r) => r.base),
     textField<Row>('reason', 'Reason', (r) => r.reasons),
@@ -68,13 +69,14 @@ export function DebitMemosList({ draftsOnly = false, compact, selectedId }: { dr
   ];
 
   const allColumns: ListColumn<Row>[] = [
-    { key: 'docNum', header: 'No.', sortable: true, locked: true, cell: (r) => <TableContent href={`#${MEMO_LIST_PATH}/${r.docNum ? r.number : r.id}`} subcopy={r.ref || undefined}>{r.number}</TableContent> },
-    { key: 'vendorName', header: 'Vendor', sortable: true, cell: (r) => <TableContent subcopy={r.vendorCode}>{r.vendorName || '—'}</TableContent> },
-    { key: 'postingDate', header: 'Posting date', sortable: true, cell: (r) => formatDate(r.postingDate) },
+    { key: 'docNum', header: `${cap(MEMO_NOUN.one)} no.`, locked: true, cell: (r) => <TableContent href={`#${MEMO_LIST_PATH}/${r.docNum ? r.number : r.id}`}>{r.number}</TableContent> },
+    { key: 'ref', header: 'Vendor credit note no.', cell: (r) => r.ref || '—' },
     { key: 'base', header: 'Based on', cell: (r) => r.base || <span className="text-muted">Entered by hand</span> },
+    { key: 'vendorName', header: 'Vendor', cell: (r) => r.vendorName || '—' },
+    { key: 'status', header: 'Status', cell: (r) => <TableStatus intent={MEMO_STATUS_INTENT[r.status]}>{r.status}</TableStatus> },
+    { key: 'postingDate', header: 'Posting date', align: 'end', cell: (r) => formatDate(r.postingDate) },
     { key: 'reasons', header: 'Reason', defaultHidden: true, cell: (r) => r.reasons || '—' },
-    { key: 'total', header: 'Total credit', sortable: true, cell: (r) => <TableAmount currency={r.currency}>{formatAmount(r.total)}</TableAmount> },
-    { key: 'status', header: 'Status', sortable: true, cell: (r) => <TableStatus intent={MEMO_STATUS_INTENT[r.status]}>{r.status}</TableStatus> },
+    { key: 'total', header: 'Total credit', align: 'end', cell: (r) => formatMoney(r.total, r.currency) },
   ];
   const { columns, manager } = useListColumns('ap-credit-memos', allColumns);
 

@@ -340,7 +340,7 @@ const fromSalesOrder = (
     projectId: so.projectId,
     salesEmployeeId: so.salesEmployeeId,
     docType: so.docType,
-    orderNumber: so.docNum ? String(so.docNum) : '',
+    orderNumber: so.docNum ? `SO-${so.postingDate.slice(0, 4)}-${String(so.docNum).padStart(4, '0')}` : '',
     controlAccount: '1120',
     journalRemark: `A/R Invoices – ${c.code}`,
     appliedAmount: 0,

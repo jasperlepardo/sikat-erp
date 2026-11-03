@@ -1,4 +1,3 @@
-import { StatusNotice } from '../../../../components/form/StatusNotice';
 import { useEffect, useState, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate, useParams } from 'react-router';
@@ -89,7 +88,7 @@ function validate(d: Draft, fx: number, asDraft: boolean): Problem<TabId>[] {
   const { problems, need } = problemCollector<TabId>();
   need(d.customerId, 'header', 'customerId', 'Pick a customer.');
   if (asDraft) return problems;
-  need(d.postingDate, 'header', 'postingDate', 'Posting date is required.');
+  need(d.postingDate, 'header', 'postingDate', 'Quotation date is required.');
   need(d.documentDate, 'header', 'documentDate', 'Document date is required.');
   need(fx > 0, 'header', 'currency', `No ${d.currency} exchange rate on or before ${d.postingDate}.`);
   need(d.lines.length, 'contents', 'lines', 'Add at least one line.');
@@ -172,7 +171,6 @@ function QuotationForm() {
   const totalLc = totals.total * fx;
   // Only a heads-up here: the limit is enforced when the quotation is copied to an order.
   const overCredit = SALES_SETTINGS.creditLimitCheck && !!customer && customer.creditLimit > 0 && openBalance + totalLc > customer.creditLimit && !readOnly;
-  const isExpired = draft.status === 'Open' && !!draft.validUntil && draft.validUntil < todayISO();
 
   /** Tax codes re-proposed for the customer and date, except ones set by hand. */
   const retax = (lines: Draft['lines'], c: Partner | undefined, date: string) =>
@@ -209,7 +207,7 @@ function QuotationForm() {
     if (added && !overrides.approved) {
       setSaving(true);
       try {
-        const saved = await saveQuotationRemarks(draft as Quotation, { remarks: draft.remarks, attachments: draft.attachments });
+        const saved = await saveQuotationRemarks(draft as Quotation, { remarks: draft.remarks, attachments: draft.attachments, documentDate: draft.documentDate, validUntil: draft.validUntil });
         navigate(QT_LIST_PATH, { state: { notice: `Quotation ${qtNumber(saved)} saved.` } });
       } finally { setSaving(false); }
       return;
@@ -294,8 +292,8 @@ function QuotationForm() {
   const menu: MoreMenuItem[] = [
     ...(draft.status === 'Open' && draft.lines.some((l) => l.itemId && l.quantity > 0) ? [{ label: 'Create sales order…', icon: 'shopping_bag', onSelect: () => setCreatingSo(true) }] : []),
     ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }] : []),
-    ...(draft.status === 'Open' ? [{ label: 'Close', icon: 'task_alt', onSelect: () => closeQuotation(saved).then((r) => navigate(QT_LIST_PATH, { state: { notice: `Quotation ${qtNumber(r)} closed.` } })) }] : []),
-    ...(draft.status === 'Open' ? [{ label: `Cancel ${QT_NOUN.one}`, icon: 'cancel', onSelect: () => cancelQuotation(saved).then((r) => navigate(QT_LIST_PATH, { state: { notice: `Quotation ${qtNumber(r)} cancelled.` } })) }] : []),
+    ...(draft.status === 'Open' || draft.status === 'Expired' ? [{ label: 'Close', icon: 'task_alt', onSelect: () => closeQuotation(saved).then((r) => navigate(QT_LIST_PATH, { state: { notice: `Quotation ${qtNumber(r)} closed.` } })) }] : []),
+    ...(draft.status === 'Open' || draft.status === 'Expired' ? [{ label: `Cancel ${QT_NOUN.one}`, icon: 'cancel', onSelect: () => cancelQuotation(saved).then((r) => navigate(QT_LIST_PATH, { state: { notice: `Quotation ${qtNumber(r)} cancelled.` } })) }] : []),
   ];
 
   const title = isNew ? `New ${QT_NOUN.one}` : added ? qtNumber(draft) : `Draft ${QT_NOUN.one}`;
@@ -337,7 +335,6 @@ function QuotationForm() {
               isNew ? undefined : (
                 <div className="flex gap-1">
                   <Badge size="small" intent={QT_STATUS_INTENT[draft.status]}>{draft.status}</Badge>
-                  {isExpired ? <Badge size="small" intent="danger">Expired</Badge> : null}
                   {draft.convertedToOrderId ? <Badge size="small" variant="outline">Converted</Badge> : null}
                 </div>
               )
@@ -380,16 +377,6 @@ function QuotationForm() {
                 <>
                   <ProblemsAlert problems={problems} tabLabel={(t) => TAB_LABEL[t as TabId]} />
                   {reject.alert('Reject quotation', rejectIt)}
-                  {added && (draft.status !== 'Open' || isExpired) ? (
-                    <StatusNotice
-                      resetKey={`${draft.id}:${draft.status}:${isExpired}`}
-                      title={isExpired ? 'This quotation has expired' : `This quotation is ${draft.status.toLowerCase()}`}
-                    >
-                      {isExpired
-                        ? 'The valid until date has passed. Create a sales order or close it.'
-                        : 'Only remarks and attachments can change.'}
-                    </StatusNotice>
-                  ) : null}
                 </>
               }
               main={

@@ -48,14 +48,14 @@ export function EmployeeList({ compact, selectedId }: { compact?: boolean; selec
   useCollection(positions);
 
   const allColumns: ListColumn<Employee>[] = [
-    { key: 'name', header: 'Employee', sortable: true, locked: true, cell: (e) => <TableContent href={`#${EMPLOYEES_PATH}/${e.id}`} subcopy={e.code}>{employeeName(e)}</TableContent> },
-    { key: 'jobTitle', header: 'Job title', sortable: true, cell: (e) => <TableContent subcopy={name(positions, e.positionId)}>{e.jobTitle || '—'}</TableContent> },
-    { key: 'department', header: 'Department', sortable: true, cell: (e) => name(departments, e.departmentId) || '—' },
-    { key: 'branch', header: 'Branch', sortable: true, cell: (e) => name(branches, e.branchId) || '—' },
+    { key: 'name', header: 'Employee', locked: true, cell: (e) => <TableContent href={`#${EMPLOYEES_PATH}/${e.id}`}>{employeeName(e)}</TableContent> },
+    { key: 'code', header: 'Employee code', cell: (e) => e.code || '—' },
+    { key: 'jobTitle', header: 'Job title', cell: (e) => <TableContent subcopy={name(positions, e.positionId)}>{e.jobTitle || '—'}</TableContent> },
+    { key: 'department', header: 'Department', cell: (e) => name(departments, e.departmentId) || '—' },
+    { key: 'branch', header: 'Branch', cell: (e) => name(branches, e.branchId) || '—' },
     {
       key: 'manager',
       header: 'Manager',
-      sortable: true,
       cell: (e) => {
         const m = all.find((x) => x.id === e.managerId);
         return m ? <TableContent initials={initials(m)}>{employeeName(m)}</TableContent> : '—';

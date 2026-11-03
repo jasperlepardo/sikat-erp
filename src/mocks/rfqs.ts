@@ -6,7 +6,7 @@
  * - Lines track quantity (what we need) and quotedQty (vendor's offered amount).
  * - Adding assigns a number and sets status to Open. No stock moves.
  * - Copy to Purchase Order carries quoted prices forward to a new PO draft.
- * - Valid Until dates track whether the quote is still usable.
+ * - Past its Valid Until date an Open quote turns Expired; it can't become a PO until the date moves on.
  * - No warehouse on lines — that is decided when the PO is created.
  */
 import type { Attachment, DocumentSeries, PriceMode } from './common';
@@ -18,10 +18,11 @@ import { SEED_ITEMS, itemsPerUom, seedLineDefaults } from './items';
 import { SEED_COMPANIES } from './companies';
 import { SEED_WAREHOUSES } from './itemMasters';
 import { formatAddress } from './address';
-import { todayISO } from '../services/dates';
+import { addDays, todayISO } from '../services/dates';
 
-export type RfqStatus = 'Draft' | 'Not Confirmed' | 'Open' | 'Closed' | 'Cancelled';
-export const RFQ_STATUSES: RfqStatus[] = ['Draft', 'Not Confirmed', 'Open', 'Closed', 'Cancelled'];
+/** Expired: an Open quotation past its valid-until date. Set by `expireRfqs()`; a later date reopens it. */
+export type RfqStatus = 'Draft' | 'Not Confirmed' | 'Open' | 'Expired' | 'Closed' | 'Cancelled';
+export const RFQ_STATUSES: RfqStatus[] = ['Draft', 'Not Confirmed', 'Open', 'Expired', 'Closed', 'Cancelled'];
 
 export type { DocumentSeries };
 
@@ -222,7 +223,7 @@ const COMPANY_ADDRESS = formatAddress(SEED_COMPANIES[0].address, SEED_COMPANIES[
 const rfq = (id: string, docNum: number, vendorId: string, patch: Partial<Rfq>): Rfq => {
   const v = vend(vendorId);
   const billAddr = v.addresses.find((a) => a.id === v.defaultBillToId) ?? v.addresses[0];
-  return {
+  return stillValid({
     ...blankRfq(employeeId('Andrea Ramos')),
     id,
     docNum,
@@ -238,8 +239,15 @@ const rfq = (id: string, docNum: number, vendorId: string, patch: Partial<Rfq>):
     journalRemark: `Purchase Quotations – ${v.code}`,
     payTo: billAddr ? formatAddress(billAddr, v.name) : '',
     ...patch,
-  };
+  });
 };
+
+/**
+ * The seeded year is fixed but "today" is the real date, so an Open demo quotation would lapse as
+ * the calendar moves on. Keep those valid for two weeks from today.
+ */
+const stillValid = (q: Rfq): Rfq =>
+  q.status === 'Open' && q.validUntil && q.validUntil < TODAY ? { ...q, validUntil: addDays(TODAY, 14) } : q;
 
 export const SEED_RFQS: Rfq[] = [
   // ── Luzon iDistribution: holiday iPhone 18 Pro allocation ─────────────────

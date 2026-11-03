@@ -1,16 +1,17 @@
 import { useLocation } from 'react-router';
-import { Alert, TableAmount, TableContent, TableStatus } from '@jasperlepardo/sikat-design-system';
+import { Alert, TableContent, TableStatus } from '@jasperlepardo/sikat-design-system';
 import { ListPage } from '../../../components/form/ListPage';
 import { useListColumns, type ListColumn } from '../../../components/form/listColumns';
 import { boolField, choiceField, dateField, numberField, textField } from '../../../components/filter/fieldKit';
 import { statusViews } from '../../../components/filter/useListPresets';
 import type { JournalVoucher } from '../../../mocks/journalVouchers';
 import { formatDate } from '../../../services/dates';
-import { formatAmount } from '../../../services/format';
+import { formatMoney } from '../../../services/format';
 import { jeTotals } from '../../../services/journalEntries';
 import { listVouchers, voucherState, voucherStatus } from '../../../services/journalVouchers';
 import { useAsync } from '../../../services/useAsync';
 import { JV_LIST_PATH, JV_NOUN } from '../paths';
+import { cap } from '../../../components/form/noun';
 
 const debitOf = (v: JournalVoucher) => v.entries.reduce((n, e) => n + jeTotals(e.lines).debit, 0);
 
@@ -31,20 +32,19 @@ export function JournalVoucherList({ compact, selectedId }: { compact?: boolean;
   ];
 
   const allColumns: ListColumn<JournalVoucher>[] = [
-    { key: 'voucherNo', header: 'Voucher No.', sortable: true, locked: true, cell: (v) => <TableContent href={`#${JV_LIST_PATH}/${v.id}`}>{v.voucherNo}</TableContent> },
+    { key: 'voucherNo', header: `${cap(JV_NOUN.one)} no.`, locked: true, cell: (v) => <TableContent href={`#${JV_LIST_PATH}/${v.id}`}>{v.voucherNo}</TableContent> },
     {
       key: 'entries',
       header: 'Entries',
-      sortable: true,
       cell: (v) => {
         const posted = v.entries.filter((e) => e.entryStatus === 'Closed').length;
         return <TableContent subcopy={posted ? `${posted} posted` : 'None posted'}>{`${v.entries.length} entr${v.entries.length === 1 ? 'y' : 'ies'}`}</TableContent>;
       },
     },
     { key: 'remarks', header: 'Remarks', cell: (v) => v.entries[0]?.remarks || '—' },
-    { key: 'amount', header: 'Debits', sortable: true, cell: (v) => <TableAmount currency="PHP">{formatAmount(debitOf(v))}</TableAmount> },
-    { key: 'createdOn', header: 'Created', sortable: true, cell: (v) => <TableContent subcopy={v.createdBy}>{formatDate(v.createdOn)}</TableContent> },
-    { key: 'status', header: 'Status', sortable: true, cell: (v) => { const s = voucherState(v); return <TableStatus intent={s.intent}>{s.label}</TableStatus>; } },
+    { key: 'amount', header: 'Debits', align: 'end', cell: (v) => formatMoney(debitOf(v)) },
+    { key: 'createdOn', header: 'Created', align: 'end', cell: (v) => <TableContent subcopy={v.createdBy}>{formatDate(v.createdOn)}</TableContent> },
+    { key: 'status', header: 'Status', cell: (v) => { const s = voucherState(v); return <TableStatus intent={s.intent}>{s.label}</TableStatus>; } },
   ];
   const { columns, manager } = useListColumns('journal-vouchers', allColumns);
 

@@ -78,7 +78,7 @@ type PageId = (typeof PAGES)[number]['value'];
 function validate(d: PrDraft, asDraft: boolean): Problem<TabId>[] {
   const { problems, need } = problemCollector<TabId>();
   need(d.requesterId, 'header', 'requesterId', 'Pick a requester.');
-  need(d.postingDate, 'header', 'postingDate', 'Posting date is required.');
+  need(d.postingDate, 'header', 'postingDate', 'Request date is required.');
   need(d.documentDate, 'header', 'documentDate', 'Document date is required.');
   if (asDraft) return problems;
 
@@ -345,7 +345,7 @@ function PurchaseRequestForm() {
       ? [
           ...(!isNew ? [{ label: `Create ${RFQ_NOUN.many}…`, icon: 'request_quote', onSelect: () => setPanel('fan-out') }] : []),
           { label: 'Create purchase order…', icon: 'receipt_long', onSelect: () => setCreatingPo(true) },
-          ...(quotes.rfqs.some((q) => q.lines.some((l) => l.quotedQty > 0))
+          ...(quotes.rfqs.some((q) => q.status !== 'Expired' && q.lines.some((l) => l.quotedQty > 0))
             ? [{ label: `Create ${PO_NOUN.one} from a quote…`, icon: 'shopping_cart', onSelect: () => setPanel('award') }]
             : []),
         ]
@@ -421,11 +421,6 @@ function PurchaseRequestForm() {
             header={
               <>
                 <ProblemsAlert problems={problems} tabLabel={() => 'Contents'} />
-                {ctx.readOnly ? (
-                  <Alert intent="default" variant="outline" title="This request is closed">
-                    Only remarks can change{draft.closeDate ? ` (closed ${draft.closeDate})` : ''}.
-                  </Alert>
-                ) : null}
               </>
             }
             main={

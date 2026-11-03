@@ -27,7 +27,7 @@ export function DprDocumentCard({ draft, update, errors, ctx, m }: DprSectionPro
         error: errors.currency,
         hint: ctx.based ? 'Locked to the currency of the source document.' : "Defaults to the vendor's currency.",
         rate: ctx.fxRate,
-        rateHint: 'From the posting date; sets how totals convert to PHP.',
+        rateHint: 'From the request date; sets how totals convert to PHP.',
       }}
     />
   );

@@ -1,17 +1,18 @@
 import { useLocation } from 'react-router';
-import { Alert, TableContent, TableStatus, Tooltip } from '@jasperlepardo/sikat-design-system';
+import { Alert, TableContent, TableStatus } from '@jasperlepardo/sikat-design-system';
 import { ListPage } from '../../../components/form/ListPage';
 import { useListColumns, type ListColumn } from '../../../components/form/listColumns';
 import { SO_STATUSES, type SalesOrder } from '../../../mocks/salesOrders';
 import { formatDate } from '../../../services/dates';
-import { formatAmount } from '../../../services/format';
+import { formatMoney } from '../../../services/format';
 import { taxCodes } from '../../../services/masterData';
-import { listSalesOrders, openQty, soNumber, soTotal } from '../../../services/salesOrders';
+import { listSalesOrders, soNumber, soTotal } from '../../../services/salesOrders';
 import { useAsync } from '../../../services/useAsync';
 import { dateField, linesField, masterField, numberField, partnerField, statusField, textField } from '../../../components/filter/fieldKit';
 import { draftScope, draftSplit, scopeStatuses } from '../../../components/filter/useListPresets';
 import { currencyDef, salesEmployeeDef } from '../../settings/masterDefs';
 import { SO_LIST_PATH, SO_NOUN, SO_STATUS_INTENT } from '../paths';
+import { cap } from '../../../components/form/noun';
 
 export function SalesOrderList({ draftsOnly = false, compact, selectedId }: { draftsOnly?: boolean; compact?: boolean; selectedId?: string } = {}) {
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
@@ -20,11 +21,11 @@ export function SalesOrderList({ draftsOnly = false, compact, selectedId }: { dr
   const totalOf = (so: SalesOrder) => soTotal(so, codes);
 
   const fields = [
-    textField<SalesOrder>('no', 'No.', soNumber),
+    textField<SalesOrder>('no', `${cap(SO_NOUN.one)} no.`, soNumber),
     partnerField<SalesOrder>('customer', 'Customer', (d) => d.customerId, (d) => d.customerName, orders),
     textField<SalesOrder>('customerCode', 'Customer code', (d) => d.customerCode),
     textField<SalesOrder>('customerRef', 'Customer PO no.', (d) => d.customerRef),
-    dateField<SalesOrder>('postingDate', 'Posting date', (d) => d.postingDate),
+    dateField<SalesOrder>('postingDate', 'Order date', (d) => d.postingDate),
     dateField<SalesOrder>('deliveryDate', 'Delivery date', (d) => d.deliveryDate),
     numberField<SalesOrder>('total', 'Total', totalOf),
     statusField<SalesOrder>(scopeStatuses(draftsOnly, SO_STATUSES)),
@@ -34,30 +35,14 @@ export function SalesOrderList({ draftsOnly = false, compact, selectedId }: { dr
   ];
 
   const allColumns: ListColumn<SalesOrder>[] = [
-    { key: 'docNum', header: 'No.', sortable: true, locked: true, cell: (so) => <TableContent href={`#${SO_LIST_PATH}/${so.docNum ? soNumber(so) : so.id}`} subcopy={so.customerRef ? `Customer PO no. ${so.customerRef}` : undefined}>{soNumber(so)}</TableContent> },
-    { key: 'customerName', header: 'Customer', sortable: true, cell: (so) => <TableContent subcopy={so.customerCode}>{so.customerName || '—'}</TableContent> },
-    { key: 'customerRef', header: 'Customer PO no.', defaultHidden: true, cell: (so) => so.customerRef || '—' },
-    { key: 'postingDate', header: 'Posting date', align: 'end', cell: (so) => formatDate(so.postingDate) },
-    { key: 'deliveryDate', header: 'Delivery date', align: 'end', defaultHidden: true, cell: (so) => (so.deliveryDate ? formatDate(so.deliveryDate) : '—') },
-    {
-      key: 'open',
-      header: 'Open qty',
-      align: 'end',
-      cell: (so) => {
-        if (so.docType === 'Service') return 'Service';
-        const open = so.lines.filter((l) => openQty(l) > 0);
-        const total = open.reduce((n, l) => n + openQty(l), 0).toLocaleString('en-PH');
-        if (!open.length) return <span className="text-caption">-</span>;
-        return (
-          <Tooltip position="bottom" message={<div className="flex flex-col gap-1">{open.map((l) => <span key={l.id}>{openQty(l).toLocaleString('en-PH')} {l.uomCode} · {l.description || l.itemNo}</span>)}</div>}>
-            {total}
-          </Tooltip>
-        );
-      },
-    },
+    { key: 'docNum', header: `${cap(SO_NOUN.one)} no.`, locked: true, cell: (so) => <TableContent href={`#${SO_LIST_PATH}/${so.docNum ? soNumber(so) : so.id}`}>{soNumber(so)}</TableContent> },
+    { key: 'customerRef', header: 'Customer PO no.', cell: (so) => so.customerRef || '—' },
+    { key: 'customerName', header: 'Customer', cell: (so) => so.customerName || '—' },
+    { key: 'status', header: 'Status', cell: (so) => <TableStatus intent={SO_STATUS_INTENT[so.status]}>{so.status}</TableStatus> },
+    { key: 'postingDate', header: 'Order date', align: 'end', cell: (so) => formatDate(so.postingDate) },
+    { key: 'deliveryDate', header: 'Delivery date', align: 'end', cell: (so) => (so.deliveryDate ? formatDate(so.deliveryDate) : '—') },
     { key: 'currency', header: 'Currency', defaultHidden: true, cell: (so) => so.currency },
-    { key: 'total', header: 'Total', align: 'end', cell: (so) => `${so.currency} ${formatAmount(totalOf(so))}` },
-    { key: 'status', header: 'Status', sortable: true, cell: (so) => <TableStatus intent={SO_STATUS_INTENT[so.status]}>{so.status}</TableStatus> },
+    { key: 'total', header: 'Total', align: 'end', cell: (so) => formatMoney(totalOf(so), so.currency) },
   ];
   const { columns, manager } = useListColumns('sales-orders', allColumns);
 

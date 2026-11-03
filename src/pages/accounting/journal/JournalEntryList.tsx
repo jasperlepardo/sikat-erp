@@ -1,5 +1,5 @@
 import { useLocation } from 'react-router';
-import { Alert, TableAmount, TableContent, TableStatus } from '@jasperlepardo/sikat-design-system';
+import { Alert, TableContent, TableStatus } from '@jasperlepardo/sikat-design-system';
 import { ListPage } from '../../../components/form/ListPage';
 import { useListColumns, type ListColumn } from '../../../components/form/listColumns';
 import { EMPTY_FILTER, oneRule } from '../../../components/filter/engine';
@@ -7,10 +7,11 @@ import { choiceField, dateField, numberField, textField } from '../../../compone
 import type { BuiltInView } from '../../../components/filter/useListViews';
 import { ORIGIN_LABEL, type JournalEntry } from '../../../mocks/journalEntries';
 import { formatDate } from '../../../services/dates';
-import { formatAmount } from '../../../services/format';
+import { formatMoney } from '../../../services/format';
 import { jeNumber, jeTotals, listJournalEntries } from '../../../services/journalEntries';
 import { useAsync } from '../../../services/useAsync';
 import { JE_LIST_PATH, JE_NOUN, JE_STATUS_INTENT } from '../paths';
+import { cap } from '../../../components/form/noun';
 
 const JE_VIEWS: BuiltInView[] = [
   { id: 'all', name: 'All journal entries', filter: EMPTY_FILTER },
@@ -25,7 +26,7 @@ export function JournalEntryList({ compact, selectedId }: { compact?: boolean; s
 
   const fields = [
     numberField<JournalEntry>('transNo', 'Trans. no.', (e) => e.transNo),
-    textField<JournalEntry>('no', 'No.', jeNumber),
+    textField<JournalEntry>('no', `${cap(JE_NOUN.one)} no.`, jeNumber),
     dateField<JournalEntry>('postingDate', 'Posting date', (e) => e.postingDate),
     dateField<JournalEntry>('dueDate', 'Due date', (e) => e.dueDate),
     choiceField<JournalEntry>('origin', 'Origin', ORIGIN_LABEL, (e) => e.origin),
@@ -38,12 +39,13 @@ export function JournalEntryList({ compact, selectedId }: { compact?: boolean; s
   ];
 
   const allColumns: ListColumn<JournalEntry>[] = [
-    { key: 'transNo', header: 'No.', sortable: true, locked: true, cell: (e) => <TableContent href={`#${JE_LIST_PATH}/${e.id}`} subcopy={`Trans. ${e.transNo}`}>{jeNumber(e)}</TableContent> },
-    { key: 'postingDate', header: 'Posting date', sortable: true, cell: (e) => formatDate(e.postingDate) },
-    { key: 'origin', header: 'Origin', sortable: true, cell: (e) => <TableContent subcopy={ORIGIN_LABEL[e.origin]}>{e.origin === 'JE' ? 'JE' : `${e.origin} ${e.originNo}`}</TableContent> },
+    { key: 'transNo', header: `${cap(JE_NOUN.one)} no.`, locked: true, cell: (e) => <TableContent href={`#${JE_LIST_PATH}/${e.id}`}>{jeNumber(e)}</TableContent> },
+    { key: 'transNum', header: 'Trans. no.', cell: (e) => String(e.transNo) },
+    { key: 'postingDate', header: 'Posting date', align: 'end', cell: (e) => formatDate(e.postingDate) },
+    { key: 'origin', header: 'Origin', cell: (e) => <TableContent subcopy={ORIGIN_LABEL[e.origin]}>{e.origin === 'JE' ? 'JE' : `${e.origin} ${e.originNo}`}</TableContent> },
     { key: 'remarks', header: 'Remarks', cell: (e) => <TableContent subcopy={[e.ref1, e.ref2].filter(Boolean).join(' · ') || undefined}>{e.remarks || '—'}</TableContent> },
-    { key: 'amount', header: 'Amount', sortable: true, cell: (e) => <TableAmount currency="PHP">{formatAmount(jeTotals(e.lines).debit)}</TableAmount> },
-    { key: 'status', header: 'Status', sortable: true, cell: (e) => <TableStatus intent={JE_STATUS_INTENT[e.status]}>{e.reverses ? 'Reversal' : e.status}</TableStatus> },
+    { key: 'amount', header: 'Amount', align: 'end', cell: (e) => formatMoney(jeTotals(e.lines).debit) },
+    { key: 'status', header: 'Status', cell: (e) => <TableStatus intent={JE_STATUS_INTENT[e.status]}>{e.reverses ? 'Reversal' : e.status}</TableStatus> },
   ];
   const { columns, manager } = useListColumns('journal-entries', allColumns);
 

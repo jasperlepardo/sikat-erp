@@ -6,12 +6,13 @@ import { useListColumns, type ListColumn } from '../../../components/form/listCo
 import { LC_STATUSES } from '../../../mocks/landedCosts';
 import type { LcStatus } from '../../../mocks/landedCosts';
 import { formatDate } from '../../../services/dates';
-import { formatAmount } from '../../../services/format';
+import { formatMoney } from '../../../services/format';
 import { lcNumber, lcTotals, listLandedCosts } from '../../../services/landedCosts';
 import { useAsync } from '../../../services/useAsync';
 import { dateField, partnerField, statusField, textField } from '../../../components/filter/fieldKit';
 import { draftScope, draftSplit, scopeStatuses } from '../../../components/filter/useListPresets';
 import { LC_LIST_PATH, LC_NOUN, LC_STATUS_INTENT } from '../paths';
+import { cap } from '../../../components/form/noun';
 
 interface Row {
   id: string; docNum: number; number: string; vendorId: string; vendorCode: string; vendorName: string;
@@ -33,7 +34,7 @@ export function LandedCostsList({ draftsOnly = false, compact, selectedId }: { d
   }, [data]);
 
   const fields = [
-    textField<Row>('no', 'No.', (r) => r.number),
+    textField<Row>('no', `${cap(LC_NOUN.one)} no.`, (r) => r.number),
     partnerField<Row>('vendor', 'Vendor', (r) => r.vendorId, (r) => r.vendorName, all),
     textField<Row>('vendorCode', 'Vendor code', (r) => r.vendorCode),
     textField<Row>('ref', 'Reference', (r) => r.reference),
@@ -42,12 +43,13 @@ export function LandedCostsList({ draftsOnly = false, compact, selectedId }: { d
   ];
 
   const allColumns: ListColumn<Row>[] = [
-    { key: 'docNum', header: 'No.', sortable: true, locked: true, cell: (r) => <TableContent href={`#${LC_LIST_PATH}/${r.docNum ? r.number : r.id}`} subcopy={r.reference || undefined}>{r.number}</TableContent> },
-    { key: 'vendorName', header: 'Vendor', sortable: true, cell: (r) => <TableContent subcopy={r.vendorCode}>{r.vendorName || '—'}</TableContent> },
-    { key: 'postingDate', header: 'Posting date', sortable: true, cell: (r) => formatDate(r.postingDate) },
+    { key: 'docNum', header: `${cap(LC_NOUN.one)} no.`, locked: true, cell: (r) => <TableContent href={`#${LC_LIST_PATH}/${r.docNum ? r.number : r.id}`}>{r.number}</TableContent> },
+    { key: 'reference', header: 'Reference', cell: (r) => r.reference || '—' },
+    { key: 'vendorName', header: 'Vendor', cell: (r) => r.vendorName || '—' },
+    { key: 'status', header: 'Status', cell: (r) => <TableStatus intent={LC_STATUS_INTENT[r.status]}>{r.status}</TableStatus> },
+    { key: 'postingDate', header: 'Posting date', align: 'end', cell: (r) => formatDate(r.postingDate) },
     { key: 'fileNo', header: 'File no.', defaultHidden: true, cell: (r) => r.fileNo || '—' },
-    { key: 'total', header: 'Total costs', sortable: true, cell: (r) => <span className="tabular-nums">{formatAmount(r.total)}</span> },
-    { key: 'status', header: 'Status', sortable: true, cell: (r) => <TableStatus intent={LC_STATUS_INTENT[r.status]}>{r.status}</TableStatus> },
+    { key: 'total', header: 'Total costs', align: 'end', cell: (r) => formatMoney(r.total, r.currency) },
   ];
   const { columns, manager } = useListColumns('landed-costs', allColumns);
 

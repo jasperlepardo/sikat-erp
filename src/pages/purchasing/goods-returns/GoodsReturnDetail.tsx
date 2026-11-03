@@ -1,4 +1,3 @@
-import { StatusNotice } from '../../../components/form/StatusNotice';
 import { useEffect, useState, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate, useParams } from 'react-router';
@@ -344,11 +343,6 @@ function GoodsReturnForm() {
                 <>
                   <ProblemsAlert problems={problems} tabLabel={(t) => ({ contents: 'Contents', logistics: 'Logistics', accounting: 'Accounting' })[t]} />
                   {reject.alert('Reject goods return', rejectIt)}
-                  {added && draft.status !== 'Open' ? (
-                    <StatusNotice resetKey={`${draft.id}:${draft.status}`} title={`This goods return is ${draft.status.toLowerCase()}`}>
-                      Only remarks and attachments can change.
-                    </StatusNotice>
-                  ) : null}
                 </>
               }
               main={

@@ -1,4 +1,3 @@
-import { StatusNotice } from '../../../../../components/form/StatusNotice';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import { createPortal } from 'react-dom';
@@ -455,11 +454,6 @@ function SalesReturnForm() {
                         </div>
                       </div>
                     </Alert>
-                  ) : null}
-                  {added && draft.status !== 'Open' ? (
-                    <StatusNotice resetKey={`${draft.id}:${draft.status}`} title={`This sales return is ${draft.status.toLowerCase()}`}>
-                      Only remarks and attachments can change.
-                    </StatusNotice>
                   ) : null}
                 </>
               }

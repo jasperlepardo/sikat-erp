@@ -2,7 +2,6 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import {
-  Alert,
   Badge,
   Form,
   Panel,
@@ -182,7 +181,6 @@ function ApReserveInvoiceForm() {
   const errors: Errors = Object.fromEntries(problems.map((p) => [p.key, p.message]));
   const docCurrency = m.currencies.find((c) => c.code === draft.currency);
   const totals = apRiTotals(draft, ctx.rateOf, docCurrency?.rounding, ctx.isReverseCharge);
-  const balance = Math.round((totals.total - draft.appliedAmount) * 100) / 100;
 
   const update = (patch: Partial<ApriDraft>) => {
     const next = { ...draft, ...patch };
@@ -376,13 +374,6 @@ function ApReserveInvoiceForm() {
             header={
               <>
                 <ProblemsAlert problems={problems} tabLabel={(t) => ({ contents: 'Contents', logistics: 'Logistics', accounting: 'Accounting' })[t]} />
-                {added ? (
-                  <Alert intent="default" variant="outline" title={draft.status === 'Open' ? 'This A/P reserve invoice is open' : `This A/P reserve invoice is ${draft.status.toLowerCase()}`}>
-                    {draft.status === 'Open'
-                      ? `The vendor is owed ${draft.currency} ${formatAmount(balance)}. Goods are received by creating a Goods Receipt PO against this invoice. Only remarks, the payment block and the payment run flag can change.`
-                      : `Only remarks can change${draft.closeDate ? ` (${draft.status.toLowerCase()} ${formatDate(draft.closeDate)})` : ''}.`}
-                  </Alert>
-                ) : null}
               </>
             }
             main={
@@ -456,7 +447,7 @@ function ApReserveInvoiceForm() {
                 hint: 'Bill from an open PO. Goods are received later when you create a Goods Receipt referencing this invoice.',
                 docs: orders.map((po) => ({
                   id: po.id,
-                  label: `PO ${poNumber(po)}`,
+                  label: `${poNumber(po)}`,
                   description: `Delivery ${formatDate(po.deliveryDate)} · ${po.currency}`,
                   lines: po.lines
                     .filter((l) => l.status === 'Open')

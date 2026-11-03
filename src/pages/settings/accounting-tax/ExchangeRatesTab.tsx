@@ -79,7 +79,7 @@ export function ExchangeRatesTab(route: ListRoute) {
           </Button>
         }
         columns={[
-          { key: 'date', header: 'Date', cell: (r) => formatDate(r.date) },
+          { key: 'date', header: 'Date', align: 'end', cell: (r) => formatDate(r.date) },
           ...shown.map((c) => ({
             key: c.code,
             header: `${c.code} (PHP)`,

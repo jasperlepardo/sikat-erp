@@ -248,7 +248,8 @@ export const SEED_GOODS_RECEIPTS: GoodsReceipt[] = received
       // Receipts for finished POs have been invoiced; the rest still wait on the bill.
       status: po.status === 'Closed' ? 'Closed' : 'Open',
       closeDate: po.status === 'Closed' ? po.closeDate : '',
-      dueDate: po.dueDate,
+      // Never before the receipt itself (a card-paid PO is due the day it is raised).
+      dueDate: po.dueDate > date ? po.dueDate : date,
       shipTo: po.shipTo,
       shippingType: po.shippingType,
       journalRemark: `Goods Receipt PO – ${po.vendorCode}`,

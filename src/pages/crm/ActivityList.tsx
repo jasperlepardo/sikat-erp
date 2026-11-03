@@ -130,19 +130,18 @@ export function ActivityList() {
     {
       key: 'subject',
       header: 'Activity',
-      sortable: true,
       locked: true,
       cell: (a) => (
         <div className="flex items-center gap-2">
           <Icon size={20}>{ACTIVITY_ICON[a.kind]}</Icon>
-          <TableContent onClick={() => setEditing({ value: a, isNew: false })} subcopy={ACTIVITY_LABEL[a.kind]}>{a.subject}</TableContent>
+          <TableContent onClick={() => setEditing({ value: a, isNew: false })} >{a.subject}</TableContent>
         </div>
       ),
     },
+    { key: 'kind', header: 'Type', cell: (a) => ACTIVITY_LABEL[a.kind] },
     {
       key: 'partner',
       header: 'Business partner',
-      sortable: true,
       cell: (a) => {
         const p = partnerOf(a);
         return p ? (
@@ -168,11 +167,11 @@ export function ActivityList() {
         );
       },
     },
-    { key: 'owner', header: 'Owner', sortable: true, defaultHidden: true, cell: (a) => ownerName(a.ownerId) || '—' },
+    { key: 'owner', header: 'Owner', defaultHidden: true, cell: (a) => ownerName(a.ownerId) || '—' },
     {
       key: 'date',
       header: 'Date / due',
-      sortable: true,
+      align: 'end',
       cell: (a) =>
         a.kind === 'task' && a.dueDate ? (
           <TableContent subcopy={`From ${formatDate(a.date)}`}>Due {formatDate(a.dueDate)}</TableContent>

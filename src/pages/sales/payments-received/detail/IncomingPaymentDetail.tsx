@@ -1,4 +1,3 @@
-import { StatusNotice } from '../../../../components/form/StatusNotice';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import { Badge, Form, FormField, Panel, Select, Tabs, Text } from '@jasperlepardo/sikat-design-system';
@@ -325,13 +324,6 @@ function IncomingForm() {
               <>
                 <ProblemsAlert problems={problems} tabLabel={(t) => TAB_LABEL[t as TabId]} />
                 {reject.alert('Reject incoming payment', rejectIt)}
-                {added && (draft.status === 'Cancelled' || draft.status === 'Not Confirmed') ? (
-                  <StatusNotice resetKey={`${draft.id}:${draft.status}`} title={draft.status === 'Cancelled' ? 'This payment is cancelled' : 'This payment is waiting for approval'}>
-                    {draft.status === 'Cancelled'
-                      ? `A reversing entry was posted on ${formatDate(draft.cancelDate)}, and the invoices it paid reopened.`
-                      : 'Approve it to post it. Only remarks and attachments can change.'}
-                  </StatusNotice>
-                ) : null}
               </>
             }
             main={

@@ -112,7 +112,7 @@ export function grDoc({ draft, update, errors, m, ctx, onCopyClick, copyableCoun
       invalid: (l) => Boolean(err(l, 'bin')),
     },
     openQtyOf: (l) => grOpenQty(l, draft),
-    baseDoc: (l) => (l.baseId ? { href: `#/purchasing/purchase-orders/${l.baseId}`, label: `PO ${l.baseDocNo}` } : null),
+    baseDoc: (l) => (l.baseId ? { href: `#/purchasing/purchase-orders/${l.baseId}`, label: `${l.baseDocNo}` } : null),
     countryDef,
     warrantyDef: warrantyTemplateDef,
     itemWarranty: (l) => itemOf(l)?.warrantyTemplate ?? '',

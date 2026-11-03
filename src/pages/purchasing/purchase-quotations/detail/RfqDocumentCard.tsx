@@ -25,7 +25,7 @@ export function RfqDocumentCard({ draft, update, errors, ctx, m }: RfqSectionPro
         error: errors.currency,
         hint: "Defaults to the vendor's currency.",
         rate: ctx.fxRate,
-        rateHint: 'From the posting date; sets how totals convert to PHP.',
+        rateHint: 'From the quotation date; sets how totals convert to PHP.',
       }}
     />
   );

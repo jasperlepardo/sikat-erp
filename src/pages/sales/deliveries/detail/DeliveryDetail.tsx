@@ -1,4 +1,3 @@
-import { StatusNotice } from '../../../../components/form/StatusNotice';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import { createPortal } from 'react-dom';
@@ -353,13 +352,6 @@ function DeliveryForm() {
                 <>
                   <ProblemsAlert problems={problems} tabLabel={(t) => TAB_LABEL[t as TabId]} />
                   {reject.alert('Reject delivery', rejectIt)}
-                  {ro && draft.status !== 'Open' ? (
-                    <StatusNotice resetKey={`${draft.id}:${draft.status}`} title={`This delivery is ${draft.status.toLowerCase()}`}>
-                      {draft.status === 'Cancelled'
-                        ? 'The stock came back, the order lines reopened and the journal entry was reversed.'
-                        : 'The stock is out and the journal entry is posted. Only remarks and attachments can change; to undo it, cancel the delivery.'}
-                    </StatusNotice>
-                  ) : null}
                 </>
               }
               main={

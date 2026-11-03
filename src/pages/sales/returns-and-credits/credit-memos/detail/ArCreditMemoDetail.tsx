@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { Alert, Badge, Form, Panel, Tabs, Text, TextField, type TableColumn } from '@jasperlepardo/sikat-design-system';
+import { Badge, Form, Panel, Tabs, Text, TextField, type TableColumn } from '@jasperlepardo/sikat-design-system';
 import { DocumentDetailSkeleton } from '../../../../../components/form/skeletons/DocumentDetailSkeleton';
 import { DataTable } from '../../../../../components/form/DataTable';
 import { Section, type Errors } from '../../../../../components/form/fields';
@@ -396,13 +396,6 @@ function ArCreditMemoForm() {
                 <>
                   <ProblemsAlert problems={problems} tabLabel={() => 'Details'} />
                   {reject.alert('Reject A/R credit memo', rejectIt)}
-                  {added ? (
-                    <Alert intent="default" variant="outline" title={draft.status === 'Open' ? `${code} ${formatAmount(openBalance)} of credit left to apply` : `This credit memo is ${draft.status.toLowerCase()}`}>
-                      {draft.status === 'Open'
-                        ? 'Apply it to another open invoice of this customer with ⋯ › Apply credit to an invoice. Only remarks can change.'
-                        : 'Only remarks can change.'}
-                    </Alert>
-                  ) : null}
                 </>
               }
               main={
@@ -540,7 +533,7 @@ function ApplyCreditPanel({ code, open, invoices, onCancel, onDone }: {
 
   const columns: TableColumn<(typeof sorted)[number]>[] = [
     { key: 'docNo', header: 'A/R invoice', cell: (i) => i.docNo },
-    { key: 'dueDate', header: 'Due', cell: (i) => formatDate(i.dueDate) },
+    { key: 'dueDate', header: 'Due', align: 'end', cell: (i) => formatDate(i.dueDate) },
     { key: 'balance', header: 'Balance due', cell: (i) => formatAmount(i.balance) },
     {
       key: 'amount', header: `Apply (${code})`,

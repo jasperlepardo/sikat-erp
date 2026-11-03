@@ -1,10 +1,10 @@
 import { useLocation } from 'react-router';
-import { Alert, Badge, TableContent } from '@jasperlepardo/sikat-design-system';
+import { Alert, TableContent, TableStatus } from '@jasperlepardo/sikat-design-system';
 import { ListPage } from '../../../components/form/ListPage';
 import { useListColumns, type ListColumn } from '../../../components/form/listColumns';
 import { DPI_STATUSES, type DownPaymentInvoice } from '../../../mocks/apDownPaymentInvoices';
 import { formatDate } from '../../../services/dates';
-import { formatAmount } from '../../../services/format';
+import { formatMoney } from '../../../services/format';
 import { listDownPaymentInvoices, dpiNumber, dpiTotals } from '../../../services/apDownPaymentInvoices';
 import { taxCodes } from '../../../services/masterData';
 import { useAsync } from '../../../services/useAsync';
@@ -12,6 +12,7 @@ import { rateAt } from '../../../mocks/taxes';
 import { dateField, numberField, partnerField, statusField, textField } from '../../../components/filter/fieldKit';
 import { draftScope, draftSplit, scopeStatuses } from '../../../components/filter/useListPresets';
 import { DPI_LIST_PATH, DPI_NOUN, DPI_STATUS_INTENT } from '../paths';
+import { cap } from '../../../components/form/noun';
 
 export function DpiList({ draftsOnly = false, compact, selectedId }: { draftsOnly?: boolean; compact?: boolean; selectedId?: string } = {}) {
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
@@ -25,7 +26,8 @@ export function DpiList({ draftsOnly = false, compact, selectedId }: { draftsOnl
   const totalOf = (inv: DownPaymentInvoice) => dpiTotals(inv, (code) => rateOf(inv, code)).total;
 
   const fields = [
-    textField<DownPaymentInvoice>('no', 'No.', dpiNumber),
+    textField<DownPaymentInvoice>('no', `${cap(DPI_NOUN.one)} no.`, dpiNumber),
+    textField<DownPaymentInvoice>('vendorRef', 'Vendor invoice no.', (d) => d.vendorRef),
     partnerField<DownPaymentInvoice>('vendor', 'Vendor', (d) => d.vendorId, (d) => d.vendorName, invoices),
     dateField<DownPaymentInvoice>('postingDate', 'Posting date', (d) => d.postingDate),
     numberField<DownPaymentInvoice>('total', 'Total', totalOf),
@@ -33,12 +35,15 @@ export function DpiList({ draftsOnly = false, compact, selectedId }: { draftsOnl
   ];
 
   const allColumns: ListColumn<DownPaymentInvoice>[] = [
-    { key: 'docNum', header: 'No.', sortable: true, locked: true, cell: (d) => <TableContent href={`#${DPI_LIST_PATH}/${d.id}`}>{dpiNumber(d)}</TableContent> },
-    { key: 'vendorName', header: 'Vendor', sortable: true, cell: (d) => <TableContent subcopy={d.vendorCode}>{d.vendorName || '—'}</TableContent> },
-    { key: 'postingDate', header: 'Posting date', sortable: true, cell: (d) => formatDate(d.postingDate) },
-    { key: 'dueDate', header: 'Due date', defaultHidden: true, cell: (d) => d.dueDate ? formatDate(d.dueDate) : '—' },
-    { key: 'total', header: 'Total', sortable: true, cell: (d) => <span className="tabular-nums">{d.currency} {formatAmount(totalOf(d))}</span> },
-    { key: 'status', header: 'Status', sortable: true, cell: (d) => <Badge size="small" intent={DPI_STATUS_INTENT[d.status]}>{d.status}</Badge> },
+    { key: 'docNum', header: `${cap(DPI_NOUN.one)} no.`, locked: true, cell: (d) => <TableContent href={`#${DPI_LIST_PATH}/${d.id}`}>{dpiNumber(d)}</TableContent> },
+    { key: 'vendorRef', header: 'Vendor invoice no.', cell: (d) => d.vendorRef || '—' },
+    { key: 'vendorName', header: 'Vendor', cell: (d) => d.vendorName || '—' },
+    { key: 'status', header: 'Status', cell: (d) => <TableStatus intent={DPI_STATUS_INTENT[d.status]}>{d.status}</TableStatus> },
+    { key: 'postingDate', header: 'Posting date', align: 'end', cell: (d) => formatDate(d.postingDate) },
+    { key: 'dueDate', header: 'Due date', align: 'end', cell: (d) => (d.dueDate ? formatDate(d.dueDate) : '—') },
+    { key: 'orderNumber', header: 'Purchase order', defaultHidden: true, cell: (d) => (d.orderNumber ? `${d.orderNumber}` : <span className="text-muted">Without PO</span>) },
+    { key: 'total', header: 'Total', align: 'end', cell: (d) => formatMoney(totalOf(d), d.currency) },
+    { key: 'paid', header: 'Paid / drawn', cell: (d) => <TableContent subcopy={d.drawnAmount ? `${formatMoney(d.drawnAmount, d.currency)} drawn` : undefined}>{d.appliedAmount ? (d.appliedAmount >= totalOf(d) - 0.005 ? 'Paid' : `${formatMoney(d.appliedAmount, d.currency)} paid`) : 'Unpaid'}</TableContent> },
   ];
   const { columns, manager } = useListColumns('down-payment-invoices', allColumns);
 

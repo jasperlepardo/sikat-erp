@@ -44,9 +44,9 @@ export function SalesDashboard() {
     {
       key: 'customerName',
       header: 'Customer',
-      cell: (so) => <TableContent subcopy={so.customerCode}>{so.customerName || '—'}</TableContent>,
+      cell: (so) => so.customerName || '—',
     },
-    { key: 'postingDate', header: 'Date', cell: (so) => formatDate(so.postingDate) },
+    { key: 'postingDate', header: 'Date', align: 'end', cell: (so) => formatDate(so.postingDate) },
     { key: 'total', header: 'Total', cell: (so) => <TableAmount currency={so.currency}>{formatAmount(soTotal(so, codes))}</TableAmount> },
     { key: 'status', header: 'Status', cell: (so) => <TableStatus intent={SO_STATUS_INTENT[so.status]}>{so.status}</TableStatus> },
   ];
@@ -60,9 +60,9 @@ export function SalesDashboard() {
     {
       key: 'customerName',
       header: 'Customer',
-      cell: (a) => <TableContent subcopy={a.customerCode}>{a.customerName || '—'}</TableContent>,
+      cell: (a) => a.customerName || '—',
     },
-    { key: 'dueDate', header: 'Due date', cell: (a) => formatDate(a.dueDate) },
+    { key: 'dueDate', header: 'Due date', align: 'end', cell: (a) => formatDate(a.dueDate) },
     { key: 'total', header: 'Total', cell: (a) => <TableAmount currency={a.currency}>{formatAmount(arTotal(a, codes))}</TableAmount> },
     { key: 'status', header: 'Status', cell: (a) => <TableStatus intent={AR_STATUS_INTENT[a.status]}>{a.status}</TableStatus> },
   ];

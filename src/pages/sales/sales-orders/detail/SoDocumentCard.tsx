@@ -25,7 +25,7 @@ export function SoDocumentCard({ draft, update, errors, ctx, m }: SoTabProps) {
         readOnly: ctx.added,
         hint: "Defaults from the customer's currency.",
         rate: ctx.fxRate,
-        rateHint: 'From the posting date; sets how totals convert to PHP.',
+        rateHint: 'From the order date; sets how totals convert to PHP.',
       }}
     />
   );

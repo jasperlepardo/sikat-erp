@@ -20,6 +20,7 @@ export const QT_STATUS_INTENT: Record<string, 'default' | 'primary' | 'success' 
   Draft: 'default',
   'Not Confirmed': 'warning',
   Open: 'primary',
+  Expired: 'warning',
   Closed: 'success',
   Cancelled: 'danger',
 };

@@ -5,7 +5,7 @@ import { useListColumns, type ListColumn } from '../../../components/form/listCo
 import { DI_STATUSES, type ArDownPaymentInvoice } from '../../../mocks/arDownPaymentInvoices';
 import { rateAt, type TaxCode } from '../../../mocks/taxes';
 import { formatDate } from '../../../services/dates';
-import { formatAmount } from '../../../services/format';
+import { formatMoney } from '../../../services/format';
 import { taxCodes } from '../../../services/masterData';
 import { diNumber, diTotals, listArDownPaymentInvoices } from '../../../services/arDownPaymentInvoices';
 import { useAsync } from '../../../services/useAsync';
@@ -13,6 +13,7 @@ import { dateField, masterField, numberField, partnerField, statusField, textFie
 import { draftScope, draftSplit, scopeStatuses } from '../../../components/filter/useListPresets';
 import { currencyDef, salesEmployeeDef } from '../../settings/masterDefs';
 import { DI_LIST_PATH, DI_NOUN, DI_STATUS_INTENT } from '../paths';
+import { cap } from '../../../components/form/noun';
 
 const rateOfOn = (codes: readonly TaxCode[], date: string) => (code: string) => {
   const c = codes.find((x) => x.code === code);
@@ -26,12 +27,13 @@ export function DiList({ draftsOnly = false, compact, selectedId }: { draftsOnly
   const totalOf = (d: ArDownPaymentInvoice) => diTotals(d, rateOfOn(codes, d.postingDate)).total;
 
   const fields = [
-    textField<ArDownPaymentInvoice>('no', 'No.', diNumber),
+    textField<ArDownPaymentInvoice>('no', `${cap(DI_NOUN.one)} no.`, diNumber),
     partnerField<ArDownPaymentInvoice>('customer', 'Customer', (d) => d.customerId, (d) => d.customerName, rows_),
     textField<ArDownPaymentInvoice>('customerCode', 'Customer code', (d) => d.customerCode),
+    textField<ArDownPaymentInvoice>('customerRef', 'Customer PO no.', (d) => d.customerRef),
     dateField<ArDownPaymentInvoice>('postingDate', 'Posting date', (d) => d.postingDate),
     dateField<ArDownPaymentInvoice>('dueDate', 'Due date', (d) => d.dueDate),
-    textField<ArDownPaymentInvoice>('order', 'Order', (d) => d.orderNumber),
+    textField<ArDownPaymentInvoice>('order', 'Sales order', (d) => d.orderNumber),
     numberField<ArDownPaymentInvoice>('total', 'Total', totalOf),
     statusField<ArDownPaymentInvoice>(scopeStatuses(draftsOnly, DI_STATUSES)),
     masterField<ArDownPaymentInvoice>('currency', 'Currency', currencyDef, (d) => d.currency),
@@ -39,13 +41,15 @@ export function DiList({ draftsOnly = false, compact, selectedId }: { draftsOnly
   ];
 
   const allColumns: ListColumn<ArDownPaymentInvoice>[] = [
-    { key: 'docNum', header: 'No.', sortable: true, locked: true, cell: (d) => <TableContent href={`#${DI_LIST_PATH}/${d.docNum ? diNumber(d) : d.id}`}>{diNumber(d)}</TableContent> },
-    { key: 'customerName', header: 'Customer', sortable: true, cell: (d) => <TableContent subcopy={d.customerCode}>{d.customerName || '—'}</TableContent> },
+    { key: 'docNum', header: `${cap(DI_NOUN.one)} no.`, locked: true, cell: (d) => <TableContent href={`#${DI_LIST_PATH}/${d.docNum ? diNumber(d) : d.id}`}>{diNumber(d)}</TableContent> },
+    { key: 'customerRef', header: 'Customer PO no.', cell: (d) => d.customerRef || '—' },
+    { key: 'customerName', header: 'Customer', cell: (d) => d.customerName || '—' },
+    { key: 'status', header: 'Status', cell: (d) => <TableStatus intent={DI_STATUS_INTENT[d.status]}>{d.status}</TableStatus> },
     { key: 'postingDate', header: 'Posting date', align: 'end', cell: (d) => formatDate(d.postingDate) },
-    { key: 'orderNumber', header: 'Order', defaultHidden: true, cell: (d) => d.orderNumber || '—' },
-    { key: 'dueDate', header: 'Due date', align: 'end', cell: (d) => d.dueDate ? formatDate(d.dueDate) : '—' },
-    { key: 'total', header: 'Total', align: 'end', cell: (d) => `${d.currency} ${formatAmount(totalOf(d))}` },
-    { key: 'status', header: 'Status', sortable: true, cell: (d) => <TableStatus intent={DI_STATUS_INTENT[d.status]}>{d.status}</TableStatus> },
+    { key: 'dueDate', header: 'Due date', align: 'end', cell: (d) => (d.dueDate ? formatDate(d.dueDate) : '—') },
+    { key: 'orderNumber', header: 'Sales order', defaultHidden: true, cell: (d) => d.orderNumber || <span className="text-muted">Without SO</span> },
+    { key: 'total', header: 'Total', align: 'end', cell: (d) => formatMoney(totalOf(d), d.currency) },
+    { key: 'paid', header: 'Paid / drawn', cell: (d) => <TableContent subcopy={d.drawnAmount ? `${formatMoney(d.drawnAmount, d.currency)} drawn` : undefined}>{d.appliedAmount ? (d.appliedAmount >= totalOf(d) - 0.005 ? 'Paid' : `${formatMoney(d.appliedAmount, d.currency)} paid`) : 'Unpaid'}</TableContent> },
   ];
   const { columns, manager } = useListColumns('ar-down-payment-invoices', allColumns);
 

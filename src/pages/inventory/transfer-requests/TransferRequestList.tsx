@@ -10,15 +10,16 @@ import { dateField, linesField, masterField, numberField, statusField, textField
 import { statusViews } from '../../../components/filter/useListPresets';
 import { salesEmployeeDef } from '../../settings/masterDefs';
 import { TRANSFER_REQUEST_LIST_PATH, TRANSFER_REQUEST_NOUN, TRANSFER_REQUEST_STATUS_INTENT } from '../paths';
+import { cap } from '../../../components/form/noun';
 
 export function TransferRequestList({ compact, selectedId }: { compact?: boolean; selectedId?: string } = {}) {
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const requests = useAsync(listTransferRequests, []);
   const fields = [
-    textField<InventoryTransferRequest>('no', 'No.', transferRequestNumber),
+    textField<InventoryTransferRequest>('no', `${cap(TRANSFER_REQUEST_NOUN.one)} no.`, transferRequestNumber),
     textField<InventoryTransferRequest>('from', 'From warehouse', (d) => d.fromWarehouse),
     textField<InventoryTransferRequest>('to', 'To warehouse', requestDestinations),
-    dateField<InventoryTransferRequest>('postingDate', 'Posting date', (d) => d.postingDate),
+    dateField<InventoryTransferRequest>('postingDate', 'Request date', (d) => d.postingDate),
     dateField<InventoryTransferRequest>('dueDate', 'Due date', (d) => d.dueDate),
     numberField<InventoryTransferRequest>('openQty', 'Open quantity', requestOpenQty),
     statusField<InventoryTransferRequest>(TRANSFER_REQUEST_STATUSES),
@@ -28,11 +29,12 @@ export function TransferRequestList({ compact, selectedId }: { compact?: boolean
   ];
 
   const allColumns: ListColumn<InventoryTransferRequest>[] = [
-    { key: 'docNum', header: 'No.', sortable: true, locked: true, cell: (r) => <TableContent href={`#${TRANSFER_REQUEST_LIST_PATH}/${r.id}`}>{transferRequestNumber(r)}</TableContent> },
-    { key: 'fromWarehouse', header: 'From → To', sortable: true, cell: (r) => <TableContent subcopy={r.remarks || undefined}>{r.fromWarehouse} → {requestDestinations(r).join(', ') || '—'}</TableContent> },
-    { key: 'dueDate', header: 'Due date', sortable: true, cell: (r) => (r.dueDate ? formatDate(r.dueDate) : '—') },
-    { key: 'openQty', header: 'Open quantity', sortable: true, cell: (r) => <TableContent subcopy={`of ${requestedQty(r).toLocaleString('en-PH')} requested`}>{requestOpenQty(r).toLocaleString('en-PH')}</TableContent> },
-    { key: 'status', header: 'Status', sortable: true, cell: (r) => <TableStatus intent={TRANSFER_REQUEST_STATUS_INTENT[r.status]}>{r.status}</TableStatus> },
+    { key: 'docNum', header: `${cap(TRANSFER_REQUEST_NOUN.one)} no.`, locked: true, cell: (r) => <TableContent href={`#${TRANSFER_REQUEST_LIST_PATH}/${r.id}`}>{transferRequestNumber(r)}</TableContent> },
+    { key: 'fromWarehouse', header: 'From → To', cell: (r) => <TableContent subcopy={r.remarks || undefined}>{r.fromWarehouse} → {requestDestinations(r).join(', ') || '—'}</TableContent> },
+    { key: 'postingDate', header: 'Request date', align: 'end', cell: (r) => formatDate(r.postingDate) },
+    { key: 'dueDate', header: 'Due date', align: 'end', cell: (r) => (r.dueDate ? formatDate(r.dueDate) : '—') },
+    { key: 'openQty', header: 'Open quantity', align: 'end', cell: (r) => <TableContent subcopy={`of ${requestedQty(r).toLocaleString('en-PH')} requested`}>{requestOpenQty(r).toLocaleString('en-PH')}</TableContent> },
+    { key: 'status', header: 'Status', cell: (r) => <TableStatus intent={TRANSFER_REQUEST_STATUS_INTENT[r.status]}>{r.status}</TableStatus> },
   ];
   const { columns, manager } = useListColumns('inventory-transfer-requests', allColumns);
 

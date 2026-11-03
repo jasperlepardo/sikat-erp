@@ -5,7 +5,7 @@ import { useColumnPrefs, type PrefColumn } from '../../../../../components/form/
 import type { PurchaseOrder } from '../../../../../mocks/purchaseOrders';
 import type { PrLine, PurchaseRequest } from '../../../../../mocks/purchaseRequests';
 import type { Rfq, RfqLine } from '../../../../../mocks/rfqs';
-import { formatDate, todayISO } from '../../../../../services/dates';
+import { formatDate } from '../../../../../services/dates';
 import { formatAmount } from '../../../../../services/format';
 import { rateOn } from '../../../../../services/masterData';
 import { copiedQty } from '../../../../../services/purchaseRequests';
@@ -79,7 +79,6 @@ export function ComparisonCard({
   const quotesOf = (prLine: PrLine) => quotesByLine.get(prLine.id) ?? [];
   const lines: Row[] = groups.map(({ prLine }) => ({ kind: 'line', id: prLine.id, prLine, quotes: quotesOf(prLine) }));
 
-  const today = todayISO();
   // Column registries per quotation (amounts and tax are in each quotation's own currency and rates).
   const lineCols = new Map<string, ReturnType<typeof quoteLineCols>>();
   const lineColsOf = (rfq: Rfq) => {
@@ -157,14 +156,12 @@ export function ComparisonCard({
   const validUntil: PrefColumn<Row> = {
     key: 'validUntil',
     header: 'Valid until',
+    align: 'end',
     optional: true,
-    // Like the quotations list: an open quote past its date has lapsed, so say so.
+    // Like the quotations list: an expired quote's date shows in red (the Status column says Expired).
     cell: (r) =>
-      r.kind !== 'quote' || !r.rfq.validUntil ? null : r.rfq.status === 'Open' && r.rfq.validUntil < today ? (
-        <div className="flex flex-col">
-          <Text variant="small" tone="danger" className="whitespace-nowrap">{formatDate(r.rfq.validUntil)}</Text>
-          <Text variant="caption" tone="muted">Expired</Text>
-        </div>
+      r.kind !== 'quote' || !r.rfq.validUntil ? null : r.rfq.status === 'Expired' ? (
+        <Text variant="small" tone="danger" className="whitespace-nowrap">{formatDate(r.rfq.validUntil)}</Text>
       ) : (
         <Text variant="small" className="whitespace-nowrap">{formatDate(r.rfq.validUntil)}</Text>
       ),

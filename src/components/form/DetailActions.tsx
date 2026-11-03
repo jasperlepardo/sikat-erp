@@ -77,7 +77,7 @@ interface DetailActionsProps<T> {
 }
 
 /**
- * A detail page's header buttons, left to right: Previous/Next · ⋯ · Cancel · secondary · primary.
+ * A detail page's header buttons, left to right: ⋯ · Cancel · secondary · primary · Previous/Next.
  * The labels follow the record's state, so every document reads the same.
  */
 export function DetailActions<T = unknown>({
@@ -115,7 +115,6 @@ export function DetailActions<T = unknown>({
 
   return (
     <>
-      {prevNext ? <PrevNext {...prevNext} /> : null}
       {menu.length ? <MoreMenu items={menu} button={size ? { size } : undefined} /> : null}
       {(mode === 'draft' || mode === 'open') && dirty !== false ? (
         <Button {...button} type="button" intent="white" disabled={false} onClick={onCancel}>
@@ -132,6 +131,7 @@ export function DetailActions<T = unknown>({
           {busy ? (busyLabel ?? primary!.busy) : primary!.label}
         </Button>
       ) : null}
+      {prevNext ? <PrevNext {...prevNext} /> : null}
     </>
   );
 }

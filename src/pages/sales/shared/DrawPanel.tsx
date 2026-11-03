@@ -59,8 +59,8 @@ export function DrawPanel({
   const tooMuch = total > max + 0.005;
 
   const columns: TableColumn<DrawableAdvance>[] = [
-    { key: 'docNo', header: 'Down payment', cell: (a) => <div className="flex flex-col"><span>{a.docNo}</span><Text variant="small" tone="muted">{a.orderNumber ? `SO ${a.orderNumber}` : 'Without SO'}</Text></div> },
-    { key: 'postingDate', header: 'Date', cell: (a) => formatDate(a.postingDate) },
+    { key: 'docNo', header: 'Down payment', cell: (a) => <div className="flex flex-col"><span>{a.docNo}</span><Text variant="small" tone="muted">{a.orderNumber ? a.orderNumber : 'Without SO'}</Text></div> },
+    { key: 'postingDate', header: 'Date', align: 'end', cell: (a) => formatDate(a.postingDate) },
     { key: 'available', header: 'Can draw', cell: (a) => <span className="tabular-nums">{formatAmount(available(a))}</span> },
     {
       key: 'amount',

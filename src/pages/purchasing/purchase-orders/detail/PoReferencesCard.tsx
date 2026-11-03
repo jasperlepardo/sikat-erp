@@ -16,7 +16,7 @@ export function PoReferencesCard({ draft, update, m, ctx }: PoTabProps) {
           {f.choose('indicator', 'Indicator', asOptions(INDICATORS), { clearable: true, readOnly: ctx.readOnly })}
           <ReadOnly
             label="Federal tax ID"
-            value={m.tax.company.tin || <span className="text-muted">Not set — Settings › Accounting & Tax › Company tax profile</span>}
+            value={m.tax.company.tin || <span className="text-muted">Not set — Settings › Company › Companies</span>}
             hint={`${m.tax.company.registeredName}'s TIN.`}
           />
           {f.text('orderNumber', 'Order number', { hint: "Chain-store order number, for direct distribution to a chain's stores.", readOnly: ctx.readOnly })}

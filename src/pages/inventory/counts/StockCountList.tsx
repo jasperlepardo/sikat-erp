@@ -6,7 +6,6 @@ import {
   Card,
   Panel,
   Table,
-  TableAmount,
   TableContent,
   TableStatus,
   Text,
@@ -20,7 +19,7 @@ import { EMPTY_FILTER } from '../../../components/filter/engine';
 import { dateField, linesField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews, useListPresets } from '../../../components/filter/useListPresets';
 import { COUNT_STATUSES, type InventoryCounting, type InventoryPosting } from '../../../mocks/inventoryCountings';
-import { formatAmount } from '../../../services/format';
+import { formatMoney } from '../../../services/format';
 import { formatDate } from '../../../services/dates';
 import { countNumber, countSummary, countWarehouses, listCountings, listPostings, postingNumber, postingTotal } from '../../../services/inventoryCountings';
 import { useAsync } from '../../../services/useAsync';
@@ -109,7 +108,7 @@ function useListState<T>({ sort, setSort, searchText }: { sort: TableSort | null
 }
 
 const COUNT_FIELDS = [
-  textField<InventoryCounting>('no', 'No.', countNumber),
+  textField<InventoryCounting>('no', `${cap(COUNT_NOUN.one)} no.`, countNumber),
   textField<InventoryCounting>('warehouse', 'Warehouse', countWarehouses),
   dateField<InventoryCounting>('countDate', 'Count date', (c) => c.countDate),
   textField<InventoryCounting>('counter', 'Counted by', (c) => c.counters.map((x) => nameIn(salesEmployees, x.employeeId))),
@@ -148,9 +147,9 @@ export function StockCountList() {
   }, [counts, presets.filter, list.query, list.sortRows]);
 
   const allColumns: ListColumn<InventoryCounting>[] = [
-    { key: 'docNum', header: 'No.', sortable: true, locked: true, cell: (c) => <TableContent href={`#${COUNT_LIST_PATH}/${c.id}`}>{countNumber(c)}</TableContent> },
+    { key: 'docNum', header: `${cap(COUNT_NOUN.one)} no.`, locked: true, cell: (c) => <TableContent href={`#${COUNT_LIST_PATH}/${c.id}`}>{countNumber(c)}</TableContent> },
     { key: 'warehouses', header: 'Warehouse', cell: (c) => <TableContent subcopy={c.remarks || undefined}>{countWarehouses(c).join(', ') || '—'}</TableContent> },
-    { key: 'countDate', header: 'Count date', sortable: true, cell: (c) => `${formatDate(c.countDate)} ${c.countTime}` },
+    { key: 'countDate', header: 'Count date', align: 'end', cell: (c) => `${formatDate(c.countDate)} ${c.countTime}` },
     {
       key: 'counters',
       header: 'Counted by',
@@ -161,6 +160,7 @@ export function StockCountList() {
     {
       key: 'progress',
       header: 'Counted',
+      align: 'end',
       cell: (c) => {
         const s = countSummary(c);
         const notes = [s.withVariance ? `${s.withVariance} with variance` : '', s.disagreements ? `${s.disagreements} counters differ` : ''].filter(Boolean).join(' · ');
@@ -171,7 +171,7 @@ export function StockCountList() {
         );
       },
     },
-    { key: 'status', header: 'Status', sortable: true, cell: (c) => <TableStatus intent={COUNT_STATUS_INTENT[c.status]}>{c.status}</TableStatus> },
+    { key: 'status', header: 'Status', cell: (c) => <TableStatus intent={COUNT_STATUS_INTENT[c.status]}>{c.status}</TableStatus> },
   ];
   const { columns, manager } = useListColumns('stock-counts', allColumns);
 
@@ -194,7 +194,7 @@ export function InventoryPostingList() {
   const presets = useListPresets({
     list: 'inventory-postings',
     fields: [
-      textField<InventoryPosting>('no', 'No.', postingNumber),
+      textField<InventoryPosting>('no', `${cap(POSTING_NOUN.one)} no.`, postingNumber),
       textField<InventoryPosting>('warehouse', 'Warehouse', countWarehouses),
       dateField<InventoryPosting>('postingDate', 'Posting date', (p) => p.postingDate),
       textField<InventoryPosting>('count', 'From count', (p) => {
@@ -229,12 +229,11 @@ export function InventoryPostingList() {
   }, [postings, presets.filter, list.query, list.sortRows]);
 
   const allColumns: ListColumn<InventoryPosting>[] = [
-    { key: 'docNum', header: 'No.', sortable: true, locked: true, cell: (p) => <TableContent href={`#${POSTING_LIST_PATH}/${p.id}`}>{postingNumber(p)}</TableContent> },
+    { key: 'docNum', header: `${cap(POSTING_NOUN.one)} no.`, locked: true, cell: (p) => <TableContent href={`#${POSTING_LIST_PATH}/${p.id}`}>{postingNumber(p)}</TableContent> },
     { key: 'warehouses', header: 'Warehouse', cell: (p) => <TableContent subcopy={p.remarks || undefined}>{countWarehouses(p).join(', ') || '—'}</TableContent> },
-    { key: 'postingDate', header: 'Posting date', sortable: true, cell: (p) => formatDate(p.postingDate) },
-    { key: 'count', header: 'From count', cell: (p) => (countOf(p) ? countNumber(countOf(p)!) : '— Direct') },
-    { key: 'lines', header: 'Lines', cell: (p) => String(p.lines.length) },
-    { key: 'total', header: 'Total', sortable: true, cell: (p) => <TableAmount currency="PHP">{formatAmount(postingTotal(p))}</TableAmount> },
+    { key: 'postingDate', header: 'Posting date', align: 'end', cell: (p) => formatDate(p.postingDate) },
+    { key: 'count', header: 'From count', cell: (p) => (countOf(p) ? countNumber(countOf(p)!) : <span className="text-muted">Direct</span>) },
+    { key: 'total', header: 'Total', align: 'end', cell: (p) => formatMoney(postingTotal(p)) },
   ];
   const { columns, manager } = useListColumns('inventory-postings', allColumns);
 

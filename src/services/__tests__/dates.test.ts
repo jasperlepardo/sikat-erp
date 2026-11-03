@@ -3,6 +3,8 @@ import {
   DATE_FORMATS,
   DEFAULT_TIME_ZONE,
   addDays,
+  daysBetween,
+  dueIn,
   applyDateSettings,
   formatDate,
   formatDateTime,
@@ -92,5 +94,19 @@ describe('applyDateSettings', () => {
   it('uses a separate display time zone for timestamps', () => {
     applyDateSettings({ bookTimeZone: 'Asia/Manila', dateFormat: 'yyyy-MM-dd', displayTimeZone: 'UTC' });
     expect(localDateTime('2026-09-25T09:30:00Z')).toBe('2026-09-25T09:30');
+  });
+});
+
+describe('dueIn', () => {
+  it('counts days between calendar dates', () => {
+    expect(daysBetween('2026-10-01', '2026-10-04')).toBe(3);
+    expect(daysBetween('2026-03-01', '2026-02-27')).toBe(-2);
+  });
+  it('describes a due date against today', () => {
+    expect(dueIn('2026-10-01', '2026-10-04')).toEqual({ text: 'Overdue by 3 days', overdue: true });
+    expect(dueIn('2026-10-03', '2026-10-04')).toEqual({ text: 'Overdue by 1 day', overdue: true });
+    expect(dueIn('2026-10-04', '2026-10-04')).toEqual({ text: 'Due today', overdue: false });
+    expect(dueIn('2026-10-05', '2026-10-04')).toEqual({ text: 'Due tomorrow', overdue: false });
+    expect(dueIn('2026-10-16', '2026-10-04')).toEqual({ text: 'Due in 12 days', overdue: false });
   });
 });

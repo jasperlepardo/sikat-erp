@@ -100,8 +100,8 @@ export function TransactionsTab({ draft }: { draft: Draft }) {
         <TableContent href={`#${d.href}`} subcopy={[ITEM_DOC_SOURCES[d.type].label, d.subcopy].filter(Boolean).join(' · ')}>{d.number}</TableContent>
       ),
     },
-    { key: 'date', header: 'Date', cell: (d) => formatDate(d.date) },
-    { key: 'dueDate', header: 'Delivery date', cell: (d) => (isOverdue(d) ? <TableStatus intent="danger">{d.dueDate}</TableStatus> : d.dueDate || '—') },
+    { key: 'date', header: 'Date', align: 'end', cell: (d) => formatDate(d.date) },
+    { key: 'dueDate', header: 'Delivery date', align: 'end', cell: (d) => (isOverdue(d) ? <TableStatus intent="danger">{d.dueDate}</TableStatus> : d.dueDate || '—') },
     { key: 'status', header: 'Status', cell: (d) => <TableStatus intent={d.intent}>{d.status}</TableStatus> },
     {
       key: 'quantity',
@@ -177,7 +177,7 @@ export function TransactionsTab({ draft }: { draft: Draft }) {
             {rows.length ? (
               <Table
                 caption="Transactions"
-                columns={columns.map((c) => ({ sortable: true, ...c }))}
+                columns={columns.map((c) => ({ ...c }))}
                 rows={visible}
                 getRowId={(d) => d.id}
                 sort={sort}

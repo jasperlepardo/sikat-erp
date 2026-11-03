@@ -33,7 +33,8 @@ export function AwardPoPanel({
   onCancel: () => void;
   onAward: (award: Award) => void;
 }) {
-  const quoting = rfqs.filter((q) => q.lines.some((l) => l.quotedQty > 0));
+  // An expired quote can't be awarded until its valid-until date is moved on.
+  const quoting = rfqs.filter((q) => q.status !== 'Expired' && q.lines.some((l) => l.quotedQty > 0));
   const [rfqId, setRfqId] = useState(quoting[0]?.id ?? '');
   const [qty, setQty] = useState<Record<string, number>>({});
   const awarded = awardedByPrLine(pos, pr.id);

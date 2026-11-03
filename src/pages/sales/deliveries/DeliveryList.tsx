@@ -1,38 +1,34 @@
 import { useLocation } from 'react-router';
-import { Alert, TableContent, TableStatus, Tooltip } from '@jasperlepardo/sikat-design-system';
+import { Alert, TableContent, TableStatus } from '@jasperlepardo/sikat-design-system';
 import { ListPage } from '../../../components/form/ListPage';
 import { useListColumns, type ListColumn } from '../../../components/form/listColumns';
 import { DN_STATUSES, type Delivery } from '../../../mocks/deliveries';
 import { formatDate } from '../../../services/dates';
-import { formatAmount } from '../../../services/format';
+import { formatMoney } from '../../../services/format';
 import { taxCodes } from '../../../services/masterData';
 import { dnNumber, dnTotal, listDeliveries } from '../../../services/deliveries';
 import { useAsync } from '../../../services/useAsync';
-import { listSalesOrders, soNumber } from '../../../services/salesOrders';
 import { dateField, linesField, masterField, numberField, partnerField, statusField, textField } from '../../../components/filter/fieldKit';
 import { draftScope, draftSplit, scopeStatuses } from '../../../components/filter/useListPresets';
 import { currencyDef, salesEmployeeDef } from '../../settings/masterDefs';
 import { DN_LIST_PATH, DN_NOUN, DN_STATUS_INTENT } from '../paths';
+import { cap } from '../../../components/form/noun';
 
 export function DeliveryList({ draftsOnly = false, compact, selectedId }: { draftsOnly?: boolean; compact?: boolean; selectedId?: string } = {}) {
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
-  const data = useAsync(() => Promise.all([listDeliveries(), taxCodes.list(), listSalesOrders()]), []);
-  const [orders, codes, salesOrders] = data ?? [undefined, [], []];
+  const data = useAsync(() => Promise.all([listDeliveries(), taxCodes.list()]), []);
+  const [orders, codes] = data ?? [undefined, []];
 
-  const baseOrders = (d: Delivery) => {
-    const ids = [...new Set(d.lines.filter((l) => l.baseType === 'SO' && l.baseId).map((l) => l.baseId))];
-    return ids.map((id) => salesOrders.find((o) => o.id === id)).filter((o) => o !== undefined).map(soNumber);
-  };
   const totalOf = (so: Delivery) => dnTotal(so, codes);
 
   const fields = [
-    textField<Delivery>('no', 'No.', dnNumber),
+    textField<Delivery>('no', `${cap(DN_NOUN.one)} no.`, dnNumber),
     partnerField<Delivery>('customer', 'Customer', (d) => d.customerId, (d) => d.customerName, orders),
     textField<Delivery>('customerCode', 'Customer code', (d) => d.customerCode),
     textField<Delivery>('customerRef', 'Customer PO no.', (d) => d.customerRef),
     dateField<Delivery>('postingDate', 'Posting date', (d) => d.postingDate),
     dateField<Delivery>('deliveryDate', 'Delivery date', (d) => d.deliveryDate),
-    textField<Delivery>('order', 'Order', (d) => d.orderNumber),
+    textField<Delivery>('order', 'Sales order', (d) => d.orderNumber),
     textField<Delivery>('trackingNo', 'Tracking no.', (d) => d.trackingNo),
     numberField<Delivery>('total', 'Total', totalOf),
     statusField<Delivery>(scopeStatuses(draftsOnly, DN_STATUSES)),
@@ -42,26 +38,14 @@ export function DeliveryList({ draftsOnly = false, compact, selectedId }: { draf
   ];
 
   const allColumns: ListColumn<Delivery>[] = [
-    { key: 'docNum', header: 'No.', sortable: true, locked: true, cell: (so) => <TableContent href={`#${DN_LIST_PATH}/${so.docNum ? dnNumber(so) : so.id}`} subcopy={so.customerRef ? `Customer PO no. ${so.customerRef}` : undefined}>{dnNumber(so)}</TableContent> },
-    { key: 'customerName', header: 'Customer', sortable: true, cell: (so) => <TableContent subcopy={so.customerCode}>{so.customerName || '—'}</TableContent> },
+    { key: 'docNum', header: `${cap(DN_NOUN.one)} no.`, locked: true, cell: (so) => <TableContent href={`#${DN_LIST_PATH}/${so.docNum ? dnNumber(so) : so.id}`}>{dnNumber(so)}</TableContent> },
+    { key: 'customerRef', header: 'Customer PO no.', cell: (so) => so.customerRef || '—' },
+    { key: 'orderNumber', header: 'Sales order', cell: (so) => so.orderNumber || <span className="text-muted">Without SO</span> },
+    { key: 'customerName', header: 'Customer', cell: (so) => so.customerName || '—' },
+    { key: 'status', header: 'Status', cell: (so) => <TableStatus intent={DN_STATUS_INTENT[so.status]}>{so.status}</TableStatus> },
     { key: 'postingDate', header: 'Posting date', align: 'end', cell: (so) => formatDate(so.postingDate) },
     { key: 'trackingNo', header: 'Tracking no.', defaultHidden: true, cell: (so) => so.trackingNo || '—' },
-    {
-      key: 'qty',
-      header: 'Shipped',
-      align: 'end',
-      cell: (so) => {
-        const shipped = so.lines.filter((l) => l.quantity > 0);
-        if (!shipped.length) return <span className="text-caption">-</span>;
-        return (
-          <Tooltip position="bottom" align="end" message={<div className="flex flex-col gap-1">{baseOrders(so).length ? <span className="font-semibold">From {baseOrders(so).join(', ')}</span> : null}{shipped.map((l) => <span key={l.id}>{l.quantity.toLocaleString('en-PH')} {l.uomCode} · {l.description || l.itemNo}</span>)}</div>}>
-            {shipped.reduce((n, l) => n + l.quantity, 0).toLocaleString('en-PH')}
-          </Tooltip>
-        );
-      },
-    },
-    { key: 'total', header: 'Total', align: 'end', cell: (so) => `${so.currency} ${formatAmount(totalOf(so))}` },
-    { key: 'status', header: 'Status', sortable: true, cell: (so) => <TableStatus intent={DN_STATUS_INTENT[so.status]}>{so.status}</TableStatus> },
+    { key: 'total', header: 'Total', align: 'end', cell: (so) => formatMoney(totalOf(so), so.currency) },
   ];
   const { columns, manager } = useListColumns('deliveries', allColumns);
 

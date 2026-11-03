@@ -1,6 +1,5 @@
 import { useCallback, useMemo } from 'react';
 import {
-  TableAmount,
   TableContent,
   TableStatus,
   type TableSort,
@@ -11,7 +10,7 @@ import { ITEM_NOUN } from '../paths';
 import type { Item } from '../../../mocks/items';
 import { isValidToday, listItems, stockTotals } from '../../../services/items';
 import { useAsync } from '../../../services/useAsync';
-import { formatAmount } from '../../../services/format';
+import { formatMoney } from '../../../services/format';
 import { itemGroupName } from '../../../services/inventoryMasters';
 import { EMPTY_FILTER, oneRule } from '../../../components/filter/engine';
 import { boolField, numberField, textField } from '../../../components/filter/fieldKit';
@@ -90,21 +89,20 @@ export function ItemList({ basePath = '/inventory/items', compact = false, selec
       key: 'description',
       locked: true,
       header: 'Item',
-      sortable: true,
       cell: (i) => (
-        <TableContent href={`#${basePath}/${i.id}`} subcopy={i.itemNo}>{i.description}</TableContent>
+        <TableContent href={`#${basePath}/${i.id}`}>{i.description}</TableContent>
       ),
     },
+    { key: 'itemNo', header: 'Item no.', cell: (i) => i.itemNo || '—' },
     {
       key: 'itemGroupId',
       header: 'Group',
-      sortable: true,
       cell: (i) => <TableContent subcopy={i.itemType === 'Items' ? undefined : i.itemType}>{itemGroupName(i.itemGroupId)}</TableContent>,
     },
     {
       key: 'inStock',
       header: 'In stock',
-      sortable: true,
+      align: 'end',
       cell: (i) => {
         if (i.variantAxes.length > 0) {
           const vc = items?.filter((x) => x.parentItemId === i.id).length ?? 0;
@@ -118,7 +116,7 @@ export function ItemList({ basePath = '/inventory/items', compact = false, selec
     {
       key: 'available',
       header: 'Available',
-      sortable: true,
+      align: 'end',
       cell: (i) => {
         if (i.variantAxes.length > 0) return '—';
         if (!i.inventoryItem) return '—';
@@ -129,11 +127,11 @@ export function ItemList({ basePath = '/inventory/items', compact = false, selec
     {
       key: 'basePrice',
       header: 'Base price',
-      sortable: true,
+      align: 'end',
       cell: (i) =>
         i.salesItem ? (
           <TableContent subcopy={`per ${i.salesUom}`}>
-            <TableAmount currency="PHP">{formatAmount(i.basePrice)}</TableAmount>
+            {formatMoney(i.basePrice)}
           </TableContent>
         ) : (
           <span className="text-muted">Not sold</span>

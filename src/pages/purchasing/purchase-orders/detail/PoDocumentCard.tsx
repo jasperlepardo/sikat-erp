@@ -29,7 +29,7 @@ export function PoDocumentCard({ draft, update, errors, ctx, m }: PoSectionProps
           ? 'Locked: goods were already received on this PO.'
           : "Defaults to the vendor's currency. Override it before receiving goods.",
         rate: ctx.fxRate,
-        rateHint: 'From the posting date; sets how totals convert to PHP.',
+        rateHint: 'From the order date; sets how totals convert to PHP.',
       }}
     />
   );

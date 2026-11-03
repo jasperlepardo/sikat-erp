@@ -100,7 +100,7 @@ export function CurrencyRateHistory({ code, days }: { code: string; days: Exchan
         getRowId={(p) => p.date}
         pageSize={25}
         columns={[
-          { key: 'date', header: 'Date', cell: (p) => formatDate(p.date) },
+          { key: 'date', header: 'Date', align: 'end', cell: (p) => formatDate(p.date) },
           { key: 'rate', header: `PHP per ${code}`, cell: (p) => fmtRate(p.rate) },
           {
             key: 'change',

@@ -1,6 +1,5 @@
 import {
   Badge,
-  TableAmount,
   TableContent,
   TableStatus,
 } from '@jasperlepardo/sikat-design-system';
@@ -16,7 +15,8 @@ import {
   listPartnersByRole,
 } from '../../services/partners';
 import { useAsync } from '../../services/useAsync';
-import { formatAmount } from '../../services/format';
+import { loadPartnerBalances } from '../../services/journalEntries';
+import { formatMoney } from '../../services/format';
 import { bpGroupName, leadSources, nameIn } from '../../services/partnerMasters';
 import { paymentTermName } from '../../services/purchaseOrders';
 import { ROLE_CONFIG, ROLE_ORDER, STAGE_INTENT, scopeConfig, scopeNoun, type PartnerScope } from './roles';
@@ -40,29 +40,36 @@ export function PartnerList({ scope, compact, selectedId }: {
   const config = scopeConfig(scope);
   const noun = scopeNoun(scope);
   const partners = useAsync(() => (scope === 'all' ? listPartners() : listPartnersByRole(scope)), [scope]);
+  const balances = useAsync(loadPartnerBalances, []);
+  // A customer's balance is what they owe us (debit); a vendor's is what we owe them (credit).
+  const balanceOf = (p: Partner) => (balances?.get(p.id) ?? 0) * (scope === 'vendor' ? -1 : 1);
+  const balanceColumns: ListColumn<Partner>[] = scope === 'customer' || scope === 'vendor'
+    ? [{ key: 'balance', header: 'Balance', align: 'end', cell: (p) => (balances ? formatMoney(balanceOf(p)) : '—') }]
+    : [];
 
   const roleColumn: ListColumn<Partner> =
     scope === 'all'
-      ? { key: 'bpGroupId', header: 'Group', sortable: true, cell: (p) => bpGroupName(p.bpGroupId) }
+      ? { key: 'bpGroupId', header: 'Group', cell: (p) => bpGroupName(p.bpGroupId) }
       : scope === 'lead'
-      ? { key: 'leadSource', header: 'Source', sortable: true, cell: (p) => (p.leadSourceId ? nameIn(leadSources, p.leadSourceId) : '—') }
+      ? { key: 'leadSource', header: 'Source', cell: (p) => (p.leadSourceId ? nameIn(leadSources, p.leadSourceId) : '—') }
       : scope === 'customer'
-        ? { key: 'creditLimit', header: 'Credit limit', cell: (p) => <TableContent subcopy={paymentTermName(p.customerPaymentTermId)}><TableAmount currency="PHP">{formatAmount(p.creditLimit ?? 0)}</TableAmount></TableContent> }
-        : { key: 'vendorPaymentTermId', header: 'Payment terms', sortable: true, cell: (p) => (p.vendorPaymentTermId ? paymentTermName(p.vendorPaymentTermId) : '—') };
+        ? { key: 'creditLimit', header: 'Credit limit', align: 'end', cell: (p) => <TableContent subcopy={paymentTermName(p.customerPaymentTermId)}>{formatMoney(p.creditLimit ?? 0)}</TableContent> }
+        : { key: 'vendorPaymentTermId', header: 'Payment terms', cell: (p) => (p.vendorPaymentTermId ? paymentTermName(p.vendorPaymentTermId) : '—') };
 
   const allColumns: ListColumn<Partner>[] = [
-    { key: 'name', header: config.singular, sortable: true, locked: true, cell: (p) => <TableContent href={`#${config.basePath}/${p.id}`} subcopy={p.code}>{p.name}</TableContent> },
+    { key: 'name', header: config.singular, locked: true, cell: (p) => <TableContent href={`#${config.basePath}/${p.id}`}>{p.name}</TableContent> },
+    { key: 'code', header: `${config.singular} code`, cell: (p) => p.code || '—' },
     {
       key: 'contact',
       header: 'Contact',
-      sortable: true,
       cell: (p) => {
         const name = defaultContactName(p);
         return name ? <TableContent initials={initials(name)} subcopy={defaultContact(p)?.email || p.contactChannels.find((c) => c.type === 'Email')?.value}>{name}</TableContent> : '—';
       },
     },
-    { key: 'city', header: 'City', sortable: true, cell: (p) => defaultBillTo(p)?.city || '—' },
+    { key: 'city', header: 'City', cell: (p) => defaultBillTo(p)?.city || '—' },
     roleColumn,
+    ...balanceColumns,
     {
       key: 'roles',
       header: scope === 'all' ? 'Roles' : 'Also a',
@@ -103,7 +110,10 @@ export function PartnerList({ scope, compact, selectedId }: {
       compact={compact}
       selectedId={selectedId}
       filterFn={(p, q) => !q || `${p.code} ${p.name} ${p.aliasName} ${defaultContactName(p)} ${defaultBillTo(p)?.city ?? ''}`.toLowerCase().includes(q)}
-      sortFn={(a, b, sort) => sortValue(a, sort.key).localeCompare(sortValue(b, sort.key))}
+      sortFn={(a, b, sort) =>
+        sort.key === 'balance' ? balanceOf(a) - balanceOf(b)
+        : sort.key === 'creditLimit' ? (a.creditLimit ?? 0) - (b.creditLimit ?? 0)
+        : sortValue(a, sort.key).localeCompare(sortValue(b, sort.key))}
     />
   );
 }

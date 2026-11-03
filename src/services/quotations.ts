@@ -1,4 +1,4 @@
-import { QT_SERIES, SEED_QUOTATIONS, type Quotation } from '../mocks/quotations';
+import { QT_SERIES, SEED_QUOTATIONS, type Quotation, type QuotationStatus } from '../mocks/quotations';
 import { qtSeries, seriesLookup, formatDocNum } from './allSeries';
 import { createCollection } from './store';
 import { todayISO } from './dates';
@@ -10,8 +10,32 @@ import { lineNet } from './lineMath';
 
 const quotations = createCollection<Quotation>('sikat-erp:quotations', SEED_QUOTATIONS, 'qt', { audit: 'QT' });
 
-export const listQuotations = quotations.list;
+// ── Expiry ───────────────────────────────────────────────────────────────────
+// An Open quotation past its valid-until date is Expired: it can't become a sales order until the
+// customer is re-quoted and the date moves on (which reopens it).
+
+/** The status an added quotation should have on `today`: Open ↔ Expired by its valid-until date. */
+export const qtStatusOn = (q: Pick<Quotation, 'status' | 'validUntil'>, today: string): QuotationStatus =>
+  q.status === 'Open' && q.validUntil && q.validUntil < today ? 'Expired'
+  : q.status === 'Expired' && (!q.validUntil || q.validUntil >= today) ? 'Open'
+  : q.status;
+
+/**
+ * The expiry run a server would do overnight: Open quotations past their date turn Expired, in one
+ * write (logged in each one's Activity). Runs before every read, so a quotation lapses the day after.
+ */
+export async function expireQuotations(today = todayISO()): Promise<void> {
+  const due = quotations.snapshot().filter((q) => q.status === 'Open' && qtStatusOn(q, today) === 'Expired');
+  if (due.length) await quotations.saveMany(due.map((q) => ({ ...q, status: 'Expired' as const })));
+}
+
+export async function listQuotations(): Promise<Quotation[]> {
+  await expireQuotations();
+  return quotations.list();
+}
+
 export async function getQuotation(idOrNumber: string) {
+  await expireQuotations();
   const direct = await quotations.get(idOrNumber);
   if (direct) return direct;
   const all = await quotations.list();
@@ -57,13 +81,19 @@ export async function addQuotation(input: QtInput): Promise<Quotation> {
   const series = seriesOf(input.seriesId);
   // One waiting for approval keeps the number it was given.
   const docNum = input.docNum || Math.max(series.firstNo - 1, ...all.filter((q) => q.seriesId === series.id).map((q) => q.docNum)) + 1;
-  return quotations.save({ ...input, docNum, status: input.approved ? 'Open' : 'Not Confirmed' });
+  const status = input.approved ? qtStatusOn({ status: 'Open', validUntil: input.validUntil }, todayISO()) : 'Not Confirmed';
+  return quotations.save({ ...input, docNum, status });
 }
 
-export async function saveQuotationRemarks(q: Quotation, patch: Pick<Quotation, 'remarks' | 'attachments'>): Promise<Quotation> {
+/**
+ * Save the fields an added quotation can still change. A new valid-until date moves it between
+ * Open and Expired, so extending an expired quotation reopens it.
+ */
+export async function saveQuotationRemarks(q: Quotation, patch: Pick<Quotation, 'remarks' | 'attachments'> & Partial<Pick<Quotation, 'documentDate' | 'validUntil'>>): Promise<Quotation> {
   const current = await quotations.get(q.id);
   if (!current) throw new Error('This quotation no longer exists.');
-  return quotations.save({ ...current, ...patch });
+  const next = { ...current, ...patch };
+  return quotations.save({ ...next, status: qtStatusOn(next, todayISO()) });
 }
 
 export async function closeQuotation(q: Quotation): Promise<Quotation> {

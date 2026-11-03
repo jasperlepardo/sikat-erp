@@ -5,7 +5,7 @@ import { useListColumns, type ListColumn } from '../../../components/form/listCo
 import { PR_STATUSES, type PurchaseRequest } from '../../../mocks/purchaseRequests';
 import { rateFrom } from '../../../mocks/taxes';
 import { formatDate } from '../../../services/dates';
-import { formatAmount } from '../../../services/format';
+import { formatMoney } from '../../../services/format';
 import { taxCodes } from '../../../services/masterData';
 import { listPurchaseRequests, prNumber, prTotals } from '../../../services/purchaseRequests';
 import { useAsync } from '../../../services/useAsync';
@@ -14,6 +14,7 @@ import { branches, departments } from '../../../services/peopleMasters';
 import { dateField, numberField, statusField, textField } from '../../../components/filter/fieldKit';
 import { statusViews } from '../../../components/filter/useListPresets';
 import { PR_LIST_PATH, PR_NOUN, PR_STATUS_INTENT } from '../paths';
+import { cap } from '../../../components/form/noun';
 
 export function PurchaseRequestList({ compact, selectedId }: { compact?: boolean; selectedId?: string } = {}) {
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
@@ -24,24 +25,23 @@ export function PurchaseRequestList({ compact, selectedId }: { compact?: boolean
   const branchOf = (r: PurchaseRequest) => (r.branchId ? nameIn(branches, r.branchId) : '');
 
   const fields = [
-    textField<PurchaseRequest>('no', 'No.', prNumber),
+    textField<PurchaseRequest>('no', `${cap(PR_NOUN.one)} no.`, prNumber),
     textField<PurchaseRequest>('requester', 'Requester', (r) => r.requesterName),
     textField<PurchaseRequest>('branch', 'Branch', branchOf),
-    dateField<PurchaseRequest>('postingDate', 'Posting date', (r) => r.postingDate),
+    dateField<PurchaseRequest>('postingDate', 'Request date', (r) => r.postingDate),
     dateField<PurchaseRequest>('requiredDate', 'Required date', (r) => r.requiredDate),
     numberField<PurchaseRequest>('total', 'Total', totalOf),
     statusField<PurchaseRequest>(PR_STATUSES),
   ];
 
   const allColumns: ListColumn<PurchaseRequest>[] = [
-    { key: 'docNum', header: 'No.', sortable: true, locked: true, cell: (r) => <TableContent href={`#${PR_LIST_PATH}/${r.docNum ? prNumber(r) : r.id}`}>{prNumber(r)}</TableContent> },
-    { key: 'requesterName', header: 'Requester', sortable: true, cell: (r) => <TableContent subcopy={branchOf(r)}>{r.requesterName || '—'}</TableContent> },
+    { key: 'docNum', header: `${cap(PR_NOUN.one)} no.`, locked: true, cell: (r) => <TableContent href={`#${PR_LIST_PATH}/${r.docNum ? prNumber(r) : r.id}`}>{prNumber(r)}</TableContent> },
+    { key: 'requesterName', header: 'Requester', cell: (r) => r.requesterName || '—' },
     { key: 'departmentId', header: 'Department', defaultHidden: true, cell: (r) => (r.departmentId ? nameIn(departments, r.departmentId) : '—') },
-    { key: 'postingDate', header: 'Posting date', sortable: true, cell: (r) => formatDate(r.postingDate) },
-    { key: 'requiredDate', header: 'Required by', sortable: true, cell: (r) => (r.requiredDate ? formatDate(r.requiredDate) : '—') },
-    { key: 'lines', header: 'Lines', cell: (r) => <TableContent subcopy={`${r.lines.filter((l) => l.status === 'Open').length} open`}>{r.lines.length}</TableContent> },
-    { key: 'total', header: 'Est. total', sortable: true, cell: (r) => <span className="tabular-nums">PHP {formatAmount(totalOf(r))}</span> },
-    { key: 'status', header: 'Status', sortable: true, cell: (r) => <TableStatus intent={PR_STATUS_INTENT[r.status]}>{r.status}</TableStatus> },
+    { key: 'status', header: 'Status', cell: (r) => <TableStatus intent={PR_STATUS_INTENT[r.status]}>{r.status}</TableStatus> },
+    { key: 'postingDate', header: 'Request date', align: 'end', cell: (r) => formatDate(r.postingDate) },
+    { key: 'requiredDate', header: 'Required by', align: 'end', cell: (r) => (r.requiredDate ? formatDate(r.requiredDate) : '—') },
+    { key: 'total', header: 'Est. total', align: 'end', cell: (r) => formatMoney(totalOf(r)) },
   ];
   const { columns, manager } = useListColumns('purchase-requests', allColumns);
 

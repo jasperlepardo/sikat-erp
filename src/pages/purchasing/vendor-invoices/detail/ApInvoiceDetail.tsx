@@ -520,13 +520,6 @@ function ApInvoiceForm() {
                     {dupWarning} Press Add again if it's a different bill, or change the vendor invoice no.
                   </Alert>
                 ) : null}
-                {added ? (
-                  <Alert intent="default" variant="outline" title={draft.status === 'Open' ? 'This A/P invoice is added' : `This A/P invoice is ${draft.status.toLowerCase()}`}>
-                    {draft.status === 'Open'
-                      ? `The vendor is owed ${draft.currency} ${formatAmount(balance)}. Only remarks, the payment block and the payment run flag can change; to undo it, cancel the invoice.`
-                      : `Only remarks can change${draft.closeDate ? ` (${draft.status.toLowerCase()} ${formatDate(draft.closeDate)})` : ''}.`}
-                  </Alert>
-                ) : null}
               </>
             }
             main={
@@ -612,7 +605,7 @@ function ApInvoiceForm() {
                 docs: receipts.map((gr) => ({
                   id: gr.id,
                   label: `Receipt ${grNumber(gr)}`,
-                  description: `Received ${formatDate(gr.postingDate)} · ${gr.currency}${gr.orderNumber ? ` · PO ${gr.orderNumber}` : ''}`,
+                  description: `Received ${formatDate(gr.postingDate)} · ${gr.currency}${gr.orderNumber ? ` · ${gr.orderNumber}` : ''}`,
                   lines: gr.lines.map((l) => ({ id: l.id, itemNo: l.itemNo, name: l.name, description: l.description, warehouse: l.warehouse, total: `${l.quantity} ${l.uomCode}`, open: grOpenQty(l, gr) })),
                 })),
               },
@@ -624,7 +617,7 @@ function ApInvoiceForm() {
                 hint: 'Bill straight from a PO when nothing was received on a receipt — the invoice receives the stock too.',
                 docs: orders.map((po) => ({
                   id: po.id,
-                  label: `PO ${poNumber(po)}`,
+                  label: `${poNumber(po)}`,
                   description: `Delivery ${formatDate(po.deliveryDate)} · ${po.currency} · not yet received — billing it receives the stock`,
                   lines: po.lines.filter((l) => l.status === 'Open').map((l) => ({ id: l.id, itemNo: l.itemNo, name: l.name, description: l.description, warehouse: l.warehouse, total: `${l.quantity} ${l.uomCode}`, open: openQty(l) })),
                 })),

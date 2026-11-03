@@ -22,8 +22,9 @@ import { H1_SALES, SEED_SALES_ORDERS, seedRateOn } from './salesOrders';
 import { MONTH_NAMES } from './storeSales';
 import { round2 } from '../services/num';
 
-export type QuotationStatus = 'Draft' | 'Not Confirmed' | 'Open' | 'Closed' | 'Cancelled';
-export const QUOTATION_STATUSES: QuotationStatus[] = ['Draft', 'Not Confirmed', 'Open', 'Closed', 'Cancelled'];
+/** Expired: an Open quotation past its valid-until date. Set by `expireQuotations()`; a later date reopens it. */
+export type QuotationStatus = 'Draft' | 'Not Confirmed' | 'Open' | 'Expired' | 'Closed' | 'Cancelled';
+export const QUOTATION_STATUSES: QuotationStatus[] = ['Draft', 'Not Confirmed', 'Open', 'Expired', 'Closed', 'Cancelled'];
 
 /** A quotation line is the shared base; it guarantees a revenue account like orders and invoices. */
 export interface QuoteLine extends SalesLine {
@@ -217,7 +218,7 @@ const qtHeader = (id: string, docNum: number, customerId: string, patch: Partial
   const c = partner(customerId);
   const bill = c.addresses.find((a) => a.id === c.defaultBillToId) ?? c.addresses[0];
   const ship = c.addresses.find((a) => a.id === c.defaultShipToId) ?? bill;
-  return {
+  return stillValid({
     ...blankQuotation(CURRENT_USER_ID),
     id,
     docNum,
@@ -235,8 +236,15 @@ const qtHeader = (id: string, docNum: number, customerId: string, patch: Partial
     shipTo: ship ? formatAddress(ship, c.name) : '',
     journalRemark: `Sales Quotations – ${c.code}`,
     ...patch,
-  };
+  });
 };
+
+/**
+ * The seeded year is fixed but "today" is the real date, so an Open demo quotation would lapse as
+ * the calendar moves on. Keep those valid for two weeks from today; the Expired example stays expired.
+ */
+const stillValid = (q: Quotation): Quotation =>
+  q.status === 'Open' && q.validUntil && q.validUntil < todayISO() ? { ...q, validUntil: addDays(todayISO(), 14) } : q;
 
 // Converted: CGS — 10 MacBook Airs (Midnight) → so-c01
 const qt001 = qtHeader('qt-001', 1, 'bp-004', {
@@ -359,6 +367,7 @@ const qt007 = qtHeader('qt-007', 7, 'bp-002', {
 
 // Expired: Guro ng Bayan Cooperative — USB-C Apple Pencils for end-of-year teacher giveaway
 const qt008 = qtHeader('qt-008', 8, 'bp-007', {
+  status: 'Expired',
   postingDate: '2026-08-01', documentDate: '2026-08-01', validUntil: '2026-09-01',
   customerRef: 'GNB-RFQ-2026-PENCIL',
   remarks: "Quote for the end-of-year teacher giveaway. PO delayed beyond validity; customer to request a new quote. VAT-exempt (cooperative).",

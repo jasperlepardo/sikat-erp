@@ -74,6 +74,17 @@ export function balancesOf(list: readonly JournalEntry[], partners: readonly Par
   return out;
 }
 
+/** Each business partner's balance over every posted entry, debit positive (a customer owing us is positive). */
+function partnerBalancesOf(list: readonly JournalEntry[]) {
+  const out = new Map<string, number>();
+  for (const je of list)
+    for (const l of je.lines)
+      if (l.partnerId) out.set(l.partnerId, round2((out.get(l.partnerId) ?? 0) + (l.debit || 0) - (l.credit || 0)));
+  return out;
+}
+
+export const loadPartnerBalances = async () => partnerBalancesOf(await listJournalEntries());
+
 export async function loadAccountBalances() {
   const [list, partners] = await Promise.all([listJournalEntries(), listPartners()]);
   return balancesOf(list, partners);

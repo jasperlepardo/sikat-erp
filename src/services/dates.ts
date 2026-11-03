@@ -54,6 +54,20 @@ export function addDays(iso: string, days: number) {
 
 export const todayISO = (now = new Date()) => bookDay.format(now);
 
+/** Calendar days from `from` to `to`: `daysBetween('2026-10-01', '2026-10-04')` is 3; negative when `to` is earlier. */
+export const daysBetween = (from: string, to: string) =>
+  Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86400000);
+
+/** Where a due date sits against `today`: `Overdue by 3 days`, `Due today`, `Due tomorrow`, `Due in 12 days`. */
+export function dueIn(dueDate: string, today: string): { text: string; overdue: boolean } {
+  const days = daysBetween(today, dueDate);
+  const n = (d: number) => `${d} day${d === 1 ? '' : 's'}`;
+  if (days < 0) return { text: `Overdue by ${n(-days)}`, overdue: true };
+  if (days === 0) return { text: 'Due today', overdue: false };
+  if (days === 1) return { text: 'Due tomorrow', overdue: false };
+  return { text: `Due in ${n(days)}`, overdue: false };
+}
+
 /** The time now as HH:mm in the company's time zone — for date + time fields such as a count's. */
 export const nowHHMM = (now = new Date()) => bookTime.format(now);
 

@@ -41,7 +41,7 @@ export function DocumentFlowTable({ rows, notes }: { rows: LinkedDocument[] | un
         </TableContent>
       ),
     },
-    { key: 'date', header: 'Posting date', cell: (d) => formatDate(d.date) },
+    { key: 'date', header: 'Posting date', align: 'end', cell: (d) => formatDate(d.date) },
     { key: 'covers', header: 'What it covers', cell: (d) => coversText(d.covers) || d.note || coversText(d.items) || '—' },
     { key: 'total', header: 'Total', cell: (d) => <TableAmount currency={d.currency}>{formatAmount(d.total)}</TableAmount> },
     { key: 'status', header: 'Status', cell: (d) => <TableStatus intent={d.intent}>{d.status}</TableStatus> },

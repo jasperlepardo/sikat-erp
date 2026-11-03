@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useRef, type ReactNode } from 'react';
-import { Card, Icon, IconButton, Panel, Table, Text, type TableColumn, type TableSort } from '@jasperlepardo/sikat-design-system';
+import { cloneElement, isValidElement, useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type UIEvent } from 'react';
+import { Card, Icon, IconButton, Panel, Table, TableContent, TableStatus, Text, type BadgeIntent, type BadgeProps, type TableColumn, type TableSort } from '@jasperlepardo/sikat-design-system';
 import { useNavigate } from 'react-router';
 import { PageHeader } from './PageHeader';
 import { cap, type Noun } from './noun';
-import { fillCardClass, useListPage } from './DataTable';
+import { DEFAULT_PAGE_SIZE, fillCardClass, useListPage } from './DataTable';
 import type { FilterField, FilterGroup } from '../filter/engine';
 import type { BuiltInView } from '../filter/useListViews';
 import { useListPresets } from '../filter/useListPresets';
@@ -75,7 +75,11 @@ export function ListPage<T>({
 }: ListPageProps<T>) {
   const navigate = useNavigate();
   const { resetPage, showIndex, paginate } = useListPage();
-  const presets = useListPresets({ list: listKey, fields, builtIns, defaultSort, rows, onChange: resetPage, search, scope });
+  // Beside an open record the list has no pagination: it renders the first `limit` rows and
+  // grows by a page each time its scroller nears the bottom.
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
+  const restart = useCallback(() => { resetPage(); setLimit(DEFAULT_PAGE_SIZE); }, [resetPage]);
+  const presets = useListPresets({ list: listKey, fields, builtIns, defaultSort, rows, onChange: restart, search, scope });
   const { sort, setSort } = presets;
 
   // Apply preset filter then optional domain/search filter.
@@ -102,7 +106,17 @@ export function ListPage<T>({
   }, [filtered, sort, sortFn]);
 
   const rowId = getRowId ?? ((r: T) => (r as { id: string }).id);
-  const { visible, pagination } = paginate(sorted);
+  const compactColumns = useMemo(() => (compact ? compactColumnsOf(columns) : columns), [compact, columns]);
+  const paged = paginate(sorted);
+  const { visible, pagination } = compact ? { visible: sorted.slice(0, limit), pagination: undefined } : paged;
+  const hasMore = compact && limit < sorted.length;
+  const loadMore = (e: UIEvent<HTMLDivElement>) => {
+    const el = e.target as HTMLElement;
+    if (hasMore && el.scrollHeight - el.scrollTop - el.clientHeight < 200) setLimit((n) => n + DEFAULT_PAGE_SIZE);
+  };
+
+  // A new sort starts the compact list from the top again.
+  useEffect(() => { setLimit(DEFAULT_PAGE_SIZE); }, [sort]);
 
   // The order Previous / Next on a record follows: every filtered, sorted row, not just this page.
   useEffect(() => {
@@ -110,18 +124,26 @@ export function ListPage<T>({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, sorted, basePath]);
 
-  // Beside an open record, turn to the page that holds it, so Previous / Next past the page
-  // edge keeps the highlighted row in view. Only when the open record changes (or first loads),
-  // so paging the list by hand while a record is open isn't undone.
+  // Beside an open record, load the list down to it and scroll it into view, so Previous / Next
+  // keeps the highlighted row visible. Only when the open record changes (or first loads), so
+  // scrolling the list by hand while a record is open isn't undone.
   const followed = useRef<string | undefined>(undefined);
+  const [reveal, setReveal] = useState(0);
   useEffect(() => {
     if (!selectedId || !rows || followed.current === selectedId) return;
     const at = sorted.findIndex((r) => rowId(r) === selectedId);
     if (at < 0) return;
     followed.current = selectedId;
-    showIndex(at);
+    if (!compact) { showIndex(at); return; }
+    setLimit((n) => Math.max(n, at + DEFAULT_PAGE_SIZE));
+    setReveal((n) => n + 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedId, rows, sorted, showIndex]);
+  }, [selectedId, rows, sorted, showIndex, compact]);
+  useEffect(() => {
+    if (!reveal || !selectedId) return;
+    document.querySelector(`[data-list-card="${listKey}"] tr[data-row-id="${CSS.escape(selectedId)}"]`)?.scrollIntoView({ block: 'nearest' });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reveal]);
 
   return (
     <Panel className="flex-1">
@@ -137,13 +159,13 @@ export function ListPage<T>({
       <Panel.Body className={`flex flex-col gap-2${compact ? ' overflow-x-hidden' : ''}`}>
         {header}
         {presets.toolbar(undefined, !compact ? toolbarExtra : undefined)}
-        <Card className={`${fillCardClass(visible.length)}${compact ? ' overflow-x-hidden [&_.sikat-table__td]:whitespace-normal [&_.sikat-table__td]:h-auto' : ''}`}>
+        <Card data-list-card={listKey} onScrollCapture={compact ? loadMore : undefined} className={`${fillCardClass(visible.length)}${compact ? ' overflow-x-hidden [&_.sikat-table__td]:whitespace-normal [&_.sikat-table__td]:h-auto' : ''}`}>
           {!rows ? (
             <Text tone="muted" className="p-4">Loading {noun.many}…</Text>
           ) : rows.length > 0 ? (
             <Table
               caption={cap(noun.many)}
-              columns={compact ? columns.slice(0, 1) : columns}
+              columns={compactColumns}
               rows={visible}
               getRowId={rowId}
               selectedIds={selectedId ? [selectedId] : undefined}
@@ -162,4 +184,56 @@ export function ListPage<T>({
       {presets.panel}
     </Panel>
   );
+}
+
+/** Dot colour per status intent: the same icon tokens the design system's Badge uses. */
+const DOT_COLOR: Record<BadgeIntent, string> = {
+  default: 'bg-[var(--color-fg-default-solid)]',
+  primary: 'bg-[var(--color-fg-primary)]',
+  success: 'bg-[var(--color-fg-success)]',
+  warning: 'bg-[var(--color-fg-warning)]',
+  danger: 'bg-[var(--color-fg-danger)]',
+  information: 'bg-[var(--color-fg-information)]',
+  automation: 'bg-[var(--color-fg-automation)]',
+  white: 'bg-[var(--color-fg-white)]',
+  black: 'bg-[var(--color-fg-black)]',
+};
+
+/** Turns a list's `TableStatus` cell into a coloured dot and plain caption text for the compact row; anything else passes through. */
+function statusText(cell: ReactNode): ReactNode {
+  if (!isValidElement<BadgeProps>(cell) || cell.type !== TableStatus) return cell;
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span aria-hidden className={`size-1.5 shrink-0 rounded-full ${DOT_COLOR[cell.props.intent ?? 'default']}`} />
+      <Text as="span" variant="caption" weight="semibold" tone="muted" className="uppercase">{cell.props.children}</Text>
+    </span>
+  );
+}
+
+/** Drops the sub line from a `TableContent` cell, so the compact row is just the main text. */
+function withoutSubcopy(cell: ReactNode): ReactNode {
+  if (!isValidElement<{ subcopy?: ReactNode }>(cell) || cell.type !== TableContent) return cell;
+  return cloneElement(cell, { subcopy: undefined });
+}
+
+/**
+ * The compact list beside an open record shows only the first column, without its sub text.
+ * When the list has a `status` column, its status goes under the main text as a dot and caption.
+ */
+function compactColumnsOf<T>(columns: TableColumn<T>[]): TableColumn<T>[] {
+  const [first] = columns;
+  if (!first) return [];
+  const status = columns.find((c) => c.key === 'status');
+  const firstCell = first.cell;
+  const statusCell = status !== first ? status?.cell : undefined;
+  if (!firstCell) return [first];
+  return [{
+    ...first,
+    cell: (row) => (
+      <div className="flex flex-col items-start gap-0.5">
+        {withoutSubcopy(firstCell(row))}
+        {statusCell ? statusText(statusCell(row)) : null}
+      </div>
+    ),
+  }];
 }

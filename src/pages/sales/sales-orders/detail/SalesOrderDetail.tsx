@@ -1,4 +1,3 @@
-import { StatusNotice } from '../../../../components/form/StatusNotice';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import { Alert, Badge, Form, Panel, Tabs, Text } from '@jasperlepardo/sikat-design-system';
@@ -16,7 +15,7 @@ import type { Partner } from '../../../../mocks/partners';
 import { NO_SALES_EMPLOYEE, SALES_SETTINGS, blankSalesOrder, newSoLine, openCommitted, type SalesOrder, type SoLine } from '../../../../mocks/salesOrders';
 import { blankTransferRequest, newTransferRequestLine } from '../../../../mocks/inventoryTransferRequests';
 import { loadCurrentCompany } from '../../../../services/companies';
-import { formatDate, todayISO } from '../../../../services/dates';
+import { todayISO } from '../../../../services/dates';
 import { recalcLineTaxes } from '../../../../services/taxRecalc';
 import { formatAmount } from '../../../../services/format';
 import { loadInventoryMasters } from '../../../../services/inventoryMasters';
@@ -74,8 +73,8 @@ function validate(d: SoDraft, ctx: SoContext, m: SoMasters, asDraft: boolean): P
   const { problems, need } = problemCollector<TabId>();
   need(d.customerId, 'header', 'customerId', 'Pick a customer.');
   if (asDraft) return problems;
-  need(d.postingDate, 'header', 'postingDate', 'Posting date is required.');
-  need(!d.deliveryDate || d.deliveryDate >= d.postingDate, 'header', 'deliveryDate', 'Delivery date is before the posting date.');
+  need(d.postingDate, 'header', 'postingDate', 'Order date is required.');
+  need(!d.deliveryDate || d.deliveryDate >= d.postingDate, 'header', 'deliveryDate', 'Delivery date is before the order date.');
   need(d.currency !== ALL_CURRENCIES, 'header', 'currency', 'Pick the document currency.');
   need(ctx.fx > 0, 'header', 'currency', `No ${d.currency} exchange rate on or before ${d.postingDate} — add it in Settings › Accounting & Tax › Exchange rates.`);
   need(d.lines.length, 'contents', 'lines', 'Add at least one line.');
@@ -92,9 +91,9 @@ function validate(d: SoDraft, ctx: SoContext, m: SoMasters, asDraft: boolean): P
     need(l.quantity >= l.deliveredQty, 'contents', `line:${l.id}:quantity`, `${n}: ${l.deliveredQty} already delivered — quantity can't be less.`);
     need(!item.inventoryItem || l.warehouse, 'contents', `line:${l.id}:warehouse`, `${n}: pick the warehouse it ships from.`);
   }
-  need(!d.requiredDate || d.requiredDate >= d.postingDate, 'header', 'requiredDate', 'Required date is before the posting date.');
-  need(!d.cancellationDate || d.cancellationDate >= d.postingDate, 'header', 'cancellationDate', 'Cancellation date is before the posting date.');
-  need(!d.dueDate || d.dueDate >= d.postingDate, 'header', 'dueDate', 'Due date is before the posting date.');
+  need(!d.requiredDate || d.requiredDate >= d.postingDate, 'header', 'requiredDate', 'Required date is before the order date.');
+  need(!d.cancellationDate || d.cancellationDate >= d.postingDate, 'header', 'cancellationDate', 'Cancellation date is before the order date.');
+  need(!d.dueDate || d.dueDate >= d.postingDate, 'header', 'dueDate', 'Due date is before the order date.');
   return problems;
 }
 
@@ -516,11 +515,6 @@ function SalesOrderForm() {
                     <Alert intent="warning" variant="outline" title="Check before closing">
                       {closeWarning}
                     </Alert>
-                  ) : null}
-                  {ctx.readOnly ? (
-                    <StatusNotice resetKey={`${draft.id}:${draft.status}`} title={`This sales order is ${draft.status.toLowerCase()}`}>
-                      Only remarks and attachments can change{draft.closeDate ? ` (${draft.status.toLowerCase()} ${formatDate(draft.closeDate)})` : ''}. Its committed stock has been released.
-                    </StatusNotice>
                   ) : null}
                 </>
               }

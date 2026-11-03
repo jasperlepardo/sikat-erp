@@ -122,7 +122,7 @@ export function ExchangeRateDifferencesPage() {
   ];
 
   const runColumns: TableColumn<ErdRun>[] = [
-    { key: 'date', header: 'Revaluation date', cell: (r) => formatDate(r.date) },
+    { key: 'date', header: 'Revaluation date', align: 'end', cell: (r) => formatDate(r.date) },
     { key: 'rates', header: 'Rates', cell: (r) => Object.entries(r.rates).map(([c, v]) => `${c} ${v}`).join(' · ') },
     { key: 'docs', header: 'Documents', cell: (r) => String(r.rows.length) },
     { key: 'gain', header: 'Gain / loss (PHP)', cell: (r) => <span className="tabular-nums">+{formatAmount(r.gain)} / −{formatAmount(r.loss)}</span> },

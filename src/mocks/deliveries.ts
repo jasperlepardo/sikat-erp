@@ -246,7 +246,7 @@ function fromOrder(id: string, docNum: number, orderId: string, lineIds: string[
     id,
     docNum,
     status: 'Open',
-    orderNumber: `${order.docNum}`,
+    orderNumber: `SO-${order.postingDate.slice(0, 4)}-${String(order.docNum).padStart(4, '0')}`,
     lines: lineIds.map((lid) => {
       const l = order.lines.find((x) => x.id === lid)!;
       return newDnLine({

@@ -1,4 +1,3 @@
-import { StatusNotice } from '../../../components/form/StatusNotice';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import { Alert, Badge, Button, Combobox, Form, Icon, IconButton, Panel, Select, Tabs, Text } from '@jasperlepardo/sikat-design-system';
@@ -16,7 +15,7 @@ import { COUNTING_TYPES, COUNT_SERIES, blankCounting, newCountLine, newCounter, 
 import { todayISO } from '../../../services/dates';
 import { loadInventoryMasters } from '../../../services/inventoryMasters';
 import { listItems } from '../../../services/items';
-import { closeCounting, countNumber, countSummary, getCounting, listCountings, postingNumber, getPosting, saveCounting, saveCountingRemarks } from '../../../services/inventoryCountings';
+import { closeCounting, countNumber, countSummary, getCounting, listCountings, saveCounting, saveCountingRemarks } from '../../../services/inventoryCountings';
 import { nameIn, salesEmployees } from '../../../services/partnerMasters';
 import { CountLines, type CountingDraft } from './CountLines';
 import { nowHHMM, type CountMasters } from './shared';
@@ -81,7 +80,6 @@ function CountForm() {
   const [draft, setDraft] = useState<CountingDraft | null | undefined>(isNew ? (copyFrom ?? blankCounting(todayISO(), nowHHMM(), CURRENT_USER_ID)) : undefined);
   const [m, setM] = useState<CountMasters>();
   const [siblings, setSiblings] = useState<string[]>([]);
-  const [postingNo, setPostingNo] = useState('');
   const [problems, setProblems] = useState<Problem<TabId>[]>([]);
   const [saving, setSaving] = useState(false);
   const [tab, setTab] = useState<TabId>('contents');
@@ -93,7 +91,6 @@ function CountForm() {
     getCounting(id).then((c) => {
       if (cancelled) return;
       setDraft(c ?? null);
-      if (c?.postingId) getPosting(c.postingId).then((p) => !cancelled && p && setPostingNo(postingNumber(p)));
     });
     listCountings().then((all) => !cancelled && setSiblings([...all].sort((a, b) => b.countDate.localeCompare(a.countDate)).map((c) => c.id)));
     return () => {
@@ -206,21 +203,7 @@ function CountForm() {
         />
         <Panel.Body className="flex flex-col gap-2">
           <ProblemsAlert problems={problems} tabLabel={(t) => (t === 'attachments' ? 'Attachments' : t === 'contents' ? 'Contents' : undefined)} />
-          {!open ? (
-            <StatusNotice resetKey={`${draft.id}:${draft.status}`} title="This count is closed">
-              {draft.postingId ? (
-                <>
-                  Its variances were posted by{' '}
-                  <button type="button" className="underline" onClick={() => navigate(`${POSTING_LIST_PATH}/${draft.postingId}`)}>
-                    Inventory Posting {postingNo || '…'}
-                  </button>
-                  . Only remarks and attachments can change.
-                </>
-              ) : (
-                "It was closed without a posting, so stock wasn't changed. Only remarks and attachments can change."
-              )}
-            </StatusNotice>
-          ) : summary.disagreements ? (
+          {open && summary.disagreements ? (
             <Alert intent="warning" variant="outline" title={`Counters differ on ${summary.disagreements} line${summary.disagreements === 1 ? '' : 's'}`}>
               Recount those lines and enter the agreed quantity before copying to an inventory posting.
             </Alert>

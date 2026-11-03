@@ -33,7 +33,7 @@ export function ApplyCreditPanel({
   const total = round2(Object.values(amounts).reduce((n, a) => n + a, 0));
   const columns: TableColumn<(typeof sorted)[number]>[] = [
     { key: 'docNo', header: 'A/P invoice', cell: (i) => i.docNo },
-    { key: 'dueDate', header: 'Due', cell: (i) => formatDate(i.dueDate) },
+    { key: 'dueDate', header: 'Due', align: 'end', cell: (i) => formatDate(i.dueDate) },
     { key: 'balance', header: 'Balance due', cell: (i) => formatAmount(i.balance) },
     {
       key: 'amount',

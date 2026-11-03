@@ -5,12 +5,13 @@ import { useListColumns, type ListColumn } from '../../../components/form/listCo
 import { dateField, numberField, partnerField, statusField, textField } from '../../../components/filter/fieldKit';
 import { draftScope, draftSplit, scopeStatuses } from '../../../components/filter/useListPresets';
 import { formatDate } from '../../../services/dates';
-import { formatAmount } from '../../../services/format';
+import { formatMoney } from '../../../services/format';
 import { listSalesReturns, srNumber, srTotal } from '../../../services/salesReturns';
 import { taxCodes } from '../../../services/masterData';
 import { useAsync } from '../../../services/useAsync';
 import type { SrStatus } from '../../../mocks/salesReturns';
 import { SR_LIST_PATH, SR_NOUN, SR_STATUS_INTENT } from '../paths';
+import { cap } from '../../../components/form/noun';
 
 const STATUSES: SrStatus[] = ['Draft', 'Not Confirmed', 'Open', 'Closed', 'Cancelled'];
 
@@ -23,6 +24,7 @@ interface Row {
   customerName: string;
   postingDate: string;
   basedOn: string;
+  reasons: string;
   currency: string;
   total: number;
   status: SrStatus;
@@ -43,6 +45,7 @@ export function SalesReturnList({ draftsOnly = false, compact, selectedId }: { d
     customerName: r.customerName,
     postingDate: r.postingDate,
     basedOn: [...new Set(r.lines.filter((l) => l.baseDocNo).map((l) => l.baseDocNo))].join(', '),
+    reasons: [...new Set(r.lines.map((l) => l.returnReason).filter(Boolean))].join(', '),
     currency: r.currency,
     total: srTotal(r, codes),
     status: r.status,
@@ -50,22 +53,24 @@ export function SalesReturnList({ draftsOnly = false, compact, selectedId }: { d
   }));
 
   const fields = [
-    textField<Row>('no', 'No.', (r) => r.number),
+    textField<Row>('no', `${cap(SR_NOUN.one)} no.`, (r) => r.number),
     partnerField<Row>('customer', 'Customer', (r) => r.customerId, (r) => r.customerName, rows),
     textField<Row>('customerCode', 'Customer code', (r) => r.customerCode),
     dateField<Row>('postingDate', 'Posting date', (r) => r.postingDate),
     textField<Row>('basedOn', 'Based on', (r) => r.basedOn),
+    textField<Row>('reason', 'Reason', (r) => r.reasons),
     numberField<Row>('total', 'Total', (r) => r.total),
     statusField<Row>(scopeStatuses(draftsOnly, STATUSES)),
   ];
 
   const allColumns: ListColumn<Row>[] = [
-    { key: 'docNum', header: 'No.', sortable: true, locked: true, cell: (r) => <TableContent href={`#${SR_LIST_PATH}/${r.docNum ? r.number : r.id}`}>{r.number}</TableContent> },
-    { key: 'customerName', header: 'Customer', sortable: true, cell: (r) => <TableContent subcopy={r.customerCode}>{r.customerName || '—'}</TableContent> },
-    { key: 'postingDate', header: 'Posting date', align: 'end', cell: (r) => formatDate(r.postingDate) },
+    { key: 'docNum', header: `${cap(SR_NOUN.one)} no.`, locked: true, cell: (r) => <TableContent href={`#${SR_LIST_PATH}/${r.docNum ? r.number : r.id}`}>{r.number}</TableContent> },
     { key: 'basedOn', header: 'Based on', cell: (r) => r.basedOn || <span className="text-muted">Entered by hand</span> },
-    { key: 'total', header: 'Total', align: 'end', cell: (r) => `${r.currency} ${formatAmount(r.total)}` },
-    { key: 'status', header: 'Status', sortable: true, cell: (r) => <TableStatus intent={SR_STATUS_INTENT[r.status]}>{r.status}</TableStatus> },
+    { key: 'customerName', header: 'Customer', cell: (r) => r.customerName || '—' },
+    { key: 'status', header: 'Status', cell: (r) => <TableStatus intent={SR_STATUS_INTENT[r.status]}>{r.status}</TableStatus> },
+    { key: 'postingDate', header: 'Posting date', align: 'end', cell: (r) => formatDate(r.postingDate) },
+    { key: 'reasons', header: 'Reason', defaultHidden: true, cell: (r) => r.reasons || '—' },
+    { key: 'total', header: 'Total', align: 'end', cell: (r) => formatMoney(r.total, r.currency) },
   ];
   const { columns, manager } = useListColumns('sales-returns', allColumns);
 

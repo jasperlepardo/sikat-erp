@@ -21,6 +21,9 @@ const STORAGE_PREFIX = 'sikat-ui:listcols:';
 interface Layout {
   order: string[];
   hidden: string[];
+  /** The default column order when this layout was saved. When the code's default order has
+   *  changed since, the new default order wins (the user's hidden columns are kept). */
+  base?: string[];
 }
 
 function load(listKey: string): Layout | null {
@@ -60,18 +63,25 @@ export function useListColumns<T>(listKey: string, allColumns: ListColumn<T>[]):
     () => ({ order: allColumns.map((c) => c.key), hidden: allColumns.filter((c) => c.defaultHidden).map((c) => c.key) }),
     [allColumns],
   );
-  const [layout, setLayout] = useState<Layout>(() => load(listKey) ?? defaults);
+  const [layout, setLayout] = useState<Layout>(() => {
+    const saved = load(listKey);
+    if (!saved) return defaults;
+    return saved.base?.join() === defaults.order.join() ? saved : { order: defaults.order, hidden: saved.hidden };
+  });
   const update = (next: Layout) => {
     setLayout(next);
-    store(listKey, next);
+    store(listKey, { ...next, base: defaults.order });
   };
 
   const byKey = useMemo(() => new Map(allColumns.map((c) => [c.key, c])), [allColumns]);
-  // Persisted order first (dropping columns that no longer exist), then any newly added columns.
-  const orderedKeys = [
-    ...layout.order.filter((k) => byKey.has(k)),
-    ...allColumns.filter((c) => !layout.order.includes(c.key)).map((c) => c.key),
-  ];
+  // Persisted order (dropping columns that no longer exist). A column added since the layout was
+  // saved goes in after the column it follows in `allColumns`, not at the end.
+  const orderedKeys = layout.order.filter((k) => byKey.has(k));
+  allColumns.forEach((c, i) => {
+    if (orderedKeys.includes(c.key)) return;
+    const after = i > 0 ? orderedKeys.indexOf(allColumns[i - 1].key) : -1;
+    orderedKeys.splice(after + 1, 0, c.key);
+  });
   const hidden = new Set(layout.hidden);
   const columns = orderedKeys.filter((k) => !hidden.has(k)).map((k) => byKey.get(k)!);
 
@@ -88,7 +98,7 @@ export function useListColumns<T>(listKey: string, allColumns: ListColumn<T>[]):
   };
   const reset = () => update(defaults);
 
-  const isDefault = JSON.stringify(layout) === JSON.stringify({ order: orderedKeys, hidden: defaults.hidden })
+  const isDefault = orderedKeys.join() === defaults.order.join()
     && defaults.hidden.length === hidden.size && defaults.hidden.every((k) => hidden.has(k));
 
   const manager = (

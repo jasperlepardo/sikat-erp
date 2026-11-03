@@ -138,10 +138,10 @@ function validate(d: PoDraft, ctx: PoContext, m: PoMasters, asDraft: boolean): P
 
   const series = seriesOf(d.seriesId);
   need(!series.manual || d.docNum > 0, 'header', 'docNum', `The ${series.name} series is manual — enter the PO number.`);
-  need(d.postingDate, 'header', 'postingDate', 'Posting date is required.');
+  need(d.postingDate, 'header', 'postingDate', 'Order date is required.');
   need(d.documentDate, 'header', 'documentDate', 'Document date is required.');
   need(d.deliveryDate, 'header', 'deliveryDate', 'Delivery date is required.');
-  need(!d.deliveryDate || d.deliveryDate >= d.postingDate, 'header', 'deliveryDate', 'Delivery date is before the posting date.');
+  need(!d.deliveryDate || d.deliveryDate >= d.postingDate, 'header', 'deliveryDate', 'Delivery date is before the order date.');
   need(d.currency !== ALL_CURRENCIES, 'header', 'currency', 'Pick the document currency.');
   need(ctx.fx > 0, 'header', 'currency', `No ${d.currency} exchange rate on or before ${d.postingDate} — add it in Settings › Accounting & Tax › Exchange rates.`);
 
@@ -154,13 +154,13 @@ function validate(d: PoDraft, ctx: PoContext, m: PoMasters, asDraft: boolean): P
     need(!item?.inventoryItem || l.warehouse, 'contents', `line:${l.id}:warehouse`, `${n}: pick the warehouse.`);
     need(l.taxCode, 'contents', `line:${l.id}:taxCode`, `${n}: pick a tax code.`);
     need(l.unitPrice >= 0, 'contents', `line:${l.id}:unitPrice`, `${n}: price can't be negative.`);
-    need(!l.deliveryDate || l.deliveryDate >= d.postingDate, 'contents', `line:${l.id}:deliveryDate`, `${n}: delivery date is before the posting date.`);
+    need(!l.deliveryDate || l.deliveryDate >= d.postingDate, 'contents', `line:${l.id}:deliveryDate`, `${n}: delivery date is before the order date.`);
     need(!item || d.status !== 'Draft' || isValidToday(item, d.postingDate), 'contents', `line:${l.id}:item`, `${n}: ${item?.itemNo} isn't valid on ${d.postingDate}.`);
   }
 
   need(!d.requiredDate || !d.deliveryDate || d.requiredDate <= d.deliveryDate, 'accounting', 'requiredDate', 'Required date is after the delivery date.');
-  need(!d.cancellationDate || d.cancellationDate >= d.postingDate, 'accounting', 'cancellationDate', 'Cancellation date is before the posting date.');
-  need(!d.dueDate || d.dueDate >= d.postingDate, 'accounting', 'dueDate', 'Due date is before the posting date.');
+  need(!d.cancellationDate || d.cancellationDate >= d.postingDate, 'accounting', 'cancellationDate', 'Cancellation date is before the order date.');
+  need(!d.dueDate || d.dueDate >= d.postingDate, 'accounting', 'dueDate', 'Due date is before the order date.');
   return problems;
 }
 
@@ -276,7 +276,7 @@ function PurchaseOrderForm() {
     if (!effectiveDraft && getPurchasingSettings().duplicateVendorRef === 'Warn' && !dupWarning) {
       const dup = await findDuplicateVendorRef(doc);
       if (dup) {
-        setDupWarning(`PO ${poNumber(dup)} from ${doc.vendorName} already has vendor sales order no. ${doc.vendorRef}.`);
+        setDupWarning(`${poNumber(dup)} from ${doc.vendorName} already has vendor sales order no. ${doc.vendorRef}.`);
         return;
       }
     }
@@ -460,11 +460,6 @@ function PurchaseOrderForm() {
                 {closeWarning ? (
                   <Alert intent="warning" variant="outline" title="Check before closing">
                     {closeWarning}
-                  </Alert>
-                ) : null}
-                {ctx.readOnly ? (
-                  <Alert intent="default" variant="outline" title={`This purchase order is ${draft.status.toLowerCase()}`}>
-                    Only remarks can change{draft.closeDate ? ` (closed ${draft.closeDate})` : ''}.
                   </Alert>
                 ) : null}
               </>
