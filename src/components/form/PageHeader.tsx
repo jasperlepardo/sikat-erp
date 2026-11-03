@@ -33,7 +33,7 @@ const labelOf = (link: ParentLink) => ('noun' in link ? cap(link.noun.many) : li
  * The top bar of every page and side panel, in the house style: the icon look is fixed, buttons go in
  * `actions` only, and a detail page names its list with `parent` instead of hand-built breadcrumbs.
  */
-export function PageHeader({ parent, title, onBack, create, actions, ...rest }: PageHeaderProps) {
+export function PageHeader({ parent, title, onBack, create, actions, leading, ...rest }: PageHeaderProps) {
   const navigate = useNavigate();
   const parents = parent ? (Array.isArray(parent) ? parent : [parent]) : [];
   const nearest = parents[parents.length - 1];
@@ -68,7 +68,7 @@ export function PageHeader({ parent, title, onBack, create, actions, ...rest }: 
         e.preventDefault();
         navigate(item.href!);
       }}
-      leading={close}
+      leading={close ?? leading}
       onBack={close ? undefined : back}
       actions={
         actions != null && createButton ? (

@@ -1,4 +1,5 @@
-import { Panel, PanelHeader } from '@jasperlepardo/sikat-design-system';
+import { Panel } from '@jasperlepardo/sikat-design-system';
+import { PageHeader } from '../PageHeader';
 import { SkeletonBlock, SkeletonCard, SkeletonLineTable, SkeletonTabs } from '../skeletons';
 
 /**
@@ -8,7 +9,7 @@ import { SkeletonBlock, SkeletonCard, SkeletonLineTable, SkeletonTabs } from '..
 export function AccountingDetailSkeleton() {
   return (
     <Panel className="min-h-0 flex-1">
-      <PanelHeader
+      <PageHeader
         variant="plain"
         leading={<SkeletonBlock className="size-8 rounded-md" />}
         title={<SkeletonBlock className="h-5 w-48" />}
