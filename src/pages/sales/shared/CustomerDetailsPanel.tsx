@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router';
-import { Card, CardField, Icon, IconButton, Panel, SidePanel, Text } from '@jasperlepardo/sikat-design-system';
+import { Card, CardField, DecorativeIcon, Icon, IconButton, Panel, SidePanel, Text } from '@jasperlepardo/sikat-design-system';
 import { PageHeader } from '../../../components/form/PageHeader';
 import { formatAddress, type PostalAddress } from '../../../mocks/address';
 import { contactName, type Partner, type PartnerAddress } from '../../../mocks/partners';
@@ -47,7 +47,7 @@ export function CustomerDetailsPanel({ customer, draft, update, readOnly, noun, 
     const line = [a.addressLine, a.block, a.city, a.countryCode === 'PH' ? a.province : countryName(a.countryCode), a.zip].filter(Boolean).join(', ');
     return line ? [{ label: 'Address', value: line }] : [];
   };
-  const locationIcon = <Icon size={16}>location_on</Icon>;
+  const locationIcon = <DecorativeIcon intent="default" size={40}><Icon size={20}>location_on</Icon></DecorativeIcon>;
   const addrOptions = (current: string, defaultId: string | undefined, tag: string) => {
     const known = customerAddresses.map((a) => ({
       value: a.id,
@@ -128,7 +128,7 @@ export function CustomerDetailsPanel({ customer, draft, update, readOnly, noun, 
                 .map((c) => ({
                   value: c.id,
                   label: contactName(c),
-                  icon: <Icon size={16}>person</Icon>,
+                  icon: <DecorativeIcon intent="default" size={40}><Icon size={20}>person</Icon></DecorativeIcon>,
                   fields: [
                     ...(c.position ? [{ label: 'Position', value: c.position }] : []),
                     ...(c.mobile || c.tel1 ? [{ label: 'Phone', value: c.mobile || c.tel1 }] : []),

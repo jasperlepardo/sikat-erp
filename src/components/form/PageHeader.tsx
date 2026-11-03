@@ -1,9 +1,10 @@
 // The one place the design system's PanelHeader is used: everything else renders PageHeader.
 // eslint-disable-next-line no-restricted-imports
-import { Button, Icon, PanelHeader, type PanelHeaderProps } from '@jasperlepardo/sikat-design-system';
+import { Button, Icon, IconButton, PanelHeader, type PanelHeaderProps } from '@jasperlepardo/sikat-design-system';
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router';
 import { cap, type Noun } from './noun';
+import { useInSplitDetail } from './SplitPage';
 
 /** A list above this record in the breadcrumbs: a document's list (by its noun) or any labelled page. */
 export type ParentLink = { noun: Noun; to: string } | { label: string; to: string };
@@ -36,12 +37,18 @@ export function PageHeader({ parent, title, onBack, create, actions, ...rest }: 
   const navigate = useNavigate();
   const parents = parent ? (Array.isArray(parent) ? parent : [parent]) : [];
   const nearest = parents[parents.length - 1];
+  const back = onBack ?? (nearest ? () => navigate(nearest.to) : undefined);
+  // Beside its list, a record closes with a plain ✕ rather than the icon that turns into a back arrow.
+  const close = useInSplitDetail() && back ? (
+    <IconButton label="Close" intent="white" variant="solid" size="medium" onClick={back}>
+      <Icon size={20}>close</Icon>
+    </IconButton>
+  ) : undefined;
   const createButton = create ? (
     <Button
       type="button"
       intent="primary"
       variant="solid"
-      shape="pill"
       leadingIcon={<Icon size={20}>add</Icon>}
       onClick={() => navigate(`${create.to}/new`)}
     >
@@ -61,7 +68,8 @@ export function PageHeader({ parent, title, onBack, create, actions, ...rest }: 
         e.preventDefault();
         navigate(item.href!);
       }}
-      onBack={onBack ?? (nearest ? () => navigate(nearest.to) : undefined)}
+      leading={close}
+      onBack={close ? undefined : back}
       actions={
         actions != null && createButton ? (
           <>

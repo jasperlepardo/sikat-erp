@@ -124,7 +124,6 @@ function QuotationForm() {
   const reject = useReject();
   const [customerDetailsOpen, setCustomerDetailsOpen] = useState(false);
   const [currencyView, setCurrencyView] = useState('');
-  const [copyFromNote, setCopyFromNote] = useState(false);
   const [creatingSo, setCreatingSo] = useState(false);
   const [openBalance, setOpenBalance] = useState(0);
   const [contentTab, setContentTab] = useState<'item' | 'orders'>('item');
@@ -203,7 +202,7 @@ function QuotationForm() {
     update({ ...customerDefaults(c, draft), lines });
   };
 
-  const submit = async (e: FormEvent | null, asDraft = false, overrides: Partial<Draft> = {}, andNew = false) => {
+  const submit = async (e: FormEvent | null, asDraft = false, overrides: Partial<Draft> = {}) => {
     e?.preventDefault();
     // Added: only remarks and attachments save, unless this is approving it.
     if (added && !overrides.approved) {
@@ -218,17 +217,15 @@ function QuotationForm() {
     const found = validate(doc, fx, asDraft);
     setProblems(found);
     if (found.length) return;
-    // "… & New" returns to a fresh form instead of the list.
-    const dest = andNew ? `${QT_LIST_PATH}/new` : QT_LIST_PATH;
     setSaving(true);
     try {
       if (asDraft) {
         const saved = await saveQuotationDraft(doc);
-        navigate(dest, { state: { notice: `Draft saved — ${saved.customerName}.` } });
+        navigate(QT_LIST_PATH, { state: { notice: `Draft saved — ${saved.customerName}.` } });
         return;
       }
       const saved = await addQuotation(doc);
-      navigate(dest, { state: { notice: saved.status === 'Not Confirmed' ? `Quotation ${qtNumber(saved)} submitted for approval.` : `Quotation ${qtNumber(saved)} added.` } });
+      navigate(QT_LIST_PATH, { state: { notice: saved.status === 'Not Confirmed' ? `Quotation ${qtNumber(saved)} submitted for approval.` : `Quotation ${qtNumber(saved)} added.` } });
     } finally { setSaving(false); }
   };
 
@@ -294,9 +291,6 @@ function QuotationForm() {
   };
 
   const menu: MoreMenuItem[] = [
-    ...(!added ? [{ label: 'Copy from', icon: 'content_copy', onSelect: () => setCopyFromNote(true) }] : []),
-    ...(!added ? [{ label: 'Create and new', icon: 'add', onSelect: () => submit(null, false, {}, true) }] : []),
-    ...(!added ? [{ label: 'Save as draft and new', icon: 'note_add', onSelect: () => submit(null, true, {}, true) }] : []),
     ...(draft.status === 'Open' && draft.lines.some((l) => l.itemId && l.quantity > 0) ? [{ label: 'Create sales order…', icon: 'shopping_bag', onSelect: () => setCreatingSo(true) }] : []),
     ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }] : []),
     ...(draft.status === 'Open' ? [{ label: 'Close', icon: 'task_alt', onSelect: () => closeQuotation(saved).then((r) => navigate(QT_LIST_PATH, { state: { notice: `Quotation ${qtNumber(r)} closed.` } })) }] : []),
@@ -385,11 +379,6 @@ function QuotationForm() {
                 <>
                   <ProblemsAlert problems={problems} tabLabel={(t) => TAB_LABEL[t as TabId]} />
                   {reject.alert('Reject quotation', rejectIt)}
-                  {copyFromNote ? (
-                    <Alert intent="default" variant="outline" title="Nothing to copy from" onClose={() => setCopyFromNote(false)}>
-                      A quotation starts the sales flow, so there is no earlier document to copy from. Use Copy to (Create sales order) once it is open.
-                    </Alert>
-                  ) : null}
                   {added ? (
                     <Alert
                       intent="default"

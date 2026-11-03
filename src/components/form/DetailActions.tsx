@@ -1,6 +1,6 @@
 import { Button, type ButtonProps } from '@jasperlepardo/sikat-design-system';
 import { useRef } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useParams } from 'react-router';
 import { PrevNext } from './DetailNav';
 import { MoreMenu, type MoreMenuItem } from './MoreMenu';
 import type { Noun } from './noun';
@@ -66,6 +66,7 @@ interface DetailActionsProps<T> {
   /**
    * The current form draft. When given, "Save changes" / "Save as draft" and Cancel stay hidden until
    * the draft differs from the loaded record, so a page being viewed shows them only once it's edited.
+   * A new record (`…/new` in the URL) shows them from the start.
    */
   draft?: T;
   /**
@@ -85,7 +86,8 @@ export function DetailActions<T = unknown>({
 }: DetailActionsProps<T>) {
   const navigate = useNavigate();
   const button = { variant: 'solid', size, shape: 'pill', disabled: busy } as const;
-  const { dirty, baseline } = useBaseline(draft);
+  const isNew = Object.values(useParams()).includes('new');
+  const { dirty, baseline } = useBaseline(isNew ? undefined : draft);
   const onCancel =
     onRevert && baseline !== undefined ? () => onRevert(baseline) : () => navigate(listPath);
 

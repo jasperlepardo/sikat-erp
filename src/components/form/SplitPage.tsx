@@ -1,6 +1,11 @@
-import { useDeferredValue } from 'react';
+import { createContext, useContext, useDeferredValue } from 'react';
 import { useParams } from 'react-router';
 import type { ComponentType } from 'react';
+
+const InSplitDetail = createContext(false);
+
+/** True inside the detail column of a split page, where the header closes the record instead of going back. */
+export const useInSplitDetail = () => useContext(InSplitDetail);
 
 interface SplitPageProps {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -38,7 +43,9 @@ export function SplitPage({ list: List, detail: Detail, listProps, detailProps }
         className="col-span-9 flex flex-col min-h-0 overflow-hidden *:min-h-0"
         style={{ opacity: isStale ? 0.5 : 1, transition: 'opacity 150ms' }}
       >
-        <Detail key={deferredId} {...(detailProps ?? {})} />
+        <InSplitDetail.Provider value>
+          <Detail key={deferredId} {...(detailProps ?? {})} />
+        </InSplitDetail.Provider>
       </div>
     </div>
   );

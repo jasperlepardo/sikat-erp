@@ -1,4 +1,4 @@
-import { Button, CardField, Icon, Panel, SidePanel } from '@jasperlepardo/sikat-design-system';
+import { Button, CardField, DecorativeIcon, Icon, Panel, SidePanel } from '@jasperlepardo/sikat-design-system';
 import { PageHeader } from '../../../../components/form/PageHeader';
 import { Fields, Section, bind, type Errors } from '../../../../components/form/fields';
 import type { Account } from '../../../../mocks/chartOfAccounts';
@@ -44,7 +44,7 @@ export function IncomingCustomerPanel({ customer, draft, update, errors, account
                 .map((c) => ({
                   value: c.id,
                   label: contactName(c),
-                  icon: <Icon size={16}>person</Icon>,
+                  icon: <DecorativeIcon intent="default" size={40}><Icon size={20}>person</Icon></DecorativeIcon>,
                   fields: [
                     ...(c.position ? [{ label: 'Position', value: c.position }] : []),
                     ...(c.mobile || c.tel1 ? [{ label: 'Phone', value: c.mobile || c.tel1 }] : []),

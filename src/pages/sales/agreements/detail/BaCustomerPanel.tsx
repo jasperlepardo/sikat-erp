@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router';
-import { CardField, Icon, IconButton, Panel, SidePanel } from '@jasperlepardo/sikat-design-system';
+import { CardField, DecorativeIcon, Icon, IconButton, Panel, SidePanel } from '@jasperlepardo/sikat-design-system';
 import { PageHeader } from '../../../../components/form/PageHeader';
 import { Fields, ReadOnly, Section, bind } from '../../../../components/form/fields';
 import { contactName, type Partner } from '../../../../mocks/partners';
@@ -47,7 +47,7 @@ export function BaCustomerPanel({ customer, draft, update, readOnly, open, onClo
                 .map((c) => ({
                   value: c.id,
                   label: contactName(c),
-                  icon: <Icon size={16}>person</Icon>,
+                  icon: <DecorativeIcon intent="default" size={40}><Icon size={20}>person</Icon></DecorativeIcon>,
                   fields: [
                     ...(c.position ? [{ label: 'Position', value: c.position }] : []),
                     ...(c.mobile || c.tel1 ? [{ label: 'Phone', value: c.mobile || c.tel1 }] : []),
