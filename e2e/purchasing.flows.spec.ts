@@ -209,11 +209,11 @@ test('US-PUR-024: purchase request and RFQ offer a "Create …" action into the 
 });
 
 test('US-PUR-025: a purchase request compares its vendors\' quotes per item @comparison', async ({ page }) => {
-  // prq-001 was sent to Luzon (PHP) and Apple (USD): the Contents card's Comparison switch shows
-  // each item with one row per vendor, linking back to the quotation.
+  // prq-001 was sent to Luzon (PHP) and Apple (USD): the Contents card's Quotations tab compares
+  // them, each item with one row per vendor, linking back to the quotation.
   const errors = watchErrors(page);
   await open(page, 'purchasing/purchase-requests/prq-001');
-  await page.getByRole('tab', { name: 'Comparison' }).click();
+  await page.getByRole('tab', { name: 'Quotations' }).click();
   const body = page.locator('body');
   await expect(body).toContainText('Apple South Asia Pte. Ltd.');
   await expect(body).toContainText('Luzon iDistribution Corp.');
@@ -500,13 +500,14 @@ test('US-PUR-020: posting a PO that reuses an open PO\'s vendor reference warns 
   await page.getByRole('gridcell').and(page.locator('[aria-current="date"]')).click();
   await expect(page.getByRole('combobox', { name: 'Delivery date' })).not.toHaveValue('');
 
-  // Re-enter the original reference via the vendor details side panel. The vendor name in the
+  // Re-enter the original vendor sales order no. via the vendor details side panel. The vendor name in the
   // card is a design-system Link (an <a> without an href, so not a "link" role) — click it by text.
   await page.locator('a', { hasText: DUP_VENDOR }).first().click();
-  const ref = page.getByLabel('Vendor ref. no.', { exact: true });
+  const ref = page.getByLabel('Vendor sales order no.', { exact: true });
   await expect(ref).toBeVisible();
   await ref.fill(DUP_REF);
-  await page.getByRole('button', { name: 'Close', exact: true }).click();
+  // The side panel's own Close: beside its list, the record's header has a Close (✕) too.
+  await page.locator('.sikat-side-panel').getByRole('button', { name: 'Close', exact: true }).click();
   await expect(ref).toHaveCount(0);
 
   // Add: a duplicate-reference warning appears and the save is held (still on the /new form).

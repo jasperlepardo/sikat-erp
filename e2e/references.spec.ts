@@ -34,7 +34,9 @@ test('renaming a payment term shows the new name on the partner, which still sto
   await expect.poll(() => shown(page.getByLabel('Payment terms'))).toBe('Net 30 days');
   expect(await rawIds(page)).toEqual([]);
 
-  // Saving the partner writes it to storage: the link is the id, never the name.
+  // Saving the partner writes it to storage: the link is the id, never the name. Save shows once
+  // the record is edited, so touch a field that doesn't matter here.
+  await page.getByLabel('Internal remarks').fill('Checked payment terms.');
   await page.getByRole('button', { name: 'Save changes', exact: true }).click();
   await expect.poll(async () => (await stored(page, 'sikat-erp:partners')).find((p) => p.id === 'bp-003')?.customerPaymentTermId).toBe('pt-004');
   expect(errors).toEqual([]);
