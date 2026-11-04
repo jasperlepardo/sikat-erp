@@ -156,6 +156,37 @@ export function ActivityTab({ target, partnerId = '' }: { target: FeedTarget; pa
   );
 }
 
+const ARROW = ' → ';
+
+function parseChange(s: string): { field: string; before?: string; after?: string } {
+  if (s.startsWith('Status ') && s.includes(ARROW)) {
+    const rest = s.slice('Status '.length);
+    const idx = rest.indexOf(ARROW);
+    return { field: 'Status', before: rest.slice(0, idx), after: rest.slice(idx + ARROW.length) };
+  }
+  const colon = s.indexOf(': ');
+  if (colon === -1) return { field: s };
+  const field = s.slice(0, colon);
+  const rest = s.slice(colon + 2);
+  const arrow = rest.indexOf(ARROW);
+  if (arrow === -1) return { field, after: rest };
+  return { field, before: rest.slice(0, arrow), after: rest.slice(arrow + ARROW.length) };
+}
+
+function ChangeTable({ rows }: { rows: string[] }) {
+  const parsed = rows.map(parseChange);
+  const threeCol = parsed.some((r) => r.before !== undefined);
+  return (
+    <div className={`mt-1 grid items-baseline gap-x-4 gap-y-0.5 ${threeCol ? 'grid-cols-[auto_1fr_1fr]' : 'grid-cols-[auto_1fr]'}`}>
+      {parsed.flatMap((r, i) => [
+        <Text key={`f${i}`} variant="caption" weight="medium">{r.field}</Text>,
+        ...(threeCol ? [<Text key={`b${i}`} variant="caption" tone="muted">{r.before ?? '—'}</Text>] : []),
+        <Text key={`a${i}`} variant="caption" tone="muted">{r.after ?? '—'}</Text>,
+      ])}
+    </div>
+  );
+}
+
 function EntryRow({ entry: e, today, onOpen, onToggle }: { entry: FeedEntry; today: string; onOpen: () => void; onToggle?: () => void }) {
   const a = e.activity;
   const meta = [whenText(e.at), e.actor, a ? ACTIVITY_LABEL[a.kind] : undefined].filter(Boolean).join(' · ');
@@ -186,10 +217,12 @@ function EntryRow({ entry: e, today, onOpen, onToggle }: { entry: FeedEntry; tod
           {a && isOpenTask(a) && a.dueDate && !isOverdue(a, today) ? <Badge size="small" variant="outline" intent="warning">Due {formatDate(a.dueDate)}</Badge> : null}
           {a && a.kind === 'task' && a.done ? <Badge size="small" variant="outline" intent="success">Done</Badge> : null}
         </div>
-        {e.detail ? (
-          <Text variant="small" tone="muted" className="line-clamp-2">
-            {e.detail}
-          </Text>
+        {e.detail?.length ? (
+          e.source === 'activity' ? (
+            <Text variant="small" tone="muted" className="line-clamp-2">{e.detail[0]}</Text>
+          ) : (
+            <ChangeTable rows={e.detail} />
+          )
         ) : null}
         <Text variant="caption" tone="muted">
           {meta}

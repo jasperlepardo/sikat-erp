@@ -23,7 +23,7 @@ export interface FeedEntry {
   source: 'system' | 'activity';
   icon: string;
   title: string;
-  detail?: string;
+  detail?: string[];
   /** Where the entry opens. */
   href?: string;
   /** Who did it: the employee on an activity, the user on a change. */
@@ -74,7 +74,7 @@ const docEntry = (d: DocNode, detail: string | undefined, order: number, self = 
   source: 'system',
   icon: STEP[d.kind]?.icon ?? 'description',
   title: `${verbOf(d)}: ${d.type} ${d.number}`,
-  detail,
+  detail: detail ? [detail] : undefined,
   href: self ? undefined : d.href,
   status: d.status,
   intent: d.intent,
@@ -134,20 +134,29 @@ export function systemEntries(target: FeedTarget): Promise<FeedEntry[]> {
 
 const AUDIT_ICON = { created: 'add_circle', updated: 'edit', removed: 'delete' } as const;
 
+const isStatusOrPosted = (s: string) => s.startsWith('Status ') || s === 'Posted';
+
 /** Changes made in the app to this record. */
 export const auditEntries = (target: FeedTarget, log: readonly AuditEvent[]): FeedEntry[] => {
   const ids = [target.id, ...(target.ids ?? [])];
   return log
     .filter((e) => e.kind === target.kind && ids.includes(e.recordId))
-    .map((e) => ({
-      id: `audit:${e.id}`,
-      at: localDateTime(e.at),
-      source: 'system' as const,
-      icon: AUDIT_ICON[e.action],
-      title: e.action === 'created' ? 'Created' : e.action === 'removed' ? 'Removed' : e.changes[0] ?? 'Edited',
-      detail: e.action === 'updated' ? e.changes.slice(1).join(' · ') || undefined : undefined,
-      actor: e.by,
-    }));
+    .map((e) => {
+      const first = e.changes[0] ?? '';
+      // Multi-field edits with no status headline: use "Edited" so all fields go into the table together.
+      const multiField = e.action === 'updated' && e.changes.length >= 2 && !isStatusOrPosted(first);
+      return {
+        id: `audit:${e.id}`,
+        at: localDateTime(e.at),
+        source: 'system' as const,
+        icon: AUDIT_ICON[e.action],
+        title: e.action === 'created' ? 'Created' : e.action === 'removed' ? 'Removed' : multiField ? 'Edited' : first || 'Edited',
+        detail: e.action === 'updated' && e.changes.length > 0
+          ? multiField ? e.changes : e.changes.length > 1 ? e.changes.slice(1) : undefined
+          : undefined,
+        actor: e.by,
+      };
+    });
 };
 
 /** Activities logged against this record (or, for a partner, for it). */
@@ -161,7 +170,7 @@ export const activityEntries = (target: FeedTarget, all: readonly Activity[], ow
       source: 'activity' as const,
       icon: ACTIVITY_ICON[a.kind],
       title: a.subject,
-      detail: a.notes || undefined,
+      detail: a.notes ? [a.notes] : undefined,
       actor: a.ownerId ? ownerName(a.ownerId) : undefined,
       activity: a,
     }));

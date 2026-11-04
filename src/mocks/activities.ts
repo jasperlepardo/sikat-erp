@@ -111,6 +111,37 @@ export const seedActivities = (): Activity[] => {
     act({ kind: 'task', subject: 'Get vendor confirmation on PO', date: '2026-09-25', dueDate: '2026-09-30', done: false, owner: 'Jasper L.', partnerId: 'bp-016', contactId: 'bp-016-c1', links: [{ kind: 'PO', id: 'po-003' }] }),
     act({ kind: 'email', subject: 'Requested updated AWS invoice breakdown', date: '2026-10-02', owner: 'Andrea Ramos', partnerId: 'bp-015', links: [{ kind: 'RFQ', id: 'rfq-005' }] }),
 
+    act({ kind: 'task', subject: 'File withholding VAT remittance for Sep AWS invoice', date: '2026-10-08', dueDate: '2026-10-20', done: false, owner: 'Andrea Ramos', partnerId: 'bp-015', contactId: 'bp-015-c1',
+      notes: 'BIR Form 1600-VT due by the 20th. Sep invoice was USD 4,218.50; apply the BSP rate from the invoice date for the PHP conversion.' }),
+
+    // Amazon Web Services — year-round account management.
+    act({ kind: 'call', subject: 'AWS account review: cost optimization for Q1', date: '2026-01-15', time: '10:00', owner: 'Andrea Ramos', partnerId: 'bp-015', contactId: 'bp-015-c1',
+      notes: 'Reviewed Reserved Instance vs. On-Demand spend for the RDS cluster. AWS TAM suggested Savings Plans for the EC2 layer; will model the expected savings before committing.' }),
+    act({ kind: 'task', subject: 'Clarify Feb invoice spike — data transfer charges', date: '2026-02-18', dueDate: '2026-02-25', done: true, owner: 'Andrea Ramos', partnerId: 'bp-015', contactId: 'bp-015-c1',
+      notes: 'Resolved — the spike came from holiday season backup jobs running into February. Documented for next year\'s budgeting cycle.' }),
+    act({ kind: 'email', subject: 'Submitted 1-year Reserved Instance commitment for RDS', date: '2026-04-10', time: '14:30', owner: 'Andrea Ramos', partnerId: 'bp-015', contactId: 'bp-015-c1',
+      notes: 'Locked in 1-year RI for the us-east-1 RDS instances. Projected 28% savings vs. On-Demand. Billing team confirmed the commitment; first adjusted invoice due in May.' }),
+    act({ kind: 'meeting', subject: 'Mid-year cloud cost review with AWS TAM', date: '2026-07-08', time: '15:00', owner: 'Andrea Ramos', partnerId: 'bp-015', contactId: 'bp-015-c1',
+      notes: 'TAM walked through the Cost Explorer report — spend tracking 8% under budget YTD due to the RI. BIR documentation for the reverse-charge VAT and withholding treatment confirmed; TAM sent a letter for our tax records.' }),
+    act({ kind: 'task', subject: 'Reconcile AWS spend vs. budget for Q3', date: '2026-09-30', dueDate: '2026-10-05', done: true, owner: 'Andrea Ramos', partnerId: 'bp-015', contactId: 'bp-015-c1',
+      notes: 'Q3 actual: PHP 631,400 (vs. PHP 660,000 budget). RI savings offset the Jul storage spike. Posted to cost center IT-OPS.' }),
+
+    // Apple South Asia — iPhone 18 launch cycle.
+    act({ kind: 'meeting', subject: 'iPhone 18 launch allocation confirmed', date: '2026-08-25', time: '09:00', owner: 'Jasper L.', partnerId: 'bp-017', contactId: 'bp-017-c1',
+      notes: 'Channel Ops confirmed 150 Pro units and 80 standard for the launch window across Natural Titanium, Black Titanium, and Desert. Delivery from Singapore Oct 15–18. Import documentation to go through our customs broker.' }),
+    act({ kind: 'task', subject: 'Finalize and send iPhone 18 launch PO to Apple', date: '2026-09-05', dueDate: '2026-09-12', done: true, owner: 'Jasper L.', partnerId: 'bp-017', contactId: 'bp-017-c1',
+      notes: 'PO sent and acknowledged. L/C opened with BDO. Customs broker briefed on the shipment timeline and BoC import VAT settlement.' }),
+
+    // Techzone Accessories — accessory launch window.
+    act({ kind: 'call', subject: 'Launch-window pricing on iPhone 18 accessories', date: '2026-08-20', time: '10:30', owner: 'Jasper L.', partnerId: 'bp-013', contactId: 'bp-013-c1',
+      notes: 'Janine confirmed launch pricing holds through end of September; standard MSRP from Oct 1. Final SKU list (cases, MagSafe chargers, screen protectors) to be sent by Sep 1 for the RFQ.' }),
+
+    // OpenAI — SaaS subscription management.
+    act({ kind: 'note', subject: 'ChatGPT Team renewed: 8 seats confirmed', date: '2026-09-15', owner: 'Andrea Ramos', partnerId: 'bp-018',
+      notes: '5 seats for store staff (Pasig + Muntinlupa), 3 for the marketing team. Billed monthly to the corporate Amex. Same withholding treatment as AWS — 25% final tax on digital services.' }),
+    act({ kind: 'task', subject: 'Issue PO for Q4 ChatGPT Team subscription', date: '2026-10-03', dueDate: '2026-10-10', done: false, owner: 'Andrea Ramos', partnerId: 'bp-018',
+      notes: 'Finance requires a PO for the audit trail. USD 400/month x 3 months; use the BSP rate on the PO date.' }),
+
     // Items.
     act({ kind: 'meeting', subject: 'Launch-day allocation across stores', date: '2026-09-12', time: '16:00', owner: 'Dino Pascual', links: [{ kind: 'ITEM', id: 'apl-fam-002' }, { kind: 'ITEM', id: 'apl-fam-001' }],
       notes: 'Pasig holds 30% for corporate orders; the rest split by last quarter’s store sales.' }),

@@ -1,4 +1,5 @@
 import { CURRENT_USER } from '../mocks/common';
+import { seedAuditEvents } from '../mocks/auditEvents';
 import { filterRows, type ListQuery } from './listQuery';
 
 /** A tiny fake "API" over seed data. Writes persist to localStorage. Swap a collection for `fetch` calls later without touching the UI. */
@@ -9,7 +10,7 @@ const wait = () => Promise.resolve();
  * shadow the seed forever, so a browser holding an older version drops every
  * `sikat-erp:` key on load and starts again from the current seed.
  */
-const SEED_VERSION = 139;
+const SEED_VERSION = 142;
 const VERSION_KEY = 'sikat-erp:seed-version';
 
 // Runs once at module load — before any collection below reads storage.
@@ -218,16 +219,72 @@ export interface AuditEvent {
   changes: string[];
 }
 
-/**
- * Saves and removals made in the app, for the Activity tabs. Seeded history isn't here: a
- * record's timeline derives that from its documents. Not audited itself.
- */
-export const auditLog = createCollection<AuditEvent>('sikat-erp:audit', [], 'aud', { invalidatesCaches: false });
+/** Saves and removals made in the app, for the Activity tabs. Not audited itself. */
+export const auditLog = createCollection<AuditEvent>('sikat-erp:audit', seedAuditEvents, 'aud', { invalidatesCaches: false });
 
 /** "dueDate" → "due date". */
 const words = (key: string) => key.replace(/([a-z0-9])([A-Z])/g, '$1 $2').toLowerCase();
 
-/** What a save changed, as short phrases: status and posting first, then the other fields by name. */
+const FIELD_LABEL: Record<string, string> = {
+  postingDate: 'Posting date', docDate: 'Document date', dueDate: 'Due date',
+  deliveryDate: 'Delivery date', shipDate: 'Ship date', validUntil: 'Valid until',
+  vendorId: 'Vendor', customerId: 'Customer', partnerId: 'Business partner',
+  contactId: 'Contact', paymentTermId: 'Payment terms',
+  currency: 'Currency', currencyCode: 'Currency',
+  warehouseId: 'Warehouse', fromWarehouseId: 'From warehouse', toWarehouseId: 'To warehouse',
+  reference: 'Reference', remarks: 'Remarks', discount: 'Discount', fxRate: 'Exchange rate',
+  creditLimit: 'Credit limit', name: 'Name', code: 'Code', type: 'Type',
+  vatType: 'VAT type', taxId: 'Tax ID', active: 'Active', approved: 'Approved',
+  notes: 'Notes', subject: 'Subject', ownerId: 'Owner', date: 'Date',
+  itemGroupId: 'Item group', uomId: 'Unit', purchaseUomId: 'Purchase unit',
+  salesUomId: 'Sales unit', valuationMethod: 'Valuation', description: 'Description',
+  itemNo: 'Item no.',
+};
+const SKIP_KEYS = new Set(['id', 'status', 'docNum', 'createdAt', 'createdBy', 'updatedAt', 'updatedBy']);
+const fieldLabel = (key: string) => FIELD_LABEL[key] ?? words(key);
+
+const isIsoDate = (v: unknown): v is string => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v);
+const fmtDate = (v: string) =>
+  new Intl.DateTimeFormat('en-PH', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }).format(
+    new Date(`${v.slice(0, 10)}T00:00:00Z`),
+  );
+const isScalar = (v: unknown): boolean =>
+  v === null || v === undefined || v === '' || typeof v === 'boolean' || typeof v === 'number' || isIsoDate(v) || (typeof v === 'string' && v.length <= 40);
+const fmtScalar = (v: unknown): string => {
+  if (v === null || v === undefined || v === '') return '—';
+  if (typeof v === 'boolean') return v ? 'Yes' : 'No';
+  if (typeof v === 'number') return v.toLocaleString('en-PH');
+  if (isIsoDate(v)) return fmtDate(v);
+  return v as string;
+};
+
+const EXCERPT = 72;
+const excerpt = (s: string) => {
+  const first = s.split('\n')[0].trim();
+  return first.length <= EXCERPT ? first : `${first.slice(0, EXCERPT)}…`;
+};
+
+function fieldChange(key: string, bv: unknown, av: unknown): string {
+  const lbl = fieldLabel(key);
+  // Foreign-key IDs: unresolvable at store level — just name the field
+  if (key !== 'taxId' && key.endsWith('Id')) return lbl;
+  if (!isScalar(bv) || !isScalar(av)) {
+    if (typeof bv === 'string' && typeof av === 'string') {
+      if (!bv) return `${lbl}: "${excerpt(av)}"`;
+      if (!av) return `${lbl}: cleared`;
+      return `${lbl}: "${excerpt(bv)}" → "${excerpt(av)}"`;
+    }
+    return `${lbl}: updated`;
+  }
+  const b = fmtScalar(bv);
+  const a = fmtScalar(av);
+  if (b === a) return '';
+  if (b === '—') return `${lbl}: ${a}`;
+  if (a === '—') return `${lbl}: cleared`;
+  return `${lbl}: ${b} → ${a}`;
+}
+
+/** What a save changed, as one phrase per field: status and posting first, then each changed field. */
 export function describeChanges(before: object, after: object): string[] {
   const a = before as Record<string, unknown>;
   const b = after as Record<string, unknown>;
@@ -235,9 +292,12 @@ export function describeChanges(before: object, after: object): string[] {
   if (a.status !== b.status && b.status !== undefined) out.push(`Status ${String(a.status ?? '—')} → ${String(b.status)}`);
   if (!a.docNum && b.docNum) out.push('Posted');
   const keys = [...new Set([...Object.keys(a), ...Object.keys(b)])].filter(
-    (k) => k !== 'id' && k !== 'status' && k !== 'docNum' && JSON.stringify(a[k]) !== JSON.stringify(b[k]),
+    (k) => !SKIP_KEYS.has(k) && k !== 'status' && k !== 'docNum' && JSON.stringify(a[k]) !== JSON.stringify(b[k]),
   );
-  if (keys.length) out.push(`Changed ${keys.slice(0, 4).map(words).join(', ')}${keys.length > 4 ? ` and ${keys.length - 4} more` : ''}`);
+  for (const k of keys) {
+    const desc = fieldChange(k, a[k], b[k]);
+    if (desc) out.push(desc);
+  }
   return out;
 }
 
