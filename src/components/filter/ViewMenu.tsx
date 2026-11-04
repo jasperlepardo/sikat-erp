@@ -48,14 +48,16 @@ export function ViewMenu({
       <DropdownItem
         key={view.id}
         selected={view.id === current.id}
-        leadingIcon={<Icon size={20}>{view.id === current.id ? 'check' : view.builtIn ? 'list' : 'filter_list'}</Icon>}
-        suffix={n === undefined ? undefined : String(n)}
+        trailingIcon={view.id === current.id ? <Icon size={20}>check</Icon> : undefined}
         onSelect={run(() => views.select(view.id))}
       >
-        {view.name}
+        {n === undefined ? view.name : `${view.name} (${n})`}
       </DropdownItem>
     );
   };
+
+  const currentCount = count?.(current);
+  const currentLabel = currentCount === undefined ? current.name : `${current.name} (${currentCount})`;
 
   const builtIns = views.views.filter((v) => v.builtIn);
   const saved = views.views.filter((v) => !v.builtIn);
@@ -64,15 +66,15 @@ export function ViewMenu({
     <div ref={root} className="relative">
       <Button
         type="button"
-        intent="default"
-        variant="link"
+        intent="white"
+        variant="solid"
         size="small"
         aria-haspopup="menu"
         aria-expanded={open}
         trailingIcon={<Icon size={20}>keyboard_arrow_down</Icon>}
         onClick={() => setOpen(!open)}
       >
-        {current.name}
+        {currentLabel}
       </Button>
       {open ? (
         <Dropdown role="menu" style={{ left: 0, width: 300, maxHeight: '70vh' }}>

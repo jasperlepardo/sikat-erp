@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { Button, Combobox, Icon, Link, Text, TextField } from '@jasperlepardo/sikat-design-system';
+import { Combobox, Icon, Link, Text, TextField } from '@jasperlepardo/sikat-design-system';
 import { DataTable } from '../DataTable';
 import { ItemSearchModal } from '../ItemSearchModal';
 import { useColumnPrefs, type PrefColumn } from '../columnPrefs';
@@ -209,26 +209,39 @@ export function DocLines<T extends DocLineBase>({
   const effectiveAddRow = item && !readOnly ? (
     <div className="flex items-center gap-2">
       <div className="flex-1">
-        <Combobox
-          key={addKey}
-          aria-label="Search items to add a line"
-          placeholder={item.addPlaceholder ?? 'Search items to add a line…'}
-          disabled={item.addDisabled}
-          options={item.options('')}
-          value={null}
-          onValueChange={(id) => {
-            const line = id ? item.fromItem(id) : undefined;
-            if (!line) return;
-            item.onAdd(line);
-            setAddKey((k) => k + 1);
-          }}
-        />
+        {item.search ? (
+          <div className="sikat-select">
+            <span className="sikat-field sikat-field--shell sikat-field--select" data-size="md">
+              <button
+                type="button"
+                className="sikat-field__input text-start"
+                disabled={item.addDisabled}
+                onClick={() => setSearchOpen(true)}
+              >
+                {item.addPlaceholder ?? 'Search items to add a line…'}
+              </button>
+              <span className="sikat-field__icon sikat-field__icon--trailing sikat-field__chevron" aria-hidden="true">
+                <Icon size={20}>expand_more</Icon>
+              </span>
+            </span>
+          </div>
+        ) : (
+          <Combobox
+            key={addKey}
+            aria-label="Search items to add a line"
+            placeholder={item.addPlaceholder ?? 'Search items to add a line…'}
+            disabled={item.addDisabled}
+            options={item.options('')}
+            value={null}
+            onValueChange={(id) => {
+              const line = id ? item.fromItem(id) : undefined;
+              if (!line) return;
+              item.onAdd(line);
+              setAddKey((k) => k + 1);
+            }}
+          />
+        )}
       </div>
-      {item.search ? (
-        <Button type="button" intent="default" variant="ghost" shape="pill" leadingIcon={<Icon size={20}>search</Icon>} disabled={item.addDisabled} onClick={() => setSearchOpen(true)}>
-          Advanced search
-        </Button>
-      ) : null}
     </div>
   ) : addRow;
 

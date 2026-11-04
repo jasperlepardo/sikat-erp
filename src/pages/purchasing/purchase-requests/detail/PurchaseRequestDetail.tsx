@@ -343,10 +343,10 @@ function PurchaseRequestForm() {
   const menu: MoreMenuItem[] = [
     ...(draft.status === 'Open' && draft.lines.some((l) => l.status === 'Open' && l.itemId)
       ? [
-          ...(!isNew ? [{ label: `Create ${RFQ_NOUN.many}…`, icon: 'request_quote', onSelect: () => setPanel('fan-out') }] : []),
-          { label: 'Create purchase order…', icon: 'receipt_long', onSelect: () => setCreatingPo(true) },
+          ...(!isNew ? [{ label: `Create ${RFQ_NOUN.many}`, icon: 'request_quote', onSelect: () => setPanel('fan-out') }] : []),
+          { label: 'Create purchase order', icon: 'receipt_long', onSelect: () => setCreatingPo(true) },
           ...(quotes.rfqs.some((q) => q.status !== 'Expired' && q.lines.some((l) => l.quotedQty > 0))
-            ? [{ label: `Create ${PO_NOUN.one} from a quote…`, icon: 'shopping_cart', onSelect: () => setPanel('award') }]
+            ? [{ label: `Create ${PO_NOUN.one} from a quote`, icon: 'shopping_cart', onSelect: () => setPanel('award') }]
             : []),
         ]
       : []),

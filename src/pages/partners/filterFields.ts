@@ -82,8 +82,8 @@ export function partnerViews(scope: PartnerScope): BuiltInView[] {
   if (scope === 'all')
     return [
       { id: 'all', name: 'All', filter: EMPTY_FILTER },
-      ...ROLE_ORDER.map((r) => ({ id: r, name: ROLE_CONFIG[r].title, filter: oneRule('roles', 'is', r) })),
-      { id: 'inactive', name: 'Inactive', filter: oneRule('status', 'is', 'Inactive') },
+      ...ROLE_ORDER.map((r) => ({ id: r, name: ROLE_CONFIG[r].title, filter: oneRule('roles', 'in', [r]) })),
+      { id: 'inactive', name: 'Inactive', filter: oneRule('status', 'in', ['Inactive']) },
     ];
   return statusViews(['Active', 'Inactive']);
 }

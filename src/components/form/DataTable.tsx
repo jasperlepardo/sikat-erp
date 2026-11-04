@@ -183,6 +183,7 @@ export function DataTable<T>({
   );
 
   const addBlock = spanRow ? <div className="px-2 pt-2 pb-2 *:w-full">{spanRow}</div> : null;
+  const addContent = spanRow ? <div className="*:w-full">{spanRow}</div> : null;
   const hasRows = rows.length > 0;
   const hasTable = hasRows || Boolean(spanRow);
   const tableEl = (
@@ -214,12 +215,14 @@ export function DataTable<T>({
     />
   );
   const emptyState = <div className="px-2 py-2">{empty}</div>;
+  // Suppress the empty message when the add row is present — the Combobox is already the prompt.
+  const showEmpty = !hasRows && !addBlock;
   // Plain: the table, add row and footer in their own Card. The headers stay visible
   // when empty, with the empty message below them. Card variant: see below.
   const table = hasTable ? (
     <Card>
       {tableEl}
-      {hasRows ? null : emptyState}
+      {showEmpty ? emptyState : null}
       {addBlock}
       {hasRows ? cardFooter : null}
     </Card>
@@ -243,8 +246,8 @@ export function DataTable<T>({
         ) : null}
         {/* Inset to match the Card's padding so the table lines up with the body content. */}
         {hasTable ? tableEl : null}
-        {hasRows ? null : emptyState}
-        {addBlock}
+        {showEmpty ? emptyState : null}
+        {addContent ? <Card.Content>{addContent}</Card.Content> : null}
         {hasRows ? cardFooter : null}
       </Card>
     );

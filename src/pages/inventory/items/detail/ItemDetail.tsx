@@ -16,7 +16,7 @@ import {
 import { ItemDetailSkeleton } from '../../../../components/form/skeletons/ItemDetailSkeleton';
 import { PageHeader } from '../../../../components/form/PageHeader';
 import { DetailColumns } from '../../../../components/form/DetailColumns';
-import { FieldStack, Section, bind, type Errors } from '../../../../components/form/fields';
+import { Fields, FieldStack, Section, bind, type Errors } from '../../../../components/form/fields';
 import { type MoreMenuItem } from '../../../../components/form/MoreMenu';
 import { DetailActions } from '../../../../components/form/DetailActions';
 import { ProblemsAlert, problemCollector, type Problem } from '../../../../components/form/ProblemsAlert';
@@ -377,13 +377,14 @@ function ItemForm() {
             parent={{ noun: ITEM_NOUN, to: LIST_PATH }}
             title={isNew ? `New ${ITEM_NOUN.one}` : (draft.name || draft.description)}
             tabs={
-              <Tabs
-                variant="outline"
-                value={page}
-                onValueChange={(v) => setPage(v as PageId)}
-                // An item has no transactions or activity until it's added.
-                items={PAGES.map((p) => ({ ...p, disabled: isNew && p.value !== 'details' }))}
-              />
+              isNew ? undefined : (
+                <Tabs
+                  variant="outline"
+                  value={page}
+                  onValueChange={(v) => setPage(v as PageId)}
+                  items={PAGES.map((p) => ({ ...p }))}
+                />
+              )
             }
             status={
               isNew ? undefined : (
@@ -437,54 +438,8 @@ function ItemForm() {
               }
               main={
                 <>
-                  {draft.parentItemId && parentItem && (
-                    <div className="flex items-center gap-2 rounded-xl border border-[var(--color-border-default)] text-body px-3 py-2 text-sm">
-                      <Icon size={16} className="shrink-0 text-muted">info</Icon>
-                      <Text variant="small" tone="muted">
-                        Tax, UoMs, planning and other settings are inherited from{' '}
-                        <Link onClick={() => navigate(`${LIST_PATH}/${parentItem.id}`)}>
-                          {parentItem.name}
-                        </Link>
-                        . Changes to those fields here are overridden by the parent.
-                      </Text>
-                    </div>
-                  )}
-                  <Tabs
-                    value={tab}
-                    onValueChange={(v) => setTab(v as TabId)}
-                    items={TABS
-                      .filter((t) => t.value !== 'variants' || draft.variantAxes.length > 0)
-                      .map((t) => ({
-                        value: t.value,
-                        label: t.label,
-                        badge: problems.some((p) => p.tab === t.value) ? '!' : counts[t.value] ? String(counts[t.value]) : undefined,
-                      }))}
-                  />
-                  <ActiveTab
-                    draft={draft}
-                    update={(patch) => {
-                      // Linked defaults: customs group → duty %, commission group → commission %.
-                      const customs = inv.customs.find((c) => c.id === patch.customsGroup);
-                      const commission = inv.commissions.find((c) => c.id === patch.commissionGroup);
-                      update({
-                        ...patch,
-                        ...(customs ? { dutyPct: customs.duty } : {}),
-                        ...(commission ? { commissionPct: commission.pct } : {}),
-                      });
-                    }}
-                    errors={errors}
-                    vendors={vendors}
-                    inv={inv}
-                    tax={tax}
-                    lockedUomIds={lockedUomIds}
-                    onAddUomsFromGroup={() => setAddingFromGroup(true)}
-                  />
-                </>
-              }
-              aside={
-                <>
                   <Section icon="inventory_2" title="Item">
-                    <FieldStack>
+                    <Fields cols={2}>
                       {isNew ? (
                         <FormField orientation="responsive" label="Numbering" tooltip={`Auto uses the group series, e.g. ${group?.prefix ?? 'ITM'}-00001.`}>
                           {(p) => (
@@ -619,7 +574,7 @@ function ItemForm() {
                           )}
                         </FormField>
                       )}
-                    </FieldStack>
+                    </Fields>
                   </Section>
 
                   {/* Attribute selectors — shown on variant items */}
@@ -651,6 +606,53 @@ function ItemForm() {
                       </FieldStack>
                     </Section>
                   )}
+
+                  {draft.parentItemId && parentItem && (
+                    <div className="flex items-center gap-2 rounded-xl border border-[var(--color-border-default)] text-body px-3 py-2 text-sm">
+                      <Icon size={16} className="shrink-0 text-muted">info</Icon>
+                      <Text variant="small" tone="muted">
+                        Tax, UoMs, planning and other settings are inherited from{' '}
+                        <Link onClick={() => navigate(`${LIST_PATH}/${parentItem.id}`)}>
+                          {parentItem.name}
+                        </Link>
+                        . Changes to those fields here are overridden by the parent.
+                      </Text>
+                    </div>
+                  )}
+                  <Tabs
+                    value={tab}
+                    onValueChange={(v) => setTab(v as TabId)}
+                    items={TABS
+                      .filter((t) => t.value !== 'variants' || draft.variantAxes.length > 0)
+                      .map((t) => ({
+                        value: t.value,
+                        label: t.label,
+                        badge: problems.some((p) => p.tab === t.value) ? '!' : counts[t.value] ? String(counts[t.value]) : undefined,
+                      }))}
+                  />
+                  <ActiveTab
+                    draft={draft}
+                    update={(patch) => {
+                      // Linked defaults: customs group → duty %, commission group → commission %.
+                      const customs = inv.customs.find((c) => c.id === patch.customsGroup);
+                      const commission = inv.commissions.find((c) => c.id === patch.commissionGroup);
+                      update({
+                        ...patch,
+                        ...(customs ? { dutyPct: customs.duty } : {}),
+                        ...(commission ? { commissionPct: commission.pct } : {}),
+                      });
+                    }}
+                    errors={errors}
+                    vendors={vendors}
+                    inv={inv}
+                    tax={tax}
+                    lockedUomIds={lockedUomIds}
+                    onAddUomsFromGroup={() => setAddingFromGroup(true)}
+                  />
+                </>
+              }
+              aside={
+                <>
                   <VendorsCards
                     draft={draft}
                     update={update}

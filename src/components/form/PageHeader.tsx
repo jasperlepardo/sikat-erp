@@ -58,18 +58,20 @@ export function PageHeader({ parent, title, onBack, create, actions, leading, ..
   return (
     <PanelHeader
       {...rest}
+      icon={close ? undefined : rest.icon}
       iconIntent="default"
       iconShape="rounded"
       iconSize={32}
       iconVariant="outline"
-      title={nearest ? undefined : title}
-      breadcrumbs={nearest ? [...parents.map((p) => ({ label: labelOf(p), href: p.to })), { label: title as string }] : undefined}
+      title={close || !nearest ? title : undefined}
+      breadcrumbs={!close && nearest ? [...parents.map((p) => ({ label: labelOf(p), href: p.to })), { label: title as string }] : undefined}
       onBreadcrumbNavigate={(item, e) => {
         e.preventDefault();
         navigate(item.href!);
       }}
-      leading={close ?? leading}
+      leading={leading}
       onBack={close ? undefined : back}
+      trailing={close}
       actions={
         actions != null && createButton ? (
           <>

@@ -1,4 +1,4 @@
-import { Dropdown, DropdownItem, Icon, IconButton, useDropdown } from '@jasperlepardo/sikat-design-system';
+import { Button, Dropdown, DropdownItem, Icon, useDropdown } from '@jasperlepardo/sikat-design-system';
 import { newRule, type FilterField, type FilterGroup } from './engine';
 
 /**
@@ -31,17 +31,18 @@ export function AddFilterMenu<T>({
 
   return (
     <div ref={rootRef} className="relative inline-flex">
-      <IconButton
-        label="Add filter"
+      <Button
+        type="button"
         intent="default"
-        variant="link"
+        variant="ghost"
         size="small"
+        leadingIcon={<Icon size={20}>add_circle</Icon>}
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={toggle}
       >
-        <Icon size={20}>add_circle</Icon>
-      </IconButton>
+        Add Filter
+      </Button>
       {open && anchor ? (
         <Dropdown ref={panelRef} role="menu" anchor={anchor} side={side} hSide={hSide} style={{ width: 240 }}>
           {fields.map((field) => (

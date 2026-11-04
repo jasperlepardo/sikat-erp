@@ -59,5 +59,5 @@ export function createHopMenuItems<Source extends { id: string }>(
 ): MoreMenuItem[] {
   return hops
     .filter((h) => h.hasOpenLines(source, items))
-    .map((h) => ({ label: `Create ${h.targetNoun}…`, icon: h.icon, onSelect: () => open(h) }));
+    .map((h) => ({ label: `Create ${h.targetNoun}`, icon: h.icon, onSelect: () => open(h) }));
 }

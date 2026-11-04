@@ -189,7 +189,7 @@ function GrrForm() {
 
   const menu: MoreMenuItem[] = [
     ...(draft.status === 'Open' && draft.lines.some((l) => l.status === 'Open' && l.itemId)
-      ? [{ label: 'Create goods return…', icon: 'assignment_return', onSelect: () => setCreatingReturn(true) }]
+      ? [{ label: 'Create goods return', icon: 'assignment_return', onSelect: () => setCreatingReturn(true) }]
       : []),
     ...(draft.status === 'Open' ? [{ label: 'Close', icon: 'task_alt', onSelect: closeIt }] : []),
   ];

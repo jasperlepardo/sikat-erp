@@ -290,7 +290,7 @@ function QuotationForm() {
   };
 
   const menu: MoreMenuItem[] = [
-    ...(draft.status === 'Open' && draft.lines.some((l) => l.itemId && l.quantity > 0) ? [{ label: 'Create sales order…', icon: 'shopping_bag', onSelect: () => setCreatingSo(true) }] : []),
+    ...(draft.status === 'Open' && draft.lines.some((l) => l.itemId && l.quantity > 0) ? [{ label: 'Create sales order', icon: 'shopping_bag', onSelect: () => setCreatingSo(true) }] : []),
     ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }] : []),
     ...(draft.status === 'Open' || draft.status === 'Expired' ? [{ label: 'Close', icon: 'task_alt', onSelect: () => closeQuotation(saved).then((r) => navigate(QT_LIST_PATH, { state: { notice: `Quotation ${qtNumber(r)} closed.` } })) }] : []),
     ...(draft.status === 'Open' || draft.status === 'Expired' ? [{ label: `Cancel ${QT_NOUN.one}`, icon: 'cancel', onSelect: () => cancelQuotation(saved).then((r) => navigate(QT_LIST_PATH, { state: { notice: `Quotation ${qtNumber(r)} cancelled.` } })) }] : []),

@@ -12,12 +12,16 @@ import type { ShippingType } from '../../mocks/itemMasters';
 import type { Project } from '../../mocks/partnerMasters';
 import { round2 } from '../../services/num';
 import { formatAmount } from '../../services/format';
+import { TotalsBar, amt } from '../form/TotalsFooterParts';
 import { formatDate, todayISO } from '../../services/dates';
 import { itemGroupName, type InventoryMasters } from '../../services/inventoryMasters';
 import { exchangeRates, rateOn } from '../../services/masterData';
 import { lineTotal, openAmountLC, openQty } from '../../services/blanketAgreements';
 import { projectDef, shippingTypeDef } from '../../pages/settings/masterDefs';
 import { CurrencyToggle, currencyChoices } from '../../pages/purchasing/shared/CurrencyToggle';
+import { cap } from '../form/noun';
+import { BA_NOUN } from '../../pages/sales/paths';
+import { PBA_NOUN } from '../../pages/purchasing/paths';
 
 const num = (v: string) => (v === '' ? 0 : Number(v));
 
@@ -194,9 +198,8 @@ export function AgreementLinesCard<L extends Line>({ side, draft, update, m, rea
       cardHeader
       prefsKey={purchase ? 'pba' : 'ba'}
       icon="list_alt"
-      title="Line Items"
-      description={`Items committed under this agreement. Unit prices are ${purchase ? 'the agreed purchase cost' : 'net of VAT'} in ${currency}.`}
-      columns={columns}
+      title={cap((purchase ? PBA_NOUN : BA_NOUN).lineLabel!)}
+columns={columns}
       rows={lines}
       getRowId={(l) => l.id}
       readOnly={locked}
@@ -211,12 +214,12 @@ export function AgreementLinesCard<L extends Line>({ side, draft, update, m, rea
         fromItem: (itemId) => ({ ...newLine(), ...itemPatch(itemId) }) as L,
         onAdd: (line) => update({ lines: [...lines, line] }),
         onRemoveLine: (l) => update({ lines: lines.filter((x) => x.id !== l.id) }),
+        search: { items: m.items.filter((i) => purchase ? i.purchaseItem : i.salesItem) },
+        onAddMany: (itemIds) => update({ lines: [...lines, ...itemIds.map((id) => ({ ...newLine(), ...itemPatch(id) } as L))] }),
       }}
       footer={
         lines.length > 0 ? (
-          <div className="flex justify-end gap-6 pb-2 text-sm tabular-nums">
-            <span>Planned total: <strong>{shown} {formatAmount(lines.reduce((n, l) => n + lineTotal(l), 0) * factor)}</strong></span>
-          </div>
+          <TotalsBar label="Planned total" value={amt(lines.reduce((n, l) => n + lineTotal(l), 0) * factor, shown)} />
         ) : undefined
       }
       empty={<Text variant="small" tone="muted">{readOnly ? 'No lines.' : 'Add a line to get started.'}</Text>}

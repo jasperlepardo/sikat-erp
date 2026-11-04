@@ -48,30 +48,32 @@ export function FilterToolbar<T>({
   return (
     <div className="flex flex-col gap-2">
       {search}
-      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-neutral-subtle px-2 py-1.5">
-        {viewMenu}
-        {rules.map((rule) => {
-          const field = fields.find((f) => f.key === rule.field);
-          if (!field) return null;
-          return (
-            <FilterChip
-              key={rule.id}
-              field={field}
-              rule={rule}
-              onChange={updateRule}
-              onRemove={() => removeRule(rule.id)}
-              defaultOpen={rule.id === openRuleId}
-            />
-          );
-        })}
-        <AddFilterMenu fields={fields} value={value} onChange={onChange} onAdded={setOpenRuleId} />
+      <div className="flex items-center gap-6 rounded-xl border border-default bg-secondary p-1">
+        <div className="flex flex-wrap items-center gap-1">
+          {viewMenu}
+          {rules.map((rule) => {
+            const field = fields.find((f) => f.key === rule.field);
+            if (!field) return null;
+            return (
+              <FilterChip
+                key={rule.id}
+                field={field}
+                rule={rule}
+                onChange={updateRule}
+                onRemove={() => removeRule(rule.id)}
+                defaultOpen={rule.id === openRuleId}
+              />
+            );
+          })}
+          <AddFilterMenu fields={fields} value={value} onChange={onChange} onAdded={setOpenRuleId} />
+        </div>
         {edited ? (
           <div className="flex items-center gap-1">
-            <IconButton label="Discard filter changes" intent="default" variant="ghost" size="small" onClick={onReset}>
-              <Icon size={20}>undo</Icon>
+            <IconButton label="Discard filter changes" intent="white" variant="solid" size="small" onClick={onReset}>
+              <Icon size={20}>rotate_left</Icon>
             </IconButton>
-            <IconButton label="Save as view" intent="default" variant="ghost" size="small" onClick={onSaveView}>
-              <Icon size={20}>save</Icon>
+            <IconButton label="Save as view" intent="white" variant="solid" size="small" onClick={onSaveView}>
+              <Icon size={20}>save_alt</Icon>
             </IconButton>
           </div>
         ) : null}

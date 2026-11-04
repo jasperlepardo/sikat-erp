@@ -102,7 +102,7 @@ export function VendorItemsTab({ draft }: { draft: Draft }) {
   const { visible, pagination } = paginate(sorted);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-2">
+    <div className="flex flex-col gap-2">
       <div className="grid gap-2 md:grid-cols-3">
         <Stat icon="inventory_2" label="Items supplied" value={String(rows.length)} sub="On the items’ Vendors card" />
         <Stat
@@ -131,7 +131,7 @@ export function VendorItemsTab({ draft }: { draft: Draft }) {
       />
 
       {/* Fills the rest of the panel; the table scrolls inside it. */}
-      <Card className="min-h-72 flex-1">
+      <Card>
         {found.length ? (
           <Table
             caption="Items supplied"

@@ -91,10 +91,7 @@ export function JournalPreview({
                 // combined label for an account that isn't in the chart.
                 const a = accounts.find((x) => x.code === j.account);
                 return a ? (
-                  <>
-                    <Text variant="caption">{a.code}{a.active ? '' : ' (inactive)'}</Text>
-                    <Text variant="small">{a.name}</Text>
-                  </>
+                  <Text variant="small">{a.code}{a.active ? '' : ' (inactive)'} {a.name}</Text>
                 ) : (
                   <Text variant="small">{accountText(j.account, accounts)}</Text>
                 );

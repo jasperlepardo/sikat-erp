@@ -133,8 +133,8 @@ function BaForm() {
   }
   if (draft === null) return <NotFound icon="description" title={`${cap(BA_NOUN.one)} not found`} backTo={BA_LIST_PATH} backLabel={`Back to ${BA_NOUN.many}`} />;
 
-  const readOnly = draft.status === 'Closed' || draft.status === 'Terminated';
   const added = draft.status !== 'Draft';
+  const readOnly = added;
   const errors: Errors = Object.fromEntries(problems.map((p) => [p.key, p.message]));
 
   const { prevId, nextId } = neighbours(siblings, draft.id && (draft.docNum ? baNumber(draft as BlanketAgreement) : draft.id));
@@ -250,7 +250,7 @@ function BaForm() {
 
   const menu: MoreMenuItem[] = [
     ...(draft.status === 'Approved' && draft.lines.some((l) => openQty(l) > 0)
-      ? [{ label: 'Create sales order…', icon: 'shopping_bag', onSelect: () => setCreatingSo(true) }]
+      ? [{ label: 'Create sales order', icon: 'shopping_bag', onSelect: () => setCreatingSo(true) }]
       : []),
     ...(!isNew ? [{ label: 'Duplicate', icon: 'content_copy', onSelect: duplicate }] : []),
     ...(draft.status === 'On Hold' ? [{ label: 'Resume', icon: 'play_circle', onSelect: () => move('Approved', 'resumed') }] : []),
@@ -315,14 +315,7 @@ function BaForm() {
           ) : (
             <DetailColumns
               header={
-                <>
-                  <ProblemsAlert problems={problems} tabLabel={(t) => TAB_LABEL[t as TabId] ?? t} />
-
-
-                  {draft.lines.length > 0 && (
-                    <AgreementSummaryCard side="sales" currency={draft.currency} totals={totals} settlementProbability={draft.settlementProbability} />
-                  )}
-                </>
+                <ProblemsAlert problems={problems} tabLabel={(t) => TAB_LABEL[t as TabId] ?? t} />
               }
               main={
                 <>
@@ -336,6 +329,9 @@ function BaForm() {
                     error={errors.customerId}
                   />
                   <AgreementLinesCard side="sales" draft={draft} update={update} m={m} readOnly={readOnly} newLine={newBaLine} />
+                  {draft.lines.length > 0 && (
+                    <AgreementSummaryCard side="sales" currency={draft.currency} totals={totals} settlementProbability={draft.settlementProbability} />
+                  )}
                   <AttachmentsCard
                     attachments={draft.attachments}
                     onChange={(attachments) => update({ attachments })}

@@ -74,7 +74,7 @@ export const RC_NOUN: Noun = { one: 'incoming payment', many: 'incoming payments
 export const RC_STATUS_INTENT: Record<IncomingStatus, 'default' | 'success' | 'danger' | 'warning'> = { Draft: 'default', 'Not Confirmed': 'warning', Posted: 'success', Cancelled: 'danger' };
 
 export const BA_LIST_PATH = '/sales/agreements';
-export const BA_NOUN: Noun = { one: 'sales blanket agreement', many: 'sales blanket agreements' };
+export const BA_NOUN: Noun = { one: 'sales blanket agreement', many: 'sales blanket agreements', lineLabel: 'committed items' };
 
 export const BA_STATUS_INTENT: Record<BaStatus, 'default' | 'primary' | 'success' | 'danger' | 'warning'> = {
   Draft: 'default',

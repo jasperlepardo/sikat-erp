@@ -265,7 +265,7 @@ function RfqForm() {
   };
 
   const menu: MoreMenuItem[] = [
-    ...(open && draft.lines.some((l) => l.itemId && (l.quotedQty || l.quantity) > 0) ? [{ label: 'Create purchase order…', icon: 'shopping_cart', onSelect: () => setCreatingPo(true) }] : []),
+    ...(open && draft.lines.some((l) => l.itemId && (l.quotedQty || l.quantity) > 0) ? [{ label: 'Create purchase order', icon: 'shopping_cart', onSelect: () => setCreatingPo(true) }] : []),
     ...(!isNew ? [{ label: 'Duplicate', icon: 'content_copy', onSelect: duplicate }] : []),
     ...(draft.status === 'Not Confirmed' ? [{ label: 'Recall', icon: 'undo', onSelect: recallIt }] : []),
     ...(live ? [

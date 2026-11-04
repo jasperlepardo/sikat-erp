@@ -115,7 +115,7 @@ export const DPR_STATUS_INTENT: Record<DprStatus, 'default' | 'primary' | 'succe
 };
 
 export const PBA_LIST_PATH = '/purchasing/agreements';
-export const PBA_NOUN: Noun = { one: 'purchase blanket agreement', many: 'purchase blanket agreements' };
+export const PBA_NOUN: Noun = { one: 'purchase blanket agreement', many: 'purchase blanket agreements', lineLabel: 'committed items' };
 
 export const PBA_STATUS_INTENT: Record<PbaStatus, 'default' | 'primary' | 'success' | 'danger' | 'warning'> = {
   Draft: 'default',

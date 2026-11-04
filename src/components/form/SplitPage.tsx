@@ -43,14 +43,14 @@ export function SplitPage({ list: List, detail: Detail, listProps, detailProps }
   if (!id) return <List {...(listProps ?? {})} />;
 
   return (
-    <div className="grid grid-cols-12 grid-rows-1 gap-2 flex-1 min-h-0 overflow-hidden">
-      <div className="col-span-3 flex flex-col min-h-0 overflow-hidden">
+    <div className="grid grid-cols-12 grid-rows-1 gap-2 flex-1 min-h-0">
+      <div className="col-span-3 flex flex-col min-h-0">
         <InSplitList.Provider value>
           <List compact selectedId={id} {...(listProps ?? {})} />
         </InSplitList.Provider>
       </div>
       <div
-        className="col-span-9 flex flex-col min-h-0 overflow-hidden *:min-h-0"
+        className="col-span-9 flex flex-col min-h-0 *:min-h-0"
         style={{ opacity: isStale ? 0.5 : 1, transition: 'opacity 150ms' }}
       >
         <InSplitDetail.Provider value>

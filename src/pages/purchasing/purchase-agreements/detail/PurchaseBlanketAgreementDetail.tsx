@@ -246,7 +246,7 @@ function PbaForm() {
 
   const menu: MoreMenuItem[] = [
     ...(draft.status === 'Approved' && draft.lines.some((l) => openQty(l) > 0)
-      ? [{ label: 'Create purchase order…', icon: 'receipt_long', onSelect: () => setCreatingPo(true) }]
+      ? [{ label: 'Create purchase order', icon: 'receipt_long', onSelect: () => setCreatingPo(true) }]
       : []),
     ...(!isNew ? [{ label: 'Duplicate', icon: 'content_copy', onSelect: duplicate }] : []),
     ...(draft.status === 'On Hold' ? [{ label: 'Resume', icon: 'play_circle', onSelect: () => move('Approved', 'resumed') }] : []),

@@ -6,12 +6,10 @@ export function Stat({ icon, label, value, sub }: { icon: string; label: string;
     <Card>
       <Card.Header icon={<Icon size={24}>{icon}</Icon>}>{label}</Card.Header>
       <Card.Content>
-        <Text variant="h3" as="p">
-          {value}
-        </Text>
-        <Text variant="small" tone="muted">
-          {sub}
-        </Text>
+        <div className="flex flex-col gap-0.5">
+          <Text variant="h3" as="p">{value}</Text>
+          <Text variant="small" tone="muted">{sub}</Text>
+        </div>
       </Card.Content>
     </Card>
   );

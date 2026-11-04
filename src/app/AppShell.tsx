@@ -133,6 +133,7 @@ export function AppShell() {
   return (
     <Page>
       <Navbar
+        theme="dark"
         onSideNavToggle={() => {
           setNavExpanded((v) => !v);
           peek.reset();
